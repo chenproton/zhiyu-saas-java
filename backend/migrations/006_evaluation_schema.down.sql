@@ -1,0 +1,24 @@
+-- 回滚评测域建表（006_evaluation_schema.up.sql）
+DROP TABLE IF EXISTS appeal_records CASCADE;
+DROP TABLE IF EXISTS credit_conversion_rules CASCADE;
+DROP TABLE IF EXISTS cert_issuance_records CASCADE;
+DROP TABLE IF EXISTS micro_cert_templates CASCADE;
+DROP TABLE IF EXISTS graduation_query_results CASCADE;
+DROP TABLE IF EXISTS graduation_project_evaluations CASCADE;
+DROP TABLE IF EXISTS graduation_project_archives CASCADE;
+DROP TABLE IF EXISTS graduation_project_topics CASCADE;
+DROP TABLE IF EXISTS student_ability_archives CASCADE;
+DROP TABLE IF EXISTS student_ability_portraits CASCADE;
+DROP TABLE IF EXISTS certification_related_tasks CASCADE;
+DROP TABLE IF EXISTS certification_ability_points CASCADE;
+DROP TABLE IF EXISTS certification_ability_items CASCADE;
+DROP TABLE IF EXISTS certification_rules CASCADE;
+DROP TABLE IF EXISTS job_ability_results CASCADE;
+DROP TABLE IF EXISTS scene_evaluation_results CASCADE;
+DROP TABLE IF EXISTS evaluation_methods CASCADE;
+DROP TABLE IF EXISTS evaluation_method_categories CASCADE;
+DROP TABLE IF EXISTS exam_usages CASCADE;
+DROP TABLE IF EXISTS exam_questions CASCADE;
+DROP TABLE IF EXISTS exams CASCADE;
+DROP TABLE IF EXISTS questions CASCADE;
+DROP TABLE IF EXISTS question_banks CASCADE;
