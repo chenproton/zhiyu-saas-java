@@ -512,7 +512,7 @@ export default function TeachersPage() {
             {!selectedTeacher && (
               <div className="grid gap-2">
                 <Label>密码 <span className="text-destructive">*</span></Label>
-                <Input type="password" placeholder="请输入密码" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} />
+                <Input type="text" placeholder="请输入密码" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} />
               </div>
             )}
             <div className="grid gap-2">
