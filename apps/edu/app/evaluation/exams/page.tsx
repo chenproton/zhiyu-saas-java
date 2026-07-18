@@ -28,8 +28,8 @@ import {
   X,
   XCircle,
 } from "lucide-react"
-import { examApi, evaluationBatchApi, workflowApi, importExportApi, approvalApi } from "@/lib/api"
-import type { Exam, EvaluationBatch, Workflow } from "@/lib/types"
+import { examApi, evaluationBatchApi, importExportApi, approvalApi } from "@/lib/api"
+import type { Exam, EvaluationBatch } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -47,7 +47,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import {
@@ -124,7 +123,6 @@ export default function ExamsPage() {
 
   const [exams, setExams] = useState<BackendExam[]>([])
   const [batches, setBatches] = useState<EvaluationBatch[]>([])
-  const [workflows, setWorkflows] = useState<Workflow[]>([])
   const [loading, setLoading] = useState(true)
 
   const [activeTab, setActiveTab] = useState<TabType>("my")
@@ -144,12 +142,6 @@ export default function ExamsPage() {
   const [newDuration, setNewDuration] = useState("60")
   const [newBatchId, setNewBatchId] = useState("")
 
-  const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false)
-  const [isInnerBatchCreateOpen, setIsInnerBatchCreateOpen] = useState(false)
-  const [newBatchName, setNewBatchName] = useState("")
-  const [newBatchWorkflow, setNewBatchWorkflow] = useState("")
-
-  const [isApprovalWorkflowDialogOpen, setIsApprovalWorkflowDialogOpen] = useState(false)
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isBatchMoveDialogOpen, setIsBatchMoveDialogOpen] = useState(false)
@@ -166,17 +158,15 @@ export default function ExamsPage() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [examsRes, batchesRes, workflowsRes] = await Promise.all([
+      const [examsRes, batchesRes] = await Promise.all([
         examApi.list({ limit: 1000 }) as unknown as {
           items: BackendExam[]
           total: number
         },
         evaluationBatchApi.list({ limit: 1000 }),
-        workflowApi.list({ limit: 1000 }),
       ])
       setExams(examsRes.items)
       setBatches(batchesRes.items)
-      setWorkflows(workflowsRes.items)
     } catch (err) {
       console.error("加载数据失败", err)
       alert("加载数据失败，请稍后重试")
@@ -514,26 +504,6 @@ export default function ExamsPage() {
     setSelectedIds([])
   }
 
-  const handleCreateBatch = async () => {
-    if (!newBatchName || !newBatchWorkflow) return
-    const code = `EB-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, "0")}`
-    try {
-      await evaluationBatchApi.create({
-        name: newBatchName,
-        code,
-        status: "open",
-        workflowId: newBatchWorkflow,
-      })
-      setNewBatchName("")
-      setNewBatchWorkflow("")
-      setIsInnerBatchCreateOpen(false)
-      await loadData()
-    } catch (err) {
-      console.error("创建批次失败", err)
-      alert("创建批次失败")
-    }
-  }
-
   const handleResetFilters = () => {
     setSearchQuery("")
     setSelectedBatchId(null)
@@ -777,110 +747,6 @@ export default function ExamsPage() {
         description="维护试卷资源，支持组卷、审批、发布与批次分组管理"
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={() => setIsApprovalWorkflowDialogOpen(true)}>
-              <GitBranch className="mr-2 h-4 w-4" />
-              配置审批流程
-            </Button>
-
-            <Dialog open={isBatchDialogOpen} onOpenChange={setIsBatchDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <FolderKanban className="mr-2 h-4 w-4" />
-                  配置批次分组
-                </Button>
-              </DialogTrigger>
-              <DialogContent size="lg" className="max-h-[85vh] overflow-hidden flex flex-col">
-                <DialogHeader>
-                  <DialogTitle>批次分组管理</DialogTitle>
-                  <DialogDescription>管理试卷建设批次分组，关联审批流程</DialogDescription>
-                </DialogHeader>
-                <div className="flex-1 overflow-y-auto py-4 space-y-4">
-                  <div className="flex justify-end">
-                    <Dialog open={isInnerBatchCreateOpen} onOpenChange={setIsInnerBatchCreateOpen}>
-                      <DialogTrigger asChild>
-                        <Button size="sm">
-                          <Plus className="mr-2 h-4 w-4" />
-                          新增批次
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent size="default">
-                        <DialogHeader>
-                          <DialogTitle>新增批次</DialogTitle>
-                          <DialogDescription>创建新的试卷建设批次分组，并关联审批流程。</DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                          <div className="grid gap-2">
-                            <Label htmlFor="batchName">分组名称</Label>
-                            <Input
-                              id="batchName"
-                              value={newBatchName}
-                              onChange={(e) => setNewBatchName(e.target.value)}
-                              placeholder="例如：2026春季电商实训试卷开发"
-                            />
-                          </div>
-                          <div className="grid gap-2">
-                            <Label htmlFor="batchCode">批次编号</Label>
-                            <Input
-                              id="batchCode"
-                              value={`EB-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, "0")}`}
-                              disabled
-                              className="bg-gray-50 text-gray-500"
-                            />
-                            <p className="text-xs text-gray-500">批次编号自动生成，不可修改</p>
-                          </div>
-                          <div className="grid gap-2">
-                            <Label htmlFor="workflow">关联审批流 <span className="text-red-500">*</span></Label>
-                            <Select value={newBatchWorkflow} onValueChange={setNewBatchWorkflow}>
-                              <SelectTrigger id="workflow">
-                                <SelectValue placeholder="选择审批流程" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {workflows.map((wf) => (
-                                  <SelectItem key={wf.id} value={wf.id}>
-                                    <span className="inline-flex items-center">
-                                      <span>{wf.name}</span>
-                                      <span className="text-xs text-gray-400 ml-2">({wf.steps?.length || 0}步)</span>
-                                    </span>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button variant="outline" onClick={() => setIsInnerBatchCreateOpen(false)}>取消</Button>
-                          <Button onClick={handleCreateBatch} disabled={!newBatchName || !newBatchWorkflow}>
-                            创建批次
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                  <div className="rounded-lg border overflow-hidden">
-                    <div className="grid grid-cols-3 gap-4 px-4 py-2 bg-slate-50 text-xs font-medium text-slate-500 border-b">
-                      <div>分组名称</div>
-                      <div>批次编号</div>
-                      <div>审批流程</div>
-                    </div>
-                    {batches.map((batch) => (
-                      <div key={batch.id} className="grid grid-cols-3 gap-4 px-4 py-2 text-sm border-b last:border-0">
-                        <div className="font-medium">{batch.name}</div>
-                        <div className="text-gray-500">{batch.code || batch.id.slice(0, 12)}</div>
-                        <div>
-                          <Badge variant="outline" className="text-xs">
-                            {workflows.find((w) => w.id === batch.workflowId)?.name || "-"}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsBatchDialogOpen(false)}>关闭</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
             <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
               <Upload className="mr-2 h-4 w-4" />
               导入试卷
@@ -1189,53 +1055,6 @@ export default function ExamsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>取消</Button>
             <Button onClick={handleCreate} disabled={!newName.trim()}>创建</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Approval Workflow Config Dialog */}
-      <Dialog open={isApprovalWorkflowDialogOpen} onOpenChange={setIsApprovalWorkflowDialogOpen}>
-        <DialogContent size="lg" className="max-h-[85vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <div>
-              <DialogTitle>配置审批流程</DialogTitle>
-              <DialogDescription>管理试卷审批流程模板</DialogDescription>
-            </div>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto py-4 space-y-4">
-            <div className="rounded-lg border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>流程名称</TableHead>
-                    <TableHead>流程描述</TableHead>
-                    <TableHead>审批步骤</TableHead>
-                    <TableHead>创建时间</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {workflows.map((wf) => (
-                    <TableRow key={wf.id}>
-                      <TableCell className="font-medium text-sm">{wf.name}</TableCell>
-                      <TableCell className="text-sm text-gray-600">{wf.description}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {wf.steps?.map((step, idx) => (
-                            <Badge key={idx} variant="outline" className="text-xs">
-                              {step.name}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-500">{wf.createdAt}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsApprovalWorkflowDialogOpen(false)}>关闭</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
