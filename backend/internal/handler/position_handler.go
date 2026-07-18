@@ -539,9 +539,9 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 			desc = resp.Description
 		}
 		_, err = tx.Exec(r.Context(), `
-			INSERT INTO position_responsibilities (id, career_position_id, name, description, sort_order)
-			VALUES ($1, $2, $3, $4, $5)
-		`, respID, id, resp.Name, desc, idx)
+			INSERT INTO position_responsibilities (id, tenant_id, career_position_id, name, description, sort_order)
+			VALUES ($1, $2, $3, $4, $5, $6)
+		`, respID, claims.TenantID, id, resp.Name, desc, idx)
 		if err != nil {
 			log.Printf("[SaveFull] insert position_responsibilities failed: %v", err)
 			respondError(w, http.StatusInternalServerError, "failed to create responsibility")
@@ -575,9 +575,9 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 				abilityPointID = uuid.NewString()
 				category := mapCategory(binding.Category)
 				_, err = tx.Exec(r.Context(), `
-					INSERT INTO ability_points (id, name, description, category, is_public)
-					VALUES ($1, $2, $3, $4, $5)
-				`, abilityPointID, binding.Name, binding.Description, category, false)
+					INSERT INTO ability_points (id, tenant_id, name, description, category, is_public)
+					VALUES ($1, $2, $3, $4, $5, $6)
+				`, abilityPointID, claims.TenantID, binding.Name, binding.Description, category, false)
 				if err != nil {
 					log.Printf("[SaveFull] insert ability_points failed: %v", err)
 					respondError(w, http.StatusInternalServerError, "failed to create ability point")
@@ -597,10 +597,10 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		}
 		_, err = tx.Exec(r.Context(), `
 			INSERT INTO position_ability_bindings (
-				id, career_position_id, responsibility_id, ability_point_id, source,
+				id, tenant_id, career_position_id, responsibility_id, ability_point_id, source,
 				domain, required_level, rubric_description, attributes, weight
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-		`, bindingID, id, respBackendID, abilityPointID, binding.Source,
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		`, bindingID, claims.TenantID, id, respBackendID, abilityPointID, binding.Source,
 			domainField, binding.Level, rubricDesc, coalesceStringSlice(binding.Attributes), 0)
 		if err != nil {
 			log.Printf("[SaveFull] insert position_ability_bindings failed: %v", err)
@@ -640,9 +640,9 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		_, err = tx.Exec(r.Context(), `
-			INSERT INTO position_certificates (id, career_position_id, name, url, description, image_url)
-			VALUES ($1, $2, $3, $4, $5, $6)
-		`, uuid.NewString(), id, cert.Name, cert.URL, cert.Description, cert.Image)
+			INSERT INTO position_certificates (id, tenant_id, career_position_id, name, url, description, image_url)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
+		`, uuid.NewString(), claims.TenantID, id, cert.Name, cert.URL, cert.Description, cert.Image)
 		if err != nil {
 			log.Printf("[SaveFull] insert position_certificates failed: %v", err)
 			respondError(w, http.StatusInternalServerError, "failed to create certificate")
