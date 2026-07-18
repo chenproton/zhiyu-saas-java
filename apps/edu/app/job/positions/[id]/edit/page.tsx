@@ -66,6 +66,7 @@ function PositionEditPageContent({ params }: PageProps) {
   const [position, setPosition] = useState<Position | null>(null)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [detailsLoaded, setDetailsLoaded] = useState(false)
+  const [detailsLoading, setDetailsLoading] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -97,7 +98,8 @@ function PositionEditPageContent({ params }: PageProps) {
   }, [id, positions, position])
 
   useEffect(() => {
-    if (!position || detailsLoaded) return
+    if (!position || detailsLoaded || detailsLoading) return
+    setDetailsLoading(true)
     let cancelled = false
     Promise.all([
       positionResponsibilityApi.list({ careerPositionId: position.id, limit: 1000 }),
@@ -107,6 +109,7 @@ function PositionEditPageContent({ params }: PageProps) {
       abilityApi.list({ limit: 1000 }),
     ])
       .then(([respRes, certRes, bindingRes, domainRes, abilityRes]) => {
+        setDetailsLoading(false)
         if (cancelled) return
         const abilityMap = new Map(abilityRes.items.map((a) => [a.id, convertApiAbilityToLocal(a)]))
         const responsibilities = respRes.items.map(convertApiResponsibilityToLocal)
@@ -138,13 +141,14 @@ function PositionEditPageContent({ params }: PageProps) {
         setDetailsLoaded(true)
       })
       .catch((err: any) => {
+        setDetailsLoading(false)
         if (!cancelled) {
           console.error('Failed to load position details:', err)
           toast({ variant: 'destructive', title: '加载详情失败', description: err?.message || '请稍后重试' })
         }
       })
     return () => { cancelled = true }
-  }, [position, detailsLoaded, toast])
+  }, [position, detailsLoaded, detailsLoading, toast])
 
   useEffect(() => {
     const stepParam = searchParams.get('step')
@@ -305,7 +309,13 @@ function PositionEditPageContent({ params }: PageProps) {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving}>
+            {detailsLoading && (
+              <span className="text-xs text-muted-foreground flex items-center">
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                加载详情中
+              </span>
+            )}
+            <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving || detailsLoading}>
               <Save className="mr-2 h-4 w-4" />
               {isSaving ? '保存中...' : '保存草稿'}
             </Button>
@@ -326,7 +336,7 @@ function PositionEditPageContent({ params }: PageProps) {
               </Button>
             ) : (
               position.status === 'draft' && (
-                <Button size="sm" onClick={handleSubmit}>
+                <Button size="sm" onClick={handleSubmit} disabled={detailsLoading}>
                   <Check className="mr-2 h-4 w-4" />
                   提交审批
                 </Button>
