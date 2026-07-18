@@ -38,10 +38,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { OrgNodeSelect } from "@/components/shared/org-node-select"
 import { MajorSelect } from "@/components/shared/major-select"
 import { useAuth } from "@/components/auth-provider"
-import { useOrgTree } from "@/hooks/use-org-tree"
 import { evaluationBatchApi, workflowApi, majorApi } from "@/lib/api"
 import type { EvaluationBatch } from "@/lib/types/evaluation"
 import type { Workflow, Major } from "@/lib/types/backend"
@@ -54,7 +52,6 @@ interface BatchView extends EvaluationBatch {
 export default function BatchesPage() {
   const { toast } = useToast()
   const { tenantId } = useAuth()
-  const { orgMap } = useOrgTree(tenantId)
   const [batches, setBatches] = useState<BatchView[]>([])
   const [workflows, setWorkflows] = useState<Workflow[]>([])
   const [majorMap, setMajorMap] = useState<Map<string, Major>>(new Map())
@@ -64,7 +61,6 @@ export default function BatchesPage() {
   const [editingBatch, setEditingBatch] = useState<BatchView | null>(null)
   const [newBatchName, setNewBatchName] = useState("")
   const [newBatchWorkflow, setNewBatchWorkflow] = useState("")
-  const [newBatchDepartmentId, setNewBatchDepartmentId] = useState("")
   const [newBatchMajorId, setNewBatchMajorId] = useState("")
 
   useEffect(() => {
@@ -110,20 +106,18 @@ export default function BatchesPage() {
   const resetForm = () => {
     setNewBatchName("")
     setNewBatchWorkflow("")
-    setNewBatchDepartmentId("")
     setNewBatchMajorId("")
     setEditingBatch(null)
   }
 
   const handleAddBatch = async () => {
-    if (!newBatchName || !newBatchWorkflow || !newBatchDepartmentId || !newBatchMajorId) return
+    if (!newBatchName || !newBatchWorkflow || !newBatchMajorId) return
     try {
       await evaluationBatchApi.create({
         name: newBatchName,
         code: `BG-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, "0")}`,
         workflowId: newBatchWorkflow,
         status: "open",
-        orgNodeId: newBatchDepartmentId,
         majorId: newBatchMajorId,
       })
       await loadData()
@@ -139,7 +133,6 @@ export default function BatchesPage() {
     setEditingBatch(batch)
     setNewBatchName(batch.name)
     setNewBatchWorkflow(batch.workflowId || "")
-    setNewBatchDepartmentId(batch.orgNodeId || "")
     setNewBatchMajorId(batch.majorId || "")
     setIsEditDialogOpen(true)
   }
@@ -152,7 +145,6 @@ export default function BatchesPage() {
         code: editingBatch.code,
         workflowId: newBatchWorkflow,
         status: editingBatch.status,
-        orgNodeId: newBatchDepartmentId || undefined,
         majorId: newBatchMajorId || undefined,
       })
       await loadData()
@@ -187,23 +179,9 @@ export default function BatchesPage() {
         />
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="department">所属院系 <span className="text-red-500">*</span></Label>
-        <OrgNodeSelect
-          tenantId={tenantId}
-          value={newBatchDepartmentId}
-          onChange={(value) => {
-            setNewBatchDepartmentId(value || "")
-            setNewBatchMajorId("")
-          }}
-          allowedTypes={["二级学院"]}
-          placeholder="选择院系"
-        />
-      </div>
-      <div className="grid gap-2">
         <Label htmlFor="major">所属专业 <span className="text-red-500">*</span></Label>
         <MajorSelect
           tenantId={tenantId}
-          orgNodeId={newBatchDepartmentId}
           value={newBatchMajorId}
           onChange={(value) => setNewBatchMajorId(value || "")}
           placeholder="选择专业"
@@ -255,7 +233,7 @@ export default function BatchesPage() {
               <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                 取消
               </Button>
-              <Button onClick={handleAddBatch} disabled={!newBatchName || !newBatchWorkflow || !newBatchDepartmentId || !newBatchMajorId}>
+              <Button onClick={handleAddBatch} disabled={!newBatchName || !newBatchWorkflow || !newBatchMajorId}>
                 创建批次
               </Button>
             </DialogFooter>
@@ -296,7 +274,6 @@ export default function BatchesPage() {
                 <TableRow className="bg-slate-50">
                   <TableHead className="text-xs font-medium text-slate-500">分组名称</TableHead>
                   <TableHead className="text-xs font-medium text-slate-500">批次编号</TableHead>
-                  <TableHead className="text-xs font-medium text-slate-500">院系</TableHead>
                   <TableHead className="text-xs font-medium text-slate-500">专业</TableHead>
                   <TableHead className="text-xs font-medium text-slate-500">审批流程</TableHead>
                   <TableHead className="text-xs font-medium text-slate-500">状态</TableHead>
@@ -306,13 +283,13 @@ export default function BatchesPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                       加载中...
                     </TableCell>
                   </TableRow>
                 ) : batches.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                       暂无批次数据
                     </TableCell>
                   </TableRow>
@@ -321,7 +298,6 @@ export default function BatchesPage() {
                     <TableRow key={batch.id}>
                       <TableCell className="font-medium">{batch.name}</TableCell>
                       <TableCell className="text-sm text-gray-600">{batch.code || "-"}</TableCell>
-                      <TableCell className="text-sm text-gray-600">{orgMap.get(batch.orgNodeId || '')?.name || "—"}</TableCell>
                       <TableCell className="text-sm text-gray-600">{majorMap.get(batch.majorId || '')?.name || "—"}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
