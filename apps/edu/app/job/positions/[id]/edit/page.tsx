@@ -39,6 +39,7 @@ import {
   convertApiAbilityToLocal,
 } from '@/lib/stores/job-converters'
 import { useToast } from '@/hooks/use-toast'
+import { Toaster } from '@/components/ui/toaster'
 import { useAuth } from '@/components/auth-provider'
 
 
@@ -522,6 +523,7 @@ function PositionEditPageContent({ params }: PageProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Toaster />
     </div>
   )
 }
