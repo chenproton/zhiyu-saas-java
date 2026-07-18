@@ -213,6 +213,16 @@ func (h *OrgTypeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var refCount int
+	if err := h.DB.QueryRow(r.Context(), `SELECT COUNT(*) FROM organizations WHERE type_id = $1`, id).Scan(&refCount); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to check org type references")
+		return
+	}
+	if refCount > 0 {
+		respondError(w, http.StatusConflict, "该组织类型仍被组织使用，不可删除")
+		return
+	}
+
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM org_types WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete org type")

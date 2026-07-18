@@ -271,6 +271,18 @@ func (h *ResourceHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var refCount int
+	if err := h.DB.QueryRow(r.Context(), `
+		SELECT (SELECT COUNT(*) FROM orders WHERE resource_id = $1)
+		     + (SELECT COUNT(*) FROM authorizations WHERE resource_id = $1)`, id).Scan(&refCount); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to check resource references")
+		return
+	}
+	if refCount > 0 {
+		respondError(w, http.StatusConflict, "资源存在订单或授权记录，不可删除，请改为下架")
+		return
+	}
+
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM resources WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete resource")
@@ -426,7 +438,7 @@ func (h *ResourceHandler) replaceResourceTags(ctx context.Context, tx pgx.Tx, re
 		_, err := tx.Exec(ctx, `
 			INSERT INTO resource_tags (id, resource_id, tag_type, tag_value)
 			VALUES ($1, $2, $3, $4)
-		`, resourceID+"-"+tag.TagType+"-"+tag.TagValue, resourceID, tag.TagType, tag.TagValue)
+		`, uuid.NewString(), resourceID, tag.TagType, tag.TagValue)
 		if err != nil {
 			return err
 		}

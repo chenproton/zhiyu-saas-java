@@ -581,6 +581,14 @@ func TestRecommend_CRUD(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
 
+	var majorID string
+	if err := env.DB.QueryRow(context.Background(), `
+		INSERT INTO majors (tenant_id, code, name, enabled) VALUES ($1, $2, $3, true) RETURNING id
+	`, testhelper.TestTenantID, "rec-test-major", "Rec Test Major").Scan(&majorID); err != nil {
+		t.Fatalf("create major: %v", err)
+	}
+	defer env.DB.Exec(context.Background(), "DELETE FROM majors WHERE id = $1", majorID)
+
 	posBody := map[string]interface{}{
 		"name":         "Recommend Test Position",
 		"positionType": "enterprise",
@@ -603,6 +611,7 @@ func TestRecommend_CRUD(t *testing.T) {
 		body := map[string]interface{}{
 			"careerPositionId": positionID,
 			"positionType":     "enterprise",
+			"majorId":          majorID,
 		}
 		w := env.Do("POST", "/api/v1/job/recommendations", body)
 		if w.Code != http.StatusCreated {
@@ -646,6 +655,7 @@ func TestRecommend_CRUD(t *testing.T) {
 		body := map[string]interface{}{
 			"careerPositionId": positionID,
 			"positionType":     "enterprise",
+			"majorId":          majorID,
 		}
 		w := env.Do("PUT", fmt.Sprintf("/api/v1/job/recommendations/%s", recID), body)
 		if w.Code != http.StatusOK {

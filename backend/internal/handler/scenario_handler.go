@@ -39,11 +39,6 @@ type CreateScenarioRequest struct {
 	CoBuilderIDs     []string `json:"coBuilderIds"`
 }
 
-type ReviewScenarioRequest struct {
-	Status  string  `json:"status"`
-	Comment *string `json:"comment"`
-}
-
 func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "permission denied")
@@ -175,7 +170,7 @@ func (h *ScenarioHandler) Create(w http.ResponseWriter, r *http.Request) {
 		INSERT INTO scenarios (id, name, code, cover_image, career_position_id, industry_id,
 			profession_id, profession_name, batch_id, difficulty, version, status, background,
 			delivery_goal, creator_id, co_builder_ids, tenant_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'draft', $13, $14, $15, $16, $17)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'draft', $12, $13, $14, $15, $16)
 	`, id, req.Name, req.Code, req.CoverImage, req.CareerPositionID, req.IndustryID,
 		req.ProfessionID, req.ProfessionName, req.BatchID, req.Difficulty, req.Version, req.Background,
 		req.DeliveryGoal, claims.UserID, coalesceStringSlice(req.CoBuilderIDs), tenantID)
@@ -250,118 +245,40 @@ func (h *ScenarioHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 
-func (h *ScenarioHandler) Submit(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
+func (h *ScenarioHandler) actions() contentActions {
+	return contentActions{
+		db:         h.DB,
+		table:      "scenarios",
+		entityName: "scenario",
+		inviteCol:  "co_builder_ids",
+		fetch: func(ctx context.Context, id string) (interface{}, error) {
+			return h.fetchScenario(ctx, id)
+		},
 	}
-	h.transitionStatus(w, r, domain.ScenarioStatusPending)
+}
+
+func (h *ScenarioHandler) Submit(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusPending)
 }
 
 func (h *ScenarioHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-	h.transitionStatus(w, r, domain.ScenarioStatusDraft)
+	h.actions().transition(w, r, domain.StatusDraft)
 }
 
 func (h *ScenarioHandler) Review(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	var req ReviewScenarioRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	var status domain.ScenarioStatus
-	switch req.Status {
-	case "approved":
-		status = domain.ScenarioStatusApproved
-	case "rejected":
-		status = domain.ScenarioStatusRejected
-	default:
-		respondError(w, http.StatusBadRequest, "invalid review status")
-		return
-	}
-
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE scenarios SET status = $1, updated_at = NOW() WHERE id = $2
-	`, status, id)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to review scenario")
-		return
-	}
-
-	scenario, _ := h.fetchScenario(r.Context(), id)
-	respondJSON(w, http.StatusOK, scenario)
+	h.actions().review(w, r)
 }
 
 func (h *ScenarioHandler) Publish(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-	h.transitionStatus(w, r, domain.ScenarioStatusPublished)
+	h.actions().transition(w, r, domain.StatusPublished)
 }
 
 func (h *ScenarioHandler) Archive(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-	h.transitionStatus(w, r, domain.ScenarioStatusArchived)
+	h.actions().transition(w, r, domain.StatusArchived)
 }
 
 func (h *ScenarioHandler) Invite(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-	id := chi.URLParam(r, "id")
-	var req InviteRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == "" {
-		respondError(w, http.StatusBadRequest, "userId is required")
-		return
-	}
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE scenarios SET co_builder_ids = array_append(co_builder_ids, $1), updated_at = NOW()
-		WHERE id = $2 AND NOT (co_builder_ids @> ARRAY[$1]::uuid[])
-	`, req.UserID, id)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to invite co-builder")
-		return
-	}
-	scenario, _ := h.fetchScenario(r.Context(), id)
-	if scenario == nil {
-		respondError(w, http.StatusNotFound, "scenario not found")
-		return
-	}
-	respondJSON(w, http.StatusOK, scenario)
-}
-
-func (h *ScenarioHandler) transitionStatus(w http.ResponseWriter, r *http.Request, status domain.ScenarioStatus) {
-	id := chi.URLParam(r, "id")
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE scenarios SET status = $1, updated_at = NOW() WHERE id = $2
-	`, status, id)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update status")
-		return
-	}
-
-	scenario, err := h.fetchScenario(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "scenario not found")
-		return
-	}
-	respondJSON(w, http.StatusOK, scenario)
+	h.actions().invite(w, r)
 }
 
 func (h *ScenarioHandler) fetchScenario(ctx context.Context, id string) (*domain.Scenario, error) {

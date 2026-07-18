@@ -300,7 +300,7 @@ func (h *InstitutionHandler) replaceInstitutionTags(ctx context.Context, tx pgx.
 		_, err := tx.Exec(ctx, `
 			INSERT INTO institution_expertise_tags (id, institution_id, tag_value)
 			VALUES ($1, $2, $3) ON CONFLICT (institution_id, tag_value) DO NOTHING
-		`, institutionID+"-"+tag, institutionID, tag)
+		`, uuid.NewString(), institutionID, tag)
 		if err != nil {
 			return err
 		}
