@@ -33,11 +33,6 @@ type CreateExamRequest struct {
 	BatchID             *string  `json:"batchId"`
 }
 
-type ReviewExamRequest struct {
-	Status  string  `json:"status"`
-	Comment *string `json:"comment"`
-}
-
 type AddExamQuestionRequest struct {
 	QuestionID string  `json:"questionId"`
 	Score      float64 `json:"score"`
@@ -237,119 +232,40 @@ func (h *ExamHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 
-func (h *ExamHandler) Submit(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
+func (h *ExamHandler) actions() contentActions {
+	return contentActions{
+		db:         h.DB,
+		table:      "exams",
+		entityName: "exam",
+		inviteCol:  "collaborator_ids",
+		fetch: func(ctx context.Context, id string) (interface{}, error) {
+			return h.fetchExam(ctx, id)
+		},
 	}
-	h.transitionStatus(w, r, domain.ExamStatusPending)
+}
+
+func (h *ExamHandler) Submit(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusPending)
 }
 
 func (h *ExamHandler) Review(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	var req ReviewExamRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	var status domain.ExamStatus
-	switch req.Status {
-	case "approved":
-		status = domain.ExamStatusApproved
-	case "rejected":
-		status = domain.ExamStatusRejected
-	default:
-		respondError(w, http.StatusBadRequest, "invalid review status")
-		return
-	}
-
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE exams SET status = $1, updated_at = NOW() WHERE id = $2
-	`, status, id)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to review exam")
-		return
-	}
-
-	exam, _ := h.fetchExam(r.Context(), id)
-	respondJSON(w, http.StatusOK, exam)
+	h.actions().review(w, r)
 }
 
 func (h *ExamHandler) Publish(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-	h.transitionStatus(w, r, domain.ExamStatusPublished)
+	h.actions().transition(w, r, domain.StatusPublished)
 }
 
 func (h *ExamHandler) Archive(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-	h.transitionStatus(w, r, domain.ExamStatusArchived)
+	h.actions().transition(w, r, domain.StatusArchived)
 }
 
 func (h *ExamHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-	h.transitionStatus(w, r, domain.ExamStatusDraft)
+	h.actions().transition(w, r, domain.StatusDraft)
 }
 
 func (h *ExamHandler) Invite(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-	id := chi.URLParam(r, "id")
-	var req InviteRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == "" {
-		respondError(w, http.StatusBadRequest, "userId is required")
-		return
-	}
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE exams SET collaborator_ids = array_append(collaborator_ids, $1), updated_at = NOW()
-		WHERE id = $2 AND NOT (collaborator_ids @> ARRAY[$1]::uuid[])
-	`, req.UserID, id)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to invite collaborator")
-		return
-	}
-	exam, _ := h.fetchExam(r.Context(), id)
-	respondJSON(w, http.StatusOK, exam)
-}
-
-func (h *ExamHandler) transitionStatus(w http.ResponseWriter, r *http.Request, status domain.ExamStatus) {
-	id := chi.URLParam(r, "id")
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE exams SET status = $1, updated_at = NOW() WHERE id = $2
-	`, status, id)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update status")
-		return
-	}
-
-	exam, err := h.fetchExam(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "exam not found")
-		return
-	}
-	respondJSON(w, http.StatusOK, exam)
+	h.actions().invite(w, r)
 }
 
 func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {

@@ -67,11 +67,6 @@ type UpdateCourseRequest struct {
 	BatchID       *string          `json:"batchId"`
 }
 
-type ReviewCourseRequest struct {
-	Status  string  `json:"status"`
-	Comment *string `json:"comment"`
-}
-
 func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "permission denied")
@@ -301,122 +296,40 @@ func (h *CourseHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 
-func (h *CourseHandler) Submit(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
+func (h *CourseHandler) actions() contentActions {
+	return contentActions{
+		db:         h.DB,
+		table:      "courses",
+		entityName: "course",
+		inviteCol:  "co_creator_ids",
+		fetch: func(ctx context.Context, id string) (interface{}, error) {
+			return h.fetchCourse(ctx, id)
+		},
 	}
-	h.transitionStatus(w, r, domain.CourseStatusPending)
+}
+
+func (h *CourseHandler) Submit(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusPending)
 }
 
 func (h *CourseHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-	h.transitionStatus(w, r, domain.CourseStatusDraft)
+	h.actions().transition(w, r, domain.StatusDraft)
 }
 
 func (h *CourseHandler) Review(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	var req ReviewCourseRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	var status domain.CourseStatus
-	switch req.Status {
-	case "approved":
-		status = domain.CourseStatusApproved
-	case "rejected":
-		status = domain.CourseStatusRejected
-	default:
-		respondError(w, http.StatusBadRequest, "invalid review status")
-		return
-	}
-
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE courses SET status = $1, updated_at = NOW() WHERE id = $2
-	`, status, id)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to review course")
-		return
-	}
-
-	course, _ := h.fetchCourse(r.Context(), id)
-	respondJSON(w, http.StatusOK, course)
+	h.actions().review(w, r)
 }
 
 func (h *CourseHandler) Publish(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-	h.transitionStatus(w, r, domain.CourseStatusPublished)
+	h.actions().transition(w, r, domain.StatusPublished)
 }
 
 func (h *CourseHandler) Archive(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-	h.transitionStatus(w, r, domain.CourseStatusArchived)
-}
-
-type InviteRequest struct {
-	UserID string `json:"userId"`
+	h.actions().transition(w, r, domain.StatusArchived)
 }
 
 func (h *CourseHandler) Invite(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-	id := chi.URLParam(r, "id")
-	var req InviteRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == "" {
-		respondError(w, http.StatusBadRequest, "userId is required")
-		return
-	}
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE courses SET co_creator_ids = array_append(co_creator_ids, $1), updated_at = NOW()
-		WHERE id = $2 AND NOT (co_creator_ids @> ARRAY[$1]::uuid[])
-	`, req.UserID, id)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to invite co-creator")
-		return
-	}
-	course, _ := h.fetchCourse(r.Context(), id)
-	if course == nil {
-		respondError(w, http.StatusNotFound, "course not found")
-		return
-	}
-	respondJSON(w, http.StatusOK, course)
-}
-
-func (h *CourseHandler) transitionStatus(w http.ResponseWriter, r *http.Request, status domain.CourseStatus) {
-	id := chi.URLParam(r, "id")
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE courses SET status = $1, updated_at = NOW() WHERE id = $2
-	`, status, id)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update status")
-		return
-	}
-
-	course, _ := h.fetchCourse(r.Context(), id)
-	if course == nil {
-		respondError(w, http.StatusNotFound, "course not found")
-		return
-	}
-	respondJSON(w, http.StatusOK, course)
+	h.actions().invite(w, r)
 }
 
 func (h *CourseHandler) fetchCourse(ctx context.Context, id string) (*domain.Course, error) {

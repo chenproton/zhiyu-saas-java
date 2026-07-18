@@ -57,11 +57,6 @@ type UpdatePositionRequest struct {
 	Collaborators []string `json:"collaborators"`
 }
 
-type ReviewPositionRequest struct {
-	Status  string  `json:"status"`
-	Comment *string `json:"comment"`
-}
-
 func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "permission denied")
@@ -343,114 +338,40 @@ func (h *PositionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 
-func (h *PositionHandler) Submit(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
+func (h *PositionHandler) actions() contentActions {
+	return contentActions{
+		db:         h.DB,
+		table:      "career_positions",
+		entityName: "position",
+		inviteCol:  "collaborators",
+		fetch: func(ctx context.Context, id string) (interface{}, error) {
+			return h.fetchPosition(ctx, id)
+		},
 	}
-	h.transitionStatus(w, r, domain.CareerPositionStatusPending)
+}
+
+func (h *PositionHandler) Submit(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusPending)
 }
 
 func (h *PositionHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-	h.transitionStatus(w, r, domain.CareerPositionStatusDraft)
+	h.actions().transition(w, r, domain.StatusDraft)
 }
 
 func (h *PositionHandler) Invite(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-	id := chi.URLParam(r, "id")
-	var req InviteRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == "" {
-		respondError(w, http.StatusBadRequest, "userId is required")
-		return
-	}
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE career_positions SET collaborators = array_append(collaborators, $1), updated_at = NOW()
-		WHERE id = $2 AND NOT (collaborators @> ARRAY[$1]::uuid[])
-	`, req.UserID, id)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to invite collaborator")
-		return
-	}
-	pos, _ := h.fetchPosition(r.Context(), id)
-	respondJSON(w, http.StatusOK, pos)
+	h.actions().invite(w, r)
 }
 
 func (h *PositionHandler) Review(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	var req ReviewPositionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	var status domain.CareerPositionStatus
-	switch req.Status {
-	case "approved":
-		status = domain.CareerPositionStatusApproved
-	case "rejected":
-		status = domain.CareerPositionStatusRejected
-	default:
-		respondError(w, http.StatusBadRequest, "invalid review status")
-		return
-	}
-
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE career_positions SET status = $1, updated_at = NOW() WHERE id = $2
-	`, status, id)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to review position")
-		return
-	}
-
-	pos, _ := h.fetchPosition(r.Context(), id)
-	respondJSON(w, http.StatusOK, pos)
+	h.actions().review(w, r)
 }
 
 func (h *PositionHandler) Publish(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-	h.transitionStatus(w, r, domain.CareerPositionStatusPublished)
+	h.actions().transition(w, r, domain.StatusPublished)
 }
 
 func (h *PositionHandler) Archive(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-	h.transitionStatus(w, r, domain.CareerPositionStatusArchived)
-}
-
-func (h *PositionHandler) transitionStatus(w http.ResponseWriter, r *http.Request, status domain.CareerPositionStatus) {
-	id := chi.URLParam(r, "id")
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE career_positions SET status = $1, updated_at = NOW() WHERE id = $2
-	`, status, id)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update status")
-		return
-	}
-
-	pos, err := h.fetchPosition(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "position not found")
-		return
-	}
-	respondJSON(w, http.StatusOK, pos)
+	h.actions().transition(w, r, domain.StatusArchived)
 }
 
 func (h *PositionHandler) fetchPosition(ctx context.Context, id string) (domain.CareerPosition, error) {

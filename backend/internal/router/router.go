@@ -11,8 +11,55 @@ import (
 	"github.com/zhiyu-saas/backend/internal/handler"
 )
 
-func New(db *pgxpool.Pool, jwtSecret string) http.Handler {
-	r := chi.NewRouter()
+// contentRoutes 内容型实体（岗位/场景/课程/题库/试卷）的标准路由集合。
+type contentRoutes interface {
+	List(http.ResponseWriter, *http.Request)
+	Get(http.ResponseWriter, *http.Request)
+	Create(http.ResponseWriter, *http.Request)
+	Update(http.ResponseWriter, *http.Request)
+	Delete(http.ResponseWriter, *http.Request)
+	Submit(http.ResponseWriter, *http.Request)
+	Review(http.ResponseWriter, *http.Request)
+	Publish(http.ResponseWriter, *http.Request)
+	Archive(http.ResponseWriter, *http.Request)
+	Withdraw(http.ResponseWriter, *http.Request)
+	Invite(http.ResponseWriter, *http.Request)
+}
+
+func registerContentRoutes(r chi.Router, base string, h contentRoutes) {
+	r.Get(base, h.List)
+	r.Get(base+"/{id}", h.Get)
+	r.Post(base, h.Create)
+	r.Put(base+"/{id}", h.Update)
+	r.Delete(base+"/{id}", h.Delete)
+	r.Post(base+"/{id}/submit", h.Submit)
+	r.Post(base+"/{id}/review", h.Review)
+	r.Post(base+"/{id}/publish", h.Publish)
+	r.Post(base+"/{id}/archive", h.Archive)
+	r.Post(base+"/{id}/withdraw", h.Withdraw)
+	r.Post(base+"/{id}/invite", h.Invite)
+}
+
+// batchRoutes 批次类实体的标准路由集合。
+type batchRoutes interface {
+	List(http.ResponseWriter, *http.Request)
+	Get(http.ResponseWriter, *http.Request)
+	Create(http.ResponseWriter, *http.Request)
+	Update(http.ResponseWriter, *http.Request)
+	Delete(http.ResponseWriter, *http.Request)
+	UpdateStatus(http.ResponseWriter, *http.Request)
+}
+
+func registerBatchRoutes(r chi.Router, base string, h batchRoutes) {
+	r.Get(base, h.List)
+	r.Get(base+"/{id}", h.Get)
+	r.Post(base, h.Create)
+	r.Put(base+"/{id}", h.Update)
+	r.Delete(base+"/{id}", h.Delete)
+	r.Post(base+"/{id}/status", h.UpdateStatus)
+}
+
+func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
@@ -310,17 +357,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {
 				r.Use(businessUser)
 
 				// Phase 3.2: job routes
-				r.Get("/job/positions", positionHandler.List)
-				r.Get("/job/positions/{id}", positionHandler.Get)
-				r.Post("/job/positions", positionHandler.Create)
-				r.Put("/job/positions/{id}", positionHandler.Update)
-				r.Delete("/job/positions/{id}", positionHandler.Delete)
-				r.Post("/job/positions/{id}/submit", positionHandler.Submit)
-				r.Post("/job/positions/{id}/review", positionHandler.Review)
-				r.Post("/job/positions/{id}/publish", positionHandler.Publish)
-				r.Post("/job/positions/{id}/archive", positionHandler.Archive)
-				r.Post("/job/positions/{id}/withdraw", positionHandler.Withdraw)
-				r.Post("/job/positions/{id}/invite", positionHandler.Invite)
+				registerContentRoutes(r, "/job/positions", positionHandler)
 
 				r.Get("/job/abilities", abilityHandler.List)
 				r.Get("/job/abilities/{id}", abilityHandler.Get)
@@ -338,12 +375,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {
 				r.Put("/job/ability-domains/{id}", abilityDomainHandler.Update)
 				r.Delete("/job/ability-domains/{id}", abilityDomainHandler.Delete)
 
-				r.Get("/job/batches", jobBatchHandler.List)
-				r.Get("/job/batches/{id}", jobBatchHandler.Get)
-				r.Post("/job/batches", jobBatchHandler.Create)
-				r.Put("/job/batches/{id}", jobBatchHandler.Update)
-				r.Delete("/job/batches/{id}", jobBatchHandler.Delete)
-				r.Post("/job/batches/{id}/status", jobBatchHandler.UpdateStatus)
+				registerBatchRoutes(r, "/job/batches", jobBatchHandler)
 
 				r.Get("/job/recommendations", recommendHandler.List)
 				r.Post("/job/recommendations", recommendHandler.Create)
@@ -363,17 +395,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {
 				r.Delete("/job/banners/{id}", jobBannerHandler.Delete)
 
 				// Phase 3.3: scene routes
-				r.Get("/scene/scenarios", scenarioHandler.List)
-				r.Get("/scene/scenarios/{id}", scenarioHandler.Get)
-				r.Post("/scene/scenarios", scenarioHandler.Create)
-				r.Put("/scene/scenarios/{id}", scenarioHandler.Update)
-				r.Delete("/scene/scenarios/{id}", scenarioHandler.Delete)
-				r.Post("/scene/scenarios/{id}/submit", scenarioHandler.Submit)
-				r.Post("/scene/scenarios/{id}/review", scenarioHandler.Review)
-				r.Post("/scene/scenarios/{id}/publish", scenarioHandler.Publish)
-				r.Post("/scene/scenarios/{id}/archive", scenarioHandler.Archive)
-				r.Post("/scene/scenarios/{id}/withdraw", scenarioHandler.Withdraw)
-				r.Post("/scene/scenarios/{id}/invite", scenarioHandler.Invite)
+				registerContentRoutes(r, "/scene/scenarios", scenarioHandler)
 
 				r.Get("/scene/tasks", scenarioTaskHandler.List)
 				r.Get("/scene/tasks/{id}", scenarioTaskHandler.Get)
@@ -410,25 +432,10 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {
 				r.Post("/scene/grade-mappings", scenarioGradeHandler.UpsertGradeMapping)
 				r.Put("/scene/grade-mappings/{id}", scenarioGradeHandler.UpsertGradeMapping)
 
-				r.Get("/scene/batches", sceneBatchHandler.List)
-				r.Post("/scene/batches", sceneBatchHandler.Create)
-				r.Get("/scene/batches/{id}", sceneBatchHandler.Get)
-				r.Put("/scene/batches/{id}", sceneBatchHandler.Update)
-				r.Delete("/scene/batches/{id}", sceneBatchHandler.Delete)
-				r.Post("/scene/batches/{id}/status", sceneBatchHandler.UpdateStatus)
+				registerBatchRoutes(r, "/scene/batches", sceneBatchHandler)
 
 				// Phase 3.4: lesson routes
-				r.Get("/lesson/courses", courseHandler.List)
-				r.Get("/lesson/courses/{id}", courseHandler.Get)
-				r.Post("/lesson/courses", courseHandler.Create)
-				r.Put("/lesson/courses/{id}", courseHandler.Update)
-				r.Delete("/lesson/courses/{id}", courseHandler.Delete)
-				r.Post("/lesson/courses/{id}/submit", courseHandler.Submit)
-				r.Post("/lesson/courses/{id}/review", courseHandler.Review)
-				r.Post("/lesson/courses/{id}/publish", courseHandler.Publish)
-				r.Post("/lesson/courses/{id}/archive", courseHandler.Archive)
-				r.Post("/lesson/courses/{id}/withdraw", courseHandler.Withdraw)
-				r.Post("/lesson/courses/{id}/invite", courseHandler.Invite)
+				registerContentRoutes(r, "/lesson/courses", courseHandler)
 
 				r.Get("/lesson/knowledge-points", knowledgePointHandler.List)
 				r.Get("/lesson/knowledge-points/{id}", knowledgePointHandler.Get)
@@ -463,28 +470,13 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {
 				r.Put("/lesson/hybrid-modules/{id}", hybridModuleHandler.UpsertModule)
 				r.Delete("/lesson/hybrid-modules/{id}", hybridModuleHandler.DeleteModule)
 
-				r.Get("/lesson/batches", courseBatchHandler.List)
-				r.Get("/lesson/batches/{id}", courseBatchHandler.Get)
-				r.Post("/lesson/batches", courseBatchHandler.Create)
-				r.Put("/lesson/batches/{id}", courseBatchHandler.Update)
-				r.Delete("/lesson/batches/{id}", courseBatchHandler.Delete)
-				r.Post("/lesson/batches/{id}/status", courseBatchHandler.UpdateStatus)
+				registerBatchRoutes(r, "/lesson/batches", courseBatchHandler)
 
 				r.Get("/lesson/behavior-collection/aggregate", lessonBehaviorHandler.Aggregate)
 				r.Post("/lesson/behavior-collection/records", lessonBehaviorHandler.Create)
 
 				// Phase 3.5: evaluation routes
-				r.Get("/evaluation/question-banks", questionBankHandler.List)
-				r.Get("/evaluation/question-banks/{id}", questionBankHandler.Get)
-				r.Post("/evaluation/question-banks", questionBankHandler.Create)
-				r.Put("/evaluation/question-banks/{id}", questionBankHandler.Update)
-				r.Delete("/evaluation/question-banks/{id}", questionBankHandler.Delete)
-				r.Post("/evaluation/question-banks/{id}/submit", questionBankHandler.Submit)
-				r.Post("/evaluation/question-banks/{id}/review", questionBankHandler.Review)
-				r.Post("/evaluation/question-banks/{id}/publish", questionBankHandler.Publish)
-				r.Post("/evaluation/question-banks/{id}/archive", questionBankHandler.Archive)
-				r.Post("/evaluation/question-banks/{id}/withdraw", questionBankHandler.Withdraw)
-				r.Post("/evaluation/question-banks/{id}/invite", questionBankHandler.Invite)
+				registerContentRoutes(r, "/evaluation/question-banks", questionBankHandler)
 
 				r.Get("/evaluation/questions", questionHandler.List)
 				r.Get("/evaluation/questions/{id}", questionHandler.Get)
@@ -493,17 +485,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {
 				r.Delete("/evaluation/questions/{id}", questionHandler.Delete)
 				r.Post("/evaluation/questions/batch", questionHandler.BatchCreate)
 
-				r.Get("/evaluation/exams", examHandler.List)
-				r.Get("/evaluation/exams/{id}", examHandler.Get)
-				r.Post("/evaluation/exams", examHandler.Create)
-				r.Put("/evaluation/exams/{id}", examHandler.Update)
-				r.Delete("/evaluation/exams/{id}", examHandler.Delete)
-				r.Post("/evaluation/exams/{id}/submit", examHandler.Submit)
-				r.Post("/evaluation/exams/{id}/review", examHandler.Review)
-				r.Post("/evaluation/exams/{id}/publish", examHandler.Publish)
-				r.Post("/evaluation/exams/{id}/archive", examHandler.Archive)
-				r.Post("/evaluation/exams/{id}/withdraw", examHandler.Withdraw)
-				r.Post("/evaluation/exams/{id}/invite", examHandler.Invite)
+				registerContentRoutes(r, "/evaluation/exams", examHandler)
 				r.Post("/evaluation/exams/{id}/questions", examHandler.AddQuestion)
 				r.Delete("/evaluation/exams/{id}/questions/{questionId}", examHandler.RemoveQuestion)
 
@@ -569,12 +551,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {
 				r.Post("/evaluation/appeals", appealHandler.Create)
 				r.Post("/evaluation/appeals/{id}/process", appealHandler.Process)
 
-				r.Get("/evaluation/batches", evaluationBatchHandler.List)
-				r.Post("/evaluation/batches", evaluationBatchHandler.Create)
-				r.Get("/evaluation/batches/{id}", evaluationBatchHandler.Get)
-				r.Put("/evaluation/batches/{id}", evaluationBatchHandler.Update)
-				r.Delete("/evaluation/batches/{id}", evaluationBatchHandler.Delete)
-				r.Post("/evaluation/batches/{id}/status", evaluationBatchHandler.UpdateStatus)
+				registerBatchRoutes(r, "/evaluation/batches", evaluationBatchHandler)
 			})
 		})
 	})
