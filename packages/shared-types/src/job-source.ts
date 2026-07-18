@@ -97,6 +97,7 @@ export interface PositionAbilityBinding {
   responsibilityId: string      // 对应职责ID
   source: 'public' | 'custom'   // 来源：公共池引用 / 自建
   publicAbilityId?: string       // 公共池能力ID（source=public时）
+  abilityPointId?: string        // 后端能力点ID（source=custom时由保存创建）
   name: string                   // 能力名称
   category: string               // 能力分类
   level: CompetencyLevel

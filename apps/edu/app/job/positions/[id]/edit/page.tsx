@@ -28,14 +28,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { positionApi, batchApi, approvalApi, majorApi } from '@/lib/api'
+import { positionApi, batchApi, approvalApi, majorApi, abilityApi, positionResponsibilityApi, positionCertificateApi } from '@/lib/api'
 import {
   convertCareerPositionToPosition,
   convertJobBatchToBatch,
-  positionToUpdateRequest,
+  convertApiResponsibilityToLocal,
+  convertApiCertificateToLocal,
+  convertApiAbilityBindingToLocal,
+  convertApiAbilityDomainToLocal,
+  convertApiAbilityToLocal,
 } from '@/lib/stores/job-converters'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/components/auth-provider'
+
+
 
 
 interface PageProps {
@@ -82,10 +88,49 @@ function PositionEditPageContent({ params }: PageProps) {
 
   useEffect(() => {
     const found = positions.find((p) => p.id === id)
-    if (found) {
+    if (found && !position) {
       setPosition({ ...found })
     }
-  }, [id, positions])
+  }, [id, positions, position])
+
+  useEffect(() => {
+    if (!position || position.responsibilities.length > 0 || position.certificates.length > 0 || position.abilityBindings.length > 0) return
+    let cancelled = false
+    Promise.all([
+      positionResponsibilityApi.list({ careerPositionId: position.id, limit: 1000 }),
+      positionCertificateApi.list({ careerPositionId: position.id, limit: 1000 }),
+      abilityApi.listBindings({ careerPositionId: position.id }),
+      abilityApi.listDomains(position.id),
+      abilityApi.list({ limit: 1000 }),
+    ])
+      .then(([respRes, certRes, bindingRes, domainRes, abilityRes]) => {
+        if (cancelled) return
+        const abilityMap = new Map(abilityRes.items.map((a) => [a.id, convertApiAbilityToLocal(a)]))
+        const responsibilities = respRes.items.map(convertApiResponsibilityToLocal)
+        const certificates = certRes.items.map(convertApiCertificateToLocal)
+        const abilityBindings = bindingRes.items.map((b) => {
+          const local = convertApiAbilityBindingToLocal(b)
+          const ability = abilityMap.get(b.abilityPointId)
+          if (ability) {
+            local.name = ability.name
+            local.category = ability.category
+            local.description = ability.description
+          } else if (b.source === 'custom') {
+            // Try to fetch custom ability details if not in public list
+          }
+          return local
+        })
+        const abilityDomains = domainRes.items.map(convertApiAbilityDomainToLocal)
+        setPosition((prev) => (prev ? { ...prev, responsibilities, certificates, abilityBindings, abilityDomains } : null))
+      })
+      .catch((err: any) => {
+        if (!cancelled) {
+          console.error('Failed to load position details:', err)
+          toast({ variant: 'destructive', title: '加载详情失败', description: err?.message || '请稍后重试' })
+        }
+      })
+    return () => { cancelled = true }
+  }, [position, toast])
 
   useEffect(() => {
     const stepParam = searchParams.get('step')
@@ -123,11 +168,32 @@ function PositionEditPageContent({ params }: PageProps) {
   const batch = batches.find((b) => b.id === position.batchId)
 
   const handleSave = async () => {
+    if (!position) return
     setIsSaving(true)
     try {
-      await positionApi.update(position.id, positionToUpdateRequest(position))
+      await positionApi.saveFull(position.id, {
+        batchId: position.batchId,
+        name: position.name,
+        shortName: position.shortName,
+        industry: position.industry,
+        majors: position.majors,
+        positionType: position.positionType,
+        salaryRange: position.salaryRange,
+        coverImage: position.coverImage,
+        description: position.description,
+        requirements: position.requirements,
+        careerPath: position.careerPath,
+        version: position.version,
+        collaborators: position.collaborators,
+        responsibilities: position.responsibilities,
+        certificates: position.certificates,
+        abilityBindings: position.abilityBindings,
+        abilityDomains: position.abilityDomains,
+      })
       setPositions((prev) => prev.map((p) => (p.id === position.id ? { ...position } : p)))
+      toast({ title: '保存成功', description: '岗位完整数据已保存' })
     } catch (err: any) {
+      console.error('Save position failed:', err)
       toast({ variant: 'destructive', title: '保存失败', description: err?.message || '请稍后重试' })
     } finally {
       setIsSaving(false)
@@ -135,10 +201,31 @@ function PositionEditPageContent({ params }: PageProps) {
   }
 
   const handleSubmit = async () => {
-    if (!batch) return
+    if (!batch || !position) {
+      toast({ variant: 'destructive', title: '无法提交', description: '该岗位未关联批次，无法提交审批' })
+      return
+    }
     setIsSaving(true)
     try {
-      await positionApi.update(position.id, positionToUpdateRequest(position))
+      await positionApi.saveFull(position.id, {
+        batchId: position.batchId,
+        name: position.name,
+        shortName: position.shortName,
+        industry: position.industry,
+        majors: position.majors,
+        positionType: position.positionType,
+        salaryRange: position.salaryRange,
+        coverImage: position.coverImage,
+        description: position.description,
+        requirements: position.requirements,
+        careerPath: position.careerPath,
+        version: position.version,
+        collaborators: position.collaborators,
+        responsibilities: position.responsibilities,
+        certificates: position.certificates,
+        abilityBindings: position.abilityBindings,
+        abilityDomains: position.abilityDomains,
+      })
       await positionApi.submit(position.id)
       await approvalApi.create({
         targetType: 'career_position',
@@ -147,6 +234,7 @@ function PositionEditPageContent({ params }: PageProps) {
       } as any)
       router.push('/job/positions')
     } catch (err: any) {
+      console.error('Submit position failed:', err)
       toast({ variant: 'destructive', title: '提交失败', description: err?.message || '请稍后重试' })
     } finally {
       setIsSaving(false)

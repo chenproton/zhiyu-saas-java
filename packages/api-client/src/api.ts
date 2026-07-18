@@ -651,7 +651,41 @@ export const appModuleApi = {
 
 // ==================== Phase 3.2: Job APIs ====================
 
-export const positionApi = createContentApi<CareerPosition, Omit<CareerPosition, "id" | "createdAt" | "updatedAt">, Partial<Omit<CareerPosition, "id" | "createdAt" | "updatedAt">>>("/job/positions")
+export const positionApi = {
+  ...createContentApi<CareerPosition, Omit<CareerPosition, "id" | "createdAt" | "updatedAt">, Partial<Omit<CareerPosition, "id" | "createdAt" | "updatedAt">>>("/job/positions"),
+  saveFull: (id: string, req: {
+    batchId: string
+    name: string
+    shortName: string
+    industry: string
+    majors: string[]
+    positionType: string
+    salaryRange: [number, number]
+    coverImage?: string
+    description?: string
+    requirements: string[]
+    careerPath?: string
+    version: string
+    collaborators: string[]
+    responsibilities: { id: string; name: string; description?: string }[]
+    certificates: { id: string; name: string; url?: string; description?: string; image?: string }[]
+    abilityBindings: {
+      id: string
+      responsibilityId: string
+      source: string
+      publicAbilityId?: string
+      abilityPointId?: string
+      name: string
+      category: string
+      level: string
+      rubricDescription?: string
+      description?: string
+      attributes?: string[]
+      domain?: string
+    }[]
+    abilityDomains: { id: string; name: string; description?: string; bindingIds: string[] }[]
+  }) => request<{ position: CareerPosition }>(`/job/positions/${id}/save-full`, { method: "PUT", body: JSON.stringify(req) }),
+}
 
 export const abilityApi = {
   list: (params?: { category?: string; isPublic?: boolean; search?: string; limit?: number; offset?: number }) =>
@@ -676,6 +710,28 @@ export const abilityApi = {
   updateDomain: (id: string, req: Partial<Omit<AbilityDomain, "id">>) =>
     request<AbilityDomain>(`/job/ability-domains/${id}`, { method: "PUT", body: JSON.stringify(req) }),
   deleteDomain: (id: string) => request<{ id: string }>(`/job/ability-domains/${id}`, { method: "DELETE" }),
+}
+
+export const positionResponsibilityApi = {
+  list: (params?: { careerPositionId?: string; limit?: number; offset?: number }) =>
+    request<ListResponse<PositionResponsibility>>(`/job/position-responsibilities${buildQuery(params || {})}`),
+  get: (id: string) => request<PositionResponsibility>(`/job/position-responsibilities/${id}`),
+  create: (req: Omit<PositionResponsibility, "id">) =>
+    request<PositionResponsibility>("/job/position-responsibilities", { method: "POST", body: JSON.stringify(req) }),
+  update: (id: string, req: Partial<Omit<PositionResponsibility, "id">>) =>
+    request<PositionResponsibility>(`/job/position-responsibilities/${id}`, { method: "PUT", body: JSON.stringify(req) }),
+  delete: (id: string) => request<{ id: string }>(`/job/position-responsibilities/${id}`, { method: "DELETE" }),
+}
+
+export const positionCertificateApi = {
+  list: (params?: { careerPositionId?: string; limit?: number; offset?: number }) =>
+    request<ListResponse<PositionCertificate>>(`/job/position-certificates${buildQuery(params || {})}`),
+  get: (id: string) => request<PositionCertificate>(`/job/position-certificates/${id}`),
+  create: (req: Omit<PositionCertificate, "id">) =>
+    request<PositionCertificate>("/job/position-certificates", { method: "POST", body: JSON.stringify(req) }),
+  update: (id: string, req: Partial<Omit<PositionCertificate, "id">>) =>
+    request<PositionCertificate>(`/job/position-certificates/${id}`, { method: "PUT", body: JSON.stringify(req) }),
+  delete: (id: string) => request<{ id: string }>(`/job/position-certificates/${id}`, { method: "DELETE" }),
 }
 
 export const batchApi = {

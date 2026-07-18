@@ -213,6 +213,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/job/positions", positionHandler.Create)
 			r.Put("/job/positions/{id}", positionHandler.Update)
 			r.Delete("/job/positions/{id}", positionHandler.Delete)
+			r.Put("/job/positions/{id}/save-full", positionHandler.SaveFull)
 			r.Post("/job/positions/{id}/submit", positionHandler.Submit)
 			r.Post("/job/positions/{id}/review", positionHandler.Review)
 			r.Post("/job/positions/{id}/publish", positionHandler.Publish)
@@ -230,6 +231,20 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/job/position-abilities", positionAbilityHandler.CreateBinding)
 			r.Put("/job/position-abilities/{id}", positionAbilityHandler.UpdateBinding)
 			r.Delete("/job/position-abilities/{id}", positionAbilityHandler.DeleteBinding)
+
+			positionResponsibilityHandler := &handler.PositionResponsibilityHandler{DB: pool}
+			r.Get("/job/position-responsibilities", positionResponsibilityHandler.List)
+			r.Get("/job/position-responsibilities/{id}", positionResponsibilityHandler.Get)
+			r.Post("/job/position-responsibilities", positionResponsibilityHandler.Create)
+			r.Put("/job/position-responsibilities/{id}", positionResponsibilityHandler.Update)
+			r.Delete("/job/position-responsibilities/{id}", positionResponsibilityHandler.Delete)
+
+			positionCertificateHandler := &handler.PositionCertificateHandler{DB: pool}
+			r.Get("/job/position-certificates", positionCertificateHandler.List)
+			r.Get("/job/position-certificates/{id}", positionCertificateHandler.Get)
+			r.Post("/job/position-certificates", positionCertificateHandler.Create)
+			r.Put("/job/position-certificates/{id}", positionCertificateHandler.Update)
+			r.Delete("/job/position-certificates/{id}", positionCertificateHandler.Delete)
 
 			abilityDomainHandler := &handler.AbilityDomainHandler{DB: pool}
 			r.Get("/job/ability-domains", abilityDomainHandler.List)

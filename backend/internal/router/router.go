@@ -115,6 +115,8 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 	positionHandler := &handler.PositionHandler{DB: db}
 	abilityHandler := &handler.AbilityHandler{DB: db}
 	positionAbilityHandler := &handler.PositionAbilityHandler{DB: db}
+	positionResponsibilityHandler := &handler.PositionResponsibilityHandler{DB: db}
+	positionCertificateHandler := &handler.PositionCertificateHandler{DB: db}
 	abilityDomainHandler := &handler.AbilityDomainHandler{DB: db}
 	jobBatchHandler := handler.NewJobBatchHandler(db)
 	recommendHandler := &handler.RecommendHandler{DB: db}
@@ -358,6 +360,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 
 				// Phase 3.2: job routes
 				registerContentRoutes(r, "/job/positions", positionHandler)
+				r.Put("/job/positions/{id}/save-full", positionHandler.SaveFull)
 
 				r.Get("/job/abilities", abilityHandler.List)
 				r.Get("/job/abilities/{id}", abilityHandler.Get)
@@ -369,6 +372,18 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 				r.Post("/job/position-abilities", positionAbilityHandler.CreateBinding)
 				r.Put("/job/position-abilities/{id}", positionAbilityHandler.UpdateBinding)
 				r.Delete("/job/position-abilities/{id}", positionAbilityHandler.DeleteBinding)
+
+				r.Get("/job/position-responsibilities", positionResponsibilityHandler.List)
+				r.Get("/job/position-responsibilities/{id}", positionResponsibilityHandler.Get)
+				r.Post("/job/position-responsibilities", positionResponsibilityHandler.Create)
+				r.Put("/job/position-responsibilities/{id}", positionResponsibilityHandler.Update)
+				r.Delete("/job/position-responsibilities/{id}", positionResponsibilityHandler.Delete)
+
+				r.Get("/job/position-certificates", positionCertificateHandler.List)
+				r.Get("/job/position-certificates/{id}", positionCertificateHandler.Get)
+				r.Post("/job/position-certificates", positionCertificateHandler.Create)
+				r.Put("/job/position-certificates/{id}", positionCertificateHandler.Update)
+				r.Delete("/job/position-certificates/{id}", positionCertificateHandler.Delete)
 
 				r.Get("/job/ability-domains", abilityDomainHandler.List)
 				r.Post("/job/ability-domains", abilityDomainHandler.Create)

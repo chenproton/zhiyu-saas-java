@@ -338,6 +338,66 @@ func (h *PositionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 
+type FullPositionResponsibility struct {
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+}
+
+type FullPositionCertificate struct {
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	URL         *string `json:"url"`
+	Description *string `json:"description"`
+	Image       *string `json:"image"`
+}
+
+type FullPositionAbilityBinding struct {
+	ID                string   `json:"id"`
+	ResponsibilityID  string   `json:"responsibilityId"`
+	Source            string   `json:"source"`
+	PublicAbilityID   *string  `json:"publicAbilityId"`
+	AbilityPointID    *string  `json:"abilityPointId"`
+	Name              string   `json:"name"`
+	Category          string   `json:"category"`
+	Level             string   `json:"level"`
+	RubricDescription *string  `json:"rubricDescription"`
+	Description       *string  `json:"description"`
+	Attributes        []string `json:"attributes"`
+	Domain            *string  `json:"domain"`
+}
+
+type FullPositionAbilityDomain struct {
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Description *string  `json:"description"`
+	BindingIDs  []string `json:"bindingIds"`
+}
+
+type SaveFullPositionRequest struct {
+	BatchID        string                        `json:"batchId"`
+	Name           string                        `json:"name"`
+	ShortName      string                        `json:"shortName"`
+	Industry       string                        `json:"industry"`
+	Majors         []string                      `json:"majors"`
+	PositionType   string                        `json:"positionType"`
+	SalaryRange    [2]int                        `json:"salaryRange"`
+	CoverImage     *string                       `json:"coverImage"`
+	Description    *string                       `json:"description"`
+	Requirements   []string                      `json:"requirements"`
+	CareerPath     *string                       `json:"careerPath"`
+	Version        string                        `json:"version"`
+	Collaborators  []string                      `json:"collaborators"`
+	Responsibilities []FullPositionResponsibility `json:"responsibilities"`
+	Certificates   []FullPositionCertificate     `json:"certificates"`
+	AbilityBindings []FullPositionAbilityBinding `json:"abilityBindings"`
+	AbilityDomains []FullPositionAbilityDomain   `json:"abilityDomains"`
+}
+
+type SaveFullPositionResponse struct {
+	Position domain.CareerPosition `json:"position"`
+}
+
 func (h *PositionHandler) actions() contentActions {
 	return contentActions{
 		db:         h.DB,
@@ -347,6 +407,254 @@ func (h *PositionHandler) actions() contentActions {
 		fetch: func(ctx context.Context, id string) (interface{}, error) {
 			return h.fetchPosition(ctx, id)
 		},
+	}
+}
+
+func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	if _, err := h.fetchPosition(r.Context(), id); err != nil {
+		respondError(w, http.StatusNotFound, "position not found")
+		return
+	}
+
+	var req SaveFullPositionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if req.Name == "" || req.PositionType == "" {
+		respondError(w, http.StatusBadRequest, "missing required fields")
+		return
+	}
+
+	var batchID *string
+	if req.BatchID != "" {
+		batchID = &req.BatchID
+	}
+	var industryID *string
+	if req.Industry != "" {
+		industryID = &req.Industry
+	}
+	var coverImage, description, careerPath *string
+	if req.CoverImage != nil && *req.CoverImage != "" {
+		coverImage = req.CoverImage
+	}
+	if req.Description != nil && *req.Description != "" {
+		description = req.Description
+	}
+	if req.CareerPath != nil && *req.CareerPath != "" {
+		careerPath = req.CareerPath
+	}
+
+	tx, err := h.DB.Begin(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to start transaction")
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	_, err = tx.Exec(r.Context(), `
+		UPDATE career_positions SET
+			batch_id = $1, name = $2, short_name = $3, industry_id = $4,
+			position_type = $5, salary_min = $6, salary_max = $7, cover_image = $8,
+			description = $9, requirements = $10, career_path = $11, version = $12,
+			collaborators = $13, updated_at = NOW()
+		WHERE id = $14
+	`, batchID, req.Name, strPtr(req.ShortName), industryID, req.PositionType,
+		req.SalaryRange[0], req.SalaryRange[1], coverImage, description,
+		coalesceStringSlice(req.Requirements), careerPath, req.Version,
+		coalesceStringSlice(req.Collaborators), id)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to update position")
+		return
+	}
+
+	_, err = tx.Exec(r.Context(), `DELETE FROM career_position_majors WHERE career_position_id = $1`, id)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to update position majors")
+		return
+	}
+	for _, majorID := range req.Majors {
+		_, err = tx.Exec(r.Context(), `
+			INSERT INTO career_position_majors (career_position_id, major_id) VALUES ($1, $2)
+		`, id, majorID)
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to insert position majors")
+			return
+		}
+	}
+
+	_, err = tx.Exec(r.Context(), `DELETE FROM position_certificates WHERE career_position_id = $1`, id)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to clear certificates")
+		return
+	}
+	_, err = tx.Exec(r.Context(), `DELETE FROM ability_domains WHERE career_position_id = $1`, id)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to clear ability domains")
+		return
+	}
+	_, err = tx.Exec(r.Context(), `DELETE FROM position_ability_bindings WHERE career_position_id = $1`, id)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to clear ability bindings")
+		return
+	}
+	_, err = tx.Exec(r.Context(), `DELETE FROM position_responsibilities WHERE career_position_id = $1`, id)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to clear responsibilities")
+		return
+	}
+
+	respIDMap := make(map[string]string)
+	for idx, resp := range req.Responsibilities {
+		if resp.Name == "" {
+			continue
+		}
+		respID := uuid.NewString()
+		var desc *string
+		if resp.Description != nil && *resp.Description != "" {
+			desc = resp.Description
+		}
+		_, err = tx.Exec(r.Context(), `
+			INSERT INTO position_responsibilities (id, career_position_id, name, description, sort_order)
+			VALUES ($1, $2, $3, $4, $5)
+		`, respID, id, resp.Name, desc, idx)
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to create responsibility")
+			return
+		}
+		respIDMap[resp.ID] = respID
+	}
+
+	abilityPointMap := make(map[string]string)
+	bindingIDMap := make(map[string]string)
+	for _, binding := range req.AbilityBindings {
+		if binding.Source == "public" && binding.PublicAbilityID != nil && *binding.PublicAbilityID != "" {
+			abilityPointMap[binding.ID] = *binding.PublicAbilityID
+		}
+	}
+
+	for _, binding := range req.AbilityBindings {
+		if binding.Source != "public" && binding.Source != "custom" {
+			continue
+		}
+		respBackendID, ok := respIDMap[binding.ResponsibilityID]
+		if !ok {
+			continue
+		}
+
+		abilityPointID, exists := abilityPointMap[binding.ID]
+		if !exists {
+			if binding.AbilityPointID != nil && *binding.AbilityPointID != "" {
+				abilityPointID = *binding.AbilityPointID
+			} else {
+				abilityPointID = uuid.NewString()
+				category := mapCategory(binding.Category)
+				_, err = tx.Exec(r.Context(), `
+					INSERT INTO ability_points (id, name, description, category, is_public)
+					VALUES ($1, $2, $3, $4, $5)
+				`, abilityPointID, binding.Name, binding.Description, category, false)
+				if err != nil {
+					respondError(w, http.StatusInternalServerError, "failed to create ability point")
+					return
+				}
+			}
+			abilityPointMap[binding.ID] = abilityPointID
+		}
+
+		bindingID := uuid.NewString()
+		var domainField, rubricDesc *string
+		if binding.Domain != nil && *binding.Domain != "" {
+			domainField = binding.Domain
+		}
+		if binding.RubricDescription != nil && *binding.RubricDescription != "" {
+			rubricDesc = binding.RubricDescription
+		}
+		_, err = tx.Exec(r.Context(), `
+			INSERT INTO position_ability_bindings (
+				id, career_position_id, responsibility_id, ability_point_id, source,
+				domain, required_level, rubric_description, attributes, weight
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		`, bindingID, id, respBackendID, abilityPointID, binding.Source,
+			domainField, binding.Level, rubricDesc, coalesceStringSlice(binding.Attributes), 0)
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to create ability binding")
+			return
+		}
+		bindingIDMap[binding.ID] = bindingID
+	}
+
+	for idx, d := range req.AbilityDomains {
+		if d.Name == "" {
+			continue
+		}
+		bindingIDs := make([]string, 0, len(d.BindingIDs))
+		for _, localID := range d.BindingIDs {
+			if backendID, ok := bindingIDMap[localID]; ok {
+				bindingIDs = append(bindingIDs, backendID)
+			}
+		}
+		var desc *string
+		if d.Description != nil && *d.Description != "" {
+			desc = d.Description
+		}
+		_, err = tx.Exec(r.Context(), `
+			INSERT INTO ability_domains (id, tenant_id, career_position_id, name, description, binding_ids, sort_order)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
+		`, uuid.NewString(), claims.TenantID, id, d.Name, desc, coalesceStringSlice(bindingIDs), idx)
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to create ability domain")
+			return
+		}
+	}
+
+	for _, cert := range req.Certificates {
+		if cert.Name == "" {
+			continue
+		}
+		_, err = tx.Exec(r.Context(), `
+			INSERT INTO position_certificates (id, career_position_id, name, url, description, image_url)
+			VALUES ($1, $2, $3, $4, $5, $6)
+		`, uuid.NewString(), id, cert.Name, cert.URL, cert.Description, cert.Image)
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to create certificate")
+			return
+		}
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
+		return
+	}
+
+	pos, _ := h.fetchPosition(r.Context(), id)
+	respondJSON(w, http.StatusOK, SaveFullPositionResponse{Position: pos})
+}
+
+func strPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+func mapCategory(category string) string {
+	switch category {
+	case "知识":
+		return "knowledge"
+	case "素养":
+		return "quality"
+	case "技能", "专业技能":
+		return "skill"
+	default:
+		return "skill"
 	}
 }
 

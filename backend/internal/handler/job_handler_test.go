@@ -200,6 +200,107 @@ func TestPosition_StatusTransitions(t *testing.T) {
 	})
 }
 
+func TestPosition_SaveFull(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+
+	var createdID string
+
+	t.Run("Create", func(t *testing.T) {
+		body := map[string]interface{}{
+			"name":         "Full Save Position",
+			"positionType": "enterprise",
+			"version":      "v1.0",
+		}
+		w := env.Do("POST", "/api/v1/job/positions", body)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		pos, err := testhelper.Unmarshal[domain.CareerPosition](w)
+		if err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		createdID = pos.ID
+	})
+	defer func() {
+		if createdID != "" {
+			env.DB.Exec(context.Background(), "DELETE FROM career_positions WHERE id = $1", createdID)
+		}
+	}()
+
+	if createdID == "" {
+		t.Fatal("no created ID")
+	}
+
+	t.Run("SaveFull", func(t *testing.T) {
+		body := map[string]interface{}{
+			"batchId":      "",
+			"name":         "Updated Full Position",
+			"shortName":    "Updated",
+			"industry":     "",
+			"majors":       []string{},
+			"positionType": "enterprise",
+			"salaryRange":  [2]int{5000, 10000},
+			"description":  "updated description",
+			"requirements": []string{"req1", "req2"},
+			"careerPath":   "updated path",
+			"version":      "v1.0",
+			"collaborators": []string{},
+			"responsibilities": []map[string]interface{}{
+				{"id": "resp-1", "name": "Responsibility 1", "description": "desc 1"},
+				{"id": "resp-2", "name": "Responsibility 2"},
+			},
+			"certificates": []map[string]interface{}{
+				{"id": "cert-1", "name": "Certificate 1", "url": "https://example.com"},
+			},
+			"abilityBindings": []map[string]interface{}{
+				{"id": "bind-1", "responsibilityId": "resp-1", "source": "custom", "name": "Custom Ability", "category": "专业技能", "level": "master", "rubricDescription": "rubric", "attributes": []string{"技能"}, "domain": "业务洞察"},
+			},
+			"abilityDomains": []map[string]interface{}{
+				{"id": "domain-1", "name": "Domain 1", "bindingIds": []string{"bind-1"}},
+			},
+		}
+		w := env.Do("PUT", fmt.Sprintf("/api/v1/job/positions/%s/save-full", createdID), body)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+	})
+
+	t.Run("VerifyResponsibilities", func(t *testing.T) {
+		w := env.Do("GET", fmt.Sprintf("/api/v1/job/position-responsibilities?careerPositionId=%s", createdID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		items, total, err := testhelper.UnmarshalList[domain.PositionResponsibility](w)
+		if err != nil {
+			t.Fatalf("unmarshal list: %v", err)
+		}
+		if total != 2 {
+			t.Errorf("total = %d, want 2", total)
+		}
+		if len(items) != 2 {
+			t.Errorf("items length = %d, want 2", len(items))
+		}
+	})
+
+	t.Run("VerifyCertificates", func(t *testing.T) {
+		w := env.Do("GET", fmt.Sprintf("/api/v1/job/position-certificates?careerPositionId=%s", createdID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		items, total, err := testhelper.UnmarshalList[domain.PositionCertificate](w)
+		if err != nil {
+			t.Fatalf("unmarshal list: %v", err)
+		}
+		if total != 1 {
+			t.Errorf("total = %d, want 1", total)
+		}
+		if len(items) != 1 || items[0].Name != "Certificate 1" {
+			t.Errorf("certificate not saved correctly")
+		}
+	})
+}
+
 func TestPosition_ValidationErrors(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()

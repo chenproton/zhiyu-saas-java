@@ -6,11 +6,19 @@ import type {
   ApprovalRecord,
   PositionRecommendation,
   Ability,
+  PositionResponsibility,
+  PositionCertificate,
+  PositionAbilityBinding,
+  AbilityDomain,
 } from '@/lib/types/job-source'
 import type {
   CareerPosition,
   JobBatch,
   PositionRecommendation as ApiPositionRecommendation,
+  PositionResponsibility as ApiPositionResponsibility,
+  PositionCertificate as ApiPositionCertificate,
+  PositionAbilityBinding as ApiPositionAbilityBinding,
+  AbilityDomain as ApiAbilityDomain,
 } from '@/lib/types/job'
 import type {
   Workflow as ApiWorkflow,
@@ -180,4 +188,91 @@ export function positionToUpdateRequest(data: Partial<Position>): Partial<Omit<C
   if (data.createdBy !== undefined) req.createdBy = data.createdBy
   if (data.collaborators !== undefined) req.collaborators = data.collaborators
   return req
+}
+
+export function convertApiResponsibilityToLocal(r: ApiPositionResponsibility): PositionResponsibility {
+  return {
+    id: r.id,
+    name: r.name,
+    description: r.description ?? '',
+  }
+}
+
+export function convertLocalResponsibilityToApi(r: PositionResponsibility): Omit<ApiPositionResponsibility, 'id'> {
+  return {
+    careerPositionId: '', // filled by caller
+    name: r.name,
+    description: r.description || undefined,
+    sortOrder: 0,
+  }
+}
+
+export function convertApiCertificateToLocal(c: ApiPositionCertificate): PositionCertificate {
+  return {
+    id: c.id,
+    name: c.name,
+    url: c.url ?? '',
+    description: c.description ?? '',
+    image: c.imageUrl ?? '',
+  }
+}
+
+export function convertLocalCertificateToApi(c: PositionCertificate): Omit<ApiPositionCertificate, 'id'> {
+  return {
+    careerPositionId: '', // filled by caller
+    name: c.name,
+    url: c.url || undefined,
+    description: c.description || undefined,
+    imageUrl: c.image || undefined,
+  }
+}
+
+export function convertApiAbilityBindingToLocal(b: ApiPositionAbilityBinding): PositionAbilityBinding {
+  return {
+    id: b.id,
+    responsibilityId: b.responsibilityId,
+    source: b.source as PositionAbilityBinding['source'],
+    publicAbilityId: b.source === 'public' ? b.abilityPointId : undefined,
+    abilityPointId: b.abilityPointId,
+    name: '', // filled by caller from ability point map if needed
+    category: '',
+    level: b.requiredLevel as PositionAbilityBinding['level'],
+    rubricDescription: b.rubricDescription ?? '',
+    description: b.rubricDescription ?? '',
+    attributes: b.attributes || [],
+    domain: b.domain ?? '',
+  }
+}
+
+export function convertLocalAbilityBindingToApi(b: PositionAbilityBinding): Omit<ApiPositionAbilityBinding, 'id'> {
+  return {
+    careerPositionId: '', // filled by caller
+    responsibilityId: b.responsibilityId,
+    abilityPointId: b.abilityPointId || b.publicAbilityId || '',
+    source: b.source,
+    domain: b.domain || undefined,
+    requiredLevel: b.level,
+    rubricDescription: b.rubricDescription || undefined,
+    attributes: b.attributes || [],
+    weight: 0,
+  }
+}
+
+export function convertApiAbilityDomainToLocal(d: ApiAbilityDomain): AbilityDomain {
+  return {
+    id: d.id,
+    name: d.name,
+    description: d.description ?? '',
+    bindingIds: d.bindingIds || [],
+  }
+}
+
+export function convertLocalAbilityDomainToApi(d: AbilityDomain): Omit<ApiAbilityDomain, 'id'> {
+  return {
+    careerPositionId: '', // filled by caller
+    name: d.name,
+    description: d.description || undefined,
+    bindingIds: d.bindingIds,
+    sortOrder: 0,
+  }
 }
