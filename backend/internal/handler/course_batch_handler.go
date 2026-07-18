@@ -17,6 +17,7 @@ func NewCourseBatchHandler(db *pgxpool.Pool) *CourseBatchHandler {
 	return &CourseBatchHandler{
 		BatchHandler: NewBatchHandler(db, BatchTableConfig{
 			TableName:          "lesson_batches lb LEFT JOIN majors m ON m.id = lb.major_id",
+			WriteTableName:     "lesson_batches",
 			SelectColumns:      "lb.id, lb.name, lb.code, lb.org_node_id, lb.major_id, COALESCE(m.name, '') AS major_name, lb.workflow_id, lb.status, lb.course_count, lb.created_at, lb.updated_at",
 			EntityName:         "batch",
 			StatusOpen:         string(domain.LessonBatchStatusOpen),

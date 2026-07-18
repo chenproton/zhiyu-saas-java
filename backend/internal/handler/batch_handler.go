@@ -37,6 +37,7 @@ type BatchUpdateStatusRequest struct {
 
 type BatchTableConfig struct {
 	TableName     string
+	WriteTableName string
 	SelectColumns string
 	EntityName    string
 	StatusOpen    string
@@ -222,7 +223,7 @@ func (h *BatchHandler) Create(w http.ResponseWriter, r *http.Request) {
 		placeholders[i] = "$" + itoa(i+1)
 	}
 
-	query := "INSERT INTO " + h.Config.TableName + " (" + strings.Join(cols, ", ") + ") VALUES (" + strings.Join(placeholders, ", ") + ")"
+	query := "INSERT INTO " + h.Config.WriteTableName + " (" + strings.Join(cols, ", ") + ") VALUES (" + strings.Join(placeholders, ", ") + ")"
 	_, err := h.DB.Exec(r.Context(), query, vals...)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create "+h.Config.EntityName)
@@ -269,7 +270,7 @@ func (h *BatchHandler) Update(w http.ResponseWriter, r *http.Request) {
 		argIdx++
 	}
 
-	query := "UPDATE " + h.Config.TableName + " SET " + strings.Join(setClauses, ", ") + " WHERE id = $" + itoa(argIdx)
+	query := "UPDATE " + h.Config.WriteTableName + " SET " + strings.Join(setClauses, ", ") + " WHERE id = $" + itoa(argIdx)
 	args = append(args, id)
 
 	_, err := h.DB.Exec(r.Context(), query, args...)
@@ -294,7 +295,7 @@ func (h *BatchHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), "DELETE FROM "+h.Config.TableName+" WHERE id = $1", id)
+	_, err := h.DB.Exec(r.Context(), "DELETE FROM "+h.Config.WriteTableName+" WHERE id = $1", id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete "+h.Config.EntityName)
 		return
@@ -325,7 +326,7 @@ func (h *BatchHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), "UPDATE "+h.Config.TableName+" SET status = $1, updated_at = NOW() WHERE id = $2", req.Status, id)
+	_, err := h.DB.Exec(r.Context(), "UPDATE "+h.Config.WriteTableName+" SET status = $1, updated_at = NOW() WHERE id = $2", req.Status, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to update "+h.Config.EntityName+" status")
 		return

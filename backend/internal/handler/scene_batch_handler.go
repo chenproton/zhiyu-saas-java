@@ -16,6 +16,7 @@ func NewSceneBatchHandler(db *pgxpool.Pool) *SceneBatchHandler {
 	return &SceneBatchHandler{
 		BatchHandler: NewBatchHandler(db, BatchTableConfig{
 			TableName:          "scene_batches sb LEFT JOIN majors m ON m.id = sb.major_id",
+			WriteTableName:     "scene_batches",
 			SelectColumns:      "sb.id, sb.name, sb.code, sb.org_node_id, sb.major_id, COALESCE(m.name, '') AS major_name, sb.workflow_id, sb.status, sb.scenario_count, sb.created_at, sb.updated_at",
 			EntityName:         "scene batch",
 			StatusOpen:         string(domain.SceneBatchStatusOpen),

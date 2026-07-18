@@ -16,6 +16,7 @@ func NewEvaluationBatchHandler(db *pgxpool.Pool) *EvaluationBatchHandler {
 	return &EvaluationBatchHandler{
 		BatchHandler: NewBatchHandler(db, BatchTableConfig{
 			TableName:          "evaluation_batches eb LEFT JOIN majors m ON m.id = eb.major_id",
+			WriteTableName:     "evaluation_batches",
 			SelectColumns:      "eb.id, eb.name, eb.code, eb.org_node_id, eb.major_id, COALESCE(m.name, '') AS major_name, eb.workflow_id, eb.status, eb.created_at, eb.updated_at",
 			EntityName:         "evaluation batch",
 			StatusOpen:         "open",
