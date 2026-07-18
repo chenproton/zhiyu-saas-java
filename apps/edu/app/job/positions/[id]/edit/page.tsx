@@ -64,6 +64,7 @@ function PositionEditPageContent({ params }: PageProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [position, setPosition] = useState<Position | null>(null)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [detailsLoaded, setDetailsLoaded] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -95,7 +96,8 @@ function PositionEditPageContent({ params }: PageProps) {
   }, [id, positions, position])
 
   useEffect(() => {
-    if (!position || position.responsibilities.length > 0 || position.certificates.length > 0 || position.abilityBindings.length > 0) return
+    if (!position || detailsLoaded) return
+    setDetailsLoaded(true)
     let cancelled = false
     Promise.all([
       positionResponsibilityApi.list({ careerPositionId: position.id, limit: 1000 }),
@@ -122,7 +124,17 @@ function PositionEditPageContent({ params }: PageProps) {
           return local
         })
         const abilityDomains = domainRes.items.map(convertApiAbilityDomainToLocal)
-        setPosition((prev) => (prev ? { ...prev, responsibilities, certificates, abilityBindings, abilityDomains } : null))
+        setPosition((prev) => {
+          if (!prev) return null
+          const next: Position = { ...prev, responsibilities, certificates, abilityBindings, abilityDomains }
+          if (next.responsibilities.length === 0) {
+            next.responsibilities = [{ id: `resp-${Date.now()}`, name: '', description: '' }]
+          }
+          if (next.requirements.length === 0) {
+            next.requirements = ['']
+          }
+          return next
+        })
       })
       .catch((err: any) => {
         if (!cancelled) {
@@ -131,7 +143,7 @@ function PositionEditPageContent({ params }: PageProps) {
         }
       })
     return () => { cancelled = true }
-  }, [position, toast])
+  }, [position, detailsLoaded, toast])
 
   useEffect(() => {
     const stepParam = searchParams.get('step')

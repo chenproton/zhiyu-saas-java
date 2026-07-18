@@ -72,17 +72,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
   const [isGenerating, setIsGenerating] = useState<string | null>(null)
   const [aiNotice, setAiNotice] = useState<string | null>(null)
 
-  // 默认至少保留一个输入框
-  useEffect(() => {
-    if (position.responsibilities.length === 0) {
-      onUpdate({ responsibilities: [{ id: `resp-${Date.now()}`, name: '', description: '' }] })
-    }
-    if (position.requirements.length === 0) {
-      onUpdate({ requirements: [''] })
-    }
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   // 加载真实行业/专业数据
   useEffect(() => {
