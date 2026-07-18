@@ -120,7 +120,10 @@ export default function BatchesPage() {
   }
 
   const handleCreate = async () => {
-    if (!formData.name || !formData.department || !formData.major || !formData.workflowId) return
+    if (!formData.name || !formData.department || !formData.major || !formData.workflowId) {
+      toast({ variant: 'destructive', title: '请完整填写', description: '批次名称、所属院系、专业方向、审批流程均为必填' })
+      return
+    }
     try {
       await batchApi.create({
         name: formData.name,

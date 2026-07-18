@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { majorApi } from "@/lib/api"
+import { useOrgTree } from "@/hooks/use-org-tree"
 import type { Major } from "@/lib/types/backend"
 
 interface MajorSelectProps {
@@ -33,6 +34,7 @@ export function MajorSelect({
   const [majors, setMajors] = useState<Major[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string>()
+  const { orgTree } = useOrgTree(orgNodeId ? tenantId : undefined)
 
   const loadMajors = useCallback(async () => {
     if (!tenantId) {
@@ -42,23 +44,47 @@ export function MajorSelect({
     setLoading(true)
     setError(undefined)
     try {
-      const params: { tenantId: string; orgNodeId?: string; limit: number } = {
-        tenantId,
-        limit: 1000,
-      }
-      if (orgNodeId) params.orgNodeId = orgNodeId
-      const res = await majorApi.list(params)
+      const res = await majorApi.list({ tenantId, limit: 1000 })
       setMajors(res.items.filter((m) => m.enabled))
     } catch (err) {
       setError(err instanceof Error ? err.message : "加载专业失败")
     } finally {
       setLoading(false)
     }
-  }, [tenantId, orgNodeId])
+  }, [tenantId])
 
   useEffect(() => {
     loadMajors()
   }, [loadMajors])
+
+  // 专业可能绑定在院系节点或院系下属的「专业」类型节点上，
+  // 因此按所选院系的整个子树过滤；未绑定组织节点的专业始终可选。
+  const subtreeIds = useMemo(() => {
+    if (!orgNodeId || orgTree.length === 0) return null
+    const childrenMap = new Map<string, string[]>()
+    orgTree.forEach((n) => {
+      if (!n.parentId) return
+      const list = childrenMap.get(n.parentId) || []
+      list.push(n.id)
+      childrenMap.set(n.parentId, list)
+    })
+    const ids = new Set<string>()
+    const stack = [orgNodeId]
+    while (stack.length > 0) {
+      const id = stack.pop()!
+      if (ids.has(id)) continue
+      ids.add(id)
+      const children = childrenMap.get(id)
+      if (children) stack.push(...children)
+    }
+    return ids
+  }, [orgNodeId, orgTree])
+
+  const visibleMajors = useMemo(() => {
+    if (!orgNodeId) return majors
+    if (!subtreeIds) return majors
+    return majors.filter((m) => !m.orgNodeId || subtreeIds.has(m.orgNodeId))
+  }, [majors, orgNodeId, subtreeIds])
 
   const handleChange = (val: string) => {
     onChange(val || undefined)
@@ -76,13 +102,13 @@ export function MajorSelect({
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-        {majors.map((major) => (
+        {visibleMajors.map((major) => (
           <SelectItem key={major.id} value={major.id}>
             {major.name}
             {major.code ? <span className="ml-2 text-xs text-muted-foreground">({major.code})</span> : null}
           </SelectItem>
         ))}
-        {majors.length === 0 && (
+        {visibleMajors.length === 0 && (
           <div className="px-2 py-1.5 text-sm text-muted-foreground">
             {!orgNodeId ? "暂无专业" : "该院系下暂无专业"}
           </div>
