@@ -208,22 +208,16 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 为新租户自动创建默认套餐，避免后续页面报 subscription not found
+	// 默认仅开通 5 个核心平台，与 /portal/apps 当前实际入口保持一致
 	if _, err := tx.Exec(r.Context(), `
 		INSERT INTO subscription_packages (tenant_id, name, valid_until, modules, status)
 		VALUES ($1, '默认全功能套餐', NULL, $2, 'active')
 	`, id, domain.JSONMap{
-		"system":   true,
-		"alliance": true,
-		"career":   true,
-		"course":   true,
-		"scene":    true,
-		"ability":  true,
-		"affairs":  true,
-		"ai":       true,
-		"resource": true,
-		"opc":      true,
-		"decision": true,
-		"research": true,
+		"system":  true,
+		"career":  true,
+		"course":  true,
+		"scene":   true,
+		"ability": true,
 	}); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create default subscription package")
 		return
