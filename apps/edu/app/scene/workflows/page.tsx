@@ -35,7 +35,7 @@ export default function WorkflowsPage() {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [steps, setSteps] = useState<WorkflowStepEditor[]>([{ ...DEFAULT_STEP }])
-  const [majorIdsInput, setMajorIdsInput] = useState("")
+  const [majorIds, setMajorIds] = useState<string[]>([])
 
   const loadWorkflows = async () => {
     setLoading(true)
@@ -51,13 +51,13 @@ export default function WorkflowsPage() {
 
   useEffect(() => { loadWorkflows(); loadMajors() }, [])
 
-  const reset = () => { setName(""); setDescription(""); setSteps([{ ...DEFAULT_STEP }]); setMajorIdsInput(""); setEditId(null); setError(null) }
+  const reset = () => { setName(""); setDescription(""); setSteps([{ ...DEFAULT_STEP }]); setMajorIds([]); setEditId(null); setError(null) }
 
   const openEdit = (wf: Workflow) => {
     setEditId(wf.id)
     setName(wf.name)
     setDescription(wf.description || "")
-    setMajorIdsInput((wf.majorIds || []).join(","))
+    setMajorIds(wf.majorIds || [])
     setSteps((wf.steps || []).length > 0 ? wf.steps.map((s) => ({
       name: s.name || "",
       approverIds: s.approverIds || [],
@@ -76,7 +76,7 @@ export default function WorkflowsPage() {
       const body = {
         name: name.trim(), description: description.trim() || undefined, steps: built,
         scene: "scene", status: "active" as const,
-        majorIds: majorIdsInput.split(/[,，\s]+/).map((s) => s.trim()).filter(Boolean),
+        majorIds,
       }
       if (editId) { await workflowApi.update(editId, body); toast({ title: "保存成功" }) }
       else { await workflowApi.create(body); toast({ title: "创建成功" }) }
@@ -96,7 +96,7 @@ export default function WorkflowsPage() {
         <DialogTitle>{isEdit ? "编辑审批流程" : "新增审批流程"}</DialogTitle>
         <DialogDescription>{isEdit ? "修改审批流程配置" : "创建新的审批流程模板"}</DialogDescription>
       </DialogHeader>
-      <WorkflowEditor error={error} name={name} onNameChange={setName} description={description} onDescriptionChange={setDescription} steps={steps} onStepsChange={setSteps} majorIdsInput={majorIdsInput} onMajorIdsChange={setMajorIdsInput} majors={majors} />
+      <WorkflowEditor error={error} name={name} onNameChange={setName} description={description} onDescriptionChange={setDescription} steps={steps} onStepsChange={setSteps} majorIds={majorIds} onMajorIdsChange={setMajorIds} majors={majors} />
       <DialogFooter>
         <Button variant="outline" onClick={() => { setIsCreateOpen(false); setIsEditOpen(false); reset() }}>取消</Button>
         <Button onClick={handleSave}>{isEdit ? "保存修改" : "创建流程"}</Button>

@@ -8,9 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog"
+import { MultiSelectSearch } from "@/components/ui/multi-select-search"
 import { UserSelector } from "@/components/shared/user-selector"
 
 export interface WorkflowStepEditor {
@@ -31,13 +29,9 @@ export function buildWorkflowSteps(steps: WorkflowStepEditor[]) {
 }
 
 interface WorkflowEditorProps {
-  defaultName?: string
-  defaultDescription?: string
-  defaultSteps?: WorkflowStepEditor[]
-  defaultMajorIds?: string
   majors: { id: string; name: string }[]
-  majorIdsInput: string
-  onMajorIdsChange: (value: string) => void
+  majorIds: string[]
+  onMajorIdsChange: (value: string[]) => void
   name: string
   onNameChange: (value: string) => void
   description: string
@@ -55,7 +49,7 @@ export function WorkflowEditor({
   onDescriptionChange,
   steps,
   onStepsChange,
-  majorIdsInput,
+  majorIds,
   onMajorIdsChange,
   majors,
 }: WorkflowEditorProps) {
@@ -97,19 +91,14 @@ export function WorkflowEditor({
       {majors.length > 0 && (
         <div className="grid gap-2">
           <Label>适用专业</Label>
-          <Input
-            placeholder="输入专业ID，逗号分隔"
-            value={majorIdsInput}
-            onChange={(e) => onMajorIdsChange(e.target.value)}
+          <MultiSelectSearch
+            options={majors.map((m) => ({ label: m.name, value: m.id }))}
+            selected={majorIds}
+            onChange={onMajorIdsChange}
+            placeholder="选择适用专业"
+            searchPlaceholder="搜索专业名称..."
+            emptyText="暂无专业"
           />
-          <div className="flex flex-wrap gap-1">
-            {majorIdsInput.split(/[,，\s]+/).filter(Boolean).map((id) => {
-              const major = majors.find((m) => m.id === id)
-              return major ? (
-                <Badge key={id} variant="outline" className="text-xs">{major.name}</Badge>
-              ) : null
-            })}
-          </div>
         </div>
       )}
       <div className="grid gap-2">

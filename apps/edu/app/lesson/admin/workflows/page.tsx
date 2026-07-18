@@ -35,7 +35,7 @@ export default function WorkflowsPage() {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [steps, setSteps] = useState<WorkflowStepEditor[]>([{ ...DEFAULT_STEP }])
-  const [majorIdsInput, setMajorIdsInput] = useState("")
+  const [majorIds, setMajorIds] = useState<string[]>([])
 
   const loadWorkflows = async () => {
     setLoading(true)
@@ -59,14 +59,14 @@ export default function WorkflowsPage() {
   useEffect(() => { loadWorkflows(); loadMajors() }, [])
 
   const reset = () => {
-    setName(""); setDescription(""); setSteps([{ ...DEFAULT_STEP }]); setMajorIdsInput(""); setEditId(null); setError(null)
+    setName(""); setDescription(""); setSteps([{ ...DEFAULT_STEP }]); setMajorIds([]); setEditId(null); setError(null)
   }
 
   const openEdit = (wf: Workflow) => {
     setEditId(wf.id)
     setName(wf.name)
     setDescription(wf.description || "")
-    setMajorIdsInput((wf.majorIds || []).join(","))
+    setMajorIds(wf.majorIds || [])
     setSteps(
       (wf.steps || []).length > 0
         ? wf.steps.map((s) => ({
@@ -92,7 +92,7 @@ export default function WorkflowsPage() {
         steps: built,
         scene: "lesson",
         status: "active" as const,
-        majorIds: majorIdsInput.split(/[,，\s]+/).map((s) => s.trim()).filter(Boolean),
+        majorIds,
       }
       if (editId) {
         await workflowApi.update(editId, body)
@@ -128,7 +128,7 @@ export default function WorkflowsPage() {
         name={name} onNameChange={setName}
         description={description} onDescriptionChange={setDescription}
         steps={steps} onStepsChange={setSteps}
-        majorIdsInput={majorIdsInput} onMajorIdsChange={setMajorIdsInput}
+        majorIds={majorIds} onMajorIdsChange={setMajorIds}
         majors={majors}
       />
       <DialogFooter>

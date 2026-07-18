@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import {
   ChevronDown, ChevronRight, School, Building2, BookOpen, Users as UsersIcon, Briefcase, Building,
   Search, X, Check, Loader2
@@ -114,6 +114,8 @@ export function UserSelector({
   const [usersLoading, setUsersLoading] = useState(false)
   const [userSearch, setUserSearch] = useState("")
   const [selectedIds, setSelectedIds] = useState<string[]>(value)
+  const [userCache, setUserCache] = useState<Record<string, User>>({})
+  const fetchedIdsRef = useRef<Set<string>>(new Set())
 
   const orgTypeMap = useMemo(() => {
     const map = new Map<string, OrgType>()
@@ -130,12 +132,14 @@ export function UserSelector({
     return map
   }, [orgs])
 
-  const selectedUserMap = useMemo(() => {
-    const map = new Map<string, User>()
-    // try to find in current loaded users first, then fallback to any cached
-    users.forEach((u) => { if (selectedIds.includes(u.id)) map.set(u.id, u) })
-    return map
-  }, [users, selectedIds])
+  const mergeUserCache = useCallback((items: User[]) => {
+    if (items.length === 0) return
+    setUserCache((prev) => {
+      const next = { ...prev }
+      items.forEach((u) => { next[u.id] = u })
+      return next
+    })
+  }, [])
 
   const loadOrgTree = useCallback(async () => {
     setOrgLoading(true)
@@ -166,12 +170,31 @@ export function UserSelector({
         filtered = filtered.filter((u) => !(u.roleCodes || []).includes("student"))
       }
       setUsers(filtered)
+      mergeUserCache(res.items)
     } catch { /* ignore */ }
     finally { setUsersLoading(false) }
-  }, [selectedOrgId, userSearch, tenantId, usePortalApi, excludeStudent, orgMap])
+  }, [selectedOrgId, userSearch, tenantId, usePortalApi, excludeStudent, orgMap, mergeUserCache])
 
   useEffect(() => { loadOrgTree() }, [loadOrgTree])
   useEffect(() => { if (open) loadUsers() }, [open, loadUsers])
+
+  // Resolve names for selected ids that are not in cache yet (e.g. echo on edit),
+  // so the trigger shows user names instead of raw ids.
+  useEffect(() => {
+    const missing = value.filter((id) => !userCache[id] && !fetchedIdsRef.current.has(id))
+    if (missing.length === 0) return
+    missing.forEach((id) => fetchedIdsRef.current.add(id))
+    const api = usePortalApi ? portalUserManagementApi : userManagementApi
+    let cancelled = false
+    Promise.allSettled(missing.map((id) => api.get(id))).then((results) => {
+      if (cancelled) return
+      const fetched = results
+        .filter((r): r is PromiseFulfilledResult<User> => r.status === "fulfilled" && !!r.value)
+        .map((r) => r.value)
+      mergeUserCache(fetched)
+    })
+    return () => { cancelled = true }
+  }, [value, userCache, usePortalApi, mergeUserCache])
 
   useEffect(() => {
     if (open) setSelectedIds([...value])
@@ -209,11 +232,13 @@ export function UserSelector({
     return orgMap.get(u.orgNodeId)?.name || u.orgNodeId
   }
 
+  const displayName = useCallback((id: string) => {
+    const u = userCache[id] || users.find((x) => x.id === id)
+    return u?.name || u?.username || id
+  }, [userCache, users])
+
   const triggerText = value.length === 0 ? placeholder
-    : value.length <= 3 ? value.map((id) => {
-        const u = users.find((x) => x.id === id)
-        return u?.name || u?.username || id
-      }).join("、")
+    : value.length <= 3 ? value.map((id) => displayName(id)).join("、")
     : `已选 ${value.length} 人`
 
   return (
@@ -333,10 +358,9 @@ export function UserSelector({
                 </span>
                 <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
                   {selectedIds.map((id) => {
-                    const u = users.find((x) => x.id === id)
                     return (
                       <Badge key={id} variant="secondary" className="gap-1 pl-2">
-                        <span className="max-w-[120px] truncate">{u?.name || u?.username || id}</span>
+                        <span className="max-w-[120px] truncate">{displayName(id)}</span>
                         <button
                           onClick={(e) => { e.stopPropagation(); removeSelected(id) }}
                           className="ml-0.5 rounded-full hover:bg-muted p-0.5"
