@@ -154,7 +154,7 @@ export default function SceneApprovalsPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-800">资源审批管理</h1>
+        <h1 className="text-2xl font-semibold text-gray-800">审批中心</h1>
         <p className="text-sm text-gray-500 mt-1">审核场景提交申请，管理审批流程</p>
       </div>
 

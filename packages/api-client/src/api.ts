@@ -707,7 +707,11 @@ export const taskApi = {
     request<{ ok: boolean }>("/scene/tasks/reorder", { method: "POST", body: JSON.stringify({ scenarioId, taskIds }) }),
 }
 
-export const sceneBatchApi = createCrudApi<SceneBatch, Omit<SceneBatch, "id" | "createdAt" | "updatedAt">, Partial<Omit<SceneBatch, "id" | "createdAt" | "updatedAt">>>("/scene/batches")
+export const sceneBatchApi = {
+  ...createCrudApi<SceneBatch, Omit<SceneBatch, "id" | "createdAt" | "updatedAt">, Partial<Omit<SceneBatch, "id" | "createdAt" | "updatedAt">>>("/scene/batches"),
+  updateStatus: (id: string, status: string) =>
+    request<SceneBatch>(`/scene/batches/${id}/status`, { method: "POST", body: JSON.stringify({ status }) }),
+}
 
 // ==================== Phase 3.4: Lesson APIs ====================
 
@@ -721,7 +725,11 @@ export const courseNodeApi = {
     request<{ ok: boolean }>("/lesson/nodes/reorder", { method: "POST", body: JSON.stringify({ courseId, nodeIds }) }),
 }
 
-export const lessonBatchApi = createCrudApi<LessonBatch, Omit<LessonBatch, "id" | "createdAt" | "updatedAt">, Partial<Omit<LessonBatch, "id" | "createdAt" | "updatedAt">>>("/lesson/batches")
+export const lessonBatchApi = {
+  ...createCrudApi<LessonBatch, Omit<LessonBatch, "id" | "createdAt" | "updatedAt">, Partial<Omit<LessonBatch, "id" | "createdAt" | "updatedAt">>>("/lesson/batches"),
+  updateStatus: (id: string, status: string) =>
+    request<LessonBatch>(`/lesson/batches/${id}/status`, { method: "POST", body: JSON.stringify({ status }) }),
+}
 
 export const lessonBehaviorApi = {
   aggregate: (params: { courseId: string; startDate?: string; endDate?: string }) =>
@@ -976,4 +984,8 @@ export const appealApi = {
     request<AppealRecord>(`/evaluation/appeals/${id}/process`, { method: "POST", body: JSON.stringify(req) }),
 }
 
-export const evaluationBatchApi = createCrudApi<EvaluationBatch, Omit<EvaluationBatch, "id" | "createdAt" | "updatedAt">, Partial<Omit<EvaluationBatch, "id" | "createdAt" | "updatedAt">>>("/evaluation/batches")
+export const evaluationBatchApi = {
+  ...createCrudApi<EvaluationBatch, Omit<EvaluationBatch, "id" | "createdAt" | "updatedAt">, Partial<Omit<EvaluationBatch, "id" | "createdAt" | "updatedAt">>>("/evaluation/batches"),
+  updateStatus: (id: string, status: string) =>
+    request<EvaluationBatch>(`/evaluation/batches/${id}/status`, { method: "POST", body: JSON.stringify({ status }) }),
+}

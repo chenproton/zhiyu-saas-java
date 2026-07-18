@@ -1,360 +1,178 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import {
-  Search,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  FileText,
-  BookOpen,
-  GraduationCap,
-  Laptop,
-  ClipboardCheck,
-  Send,
-  Ban,
-  Eye,
-} from "lucide-react"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { useEffect, useState, useMemo } from "react"
+import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { useData } from "@/components/providers/data-provider"
-import { PageHeaderCard } from "@/components/shared/page-header-card"
-import { APPROVAL_TYPE_LABELS, APPROVAL_STATUS_LABELS } from "@/lib/types"
-import type { ApprovalType, ApprovalItem, ApprovalStatus } from "@/lib/types"
-import { PrdAnnotation } from "@/components/prd-annotation"
-import { getAnnotation } from "@/lib/prd-annotations"
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { CheckSquare, Eye } from "lucide-react"
+import { questionBankApi, examApi, evaluationBatchApi } from "@/lib/api"
+import type { QuestionBank, Exam, EvaluationBatch } from "@/lib/types"
+import { useApprovals } from "@/hooks/use-approvals"
+import { useApprovalDialogs } from "@/components/shared/approval-dialogs"
 
-const typeTabs: { value: ApprovalType; label: string }[] = [
-  { value: "questionBank", label: "题库" },
-  { value: "exam", label: "试卷" },
-]
-
-const typeIcons: Record<ApprovalType, React.ReactNode> = {
-  question: <FileText className="size-4" />,
-  questionBank: <BookOpen className="size-4" />,
-  exam: <GraduationCap className="size-4" />,
-  onlineExam: <Laptop className="size-4" />,
+const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  pending: { label: "待审批", className: "bg-yellow-50 text-yellow-600" },
+  approved: { label: "已通过", className: "bg-green-50 text-green-600" },
+  rejected: { label: "已驳回", className: "bg-red-50 text-red-500" },
 }
 
-export default function ApprovalCenterPage() {
-  const { approvalItems, approveItem, rejectItem } = useData()
+const TYPE_LABELS: Record<string, string> = {
+  question_bank: "题库",
+  exam: "试卷",
+}
 
-  const [search, setSearch] = useState("")
-  const [typeTab, setTypeTab] = useState<ApprovalType>("questionBank")
-  const [statusTab, setStatusTab] = useState<ApprovalStatus | "all">("all")
-  const [approveDialog, setApproveDialog] = useState<{ open: boolean; item: ApprovalItem | null }>({
-    open: false,
-    item: null,
+interface ApprovalView {
+  id: string
+  targetType: "question_bank" | "exam"
+  targetId: string
+  targetName: string
+  version: string
+  batchName?: string
+  submitterId: string
+  status: string
+  submittedAt: string
+}
+
+export default function EvaluationApprovalsPage() {
+  const bankApprovals = useApprovals({ targetType: "question_bank" })
+  const examApprovals = useApprovals({ targetType: "exam" })
+  const [bankMap, setBankMap] = useState<Map<string, QuestionBank>>(new Map())
+  const [examMap, setExamMap] = useState<Map<string, Exam>>(new Map())
+  const [batchMap, setBatchMap] = useState<Map<string, EvaluationBatch>>(new Map())
+
+  useEffect(() => {
+    Promise.all([
+      questionBankApi.list({ limit: 1000 }),
+      examApi.list({ limit: 1000 }),
+      evaluationBatchApi.list({ limit: 1000 }),
+    ]).then(([bankRes, examRes, batchRes]) => {
+      setBankMap(new Map(bankRes.items.map((b) => [b.id, b])))
+      setExamMap(new Map(examRes.items.map((e) => [e.id, e])))
+      setBatchMap(new Map(batchRes.items.map((b) => [b.id, b])))
+    }).catch(() => {})
+  }, [])
+
+  const { dialogs, approveAction } = useApprovalDialogs({
+    entityLabel: "测评资源",
+    onApprove: async (comment) => {
+      if (!currentItem) return
+      if (currentItem.targetType === "question_bank") await bankApprovals.approve(currentItem.id, comment)
+      else await examApprovals.approve(currentItem.id, comment)
+    },
+    onReject: async (comment) => {
+      if (!currentItem) return
+      if (currentItem.targetType === "question_bank") await bankApprovals.reject(currentItem.id, comment)
+      else await examApprovals.reject(currentItem.id, comment)
+    },
   })
-  const [rejectDialog, setRejectDialog] = useState<{ open: boolean; item: ApprovalItem | null }>({
-    open: false,
-    item: null,
-  })
-  const [remark, setRemark] = useState("")
-  const [detailDialog, setDetailDialog] = useState<{ open: boolean; item: ApprovalItem | null }>({
-    open: false,
-    item: null,
-  })
+  const [currentItem, setCurrentItem] = useState<ApprovalView | null>(null)
 
-  const filteredItems = useMemo(() => {
-    let list = [...approvalItems]
-    list = list.filter((item) => item.type === typeTab)
-    if (statusTab !== "all") {
-      list = list.filter((item) => item.status === statusTab)
-    }
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      list = list.filter(
-        (item) =>
-          item.title.toLowerCase().includes(q) ||
-          item.submitterName.toLowerCase().includes(q) ||
-          (item.description && item.description.toLowerCase().includes(q))
-      )
-    }
-    return list.sort((a, b) => b.submitTime.getTime() - a.submitTime.getTime())
-  }, [approvalItems, typeTab, statusTab, search])
+  const loading = bankApprovals.loading || examApprovals.loading
 
-  const stats = useMemo(() => {
-    const total = approvalItems.length
-    const pending = approvalItems.filter((i) => i.status === "pending").length
-    const approved = approvalItems.filter((i) => i.status === "approved").length
-    const rejected = approvalItems.filter((i) => i.status === "rejected").length
-    return { total, pending, approved, rejected }
-  }, [approvalItems])
+  const items: ApprovalView[] = useMemo(() => {
+    const bankItems: ApprovalView[] = bankApprovals.records.map((a) => {
+      const bank = bankMap.get(a.targetId)
+      const batch = bank?.batchId ? batchMap.get(bank.batchId) : undefined
+      return {
+        id: a.id,
+        targetType: "question_bank" as const,
+        targetId: a.targetId,
+        targetName: bank?.name || a.targetId,
+        version: bank?.version || "-",
+        batchName: batch?.name,
+        submitterId: a.submitterId,
+        status: a.status,
+        submittedAt: new Date(a.createdAt).toLocaleDateString(),
+      }
+    })
+    const examItems: ApprovalView[] = examApprovals.records.map((a) => {
+      const exam = examMap.get(a.targetId)
+      const batch = exam?.batchId ? batchMap.get(exam.batchId) : undefined
+      return {
+        id: a.id,
+        targetType: "exam" as const,
+        targetId: a.targetId,
+        targetName: exam?.name || a.targetId,
+        version: "-",
+        batchName: batch?.name,
+        submitterId: a.submitterId,
+        status: a.status,
+        submittedAt: new Date(a.createdAt).toLocaleDateString(),
+      }
+    })
+    return [...bankItems, ...examItems]
+  }, [bankApprovals.records, examApprovals.records, bankMap, examMap, batchMap])
 
-  const handleApprove = () => {
-    if (approveDialog.item) {
-      approveItem(approveDialog.item.id, remark || undefined)
-      setApproveDialog({ open: false, item: null })
-      setRemark("")
-    }
-  }
+  const pendingItems = items.filter((a) => a.status === "pending")
+  const processedItems = items.filter((a) => a.status !== "pending")
 
-  const handleReject = () => {
-    if (rejectDialog.item) {
-      rejectItem(rejectDialog.item.id, remark || undefined)
-      setRejectDialog({ open: false, item: null })
-      setRemark("")
-    }
-  }
+  const detailHref = (item: ApprovalView) =>
+    item.targetType === "question_bank"
+      ? `/evaluation/question-banks/${item.targetId}`
+      : `/evaluation/exams/${item.targetId}`
 
-  const getStatusBadge = (status: ApprovalStatus) => {
-    switch (status) {
-      case "pending":
-        return (
-          <Badge variant="secondary" className="gap-1">
-            <Clock className="size-3" />
-            {APPROVAL_STATUS_LABELS[status]}
-          </Badge>
-        )
-      case "approved":
-        return (
-          <Badge variant="default" className="gap-1 bg-emerald-500">
-            <CheckCircle2 className="size-3" />
-            {APPROVAL_STATUS_LABELS[status]}
-          </Badge>
-        )
-      case "rejected":
-        return (
-          <Badge variant="destructive" className="gap-1">
-            <XCircle className="size-3" />
-            {APPROVAL_STATUS_LABELS[status]}
-          </Badge>
-        )
-    }
-  }
-
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("zh-CN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(date)
-  }
-
-  return (
-    <div className="px-8 py-6">
-      <PageHeaderCard
-        title="审批中心"
-        description="统一审批题目、题库、试卷、在线考试的提交申请"
-        stats={[
-          {
-            label: "审批总数",
-            value: stats.total,
-            icon: <ClipboardCheck className="size-4 text-blue-500" />,
-            iconClassName: "bg-blue-50",
-          },
-          {
-            label: "待审批",
-            value: stats.pending,
-            icon: <Clock className="size-4 text-yellow-500" />,
-            iconClassName: "bg-yellow-50",
-          },
-          {
-            label: "已通过",
-            value: stats.approved,
-            icon: <CheckCircle2 className="size-4 text-green-500" />,
-            iconClassName: "bg-green-50",
-          },
-          {
-            label: "已驳回",
-            value: stats.rejected,
-            icon: <XCircle className="size-4 text-red-500" />,
-            iconClassName: "bg-red-50",
-          },
-        ]}
-        className="mb-4"
-      />
-
-      {/* Tab 切换 */}
-      <div className="mb-4">
-        <Tabs value={typeTab} onValueChange={(v) => setTypeTab(v as ApprovalType)}>
-          <TabsList>
-            {typeTabs.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value}>
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      </div>
-
-      {/* 筛选栏 */}
-      <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="relative flex-1 sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="搜索标题、提交人..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select value={statusTab} onValueChange={(v) => setStatusTab(v as ApprovalStatus | "all")}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="全部状态" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectItem value="all">全部状态</SelectItem>
-              <SelectItem value="pending">待审批</SelectItem>
-              <SelectItem value="approved">已通过</SelectItem>
-              <SelectItem value="rejected">已驳回</SelectItem>
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* 审批列表 */}
-      <div className="rounded-lg border bg-white px-4 py-3">
-        <div className="overflow-x-auto">
+  const renderTable = (data: ApprovalView[]) => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <CheckSquare className="h-4 w-4" />
+          审批记录列表
+        </CardTitle>
+        <CardDescription>共 {data.length} 条审批记录</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="rounded-lg border border-slate-200 bg-white overflow-x-auto">
           <Table>
             <TableHeader>
-              {typeTab === 'questionBank' && (
-                <TableRow>
-                  <TableHead className="w-[100px]"><PrdAnnotation data={getAnnotation("ac-col-type")}>审批类型</PrdAnnotation></TableHead>
-                  <TableHead className="w-[200px]"><PrdAnnotation data={getAnnotation("ac-col-title")}>题库名称</PrdAnnotation></TableHead>
-                  <TableHead className="w-[200px]"><PrdAnnotation data={getAnnotation("ac-col-desc")}>题库描述</PrdAnnotation></TableHead>
-                  <TableHead className="w-[100px]"><PrdAnnotation data={getAnnotation("ac-col-submitter")}>提交人</PrdAnnotation></TableHead>
-                  <TableHead className="w-[150px]"><PrdAnnotation data={getAnnotation("ac-col-submit-time")}>提交时间</PrdAnnotation></TableHead>
-                  <TableHead className="w-[100px]"><PrdAnnotation data={getAnnotation("ac-col-status")}>状态</PrdAnnotation></TableHead>
-                  <TableHead className="w-[150px]"><PrdAnnotation data={getAnnotation("ac-col-remark")}>备注</PrdAnnotation></TableHead>
-                  <TableHead className="sticky right-0 w-[160px] bg-white text-right"><PrdAnnotation data={getAnnotation("ac-col-actions")}>操作</PrdAnnotation></TableHead>
-                </TableRow>
-              )}
-              {typeTab === 'exam' && (
-                <TableRow>
-                  <TableHead className="w-[100px]"><PrdAnnotation data={getAnnotation("ac-col-type")}>审批类型</PrdAnnotation></TableHead>
-                  <TableHead className="w-[200px]"><PrdAnnotation data={getAnnotation("ac-col-title")}>试卷名称</PrdAnnotation></TableHead>
-                  <TableHead className="w-[200px]"><PrdAnnotation data={getAnnotation("ac-col-desc")}>试卷描述</PrdAnnotation></TableHead>
-                  <TableHead className="w-[100px]"><PrdAnnotation data={getAnnotation("ac-col-submitter")}>提交人</PrdAnnotation></TableHead>
-                  <TableHead className="w-[150px]"><PrdAnnotation data={getAnnotation("ac-col-submit-time")}>提交时间</PrdAnnotation></TableHead>
-                  <TableHead className="w-[100px]"><PrdAnnotation data={getAnnotation("ac-col-status")}>状态</PrdAnnotation></TableHead>
-                  <TableHead className="w-[150px]"><PrdAnnotation data={getAnnotation("ac-col-remark")}>备注</PrdAnnotation></TableHead>
-                  <TableHead className="sticky right-0 w-[160px] bg-white text-right"><PrdAnnotation data={getAnnotation("ac-col-actions")}>操作</PrdAnnotation></TableHead>
-                </TableRow>
-              )}
-              {typeTab === 'onlineExam' && (
-                <TableRow>
-                  <TableHead className="w-[100px]"><PrdAnnotation data={getAnnotation("ac-col-type")}>审批类型</PrdAnnotation></TableHead>
-                  <TableHead className="w-[200px]"><PrdAnnotation data={getAnnotation("ac-col-title")}>考试名称</PrdAnnotation></TableHead>
-                  <TableHead className="w-[200px]"><PrdAnnotation data={getAnnotation("ac-col-desc")}>考试描述</PrdAnnotation></TableHead>
-                  <TableHead className="w-[100px]"><PrdAnnotation data={getAnnotation("ac-col-submitter")}>提交人</PrdAnnotation></TableHead>
-                  <TableHead className="w-[150px]"><PrdAnnotation data={getAnnotation("ac-col-submit-time")}>提交时间</PrdAnnotation></TableHead>
-                  <TableHead className="w-[100px]"><PrdAnnotation data={getAnnotation("ac-col-status")}>状态</PrdAnnotation></TableHead>
-                  <TableHead className="w-[150px]"><PrdAnnotation data={getAnnotation("ac-col-remark")}>备注</PrdAnnotation></TableHead>
-                  <TableHead className="sticky right-0 w-[160px] bg-white text-right"><PrdAnnotation data={getAnnotation("ac-col-actions")}>操作</PrdAnnotation></TableHead>
-                </TableRow>
-              )}
+              <TableRow className="bg-slate-50">
+                <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">资源名称</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500 text-center whitespace-nowrap">类型</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500 text-center whitespace-nowrap">版本</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">所属批次分组</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">创建人</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">提交审批日期</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500 text-center whitespace-nowrap">状态</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500 text-right whitespace-nowrap sticky right-0 bg-slate-50 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">操作</TableHead>
+              </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredItems.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                    暂无审批记录
-                  </TableCell>
-                </TableRow>
+              {loading ? (
+                <TableRow><TableCell colSpan={8} className="text-center py-8 text-gray-500">加载中...</TableCell></TableRow>
+              ) : data.length === 0 ? (
+                <TableRow><TableCell colSpan={8} className="text-center py-12 text-gray-500">暂无数据</TableCell></TableRow>
               ) : (
-                filteredItems.map((item) => (
-                  <TableRow key={item.id} className="group">
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {typeIcons[item.type]}
-                        <span className="text-sm">{APPROVAL_TYPE_LABELS[item.type]}</span>
-                      </div>
+                data.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium whitespace-nowrap">{item.targetName}</TableCell>
+                    <TableCell className="text-center whitespace-nowrap">
+                      <Badge variant="outline" className="text-xs">{TYPE_LABELS[item.targetType]}</Badge>
                     </TableCell>
-                    <TableCell className="font-medium">{item.title}</TableCell>
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground line-clamp-2">
-                        {item.description || "-"}
-                      </span>
+                    <TableCell className="text-center text-sm text-gray-600 whitespace-nowrap">{item.version}</TableCell>
+                    <TableCell className="text-sm text-gray-600 whitespace-nowrap">{item.batchName || "-"}</TableCell>
+                    <TableCell className="text-sm text-gray-600 whitespace-nowrap">{item.submitterId}</TableCell>
+                    <TableCell className="text-sm text-gray-600 whitespace-nowrap">{item.submittedAt}</TableCell>
+                    <TableCell className="text-center whitespace-nowrap">
+                      <Badge variant="secondary" className={STATUS_CONFIG[item.status]?.className}>
+                        {STATUS_CONFIG[item.status]?.label}
+                      </Badge>
                     </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{item.submitterName}</span>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDate(item.submitTime)}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(item.status)}</TableCell>
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground">
-                        {item.remark || "-"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="sticky right-0 bg-white text-right relative">
-                      <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs text-blue-600"
-                          onClick={() => setDetailDialog({ open: true, item })}
-                        >
-                          <PrdAnnotation data={getAnnotation("ac-col-actions")}>
-                            <Eye className="size-3" />
-                            查看详情
-                          </PrdAnnotation>
+                    <TableCell className="text-right whitespace-nowrap sticky right-0 bg-white z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={detailHref(item)}>
+                            <Eye className="mr-1 h-3 w-3" />查看
+                          </Link>
                         </Button>
-                        {item.status === "pending" && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-600"
-                              onClick={() => {
-                                setApproveDialog({ open: true, item })
-                                setRemark("")
-                              }}
-                            >
-                              <PrdAnnotation data={getAnnotation("ac-btn-approve")}>
-                                <CheckCircle2 className="mr-1 size-3.5" />
-                                同意
-                              </PrdAnnotation>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                              onClick={() => {
-                                setRejectDialog({ open: true, item })
-                                setRemark("")
-                              }}
-                            >
-                              <PrdAnnotation data={getAnnotation("ac-btn-reject")}>
-                                <Ban className="mr-1 size-3.5" />
-                                驳回
-                              </PrdAnnotation>
-                            </Button>
-                          </>
-                        )}
+                        {approveAction ? (
+                          <span onClick={() => setCurrentItem(item)} key={item.id}>
+                            {approveAction(item.status)}
+                          </span>
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -363,109 +181,42 @@ export default function ApprovalCenterPage() {
             </TableBody>
           </Table>
         </div>
+      </CardContent>
+    </Card>
+  )
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-800">审批中心</h1>
+        <p className="text-sm text-gray-500 mt-1">审核题库、试卷提交申请，管理审批流程</p>
       </div>
 
-      {/* 同意弹窗 */}
-      <Dialog open={approveDialog.open} onOpenChange={(open) => !open && setApproveDialog({ open: false, item: null })}>
-        <DialogContent size="sm">
-          <DialogHeader>
-            <DialogTitle>审批通过</DialogTitle>
-            <DialogDescription>
-              确认通过「{approveDialog.item?.title}」的审批申请？
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <label className="mb-2 block text-sm font-medium">审批备注（非必填）</label>
-            <Textarea
-              value={remark}
-              onChange={(e) => setRemark(e.target.value)}
-              placeholder="请输入审批备注..."
-              rows={3}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setApproveDialog({ open: false, item: null })}>
-              取消
-            </Button>
-            <Button onClick={handleApprove}>
-              <Send className="mr-2 size-4" />
-              确认通过
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <Tabs defaultValue="pending">
+        <TabsList>
+          <TabsTrigger value="pending" className="gap-2 w-full">
+            待审批
+            {pendingItems.length > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 bg-yellow-100 text-yellow-700">
+                {pendingItems.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="processed" className="w-full">已审批</TabsTrigger>
+        </TabsList>
+        <TabsContent value="pending" className="mt-6">
+          {pendingItems.length > 0 ? renderTable(pendingItems) : (
+            <Card><CardContent className="py-12 text-center"><CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" /><h3 className="text-lg font-medium text-gray-700">暂无待审批项</h3><p className="text-sm text-gray-500 mt-1">所有提交的测评资源都已处理完毕</p></CardContent></Card>
+          )}
+        </TabsContent>
+        <TabsContent value="processed" className="mt-6">
+          {processedItems.length > 0 ? renderTable(processedItems) : (
+            <Card><CardContent className="py-12 text-center"><CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" /><h3 className="text-lg font-medium text-gray-700">暂无已处理记录</h3></CardContent></Card>
+          )}
+        </TabsContent>
+      </Tabs>
 
-      {/* 驳回弹窗 */}
-      <Dialog open={rejectDialog.open} onOpenChange={(open) => !open && setRejectDialog({ open: false, item: null })}>
-        <DialogContent size="sm">
-          <DialogHeader>
-            <DialogTitle>审批驳回</DialogTitle>
-            <DialogDescription>
-              确认驳回「{rejectDialog.item?.title}」的审批申请？
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <label className="mb-2 block text-sm font-medium">驳回备注（非必填）</label>
-            <Textarea
-              value={remark}
-              onChange={(e) => setRemark(e.target.value)}
-              placeholder="请输入驳回原因..."
-              rows={3}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectDialog({ open: false, item: null })}>
-              取消
-            </Button>
-            <Button variant="destructive" onClick={handleReject}>
-              <Ban className="mr-2 size-4" />
-              确认驳回
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 查看详情弹窗 */}
-      <Dialog open={detailDialog.open} onOpenChange={(open) => !open && setDetailDialog({ open: false, item: null })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>审批详情</DialogTitle>
-            <DialogDescription>
-              {detailDialog.item?.title}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-4">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">审批类型</span>
-              <span>{detailDialog.item ? APPROVAL_TYPE_LABELS[detailDialog.item.type] : '-'}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">标题</span>
-              <span>{detailDialog.item?.title}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">描述</span>
-              <span className="max-w-xs text-right">{detailDialog.item?.description || '-'}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">提交人</span>
-              <span>{detailDialog.item?.submitterName}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">提交时间</span>
-              <span>{detailDialog.item ? formatDate(detailDialog.item.submitTime) : '-'}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">状态</span>
-              <span>{detailDialog.item ? getStatusBadge(detailDialog.item.status) : '-'}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">备注</span>
-              <span className="max-w-xs text-right">{detailDialog.item?.remark || '-'}</span>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {dialogs}
     </div>
   )
 }
