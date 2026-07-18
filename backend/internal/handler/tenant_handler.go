@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"strings"
 
@@ -165,38 +164,51 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	id := uuid.NewString()
+	adminUsername := "admin-" + req.Code
+	adminPassword := uuid.NewString()
+
+	tx, err := h.DB.Begin(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to start transaction")
+		return
+	}
+	defer tx.Rollback(r.Context())
+
 	var codeExists bool
-	_ = h.DB.QueryRow(r.Context(),
+	if err := tx.QueryRow(r.Context(),
 		`SELECT EXISTS(SELECT 1 FROM tenants WHERE code = $1)`, req.Code,
-	).Scan(&codeExists)
+	).Scan(&codeExists); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to check tenant code")
+		return
+	}
 	if codeExists {
 		respondError(w, http.StatusConflict, "租户标识已存在")
 		return
 	}
 
-	adminUsername := "admin-" + req.Code
 	var loginNameExists bool
-	_ = h.DB.QueryRow(r.Context(),
+	if err := tx.QueryRow(r.Context(),
 		`SELECT EXISTS(SELECT 1 FROM users WHERE login_name = $1)`, adminUsername,
-	).Scan(&loginNameExists)
+	).Scan(&loginNameExists); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to check admin username")
+		return
+	}
 	if loginNameExists {
-		respondError(w, http.StatusConflict, "管理员用户名 " + adminUsername + " 已存在")
+		respondError(w, http.StatusConflict, "管理员用户名 "+adminUsername+" 已存在")
 		return
 	}
 
-	id := uuid.NewString()
-
-	_, err := h.DB.Exec(r.Context(), `
+	if _, err := tx.Exec(r.Context(), `
 		INSERT INTO tenants (id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, status)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active')
-	`, id, req.Name, req.Code, req.LogoURL, req.Domain, req.EnterpriseCode, req.Contact, req.Phone, req.Address, req.Description)
-	if err != nil {
+	`, id, req.Name, req.Code, req.LogoURL, req.Domain, req.EnterpriseCode, req.Contact, req.Phone, req.Address, req.Description); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create tenant")
 		return
 	}
 
 	// 为新租户自动创建默认套餐，避免后续页面报 subscription not found
-	if _, err := h.DB.Exec(r.Context(), `
+	if _, err := tx.Exec(r.Context(), `
 		INSERT INTO subscription_packages (tenant_id, name, valid_until, modules, status)
 		VALUES ($1, '默认全功能套餐', NULL, $2, 'active')
 	`, id, domain.JSONMap{
@@ -213,11 +225,12 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 		"decision": true,
 		"research": true,
 	}); err != nil {
-		log.Printf("[ERROR] createTenant: failed to insert default subscription package for tenant %s (%s): %v", id, req.Code, err)
+		respondError(w, http.StatusInternalServerError, "failed to create default subscription package")
+		return
 	}
 
 	// 为新租户初始化默认组织类型
-	_, _ = h.DB.Exec(r.Context(), `
+	if _, err := tx.Exec(r.Context(), `
 		INSERT INTO org_types (tenant_id, name, category, description)
 		VALUES
 			($1, '学校', 'internal', '学校根节点'),
@@ -226,7 +239,10 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 			($1, '班级', 'internal', '班级节点'),
 			($1, '行政职能部门', 'internal', '行政职能部门')
 		ON CONFLICT DO NOTHING
-	`, id)
+	`, id); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to create default org types")
+		return
+	}
 
 	// 为新租户创建默认角色。
 	// platform_admin 为跨租户运营角色，仅存在于运营方租户（seed/手工创建），普通租户不生成。
@@ -241,48 +257,67 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 		{"enterprise_mentor", "企业导师", domain.JSONMap{"enterpriseMentor": true}},
 	}
 	for _, role := range defaultRoles {
-		_, _ = h.DB.Exec(r.Context(), `
+		if _, err := tx.Exec(r.Context(), `
 			INSERT INTO roles (id, tenant_id, code, name, description, permissions, user_count, status, created_at)
 			VALUES ($1, $2, $3, $4, '', $5, 0, 'active', NOW())
-		`, uuid.NewString(), id, role.code, role.name, role.permissions)
+		`, uuid.NewString(), id, role.code, role.name, role.permissions); err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to create default roles")
+			return
+		}
 	}
 
 	// 为新租户创建默认管理员用户，并绑定 school_admin 预设角色
 	var adminUser *adminUserInfo
-	{
-		adminID := uuid.NewString()
-		adminPassword := "admin123"
+	adminID := uuid.NewString()
+	hash, hashErr := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
+	if hashErr != nil {
+		respondError(w, http.StatusInternalServerError, "failed to hash admin password")
+		return
+	}
 
-		hash, hashErr := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
-		if hashErr == nil {
-			_, _ = h.DB.Exec(r.Context(), `
-				INSERT INTO users (id, tenant_id, institution_id, org_node_id, major_id,
-					role, platform, login_name, username, password_hash, name, email, phone, avatar_url,
-					student_no, work_id, id_card, title_ids, oauth, status)
-				VALUES ($1, $2, NULL, NULL, NULL, 'school', 'portal', $3, $4, $5, $6, NULL, NULL, NULL, NULL, NULL, NULL, $7, '{}', 'active')
-			`, adminID, id, adminUsername, adminUsername, string(hash), req.Name+"管理员", "{}")
+	if _, err := tx.Exec(r.Context(), `
+		INSERT INTO users (id, tenant_id, institution_id, org_node_id, major_id,
+			role, platform, login_name, username, password_hash, name, email, phone, avatar_url,
+			student_no, work_id, id_card, title_ids, oauth, status)
+		VALUES ($1, $2, NULL, NULL, NULL, 'school', 'portal', $3, $4, $5, $6, NULL, NULL, NULL, NULL, NULL, NULL, $7, '{}', 'active')
+	`, adminID, id, adminUsername, adminUsername, string(hash), req.Name+"管理员", "{}"); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to create admin user")
+		return
+	}
 
-			_, _ = h.DB.Exec(r.Context(),
-				`INSERT INTO user_roles (id, user_id, role_id)
-				 SELECT $1, $2, id FROM roles WHERE tenant_id = $3 AND code = 'school_admin' LIMIT 1`,
-				uuid.NewString(), adminID, id)
+	if _, err := tx.Exec(r.Context(),
+		`INSERT INTO user_roles (id, user_id, role_id)
+		 SELECT $1, $2, id FROM roles WHERE tenant_id = $3 AND code = 'school_admin' LIMIT 1`,
+		uuid.NewString(), adminID, id); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to bind admin role")
+		return
+	}
 
-			_, _ = h.DB.Exec(r.Context(),
-				`UPDATE roles SET user_count = user_count + 1
-				 WHERE tenant_id = $1 AND code = 'school_admin'`,
-				id)
+	if _, err := tx.Exec(r.Context(),
+		`UPDATE roles SET user_count = user_count + 1
+		 WHERE tenant_id = $1 AND code = 'school_admin'`,
+		id); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to update role user count")
+		return
+	}
 
-			_, _ = h.DB.Exec(r.Context(),
-				`UPDATE tenants SET admin_ids = ARRAY[$1::UUID] WHERE id = $2`,
-				adminID, id)
+	if _, err := tx.Exec(r.Context(),
+		`UPDATE tenants SET admin_ids = ARRAY[$1::UUID] WHERE id = $2`,
+		adminID, id); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to update tenant admin ids")
+		return
+	}
 
-			adminUser = &adminUserInfo{
-				ID:        adminID,
-				Username:  adminUsername,
-				LoginName: adminUsername,
-				Password:  adminPassword,
-			}
-		}
+	if err := tx.Commit(r.Context()); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
+		return
+	}
+
+	adminUser = &adminUserInfo{
+		ID:        adminID,
+		Username:  adminUsername,
+		LoginName: adminUsername,
+		Password:  adminPassword,
 	}
 
 	tenant, _ := h.fetchTenant(r.Context(), id)

@@ -58,13 +58,11 @@ import type { Course, CourseStatus, CourseType } from "@/lib/types/lesson-source
 import type { Course as BackendCourse, LessonBatch } from "@/lib/types/lesson"
 import { useAuth } from "@/components/auth-provider"
 
-const CURRENT_USER_ID = "user-1"
-
-function displayCreatorName(creatorId: string): string {
-  return creatorId === CURRENT_USER_ID ? "杭州知与未来科技有限公司" : creatorId
+function displayCreatorName(creatorId: string, currentUserId?: string): string {
+  return currentUserId && creatorId === currentUserId ? "杭州知与未来科技有限公司" : creatorId
 }
 
-function convertBackendCourse(c: BackendCourse): Course {
+function convertBackendCourse(c: BackendCourse, currentUserId?: string): Course {
   return {
     id: c.id,
     code: c.code,
@@ -84,7 +82,7 @@ function convertBackendCourse(c: BackendCourse): Course {
     coverColor: c.coverColor || undefined,
     coverImage: c.coverImage || undefined,
     courseTag: c.courseTag || undefined,
-    creator: displayCreatorName(c.creatorId),
+    creator: displayCreatorName(c.creatorId, currentUserId),
     creatorId: c.creatorId,
     createDate: c.createdAt,
     coCreator: c.coCreatorIds?.length ? c.coCreatorIds.join(", ") : undefined,
@@ -112,7 +110,8 @@ interface CourseAdminPageProps {
 
 export function CourseAdminPage({ title, subtitle, courseType, addHref }: CourseAdminPageProps) {
   const router = useRouter()
-  const { hasPermission } = useAuth()
+  const { hasPermission, user } = useAuth()
+  const currentUserId = user?.id ?? ""
   const [activeTab, setActiveTab] = useState<TabType>("my")
   const [viewMode, setViewMode] = useState<ViewMode>("list")
 
@@ -149,7 +148,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
         courseApi.list({ type: courseType, limit: 1000 }),
         lessonBatchApi.list({ limit: 1000 }),
       ])
-      setCourses(coursesResp.items.map(convertBackendCourse))
+      setCourses(coursesResp.items.map((c) => convertBackendCourse(c, currentUserId)))
       setBatches(batchesResp.items)
       setExpandedBatches(batchesResp.items.map((b) => b.id))
     } catch (err) {
@@ -172,9 +171,9 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
   const tabFilteredCourses = useMemo(() => {
     switch (activeTab) {
       case "my":
-        return courses.filter((c) => c.creatorId === CURRENT_USER_ID)
+        return courses.filter((c) => c.creatorId === currentUserId)
       case "collab":
-        return courses.filter((c) => c.coCreatorIds?.includes(CURRENT_USER_ID))
+        return courses.filter((c) => c.coCreatorIds?.includes(currentUserId))
       case "public":
       default:
         return courses.filter((c) => c.status === "published")
@@ -314,7 +313,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
           industryId: undefined,
         version: course.version,
         status: "draft",
-        creatorId: CURRENT_USER_ID,
+        creatorId: currentUserId,
         coCreatorIds: [],
         batchId: course.batchId,
       })
@@ -373,7 +372,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
       industryId: undefined,
       version: cloneTargetCourse.version,
       status: "draft",
-      creatorId: CURRENT_USER_ID,
+      creatorId: currentUserId,
       coCreatorIds: [],
       batchId: cloneTargetCourse.batchId,
     })
@@ -461,7 +460,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
       type: courseType,
       category: "default",
       status: "draft",
-      creatorId: CURRENT_USER_ID,
+      creatorId: currentUserId,
       coCreatorIds: [],
     })
     router.push(`${addHref}?courseId=${newCourse.id}`)

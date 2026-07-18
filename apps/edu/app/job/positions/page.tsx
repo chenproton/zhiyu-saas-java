@@ -65,7 +65,6 @@ import type { Position, Batch } from "@/lib/types/job-source"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/components/auth-provider"
 
-const CURRENT_USER_ID = "user-1"
 
 type TabType = "my" | "collab" | "public"
 type ViewMode = "list" | "group"
@@ -73,7 +72,8 @@ type ViewMode = "list" | "group"
 export default function PositionsPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { hasPermission } = useAuth()
+  const { hasPermission, user } = useAuth()
+  const currentUserId = user?.id ?? ""
 
   const [positions, setPositions] = useState<Position[]>([])
   const [batches, setBatches] = useState<Batch[]>([])
@@ -145,9 +145,9 @@ export default function PositionsPage() {
   const tabFilteredPositions = useMemo(() => {
     switch (activeTab) {
       case "my":
-        return positions.filter((p) => p.createdBy === CURRENT_USER_ID)
+        return positions.filter((p) => p.createdBy === currentUserId)
       case "collab":
-        return positions.filter((p) => p.collaborators.includes(CURRENT_USER_ID))
+        return positions.filter((p) => p.collaborators.includes(currentUserId))
       case "public":
       default:
         return positions.filter((p) => p.status === "published")
@@ -317,8 +317,8 @@ export default function PositionsPage() {
           abilityBindings: position.abilityBindings,
           abilityDomains: position.abilityDomains,
           competencyConfig: position.competencyConfig,
-          createdBy: CURRENT_USER_ID,
-          collaborators: [CURRENT_USER_ID],
+          createdBy: currentUserId,
+          collaborators: [currentUserId],
           favoriteCount: 0,
         }))
       } catch (err: any) {
@@ -395,8 +395,8 @@ export default function PositionsPage() {
         abilityBindings: cloneTargetPosition.abilityBindings,
         abilityDomains: cloneTargetPosition.abilityDomains,
         competencyConfig: cloneTargetPosition.competencyConfig,
-        createdBy: CURRENT_USER_ID,
-        collaborators: [CURRENT_USER_ID],
+        createdBy: currentUserId,
+        collaborators: [currentUserId],
         favoriteCount: 0,
       }))
     } catch (err: any) {
@@ -505,8 +505,8 @@ export default function PositionsPage() {
         abilityBindings: [],
         abilityDomains: [],
         competencyConfig: [],
-        createdBy: CURRENT_USER_ID,
-        collaborators: [CURRENT_USER_ID],
+        createdBy: currentUserId,
+        collaborators: [currentUserId],
         favoriteCount: 0,
       }))
       router.push(`/job/positions/${created.id}/edit`)

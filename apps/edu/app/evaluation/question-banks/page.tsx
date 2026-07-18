@@ -67,8 +67,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { PageHeaderCard } from "@/components/shared/page-header-card"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/components/auth-provider"
 
-const CURRENT_USER_ID = "user-1"
 
 type TabType = "my" | "collab" | "public"
 type ViewMode = "list" | "group"
@@ -115,6 +115,8 @@ function formatDate(iso: string) {
 
 export default function QuestionBanksPage() {
   const router = useRouter()
+  const { user } = useAuth()
+  const currentUserId = user?.id ?? ""
 
   const [banks, setBanks] = useState<BackendQuestionBank[]>([])
   const [batches, setBatches] = useState<EvaluationBatch[]>([])
@@ -186,9 +188,9 @@ export default function QuestionBanksPage() {
   const tabFilteredBanks = useMemo(() => {
     switch (activeTab) {
       case "my":
-        return banks.filter((b) => b.creatorId === CURRENT_USER_ID)
+        return banks.filter((b) => b.creatorId === currentUserId)
       case "collab":
-        return banks.filter((b) => (b.collaboratorIds || []).includes(CURRENT_USER_ID))
+        return banks.filter((b) => (b.collaboratorIds || []).includes(currentUserId))
       case "public":
       default:
         return banks.filter((b) => b.status === "published")

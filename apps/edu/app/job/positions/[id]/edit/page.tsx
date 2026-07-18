@@ -35,8 +35,8 @@ import {
   positionToUpdateRequest,
 } from '@/lib/stores/job-converters'
 import { useToast } from '@/hooks/use-toast'
+import { useAuth } from '@/components/auth-provider'
 
-const CURRENT_USER = { id: 'user-1', name: '张建设' }
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -47,6 +47,8 @@ function PositionEditPageContent({ params }: PageProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
+  const { user } = useAuth()
+  const currentUser = user ? { id: user.id, name: user.name || user.username || user.id } : { id: '', name: '' }
   const [positions, setPositions] = useState<Position[]>([])
   const [batches, setBatches] = useState<Batch[]>([])
   const [majorMap, setMajorMap] = useState<Map<string, string>>(new Map())
@@ -317,7 +319,7 @@ function PositionEditPageContent({ params }: PageProps) {
 
                   <div>
                     <Label className="text-gray-500 text-xs">创建人</Label>
-                    <p className="font-medium text-gray-800 mt-1">{CURRENT_USER.name}</p>
+                    <p className="font-medium text-gray-800 mt-1">{currentUser.name}</p>
                   </div>
 
                   <div>

@@ -70,7 +70,6 @@ import { PageHeaderCard } from "@/components/shared/page-header-card"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth-provider"
 
-const CURRENT_USER_ID = "user-1"
 
 type TabType = "my" | "collab" | "public"
 type ViewMode = "list" | "group"
@@ -119,7 +118,8 @@ function formatDate(iso: string) {
 
 export default function ExamsPage() {
   const router = useRouter()
-  const { hasPermission } = useAuth()
+  const { hasPermission, user } = useAuth()
+  const currentUserId = user?.id ?? ""
 
   const [exams, setExams] = useState<BackendExam[]>([])
   const [batches, setBatches] = useState<EvaluationBatch[]>([])
@@ -192,9 +192,9 @@ export default function ExamsPage() {
   const tabFilteredExams = useMemo(() => {
     switch (activeTab) {
       case "my":
-        return exams.filter((e) => e.creatorId === CURRENT_USER_ID)
+        return exams.filter((e) => e.creatorId === currentUserId)
       case "collab":
-        return exams.filter((e) => (e.collaboratorIds || []).includes(CURRENT_USER_ID))
+        return exams.filter((e) => (e.collaboratorIds || []).includes(currentUserId))
       case "public":
       default:
         return exams.filter((e) => e.status === "published")

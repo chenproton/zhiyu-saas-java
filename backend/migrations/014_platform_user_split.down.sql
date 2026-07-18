@@ -2,8 +2,8 @@
 
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_platform_username;
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_platform_login_name;
-ALTER TABLE users DROP INDEX IF EXISTS idx_users_platform;
-ALTER TABLE users DROP INDEX IF EXISTS idx_users_platform_username;
+DROP INDEX IF EXISTS idx_users_platform;
+DROP INDEX IF EXISTS idx_users_platform_username;
 ALTER TABLE users DROP COLUMN IF EXISTS platform;
 
 -- username 在 users 表中原本 NOT NULL 且有唯一约束

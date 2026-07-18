@@ -37,14 +37,17 @@ func (h *LandingHandler) ListExams(w http.ResponseWriter, r *http.Request) {
 		SELECT e.id, e.name, COALESCE(e.description, ''), e.duration,
 			COALESCE((SELECT COUNT(*) FROM exam_questions eq WHERE eq.exam_id = e.id), 0),
 			eu.start_time, eu.end_time,
-			COALESCE(m.name, ''),
 			COALESCE(org.name, ''),
 			COALESCE(parent_org.name, '')
 		FROM exams e
 		JOIN exam_usages eu ON eu.exam_id = e.id
-		LEFT JOIN majors m ON m.id = eu.major_id
-		LEFT JOIN org_nodes org ON org.id = eu.target_id AND eu.target_type = 'org_node'
-		LEFT JOIN org_nodes parent_org ON parent_org.id = org.parent_id
+		LEFT JOIN LATERAL (
+			SELECT o.id, o.name, o.parent_id
+			FROM organizations o
+			WHERE o.id = ANY(eu.target_ids)
+			LIMIT 1
+		) org ON TRUE
+		LEFT JOIN organizations parent_org ON parent_org.id = org.parent_id
 		WHERE e.status = 'published'
 		ORDER BY eu.start_time ASC NULLS LAST
 		LIMIT 100`
@@ -60,13 +63,12 @@ func (h *LandingHandler) ListExams(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var item LandingExamItem
 		var startTime, endTime interface{}
-		var major, orgName, collegeName string
+		var orgName, collegeName string
 
 		if err := rows.Scan(
 			&item.ID, &item.Name, &item.Description, &item.Duration,
 			&item.QuestionCount,
 			&startTime, &endTime,
-			&major,
 			&orgName, &collegeName,
 		); err != nil {
 			continue
@@ -77,10 +79,7 @@ func (h *LandingHandler) ListExams(w http.ResponseWriter, r *http.Request) {
 		if item.College == "" {
 			item.College = orgName
 		}
-		item.Major = major
-		if item.Major == "" {
-			item.Major = orgName
-		}
+		item.Major = orgName
 
 		item.TargetAudience = ""
 

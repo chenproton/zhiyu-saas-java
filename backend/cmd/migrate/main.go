@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -81,7 +82,11 @@ func migrateUp(conn *pgx.Conn, dir string) error {
 			migrations = append(migrations, f.Name())
 		}
 	}
-	sort.Strings(migrations)
+	sort.Slice(migrations, func(i, j int) bool {
+		vi, _ := strconv.Atoi(strings.Split(migrations[i], "_")[0])
+		vj, _ := strconv.Atoi(strings.Split(migrations[j], "_")[0])
+		return vi < vj
+	})
 
 	for _, name := range migrations {
 		version := strings.TrimSuffix(name, ".up.sql")
@@ -100,11 +105,21 @@ func migrateUp(conn *pgx.Conn, dir string) error {
 			return fmt.Errorf("read migration %s: %w", name, err)
 		}
 
-		if _, err := conn.Exec(ctx(), string(sql)); err != nil {
+		tx, err := conn.Begin(ctx())
+		if err != nil {
+			return fmt.Errorf("begin migration %s: %w", name, err)
+		}
+
+		if _, err := tx.Exec(ctx(), string(sql)); err != nil {
+			tx.Rollback(ctx())
 			return fmt.Errorf("execute migration %s: %w", name, err)
 		}
-		if _, err := conn.Exec(ctx(), `INSERT INTO schema_migrations (version) VALUES ($1)`, version); err != nil {
+		if _, err := tx.Exec(ctx(), `INSERT INTO schema_migrations (version) VALUES ($1)`, version); err != nil {
+			tx.Rollback(ctx())
 			return fmt.Errorf("record migration %s: %w", name, err)
+		}
+		if err := tx.Commit(ctx()); err != nil {
+			return fmt.Errorf("commit migration %s: %w", name, err)
 		}
 		fmt.Println("applied:", name)
 	}
@@ -112,31 +127,49 @@ func migrateUp(conn *pgx.Conn, dir string) error {
 }
 
 func migrateDown(conn *pgx.Conn, dir string) error {
-	files, err := os.ReadDir(dir)
+	rows, err := conn.Query(ctx(), `SELECT version FROM schema_migrations ORDER BY version DESC`)
 	if err != nil {
-		return err
+		return fmt.Errorf("list applied migrations: %w", err)
 	}
-
-	var migrations []string
-	for _, f := range files {
-		if strings.HasSuffix(f.Name(), ".down.sql") {
-			migrations = append(migrations, f.Name())
+	var applied []string
+	for rows.Next() {
+		var version string
+		if err := rows.Scan(&version); err != nil {
+			rows.Close()
+			return fmt.Errorf("scan applied migration: %w", err)
 		}
+		applied = append(applied, version)
 	}
-	sort.Sort(sort.Reverse(sort.StringSlice(migrations)))
+	rows.Close()
 
-	for _, name := range migrations {
-		version := strings.TrimSuffix(name, ".down.sql")
-		sql, err := os.ReadFile(filepath.Join(dir, name))
+	for _, version := range applied {
+		name := version + ".down.sql"
+		path := filepath.Join(dir, name)
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			fmt.Println("skip (no down file):", name)
+			continue
+		}
+
+		sql, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("read migration %s: %w", name, err)
 		}
 
-		if _, err := conn.Exec(ctx(), string(sql)); err != nil {
+		tx, err := conn.Begin(ctx())
+		if err != nil {
+			return fmt.Errorf("begin rollback %s: %w", name, err)
+		}
+
+		if _, err := tx.Exec(ctx(), string(sql)); err != nil {
+			tx.Rollback(ctx())
 			return fmt.Errorf("execute migration %s: %w", name, err)
 		}
-		if _, err := conn.Exec(ctx(), `DELETE FROM schema_migrations WHERE version = $1`, version); err != nil {
+		if _, err := tx.Exec(ctx(), `DELETE FROM schema_migrations WHERE version = $1`, version); err != nil {
+			tx.Rollback(ctx())
 			return fmt.Errorf("record migration %s: %w", name, err)
+		}
+		if err := tx.Commit(ctx()); err != nil {
+			return fmt.Errorf("commit rollback %s: %w", name, err)
 		}
 		fmt.Println("rolled back:", name)
 	}

@@ -423,30 +423,54 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setCertIssuanceRecords(res.items.map(parseCertRecord))
   }, [])
 
+  const shouldLoadEvaluation = pathname.startsWith('/evaluation')
+  const shouldLoadScene = pathname.startsWith('/scene')
+  const shouldLoadGraduation = pathname.startsWith('/graduation')
+  const shouldLoadPortrait = pathname.startsWith('/portrait') || pathname.startsWith('/student-ability')
+  const shouldLoadMicroCert = pathname.startsWith('/micro-cert')
+
   useEffect(() => {
     if (pathname.startsWith("/portal")) return
+
+    const tasks: Promise<void>[] = []
+    if (shouldLoadEvaluation || shouldLoadScene) {
+      tasks.push(
+        loadQuestionBanks(),
+        loadQuestions(),
+        loadExams(),
+        loadEvaluationMethods(),
+        loadSceneTasks(),
+        loadSceneResults(),
+        loadJobAbilityResults(),
+        loadApprovalItems()
+      )
+    }
+    if (shouldLoadGraduation) {
+      tasks.push(
+        loadGraduationTopics(),
+        loadGraduationArchives(),
+        loadGraduationEvaluations(),
+        loadGraduationQueryResults()
+      )
+    }
+    if (shouldLoadPortrait) {
+      tasks.push(
+        loadStudentAbilityArchives(),
+        loadStudentAbilityPortraits()
+      )
+    }
+    if (shouldLoadMicroCert || shouldLoadPortrait) {
+      tasks.push(
+        loadMicroCertTemplates(),
+        loadCertIssuanceRecords()
+      )
+    }
+    if (tasks.length === 0) return
 
     let cancelled = false
     const loadAll = async () => {
       try {
-        await Promise.all([
-          loadQuestionBanks(),
-          loadQuestions(),
-          loadExams(),
-          loadEvaluationMethods(),
-          loadSceneTasks(),
-          loadSceneResults(),
-          loadJobAbilityResults(),
-          loadApprovalItems(),
-          loadGraduationTopics(),
-          loadGraduationArchives(),
-          loadGraduationEvaluations(),
-          loadGraduationQueryResults(),
-          loadStudentAbilityArchives(),
-          loadStudentAbilityPortraits(),
-          loadMicroCertTemplates(),
-          loadCertIssuanceRecords(),
-        ])
+        await Promise.all(tasks)
       } catch (err) {
         if (!cancelled) {
           console.error('Failed to load evaluation data', err)
@@ -457,6 +481,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true }
   }, [
     pathname,
+    shouldLoadEvaluation,
+    shouldLoadScene,
+    shouldLoadGraduation,
+    shouldLoadPortrait,
+    shouldLoadMicroCert,
     loadQuestionBanks,
     loadQuestions,
     loadExams,

@@ -54,8 +54,8 @@ var importExportEntities = map[string]importExportEntity{
 	"scenarios": {
 		displayName: "场景",
 		insertSQL: `
-			INSERT INTO scenarios (id, name, code, status, creator_id, co_builder_ids, version)
-			VALUES ($1, $2, $3, 'draft', $4, '{}', 'v1.0')
+			INSERT INTO scenarios (id, tenant_id, name, code, status, creator_id, co_builder_ids, version)
+			VALUES ($1, $2, $3, $4, 'draft', $5, '{}', 'v1.0')
 		`,
 		defaultCols: []string{"id", "name", "code", "status", "created_at"},
 	},

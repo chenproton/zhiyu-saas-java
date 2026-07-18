@@ -58,7 +58,6 @@ import { scenarioApi, sceneBatchApi, taskApi, importExportApi } from "@/lib/api"
 import type { Scenario, SceneBatch } from "@/lib/types/scene"
 import { useAuth } from "@/components/auth-provider"
 
-const CURRENT_USER_ID = "user-1"
 
 type TabType = "my" | "collab" | "public"
 type ViewMode = "list" | "group"
@@ -69,7 +68,8 @@ function generateCode(prefix: string) {
 
 export default function SceneHallPage() {
   const router = useRouter()
-  const { hasPermission } = useAuth()
+  const { hasPermission, user } = useAuth()
+  const currentUserId = user?.id ?? ""
 
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [batches, setBatches] = useState<SceneBatch[]>([])
@@ -158,18 +158,18 @@ export default function SceneHallPage() {
       case "my":
         return scenarioItems.filter((s) => {
           const backend = scenarios.find((bs) => bs.id === s.id)
-          return backend?.creatorId === CURRENT_USER_ID
+          return backend?.creatorId === currentUserId
         })
       case "collab":
         return scenarioItems.filter((s) => {
           const backend = scenarios.find((bs) => bs.id === s.id)
-          return backend?.coBuilderIds?.includes(CURRENT_USER_ID) ?? false
+          return backend?.coBuilderIds?.includes(currentUserId) ?? false
         })
       case "public":
       default:
         return scenarioItems.filter((s) => s.status === "published")
     }
-  }, [scenarioItems, scenarios, activeTab])
+  }, [scenarioItems, scenarios, activeTab, currentUserId])
 
   const filteredScenarios = useMemo(() => {
     let result = tabFilteredScenarios
@@ -326,8 +326,8 @@ export default function SceneHallPage() {
           status: "draft",
           version: "V1.0",
           difficulty: scenario.difficulty || 1,
-          creatorId: CURRENT_USER_ID,
-          coBuilderIds: [CURRENT_USER_ID],
+          creatorId: currentUserId,
+          coBuilderIds: [currentUserId],
           batchId: scenario.batchId,
           careerPositionId: scenario.careerPositionId,
           industryId: scenario.industryId,
@@ -395,8 +395,8 @@ export default function SceneHallPage() {
         status: "draft",
         version: "V1.0",
         difficulty: backend?.difficulty || 1,
-        creatorId: CURRENT_USER_ID,
-        coBuilderIds: [CURRENT_USER_ID],
+        creatorId: currentUserId,
+        coBuilderIds: [currentUserId],
         batchId: backend?.batchId,
         careerPositionId: backend?.careerPositionId,
         industryId: backend?.industryId,
@@ -499,8 +499,8 @@ export default function SceneHallPage() {
         status: "draft",
         version: "V1.0",
         difficulty: 1,
-        creatorId: CURRENT_USER_ID,
-        coBuilderIds: [CURRENT_USER_ID],
+        creatorId: currentUserId,
+        coBuilderIds: [currentUserId],
       })
       router.push(`/scene/scenarios/${newScenario.id}/edit`)
     } catch (err) {

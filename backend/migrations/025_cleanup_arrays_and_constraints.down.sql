@@ -13,8 +13,6 @@ ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS industry_name VARCHAR(128);
 
 -- 恢复 evaluation_methods.target_ids
 ALTER TABLE evaluation_methods ADD COLUMN target_ids UUID[] NOT NULL DEFAULT '{}';
-INSERT INTO evaluation_methods (id, target_ids)  -- 这里无法完全回滚数据
--- 简化为仅恢复表结构
 DROP TABLE IF EXISTS evaluation_method_targets;
 
 -- 恢复 question_banks.knowledge_point_ids
