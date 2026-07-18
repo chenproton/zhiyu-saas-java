@@ -1,10 +1,11 @@
 "use client"
 
 import { GitBranch, MoreHorizontal, Plus } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle, DialogTrigger,
@@ -36,6 +37,12 @@ export default function WorkflowsPage() {
   const [description, setDescription] = useState("")
   const [steps, setSteps] = useState<WorkflowStepEditor[]>([{ ...DEFAULT_STEP }])
   const [majorIds, setMajorIds] = useState<string[]>([])
+  const [filterMajorId, setFilterMajorId] = useState<string>("all")
+
+  const filteredWorkflows = useMemo(
+    () => (filterMajorId === "all" ? workflows : workflows.filter((wf) => (wf.majorIds || []).includes(filterMajorId))),
+    [workflows, filterMajorId]
+  )
 
   const loadWorkflows = async () => {
     setLoading(true)
@@ -114,15 +121,25 @@ export default function WorkflowsPage() {
         </Dialog>
       </div>
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>{renderDialog(true)}</Dialog>
+      {majors.length > 0 && (
+        <Tabs value={filterMajorId} onValueChange={setFilterMajorId}>
+          <TabsList className="h-auto flex-wrap justify-start">
+            <TabsTrigger value="all">全部专业</TabsTrigger>
+            {majors.map((m) => (
+              <TabsTrigger key={m.id} value={m.id}>{m.name}</TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      )}
       <Card>
-        <CardHeader><CardTitle className="text-base flex items-center gap-2"><GitBranch className="h-4 w-4" />审批流程列表</CardTitle><CardDescription>共 {workflows.length} 个审批流程</CardDescription></CardHeader>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><GitBranch className="h-4 w-4" />审批流程列表</CardTitle><CardDescription>共 {filteredWorkflows.length} 个审批流程</CardDescription></CardHeader>
         <CardContent>
           <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
             <Table>
               <TableHeader><TableRow className="bg-slate-50"><TableHead className="text-xs">流程名称</TableHead><TableHead className="text-xs">流程描述</TableHead><TableHead className="text-xs">审批步骤</TableHead><TableHead className="text-xs">适用专业</TableHead><TableHead className="text-xs">创建时间</TableHead><TableHead className="w-12" /></TableRow></TableHeader>
               <TableBody>
-                {loading ? (<TableRow><TableCell colSpan={6} className="text-center py-8">加载中...</TableCell></TableRow>) : workflows.length === 0 ? (<TableRow><TableCell colSpan={6} className="text-center py-8">暂无审批流程</TableCell></TableRow>) : (
-                  workflows.map((wf) => (<TableRow key={wf.id}><TableCell className="font-medium">{wf.name}</TableCell><TableCell className="text-sm text-gray-600">{wf.description || "-"}</TableCell><TableCell><div className="flex flex-wrap gap-1">{(wf.steps || []).map((s, idx) => (<Badge key={idx} variant="outline" className="text-xs">{idx + 1}.{s.name}({s.approvalMode === "all" ? "全" : "任一"})</Badge>))}</div></TableCell><TableCell className="text-sm text-gray-600">{wf.majorIds?.length ? majors.filter((m) => wf.majorIds.includes(m.id)).map((m) => m.name).join("、") || wf.majorIds.join(",") : "-"}</TableCell><TableCell className="text-sm text-gray-500">{new Date(wf.createdAt).toLocaleDateString()}</TableCell><TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => openEdit(wf)}>编辑</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem className="text-destructive" onClick={() => handleDelete(wf.id)}>删除</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell></TableRow>))
+                {loading ? (<TableRow><TableCell colSpan={6} className="text-center py-8">加载中...</TableCell></TableRow>) : filteredWorkflows.length === 0 ? (<TableRow><TableCell colSpan={6} className="text-center py-8">暂无审批流程</TableCell></TableRow>) : (
+                  filteredWorkflows.map((wf) => (<TableRow key={wf.id}><TableCell className="font-medium">{wf.name}</TableCell><TableCell className="text-sm text-gray-600">{wf.description || "-"}</TableCell><TableCell><div className="flex flex-wrap gap-1">{(wf.steps || []).map((s, idx) => (<Badge key={idx} variant="outline" className="text-xs">{idx + 1}.{s.name}({s.approvalMode === "all" ? "全" : "任一"})</Badge>))}</div></TableCell><TableCell className="text-sm text-gray-600">{wf.majorIds?.length ? majors.filter((m) => wf.majorIds.includes(m.id)).map((m) => m.name).join("、") || wf.majorIds.join(",") : "-"}</TableCell><TableCell className="text-sm text-gray-500">{new Date(wf.createdAt).toLocaleDateString()}</TableCell><TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => openEdit(wf)}>编辑</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem className="text-destructive" onClick={() => handleDelete(wf.id)}>删除</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell></TableRow>))
                 )}
               </TableBody>
             </Table>
