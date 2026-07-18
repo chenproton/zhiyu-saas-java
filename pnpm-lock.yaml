@@ -312,6 +312,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@zhiyu/api-client':
+        specifier: workspace:*
+        version: link:../api-client
       react:
         specifier: ^19
         version: 19.2.7
@@ -319,6 +322,9 @@ importers:
         specifier: ^19
         version: 19.2.7(react@19.2.7)
     devDependencies:
+      '@types/node':
+        specifier: ^22
+        version: 22.19.21
       '@types/react':
         specifier: ^19
         version: 19.2.17
