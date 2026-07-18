@@ -166,7 +166,7 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 
 	id := uuid.NewString()
 	adminUsername := "admin-" + req.Code
-	adminPassword := uuid.NewString()
+	adminPassword := "admin123"
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
