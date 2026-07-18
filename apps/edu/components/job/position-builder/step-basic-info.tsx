@@ -104,9 +104,18 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
   const [isCertDialogOpen, setIsCertDialogOpen] = useState(false)
   const [isNewCertDialogOpen, setIsNewCertDialogOpen] = useState(false)
   const [certSearchQuery, setCertSearchQuery] = useState('')
-  const [selectedCertIds, setSelectedCertIds] = useState<string[]>(
-    position.certificates?.map((c) => c.id) || []
-  )
+  const [selectedCertIds, setSelectedCertIds] = useState<string[]>([])
+
+  // 同步已选证书状态，防止异步加载/重新进入编辑页后选择框与保存数据不一致
+  useEffect(() => {
+    setSelectedCertIds(position.certificates?.map((c) => c.id) || [])
+  }, [position.certificates])
+
+  const openCertDialog = () => {
+    setSelectedCertIds(position.certificates?.map((c) => c.id) || [])
+    setIsCertDialogOpen(true)
+  }
+
   const [newCert, setNewCert] = useState<Omit<Certificate, 'id'>>({
     name: '',
     url: '',
@@ -458,7 +467,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base">相关证书</CardTitle>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setIsCertDialogOpen(true)}>
+            <Button variant="outline" size="sm" onClick={openCertDialog}>
               从证书库选择
             </Button>
             <Button variant="outline" size="sm" onClick={() => setIsNewCertDialogOpen(true)}>

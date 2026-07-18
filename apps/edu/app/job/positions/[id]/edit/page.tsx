@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState, useEffect, use, useRef } from 'react'
+import { Suspense, useState, useEffect, use } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -65,7 +65,7 @@ function PositionEditPageContent({ params }: PageProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [position, setPosition] = useState<Position | null>(null)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
-  const detailsLoadedRef = useRef(false)
+  const [detailsLoaded, setDetailsLoaded] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -97,8 +97,7 @@ function PositionEditPageContent({ params }: PageProps) {
   }, [id, positions, position])
 
   useEffect(() => {
-    if (!position || detailsLoadedRef.current) return
-    detailsLoadedRef.current = true
+    if (!position || detailsLoaded) return
     let cancelled = false
     Promise.all([
       positionResponsibilityApi.list({ careerPositionId: position.id, limit: 1000 }),
@@ -136,6 +135,7 @@ function PositionEditPageContent({ params }: PageProps) {
           }
           return next
         })
+        setDetailsLoaded(true)
       })
       .catch((err: any) => {
         if (!cancelled) {
@@ -144,7 +144,7 @@ function PositionEditPageContent({ params }: PageProps) {
         }
       })
     return () => { cancelled = true }
-  }, [position, toast])
+  }, [position, detailsLoaded, toast])
 
   useEffect(() => {
     const stepParam = searchParams.get('step')
