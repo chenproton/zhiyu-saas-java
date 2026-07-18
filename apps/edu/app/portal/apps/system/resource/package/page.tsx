@@ -102,6 +102,7 @@ function buildPackageModules(
   if (!modules || typeof modules !== "object") return []
 
   return Object.entries(SUBSCRIPTION_PLATFORM_DEFS)
+    .filter(([key]) => Boolean(modules[key]))
     .map(([key, def]) => {
       const enabled = Boolean(modules[key])
       return {
