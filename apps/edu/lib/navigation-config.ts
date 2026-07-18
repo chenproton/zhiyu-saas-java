@@ -164,7 +164,6 @@ export const jobNavigationConfig: PlatformNavigationConfig = {
       icon: "briefcase",
       children: [
         { id: "positions", label: "岗位管理", href: "/job/positions", matchers: ["/job/positions$", "/job/positions/"] },
-        { id: "ai-positions", label: "AI 辅助建岗", href: "/job/ai/positions", matchers: ["/job/ai/positions"] },
       ],
     },
     {
