@@ -269,8 +269,17 @@ export const evaluationNavigationConfig: PlatformNavigationConfig = {
         { id: "question-banks", label: "题库管理", href: "/evaluation/question-banks", matchers: ["/evaluation/question-banks"] },
         { id: "exams", label: "试卷管理", href: "/evaluation/exams", matchers: ["/evaluation/exams"] },
         { id: "exam-usage", label: "考试管理", href: "/evaluation/exam-usage", matchers: ["/evaluation/exam-usage"] },
-        { id: "approvals", label: "审批中心", href: "/evaluation/approvals", matchers: ["/evaluation/approvals"] },
         { id: "methods", label: "测评方式", href: "/evaluation/methods", matchers: ["/evaluation/methods"] },
+      ],
+    },
+    {
+      id: "batch-flow",
+      label: "批次与审批管理",
+      icon: "settings",
+      children: [
+        { id: "batches", label: "批次分组管理", href: "/evaluation/batches", matchers: ["/evaluation/batches"] },
+        { id: "workflows", label: "审批流程配置", href: "/evaluation/workflows", matchers: ["/evaluation/workflows"] },
+        { id: "approvals", label: "审批中心", href: "/evaluation/approvals", matchers: ["/evaluation/approvals"] },
       ],
     },
     {
@@ -293,7 +302,7 @@ export const evaluationNavigationConfig: PlatformNavigationConfig = {
       ],
     },
   ],
-  defaultExpandedSideNavIds: ["exam-center", "result-center", "graduate-portrait"],
+  defaultExpandedSideNavIds: ["exam-center", "batch-flow", "result-center", "graduate-portrait"],
   platformSwitchItems: [],
   shellClassName: "bg-background",
   mainClassName: "min-w-0 flex-1",
