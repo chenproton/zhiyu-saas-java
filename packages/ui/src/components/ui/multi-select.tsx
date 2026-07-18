@@ -1,12 +1,17 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { X, ChevronDown } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 
+export interface MultiSelectOption {
+  label: string
+  value: string
+}
+
 interface MultiSelectProps {
-  options: string[]
+  options: string[] | MultiSelectOption[]
   value: string[]
   onChange: (value: string[]) => void
   placeholder?: string
@@ -27,19 +32,35 @@ export function MultiSelect({ options, value, onChange, placeholder = '请选择
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const filteredOptions = options.filter((option) => option.toLowerCase().includes(search.toLowerCase()))
+  const normalizedOptions = useMemo<MultiSelectOption[]>(() => {
+    return options.map((option) =>
+      typeof option === 'string' ? { label: option, value: option } : option
+    )
+  }, [options])
 
-  const toggleOption = (option: string) => {
-    if (value.includes(option)) {
-      onChange(value.filter((v) => v !== option))
+  const filteredOptions = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return normalizedOptions
+    return normalizedOptions.filter((option) => option.label.toLowerCase().includes(q))
+  }, [normalizedOptions, search])
+
+  const valueToOption = useMemo(() => {
+    const map = new Map<string, MultiSelectOption>()
+    normalizedOptions.forEach((option) => map.set(option.value, option))
+    return map
+  }, [normalizedOptions])
+
+  const toggleOption = (optionValue: string) => {
+    if (value.includes(optionValue)) {
+      onChange(value.filter((v) => v !== optionValue))
     } else {
-      onChange([...value, option])
+      onChange([...value, optionValue])
     }
   }
 
-  const removeOption = (option: string, e: React.MouseEvent) => {
+  const removeOption = (optionValue: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    onChange(value.filter((v) => v !== option))
+    onChange(value.filter((v) => v !== optionValue))
   }
 
   return (
@@ -55,20 +76,24 @@ export function MultiSelect({ options, value, onChange, placeholder = '请选择
         {value.length === 0 ? (
           <span className="text-muted-foreground">{placeholder}</span>
         ) : (
-          value.map((option) => (
-            <span
-              key={option}
-              className="inline-flex items-center gap-1 rounded-sm bg-blue-50 px-1.5 py-0.5 text-xs text-blue-600"
-            >
-              {option}
+          value.map((optionValue) => {
+            const option = valueToOption.get(optionValue)
+            const displayLabel = option?.label ?? optionValue
+            return (
               <span
-                onClick={(e) => removeOption(option, e)}
-                className="cursor-pointer text-blue-400 hover:text-blue-800"
+                key={optionValue}
+                className="inline-flex items-center gap-1 rounded-sm bg-blue-50 px-1.5 py-0.5 text-xs text-blue-600"
               >
-                <X className="h-3 w-3" />
+                {displayLabel}
+                <span
+                  onClick={(e) => removeOption(optionValue, e)}
+                  className="cursor-pointer text-blue-400 hover:text-blue-800"
+                >
+                  <X className="h-3 w-3" />
+                </span>
               </span>
-            </span>
-          ))
+            )
+          })
         )}
         <span className="ml-auto pl-2">
           <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -93,15 +118,15 @@ export function MultiSelect({ options, value, onChange, placeholder = '请选择
             ) : (
               filteredOptions.map((option) => (
                 <div
-                  key={option}
-                  onClick={() => toggleOption(option)}
+                  key={option.value}
+                  onClick={() => toggleOption(option.value)}
                   className={cn(
                     'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-accent',
-                    value.includes(option) && 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                    value.includes(option.value) && 'bg-blue-50 text-blue-600 hover:bg-blue-100'
                   )}
                 >
-                  <Checkbox checked={value.includes(option)} className="pointer-events-none" />
-                  <span>{option}</span>
+                  <Checkbox checked={value.includes(option.value)} className="pointer-events-none" />
+                  <span>{option.label}</span>
                 </div>
               ))
             )}

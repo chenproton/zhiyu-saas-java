@@ -28,7 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { positionApi, batchApi, approvalApi, majorApi, abilityApi, positionResponsibilityApi, positionCertificateApi } from '@/lib/api'
+import { positionApi, batchApi, approvalApi, majorApi, industryApi, abilityApi, positionResponsibilityApi, positionCertificateApi } from '@/lib/api'
 import {
   convertCareerPositionToPosition,
   convertJobBatchToBatch,
@@ -58,6 +58,7 @@ function PositionEditPageContent({ params }: PageProps) {
   const [positions, setPositions] = useState<Position[]>([])
   const [batches, setBatches] = useState<Batch[]>([])
   const [majorMap, setMajorMap] = useState<Map<string, string>>(new Map())
+  const [industryMap, setIndustryMap] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
   const [activeStep, setActiveStep] = useState('basic')
   const [isSaving, setIsSaving] = useState(false)
@@ -142,10 +143,16 @@ function PositionEditPageContent({ params }: PageProps) {
   }, [searchParams])
 
   useEffect(() => {
-    majorApi.list({ limit: 1000 }).then((res) => {
-      const map = new Map<string, string>()
-      res.items.forEach((m) => map.set(m.id, m.name))
-      setMajorMap(map)
+    Promise.all([
+      majorApi.list({ limit: 1000 }),
+      industryApi.list({ limit: 1000 }),
+    ]).then(([majorRes, industryRes]) => {
+      const majorMap = new Map<string, string>()
+      majorRes.items.forEach((m) => majorMap.set(m.id, m.name))
+      setMajorMap(majorMap)
+      const industryMap = new Map<string, string>()
+      industryRes.items.forEach((i) => industryMap.set(i.id, i.name))
+      setIndustryMap(industryMap)
     }).catch(() => {})
   }, [])
 
@@ -462,11 +469,11 @@ function PositionEditPageContent({ params }: PageProps) {
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">面向行业</p>
-                <p className="font-medium text-sm">{position.industry || '-'}</p>
+                <p className="font-medium text-sm">{industryMap.get(position.industry) || position.industry || '-'}</p>
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">适用专业</p>
-                <p className="font-medium text-sm">{position.majors.join('、') || '-'}</p>
+                <p className="font-medium text-sm">{position.majors.map((id) => majorMap.get(id) || id).join('、') || '-'}</p>
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">薪资范围</p>

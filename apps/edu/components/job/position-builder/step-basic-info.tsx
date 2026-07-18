@@ -66,8 +66,8 @@ type AiSuggestionField = 'description' | 'responsibilities' | 'requirements' | '
 
 export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'default' }: StepBasicInfoProps) {
   const isCreate = variant === 'create'
-  const [industries, setIndustries] = useState<string[]>([])
-  const [majors, setMajors] = useState<string[]>([])
+  const [industries, setIndustries] = useState<{ id: string; name: string }[]>([])
+  const [majors, setMajors] = useState<{ id: string; name: string }[]>([])
   const [optionsLoading, setOptionsLoading] = useState(false)
   const [isGenerating, setIsGenerating] = useState<string | null>(null)
   const [aiNotice, setAiNotice] = useState<string | null>(null)
@@ -94,8 +94,8 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
     ])
       .then(([indRes, majorRes]) => {
         if (cancelled) return
-        setIndustries((indRes.items || []).filter((i) => i.enabled).map((i) => i.name))
-        setMajors((majorRes.items || []).filter((m) => m.enabled).map((m) => m.name))
+        setIndustries((indRes.items || []).filter((i) => i.enabled).map((i) => ({ id: i.id, name: i.name })))
+        setMajors((majorRes.items || []).filter((m) => m.enabled).map((m) => ({ id: m.id, name: m.name })))
       })
       .catch(() => {
         if (cancelled) return
@@ -245,7 +245,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
             <div className="grid gap-2">
               <Label htmlFor="industry">面向行业</Label>
               <MultiSelect
-                options={industries}
+                options={industries.map((i) => ({ label: i.name, value: i.id }))}
                 value={position.industry ? [position.industry] : []}
                 onChange={(values) => onUpdate({ industry: values[values.length - 1] || '' })}
                 placeholder={optionsLoading ? '加载中...' : '选择行业'}
@@ -254,7 +254,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
             <div className="grid gap-2">
               <Label htmlFor="major">适用专业</Label>
               <MultiSelect
-                options={majors}
+                options={majors.map((m) => ({ label: m.name, value: m.id }))}
                 value={position.majors}
                 onChange={(values) => onUpdate({ majors: values })}
                 placeholder={optionsLoading ? '加载中...' : '选择专业'}
