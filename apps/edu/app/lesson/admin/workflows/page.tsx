@@ -142,7 +142,7 @@ export default function WorkflowsPage() {
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-800">审批流程管理</h1>
+          <h1 className="text-2xl font-semibold text-gray-800">审批流程配置</h1>
           <p className="text-sm text-gray-500 mt-1">配置审批流模板，供批次关联使用。支持多步骤审批、会签/或签模式。</p>
         </div>
         <Dialog open={isCreateOpen} onOpenChange={(o) => { if (o) reset(); setIsCreateOpen(o) }}>

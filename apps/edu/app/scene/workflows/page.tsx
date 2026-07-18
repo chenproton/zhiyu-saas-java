@@ -107,7 +107,7 @@ export default function WorkflowsPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-semibold text-gray-800">审批流程管理</h1><p className="text-sm text-gray-500 mt-1">配置场景审批流模板，供批次关联使用</p></div>
+        <div><h1 className="text-2xl font-semibold text-gray-800">审批流程配置</h1><p className="text-sm text-gray-500 mt-1">配置场景审批流模板，供批次关联使用</p></div>
         <Dialog open={isCreateOpen} onOpenChange={(o) => { if (o) reset(); setIsCreateOpen(o) }}>
           <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />新增审批流程</Button></DialogTrigger>
           {renderDialog(false)}
