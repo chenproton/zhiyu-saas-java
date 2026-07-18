@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 
@@ -453,8 +454,16 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		careerPath = req.CareerPath
 	}
 
+	reqBody, _ := json.Marshal(req)
+	tenantID := ""
+	if claims.TenantID != nil {
+		tenantID = *claims.TenantID
+	}
+	log.Printf("[SaveFull] id=%s tenant=%s req=%s", id, tenantID, string(reqBody))
+
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
+		log.Printf("[SaveFull] begin tx failed: %v", err)
 		respondError(w, http.StatusInternalServerError, "failed to start transaction")
 		return
 	}
@@ -472,12 +481,14 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		coalesceStringSlice(req.Requirements), careerPath, req.Version,
 		coalesceStringSlice(req.Collaborators), id)
 	if err != nil {
+		log.Printf("[SaveFull] update career_positions failed: %v", err)
 		respondError(w, http.StatusInternalServerError, "failed to update position")
 		return
 	}
 
 	_, err = tx.Exec(r.Context(), `DELETE FROM career_position_majors WHERE career_position_id = $1`, id)
 	if err != nil {
+		log.Printf("[SaveFull] delete career_position_majors failed: %v", err)
 		respondError(w, http.StatusInternalServerError, "failed to update position majors")
 		return
 	}
@@ -486,6 +497,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 			INSERT INTO career_position_majors (career_position_id, major_id) VALUES ($1, $2)
 		`, id, majorID)
 		if err != nil {
+			log.Printf("[SaveFull] insert career_position_majors failed majorID=%s: %v", majorID, err)
 			respondError(w, http.StatusInternalServerError, "failed to insert position majors")
 			return
 		}
@@ -493,21 +505,25 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 
 	_, err = tx.Exec(r.Context(), `DELETE FROM position_certificates WHERE career_position_id = $1`, id)
 	if err != nil {
+		log.Printf("[SaveFull] delete position_certificates failed: %v", err)
 		respondError(w, http.StatusInternalServerError, "failed to clear certificates")
 		return
 	}
 	_, err = tx.Exec(r.Context(), `DELETE FROM ability_domains WHERE career_position_id = $1`, id)
 	if err != nil {
+		log.Printf("[SaveFull] delete ability_domains failed: %v", err)
 		respondError(w, http.StatusInternalServerError, "failed to clear ability domains")
 		return
 	}
 	_, err = tx.Exec(r.Context(), `DELETE FROM position_ability_bindings WHERE career_position_id = $1`, id)
 	if err != nil {
+		log.Printf("[SaveFull] delete position_ability_bindings failed: %v", err)
 		respondError(w, http.StatusInternalServerError, "failed to clear ability bindings")
 		return
 	}
 	_, err = tx.Exec(r.Context(), `DELETE FROM position_responsibilities WHERE career_position_id = $1`, id)
 	if err != nil {
+		log.Printf("[SaveFull] delete position_responsibilities failed: %v", err)
 		respondError(w, http.StatusInternalServerError, "failed to clear responsibilities")
 		return
 	}
@@ -527,6 +543,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 			VALUES ($1, $2, $3, $4, $5)
 		`, respID, id, resp.Name, desc, idx)
 		if err != nil {
+			log.Printf("[SaveFull] insert position_responsibilities failed: %v", err)
 			respondError(w, http.StatusInternalServerError, "failed to create responsibility")
 			return
 		}
@@ -562,6 +579,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 					VALUES ($1, $2, $3, $4, $5)
 				`, abilityPointID, binding.Name, binding.Description, category, false)
 				if err != nil {
+					log.Printf("[SaveFull] insert ability_points failed: %v", err)
 					respondError(w, http.StatusInternalServerError, "failed to create ability point")
 					return
 				}
@@ -585,6 +603,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		`, bindingID, id, respBackendID, abilityPointID, binding.Source,
 			domainField, binding.Level, rubricDesc, coalesceStringSlice(binding.Attributes), 0)
 		if err != nil {
+			log.Printf("[SaveFull] insert position_ability_bindings failed: %v", err)
 			respondError(w, http.StatusInternalServerError, "failed to create ability binding")
 			return
 		}
@@ -610,6 +629,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 			VALUES ($1, $2, $3, $4, $5, $6, $7)
 		`, uuid.NewString(), claims.TenantID, id, d.Name, desc, coalesceStringSlice(bindingIDs), idx)
 		if err != nil {
+			log.Printf("[SaveFull] insert ability_domains failed: %v", err)
 			respondError(w, http.StatusInternalServerError, "failed to create ability domain")
 			return
 		}
@@ -624,15 +644,19 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 			VALUES ($1, $2, $3, $4, $5, $6)
 		`, uuid.NewString(), id, cert.Name, cert.URL, cert.Description, cert.Image)
 		if err != nil {
+			log.Printf("[SaveFull] insert position_certificates failed: %v", err)
 			respondError(w, http.StatusInternalServerError, "failed to create certificate")
 			return
 		}
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
+		log.Printf("[SaveFull] commit failed: %v", err)
 		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
 		return
 	}
+
+	log.Printf("[SaveFull] id=%s saved successfully", id)
 
 	pos, _ := h.fetchPosition(r.Context(), id)
 	respondJSON(w, http.StatusOK, SaveFullPositionResponse{Position: pos})
