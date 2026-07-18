@@ -116,7 +116,7 @@ export default function WorkflowsPage() {
   }
 
   const renderDialog = (isEdit: boolean) => (
-    <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-y-auto">
+    <DialogContent className="sm:max-w-[800px] max-h-[85vh] overflow-y-auto overflow-x-hidden">
       <DialogHeader>
         <DialogTitle>{isEdit ? "编辑审批流程" : "新增审批流程"}</DialogTitle>
         <DialogDescription>

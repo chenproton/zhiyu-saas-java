@@ -131,7 +131,7 @@ export function WorkflowEditor({
                 )}
               </div>
               <div className="flex items-start gap-2 pl-8">
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <UserSelector
                     value={step.approverIds}
                     onChange={(ids) => handleStepChange(index, "approverIds", ids as any)}
