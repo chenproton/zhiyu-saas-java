@@ -40,6 +40,10 @@
    - `JWT_SECRET`：JWT 签名密钥
    - `PORT`：后端服务端口（默认 8080）
 
+   可选变量：
+   - `DEPLOY_DIR`：部署目标目录，默认 `/opt/zhiyu-saas`，代码与运行数据分离
+   - `UPLOAD_DIR`：文件上传保存目录，默认 `$DEPLOY_DIR/data/uploads`
+
 2. **数据库 migration**
 
    每个 migration 必须提供可回滚的 `.down.sql`、不得破坏已有数据、须与代码变更在同一 PR/提交中审查。`deploy.sh` 默认先执行 migration 再构建部署；回滚时先执行 down migration 回滚 schema，再部署旧代码。
@@ -60,7 +64,7 @@
    - **`--backend-only`**：跳过 `pnpm`/`node` 依赖检查、`node_modules` 安装、前端构建与 `assemble_standalone`。PM2 只启 `zhiyu-backend`，不动前端进程。
    - **全量部署**（不带参数）：执行完整流程。
 
-   回滚快照中前端 standalone 产物使用 `mv` 而非 `cp -a` 保存（同文件系统，零 I/O 开销），因此每次部署前端时旧版产物会被移走而非复制；回滚时自动移回。构建失败也会自动触发回滚恢复旧版服务。
+   `deploy.sh` 将构建产物部署到代码目录之外（默认 `/opt/zhiyu-saas`），运行时数据（上传文件、日志、数据库备份、回滚快照）均存放于该目录。前端 standalone 产物通过 `cp -a` 复制到部署目录（需保留 pnpm 内部符号链接），回滚快照中保存的旧版产物使用 `mv` 恢复。构建失败会自动触发回滚恢复旧版服务。
 
 ## 六、运维操作
 
