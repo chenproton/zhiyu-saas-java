@@ -119,7 +119,11 @@ function AddGranularPageInner() {
 
   useEffect(() => {
     majorApi.list({ limit: 1000 }).then((res) => {
-      setMajorNames(res.items.filter((m) => m.enabled).map((m) => m.name))
+      const enabled = res.items.filter((m) => m.enabled)
+      setMajorNames(enabled.map((m) => m.name))
+      const map = new Map<string, string>()
+      enabled.forEach((m) => map.set(m.name, m.id))
+      majorMapRef.current = map
     }).catch(() => {})
   }, [])
 
@@ -287,7 +291,7 @@ function AddGranularPageInner() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">所属专业</Label>
-                    <Select value={major} onValueChange={setMajor}>
+                    <Select value={major} onValueChange={(v) => { setMajor(v); setMajorId(majorMapRef.current.get(v) || "") }}>
                       <SelectTrigger className="h-9 text-sm">
                         <SelectValue placeholder="请选择适用专业" />
                       </SelectTrigger>
