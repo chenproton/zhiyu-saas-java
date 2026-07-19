@@ -239,7 +239,8 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchCourse(r.Context(), id); err != nil {
+	existing, err := h.fetchCourse(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "course not found")
 		return
 	}
@@ -249,16 +250,25 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	if req.Code == "" || req.Name == "" || req.Type == "" || req.Category == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
-		return
+
+	if req.Code == "" {
+		req.Code = existing.Code
+	}
+	if req.Name == "" {
+		req.Name = existing.Name
+	}
+	if req.Type == "" {
+		req.Type = existing.Type
+	}
+	if req.Category == "" {
+		req.Category = existing.Category
 	}
 
 	if req.CoCreatorIds == nil {
 		req.CoCreatorIds = domain.JSONSlice{}
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
+	_, err = h.DB.Exec(r.Context(), `
 		UPDATE courses SET code = $1, name = $2, type = $3, category = $4, major_id = $5, teacher_id = $6,
 			industry_id = $7, version = $8, online_hours = $9, offline_hours = $10, online_weight = $11,
 			offline_weight = $12, semester = $13, class_name = $14, cover_color = $15, cover_image = $16,
