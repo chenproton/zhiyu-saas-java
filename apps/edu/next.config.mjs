@@ -20,6 +20,10 @@ const nextConfig = {
         destination: `${apiProxy}/api/:path*`,
       },
       {
+        source: '/uploads/:path*',
+        destination: `${apiProxy}/uploads/:path*`,
+      },
+      {
         source: '/portal/career',
         destination: '/job/positions',
       },

@@ -152,7 +152,7 @@ export default function PositionsPage() {
       default:
         return positions.filter((p) => p.status === "published")
     }
-  }, [positions, activeTab])
+  }, [positions, activeTab, currentUserId])
 
   const filteredPositions = useMemo(() => {
     let result = tabFilteredPositions

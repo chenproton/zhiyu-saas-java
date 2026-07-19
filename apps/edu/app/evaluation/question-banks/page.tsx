@@ -195,7 +195,7 @@ export default function QuestionBanksPage() {
       default:
         return banks.filter((b) => b.status === "published")
     }
-  }, [banks, activeTab])
+  }, [banks, activeTab, currentUserId])
 
   const filteredBanks = useMemo(() => {
     let result = tabFilteredBanks

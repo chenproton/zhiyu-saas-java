@@ -199,7 +199,7 @@ export default function ExamsPage() {
       default:
         return exams.filter((e) => e.status === "published")
     }
-  }, [exams, activeTab])
+  }, [exams, activeTab, currentUserId])
 
   const filteredExams = useMemo(() => {
     let result = tabFilteredExams

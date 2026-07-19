@@ -178,7 +178,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
       default:
         return courses.filter((c) => c.status === "published")
     }
-  }, [courses, activeTab])
+  }, [courses, activeTab, currentUserId])
 
   const filteredCourses = useMemo(() => {
     let result = tabFilteredCourses
