@@ -280,6 +280,35 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if collaborators == nil {
 		collaborators = existing.Collaborators
 	}
+	batchID := req.BatchID
+	industryID := req.IndustryID
+	if industryID == nil {
+		industryID = existing.IndustryID
+	}
+	salaryMin := req.SalaryMin
+	if salaryMin == nil {
+		salaryMin = existing.SalaryMin
+	}
+	salaryMax := req.SalaryMax
+	if salaryMax == nil {
+		salaryMax = existing.SalaryMax
+	}
+	coverImage := req.CoverImage
+	if coverImage == nil {
+		coverImage = existing.CoverImage
+	}
+	description := req.Description
+	if description == nil {
+		description = existing.Description
+	}
+	careerPath := req.CareerPath
+	if careerPath == nil {
+		careerPath = existing.CareerPath
+	}
+	version := req.Version
+	if version == "" {
+		version = existing.Version
+	}
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
@@ -295,9 +324,9 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 			description = $9, requirements = $10, career_path = $11, version = $12,
 			collaborators = $13, updated_at = NOW()
 		WHERE id = $14
-	`, req.BatchID, req.Name, req.ShortName, req.IndustryID, req.PositionType,
-		req.SalaryMin, req.SalaryMax, req.CoverImage, req.Description, requirements,
-		req.CareerPath, req.Version, collaborators, id)
+	`, batchID, req.Name, req.ShortName, industryID, req.PositionType,
+		salaryMin, salaryMax, coverImage, description, requirements,
+		careerPath, version, collaborators, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to update position")
 		return

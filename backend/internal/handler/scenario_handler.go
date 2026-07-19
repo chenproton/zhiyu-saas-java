@@ -214,9 +214,46 @@ func (h *ScenarioHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if code == "" {
 		code = existing.Code
 	}
+	version := req.Version
+	if version == "" {
+		version = existing.Version
+	}
+	difficulty := req.Difficulty
+	if difficulty == 0 {
+		difficulty = existing.Difficulty
+	}
 	coBuilderIDs := req.CoBuilderIDs
 	if coBuilderIDs == nil {
 		coBuilderIDs = existing.CoBuilderIDs
+	}
+	coverImage := req.CoverImage
+	if coverImage == nil {
+		coverImage = existing.CoverImage
+	}
+	careerPositionID := req.CareerPositionID
+	if careerPositionID == nil {
+		careerPositionID = existing.CareerPositionID
+	}
+	industryID := req.IndustryID
+	if industryID == nil {
+		industryID = existing.IndustryID
+	}
+	professionID := req.ProfessionID
+	if professionID == nil {
+		professionID = existing.ProfessionID
+	}
+	professionName := req.ProfessionName
+	if professionName == nil {
+		professionName = existing.ProfessionName
+	}
+	batchID := req.BatchID
+	background := req.Background
+	if background == nil {
+		background = existing.Background
+	}
+	deliveryGoal := req.DeliveryGoal
+	if deliveryGoal == nil {
+		deliveryGoal = existing.DeliveryGoal
 	}
 
 	_, err = h.DB.Exec(r.Context(), `
@@ -225,9 +262,9 @@ func (h *ScenarioHandler) Update(w http.ResponseWriter, r *http.Request) {
 			batch_id = $8, difficulty = $9, version = $10, background = $11, delivery_goal = $12,
 			co_builder_ids = $13, updated_at = NOW()
 		WHERE id = $14
-	`, name, code, req.CoverImage, req.CareerPositionID, req.IndustryID,
-		req.ProfessionID, req.ProfessionName, req.BatchID, req.Difficulty, req.Version, req.Background,
-		req.DeliveryGoal, coBuilderIDs, id)
+	`, name, code, coverImage, careerPositionID, industryID,
+		professionID, professionName, batchID, difficulty, version, background,
+		deliveryGoal, coBuilderIDs, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to update scenario")
 		return

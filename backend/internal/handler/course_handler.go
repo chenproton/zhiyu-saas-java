@@ -264,8 +264,49 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		req.Category = existing.Category
 	}
 
+	if req.MajorID == nil {
+		req.MajorID = existing.MajorID
+	}
+	if req.TeacherID == nil {
+		req.TeacherID = existing.TeacherID
+	}
+	if req.IndustryID == nil {
+		req.IndustryID = existing.IndustryID
+	}
+	if req.Version == nil || *req.Version == "" {
+		req.Version = existing.Version
+	}
+	if req.OnlineHours == nil {
+		req.OnlineHours = existing.OnlineHours
+	}
+	if req.OfflineHours == nil {
+		req.OfflineHours = existing.OfflineHours
+	}
+	if req.OnlineWeight == nil {
+		req.OnlineWeight = existing.OnlineWeight
+	}
+	if req.OfflineWeight == nil {
+		req.OfflineWeight = existing.OfflineWeight
+	}
+	if req.Semester == nil {
+		req.Semester = existing.Semester
+	}
+	if req.ClassName == nil {
+		req.ClassName = existing.ClassName
+	}
+	if req.CoverColor == nil {
+		req.CoverColor = existing.CoverColor
+	}
+	if req.CoverImage == nil {
+		req.CoverImage = existing.CoverImage
+	}
+	if req.CourseTag == nil {
+		req.CourseTag = existing.CourseTag
+	}
+	batchID := req.BatchID
+
 	if req.CoCreatorIds == nil {
-		req.CoCreatorIds = domain.JSONSlice{}
+		req.CoCreatorIds = existing.CoCreatorIds
 	}
 
 	_, err = h.DB.Exec(r.Context(), `
@@ -276,7 +317,7 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $20
 	`, req.Code, req.Name, req.Type, req.Category, req.MajorID, req.TeacherID, req.IndustryID, req.Version,
 		req.OnlineHours, req.OfflineHours, req.OnlineWeight, req.OfflineWeight, req.Semester, req.ClassName,
-		req.CoverColor, req.CoverImage, req.CourseTag, req.CoCreatorIds, req.BatchID, id)
+		req.CoverColor, req.CoverImage, req.CourseTag, req.CoCreatorIds, batchID, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to update course")
 		return
