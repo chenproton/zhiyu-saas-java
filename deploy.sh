@@ -76,8 +76,12 @@ BACKEND_BIN_NEW="$BACKEND_DIR/bin/server.new"
 MARKETPLACE_DIR="$PROJECT_ROOT/apps/marketplace"
 EDU_DIR="$PROJECT_ROOT/apps/edu"
 
-MARKETPLACE_STANDALONE="$MARKETPLACE_DIR/.next/standalone/apps/marketplace"
-EDU_STANDALONE="$EDU_DIR/.next/standalone/apps/edu"
+# 前端 standalone 产物根目录（包含 .pnpm 依赖仓库）
+MARKETPLACE_STANDALONE_ROOT="$MARKETPLACE_DIR/.next/standalone"
+EDU_STANDALONE_ROOT="$EDU_DIR/.next/standalone"
+# 前端 standalone 产物内应用目录（PM2 工作目录）
+MARKETPLACE_STANDALONE="$MARKETPLACE_STANDALONE_ROOT/apps/marketplace"
+EDU_STANDALONE="$EDU_STANDALONE_ROOT/apps/edu"
 
 # ==================== 加载环境变量 ====================
 if [[ -f "$PROJECT_ROOT/.env" ]]; then
@@ -98,8 +102,10 @@ DEPLOY_BACKEND_DIR="$DEPLOY_DIR/backend"
 DEPLOY_BACKEND_BIN="$DEPLOY_BACKEND_DIR/bin/server"
 DEPLOY_MARKETPLACE_DIR="$DEPLOY_DIR/apps/marketplace"
 DEPLOY_EDU_DIR="$DEPLOY_DIR/apps/edu"
-DEPLOY_MARKETPLACE_STANDALONE="$DEPLOY_MARKETPLACE_DIR/.next/standalone/apps/marketplace"
-DEPLOY_EDU_STANDALONE="$DEPLOY_EDU_DIR/.next/standalone/apps/edu"
+DEPLOY_MARKETPLACE_STANDALONE_ROOT="$DEPLOY_MARKETPLACE_DIR/.next/standalone"
+DEPLOY_EDU_STANDALONE_ROOT="$DEPLOY_EDU_DIR/.next/standalone"
+DEPLOY_MARKETPLACE_STANDALONE="$DEPLOY_MARKETPLACE_STANDALONE_ROOT/apps/marketplace"
+DEPLOY_EDU_STANDALONE="$DEPLOY_EDU_STANDALONE_ROOT/apps/edu"
 
 DEPLOY_DATA_DIR="$DEPLOY_DIR/data"
 DEPLOY_UPLOAD_DIR="${UPLOAD_DIR:-$DEPLOY_DATA_DIR/uploads}"
@@ -386,16 +392,16 @@ restore_rollback() {
 
   if [[ -d "$snapshot_dir/marketplace" ]]; then
     echo "  恢复商城 standalone 产物..."
-    rm -rf "$DEPLOY_MARKETPLACE_STANDALONE"
-    mkdir -p "$(dirname "$DEPLOY_MARKETPLACE_STANDALONE")"
-    mv "$snapshot_dir/marketplace" "$DEPLOY_MARKETPLACE_STANDALONE"
+    rm -rf "$DEPLOY_MARKETPLACE_STANDALONE_ROOT"
+    mkdir -p "$(dirname "$DEPLOY_MARKETPLACE_STANDALONE_ROOT")"
+    mv "$snapshot_dir/marketplace" "$DEPLOY_MARKETPLACE_STANDALONE_ROOT"
   fi
 
   if [[ -d "$snapshot_dir/edu" ]]; then
     echo "  恢复教育管理 standalone 产物..."
-    rm -rf "$DEPLOY_EDU_STANDALONE"
-    mkdir -p "$(dirname "$DEPLOY_EDU_STANDALONE")"
-    mv "$snapshot_dir/edu" "$DEPLOY_EDU_STANDALONE"
+    rm -rf "$DEPLOY_EDU_STANDALONE_ROOT"
+    mkdir -p "$(dirname "$DEPLOY_EDU_STANDALONE_ROOT")"
+    mv "$snapshot_dir/edu" "$DEPLOY_EDU_STANDALONE_ROOT"
   fi
 
   echo "  重启旧版本服务..."
@@ -469,11 +475,11 @@ save_snapshot "$SNAPSHOT_DIR" "$DEPLOY_MODE"
 if [[ "$FRONTEND_ONLY" != "true" && -f "$DEPLOY_BACKEND_BIN" ]]; then
   cp "$DEPLOY_BACKEND_BIN" "$SNAPSHOT_DIR/server"
 fi
-if [[ "$BACKEND_ONLY" != "true" && -d "$DEPLOY_MARKETPLACE_STANDALONE" ]]; then
-  mv "$DEPLOY_MARKETPLACE_STANDALONE" "$SNAPSHOT_DIR/marketplace"
+if [[ "$BACKEND_ONLY" != "true" && -d "$DEPLOY_MARKETPLACE_STANDALONE_ROOT" ]]; then
+  mv "$DEPLOY_MARKETPLACE_STANDALONE_ROOT" "$SNAPSHOT_DIR/marketplace"
 fi
-if [[ "$BACKEND_ONLY" != "true" && -d "$DEPLOY_EDU_STANDALONE" ]]; then
-  mv "$DEPLOY_EDU_STANDALONE" "$SNAPSHOT_DIR/edu"
+if [[ "$BACKEND_ONLY" != "true" && -d "$DEPLOY_EDU_STANDALONE_ROOT" ]]; then
+  mv "$DEPLOY_EDU_STANDALONE_ROOT" "$SNAPSHOT_DIR/edu"
 fi
 
 rm -f "$DEPLOY_ROLLBACK_DIR/latest"
@@ -623,21 +629,22 @@ if [[ "$FRONTEND_ONLY" != "true" && -f "$BACKEND_BIN_NEW" ]]; then
   echo "  后端已切换"
 fi
 
-if [[ "$BACKEND_ONLY" != "true" && -d "$MARKETPLACE_STANDALONE" ]]; then
+if [[ "$BACKEND_ONLY" != "true" && -d "$MARKETPLACE_STANDALONE_ROOT" ]]; then
   echo "  复制商城 standalone 到部署目录..."
-  rm -rf "$DEPLOY_MARKETPLACE_STANDALONE"
-  mkdir -p "$(dirname "$DEPLOY_MARKETPLACE_STANDALONE")"
-  cp -aL "$MARKETPLACE_STANDALONE" "$DEPLOY_MARKETPLACE_STANDALONE"
-  rm -rf "$MARKETPLACE_STANDALONE"
+  rm -rf "$DEPLOY_MARKETPLACE_STANDALONE_ROOT"
+  mkdir -p "$(dirname "$DEPLOY_MARKETPLACE_STANDALONE_ROOT")"
+  # 保留内部相对符号链接（pnpm standalone 依赖符号链接解析到 .pnpm 虚拟仓库）
+  cp -a "$MARKETPLACE_STANDALONE_ROOT" "$DEPLOY_MARKETPLACE_STANDALONE_ROOT"
+  rm -rf "$MARKETPLACE_STANDALONE_ROOT"
   echo "  商城前端已切换"
 fi
 
-if [[ "$BACKEND_ONLY" != "true" && -d "$EDU_STANDALONE" ]]; then
+if [[ "$BACKEND_ONLY" != "true" && -d "$EDU_STANDALONE_ROOT" ]]; then
   echo "  复制教育管理 standalone 到部署目录..."
-  rm -rf "$DEPLOY_EDU_STANDALONE"
-  mkdir -p "$(dirname "$DEPLOY_EDU_STANDALONE")"
-  cp -aL "$EDU_STANDALONE" "$DEPLOY_EDU_STANDALONE"
-  rm -rf "$EDU_STANDALONE"
+  rm -rf "$DEPLOY_EDU_STANDALONE_ROOT"
+  mkdir -p "$(dirname "$DEPLOY_EDU_STANDALONE_ROOT")"
+  cp -a "$EDU_STANDALONE_ROOT" "$DEPLOY_EDU_STANDALONE_ROOT"
+  rm -rf "$EDU_STANDALONE_ROOT"
   echo "  教育管理前端已切换"
 fi
 
