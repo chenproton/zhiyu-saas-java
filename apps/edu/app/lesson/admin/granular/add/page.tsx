@@ -3,17 +3,12 @@
 import { useEffect, useState, useRef, Suspense, useMemo } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import {
-  ArrowLeft,
-  Save,
-  Send,
   Star,
   BookOpen,
   GraduationCap,
   ImageUp,
 } from "lucide-react"
 import { toast, Toaster } from "sonner"
-
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -33,6 +28,7 @@ import { KnowledgeSelector } from "../../_components/knowledge/knowledge-selecto
 import { ResourceSelector, type ResourceItem } from "../../_components/resources/resource-selector"
 import { RichTextEditor } from "../../_components/common/rich-text-editor"
 import PublishCheckPanel from "../../system/add/_components/PublishCheckPanel"
+import { EditorShell } from "@/components/shared/editor-shell"
 
 interface KnowledgePointItem {
   id: string
@@ -233,42 +229,22 @@ function AddGranularPageInner() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f7fa]">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-30">
-        <div className="max-w-[1400px] mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={async () => {
-                if (isNewCourse && editId && !hasSavedRef.current) {
-                  try { await courseApi.delete(editId) } catch {}
-                }
-                router.push("/lesson/admin/granular")
-              }}>
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                返回列表
-              </Button>
-              <h1 className="text-lg font-semibold text-gray-900">
-                {editId ? "编辑颗粒课" : "新建颗粒课"}
-                {courseName && <span className="text-gray-400 font-normal ml-2">- {courseName}</span>}
-              </h1>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-1" onClick={handleSave} disabled={saving}>
-                <Save className="h-4 w-4" />
-                保存草稿
-              </Button>
-              <Button size="sm" className="gap-1 bg-[#1890ff] hover:bg-[#40a9ff]" onClick={handleSubmit} disabled={saving}>
-                <Send className="h-4 w-4" />
-                提交
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-[1400px] mx-auto px-6 py-6">
-        <div className="grid grid-cols-[1fr_260px] gap-6">
+    <EditorShell
+      mode="inline"
+      backText="返回列表"
+      onBack={async () => {
+        if (isNewCourse && editId && !hasSavedRef.current) {
+          try { await courseApi.delete(editId) } catch {}
+        }
+        router.push("/lesson/admin/granular")
+      }}
+      onSaveDraft={handleSave}
+      isSaving={saving}
+      onSubmit={handleSubmit}
+      submitText="提交"
+      headerTitle={<>{editId ? "编辑颗粒课" : "新建颗粒课"}{courseName && <span className="text-gray-400 font-normal ml-2">- {courseName}</span>}</>}
+    >
+      <div className="grid grid-cols-[1fr_260px] gap-6">
           <main className="space-y-5 min-w-0">
             {/* Module 1: Basic Info */}
             <Card className="border-0 shadow-sm">
@@ -429,9 +405,8 @@ function AddGranularPageInner() {
 
           <PublishCheckPanel node={currentCheckNode} />
         </div>
-      </div>
-      <Toaster />
-    </div>
+        <Toaster />
+      </EditorShell>
   )
 }
 

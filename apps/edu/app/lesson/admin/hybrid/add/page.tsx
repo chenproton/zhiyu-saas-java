@@ -13,12 +13,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { ArrowLeft, Save, Send, Info, Plus, X, BookOpen, Layers, BookMarked, Microscope, Briefcase, Database, FileStack, Monitor, CheckCircle2, BarChart3, ClipboardList, Zap, Shuffle, MessageSquare, HelpCircle, ChevronDown, ChevronRight, Bold, Italic, Underline, List, ListOrdered, Image as ImageIcon, ImageUp, Link as LinkIcon, AlignLeft } from "lucide-react"
+import { Info, Plus, X, BookOpen, Layers, BookMarked, Microscope, Briefcase, Database, FileStack, Monitor, CheckCircle2, BarChart3, ClipboardList, Zap, Shuffle, MessageSquare, HelpCircle, ChevronDown, ChevronRight, Bold, Italic, Underline, List, ListOrdered, Image as ImageIcon, ImageUp, Link as LinkIcon, AlignLeft } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import { courseApi, approvalApi, majorApi, fileApi } from "@/lib/api"
 import type { Course } from "@/lib/types/lesson"
 import type { SystemCourseNode, NodeRefType } from "@/lib/types/lesson-source"
 import CourseNodeTree from "../../system/add/_components/CourseNodeTree"
+import { EditorShell } from "@/components/shared/editor-shell"
 import { WEB_FRONTEND_SEMESTER_NODES } from "./_mock/semester-nodes"
 import {
   ATOMIC_MODULES,
@@ -552,41 +553,21 @@ function HybridCourseAddForm() {
     : []
 
   return (
-    <div className="min-h-screen bg-[#f5f7fa]">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-30">
-        <div className="max-w-[1400px] mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={async () => {
-                if (isNewCourse && editId && !hasSavedRef.current) {
-                  try { await courseApi.delete(editId) } catch {}
-                }
-                router.push("/lesson/admin/hybrid")
-              }}>
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                返回列表
-              </Button>
-              <h1 className="text-lg font-semibold text-gray-900">
-                {editId ? "编辑混合课程" : "新建混合课程"}
-                {rootForm.name && <span className="text-gray-400 font-normal ml-2">- {rootForm.name}</span>}
-              </h1>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-1" onClick={handleSave} disabled={saving}>
-                <Save className="h-4 w-4" />
-                {saving ? "保存中..." : "保存草稿"}
-              </Button>
-              <Button size="sm" className="gap-1 bg-[#1890ff] hover:bg-[#40a9ff]" onClick={handleSubmit} disabled={saving}>
-                <Send className="h-4 w-4" />
-                {saving ? "提交中..." : "提交审批"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-[1400px] mx-auto px-6 py-6">
+    <EditorShell
+      mode="inline"
+      backText="返回列表"
+      onBack={async () => {
+        if (isNewCourse && editId && !hasSavedRef.current) {
+          try { await courseApi.delete(editId) } catch {}
+        }
+        router.push("/lesson/admin/hybrid")
+      }}
+      onSaveDraft={handleSave}
+      isSaving={saving}
+      onSubmit={handleSubmit}
+      submitText="提交审批"
+      headerTitle={<>{editId ? "编辑混合课程" : "新建混合课程"}{rootForm.name && <span className="text-gray-400 font-normal ml-2">- {rootForm.name}</span>}</>}
+    >
         {/* ========== Global Course Info (collapsible, spans full width) ========== */}
         <Collapsible open={globalInfoOpen} onOpenChange={setGlobalInfoOpen} className="mb-6">
           <Card className="border-0 shadow-sm">
@@ -859,7 +840,6 @@ function HybridCourseAddForm() {
             </main>
           </div>
         </div>
-      </div>
 
       {/* Add module dialog */}
       <Dialog
@@ -943,7 +923,7 @@ function HybridCourseAddForm() {
         </DialogContent>
       </Dialog>
       <Toaster />
-    </div>
+    </EditorShell>
   )
 }
 

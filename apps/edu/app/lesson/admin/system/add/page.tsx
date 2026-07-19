@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useRef, Suspense, useMemo, useCallback, useEffect } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useSearchParams } from "next/navigation"
+import Link from "next/link"
 import {
   ArrowLeft,
   Save,
@@ -24,7 +25,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react"
-import { toast, Toaster } from "sonner"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -50,6 +51,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { MAJORS } from "@/lib/types/lesson-source"
 import type { SystemCourseNode, NodeResource, NodeRefType } from "@/lib/types/lesson-source"
 
 import { KnowledgeSelector } from "../../_components/knowledge/knowledge-selector"
@@ -62,7 +64,7 @@ import CourseNodeTree from "./_components/CourseNodeTree"
 import PublishCheckPanel from "./_components/PublishCheckPanel"
 
 import type { KnowledgePointItem } from "@/lib/types/lesson"
-import { courseApi, courseNodeApi, knowledgeApi, approvalApi, majorApi, fileApi } from "@/lib/api"
+import { courseApi, courseNodeApi, knowledgeApi } from "@/lib/api"
 
 /* ---------- node editing mode ---------- */
 
@@ -156,11 +158,8 @@ function ConvertPreviewTree({
 
 function AddSystemPageInner() {
   const searchParams = useSearchParams()
-  const router = useRouter()
   const editId = searchParams.get("id")
   const isEdit = !!editId
-  const hasSavedRef = useRef(false)
-  const isNewCourse = searchParams.get("new") === "true"
 
   /* ========== global config (collapsible) ========== */
   const [globalInfoOpen, setGlobalInfoOpen] = useState(true)
@@ -168,14 +167,10 @@ function AddSystemPageInner() {
   const [courseName, setCourseName] = useState("")
   const [courseCode, setCourseCode] = useState(`AB8G-A1-${Math.floor(10000000 + Math.random() * 90000000)}`)
   const [major, setMajor] = useState("")
-  const [majorId, setMajorId] = useState("")
-  const [majorNames, setMajorNames] = useState<string[]>([])
-  const majorMapRef = useRef<Map<string, string>>(new Map())
   const [courseDescription, setCourseDescription] = useState("")
   const [coverImage, setCoverImage] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [loadingEdit, setLoadingEdit] = useState(false)
-  const [courseStatus, setCourseStatus] = useState<string>("draft")
 
   /* ========== course node tree ========== */
   const [nodes, setNodes] = useState<SystemCourseNode[]>([])
@@ -191,27 +186,15 @@ function AddSystemPageInner() {
       setCourseId(course.id)
       setCourseName(course.name || "")
       if (course.code) setCourseCode(course.code)
-      if (course.description) setCourseDescription(course.description)
-      if (course.coverImage) setCoverImage(course.coverImage)
-      if (course.majorName) setMajor(course.majorName)
-      if (course.majorId) setMajorId(course.majorId)
-      setCourseStatus(course.status || "draft")
+      if (course.description) setDescription(course.description)
+      if (course.coverUrl) setCoverImage(course.coverUrl)
+      if (course.majorId) setMajor(course.majorId)
       if (nodeRes.items?.length) {
-        setNodes(nodeRes.items as unknown as SystemCourseNode[])
+        setNodes(nodeRes.items)
         setSelectedNodeId(nodeRes.items[0]?.id || null)
       }
     }).catch(() => {}).finally(() => setLoadingEdit(false))
   }, [editId])
-
-  useEffect(() => {
-    majorApi.list({ limit: 1000 }).then((res) => {
-      const enabled = res.items.filter((m) => m.enabled)
-      setMajorNames(enabled.map((m) => m.name))
-      const map = new Map<string, string>()
-      enabled.forEach((m) => map.set(m.name, m.id))
-      majorMapRef.current = map
-    }).catch(() => {})
-  }, [])
 
   const handleAddNode = useCallback((parentId: string | null, name: string, order: number, type?: NodeRefType, sourceId?: string, sourceName?: string) => {
     const newNode: SystemCourseNode = {
@@ -290,7 +273,7 @@ function AddSystemPageInner() {
         id: c.id,
         name: c.name,
         description: c.category,
-        source: c.majorName || c.creatorId || "",
+        source: c.major || c.creatorId || "",
         duration: c.nodeCount,
       })))
     }).catch(() => setGrainCourses([]))
@@ -472,41 +455,29 @@ function AddSystemPageInner() {
   const handleSave = useCallback(async () => {
     setSaving(true)
     try {
-      const payload: any = {
+      const payload = {
         name: courseName,
         code: courseCode,
-        majorId: majorId || undefined,
-        majorName: major || undefined,
-        description: courseDescription || undefined,
-        coverImage: coverImage || undefined,
-        type: "system",
-        status: "draft",
-        category: "system",
-        creatorId: "",
-        coCreatorIds: [],
+        majorId: major || undefined,
+        description: description || undefined,
+        coverUrl: coverImage || undefined,
+        type: "system" as const,
+        status: "draft" as const,
       }
       if (isEdit && courseId) {
         await courseApi.update(courseId, payload)
-        hasSavedRef.current = true
-        if (courseStatus === "approved" || courseStatus === "published") {
-          await courseApi.saveDraft(courseId)
-          setCourseStatus("draft")
-          toast.success("草稿已更新，课程已退回草稿状态")
-        } else {
-          toast.success("草稿已更新")
-        }
+        toast.success("草稿已更新")
       } else {
         const created = await courseApi.create(payload)
         setCourseId(created.id)
-        hasSavedRef.current = true
         toast.success("草稿已保存")
       }
-    } catch (e: any) {
-      toast.error(e?.message || "保存失败")
+    } catch {
+      toast.error("保存失败")
     } finally {
       setSaving(false)
     }
-  }, [courseName, courseCode, major, majorId, courseDescription, coverImage, isEdit, courseId, courseStatus])
+  }, [courseName, courseCode, major, description, coverImage, isEdit, courseId])
 
   const handleSubmit = useCallback(async () => {
     const completeNodes = nodes.filter((n) => n.type !== "original" && checkNodeComplete(n))
@@ -526,7 +497,6 @@ function AddSystemPageInner() {
     setSaving(true)
     try {
       await courseApi.submit(courseId)
-      await approvalApi.create({ targetType: "course", targetId: courseId })
       toast.success("课程已提交审核")
     } catch {
       toast.error("提交失败")
@@ -590,15 +560,12 @@ function AddSystemPageInner() {
         <div className="max-w-[1400px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={async () => {
-                if (isNewCourse && courseId && !hasSavedRef.current) {
-                  try { await courseApi.delete(courseId) } catch {}
-                }
-                router.push("/lesson/admin/system")
-              }}>
+              <Link href="/lesson/admin/system">
+                <Button variant="ghost" size="sm">
                   <ArrowLeft className="h-4 w-4 mr-1" />
                   返回列表
                 </Button>
+              </Link>
               <h1 className="text-lg font-semibold text-gray-900">
                 {isEdit ? "编辑体系课" : "新建体系课"}
                 {courseName && <span className="text-gray-400 font-normal ml-2">- {courseName}</span>}
@@ -609,7 +576,7 @@ function AddSystemPageInner() {
                 <Save className="h-4 w-4" />
                 {saving ? "保存中..." : "保存草稿"}
               </Button>
-              <Button size="sm" className="bg-[#1890ff] hover:bg-[#40a9ff]" onClick={handleSubmit} disabled={saving}>
+              <Button size="sm" className="gap-1 bg-[#1890ff] hover:bg-[#40a9ff]" onClick={handleSubmit} disabled={saving}>
                 <Send className="h-4 w-4" />
                 提交
               </Button>
@@ -649,8 +616,8 @@ function AddSystemPageInner() {
                       )}
                     </div>
                   </div>
-                  {!globalInfoOpen && courseDescription && (
-                    <p className="text-xs text-gray-400 mt-1 pl-6 text-left">{courseDescription}</p>
+                  {!globalInfoOpen && description && (
+                    <p className="text-xs text-gray-400 mt-1 pl-6 text-left">{description}</p>
                   )}
                 </CardHeader>
               </button>
@@ -674,12 +641,12 @@ function AddSystemPageInner() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">适用专业</Label>
-                    <Select value={major} onValueChange={(v) => { setMajor(v); setMajorId(majorMapRef.current.get(v) || "") }}>
+                    <Select value={major} onValueChange={setMajor}>
                       <SelectTrigger className="h-9 text-sm">
                         <SelectValue placeholder="请选择适用专业" />
                       </SelectTrigger>
                       <SelectContent>
-                        {majorNames.map((m) => (
+                        {MAJORS.filter((m) => m !== "全部").map((m) => (
                           <SelectItem key={m} value={m}>{m}</SelectItem>
                         ))}
                       </SelectContent>
@@ -710,15 +677,12 @@ function AddSystemPageInner() {
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={async (e) => {
+                        onChange={(e) => {
                           const file = e.target.files?.[0]
-                          if (!file) return
-                          try {
-                            const res = await fileApi.upload(file)
-                            setCoverImage(res.url)
-                            toast.success("封面上传成功")
-                          } catch (err: any) {
-                            toast.error(err?.message || "封面上传失败")
+                          if (file) {
+                            const reader = new FileReader()
+                            reader.onload = (ev) => setCoverImage(ev.target?.result as string)
+                            reader.readAsDataURL(file)
                           }
                         }}
                       />
@@ -727,8 +691,8 @@ function AddSystemPageInner() {
                   <div className="md:col-span-3 space-y-1.5">
                     <Label className="text-xs">课程简介</Label>
                     <RichTextEditor
-                      value={courseDescription}
-                      onChange={setCourseDescription}
+                      value={description}
+                      onChange={setDescription}
                       placeholder="请输入课程简介..."
                       minHeight={280}
                     />
@@ -1019,17 +983,9 @@ function AddSystemPageInner() {
           </div>
           <DialogFooter>
             <Button
-              onClick={async () => {
+              onClick={() => {
                 setConvertDialogOpen(false)
-                if (!courseId) { toast.error("请先保存草稿"); return }
-                setSaving(true)
-                try {
-      await courseApi.submit(courseId)
-      hasSavedRef.current = true
-      await approvalApi.create({ targetType: "course", targetId: courseId })
-                  toast.success("课程已提交审核")
-                } catch { toast.error("提交失败") }
-                setSaving(false)
+                toast.success("课程已提交审核")
               }}
             >
               确认
@@ -1107,7 +1063,6 @@ function AddSystemPageInner() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Toaster />
     </div>
   )
 }
