@@ -89,6 +89,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
       approvalTargetType="course"
       importEntityName="courses"
       exportEntityName="courses"
+      listParams={{ type: courseType }}
       statusFilterOptions={[
         { value: "draft", label: "草稿" },
         { value: "pending", label: "审批中" },

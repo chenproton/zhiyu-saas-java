@@ -126,6 +126,7 @@ export interface ContentListPageConfig<T extends ContentListItem> {
 
   createPayload: (userId: string, entityLabel: string) => any
   createRedirectUrl?: (id: string) => string
+  listParams?: Record<string, any>
 
   renderList: (props: ListRenderProps<T>) => ReactNode
 
@@ -165,7 +166,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     permissionModule, permissionResource,
     itemApi, batchApi, approvalApi, importExportApi,
     approvalTargetType, importEntityName, exportEntityName,
-    statusFilterOptions, mapItem, mapBatch, createPayload, createRedirectUrl,
+    statusFilterOptions, mapItem, mapBatch, createPayload, createRedirectUrl, listParams,
     renderList, extraHeaderActions, listExtraProps, children, afterLoad,
   } = config
 
@@ -204,7 +205,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     setIsLoading(true)
     try {
       const [itemsResp, batchesResp] = await Promise.all([
-        itemApi.list({ limit: 1000 }),
+        itemApi.list({ limit: 1000, ...(listParams || {}) }),
         batchApi.list({ limit: 1000 }),
       ])
       setItems(itemsResp.items)
