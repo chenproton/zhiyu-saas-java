@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { ArrowLeft, Save, Send, Info, Plus, X, BookOpen, Layers, BookMarked, Microscope, Briefcase, Database, FileStack, Monitor, CheckCircle2, BarChart3, ClipboardList, Zap, Shuffle, MessageSquare, HelpCircle, ChevronDown, ChevronRight, Bold, Italic, Underline, List, ListOrdered, Image as ImageIcon, ImageUp, Link as LinkIcon, AlignLeft } from "lucide-react"
 import { toast } from "sonner"
-import { courseApi, approvalApi, majorApi } from "@/lib/api"
+import { courseApi, approvalApi, majorApi, fileApi } from "@/lib/api"
 import type { Course } from "@/lib/types/lesson"
 import type { SystemCourseNode, NodeRefType } from "@/lib/types/lesson-source"
 import CourseNodeTree from "../../system/add/_components/CourseNodeTree"
@@ -689,12 +689,15 @@ function HybridCourseAddForm() {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0]
-                        if (file) {
-                          const reader = new FileReader()
-                          reader.onload = (ev) => updateRootForm({ coverImage: ev.target?.result as string })
-                          reader.readAsDataURL(file)
+                        if (!file) return
+                        try {
+                          const res = await fileApi.upload(file)
+                          updateRootForm({ coverImage: res.url })
+                          toast.success("封面上传成功")
+                        } catch (err: any) {
+                          toast.error(err?.message || "封面上传失败")
                         }
                       }}
                     />

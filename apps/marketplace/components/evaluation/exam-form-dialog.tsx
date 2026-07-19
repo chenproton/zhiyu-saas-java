@@ -25,7 +25,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { X, Upload, ImageIcon, UserPlus } from "lucide-react"
 import type { Exam, ExamFormData, User } from "@/lib/types"
-import { evaluationBatchApi, userManagementApi } from "@/lib/api"
+import { evaluationBatchApi, userManagementApi, fileApi } from "@/lib/api"
 import { CoBuilderDialog } from "@/components/shared/co-builder-dialog"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
@@ -115,7 +115,7 @@ export function ExamFormDialog({
     onOpenChange(false)
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -129,8 +129,12 @@ export function ExamFormDialog({
       return
     }
 
-    const url = URL.createObjectURL(file)
-    setCoverUrl(url)
+    try {
+      const res = await fileApi.upload(file)
+      setCoverUrl(res.url)
+    } catch (err: any) {
+      alert(err?.message || "封面上传失败")
+    }
   }
 
   const removeCover = () => {

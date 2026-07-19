@@ -63,7 +63,7 @@ import CourseNodeTree from "./_components/CourseNodeTree"
 import PublishCheckPanel from "./_components/PublishCheckPanel"
 
 import type { KnowledgePointItem } from "@/lib/types/lesson"
-import { courseApi, courseNodeApi, knowledgeApi, approvalApi, majorApi } from "@/lib/api"
+import { courseApi, courseNodeApi, knowledgeApi, approvalApi, majorApi, fileApi } from "@/lib/api"
 
 /* ---------- node editing mode ---------- */
 
@@ -687,12 +687,15 @@ function AddSystemPageInner() {
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0]
-                          if (file) {
-                            const reader = new FileReader()
-                            reader.onload = (ev) => setCoverImage(ev.target?.result as string)
-                            reader.readAsDataURL(file)
+                          if (!file) return
+                          try {
+                            const res = await fileApi.upload(file)
+                            setCoverImage(res.url)
+                            toast.success("封面上传成功")
+                          } catch (err: any) {
+                            toast.error(err?.message || "封面上传失败")
                           }
                         }}
                       />

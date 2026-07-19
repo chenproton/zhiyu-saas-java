@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowRight, ChevronDown, ChevronRight, Eye, ImagePlus, List, ListOrdered, Save, Search, Star, X, UserPlus } from "lucide-react"
+import { ArrowRight, ChevronDown, ChevronRight, Eye, ImagePlus, List, ListOrdered, Loader2, Save, Search, Star, X, UserPlus } from "lucide-react"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 import { useParams, useRouter } from "next/navigation"
@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { positionApi, industryApi, sceneBatchApi, userManagementApi, scenarioApi } from "@/lib/api"
+import { positionApi, industryApi, sceneBatchApi, userManagementApi, scenarioApi, fileApi } from "@/lib/api"
 import type { User } from "@/lib/api"
 import type { CareerPosition } from "@/lib/types/job"
 import type { Industry } from "@/lib/types/backend"
@@ -155,6 +155,9 @@ export default function ScenarioEditPage() {
   const [creatorName, setCreatorName] = useState("当前用户")
   const [coBuilderIds, setCoBuilderIds] = useState<string[]>([])
   const [version, setVersion] = useState("v1.0")
+  const [coverImage, setCoverImage] = useState("")
+  const [coverUploading, setCoverUploading] = useState(false)
+  const coverInputRef = useRef<HTMLInputElement>(null)
 
   const [coBuilderSearch, setCoBuilderSearch] = useState("")
   const [isCoBuilderDialogOpen, setIsCoBuilderDialogOpen] = useState(false)
@@ -185,6 +188,7 @@ export default function ScenarioEditPage() {
         setBackground(scenario.background || "")
         setCoBuilderIds(scenario.coBuilderIds || [])
         setVersion(scenario.version || "v1.0")
+        setCoverImage(scenario.coverImage || "")
       } catch (err: any) {
         console.error("Failed to load form data", err)
         toast({ variant: "destructive", title: "数据加载失败", description: err.message || "请刷新页面重试" })
@@ -232,6 +236,7 @@ export default function ScenarioEditPage() {
         background: background || undefined,
         version,
         coBuilderIds,
+        coverImage: coverImage || undefined,
       }
       await scenarioApi.update(scenarioId, payload as any)
       toast({ title: "保存成功" })
@@ -257,6 +262,7 @@ export default function ScenarioEditPage() {
         background: background || undefined,
         version,
         coBuilderIds,
+        coverImage: coverImage || undefined,
       }
       await scenarioApi.update(scenarioId, payload as any)
       toast({ title: "草稿已保存" })
@@ -273,6 +279,24 @@ export default function ScenarioEditPage() {
         ? prev.filter(id => id !== userId)
         : [...prev, userId]
     )
+  }
+
+  const handleCoverUpload = async (file: File) => {
+    setCoverUploading(true)
+    try {
+      const res = await fileApi.upload(file)
+      setCoverImage(res.url)
+      toast({ title: "封面上传成功" })
+    } catch (err: any) {
+      console.error("Cover upload failed:", err)
+      toast({ variant: "destructive", title: "封面上传失败", description: err?.message || "请稍后重试" })
+    } finally {
+      setCoverUploading(false)
+    }
+  }
+
+  const triggerCoverUpload = () => {
+    coverInputRef.current?.click()
   }
 
   return (
@@ -502,11 +526,65 @@ export default function ScenarioEditPage() {
                     <Label className="mb-3 block">场景封面</Label>
                   </PrdAnnotation>
                   <div
-                    className="aspect-video bg-gray-100 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors"
+                    className="aspect-video bg-gray-100 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors overflow-hidden relative group"
+                    onClick={triggerCoverUpload}
                   >
-                    <ImagePlus className="h-8 w-8 text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-500">点击上传封面图片</p>
-                    <p className="text-xs text-gray-400 mt-1">建议尺寸 320x200</p>
+                    <input
+                      ref={coverInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleCoverUpload(file)
+                        e.target.value = ""
+                      }}
+                    />
+                    {coverImage ? (
+                      <>
+                        <img
+                          src={coverImage}
+                          alt="场景封面"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-white/90 text-gray-800 border-white hover:bg-white"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              triggerCoverUpload()
+                            }}
+                            disabled={coverUploading}
+                          >
+                            {coverUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : "更换封面"}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-white/90 text-gray-800 border-white hover:bg-white"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setCoverImage("")
+                            }}
+                            disabled={coverUploading}
+                          >
+                            移除封面
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center">
+                        {coverUploading ? (
+                          <Loader2 className="h-8 w-8 text-gray-400 mb-2 animate-spin" />
+                        ) : (
+                          <ImagePlus className="h-8 w-8 text-gray-400 mb-2" />
+                        )}
+                        <p className="text-sm text-gray-500">{coverUploading ? "上传中..." : "点击上传封面图片"}</p>
+                        <p className="text-xs text-gray-400 mt-1">建议尺寸 320x200，支持 jpg/png/webp</p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -675,8 +753,12 @@ export default function ScenarioEditPage() {
             <DialogDescription>预览当前填写的基础信息</DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
-            <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
-              <ImagePlus className="h-12 w-12 text-gray-300" />
+            <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+              {coverImage ? (
+                <img src={coverImage} alt="场景封面" className="w-full h-full object-cover" />
+              ) : (
+                <ImagePlus className="h-12 w-12 text-gray-300" />
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="p-3 bg-gray-50 rounded-lg">
