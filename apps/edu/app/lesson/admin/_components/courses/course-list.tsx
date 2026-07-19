@@ -1,6 +1,6 @@
 "use client"
 
-import { Copy, Download, Eye, Pencil, Rocket, Send, Trash2, Undo2, CheckCircle, XCircle, ArrowDownFromLine, UserPlus, Archive, MessageSquare } from "lucide-react"
+import { Copy, Eye, Pencil, Rocket, Send, Trash2, Undo2, CheckCircle, XCircle, ArrowDownFromLine, UserPlus, Archive, MessageSquare } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -26,7 +26,6 @@ interface CourseListProps {
   onArchive?: (course: Course) => void
   onViewRejectReason?: (course: Course) => void
   onInviteCoBuild?: (course: Course) => void
-  onExport?: (course: Course) => void
   className?: string
   viewHref?: (course: Course) => string
 }
@@ -48,7 +47,6 @@ export function CourseList({
   onArchive,
   onViewRejectReason,
   onInviteCoBuild,
-  onExport,
   className,
   viewHref,
 }: CourseListProps) {
@@ -276,20 +274,6 @@ export function CourseList({
                     >
                       <UserPlus className="mr-1 h-3 w-3" />
                       邀请共建
-                    </Button>
-                  )}
-                  {onExport && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onExport(course)
-                      }}
-                    >
-                      <Download className="mr-1 h-3 w-3" />
-                      导出
                     </Button>
                   )}
                   {onDelete && (

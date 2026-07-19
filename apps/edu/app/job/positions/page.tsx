@@ -53,6 +53,7 @@ export default function PositionsPage() {
         { value: "approved", label: "已通过" },
         { value: "rejected", label: "已驳回" },
         { value: "published", label: "已发布" },
+        { value: "archived", label: "已归档" },
       ]}
       mapItem={(b) => mapPosition(b, currentUserId)}
       mapBatch={mapPositionBatch}

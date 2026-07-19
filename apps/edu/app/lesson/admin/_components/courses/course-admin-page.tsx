@@ -107,7 +107,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
         category: "default",
         status: "draft",
         creatorId: uid || "",
-        coCreatorIds: [],
+        coCreatorIds: uid ? [uid] : [],
       })}
       extraHeaderActions={
         <Button variant="outline" size="sm" onClick={() => setResourceImportOpen(true)}>
@@ -134,7 +134,6 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
           onArchive={props.onArchive}
           onViewRejectReason={props.onViewRejectReason}
           onInviteCoBuild={props.onInviteCoBuild}
-          onExport={() => {}}
           className="border-0 rounded-none"
         />
       )}
