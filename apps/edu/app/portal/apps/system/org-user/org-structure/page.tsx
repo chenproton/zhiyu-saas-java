@@ -335,10 +335,12 @@ export default function OrgStructurePage() {
       setFormName("")
       setFormTypeId("")
       setFormSortOrder(String(node.children ? node.children.length + 1 : 1))
+      setFormParentId(node.id)
     } else {
       setFormName("")
       setFormTypeId("")
       setFormSortOrder(String(orgData.length + 1))
+      setFormParentId("__root__")
     }
     setIsDialogOpen(true)
   }
@@ -354,13 +356,15 @@ export default function OrgStructurePage() {
   }
 
   const parentOptions = useMemo(() => {
-    if (dialogMode !== "edit" || !selectedNode) return []
+    if (!isDialogOpen) return []
     const excluded = new Set<string>()
-    const collect = (node: OrgNode) => {
-      excluded.add(node.id)
-      node.children?.forEach(collect)
+    if (dialogMode === "edit" && selectedNode) {
+      const collect = (node: OrgNode) => {
+        excluded.add(node.id)
+        node.children?.forEach(collect)
+      }
+      collect(selectedNode)
     }
-    collect(selectedNode)
     const options: { id: string; name: string; depth: number }[] = []
     const walk = (nodes: OrgNode[], depth: number) => {
       nodes.forEach((n) => {
@@ -371,7 +375,7 @@ export default function OrgStructurePage() {
     }
     walk(orgData, 0)
     return options
-  }, [dialogMode, selectedNode, orgData])
+  }, [isDialogOpen, dialogMode, selectedNode, orgData])
 
   const handleSave = async () => {
     if (!tenantId) {
@@ -411,10 +415,7 @@ export default function OrgStructurePage() {
             : `组织节点「${formName.trim()}」已调整为一级节点`
         }
       } else {
-        let parentId: string | undefined
-        if (dialogMode === "addChild" && selectedNode) {
-          parentId = selectedNode.id
-        }
+        const parentId = formParentId === "__root__" ? undefined : formParentId
         const newNode = await orgApi.create({
           tenantId,
           name: formName.trim(),
@@ -424,13 +425,8 @@ export default function OrgStructurePage() {
           memberCount: 0,
         })
         targetId = newNode.id
-        if (dialogMode === "addChild" && selectedNode) {
-          toastTitle = "创建成功"
-          toastDescription = `已在「${selectedNode.name}」下添加「${newNode.name}」`
-        } else {
-          toastTitle = "创建成功"
-          toastDescription = `已添加根节点「${newNode.name}」`
-        }
+        toastTitle = "创建成功"
+        toastDescription = `已添加节点「${newNode.name}」`
       }
 
       await fetchData()
@@ -593,40 +589,51 @@ export default function OrgStructurePage() {
                 </div>
                 <div className="grid gap-2">
                   <Label>节点类型</Label>
-                  <Select value={formTypeId} onValueChange={setFormTypeId}>
+                  <div className="grid grid-cols-4 gap-2">
+                    {orgTypes.map((type) => {
+                      const meta = typeMetaFor(type.name)
+                      const Icon = meta.icon
+                      const selected = formTypeId === type.id
+                      return (
+                        <button
+                          key={type.id}
+                          type="button"
+                          onClick={() => setFormTypeId(type.id)}
+                          className={cn(
+                            "flex flex-col items-center gap-1 rounded-lg border px-2 py-3 text-center transition-colors",
+                            selected
+                              ? "border-primary bg-primary/5 ring-1 ring-primary"
+                              : "border-input hover:bg-accent hover:text-accent-foreground"
+                          )}
+                        >
+                          <Icon className={cn("h-5 w-5", meta.color)} />
+                          <span className="text-xs font-medium">{type.name}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label>父节点</Label>
+                  <Select value={formParentId} onValueChange={setFormParentId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="选择类型" />
+                      <SelectValue placeholder="选择父节点" />
                     </SelectTrigger>
                     <SelectContent>
-                      {orgTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.id}>
-                          {type.name}
+                      <SelectItem value="__root__">无（作为一级节点）</SelectItem>
+                      {parentOptions.map((option) => (
+                        <SelectItem key={option.id} value={option.id}>
+                          {`${"　".repeat(option.depth)}${option.name}`}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-                {dialogMode === "edit" && (
-                  <div className="grid gap-2">
-                    <Label>父节点</Label>
-                    <Select value={formParentId} onValueChange={setFormParentId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="选择父节点" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__root__">无（作为一级节点）</SelectItem>
-                        {parentOptions.map((option) => (
-                          <SelectItem key={option.id} value={option.id}>
-                            {`${"　".repeat(option.depth)}${option.name}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  {dialogMode === "edit" && (
                     <p className="text-xs text-muted-foreground">
                       更改父节点后，当前节点及其全部子节点将迁移到新父节点下
                     </p>
-                  </div>
-                )}
+                  )}
+                </div>
                 <div className="grid gap-2">
                   <Label>排序序号</Label>
                   <Input
