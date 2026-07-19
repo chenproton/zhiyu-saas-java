@@ -144,8 +144,6 @@ export interface ListRenderProps<T extends ContentListItem> {
   onDelete: (item: T) => void
   onSubmitApproval: (item: T) => void
   onWithdrawApproval: (item: T) => void
-  onApprove: (item: T) => void
-  onReject: (item: T) => void
   onViewRejectReason: (item: T) => void
   onPublish: (item: T) => void
   onUnpublish: (item: T) => void
@@ -487,30 +485,6 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     try { await itemApi.withdraw(item.id); await refresh() } catch (_) {}
   }
 
-  const handleApprove = async (item: T) => {
-    try {
-      const records = await approvalApi.list({ targetType: approvalTargetType, targetId: item.id, status: "pending", limit: 1 })
-      if (records.items.length === 0) { alert("未找到审批记录"); return }
-      await approvalApi.review(records.items[0].id, { status: "approved" })
-      await refresh()
-    } catch (err: any) {
-      console.error("审批失败", err)
-      alert(err?.message || "审批失败，请稍后重试")
-    }
-  }
-
-  const handleReject = async (item: T) => {
-    try {
-      const records = await approvalApi.list({ targetType: approvalTargetType, targetId: item.id, status: "pending", limit: 1 })
-      if (records.items.length === 0) { alert("未找到审批记录"); return }
-      await approvalApi.review(records.items[0].id, { status: "rejected" })
-      await refresh()
-    } catch (err: any) {
-      console.error("驳回失败", err)
-      alert(err?.message || "驳回失败，请稍后重试")
-    }
-  }
-
   const handlePublish = async (item: T) => {
     try { await itemApi.publish(item.id); await refresh() } catch (_) {}
   }
@@ -579,8 +553,6 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     onDelete: handleDelete,
     onSubmitApproval: handleSubmitApproval,
     onWithdrawApproval: handleWithdrawApproval,
-    onApprove: handleApprove,
-    onReject: handleReject,
     onViewRejectReason: handleViewRejectReason,
     onPublish: handlePublish,
     onUnpublish: handleUnpublish,

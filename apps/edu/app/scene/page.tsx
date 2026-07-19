@@ -103,8 +103,6 @@ export default function SceneHallPage() {
           onDelete={props.onDelete}
           onSubmitApproval={props.onSubmitApproval}
           onWithdrawApproval={props.onWithdrawApproval}
-          onApprove={props.onApprove}
-          onReject={props.onReject}
           onPublish={props.onPublish}
           onUnpublish={props.onUnpublish}
           onArchive={props.onArchive}

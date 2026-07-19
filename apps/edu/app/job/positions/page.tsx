@@ -84,8 +84,6 @@ export default function PositionsPage() {
           onDelete={props.onDelete}
           onSubmitApproval={props.onSubmitApproval}
           onWithdrawApproval={props.onWithdrawApproval}
-          onApprove={props.onApprove}
-          onReject={props.onReject}
           onViewRejectReason={props.onViewRejectReason}
           onPublish={props.onPublish}
           onUnpublish={props.onUnpublish}
