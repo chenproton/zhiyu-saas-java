@@ -40,8 +40,12 @@ export function useApprovals({ targetType, limit = 1000 }: UseApprovalsOptions):
 
   const approve = useCallback(async (id: string, comment?: string) => {
     try {
-      await approvalApi.review(id, { status: "approved", comment })
-      toast.success("审批通过")
+      const result = await approvalApi.review(id, { status: "approved", comment })
+      if (result.status === "approved") {
+        toast.success("审批通过")
+      } else {
+        toast.success("审批意见已记录")
+      }
       await refresh()
     } catch (err: any) {
       toast.error(err.message || "审批失败")
@@ -50,8 +54,12 @@ export function useApprovals({ targetType, limit = 1000 }: UseApprovalsOptions):
 
   const reject = useCallback(async (id: string, comment?: string) => {
     try {
-      await approvalApi.review(id, { status: "rejected", comment })
-      toast.success("已驳回")
+      const result = await approvalApi.review(id, { status: "rejected", comment })
+      if (result.status === "rejected") {
+        toast.success("已驳回")
+      } else {
+        toast.success("驳回意见已记录")
+      }
       await refresh()
     } catch (err: any) {
       toast.error(err.message || "驳回失败")
