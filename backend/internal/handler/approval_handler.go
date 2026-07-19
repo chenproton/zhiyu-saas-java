@@ -365,10 +365,12 @@ func (h *ApprovalHandler) syncEntityStatus(ctx context.Context, targetType, targ
 	if !ok {
 		return nil
 	}
-	_, err := h.DB.Exec(ctx,
+	result, err := h.DB.Exec(ctx,
 		fmt.Sprintf("UPDATE %s SET status = $1, updated_at = NOW() WHERE id = $2", tableName),
 		status, targetID,
 	)
+	fmt.Printf("debug: syncEntityStatus targetType=%s targetID=%s status=%s table=%s rows=%d err=%v\n",
+		targetType, targetID, status, tableName, result.RowsAffected(), err)
 	return err
 }
 
