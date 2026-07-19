@@ -328,6 +328,10 @@ func (h *CourseHandler) Archive(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusArchived)
 }
 
+func (h *CourseHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusDraft)
+}
+
 func (h *CourseHandler) Invite(w http.ResponseWriter, r *http.Request) {
 	h.actions().invite(w, r)
 }

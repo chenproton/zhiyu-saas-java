@@ -260,6 +260,10 @@ func (h *ExamHandler) Archive(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusArchived)
 }
 
+func (h *ExamHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusDraft)
+}
+
 func (h *ExamHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusDraft)
 }

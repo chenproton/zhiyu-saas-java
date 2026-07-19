@@ -114,21 +114,20 @@ import { getAnnotation } from "@/lib/prd-annotations"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
 import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi } from "@/lib/api"
 import type { ScenarioTask as ApiScenarioTask } from "@/lib/types/scene"
-import {
-  type Task,
-  type PositionAbility,
-  type GradeMapping,
-  // Import module-level mutable arrays; cleared & repopulated from APIs on mount
-  scenarios,
-  knowledgePoints,
-  abilityPoints,
-  learningResources,
-  positionAbilities,
-  questionBank,
-  granularLessons,
-  professions,
-  allTeachers,
+import { useToast } from "@/hooks/use-toast"
+import type {
+  Task, PositionAbility, GradeMapping,
 } from "@/lib/mock-data"
+
+// Module-level mutable arrays — populated from APIs on mount, zero mock data
+const scenarios: any[] = []
+const knowledgePoints: any[] = []
+const abilityPoints: any[] = []
+const learningResources: any[] = []
+const positionAbilities: any[] = []
+const questionBank: Record<string, any[]> = { frontend: [], backend: [], draft: [] }
+const granularLessons: any[] = []
+const professions: any[] = []
 
 // ============ Types & Configs ============
 
@@ -517,9 +516,11 @@ export default function TasksEditPage() {
   const params = useParams()
   const router = useRouter()
   const scenarioId = params.id as string
+  const { toast } = useToast()
 
   const [existingScenario, setExistingScenario] = useState<any>(null)
   const [dataLoaded, setDataLoaded] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const [tasks, setTasks] = useState<Task[]>([])
   const [taskStates, setTaskStates] = useState<Record<string, TaskState>>({})
@@ -733,37 +734,50 @@ export default function TasksEditPage() {
     }
   }
 
-  const handleAddTask = () => {
-    const task: Task = {
-      id: `task-${Date.now()}`,
-      name: newTask.name,
-      code: `T-${Date.now().toString().slice(-6)}`,
-      order: tasks.length + 1,
-      description: newTask.background,
-      estimatedHours: newTask.hours,
-      taskType: newTask.type,
-      difficulty: newTask.difficulty as 1|2|3|4|5,
-      background: newTask.background,
-      dependencies: [],
-      resources: [],
-      deliverables: [],
-      knowledgePoints: [],
-      abilityPoints: [],
-      assessment: null,
+  const handleAddTask = async () => {
+    if (!newTask.name.trim()) return
+    try {
+      const payload: any = {
+        scenarioId,
+        name: newTask.name.trim(),
+        code: `TK-${Date.now().toString().slice(-6)}`,
+        sortOrder: tasks.length + 1,
+        estimatedHours: newTask.hours,
+        taskType: newTask.type,
+        difficulty: newTask.difficulty,
+        background: newTask.background,
+        dependencyIds: [],
+        isReferenced: false,
+        knowledgePointIds: [],
+        abilityPointIds: [],
+        resourceIds: [],
+      }
+      const created = await taskApi.create(payload)
+      const mkTask: Task = {
+        ...created as any,
+        order: created.sortOrder,
+        deliverables: [],
+        knowledgePoints: [],
+        abilityPoints: [],
+        resources: [],
+        dependencies: [],
+        assessment: null,
+      }
+      const newTasks = [...tasks, mkTask]
+      setTasks(newTasks)
+      const count = newTasks.length
+      const weight = Math.floor(100 / count)
+      const newStates = { ...taskStates }
+      Object.keys(newStates).forEach(id => { newStates[id] = { ...newStates[id], weight } })
+      newStates[created.id] = makeDefaultTaskState(count, count - 1)
+      newStates[created.id].weight = 100 - weight * (count - 1)
+      setTaskStates(newStates)
+      setIsAddTaskOpen(false)
+      setNewTask({ name: "", hours: 4, type: "training", difficulty: 3, background: "" })
+      toast({ title: "已添加任务" })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "添加失败", description: err.message })
     }
-    const newTasks = [...tasks, task]
-    setTasks(newTasks)
-    const count = newTasks.length
-    const weight = Math.floor(100 / count)
-    const newStates = { ...taskStates }
-    Object.keys(newStates).forEach(id => {
-      newStates[id] = { ...newStates[id], weight }
-    })
-    newStates[task.id] = makeDefaultTaskState(count, count - 1)
-    newStates[task.id].weight = 100 - weight * (count - 1)
-    setTaskStates(newStates)
-    setIsAddTaskOpen(false)
-    setNewTask({ name: "", hours: 4, type: "training", difficulty: 3, background: "" })
   }
 
   const handleClone = () => {
@@ -786,12 +800,82 @@ export default function TasksEditPage() {
     setSelectedClone([])
   }
 
-  const handleDeleteTask = (id: string) => {
-    setTasks(tasks.filter(t => t.id !== id))
-    const newStates = { ...taskStates }
-    delete newStates[id]
-    setTaskStates(newStates)
-    setDeleteConfirmTask(null)
+  const handleDeleteTask = async (id: string) => {
+    try {
+      await taskApi.delete(id)
+      setTasks(tasks.filter(t => t.id !== id))
+      const newStates = { ...taskStates }
+      delete newStates[id]
+      setTaskStates(newStates)
+      setDeleteConfirmTask(null)
+      toast({ title: "已删除任务" })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "删除失败", description: err.message })
+    }
+  }
+
+  const saveTasksToBackend = async () => {
+    const results = []
+    for (let i = 0; i < tasks.length; i++) {
+      const t = tasks[i]
+      const ts = taskStates[t.id] || makeDefaultTaskState(0, 0)
+      const payload: any = {
+        scenarioId,
+        name: t.name,
+        code: t.code,
+        sortOrder: i,
+        description: t.description,
+        detailedDescription: ts.description || t.detailedDescription,
+        estimatedHours: t.estimatedHours,
+        taskType: t.taskType,
+        difficulty: t.difficulty,
+        background: t.background,
+        dependencyIds: t.dependencies || [],
+        isReferenced: !!t.isReferenced,
+        sourceScenarioId: t.sourceScenarioId || null,
+        knowledgePointIds: ts.knowledgePoints || [],
+        abilityPointIds: ts.abilityPoints || [],
+        resourceIds: ts.resources || [],
+        evalData: {
+          evaluationMethods: ts.evaluationMethods,
+          methodWeights: ts.methodWeights,
+          weight: ts.weight,
+          locked: ts.locked,
+          gradeMapping: ts.gradeMapping,
+        },
+      }
+      if (t.id.startsWith("task-")) {
+        const created = await taskApi.create(payload)
+        t.id = created.id
+      } else {
+        await taskApi.update(t.id, payload)
+      }
+    }
+  }
+
+  const handleSaveDraft = async () => {
+    setIsSaving(true)
+    try {
+      await saveTasksToBackend()
+      toast({ title: "草稿已保存" })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "保存失败", description: err.message })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleFinish = async () => {
+    setIsSaving(true)
+    try {
+      await saveTasksToBackend()
+      toast({ title: "配置已保存" })
+      router.push("/scene")
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "保存失败", description: err.message })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const distributeWeights = () => {
@@ -828,9 +912,9 @@ export default function TasksEditPage() {
           </div>
           <div className="flex items-center gap-3">
             <PrdAnnotation data={getAnnotation("editor-step2-save")}>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleSaveDraft} disabled={isSaving}>
                 <Save className="mr-2 h-4 w-4" />
-                保存草稿
+                {isSaving ? "保存中..." : "保存草稿"}
               </Button>
             </PrdAnnotation>
             <PrdAnnotation data={getAnnotation("editor-step2-preview")}>
@@ -840,9 +924,9 @@ export default function TasksEditPage() {
               </Button>
             </PrdAnnotation>
             <PrdAnnotation data={getAnnotation("editor-step2-finish")}>
-              <Button onClick={() => router.push("/scene")}>
-                完成配置
-                <ArrowRight className="ml-2 h-4 w-4" />
+              <Button onClick={handleFinish} disabled={isSaving}>
+                {isSaving ? "保存中..." : "完成配置"}
+                {!isSaving && <ArrowRight className="ml-2 h-4 w-4" />}
               </Button>
             </PrdAnnotation>
           </div>
@@ -963,8 +1047,10 @@ export default function TasksEditPage() {
                   const newTasks = [...tasks]
                   const [removed] = newTasks.splice(draggedIdx, 1)
                   newTasks.splice(idx, 0, removed)
-                  setTasks(newTasks.map((t, i) => ({ ...t, order: i + 1 })))
+                  const reordered = newTasks.map((t, i) => ({ ...t, order: i + 1 }))
+                  setTasks(reordered)
                   setDraggedIdx(null)
+                  taskApi.reorder(scenarioId, reordered.map(t => t.id)).catch(() => {})
                 }}
                 className={cn(
                   "flex items-center gap-3 p-3 bg-white rounded-xl border hover:border-primary/30 transition-colors group",
@@ -1748,13 +1834,13 @@ function EditCardDialog({
           const kp = knowledgePoints.find(k => k.id === glSelectTargetKp)
           if (!kp) return
           const current = kp.granularLessons || []
-          const updated = current.includes(glId) ? current.filter(x => x !== glId) : [...current, glId]
+          const updated = current.includes(glId) ? current.filter((x: any) => x !== glId) : [...current, glId]
           kp.granularLessons = updated
           updateState({ knowledgePoints: [...state.knowledgePoints] })
         }
 
         const detailKp = selectedKpForDetail ? knowledgePoints.find(k => k.id === selectedKpForDetail) : null
-        const detailGranularLessons = detailKp?.granularLessons?.map(gid => granularLessons.find(g => g.id === gid)).filter(Boolean) || []
+        const detailGranularLessons = detailKp?.granularLessons?.map((gid: any) => granularLessons.find((g: any) => g.id === gid)).filter(Boolean) || []
 
         const glFiltered = granularLessons.filter(g => !glSearch || g.name.includes(glSearch) || (g.code && g.code.includes(glSearch)))
         const glTargetKp = glSelectTargetKp ? knowledgePoints.find(k => k.id === glSelectTargetKp) : null
@@ -1876,7 +1962,7 @@ function EditCardDialog({
                         const kp = knowledgePoints.find(k => k.id === kpId)
                         if (!kp) return null
                         const isReference = !customKnowledgePointIds.has(kpId)
-                        const kpGlNames = kp.granularLessons?.map(gid => granularLessons.find(g => g.id === gid)?.name).filter(Boolean) || []
+                        const kpGlNames = kp.granularLessons?.map((gid: any) => granularLessons.find((g: any) => g.id === gid)?.name).filter(Boolean) || []
                         return (
                           <div key={kpId} className={cn(
                             "p-2 rounded-lg border cursor-pointer transition-colors relative overflow-hidden",
@@ -1900,7 +1986,7 @@ function EditCardDialog({
                             <p className="text-[11px] text-gray-500 line-clamp-1 mb-1">{kp.description}</p>
                             {kpGlNames.length > 0 && (
                               <div className="flex items-center gap-0.5 flex-wrap">
-                                {kpGlNames.slice(0, 2).map((name, i) => (
+                                {kpGlNames.slice(0, 2).map((name: any, i: number) => (
                                   <Badge key={i} variant="outline" className="text-[9px] font-normal px-1 py-0 h-4">{name}</Badge>
                                 ))}
                                 {kpGlNames.length > 2 && <span className="text-[9px] text-gray-400">+{kpGlNames.length - 2}</span>}
@@ -1970,7 +2056,7 @@ function EditCardDialog({
                       {newKpForm.granularLessons.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5 mb-2">
                           {newKpForm.granularLessons.map(gid => {
-                            const gl = granularLessons.find(g => g.id === gid)
+                            const gl = granularLessons.find((g: any) => g.id === gid)
                             return gl ? (
                               <Badge key={gid} variant="secondary" className="text-xs gap-1">
                                 {gl.name}
@@ -2065,8 +2151,8 @@ function EditCardDialog({
                           <p className="text-xs">从左侧选择颗粒课</p>
                         </div>
                       ) : (
-                        glSelectedIds.map(gid => {
-                          const gl = granularLessons.find(g => g.id === gid)
+                        glSelectedIds.map((gid: any) => {
+                          const gl = granularLessons.find((g: any) => g.id === gid)
                           if (!gl) return null
                           return (
                             <div key={gid} className="flex items-center gap-2 p-2 rounded border bg-gray-50">
@@ -2138,7 +2224,7 @@ function EditCardDialog({
                         )}
                       </div>
                       <div className="flex flex-wrap gap-1.5 mt-2">
-                        {detailGranularLessons.length > 0 ? detailGranularLessons.map(gl => (
+                        {detailGranularLessons.length > 0 ? detailGranularLessons.map((gl: any) => (
                           <Badge key={gl!.id} variant="outline" className="text-xs">{gl!.name}</Badge>
                         )) : <p className="text-sm text-gray-400">暂无关联颗粒课</p>}
                       </div>
@@ -2166,7 +2252,7 @@ function EditCardDialog({
 
         // Build position name map
         const positionNameMap: Record<string, string> = {}
-        professions.forEach(p => p.positions.forEach(pos => { positionNameMap[pos.id] = pos.name }))
+        professions.forEach((p: any) => p.positions.forEach((pos: any) => { positionNameMap[pos.id] = pos.name }))
 
         // Filter abilities related to current position
         const relatedAbilities = abilityPoints.filter(ab => ab.positionIds?.includes(positionId))
@@ -2228,8 +2314,8 @@ function EditCardDialog({
 
             <div className="flex-1 min-h-0 border rounded-xl overflow-hidden">
               <div className="h-full overflow-y-auto p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 content-start">
-                {Object.entries(domainGroups).map(([domain, abilities]) => {
-                  const filtered = abilities.filter(a =>
+                {Object.entries(domainGroups).map(([domain, abilities]: [string, any]) => {
+                  const filtered = abilities.filter((a: any) =>
                     !abilitySearch ||
                     a.name.includes(abilitySearch) ||
                     a.description.includes(abilitySearch) ||
@@ -2251,9 +2337,9 @@ function EditCardDialog({
                       </button>
                       {expanded && (
                         <div className="divide-y divide-gray-100">
-                          {filtered.map(ab => {
+                          {filtered.map((ab: any) => {
                             const selected = state.abilityPoints.includes(ab.id)
-                            const positionNames = ab.positionIds?.map(pid => positionNameMap[pid]).filter(Boolean) || []
+                            const positionNames = ab.positionIds?.map((pid: any) => positionNameMap[pid]).filter(Boolean) || []
                             return (
                               <div
                                 key={ab.id}
@@ -2288,7 +2374,7 @@ function EditCardDialog({
                                   <p className="text-xs text-gray-500 line-clamp-1 flex-1">{ab.description}</p>
                                   {positionNames.length > 0 && (
                                     <div className="flex items-center gap-1 shrink-0">
-                                      {positionNames.slice(0, 2).map((name, i) => (
+                                      {positionNames.slice(0, 2).map((name: any, i: number) => (
                                         <Badge key={i} variant="secondary" className="text-[10px] font-normal bg-gray-100 text-gray-600 h-5 px-1">
                                           {name}
                                         </Badge>
@@ -2307,8 +2393,8 @@ function EditCardDialog({
                     </div>
                   )
                 })}
-                {Object.entries(domainGroups).filter(([_, abilities]) =>
-                  abilities.some(a =>
+                {Object.entries(domainGroups).filter(([_, abilities]: [string, any]) =>
+                  abilities.some((a: any) =>
                     !abilitySearch ||
                     a.name.includes(abilitySearch) ||
                     a.description.includes(abilitySearch) ||
@@ -2348,7 +2434,7 @@ function EditCardDialog({
                     <div>
                       <Label className="text-xs text-gray-500">关联岗位</Label>
                       <div className="flex flex-wrap gap-1.5 mt-1">
-                        {(detailAb.positionIds?.map(pid => positionNameMap[pid]).filter(Boolean) || []).map((name, i) => (
+                        {(detailAb.positionIds?.map((pid: any) => positionNameMap[pid]).filter(Boolean) || []).map((name: any, i: number) => (
                           <Badge key={i} variant="secondary">{name}</Badge>
                         ))}
                         {(!detailAb.positionIds || detailAb.positionIds.length === 0) && <span className="text-sm text-gray-400">-</span>}

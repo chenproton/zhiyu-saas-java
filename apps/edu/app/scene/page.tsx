@@ -54,7 +54,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { cn } from "@/lib/utils"
-import { scenarioApi, sceneBatchApi, taskApi, importExportApi } from "@/lib/api"
+import { scenarioApi, sceneBatchApi, taskApi, importExportApi, approvalApi } from "@/lib/api"
 import type { Scenario, SceneBatch } from "@/lib/types/scene"
 import { useAuth } from "@/components/auth-provider"
 
@@ -139,6 +139,7 @@ export default function SceneHallPage() {
       code: s.code,
       version: s.version,
       status: s.status,
+      batchId: s.batchId,
       positionName: "-",
       batchName: s.batchId ? batches.find((b) => b.id === s.batchId)?.name || "-" : "-",
       creatorName: "-",
@@ -281,7 +282,7 @@ export default function SceneHallPage() {
     for (const scenario of selectedScenarios) {
       if (scenario.status === "published") {
         try {
-          await scenarioApi.update(scenario.id, { status: "draft" })
+          await scenarioApi.unpublish(scenario.id)
         } catch (err) {
           console.error("取消发布失败", err)
         }
@@ -427,8 +428,14 @@ export default function SceneHallPage() {
   }
 
   const handleSubmitApproval = async (scenario: ScenarioListItem) => {
+    const batch = batches.find((b) => b.id === scenario.batchId)
+    if (!batch) {
+      alert("该场景未关联批次，无法提交审批")
+      return
+    }
     try {
       await scenarioApi.submit(scenario.id)
+      await approvalApi.create({ targetType: 'scenario', targetId: scenario.id, workflowId: batch.workflowId })
       await refresh()
     } catch (err) {
       console.error("提交审批失败", err)
@@ -443,6 +450,56 @@ export default function SceneHallPage() {
     } catch (err) {
       console.error("撤回审批失败", err)
       alert("撤回审批失败，请稍后重试")
+    }
+  }
+
+  const handleApprove = async (scenario: ScenarioListItem) => {
+    try {
+      const records = await approvalApi.list({ targetType: 'scenario', targetId: scenario.id, status: 'pending', limit: 1 })
+      if (records.items.length === 0) {
+        alert("未找到审批记录")
+        return
+      }
+      await approvalApi.review(records.items[0].id, { status: 'approved' })
+      await refresh()
+    } catch (err) {
+      console.error("审批通过失败", err)
+      alert("审批通过失败，请稍后重试")
+    }
+  }
+
+  const handleReject = async (scenario: ScenarioListItem) => {
+    try {
+      const records = await approvalApi.list({ targetType: 'scenario', targetId: scenario.id, status: 'pending', limit: 1 })
+      if (records.items.length === 0) {
+        alert("未找到审批记录")
+        return
+      }
+      await approvalApi.review(records.items[0].id, { status: 'rejected' })
+      await refresh()
+    } catch (err) {
+      console.error("驳回失败", err)
+      alert("驳回失败，请稍后重试")
+    }
+  }
+
+  const handlePublish = async (scenario: ScenarioListItem) => {
+    try {
+      await scenarioApi.publish(scenario.id)
+      await refresh()
+    } catch (err) {
+      console.error("发布失败", err)
+      alert("发布失败，请稍后重试")
+    }
+  }
+
+  const handleUnpublish = async (scenario: ScenarioListItem) => {
+    try {
+      await scenarioApi.unpublish(scenario.id)
+      await refresh()
+    } catch (err) {
+      console.error("取消发布失败", err)
+      alert("取消发布失败，请稍后重试")
     }
   }
 
@@ -716,6 +773,10 @@ export default function SceneHallPage() {
               onDelete={handleDelete}
               onSubmitApproval={handleSubmitApproval}
               onWithdrawApproval={handleWithdrawApproval}
+              onApprove={handleApprove}
+              onReject={handleReject}
+              onPublish={handlePublish}
+              onUnpublish={handleUnpublish}
               onViewRejectReason={handleViewRejectReason}
               onInviteCoBuild={handleInviteCoBuild}
               basePath="/scene/scenarios"
@@ -763,6 +824,10 @@ export default function SceneHallPage() {
                         onDelete={handleDelete}
                         onSubmitApproval={handleSubmitApproval}
                         onWithdrawApproval={handleWithdrawApproval}
+                        onApprove={handleApprove}
+                        onReject={handleReject}
+                        onPublish={handlePublish}
+                        onUnpublish={handleUnpublish}
                         onViewRejectReason={handleViewRejectReason}
                         onInviteCoBuild={handleInviteCoBuild}
                         basePath="/scene/scenarios"
@@ -793,6 +858,10 @@ export default function SceneHallPage() {
                   onDelete={handleDelete}
                   onSubmitApproval={handleSubmitApproval}
                   onWithdrawApproval={handleWithdrawApproval}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                  onPublish={handlePublish}
+                  onUnpublish={handleUnpublish}
                   onViewRejectReason={handleViewRejectReason}
                   onInviteCoBuild={handleInviteCoBuild}
                   basePath="/scene/scenarios"

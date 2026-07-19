@@ -1,6 +1,6 @@
 "use client"
 
-import { Copy, Download, Eye, Pencil, Send, Trash2, Undo2, UserPlus } from "lucide-react"
+import { Copy, Download, Eye, Pencil, Rocket, Send, Trash2, Undo2, CheckCircle, XCircle, ArrowDownFromLine, UserPlus } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -19,6 +19,10 @@ interface CourseListProps {
   onDelete?: (course: Course) => void
   onSubmitApproval?: (course: Course) => void
   onWithdrawApproval?: (course: Course) => void
+  onApprove?: (course: Course) => void
+  onReject?: (course: Course) => void
+  onPublish?: (course: Course) => void
+  onUnpublish?: (course: Course) => void
   onInviteCoBuild?: (course: Course) => void
   onExport?: (course: Course) => void
   className?: string
@@ -34,6 +38,10 @@ export function CourseList({
   onDelete,
   onSubmitApproval,
   onWithdrawApproval,
+  onApprove,
+  onReject,
+  onPublish,
+  onUnpublish,
   onInviteCoBuild,
   onExport,
   className,
@@ -116,7 +124,7 @@ export function CourseList({
                       编辑
                     </Link>
                   </Button>
-                  {course.status === "draft" && onSubmitApproval && (
+                  {(course.status === "draft" || course.status === "rejected") && onSubmitApproval && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -142,6 +150,62 @@ export function CourseList({
                     >
                       <Undo2 className="mr-1 h-3 w-3" />
                       撤回审批
+                    </Button>
+                  )}
+                  {course.status === "pending" && onApprove && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onApprove(course)
+                      }}
+                    >
+                      <CheckCircle className="mr-1 h-3 w-3" />
+                      通过
+                    </Button>
+                  )}
+                  {course.status === "pending" && onReject && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onReject(course)
+                      }}
+                    >
+                      <XCircle className="mr-1 h-3 w-3" />
+                      驳回
+                    </Button>
+                  )}
+                  {course.status === "approved" && onPublish && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onPublish(course)
+                      }}
+                    >
+                      <Rocket className="mr-1 h-3 w-3" />
+                      发布
+                    </Button>
+                  )}
+                  {course.status === "published" && onUnpublish && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onUnpublish(course)
+                      }}
+                    >
+                      <ArrowDownFromLine className="mr-1 h-3 w-3" />
+                      取消发布
                     </Button>
                   )}
                   {onClone && (

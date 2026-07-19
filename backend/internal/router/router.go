@@ -23,6 +23,7 @@ type contentRoutes interface {
 	Review(http.ResponseWriter, *http.Request)
 	Publish(http.ResponseWriter, *http.Request)
 	Archive(http.ResponseWriter, *http.Request)
+	Unpublish(http.ResponseWriter, *http.Request)
 	Withdraw(http.ResponseWriter, *http.Request)
 	Invite(http.ResponseWriter, *http.Request)
 }
@@ -37,6 +38,7 @@ func registerContentRoutes(r chi.Router, base string, h contentRoutes) {
 	r.Post(base+"/{id}/review", h.Review)
 	r.Post(base+"/{id}/publish", h.Publish)
 	r.Post(base+"/{id}/archive", h.Archive)
+	r.Post(base+"/{id}/unpublish", h.Unpublish)
 	r.Post(base+"/{id}/withdraw", h.Withdraw)
 	r.Post(base+"/{id}/invite", h.Invite)
 }

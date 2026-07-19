@@ -42,17 +42,17 @@ export interface Department {
   name: string
 }
 
-// 状态枚举
-export type Status = 'draft' | 'unsubmitted' | 'pending' | 'rejected' | 'toPublish' | 'published'
+// 状态枚举：与后端 content_status 保持一致
+export type Status = 'draft' | 'pending' | 'approved' | 'rejected' | 'published' | 'archived'
 
 // 状态中文映射
 export const STATUS_LABELS: Record<Status, string> = {
   draft: '草稿',
-  unsubmitted: '未提交',
   pending: '审批中',
+  approved: '已通过',
   rejected: '已驳回',
-  toPublish: '待发布',
   published: '已发布',
+  archived: '已归档',
 }
 
 // 题目类型枚举
@@ -190,14 +190,14 @@ export type StatusAction =
   | 'publish'         // 发布
   | 'unpublish'       // 取消发布
 
-// 状态流转规则
+// 状态流转规则：与后端状态机保持一致
 export const STATUS_TRANSITIONS: Record<StatusAction, { from: Status[], to: Status }> = {
-  save_draft: { from: ['draft', 'unsubmitted', 'rejected'], to: 'draft' },
-  submit: { from: ['draft', 'unsubmitted', 'rejected'], to: 'pending' },
-  withdraw: { from: ['pending'], to: 'unsubmitted' },
-  approve: { from: ['pending'], to: 'toPublish' },
+  save_draft: { from: ['draft', 'rejected'], to: 'draft' },
+  submit: { from: ['draft', 'rejected'], to: 'pending' },
+  withdraw: { from: ['pending'], to: 'draft' },
+  approve: { from: ['pending'], to: 'approved' },
   reject: { from: ['pending'], to: 'rejected' },
-  publish: { from: ['toPublish'], to: 'published' },
+  publish: { from: ['approved'], to: 'published' },
   unpublish: { from: ['published'], to: 'draft' },
 }
 

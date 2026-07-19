@@ -246,8 +246,9 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
     for (const id of selectedIds) {
       const course = courses.find((c) => c.id === id)
       if (course && (course.status === "draft" || course.status === "rejected") && course.batchId) {
+        const batch = batches.find((b) => b.id === course.batchId)
         await courseApi.submit(id)
-        await approvalApi.create({ targetType: "course", targetId: id })
+        await approvalApi.create({ targetType: "course", targetId: id, workflowId: batch?.workflowId })
       }
     }
     setSelectedIds([])
@@ -269,7 +270,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
     for (const id of selectedIds) {
       const course = courses.find((c) => c.id === id)
       if (course && course.status === "published") {
-        await courseApi.update(id, { status: "draft" })
+        await courseApi.unpublish(id)
       }
     }
     setSelectedIds([])
@@ -394,13 +395,44 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
       alert("该课程未关联批次，无法提交审批")
       return
     }
+    const batch = batches.find((b) => b.id === course.batchId)
     await courseApi.submit(course.id)
-    await approvalApi.create({ targetType: "course", targetId: course.id })
+    await approvalApi.create({ targetType: "course", targetId: course.id, workflowId: batch?.workflowId })
     await loadData()
   }
 
   const handleWithdrawApproval = async (course: Course) => {
     await courseApi.withdraw(course.id)
+    await loadData()
+  }
+
+  const handleApprove = async (course: Course) => {
+    const records = await approvalApi.list({ targetType: "course", targetId: course.id, status: "pending", limit: 1 })
+    if (records.items.length === 0) {
+      alert("未找到审批记录")
+      return
+    }
+    await approvalApi.review(records.items[0].id, { status: "approved" })
+    await loadData()
+  }
+
+  const handleReject = async (course: Course) => {
+    const records = await approvalApi.list({ targetType: "course", targetId: course.id, status: "pending", limit: 1 })
+    if (records.items.length === 0) {
+      alert("未找到审批记录")
+      return
+    }
+    await approvalApi.review(records.items[0].id, { status: "rejected" })
+    await loadData()
+  }
+
+  const handlePublish = async (course: Course) => {
+    await courseApi.publish(course.id)
+    await loadData()
+  }
+
+  const handleUnpublish = async (course: Course) => {
+    await courseApi.unpublish(course.id)
     await loadData()
   }
 
@@ -668,6 +700,10 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
               onDelete={handleDelete}
               onSubmitApproval={handleSubmitApproval}
               onWithdrawApproval={handleWithdrawApproval}
+              onApprove={handleApprove}
+              onReject={handleReject}
+              onPublish={handlePublish}
+              onUnpublish={handleUnpublish}
               onInviteCoBuild={handleInviteCoBuild}
               onExport={handleExport}
               className="border-0 rounded-none"
@@ -717,6 +753,10 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
                         onDelete={handleDelete}
                         onSubmitApproval={handleSubmitApproval}
                         onWithdrawApproval={handleWithdrawApproval}
+                        onApprove={handleApprove}
+                        onReject={handleReject}
+                        onPublish={handlePublish}
+                        onUnpublish={handleUnpublish}
                         onInviteCoBuild={handleInviteCoBuild}
                         onExport={handleExport}
                       />
@@ -747,6 +787,10 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
                   onDelete={handleDelete}
                   onSubmitApproval={handleSubmitApproval}
                   onWithdrawApproval={handleWithdrawApproval}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                  onPublish={handlePublish}
+                  onUnpublish={handleUnpublish}
                   onInviteCoBuild={handleInviteCoBuild}
                   onExport={handleExport}
                 />

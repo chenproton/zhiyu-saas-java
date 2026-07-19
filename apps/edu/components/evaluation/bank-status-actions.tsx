@@ -48,7 +48,7 @@ const confirmConfig: Record<Exclude<ConfirmType, null>, { title: string; descrip
   },
   approve: {
     title: "审批通过",
-    description: "通过后题库将进入待发布状态。确定要通过吗？",
+    description: "通过后题库将进入已通过状态。确定要通过吗？",
     variant: "default",
   },
   reject: {
@@ -100,8 +100,8 @@ export function BankStatusActions({
     setConfirmType(null)
   }
 
-  const canEdit = ['draft', 'unsubmitted', 'rejected'].includes(status)
-  const canDelete = ['draft', 'unsubmitted', 'rejected'].includes(status)
+  const canEdit = ['draft', 'rejected'].includes(status)
+  const canDelete = ['draft', 'rejected'].includes(status)
   const canSubmit = canPerformAction(status, 'submit')
   const canWithdraw = canPerformAction(status, 'withdraw')
   const canApprove = canPerformAction(status, 'approve')

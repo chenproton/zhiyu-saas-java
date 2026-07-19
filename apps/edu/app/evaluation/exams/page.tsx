@@ -263,7 +263,7 @@ export default function ExamsPage() {
 
   const canBatchSubmit = selectedExams.some((e) => e.status === "draft" || e.status === "rejected")
   const canBatchWithdraw = selectedExams.some((e) => e.status === "pending")
-  const canBatchPublish = selectedExams.some((e) => e.status === "pending" || e.status === "rejected")
+  const canBatchPublish = selectedExams.some((e) => e.status === "approved")
   const canBatchUnpublish = selectedExams.some((e) => e.status === "published")
   const canBatchDelete = selectedExams.some((e) => e.status === "draft" || e.status === "rejected")
 
@@ -312,9 +312,15 @@ export default function ExamsPage() {
   }
 
   const handleSubmitApproval = async (id: string) => {
+    const exam = exams.find((e) => e.id === id)
+    if (!exam?.batchId) {
+      alert("该试卷未关联批次，无法提交审批")
+      return
+    }
+    const batch = batches.find((b) => b.id === exam.batchId)
     try {
       await examApi.submit(id)
-      await approvalApi.create({ targetType: "exam", targetId: id })
+      await approvalApi.create({ targetType: "exam", targetId: id, workflowId: batch?.workflowId })
       await loadData()
     } catch (err) {
       console.error("提交审批失败", err)
@@ -371,7 +377,7 @@ export default function ExamsPage() {
 
   const handleUnpublish = async (id: string) => {
     try {
-      await examApi.update(id, { status: "draft" })
+      await examApi.unpublish(id)
       await loadData()
     } catch (err) {
       console.error("取消发布失败", err)
@@ -437,7 +443,7 @@ export default function ExamsPage() {
 
   const handleBatchPublish = async () => {
     for (const exam of selectedExams) {
-      if (exam.status === "pending" || exam.status === "rejected") {
+      if (exam.status === "approved") {
         await examApi.publish(exam.id)
       }
     }
@@ -448,7 +454,7 @@ export default function ExamsPage() {
   const handleBatchUnpublish = async () => {
     for (const exam of selectedExams) {
       if (exam.status === "published") {
-        await examApi.update(exam.id, { status: "draft" })
+        await examApi.unpublish(exam.id)
       }
     }
     setSelectedIds([])
@@ -697,7 +703,7 @@ export default function ExamsPage() {
                         )}
                       </>
                     )}
-                    {(exam.status === "pending" || exam.status === "rejected") && hasPermission("evaluation", "exams", "publish") && (
+                    {exam.status === "approved" && hasPermission("evaluation", "exams", "publish") && (
                       <Button
                         variant="ghost"
                         size="sm"

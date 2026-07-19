@@ -315,6 +315,10 @@ func (h *QuestionBankHandler) Archive(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusArchived)
 }
 
+func (h *QuestionBankHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusDraft)
+}
+
 func (h *QuestionBankHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusDraft)
 }

@@ -259,7 +259,7 @@ export default function QuestionBanksPage() {
 
   const canBatchSubmit = selectedBanks.some((b) => b.status === "draft" || b.status === "rejected")
   const canBatchWithdraw = selectedBanks.some((b) => b.status === "pending")
-  const canBatchPublish = selectedBanks.some((b) => b.status === "pending" || b.status === "rejected")
+  const canBatchPublish = selectedBanks.some((b) => b.status === "approved")
   const canBatchUnpublish = selectedBanks.some((b) => b.status === "published")
   const canBatchDelete = selectedBanks.some((b) => b.status === "draft" || b.status === "rejected")
 
@@ -305,9 +305,15 @@ export default function QuestionBanksPage() {
   }
 
   const handleSubmitApproval = async (id: string) => {
+    const bank = banks.find((b) => b.id === id)
+    if (!bank?.batchId) {
+      alert("该题库未关联批次，无法提交审批")
+      return
+    }
+    const batch = batches.find((b) => b.id === bank.batchId)
     try {
       await questionBankApi.submit(id)
-      await approvalApi.create({ targetType: "question_bank", targetId: id })
+      await approvalApi.create({ targetType: "question_bank", targetId: id, workflowId: batch?.workflowId })
       await loadData()
     } catch (err) {
       console.error("提交审批失败", err)
@@ -339,7 +345,7 @@ export default function QuestionBanksPage() {
 
   const handleReview = async (id: string, status: "approved" | "rejected") => {
     try {
-      const records = await approvalApi.list({ targetType: "question_bank", targetId: id, limit: 1 })
+      const records = await approvalApi.list({ targetType: "question_bank", targetId: id, status: "pending", limit: 1 })
       if (records.items.length === 0) {
         alert("未找到审批记录")
         return
@@ -364,7 +370,7 @@ export default function QuestionBanksPage() {
 
   const handleUnpublish = async (id: string) => {
     try {
-      await questionBankApi.update(id, { status: "draft" })
+      await questionBankApi.unpublish(id)
       await loadData()
     } catch (err) {
       console.error("取消发布失败", err)
@@ -443,7 +449,7 @@ export default function QuestionBanksPage() {
 
   const handleBatchPublish = async () => {
     for (const bank of selectedBanks) {
-      if (bank.status === "pending" || bank.status === "rejected") {
+      if (bank.status === "approved") {
         await questionBankApi.publish(bank.id)
       }
     }
@@ -454,7 +460,7 @@ export default function QuestionBanksPage() {
   const handleBatchUnpublish = async () => {
     for (const bank of selectedBanks) {
       if (bank.status === "published") {
-        await questionBankApi.update(bank.id, { status: "draft" })
+        await questionBankApi.unpublish(bank.id)
       }
     }
     setSelectedIds([])
@@ -708,7 +714,7 @@ export default function QuestionBanksPage() {
                         </Button>
                       </>
                     )}
-                    {(bank.status === "pending" || bank.status === "rejected") && (
+                    {bank.status === "approved" && (
                       <Button
                         variant="ghost"
                         size="sm"

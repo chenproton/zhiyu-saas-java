@@ -255,7 +255,7 @@ export default function PositionsPage() {
       const position = positions.find((p) => p.id === id)
       if (position && position.status === "published") {
         try {
-          await positionApi.update(id, { status: 'draft' } as any)
+          await positionApi.unpublish(id)
         } catch (_) {}
       }
     }
@@ -268,7 +268,7 @@ export default function PositionsPage() {
       const position = positions.find((p) => p.id === id)
       if (position && position.status === "approved") {
         try {
-          await positionApi.update(id, { status: 'published' } as any)
+          await positionApi.publish(id)
         } catch (_) {}
       }
     }
@@ -437,6 +437,24 @@ export default function PositionsPage() {
       loadData()
     } catch (err: any) {
       toast({ variant: 'destructive', title: '撤回失败', description: err?.message || '请稍后重试' })
+    }
+  }
+
+  const handlePublish = async (position: Position) => {
+    try {
+      await positionApi.publish(position.id)
+      loadData()
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: '发布失败', description: err?.message || '请稍后重试' })
+    }
+  }
+
+  const handleUnpublish = async (position: Position) => {
+    try {
+      await positionApi.unpublish(position.id)
+      loadData()
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: '取消发布失败', description: err?.message || '请稍后重试' })
     }
   }
 
@@ -710,6 +728,8 @@ export default function PositionsPage() {
               onDelete={handleDelete}
               onSubmitApproval={handleSubmitApproval}
               onWithdrawApproval={handleWithdrawApproval}
+              onPublish={handlePublish}
+              onUnpublish={handleUnpublish}
               onInviteCoBuild={handleInviteCoBuild}
               configureStepParam="2"
               className="border-0 rounded-none"
@@ -757,6 +777,8 @@ export default function PositionsPage() {
                         onDelete={handleDelete}
                         onSubmitApproval={handleSubmitApproval}
                         onWithdrawApproval={handleWithdrawApproval}
+                        onPublish={handlePublish}
+                        onUnpublish={handleUnpublish}
                         onInviteCoBuild={handleInviteCoBuild}
                         configureStepParam="2"
                         industryMap={industryMap}
@@ -788,6 +810,8 @@ export default function PositionsPage() {
                   onDelete={handleDelete}
                   onSubmitApproval={handleSubmitApproval}
                   onWithdrawApproval={handleWithdrawApproval}
+                  onPublish={handlePublish}
+                  onUnpublish={handleUnpublish}
                   onInviteCoBuild={handleInviteCoBuild}
                   configureStepParam="2"
                   industryMap={industryMap}

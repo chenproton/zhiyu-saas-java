@@ -3,9 +3,11 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
@@ -32,12 +34,49 @@ type contentActions struct {
 	fetch      func(ctx context.Context, id string) (interface{}, error)
 }
 
+// allowedStatusTransitions 定义内容实体允许的状态流转。
+// key 为当前状态，value 为可进入的目标状态集合。
+var allowedStatusTransitions = map[domain.ContentStatus][]domain.ContentStatus{
+	domain.StatusDraft:     {domain.StatusPending, domain.StatusArchived},
+	domain.StatusRejected:  {domain.StatusPending, domain.StatusArchived},
+	domain.StatusPending:   {domain.StatusDraft, domain.StatusApproved, domain.StatusRejected},
+	domain.StatusApproved:  {domain.StatusPublished, domain.StatusArchived},
+	domain.StatusPublished: {domain.StatusDraft, domain.StatusArchived},
+	domain.StatusArchived:  {},
+}
+
+func (c contentActions) canTransition(from, to domain.ContentStatus) bool {
+	for _, s := range allowedStatusTransitions[from] {
+		if s == to {
+			return true
+		}
+	}
+	return false
+}
+
 func (c contentActions) transition(w http.ResponseWriter, r *http.Request, status domain.ContentStatus) {
 	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "permission denied")
 		return
 	}
 	id := chi.URLParam(r, "id")
+
+	var current domain.ContentStatus
+	err := c.db.QueryRow(r.Context(), `SELECT status FROM `+c.table+` WHERE id = $1`, id).Scan(&current)
+	if err == pgx.ErrNoRows {
+		respondError(w, http.StatusNotFound, c.entityName+" not found")
+		return
+	}
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to fetch current status")
+		return
+	}
+
+	if !c.canTransition(current, status) {
+		respondError(w, http.StatusBadRequest, fmt.Sprintf("invalid status transition from %s to %s", current, status))
+		return
+	}
+
 	if _, err := c.db.Exec(r.Context(), `UPDATE `+c.table+` SET status = $1, updated_at = NOW() WHERE id = $2`, status, id); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to update status")
 		return
@@ -70,6 +109,20 @@ func (c contentActions) review(w http.ResponseWriter, r *http.Request) {
 		status = domain.StatusRejected
 	default:
 		respondError(w, http.StatusBadRequest, "invalid review status")
+		return
+	}
+
+	var current domain.ContentStatus
+	if err := c.db.QueryRow(r.Context(), `SELECT status FROM `+c.table+` WHERE id = $1`, id).Scan(&current); err != nil {
+		if err == pgx.ErrNoRows {
+			respondError(w, http.StatusNotFound, c.entityName+" not found")
+		} else {
+			respondError(w, http.StatusInternalServerError, "failed to fetch current status")
+		}
+		return
+	}
+	if current != domain.StatusPending {
+		respondError(w, http.StatusBadRequest, "can only review pending "+c.entityName)
 		return
 	}
 

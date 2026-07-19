@@ -277,6 +277,10 @@ func (h *ScenarioHandler) Archive(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusArchived)
 }
 
+func (h *ScenarioHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusDraft)
+}
+
 func (h *ScenarioHandler) Invite(w http.ResponseWriter, r *http.Request) {
 	h.actions().invite(w, r)
 }

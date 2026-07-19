@@ -29,6 +29,8 @@ export function createContentApi<TItem, TCreate, TUpdate>(prefix: string) {
       request<TItem>(`${prefix}/${id}/publish`, { method: "POST" }),
     archive: (id: string) =>
       request<TItem>(`${prefix}/${id}/archive`, { method: "POST" }),
+    unpublish: (id: string) =>
+      request<TItem>(`${prefix}/${id}/unpublish`, { method: "POST" }),
     withdraw: (id: string) =>
       request<TItem>(`${prefix}/${id}/withdraw`, { method: "POST" }),
     invite: (id: string, userId: string) =>

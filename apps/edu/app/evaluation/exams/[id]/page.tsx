@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, GripVertical, Trash2, Eye, Clock, FileText, Award, Wand2, Hand, Plus, Edit, Send, Save, FileUp, MonitorPlay } from "lucide-react"
+import { ArrowLeft, GripVertical, Trash2, Eye, Clock, FileText, Award, Wand2, Hand, Plus, Edit, Send, Save, FileUp, MonitorPlay, Rocket, ArrowDownFromLine } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -71,9 +71,11 @@ export default function ExamComposerPage() {
     )
   }
 
-  const canEdit = !isPreview && ['draft', 'unsubmitted', 'rejected'].includes(exam.status)
-  const canDelete = !isPreview && ['draft', 'unsubmitted', 'rejected'].includes(exam.status)
+  const canEdit = !isPreview && ['draft', 'rejected'].includes(exam.status)
+  const canDelete = !isPreview && ['draft', 'rejected'].includes(exam.status)
   const canSubmit = !isPreview && canPerformAction(exam.status, 'submit')
+  const canPublish = !isPreview && canPerformAction(exam.status, 'publish')
+  const canUnpublish = !isPreview && canPerformAction(exam.status, 'unpublish')
 
   const handleExamUpdate = (data: ExamFormData) => {
     updateExam(examId, data)
@@ -211,6 +213,18 @@ export default function ExamComposerPage() {
                     删除
                   </Button>
                 </PrdAnnotation>
+              )}
+              {canPublish && (
+                <Button variant="outline" size="sm" className="text-indigo-600 hover:text-indigo-700" onClick={() => updateExamStatus(examId, 'publish')}>
+                  <Rocket className="mr-1 size-4" />
+                  发布
+                </Button>
+              )}
+              {canUnpublish && (
+                <Button variant="outline" size="sm" className="text-red-500 hover:text-red-600" onClick={() => updateExamStatus(examId, 'unpublish')}>
+                  <ArrowDownFromLine className="mr-1 size-4" />
+                  取消发布
+                </Button>
               )}
               <PrdAnnotation {...getAnnotation("ec-btn-preview")}>
                 <Button variant="outline" size="sm" onClick={() => router.push('/evaluation/landing/resources/exams/exam-1?returnUrl=' + encodeURIComponent('/exams/' + examId))}>

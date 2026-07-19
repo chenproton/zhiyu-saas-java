@@ -1,6 +1,6 @@
 "use client"
 
-import { Copy, Eye, GitBranch, Pencil, Send, Trash2, Undo2, MessageSquare, UserPlus } from "lucide-react"
+import { Copy, Eye, GitBranch, Pencil, Rocket, Send, Trash2, Undo2, CheckCircle, XCircle, ArrowDownFromLine, MessageSquare, UserPlus } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -24,6 +24,7 @@ export interface ScenarioListItem {
   code: string
   version: string
   status: "draft" | "pending" | "approved" | "rejected" | "published" | "archived"
+  batchId?: string
   positionName?: string
   batchName?: string
   creatorName?: string
@@ -41,6 +42,10 @@ interface ScenarioListProps<T extends ScenarioListItem = ScenarioListItem> {
   onDelete?: (scenario: T) => void
   onSubmitApproval?: (scenario: T) => void
   onWithdrawApproval?: (scenario: T) => void
+  onApprove?: (scenario: T) => void
+  onReject?: (scenario: T) => void
+  onPublish?: (scenario: T) => void
+  onUnpublish?: (scenario: T) => void
   onViewRejectReason?: (scenario: T) => void
   onInviteCoBuild?: (scenario: T) => void
   className?: string
@@ -56,6 +61,10 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
   onDelete,
   onSubmitApproval,
   onWithdrawApproval,
+  onApprove,
+  onReject,
+  onPublish,
+  onUnpublish,
   onViewRejectReason,
   onInviteCoBuild,
   className,
@@ -205,7 +214,7 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                       邀请共建
                     </Button>
                   </PrdAnnotation>
-                  {scenario.status === "draft" && onSubmitApproval && (
+                  {(scenario.status === "draft" || scenario.status === "rejected") && onSubmitApproval && (
                     <PrdAnnotation data={getAnnotation("row-action-submit")}>
                       <Button
                         variant="ghost"
@@ -234,6 +243,70 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                       >
                         <Undo2 className="mr-1 h-3 w-3" />
                         撤回审批
+                      </Button>
+                    </PrdAnnotation>
+                  )}
+                  {scenario.status === "pending" && onApprove && (
+                    <PrdAnnotation data={getAnnotation("row-action-approve")}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onApprove(scenario)
+                        }}
+                      >
+                        <CheckCircle className="mr-1 h-3 w-3" />
+                        通过
+                      </Button>
+                    </PrdAnnotation>
+                  )}
+                  {scenario.status === "pending" && onReject && (
+                    <PrdAnnotation data={getAnnotation("row-action-reject")}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onReject(scenario)
+                        }}
+                      >
+                        <XCircle className="mr-1 h-3 w-3" />
+                        驳回
+                      </Button>
+                    </PrdAnnotation>
+                  )}
+                  {scenario.status === "approved" && onPublish && (
+                    <PrdAnnotation data={getAnnotation("row-action-publish")}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onPublish(scenario)
+                        }}
+                      >
+                        <Rocket className="mr-1 h-3 w-3" />
+                        发布
+                      </Button>
+                    </PrdAnnotation>
+                  )}
+                  {scenario.status === "published" && onUnpublish && (
+                    <PrdAnnotation data={getAnnotation("row-action-unpublish")}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onUnpublish(scenario)
+                        }}
+                      >
+                        <ArrowDownFromLine className="mr-1 h-3 w-3" />
+                        取消发布
                       </Button>
                     </PrdAnnotation>
                   )}

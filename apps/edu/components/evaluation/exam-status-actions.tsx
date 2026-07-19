@@ -51,7 +51,7 @@ const confirmConfig: Record<Exclude<ConfirmType, null>, { title: string; descrip
   },
   approve: {
     title: "审批通过",
-    description: "通过后试卷将进入待发布状态。确定要通过吗？",
+    description: "通过后试卷将进入已通过状态，可执行发布。确定要通过吗？",
     variant: "default",
   },
   reject: {
@@ -112,8 +112,8 @@ export function ExamStatusActions({
     setConfirmType(null)
   }
 
-  const canEdit = ['draft', 'unsubmitted', 'rejected'].includes(status)
-  const canDelete = ['draft', 'unsubmitted', 'rejected'].includes(status)
+  const canEdit = ['draft', 'rejected'].includes(status)
+  const canDelete = ['draft', 'rejected'].includes(status)
   const canSubmit = canPerformAction(status, 'submit')
   const canWithdraw = canPerformAction(status, 'withdraw')
   const canApprove = canPerformAction(status, 'approve')

@@ -1,6 +1,6 @@
 "use client"
 
-import { Copy, Eye, GitBranch, Pencil, Send, Trash2, Undo2, UserPlus } from "lucide-react"
+import { Copy, Eye, GitBranch, Pencil, Rocket, Send, Trash2, Undo2, ArrowDownFromLine, UserPlus } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -26,6 +26,8 @@ interface PositionListProps {
   onDelete?: (position: Position) => void
   onSubmitApproval?: (position: Position) => void
   onWithdrawApproval?: (position: Position) => void
+  onPublish?: (position: Position) => void
+  onUnpublish?: (position: Position) => void
   onInviteCoBuild?: (position: Position) => void
   className?: string
   basePath?: string
@@ -43,6 +45,8 @@ export function PositionList({
   onDelete,
   onSubmitApproval,
   onWithdrawApproval,
+  onPublish,
+  onUnpublish,
   onInviteCoBuild,
   className,
   basePath = "/job/positions",
@@ -167,7 +171,7 @@ export function PositionList({
                       克隆
                     </Button>
                   )}
-                  {position.status === "draft" && onSubmitApproval && (
+                  {(position.status === "draft" || position.status === "rejected") && onSubmitApproval && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -193,6 +197,34 @@ export function PositionList({
                     >
                       <Undo2 className="mr-1 h-3 w-3" />
                       撤回审批
+                    </Button>
+                  )}
+                  {position.status === "approved" && onPublish && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onPublish(position)
+                      }}
+                    >
+                      <Rocket className="mr-1 h-3 w-3" />
+                      发布
+                    </Button>
+                  )}
+                  {position.status === "published" && onUnpublish && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onUnpublish(position)
+                      }}
+                    >
+                      <ArrowDownFromLine className="mr-1 h-3 w-3" />
+                      取消发布
                     </Button>
                   )}
                   {onInviteCoBuild && (

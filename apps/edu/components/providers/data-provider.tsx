@@ -43,6 +43,7 @@ import {
   questionBankApi,
   questionApi,
   examApi,
+  evaluationBatchApi,
   evaluationMethodApi,
   evaluationResultApi,
   approvalApi,
@@ -545,20 +546,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [questionBanks, loadQuestionBanks, loadQuestions])
 
   const updateQuestionBankStatus = useCallback(async (id: string, action: StatusAction) => {
+    const bank = questionBanks.find((b) => b.id === id)
     switch (action) {
       case 'save_draft':
         await questionBankApi.update(id, { status: 'draft' })
         break
-      case 'submit':
+      case 'submit': {
+        if (!bank?.batchId) {
+          toast({ variant: 'destructive', title: '无法提交', description: '该题库未关联批次，无法提交审批' })
+          return
+        }
+        const batch = await evaluationBatchApi.get(bank.batchId)
         await questionBankApi.submit(id)
-        await approvalApi.create({ targetType: 'question_bank', targetId: id })
+        await approvalApi.create({ targetType: 'question_bank', targetId: id, workflowId: batch.workflowId })
         break
+      }
       case 'withdraw':
-        await questionBankApi.update(id, { status: 'unsubmitted' })
+        await questionBankApi.withdraw(id)
         break
       case 'approve':
       case 'reject': {
-        const records = await approvalApi.list({ targetType: 'question_bank', targetId: id, limit: 1 })
+        const records = await approvalApi.list({ targetType: 'question_bank', targetId: id, status: 'pending', limit: 1 })
         if (records.items.length > 0) {
           await approvalApi.review(records.items[0].id, { status: action === 'approve' ? 'approved' : 'rejected' })
         }
@@ -568,11 +576,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         await questionBankApi.publish(id)
         break
       case 'unpublish':
-        await questionBankApi.archive(id)
+        await questionBankApi.unpublish(id)
         break
     }
     await loadQuestionBanks()
-  }, [loadQuestionBanks])
+  }, [loadQuestionBanks, questionBanks, toast])
 
   // ==================== Question actions ====================
   const getQuestionsByBank = useCallback(
@@ -649,20 +657,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [loadExams])
 
   const updateExamStatus = useCallback(async (id: string, action: StatusAction) => {
+    const exam = exams.find((e) => e.id === id)
     switch (action) {
       case 'save_draft':
         await examApi.update(id, { status: 'draft' })
         break
-      case 'submit':
+      case 'submit': {
+        if (!exam?.batchId) {
+          toast({ variant: 'destructive', title: '无法提交', description: '该试卷未关联批次，无法提交审批' })
+          return
+        }
+        const batch = await evaluationBatchApi.get(exam.batchId)
         await examApi.submit(id)
-        await approvalApi.create({ targetType: 'exam', targetId: id })
+        await approvalApi.create({ targetType: 'exam', targetId: id, workflowId: batch.workflowId })
         break
+      }
       case 'withdraw':
-        await examApi.update(id, { status: 'unsubmitted' })
+        await examApi.withdraw(id)
         break
       case 'approve':
       case 'reject': {
-        const records = await approvalApi.list({ targetType: 'exam', targetId: id, limit: 1 })
+        const records = await approvalApi.list({ targetType: 'exam', targetId: id, status: 'pending', limit: 1 })
         if (records.items.length > 0) {
           await approvalApi.review(records.items[0].id, { status: action === 'approve' ? 'approved' : 'rejected' })
         }
@@ -672,11 +687,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         await examApi.publish(id)
         break
       case 'unpublish':
-        await examApi.archive(id)
+        await examApi.unpublish(id)
         break
     }
     await loadExams()
-  }, [loadExams])
+  }, [exams, loadExams, toast])
 
   const addQuestionToExam = useCallback(async (examId: string, question: Question, score?: number) => {
     const exam = exams.find((e) => e.id === examId)

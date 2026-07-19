@@ -58,7 +58,7 @@ export interface AdminCourseStats {
 }
 
 export const COURSE_STATUS_LABELS: Record<CourseStatus, string> = {
-  draft: '未提交',
+  draft: '草稿',
   pending: '审批中',
   rejected: '已驳回',
   published: '已发布',
