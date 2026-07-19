@@ -57,11 +57,11 @@ export function CourseList({
   const allSelected = courses.length > 0 && courses.every((c) => selectedIds.includes(c.id))
   const someSelected = courses.some((c) => selectedIds.includes(c.id)) && !allSelected
 
-  const editPath = courseType === "system"
-    ? "/lesson/admin/system/add?mode=edit"
+  const editPath = (courseId: string) => courseType === "system"
+    ? `/lesson/admin/system/add?id=${courseId}`
     : courseType === "granular"
-      ? "/lesson/admin/granular/add?mode=edit"
-      : `/lesson/admin/hybrid/add`
+      ? `/lesson/admin/granular/add?id=${courseId}`
+      : `/lesson/admin/hybrid/add?id=${courseId}`
 
   return (
     <div className={cn("rounded-lg border border-slate-200 bg-white overflow-hidden", className)}>
@@ -106,7 +106,7 @@ export function CourseList({
                 />
               </div>
               <div className="col-span-2">
-                <Link href={editPath} className="block">
+                <Link href={editPath(course.id)} className="block">
                   <p className="text-sm font-medium text-slate-900 line-clamp-1 hover:text-primary">{course.name}</p>
                 </Link>
                 <Badge variant="secondary" className={cn("text-xs mt-1", COURSE_STATUS_COLORS[course.status])}>
@@ -127,13 +127,13 @@ export function CourseList({
               <div className="col-span-1 text-right relative">
                 <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
                   <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
-                    <Link href={viewHref?.(course) || editPath} className="flex items-center">
+                    <Link href={viewHref?.(course) || editPath(course.id)} className="flex items-center">
                       <Eye className="mr-1 h-3 w-3" />
                       查看详情
                     </Link>
                   </Button>
                   <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
-                    <Link href={editPath} className="flex items-center">
+                    <Link href={editPath(course.id)} className="flex items-center">
                       <Pencil className="mr-1 h-3 w-3" />
                       编辑
                     </Link>
