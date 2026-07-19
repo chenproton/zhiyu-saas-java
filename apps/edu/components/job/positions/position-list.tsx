@@ -1,6 +1,6 @@
 "use client"
 
-import { Copy, Eye, GitBranch, Pencil, Rocket, Send, Trash2, Undo2, ArrowDownFromLine, UserPlus, Archive } from "lucide-react"
+import { Copy, Eye, GitBranch, Pencil, Rocket, Send, Trash2, Undo2, ArrowDownFromLine, UserPlus, Archive, CheckCircle, XCircle, MessageSquare } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -26,6 +26,9 @@ interface PositionListProps {
   onDelete?: (position: Position) => void
   onSubmitApproval?: (position: Position) => void
   onWithdrawApproval?: (position: Position) => void
+  onApprove?: (position: Position) => void
+  onReject?: (position: Position) => void
+  onViewRejectReason?: (position: Position) => void
   onPublish?: (position: Position) => void
   onUnpublish?: (position: Position) => void
   onArchive?: (position: Position) => void
@@ -35,6 +38,7 @@ interface PositionListProps {
   configureStepParam?: string
   industryMap?: Map<string, string>
   majorMap?: Map<string, string>
+  batchMap?: Map<string, string>
 }
 
 export function PositionList({
@@ -46,6 +50,9 @@ export function PositionList({
   onDelete,
   onSubmitApproval,
   onWithdrawApproval,
+  onApprove,
+  onReject,
+  onViewRejectReason,
   onPublish,
   onUnpublish,
   onArchive,
@@ -55,6 +62,7 @@ export function PositionList({
   configureStepParam = "1",
   industryMap,
   majorMap,
+  batchMap,
 }: PositionListProps) {
   const getIndustryName = (id?: string) => {
     if (!id) return '-'
@@ -83,7 +91,8 @@ export function PositionList({
         <div className="col-span-2">岗位名称</div>
         <div className="col-span-1 text-center">版本</div>
         <div className="col-span-1">所属行业</div>
-        <div className="col-span-2">所属专业</div>
+        <div className="col-span-1">所属专业</div>
+        <div className="col-span-1">所属批次分组</div>
         <div className="col-span-1">共建人员</div>
         <div className="col-span-1 text-center">职责数</div>
         <div className="col-span-1 text-center">能力绑定</div>
@@ -122,9 +131,10 @@ export function PositionList({
               </div>
               <div className="col-span-1 text-center text-sm text-slate-600">{position.version}</div>
               <div className="col-span-1 text-sm text-slate-600 truncate">{getIndustryName(position.industry)}</div>
-              <div className="col-span-2 text-sm text-slate-600 truncate">
+              <div className="col-span-1 text-sm text-slate-600 truncate">
                 {getMajorNames(position.majors)}
               </div>
+              <div className="col-span-1 text-sm text-slate-600 truncate">{batchMap?.get(position.batchId) || position.batchId || "-"}</div>
               <div className="col-span-1 text-xs text-slate-500 truncate">
                 {position.collaborators.length > 0 ? `${position.collaborators.length}人` : "-"}
               </div>
@@ -199,6 +209,48 @@ export function PositionList({
                     >
                       <Undo2 className="mr-1 h-3 w-3" />
                       撤回审批
+                    </Button>
+                  )}
+                  {position.status === "pending" && onApprove && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onApprove(position)
+                      }}
+                    >
+                      <CheckCircle className="mr-1 h-3 w-3" />
+                      通过
+                    </Button>
+                  )}
+                  {position.status === "pending" && onReject && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onReject(position)
+                      }}
+                    >
+                      <XCircle className="mr-1 h-3 w-3" />
+                      驳回
+                    </Button>
+                  )}
+                  {position.status === "rejected" && onViewRejectReason && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onViewRejectReason(position)
+                      }}
+                    >
+                      <MessageSquare className="mr-1 h-3 w-3" />
+                      查看驳回原因
                     </Button>
                   )}
                   {position.status === "approved" && onPublish && (

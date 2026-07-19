@@ -22,6 +22,7 @@ import {
   ArrowUpFromLine,
   Archive,
   Loader2,
+  MessageSquare,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useMemo, useRef, useEffect, useCallback } from "react"
@@ -105,6 +106,15 @@ export default function PositionsPage() {
   const [isCloneRenameDialogOpen, setIsCloneRenameDialogOpen] = useState(false)
   const [cloneRenameValue, setCloneRenameValue] = useState("")
   const [cloneTargetPosition, setCloneTargetPosition] = useState<Position | null>(null)
+
+  const [isRejectReasonDialogOpen, setIsRejectReasonDialogOpen] = useState(false)
+  const [rejectReasonPosition, setRejectReasonPosition] = useState<Position | null>(null)
+
+  const batchMap = useMemo(() => {
+    const map = new Map<string, string>()
+    batches.forEach((b) => map.set(b.id, b.name))
+    return map
+  }, [batches])
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -496,6 +506,39 @@ export default function PositionsPage() {
     }
   }
 
+  const handleApprove = async (position: Position) => {
+    try {
+      const records = await approvalApi.list({ targetType: 'career_position', targetId: position.id, status: 'pending', limit: 1 })
+      if (records.items.length === 0) {
+        toast({ variant: 'destructive', title: '审批失败', description: '未找到审批记录' })
+        return
+      }
+      await approvalApi.review(records.items[0].id, { status: 'approved' } as any)
+      loadData()
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: '审批失败', description: err?.message || '请稍后重试' })
+    }
+  }
+
+  const handleReject = async (position: Position) => {
+    try {
+      const records = await approvalApi.list({ targetType: 'career_position', targetId: position.id, status: 'pending', limit: 1 })
+      if (records.items.length === 0) {
+        toast({ variant: 'destructive', title: '驳回失败', description: '未找到审批记录' })
+        return
+      }
+      await approvalApi.review(records.items[0].id, { status: 'rejected' } as any)
+      loadData()
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: '驳回失败', description: err?.message || '请稍后重试' })
+    }
+  }
+
+  const handleViewRejectReason = async (position: Position) => {
+    setRejectReasonPosition(position)
+    setIsRejectReasonDialogOpen(true)
+  }
+
   const handleResetFilters = () => {
     setSearchQuery("")
     setSelectedBatchId(null)
@@ -759,6 +802,9 @@ export default function PositionsPage() {
               onDelete={handleDelete}
               onSubmitApproval={handleSubmitApproval}
               onWithdrawApproval={handleWithdrawApproval}
+              onApprove={handleApprove}
+              onReject={handleReject}
+              onViewRejectReason={handleViewRejectReason}
               onPublish={handlePublish}
               onUnpublish={handleUnpublish}
               onArchive={handleArchive}
@@ -767,6 +813,7 @@ export default function PositionsPage() {
               className="border-0 rounded-none"
               industryMap={industryMap}
               majorMap={majorMap}
+              batchMap={batchMap}
             />
           </CardContent>
         )}
@@ -809,6 +856,9 @@ export default function PositionsPage() {
                         onDelete={handleDelete}
                         onSubmitApproval={handleSubmitApproval}
                         onWithdrawApproval={handleWithdrawApproval}
+                        onApprove={handleApprove}
+                        onReject={handleReject}
+                        onViewRejectReason={handleViewRejectReason}
                         onPublish={handlePublish}
                         onUnpublish={handleUnpublish}
                         onArchive={handleArchive}
@@ -816,6 +866,7 @@ export default function PositionsPage() {
                         configureStepParam="2"
                         industryMap={industryMap}
                         majorMap={majorMap}
+                        batchMap={batchMap}
                       />
                     </div>
                   </CollapsibleContent>
@@ -843,6 +894,9 @@ export default function PositionsPage() {
                   onDelete={handleDelete}
                   onSubmitApproval={handleSubmitApproval}
                   onWithdrawApproval={handleWithdrawApproval}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                  onViewRejectReason={handleViewRejectReason}
                   onPublish={handlePublish}
                   onUnpublish={handleUnpublish}
                   onArchive={handleArchive}
@@ -850,6 +904,7 @@ export default function PositionsPage() {
                   configureStepParam="2"
                   industryMap={industryMap}
                   majorMap={majorMap}
+                  batchMap={batchMap}
                 />
               </div>
             </div>
@@ -991,6 +1046,25 @@ export default function PositionsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCloneRenameDialogOpen(false)}>取消</Button>
             <Button onClick={handleConfirmClone} disabled={!cloneRenameValue.trim()}>确认克隆</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isRejectReasonDialogOpen} onOpenChange={setIsRejectReasonDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>驳回原因</DialogTitle>
+            <DialogDescription>
+              岗位「{rejectReasonPosition?.name}」的审批被驳回，驳回原因如下：
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
+              审批人已驳回此岗位的提交申请，请根据审批意见修改后重新提交。
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRejectReasonDialogOpen(false)}>关闭</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

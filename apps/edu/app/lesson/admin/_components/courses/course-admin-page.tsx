@@ -23,6 +23,7 @@ import {
   ArrowDownFromLine,
   ArrowUpFromLine,
   Archive,
+  MessageSquare,
 } from "lucide-react"
 import { PageHeaderCard } from "@/components/shared/page-header-card"
 import { Badge } from "@/components/ui/badge"
@@ -138,6 +139,9 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
   const [cloneRenameValue, setCloneRenameValue] = useState("")
   const [cloneTargetCourse, setCloneTargetCourse] = useState<Course | null>(null)
 
+  const [isRejectReasonDialogOpen, setIsRejectReasonDialogOpen] = useState(false)
+  const [rejectReasonCourse, setRejectReasonCourse] = useState<Course | null>(null)
+
   const [importFile, setImportFile] = useState<File | null>(null)
   const [isImporting, setIsImporting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -245,6 +249,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
   const canBatchUnpublish = selectedCourses.some((c) => c.status === "published")
   const canBatchDelete = selectedCourses.some((c) => c.status === "draft" || c.status === "rejected")
   const canBatchArchive = selectedCourses.some((c) => ["draft", "rejected", "approved", "published"].includes(c.status))
+  const canBatchPublish = selectedCourses.some((c) => c.status === "approved")
 
   const handleBatchSubmitApproval = async () => {
     for (const id of selectedIds) {
@@ -456,6 +461,11 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
     await loadData()
   }
 
+  const handleViewRejectReason = (course: Course) => {
+    setRejectReasonCourse(course)
+    setIsRejectReasonDialogOpen(true)
+  }
+
   const handleResetFilters = () => {
     setSearchQuery("")
     setSelectedBatchId(null)
@@ -637,6 +647,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
                   <SelectItem value="__all__">全部状态</SelectItem>
                   <SelectItem value="draft">草稿</SelectItem>
                   <SelectItem value="pending">审批中</SelectItem>
+                  <SelectItem value="approved">已通过</SelectItem>
                   <SelectItem value="rejected">已驳回</SelectItem>
                   <SelectItem value="published">已发布</SelectItem>
                   <SelectItem value="archived">已归档</SelectItem>
@@ -667,7 +678,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
               </Button>
             )}
             {hasPermission("lesson", "courses", "publish") && (
-              <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected} onClick={handleBatchPublish}>
+              <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected || !canBatchPublish} onClick={handleBatchPublish}>
                 <ArrowUpFromLine className="mr-1 h-3 w-3" />
                 发布
               </Button>
@@ -721,6 +732,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
               onPublish={handlePublish}
               onUnpublish={handleUnpublish}
               onArchive={handleArchive}
+              onViewRejectReason={handleViewRejectReason}
               onInviteCoBuild={handleInviteCoBuild}
               onExport={handleExport}
               className="border-0 rounded-none"
@@ -775,6 +787,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
                         onPublish={handlePublish}
                         onUnpublish={handleUnpublish}
                         onArchive={handleArchive}
+                        onViewRejectReason={handleViewRejectReason}
                         onInviteCoBuild={handleInviteCoBuild}
                         onExport={handleExport}
                       />
@@ -810,6 +823,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
                   onPublish={handlePublish}
                   onUnpublish={handleUnpublish}
                   onArchive={handleArchive}
+                  onViewRejectReason={handleViewRejectReason}
                   onInviteCoBuild={handleInviteCoBuild}
                   onExport={handleExport}
                 />
@@ -964,6 +978,25 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCloneRenameDialogOpen(false)}>取消</Button>
             <Button onClick={handleConfirmClone} disabled={!cloneRenameValue.trim()}>确认克隆</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isRejectReasonDialogOpen} onOpenChange={setIsRejectReasonDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>驳回原因</DialogTitle>
+            <DialogDescription>
+              {typeLabel}「{rejectReasonCourse?.name}」的审批被驳回，驳回原因如下：
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
+              审批人已驳回此{typeLabel}的提交申请，请根据审批意见修改后重新提交。
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRejectReasonDialogOpen(false)}>关闭</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -22,7 +22,7 @@ import {
 
 import type { SystemCourseNode, NodeResource } from "@/lib/types/lesson-source"
 import type { Course } from "@/lib/types/lesson"
-import { courseApi, knowledgeApi, fileApi, approvalApi, majorApi } from "@/lib/api"
+import { courseApi, knowledgeApi, fileApi, approvalApi, majorApi, lessonBatchApi } from "@/lib/api"
 
 import { KnowledgeSelector } from "../../_components/knowledge/knowledge-selector"
 import { ResourceSelector, type ResourceItem } from "../../_components/resources/resource-selector"
@@ -61,6 +61,8 @@ function AddGranularPageInner() {
   const majorMapRef = useRef<Map<string, string>>(new Map())
   const [difficulty, setDifficulty] = useState<number>(0)
   const [coverImage, setCoverImage] = useState("")
+  const [batchId, setBatchId] = useState("")
+  const [batches, setBatches] = useState<{ id: string; name: string; workflowId?: string }[]>([])
 
   /* module 2: knowledge points */
   const [knowledgePool, setKnowledgePool] = useState<KnowledgePointItem[]>([])
@@ -100,6 +102,7 @@ function AddGranularPageInner() {
           setMajorId(c.majorId || "")
           setDifficulty(0)
           setCoverImage(c.coverImage || "")
+          if (c.batchId) setBatchId(c.batchId)
         } else {
           setCourseCode(`GRA-${Date.now().toString(36).toUpperCase()}`)
         }
@@ -120,6 +123,7 @@ function AddGranularPageInner() {
       enabled.forEach((m) => map.set(m.name, m.id))
       majorMapRef.current = map
     }).catch(() => {})
+    lessonBatchApi.list({ limit: 1000 }).then((res) => setBatches(res.items))
   }, [])
 
   const currentCheckNode: SystemCourseNode | undefined = useMemo(() => {
@@ -176,6 +180,7 @@ function AddGranularPageInner() {
         onlineHours: parseInt(hours) || 0,
         offlineHours: 0,
         coverImage: coverImage || undefined,
+        batchId: batchId || undefined,
         status: course?.status || "draft",
         creatorId: course?.creatorId || undefined,
         coCreatorIds: course?.coCreatorIds ?? [],
@@ -207,11 +212,16 @@ function AddGranularPageInner() {
       toast.error("请先保存草稿")
       return
     }
+    if (!batchId) {
+      toast.error("请先关联所属批次")
+      return
+    }
     setSaving(true)
     try {
+      const batch = batches.find((b) => b.id === batchId)
       await courseApi.submit(editId)
       hasSavedRef.current = true
-      await approvalApi.create({ targetType: "course", targetId: editId })
+      await approvalApi.create({ targetType: "course", targetId: editId, workflowId: batch?.workflowId as string })
       toast.success("颗粒课已提交审批")
       router.push("/lesson/admin/granular")
     } catch (err: any) {
@@ -275,6 +285,20 @@ function AddGranularPageInner() {
                       <SelectContent>
                         {majorNames.map((m) => (
                           <SelectItem key={m} value={m}>{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">所属批次</Label>
+                    <Select value={batchId} onValueChange={setBatchId}>
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="请选择批次" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">不关联批次</SelectItem>
+                        {batches.map((b) => (
+                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

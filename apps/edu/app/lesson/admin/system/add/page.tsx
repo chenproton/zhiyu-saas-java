@@ -64,7 +64,7 @@ import CourseNodeTree from "./_components/CourseNodeTree"
 import PublishCheckPanel from "./_components/PublishCheckPanel"
 
 import type { KnowledgePointItem } from "@/lib/types/lesson"
-import { courseApi, courseNodeApi, knowledgeApi, majorApi, approvalApi } from "@/lib/api"
+import { courseApi, courseNodeApi, knowledgeApi, majorApi, approvalApi, lessonBatchApi } from "@/lib/api"
 
 /* ---------- node editing mode ---------- */
 
@@ -184,6 +184,8 @@ function AddSystemPageInner() {
   const [major, setMajor] = useState("")
   const [courseDescription, setCourseDescription] = useState("")
   const [coverImage, setCoverImage] = useState("")
+  const [batchId, setBatchId] = useState("")
+  const [batches, setBatches] = useState<{ id: string; name: string; workflowId?: string }[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const hasSavedRef = useRef(false)
   const [loadingEdit, setLoadingEdit] = useState(false)
@@ -205,12 +207,17 @@ function AddSystemPageInner() {
       if (course.description) setCourseDescription(course.description)
       if (course.coverImage) setCoverImage(course.coverImage)
       if (course.majorId) setMajor(course.majorId)
+      if (course.batchId) setBatchId(course.batchId)
       if (nodeRes.items?.length) {
         setNodes(nodeRes.items as unknown as SystemCourseNode[])
         setSelectedNodeId(nodeRes.items[0]?.id || null)
       }
     }).catch(() => {}).finally(() => setLoadingEdit(false))
   }, [editId])
+
+  useEffect(() => {
+    lessonBatchApi.list({ limit: 1000 }).then((res) => setBatches(res.items))
+  }, [])
 
   const handleAddNode = useCallback((parentId: string | null, name: string, order: number, type?: NodeRefType, sourceId?: string, sourceName?: string) => {
     const newNode: SystemCourseNode = {
@@ -477,6 +484,7 @@ function AddSystemPageInner() {
         majorId: major || undefined,
         description: courseDescription || undefined,
         coverImage: coverImage || undefined,
+        batchId: batchId || undefined,
         type: "system" as const,
         status: "draft" as const,
         category: "system",
@@ -515,11 +523,16 @@ function AddSystemPageInner() {
       toast.error("请先保存草稿")
       return
     }
+    if (!batchId) {
+      toast.error("请先关联所属批次")
+      return
+    }
     setSaving(true)
     try {
+      const batch = batches.find((b) => b.id === batchId)
       await courseApi.submit(courseId)
       hasSavedRef.current = true
-      await approvalApi.create({ targetType: "course", targetId: courseId })
+      await approvalApi.create({ targetType: "course", targetId: courseId, workflowId: batch?.workflowId as string })
       toast.success("课程已提交审核")
       router.push("/lesson/admin/system")
     } catch {
@@ -527,7 +540,7 @@ function AddSystemPageInner() {
     } finally {
       setSaving(false)
     }
-  }, [nodes, checkNodeComplete, courseId])
+  }, [nodes, checkNodeComplete, courseId, batchId, batches])
 
   /* ---------- construct current node for publish check ---------- */
   const currentCheckNode: SystemCourseNode | undefined = useMemo(() => {
@@ -631,7 +644,7 @@ function AddSystemPageInner() {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <CardContent className="pt-0">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
                   <div className="space-y-1.5">
                     <Label className="text-xs">课程名称</Label>
                     <Input
@@ -655,6 +668,20 @@ function AddSystemPageInner() {
                       <SelectContent>
                         {defaultMajorNames.filter((m) => m !== "全部").map((m) => (
                           <SelectItem key={m} value={m}>{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">所属批次</Label>
+                    <Select value={batchId} onValueChange={setBatchId}>
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="请选择批次" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">不关联批次</SelectItem>
+                        {batches.map((b) => (
+                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

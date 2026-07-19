@@ -1,6 +1,6 @@
 "use client"
 
-import { Copy, Download, Eye, Pencil, Rocket, Send, Trash2, Undo2, CheckCircle, XCircle, ArrowDownFromLine, UserPlus, Archive } from "lucide-react"
+import { Copy, Download, Eye, Pencil, Rocket, Send, Trash2, Undo2, CheckCircle, XCircle, ArrowDownFromLine, UserPlus, Archive, MessageSquare } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -24,9 +24,11 @@ interface CourseListProps {
   onPublish?: (course: Course) => void
   onUnpublish?: (course: Course) => void
   onArchive?: (course: Course) => void
+  onViewRejectReason?: (course: Course) => void
   onInviteCoBuild?: (course: Course) => void
   onExport?: (course: Course) => void
   className?: string
+  viewHref?: (course: Course) => string
 }
 
 export function CourseList({
@@ -44,9 +46,11 @@ export function CourseList({
   onPublish,
   onUnpublish,
   onArchive,
+  onViewRejectReason,
   onInviteCoBuild,
   onExport,
   className,
+  viewHref,
 }: CourseListProps) {
   if (courses.length === 0) return null
 
@@ -71,10 +75,11 @@ export function CourseList({
           />
         </div>
         <div className="col-span-2">课程名称</div>
-        <div className="col-span-2">课程编码</div>
+        <div className="col-span-1">课程编码</div>
         <div className="col-span-1 text-center">版本</div>
         <div className="col-span-1">所属行业</div>
-        <div className="col-span-2">适用专业</div>
+        <div className="col-span-1">适用专业</div>
+        <div className="col-span-1">所属批次分组</div>
         <div className="col-span-1">创建人</div>
         <div className="col-span-1 text-center">状态</div>
         <div className="col-span-1 text-right">操作</div>
@@ -108,10 +113,11 @@ export function CourseList({
                   {COURSE_STATUS_LABELS[course.status]}
                 </Badge>
               </div>
-              <div className="col-span-2 text-sm text-slate-600 truncate">{course.code}</div>
+              <div className="col-span-1 text-sm text-slate-600 truncate">{course.code}</div>
               <div className="col-span-1 text-center text-sm text-slate-600">{course.version}</div>
               <div className="col-span-1 text-sm text-slate-600 truncate">{course.industry || "-"}</div>
-              <div className="col-span-2 text-sm text-slate-600 truncate">{course.major || "-"}</div>
+              <div className="col-span-1 text-sm text-slate-600 truncate">{course.major || "-"}</div>
+              <div className="col-span-1 text-sm text-slate-600 truncate">{course.batchName || "-"}</div>
               <div className="col-span-1 text-xs text-slate-500 truncate">{course.creator || "-"}</div>
               <div className="col-span-1 text-center">
                 <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${COURSE_STATUS_COLORS[course.status]}`}>
@@ -120,6 +126,12 @@ export function CourseList({
               </div>
               <div className="col-span-1 text-right relative">
                 <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
+                    <Link href={viewHref?.(course) || editPath} className="flex items-center">
+                      <Eye className="mr-1 h-3 w-3" />
+                      查看详情
+                    </Link>
+                  </Button>
                   <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
                     <Link href={editPath} className="flex items-center">
                       <Pencil className="mr-1 h-3 w-3" />
@@ -180,6 +192,20 @@ export function CourseList({
                     >
                       <XCircle className="mr-1 h-3 w-3" />
                       驳回
+                    </Button>
+                  )}
+                  {course.status === "rejected" && onViewRejectReason && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onViewRejectReason(course)
+                      }}
+                    >
+                      <MessageSquare className="mr-1 h-3 w-3" />
+                      查看驳回原因
                     </Button>
                   )}
                   {course.status === "approved" && onPublish && (

@@ -255,8 +255,12 @@ export default function SceneHallPage() {
   const handleBatchSubmitApproval = async () => {
     for (const scenario of selectedScenarios) {
       if (scenario.status === "draft" || scenario.status === "rejected") {
+        const batch = batches.find((b) => b.id === scenario.batchId)
         try {
           await scenarioApi.submit(scenario.id)
+          if (batch) {
+            await approvalApi.create({ targetType: 'scenario', targetId: scenario.id, workflowId: batch.workflowId })
+          }
         } catch (err) {
           console.error("提交审批失败", err)
         }

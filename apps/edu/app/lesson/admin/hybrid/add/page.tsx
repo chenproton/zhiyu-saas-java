@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Info, Plus, X, BookOpen, Layers, BookMarked, Microscope, Briefcase, Database, FileStack, Monitor, CheckCircle2, BarChart3, ClipboardList, Zap, Shuffle, MessageSquare, HelpCircle, ChevronDown, ChevronRight, Bold, Italic, Underline, List, ListOrdered, Image as ImageIcon, ImageUp, Link as LinkIcon, AlignLeft } from "lucide-react"
 import { toast, Toaster } from "sonner"
-import { courseApi, approvalApi, majorApi, fileApi } from "@/lib/api"
+import { courseApi, approvalApi, majorApi, fileApi, lessonBatchApi } from "@/lib/api"
 import type { Course } from "@/lib/types/lesson"
 import type { SystemCourseNode, NodeRefType } from "@/lib/types/lesson-source"
 import CourseNodeTree from "../../system/add/_components/CourseNodeTree"
@@ -88,7 +88,10 @@ function HybridCourseAddForm() {
       setExisting(null)
       return
     }
-    courseApi.get(editId).then((c) => setExisting(c)).catch(() => setExisting(null))
+    courseApi.get(editId).then((c) => {
+      setExisting(c)
+      if (c.batchId) setBatchId(c.batchId)
+    }).catch(() => setExisting(null))
   }, [editId])
 
   useEffect(() => {
@@ -99,6 +102,7 @@ function HybridCourseAddForm() {
       enabled.forEach((m) => map.set(m.name, m.id))
       majorMapRef.current = map
     }).catch(() => {})
+    lessonBatchApi.list({ limit: 1000 }).then((res) => setBatches(res.items))
   }, [])
 
   interface ClaimPayload {
@@ -192,6 +196,9 @@ function HybridCourseAddForm() {
   const [saving, setSaving] = useState(false)
 
   const rootForm = nodeDataMap[FIRST_NODE_ID]?.form || createDefaultNodeModuleData().form
+
+  const [batchId, setBatchId] = useState("")
+  const [batches, setBatches] = useState<{ id: string; name: string; workflowId?: string }[]>([])
 
   const updateRootForm = useCallback((patch: Partial<CourseBasicForm>) => {
     setNodeDataMap((prev) => ({
@@ -431,6 +438,7 @@ function HybridCourseAddForm() {
     semester: rootForm.semester || existing?.semester || undefined,
     className: existing?.className || "",
     coverImage: rootForm.coverImage || undefined,
+    batchId: batchId || undefined,
     status: "draft",
     creatorId: existing?.creatorId || "",
     coCreatorIds: existing?.coCreatorIds || [],
@@ -474,8 +482,13 @@ function HybridCourseAddForm() {
       toast.error("请填写课程名称和课程编码")
       return
     }
+    if (!batchId) {
+      toast.error("请先关联所属批次")
+      return
+    }
     setSaving(true)
     try {
+      const batch = batches.find((b) => b.id === batchId)
       let courseId = editId || existing?.id
       if (!courseId) {
         const created = await courseApi.create(buildCoursePayload())
@@ -484,7 +497,7 @@ function HybridCourseAddForm() {
       }
       await courseApi.submit(courseId)
       hasSavedRef.current = true
-      await approvalApi.create({ targetType: "course", targetId: courseId })
+      await approvalApi.create({ targetType: "course", targetId: courseId, workflowId: batch?.workflowId as string })
       toast.success(`已提交混合课程审批：${rootForm.name}`)
       router.push("/lesson/admin/hybrid")
     } catch (e) {
@@ -657,6 +670,20 @@ function HybridCourseAddForm() {
                       placeholder="如：2026-2027-1"
                       className="h-9 text-sm"
                     />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">所属批次</Label>
+                    <Select value={batchId} onValueChange={setBatchId}>
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="请选择批次" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">不关联批次</SelectItem>
+                        {batches.map((b) => (
+                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <div className="mt-5 space-y-1.5">
