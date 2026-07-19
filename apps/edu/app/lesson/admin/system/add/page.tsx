@@ -64,7 +64,7 @@ import CourseNodeTree from "./_components/CourseNodeTree"
 import PublishCheckPanel from "./_components/PublishCheckPanel"
 
 import type { KnowledgePointItem } from "@/lib/types/lesson"
-import { courseApi, courseNodeApi, knowledgeApi, majorApi } from "@/lib/api"
+import { courseApi, courseNodeApi, knowledgeApi, majorApi, approvalApi } from "@/lib/api"
 
 /* ---------- node editing mode ---------- */
 
@@ -184,6 +184,7 @@ function AddSystemPageInner() {
   const [courseDescription, setCourseDescription] = useState("")
   const [coverImage, setCoverImage] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const hasSavedRef = useRef(false)
   const [loadingEdit, setLoadingEdit] = useState(false)
 
   /* ========== course node tree ========== */
@@ -483,10 +484,12 @@ function AddSystemPageInner() {
       }
       if (isEdit && courseId) {
         await courseApi.update(courseId, payload)
+        hasSavedRef.current = true
         toast.success("草稿已更新")
       } else {
         const created = await courseApi.create(payload)
         setCourseId(created.id)
+        hasSavedRef.current = true
         toast.success("草稿已保存")
       }
     } catch {
@@ -514,7 +517,10 @@ function AddSystemPageInner() {
     setSaving(true)
     try {
       await courseApi.submit(courseId)
+      hasSavedRef.current = true
+      await approvalApi.create({ targetType: "course", targetId: courseId })
       toast.success("课程已提交审核")
+      router.push("/lesson/admin/system")
     } catch {
       toast.error("提交失败")
     } finally {
@@ -572,14 +578,19 @@ function AddSystemPageInner() {
 
   return (
     <EditorShell
-      mode="inline"
-      backText="返回列表"
-      onBack={() => router.push("/lesson/admin/system")}
+      mode="fullscreen"
+      backText="取消"
+      onBack={async () => {
+        if (!isEdit && courseId && !hasSavedRef.current) {
+          try { await courseApi.delete(courseId) } catch {}
+        }
+        router.push("/lesson/admin/system")
+      }}
       onSaveDraft={handleSave}
       isSaving={saving}
       onSubmit={handleSubmit}
-      submitText="提交"
-      headerTitle={<>{isEdit ? "编辑体系课" : "新建体系课"}{courseName && <span className="text-gray-400 font-normal ml-2">- {courseName}</span>}</>}
+      submitText="提交审批"
+      title={isEdit ? "编辑体系课" : "新建体系课"}
     >
         {/* ========== Global Course Info (collapsible, spans full width) ========== */}
         <Collapsible open={globalInfoOpen} onOpenChange={setGlobalInfoOpen} className="mb-6">

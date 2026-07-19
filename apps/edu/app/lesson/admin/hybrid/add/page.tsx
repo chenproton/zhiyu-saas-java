@@ -486,6 +486,7 @@ function HybridCourseAddForm() {
       hasSavedRef.current = true
       await approvalApi.create({ targetType: "course", targetId: courseId })
       toast.success(`已提交混合课程审批：${rootForm.name}`)
+      router.push("/lesson/admin/hybrid")
     } catch (e) {
       toast.error("提交失败，请重试")
     } finally {
@@ -554,8 +555,8 @@ function HybridCourseAddForm() {
 
   return (
     <EditorShell
-      mode="inline"
-      backText="返回列表"
+      mode="fullscreen"
+      backText="取消"
       onBack={async () => {
         if (isNewCourse && editId && !hasSavedRef.current) {
           try { await courseApi.delete(editId) } catch {}
@@ -566,7 +567,7 @@ function HybridCourseAddForm() {
       isSaving={saving}
       onSubmit={handleSubmit}
       submitText="提交审批"
-      headerTitle={<>{editId ? "编辑混合课程" : "新建混合课程"}{rootForm.name && <span className="text-gray-400 font-normal ml-2">- {rootForm.name}</span>}</>}
+      title={editId ? "编辑混合课程" : "新建混合课程"}
     >
         {/* ========== Global Course Info (collapsible, spans full width) ========== */}
         <Collapsible open={globalInfoOpen} onOpenChange={setGlobalInfoOpen} className="mb-6">

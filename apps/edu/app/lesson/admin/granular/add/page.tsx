@@ -213,6 +213,7 @@ function AddGranularPageInner() {
       hasSavedRef.current = true
       await approvalApi.create({ targetType: "course", targetId: editId })
       toast.success("颗粒课已提交审批")
+      router.push("/lesson/admin/granular")
     } catch (err: any) {
       toast.error(err.message || "提交失败")
     } finally {
@@ -230,8 +231,8 @@ function AddGranularPageInner() {
 
   return (
     <EditorShell
-      mode="inline"
-      backText="返回列表"
+      mode="fullscreen"
+      backText="取消"
       onBack={async () => {
         if (isNewCourse && editId && !hasSavedRef.current) {
           try { await courseApi.delete(editId) } catch {}
@@ -241,8 +242,8 @@ function AddGranularPageInner() {
       onSaveDraft={handleSave}
       isSaving={saving}
       onSubmit={handleSubmit}
-      submitText="提交"
-      headerTitle={<>{editId ? "编辑颗粒课" : "新建颗粒课"}{courseName && <span className="text-gray-400 font-normal ml-2">- {courseName}</span>}</>}
+      submitText="提交审批"
+      title={editId ? "编辑颗粒课" : "新建颗粒课"}
     >
       <div className="grid grid-cols-[1fr_260px] gap-6">
           <main className="space-y-5 min-w-0">
