@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, Suspense, useMemo, useCallback, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   ArrowLeft,
@@ -159,6 +159,7 @@ function ConvertPreviewTree({
 
 function AddSystemPageInner() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const editId = searchParams.get("id")
   const isEdit = !!editId
 
