@@ -1,4 +1,4 @@
-export type CourseStatus = 'draft' | 'pending' | 'rejected' | 'published' | 'archived'
+export type CourseStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'published' | 'archived'
 export type CourseType = 'system' | 'granular' | 'hybrid'
 
 export interface Course {
@@ -53,6 +53,7 @@ export interface AdminCourseStats {
   total: number
   draft: number
   pending: number
+  approved: number
   rejected: number
   published: number
 }
@@ -60,6 +61,7 @@ export interface AdminCourseStats {
 export const COURSE_STATUS_LABELS: Record<CourseStatus, string> = {
   draft: '草稿',
   pending: '审批中',
+  approved: '已通过',
   rejected: '已驳回',
   published: '已发布',
   archived: '已归档',
@@ -68,6 +70,7 @@ export const COURSE_STATUS_LABELS: Record<CourseStatus, string> = {
 export const COURSE_STATUS_COLORS: Record<CourseStatus, string> = {
   draft: 'bg-gray-100 text-gray-700',
   pending: 'bg-yellow-100 text-yellow-700',
+  approved: 'bg-blue-100 text-blue-700',
   rejected: 'bg-red-100 text-red-700',
   published: 'bg-green-100 text-green-700',
   archived: 'bg-slate-100 text-slate-700',

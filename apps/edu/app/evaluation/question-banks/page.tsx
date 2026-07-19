@@ -72,7 +72,7 @@ import { useAuth } from "@/components/auth-provider"
 
 type TabType = "my" | "collab" | "public"
 type ViewMode = "list" | "group"
-type BackendStatus = "draft" | "pending" | "rejected" | "published" | "archived"
+type BackendStatus = "draft" | "pending" | "approved" | "rejected" | "published" | "archived"
 
 interface BackendQuestionBank extends Omit<QuestionBank, "status" | "createdAt" | "updatedAt"> {
   status: BackendStatus
@@ -83,6 +83,7 @@ interface BackendQuestionBank extends Omit<QuestionBank, "status" | "createdAt" 
 const STATUS_LABELS: Record<BackendStatus, string> = {
   draft: "草稿",
   pending: "审批中",
+  approved: "已通过",
   rejected: "已驳回",
   published: "已发布",
   archived: "已归档",
@@ -91,6 +92,7 @@ const STATUS_LABELS: Record<BackendStatus, string> = {
 const STATUS_STYLES: Record<BackendStatus, string> = {
   draft: "bg-muted text-muted-foreground border-muted",
   pending: "bg-yellow-50 text-yellow-600 border-yellow-200",
+  approved: "bg-blue-50 text-blue-600 border-blue-200",
   rejected: "bg-red-50 text-red-600 border-red-200",
   published: "bg-emerald-50 text-emerald-600 border-emerald-200",
   archived: "bg-gray-100 text-gray-500 border-gray-200",

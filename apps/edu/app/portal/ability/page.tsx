@@ -19,11 +19,11 @@ type AbilityItem =
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "草稿",
-  unsubmitted: "未提交",
   pending: "审批中",
   rejected: "已驳回",
-  toPublish: "待发布",
+  approved: "已通过",
   published: "已发布",
+  archived: "已归档",
 }
 
 function StatusBadge({ status }: { status: string }) {
