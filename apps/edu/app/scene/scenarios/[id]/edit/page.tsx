@@ -32,8 +32,7 @@ import type { User } from "@/lib/api"
 import type { CareerPosition } from "@/lib/types/job"
 import type { Industry } from "@/lib/types/backend"
 import type { SceneBatch } from "@/lib/types/scene"
-import { useToast } from "@/hooks/use-toast"
-import { Toaster } from "@/components/ui/toaster"
+import { toast, Toaster } from "sonner"
 import { EditorShell } from "@/components/shared/editor-shell"
 
 function IndustryProfessionSelector({
@@ -139,7 +138,6 @@ export default function ScenarioEditPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const scenarioId = params.id as string
-  const { toast } = useToast()
   const hasSavedRef = useRef(false)
   const isNewScenario = searchParams.get('new') === 'true'
 
@@ -198,7 +196,7 @@ export default function ScenarioEditPage() {
         setScenarioStatus(scenario.status || "draft")
       } catch (err: any) {
         console.error("Failed to load form data", err)
-        toast({ variant: "destructive", title: "数据加载失败", description: err.message || "请刷新页面重试" })
+        toast.error(err.message || "请刷新页面重试")
       } finally {
         setDataLoading(false)
       }
@@ -247,10 +245,10 @@ export default function ScenarioEditPage() {
       }
       await scenarioApi.update(scenarioId, payload as any)
       hasSavedRef.current = true
-      toast({ title: "保存成功" })
+      toast.success("保存成功")
       router.push(`/scene/scenarios/${scenarioId}/edit/tasks`)
     } catch (err: any) {
-      toast({ variant: "destructive", title: "保存失败", description: err.message || "请稍后重试" })
+      toast.error(err.message || "请稍后重试")
     } finally {
       setIsSaving(false)
     }
@@ -277,12 +275,12 @@ export default function ScenarioEditPage() {
       if (scenarioStatus === "approved" || scenarioStatus === "published") {
         await scenarioApi.saveDraft(scenarioId)
         setScenarioStatus("draft")
-        toast({ title: "草稿已保存" })
+        toast.success("草稿已保存")
       } else {
-        toast({ title: "草稿已保存" })
+        toast.success("草稿已保存")
       }
     } catch (err: any) {
-      toast({ variant: "destructive", title: "保存失败", description: err.message || "请稍后重试" })
+      toast.error(err.message || "请稍后重试")
     } finally {
       setIsSaving(false)
     }
@@ -301,10 +299,10 @@ export default function ScenarioEditPage() {
     try {
       const res = await fileApi.upload(file)
       setCoverImage(res.url)
-      toast({ title: "封面上传成功" })
+      toast.success("封面上传成功")
     } catch (err: any) {
       console.error("Cover upload failed:", err)
-      toast({ variant: "destructive", title: "封面上传失败", description: err?.message || "请稍后重试" })
+      toast.error(err?.message || "请稍后重试")
     } finally {
       setCoverUploading(false)
     }

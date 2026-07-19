@@ -20,6 +20,7 @@ import type { Course } from "@/lib/types/lesson"
 import type { SystemCourseNode, NodeRefType } from "@/lib/types/lesson-source"
 import CourseNodeTree from "../../system/add/_components/CourseNodeTree"
 import { EditorShell } from "@/components/shared/editor-shell"
+import { BatchSelector } from "@/components/shared/batch-selector"
 import { WEB_FRONTEND_SEMESTER_NODES } from "./_mock/semester-nodes"
 import {
   ATOMIC_MODULES,
@@ -102,7 +103,6 @@ function HybridCourseAddForm() {
       enabled.forEach((m) => map.set(m.name, m.id))
       majorMapRef.current = map
     }).catch(() => {})
-    lessonBatchApi.list({ limit: 1000 }).then((res) => setBatches(res.items))
   }, [])
 
   interface ClaimPayload {
@@ -198,7 +198,6 @@ function HybridCourseAddForm() {
   const rootForm = nodeDataMap[FIRST_NODE_ID]?.form || createDefaultNodeModuleData().form
 
   const [batchId, setBatchId] = useState("")
-  const [batches, setBatches] = useState<{ id: string; name: string; workflowId?: string }[]>([])
 
   const updateRootForm = useCallback((patch: Partial<CourseBasicForm>) => {
     setNodeDataMap((prev) => ({
@@ -639,20 +638,7 @@ function HybridCourseAddForm() {
                       className="h-9 text-sm"
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">所属批次</Label>
-                    <Select value={batchId || "__none__"} onValueChange={(v) => setBatchId(v === "__none__" ? "" : v)}>
-                      <SelectTrigger className="h-9 text-sm">
-                        <SelectValue placeholder="请选择批次" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">不关联批次</SelectItem>
-                        {batches.map((b) => (
-                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <BatchSelector value={batchId} onChange={setBatchId} batchApi={lessonBatchApi} />
                 </div>
                 <div className="mt-5 space-y-1.5">
                   <Label className="text-xs">课程目标</Label>

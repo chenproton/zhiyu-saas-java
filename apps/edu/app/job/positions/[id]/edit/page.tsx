@@ -37,10 +37,10 @@ import {
   convertApiAbilityDomainToLocal,
   convertApiAbilityToLocal,
 } from '@/lib/stores/job-converters'
-import { useToast } from '@/hooks/use-toast'
-import { Toaster } from '@/components/ui/toaster'
+import { toast, Toaster } from 'sonner'
 import { useAuth } from '@/components/auth-provider'
 import { EditorShell } from '@/components/shared/editor-shell'
+import { BatchSelector } from '@/components/shared/batch-selector'
 
 
 
@@ -53,7 +53,6 @@ function PositionEditPageContent({ params }: PageProps) {
   const { id } = use(params)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { toast } = useToast()
   const { user } = useAuth()
   const currentUser = user ? { id: user.id, name: user.name || user.username || user.id } : { id: '', name: '' }
   const [positions, setPositions] = useState<Position[]>([])
@@ -86,7 +85,7 @@ function PositionEditPageContent({ params }: PageProps) {
         setBatches(batchRes.items.map(convertJobBatchToBatch))
       })
       .catch((err: any) => {
-        if (!cancelled) toast({ variant: 'destructive', title: '加载失败', description: err?.message || '请稍后重试' })
+        if (!cancelled) toast.error(err?.message || '请稍后重试')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -151,7 +150,7 @@ function PositionEditPageContent({ params }: PageProps) {
         setDetailsLoading(false)
         if (!cancelled) {
           console.error('Failed to load position details:', err)
-          toast({ variant: 'destructive', title: '加载详情失败', description: err?.message || '请稍后重试' })
+          toast.error(err?.message || '请稍后重试')
         }
       })
     return () => { cancelled = true }
@@ -226,10 +225,10 @@ function PositionEditPageContent({ params }: PageProps) {
       }
       hasSavedRef.current = true
       setPositions((prev) => prev.map((p) => (p.id === position.id ? { ...position, status: 'draft' as const } : p)))
-      toast({ title: '草稿已保存' })
+      toast.success('草稿已保存')
     } catch (err: any) {
       console.error('Save position failed:', err)
-      toast({ variant: 'destructive', title: '保存失败', description: err?.message || '请稍后重试' })
+      toast.error(err?.message || '请稍后重试')
     } finally {
       setIsSaving(false)
     }
@@ -240,10 +239,10 @@ function PositionEditPageContent({ params }: PageProps) {
     try {
       const res = await fileApi.upload(file)
       updatePositionData({ coverImage: res.url })
-      toast({ title: '封面上传成功' })
+      toast.success('封面上传成功')
     } catch (err: any) {
       console.error('Cover upload failed:', err)
-      toast({ variant: 'destructive', title: '封面上传失败', description: err?.message || '请稍后重试' })
+      toast.error(err?.message || '请稍后重试')
     } finally {
       setCoverUploading(false)
     }
@@ -376,28 +375,12 @@ function PositionEditPageContent({ params }: PageProps) {
 
               <Card>
                 <CardContent className="pt-6 space-y-4">
-                  <div>
-                    <Label className="text-gray-500 text-xs">所属批次</Label>
-                    <div className="mt-1">
-                      <Select
-                        value={position.batchId || '__none__'}
-                        onValueChange={(v) => updatePositionData({ batchId: v === '__none__' ? '' : v })}
-                      >
-                        <SelectTrigger className="h-9 text-sm">
-                          <SelectValue placeholder="选择批次" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__none__">未选择批次</SelectItem>
-                          {batches.map((b) => (
-                            <SelectItem key={b.id} value={b.id}>
-                              {b.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
+                  <BatchSelector
+                    value={position.batchId || ''}
+                    onChange={(v) => updatePositionData({ batchId: v })}
+                    batchApi={batchApi}
+                    emptyLabel="未选择批次"
+                  />
                   <div>
                     <Label className="text-gray-500 text-xs">创建人</Label>
                     <p className="font-medium text-gray-800 mt-1">{currentUser.name}</p>

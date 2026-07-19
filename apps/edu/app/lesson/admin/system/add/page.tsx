@@ -59,6 +59,7 @@ import { EvaluationMethodSelector } from "../../_components/assessment/evaluatio
 import { CourseEvaluationRulesDialog } from "../../_components/assessment/course-evaluation-rules-dialog"
 import { RichTextEditor } from "../../_components/common/rich-text-editor"
 import { EditorShell } from "@/components/shared/editor-shell"
+import { BatchSelector } from "@/components/shared/batch-selector"
 
 import CourseNodeTree from "./_components/CourseNodeTree"
 import PublishCheckPanel from "./_components/PublishCheckPanel"
@@ -184,8 +185,9 @@ function AddSystemPageInner() {
   const [major, setMajor] = useState("")
   const [courseDescription, setCourseDescription] = useState("")
   const [coverImage, setCoverImage] = useState("")
-  const [batchId, setBatchId] = useState("")
-  const [batches, setBatches] = useState<{ id: string; name: string; workflowId?: string }[]>([])
+    const [batchId, setBatchId] = useState("")
+
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const hasSavedRef = useRef(false)
   const [loadingEdit, setLoadingEdit] = useState(false)
@@ -214,10 +216,6 @@ function AddSystemPageInner() {
       }
     }).catch(() => {}).finally(() => setLoadingEdit(false))
   }, [editId])
-
-  useEffect(() => {
-    lessonBatchApi.list({ limit: 1000 }).then((res) => setBatches(res.items))
-  }, [])
 
   const handleAddNode = useCallback((parentId: string | null, name: string, order: number, type?: NodeRefType, sourceId?: string, sourceName?: string) => {
     const newNode: SystemCourseNode = {
@@ -637,20 +635,7 @@ function AddSystemPageInner() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">所属批次</Label>
-                    <Select value={batchId || "__none__"} onValueChange={(v) => setBatchId(v === "__none__" ? "" : v)}>
-                      <SelectTrigger className="h-9 text-sm">
-                        <SelectValue placeholder="请选择批次" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">不关联批次</SelectItem>
-                        {batches.map((b) => (
-                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <BatchSelector value={batchId} onChange={setBatchId} batchApi={lessonBatchApi} />
                   <div className="space-y-1.5">
                     <Label className="text-xs">封面图片</Label>
                     <div className="flex items-start gap-4">

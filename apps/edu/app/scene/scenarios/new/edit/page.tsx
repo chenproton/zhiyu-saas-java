@@ -32,8 +32,7 @@ import type { User } from "@/lib/api"
 import type { CareerPosition } from "@/lib/types/job"
 import type { Industry } from "@/lib/types/backend"
 import type { SceneBatch } from "@/lib/types/scene"
-import { useToast } from "@/hooks/use-toast"
-import { Toaster } from "@/components/ui/toaster"
+import { toast, Toaster } from "sonner"
 import { EditorShell } from "@/components/shared/editor-shell"
 
 interface PositionWithProfession extends CareerPosition {
@@ -148,7 +147,6 @@ interface DeptNode {
 function NewScenarioEditForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { toast } = useToast()
 
   const positionIdFromQuery = searchParams.get("positionId")
   const batchIdFromQuery = searchParams.get("batchId")
@@ -214,7 +212,7 @@ function NewScenarioEditForm() {
         setExpandedDepts(expanded)
       } catch (err) {
         console.error("Failed to load form data", err)
-        toast({ variant: "destructive", title: "数据加载失败", description: "请刷新页面重试" })
+        toast.error("请刷新页面重试")
       } finally {
         setDataLoading(false)
       }
@@ -280,10 +278,10 @@ function NewScenarioEditForm() {
         coverImage: coverImage || undefined,
       }
       const created = await scenarioApi.create(payload as any)
-      toast({ title: "创建成功" })
+      toast.success("创建成功")
       router.push(`/scene/scenarios/${created.id}/edit/tasks`)
     } catch (err: any) {
-      toast({ variant: "destructive", title: "创建失败", description: err.message || "请稍后重试" })
+      toast.error(err.message || "请稍后重试")
     } finally {
       setIsSaving(false)
     }
@@ -307,10 +305,10 @@ function NewScenarioEditForm() {
         coverImage: coverImage || undefined,
       }
       const created = await scenarioApi.create(payload as any)
-      toast({ title: "草稿已保存" })
+      toast.success("草稿已保存")
       router.push(`/scene/scenarios/${created.id}/edit`)
     } catch (err: any) {
-      toast({ variant: "destructive", title: "保存失败", description: err.message || "请稍后重试" })
+      toast.error(err.message || "请稍后重试")
     } finally {
       setIsSaving(false)
     }
@@ -339,10 +337,10 @@ function NewScenarioEditForm() {
     try {
       const res = await fileApi.upload(file)
       setCoverImage(res.url)
-      toast({ title: "封面上传成功" })
+      toast.success("封面上传成功")
     } catch (err: any) {
       console.error("Cover upload failed:", err)
-      toast({ variant: "destructive", title: "封面上传失败", description: err?.message || "请稍后重试" })
+      toast.error(err?.message || "请稍后重试")
     } finally {
       setCoverUploading(false)
     }

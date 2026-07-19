@@ -29,6 +29,7 @@ import { ResourceSelector, type ResourceItem } from "../../_components/resources
 import { RichTextEditor } from "../../_components/common/rich-text-editor"
 import PublishCheckPanel from "../../system/add/_components/PublishCheckPanel"
 import { EditorShell } from "@/components/shared/editor-shell"
+import { BatchSelector } from "@/components/shared/batch-selector"
 
 interface KnowledgePointItem {
   id: string
@@ -62,7 +63,6 @@ function AddGranularPageInner() {
   const [difficulty, setDifficulty] = useState<number>(0)
   const [coverImage, setCoverImage] = useState("")
   const [batchId, setBatchId] = useState("")
-  const [batches, setBatches] = useState<{ id: string; name: string; workflowId?: string }[]>([])
 
   /* module 2: knowledge points */
   const [knowledgePool, setKnowledgePool] = useState<KnowledgePointItem[]>([])
@@ -123,7 +123,6 @@ function AddGranularPageInner() {
       enabled.forEach((m) => map.set(m.name, m.id))
       majorMapRef.current = map
     }).catch(() => {})
-    lessonBatchApi.list({ limit: 1000 }).then((res) => setBatches(res.items))
   }, [])
 
   const currentCheckNode: SystemCourseNode | undefined = useMemo(() => {
@@ -263,20 +262,7 @@ function AddGranularPageInner() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">所属批次</Label>
-                    <Select value={batchId || "__none__"} onValueChange={(v) => setBatchId(v === "__none__" ? "" : v)}>
-                      <SelectTrigger className="h-9 text-sm">
-                        <SelectValue placeholder="请选择批次" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">不关联批次</SelectItem>
-                        {batches.map((b) => (
-                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <BatchSelector value={batchId} onChange={setBatchId} batchApi={lessonBatchApi} />
                   <div className="space-y-1.5">
                     <Label className="text-xs">预计课时</Label>
                     <Input type="number" value={hours} onChange={(e) => setHours(e.target.value)} placeholder="请输入课时数" className="h-9 text-sm" />
