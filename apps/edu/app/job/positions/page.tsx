@@ -6,6 +6,7 @@ import { useIndustryMap, useMajorMap } from "@/lib/use-resource-maps"
 import {
   convertCareerPositionToPosition,
   convertJobBatchToBatch,
+  positionToCreateRequest,
 } from "@/lib/stores/job-converters"
 import type { Position } from "@/lib/types/job-source"
 import { useAuth } from "@/components/auth-provider"
@@ -54,15 +55,14 @@ export default function PositionsPage() {
       ]}
       mapItem={(b) => mapPosition(b, currentUserId)}
       mapBatch={mapPositionBatch}
-      createPayload={(uid, _label) => ({
+      createPayload={(uid, _label) => positionToCreateRequest({
         batchId: "",
         name: "新建岗位",
         shortName: "新岗位",
-        industryId: "",
-        majorIds: [],
+        industry: "",
+        majors: [],
         positionType: "enterprise",
-        salaryMin: 0,
-        salaryMax: 0,
+        salaryRange: [0, 0],
         description: "",
         requirements: [],
         careerPath: "",
@@ -70,7 +70,7 @@ export default function PositionsPage() {
         status: "draft",
         createdBy: uid,
         collaborators: [uid],
-      })}
+      } as any)}
       listExtraProps={{ configureStepParam: "2", industryMap, majorMap }}
       renderList={(props) => (
         <PositionList
