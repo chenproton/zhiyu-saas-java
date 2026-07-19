@@ -25,7 +25,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react"
-import { toast } from "sonner"
+import { toast, Toaster } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -606,6 +606,7 @@ function AddSystemPageInner() {
       submitText="提交审批"
       title={isEdit ? "编辑体系课" : "新建体系课"}
     >
+        <Toaster />
         {/* ========== Global Course Info (collapsible, spans full width) ========== */}
         <Collapsible open={globalInfoOpen} onOpenChange={setGlobalInfoOpen} className="mb-6">
           <Card className="border-0 shadow-sm">
@@ -1018,10 +1019,10 @@ function AddSystemPageInner() {
             <Button
               onClick={() => {
                 setConvertDialogOpen(false)
-                toast.success("课程已提交审核")
+                setTimeout(() => handleSubmit(), 100)
               }}
             >
-              确认
+              确认并提交
             </Button>
           </DialogFooter>
         </DialogContent>
