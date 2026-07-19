@@ -19,13 +19,13 @@
 | pending | ✓ | - | ✓ | ✓ | - | - |
 | approved | ✓ | - | - | - | ✓ | ✓ |
 | published | ✓ | - | - | - | - | ✓ |
-| archived | - | - | - | - | - | - |
+| archived | ✓ | - | - | - | - | - |
 
 说明：
 - `save-draft` 对应的目标状态是 `draft`。
 - 审批通过后（`approved`）可发布（`published`）。
 - 已发布对象可以取消发布，回到 `draft`（复用 `save-draft` 语义）。
-- `archived` 为终态，不可再编辑或流转。
+- `archived` 可通过 `save-draft` 恢复为 `draft`，恢复后可在原编辑页继续编辑或重新提交审批。
 
 ## 关键行为
 
@@ -44,9 +44,10 @@
      - 试卷详情：`/evaluation/exams/[id]`
      - 题库详情：`/evaluation/question-banks/[id]`
 
-2. **编辑与删除权限**
-   - 可编辑：`draft` / `rejected` / `approved` / `published`
+2. **编辑、删除与归档权限**
+   - 可编辑：`draft` / `rejected` / `approved` / `published` / `archived`
    - 可删除：`draft` / `rejected` / `archived`
+   - 可归档：`draft` / `rejected` / `approved` / `published`（`pending` 与 `archived` 不可归档）
 
 3. **审批与发布入口**
    - 提交审批：`POST /{entity}/{id}/submit`（`draft`/`rejected` → `pending`）
@@ -60,9 +61,10 @@
 |---|---|---|
 | 后端状态机统一 | PASS | `content_actions.go` 中 `allowedStatusTransitions` 统一控制五个对象 |
 | SaveDraft 端点 | PASS | 五个 handler 均实现 `SaveDraft` 并注册 `/{id}/save-draft` 路由 |
-| 共享类型一致 | PASS | `STATUS_TRANSITIONS` 与后端矩阵一致，`save_draft.from` 包含 `approved`/`published` |
-| API 客户端覆盖 | PASS | `createContentApi` 暴露 `saveDraft(id)` |
-| 前端保存草稿回退 | PASS | 所有内容编辑页均实现 approved/published → draft 回退 |
+| 共享类型一致 | PASS | `STATUS_TRANSITIONS` 与后端矩阵一致，`save_draft.from` 包含 `approved`/`published`/`archived` |
+| API 客户端覆盖 | PASS | `createContentApi` 暴露 `saveDraft(id)` 与 `archive(id)` |
+| 前端保存草稿回退 | PASS | 所有内容编辑页均实现 approved/published/archived → draft 回退 |
+| 归档与恢复入口 | PASS | 场景、岗位列表均提供行级/批量归档按钮，并在归档库提供恢复入口 |
 | 本地验证 | PASS | `go vet ./...`、`go test ./...`、`go build ./cmd/server/main.go`、`pnpm -r typecheck`、`pnpm -r lint`、`pnpm build:edu`、`pnpm build:marketplace` 通过 |
 
 ## 风险与约束
