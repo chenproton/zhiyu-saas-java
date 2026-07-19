@@ -492,7 +492,10 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       if (records.items.length === 0) { alert("未找到审批记录"); return }
       await approvalApi.review(records.items[0].id, { status: "approved" })
       await refresh()
-    } catch (_) {}
+    } catch (err: any) {
+      console.error("审批失败", err)
+      alert(err?.message || "审批失败，请稍后重试")
+    }
   }
 
   const handleReject = async (item: T) => {
@@ -501,7 +504,10 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       if (records.items.length === 0) { alert("未找到审批记录"); return }
       await approvalApi.review(records.items[0].id, { status: "rejected" })
       await refresh()
-    } catch (_) {}
+    } catch (err: any) {
+      console.error("驳回失败", err)
+      alert(err?.message || "驳回失败，请稍后重试")
+    }
   }
 
   const handlePublish = async (item: T) => {
