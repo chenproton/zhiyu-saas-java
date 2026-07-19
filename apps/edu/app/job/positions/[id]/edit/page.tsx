@@ -98,7 +98,7 @@ function PositionEditPageContent({ params }: PageProps) {
   }, [id, positions, position])
 
   useEffect(() => {
-    if (!position || detailsLoaded || detailsLoading) return
+    if (!position || detailsLoaded) return
     setDetailsLoading(true)
     let cancelled = false
     Promise.all([
@@ -109,8 +109,10 @@ function PositionEditPageContent({ params }: PageProps) {
       abilityApi.list({ limit: 1000 }),
     ])
       .then(([respRes, certRes, bindingRes, domainRes, abilityRes]) => {
-        setDetailsLoading(false)
-        if (cancelled) return
+        if (cancelled) {
+          setDetailsLoading(false)
+          return
+        }
         const abilityMap = new Map(abilityRes.items.map((a) => [a.id, convertApiAbilityToLocal(a)]))
         const responsibilities = respRes.items.map(convertApiResponsibilityToLocal)
         const certificates = certRes.items.map(convertApiCertificateToLocal)
@@ -139,6 +141,7 @@ function PositionEditPageContent({ params }: PageProps) {
           return next
         })
         setDetailsLoaded(true)
+        setDetailsLoading(false)
       })
       .catch((err: any) => {
         setDetailsLoading(false)
@@ -148,7 +151,7 @@ function PositionEditPageContent({ params }: PageProps) {
         }
       })
     return () => { cancelled = true }
-  }, [position, detailsLoaded, detailsLoading, toast])
+  }, [position, detailsLoaded, toast])
 
   useEffect(() => {
     const stepParam = searchParams.get('step')
