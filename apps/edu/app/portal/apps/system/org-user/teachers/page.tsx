@@ -303,12 +303,10 @@ export default function TeachersPage() {
           <p className="mt-1 text-sm text-muted-foreground">维护教师档案信息</p>
         </div>
         <div className="flex items-center gap-2">
-          {selectedTeachers.length > 0 && (
-            <Button variant="destructive" size="sm" disabled={batchDeleting} onClick={handleBatchDelete}>
-              {batchDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
-              批量删除({selectedTeachers.length})
-            </Button>
-          )}
+          <Button variant="destructive" size="sm" disabled={selectedTeachers.length === 0 || batchDeleting} onClick={handleBatchDelete}>
+            {batchDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+            {selectedTeachers.length > 0 ? `批量删除(${selectedTeachers.length})` : "批量删除"}
+          </Button>
           <Button variant="outline" size="sm">
             <Upload className="h-4 w-4 mr-1" />导入
           </Button>
