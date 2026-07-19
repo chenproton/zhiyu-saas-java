@@ -51,7 +51,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-import { MAJORS } from "@/lib/types/lesson-source"
 import type { SystemCourseNode, NodeResource, NodeRefType } from "@/lib/types/lesson-source"
 
 import { KnowledgeSelector } from "../../_components/knowledge/knowledge-selector"
@@ -65,7 +64,7 @@ import CourseNodeTree from "./_components/CourseNodeTree"
 import PublishCheckPanel from "./_components/PublishCheckPanel"
 
 import type { KnowledgePointItem } from "@/lib/types/lesson"
-import { courseApi, courseNodeApi, knowledgeApi } from "@/lib/api"
+import { courseApi, courseNodeApi, knowledgeApi, majorApi } from "@/lib/api"
 
 /* ---------- node editing mode ---------- */
 
@@ -157,6 +156,19 @@ function ConvertPreviewTree({
 
 /* ---------- main component ---------- */
 
+const defaultMajorNames = [
+  "计算机科学与技术",
+  "软件工程",
+  "数据科学与大数据技术",
+  "人工智能",
+  "网络工程",
+  "信息安全",
+  "物联网工程",
+  "数字媒体技术",
+  "智能科学与技术",
+  "电子与计算机工程",
+]
+
 function AddSystemPageInner() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -188,11 +200,11 @@ function AddSystemPageInner() {
       setCourseId(course.id)
       setCourseName(course.name || "")
       if (course.code) setCourseCode(course.code)
-      if (course.description) setDescription(course.description)
-      if (course.coverUrl) setCoverImage(course.coverUrl)
+      if (course.description) setCourseDescription(course.description)
+      if (course.coverImage) setCoverImage(course.coverImage)
       if (course.majorId) setMajor(course.majorId)
       if (nodeRes.items?.length) {
-        setNodes(nodeRes.items)
+        setNodes(nodeRes.items as unknown as SystemCourseNode[])
         setSelectedNodeId(nodeRes.items[0]?.id || null)
       }
     }).catch(() => {}).finally(() => setLoadingEdit(false))
@@ -275,7 +287,7 @@ function AddSystemPageInner() {
         id: c.id,
         name: c.name,
         description: c.category,
-        source: c.major || c.creatorId || "",
+        source: c.majorName || c.creatorId || "unknown",
         duration: c.nodeCount,
       })))
     }).catch(() => setGrainCourses([]))
@@ -461,10 +473,13 @@ function AddSystemPageInner() {
         name: courseName,
         code: courseCode,
         majorId: major || undefined,
-        description: description || undefined,
-        coverUrl: coverImage || undefined,
+        description: courseDescription || undefined,
+        coverImage: coverImage || undefined,
         type: "system" as const,
         status: "draft" as const,
+        category: "system",
+        creatorId: "",
+        coCreatorIds: [] as string[],
       }
       if (isEdit && courseId) {
         await courseApi.update(courseId, payload)
@@ -479,7 +494,7 @@ function AddSystemPageInner() {
     } finally {
       setSaving(false)
     }
-  }, [courseName, courseCode, major, description, coverImage, isEdit, courseId])
+  }, [courseName, courseCode, major, courseDescription, coverImage, isEdit, courseId])
 
   const handleSubmit = useCallback(async () => {
     const completeNodes = nodes.filter((n) => n.type !== "original" && checkNodeComplete(n))
@@ -596,8 +611,8 @@ function AddSystemPageInner() {
                       )}
                     </div>
                   </div>
-                  {!globalInfoOpen && description && (
-                    <p className="text-xs text-gray-400 mt-1 pl-6 text-left">{description}</p>
+                  {!globalInfoOpen && courseDescription && (
+                    <p className="text-xs text-gray-400 mt-1 pl-6 text-left">{courseDescription}</p>
                   )}
                 </CardHeader>
               </button>
@@ -626,7 +641,7 @@ function AddSystemPageInner() {
                         <SelectValue placeholder="请选择适用专业" />
                       </SelectTrigger>
                       <SelectContent>
-                        {MAJORS.filter((m) => m !== "全部").map((m) => (
+                        {defaultMajorNames.filter((m) => m !== "全部").map((m) => (
                           <SelectItem key={m} value={m}>{m}</SelectItem>
                         ))}
                       </SelectContent>
@@ -671,8 +686,8 @@ function AddSystemPageInner() {
                   <div className="md:col-span-3 space-y-1.5">
                     <Label className="text-xs">课程简介</Label>
                     <RichTextEditor
-                      value={description}
-                      onChange={setDescription}
+                      value={courseDescription}
+                      onChange={setCourseDescription}
                       placeholder="请输入课程简介..."
                       minHeight={280}
                     />
