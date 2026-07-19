@@ -678,12 +678,10 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
                 取消发布
               </Button>
             )}
-            {hasPermission("lesson", "courses", "archive") && (
-              <Button variant="outline" size="sm" className="h-8 text-xs text-purple-600 hover:text-purple-700" disabled={!hasSelected || !canBatchArchive} onClick={handleBatchArchive}>
-                <Archive className="mr-1 h-3 w-3" />
-                归档
-              </Button>
-            )}
+            <Button variant="outline" size="sm" className="h-8 text-xs text-purple-600 hover:text-purple-700" disabled={!hasSelected || !canBatchArchive} onClick={handleBatchArchive}>
+              <Archive className="mr-1 h-3 w-3" />
+              归档
+            </Button>
             {hasPermission("lesson", "courses", "delete") && (
               <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected || !canBatchDelete} onClick={handleBatchDelete}>
                 <Trash2 className="mr-1 h-3 w-3" />
