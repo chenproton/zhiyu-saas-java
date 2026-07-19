@@ -673,12 +673,12 @@ function HybridCourseAddForm() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">所属批次</Label>
-                    <Select value={batchId} onValueChange={setBatchId}>
+                    <Select value={batchId || "__none__"} onValueChange={(v) => setBatchId(v === "__none__" ? "" : v)}>
                       <SelectTrigger className="h-9 text-sm">
                         <SelectValue placeholder="请选择批次" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">不关联批次</SelectItem>
+                        <SelectItem value="__none__">不关联批次</SelectItem>
                         {batches.map((b) => (
                           <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                         ))}
