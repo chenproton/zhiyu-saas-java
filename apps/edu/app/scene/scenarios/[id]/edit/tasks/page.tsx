@@ -1,165 +1,725 @@
 "use client"
 
 import {
-  ArrowLeft, ArrowRight, Book, CheckCircle2, Clock, Copy, FileText,
-  GripVertical, Lightbulb, Link2, Plus, Save, Scale, Search, Star,
-  Target, Trash2, Eye, X, Check, Play, Upload, Image, Video, Globe,
-  MapPin, Package, Award, List, ListOrdered, ChevronDown, ChevronUp,
-  AlertCircle, Info, PenTool, Database, ClipboardList, FileQuestion,
-  User, Users, Bot, FolderCheck, Gavel, Presentation, Unlock, Lock,
-  ChevronRight, ChevronLeft, PieChart as PieChartIcon, Headphones,
-  Archive, RotateCcw, BookOpen, Pencil, Minus,
+  ArrowLeft,
+  ArrowRight,
+  Book,
+  CheckCircle2,
+  Clock,
+  Copy,
+  FileText,
+  GripVertical,
+  Lightbulb,
+  Link2,
+  Plus,
+  Save,
+  Scale,
+  Search,
+  Star,
+  Target,
+  Trash2,
+  Eye,
+  X,
+  Check,
+  Play,
+  Upload,
+  Image,
+  Video,
+  Globe,
+  MapPin,
+  Package,
+  Award,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  List,
+  ListOrdered,
+  Heading1,
+  Heading2,
+  Quote,
+  Code,
+  Minus,
+  Link as LinkIcon,
+  Table,
+  Strikethrough,
+  Palette,
+  Type,
+  Rows3,
+  Gavel,
+  ClipboardList,
+  Database,
+  MessageSquare,
+  PenTool,
+  Presentation,
+  FileQuestion,
+  MonitorPlay,
+  User,
+  Users,
+  Bot,
+  FolderCheck,
+  Wrench,
+  UserCheck,
+  Lock,
+  Unlock,
+  ChevronDown,
+  ChevronUp,
+  AlertCircle,
+  Info,
+  Sparkles,
+  ChevronRight,
+  ChevronLeft,
+  File,
+  PieChart as PieChartIcon,
+  Headphones,
+  Archive,
+  Building2,
+  RotateCcw,
+  Shield,
+  Server,
+  Layers,
+  BookOpen,
+  Pencil,
 } from "lucide-react"
+import NextLink from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useMemo, useRef, useCallback, useLayoutEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter,
-  DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { Slider } from "@/components/ui/slider"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
-import { scenarioApi, taskApi, knowledgeApi, abilityApi, questionBankApi, questionApi, examApi } from "@/lib/api"
-import type { ScenarioTask } from "@/lib/types/scene"
-import { useToast } from "@/hooks/use-toast"
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
+import {
+  scenarios,
+  knowledgePoints,
+  abilityPoints,
+  learningResources,
+  positionAbilities,
+  questionBank,
+  granularLessons,
+  professions,
+  type Task,
+  type PositionAbility,
+  type GradeMapping,
+} from "@/lib/mock-data"
+
+// ============ Types & Configs ============
 
 type CardType = "info" | "description" | "knowledge" | "ability" | "resources" | "evaluation" | "evaluationRules" | "weight"
 
 const cardConfigs: { type: CardType; title: string; icon: React.ReactNode }[] = [
-  { type: "info", title: "配置任务\n基础信息", icon: <FileText className="h-4 w-4" /> },
-  { type: "description", title: "配置任务\n说明", icon: <Book className="h-4 w-4" /> },
-  { type: "knowledge", title: "考查\n知识点", icon: <Lightbulb className="h-4 w-4" /> },
-  { type: "ability", title: "考查\n能力点", icon: <Award className="h-4 w-4" /> },
-  { type: "resources", title: "配置任务\n资源", icon: <Link2 className="h-4 w-4" /> },
-  { type: "evaluation", title: "配置任务\n测评形式", icon: <CheckCircle2 className="h-4 w-4" /> },
-  { type: "evaluationRules", title: "配置任务\n评价规则", icon: <Gavel className="h-4 w-4" /> },
-  { type: "weight", title: "配置任务\n权重", icon: <Scale className="h-4 w-4" /> },
+  { type: "info", title: "配置任务基础信息", icon: <FileText className="h-4 w-4" /> },
+  { type: "description", title: "配置任务说明", icon: <Book className="h-4 w-4" /> },
+  { type: "knowledge", title: "考查知识点", icon: <Lightbulb className="h-4 w-4" /> },
+  { type: "ability", title: "考查能力点", icon: <Award className="h-4 w-4" /> },
+  { type: "resources", title: "配置任务资源", icon: <Link2 className="h-4 w-4" /> },
+  { type: "evaluation", title: "配置任务测评形式", icon: <CheckCircle2 className="h-4 w-4" /> },
+  { type: "evaluationRules", title: "配置任务评价规则", icon: <Gavel className="h-4 w-4" /> },
+  { type: "weight", title: "配置任务权重", icon: <Scale className="h-4 w-4" /> },
 ]
 
-const evaluationMethodOptions = [
-  { key: "random_draw", label: "现场问答", color: "bg-blue-50 text-blue-600 border-blue-200" },
-  { key: "review", label: "现场评审", color: "bg-purple-50 text-purple-600 border-purple-200" },
-  { key: "paper", label: "试卷", color: "bg-green-50 text-green-600 border-green-200" },
-  { key: "question_bank", label: "题库", color: "bg-orange-50 text-orange-600 border-orange-200" },
-  { key: "quiz", label: "随堂测", color: "bg-red-50 text-red-600 border-red-200" },
-  { key: "outcome", label: "成果评价", color: "bg-cyan-50 text-cyan-600 border-cyan-200" },
-  { key: "homework", label: "作业", color: "bg-pink-50 text-pink-600 border-pink-200" },
-]
-
-const defaultGradeMapping = [
-  { id: "grade-1", grade: "A", minScore: 90, maxScore: 100, color: "bg-green-500", remark: "表现卓越" },
-  { id: "grade-2", grade: "B", minScore: 75, maxScore: 89, color: "bg-blue-500", remark: "表现良好" },
-  { id: "grade-3", grade: "C", minScore: 60, maxScore: 74, color: "bg-yellow-500", remark: "基本达标" },
-  { id: "grade-4", grade: "D", minScore: 0, maxScore: 59, color: "bg-red-500", remark: "未达标准" },
-]
-
-interface TaskState {
-  description: string
-  knowledgePoints: string[]
-  abilityPoints: string[]
-  resources: string[]
-  evaluationMethods: string[]
-  weight: number
-  locked: boolean
-  gradeMapping: { id: string; grade: string; minScore: number; maxScore: number; color: string; remark: string }[]
-  methodWeights: Record<string, number>
+const resourceTypeIcons: Record<string, React.ReactNode> = {
+  document: <FileText className="h-4 w-4 text-blue-500" />,
+  spreadsheet: <Table className="h-4 w-4 text-teal-500" />,
+  image: <Image className="h-4 w-4 text-green-500" />,
+  link: <Link2 className="h-4 w-4 text-cyan-500" />,
+  audio: <Headphones className="h-4 w-4 text-violet-500" />,
+  video: <Video className="h-4 w-4 text-red-500" />,
+  archive: <Archive className="h-4 w-4 text-amber-500" />,
+  venue: <MapPin className="h-4 w-4 text-orange-500" />,
+  facility: <Building2 className="h-4 w-4 text-rose-500" />,
+  software: <Globe className="h-4 w-4 text-purple-500" />,
+  other: <Package className="h-4 w-4 text-gray-500" />,
 }
 
-function makeDefaultTaskState(): TaskState {
-  return {
-    description: "",
-    knowledgePoints: [],
-    abilityPoints: [],
-    resources: [],
-    evaluationMethods: ["review"],
-    methodWeights: { review: 100 },
-    weight: 0,
-    locked: false,
-    gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)),
+const resourceTypeLabels: Record<string, string> = {
+  all: "全部",
+  document: "文档资源",
+  spreadsheet: "表格资源",
+  image: "图片资源",
+  link: "链接资源",
+  audio: "音频资源",
+  video: "视频资源",
+  archive: "压缩包资源",
+  venue: "场地资源",
+  facility: "设施设备资源",
+  software: "软件资源",
+  other: "其他资源",
+}
+
+const resourceTypeColors: Record<string, string> = {
+  document: "bg-blue-50 text-blue-600 border-blue-200",
+  spreadsheet: "bg-teal-50 text-teal-600 border-teal-200",
+  image: "bg-green-50 text-green-600 border-green-200",
+  link: "bg-cyan-50 text-cyan-600 border-cyan-200",
+  audio: "bg-violet-50 text-violet-600 border-violet-200",
+  video: "bg-red-50 text-red-600 border-red-200",
+  archive: "bg-amber-50 text-amber-600 border-amber-200",
+  venue: "bg-orange-50 text-orange-600 border-orange-200",
+  facility: "bg-rose-50 text-rose-600 border-rose-200",
+  software: "bg-purple-50 text-purple-600 border-purple-200",
+  other: "bg-gray-50 text-gray-600 border-gray-200",
+}
+
+const evaluationMethodOptions = [
+  // 平台通用 - 知识评价
+  { key: "question_bank", label: "题库", icon: <Database className="h-5 w-5" />, color: "bg-orange-50 text-orange-600 border-orange-200", available: true, desc: "从题库选题组成测评资源", primaryCategory: "platform", secondaryCategory: "知识评价" },
+  { key: "paper", label: "试卷", icon: <ClipboardList className="h-5 w-5" />, color: "bg-green-50 text-green-600 border-green-200", available: true, desc: "使用固定试卷进行考核", primaryCategory: "platform", secondaryCategory: "知识评价" },
+  { key: "quiz", label: "随堂测", icon: <FileQuestion className="h-5 w-5" />, color: "bg-red-50 text-red-600 border-red-200", available: true, desc: "课堂即时测验", primaryCategory: "platform", secondaryCategory: "知识评价" },
+  // 平台通用 - 过程评价
+  { key: "random_draw", label: "现场问答", icon: <FileQuestion className="h-5 w-5" />, color: "bg-blue-50 text-blue-600 border-blue-200", available: true, desc: "从题库抽取题目，教师现场提问", primaryCategory: "platform", secondaryCategory: "过程评价" },
+  // 平台通用 - 成果评价
+  { key: "review", label: "现场评审", icon: <Gavel className="h-5 w-5" />, color: "bg-purple-50 text-purple-600 border-purple-200", available: true, desc: "教师根据表现/材料给评价点打分", primaryCategory: "platform", secondaryCategory: "成果评价" },
+  { key: "outcome", label: "成果评价", icon: <FolderCheck className="h-5 w-5" />, color: "bg-cyan-50 text-cyan-600 border-cyan-200", available: true, desc: "对学生成果进行评价", primaryCategory: "platform", secondaryCategory: "成果评价" },
+  { key: "homework", label: "作业", icon: <BookOpen className="h-5 w-5" />, color: "bg-pink-50 text-pink-600 border-pink-200", available: true, desc: "学生提交作业进行评价", primaryCategory: "platform", secondaryCategory: "成果评价" },
+  // 行业专属 - 智慧物流
+  { key: "wms_inbound", label: "WMS(入库单)自动化评分", icon: <Package className="h-5 w-5" />, color: "bg-indigo-50 text-indigo-600 border-indigo-200", available: false, desc: "基于 WMS 入库单操作的自动化评分", primaryCategory: "industry", secondaryCategory: "智慧物流" },
+  { key: "wms_outbound", label: "WMS(出库单)自动化评分", icon: <Package className="h-5 w-5" />, color: "bg-indigo-50 text-indigo-600 border-indigo-200", available: false, desc: "基于 WMS 出库单操作的自动化评分", primaryCategory: "industry", secondaryCategory: "智慧物流" },
+  { key: "wms_wave", label: "WMS(波次分拣)自动化评分", icon: <Package className="h-5 w-5" />, color: "bg-indigo-50 text-indigo-600 border-indigo-200", available: false, desc: "基于 WMS 波次分拣操作的自动化评分", primaryCategory: "industry", secondaryCategory: "智慧物流" },
+  // 行业专属 - 网络安全
+  { key: "network_traffic", label: "网络流量分析自助评价", icon: <Shield className="h-5 w-5" />, color: "bg-emerald-50 text-emerald-600 border-emerald-200", available: false, desc: "基于网络流量分析的自助评价", primaryCategory: "industry", secondaryCategory: "网络安全" },
+  { key: "cyber_range", label: "网络靶场自助评价", icon: <Shield className="h-5 w-5" />, color: "bg-emerald-50 text-emerald-600 border-emerald-200", available: false, desc: "基于网络靶场环境的自助评价", primaryCategory: "industry", secondaryCategory: "网络安全" },
+]
+
+const abilityLevels = ["了解", "理解", "掌握", "熟练", "精通"]
+
+const defaultDescriptionTemplate = `任务描述
+
+你需要完成[具体任务]。该任务基于[背景/前提],要求你[核/心动作]。执行时请注意[关键约束],确保理解需求后再开始。
+
+任务目标
+
+·核心目标:[一句话概括最终成果]
+·目标一:[具体子目标]
+·目标二:[具体子目标]
+·目标三:[具体子目标]
+·成功标准:[任务完成的具体标志]
+
+任务结果
+
+请提交以下内容:
+
+·主交付物:[如报告/代码/方案]
+格式要求:[如Markdown/JSON/纯文本]
+·附属说明:[假设、来源、取舍等]
+篇幅要求:[如不少于500字/代码100行内]
+
+测评要求
+
+·准确性(30%):内容正确,逻辑清晰,来源可靠
+·完整性(25%):覆盖所有子目标,无遗漏
+清晰度(20%):结构分明,表达简洁
+·实用性(15%):结论可操作,建议可落地
+规范性(10%):符合格式,术语统一,无明显错误
+
+一票否决项:若出现[如抄袭/泄密/核心事实错误],视为未通过。`
+
+const defaultGradeMapping: GradeMapping[] = [
+  { id: "grade-1", grade: "A", minScore: 90, maxScore: 100, color: "bg-green-500", remark: "表现卓越，完全超出预期要求，可作为标杆示范" },
+  { id: "grade-2", grade: "B", minScore: 75, maxScore: 89, color: "bg-blue-500", remark: "表现良好，达到预期要求，仅有少量可改进之处" },
+  { id: "grade-3", grade: "C", minScore: 60, maxScore: 74, color: "bg-yellow-500", remark: "基本达标，核心要求已满足，但存在明显不足" },
+  { id: "grade-4", grade: "D", minScore: 0, maxScore: 59, color: "bg-red-500", remark: "未达标准，核心要求未完成，需要重新学习或训练" },
+]
+
+const questionBankLabels: Record<string, string> = {
+  frontend: "前端开发题库",
+  backend: "后端开发题库",
+  draft: "草稿库",
+  public: "公共基础题库",
+  professional: "专业技能题库",
+}
+
+const allQuestions = [
+  ...questionBank.frontend.map(q => ({ ...q, questionBank: "frontend" as string })),
+  ...questionBank.backend.map(q => ({ ...q, questionBank: "backend" as string })),
+  ...questionBank.draft.map(q => ({ ...q, questionBank: "draft" as string })),
+]
+
+const paperMocks = [
+  { id: "paper-1", name: "前端基础综合试卷", questionCount: 20, totalScore: 100 },
+  { id: "paper-2", name: "React 进阶测试", questionCount: 15, totalScore: 100 },
+  { id: "paper-3", name: "API 设计规范测验", questionCount: 10, totalScore: 100 },
+]
+
+type EvalObjectType = "individual" | "group"
+
+interface EvalSubjectConfig {
+  type: "teacher" | "enterprise_mentor" | "peer" | "self" | "ai" | "service_target"
+  enabled: boolean
+  params?: {
+    // teacher
+    teacherBackground?: string
+    scorerCount?: number
+    weightPercent?: number
+    scoringDimensions?: string[]
+    minTeachingYears?: number
+    aggregationRule?: "average" | "median" | "max" | "min"
+    // enterprise_mentor
+    expertise?: string
+    minYears?: number
+    companyType?: string
+    jobExperience?: string
+    // peer
+    peerCount?: number
+    peerRule?: string
+    anonymous?: boolean
+    // self
+    requiresReflection?: boolean
+    reflectionMinLength?: number
+    // ai
+    aiModel?: string
+    confidenceThreshold?: number
+    autoReview?: boolean
+    // service_target
+    serviceMethod?: string
+    sampleSize?: number
   }
 }
 
-export default function ScenarioTasksPage() {
+type EvalSubType = "knowledge_mastery" | "operation_standard" | "task_completion" | "result_quality" | "communication" | "collaboration" | "professionalism" | "innovation" | "adaptability"
+
+const evalSubTypeLabels: Record<EvalSubType, string> = {
+  knowledge_mastery: "知识掌握",
+  operation_standard: "操作规范",
+  task_completion: "任务完成度",
+  result_quality: "成果质量",
+  communication: "沟通表达",
+  collaboration: "协作能力",
+  professionalism: "职业素养",
+  innovation: "创新能力",
+  adaptability: "应变能力",
+}
+
+const evalSubTypeColors: Record<EvalSubType, string> = {
+  knowledge_mastery: "bg-blue-50 text-blue-600 border-blue-200",
+  operation_standard: "bg-teal-50 text-teal-600 border-teal-200",
+  task_completion: "bg-green-50 text-green-600 border-green-200",
+  result_quality: "bg-cyan-50 text-cyan-600 border-cyan-200",
+  communication: "bg-violet-50 text-violet-600 border-violet-200",
+  collaboration: "bg-orange-50 text-orange-600 border-orange-200",
+  professionalism: "bg-amber-50 text-amber-600 border-amber-200",
+  innovation: "bg-indigo-50 text-indigo-600 border-indigo-200",
+  adaptability: "bg-rose-50 text-rose-600 border-rose-200",
+}
+
+interface EvalPoint {
+  id: string
+  name: string
+  desc: string
+  subType?: EvalSubType
+  types?: EvalSubType[]
+  knowledgePointIds?: string[]
+  abilityPointIds?: string[]
+  scoringMethod?: "score" | "level" | "rubric"
+  gradeMapping?: GradeMapping[]
+  weight?: number
+}
+
+interface ScoringConfig {
+  teacherBackground: string
+  scorerCount: number
+  requiresEnterpriseMentor: boolean
+}
+
+interface TaskState {
+  description: string
+  descriptionPdf: string | null
+  knowledgePoints: string[]
+  knowledgeAutoResources: string[]
+  abilityPoints: string[]
+  abilityLevelMappings: { abilityId: string; level: number }[]
+  resources: string[]
+  evaluationMethods: string[]
+  randomDrawQuestions: string[]
+  randomDrawCustomQuestions: { id: string; name: string; description: string; answer: string; major: string }[]
+  randomDrawSelectedIds: string[]
+  randomDrawEvalPoints: EvalPoint[]
+  randomDrawScoreType: "eval_points" | "ability_levels"
+  randomDrawRubricId: string | null
+  reviewEvalPoints: EvalPoint[]
+  reviewScoreType: "eval_points" | "ability_levels"
+  reviewRubricId: string | null
+  paperIds: string[]
+  paperWeights: Record<string, number>
+  paperEvalPoints: EvalPoint[]
+  questionBankQuestions: string[]
+  questionBankEvalPoints: EvalPoint[]
+  outcomeEvalPoints: EvalPoint[]
+  outcomeScoreType: "eval_points" | "ability_levels"
+  outcomeRubricId: string | null
+  homeworkEvalPoints: EvalPoint[]
+  homeworkScoreType: "eval_points" | "ability_levels"
+  homeworkRubricId: string | null
+  quizQuestions: string[]
+  quizEvalPoints: EvalPoint[]
+  weight: number
+  locked: boolean
+  gradeMapping: GradeMapping[]
+  scoringConfig: ScoringConfig
+  evalObject: EvalObjectType
+  evalSubjects: EvalSubjectConfig[]
+  methodEvalObjects: Record<string, EvalObjectType>
+  methodEvalSubjects: Record<string, EvalSubjectConfig[]>
+  methodWeights: Record<string, number>
+}
+
+const defaultEvalSubjects: EvalSubjectConfig[] = [
+  {
+    type: "teacher",
+    enabled: true,
+    params: {
+      teacherBackground: "计算机/软件工程相关专业",
+      scorerCount: 2,
+      weightPercent: 50,
+      scoringDimensions: ["knowledge_mastery", "operation_standard", "task_completion", "result_quality"],
+      minTeachingYears: 3,
+    },
+  },
+  {
+    type: "enterprise_mentor",
+    enabled: true,
+    params: {
+      expertise: "前端开发 / React 生态",
+      minYears: 5,
+      scorerCount: 1,
+      weightPercent: 20,
+      companyType: "互联网/科技公司",
+    },
+  },
+  {
+    type: "self",
+    enabled: true,
+    params: {
+      requiresReflection: true,
+      weightPercent: 10,
+      reflectionMinLength: 500,
+    },
+  },
+  {
+    type: "peer",
+    enabled: false,
+    params: {
+      peerCount: 4,
+      peerRule: "随机分配",
+      anonymous: true,
+      weightPercent: 15,
+    },
+  },
+  {
+    type: "ai",
+    enabled: false,
+    params: {
+      aiModel: "GPT-4",
+      weightPercent: 5,
+      confidenceThreshold: 85,
+      autoReview: true,
+    },
+  },
+  {
+    type: "service_target",
+    enabled: false,
+    params: {
+      serviceMethod: "满意度问卷",
+      sampleSize: 20,
+      weightPercent: 5,
+    },
+  },
+]
+
+const mockDefaultEvalPoints: EvalPoint[] = [
+  { id: "ep-mock-1", name: "组件封装与复用能力符合预期", desc: "", subType: "knowledge_mastery", knowledgePointIds: ["kp-1"], abilityPointIds: ["ab-1"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
+  { id: "ep-mock-2", name: "状态管理方案选择合理且运用熟练", desc: "", subType: "knowledge_mastery", knowledgePointIds: ["kp-2"], abilityPointIds: ["ab-2"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
+  { id: "ep-mock-3", name: "API接口设计清晰规范、易于维护", desc: "", subType: "operation_standard", knowledgePointIds: ["kp-4"], abilityPointIds: ["ab-3"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
+  { id: "ep-mock-4", name: "数据库模型设计高效且符合范式要求", desc: "", subType: "operation_standard", knowledgePointIds: ["kp-5"], abilityPointIds: ["ab-4"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
+  { id: "ep-mock-5", name: "功能需求实现完整，无明显遗漏", desc: "", subType: "task_completion", knowledgePointIds: ["kp-3"], abilityPointIds: ["ab-5"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
+  { id: "ep-mock-6", name: "代码规范性强，结构清晰易于维护", desc: "", subType: "result_quality", knowledgePointIds: ["kp-6"], abilityPointIds: ["ab-6"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
+  { id: "ep-mock-7", name: "团队沟通顺畅，协作配合积极主动", desc: "", subType: "communication", knowledgePointIds: ["kp-7"], abilityPointIds: ["ab-7"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
+  { id: "ep-mock-8", name: "问题分析思路清晰，解决方案有效", desc: "", subType: "knowledge_mastery", knowledgePointIds: ["kp-1"], abilityPointIds: ["ab-1"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
+  { id: "ep-mock-9", name: "响应式布局适配多种终端且表现一致", desc: "", subType: "operation_standard", knowledgePointIds: ["kp-2"], abilityPointIds: ["ab-2"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
+  { id: "ep-mock-10", name: "项目文档编写完整、准确、可读性强", desc: "", subType: "result_quality", knowledgePointIds: ["kp-3"], abilityPointIds: ["ab-3"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
+  { id: "ep-mock-11", name: "技术方案具有创新性，能突破常规思路", desc: "", subType: "innovation", knowledgePointIds: ["kp-4"], abilityPointIds: ["ab-4"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
+  { id: "ep-mock-12", name: "面对突发问题能冷静分析并快速解决", desc: "", subType: "adaptability", knowledgePointIds: ["kp-5"], abilityPointIds: ["ab-5"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
+  { id: "ep-mock-13", name: "职业素养良好，按时交付并遵守规范", desc: "", subType: "professionalism", knowledgePointIds: ["kp-6"], abilityPointIds: ["ab-6"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
+  { id: "ep-mock-14", name: "协作能力强，能有效推动团队目标达成", desc: "", subType: "collaboration", knowledgePointIds: ["kp-7"], abilityPointIds: ["ab-7"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
+]
+
+function makeDefaultTaskState(count: number, index: number): TaskState {
+  return {
+    description: "",
+    descriptionPdf: null,
+    knowledgePoints: [],
+    knowledgeAutoResources: [],
+    abilityPoints: [],
+    abilityLevelMappings: [],
+    resources: [],
+    evaluationMethods: ["random_draw", "review", "paper", "question_bank"],
+    methodWeights: { random_draw: 25, review: 25, paper: 25, question_bank: 25 },
+    randomDrawQuestions: allQuestions.slice(0, 2).map(q => q.id),
+    randomDrawCustomQuestions: [],
+    randomDrawSelectedIds: [],
+    randomDrawEvalPoints: [mockDefaultEvalPoints[0], mockDefaultEvalPoints[1], mockDefaultEvalPoints[7], mockDefaultEvalPoints[8]],
+    randomDrawScoreType: "eval_points",
+    randomDrawRubricId: null,
+    reviewEvalPoints: [mockDefaultEvalPoints[2], mockDefaultEvalPoints[3], mockDefaultEvalPoints[4], mockDefaultEvalPoints[5], mockDefaultEvalPoints[6], mockDefaultEvalPoints[9]],
+    reviewScoreType: "eval_points",
+    reviewRubricId: null,
+    paperIds: [paperMocks[0].id],
+    paperWeights: { [paperMocks[0].id]: 100 },
+    paperEvalPoints: [mockDefaultEvalPoints[3], mockDefaultEvalPoints[4]],
+    questionBankQuestions: allQuestions.slice(0, 2).map(q => q.id),
+    questionBankEvalPoints: [mockDefaultEvalPoints[5], mockDefaultEvalPoints[6]],
+    outcomeEvalPoints: [mockDefaultEvalPoints[2], mockDefaultEvalPoints[3]],
+    outcomeScoreType: "eval_points",
+    outcomeRubricId: null,
+    homeworkEvalPoints: [mockDefaultEvalPoints[3], mockDefaultEvalPoints[4]],
+    homeworkScoreType: "eval_points",
+    homeworkRubricId: null,
+    quizQuestions: allQuestions.slice(0, 2).map(q => q.id),
+    quizEvalPoints: [mockDefaultEvalPoints[5], mockDefaultEvalPoints[6]],
+    weight: count > 0 ? Math.floor(100 / count) + (index < 100 % count ? 1 : 0) : 0,
+    locked: false,
+    gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)),
+    scoringConfig: { teacherBackground: "", scorerCount: 1, requiresEnterpriseMentor: false },
+    evalObject: "individual",
+    evalSubjects: JSON.parse(JSON.stringify(defaultEvalSubjects)),
+    methodEvalObjects: {},
+    methodEvalSubjects: {},
+  }
+}
+
+
+// ============ Main Page ============
+
+export default function TasksEditPage() {
   const params = useParams()
   const router = useRouter()
   const scenarioId = params.id as string
-  const { toast } = useToast()
 
-  const [scenario, setScenario] = useState<any>(null)
-  const [tasks, setTasks] = useState<ScenarioTask[]>([])
-  const [taskStates, setTaskStates] = useState<Record<string, TaskState>>({})
-  const [dataLoading, setDataLoading] = useState(true)
+  const existingScenario = scenarios.find(s => s.id === scenarioId)
+
+  const [tasks, setTasks] = useState<Task[]>(existingScenario?.tasks || [])
+
+  // Helper: generate mock eval points from task deliverables
+  const generateMockEvalPoints = (t: Task): { randomDraw: EvalPoint[]; review: EvalPoint[] } => {
+    const subTypePool: EvalSubType[] = ["knowledge_mastery", "operation_standard", "task_completion", "result_quality", "communication", "collaboration", "professionalism", "innovation", "adaptability"]
+    const eps = t.deliverables?.flatMap(d => d.evaluationPoints || []) || []
+    const randomDraw: EvalPoint[] = []
+    const review: EvalPoint[] = []
+    eps.forEach((ep, idx) => {
+      const point: EvalPoint = {
+        id: ep.id,
+        name: ep.name,
+        desc: ep.description || "",
+        subType: subTypePool[idx % subTypePool.length],
+        knowledgePointIds: t.knowledgePoints?.slice(0, 2),
+        abilityPointIds: t.abilityPoints?.slice(0, 2),
+        scoringMethod: "level",
+        gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)),
+        weight: 10,
+      }
+      if (idx % 2 === 0) randomDraw.push(point)
+      else review.push(point)
+    })
+    return { randomDraw, review }
+  }
+
+  const [taskStates, setTaskStates] = useState<Record<string, TaskState>>(() => {
+    const states: Record<string, TaskState> = {}
+    const count = existingScenario?.tasks.length || 0
+    existingScenario?.tasks.forEach((t, i) => {
+      // Determine evaluation methods from assessment type
+      let methods: string[] = []
+      if (t.assessment?.type === "objective") methods = ["random_draw", "question_bank"]
+      else if (t.assessment?.type === "subjective") methods = ["review"]
+      else if (t.assessment?.type === "mixed") methods = ["random_draw", "review"]
+      else methods = ["review"]
+
+      const mockEps = generateMockEvalPoints(t)
+      const mockQuestions = allQuestions.slice(0, 3).map(q => q.id)
+      const hasPaper = methods.includes("paper")
+
+      states[t.id] = {
+        description: t.detailedDescription || defaultDescriptionTemplate,
+        descriptionPdf: null,
+        knowledgePoints: t.knowledgePoints || [],
+        knowledgeAutoResources: [],
+        abilityPoints: (t as any).abilityPoints || [],
+        abilityLevelMappings: [],
+        resources: t.resources || [],
+        evaluationMethods: methods,
+        randomDrawQuestions: mockQuestions,
+        randomDrawCustomQuestions: [
+          { id: "rdq-1", name: "请简述 React 的虚拟 DOM 工作原理", description: "考察学生对 React 核心机制的理解，包括 diff 算法和 reconciliation 过程。", answer: "虚拟 DOM 是 React 在内存中维护的一颗树形结构，用于描述真实 DOM 的状态。当状态变化时，React 会生成新的虚拟 DOM，通过 Diff 算法比较新旧虚拟 DOM 的差异，计算出最小变更集，最后批量更新真实 DOM。", major: "前端开发" },
+          { id: "rdq-2", name: "什么是闭包？请举例说明其在实际开发中的应用", description: "考察 JavaScript 核心概念闭包的理解及实际应用场景。", answer: "闭包是指有权访问另一个函数作用域中变量的函数。应用场景包括：1. 数据封装和私有变量；2. 函数柯里化；3. 防抖和节流函数的实现；4. 模块化模式。", major: "前端开发" },
+          { id: "rdq-3", name: "HTTP 状态码 301 和 302 的区别是什么", description: "考察对 HTTP 协议重定向状态码的理解。", answer: "301 Moved Permanently 表示资源已被永久移动到新的 URL，搜索引擎会更新索引。302 Found 表示资源临时位于其他 URL，客户端应继续使用原 URL 发起后续请求。", major: "后端开发" },
+          { id: "rdq-4", name: "请解释数据库事务的 ACID 特性", description: "考察关系型数据库核心概念。", answer: "ACID 指原子性（Atomicity，事务要么全部完成要么全部不完成）、一致性（Consistency，事务执行前后数据库处于一致状态）、隔离性（Isolation，并发事务互不干扰）、持久性（Durability，事务一旦提交就永久保存）。", major: "后端开发" },
+          { id: "rdq-5", name: "什么是 RESTful API？设计一个用户资源的 RESTful 接口", description: "考察 RESTful 架构风格的理解和接口设计能力。", answer: "RESTful API 是一种基于 HTTP 协议、使用 URL 定位资源、用 HTTP 方法（GET/POST/PUT/DELETE）操作资源的架构风格。用户资源接口示例：GET /users（查询列表）、GET /users/:id（查询详情）、POST /users（创建）、PUT /users/:id（更新）、DELETE /users/:id（删除）。", major: "后端开发" },
+          { id: "rdq-6", name: "请说明 CSS 中 BFC（块级格式化上下文）的作用及创建方式", description: "考察 CSS 布局核心概念。", answer: "BFC 是页面上的一个独立渲染区域，内部元素的布局不会影响外部。作用：1. 清除浮动；2. 防止外边距合并；3. 阻止元素被浮动元素覆盖。创建方式：overflow 不为 visible、display 为 inline-block/flex/grid、position 为 absolute/fixed、float 不为 none 等。", major: "前端开发" },
+          { id: "rdq-7", name: "TCP 三次握手的过程是什么？为什么需要三次", description: "考察网络协议基础知识。", answer: "三次握手：1. 客户端发送 SYN；2. 服务端回复 SYN+ACK；3. 客户端回复 ACK。需要三次的原因是为了确认双方的收发能力都正常，同时防止历史重复连接初始化造成混乱。", major: "后端开发" },
+          { id: "rdq-8", name: "请简述 Git 中 merge 和 rebase 的区别及使用场景", description: "考察版本控制工具的深入理解。", answer: "merge 会保留分支历史，产生一个新的合并提交，适合保留完整协作历史。rebase 会将当前分支的提交在目标分支上重新播放，历史呈线性，适合清理本地提交历史或在功能分支上保持与主分支同步。", major: "通用" },
+          { id: "rdq-9", name: "什么是跨域？如何解决浏览器的跨域问题", description: "考察前端安全及网络基础知识。", answer: "跨域是指浏览器的同源策略限制了不同源（协议、域名、端口不同）之间的资源访问。解决方案：1. CORS（服务端设置 Access-Control-Allow-Origin）；2. JSONP（仅支持 GET）；3. 反向代理；4. postMessage；5. WebSocket。", major: "前端开发" },
+          { id: "rdq-10", name: "请解释 JavaScript 中的事件循环（Event Loop）机制", description: "考察 JS 异步执行原理。", answer: "JavaScript 是单线程语言，事件循环负责协调同步任务和异步任务的执行。执行栈为空时，事件循环会优先检查微任务队列（Promise、MutationObserver），然后检查宏任务队列（setTimeout、setInterval、I/O），循环往复。", major: "前端开发" },
+          { id: "rdq-11", name: "Redis 有哪些常见的数据类型？分别适用于什么场景", description: "考察缓存数据库的使用经验。", answer: "String：缓存、计数器；List：消息队列、时间线；Set：去重、共同关注；ZSet：排行榜、延时队列；Hash：对象存储；Bitmap：签到统计；HyperLogLog：UV 统计；Geo：地理位置。", major: "后端开发" },
+          { id: "rdq-12", name: "请说明单点登录（SSO）的实现原理", description: "考察认证授权架构设计能力。", answer: "SSO 的核心思想是将用户认证信息集中管理。常见实现：1. 基于 Cookie 的 CAS 协议；2. 基于 Token 的 JWT/OAuth2.0；3. 统一认证中心签发票据，各子系统凭票据换取登录状态。", major: "后端开发" },
+          { id: "rdq-13", name: "什么是防抖（debounce）和节流（throttle）？", description: "考察前端性能优化技巧。", answer: "防抖：事件触发后等待一定时间，若期间再次触发则重新计时，适用于搜索框输入。节流：在固定时间间隔内只执行一次函数，适用于滚动加载、resize 事件。两者都通过闭包实现定时器控制。", major: "前端开发" },
+          { id: "rdq-14", name: "请简述 Docker 容器与虚拟机的区别", description: "考察容器化技术基础。", answer: "虚拟机通过 Hypervisor 在硬件层模拟完整操作系统，资源占用大、启动慢。Docker 容器共享宿主机内核，通过 Namespace 和 Cgroups 实现隔离，轻量、启动快、镜像小。", major: "运维部署" },
+          { id: "rdq-15", name: "前端性能优化有哪些常用手段？", description: "考察前端工程化实践经验。", answer: "1. 资源压缩与合并；2. 使用 CDN；3. 图片懒加载与 WebP 格式；4. 代码分割与懒加载；5. 浏览器缓存策略；6. SSR/SSG；7. 减少重排重绘；8. 使用 Web Worker；9. 服务端压缩（Gzip/Brotli）。", major: "前端开发" },
+          { id: "rdq-16", name: "请解释 MySQL 索引的工作原理及优化原则", description: "考察数据库性能优化能力。", answer: "索引通过 B+Tree 结构存储，加速数据检索。优化原则：1. 最左前缀原则；2. 避免全表扫描；3. 覆盖索引减少回表；4. 控制索引数量；5. 区分度高的列建索引；6. 避免索引失效（如函数操作、类型转换）。", major: "后端开发" },
+          { id: "rdq-17", name: "什么是微前端？有哪些实现方案", description: "考察前端架构设计能力。", answer: "微前端是将大型前端应用拆分为独立部署的子应用的架构。实现方案：1. qiankun（基于 single-spa）；2. Module Federation（Webpack 5）；3. iframe；4. Web Components；5. 路由分发。", major: "前端开发" },
+          { id: "rdq-18", name: "请说明 Linux 中进程和线程的区别", description: "考察操作系统基础知识。", answer: "进程是资源分配的基本单位，拥有独立的地址空间和系统资源。线程是 CPU 调度的基本单位，共享进程的地址空间和资源。线程切换开销小于进程切换。", major: "后端开发" },
+          { id: "rdq-19", name: "请简述敏捷开发（Scrum）的核心流程", description: "考察项目管理方法论。", answer: "Scrum 核心流程：1. 产品待办列表梳理；2. Sprint 计划会议；3. 每日站会（15分钟）；4. Sprint 执行与跟踪（燃尽图）；5. Sprint 评审会议；6. Sprint 回顾会议。通常 Sprint 周期为 1-4 周。", major: "通用" },
+          { id: "rdq-20", name: "WebSocket 与 HTTP 轮询的区别及适用场景", description: "考察实时通信技术选型能力。", answer: "HTTP 轮询：客户端定时请求服务端，实现简单但实时性差、浪费带宽。WebSocket：全双工长连接，服务端可主动推送，实时性好、开销低。适用场景：即时通讯、股票行情、协同编辑、在线游戏。", major: "后端开发" },
+        ],
+        randomDrawSelectedIds: [],
+        randomDrawEvalPoints: mockEps.randomDraw.length > 0 ? mockEps.randomDraw : [mockDefaultEvalPoints[0], mockDefaultEvalPoints[1], mockDefaultEvalPoints[7]],
+        randomDrawScoreType: "eval_points",
+        randomDrawRubricId: null,
+        reviewEvalPoints: mockEps.review.length > 0 ? mockEps.review : [mockDefaultEvalPoints[2], mockDefaultEvalPoints[3], mockDefaultEvalPoints[4], mockDefaultEvalPoints[5]],
+        reviewScoreType: "eval_points",
+        reviewRubricId: null,
+        paperIds: hasPaper ? [paperMocks[0].id] : [],
+        paperWeights: hasPaper ? { [paperMocks[0].id]: 100 } : {},
+        paperEvalPoints: [mockDefaultEvalPoints[3], mockDefaultEvalPoints[4]],
+        questionBankQuestions: methods.includes("question_bank") ? mockQuestions : [],
+        questionBankEvalPoints: [mockDefaultEvalPoints[5], mockDefaultEvalPoints[6]],
+        outcomeEvalPoints: methods.includes("outcome") ? [mockDefaultEvalPoints[2], mockDefaultEvalPoints[3]] : [],
+        outcomeScoreType: "eval_points",
+        outcomeRubricId: null,
+        homeworkEvalPoints: methods.includes("homework") ? [mockDefaultEvalPoints[3], mockDefaultEvalPoints[4]] : [],
+        homeworkScoreType: "eval_points",
+        homeworkRubricId: null,
+        quizQuestions: methods.includes("quiz") ? mockQuestions : [],
+        quizEvalPoints: methods.includes("quiz") ? [mockDefaultEvalPoints[5], mockDefaultEvalPoints[6]] : [],
+        weight: count > 0 ? Math.floor(100 / count) + (i < 100 % count ? 1 : 0) : 0,
+        locked: false,
+        gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)),
+        scoringConfig: { teacherBackground: "", scorerCount: 1, requiresEnterpriseMentor: false },
+        evalObject: "individual",
+        evalSubjects: JSON.parse(JSON.stringify(defaultEvalSubjects)),
+        methodEvalObjects: {},
+        methodEvalSubjects: {},
+        methodWeights: methods.reduce((acc, m, i, arr) => {
+          const base = Math.floor(100 / arr.length)
+          acc[m] = base + (i < 100 % arr.length ? 1 : 0)
+          return acc
+        }, {} as Record<string, number>),
+      }
+    })
+    return states
+  })
 
   const [editingCard, setEditingCard] = useState<{ taskId: string; type: CardType } | null>(null)
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false)
+  const [isCloneOpen, setIsCloneOpen] = useState(false)
+
+  const [newTask, setNewTask] = useState({
+    name: "",
+    hours: 4,
+    type: "training" as "assessment" | "training",
+    difficulty: 3,
+    background: "",
+  })
+
+  const [cloneSearch, setCloneSearch] = useState("")
+  const [cloneMode, setCloneMode] = useState<"clone" | "reference">("clone")
+  const [cloneTab, setCloneTab] = useState<"my" | "collab" | "public">("my")
+  const [selectedClone, setSelectedClone] = useState<string[]>([])
   const [isWeightConfigOpen, setIsWeightConfigOpen] = useState(false)
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null)
   const [deleteConfirmTask, setDeleteConfirmTask] = useState<{ id: string; name: string } | null>(null)
 
-  const [newTask, setNewTask] = useState({ name: "", type: "training" as "assessment" | "training", difficulty: 3, hours: 4, background: "" })
-
-  const loadData = useCallback(async () => {
-    setDataLoading(true)
-    try {
-      const [scenarioData, tasksRes] = await Promise.all([
-        scenarioApi.get(scenarioId),
-        taskApi.list({ scenarioId, limit: 1000 }),
-      ])
-      setScenario(scenarioData)
-      setTasks(tasksRes.items.sort((a, b) => a.sortOrder - b.sortOrder))
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "加载失败", description: err.message || "无法获取数据" })
-    } finally {
-      setDataLoading(false)
-    }
-  }, [scenarioId])
-
-  useEffect(() => { loadData() }, [loadData])
-
-  const totalWeight = useMemo(() =>
-    Object.values(taskStates).reduce((sum, s) => sum + s.weight, 0),
-    [taskStates]
+  const posAbilities = useMemo(() =>
+    positionAbilities.filter(a => a.positionId === existingScenario?.positionId),
+    [existingScenario?.positionId]
   )
 
-  const getState = useCallback((id: string): TaskState =>
-    taskStates[id] || makeDefaultTaskState(),
-    [taskStates]
+  const allTasks = useMemo(() =>
+    scenarios.flatMap(s => s.tasks.map(t => ({ ...t, scenarioName: s.name }))),
+    []
   )
 
-  const updateState = useCallback((id: string, updates: Partial<TaskState>) => {
+  const totalWeight = Object.values(taskStates).reduce((sum, s) => sum + s.weight, 0)
+
+  const getState = (id: string): TaskState => taskStates[id] || makeDefaultTaskState(0, 0)
+
+  const updateState = (id: string, updates: Partial<TaskState>) => {
     setTaskStates(prev => ({ ...prev, [id]: { ...getState(id), ...updates } }))
-  }, [getState])
+  }
 
-  const getSummary = useCallback((taskId: string, type: CardType): string => {
+  const getSummary = (taskId: string, type: CardType): string => {
     const task = tasks.find(t => t.id === taskId)
-    const state = taskStates[taskId]
+    const state = getState(taskId)
     if (!task) return ""
-    switch (type) {
-      case "info": return `名称: ${task.name}\n编码: ${task.code || "-"}\n类型: ${task.taskType === "assessment" ? "考核" : "训练"}\n难度: ${task.difficulty}星\n学时: ${task.estimatedHours}h`
-      case "description": return state?.description ? state.description.slice(0, 60) + (state.description.length > 60 ? "..." : "") : "未填写"
-      case "knowledge": return state?.knowledgePoints?.length ? `${state.knowledgePoints.length} 个知识点` : "未配置"
-      case "ability": return state?.abilityPoints?.length ? `${state.abilityPoints.length} 个能力点` : "未配置"
-      case "resources": return state?.resources?.length ? `${state.resources.length} 个资源` : "未配置"
-      case "evaluation": return state?.evaluationMethods?.length ? state.evaluationMethods.map(m => evaluationMethodOptions.find(o => o.key === m)?.label).join("、") : "未配置"
-      case "evaluationRules": return state?.evaluationMethods?.length ? `${state.evaluationMethods.length} 种评价方式` : "待配置"
-      case "weight": return `${state?.weight || 0}%`
-      default: return ""
-    }
-  }, [tasks, taskStates])
 
-  const isConfigured = useCallback((taskId: string, type: CardType): boolean => {
-    const state = taskStates[taskId]
-    if (!state) return false
+    switch (type) {
+      case "info":
+        return `任务名称：${task.name}\n编码：${task.code || "-"}\n任务类型：${task.taskType === "assessment" ? "考核" : "训练"}\n难度：${task.difficulty}星\n预估学时：${task.estimatedHours}小时`
+      case "description":
+        return state.description ? `${state.description.replace(/<[^>]*>/g, "").slice(0, 50)}...` : "未填写"
+      case "knowledge":
+        if (state.knowledgePoints.length === 0) return "未配置"
+        const kpNames = state.knowledgePoints.map(id => knowledgePoints.find(k => k.id === id)?.name).filter(Boolean)
+        return kpNames.slice(0, 3).join("、") + (kpNames.length > 3 ? ` 等${state.knowledgePoints.length}个` : "")
+      case "ability":
+        if (state.abilityPoints.length === 0) return "未配置"
+        const abNames = state.abilityPoints.map(id => abilityPoints.find(a => a.id === id)?.name).filter(Boolean)
+        return abNames.slice(0, 3).join("、") + (abNames.length > 3 ? ` 等${state.abilityPoints.length}个` : "")
+      case "resources":
+        if (state.resources.length === 0) return "未配置"
+        const resNames = state.resources.map(id => learningResources.find(r => r.id === id)?.name).filter(Boolean)
+        return resNames.slice(0, 3).join("、") + (resNames.length > 3 ? ` 等${state.resources.length}个` : "")
+      case "evaluation":
+        if (state.evaluationMethods.length === 0) return "未配置"
+        return state.evaluationMethods.map(m => evaluationMethodOptions.find(o => o.key === m)?.label).filter(Boolean).join("、")
+      case "evaluationRules":
+        if (state.evaluationMethods.length === 0) return "未配置评价方式"
+        const configuredMethods = state.evaluationMethods.filter(m => {
+          if (m === "random_draw") return state.randomDrawSelectedIds.length > 0 || state.randomDrawEvalPoints.length > 0
+          if (m === "review") return state.reviewEvalPoints.length > 0
+          if (m === "paper") return state.paperIds.length > 0
+          if (m === "question_bank") return state.questionBankQuestions.length > 0
+          if (m === "outcome") return state.outcomeEvalPoints.length > 0
+          if (m === "homework") return state.homeworkEvalPoints.length > 0
+          if (m === "quiz") return state.quizQuestions.length > 0
+          return false
+        })
+        const methodWeightTotal2 = state.evaluationMethods.reduce((sum, m) => sum + (state.methodWeights[m] || 0), 0)
+        if (configuredMethods.length === 0) return "待配置"
+        const weightSummary = state.evaluationMethods.map(m => {
+          const label = evaluationMethodOptions.find(o => o.key === m)?.label || m
+          return `${label}${state.methodWeights[m] || 0}%`
+        }).join("、")
+        return `${weightSummary}\n权重合计 ${methodWeightTotal2}%${methodWeightTotal2 !== 100 ? " (需等于100%)" : ""}`
+      case "weight":
+        return `${state.weight}%`
+    }
+  }
+
+  const isConfigured = (taskId: string, type: CardType): boolean => {
+    const state = getState(taskId)
     switch (type) {
       case "info": return true
       case "description": return !!state.description
@@ -169,82 +729,94 @@ export default function ScenarioTasksPage() {
       case "evaluation": return state.evaluationMethods.length > 0
       case "evaluationRules": return state.evaluationMethods.length > 0
       case "weight": return state.weight > 0
-      default: return false
-    }
-  }, [taskStates])
-
-  const handleAddTask = async () => {
-    if (!newTask.name.trim()) return
-    try {
-      const payload: any = {
-        scenarioId,
-        name: newTask.name.trim(),
-        code: `TK-${Date.now().toString().slice(-6)}`,
-        taskType: newTask.type,
-        difficulty: newTask.difficulty,
-        estimatedHours: newTask.hours,
-        background: newTask.background,
-        sortOrder: tasks.length + 1,
-        dependencyIds: [],
-        isReferenced: false,
-      }
-      const created = await taskApi.create(payload)
-      await loadData()
-      setIsAddTaskOpen(false)
-      setNewTask({ name: "", type: "training", difficulty: 3, hours: 4, background: "" })
-      toast({ title: "添加成功" })
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "添加失败", description: err.message })
     }
   }
 
-  const handleDeleteTask = async (id: string) => {
-    try {
-      await taskApi.delete(id)
-      setDeleteConfirmTask(null)
-      await loadData()
-      toast({ title: "删除成功" })
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "删除失败", description: err.message })
+  const handleAddTask = () => {
+    const task: Task = {
+      id: `task-${Date.now()}`,
+      name: newTask.name,
+      code: `T-${Date.now().toString().slice(-6)}`,
+      order: tasks.length + 1,
+      description: newTask.background,
+      estimatedHours: newTask.hours,
+      taskType: newTask.type,
+      difficulty: newTask.difficulty as 1|2|3|4|5,
+      background: newTask.background,
+      dependencies: [],
+      resources: [],
+      deliverables: [],
+      knowledgePoints: [],
+      abilityPoints: [],
+      assessment: null,
     }
+    const newTasks = [...tasks, task]
+    setTasks(newTasks)
+    const count = newTasks.length
+    const weight = Math.floor(100 / count)
+    const newStates = { ...taskStates }
+    Object.keys(newStates).forEach(id => {
+      newStates[id] = { ...newStates[id], weight }
+    })
+    newStates[task.id] = makeDefaultTaskState(count, count - 1)
+    newStates[task.id].weight = 100 - weight * (count - 1)
+    setTaskStates(newStates)
+    setIsAddTaskOpen(false)
+    setNewTask({ name: "", hours: 4, type: "training", difficulty: 3, background: "" })
   }
 
-  const handleDragDrop = async (fromIdx: number, toIdx: number) => {
-    if (fromIdx === toIdx) return
-    const newTasks = [...tasks]
-    const [removed] = newTasks.splice(fromIdx, 1)
-    newTasks.splice(toIdx, 0, removed)
-    setTasks(newTasks.map((t, i) => ({ ...t, sortOrder: i + 1 })))
-    try {
-      await taskApi.reorder(scenarioId, newTasks.map(t => t.id))
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "排序失败" })
-      await loadData()
-    }
+  const handleClone = () => {
+    const selected = allTasks.filter(t => selectedClone.includes(t.id))
+    const newTasks = selected.map((t, i) => ({
+      ...t,
+      id: `task-${cloneMode}-${Date.now()}-${i}`,
+      order: tasks.length + i + 1,
+      isReferenced: cloneMode === "reference",
+      sourceScenarioName: cloneMode === "reference" ? t.scenarioName : undefined,
+    }))
+    setTasks([...tasks, ...newTasks])
+    newTasks.forEach((t, i) => {
+      setTaskStates(prev => ({
+        ...prev,
+        [t.id]: makeDefaultTaskState(tasks.length + newTasks.length, tasks.length + i),
+      }))
+    })
+    setIsCloneOpen(false)
+    setSelectedClone([])
+  }
+
+  const handleDeleteTask = (id: string) => {
+    setTasks(tasks.filter(t => t.id !== id))
+    const newStates = { ...taskStates }
+    delete newStates[id]
+    setTaskStates(newStates)
+    setDeleteConfirmTask(null)
   }
 
   const distributeWeights = () => {
-    const unlocked = tasks.filter(t => !taskStates[t.id]?.locked)
-    const lockedWeight = tasks.filter(t => taskStates[t.id]?.locked).reduce((s, t) => s + (taskStates[t.id]?.weight || 0), 0)
+    const unlocked = tasks.filter(t => !getState(t.id).locked)
+    const lockedWeight = tasks.filter(t => getState(t.id).locked).reduce((s, t) => s + getState(t.id).weight, 0)
     const remaining = 100 - lockedWeight
-    if (unlocked.length === 0) return
     const each = Math.floor(remaining / unlocked.length)
     const newStates = { ...taskStates }
     unlocked.forEach((t, i) => {
-      newStates[t.id] = { ...(newStates[t.id] || makeDefaultTaskState()), weight: each + (i < remaining % unlocked.length ? 1 : 0) }
+      newStates[t.id] = { ...newStates[t.id], weight: each + (i < remaining % unlocked.length ? 1 : 0) }
     })
     setTaskStates(newStates)
   }
 
   return (
     <div className="fixed inset-0 bg-background z-50 overflow-auto">
+      {/* Header */}
       <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
         <div className="max-w-[1400px] mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <PrdAnnotation data={getAnnotation("editor-step2-back")}>
-              <Button variant="ghost" size="sm" onClick={() => router.push(`/scene/scenarios/${scenarioId}/edit`)}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                返回上一步
+              <Button variant="ghost" size="sm" asChild>
+                <NextLink href={`/scene/scenarios/${scenarioId}/edit`}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  返回上一步
+                </NextLink>
               </Button>
             </PrdAnnotation>
             <div className="h-5 w-px bg-gray-200" />
@@ -255,9 +827,15 @@ export default function ScenarioTasksPage() {
           </div>
           <div className="flex items-center gap-3">
             <PrdAnnotation data={getAnnotation("editor-step2-save")}>
-              <Button variant="outline" size="sm" onClick={() => router.push(`/scene/scenarios/${scenarioId}/edit`)}>
+              <Button variant="outline" size="sm">
                 <Save className="mr-2 h-4 w-4" />
                 保存草稿
+              </Button>
+            </PrdAnnotation>
+            <PrdAnnotation data={getAnnotation("editor-step2-preview")}>
+              <Button variant="outline" size="sm">
+                <Eye className="mr-2 h-4 w-4" />
+                预览
               </Button>
             </PrdAnnotation>
             <PrdAnnotation data={getAnnotation("editor-step2-finish")}>
@@ -270,161 +848,249 @@ export default function ScenarioTasksPage() {
         </div>
       </div>
 
-      {dataLoading ? (
-        <div className="flex items-center justify-center py-20"><p className="text-gray-500">加载中...</p></div>
-      ) : (
-        <div className="max-w-[1400px] mx-auto px-6 py-8 space-y-6">
-          <PrdAnnotation data={getAnnotation("editor-scenario-summary")} className="block">
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <CardTitle className="text-lg">{scenario?.name || "场景"}</CardTitle>
-                      {scenario?.coBuilderIds?.length > 0 && <Badge variant="secondary" className="text-[10px]">共建</Badge>}
-                    </div>
-                    <CardDescription>
-                      {scenario?.industryName && `${scenario.industryName} | `}
-                      难度: {scenario?.difficulty || 3} 星
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star key={i} className={cn("h-4 w-4", i < (scenario?.difficulty || 3) ? "fill-amber-400 text-amber-400" : "text-gray-200")} />
-                      ))}
-                    </div>
-                    <Badge variant="outline">{scenario?.version || "v1.0"}</Badge>
-                  </div>
+      <div className="max-w-[1400px] mx-auto px-6 py-8 space-y-6">
+        {/* Scenario Info */}
+        <PrdAnnotation data={getAnnotation("editor-scenario-summary")} className="block">
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <CardTitle className="text-lg">{existingScenario?.name || "新建场景"}</CardTitle>
+                  {existingScenario && existingScenario.coBuilders.length > 0 && (
+                    <Badge variant="secondary" className="text-[10px]">共建</Badge>
+                  )}
                 </div>
-              </CardHeader>
-              {scenario?.background && (
-                <CardContent className="pt-0 border-t">
-                  <p className="text-sm text-gray-600 pt-3">{scenario.background}</p>
-                </CardContent>
-              )}
-            </Card>
-          </PrdAnnotation>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h2 className="font-semibold text-lg">任务列表</h2>
-              <Badge variant="secondary">{tasks.length} 个任务</Badge>
-              <div className={cn("flex items-center gap-1 text-sm px-2 py-1 rounded", totalWeight === 100 ? "bg-green-50 text-green-600" : "bg-amber-50 text-amber-600")}>
-                <Scale className="h-3.5 w-3.5" /> 权重: {totalWeight}%
+                <CardDescription>
+                  {existingScenario?.positionName} | {existingScenario?.industryName} | {existingScenario?.professionName}
+                  {existingScenario && existingScenario.coBuilders.length > 0 && (
+                    <span className="ml-2">
+                      共建人：
+                      {existingScenario.coBuilders.map((cb, i) => (
+                        <Badge key={cb.id} variant="outline" className="text-[10px] ml-1">
+                          {cb.name}
+                        </Badge>
+                      ))}
+                    </span>
+                  )}
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} className={cn("h-4 w-4", i < (existingScenario?.difficulty || 3) ? "fill-amber-400 text-amber-400" : "text-gray-200")} />
+                  ))}
+                </div>
+                <Badge variant="outline">{existingScenario?.version}</Badge>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button size="sm" onClick={() => setIsAddTaskOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" /> 添加任务
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setIsWeightConfigOpen(true)}>
-                <PieChartIcon className="mr-2 h-4 w-4" /> 配置任务权重
-              </Button>
-            </div>
+          </CardHeader>
+          <CardContent className="pt-0 border-t">
+            <p className="text-sm text-gray-600 pt-3">{existingScenario?.background || "暂无介绍"}</p>
+          </CardContent>
+        </Card>
+        </PrdAnnotation>
+
+        {/* Tasks Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <PrdAnnotation data={getAnnotation("editor-task-list-title")}>
+              <h2 className="font-semibold text-lg">任务列表</h2>
+            </PrdAnnotation>
+            <Badge variant="secondary">{tasks.length} 个任务</Badge>
+            <PrdAnnotation data={getAnnotation("editor-task-weight-hint")}>
+              <div className={cn(
+                "flex items-center gap-1 text-sm px-2 py-1 rounded",
+                totalWeight === 100 ? "bg-green-50 text-green-600" : "bg-amber-50 text-amber-600"
+              )}>
+                <Scale className="h-3.5 w-3.5" />
+                权重: {totalWeight}%
+              </div>
+            </PrdAnnotation>
           </div>
-
-          <div className="overflow-x-auto pb-2">
-            <div className="flex items-start gap-3 pl-10 min-w-max">
-              {cardConfigs.map(c => (
-                <PrdAnnotation key={c.type} data={getAnnotation(`editor-card-${c.type}`)} className="w-52 shrink-0">
-                  <div className="w-52 shrink-0 text-xs text-gray-500 text-center whitespace-pre-line leading-tight py-1">{c.title}</div>
-                </PrdAnnotation>
-              ))}
-            </div>
-
-            <div className="space-y-3 min-w-max">
-              {tasks.map((task, idx) => (
-                <div
-                  key={task.id}
-                  draggable
-                  onDragStart={(e) => e.dataTransfer.setData("text/plain", String(idx))}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault()
-                    const fromIdx = parseInt(e.dataTransfer.getData("text/plain"))
-                    if (!isNaN(fromIdx)) handleDragDrop(fromIdx, idx)
-                  }}
-                  className={cn("flex items-center gap-3 p-3 bg-white rounded-xl border hover:border-primary/30 transition-colors group")}
-                >
-                  <div className="flex items-center gap-1 shrink-0 w-8 cursor-grab">
-                    <GripVertical className="h-4 w-4 text-gray-400" />
-                    <span className="text-xs text-gray-400 font-medium">{idx + 1}</span>
-                  </div>
-
-                  <div className="flex items-center gap-3 flex-1">
-                    {cardConfigs.map(config => {
-                      const configured = isConfigured(task.id, config.type)
-                      const summary = getSummary(task.id, config.type)
-                      const isWeightReadonly = config.type === "weight"
-
-                      return (
-                        <button
-                          key={config.type}
-                          onClick={() => !isWeightReadonly && setEditingCard({ taskId: task.id, type: config.type })}
-                          disabled={isWeightReadonly}
-                          className={cn(
-                            "w-52 h-36 shrink-0 rounded-lg border p-3 text-left transition-all flex flex-col",
-                            isWeightReadonly ? "bg-gray-100 border-gray-200 cursor-not-allowed opacity-60" :
-                              configured ? "bg-white border-gray-200 hover:border-primary hover:shadow-sm" :
-                                "bg-gray-50 border-dashed border-gray-300 hover:border-primary"
-                          )}
-                        >
-                          <div className="flex items-center gap-1.5 mb-1.5">
-                            <div className={cn("p-1 rounded", configured ? "bg-primary/10 text-primary" : "bg-gray-100 text-gray-400")}>
-                              {config.icon}
-                            </div>
-                            <span className="text-xs font-medium truncate flex-1">{config.title.split("\n")[0]}</span>
-                          </div>
-                          <p className={cn("text-xs line-clamp-5 flex-1 leading-relaxed whitespace-pre-line", configured ? "text-gray-600" : "text-gray-400")}>
-                            {summary}
-                          </p>
-                        </button>
-                      )
-                    })}
-                  </div>
-
-                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-gray-400 hover:text-red-500"
-                    onClick={() => setDeleteConfirmTask({ id: task.id, name: task.name })}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-
-              {tasks.length === 0 && (
-                <div className="py-16 text-center">
-                  <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 mb-4">暂无任务，点击添加第一个任务</p>
-                  <Button onClick={() => setIsAddTaskOpen(true)}><Plus className="mr-2 h-4 w-4" />添加任务</Button>
-                </div>
-              )}
-            </div>
+          <div className="flex items-center gap-2">
+            <PrdAnnotation data={getAnnotation("editor-add-task")}>
+              <Button size="sm" onClick={() => setIsAddTaskOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                添加任务
+              </Button>
+            </PrdAnnotation>
+            <PrdAnnotation data={getAnnotation("editor-clone-task")}>
+              <Button variant="outline" size="sm" onClick={() => setIsCloneOpen(true)}>
+                <Copy className="mr-2 h-4 w-4" />
+                克隆/引用
+              </Button>
+            </PrdAnnotation>
+            <PrdAnnotation data={getAnnotation("editor-config-weight")}>
+              <Button variant="outline" size="sm" onClick={() => setIsWeightConfigOpen(true)}>
+                <PieChartIcon className="mr-2 h-4 w-4" />
+                配置任务权重
+              </Button>
+            </PrdAnnotation>
           </div>
         </div>
-      )}
 
+        {/* Task List with unified horizontal scroll */}
+        <div className="overflow-x-auto pb-2">
+          {/* Column Headers */}
+          <div className="flex items-start gap-3 pl-10 min-w-max">
+            {cardConfigs.map(c => (
+              <PrdAnnotation key={c.type} data={getAnnotation(`editor-card-${c.type}`)} className="w-52 shrink-0">
+                <div className="w-52 shrink-0 text-xs text-gray-500 text-center whitespace-pre-line leading-tight py-1">
+                  {c.title}
+                </div>
+              </PrdAnnotation>
+            ))}
+          </div>
+
+          {/* Task Rows */}
+          <div className="space-y-3 min-w-max">
+            {tasks.map((task, idx) => (
+              <div
+                key={task.id}
+                draggable
+                onDragStart={() => setDraggedIdx(idx)}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  if (draggedIdx === null || draggedIdx === idx) {
+                    setDraggedIdx(null)
+                    return
+                  }
+                  const newTasks = [...tasks]
+                  const [removed] = newTasks.splice(draggedIdx, 1)
+                  newTasks.splice(idx, 0, removed)
+                  setTasks(newTasks.map((t, i) => ({ ...t, order: i + 1 })))
+                  setDraggedIdx(null)
+                }}
+                className={cn(
+                  "flex items-center gap-3 p-3 bg-white rounded-xl border hover:border-primary/30 transition-colors group",
+                  draggedIdx === idx && "opacity-50 border-dashed border-primary"
+                )}
+              >
+                {/* Order */}
+                <div className="flex items-center gap-1 shrink-0 w-8 cursor-grab">
+                  <GripVertical className="h-4 w-4 text-gray-400" />
+                  <span className="text-xs text-gray-400 font-medium">{idx + 1}</span>
+                </div>
+
+                {/* Cards */}
+                <div className="flex items-center gap-3 flex-1">
+                  {cardConfigs.map(config => {
+                    const configured = isConfigured(task.id, config.type)
+                    const summary = getSummary(task.id, config.type)
+                    const isRef = task.isReferenced && config.type !== "weight"
+                    const isWeightReadonly = config.type === "weight"
+
+                    return (
+                      <button
+                        key={config.type}
+                        onClick={() => !isRef && !isWeightReadonly && setEditingCard({ taskId: task.id, type: config.type })}
+                        disabled={isRef || isWeightReadonly}
+                        className={cn(
+                          "w-52 h-36 shrink-0 rounded-lg border p-3 text-left transition-all flex flex-col",
+                          isRef || isWeightReadonly
+                            ? "bg-gray-100 border-gray-200 cursor-not-allowed opacity-60"
+                            : configured
+                              ? "bg-white border-gray-200 hover:border-primary hover:shadow-sm"
+                              : "bg-gray-50 border-dashed border-gray-300 hover:border-primary"
+                        )}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <div className={cn(
+                            "p-1 rounded",
+                            configured ? "bg-primary/10 text-primary" : "bg-gray-100 text-gray-400"
+                          )}>
+                            {config.icon}
+                          </div>
+                          <span className="text-xs font-medium truncate flex-1">{config.title}</span>
+                          {isRef && <Badge variant="outline" className="text-[10px] px-1 py-0">引用</Badge>}
+                        </div>
+                        <p className={cn(
+                          "text-xs line-clamp-5 flex-1 leading-relaxed whitespace-pre-line",
+                          configured ? "text-gray-600" : "text-gray-400"
+                        )}>
+                          {summary}
+                        </p>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Delete */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 text-gray-400 hover:text-red-500"
+                  onClick={() => setDeleteConfirmTask({ id: task.id, name: task.name })}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+
+            {tasks.length === 0 && (
+              <div className="py-16 text-center">
+                <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 mb-4">暂无任务，点击添加第一个任务</p>
+                <Button onClick={() => setIsAddTaskOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  添加任务
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Add Task Dialog */}
       <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>添加任务</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <PrdAnnotation data={getAnnotation("editor-add-task")}>
+              <DialogTitle>添加任务</DialogTitle>
+            </PrdAnnotation>
+          </DialogHeader>
           <div className="space-y-4 py-4">
-            <div><Label>任务名称</Label><Input value={newTask.name} onChange={e => setNewTask({ ...newTask, name: e.target.value })} placeholder="输入任务名称" className="mt-1.5" /></div>
+            <div>
+              <Label>任务名称</Label>
+              <Input value={newTask.name} onChange={e => setNewTask({ ...newTask, name: e.target.value })} placeholder="输入任务名称" className="mt-1.5" />
+            </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>任务类型</Label>
+              <div>
+                <Label>任务类型</Label>
                 <Select value={newTask.type} onValueChange={v => setNewTask({ ...newTask, type: v as "assessment" | "training" })}>
                   <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="training">训练任务</SelectItem><SelectItem value="assessment">考核任务</SelectItem></SelectContent>
+                  <SelectContent>
+                    <SelectItem value="training">训练任务</SelectItem>
+                    <SelectItem value="assessment">考核任务</SelectItem>
+                  </SelectContent>
                 </Select>
               </div>
-              <div><Label>预估学时</Label><Input type="number" value={newTask.hours} onChange={e => setNewTask({ ...newTask, hours: +e.target.value })} className="mt-1.5" /></div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <Label>预估学时</Label>
+                  <span className="text-xs text-gray-400">学生完成任务的预估时长</span>
+                </div>
+                <Input type="number" value={newTask.hours} onChange={e => setNewTask({ ...newTask, hours: +e.target.value })} className="mt-1.5" />
+              </div>
             </div>
-            <div><Label>难度</Label><div className="flex gap-1 mt-1.5">
-              {[1, 2, 3, 4, 5].map(n => (
-                <button key={n} onClick={() => setNewTask({ ...newTask, difficulty: n })}>
-                  <Star className={cn("h-6 w-6", n <= newTask.difficulty ? "fill-amber-400 text-amber-400" : "text-gray-200")} />
-                </button>
-              ))}
-            </div></div>
-            <div><Label>背景介绍</Label><Textarea value={newTask.background} onChange={e => setNewTask({ ...newTask, background: e.target.value })} className="mt-1.5" rows={3} /></div>
+            <div>
+              <Label>难度</Label>
+              <div className="flex gap-1 mt-1.5">
+                {[1,2,3,4,5].map(n => (
+                  <button key={n} onClick={() => setNewTask({ ...newTask, difficulty: n })}>
+                    <Star className={cn("h-6 w-6", n <= newTask.difficulty ? "fill-amber-400 text-amber-400" : "text-gray-200")} />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label>背景介绍</Label>
+              <Textarea value={newTask.background} onChange={e => setNewTask({ ...newTask, background: e.target.value })} placeholder="简述任务背景" className="mt-1.5" rows={3} />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddTaskOpen(false)}>取消</Button>
@@ -433,112 +1099,447 @@ export default function ScenarioTasksPage() {
         </DialogContent>
       </Dialog>
 
-      <WeightConfigDialog open={isWeightConfigOpen} onOpenChange={setIsWeightConfigOpen}
-        tasks={tasks} taskStates={taskStates} updateAnyState={updateState} onAutoDistribute={distributeWeights} />
-
-      <Dialog open={!!deleteConfirmTask} onOpenChange={(open) => !open && setDeleteConfirmTask(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>确认删除</DialogTitle><DialogDescription>确定要删除任务「{deleteConfirmTask?.name}」吗？删除后不可恢复。</DialogDescription></DialogHeader>
+      {/* Clone Dialog */}
+      <Dialog open={isCloneOpen} onOpenChange={setIsCloneOpen}>
+        <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <PrdAnnotation data={getAnnotation("editor-clone-task")}>
+              <DialogTitle>克隆/引用任务</DialogTitle>
+            </PrdAnnotation>
+            <DialogDescription>从其他场景选择任务进行克隆或引用</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 flex-1 overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between">
+              <div className="flex gap-2">
+                <Button variant={cloneMode === "clone" ? "default" : "outline"} size="sm" onClick={() => setCloneMode("clone")}>克隆（可编辑）</Button>
+                <Button variant={cloneMode === "reference" ? "default" : "outline"} size="sm" onClick={() => setCloneMode("reference")}>引用（只读）</Button>
+              </div>
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input value={cloneSearch} onChange={e => setCloneSearch(e.target.value)} placeholder="搜索任务名称、编码..." className="pl-9" />
+              </div>
+            </div>
+            <Tabs value={cloneTab} onValueChange={v => setCloneTab(v as "my" | "collab" | "public")}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="my">我的</TabsTrigger>
+                <TabsTrigger value="collab">共建</TabsTrigger>
+                <TabsTrigger value="public">公共库</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <div className="flex-1 overflow-y-auto border rounded-lg">
+              {/* Table Header */}
+              <div className="grid grid-cols-[48px_1fr_120px_140px_120px] gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b sticky top-0">
+                <div></div>
+                <div>任务名称</div>
+                <div>任务编码</div>
+                <div>关联场景</div>
+                <div>关联岗位</div>
+              </div>
+              {allTasks
+                .filter(t => {
+                  if (cloneTab === "my") return t.scenarioName?.includes("场景") || true
+                  if (cloneTab === "collab") return t.scenarioName?.includes("协作") || false
+                  if (cloneTab === "public") return t.scenarioName?.includes("公共") || false
+                  return true
+                })
+                .filter(t => !cloneSearch || t.name.includes(cloneSearch) || t.code?.includes(cloneSearch) || t.scenarioName?.includes(cloneSearch))
+                .map(t => {
+                  const selected = selectedClone.includes(t.id)
+                  return (
+                    <div key={t.id} onClick={() => setSelectedClone(prev => prev.includes(t.id) ? prev.filter(x => x !== t.id) : [...prev, t.id])} className={cn("grid grid-cols-[48px_1fr_120px_140px_120px] gap-3 px-4 py-3 border-b cursor-pointer items-center text-sm hover:bg-gray-50", selected ? "bg-primary/5" : "")}>
+                      <div className="flex justify-center">
+                        <div className={cn("w-4 h-4 rounded border flex items-center justify-center", selected ? "bg-primary border-primary" : "border-gray-300")}>
+                          {selected && <CheckCircle2 className="h-3 w-3 text-white" />}
+                        </div>
+                      </div>
+                      <div className="font-medium">{t.name}</div>
+                      <div className="text-gray-500 text-xs">{t.code}</div>
+                      <div className="text-gray-500 text-xs truncate">{t.scenarioName}</div>
+                      <div className="text-gray-500 text-xs">{existingScenario?.positionName || "-"}</div>
+                    </div>
+                  )
+                })}
+            </div>
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirmTask(null)}>取消</Button>
-            <Button variant="destructive" onClick={() => deleteConfirmTask && handleDeleteTask(deleteConfirmTask.id)}>确认删除</Button>
+            <Button variant="outline" onClick={() => setIsCloneOpen(false)}>取消</Button>
+            <Button onClick={handleClone} disabled={selectedClone.length === 0}>确定 ({selectedClone.length})</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Edit Card Dialog */}
       {editingCard && (
         <EditCardDialog
-          tasks={tasks}
+          allTasks={tasks}
           taskId={editingCard.taskId}
           cardType={editingCard.type}
-          state={taskStates[editingCard.taskId] || makeDefaultTaskState()}
           task={tasks.find(t => t.id === editingCard.taskId)!}
-          updateState={(u) => updateState(editingCard.taskId, u)}
-          updateTask={async (u) => {
-            try {
-              await taskApi.update(editingCard.taskId, u as any)
-              await loadData()
-            } catch (err: any) {
-              toast({ variant: "destructive", title: "更新失败", description: err.message })
-            }
-          }}
+          state={getState(editingCard.taskId)}
+          updateState={(updates) => updateState(editingCard.taskId, updates)}
+          updateTask={(updates) => setTasks(tasks.map(t => t.id === editingCard.taskId ? { ...t, ...updates } : t))}
+          allTaskStates={taskStates}
+          updateAnyState={(id, updates) => updateState(id, updates)}
           onClose={() => setEditingCard(null)}
+          positionId={existingScenario?.positionId}
         />
       )}
+
+      {/* Weight Config Dialog */}
+      <WeightConfigDialog
+        open={isWeightConfigOpen}
+        onOpenChange={setIsWeightConfigOpen}
+        tasks={tasks}
+        taskStates={taskStates}
+        updateAnyState={(id, updates) => updateState(id, updates)}
+      />
+
+      {/* Delete Confirm Dialog */}
+      <Dialog open={!!deleteConfirmTask} onOpenChange={(open) => !open && setDeleteConfirmTask(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <PrdAnnotation data={getAnnotation("row-action-delete")}>
+              <DialogTitle>确认删除</DialogTitle>
+            </PrdAnnotation>
+            <DialogDescription>
+              确定要删除任务「{deleteConfirmTask?.name}」吗？删除后不可恢复。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmTask(null)}>取消</Button>
+            <Button variant="destructive" onClick={() => deleteConfirmTask && handleDeleteTask(deleteConfirmTask.id)}>
+              确认删除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
-function WeightConfigDialog({
-  open, onOpenChange, tasks, taskStates, updateAnyState, onAutoDistribute,
-}: {
-  open: boolean; onOpenChange: (v: boolean) => void
-  tasks: ScenarioTask[]; taskStates: Record<string, TaskState>
-  updateAnyState: (id: string, u: Partial<TaskState>) => void; onAutoDistribute: () => void
-}) {
-  const total = Object.values(taskStates).reduce((s, ts) => s + (ts?.weight || 0), 0)
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader><DialogTitle>配置任务权重</DialogTitle><DialogDescription>权重总和需为 100%，修改后点击自动均衡或手动调整。</DialogDescription></DialogHeader>
-        <div className="space-y-3 py-4 max-h-[60vh] overflow-y-auto">
-          {tasks.map(t => {
-            const ts = taskStates[t.id] || makeDefaultTaskState()
-            return (
-              <div key={t.id} className="flex items-center gap-3 p-3 border rounded-lg">
-                <div className="flex-1"><p className="font-medium text-sm">{t.name}</p><p className="text-xs text-gray-500">{t.code}</p></div>
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateAnyState(t.id, { locked: !ts.locked })}>
-                    {ts.locked ? <Lock className="h-3.5 w-3.5 text-amber-500" /> : <Unlock className="h-3.5 w-3.5 text-gray-400" />}
-                  </Button>
-                  <Input type="number" className="w-20 h-9 text-sm" value={ts.weight}
-                    onChange={e => updateAnyState(t.id, { weight: Math.max(0, Math.min(100, +e.target.value || 0)) })} />
-                  <span className="text-sm text-gray-500">%</span>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-        <div className="flex items-center justify-between mb-2">
-          <span className={cn("text-sm font-medium", total === 100 ? "text-green-600" : "text-amber-600")}>合计: {total}%</span>
-          <Button variant="outline" size="sm" onClick={onAutoDistribute}><RotateCcw className="mr-1 h-3.5 w-3.5" />自动均衡</Button>
-        </div>
-        <DialogFooter>
-          <Button onClick={() => onOpenChange(false)}>完成</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
+// Module-level set to track custom (added/cloned) knowledge points across dialog re-opens
+const customKnowledgePointIds = new Set<string>()
+
+// ============ Edit Card Dialog ============
 
 function EditCardDialog({
-  tasks, taskId, cardType, state, task, updateState, updateTask, onClose,
+  allTasks,
+  taskId,
+  cardType,
+  task,
+  state,
+  updateState,
+  updateTask,
+  allTaskStates,
+  updateAnyState,
+  onClose,
+  positionId,
 }: {
-  tasks: ScenarioTask[]; taskId: string; cardType: CardType
-  state: TaskState; task: ScenarioTask
+  allTasks: Task[]
+  taskId: string
+  cardType: CardType
+  task: Task
+  state: TaskState
   updateState: (u: Partial<TaskState>) => void
-  updateTask: (u: Partial<ScenarioTask>) => Promise<void>
+  updateTask: (u: Partial<Task>) => void
+  allTaskStates: Record<string, TaskState>
+  updateAnyState: (id: string, u: Partial<TaskState>) => void
   onClose: () => void
+  positionId?: string
 }) {
   const config = cardConfigs.find(c => c.type === cardType)!
-  const [localTask, setLocalTask] = useState({ name: task.name, type: task.taskType, difficulty: task.difficulty, hours: task.estimatedHours, background: task.background || "" })
+  const [localTask, setLocalTask] = useState({ name: task.name, type: task.taskType, difficulty: task.difficulty, hours: task.estimatedHours, background: task.background })
 
-  const [knowledgeData, setKnowledgeData] = useState<any[]>([])
-  const [abilityData, setAbilityData] = useState<any[]>([])
-  const [resourceSearch, setResourceSearch] = useState("")
+  // For knowledge / ability "create new"
+  const [showAddKnowledge, setShowAddKnowledge] = useState(false)
+  const [newKnowledgeName, setNewKnowledgeName] = useState("")
+  const [newKnowledgeDesc, setNewKnowledgeDesc] = useState("")
+  const [newKnowledgeCategory, setNewKnowledgeCategory] = useState("通用")
 
-  useEffect(() => {
-    if (cardType === "knowledge") knowledgeApi.list({ limit: 1000 }).then(r => setKnowledgeData(r.items)).catch(() => {})
-    if (cardType === "ability") abilityApi.list({ limit: 1000 }).then(r => setAbilityData(r.items)).catch(() => {})
-  }, [cardType])
+  const [showAddAbility, setShowAddAbility] = useState(false)
+  const [newAbilityName, setNewAbilityName] = useState("")
+  const [newAbilityDesc, setNewAbilityDesc] = useState("")
+  const [newAbilityCategory, setNewAbilityCategory] = useState("通用")
+
+  // For evaluation full-screen dialog
+  const [evalDialogOpen, setEvalDialogOpen] = useState(false)
+
+  // For scoring config
+  const [selectedGradeTaskId, setSelectedGradeTaskId] = useState(taskId)
+
+  // For resources filter
+  const [resType, setResType] = useState("all")
+
+  // For ability search
+  const [abilitySearch, setAbilitySearch] = useState("")
+  const [abilityDetailOpen, setAbilityDetailOpen] = useState(false)
+  const [selectedAbilityForDetail, setSelectedAbilityForDetail] = useState<string | null>(null)
+  const [expandedDomains, setExpandedDomains] = useState<Record<string, boolean>>({})
+
+  // For knowledge
+  const [kpSearch, setKpSearch] = useState("")
+  const [kpDetailOpen, setKpDetailOpen] = useState(false)
+  const [selectedKpForDetail, setSelectedKpForDetail] = useState<string | null>(null)
+  const [kpActionOpen, setKpActionOpen] = useState(false)
+  const [kpActionMode, setKpActionMode] = useState<"add" | "clone" | "edit" | null>(null)
+  const [kpActionTarget, setKpActionTarget] = useState<(typeof knowledgePoints)[0] | null>(null)
+  const [newKpForm, setNewKpForm] = useState({ name: "", description: "", code: "", granularLessons: [] as string[] })
+  const [glSelectOpen, setGlSelectOpen] = useState(false)
+  const [glSelectTargetKp, setGlSelectTargetKp] = useState<string | null>(null)
+  const [glSearch, setGlSearch] = useState("")
+
+  // Determine if a knowledge point is reference (original library) or custom (added/cloned)
+  const isReferenceKp = (kpId: string) => !customKnowledgePointIds.has(kpId)
+
+  // For random draw custom questions (现场问答题)
+  const [rdqSearch, setRdqSearch] = useState("")
+  const [rdqActionOpen, setRdqActionOpen] = useState(false)
+  const [rdqActionMode, setRdqActionMode] = useState<"add" | "edit" | null>(null)
+  const [rdqActionTarget, setRdqActionTarget] = useState<{ id: string; name: string; description: string; answer: string } | null>(null)
+  const [newRdqForm, setNewRdqForm] = useState({ name: "", description: "", answer: "", major: "" })
+  const [rdqDetailOpen, setRdqDetailOpen] = useState(false)
+  const [selectedRdqForDetail, setSelectedRdqForDetail] = useState<string | null>(null)
+
+  // For resources search & upload
+  const [resSearchName, setResSearchName] = useState("")
+  const [resSearchProvider, setResSearchProvider] = useState("")
+  const [showUploadRes, setShowUploadRes] = useState(false)
+  const [newResName, setNewResName] = useState("")
+  const [newResType, setNewResType] = useState("document")
+  const [newResUrl, setNewResUrl] = useState("")
+  const [newResDescription, setNewResDescription] = useState("")
+  const [newResAddress, setNewResAddress] = useState("")
+  const [newResOpenTime, setNewResOpenTime] = useState("")
+  const [newResCapacity, setNewResCapacity] = useState("")
+  const [newResContact, setNewResContact] = useState("")
+  const [newResLocation, setNewResLocation] = useState("")
+  const [newResQuantity, setNewResQuantity] = useState("")
+  const [newResVersion, setNewResVersion] = useState("")
+  const [newResLicense, setNewResLicense] = useState("")
+  const [showUploadTypePicker, setShowUploadTypePicker] = useState(false)
+
+  // For question bank config
+  const [questionTab, setQuestionTab] = useState<"my" | "collab" | "public">("my")
+  const [questionSearch, setQuestionSearch] = useState("")
+  const [showAddQuestion, setShowAddQuestion] = useState(false)
+  const [newQuestionType, setNewQuestionType] = useState<"single" | "multiple" | "judgment" | "short_answer" | "essay" | "fill_blank">("single")
+  const [newQuestionName, setNewQuestionName] = useState("")
+  const [newQuestionContent, setNewQuestionContent] = useState("")
+  const [newQuestionDifficulty, setNewQuestionDifficulty] = useState<"easy" | "medium" | "hard">("easy")
+  const [newQuestionScore, setNewQuestionScore] = useState(10)
+  const [newQuestionOptions, setNewQuestionOptions] = useState(["", "", "", ""])
+  const [newQuestionAnswer, setNewQuestionAnswer] = useState("")
+  const [newQuestionMultipleAnswer, setNewQuestionMultipleAnswer] = useState<string[]>([])
+  const [newQuestionJudgmentAnswer, setNewQuestionJudgmentAnswer] = useState<"true" | "false">("true")
+  const [newQuestionBank, setNewQuestionBank] = useState("draft")
+  const [questionDetailOpen, setQuestionDetailOpen] = useState(false)
+  const [selectedQuestionForDetail, setSelectedQuestionForDetail] = useState<string | null>(null)
+
+  // For assessment config
+  const [assessActiveTab, setAssessActiveTab] = useState<string | null>(state.evaluationMethods[0] || null)
+
+  // For method dialog view mode (scheme list / scheme edit) — persisted across remounts
+  const [methodDialogViews, setMethodDialogViews] = useState<Record<string, "list" | "edit" | "template">>({})
+  const [newPointName, setNewPointName] = useState("")
+
+  // Score rule item type
+  interface ScoreRuleItem {
+    id: string
+    name: string
+    desc: string
+    rule: string
+    weight: number
+  }
+
+  // Rubric library — shared across all methods
+  type RubricScheme = { id: string; name: string; types: EvalSubType[]; desc: string; points: EvalPoint[]; mode: "rubric" | "score_rule"; scoreRuleItems?: ScoreRuleItem[] }
+  const [rubricLibrary, setRubricLibrary] = useState<RubricScheme[]>([
+    { id: "scheme-fe", name: "前端开发能力评价量规", types: ["knowledge_mastery", "operation_standard", "task_completion", "result_quality"], desc: "涵盖前端核心技术能力、操作规范、任务完成度和成果质量", points: [mockDefaultEvalPoints[0], mockDefaultEvalPoints[1], mockDefaultEvalPoints[8], mockDefaultEvalPoints[5]].map((p, i) => ({ ...p, id: `ep-scheme-fe-${i}` })), mode: "rubric" },
+    { id: "scheme-review", name: "通用评审量规", types: ["knowledge_mastery", "communication", "collaboration", "professionalism", "result_quality"], desc: "适用于项目评审，关注知识掌握、沟通协作与职业素养", points: [mockDefaultEvalPoints[2], mockDefaultEvalPoints[3], mockDefaultEvalPoints[6], mockDefaultEvalPoints[9], mockDefaultEvalPoints[12], mockDefaultEvalPoints[13]].map((p, i) => ({ ...p, id: `ep-scheme-review-${i}` })), mode: "rubric" },
+    { id: "scheme-innovation", name: "创新实践评价量规", types: ["innovation", "adaptability", "result_quality", "task_completion"], desc: "侧重创新能力、应变能力和成果质量", points: [mockDefaultEvalPoints[10], mockDefaultEvalPoints[11], mockDefaultEvalPoints[5], mockDefaultEvalPoints[4]].map((p, i) => ({ ...p, id: `ep-scheme-innovation-${i}` })), mode: "rubric" },
+    { id: "scheme-score-rule-code", name: "代码规范评分规则", types: ["operation_standard", "result_quality"], desc: "基于代码规范和成果质量进行加减分评价", points: [], mode: "score_rule", scoreRuleItems: [
+      { id: "sr-1", name: "代码注释规范", desc: "代码注释完整、清晰，符合团队规范", rule: "注释完整 +2分，缺失关键注释 -1分", weight: 20 },
+      { id: "sr-2", name: "命名规范", desc: "变量、函数命名具有语义化，符合驼峰/下划线规范", rule: "命名规范 +2分，命名混乱 -1分", weight: 20 },
+      { id: "sr-3", name: "代码复用性", desc: "避免重复代码，合理使用函数和组件封装", rule: "复用性好 +3分，大量重复代码 -2分", weight: 30 },
+      { id: "sr-4", name: "功能完整性", desc: "实现需求文档中全部功能点", rule: "功能完整 +3分，每缺一项 -2分", weight: 30 },
+    ]},
+    { id: "scheme-score-rule-attendance", name: "出勤表现评分规则", types: ["professionalism", "collaboration"], desc: "基于出勤和团队协作表现进行加减分评价", points: [], mode: "score_rule", scoreRuleItems: [
+      { id: "sr-5", name: "出勤率", desc: "按时参加课程/项目活动，无迟到早退", rule: "全勤 +5分，迟到/早退每次 -1分，缺勤每次 -3分", weight: 40 },
+      { id: "sr-6", name: "团队协作", desc: "积极参与团队讨论，主动承担任务", rule: "积极协作 +3分，消极配合 -2分", weight: 30 },
+      { id: "sr-7", name: "任务交付", desc: "按时高质量完成分配的任务", rule: "按时交付 +2分，延期交付 -1分，质量不达标 -2分", weight: 30 },
+    ]},
+  ])
+  const [editingRubricId, setEditingRubricId] = useState<string | null>(null)
+
+  // For evaluation rules
+  const [erQSearch, setErQSearch] = useState("")
+  const [erPSearch, setErPSearch] = useState("")
+  const [erKpSearch, setErKpSearch] = useState("")
+  const [erAbSearch, setErAbSearch] = useState("")
+
+  // Dialog states for evaluation rules card layout
+  const [erDialogOpen, setErDialogOpen] = useState<"object" | "subject" | "resource" | "method" | null>(null)
+  const [erDialogMethod, setErDialogMethod] = useState<string | null>(null)
+
+  // For rubric knowledge/ability multi-select dialogs
+  const [rubricKpDialogOpen, setRubricKpDialogOpen] = useState(false)
+  const [rubricKpSearch, setRubricKpSearch] = useState("")
+  const [rubricKpTargetPointId, setRubricKpTargetPointId] = useState<string | null>(null)
+  const [rubricKpTargetField, setRubricKpTargetField] = useState<string | null>(null)
+  const [rubricAbDialogOpen, setRubricAbDialogOpen] = useState(false)
+  const [rubricAbSearch, setRubricAbSearch] = useState("")
+  const [rubricAbTargetPointId, setRubricAbTargetPointId] = useState<string | null>(null)
+  const [rubricAbTargetField, setRubricAbTargetField] = useState<string | null>(null)
+
+  // Mock resource config states
+  const [mockResRandomDraw, setMockResRandomDraw] = useState({ questionCount: 5, difficulty: "mixed", types: { single: true, multiple: true, judge: true }, autoDraw: true })
+  const [mockResPaper, setMockResPaper] = useState({ duration: 60, passScore: 60, allowRetake: false, retakeCount: 1, shuffleQuestions: true, showResult: true, activationMode: "manual" as "manual" | "scheduled" | "always", scheduledTime: "" })
+  const [selectedPaperForDetail, setSelectedPaperForDetail] = useState<string | null>(null)
+  const [paperDetailOpen, setPaperDetailOpen] = useState(false)
+  const [showCreatePaper, setShowCreatePaper] = useState(false)
+  const [newPaperName, setNewPaperName] = useState("")
+  const [newPaperQuestionCount, setNewPaperQuestionCount] = useState(10)
+  const [newPaperTotalScore, setNewPaperTotalScore] = useState(100)
+  const [mockResQuestionBank, setMockResQuestionBank] = useState({ questionCount: 10, difficulty: "mixed", totalScore: 100, autoGenerate: false, timeLimit: 90, typeWeights: {} as Record<string, number>, allowRetake: false, retakeCount: 1, shuffleQuestions: true, showResult: true, questionScores: {} as Record<string, number> })
+  const [mockResReview, setMockResReview] = useState({ materialType: "project_report", submitFormatDesc: "请提交 PDF 格式的项目报告，包含完整的项目背景、实现方案、测试结果和总结反思。", deadlineDays: 7, allowResubmit: false, venueResources: "多媒体教室（容纳30人）、投影仪、白板、评委席桌椅、计时器、签到表、评分表及文具。", requiresMaterial: true })
+  const [reviewSteps, setReviewSteps] = useState([
+    { id: "rs-1", label: "初评", desc: "由指导教师进行第一轮评审", enabled: true, subjectType: "teacher" as string | null, weight: 40 },
+    { id: "rs-2", label: "复评", desc: "由专家组进行第二轮复核", enabled: false, subjectType: null as string | null, weight: 30 },
+    { id: "rs-3", label: "终评", desc: "答辩委员会最终评定", enabled: false, subjectType: null as string | null, weight: 30 },
+  ])
+  const [editingReviewStepId, setEditingReviewStepId] = useState<string | null>(null)
+  const [editingStepLabel, setEditingStepLabel] = useState("")
+  const [editingStepDesc, setEditingStepDesc] = useState("")
+  const [showAddStep, setShowAddStep] = useState(false)
+  const [newStepLabel, setNewStepLabel] = useState("")
+  const [newStepDesc, setNewStepDesc] = useState("")
+  const [newStepSubjectType, setNewStepSubjectType] = useState("")
 
   const handleSave = () => {
     if (cardType === "info") {
-      updateTask({ name: localTask.name, taskType: localTask.type, difficulty: localTask.difficulty, estimatedHours: localTask.hours, background: localTask.background })
+      updateTask({ name: localTask.name, taskType: localTask.type as "assessment"|"training", difficulty: localTask.difficulty as 1|2|3|4|5, estimatedHours: localTask.hours, background: localTask.background })
+    } else if (cardType === "evaluationRules") {
+      const toTaskEvalPoint = (ep: EvalPoint): import("@/lib/mock-data").TaskEvalPoint => {
+        const gmMax = ep.gradeMapping && ep.gradeMapping.length > 0
+          ? Math.max(...ep.gradeMapping.map(g => g.maxScore))
+          : 100
+        return {
+          id: ep.id,
+          name: ep.name,
+          desc: ep.desc,
+          weight: ep.weight || 0,
+          maxScore: ep.weight || gmMax,
+          scoringMethod: ep.scoringMethod,
+          gradeMapping: ep.gradeMapping,
+          subType: ep.subType,
+          types: ep.types,
+          knowledgePointIds: ep.knowledgePointIds,
+          abilityPointIds: ep.abilityPointIds,
+        }
+      }
+      updateTask({
+        evalPoints: {
+          randomDraw: state.randomDrawEvalPoints.map(toTaskEvalPoint),
+          review: state.reviewEvalPoints.map(toTaskEvalPoint),
+          paper: state.paperEvalPoints.map(toTaskEvalPoint),
+          questionBank: state.questionBankEvalPoints.map(toTaskEvalPoint),
+        },
+        reviewSteps: reviewSteps.filter(s => s.enabled).map(s => ({
+          id: s.id,
+          label: s.label,
+          desc: s.desc,
+          enabled: s.enabled,
+          subjectType: s.subjectType,
+          weight: s.weight,
+        })),
+      })
     }
     onClose()
   }
+
+  const handleAddKnowledge = () => {
+    if (!newKnowledgeName.trim()) return
+    const newId = `kp-new-${Date.now()}`
+    knowledgePoints.push({ id: newId, name: newKnowledgeName.trim(), description: newKnowledgeDesc.trim(), category: newKnowledgeCategory })
+    updateState({ knowledgePoints: [...state.knowledgePoints, newId] })
+    setNewKnowledgeName("")
+    setNewKnowledgeDesc("")
+    setShowAddKnowledge(false)
+  }
+
+  const handleAddAbility = () => {
+    if (!newAbilityName.trim()) return
+    const newId = `ab-new-${Date.now()}`
+    abilityPoints.push({ id: newId, name: newAbilityName.trim(), description: newAbilityDesc.trim(), category: newAbilityCategory })
+    updateState({ abilityPoints: [...state.abilityPoints, newId] })
+    setNewAbilityName("")
+    setNewAbilityDesc("")
+    setShowAddAbility(false)
+  }
+
+  const handleUploadResource = () => {
+    if (!newResName.trim()) return
+    const newId = `lr-upload-${Date.now()}`
+    let extraData: Record<string, any> = {}
+    switch (newResType) {
+      case "link":
+        extraData = { url: newResUrl.trim(), description: newResDescription.trim() }
+        break
+      case "venue":
+        extraData = { address: newResAddress.trim(), openTime: newResOpenTime.trim(), capacity: newResCapacity.trim(), contact: newResContact.trim(), description: newResDescription.trim() }
+        break
+      case "facility":
+        extraData = { location: newResLocation.trim(), quantity: newResQuantity.trim(), description: newResDescription.trim() }
+        break
+      case "software":
+        extraData = { version: newResVersion.trim(), url: newResUrl.trim(), license: newResLicense.trim(), description: newResDescription.trim() }
+        break
+      default:
+        extraData = { description: newResDescription.trim() }
+        break
+    }
+    const newRes = {
+      id: newId,
+      name: newResName.trim(),
+      type: newResType as any,
+      url: newResUrl.trim() || "",
+      description: newResDescription.trim(),
+      knowledgePoints: [],
+      uploadedAt: new Date().toISOString().slice(0, 10),
+      uploadedBy: "当前用户",
+      thumbnail: "/placeholder.svg",
+      ...extraData,
+    }
+    learningResources.push(newRes as any)
+    updateState({ resources: [...state.resources, newId] })
+    setNewResName("")
+    setNewResType("document")
+    setNewResUrl("")
+    setNewResDescription("")
+    setNewResAddress("")
+    setNewResOpenTime("")
+    setNewResCapacity("")
+    setNewResContact("")
+    setNewResLocation("")
+    setNewResQuantity("")
+    setNewResVersion("")
+    setNewResLicense("")
+    setShowUploadRes(false)
+  }
+
+  // Rich text editor mock toolbar items
+  const toolbarItems = [
+    [{ icon: <Heading1 className="h-4 w-4" />, label: "H1" }, { icon: <Heading2 className="h-4 w-4" />, label: "H2" }],
+    [{ icon: <Type className="h-4 w-4" />, label: "正文" }],
+    [{ icon: <b className="text-xs">B</b>, label: "加粗" }, { icon: <i className="text-xs">I</i>, label: "斜体" }, { icon: <u className="text-xs">U</u>, label: "下划线" }, { icon: <Strikethrough className="h-4 w-4" />, label: "删除线" }],
+    [{ icon: <AlignLeft className="h-4 w-4" />, label: "左对齐" }, { icon: <AlignCenter className="h-4 w-4" />, label: "居中" }, { icon: <AlignRight className="h-4 w-4" />, label: "右对齐" }],
+    [{ icon: <List className="h-4 w-4" />, label: "无序列表" }, { icon: <ListOrdered className="h-4 w-4" />, label: "有序列表" }],
+    [{ icon: <Quote className="h-4 w-4" />, label: "引用" }, { icon: <Code className="h-4 w-4" />, label: "代码" }],
+    [{ icon: <LinkIcon className="h-4 w-4" />, label: "链接" }, { icon: <Image className="h-4 w-4" />, label: "图片" }, { icon: <Video className="h-4 w-4" />, label: "视频" }],
+    [{ icon: <Table className="h-4 w-4" />, label: "表格" }, { icon: <Minus className="h-4 w-4" />, label: "分割线" }],
+    [{ icon: <Palette className="h-4 w-4" />, label: "字体颜色" }, { icon: <Sparkles className="h-4 w-4" />, label: "背景色" }],
+  ]
 
   const renderContent = () => {
     switch (cardType) {
@@ -547,193 +1548,5165 @@ function EditCardDialog({
           <div className="space-y-4">
             <div><Label>任务名称</Label><Input value={localTask.name} onChange={e => setLocalTask({ ...localTask, name: e.target.value })} className="mt-1.5" /></div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>任务类型</Label>
-                <Select value={localTask.type} onValueChange={v => setLocalTask({ ...localTask, type: v as "assessment" | "training" })}>
-                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="training">训练</SelectItem><SelectItem value="assessment">考核</SelectItem></SelectContent>
-                </Select>
+              <div><Label>任务类型</Label><Select value={localTask.type} onValueChange={v => setLocalTask({ ...localTask, type: v as "assessment"|"training" })}><SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="training">训练</SelectItem><SelectItem value="assessment">考核</SelectItem></SelectContent></Select></div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <Label>预估学时</Label>
+                  <span className="text-xs text-gray-400">学生完成任务的预估时长</span>
+                </div>
+                <Input type="number" value={localTask.hours} onChange={e => setLocalTask({ ...localTask, hours: +e.target.value })} className="mt-1.5" />
               </div>
-              <div><Label>预估学时</Label><Input type="number" value={localTask.hours} onChange={e => setLocalTask({ ...localTask, hours: +e.target.value })} className="mt-1.5" /></div>
             </div>
-            <div><Label>难度</Label><div className="flex gap-1 mt-1.5">
-              {[1, 2, 3, 4, 5].map(n => (
-                <button key={n} onClick={() => setLocalTask({ ...localTask, difficulty: n })}>
-                  <Star className={cn("h-6 w-6", n <= localTask.difficulty ? "fill-amber-400 text-amber-400" : "text-gray-200")} />
-                </button>
-              ))}
-            </div></div>
+            <div><Label>难度</Label><div className="flex gap-1 mt-1.5">{([1,2,3,4,5] as const).map(n => <button key={n} onClick={() => setLocalTask({ ...localTask, difficulty: n })}><Star className={cn("h-6 w-6", n <= localTask.difficulty ? "fill-amber-400 text-amber-400" : "text-gray-200")} /></button>)}</div></div>
             <div><Label>背景</Label><Textarea value={localTask.background} onChange={e => setLocalTask({ ...localTask, background: e.target.value })} className="mt-1.5" rows={3} /></div>
           </div>
         )
 
-      case "description":
+      case "description": {
+        const [descMode, setDescMode] = useState<"rich_text" | "pdf">("rich_text")
         return (
-          <div className="space-y-3">
-            <Label>任务说明</Label>
-            <Textarea value={state.description} onChange={e => updateState({ description: e.target.value })}
-              placeholder="描述任务的目标、步骤、要求等..." className="min-h-[300px]" />
-          </div>
-        )
+          <div className="space-y-3 h-full flex flex-col">
+            <Tabs value={descMode} onValueChange={v => setDescMode(v as "rich_text" | "pdf")}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="rich_text">富文本编辑</TabsTrigger>
+                <TabsTrigger value="pdf">上传任务说明书</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            {descMode === "rich_text" ? (
+              <div className="flex-1 flex flex-col min-h-0">
+                <p className="text-xs text-gray-500 mb-2">可编写详细的操作手册，支持图文混排</p>
+                <div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-[450px]">
+                  {/* Mock Toolbar */}
+                  <div className="bg-gray-50 border-b px-3 py-2 flex flex-wrap gap-1">
+                    {toolbarItems.map((group, gi) => (
+                      <div key={gi} className="flex items-center gap-0.5 mr-2">
+                        {group.map((item, ii) => (
+                          <Button key={ii} variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-600 hover:text-primary hover:bg-primary/5" title={item.label}>
+                            {item.icon}
+                          </Button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                  {/* Mock Editor Area */}
+                  <div className="p-4 flex-1 bg-white">
+                    <Textarea
+                      value={state.description}
+                      onChange={e => updateState({ description: e.target.value })}
+                      placeholder={`任务描述
 
-      case "knowledge":
-        return (
-          <div className="space-y-4 max-h-[65vh] overflow-y-auto">
-            <div className="text-sm text-gray-500">已选 {state.knowledgePoints.length} 个知识点</div>
-            {knowledgeData.map(kp => (
-              <div key={kp.id} className={cn("flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:border-primary",
-                state.knowledgePoints.includes(kp.id) && "border-primary bg-primary/5")}
-                onClick={() => {
-                  const ids = state.knowledgePoints.includes(kp.id)
-                    ? state.knowledgePoints.filter(i => i !== kp.id)
-                    : [...state.knowledgePoints, kp.id]
-                  updateState({ knowledgePoints: ids })
-                }}>
-                <div className={cn("w-5 h-5 rounded border flex items-center justify-center shrink-0",
-                  state.knowledgePoints.includes(kp.id) ? "bg-primary border-primary" : "border-gray-300")}>
-                  {state.knowledgePoints.includes(kp.id) && <Check className="h-3 w-3 text-white" />}
+你需要完成 [具体任务]。该任务基于 [背景/前提]，要求你 [核心动作]。执行时请注意 [关键约束]，确保理解需求后再开始。
+
+任务目标
+
+• 核心目标：[一句话概括最终成果]
+• 目标一：[具体子目标]
+• 目标二：[具体子目标]
+• 目标三：[具体子目标]
+• 成功标准：[任务完成的具体标志]
+
+任务结果
+
+请提交以下内容：
+
+• 主交付物：[如报告/代码/方案]
+• 格式要求：[如 Markdown/JSON/纯文本]
+• 附属说明：[假设、来源、取舍等]
+• 篇幅要求：[如不少于 500 字/代码 100 行内]
+
+测评要求
+
+• 准确性（30%）：内容正确，逻辑清晰，来源可靠
+• 完整性（25%）：覆盖所有子目标，无遗漏
+• 清晰度（20%）：结构分明，表达简洁
+• 实用性（15%）：结论可操作，建议可落地
+• 规范性（10%）：符合格式，术语统一，无明显错误
+
+一票否决项：若出现 [如抄袭/泄密/核心事实错误]，视为未通过。`}
+                      className="border-0 min-h-full w-full focus-visible:ring-0 resize-none text-sm leading-relaxed"
+                    />
+                  </div>
+                  {/* Mock Status Bar */}
+                  <div className="bg-gray-50 border-t px-3 py-1.5 flex items-center justify-between text-xs text-gray-400">
+                    <span>纯文本模式</span>
+                    <span>{state.description.length} 字符</span>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{kp.name}</p>
-                  {kp.description && <p className="text-xs text-gray-500 truncate">{kp.description}</p>}
-                </div>
+                {state.description.includes('<img') || state.description.includes('<video') ? (
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm text-blue-700 flex items-center gap-2 mt-2">
+                    <Image className="h-4 w-4" />
+                    检测到已插入多媒体内容
+                  </div>
+                ) : null}
               </div>
-            ))}
-            {knowledgeData.length === 0 && <p className="text-center text-gray-500 py-8">暂无知识点数据</p>}
-          </div>
-        )
-
-      case "ability":
-        return (
-          <div className="space-y-4 max-h-[65vh] overflow-y-auto">
-            <div className="text-sm text-gray-500">已选 {state.abilityPoints.length} 个能力点</div>
-            {abilityData.map(ap => (
-              <div key={ap.id} className={cn("flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:border-primary",
-                state.abilityPoints.includes(ap.id) && "border-primary bg-primary/5")}
-                onClick={() => {
-                  const ids = state.abilityPoints.includes(ap.id)
-                    ? state.abilityPoints.filter(i => i !== ap.id)
-                    : [...state.abilityPoints, ap.id]
-                  updateState({ abilityPoints: ids })
-                }}>
-                <div className={cn("w-5 h-5 rounded border flex items-center justify-center shrink-0",
-                  state.abilityPoints.includes(ap.id) ? "bg-primary border-primary" : "border-gray-300")}>
-                  {state.abilityPoints.includes(ap.id) && <Check className="h-3 w-3 text-white" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{ap.name}</p>
-                  {ap.category && <Badge variant="outline" className="text-[10px] mt-1">{ap.category}</Badge>}
-                </div>
-              </div>
-            ))}
-            {abilityData.length === 0 && <p className="text-center text-gray-500 py-8">暂无能力点数据</p>}
-          </div>
-        )
-
-      case "resources":
-        return (
-          <div className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input placeholder="搜索资源..." value={resourceSearch} onChange={e => setResourceSearch(e.target.value)} className="pl-8" />
-            </div>
-            <div className="text-sm text-gray-500">已选 {state.resources.length} 个资源</div>
-            <div className="space-y-2 max-h-[55vh] overflow-y-auto">
-              <div className="p-6 text-center">
-                <div className="aspect-video bg-gray-100 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center mb-3">
-                  <Upload className="h-8 w-8 text-gray-400 mb-2" /><p className="text-sm text-gray-500">上传资源</p>
-                </div>
-                <p className="text-xs text-gray-400">支持文档、图片、视频、链接等类型，上传后将自动关联到当前任务</p>
-              </div>
-            </div>
-          </div>
-        )
-
-      case "evaluation":
-        return (
-          <div className="space-y-4 max-h-[65vh] overflow-y-auto">
-            <Label>选择测评方式</Label>
-            <div className="grid grid-cols-2 gap-3">
-              {evaluationMethodOptions.map(opt => {
-                const selected = state.evaluationMethods.includes(opt.key)
-                return (
-                  <div key={opt.key} className={cn("flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:border-primary transition-colors",
-                    selected && "border-primary bg-primary/5")}
-                    onClick={() => {
-                      const methods = selected ? state.evaluationMethods.filter(m => m !== opt.key) : [...state.evaluationMethods, opt.key]
-                      const weights: Record<string, number> = {}
-                      methods.forEach((m, i) => { weights[m] = Math.floor(100 / methods.length) + (i < 100 % methods.length ? 1 : 0) })
-                      updateState({ evaluationMethods: methods, methodWeights: weights })
-                    }}>
-                    <div className={cn("w-5 h-5 rounded border flex items-center justify-center shrink-0",
-                      selected ? "bg-primary border-primary" : "border-gray-300")}>
-                      {selected && <Check className="h-3 w-3 text-white" />}
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-8 space-y-4">
+                {state.descriptionPdf ? (
+                  <div className="text-center space-y-3">
+                    <div className="w-24 h-32 bg-red-50 border border-red-200 rounded-lg flex flex-col items-center justify-center mx-auto">
+                      <File className="h-10 w-10 text-red-500 mb-2" />
+                      <span className="text-[10px] text-red-600 font-medium">PDF</span>
                     </div>
-                    <div>
-                      <p className="font-medium text-sm">{opt.label}</p>
+                    <p className="text-sm font-medium text-gray-700">{state.descriptionPdf}</p>
+                    <Button variant="outline" size="sm" onClick={() => updateState({ descriptionPdf: null })}>
+                      <Trash2 className="h-4 w-4 mr-1" />移除文件
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center">
+                      <Upload className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-gray-700">点击或拖拽上传任务说明书</p>
+                      <p className="text-xs text-gray-500 mt-1">支持 PDF 格式，最大 20MB</p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => updateState({ descriptionPdf: "任务说明书示例.pdf" })}>
+                      <Upload className="h-4 w-4 mr-1" />模拟上传
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      }
+
+      case "knowledge": {
+        const filteredKp = knowledgePoints.filter(k => !kpSearch || k.name.includes(kpSearch) || k.description.includes(kpSearch) || (k.code && k.code.includes(kpSearch)))
+        const hasResults = kpSearch ? filteredKp.length > 0 : false
+
+        const generateKpCode = () => `KP-${Date.now().toString().slice(-6)}`
+
+        const handleReferenceKp = (kpId: string) => {
+          if (state.knowledgePoints.includes(kpId)) return
+          updateState({ knowledgePoints: [...state.knowledgePoints, kpId] })
+        }
+
+        const handleRemoveKp = (kpId: string) => {
+          updateState({ knowledgePoints: state.knowledgePoints.filter(x => x !== kpId) })
+        }
+
+        const openAddKp = () => {
+          setNewKpForm({ name: kpSearch, description: "", code: generateKpCode(), granularLessons: [] })
+          setKpActionMode("add")
+          setKpActionTarget(null)
+          setKpActionOpen(true)
+        }
+
+        const openCloneKp = (kp: (typeof knowledgePoints)[0]) => {
+          setNewKpForm({ name: `${kp.name}（克隆）`, description: kp.description, code: generateKpCode(), granularLessons: kp.granularLessons || [] })
+          setKpActionMode("clone")
+          setKpActionTarget(kp)
+          setKpActionOpen(true)
+        }
+
+        const openEditKp = (kp: (typeof knowledgePoints)[0]) => {
+          setNewKpForm({ name: kp.name, description: kp.description, code: kp.code || generateKpCode(), granularLessons: kp.granularLessons || [] })
+          setKpActionMode("edit")
+          setKpActionTarget(kp)
+          setKpActionOpen(true)
+        }
+
+        const handleSaveKp = () => {
+          if (!newKpForm.name.trim()) return
+          if (kpActionMode === "edit" && kpActionTarget) {
+            // Update existing custom knowledge point in place
+            const kp = knowledgePoints.find(k => k.id === kpActionTarget.id)
+            if (kp) {
+              kp.name = newKpForm.name.trim()
+              kp.description = newKpForm.description.trim()
+              kp.code = newKpForm.code
+              kp.granularLessons = newKpForm.granularLessons
+            }
+            setKpActionOpen(false)
+            return
+          }
+          const newId = `kp-${kpActionMode}-${Date.now()}`
+          const newKp = {
+            id: newId,
+            name: newKpForm.name.trim(),
+            description: newKpForm.description.trim(),
+            code: newKpForm.code,
+            granularLessons: newKpForm.granularLessons,
+          }
+          knowledgePoints.push(newKp as any)
+          customKnowledgePointIds.add(newId)
+          updateState({ knowledgePoints: [...state.knowledgePoints, newId] })
+          setKpActionOpen(false)
+          setKpSearch("")
+        }
+
+        const openGlSelect = (kpId: string) => {
+          setGlSelectTargetKp(kpId)
+          setGlSearch("")
+          setGlSelectOpen(true)
+        }
+
+        const handleToggleGlForKp = (glId: string) => {
+          const kp = knowledgePoints.find(k => k.id === glSelectTargetKp)
+          if (!kp) return
+          const current = kp.granularLessons || []
+          const updated = current.includes(glId) ? current.filter(x => x !== glId) : [...current, glId]
+          kp.granularLessons = updated
+          updateState({ knowledgePoints: [...state.knowledgePoints] })
+        }
+
+        const detailKp = selectedKpForDetail ? knowledgePoints.find(k => k.id === selectedKpForDetail) : null
+        const detailGranularLessons = detailKp?.granularLessons?.map(gid => granularLessons.find(g => g.id === gid)).filter(Boolean) || []
+
+        const glFiltered = granularLessons.filter(g => !glSearch || g.name.includes(glSearch) || (g.code && g.code.includes(glSearch)))
+        const glTargetKp = glSelectTargetKp ? knowledgePoints.find(k => k.id === glSelectTargetKp) : null
+        const glSelectedIds = glTargetKp?.granularLessons || []
+
+        return (
+          <div className="h-full flex flex-col">
+            {/* Search Bar + Add Button */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  value={kpSearch}
+                  onChange={e => setKpSearch(e.target.value)}
+                  placeholder="搜索知识点名称、描述或编码..."
+                  className="pl-9"
+                />
+              </div>
+              <Button onClick={openAddKp}>
+                <Plus className="h-4 w-4 mr-1" />新增知识点
+              </Button>
+            </div>
+
+            <div className="flex gap-4 flex-1 min-h-0">
+              {/* Left: Search Results */}
+              <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
+                <p className="text-sm font-medium mb-3 text-gray-700">
+                  {kpSearch ? `搜索结果 (${filteredKp.length})` : "全部知识点"}
+                </p>
+                <div className="flex-1 overflow-y-auto pr-1">
+                  {!kpSearch && filteredKp.length === 0 && (
+                    <div className="text-center text-gray-400 py-8">
+                      <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">请输入关键词搜索知识点</p>
+                    </div>
+                  )}
+                  {kpSearch && !hasResults && (
+                    <div className="p-6 text-center text-gray-500 text-sm border border-dashed rounded-lg">
+                      <p className="mb-2">未找到 "{kpSearch}" 相关的知识点</p>
+                      <Button variant="outline" size="sm" onClick={openAddKp}>
+                        <Plus className="h-3 w-3 mr-1" />新增此知识点
+                      </Button>
+                    </div>
+                  )}
+                  {filteredKp.length > 0 && (
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 sticky top-0 z-10">
+                        <tr>
+                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[28%]">知识点名称</th>
+                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[18%]">知识点编码</th>
+                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[34%]">知识点描述</th>
+                          <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {filteredKp.map(kp => {
+                          const isSelected = state.knowledgePoints.includes(kp.id)
+                          return (
+                            <tr key={kp.id} className={cn("hover:bg-gray-50 transition-colors", isSelected ? "bg-primary/[0.03]" : "")}>
+                              <td className="px-3 py-2">
+                                <span className="text-sm font-medium text-gray-800">{kp.name}</span>
+                              </td>
+                              <td className="px-3 py-2">
+                                {kp.code ? (
+                                  <Badge variant="outline" className="text-[10px] h-5 px-1.5">{kp.code}</Badge>
+                                ) : (
+                                  <span className="text-xs text-gray-400">-</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2">
+                                <p className="text-xs text-gray-500 line-clamp-1" title={kp.description}>{kp.description}</p>
+                              </td>
+                              <td className="px-3 py-2">
+                                <div className="flex items-center justify-end gap-1">
+                                  <PrdAnnotation data={getAnnotation("kp-action-detail")}>
+                                    <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary" onClick={() => { setSelectedKpForDetail(kp.id); setKpDetailOpen(true) }}>
+                                      详情
+                                    </Button>
+                                  </PrdAnnotation>
+                                  {isSelected ? (
+                                    <PrdAnnotation data={getAnnotation("kp-action-cancel")}>
+                                      <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => handleRemoveKp(kp.id)}>
+                                        取消
+                                      </Button>
+                                    </PrdAnnotation>
+                                  ) : (
+                                    <>
+                                      <Button size="sm" className="h-6 text-[11px] px-2" onClick={() => handleReferenceKp(kp.id)}>
+                                        引用
+                                      </Button>
+                                      <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => openCloneKp(kp)}>
+                                        克隆
+                                      </Button>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+
+              {/* Right: Selected Knowledge Points - Compact Grid */}
+              <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
+                <p className="text-sm font-medium mb-3 text-gray-700">已选择知识点 ({state.knowledgePoints.length})</p>
+                <div className="flex-1 overflow-y-auto">
+                  {state.knowledgePoints.length === 0 ? (
+                    <div className="text-center text-gray-400 py-8">
+                      <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-xs">从左侧搜索并选择知识点</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {state.knowledgePoints.map(kpId => {
+                        const kp = knowledgePoints.find(k => k.id === kpId)
+                        if (!kp) return null
+                        const isReference = !customKnowledgePointIds.has(kpId)
+                        const kpGlNames = kp.granularLessons?.map(gid => granularLessons.find(g => g.id === gid)?.name).filter(Boolean) || []
+                        return (
+                          <div key={kpId} className={cn(
+                            "p-2 rounded-lg border cursor-pointer transition-colors relative overflow-hidden",
+                            isReference
+                              ? "border-gray-200 bg-gray-50 hover:bg-gray-100"
+                              : "border-primary/20 bg-primary/5 hover:bg-primary/10"
+                          )} onClick={() => {
+                            if (isReference) {
+                              setSelectedKpForDetail(kp.id)
+                              setKpDetailOpen(true)
+                            } else {
+                              openEditKp(kp)
+                            }
+                          }}>
+                            <div className="flex items-center gap-1 mb-1">
+                              <span className="text-xs font-medium flex-1 truncate">{kp.name}</span>
+                              <Button variant="ghost" size="icon" className="h-5 w-5 text-gray-400 -mr-1 -mt-1" onClick={(e) => { e.stopPropagation(); handleRemoveKp(kpId) }}>
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            <p className="text-[11px] text-gray-500 line-clamp-1 mb-1">{kp.description}</p>
+                            {kpGlNames.length > 0 && (
+                              <div className="flex items-center gap-0.5 flex-wrap">
+                                {kpGlNames.slice(0, 2).map((name, i) => (
+                                  <Badge key={i} variant="outline" className="text-[9px] font-normal px-1 py-0 h-4">{name}</Badge>
+                                ))}
+                                {kpGlNames.length > 2 && <span className="text-[9px] text-gray-400">+{kpGlNames.length - 2}</span>}
+                              </div>
+                            )}
+                            {/* Reference badge — corner mark at bottom-right */}
+                            {isReference && (
+                              <div className="absolute bottom-0 right-0">
+                                <div className="bg-gray-200 text-gray-600 text-[9px] px-1.5 py-0.5 rounded-tl-md border-t border-l border-white/80">
+                                  引用
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Add / Clone Knowledge Dialog */}
+            <Dialog open={kpActionOpen} onOpenChange={setKpActionOpen}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <PrdAnnotation data={getAnnotation("dialog-knowledge-form")}>
+                    <DialogTitle>{kpActionMode === "add" ? "新增知识点" : kpActionMode === "clone" ? "克隆知识点" : "编辑知识点"}</DialogTitle>
+                  </PrdAnnotation>
+                  <DialogDescription>
+                    {kpActionMode === "add" ? "创建一个新的知识点" : kpActionMode === "clone" ? `基于「${kpActionTarget?.name}」创建副本` : "修改知识点信息"}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div>
+                    <Label>知识点名称</Label>
+                    <Input
+                      value={newKpForm.name}
+                      onChange={e => setNewKpForm({ ...newKpForm, name: e.target.value })}
+                      placeholder="输入知识点名称"
+                      className="mt-1.5"
+                    />
+                  </div>
+                  <div>
+                    <Label>描述</Label>
+                    <Textarea
+                      value={newKpForm.description}
+                      onChange={e => setNewKpForm({ ...newKpForm, description: e.target.value })}
+                      placeholder="输入知识点描述"
+                      className="mt-1.5"
+                      rows={3}
+                    />
+                  </div>
+                  <div>
+                    <Label>编码</Label>
+                    <Input
+                      value={newKpForm.code}
+                      disabled={kpActionMode !== "edit"}
+                      onChange={e => setNewKpForm({ ...newKpForm, code: e.target.value })}
+                      className={cn("mt-1.5", kpActionMode !== "edit" && "bg-gray-50")}
+                    />
+                    <p className="text-xs text-gray-400 mt-1">{kpActionMode === "edit" ? "可修改编码" : "系统自动生成，不可修改"}</p>
+                  </div>
+                  <div>
+                    <Label>关联颗粒课</Label>
+                    <div className="mt-1.5">
+                      {newKpForm.granularLessons.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          {newKpForm.granularLessons.map(gid => {
+                            const gl = granularLessons.find(g => g.id === gid)
+                            return gl ? (
+                              <Badge key={gid} variant="secondary" className="text-xs gap-1">
+                                {gl.name}
+                                <X className="h-3 w-3 cursor-pointer" onClick={() => setNewKpForm({ ...newKpForm, granularLessons: newKpForm.granularLessons.filter(x => x !== gid) })} />
+                              </Badge>
+                            ) : null
+                          })}
+                        </div>
+                      ) : null}
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => { setGlSelectTargetKp("new-kp"); setGlSearch(""); setGlSelectOpen(true) }}>
+                          <Plus className="h-3 w-3 mr-1" />选择颗粒课
+                        </Button>
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => window.open("/granular-lessons/new", "_blank")}>
+                          <Plus className="h-3 w-3 mr-1" />新建颗粒课
+                        </Button>
+                      </div>
                     </div>
                   </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setKpActionOpen(false)}>取消</Button>
+                  <Button onClick={handleSaveKp} disabled={!newKpForm.name.trim()}>
+                    {kpActionMode === "add" ? "新增并选中" : kpActionMode === "clone" ? "克隆并选中" : "保存修改"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Granular Lesson Selection Dialog */}
+            <Dialog open={glSelectOpen} onOpenChange={setGlSelectOpen}>
+              <DialogContent className="sm:max-w-[800px] max-h-[80vh] h-[80vh] flex flex-col">
+                <DialogHeader>
+                  <PrdAnnotation data={getAnnotation("dialog-link-knowledge")}>
+                    <DialogTitle>
+                      {glTargetKp ? `为「${glTargetKp.name}」选择颗粒课` : "选择颗粒课"}
+                    </DialogTitle>
+                  </PrdAnnotation>
+                </DialogHeader>
+                <div className="flex gap-4 flex-1 min-h-0 py-4">
+                  {/* Left: All granular lessons */}
+                  <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
+                    <div className="relative mb-3">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        value={glSearch}
+                        onChange={e => setGlSearch(e.target.value)}
+                        placeholder="搜索颗粒课名称或编码..."
+                        className="pl-9"
+                      />
+                    </div>
+                    <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                      {glFiltered.map(gl => {
+                        const isSelected = glSelectedIds.includes(gl.id)
+                        return (
+                          <div key={gl.id} className={cn("p-3 rounded-lg border cursor-pointer transition-all", isSelected ? "border-primary bg-primary/5" : "border-gray-200 hover:border-gray-300")} onClick={() => {
+                            if (glSelectTargetKp === "new-kp") {
+                              setNewKpForm(prev => {
+                                const current = prev.granularLessons
+                                const updated = current.includes(gl.id) ? current.filter(x => x !== gl.id) : [...current, gl.id]
+                                return { ...prev, granularLessons: updated }
+                              })
+                            } else {
+                              handleToggleGlForKp(gl.id)
+                            }
+                          }}>
+                            <div className="flex items-center gap-2">
+                              <div className={cn("w-4 h-4 rounded border flex items-center justify-center", isSelected ? "bg-primary border-primary" : "border-gray-300")}>
+                                {isSelected && <Check className="h-3 w-3 text-white" />}
+                              </div>
+                              <span className="text-sm font-medium flex-1">{gl.name}</span>
+                              {gl.code && <Badge variant="outline" className="text-[10px]">{gl.code}</Badge>}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1 ml-6">{gl.description}</p>
+                          </div>
+                        )
+                      })}
+                      {glFiltered.length === 0 && (
+                        <div className="text-center text-gray-400 py-8">
+                          <p className="text-sm">未找到匹配的颗粒课</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right: Selected */}
+                  <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
+                    <p className="text-sm font-medium mb-3 text-gray-700">已选择 ({glSelectedIds.length})</p>
+                    <div className="flex-1 overflow-y-auto space-y-2">
+                      {glSelectedIds.length === 0 ? (
+                        <div className="text-center text-gray-400 py-8">
+                          <p className="text-xs">从左侧选择颗粒课</p>
+                        </div>
+                      ) : (
+                        glSelectedIds.map(gid => {
+                          const gl = granularLessons.find(g => g.id === gid)
+                          if (!gl) return null
+                          return (
+                            <div key={gid} className="flex items-center gap-2 p-2 rounded border bg-gray-50">
+                              <span className="text-sm flex-1 truncate">{gl.name}</span>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400" onClick={() => {
+                                if (glSelectTargetKp === "new-kp") {
+                                  setNewKpForm(prev => ({ ...prev, granularLessons: prev.granularLessons.filter(x => x !== gid) }))
+                                } else {
+                                  handleToggleGlForKp(gid)
+                                }
+                              }}>
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button onClick={() => setGlSelectOpen(false)}>确定</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Knowledge Point Detail Dialog */}
+            <Dialog open={kpDetailOpen} onOpenChange={setKpDetailOpen}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <PrdAnnotation data={getAnnotation("dialog-knowledge-detail")}>
+                    <DialogTitle>知识点详情</DialogTitle>
+                  </PrdAnnotation>
+                </DialogHeader>
+                {detailKp && (
+                  <div className="space-y-4 py-2">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-gray-500">知识点名称</Label>
+                      {!customKnowledgePointIds.has(detailKp.id) && (
+                        <Badge variant="secondary" className="text-[10px] h-5">引用（不可编辑）</Badge>
+                      )}
+                      {customKnowledgePointIds.has(detailKp.id) && (
+                        <Badge variant="outline" className="text-[10px] h-5 border-primary/30 text-primary">自定义（可编辑）</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm font-medium">{detailKp.name}</p>
+                    <div>
+                      <Label className="text-xs text-gray-500">知识点描述</Label>
+                      <p className="text-sm text-gray-700 mt-1">{detailKp.description}</p>
+                    </div>
+                    {detailKp.code && (
+                      <div>
+                        <Label className="text-xs text-gray-500">编码</Label>
+                        <p className="text-sm text-gray-700 mt-1">{detailKp.code}</p>
+                      </div>
+                    )}
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs text-gray-500">关联颗粒课</Label>
+                        {customKnowledgePointIds.has(detailKp.id) && (
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="sm" className="h-6 text-[11px] px-2 text-primary" onClick={() => { setKpDetailOpen(false); openGlSelect(detailKp.id) }}>
+                              引用颗粒课
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-6 text-[11px] px-2 text-primary" onClick={() => window.open("/granular-lessons/new", "_blank")}>
+                              新增颗粒课
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {detailGranularLessons.length > 0 ? detailGranularLessons.map(gl => (
+                          <Badge key={gl!.id} variant="outline" className="text-xs">{gl!.name}</Badge>
+                        )) : <p className="text-sm text-gray-400">暂无关联颗粒课</p>}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
+          </div>
+        )
+      }
+
+      case "ability": {
+        // abilityDetailOpen, selectedAbilityForDetail, expandedDomains, abilitySearch are defined at component top level
+
+        // If no position is associated, show warning instead of ability list
+        if (!positionId) {
+          return (
+            <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 py-16">
+              <AlertCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p className="text-sm font-medium text-gray-600">请先关联岗位后，再选择考察能力点</p>
+            </div>
+          )
+        }
+
+        // Build position name map
+        const positionNameMap: Record<string, string> = {}
+        professions.forEach(p => p.positions.forEach(pos => { positionNameMap[pos.id] = pos.name }))
+
+        // Filter abilities related to current position
+        const relatedAbilities = abilityPoints.filter(ab => ab.positionIds?.includes(positionId))
+
+        const toggleAbility = (abId: string) => {
+          const selected = state.abilityPoints.includes(abId)
+          updateState({ abilityPoints: selected ? state.abilityPoints.filter(x => x !== abId) : [...state.abilityPoints, abId] })
+        }
+
+        // Group by domain
+        const domainGroups = relatedAbilities.reduce((acc, ab) => {
+          const domain = ab.domain || "其他"
+          if (!acc[domain]) acc[domain] = []
+          acc[domain].push(ab)
+          return acc
+        }, {} as Record<string, typeof relatedAbilities>)
+
+        const detailAb = selectedAbilityForDetail ? abilityPoints.find(a => a.id === selectedAbilityForDetail) : null
+
+        const requiredLevelColors: Record<string, string> = {
+          "了解": "bg-gray-100 text-gray-600 border-gray-200",
+          "理解": "bg-blue-50 text-blue-600 border-blue-200",
+          "掌握": "bg-green-50 text-green-600 border-green-200",
+          "熟练": "bg-orange-50 text-orange-600 border-orange-200",
+          "精通": "bg-purple-50 text-purple-600 border-purple-200",
+        }
+
+        const domainIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+          "前端工程化": Code,
+          "系统设计": Database,
+          "质量保障": Shield,
+          "职业素养": Users,
+          "服务端开发": Server,
+          "运维部署": Wrench,
+          "数据分析": BookOpen,
+        }
+
+        const categoryColors: Record<string, string> = {
+          "开发能力": "bg-blue-50 text-blue-600 border-blue-200",
+          "设计能力": "bg-purple-50 text-purple-600 border-purple-200",
+          "优化能力": "bg-green-50 text-green-600 border-green-200",
+          "软技能": "bg-orange-50 text-orange-600 border-orange-200",
+          "分析能力": "bg-cyan-50 text-cyan-600 border-cyan-200",
+          "工程能力": "bg-indigo-50 text-indigo-600 border-indigo-200",
+        }
+
+        return (
+          <div className="h-full flex flex-col">
+            {/* Header bar */}
+            <div className="flex items-center gap-4 mb-4 shrink-0">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input value={abilitySearch} onChange={e => setAbilitySearch(e.target.value)} placeholder="搜索能力点名称、编码或描述..." className="pl-9" />
+              </div>
+              <div className="text-sm text-gray-500 shrink-0">
+                共 <span className="font-medium text-gray-800">{relatedAbilities.length}</span> 个关联能力点，已选 <span className="font-medium text-primary">{state.abilityPoints.length}</span> 个
+              </div>
+            </div>
+
+            <div className="flex-1 min-h-0 border rounded-xl overflow-hidden">
+              <div className="h-full overflow-y-auto p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 content-start">
+                {Object.entries(domainGroups).map(([domain, abilities]) => {
+                  const filtered = abilities.filter(a =>
+                    !abilitySearch ||
+                    a.name.includes(abilitySearch) ||
+                    a.description.includes(abilitySearch) ||
+                    (a.code && a.code.includes(abilitySearch))
+                  )
+                  if (filtered.length === 0) return null
+                  const expanded = expandedDomains[domain] !== false
+                  const DomainIcon = domainIconMap[domain] || Award
+                  return (
+                    <div key={domain} className="border rounded-xl overflow-hidden bg-white flex flex-col">
+                      <button
+                        className="w-full flex items-center gap-2 px-4 py-2.5 bg-sky-50 text-sm font-semibold text-sky-700 hover:bg-sky-100 transition-colors shrink-0"
+                        onClick={() => setExpandedDomains(prev => ({ ...prev, [domain]: !expanded }))}
+                      >
+                        {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        <DomainIcon className="h-4 w-4" />
+                        <span className="flex-1 text-left truncate">{domain}</span>
+                        <Badge className="text-[10px] bg-white text-sky-600 border-sky-200 shrink-0">{filtered.length} 个能力点</Badge>
+                      </button>
+                      {expanded && (
+                        <div className="divide-y divide-gray-100">
+                          {filtered.map(ab => {
+                            const selected = state.abilityPoints.includes(ab.id)
+                            const positionNames = ab.positionIds?.map(pid => positionNameMap[pid]).filter(Boolean) || []
+                            return (
+                              <div
+                                key={ab.id}
+                                onClick={() => toggleAbility(ab.id)}
+                                className={cn(
+                                  "px-4 py-2.5 cursor-pointer transition-colors group",
+                                  selected
+                                    ? "bg-primary/[0.03] border-l-2 border-l-primary"
+                                    : "hover:bg-gray-50 border-l-2 border-l-transparent"
+                                )}
+                              >
+                                {/* Row 1: checkbox + name + code + badges */}
+                                <div className="flex items-center gap-2">
+                                  <div className={cn(
+                                    "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors",
+                                    selected ? "bg-primary border-primary" : "border-gray-300 group-hover:border-gray-400"
+                                  )}>
+                                    {selected && <Check className="h-3 w-3 text-white" />}
+                                  </div>
+                                  <span className="text-sm font-medium text-gray-800 truncate">{ab.name}</span>
+                                  {ab.code && <span className="text-[11px] text-gray-400 font-mono shrink-0">{ab.code}</span>}
+                                  <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                                    {ab.requiredLevel && (
+                                      <Badge variant="outline" className={cn("text-[10px] font-medium h-5 px-1", requiredLevelColors[ab.requiredLevel] || "")}>
+                                        掌握程度：{ab.requiredLevel}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                                {/* Row 2: description + positions */}
+                                <div className="flex items-center gap-2 mt-1 ml-6">
+                                  <p className="text-xs text-gray-500 line-clamp-1 flex-1">{ab.description}</p>
+                                  {positionNames.length > 0 && (
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      {positionNames.slice(0, 2).map((name, i) => (
+                                        <Badge key={i} variant="secondary" className="text-[10px] font-normal bg-gray-100 text-gray-600 h-5 px-1">
+                                          {name}
+                                        </Badge>
+                                      ))}
+                                      {positionNames.length > 2 && (
+                                        <span className="text-[10px] text-gray-400">+{positionNames.length - 2}</span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+                {Object.entries(domainGroups).filter(([_, abilities]) =>
+                  abilities.some(a =>
+                    !abilitySearch ||
+                    a.name.includes(abilitySearch) ||
+                    a.description.includes(abilitySearch) ||
+                    (a.code && a.code.includes(abilitySearch))
+                  )
+                ).length === 0 && (
+                  <div className="col-span-full text-center text-gray-400 py-16">
+                    <Award className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">未找到匹配的能力点</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Ability Detail Dialog */}
+            <Dialog open={abilityDetailOpen} onOpenChange={setAbilityDetailOpen}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <PrdAnnotation data={getAnnotation("dialog-ability-detail")}>
+                    <DialogTitle>能力点详情</DialogTitle>
+                  </PrdAnnotation>
+                </DialogHeader>
+                {detailAb && (
+                  <div className="space-y-4 py-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-base font-semibold">{detailAb.name}</p>
+                      {detailAb.code && <Badge variant="outline" className="font-mono">{detailAb.code}</Badge>}
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">能力点描述</Label>
+                      <p className="text-sm text-gray-700 mt-1">{detailAb.description}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">所属能力领域</Label>
+                      <p className="text-sm text-gray-700 mt-1">{detailAb.domain || "-"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">关联岗位</Label>
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {(detailAb.positionIds?.map(pid => positionNameMap[pid]).filter(Boolean) || []).map((name, i) => (
+                          <Badge key={i} variant="secondary">{name}</Badge>
+                        ))}
+                        {(!detailAb.positionIds || detailAb.positionIds.length === 0) && <span className="text-sm text-gray-400">-</span>}
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">掌握程度要求</Label>
+                      <p className="text-sm text-gray-700 mt-1">{detailAb.requiredLevel || "-"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">熟练程度描述</Label>
+                      <p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{detailAb.proficiencyDesc || "-"}</p>
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
+          </div>
+        )
+      }
+
+      case "resources": {
+        const types = ["all", "document", "spreadsheet", "image", "link", "audio", "video", "archive", "venue", "facility", "software", "other"]
+        const filteredRes = learningResources.filter(r => {
+          const matchType = resType === "all" || r.type === resType
+          const matchName = !resSearchName || r.name.includes(resSearchName)
+          const matchProvider = !resSearchProvider || r.uploadedBy.includes(resSearchProvider)
+          return matchType && matchName && matchProvider
+        })
+
+        const toggleResource = (rid: string) => {
+          const selected = state.resources.includes(rid)
+          updateState({ resources: selected ? state.resources.filter(x => x !== rid) : [...state.resources, rid] })
+        }
+
+        const resetFilters = () => {
+          setResType("all")
+          setResSearchName("")
+          setResSearchProvider("")
+        }
+
+        return (
+          <div className="h-full flex flex-col">
+            {/* Toolbar */}
+            <div className="shrink-0 space-y-3 mb-4">
+              {/* Type filters */}
+              <div className="flex gap-1.5 flex-wrap">
+                {types.map(t => (
+                  <Button
+                    key={t}
+                    variant={resType === t ? "default" : "outline"}
+                    size="sm"
+                    className={cn("text-xs h-7", resType === t ? "" : "bg-white")}
+                    onClick={() => setResType(t)}
+                  >
+                    {resourceTypeIcons[t] && <span className="mr-1.5">{resourceTypeIcons[t]}</span>}
+                    {resourceTypeLabels[t] || t}
+                  </Button>
+                ))}
+              </div>
+              {/* Search & Actions */}
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    value={resSearchName}
+                    onChange={e => setResSearchName(e.target.value)}
+                    placeholder="搜索资源名称..."
+                    className="pl-9 text-sm"
+                  />
+                </div>
+                <div className="relative flex-1">
+                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    value={resSearchProvider}
+                    onChange={e => setResSearchProvider(e.target.value)}
+                    placeholder="搜索资源提供者..."
+                    className="pl-9 text-sm"
+                  />
+                </div>
+                <Button variant="outline" size="sm" className="h-9 text-xs" onClick={resetFilters}>
+                  <RotateCcw className="h-3.5 w-3.5 mr-1" />重置
+                </Button>
+                <Button size="sm" className="h-9 text-xs" onClick={() => {
+                  if (resType === "all") {
+                    setShowUploadTypePicker(true)
+                  } else {
+                    setNewResType(resType)
+                    setShowUploadRes(true)
+                  }
+                }}>
+                  <Upload className="h-3.5 w-3.5 mr-1" />上传资源
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex gap-4 flex-1 min-h-0">
+              {/* Left: Resource cards grid */}
+              <div className="flex-1 flex flex-col min-h-0 border rounded-xl p-4 overflow-hidden">
+                <div className="flex items-center justify-between mb-3 shrink-0">
+                  <p className="text-sm font-medium text-gray-700">
+                    资源列表 <span className="text-gray-400 font-normal">({filteredRes.length})</span>
+                  </p>
+                </div>
+                <div className="flex-1 overflow-y-auto pr-1">
+                  {filteredRes.length === 0 ? (
+                    <div className="text-center text-gray-400 py-16">
+                      <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p className="text-sm">未找到匹配的资源</p>
+                      <p className="text-xs mt-1">尝试调整筛选条件</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {filteredRes.map(r => {
+                        const selected = state.resources.includes(r.id)
+                        return (
+                          <div
+                            key={r.id}
+                            className={cn(
+                              "relative rounded-lg border overflow-hidden transition-all cursor-pointer group",
+                              selected
+                                ? "border-primary shadow-sm ring-1 ring-primary/10"
+                                : "border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white"
+                            )}
+                          >
+                            {/* Thumbnail area */}
+                            <div className="relative h-20 bg-gray-50 border-b border-gray-100 overflow-hidden">
+                              {r.thumbnail && r.type === "image" ? (
+                                <img src={r.thumbnail} alt={r.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <div className={cn("p-2 rounded-lg border", resourceTypeColors[r.type] || "bg-gray-50 border-gray-200")}>
+                                    {resourceTypeIcons[r.type] || <Package className="h-5 w-5 text-gray-400" />}
+                                  </div>
+                                </div>
+                              )}
+                              {selected && (
+                                <div className="absolute top-1.5 right-1.5 bg-primary text-white rounded-full p-0.5 shadow-sm">
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                </div>
+                              )}
+                              {/* Type badge */}
+                              <div className="absolute bottom-1.5 left-1.5">
+                                <Badge className={cn("text-[9px] border", resourceTypeColors[r.type] || "")}>
+                                  {resourceTypeLabels[r.type] || r.type}
+                                </Badge>
+                              </div>
+                            </div>
+                            {/* Info */}
+                            <div className="p-2" onClick={() => toggleResource(r.id)}>
+                              <p className="text-xs font-medium text-gray-800 truncate mb-1">{r.name}</p>
+                              <div className="flex items-center justify-between text-[11px] text-gray-500">
+                                <span className="flex items-center gap-1 truncate max-w-[80px]">
+                                  <Users className="h-3 w-3 shrink-0" />{r.uploadedBy}
+                                </span>
+                                <span className="shrink-0">{r.uploadedAt}</span>
+                              </div>
+                            </div>
+                            {/* Actions */}
+                            <div className="px-2 pb-2 flex items-center gap-1.5">
+                              <PrdAnnotation data={getAnnotation("resource-action-preview")}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 text-[10px] px-1.5 flex-1 text-gray-500 hover:text-primary"
+                                  onClick={(e) => { e.stopPropagation(); window.open(r.url || "#", "_blank") }}
+                                >
+                                  <Eye className="h-3 w-3 mr-0.5" />预览
+                                </Button>
+                              </PrdAnnotation>
+                              <PrdAnnotation data={selected ? getAnnotation("resource-action-cancel") : getAnnotation("resource-action-select")}>
+                                <Button
+                                  variant={selected ? "outline" : "default"}
+                                  size="sm"
+                                  className="h-6 text-[10px] px-1.5 flex-1"
+                                  onClick={(e) => { e.stopPropagation(); toggleResource(r.id) }}
+                                >
+                                  {selected ? "取消" : "选择"}
+                                </Button>
+                              </PrdAnnotation>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right: Selected resources sidebar */}
+              <div className="w-72 shrink-0 flex flex-col min-h-0 border rounded-xl p-4 bg-gray-50/50 overflow-hidden">
+                <div className="flex items-center justify-between mb-3 shrink-0">
+                  <p className="text-sm font-semibold text-gray-700">已选资源</p>
+                  <Badge variant="secondary" className="text-[10px]">{state.resources.length}</Badge>
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
+                  {state.resources.length === 0 ? (
+                    <div className="text-center text-gray-400 py-8">
+                      <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-xs">请从左侧选择资源</p>
+                    </div>
+                  ) : (
+                    state.resources.map(rid => {
+                      const r = learningResources.find(res => res.id === rid)
+                      if (!r) return null
+                      return (
+                        <div key={rid} className="flex items-center gap-2.5 p-2.5 rounded-lg border border-primary/20 bg-white shadow-sm">
+                          <div className={cn("w-9 h-9 rounded-lg border flex items-center justify-center shrink-0", resourceTypeColors[r.type] || "bg-gray-50")}>
+                            {resourceTypeIcons[r.type] || <Package className="h-4 w-4 text-gray-400" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate text-gray-800">{r.name}</p>
+                            <p className="text-[10px] text-gray-400 truncate">{r.uploadedBy} · {r.uploadedAt}</p>
+                          </div>
+                          <PrdAnnotation data={getAnnotation("resource-action-cancel")}>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-500 shrink-0" onClick={() => toggleResource(rid)}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </PrdAnnotation>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Upload Type Picker Dialog */}
+            <Dialog open={showUploadTypePicker} onOpenChange={setShowUploadTypePicker}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <PrdAnnotation data={getAnnotation("dialog-resource-type-select")}>
+                    <DialogTitle>选择资源类型</DialogTitle>
+                  </PrdAnnotation>
+                  <DialogDescription>请选择要上传的资源类型</DialogDescription>
+                </DialogHeader>
+                <div className="grid grid-cols-3 gap-3 py-4">
+                  {types.filter(t => t !== "all").map(t => (
+                    <button
+                      key={t}
+                      onClick={() => {
+                        setNewResType(t)
+                        setShowUploadTypePicker(false)
+                        setShowUploadRes(true)
+                      }}
+                      className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 hover:border-primary hover:bg-primary/5 transition-all text-center"
+                    >
+                      <div className={cn("p-2 rounded-lg border", resourceTypeColors[t] || "bg-gray-50 border-gray-200")}>
+                        {resourceTypeIcons[t] || <Package className="h-5 w-5 text-gray-400" />}
+                      </div>
+                      <span className="text-xs font-medium text-gray-700">{resourceTypeLabels[t] || t}</span>
+                    </button>
+                  ))}
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Upload Resource Dialog */}
+            <Dialog open={showUploadRes} onOpenChange={setShowUploadRes}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <PrdAnnotation data={getAnnotation("dialog-resource-upload")}>
+                    <DialogTitle>上传资源到公共库</DialogTitle>
+                  </PrdAnnotation>
+                  <DialogDescription>补充本地资源，上传后将加入资源公共库并自动选中</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-1">
+                  <div>
+                    <Label>资源名称</Label>
+                    <Input value={newResName} onChange={e => setNewResName(e.target.value)} placeholder="输入资源名称" className="mt-1.5" />
+                  </div>
+                  {newResType === "all" && (
+                    <div>
+                      <Label>资源类型</Label>
+                      <Select value={newResType} onValueChange={v => setNewResType(v)}>
+                        <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="document">文档资源</SelectItem>
+                          <SelectItem value="spreadsheet">表格资源</SelectItem>
+                          <SelectItem value="image">图片资源</SelectItem>
+                          <SelectItem value="link">链接资源</SelectItem>
+                          <SelectItem value="audio">音频资源</SelectItem>
+                          <SelectItem value="video">视频资源</SelectItem>
+                          <SelectItem value="archive">压缩包资源</SelectItem>
+                          <SelectItem value="venue">场地资源</SelectItem>
+                          <SelectItem value="facility">设施设备资源</SelectItem>
+                          <SelectItem value="software">软件资源</SelectItem>
+                          <SelectItem value="other">其他资源</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Link type: URL */}
+                  {newResType === "link" && (
+                    <div>
+                      <Label>URL 地址</Label>
+                      <Input value={newResUrl} onChange={e => setNewResUrl(e.target.value)} placeholder="https://..." className="mt-1.5" />
+                    </div>
+                  )}
+
+                  {/* Venue type: address, open time, capacity, contact */}
+                  {newResType === "venue" && (
+                    <>
+                      <div>
+                        <Label>场地地址</Label>
+                        <Input value={newResAddress} onChange={e => setNewResAddress(e.target.value)} placeholder="输入场地详细地址" className="mt-1.5" />
+                      </div>
+                      <div>
+                        <Label>开放时间</Label>
+                        <Input value={newResOpenTime} onChange={e => setNewResOpenTime(e.target.value)} placeholder="例如：周一至周五 09:00-18:00" className="mt-1.5" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>容纳人数</Label>
+                          <Input value={newResCapacity} onChange={e => setNewResCapacity(e.target.value)} placeholder="例如：50人" className="mt-1.5" />
+                        </div>
+                        <div>
+                          <Label>联系人/电话</Label>
+                          <Input value={newResContact} onChange={e => setNewResContact(e.target.value)} placeholder="输入联系人或电话" className="mt-1.5" />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Facility type: location, quantity */}
+                  {newResType === "facility" && (
+                    <>
+                      <div>
+                        <Label>所在位置</Label>
+                        <Input value={newResLocation} onChange={e => setNewResLocation(e.target.value)} placeholder="输入设施所在位置" className="mt-1.5" />
+                      </div>
+                      <div>
+                        <Label>数量</Label>
+                        <Input value={newResQuantity} onChange={e => setNewResQuantity(e.target.value)} placeholder="输入设施数量" className="mt-1.5" />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Tool / Software type: version, url, license */}
+                  {newResType === "software" && (
+                    <>
+                      <div>
+                        <Label>版本号</Label>
+                        <Input value={newResVersion} onChange={e => setNewResVersion(e.target.value)} placeholder="例如：v2.1.0" className="mt-1.5" />
+                      </div>
+                      <div>
+                        <Label>下载链接</Label>
+                        <Input value={newResUrl} onChange={e => setNewResUrl(e.target.value)} placeholder="https://..." className="mt-1.5" />
+                      </div>
+                      {newResType === "software" && (
+                        <div>
+                          <Label>授权信息</Label>
+                          <Input value={newResLicense} onChange={e => setNewResLicense(e.target.value)} placeholder="例如：MIT / 商业授权 / 校内授权" className="mt-1.5" />
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Description for all types */}
+                  <div>
+                    <Label>资源描述</Label>
+                    <Textarea value={newResDescription} onChange={e => setNewResDescription(e.target.value)} placeholder="输入资源简介、用途说明等" className="mt-1.5" rows={2} />
+                  </div>
+
+                  {/* File upload for file-based types */}
+                  {["document", "spreadsheet", "image", "audio", "video", "archive", "other"].includes(newResType) && (
+                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center space-y-3">
+                      <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto">
+                        <Upload className="h-6 w-6 text-gray-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">点击或拖拽上传文件</p>
+                        <p className="text-xs text-gray-500 mt-1">支持多种格式，最大 100MB</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowUploadRes(false)}>取消</Button>
+                  <Button
+                    onClick={handleUploadResource}
+                    disabled={!newResName.trim() || (newResType === "link" && !newResUrl.trim())}
+                  >
+                    上传并选中
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        )
+      }
+
+
+      case "evaluation": {
+        const [primaryTab, setPrimaryTab] = useState<"platform" | "industry">("platform")
+        const [secondaryTab, setSecondaryTab] = useState("全部")
+
+        const primaryTabs = [
+          { key: "platform" as const, label: "平台通用" },
+          { key: "industry" as const, label: "行业专属" },
+        ]
+
+        const secondaryTabsMap: Record<string, string[]> = {
+          platform: ["全部", "知识评价", "过程评价", "成果评价"],
+          industry: ["全部", "智慧物流", "网络安全"],
+        }
+
+        const secondaryTabs = secondaryTabsMap[primaryTab]
+
+        const toggleMethod = (key: string) => {
+          const opts = evaluationMethodOptions.find(o => o.key === key)
+          if (!opts || !opts.available) return
+          const enabled = state.evaluationMethods.includes(key)
+          const newMethods = enabled ? state.evaluationMethods.filter(m => m !== key) : [...state.evaluationMethods, key]
+          updateState({ evaluationMethods: newMethods })
+        }
+
+        const filteredMethods = evaluationMethodOptions.filter(m => {
+          if (m.primaryCategory !== primaryTab) return false
+          if (secondaryTab === "全部") return true
+          return m.secondaryCategory === secondaryTab
+        })
+
+        return (
+          <div className="h-full overflow-y-auto pr-2 space-y-4">
+            {/* 一级分类 */}
+            <div className="flex items-center gap-2 border-b pb-2">
+              {primaryTabs.map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => {
+                    setPrimaryTab(tab.key)
+                    setSecondaryTab("全部")
+                  }}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+                    primaryTab === tab.key
+                      ? "bg-primary text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* 二级分类 */}
+            <div className="flex items-center gap-2">
+              {secondaryTabs.map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setSecondaryTab(tab)}
+                  className={cn(
+                    "px-3 py-1 rounded-md text-xs font-medium transition-colors border",
+                    secondaryTab === tab
+                      ? "border-primary text-primary bg-primary/5"
+                      : "border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50"
+                  )}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* 测评方式网格 */}
+            <div className="grid grid-cols-2 gap-2">
+              {filteredMethods.map(method => {
+                const enabled = state.evaluationMethods.includes(method.key)
+                return (
+                  <button
+                    key={method.key}
+                    disabled={!method.available}
+                    onClick={() => toggleMethod(method.key)}
+                    className={cn(
+                      "p-2.5 rounded-lg border text-left transition-all flex flex-col gap-1.5 relative overflow-hidden",
+                      !method.available
+                        ? "opacity-50 cursor-not-allowed bg-white border-gray-200"
+                        : enabled
+                          ? "border-primary bg-white ring-1 ring-primary/20 shadow-sm"
+                          : "border-gray-200 hover:border-primary/40 bg-white hover:shadow-sm"
+                    )}
+                  >
+                    {!method.available && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                        <span className="text-xl font-bold text-gray-300/60 rotate-[-12deg] select-none border-2 border-gray-300/40 px-3 py-1 rounded">未开通</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between relative z-10">
+                      <div className="flex items-center gap-2.5">
+                        <div className={cn("p-2 rounded-lg", method.available ? method.color : "bg-gray-100 text-gray-400")}>{method.icon}</div>
+                        <div>
+                          <p className={cn("text-sm font-semibold", !method.available && "text-gray-400")}>{method.label}</p>
+                          <p className="text-[11px] text-gray-400 mt-0.5">{method.desc}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+
+                        {enabled && (
+                          <div className="flex items-center gap-1.5 text-primary text-xs font-medium bg-primary/5 px-2 py-1 rounded-full">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            已开通
+                          </div>
+                        )}
+                        {!method.available && (
+                          <Badge variant="outline" className="text-[10px] text-gray-400 border-gray-300 bg-white">未开通</Badge>
+                        )}
+                      </div>
+                    </div>
+                  </button>
                 )
               })}
             </div>
+
+            {state.evaluationMethods.length === 0 && (
+              <div className="p-12 text-center text-gray-400 border border-dashed rounded-xl">
+                <CheckCircle2 className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">请选择至少一种评价方式</p>
+              </div>
+            )}
+          </div>
+        )
+      }
+
+      case "evaluationRules": {
+        const qSearch = erQSearch
+        const setQSearch = setErQSearch
+        const pSearch = erPSearch
+        const setPSearch = setErPSearch
+        const kpSearchForEval = erKpSearch
+        const setKpSearchForEval = setErKpSearch
+        const abSearchForEval = erAbSearch
+        const setAbSearchForEval = setErAbSearch
+
+        const [isOrderConfigOpen, setIsOrderConfigOpen] = useState(false)
+        const [isWeightConfigOpen, setIsWeightConfigOpen] = useState(false)
+
+        // 测评方式实例计数（纯 UI 模拟，不持久化）
+        const [methodInstanceCounts, setMethodInstanceCounts] = useState<Record<string, number>>({})
+
+        const getMethodInstances = () => {
+          const instances: { methodKey: string; instanceIndex: number }[] = []
+          state.evaluationMethods.forEach(methodKey => {
+            const count = methodInstanceCounts[methodKey] || 1
+            for (let i = 0; i < count; i++) {
+              instances.push({ methodKey, instanceIndex: i })
+            }
+          })
+          return instances
+        }
+
+        const duplicateMethod = (methodKey: string) => {
+          setMethodInstanceCounts(prev => ({
+            ...prev,
+            [methodKey]: (prev[methodKey] || 1) + 1
+          }))
+        }
+
+        const subjectLabels: Record<string, string> = {
+          teacher: "教师",
+          enterprise_mentor: "企业导师",
+          self: "自评",
+          peer: "互评",
+          ai: "AI 评价",
+          service_target: "服务对象",
+        }
+
+        const getMethodConfigSummary = (methodKey: string) => {
+          switch (methodKey) {
+            case "random_draw":
+              return { title: "现场问答", summary: `${state.randomDrawSelectedIds.length} 题 / ${state.randomDrawEvalPoints.length} 个评价点`, configured: state.randomDrawSelectedIds.length > 0 || state.randomDrawEvalPoints.length > 0 }
+            case "review":
+              return { title: "现场评审", summary: `${state.reviewEvalPoints.length} 个评价点`, configured: state.reviewEvalPoints.length > 0 }
+            case "paper":
+              return { title: "试卷", summary: state.paperIds.length > 0 ? `已选 ${state.paperIds.length} 张试卷` : "未选择", configured: state.paperIds.length > 0 }
+            case "question_bank":
+              return { title: "题库", summary: `${state.questionBankQuestions.length} 题`, configured: state.questionBankQuestions.length > 0 }
+            case "outcome":
+              return { title: "成果评价", summary: `${state.outcomeEvalPoints.length} 个评价点`, configured: state.outcomeEvalPoints.length > 0 }
+            case "homework":
+              return { title: "作业", summary: `${state.homeworkEvalPoints.length} 个评价点`, configured: state.homeworkEvalPoints.length > 0 }
+            case "quiz":
+              return { title: "随堂测", summary: `${state.quizQuestions.length} 题`, configured: state.quizQuestions.length > 0 }
+            default: return { title: "", summary: "", configured: false }
+          }
+        }
+
+        const updateEvalSubject = (idx: number, updates: Partial<EvalSubjectConfig>) => {
+          const newSubjects = [...state.evalSubjects]
+          newSubjects[idx] = { ...newSubjects[idx], ...updates }
+          updateState({ evalSubjects: newSubjects })
+        }
+
+        const updateMethodEvalSubject = (methodKey: string, idx: number, updates: Partial<EvalSubjectConfig>) => {
+          const baseSubjects = state.methodEvalSubjects[methodKey] || state.evalSubjects
+          const newSubjects = [...baseSubjects]
+          newSubjects[idx] = { ...newSubjects[idx], ...updates }
+          updateState({ methodEvalSubjects: { ...state.methodEvalSubjects, [methodKey]: newSubjects } })
+        }
+
+        type EvalPointField = "randomDrawEvalPoints" | "reviewEvalPoints" | "paperEvalPoints" | "questionBankEvalPoints" | "outcomeEvalPoints" | "homeworkEvalPoints" | "quizEvalPoints"
+
+        const getEvalPoints = (field: EvalPointField) => {
+          switch (field) {
+            case "randomDrawEvalPoints": return state.randomDrawEvalPoints
+            case "reviewEvalPoints": return state.reviewEvalPoints
+            case "paperEvalPoints": return state.paperEvalPoints
+            case "questionBankEvalPoints": return state.questionBankEvalPoints
+            case "outcomeEvalPoints": return state.outcomeEvalPoints
+            case "homeworkEvalPoints": return state.homeworkEvalPoints
+            case "quizEvalPoints": return state.quizEvalPoints
+          }
+        }
+
+        const setEvalPoints = (field: EvalPointField, points: EvalPoint[]) => {
+          switch (field) {
+            case "randomDrawEvalPoints": updateState({ randomDrawEvalPoints: points }); break
+            case "reviewEvalPoints": updateState({ reviewEvalPoints: points }); break
+            case "paperEvalPoints": updateState({ paperEvalPoints: points }); break
+            case "questionBankEvalPoints": updateState({ questionBankEvalPoints: points }); break
+            case "outcomeEvalPoints": updateState({ outcomeEvalPoints: points }); break
+            case "homeworkEvalPoints": updateState({ homeworkEvalPoints: points }); break
+            case "quizEvalPoints": updateState({ quizEvalPoints: points }); break
+          }
+        }
+
+        const addEvalPoint = (field: EvalPointField, preset?: Partial<EvalPoint>) => {
+          const name = preset ? (preset.name ?? newPointName.trim()) : newPointName.trim()
+          if (!name && !preset) return
+          const newPoint: EvalPoint = {
+            id: `ep-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+            name: name || "未命名评价点",
+            desc: preset?.desc || "",
+            subType: preset?.subType,
+            types: preset?.types,
+            knowledgePointIds: preset?.knowledgePointIds,
+            abilityPointIds: preset?.abilityPointIds,
+            scoringMethod: preset?.scoringMethod || "level",
+            gradeMapping: preset?.gradeMapping !== undefined ? preset.gradeMapping : (preset?.name === "" ? [] : JSON.parse(JSON.stringify(defaultGradeMapping))),
+          }
+          setEvalPoints(field, [...getEvalPoints(field), newPoint])
+          setNewPointName("")
+        }
+
+        const removeEvalPoint = (field: EvalPointField, id: string) => {
+          setEvalPoints(field, getEvalPoints(field).filter(p => p.id !== id))
+        }
+
+        const updateEvalPoint = (field: EvalPointField, id: string, updates: Partial<EvalPoint>) => {
+          setEvalPoints(field, getEvalPoints(field).map(p => p.id === id ? { ...p, ...updates } : p))
+        }
+
+        const toggleQuestion = (qid: string, field: "randomDrawQuestions" | "questionBankQuestions" | "quizQuestions") => {
+          const arr = field === "randomDrawQuestions" ? state.randomDrawQuestions : field === "quizQuestions" ? state.quizQuestions : state.questionBankQuestions
+          const exists = arr.includes(qid)
+          const newArr = exists ? arr.filter(x => x !== qid) : [...arr, qid]
+          if (field === "randomDrawQuestions") updateState({ randomDrawQuestions: newArr })
+          else if (field === "quizQuestions") updateState({ quizQuestions: newArr })
+          else updateState({ questionBankQuestions: newArr })
+        }
+
+        const addEvalPointFromAbility = (field: EvalPointField, abilityId: string, subType?: EvalSubType) => {
+          const ab = abilityPoints.find(a => a.id === abilityId)
+          if (!ab) return
+          addEvalPoint(field, {
+            name: ab.name,
+            desc: ab.description || "",
+            abilityPointIds: [ab.id],
+            subType,
+            scoringMethod: "level",
+          })
+        }
+
+        const addEvalPointFromKnowledge = (field: EvalPointField, kpId: string, subType?: EvalSubType) => {
+          const kp = knowledgePoints.find(k => k.id === kpId)
+          if (!kp) return
+          addEvalPoint(field, {
+            name: kp.name,
+            desc: kp.description || "",
+            knowledgePointIds: [kp.id],
+            subType,
+            scoringMethod: "level",
+          })
+        }
+
+        const LevelRuleEditor = ({ gradeMapping, onChange }: { gradeMapping: GradeMapping[]; onChange: (gm: GradeMapping[]) => void }) => {
+          const gradeColors = [
+            { light: "bg-green-50 border-green-200 text-green-700", dot: "bg-green-500" },
+            { light: "bg-blue-50 border-blue-200 text-blue-700", dot: "bg-blue-500" },
+            { light: "bg-yellow-50 border-yellow-200 text-yellow-700", dot: "bg-yellow-500" },
+            { light: "bg-red-50 border-red-200 text-red-700", dot: "bg-red-500" },
+          ]
+          return (
+            <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
+              <p className="text-xs font-medium text-gray-600 mb-2">等级转换规则</p>
+              <div className="h-6 bg-gray-200 rounded overflow-hidden flex mb-2">
+                {[...gradeMapping].sort((a, b) => a.minScore - b.minScore).map(g => {
+                  const width = g.maxScore - g.minScore + 1
+                  return <div key={g.id} className={cn("flex items-center justify-center text-white text-[10px] font-medium", g.color)} style={{ width: `${width}%` }}>{g.grade}</div>
+                })}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {[...gradeMapping].sort((a, b) => b.maxScore - a.maxScore).map((g, i) => {
+                  const c = gradeColors[i % gradeColors.length]
+                  return (
+                    <div key={g.id} className={cn("rounded border p-2", c.light)}>
+                      <div className="flex items-center justify-between mb-1">
+                        <Input value={g.grade} onChange={e => onChange(gradeMapping.map(x => x.id === g.id ? { ...x, grade: e.target.value } : x))} className="w-14 h-6 text-center text-xs font-semibold" />
+                        <div className={cn("w-3 h-3 rounded-full", c.dot)} />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Input type="number" value={g.minScore} onChange={e => onChange(gradeMapping.map(x => x.id === g.id ? { ...x, minScore: parseInt(e.target.value) || 0 } : x))} className="w-16 h-6 text-center text-xs" min={0} max={100} />
+                        <span className="text-gray-500 text-xs">-</span>
+                        <Input type="number" value={g.maxScore} onChange={e => onChange(gradeMapping.map(x => x.id === g.id ? { ...x, maxScore: parseInt(e.target.value) || 0 } : x))} className="w-16 h-6 text-center text-xs" min={0} max={100} />
+                        <span className="text-xs text-gray-500">分</span>
+                      </div>
+                      <div className="mt-1.5">
+                        <Input value={g.remark || ""} onChange={e => onChange(gradeMapping.map(x => x.id === g.id ? { ...x, remark: e.target.value } : x))} className="h-7 text-[10px] bg-white/70" placeholder="等级备注说明（一句话辅助教师参考）" />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        }
+
+        const EvalPointCard = ({ ep, field }: { ep: EvalPoint; field: EvalPointField }) => (
+          <div className="p-3 bg-white rounded-lg border">
+            <div className="flex items-center gap-2 mb-2">
+              <Input value={ep.name} onChange={e => updateEvalPoint(field, ep.id, { name: e.target.value })} className="flex-1 h-8 text-sm" />
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-500" onClick={() => removeEvalPoint(field, ep.id)}><Trash2 className="h-4 w-4" /></Button>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap mb-2">
+              <Badge variant="outline" className={cn("text-[10px]", evalSubTypeColors[ep.subType as EvalSubType])}>{ep.subType ? evalSubTypeLabels[ep.subType as EvalSubType] : "未分类"}</Badge>
+              <Select value={ep.scoringMethod || "level"} onValueChange={v => updateEvalPoint(field, ep.id, { scoringMethod: v as "score" | "level" | "rubric" })}>
+                <SelectTrigger className="h-7 text-[10px] w-28">
+                  <SelectValue placeholder="评分方式" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="score" disabled>分值制</SelectItem>
+                  <SelectItem value="level">等级制</SelectItem>
+                  <SelectItem value="rubric" disabled>rubric量表</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="mb-2">
+              <p className="text-xs text-gray-500 mb-1">关联能力点</p>
+              <div className="flex flex-wrap gap-1">
+                {(ep.abilityPointIds || []).map(abId => {
+                  const ab = abilityPoints.find(a => a.id === abId)
+                  return ab ? (
+                    <Badge key={abId} variant="secondary" className="text-[10px] font-normal">
+                      {ab.name}
+                      <button onClick={() => updateEvalPoint(field, ep.id, { abilityPointIds: (ep.abilityPointIds || []).filter(id => id !== abId) })} className="ml-1 text-gray-400 hover:text-red-500">×</button>
+                    </Badge>
+                  ) : null
+                })}
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary">+ 添加能力点</Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader><PrdAnnotation data={getAnnotation("dialog-link-ability")}><DialogTitle>关联能力点</DialogTitle></PrdAnnotation></DialogHeader>
+                    <div className="relative mb-3">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input value={abSearchForEval} onChange={e => setAbSearchForEval(e.target.value)} placeholder="搜索能力点..." className="pl-9" />
+                    </div>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {abilityPoints.filter(a => !abSearchForEval || a.name.includes(abSearchForEval)).map(a => {
+                        const alreadyLinked = (ep.abilityPointIds || []).includes(a.id)
+                        return (
+                          <div key={a.id} onClick={() => {
+                            if (alreadyLinked) return
+                            updateEvalPoint(field, ep.id, { abilityPointIds: [...(ep.abilityPointIds || []), a.id] })
+                          }} className={cn("p-2 rounded-lg border cursor-pointer text-sm", alreadyLinked ? "border-primary bg-primary/5 opacity-50" : "hover:border-gray-300")}>
+                            <div className="flex items-center gap-2">
+                              <span className="flex-1">{a.name}</span>
+                              {alreadyLinked && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+            <div className="mb-2">
+              <p className="text-xs text-gray-500 mb-1">关联知识点</p>
+              <div className="flex flex-wrap gap-1">
+                {(ep.knowledgePointIds || []).map(kpid => {
+                  const kp = knowledgePoints.find(k => k.id === kpid)
+                  return kp ? (
+                    <Badge key={kpid} variant="secondary" className="text-[10px] font-normal">
+                      {kp.name}
+                      <button onClick={() => updateEvalPoint(field, ep.id, { knowledgePointIds: (ep.knowledgePointIds || []).filter(id => id !== kpid) })} className="ml-1 text-gray-400 hover:text-red-500">×</button>
+                    </Badge>
+                  ) : null
+                })}
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary">+ 添加知识点</Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader><PrdAnnotation data={getAnnotation("dialog-link-knowledge")}><DialogTitle>关联知识点</DialogTitle></PrdAnnotation></DialogHeader>
+                    <div className="relative mb-3">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input value={kpSearchForEval} onChange={e => setKpSearchForEval(e.target.value)} placeholder="搜索知识点..." className="pl-9" />
+                    </div>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {knowledgePoints.filter(k => !kpSearchForEval || k.name.includes(kpSearchForEval)).map(k => {
+                        const alreadyLinked = (ep.knowledgePointIds || []).includes(k.id)
+                        return (
+                          <div key={k.id} onClick={() => {
+                            if (alreadyLinked) return
+                            updateEvalPoint(field, ep.id, { knowledgePointIds: [...(ep.knowledgePointIds || []), k.id] })
+                          }} className={cn("p-2 rounded-lg border cursor-pointer text-sm", alreadyLinked ? "border-primary bg-primary/5 opacity-50" : "hover:border-gray-300")}>
+                            <div className="flex items-center gap-2">
+                              <span className="flex-1">{k.name}</span>
+                              {alreadyLinked && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+            {ep.scoringMethod === "level" && ep.gradeMapping && (
+              <LevelRuleEditor
+                gradeMapping={ep.gradeMapping}
+                onChange={gm => updateEvalPoint(field, ep.id, { gradeMapping: gm })}
+              />
+            )}
           </div>
         )
 
-      case "evaluationRules":
-        return (
-          <div className="space-y-4 max-h-[65vh] overflow-y-auto">
-            <Label>已选测评方式</Label>
-            {state.evaluationMethods.length === 0 ? (
-              <p className="text-gray-500 text-sm">请先在"测评形式"中配置测评方式</p>
-            ) : (
+        const openRubricKpDialog = (pointId: string, field: EvalPointField) => {
+          setRubricKpTargetPointId(pointId)
+          setRubricKpTargetField(field)
+          setRubricKpSearch("")
+          setRubricKpDialogOpen(true)
+        }
+
+        const openRubricAbDialog = (pointId: string, field: EvalPointField) => {
+          setRubricAbTargetPointId(pointId)
+          setRubricAbTargetField(field)
+          setRubricAbSearch("")
+          setRubricAbDialogOpen(true)
+        }
+
+        const RubricEvalPointCard = ({ ep, field }: { ep: EvalPoint; field: EvalPointField }) => {
+          const [expanded, setExpanded] = useState(false)
+          const pointTypes = ep.types?.length ? ep.types : ep.subType ? [ep.subType] : []
+          return (
+            <div className="bg-white rounded-lg border overflow-hidden">
+              {/* Collapsed header - always visible */}
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-gray-50 transition-colors"
+              >
+                {expanded ? <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" /> : <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />}
+                <div className="flex items-center gap-1 shrink-0">
+                  {pointTypes.length > 0 ? pointTypes.map(t => (
+                    <Badge key={t} variant="outline" className={cn("text-[10px]", evalSubTypeColors[t])}>{evalSubTypeLabels[t]}</Badge>
+                  )) : <Badge variant="outline" className="text-[10px]">未分类</Badge>}
+                </div>
+                <span className="text-sm text-gray-700 flex-1 truncate">{ep.name || "未命名评价点"}</span>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-500 shrink-0" onClick={e => { e.stopPropagation(); removeEvalPoint(field, ep.id); }}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </button>
+
+              {/* Expanded content */}
+              {expanded && (
+                <div className="px-3 pb-3 border-t">
+                  {/* 1. 评价点内容 */}
+                  <div className="mt-2">
+                    <Label className="text-xs text-gray-500">评价点内容</Label>
+                    <Input value={ep.name} onChange={e => updateEvalPoint(field, ep.id, { name: e.target.value })} className="mt-1 h-8 text-sm" placeholder="输入评价点内容" />
+                  </div>
+
+                  {/* 2. 量规类型 */}
+                  <div className="mt-2">
+                    <Label className="text-xs text-gray-500">量规类型</Label>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {(Object.keys(evalSubTypeLabels) as EvalSubType[]).map(type => {
+                        const selected = pointTypes.includes(type)
+                        return (
+                          <button
+                            key={type}
+                            onClick={() => {
+                              const current = ep.types || (ep.subType ? [ep.subType] : [])
+                              const has = current.includes(type)
+                              const newTypes = has ? current.filter(t => t !== type) : [...current, type]
+                              updateEvalPoint(field, ep.id, { types: newTypes, subType: undefined })
+                            }}
+                            className={cn(
+                              "px-2 py-0.5 rounded-full text-[10px] border transition-all",
+                              selected ? cn(evalSubTypeColors[type], "border-current") : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+                            )}
+                          >
+                            {evalSubTypeLabels[type]}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 3. 关联能力点 */}
+                  <div className="mt-2">
+                    <Label className="text-xs text-gray-500">关联能力点</Label>
+                    <div className="flex items-center gap-2 flex-wrap mt-1">
+                      {(ep.abilityPointIds || []).map(abId => {
+                        const ab = abilityPoints.find(a => a.id === abId)
+                        return ab ? (
+                          <Badge key={abId} variant="secondary" className="text-[10px] font-normal">
+                            {ab.name}
+                            <button onClick={() => updateEvalPoint(field, ep.id, { abilityPointIds: (ep.abilityPointIds || []).filter(id => id !== abId) })} className="ml-1 text-gray-400 hover:text-red-500">×</button>
+                          </Badge>
+                        ) : null
+                      })}
+                      <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary" onClick={() => openRubricAbDialog(ep.id, field)}>+ 关联能力点</Button>
+                    </div>
+                  </div>
+
+                  {/* 4. 关联知识点 */}
+                  <div className="mt-2">
+                    <Label className="text-xs text-gray-500">关联知识点</Label>
+                    <div className="flex items-center gap-2 flex-wrap mt-1">
+                      {(ep.knowledgePointIds || []).map(kpid => {
+                        const kp = knowledgePoints.find(k => k.id === kpid)
+                        return kp ? (
+                          <Badge key={kpid} variant="secondary" className="text-[10px] font-normal">
+                            {kp.name}
+                            <button onClick={() => updateEvalPoint(field, ep.id, { knowledgePointIds: (ep.knowledgePointIds || []).filter(id => id !== kpid) })} className="ml-1 text-gray-400 hover:text-red-500">×</button>
+                          </Badge>
+                        ) : null
+                      })}
+                      <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary" onClick={() => openRubricKpDialog(ep.id, field)}>+ 关联知识点</Button>
+                    </div>
+                  </div>
+
+                  {/* 5. 评分规则 + 等级转换规则 */}
+                  <div className="mt-2">
+                    <Label className="text-xs text-gray-500">评分规则</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Select value={ep.scoringMethod || "level"} onValueChange={v => updateEvalPoint(field, ep.id, { scoringMethod: v as "score" | "level" | "rubric" })}>
+                        <SelectTrigger className="h-7 text-[10px] w-32"><SelectValue placeholder="评分方式" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="score">分值制</SelectItem>
+                          <SelectItem value="level">等级制</SelectItem>
+                          <SelectItem value="rubric">rubric量表</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {ep.scoringMethod === "level" && ep.gradeMapping && (
+                      <LevelRuleEditor gradeMapping={ep.gradeMapping} onChange={gm => updateEvalPoint(field, ep.id, { gradeMapping: gm })} />
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        }
+
+        const EvalPointConfigPanel = ({ points, field }: { points: EvalPoint[]; field: EvalPointField }) => {
+          const [expandedTypes, setExpandedTypes] = useState<Record<string, boolean>>({})
+
+          // Group points by subType
+          const grouped = points.reduce((acc, ep) => {
+            const key = ep.subType || "uncategorized"
+            if (!acc[key]) acc[key] = []
+            acc[key].push(ep)
+            return acc
+          }, {} as Record<string, EvalPoint[]>)
+
+          const subTypeKeys = Object.keys(evalSubTypeLabels) as EvalSubType[]
+          const usedSubTypes = subTypeKeys.filter(st => grouped[st]?.length > 0)
+
+          const toggleType = (st: string) => setExpandedTypes(prev => ({ ...prev, [st]: !prev[st] }))
+
+          return (
+            <div className="border rounded-xl p-4">
+              <p className="text-sm font-medium mb-3">评价点配置</p>
+
+              {/* Sub-type selector */}
+              <div className="mb-4">
+                <p className="text-xs text-gray-500 mb-2">选择细分类型并添加评价点</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {subTypeKeys.map(st => {
+                    const count = grouped[st]?.length || 0
+                    const active = count > 0
+                    return (
+                      <button
+                        key={st}
+                        onClick={() => {
+                          if (!active) {
+                            // Add a blank eval point of this type
+                            addEvalPoint(field, { subType: st, name: `${evalSubTypeLabels[st]}评价点` })
+                          }
+                          toggleType(st)
+                        }}
+                        className={cn(
+                          "px-2.5 py-1 rounded-full text-xs border transition-all",
+                          active
+                            ? cn(evalSubTypeColors[st], "border-current")
+                            : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+                        )}
+                      >
+                        {evalSubTypeLabels[st]}
+                        {count > 0 && <span className="ml-1 font-medium">({count})</span>}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Grouped eval points */}
               <div className="space-y-3">
-                {state.evaluationMethods.map(method => {
-                  const opt = evaluationMethodOptions.find(o => o.key === method)
+                {usedSubTypes.map(st => {
+                  const expanded = expandedTypes[st] !== false
+                  const eps = grouped[st]
                   return (
-                    <div key={method} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="font-medium text-sm">{opt?.label || method}</span>
-                        <span className="text-xs text-gray-500">权重: {state.methodWeights[method] || 0}%</span>
+                    <div key={st} className="border rounded-lg overflow-hidden">
+                      <button
+                        onClick={() => toggleType(st)}
+                        className={cn("w-full flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors", expanded ? "bg-gray-50" : "bg-white hover:bg-gray-50")}
+                      >
+                        {expanded ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
+                        <Badge variant="outline" className={cn("text-[10px]", evalSubTypeColors[st])}>{evalSubTypeLabels[st]}</Badge>
+                        <span className="flex-1 text-left text-gray-600">{eps.length} 个评价点</span>
+                        <div className="flex items-center gap-1">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary" onClick={e => e.stopPropagation()}>
+                                <Award className="h-3 w-3 mr-1" />能力点
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-md">
+                              <DialogHeader><PrdAnnotation data={getAnnotation("dialog-eval-from-ability")}><DialogTitle>从能力点创建 — {evalSubTypeLabels[st]}</DialogTitle></PrdAnnotation></DialogHeader>
+                              <div className="space-y-2 max-h-80 overflow-y-auto mt-2">
+                                {abilityPoints.map(a => (
+                                  <div key={a.id} onClick={() => addEvalPointFromAbility(field, a.id, st)} className="p-2.5 rounded-lg border cursor-pointer hover:border-gray-300 text-sm">
+                                    <div className="flex items-center gap-2">
+                                      <span className="flex-1 font-medium">{a.name}</span>
+                                      {a.code && <Badge variant="outline" className="text-[10px]">{a.code}</Badge>}
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1 line-clamp-1">{a.description}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary" onClick={e => e.stopPropagation()}>
+                                <Lightbulb className="h-3 w-3 mr-1" />知识点
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-md">
+                              <DialogHeader><PrdAnnotation data={getAnnotation("dialog-eval-from-knowledge")}><DialogTitle>从知识点创建 — {evalSubTypeLabels[st]}</DialogTitle></PrdAnnotation></DialogHeader>
+                              <div className="space-y-2 max-h-80 overflow-y-auto mt-2">
+                                {knowledgePoints.map(k => (
+                                  <div key={k.id} onClick={() => addEvalPointFromKnowledge(field, k.id, st)} className="p-2.5 rounded-lg border cursor-pointer hover:border-gray-300 text-sm">
+                                    <div className="flex items-center gap-2">
+                                      <span className="flex-1 font-medium">{k.name}</span>
+                                      {k.code && <Badge variant="outline" className="text-[10px]">{k.code}</Badge>}
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1 line-clamp-1">{k.description}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary" onClick={e => { e.stopPropagation(); addEvalPoint(field, { subType: st, name: "" }); }}>
+                            <Plus className="h-3 w-3 mr-1" />手动添加
+                          </Button>
+                        </div>
+                      </button>
+                      {expanded && (
+                        <div className="p-3 space-y-2 border-t">
+                          {eps.map(ep => <EvalPointCard key={ep.id} ep={ep} field={field} />)}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+
+                {/* Uncategorized points */}
+                {grouped["uncategorized"]?.length > 0 && (
+                  <div className="border rounded-lg overflow-hidden">
+                    <button onClick={() => toggleType("uncategorized")} className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium bg-white hover:bg-gray-50 transition-colors">
+                      {expandedTypes["uncategorized"] !== false ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
+                      <span className="text-gray-600">未分类评价点</span>
+                      <span className="text-gray-400">({grouped["uncategorized"].length})</span>
+                    </button>
+                    {expandedTypes["uncategorized"] !== false && (
+                      <div className="p-3 space-y-2 border-t">
+                        {grouped["uncategorized"].map(ep => <EvalPointCard key={ep.id} ep={ep} field={field} />)}
                       </div>
-                      <div className="text-xs text-gray-400">评价规则配置将在后续版本中完善</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        }
+
+        const questionTypeLabels: Record<string, string> = {
+          single: "单选",
+          multiple: "多选",
+          judgment: "判断",
+          short_answer: "简答",
+          essay: "论述",
+          fill_blank: "填空",
+        }
+
+        const difficultyLabels: Record<string, string> = {
+          easy: "简单",
+          medium: "中等",
+          hard: "困难",
+        }
+
+        const QuestionSelectorPanel = ({ field, selectedIds, showAutoSelect = false, maxCount }: { field: "randomDrawQuestions" | "questionBankQuestions" | "quizQuestions", selectedIds: string[], showAutoSelect?: boolean, maxCount?: number }) => {
+          const filteredQuestions = allQuestions.filter(q => {
+            const matchTab = questionTab === "my" ? q.source === "my" : questionTab === "collab" ? q.source === "collab" : q.source === "public"
+            const matchSearch = !questionSearch || q.name.includes(questionSearch) || q.content.includes(questionSearch)
+            return matchTab && matchSearch
+          })
+
+          return (
+            <div className="flex gap-4 h-[60vh] min-h-[480px]">
+              {/* Left column */}
+              <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
+                <Tabs value={questionTab} onValueChange={v => setQuestionTab(v as "my" | "collab" | "public")} className="mb-3">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="my">我的</TabsTrigger>
+                    <TabsTrigger value="collab">共建</TabsTrigger>
+                    <TabsTrigger value="public">公共题库</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input value={questionSearch} onChange={e => setQuestionSearch(e.target.value)} placeholder="搜索题目名称..." className="pl-9" />
+                  </div>
+                  <Button onClick={() => setShowAddQuestion(true)}>
+                    <Plus className="h-4 w-4 mr-1" />新增题目
+                  </Button>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  {filteredQuestions.length === 0 ? (
+                    <div className="text-center text-gray-400 py-8">
+                      <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">暂无题目</p>
+                    </div>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 sticky top-0 z-10">
+                        <tr>
+                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">题目名称</th>
+                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[12%]">题目类型</th>
+                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[12%]">题目难度</th>
+                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">所属题库</th>
+                          <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[31%]">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {filteredQuestions.map(q => {
+                          const isSelected = selectedIds.includes(q.id)
+                          return (
+                            <tr key={q.id} className={cn("hover:bg-gray-50 transition-colors cursor-pointer", isSelected ? "bg-primary/[0.03]" : "")} onClick={() => toggleQuestion(q.id, field)}>
+                              <td className="px-3 py-2">
+                                <div className="flex items-center gap-2">
+                                  <div className={cn("w-4 h-4 rounded border flex items-center justify-center shrink-0", isSelected ? "bg-primary border-primary" : "border-gray-300")}>
+                                    {isSelected && <Check className="h-3 w-3 text-white" />}
+                                  </div>
+                                  <span className="text-sm font-medium text-gray-800 line-clamp-1">{q.name}</span>
+                                </div>
+                              </td>
+                              <td className="px-3 py-2">
+                                <Badge variant="secondary" className="text-xs">{questionTypeLabels[q.type] || q.type}</Badge>
+                              </td>
+                              <td className="px-3 py-2">
+                                <span className="text-xs text-gray-500">{difficultyLabels[q.difficulty] || q.difficulty}</span>
+                              </td>
+                              <td className="px-3 py-2">
+                                <span className="text-xs text-gray-500">{questionBankLabels[(q as any).questionBank] || (q as any).questionBank || "-"}</span>
+                              </td>
+                              <td className="px-3 py-2">
+                                <div className="flex items-center justify-end gap-1">
+                                  <PrdAnnotation data={getAnnotation("dialog-question-detail")}>
+                                    <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary" onClick={e => { e.stopPropagation(); setSelectedQuestionForDetail(q.id); setQuestionDetailOpen(true) }}>
+                                      查看详情
+                                    </Button>
+                                  </PrdAnnotation>
+                                  {isSelected ? (
+                                    <PrdAnnotation data={getAnnotation("qb-action-cancel")}>
+                                      <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); toggleQuestion(q.id, field) }}>
+                                        取消
+                                      </Button>
+                                    </PrdAnnotation>
+                                  ) : (
+                                    <PrdAnnotation data={getAnnotation("qb-action-select")}>
+                                      <Button size="sm" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); toggleQuestion(q.id, field) }}>
+                                        使用
+                                      </Button>
+                                    </PrdAnnotation>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+
+              {/* Right column */}
+              <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-medium text-gray-700">已选择题目 ({selectedIds.length}{maxCount ? `/${maxCount}` : ""})</p>
+                  {showAutoSelect && (
+                    <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => alert("参考测评认证中心-试卷管理-自动抽题功能即可")}>
+                      自动选择
+                    </Button>
+                  )}
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  {selectedIds.length === 0 ? (
+                    <div className="text-center text-gray-400 py-8">
+                      <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-xs">从左侧搜索并选择题目</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedIds.map(qid => {
+                        const q = allQuestions.find(aq => aq.id === qid)
+                        if (!q) return null
+                        return (
+                          <div key={qid} className="p-2.5 rounded-lg border border-primary/20 bg-primary/5 relative">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-medium flex-1 truncate">{q.name}</span>
+                              <Button variant="ghost" size="icon" className="h-5 w-5 text-gray-400 -mr-1 -mt-1" onClick={() => toggleQuestion(qid, field)}>
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant="secondary" className="text-[10px]">{questionTypeLabels[q.type] || q.type}</Badge>
+                              <span className="text-[10px] text-gray-400">{difficultyLabels[q.difficulty] || q.difficulty}</span>
+                              {field === "questionBankQuestions" ? (
+                                <div className="flex items-center gap-1 ml-auto">
+                                  <span className="text-[10px] text-gray-400">分值</span>
+                                  <Input
+                                    type="number"
+                                    value={mockResQuestionBank.questionScores[qid] ?? q.score}
+                                    onChange={e => {
+                                      const val = Math.max(0, Math.min(100, parseInt(e.target.value) || 0))
+                                      setMockResQuestionBank(prev => ({ ...prev, questionScores: { ...prev.questionScores, [qid]: val } }))
+                                    }}
+                                    className="w-14 h-5 text-[10px] px-1 py-0"
+                                    min={0}
+                                    max={100}
+                                  />
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-gray-400">{q.score}分</span>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        // Resource-only panel (no eval points)
+        const EvalResourceOnlyPanel = ({ methodKey }: { methodKey: string }) => {
+          if (methodKey === "random_draw") {
+            const rdqMajorOptions = ["全部", "经济学", "物流管理", "机械工程", "计算机科学", "电子信息", "工商管理", "会计学", "市场营销", "土木工程", "英语", "法学"]
+            const [rdqMajorTab, setRdqMajorTab] = useState("全部")
+            const [rdqDrawMode, setRdqDrawMode] = useState<"random" | "manual">("random")
+            const [rdqDrawCount, setRdqDrawCount] = useState(5)
+            const filteredRdq = state.randomDrawCustomQuestions.filter(q => {
+              const matchMajor = rdqMajorTab === "全部" || q.major === rdqMajorTab
+              const matchSearch = !rdqSearch || q.name.includes(rdqSearch) || q.description.includes(rdqSearch) || q.major.includes(rdqSearch)
+              return matchMajor && matchSearch
+            })
+
+            const handleAddRdq = () => {
+              setNewRdqForm({ name: "", description: "", answer: "", major: "" })
+              setRdqActionMode("add")
+              setRdqActionTarget(null)
+              setRdqActionOpen(true)
+            }
+
+            const handleEditRdq = (q: typeof state.randomDrawCustomQuestions[0]) => {
+              setNewRdqForm({ name: q.name, description: q.description, answer: q.answer, major: q.major })
+              setRdqActionMode("edit")
+              setRdqActionTarget(q)
+              setRdqActionOpen(true)
+            }
+
+            const handleSaveRdq = () => {
+              if (!newRdqForm.name.trim()) return
+              if (rdqActionMode === "edit" && rdqActionTarget) {
+                updateState({
+                  randomDrawCustomQuestions: state.randomDrawCustomQuestions.map(q =>
+                    q.id === rdqActionTarget.id ? { ...q, name: newRdqForm.name.trim(), description: newRdqForm.description.trim(), answer: newRdqForm.answer.trim(), major: newRdqForm.major.trim() } : q
+                  )
+                })
+                setRdqActionOpen(false)
+                return
+              }
+              const newId = `rdq-${Date.now()}`
+              const newQ = {
+                id: newId,
+                name: newRdqForm.name.trim(),
+                description: newRdqForm.description.trim(),
+                answer: newRdqForm.answer.trim(),
+                major: newRdqForm.major.trim(),
+              }
+              updateState({ randomDrawCustomQuestions: [...state.randomDrawCustomQuestions, newQ] })
+              setRdqActionOpen(false)
+              setRdqSearch("")
+            }
+
+            const handleDeleteRdq = (id: string) => {
+              updateState({
+                randomDrawCustomQuestions: state.randomDrawCustomQuestions.filter(q => q.id !== id),
+                randomDrawSelectedIds: state.randomDrawSelectedIds.filter(sid => sid !== id)
+              })
+            }
+
+            const handleToggleSelect = (id: string) => {
+              const isSelected = state.randomDrawSelectedIds.includes(id)
+              if (isSelected) {
+                updateState({ randomDrawSelectedIds: state.randomDrawSelectedIds.filter(sid => sid !== id) })
+              } else {
+                updateState({ randomDrawSelectedIds: [...state.randomDrawSelectedIds, id] })
+              }
+            }
+
+            const selectedRdqList = state.randomDrawSelectedIds.map(id => state.randomDrawCustomQuestions.find(q => q.id === id)).filter(Boolean) as typeof state.randomDrawCustomQuestions
+
+            return (
+              <div className="h-[calc(92vh-180px)] flex flex-col">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input value={rdqSearch} onChange={e => setRdqSearch(e.target.value)} placeholder="搜索现场问答题名称、描述或适用专业..." className="pl-9" />
+                  </div>
+                  <Button onClick={handleAddRdq}>
+                    <Plus className="h-4 w-4 mr-1" />新增现场问答题
+                  </Button>
+                </div>
+
+                <div className="flex gap-4 flex-1 min-h-0">
+                  {/* Left: All questions */}
+                  <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
+                    <div className="flex items-center gap-1 mb-2">
+                      {rdqMajorOptions.map(opt => (
+                        <button
+                          key={opt}
+                          onClick={() => setRdqMajorTab(opt)}
+                          className={cn(
+                            "px-2.5 py-1 rounded-md text-[11px] transition-all",
+                            rdqMajorTab === opt
+                              ? "bg-primary/10 text-primary font-medium"
+                              : "text-gray-500 hover:bg-gray-100"
+                          )}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-sm font-medium mb-2 text-gray-700">
+                      {rdqSearch ? `搜索结果 (${filteredRdq.length})` : (rdqMajorTab === "全部" ? "全部现场问答题" : `${rdqMajorTab}相关现场问答题`)}
+                    </p>
+                    <div className="flex-1 overflow-y-auto pr-1">
+                      {filteredRdq.length === 0 ? (
+                        <div className="text-center text-gray-400 py-8">
+                          <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">{rdqSearch ? "未找到匹配的现场问答题" : "暂无现场问答题，请点击上方按钮新增"}</p>
+                        </div>
+                      ) : (
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 sticky top-0 z-10">
+                            <tr>
+                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[26%]">题目名称</th>
+                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">题目描述</th>
+                              <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[14%]">适用专业</th>
+                              <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">操作</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {filteredRdq.map(q => {
+                              const isSelected = state.randomDrawSelectedIds.includes(q.id)
+                              return (
+                                <tr key={q.id} className={cn("hover:bg-gray-50 transition-colors", isSelected ? "bg-primary/[0.03]" : "")}>
+                                  <td className="px-3 py-2">
+                                    <span className="text-sm font-medium text-gray-800">{q.name}</span>
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <p className="text-xs text-gray-500 line-clamp-1" title={q.description}>{q.description || "-"}</p>
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <Badge variant="secondary" className="text-[10px]">{q.major || "-"}</Badge>
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <div className="flex items-center justify-end gap-1">
+                                      <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary" onClick={() => { setSelectedRdqForDetail(q.id); setRdqDetailOpen(true) }}>
+                                        详情
+                                      </Button>
+                                      <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary" onClick={() => handleEditRdq(q)}>
+                                        编辑
+                                      </Button>
+                                      {isSelected ? (
+                                        <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => handleToggleSelect(q.id)}>
+                                          取消
+                                        </Button>
+                                      ) : (
+                                        <Button size="sm" className="h-6 text-[11px] px-2" onClick={() => handleToggleSelect(q.id)}>
+                                          选择
+                                        </Button>
+                                      )}
+                                      <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-red-400 hover:text-red-600" onClick={() => handleDeleteRdq(q.id)}>
+                                        删除
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right: Selected questions */}
+                  <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
+                    <p className="text-sm font-medium mb-3 text-gray-700">已配置现场问答题 ({selectedRdqList.length})</p>
+                    <div className="flex-1 overflow-y-auto">
+                      {selectedRdqList.length === 0 ? (
+                        <div className="text-center text-gray-400 py-8">
+                          <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p className="text-xs">请从左侧选择现场问答题</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {selectedRdqList.map(q => (
+                            <div key={q.id} className="p-2.5 rounded-lg border border-primary/20 bg-primary/5 relative">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs font-medium flex-1 truncate">{q.name}</span>
+                                <Button variant="ghost" size="icon" className="h-5 w-5 text-gray-400 -mr-1 -mt-1" onClick={() => handleToggleSelect(q.id)}>
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                              <p className="text-[11px] text-gray-500 line-clamp-1">{q.description || "暂无描述"}</p>
+                              <Badge variant="outline" className="text-[9px] mt-1 font-normal px-1 py-0 h-4">{q.major || "通用"}</Badge>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 抽题规则 */}
+                <div className="border rounded-xl p-4 mt-4">
+                  <p className="text-sm font-medium mb-3">抽题规则</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-gray-500">抽题方式</Label>
+                      <Select value={rdqDrawMode} onValueChange={v => setRdqDrawMode(v as "random" | "manual")}>
+                        <SelectTrigger className="mt-1 text-sm h-9"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="random">系统随机分配</SelectItem>
+                          <SelectItem value="manual">老师手动选择</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">抽题数量</Label>
+                      <Input type="number" value={rdqDrawCount} onChange={e => setRdqDrawCount(Math.max(1, parseInt(e.target.value) || 1))} className="mt-1 text-sm" min={1} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Add / Edit Dialog */}
+                <Dialog open={rdqActionOpen} onOpenChange={setRdqActionOpen}>
+                  <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle>{rdqActionMode === "add" ? "新增现场问答题" : "编辑现场问答题"}</DialogTitle>
+                      <DialogDescription>{rdqActionMode === "add" ? "创建一个新的现场问答题" : "修改现场问答题信息"}</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div>
+                        <Label>题目名称</Label>
+                        <Input value={newRdqForm.name} onChange={e => setNewRdqForm({ ...newRdqForm, name: e.target.value })} placeholder="输入题目名称" className="mt-1.5" />
+                      </div>
+                      <div>
+                        <Label>适用专业</Label>
+                        <Select value={newRdqForm.major} onValueChange={v => setNewRdqForm({ ...newRdqForm, major: v })}>
+                          <SelectTrigger className="mt-1.5"><SelectValue placeholder="选择适用专业" /></SelectTrigger>
+                          <SelectContent>
+                            {rdqMajorOptions.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>题目描述</Label>
+                        <Textarea value={newRdqForm.description} onChange={e => setNewRdqForm({ ...newRdqForm, description: e.target.value })} placeholder="输入题目描述" className="mt-1.5" rows={3} />
+                      </div>
+                      <div>
+                        <Label>题目答案</Label>
+                        <Textarea value={newRdqForm.answer} onChange={e => setNewRdqForm({ ...newRdqForm, answer: e.target.value })} placeholder="输入题目答案" className="mt-1.5" rows={3} />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setRdqActionOpen(false)}>取消</Button>
+                      <Button onClick={handleSaveRdq} disabled={!newRdqForm.name.trim()}>
+                        {rdqActionMode === "add" ? "新增" : "保存修改"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Detail Dialog */}
+                <Dialog open={rdqDetailOpen} onOpenChange={setRdqDetailOpen}>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>现场问答题详情</DialogTitle>
+                    </DialogHeader>
+                    {(() => {
+                      const q = state.randomDrawCustomQuestions.find(x => x.id === selectedRdqForDetail)
+                      if (!q) return null
+                      return (
+                        <div className="space-y-4 py-2">
+                          <div>
+                            <Label className="text-xs text-gray-500">题目名称</Label>
+                            <p className="text-sm font-medium mt-1">{q.name}</p>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-gray-500">适用专业</Label>
+                            <Badge variant="secondary" className="text-[10px] mt-1">{q.major || "通用"}</Badge>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-gray-500">题目描述</Label>
+                            <p className="text-sm mt-1 text-gray-700 whitespace-pre-wrap">{q.description || "-"}</p>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-gray-500">题目答案</Label>
+                            <p className="text-sm mt-1 text-gray-700 whitespace-pre-wrap">{q.answer || "-"}</p>
+                          </div>
+                        </div>
+                      )
+                    })()}
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setRdqDetailOpen(false)}>关闭</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            )
+          }
+          if (methodKey === "review") {
+            return (
+              <div className="space-y-4">
+                <div className="p-4 bg-amber-50 rounded-lg border border-amber-100 text-sm text-amber-700">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Info className="h-4 w-4" />
+                    <span className="font-medium">评审说明</span>
+                  </div>
+                  <p>评审时教师根据学生现场表现或提交的材料进行打分。评价点配置请在「评价标准配置」卡片中设置。</p>
+                </div>
+                <div className="border rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-medium">评审材料要求</p>
+                    <div className="flex items-center gap-2">
+                      <Switch checked={mockResReview.requiresMaterial} onCheckedChange={v => setMockResReview({ ...mockResReview, requiresMaterial: v })} />
+                      <span className="text-xs text-gray-600">是否需要提交评审材料</span>
+                    </div>
+                  </div>
+                  {mockResReview.requiresMaterial && (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs text-gray-500">预估提交天数</Label>
+                          <Input type="number" value={mockResReview.deadlineDays} onChange={e => setMockResReview({ ...mockResReview, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} />
+                        </div>
+                      </div>
+                      <div className="mt-3">
+                        <Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label>
+                        <Textarea
+                          value={mockResReview.submitFormatDesc}
+                          onChange={e => setMockResReview({ ...mockResReview, submitFormatDesc: e.target.value })}
+                          placeholder="请用一句话说明学生需要提交的材料要求..."
+                          rows={2}
+                          className="text-sm"
+                        />
+                      </div>
+                    </>
+                  )}
+                  <div className="mt-3">
+                    <Label className="text-xs text-gray-500 mb-1.5">评审场地/环境资源准备</Label>
+                    <Textarea
+                      value={mockResReview.venueResources}
+                      onChange={e => setMockResReview({ ...mockResReview, venueResources: e.target.value })}
+                      placeholder="请描述评审所需的场地、设备及环境资源准备要求..."
+                      rows={2}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="mt-3">
+                    <div className="flex items-center gap-2">
+                      <Switch checked={mockResReview.allowResubmit} onCheckedChange={v => setMockResReview({ ...mockResReview, allowResubmit: v })} />
+                      <span className="text-xs text-gray-600">允许重新提交</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="border rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <p className="text-sm font-medium">评审流程设置</p>
+                      {(() => {
+                        const enabledSteps = reviewSteps.filter(s => s.enabled)
+                        const totalWeight = enabledSteps.reduce((sum, s) => sum + (s.weight || 0), 0)
+                        return enabledSteps.length > 0 && (
+                          <div className={cn(
+                            "flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full font-medium",
+                            totalWeight === 100 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+                          )}>
+                            <span>权重合计 {totalWeight}%</span>
+                            {totalWeight !== 100 && <span className="text-[10px]">(需等于100%)</span>}
+                          </div>
+                        )
+                      })()}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
+                        const enabled = reviewSteps.filter(s => s.enabled)
+                        const count = enabled.length
+                        if (count === 0) return
+                        const base = Math.floor(100 / count)
+                        const remainder = 100 % count
+                        const newSteps = reviewSteps.map(s => {
+                          if (!s.enabled) return s
+                          const idx = enabled.findIndex(e => e.id === s.id)
+                          return { ...s, weight: base + (idx < remainder ? 1 : 0) }
+                        })
+                        setReviewSteps(newSteps)
+                      }}>
+                        <RotateCcw className="h-3.5 w-3.5 mr-1" />一键平均权重
+                      </Button>
+                      <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { setShowAddStep(true); setNewStepLabel(""); setNewStepDesc(""); }}>
+                        <Plus className="h-3.5 w-3.5 mr-1" />新增步骤
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {reviewSteps.map((step, i) => (
+                      <div key={step.id} className="p-3 rounded-lg border">
+                        {editingReviewStepId === step.id ? (
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input value={editingStepLabel} onChange={e => setEditingStepLabel(e.target.value)} placeholder="步骤名称" className="text-sm h-8" />
+                              <Select value={step.subjectType || ""} onValueChange={v => setReviewSteps(reviewSteps.map(s => s.id === step.id ? { ...s, subjectType: v } : s))}>
+                                <SelectTrigger className="text-sm h-8"><SelectValue placeholder="请选择评价主体" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="teacher">教师</SelectItem>
+                                  <SelectItem value="enterprise_mentor">企业导师</SelectItem>
+                                  <SelectItem value="peer">互评</SelectItem>
+                                  <SelectItem value="self">自评</SelectItem>
+                                  <SelectItem value="ai">AI 评价</SelectItem>
+                                  <SelectItem value="service_target">服务对象</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Input value={editingStepDesc} onChange={e => setEditingStepDesc(e.target.value)} placeholder="步骤描述" className="text-sm h-8" />
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" className="h-7 text-xs" onClick={() => {
+                                setReviewSteps(reviewSteps.map(s => s.id === step.id ? { ...s, label: editingStepLabel || s.label, desc: editingStepDesc || s.desc } : s))
+                                setEditingReviewStepId(null)
+                              }}>保存</Button>
+                              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingReviewStepId(null)}>取消</Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2">
+                                <Switch checked={step.enabled} onCheckedChange={v => {
+                                  if (v && !step.subjectType) {
+                                    setReviewSteps(reviewSteps.map(s => s.id === step.id ? { ...s, enabled: v, subjectType: "teacher" } : s))
+                                  } else {
+                                    setReviewSteps(reviewSteps.map(s => s.id === step.id ? { ...s, enabled: v } : s))
+                                  }
+                                }} />
+                                <div>
+                                  <p className="text-sm font-medium">{step.label}</p>
+                                  <p className="text-xs text-gray-400">{step.desc}</p>
+                                </div>
+                              </div>
+                              <Badge variant={step.subjectType ? "secondary" : "outline"} className="text-[10px]">{step.subjectType ? (subjectLabels[step.subjectType] || step.subjectType) : "未绑定"}</Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {step.enabled && (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    type="number"
+                                    value={step.weight || 0}
+                                    onChange={e => setReviewSteps(reviewSteps.map(s => s.id === step.id ? { ...s, weight: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } : s))}
+                                    className="h-7 text-xs w-14 text-center"
+                                    min={0}
+                                    max={100}
+                                  />
+                                  <span className="text-xs text-gray-400">%</span>
+                                </div>
+                              )}
+                              <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-400 hover:text-primary" onClick={() => { setEditingReviewStepId(step.id); setEditingStepLabel(step.label); setEditingStepDesc(step.desc); }}>
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              {reviewSteps.length > 1 && (
+                                <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-400 hover:text-red-500" onClick={() => setReviewSteps(reviewSteps.filter(s => s.id !== step.id))}>
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {showAddStep && (
+                    <div className="mt-2 p-3 rounded-lg border border-dashed border-primary/30 bg-primary/[0.02] space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input value={newStepLabel} onChange={e => setNewStepLabel(e.target.value)} placeholder="步骤名称" className="text-sm h-8" />
+                        <Select value={newStepSubjectType} onValueChange={v => setNewStepSubjectType(v)}>
+                          <SelectTrigger className="text-sm h-8"><SelectValue placeholder="请选择评价主体" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="teacher">教师</SelectItem>
+                            <SelectItem value="enterprise_mentor">企业导师</SelectItem>
+                            <SelectItem value="peer">互评</SelectItem>
+                            <SelectItem value="self">自评</SelectItem>
+                            <SelectItem value="ai">AI 评价</SelectItem>
+                            <SelectItem value="service_target">服务对象</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Input value={newStepDesc} onChange={e => setNewStepDesc(e.target.value)} placeholder="步骤描述" className="text-sm h-8" />
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" className="h-7 text-xs" onClick={() => {
+                          if (!newStepLabel.trim() || !newStepSubjectType) return
+                          setReviewSteps([...reviewSteps, { id: `rs-${Date.now()}`, label: newStepLabel, desc: newStepDesc, enabled: true, subjectType: newStepSubjectType, weight: 0 }])
+                          setShowAddStep(false)
+                          setNewStepLabel("")
+                          setNewStepDesc("")
+                          setNewStepSubjectType("")
+                        }}>添加</Button>
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setShowAddStep(false); setNewStepLabel(""); setNewStepDesc(""); setNewStepSubjectType(""); }}>取消</Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          }
+          if (methodKey === "paper") {
+            const [paperEndTime, setPaperEndTime] = useState("")
+
+            const selectPaper = (paperId: string) => {
+              updateState({ paperIds: [paperId], paperWeights: { [paperId]: 100 } })
+            }
+
+            return (
+              <div className="space-y-4">
+                <div className="border rounded-xl p-4">
+                  <p className="text-sm font-medium mb-3">选择已有试卷</p>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input value={pSearch} onChange={e => setPSearch(e.target.value)} placeholder="搜索试卷..." className="pl-9" />
+                    </div>
+                    <PrdAnnotation data={getAnnotation("paper-action-create")}>
+                      <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => { setShowCreatePaper(true); setNewPaperName(""); setNewPaperQuestionCount(10); setNewPaperTotalScore(100); }}>
+                        <Plus className="h-3.5 w-3.5 mr-1" />新建试卷
+                      </Button>
+                    </PrdAnnotation>
+                  </div>
+                  <div className="space-y-2">
+                    {paperMocks.filter(p => !pSearch || p.name.includes(pSearch)).map(paper => {
+                      const selected = state.paperIds.includes(paper.id)
+                      return (
+                        <div key={paper.id} onClick={() => selectPaper(paper.id)} className={cn("p-4 rounded-lg border cursor-pointer", selected ? "border-primary bg-primary/5" : "hover:border-gray-300")}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center shrink-0", selected ? "bg-primary border-primary" : "border-gray-300")}>{selected && <div className="w-2 h-2 rounded-full bg-white" />}</div>
+                              <div>
+                                <p className="text-sm font-medium">{paper.name}</p>
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  <Badge className="text-[10px] bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-50">{paper.questionCount} 题</Badge>
+                                  <Badge className="text-[10px] bg-green-50 text-green-600 border-green-200 hover:bg-green-50">总分 {paper.totalScore}</Badge>
+                                </div>
+                              </div>
+                            </div>
+                            <Button variant="ghost" size="sm" className="h-7 text-[11px] px-2 text-gray-400 hover:text-primary" onClick={e => { e.stopPropagation(); setSelectedPaperForDetail(paper.id); setPaperDetailOpen(true); }}>
+                              查看详情
+                            </Button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="border rounded-xl p-4">
+                  <p className="text-sm font-medium mb-3">考卷设置</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-gray-500">考试时长（分钟）</Label>
+                      <Input type="number" value={mockResPaper.duration} onChange={e => setMockResPaper({ ...mockResPaper, duration: Math.max(5, parseInt(e.target.value) || 5) })} className="mt-1 text-sm" min={5} />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">允许重考</Label>
+                      <div className="mt-2 flex items-center gap-2">
+                        <Switch checked={mockResPaper.allowRetake} onCheckedChange={v => setMockResPaper({ ...mockResPaper, allowRetake: v })} />
+                        <span className="text-xs text-gray-600">{mockResPaper.allowRetake ? "是" : "否"}</span>
+                      </div>
+                    </div>
+                    {mockResPaper.allowRetake && (
+                      <div>
+                        <Label className="text-xs text-gray-500">最多重考次数</Label>
+                        <Input type="number" value={mockResPaper.retakeCount} onChange={e => setMockResPaper({ ...mockResPaper, retakeCount: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-3 flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Switch checked={mockResPaper.shuffleQuestions} onCheckedChange={v => setMockResPaper({ ...mockResPaper, shuffleQuestions: v })} />
+                      <span className="text-xs text-gray-600">题目乱序</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch checked={mockResPaper.showResult} onCheckedChange={v => setMockResPaper({ ...mockResPaper, showResult: v })} />
+                      <span className="text-xs text-gray-600">交卷后显示成绩</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-4 border-t">
+                    <Label className="text-xs text-gray-500 mb-2">试卷启用条件</Label>
+                    <div className="space-y-2 mt-1">
+                      {[
+                        { key: "manual", label: "后台手动启用", desc: `老师手动开启试卷后，学生才能进入作答。每位学生从点击「开始答题」时起，计时 ${mockResPaper.duration} 分钟，时间结束系统将自动提交试卷。` },
+                        { key: "scheduled", label: "定时启用", desc: "提前预设考试的开始、结束时间。到开始时间后，学生方可进入作答；从开始时间起按考试时长计时，到预设结束时间自动关闭并提交试卷。" },
+                        { key: "always", label: "随时作答", desc: "试卷创建完成后立即开放，学生可随时进入作答。学生从点击「开始答题」时起按试卷设定时长计时，时间结束系统将自动提交试卷。" },
+                      ].map(mode => (
+                        <button
+                          key={mode.key}
+                          onClick={() => setMockResPaper({ ...mockResPaper, activationMode: mode.key as "manual" | "scheduled" | "always" })}
+                          className={cn(
+                            "w-full text-left p-3 rounded-lg border transition-all",
+                            mockResPaper.activationMode === mode.key
+                              ? "border-primary bg-primary/5 text-primary"
+                              : "border-gray-200 text-gray-600 hover:border-gray-300"
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center shrink-0", mockResPaper.activationMode === mode.key ? "bg-primary border-primary" : "border-gray-300")}>
+                              {mockResPaper.activationMode === mode.key && <div className="w-2 h-2 rounded-full bg-white" />}
+                            </div>
+                            <span className="text-xs font-medium">{mode.label}</span>
+                          </div>
+                          <p className="text-[11px] text-gray-400 mt-1 ml-6">{mode.desc}</p>
+                        </button>
+                      ))}
+                    </div>
+                    {mockResPaper.activationMode === "scheduled" && (
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs text-gray-500">启用时间</Label>
+                          <Input
+                            type="datetime-local"
+                            value={mockResPaper.scheduledTime}
+                            onChange={e => setMockResPaper({ ...mockResPaper, scheduledTime: e.target.value })}
+                            className="mt-1 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-500">停用时间</Label>
+                          <Input
+                            type="datetime-local"
+                            value={paperEndTime}
+                            onChange={e => setPaperEndTime(e.target.value)}
+                            className="mt-1 text-sm"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          }
+          if (methodKey === "question_bank") {
+            const selectedQuestions = allQuestions.filter(q => state.questionBankQuestions.includes(q.id))
+            const typeSet = new Set(selectedQuestions.map(q => q.type))
+            const selectedTypes = Array.from(typeSet)
+            const [qbDrawMode, setQbDrawMode] = useState<"all" | "practice">("all")
+            const [qbPassRate, setQbPassRate] = useState(60)
+
+            return (
+              <div className="space-y-4">
+                <QuestionSelectorPanel field="questionBankQuestions" selectedIds={state.questionBankQuestions} showAutoSelect={true} />
+                <div className="border rounded-xl p-4">
+                  <p className="text-sm font-medium mb-3">答题规则</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-gray-500">答题方式</Label>
+                      <Select value={qbDrawMode} onValueChange={v => setQbDrawMode(v as "all" | "practice")}>
+                        <SelectTrigger className="mt-1 text-sm h-9"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">全部作答</SelectItem>
+                          <SelectItem value="practice">自由刷题</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {qbDrawMode === "practice" && (
+                      <div>
+                        <Label className="text-xs text-gray-500">正确率（%）</Label>
+                        <Input type="number" value={qbPassRate} onChange={e => setQbPassRate(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))} className="mt-1 text-sm" min={0} max={100} />
+                        <p className="text-[10px] text-gray-400 mt-1">超过正确率则得分 100，低于正确率得分 0</p>
+                      </div>
+                    )}
+                    <div>
+                      <Label className="text-xs text-gray-500">时间限制（分钟）</Label>
+                      <Input type="number" value={mockResQuestionBank.timeLimit} onChange={e => setMockResQuestionBank({ ...mockResQuestionBank, timeLimit: Math.max(5, parseInt(e.target.value) || 5) })} className="mt-1 text-sm" min={5} />
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Switch checked={mockResQuestionBank.allowRetake} onCheckedChange={v => setMockResQuestionBank({ ...mockResQuestionBank, allowRetake: v })} />
+                      <span className="text-xs text-gray-600">允许重复测评</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch checked={mockResQuestionBank.shuffleQuestions} onCheckedChange={v => setMockResQuestionBank({ ...mockResQuestionBank, shuffleQuestions: v })} />
+                      <span className="text-xs text-gray-600">题目乱序</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch checked={mockResQuestionBank.showResult} onCheckedChange={v => setMockResQuestionBank({ ...mockResQuestionBank, showResult: v })} />
+                      <span className="text-xs text-gray-600">提交后展示成绩</span>
+                    </div>
+                  </div>
+                  {mockResQuestionBank.allowRetake && (
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs text-gray-500">最多重考次数</Label>
+                        <Input type="number" value={mockResQuestionBank.retakeCount} onChange={e => setMockResQuestionBank({ ...mockResQuestionBank, retakeCount: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            )
+          }
+          if (methodKey === "outcome") {
+            return (
+              <div className="space-y-4">
+                <div className="p-4 bg-cyan-50 rounded-lg border border-cyan-100 text-sm text-cyan-700">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Info className="h-4 w-4" />
+                    <span className="font-medium">成果评价说明</span>
+                  </div>
+                  <p>成果评价时教师根据学生提交的成果材料进行打分。评价点配置请在「评价标准配置」卡片中设置。</p>
+                </div>
+                <div className="border rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-medium">成果材料要求</p>
+                    <div className="flex items-center gap-2">
+                      <Switch checked={mockResReview.requiresMaterial} onCheckedChange={v => setMockResReview({ ...mockResReview, requiresMaterial: v })} />
+                      <span className="text-xs text-gray-600">是否需要提交成果材料</span>
+                    </div>
+                  </div>
+                  {mockResReview.requiresMaterial && (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs text-gray-500">预估提交天数</Label>
+                          <Input type="number" value={mockResReview.deadlineDays} onChange={e => setMockResReview({ ...mockResReview, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} />
+                        </div>
+                      </div>
+                      <div className="mt-3">
+                        <Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label>
+                        <Textarea
+                          value={mockResReview.submitFormatDesc}
+                          onChange={e => setMockResReview({ ...mockResReview, submitFormatDesc: e.target.value })}
+                          placeholder="请用一句话说明学生需要提交的成果材料要求..."
+                          rows={2}
+                          className="text-sm"
+                        />
+                      </div>
+                    </>
+                  )}
+                  <div className="mt-3">
+                    <Label className="text-xs text-gray-500 mb-1.5">评价场地/环境资源准备</Label>
+                    <Textarea
+                      value={mockResReview.venueResources}
+                      onChange={e => setMockResReview({ ...mockResReview, venueResources: e.target.value })}
+                      placeholder="请描述评价所需的场地、设备及环境资源准备要求..."
+                      rows={2}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="mt-3">
+                    <div className="flex items-center gap-2">
+                      <Switch checked={mockResReview.allowResubmit} onCheckedChange={v => setMockResReview({ ...mockResReview, allowResubmit: v })} />
+                      <span className="text-xs text-gray-600">允许重新提交</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          }
+          if (methodKey === "homework") {
+            return (
+              <div className="space-y-4">
+                <div className="p-4 bg-pink-50 rounded-lg border border-pink-100 text-sm text-pink-700">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Info className="h-4 w-4" />
+                    <span className="font-medium">作业说明</span>
+                  </div>
+                  <p>学生提交作业后，教师按评分规则进行打分。评价点配置请在「评价标准配置」卡片中设置。</p>
+                </div>
+                <div className="border rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-medium">作业提交要求</p>
+                    <div className="flex items-center gap-2">
+                      <Switch checked={mockResReview.requiresMaterial} onCheckedChange={v => setMockResReview({ ...mockResReview, requiresMaterial: v })} />
+                      <span className="text-xs text-gray-600">是否需要提交作业材料</span>
+                    </div>
+                  </div>
+                  {mockResReview.requiresMaterial && (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs text-gray-500">预估提交天数</Label>
+                          <Input type="number" value={mockResReview.deadlineDays} onChange={e => setMockResReview({ ...mockResReview, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} />
+                        </div>
+                      </div>
+                      <div className="mt-3">
+                        <Label className="text-xs text-gray-500 mb-1.5">作业格式要求</Label>
+                        <Textarea
+                          value={mockResReview.submitFormatDesc}
+                          onChange={e => setMockResReview({ ...mockResReview, submitFormatDesc: e.target.value })}
+                          placeholder="请用一句话说明学生需要提交的作业格式要求..."
+                          rows={2}
+                          className="text-sm"
+                        />
+                      </div>
+                    </>
+                  )}
+                  <div className="mt-3">
+                    <div className="flex items-center gap-2">
+                      <Switch checked={mockResReview.allowResubmit} onCheckedChange={v => setMockResReview({ ...mockResReview, allowResubmit: v })} />
+                      <span className="text-xs text-gray-600">允许重新提交</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          }
+          if (methodKey === "quiz") {
+            const quizPresetTimes = [5, 10, 15, 20, 30]
+            const quizIsPreset = quizPresetTimes.includes(mockResQuestionBank.timeLimit)
+            return (
+              <div className="space-y-4">
+                <QuestionSelectorPanel field="quizQuestions" selectedIds={state.quizQuestions} showAutoSelect={true} maxCount={30} />
+                <div className="border rounded-xl p-4">
+                  <p className="text-sm font-medium mb-3">答题规则</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-gray-500">时间限制</Label>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {quizPresetTimes.map(min => (
+                          <button
+                            key={min}
+                            onClick={() => setMockResQuestionBank({ ...mockResQuestionBank, timeLimit: min })}
+                            className={cn(
+                              "px-3 py-1.5 rounded-lg text-xs border transition-all",
+                              mockResQuestionBank.timeLimit === min && quizIsPreset
+                                ? "border-primary bg-primary/5 text-primary"
+                                : "border-gray-200 text-gray-600 hover:border-gray-300"
+                            )}
+                          >
+                            {min} 分钟
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => setMockResQuestionBank({ ...mockResQuestionBank, timeLimit: quizIsPreset ? 1 : mockResQuestionBank.timeLimit })}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg text-xs border transition-all",
+                            !quizIsPreset && mockResQuestionBank.timeLimit > 0
+                              ? "border-primary bg-primary/5 text-primary"
+                              : "border-gray-200 text-gray-600 hover:border-gray-300"
+                          )}
+                        >
+                          自定义
+                        </button>
+                      </div>
+                      {!quizIsPreset && (
+                        <div className="mt-2">
+                          <Input
+                            type="number"
+                            value={mockResQuestionBank.timeLimit}
+                            onChange={e => {
+                              const val = Math.max(1, parseInt(e.target.value) || 1)
+                              setMockResQuestionBank({ ...mockResQuestionBank, timeLimit: val })
+                            }}
+                            className="w-32 text-sm"
+                            min={1}
+                            placeholder="输入分钟数"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Switch checked={mockResQuestionBank.allowRetake} onCheckedChange={v => setMockResQuestionBank({ ...mockResQuestionBank, allowRetake: v })} />
+                      <span className="text-xs text-gray-600">允许重复测评</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch checked={mockResQuestionBank.shuffleQuestions} onCheckedChange={v => setMockResQuestionBank({ ...mockResQuestionBank, shuffleQuestions: v })} />
+                      <span className="text-xs text-gray-600">题目乱序</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch checked={mockResQuestionBank.showResult} onCheckedChange={v => setMockResQuestionBank({ ...mockResQuestionBank, showResult: v })} />
+                      <span className="text-xs text-gray-600">提交后展示成绩</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          }
+          return null
+        }
+
+        const getMethodEvalInfo = (methodKey: string) => {
+          switch (methodKey) {
+            case "random_draw": return { points: state.randomDrawEvalPoints, field: "randomDrawEvalPoints" as const }
+            case "review": return { points: state.reviewEvalPoints, field: "reviewEvalPoints" as const }
+            case "paper": return { points: state.paperEvalPoints, field: "paperEvalPoints" as const }
+            case "question_bank": return { points: state.questionBankEvalPoints, field: "questionBankEvalPoints" as const }
+            case "outcome": return { points: state.outcomeEvalPoints, field: "outcomeEvalPoints" as const }
+            case "homework": return { points: state.homeworkEvalPoints, field: "homeworkEvalPoints" as const }
+            case "quiz": return { points: state.quizEvalPoints, field: "quizEvalPoints" as const }
+            default: return { points: [] as EvalPoint[], field: "randomDrawEvalPoints" as const }
+          }
+        }
+
+        const openDialog = (type: "object" | "subject" | "resource" | "method", methodKey: string) => {
+          setErDialogMethod(methodKey)
+          setErDialogOpen(type)
+        }
+
+        const ObjectDialogContent = ({ methodKey }: { methodKey: string }) => {
+          const currentObject = state.methodEvalObjects[methodKey] || state.evalObject
+          return (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-500 mb-4">选择本评价方式的测评对象类型</p>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { key: "individual", label: "个人", desc: "以学生个人为单位进行测评", icon: <User className="h-6 w-6" /> },
+                  { key: "group", label: "小组", desc: "以小组为单位进行测评", icon: <Users className="h-6 w-6" /> },
+                ].map(opt => (
+                  <button
+                    key={opt.key}
+                    onClick={() => updateState({ methodEvalObjects: { ...state.methodEvalObjects, [methodKey]: opt.key as EvalObjectType } })}
+                    className={cn("p-5 rounded-xl border text-left transition-all flex items-center gap-4", currentObject === opt.key ? "border-primary bg-primary/[0.03] ring-1 ring-primary/20" : "border-gray-200 hover:border-gray-300 bg-white")}
+                  >
+                    <div className={cn("p-3 rounded-lg", currentObject === opt.key ? "bg-primary/10 text-primary" : "bg-gray-100 text-gray-400")}>
+                      {opt.icon}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold mb-1">{opt.label}</p>
+                      <p className="text-xs text-gray-400">{opt.desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )
+        }
+
+        const SubjectDialogContent = ({ methodKey }: { methodKey: string }) => {
+          const currentSubjects = state.methodEvalSubjects[methodKey] || state.evalSubjects
+          const evalObject = state.methodEvalObjects[methodKey] || state.evalObject
+
+          const handleDistributeWeights = () => {
+            const enabled = currentSubjects.filter(s => s.enabled)
+            const count = enabled.length
+            if (count === 0) return
+            const base = Math.floor(100 / count)
+            const remainder = 100 % count
+            const enabledIdxMap = new Map(enabled.map((s, i) => [s.type, i]))
+            const newSubjects = currentSubjects.map(s => {
+              if (!s.enabled) return s
+              const idx = enabledIdxMap.get(s.type) ?? 0
+              return { ...s, params: { ...s.params, weightPercent: base + (idx < remainder ? 1 : 0) } }
+            })
+            updateState({ methodEvalSubjects: { ...state.methodEvalSubjects, [methodKey]: newSubjects } })
+          }
+
+          const backgroundOptions = [
+            "计算机/软件工程相关专业",
+            "电子信息工程",
+            "自动化/控制工程",
+            "数学/统计学",
+            "设计/艺术相关专业",
+            "工商管理/市场营销",
+            "财务会计/金融",
+            "机械工程/制造业",
+            "建筑工程/土木工程",
+            "医学/护理学",
+            "教育学/心理学",
+            "法学/政治学",
+            "其他专业",
+          ]
+
+          return (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-500">配置参与评价的主体及其参数</p>
+                <Button variant="outline" size="sm" className="text-xs h-8" onClick={handleDistributeWeights}>
+                  <Scale className="h-3.5 w-3.5 mr-1" />一键平均权重
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {currentSubjects.map((subject, idx) => {
+                  const allowedSubjectsForMethod: Record<string, string[]> = {
+                    paper: ["teacher", "enterprise_mentor"],
+                    question_bank: ["teacher", "enterprise_mentor"],
+                    random_draw: ["teacher", "enterprise_mentor", "self", "peer"],
+                    review: ["teacher", "enterprise_mentor", "self", "peer", "service_target"],
+                  }
+                  const methodAllowed = (allowedSubjectsForMethod[methodKey] || []).includes(subject.type)
+                  const peerAllowed = subject.type !== "peer" || evalObject === "group"
+                  const allowed = methodAllowed && peerAllowed
+                  return (
+                    <div key={subject.type} className={cn("p-4 rounded-xl border transition-all", !allowed ? "opacity-50 bg-gray-50 border-gray-200" : subject.enabled ? "border-primary bg-primary/[0.03]" : "border-gray-200 bg-white")}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <Switch checked={subject.enabled} disabled={!allowed} onCheckedChange={v => updateMethodEvalSubject(methodKey, idx, { enabled: v })} />
+                          <span className={cn("text-sm font-medium", !allowed && "text-gray-400")}>{subjectLabels[subject.type]}</span>
+                        </div>
+                        {subject.enabled && allowed && subject.params?.weightPercent !== undefined && (
+                          <Badge variant="outline" className="text-[10px]">权重 {subject.params.weightPercent}%</Badge>
+                        )}
+                      </div>
+                      {subject.enabled && (
+                        <div className="pl-12 space-y-3">
+                          {subject.type === "teacher" && (
+                            <>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Label className="text-xs text-gray-500">专业背景要求</Label>
+                                  <Select value={subject.params?.teacherBackground || ""} onValueChange={v => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, teacherBackground: v } })}>
+                                    <SelectTrigger className="mt-1 text-sm h-9">
+                                      <SelectValue placeholder="选择专业背景" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {backgroundOptions.map(bg => (
+                                        <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-gray-500">评分人数</Label>
+                                  <Input type="number" value={subject.params?.scorerCount || 1} onChange={e => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, scorerCount: Math.max(1, parseInt(e.target.value) || 1) } })} className="mt-1 text-sm" min={1} />
+                                  {(subject.params?.scorerCount || 1) > 1 && (
+                                    <div className="mt-2">
+                                      <Label className="text-xs text-gray-500">统计规则</Label>
+                                      <Select value={subject.params?.aggregationRule || "average"} onValueChange={v => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, aggregationRule: v as "average" | "median" | "max" | "min" } })}>
+                                        <SelectTrigger className="mt-1 text-sm h-9">
+                                          <SelectValue placeholder="选择统计规则" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="average">平均值</SelectItem>
+                                          <SelectItem value="median">中位数</SelectItem>
+                                          <SelectItem value="max">最高分</SelectItem>
+                                          <SelectItem value="min">最低分</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-gray-500">评分权重 (%)</Label>
+                                  <Input type="number" value={subject.params?.weightPercent || 0} onChange={e => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, weightPercent: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } })} className="mt-1 text-sm" min={0} max={100} />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-gray-500">最低教龄 (年)</Label>
+                                  <Input type="number" value={subject.params?.minTeachingYears || 0} onChange={e => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, minTeachingYears: Math.max(0, parseInt(e.target.value) || 0) } })} className="mt-1 text-sm" min={0} />
+                                </div>
+                              </div>
+                            </>
+                          )}
+                          {subject.type === "enterprise_mentor" && (
+                            <>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Label className="text-xs text-gray-500">专业领域</Label>
+                                  <Select value={subject.params?.expertise || ""} onValueChange={v => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, expertise: v } })}>
+                                    <SelectTrigger className="mt-1 text-sm h-9">
+                                      <SelectValue placeholder="选择专业领域" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {backgroundOptions.map(bg => (
+                                        <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-gray-500">工作年限要求 (年)</Label>
+                                  <Input type="number" value={subject.params?.minYears || 0} onChange={e => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, minYears: Math.max(0, parseInt(e.target.value) || 0) } })} className="mt-1 text-sm" min={0} />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-gray-500">评分人数</Label>
+                                  <Input type="number" value={subject.params?.scorerCount || 1} onChange={e => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, scorerCount: Math.max(1, parseInt(e.target.value) || 1) } })} className="mt-1 text-sm" min={1} />
+                                  {(subject.params?.scorerCount || 1) > 1 && (
+                                    <div className="mt-2">
+                                      <Label className="text-xs text-gray-500">统计规则</Label>
+                                      <Select value={subject.params?.aggregationRule || "average"} onValueChange={v => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, aggregationRule: v as "average" | "median" | "max" | "min" } })}>
+                                        <SelectTrigger className="mt-1 text-sm h-9">
+                                          <SelectValue placeholder="选择统计规则" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="average">平均值</SelectItem>
+                                          <SelectItem value="median">中位数</SelectItem>
+                                          <SelectItem value="max">最高分</SelectItem>
+                                          <SelectItem value="min">最低分</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-gray-500">评分权重 (%)</Label>
+                                  <Input type="number" value={subject.params?.weightPercent || 0} onChange={e => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, weightPercent: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } })} className="mt-1 text-sm" min={0} max={100} />
+                                </div>
+                              </div>
+                              <div>
+                                <Label className="text-xs text-gray-500">岗位工作经历</Label>
+                                <Input value={subject.params?.jobExperience || ""} onChange={e => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, jobExperience: e.target.value } })} placeholder="请填写岗位工作经历要求" className="mt-1 text-sm" />
+                              </div>
+                            </>
+                          )}
+                          {subject.type === "peer" && (
+                            <>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Label className="text-xs text-gray-500">互评人数</Label>
+                                  <Input type="number" value={subject.params?.peerCount || 3} onChange={e => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, peerCount: Math.max(1, parseInt(e.target.value) || 1) } })} className="mt-1 text-sm" min={1} />
+                                  {(subject.params?.peerCount || 3) > 1 && (
+                                    <div className="mt-2">
+                                      <Label className="text-xs text-gray-500">统计规则</Label>
+                                      <Select value={subject.params?.aggregationRule || "average"} onValueChange={v => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, aggregationRule: v as "average" | "median" | "max" | "min" } })}>
+                                        <SelectTrigger className="mt-1 text-sm h-9">
+                                          <SelectValue placeholder="选择统计规则" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="average">平均值</SelectItem>
+                                          <SelectItem value="median">中位数</SelectItem>
+                                          <SelectItem value="max">最高分</SelectItem>
+                                          <SelectItem value="min">最低分</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-gray-500">评分权重 (%)</Label>
+                                  <Input type="number" value={subject.params?.weightPercent || 0} onChange={e => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, weightPercent: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } })} className="mt-1 text-sm" min={0} max={100} />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Label className="text-xs text-gray-500">互评规则</Label>
+                                  <Select value={subject.params?.peerRule || ""} onValueChange={v => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, peerRule: v } })}>
+                                    <SelectTrigger className="mt-1 text-sm h-9">
+                                      <SelectValue placeholder="选择互评规则" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="随机分配">随机分配</SelectItem>
+                                      <SelectItem value="相邻座位">相邻座位</SelectItem>
+                                      <SelectItem value="自由组合">自由组合</SelectItem>
+                                      <SelectItem value="指定分组">指定分组</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="flex items-end pb-2">
+                                  <div className="flex items-center gap-2">
+                                    <Switch checked={subject.params?.anonymous || false} onCheckedChange={v => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, anonymous: v } })} />
+                                    <span className="text-xs text-gray-600">匿名评价</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                          {subject.type === "self" && (
+                            <>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Label className="text-xs text-gray-500">评分权重 (%)</Label>
+                                  <Input type="number" value={subject.params?.weightPercent || 0} onChange={e => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, weightPercent: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } })} className="mt-1 text-sm" min={0} max={100} />
+                                </div>
+                                <div className="flex items-end pb-2">
+                                  <div className="flex items-center gap-2">
+                                    <Switch checked={subject.params?.requiresReflection || false} onCheckedChange={v => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, requiresReflection: v } })} />
+                                    <span className="text-xs text-gray-600">需要提交反思报告</span>
+                                  </div>
+                                </div>
+                              </div>
+                              {subject.params?.requiresReflection && (
+                                <div>
+                                  <Label className="text-xs text-gray-500">反思报告最少字数</Label>
+                                  <Input type="number" value={subject.params?.reflectionMinLength || 300} onChange={e => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, reflectionMinLength: Math.max(100, parseInt(e.target.value) || 100) } })} className="mt-1 text-sm w-32" min={100} />
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {subject.type === "ai" && (
+                            <>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Label className="text-xs text-gray-500">AI 模型</Label>
+                                  <Select value={subject.params?.aiModel || ""} onValueChange={v => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, aiModel: v } })}>
+                                    <SelectTrigger className="mt-1 text-sm h-9">
+                                      <SelectValue placeholder="选择 AI 模型" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="GPT-4">GPT-4</SelectItem>
+                                      <SelectItem value="GPT-3.5">GPT-3.5</SelectItem>
+                                      <SelectItem value="Claude">Claude</SelectItem>
+                                      <SelectItem value="文心一言">文心一言</SelectItem>
+                                      <SelectItem value="通义千问">通义千问</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-gray-500">评分权重 (%)</Label>
+                                  <Input type="number" value={subject.params?.weightPercent || 0} onChange={e => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, weightPercent: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } })} className="mt-1 text-sm" min={0} max={100} />
+                                </div>
+                              </div>
+                            </>
+                          )}
+                          {subject.type === "service_target" && (
+                            <>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Label className="text-xs text-gray-500">评价方式</Label>
+                                  <Select value={subject.params?.serviceMethod || ""} onValueChange={v => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, serviceMethod: v } })}>
+                                    <SelectTrigger className="mt-1 text-sm h-9">
+                                      <SelectValue placeholder="选择评价方式" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="满意度问卷">满意度问卷</SelectItem>
+                                      <SelectItem value="现场反馈">现场反馈</SelectItem>
+                                      <SelectItem value="线上评价">线上评价</SelectItem>
+                                      <SelectItem value="访谈记录">访谈记录</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-gray-500">样本数量</Label>
+                                  <Input type="number" value={subject.params?.sampleSize || 10} onChange={e => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, sampleSize: Math.max(1, parseInt(e.target.value) || 1) } })} className="mt-1 text-sm" min={1} />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-gray-500">评分权重 (%)</Label>
+                                  <Input type="number" value={subject.params?.weightPercent || 0} onChange={e => updateMethodEvalSubject(methodKey, idx, { params: { ...subject.params, weightPercent: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } })} className="mt-1 text-sm" min={0} max={100} />
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        }
+
+        function MixedTagEditor({
+          text,
+          knowledgePointIds,
+          abilityPointIds,
+          onChange,
+          onOpenKpDialog,
+          onOpenAbDialog,
+        }: {
+          text: string
+          knowledgePointIds: string[]
+          abilityPointIds: string[]
+          onChange: (updates: { name?: string; knowledgePointIds?: string[]; abilityPointIds?: string[] }) => void
+          onOpenKpDialog: () => void
+          onOpenAbDialog: () => void
+        }) {
+          const ref = useRef<HTMLDivElement>(null)
+          const isComposing = useRef(false)
+          const onChangeRef = useRef(onChange)
+          onChangeRef.current = onChange
+          const kpIdsRef = useRef(knowledgePointIds)
+          kpIdsRef.current = knowledgePointIds
+          const abIdsRef = useRef(abilityPointIds)
+          abIdsRef.current = abilityPointIds
+          const prevTags = useRef({ kp: [] as string[], ab: [] as string[] })
+          const cursorOffsetRef = useRef<number | null>(null)
+
+          const updateCursorOffset = () => {
+            const el = ref.current
+            if (!el) return
+            const selection = document.getSelection()
+            if (!selection || !selection.rangeCount) return
+            const range = selection.getRangeAt(0)
+            if (!el.contains(range.startContainer) && range.startContainer !== el) return
+
+            let offset = 0
+            if (range.startContainer.nodeType === Node.TEXT_NODE) {
+              const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+              let node
+              while ((node = walker.nextNode())) {
+                if (node === range.startContainer) {
+                  offset += range.startOffset
+                  break
+                }
+                offset += node.textContent?.length || 0
+              }
+            } else if (range.startContainer === el) {
+              for (let i = 0; i < range.startOffset && i < el.childNodes.length; i++) {
+                const child = el.childNodes[i]
+                if (child.nodeType === Node.TEXT_NODE) {
+                  offset += child.textContent?.length || 0
+                }
+              }
+            }
+            cursorOffsetRef.current = offset
+          }
+
+          const createTagSpan = (type: 'kp' | 'ab', id: string): HTMLSpanElement | null => {
+            const span = document.createElement('span')
+            span.contentEditable = 'false'
+            span.dataset.tag = 'true'
+            span.dataset.type = type
+            span.dataset.id = id
+            if (type === 'kp') {
+              const kp = knowledgePoints.find(k => k.id === id)
+              if (!kp) return null
+              span.className = 'inline-flex items-center px-1 py-0.5 rounded text-[10px] font-normal bg-blue-50 text-blue-600 border border-blue-200 mx-0.5 align-middle cursor-default'
+              span.innerHTML = `${kp.name}<button class="ml-0.5 text-blue-400 hover:text-red-500 leading-none">×</button>`
+              span.querySelector('button')!.onclick = (e) => {
+                e.stopPropagation()
+                span.remove()
+                onChangeRef.current({ knowledgePointIds: kpIdsRef.current.filter(i => i !== id) })
+              }
+            } else {
+              const ab = abilityPoints.find(a => a.id === id)
+              if (!ab) return null
+              span.className = 'inline-flex items-center px-1 py-0.5 rounded text-[10px] font-normal bg-amber-50 text-amber-600 border border-amber-200 mx-0.5 align-middle cursor-default'
+              span.innerHTML = `${ab.name}<button class="ml-0.5 text-amber-400 hover:text-red-500 leading-none">×</button>`
+              span.querySelector('button')!.onclick = (e) => {
+                e.stopPropagation()
+                span.remove()
+                onChangeRef.current({ abilityPointIds: abIdsRef.current.filter(i => i !== id) })
+              }
+            }
+            return span
+          }
+
+          // Initial mount only
+          useLayoutEffect(() => {
+            const el = ref.current
+            if (!el) return
+            if (text) el.textContent = text
+            else el.innerHTML = ''
+            knowledgePointIds.forEach(kpid => {
+              const span = createTagSpan('kp', kpid)
+              if (span) el.appendChild(span)
+            })
+            abilityPointIds.forEach(abId => {
+              const span = createTagSpan('ab', abId)
+              if (span) el.appendChild(span)
+            })
+            prevTags.current = { kp: [...knowledgePointIds], ab: [...abilityPointIds] }
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+          }, [])
+
+          // Tag / text changes from parent
+          useLayoutEffect(() => {
+            const el = ref.current
+            if (!el) return
+            const kpChanged = JSON.stringify(prevTags.current.kp) !== JSON.stringify(knowledgePointIds)
+            const abChanged = JSON.stringify(prevTags.current.ab) !== JSON.stringify(abilityPointIds)
+            const domText = Array.from(el.childNodes)
+              .filter(n => n.nodeType === Node.TEXT_NODE)
+              .map(n => n.textContent)
+              .join('')
+            const textChanged = domText !== (text || '')
+            if (!kpChanged && !abChanged && !textChanged) return
+
+            if (el !== document.activeElement) {
+              const newKpIds = knowledgePointIds.filter(id => !prevTags.current.kp.includes(id))
+              const newAbIds = abilityPointIds.filter(id => !prevTags.current.ab.includes(id))
+              const existingKpIds = knowledgePointIds.filter(id => prevTags.current.kp.includes(id))
+              const existingAbIds = abilityPointIds.filter(id => prevTags.current.ab.includes(id))
+
+              if ((newKpIds.length > 0 || newAbIds.length > 0) && cursorOffsetRef.current != null) {
+                const offset = cursorOffsetRef.current
+                const before = text?.slice(0, offset) || ''
+                const after = text?.slice(offset) || ''
+                el.textContent = ''
+                if (before) el.appendChild(document.createTextNode(before))
+                newKpIds.forEach(kpid => {
+                  const span = createTagSpan('kp', kpid)
+                  if (span) el.appendChild(span)
+                })
+                newAbIds.forEach(abId => {
+                  const span = createTagSpan('ab', abId)
+                  if (span) el.appendChild(span)
+                })
+                if (after) el.appendChild(document.createTextNode(after))
+                existingKpIds.forEach(kpid => {
+                  const span = createTagSpan('kp', kpid)
+                  if (span) el.appendChild(span)
+                })
+                existingAbIds.forEach(abId => {
+                  const span = createTagSpan('ab', abId)
+                  if (span) el.appendChild(span)
+                })
+                cursorOffsetRef.current = null
+              } else {
+                if (text) el.textContent = text
+                else el.innerHTML = ''
+                knowledgePointIds.forEach(kpid => {
+                  const span = createTagSpan('kp', kpid)
+                  if (span) el.appendChild(span)
+                })
+                abilityPointIds.forEach(abId => {
+                  const span = createTagSpan('ab', abId)
+                  if (span) el.appendChild(span)
+                })
+              }
+            } else if (kpChanged || abChanged) {
+              const existingKp = new Set(Array.from(el.querySelectorAll('[data-type="kp"]')).map(el => (el as HTMLElement).dataset.id))
+              const existingAb = new Set(Array.from(el.querySelectorAll('[data-type="ab"]')).map(el => (el as HTMLElement).dataset.id))
+              knowledgePointIds.forEach(kpid => {
+                if (!existingKp.has(kpid)) {
+                  const span = createTagSpan('kp', kpid)
+                  if (span) el.appendChild(span)
+                }
+              })
+              abilityPointIds.forEach(abId => {
+                if (!existingAb.has(abId)) {
+                  const span = createTagSpan('ab', abId)
+                  if (span) el.appendChild(span)
+                }
+              })
+            }
+            prevTags.current = { kp: [...knowledgePointIds], ab: [...abilityPointIds] }
+          }, [knowledgePointIds, abilityPointIds, text])
+
+          const handleBlur = () => {
+            if (isComposing.current) return
+            const el = ref.current
+            if (!el) return
+            let newText = ''
+            const newKpIds: string[] = []
+            const newAbIds: string[] = []
+            el.childNodes.forEach(node => {
+              if (node.nodeType === Node.TEXT_NODE) {
+                newText += node.textContent || ''
+              } else if (node.nodeType === Node.ELEMENT_NODE) {
+                const dataset = (node as HTMLElement).dataset
+                if (dataset.tag) {
+                  if (dataset.type === 'kp' && dataset.id) newKpIds.push(dataset.id)
+                  if (dataset.type === 'ab' && dataset.id) newAbIds.push(dataset.id)
+                }
+              }
+            })
+            onChangeRef.current({ name: newText, knowledgePointIds: newKpIds, abilityPointIds: newAbIds })
+          }
+
+          return (
+            <div className="min-h-[32px] rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-sm flex flex-wrap gap-1 items-center">
+              <div
+                ref={ref}
+                contentEditable
+                suppressContentEditableWarning
+                className="flex-1 outline-none min-w-[80px] text-sm leading-6 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
+                data-placeholder="输入评价维度"
+                onBlur={handleBlur}
+                onKeyUp={updateCursorOffset}
+                onClick={updateCursorOffset}
+                onCompositionStart={() => { isComposing.current = true }}
+                onCompositionEnd={() => { isComposing.current = false }}
+                onPaste={(e) => {
+                  e.preventDefault()
+                  const pasted = e.clipboardData.getData('text/plain')
+                  document.execCommand('insertText', false, pasted)
+                }}
+              />
+              <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 text-gray-400 hover:text-primary shrink-0" onMouseDown={updateCursorOffset} onClick={onOpenKpDialog}>关联考查知识点</Button>
+              <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 text-gray-400 hover:text-primary shrink-0" onMouseDown={updateCursorOffset} onClick={onOpenAbDialog}>关联考查能力点</Button>
+            </div>
+          )
+        }
+
+        const rubricSchemes = [
+          { id: "scheme-fe", name: "前端开发能力评价量规", types: ["knowledge_mastery", "operation_standard", "task_completion", "result_quality"] as EvalSubType[], desc: "涵盖前端核心技术能力、操作规范、任务完成度和成果质量", pointIndices: [0, 1, 8, 5] },
+          { id: "scheme-review", name: "通用评审量规", types: ["knowledge_mastery", "communication", "collaboration", "professionalism", "result_quality"] as EvalSubType[], desc: "适用于项目评审，关注知识掌握、沟通协作与职业素养", pointIndices: [2, 3, 6, 9, 12, 13] },
+          { id: "scheme-innovation", name: "创新实践评价量规", types: ["innovation", "adaptability", "result_quality", "task_completion"] as EvalSubType[], desc: "侧重创新能力、应变能力和成果质量", pointIndices: [10, 11, 5, 4] },
+        ]
+
+        const MethodDialogContent = ({ methodKey }: { methodKey: string }) => {
+          const info = getMethodEvalInfo(methodKey)
+          const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+          const [gradeMappingDialogOpen, setGradeMappingDialogOpen] = useState(false)
+          const [editingGradeMappingPointId, setEditingGradeMappingPointId] = useState<string | null>(null)
+          const [localDraft, setLocalDraft] = useState<{ name: string; mode: "rubric" | "score_rule"; types: EvalSubType[]; scoreRuleItems: ScoreRuleItem[] }>({ name: "", mode: "rubric", types: [], scoreRuleItems: [] })
+          const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false)
+          const [saveTemplateMode, setSaveTemplateMode] = useState<"new" | "replace">("new")
+          const [selectedReplaceTemplateId, setSelectedReplaceTemplateId] = useState<string | null>(null)
+          const rubricIdField =
+            methodKey === "random_draw" ? "randomDrawRubricId" :
+            methodKey === "review" ? "reviewRubricId" :
+            methodKey === "outcome" ? "outcomeRubricId" :
+            methodKey === "homework" ? "homeworkRubricId" :
+            "reviewRubricId"
+          const currentRubricId = (state as any)[rubricIdField] as string | null
+          const view = methodDialogViews[methodKey] || "edit"
+          const setView = (v: "list" | "edit" | "template") => setMethodDialogViews(prev => ({ ...prev, [methodKey]: v }))
+
+          const currentScheme = rubricLibrary.find(s => s.id === currentRubricId)
+
+          const applyScheme = (schemeId: string) => {
+            const scheme = rubricLibrary.find(s => s.id === schemeId)
+            if (!scheme) return
+            updateState({ [rubricIdField]: schemeId } as any)
+            if (scheme.mode === "rubric") {
+              setEvalPoints(info.field, scheme.points.map(p => ({ ...p, id: `ep-${Date.now()}-${Math.random().toString(36).slice(2, 5)}` })))
+            } else {
+              setEvalPoints(info.field, [])
+            }
+            setEditingRubricId(schemeId)
+          }
+
+          const enterEdit = (schemeId: string | null) => {
+            if (schemeId) {
+              const scheme = rubricLibrary.find(s => s.id === schemeId)
+              if (scheme) {
+                setEvalPoints(info.field, JSON.parse(JSON.stringify(scheme.points)))
+                setLocalDraft({ name: scheme.name, mode: scheme.mode, types: scheme.types, scoreRuleItems: scheme.scoreRuleItems || [] })
+              }
+            } else {
+              setEvalPoints(info.field, [])
+              setLocalDraft({ name: "", mode: "rubric", types: [], scoreRuleItems: [] })
+            }
+            setEditingRubricId(schemeId)
+            setView("edit")
+          }
+
+          const saveRubricToLibrary = (schemeId: string | null, updates: Partial<RubricScheme>) => {
+            if (schemeId) {
+              // Update existing
+              setRubricLibrary(prev => prev.map(s => s.id === schemeId ? { ...s, ...updates } as RubricScheme : s))
+            } else {
+              // Create new
+              const newId = `scheme-${Date.now()}`
+              const newScheme: RubricScheme = {
+                id: newId,
+                name: updates.name || "新建评价标准",
+                types: updates.types || [],
+                desc: updates.desc || "",
+                points: info.points.map(p => ({ ...p, id: `ep-${Date.now()}-${Math.random().toString(36).slice(2, 5)}` })),
+                mode: updates.mode || "rubric",
+                scoreRuleItems: updates.scoreRuleItems || [],
+              }
+              setRubricLibrary(prev => [...prev, newScheme])
+              updateState({ [rubricIdField]: newId } as any)
+            }
+          }
+
+          const editingScheme = editingRubricId ? rubricLibrary.find(s => s.id === editingRubricId) : null
+          const draftScheme = editingScheme
+            ? { name: editingScheme.name, types: editingScheme.types, mode: editingScheme.mode, scoreRuleItems: editingScheme.scoreRuleItems || [] }
+            : localDraft
+
+          if (view === "edit") {
+            return (
+              <div className="space-y-4">
+                <div className="flex items-center justify-end mb-2">
+                  <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { setView("template"); setEditingRubricId(null); }}>
+                    <BookOpen className="h-3.5 w-3.5 mr-1" />选择评价标准模板覆盖
+                  </Button>
+                </div>
+                <div className="border rounded-xl p-4 bg-gray-50/50">
+                  <p className="text-sm font-medium mb-3">评价标准信息</p>
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-xs text-gray-500">评价标准名称</Label>
+                      <Input value={draftScheme.name} onChange={e => {
+                        if (editingRubricId) {
+                          setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, name: e.target.value } : s))
+                        } else {
+                          setLocalDraft(prev => ({ ...prev, name: e.target.value }))
+                        }
+                      }} className="mt-1 text-sm" placeholder="输入评价标准名称" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">评价标准类型</Label>
+                      <div className="flex gap-3 mt-1">
+                        {methodKey !== "homework" && (
+                          <button
+                            onClick={() => {
+                              if (editingRubricId) {
+                                setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, mode: "rubric" } : s))
+                              } else {
+                                setLocalDraft(prev => ({ ...prev, mode: "rubric" }))
+                              }
+                            }}
+                            className={cn(
+                              "px-3 py-1.5 rounded-lg text-xs border transition-all flex items-center gap-1.5",
+                              draftScheme.mode === "rubric" ? "bg-primary/10 text-primary border-primary" : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+                            )}
+                          >
+                            <div className={cn("w-3.5 h-3.5 rounded-full border flex items-center justify-center", draftScheme.mode === "rubric" ? "border-primary" : "border-gray-300")}>
+                              {draftScheme.mode === "rubric" && <div className="w-2 h-2 rounded-full bg-primary" />}
+                            </div>
+                            评价量规
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            if (editingRubricId) {
+                              setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, mode: "score_rule", scoreRuleItems: s.scoreRuleItems?.length ? s.scoreRuleItems : [{ id: `sr-${Date.now()}`, name: "", desc: "", rule: "", weight: 0 }] } : s))
+                            } else {
+                              setLocalDraft(prev => ({ ...prev, mode: "score_rule", scoreRuleItems: prev.scoreRuleItems?.length ? prev.scoreRuleItems : [{ id: `sr-${Date.now()}`, name: "", desc: "", rule: "", weight: 0 }] }))
+                            }
+                          }}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg text-xs border transition-all flex items-center gap-1.5",
+                            draftScheme.mode === "score_rule" ? "bg-primary/10 text-primary border-primary" : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+                          )}
+                        >
+                          <div className={cn("w-3.5 h-3.5 rounded-full border flex items-center justify-center", draftScheme.mode === "score_rule" ? "border-primary" : "border-gray-300")}>
+                            {draftScheme.mode === "score_rule" && <div className="w-2 h-2 rounded-full bg-primary" />}
+                          </div>
+                          评分规则
+                        </button>
+                      </div>
+                      {methodKey === "homework" && (
+                        <p className="text-[10px] text-gray-400 mt-1">作业测评仅需使用评分规则即可</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {draftScheme.mode === "rubric" ? (
+                  <div className="border rounded-xl p-4 overflow-hidden">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-medium">评价量规配置表</p>
+                      <div className="flex items-center gap-2">
+                        <PrdAnnotation data={getAnnotation("eval-rule-onekey-split")}>
+                          <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
+                            const count = info.points.length
+                            if (count === 0) return
+                            const base = Math.floor(100 / count)
+                            const remainder = 100 % count
+                            const newPoints = info.points.map((p, i) => ({ ...p, weight: base + (i < remainder ? 1 : 0) }))
+                            setEvalPoints(info.field, newPoints)
+                          }}>
+                            <RotateCcw className="h-3.5 w-3.5 mr-1" />一键均分
+                          </Button>
+                        </PrdAnnotation>
+                        <PrdAnnotation data={getAnnotation("eval-rule-add-dimension")}>
+                          <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => addEvalPoint(info.field, { name: "", types: draftScheme.types.length ? draftScheme.types : undefined })}>
+                            <Plus className="h-3.5 w-3.5 mr-1" />添加评价维度
+                          </Button>
+                        </PrdAnnotation>
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm border-collapse min-w-[900px]">
+                        <thead>
+                          <tr className="border-b bg-gray-50 text-gray-500 text-xs">
+                            <th className="py-2.5 px-2 text-left w-12">序号</th>
+                            <th className="py-2.5 px-2 text-left min-w-[360px]">评价维度名称/关联知识点/能力点</th>
+                            <th className="py-2.5 px-2 text-left min-w-[440px]">评价等级</th>
+                            <th className="py-2.5 px-2 text-center w-16">权重(%)</th>
+                            <th className="py-2.5 px-2 text-center w-14">操作</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {info.points.map((ep, idx) => (
+                            <tr key={ep.id} className="border-b hover:bg-gray-50/50 transition-colors">
+                              <td className="py-3 px-2">
+                                <span className="text-gray-600 align-middle">{idx + 1}</span>
+                              </td>
+                              <td className="py-3 px-2">
+                                <MixedTagEditor
+                                  text={ep.name}
+                                  knowledgePointIds={ep.knowledgePointIds || []}
+                                  abilityPointIds={ep.abilityPointIds || []}
+                                  onChange={updates => updateEvalPoint(info.field, ep.id, updates)}
+                                  onOpenKpDialog={() => openRubricKpDialog(ep.id, info.field)}
+                                  onOpenAbDialog={() => openRubricAbDialog(ep.id, info.field)}
+                                />
+                              </td>
+                              <td className="py-3 px-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingGradeMappingPointId(ep.id)
+                                    setGradeMappingDialogOpen(true)
+                                  }}
+                                  className="text-xs text-left text-primary hover:underline w-full block"
+                                >
+                                  {ep.gradeMapping?.map(gm => (
+                                    <div key={gm.id} className="truncate leading-relaxed" title={`${gm.grade} (${gm.minScore}-${gm.maxScore}分) ${gm.remark}`}>
+                                      {gm.grade} ({gm.minScore}-{gm.maxScore}分) {gm.remark}
+                                    </div>
+                                  ))}
+                                  {!ep.gradeMapping?.length && "点击配置评价等级"}
+                                </button>
+                              </td>
+                              <td className="py-3 px-2">
+                                <Input type="number" value={ep.weight || 0} onChange={e => updateEvalPoint(info.field, ep.id, { weight: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })} className="h-8 text-sm text-center" />
+                              </td>
+                              <td className="py-3 px-2 text-center">
+                                <button className="text-red-500 hover:text-red-600 text-xs" onClick={() => removeEvalPoint(info.field, ep.id)}>删除</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      <button onClick={() => addEvalPoint(info.field, { name: "", types: draftScheme.types.length ? draftScheme.types : undefined })} className="w-full py-3 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-primary/40 hover:text-primary transition-colors flex items-center justify-center gap-1">
+                        <Plus className="h-4 w-4" />添加评价维度
+                      </button>
+                      {info.points.length > 0 && (
+                        <div className="flex justify-end text-xs items-center gap-1">
+                          <span className="text-gray-500">维度权重合计：</span>
+                          <span className={cn("font-semibold", (info.points.reduce((sum, p) => sum + (p.weight || 0), 0)) === 100 ? "text-green-600" : "text-red-500")}>
+                            {info.points.reduce((sum, p) => sum + (p.weight || 0), 0)}%
+                          </span>
+                          {(info.points.reduce((sum, p) => sum + (p.weight || 0), 0)) !== 100 && (
+                            <span className="text-red-500">⚠️（需等于100%）</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {info.points.length === 0 && (
+                      <div className="text-center text-gray-400 py-8">
+                        <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">尚未添加评价点</p>
+                        <p className="text-xs mt-1">点击上方按钮添加第一个评价点</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="border rounded-xl p-4 overflow-hidden">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-medium">评分规则配置表</p>
+                      <div className="flex items-center gap-2">
+                        <PrdAnnotation data={getAnnotation("eval-rule-onekey-split")}>
+                          <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
+                            const items = draftScheme.scoreRuleItems || []
+                            const count = items.length
+                            if (count === 0) return
+                            const base = Math.floor(100 / count)
+                            const remainder = 100 % count
+                            const newItems = items.map((it, i) => ({ ...it, weight: base + (i < remainder ? 1 : 0) }))
+                            if (editingRubricId) {
+                              setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: newItems } : s))
+                            } else {
+                              setLocalDraft(prev => ({ ...prev, scoreRuleItems: newItems }))
+                            }
+                          }}>
+                            <RotateCcw className="h-3.5 w-3.5 mr-1" />一键均分
+                          </Button>
+                        </PrdAnnotation>
+                        <PrdAnnotation data={getAnnotation("eval-rule-add-item")}>
+                          <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
+                            const newItem: ScoreRuleItem = { id: `sr-${Date.now()}`, name: "", desc: "", rule: "", weight: 0 }
+                            if (editingRubricId) {
+                              setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: [...(s.scoreRuleItems || []), newItem] } : s))
+                            } else {
+                              setLocalDraft(prev => ({ ...prev, scoreRuleItems: [...(prev.scoreRuleItems || []), newItem] }))
+                            }
+                          }}>
+                            <Plus className="h-3.5 w-3.5 mr-1" />添加评价项
+                          </Button>
+                        </PrdAnnotation>
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm border-collapse min-w-[700px]">
+                        <thead>
+                          <tr className="border-b bg-gray-50 text-gray-500 text-xs">
+                            <th className="py-2.5 px-2 text-left w-16">序号</th>
+                            <th className="py-2.5 px-2 text-left min-w-[300px]">评价项/评分标准描述</th>
+                            <th className="py-2.5 px-2 text-left min-w-[200px]">加减分规则</th>
+                            <th className="py-2.5 px-2 text-center w-20">分值</th>
+                            <th className="py-2.5 px-2 text-center w-16">操作</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(draftScheme.scoreRuleItems || []).map((item, idx) => (
+                            <tr key={item.id} className="border-b hover:bg-gray-50/50 transition-colors">
+                              <td className="py-3 px-2">
+                                <span className="text-gray-600 align-middle">{idx + 1}</span>
+                              </td>
+                              <td className="py-3 px-2">
+                                <Textarea value={item.name + (item.desc ? `\n${item.desc}` : "")} onChange={e => {
+                                  const lines = e.target.value.split('\n')
+                                  const newName = lines[0] || ""
+                                  const newDesc = lines.slice(1).join('\n')
+                                  if (editingRubricId) {
+                                    setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: (s.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, name: newName, desc: newDesc } : it) } : s))
+                                  } else {
+                                    setLocalDraft(prev => ({ ...prev, scoreRuleItems: (prev.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, name: newName, desc: newDesc } : it) }))
+                                  }
+                                }} className="text-sm min-h-[60px]" placeholder="请输入评分描述" rows={2} />
+                              </td>
+                              <td className="py-3 px-2">
+                                <Textarea value={item.rule} onChange={e => {
+                                  if (editingRubricId) {
+                                    setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: (s.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, rule: e.target.value } : it) } : s))
+                                  } else {
+                                    setLocalDraft(prev => ({ ...prev, scoreRuleItems: (prev.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, rule: e.target.value } : it) }))
+                                  }
+                                }} className="text-sm min-h-[60px]" placeholder="输入加减分规则" rows={2} />
+                              </td>
+                              <td className="py-3 px-2">
+                                <Input type="number" value={item.weight || 0} onChange={e => {
+                                  const val = Math.max(0, Math.min(100, parseInt(e.target.value) || 0))
+                                  if (editingRubricId) {
+                                    setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: (s.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, weight: val } : it) } : s))
+                                  } else {
+                                    setLocalDraft(prev => ({ ...prev, scoreRuleItems: (prev.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, weight: val } : it) }))
+                                  }
+                                }} className="h-8 text-sm text-center" />
+                              </td>
+                              <td className="py-3 px-2 text-center">
+                                <button className="text-red-500 hover:text-red-600 text-xs" onClick={() => {
+                                  if (editingRubricId) {
+                                    setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: (s.scoreRuleItems || []).filter(it => it.id !== item.id) } : s))
+                                  } else {
+                                    setLocalDraft(prev => ({ ...prev, scoreRuleItems: (prev.scoreRuleItems || []).filter(it => it.id !== item.id) }))
+                                  }
+                                }}>删除</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      <button onClick={() => {
+                        const newItem: ScoreRuleItem = { id: `sr-${Date.now()}`, name: "", desc: "", rule: "", weight: 0 }
+                        if (editingRubricId) {
+                          setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: [...(s.scoreRuleItems || []), newItem] } : s))
+                        } else {
+                          setLocalDraft(prev => ({ ...prev, scoreRuleItems: [...(prev.scoreRuleItems || []), newItem] }))
+                        }
+                      }} className="w-full py-3 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-primary/40 hover:text-primary transition-colors flex items-center justify-center gap-1">
+                        <Plus className="h-4 w-4" />添加评价项
+                      </button>
+                      {(draftScheme.scoreRuleItems || []).length > 0 && (
+                        <div className="flex justify-end text-xs items-center gap-1">
+                          <span className="text-gray-500">分值合计：</span>
+                          <span className={cn("font-semibold", ((draftScheme.scoreRuleItems || []).reduce((sum, it) => sum + (it.weight || 0), 0)) === 100 ? "text-green-600" : "text-red-500")}>
+                            {(draftScheme.scoreRuleItems || []).reduce((sum, it) => sum + (it.weight || 0), 0)}%
+                          </span>
+                          {((draftScheme.scoreRuleItems || []).reduce((sum, it) => sum + (it.weight || 0), 0)) !== 100 && (
+                            <span className="text-red-500">⚠️（需等于100%）</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {(draftScheme.scoreRuleItems || []).length === 0 && (
+                      <div className="text-center text-gray-400 py-8">
+                        <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">尚未添加评价项</p>
+                        <p className="text-xs mt-1">点击上方按钮添加第一个评价项</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <Button size="sm" className="text-xs h-8" onClick={() => {
+                    if (editingRubricId) {
+                      setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, points: info.points.map(p => ({ ...p })) } : s))
+                    } else {
+                      saveRubricToLibrary(null, { name: draftScheme.name || "新建评价标准", types: draftScheme.types, desc: "", mode: draftScheme.mode, scoreRuleItems: draftScheme.scoreRuleItems })
+                    }
+                    setView("list")
+                    setEditingRubricId(null)
+                  }}>
+                    保存
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-xs h-8" onClick={() => { setSaveTemplateDialogOpen(true); setSaveTemplateMode("new"); setSelectedReplaceTemplateId(null); }}>
+                    保存到模板
+                  </Button>
+                </div>
+                <Dialog open={saveTemplateDialogOpen} onOpenChange={setSaveTemplateDialogOpen}>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <PrdAnnotation data={getAnnotation("dialog-save-template")}><DialogTitle>保存到模板</DialogTitle></PrdAnnotation>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setSaveTemplateMode("new")}
+                          className={cn(
+                            "flex-1 px-3 py-2 rounded-lg text-xs border transition-all",
+                            saveTemplateMode === "new" ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-500 hover:border-gray-300"
+                          )}
+                        >
+                          新增模板
+                        </button>
+                        <button
+                          onClick={() => setSaveTemplateMode("replace")}
+                          className={cn(
+                            "flex-1 px-3 py-2 rounded-lg text-xs border transition-all",
+                            saveTemplateMode === "replace" ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-500 hover:border-gray-300"
+                          )}
+                        >
+                          替换现有模板
+                        </button>
+                      </div>
+                      {saveTemplateMode === "new" ? (
+                        <div>
+                          <Label className="text-xs text-gray-500">模板名称</Label>
+                          <Input value={draftScheme.name} onChange={e => {
+                            if (editingRubricId) {
+                              setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, name: e.target.value } : s))
+                            } else {
+                              setLocalDraft(prev => ({ ...prev, name: e.target.value }))
+                            }
+                          }} className="mt-1 text-sm" placeholder="输入模板名称" />
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Label className="text-xs text-gray-500">选择要替换的模板</Label>
+                          <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                            {rubricLibrary.map(scheme => (
+                              <div
+                                key={scheme.id}
+                                onClick={() => setSelectedReplaceTemplateId(scheme.id)}
+                                className={cn(
+                                  "p-3 rounded-lg border cursor-pointer transition-all",
+                                  selectedReplaceTemplateId === scheme.id ? "border-primary bg-primary/5" : "border-gray-200 hover:border-gray-300"
+                                )}
+                              >
+                                <p className="text-sm font-medium">{scheme.name}</p>
+                                <p className="text-xs text-gray-400 mt-0.5">{scheme.mode === "rubric" ? "评价量规" : "评分规则"}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" size="sm" className="text-xs" onClick={() => setSaveTemplateDialogOpen(false)}>取消</Button>
+                      <Button size="sm" className="text-xs" onClick={() => {
+                        if (saveTemplateMode === "new") {
+                          saveRubricToLibrary(null, { name: draftScheme.name || "新建评价标准", types: draftScheme.types, desc: "", mode: draftScheme.mode, scoreRuleItems: draftScheme.scoreRuleItems })
+                        } else if (selectedReplaceTemplateId) {
+                          setRubricLibrary(prev => prev.map(s => s.id === selectedReplaceTemplateId ? { ...s, points: info.points.map(p => ({ ...p })), mode: draftScheme.mode, scoreRuleItems: draftScheme.scoreRuleItems || [] } : s))
+                        }
+                        setSaveTemplateDialogOpen(false)
+                        setView("list")
+                        setEditingRubricId(null)
+                      }} disabled={saveTemplateMode === "replace" && !selectedReplaceTemplateId}>
+                        确认保存
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+                <Dialog open={gradeMappingDialogOpen} onOpenChange={v => !v && setGradeMappingDialogOpen(false)}>
+                  <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <PrdAnnotation data={getAnnotation("dialog-edit-grade-level")}><DialogTitle>编辑评分等级</DialogTitle></PrdAnnotation>
+                    </DialogHeader>
+                    {(() => {
+                      const ep = info.points.find(p => p.id === editingGradeMappingPointId)
+                      if (!ep || !ep.gradeMapping) return null
+                      const gm = ep.gradeMapping
+                      return (
+                        <div className="space-y-3 py-2">
+                          {gm.map((g, i) => (
+                            <div key={g.id} className="flex items-start gap-2 p-3 rounded-lg border bg-gray-50/50">
+                              <div className="flex-1 space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <Input value={g.grade} onChange={e => {
+                                    const newGm = gm.map(x => x.id === g.id ? { ...x, grade: e.target.value } : x)
+                                    updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
+                                  }} className="w-14 h-7 text-center text-xs font-semibold" placeholder="等级" />
+                                  <Input type="number" value={g.minScore} onChange={e => {
+                                    const newGm = gm.map(x => x.id === g.id ? { ...x, minScore: parseInt(e.target.value) || 0 } : x)
+                                    updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
+                                  }} className="w-16 h-7 text-center text-xs" min={0} max={100} />
+                                  <span className="text-gray-500 text-xs">-</span>
+                                  <Input type="number" value={g.maxScore} onChange={e => {
+                                    const newGm = gm.map(x => x.id === g.id ? { ...x, maxScore: parseInt(e.target.value) || 0 } : x)
+                                    updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
+                                  }} className="w-16 h-7 text-center text-xs" min={0} max={100} />
+                                  <span className="text-xs text-gray-500">分</span>
+                                </div>
+                                <Input value={g.remark || ""} onChange={e => {
+                                  const newGm = gm.map(x => x.id === g.id ? { ...x, remark: e.target.value } : x)
+                                  updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
+                                }} className="h-7 text-xs" placeholder="等级描述" />
+                              </div>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-400 hover:text-red-500" onClick={() => {
+                                const newGm = gm.filter(x => x.id !== g.id)
+                                updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
+                              }}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => {
+                            const colors = ["bg-green-500", "bg-blue-500", "bg-yellow-500", "bg-red-500", "bg-purple-500", "bg-orange-500"]
+                            const newId = `grade-${Date.now()}`
+                            const newGm = [...gm, { id: newId, grade: "新等级", minScore: 0, maxScore: 100, color: colors[gm.length % colors.length], remark: "" }]
+                            updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
+                          }}>
+                            <Plus className="h-3.5 w-3.5 mr-1" />新增等级
+                          </Button>
+                        </div>
+                      )
+                    })()}
+                    <DialogFooter>
+                      <Button variant="outline" size="sm" onClick={() => setGradeMappingDialogOpen(false)}>关闭</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            )
+          }
+
+          if (view === "template") {
+            return (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setView("edit")}>
+                    <ChevronLeft className="h-3.5 w-3.5 mr-1" />返回评价标准编辑
+                  </Button>
+                </div>
+                <p className="text-sm font-medium">选择评价标准模板进行覆盖</p>
+                <div className="grid grid-cols-1 gap-3">
+                  {rubricLibrary.map(scheme => (
+                    <div
+                      key={scheme.id}
+                      className="p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer"
+                      onClick={() => {
+                        applyScheme(scheme.id)
+                        setView("edit")
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <p className="text-sm font-semibold">{scheme.name}</p>
+                            <Badge variant="outline" className={cn("text-[10px]", scheme.mode === "rubric" ? "bg-purple-50 text-purple-600 border-purple-200" : "bg-blue-50 text-blue-600 border-blue-200")}>
+                              {scheme.mode === "rubric" ? "评价量规" : "评分规则"}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-gray-400 mb-2">{scheme.desc}</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {scheme.types.map(type => (
+                              <Badge key={type} variant="outline" className={cn("text-[10px]", evalSubTypeColors[type])}>{evalSubTypeLabels[type]}</Badge>
+                            ))}
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1.5">{scheme.mode === "rubric" ? `${scheme.points.length} 个评价点` : `${scheme.scoreRuleItems?.length || 0} 个评价项`}</p>
+                        </div>
+                        <Button size="sm" className="h-7 text-[11px] px-2.5 shrink-0 mt-0.5" onClick={(e) => { e.stopPropagation(); applyScheme(scheme.id); setView("edit"); }}>
+                          使用此模板
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          }
+
+          return (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">选择评价标准方案</p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { setView("template"); setEditingRubricId(null); }}>
+                    <BookOpen className="h-3.5 w-3.5 mr-1" />选择评价标准模板覆盖
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => enterEdit(null)}>
+                    <Plus className="h-3.5 w-3.5 mr-1" />添加评价标准
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3">
+                {rubricLibrary.map(scheme => {
+                  const isSelected = currentRubricId === scheme.id
+                  return (
+                    <div
+                      key={scheme.id}
+                      className={cn(
+                        "p-4 rounded-xl border transition-all cursor-pointer",
+                        isSelected
+                          ? "border-primary bg-white ring-1 ring-primary/20 shadow-sm"
+                          : "border-gray-200 bg-white hover:border-primary/40 hover:shadow-sm"
+                      )}
+                      onClick={() => {
+                        if (isSelected) {
+                          updateState({ [rubricIdField]: null } as any)
+                          setEvalPoints(info.field, [])
+                        } else {
+                          applyScheme(scheme.id)
+                        }
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <p className="text-sm font-semibold">{scheme.name}</p>
+                            <Badge variant="outline" className={cn("text-[10px]", scheme.mode === "rubric" ? "bg-purple-50 text-purple-600 border-purple-200" : "bg-blue-50 text-blue-600 border-blue-200")}>
+                              {scheme.mode === "rubric" ? "评价量规" : "评分规则"}
+                            </Badge>
+                            {isSelected && (
+                              <div className="flex items-center gap-1 text-primary text-xs font-medium bg-primary/5 px-2 py-0.5 rounded-full">
+                                <CheckCircle2 className="h-3 w-3" />
+                                已选用
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-400 mb-2">{scheme.desc}</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {scheme.types.map(type => (
+                              <Badge key={type} variant="outline" className={cn("text-[10px]", evalSubTypeColors[type])}>{evalSubTypeLabels[type]}</Badge>
+                            ))}
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1.5">{scheme.mode === "rubric" ? `${scheme.points.length} 个评价点` : `${scheme.scoreRuleItems?.length || 0} 个评价项`}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                          <Button
+                            size="sm"
+                            variant={isSelected ? "outline" : "default"}
+                            className="h-7 text-[11px] px-2.5"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (isSelected) {
+                                updateState({ [rubricIdField]: null } as any)
+                                setEvalPoints(info.field, [])
+                              } else {
+                                applyScheme(scheme.id)
+                              }
+                            }}
+                          >
+                            {isSelected ? "取消选用" : "选用"}
+                          </Button>
+                          <Button variant="outline" size="sm" className="h-7 text-[11px] px-2.5" onClick={(e) => { e.stopPropagation(); enterEdit(scheme.id); }}>
+                            编辑
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              {!currentRubricId && (
+                <div className="text-center text-gray-400 py-6">
+                  <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">尚未选用评价标准</p>
+                  <p className="text-xs mt-1">请从上方列表中选用一个评价标准方案</p>
+                </div>
+              )}
+            </div>
+          )
+        }
+
+        const objectOptions = [
+          { key: "individual", label: "个人", desc: "以个人为单位" },
+          { key: "group", label: "小组", desc: "以小组为单位" },
+        ] as const
+
+        const ObjectCard = ({ methodKey, onClick }: { methodKey: string; onClick: () => void }) => {
+          const currentObject = state.methodEvalObjects[methodKey] || state.evalObject
+          const opt = objectOptions.find(o => o.key === currentObject)
+          return (
+            <button onClick={onClick} className="flex-1 min-w-0 p-4 rounded-xl border text-left transition-all hover:border-primary/50 hover:bg-primary/[0.02] bg-white group">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="h-4 w-4 text-gray-400 group-hover:text-primary" />
+                <span className="text-xs font-medium text-gray-500">测评对象</span>
+              </div>
+              <p className="text-sm font-semibold truncate">{opt?.label || "未选择"}</p>
+              <p className="text-xs text-gray-400 truncate mt-0.5">{opt?.desc || "点击配置"}</p>
+            </button>
+          )
+        }
+
+        const SubjectCard = ({ methodKey, onClick }: { methodKey: string; onClick: () => void }) => {
+          const currentSubjects = state.methodEvalSubjects[methodKey] || state.evalSubjects
+          const evalObject = state.methodEvalObjects[methodKey] || state.evalObject
+          const enabledSubjects = currentSubjects.filter(s => s.enabled && !(s.type === "peer" && evalObject !== "group"))
+          const totalWeight = enabledSubjects.reduce((s, sub) => s + (sub.params?.weightPercent || 0), 0)
+          return (
+            <button onClick={onClick} className="flex-1 min-w-0 p-4 rounded-xl border text-left transition-all hover:border-primary/50 hover:bg-primary/[0.02] bg-white group">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <UserCheck className="h-4 w-4 text-gray-400 group-hover:text-primary" />
+                  <span className="text-xs font-medium text-gray-500">评价主体</span>
+                </div>
+                {enabledSubjects.length > 0 && <Badge variant="outline" className="text-[10px]">{enabledSubjects.length} 类</Badge>}
+              </div>
+              <p className="text-sm font-semibold truncate">
+                {enabledSubjects.length === 0 ? "未配置" : enabledSubjects.map(s => subjectLabels[s.type]).join("、")}
+              </p>
+              <p className="text-xs text-gray-400 truncate mt-0.5">
+                {enabledSubjects.length === 0 ? "点击配置" : `总权重 ${totalWeight}%`}
+              </p>
+            </button>
+          )
+        }
+
+        const ResourceCard = ({ methodKey, onClick }: { methodKey: string; onClick: () => void }) => {
+          const summary = getMethodConfigSummary(methodKey)
+          return (
+            <button onClick={onClick} className="flex-1 min-w-0 p-4 rounded-xl border text-left transition-all hover:border-primary/50 hover:bg-primary/[0.02] bg-white group">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Database className="h-4 w-4 text-gray-400 group-hover:text-primary" />
+                  <span className="text-xs font-medium text-gray-500">测评资源</span>
+                </div>
+                {summary.configured && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+              </div>
+              <p className="text-sm font-semibold truncate">{summary.summary || "未配置"}</p>
+              <p className="text-xs text-gray-400 truncate mt-0.5">&nbsp;</p>
+            </button>
+          )
+        }
+
+        const MethodCard = ({ methodKey, onClick }: { methodKey: string; onClick: () => void }) => {
+          const info = getMethodEvalInfo(methodKey)
+          const subTypeCount = Object.entries(
+            info.points.reduce((acc, p) => {
+              if (p.subType) acc[p.subType] = (acc[p.subType] || 0) + 1
+              return acc
+            }, {} as Record<string, number>)
+          ).map(([k, v]) => `${evalSubTypeLabels[k as EvalSubType]}${v}`)
+          return (
+            <button onClick={onClick} className="flex-1 min-w-0 p-4 rounded-xl border text-left transition-all hover:border-primary/50 hover:bg-primary/[0.02] bg-white group">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-gray-400 group-hover:text-primary" />
+                  <span className="text-xs font-medium text-gray-500">评价标准配置</span>
+                </div>
+                {info.points.length > 0 && <Badge variant="outline" className="text-[10px]">{info.points.length} 点</Badge>}
+              </div>
+              <p className="text-sm font-semibold truncate">
+                {info.points.length === 0 ? "未配置评价点" : `${info.points.length} 个评价点`}
+              </p>
+              <p className="text-xs text-gray-400 truncate mt-0.5">
+                {subTypeCount.length === 0 ? "点击配置" : subTypeCount.join(" · ")}
+              </p>
+            </button>
+          )
+        }
+
+        const methodWeightTotal = state.evaluationMethods.reduce((sum, m) => sum + (state.methodWeights[m] || 0), 0)
+
+        const updateMethodWeight = (methodKey: string, value: number) => {
+          const clamped = Math.max(0, Math.min(100, value))
+          updateState({ methodWeights: { ...state.methodWeights, [methodKey]: clamped } })
+        }
+
+        const distributeMethodWeights = () => {
+          const count = state.evaluationMethods.length
+          if (count === 0) return
+          const base = Math.floor(100 / count)
+          const remainder = 100 % count
+          const newWeights: Record<string, number> = {}
+          state.evaluationMethods.forEach((m, i) => {
+            newWeights[m] = base + (i < remainder ? 1 : 0)
+          })
+          updateState({ methodWeights: newWeights })
+        }
+
+        const moveMethodUp = (index: number) => {
+          if (index <= 0) return
+          const newMethods = [...state.evaluationMethods]
+          const temp = newMethods[index]
+          newMethods[index] = newMethods[index - 1]
+          newMethods[index - 1] = temp
+          updateState({ evaluationMethods: newMethods })
+        }
+
+        const moveMethodDown = (index: number) => {
+          if (index >= state.evaluationMethods.length - 1) return
+          const newMethods = [...state.evaluationMethods]
+          const temp = newMethods[index]
+          newMethods[index] = newMethods[index + 1]
+          newMethods[index + 1] = temp
+          updateState({ evaluationMethods: newMethods })
+        }
+
+        return (
+          <div className="h-full flex flex-col">
+            {state.evaluationMethods.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+                <Target className="h-12 w-12 mb-3 opacity-50" />
+                <p className="text-sm">尚未配置评价方式</p>
+                <p className="text-xs mt-1">请先在「配置任务测评形式」中选择评价类型</p>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto space-y-5 p-1">
+                {/* 评价方式顺序和权重配置入口 */}
+                <div className="flex items-center gap-3">
+                  <Button variant="outline" size="sm" className="text-xs h-9" onClick={() => setIsOrderConfigOpen(true)}>
+                    <ListOrdered className="h-3.5 w-3.5 mr-1.5" />
+                    配置评价顺序
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-xs h-9" onClick={() => setIsWeightConfigOpen(true)}>
+                    <Scale className="h-3.5 w-3.5 mr-1.5" />
+                    配置评价权重
+                    <span className={cn(
+                      "ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium",
+                      methodWeightTotal === 100 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+                    )}>
+                      {methodWeightTotal}%
+                    </span>
+                  </Button>
+                </div>
+
+                {/* 评价方式顺序配置弹窗 */}
+                <Dialog open={isOrderConfigOpen} onOpenChange={setIsOrderConfigOpen}>
+                  <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                      <PrdAnnotation data={getAnnotation("dialog-eval-order")}><DialogTitle>评价方式顺序配置</DialogTitle></PrdAnnotation>
+                      <DialogDescription>点击箭头调整评价方式的执行顺序</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-1.5 py-4">
+                      {getMethodInstances().map(({ methodKey, instanceIndex }, index) => {
+                        const method = evaluationMethodOptions.find(o => o.key === methodKey)
+                        if (!method) return null
+                        const instanceCount = methodInstanceCounts[methodKey] || 1
+                        const displayLabel = instanceCount > 1 ? `${method.label} ${instanceIndex + 1}` : method.label
+                        const instanceKey = `${methodKey}-${instanceIndex}`
+                        return (
+                          <div
+                            key={instanceKey}
+                            className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-100 bg-gray-50/50"
+                          >
+                            <span className="w-5 h-5 rounded-full bg-gray-200 text-gray-500 text-[10px] flex items-center justify-center font-medium">
+                              {index + 1}
+                            </span>
+                            <div className={cn("p-1.5 rounded-md", method.color)}>{method.icon}</div>
+                            <span className="text-sm font-medium flex-1">{displayLabel}</span>
+                            <div className="flex items-center gap-0.5">
+                              <button
+                                onClick={() => moveMethodUp(index)}
+                                disabled={index === 0}
+                                className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-200/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                              >
+                                <ChevronUp className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => moveMethodDown(index)}
+                                disabled={index === getMethodInstances().length - 1}
+                                className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-200/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                              >
+                                <ChevronDown className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={() => setIsOrderConfigOpen(false)}>完成</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* 评价方式权重配置弹窗 */}
+                <Dialog open={isWeightConfigOpen} onOpenChange={setIsWeightConfigOpen}>
+                  <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                      <PrdAnnotation data={getAnnotation("dialog-eval-weight")}><DialogTitle>评价方式权重配置</DialogTitle></PrdAnnotation>
+                      <DialogDescription>
+                        配置各评价方式的权重占比，合计需等于 100%
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className={cn(
+                          "flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium",
+                          methodWeightTotal === 100 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+                        )}>
+                          <span>合计</span>
+                          <span>{methodWeightTotal}%</span>
+                          {methodWeightTotal !== 100 && <span className="text-[10px]">(需等于100%)</span>}
+                        </div>
+                        <Button variant="outline" size="sm" className="text-xs h-8" onClick={distributeMethodWeights}>
+                          <RotateCcw className="h-3.5 w-3.5 mr-1" />一键平均
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        {getMethodInstances().map(({ methodKey, instanceIndex }) => {
+                          const method = evaluationMethodOptions.find(o => o.key === methodKey)
+                          if (!method) return null
+                          const instanceCount = methodInstanceCounts[methodKey] || 1
+                          const displayLabel = instanceCount > 1 ? `${method.label} ${instanceIndex + 1}` : method.label
+                          const instanceKey = `${methodKey}-${instanceIndex}`
+                          const weight = state.methodWeights[methodKey] || 0
+                          return (
+                            <div key={instanceKey} className="flex items-center gap-2.5 p-3 rounded-lg border border-gray-100 bg-gray-50/50">
+                              <div className={cn("p-1.5 rounded-md shrink-0", method.color)}>
+                                {method.icon}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium text-gray-700 truncate">{displayLabel}</p>
+                                <div className="flex items-center gap-1 mt-1">
+                                  <Input
+                                    type="number"
+                                    value={weight}
+                                    onChange={e => updateMethodWeight(methodKey, parseInt(e.target.value) || 0)}
+                                    className="h-7 text-xs w-16 text-center"
+                                    min={0}
+                                    max={100}
+                                  />
+                                  <span className="text-xs text-gray-400">%</span>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={() => setIsWeightConfigOpen(false)}>完成</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {getMethodInstances().map(({ methodKey, instanceIndex }) => {
+                  const method = evaluationMethodOptions.find(o => o.key === methodKey)
+                  if (!method) return null
+                  const instanceCount = methodInstanceCounts[methodKey] || 1
+                  const displayLabel = instanceCount > 1 ? `${method.label} ${instanceIndex + 1}` : method.label
+                  const instanceKey = `${methodKey}-${instanceIndex}`
+                  return (
+                    <div key={instanceKey} className="border rounded-xl p-4 bg-gray-50/50">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className={cn("p-2 rounded-lg", method.color)}>{method.icon}</div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold">{displayLabel}</p>
+                          <p className="text-xs text-gray-400">{method.desc}</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (confirm(`确定要复制「${method.label}」测评方式吗？`)) {
+                              duplicateMethod(methodKey)
+                            }
+                          }}
+                          className="flex items-center gap-1 px-2 py-1 rounded-md text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors text-xs"
+                          title="复制测评方式"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                          复制测评方式
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <ObjectCard methodKey={methodKey} onClick={() => openDialog("object", methodKey)} />
+                        <div className="flex flex-col items-center justify-center text-gray-300 shrink-0 px-0.5">
+                          <span className="text-[10px] font-medium">①</span>
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </div>
+                        <SubjectCard methodKey={methodKey} onClick={() => openDialog("subject", methodKey)} />
+                        <div className="flex flex-col items-center justify-center text-gray-300 shrink-0 px-0.5">
+                          <span className="text-[10px] font-medium">②</span>
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </div>
+                        <ResourceCard methodKey={methodKey} onClick={() => openDialog("resource", methodKey)} />
+                        <div className="flex flex-col items-center justify-center text-gray-300 shrink-0 px-0.5">
+                          <span className="text-[10px] font-medium">③</span>
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </div>
+                        {(methodKey === "question_bank" || methodKey === "paper" || methodKey === "quiz") ? (
+                          <div className="flex-1 min-w-0 p-4 rounded-xl border text-left bg-green-50/50 border-green-100">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Target className="h-4 w-4 text-green-500" />
+                              <span className="text-xs font-medium text-green-600">评价标准配置</span>
+                            </div>
+                            <p className="text-sm font-semibold text-green-700">自动读取得分</p>
+                            <p className="text-xs text-green-500 truncate mt-0.5">系统将自动读取上一步测评资源的得分</p>
+                          </div>
+                        ) : (
+                          <MethodCard methodKey={methodKey} onClick={() => openDialog("method", methodKey)} />
+                        )}
+                      </div>
                     </div>
                   )
                 })}
               </div>
             )}
-          </div>
-        )
 
-      case "weight":
-        return (
-          <div className="space-y-4">
-            <Label>任务权重</Label>
-            <div className="flex items-center gap-4">
-              <Input type="number" className="w-32" value={state.weight}
-                onChange={e => updateState({ weight: Math.max(0, Math.min(100, +e.target.value || 0)) })} />
-              <span className="text-sm text-gray-500">%</span>
-            </div>
-            <div className="flex items-center gap-2 mt-3">
-              <Switch checked={state.locked} onCheckedChange={v => updateState({ locked: v })} />
-              <Label className="text-sm">{state.locked ? "已锁定" : "未锁定"}</Label>
-            </div>
+            <Dialog open={erDialogOpen === "object"} onOpenChange={v => !v && setErDialogOpen(null)}>
+              <DialogContent className="sm:max-w-[63vw] max-w-[63vw] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <PrdAnnotation data={getAnnotation("dialog-test-object")}><DialogTitle>测评对象配置</DialogTitle></PrdAnnotation>
+                  <DialogDescription>
+                    配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的测评对象
+                  </DialogDescription>
+                </DialogHeader>
+                {erDialogMethod && <ObjectDialogContent methodKey={erDialogMethod} />}
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={erDialogOpen === "subject"} onOpenChange={v => !v && setErDialogOpen(null)}>
+              <DialogContent className="sm:max-w-[63vw] max-w-[63vw] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <PrdAnnotation data={getAnnotation("dialog-eval-subject")}><DialogTitle>评价主体配置</DialogTitle></PrdAnnotation>
+                  <DialogDescription>
+                    配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的评价主体
+                  </DialogDescription>
+                </DialogHeader>
+                {erDialogMethod && <SubjectDialogContent methodKey={erDialogMethod} />}
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={erDialogOpen === "resource"} onOpenChange={v => !v && setErDialogOpen(null)}>
+              <DialogContent className="sm:max-w-[85vw] max-w-[85vw] h-[92vh] overflow-y-auto">
+                <DialogHeader>
+                  <PrdAnnotation data={getAnnotation("dialog-test-resource")}><DialogTitle>测评资源配置</DialogTitle></PrdAnnotation>
+                  <DialogDescription>
+                    配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的测评资源
+                  </DialogDescription>
+                </DialogHeader>
+                {erDialogMethod && <EvalResourceOnlyPanel methodKey={erDialogMethod} />}
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={erDialogOpen === "method"} onOpenChange={v => !v && setErDialogOpen(null)}>
+              <DialogContent className="sm:max-w-[90vw] max-w-[90vw] h-[92vh] overflow-y-auto">
+                <DialogHeader>
+                  <PrdAnnotation data={getAnnotation("dialog-eval-standard")}><DialogTitle>评价标准配置</DialogTitle></PrdAnnotation>
+                  <DialogDescription>
+                    配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的评价点与评分规则
+                  </DialogDescription>
+                </DialogHeader>
+                {erDialogMethod && <MethodDialogContent methodKey={erDialogMethod} />}
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={questionDetailOpen} onOpenChange={setQuestionDetailOpen}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <PrdAnnotation data={getAnnotation("dialog-question-detail")}><DialogTitle>题目详情</DialogTitle></PrdAnnotation>
+                </DialogHeader>
+                {(() => {
+                  const q = allQuestions.find(aq => aq.id === selectedQuestionForDetail) as any
+                  if (!q) return null
+                  return (
+                    <div className="space-y-3 py-2">
+                      <div>
+                        <Label className="text-xs text-gray-500">题目名称</Label>
+                        <p className="text-sm font-medium mt-1">{q.name}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-500">题目内容</Label>
+                        <p className="text-sm mt-1">{q.content}</p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div>
+                          <Label className="text-xs text-gray-500">题型</Label>
+                          <p className="text-sm mt-1">{questionTypeLabels[q.type] || q.type}</p>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-500">难度</Label>
+                          <p className="text-sm mt-1">{difficultyLabels[q.difficulty] || q.difficulty}</p>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-500">分值</Label>
+                          <p className="text-sm mt-1">{q.score}分</p>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-500">所属题库</Label>
+                          <p className="text-sm mt-1">{questionBankLabels[q.questionBank] || q.questionBank || "-"}</p>
+                        </div>
+                      </div>
+                      {q.options && q.options.length > 0 && (
+                        <div>
+                          <Label className="text-xs text-gray-500">选项</Label>
+                          <div className="space-y-1 mt-1">
+                            {q.options.map((opt: string, i: number) => (
+                              <div key={i} className={cn("text-sm p-2 rounded border", Array.isArray(q.answer) ? q.answer.includes(opt) ? "border-green-300 bg-green-50" : "border-gray-200" : q.answer === opt ? "border-green-300 bg-green-50" : "border-gray-200")}>
+                                {String.fromCharCode(65 + i)}. {opt}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {q.type === "judgment" && (
+                        <div>
+                          <Label className="text-xs text-gray-500">正确答案</Label>
+                          <p className="text-sm mt-1">{q.answer === "true" ? "正确" : "错误"}</p>
+                        </div>
+                      )}
+                      {q.type === "subjective" && q.answer && (
+                        <div>
+                          <Label className="text-xs text-gray-500">参考答案</Label>
+                          <p className="text-sm mt-1">{q.answer}</p>
+                        </div>
+                      )}
+                      {Array.isArray(q.answer) && q.type !== "judgment" && (
+                        <div>
+                          <Label className="text-xs text-gray-500">正确答案</Label>
+                          <p className="text-sm mt-1">{q.answer.join(", ")}</p>
+                        </div>
+                      )}
+                      {!Array.isArray(q.answer) && q.type !== "judgment" && q.type !== "subjective" && (
+                        <div>
+                          <Label className="text-xs text-gray-500">正确答案</Label>
+                          <p className="text-sm mt-1">{q.answer}</p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setQuestionDetailOpen(false)}>关闭</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={showAddQuestion} onOpenChange={setShowAddQuestion}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>新增题目</DialogTitle>
+                </DialogHeader>
+                <div className="py-8 text-center text-gray-500">
+                  此处参考 1.0 版本页面功能即可
+                </div>
+                <DialogFooter>
+                  <Button onClick={() => setShowAddQuestion(false)}>知道了</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Paper Detail Dialog */}
+            <Dialog open={paperDetailOpen} onOpenChange={setPaperDetailOpen}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <PrdAnnotation data={getAnnotation("dialog-paper-detail")}><DialogTitle>试卷详情</DialogTitle></PrdAnnotation>
+                </DialogHeader>
+                {(() => {
+                  const paper = paperMocks.find(p => p.id === selectedPaperForDetail)
+                  if (!paper) return null
+                  return (
+                    <div className="space-y-3 py-2">
+                      <div>
+                        <Label className="text-xs text-gray-500">试卷名称</Label>
+                        <p className="text-sm font-medium mt-1">{paper.name}</p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div>
+                          <Label className="text-xs text-gray-500">题目数量</Label>
+                          <p className="text-sm mt-1">{paper.questionCount} 题</p>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-500">总分</Label>
+                          <p className="text-sm mt-1">{paper.totalScore} 分</p>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-500">包含题型</Label>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          <Badge variant="secondary" className="text-[10px]">单选题</Badge>
+                          <Badge variant="secondary" className="text-[10px]">多选题</Badge>
+                          <Badge variant="secondary" className="text-[10px]">判断题</Badge>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setPaperDetailOpen(false)}>关闭</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Create Paper Dialog */}
+            <Dialog open={showCreatePaper} onOpenChange={setShowCreatePaper}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <PrdAnnotation data={getAnnotation("dialog-create-paper")}><DialogTitle>新建试卷</DialogTitle></PrdAnnotation>
+                  <DialogDescription>创建新的试卷</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                  <div>
+                    <Label className="text-xs text-gray-500">试卷名称</Label>
+                    <Input value={newPaperName} onChange={e => setNewPaperName(e.target.value)} placeholder="输入试卷名称" className="mt-1 text-sm" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-gray-500">题目数量</Label>
+                      <Input type="number" value={newPaperQuestionCount} onChange={e => setNewPaperQuestionCount(Math.max(1, parseInt(e.target.value) || 1))} className="mt-1 text-sm" min={1} />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">总分</Label>
+                      <Input type="number" value={newPaperTotalScore} onChange={e => setNewPaperTotalScore(Math.max(1, parseInt(e.target.value) || 1))} className="mt-1 text-sm" min={1} />
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowCreatePaper(false)}>取消</Button>
+                  <Button onClick={() => {
+                    if (!newPaperName.trim()) return
+                    const newId = `paper-${Date.now()}`
+                    ;(paperMocks as any).push({ id: newId, name: newPaperName.trim(), questionCount: newPaperQuestionCount, totalScore: newPaperTotalScore })
+                    updateState({ paperIds: [...state.paperIds, newId], paperWeights: { ...state.paperWeights, [newId]: state.paperIds.length === 0 ? 100 : 0 } })
+                    setShowCreatePaper(false)
+                    setNewPaperName("")
+                    setNewPaperQuestionCount(10)
+                    setNewPaperTotalScore(100)
+                  }}>创建</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Rubric Knowledge Points Multi-Select Dialog */}
+            <Dialog open={rubricKpDialogOpen} onOpenChange={v => { if (!v) setRubricKpDialogOpen(false) }}>
+              <DialogContent
+        className="sm:max-w-3xl max-h-[90vh] flex flex-col"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
+                <DialogHeader>
+                  <PrdAnnotation data={getAnnotation("dialog-link-knowledge-eval")}><DialogTitle>关联考查知识点</DialogTitle></PrdAnnotation>
+                  <DialogDescription>此处仅可选择任务关联的知识点/能力点，请先在任务中配置后选择。</DialogDescription>
+                </DialogHeader>
+                {(() => {
+                  const field = rubricKpTargetField
+                  const pointId = rubricKpTargetPointId
+                  const ep = field && pointId ? getEvalPoints(field as EvalPointField).find(p => p.id === pointId) : null
+                  const selectedIds = ep?.knowledgePointIds || []
+                  const filteredKp = knowledgePoints.filter(k => !rubricKpSearch || k.name.includes(rubricKpSearch) || k.description.includes(rubricKpSearch) || (k.code && k.code.includes(rubricKpSearch)))
+
+                  const toggleKp = (kpId: string) => {
+                    if (!field || !pointId) return
+                    const newIds = selectedIds.includes(kpId) ? selectedIds.filter(id => id !== kpId) : [...selectedIds, kpId]
+                    updateEvalPoint(field as EvalPointField, pointId, { knowledgePointIds: newIds })
+                  }
+
+                  return (
+                    <div className="flex gap-4 flex-1 min-h-0 py-2">
+                      <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
+                        <div className="relative mb-3">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <Input value={rubricKpSearch} onChange={e => setRubricKpSearch(e.target.value)} placeholder="搜索知识点名称、描述或编码..." className="pl-9" />
+                        </div>
+                        <div className="flex-1 overflow-y-auto">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-50 sticky top-0 z-10">
+                              <tr>
+                                <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">知识点名称</th>
+                                <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">编码</th>
+                                <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[35%]">描述</th>
+                                <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">操作</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {filteredKp.map(kp => {
+                                const isSelected = selectedIds.includes(kp.id)
+                                return (
+                                  <tr key={kp.id} className={cn("hover:bg-gray-50 cursor-pointer", isSelected ? "bg-primary/[0.03]" : "")} onClick={() => toggleKp(kp.id)}>
+                                    <td className="px-3 py-2">
+                                      <div className="flex items-center gap-2">
+                                        <div className={cn("w-4 h-4 rounded border flex items-center justify-center shrink-0", isSelected ? "bg-primary border-primary" : "border-gray-300")}>
+                                          {isSelected && <Check className="h-3 w-3 text-white" />}
+                                        </div>
+                                        <span className="text-sm font-medium text-gray-800">{kp.name}</span>
+                                      </div>
+                                    </td>
+                                    <td className="px-3 py-2">{kp.code ? <Badge variant="outline" className="text-[10px] h-5 px-1.5">{kp.code}</Badge> : <span className="text-xs text-gray-400">-</span>}</td>
+                                    <td className="px-3 py-2"><p className="text-xs text-gray-500 line-clamp-1">{kp.description}</p></td>
+                                    <td className="px-3 py-2 text-right">
+                                      {isSelected ? (
+                                        <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); toggleKp(kp.id); }}>取消</Button>
+                                      ) : (
+                                        <Button size="sm" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); toggleKp(kp.id); }}>选择</Button>
+                                      )}
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                      <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
+                        <p className="text-sm font-medium mb-3 text-gray-700">已选择知识点 ({selectedIds.length})</p>
+                        <div className="flex-1 overflow-y-auto space-y-2">
+                          {selectedIds.length === 0 && (
+                            <div className="text-center text-gray-400 py-8">
+                              <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-xs">从左侧选择知识点</p>
+                            </div>
+                          )}
+                          {selectedIds.map(kpId => {
+                            const kp = knowledgePoints.find(k => k.id === kpId)
+                            if (!kp) return null
+                            return (
+                              <div key={kpId} className="p-2 rounded-lg border border-primary/20 bg-primary/5">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-medium flex-1 truncate">{kp.name}</span>
+                                  <PrdAnnotation data={getAnnotation("kp-right-delete")}>
+                                    <Button variant="ghost" size="icon" className="h-5 w-5 text-gray-400" onClick={() => toggleKp(kpId)}><X className="h-3 w-3" /></Button>
+                                  </PrdAnnotation>
+                                </div>
+                                <p className="text-[10px] text-gray-500 line-clamp-1">{kp.description}</p>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+                <DialogFooter>
+                  <Button onClick={() => setRubricKpDialogOpen(false)}>完成</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Rubric Ability Points Multi-Select Dialog */}
+            <Dialog open={rubricAbDialogOpen} onOpenChange={v => { if (!v) setRubricAbDialogOpen(false) }}>
+              <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
+                <DialogHeader>
+                  <PrdAnnotation data={getAnnotation("dialog-link-ability-eval")}><DialogTitle>关联考查能力点</DialogTitle></PrdAnnotation>
+                  <DialogDescription>此处仅可选择任务关联的知识点/能力点，请先在任务中配置后选择。</DialogDescription>
+                </DialogHeader>
+                {(() => {
+                  const field = rubricAbTargetField
+                  const pointId = rubricAbTargetPointId
+                  const ep = field && pointId ? getEvalPoints(field as EvalPointField).find(p => p.id === pointId) : null
+                  const selectedIds = ep?.abilityPointIds || []
+                  const filteredAb = abilityPoints.filter(a => !rubricAbSearch || a.name.includes(rubricAbSearch) || a.description.includes(rubricAbSearch) || (a.code && a.code.includes(rubricAbSearch)))
+
+                  const toggleAb = (abId: string) => {
+                    if (!field || !pointId) return
+                    const newIds = selectedIds.includes(abId) ? selectedIds.filter(id => id !== abId) : [...selectedIds, abId]
+                    updateEvalPoint(field as EvalPointField, pointId, { abilityPointIds: newIds })
+                  }
+
+                  return (
+                    <div className="flex gap-4 flex-1 min-h-0 py-2">
+                      <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
+                        <div className="relative mb-3">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <Input value={rubricAbSearch} onChange={e => setRubricAbSearch(e.target.value)} placeholder="搜索能力点名称、描述或编码..." className="pl-9" />
+                        </div>
+                        <div className="flex-1 overflow-y-auto">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-50 sticky top-0 z-10">
+                              <tr>
+                                <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[30%]">能力点名称</th>
+                                <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">编码</th>
+                                <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[35%]">描述</th>
+                                <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[15%]">操作</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {filteredAb.map(ab => {
+                                const isSelected = selectedIds.includes(ab.id)
+                                return (
+                                  <tr key={ab.id} className={cn("hover:bg-gray-50 cursor-pointer", isSelected ? "bg-primary/[0.03]" : "")} onClick={() => toggleAb(ab.id)}>
+                                    <td className="px-3 py-2">
+                                      <div className="flex items-center gap-2">
+                                        <div className={cn("w-4 h-4 rounded border flex items-center justify-center shrink-0", isSelected ? "bg-primary border-primary" : "border-gray-300")}>
+                                          {isSelected && <Check className="h-3 w-3 text-white" />}
+                                        </div>
+                                        <span className="text-sm font-medium text-gray-800">{ab.name}</span>
+                                      </div>
+                                    </td>
+                                    <td className="px-3 py-2">{ab.code ? <Badge variant="outline" className="text-[10px] h-5 px-1.5">{ab.code}</Badge> : <span className="text-xs text-gray-400">-</span>}</td>
+                                    <td className="px-3 py-2"><p className="text-xs text-gray-500 line-clamp-1">{ab.description}</p></td>
+                                    <td className="px-3 py-2 text-right">
+                                      {isSelected ? (
+                                        <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); toggleAb(ab.id); }}>取消</Button>
+                                      ) : (
+                                        <Button size="sm" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); toggleAb(ab.id); }}>选择</Button>
+                                      )}
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                      <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
+                        <p className="text-sm font-medium mb-3 text-gray-700">已选择能力点 ({selectedIds.length})</p>
+                        <div className="flex-1 overflow-y-auto space-y-2">
+                          {selectedIds.length === 0 && (
+                            <div className="text-center text-gray-400 py-8">
+                              <Award className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-xs">从左侧选择能力点</p>
+                            </div>
+                          )}
+                          {selectedIds.map(abId => {
+                            const ab = abilityPoints.find(a => a.id === abId)
+                            if (!ab) return null
+                            return (
+                              <div key={abId} className="p-2 rounded-lg border border-primary/20 bg-primary/5">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-medium flex-1 truncate">{ab.name}</span>
+                                  <PrdAnnotation data={getAnnotation("ability-action-cancel")}>
+                                    <Button variant="ghost" size="icon" className="h-5 w-5 text-gray-400" onClick={() => toggleAb(abId)}><X className="h-3 w-3" /></Button>
+                                  </PrdAnnotation>
+                                </div>
+                                <p className="text-[10px] text-gray-500 line-clamp-1">{ab.description}</p>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+                <DialogFooter>
+                  <Button onClick={() => setRubricAbDialogOpen(false)}>完成</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         )
+      }
+
+      case "weight": {
+        return (
+          <div className="flex flex-col items-center justify-center h-full text-gray-400">
+            <Scale className="h-12 w-12 mb-3 opacity-50" />
+            <p className="text-sm">任务权重已在全局配置</p>
+            <p className="text-xs mt-1">请点击顶部「配置任务权重」按钮进行设置</p>
+          </div>
+        )
+      }
     }
   }
 
+  const isFullScreen = cardType === "evaluationRules" || cardType === "weight" || cardType === "knowledge" || cardType === "ability" || cardType === "resources"
+  const dialogSizeClass =
+    isFullScreen
+      ? "sm:max-w-[95vw] max-h-[95vh] h-[95vh]"
+      : cardType === "evaluation"
+        ? "sm:max-w-[720px] max-h-[85vh]"
+        : cardType === "description"
+          ? "sm:max-w-[900px] max-h-[90vh]"
+          : cardType === "info"
+            ? "sm:max-w-[650px] max-h-[85vh]"
+            : "sm:max-w-[550px] max-h-[85vh]"
+
   return (
-    <Dialog open onOpenChange={() => onClose()}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className={cn(
+        "flex flex-col overflow-hidden",
+        dialogSizeClass
+      )}>
         <DialogHeader>
-          <DialogTitle>{config.title.replace("\n", " ")}</DialogTitle>
-          <DialogDescription>{task.name}</DialogDescription>
+          <PrdAnnotation data={getAnnotation(`editor-card-${config.type}`)}>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="p-1.5 bg-primary/10 rounded">{config.icon}</div>
+              {config.title}
+            </DialogTitle>
+          </PrdAnnotation>
+          <DialogDescription>任务：{task.name}</DialogDescription>
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto py-4">
-          {renderContent()}
-        </div>
+        <div className={cn("flex-1 py-4", isFullScreen ? "overflow-hidden" : "overflow-y-auto")}>{renderContent()}</div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>取消</Button>
           <Button onClick={handleSave}>保存</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+
+// ============ Weight Config Dialog ============
+
+function WeightConfigDialog({
+  open,
+  onOpenChange,
+  tasks,
+  taskStates,
+  updateAnyState,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  tasks: Task[]
+  taskStates: Record<string, TaskState>
+  updateAnyState: (id: string, u: Partial<TaskState>) => void
+}) {
+  const colors = ["bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500", "bg-cyan-500", "bg-pink-500"]
+  const pieColors = ["#3b82f6", "#22c55e", "#a855f7", "#f97316", "#06b6d4", "#ec4899"]
+
+  const handleGlobalWeightChange = (tid: string, val: number) => {
+    updateAnyState(tid, { weight: Math.max(0, Math.min(100, val)) })
+  }
+
+  const toggleGlobalLock = (tid: string) => {
+    const s = taskStates[tid]
+    updateAnyState(tid, { locked: !s?.locked })
+  }
+
+  const distributeGlobal = () => {
+    const unlocked = tasks.filter(t => !taskStates[t.id]?.locked)
+    const lockedWeight = tasks.filter(t => taskStates[t.id]?.locked).reduce((s, t) => s + (taskStates[t.id]?.weight || 0), 0)
+    const remaining = 100 - lockedWeight
+    const each = Math.floor(remaining / unlocked.length)
+    unlocked.forEach((t, i) => {
+      updateAnyState(t.id, { weight: each + (i < remaining % unlocked.length ? 1 : 0) })
+    })
+  }
+
+  const totalW = tasks.reduce((sum, t) => sum + (taskStates[t.id]?.weight || 0), 0)
+
+  const pieData = tasks.map((t, i) => ({
+    name: t.name,
+    value: taskStates[t.id]?.weight || 0,
+    color: pieColors[i % pieColors.length],
+  })).filter(d => d.value > 0)
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="sm:max-w-3xl max-h-[90vh] flex flex-col"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
+        <DialogHeader>
+          <PrdAnnotation data={getAnnotation("editor-config-weight")}>
+            <DialogTitle className="flex items-center gap-2">
+              <PieChartIcon className="h-5 w-5" />
+              配置任务权重
+            </DialogTitle>
+          </PrdAnnotation>
+          <DialogDescription>调整所有任务的权重分配，总权重应为 100%</DialogDescription>
+        </DialogHeader>
+        <div className="flex-1 overflow-y-auto py-4 space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className={cn("text-lg font-semibold", totalW === 100 ? "text-green-600" : "text-amber-600")}>总权重: {totalW}%</span>
+              {totalW !== 100 && <span className="text-sm text-amber-600">{totalW > 100 ? `超出 ${totalW - 100}%` : `还需分配 ${100 - totalW}%`}</span>}
+            </div>
+            <Button variant="outline" size="sm" onClick={distributeGlobal}>
+              <Scale className="mr-2 h-4 w-4" />
+              一键平均分配
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6">
+            {/* Pie Chart */}
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => `${value}%`} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Legend */}
+            <div className="h-64 overflow-y-auto space-y-2">
+              {tasks.map((t, i) => (
+                <div key={t.id} className="flex items-center gap-2 text-sm">
+                  <div className={cn("w-3 h-3 rounded-full shrink-0", colors[i % colors.length])} />
+                  <span className="truncate flex-1">{t.name}</span>
+                  <span className="text-gray-500 font-medium">{taskStates[t.id]?.weight || 0}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="h-3 bg-gray-100 rounded-full overflow-hidden flex">
+            {tasks.map((t, i) => (
+              <div key={t.id} className={cn("transition-all duration-300", colors[i % colors.length])} style={{ width: `${taskStates[t.id]?.weight || 0}%` }} />
+            ))}
+          </div>
+
+          {/* Task List */}
+          <div className="space-y-2">
+            {tasks.map((t, i) => {
+              const s = taskStates[t.id]
+              return (
+                <div key={t.id} className="flex items-center gap-4 p-3 rounded-lg border border-gray-100 bg-white hover:border-gray-200 transition-colors">
+                  <div className={cn("w-3 h-8 rounded-full shrink-0", colors[i % colors.length])} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-xs font-medium text-gray-600">{i + 1}</span>
+                      <span className="font-medium text-gray-700 truncate text-sm">{t.name}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Input type="number" value={s?.weight || 0} onChange={e => handleGlobalWeightChange(t.id, parseInt(e.target.value) || 0)} disabled={s?.locked} className={cn("w-20 text-center", s?.locked && "bg-gray-50")} min={0} max={100} />
+                    <span className="text-gray-500 w-4">%</span>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => toggleGlobalLock(t.id)} className={cn("h-8 w-8", s?.locked ? "text-amber-500" : "text-gray-400")}>
+                    {s?.locked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+        <DialogFooter className="gap-2">
+          <Button
+            disabled={totalW !== 100}
+            onClick={() => onOpenChange(false)}
+          >
+            保存
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
