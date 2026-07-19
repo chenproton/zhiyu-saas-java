@@ -12,7 +12,7 @@ function generateCode(prefix: string) {
   return `${prefix}-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, "0")}`
 }
 
-function mapScenario(backend: any, _currentUserId: string): ScenarioListItem {
+function mapScenario(backend: any, _currentUserId: string): ScenarioListItem & { creatorId: string; coCreatorIds: string[] } {
   return {
     id: backend.id,
     name: backend.name,
@@ -23,6 +23,8 @@ function mapScenario(backend: any, _currentUserId: string): ScenarioListItem {
     positionName: "-",
     batchName: undefined,
     creatorName: "-",
+    creatorId: backend.creatorId,
+    coCreatorIds: backend.coBuilderIds || [],
     publishTime: backend.publishTime,
     taskCount: 0,
   }

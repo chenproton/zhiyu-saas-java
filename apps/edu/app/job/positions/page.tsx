@@ -15,9 +15,9 @@ import {
   type ContentBatch,
 } from "@/components/shared/content-list-page"
 
-function mapPosition(backend: any, _currentUserId: string): Position {
+function mapPosition(backend: any, _currentUserId: string): Position & { creatorId: string; coCreatorIds: string[] } {
   const pos = convertCareerPositionToPosition(backend)
-  return pos as Position
+  return { ...pos, creatorId: pos.createdBy, coCreatorIds: pos.collaborators }
 }
 
 function mapPositionBatch(backend: any): ContentBatch {
