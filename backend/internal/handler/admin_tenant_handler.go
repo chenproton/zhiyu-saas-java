@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
 // Superadmin console handlers for /api/v1/admin/tenants.
@@ -78,8 +77,6 @@ func (h *TenantHandler) AdminUpdateStatus(w http.ResponseWriter, r *http.Request
 	h.updateTenantStatus(w, r)
 }
 
-// AdminDelete 不再物理删除租户及其数据，仅将租户状态置为 inactive，
-// 后续可通过 AdminUpdateStatus 恢复为 active 继续使用。
 func (h *TenantHandler) AdminDelete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchTenant(r.Context(), id); err != nil {
@@ -87,9 +84,9 @@ func (h *TenantHandler) AdminDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := h.DB.Exec(r.Context(), `UPDATE tenants SET status = $1, updated_at = NOW() WHERE id = $2`, domain.TenantStatusInactive, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to deactivate tenant")
+	if _, err := h.DB.Exec(r.Context(), `DELETE FROM tenants WHERE id = $1`, id); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to delete tenant")
 		return
 	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id, "status": string(domain.TenantStatusInactive)})
+	respondJSON(w, http.StatusOK, map[string]string{"id": id, "deleted": "true"})
 }

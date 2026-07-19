@@ -769,6 +769,61 @@ export const sceneBatchApi = {
     request<SceneBatch>(`/scene/batches/${id}/status`, { method: "POST", body: JSON.stringify({ status }) }),
 }
 
+export const taskResourceApi = {
+  listResources: (params?: { taskId?: string; search?: string; limit?: number; offset?: number }) =>
+    request<ListResponse<TaskResource>>(`/scene/task-resources${buildQuery(params || {})}`),
+  bindResource: (data: { taskId: string; resourceId: string }) =>
+    request<TaskResourceBinding>(`/scene/task-resources`, { method: "POST", body: JSON.stringify(data) }),
+  unbindResource: (id: string) =>
+    request<{ id: string }>(`/scene/task-resources/${id}`, { method: "DELETE" }),
+}
+
+export const taskKnowledgeAbilityApi = {
+  bindKnowledge: (data: { taskId: string; knowledgePointId: string }) =>
+    request<TaskKnowledgeBinding>(`/scene/task-bindings/knowledge`, { method: "POST", body: JSON.stringify(data) }),
+  unbindKnowledge: (id: string) =>
+    request<{ id: string }>(`/scene/task-bindings/knowledge/${id}`, { method: "DELETE" }),
+  bindAbility: (data: { taskId: string; abilityPointId: string }) =>
+    request<TaskAbilityBinding>(`/scene/task-bindings/ability`, { method: "POST", body: JSON.stringify(data) }),
+  unbindAbility: (id: string) =>
+    request<{ id: string }>(`/scene/task-bindings/ability/${id}`, { method: "DELETE" }),
+}
+
+export const taskEvaluationApi = {
+  listConfigs: (params?: { taskId?: string; limit?: number; offset?: number }) =>
+    request<{ items: TaskEvaluationConfig[]; total: number }>(`/scene/evaluation${buildQuery(params || {})}`),
+  upsertConfig: (data: Partial<TaskEvaluationConfig>) =>
+    request<TaskEvaluationConfig>(`/scene/evaluation`, { method: "POST", body: JSON.stringify(data) }),
+  deleteConfig: (id: string) =>
+    request<{ id: string }>(`/scene/evaluation/${id}`, { method: "DELETE" }),
+  listEvalPoints: (configId: string, params?: { limit?: number; offset?: number }) =>
+    request<{ items: TaskEvalPoint[]; total: number }>(`/scene/evaluation/${configId}/points${buildQuery(params || {})}`),
+  upsertEvalPoint: (configId: string, data: Partial<TaskEvalPoint>) =>
+    request<TaskEvalPoint>(`/scene/evaluation/${configId}/points`, { method: "POST", body: JSON.stringify(data) }),
+  deleteEvalPoint: (id: string) =>
+    request<{ id: string }>(`/scene/evaluation/points/${id}`, { method: "DELETE" }),
+  listReviewSteps: (configId: string, params?: { limit?: number; offset?: number }) =>
+    request<{ items: TaskReviewStep[]; total: number }>(`/scene/evaluation/${configId}/steps${buildQuery(params || {})}`),
+  upsertReviewStep: (configId: string, data: Partial<TaskReviewStep>) =>
+    request<TaskReviewStep>(`/scene/evaluation/${configId}/steps`, { method: "POST", body: JSON.stringify(data) }),
+}
+
+export const scenarioWeightApi = {
+  listWeights: (params?: { scenarioId?: string; taskId?: string; limit?: number; offset?: number }) =>
+    request<{ items: ScenarioWeightConfig[]; total: number }>(`/scene/weights${buildQuery(params || {})}`),
+  upsertWeight: (data: Partial<ScenarioWeightConfig>) =>
+    request<ScenarioWeightConfig>(`/scene/weights`, { method: "POST", body: JSON.stringify(data) }),
+}
+
+export const scenarioGradeApi = {
+  listGradeMappings: (params?: { scenarioId?: string; taskId?: string; limit?: number; offset?: number }) =>
+    request<{ items: ScenarioGradeMapping[]; total: number }>(`/scene/grade-mappings${buildQuery(params || {})}`),
+  upsertGradeMapping: (data: Partial<ScenarioGradeMapping>) =>
+    request<ScenarioGradeMapping>(`/scene/grade-mappings`, { method: "POST", body: JSON.stringify(data) }),
+  deleteGradeMapping: (id: string) =>
+    request<{ id: string }>(`/scene/grade-mappings/${id}`, { method: "DELETE" }),
+}
+
 // ==================== Phase 3.4: Lesson APIs ====================
 
 export const courseApi = createContentApi<Course, Omit<Course, "id" | "nodeCount" | "resourceCount" | "studyCount" | "createdAt" | "updatedAt">, Partial<Omit<Course, "id" | "createdAt" | "updatedAt">>>("/lesson/courses")
