@@ -33,6 +33,7 @@ import type { CareerPosition } from "@/lib/types/job"
 import type { Industry } from "@/lib/types/backend"
 import type { SceneBatch } from "@/lib/types/scene"
 import { useToast } from "@/hooks/use-toast"
+import { TopNav } from "@/components/portal/top-nav"
 
 function IndustryProfessionSelector({
   options,
@@ -301,7 +302,8 @@ export default function ScenarioEditPage() {
 
   return (
     <div className="fixed inset-0 bg-background z-50 overflow-auto">
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
+      <TopNav />
+      <div className="sticky top-14 z-10 bg-white border-b border-gray-100">
         <div className="max-w-full mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="sm" onClick={() => router.push("/scene")}>

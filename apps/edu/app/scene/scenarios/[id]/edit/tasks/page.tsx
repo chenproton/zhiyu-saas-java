@@ -115,6 +115,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
 import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi } from "@/lib/api"
 import type { ScenarioTask as ApiScenarioTask } from "@/lib/types/scene"
 import { useToast } from "@/hooks/use-toast"
+import { TopNav } from "@/components/portal/top-nav"
 import type {
   Task, PositionAbility, GradeMapping,
 } from "@/lib/mock-data"
@@ -892,8 +893,9 @@ export default function TasksEditPage() {
 
   return (
     <div className="fixed inset-0 bg-background z-50 overflow-auto">
+      <TopNav />
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
+      <div className="sticky top-14 z-10 bg-white border-b border-gray-100">
         <div className="max-w-[1400px] mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <PrdAnnotation data={getAnnotation("editor-step2-back")}>
