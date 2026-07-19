@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
   Table,
@@ -24,8 +23,6 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import {
   Search,
-  Archive,
-  Building2,
   GraduationCap,
   MoreHorizontal,
 } from "lucide-react"
@@ -73,15 +70,6 @@ export default function PositionArchivePage() {
   useEffect(() => {
     loadData()
   }, [])
-
-  const industries = useMemo(() => {
-    const set = new Set<string>()
-    positions.forEach((p) => {
-      const name = industryMap.get(p.industry)
-      if (name) set.add(name)
-    })
-    return Array.from(set).sort()
-  }, [positions, industryMap])
 
   const majors = useMemo(() => {
     const set = new Set<string>()
@@ -136,48 +124,6 @@ export default function PositionArchivePage() {
         <p className="text-muted-foreground mt-1">
           查看已归档的岗位记录，支持恢复为草稿继续编辑
         </p>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">归档岗位总数</p>
-                <p className="text-2xl font-bold mt-1">{positions.length}</p>
-              </div>
-              <div className="p-2.5 rounded-lg bg-purple-100 text-purple-600">
-                <Archive className="h-5 w-5" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">覆盖行业</p>
-                <p className="text-2xl font-bold mt-1">{industries.length}</p>
-              </div>
-              <div className="p-2.5 rounded-lg bg-blue-100 text-blue-600">
-                <Building2 className="h-5 w-5" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">覆盖专业</p>
-                <p className="text-2xl font-bold mt-1">{majors.length}</p>
-              </div>
-              <div className="p-2.5 rounded-lg bg-green-100 text-green-600">
-                <GraduationCap className="h-5 w-5" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <div className="flex gap-4 items-start">

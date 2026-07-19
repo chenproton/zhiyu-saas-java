@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
   Table,
@@ -24,11 +23,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import {
   Search,
-  Pencil,
-  Archive,
   GraduationCap,
-  Building2,
-  RotateCcw,
   MoreHorizontal,
 } from "lucide-react"
 import { scenarioApi, sceneBatchApi } from "@/lib/api"
@@ -118,50 +113,6 @@ export default function SceneArchivePage() {
         <p className="text-muted-foreground mt-1">
           查看已归档的场景记录，支持恢复为草稿继续编辑
         </p>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">归档场景总数</p>
-                <p className="text-2xl font-bold mt-1">{scenarios.length}</p>
-              </div>
-              <div className="p-2.5 rounded-lg bg-purple-100 text-purple-600">
-                <Archive className="h-5 w-5" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">覆盖专业</p>
-                <p className="text-2xl font-bold mt-1">{professions.length}</p>
-              </div>
-              <div className="p-2.5 rounded-lg bg-blue-100 text-blue-600">
-                <Building2 className="h-5 w-5" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">覆盖行业</p>
-                <p className="text-2xl font-bold mt-1">
-                  {new Set(scenarios.map((s) => s.industryName).filter(Boolean)).size}
-                </p>
-              </div>
-              <div className="p-2.5 rounded-lg bg-green-100 text-green-600">
-                <GraduationCap className="h-5 w-5" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <div className="flex gap-4 items-start">

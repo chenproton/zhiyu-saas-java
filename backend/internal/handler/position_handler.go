@@ -104,6 +104,10 @@ func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 		where = append(where, "status = $"+itoa(argIdx))
 		args = append(args, status)
 		argIdx++
+	} else {
+		where = append(where, "status != $"+itoa(argIdx))
+		args = append(args, "archived")
+		argIdx++
 	}
 	if positionType != "" {
 		where = append(where, "position_type = $"+itoa(argIdx))

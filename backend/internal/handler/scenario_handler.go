@@ -79,6 +79,10 @@ func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {
 		where = append(where, "status = $"+itoa(argIdx))
 		args = append(args, status)
 		argIdx++
+	} else {
+		where = append(where, "status != $"+itoa(argIdx))
+		args = append(args, "archived")
+		argIdx++
 	}
 	if batchID != "" {
 		where = append(where, "batch_id = $"+itoa(argIdx))
