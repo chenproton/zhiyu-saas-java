@@ -115,6 +115,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
 import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi } from "@/lib/api"
 import type { ScenarioTask as ApiScenarioTask } from "@/lib/types/scene"
 import { useToast } from "@/hooks/use-toast"
+import { Toaster } from "@/components/ui/toaster"
 import { TopNav } from "@/components/portal/top-nav"
 import type {
   Task, PositionAbility, GradeMapping,
@@ -1314,6 +1315,7 @@ export default function TasksEditPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Toaster />
     </div>
   )
 }

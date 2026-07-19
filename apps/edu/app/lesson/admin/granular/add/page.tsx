@@ -11,7 +11,7 @@ import {
   GraduationCap,
   ImageUp,
 } from "lucide-react"
-import { toast } from "sonner"
+import { toast, Toaster } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -61,7 +61,9 @@ function AddGranularPageInner() {
   const [hours, setHours] = useState("")
   const [learningGoal, setLearningGoal] = useState("")
   const [major, setMajor] = useState("")
+  const [majorId, setMajorId] = useState("")
   const [majorNames, setMajorNames] = useState<string[]>([])
+  const majorMapRef = useRef<Map<string, string>>(new Map())
   const [difficulty, setDifficulty] = useState<number>(0)
   const [coverImage, setCoverImage] = useState("")
 
@@ -100,6 +102,7 @@ function AddGranularPageInner() {
           setHours(String(c.onlineHours ?? c.offlineHours ?? ""))
           setLearningGoal("") // course 表无学习目标字段
           setMajor(c.majorName || "")
+          setMajorId(c.majorId || "")
           setDifficulty(0)
           setCoverImage(c.coverImage || "")
         } else {
@@ -423,6 +426,7 @@ function AddGranularPageInner() {
           <PublishCheckPanel node={currentCheckNode} />
         </div>
       </div>
+      <Toaster />
     </div>
   )
 }

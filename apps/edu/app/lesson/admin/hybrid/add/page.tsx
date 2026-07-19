@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { ArrowLeft, Save, Send, Info, Plus, X, BookOpen, Layers, BookMarked, Microscope, Briefcase, Database, FileStack, Monitor, CheckCircle2, BarChart3, ClipboardList, Zap, Shuffle, MessageSquare, HelpCircle, ChevronDown, ChevronRight, Bold, Italic, Underline, List, ListOrdered, Image as ImageIcon, ImageUp, Link as LinkIcon, AlignLeft } from "lucide-react"
-import { toast } from "sonner"
+import { toast, Toaster } from "sonner"
 import { courseApi, approvalApi, majorApi, fileApi } from "@/lib/api"
 import type { Course } from "@/lib/types/lesson"
 import type { SystemCourseNode, NodeRefType } from "@/lib/types/lesson-source"
@@ -80,6 +80,7 @@ function HybridCourseAddForm() {
   const claimSessionsParam = searchParams.get("claimSessions")
   const [existing, setExisting] = useState<Course | null>(null)
   const [majorNames, setMajorNames] = useState<string[]>([])
+  const majorMapRef = useRef<Map<string, string>>(new Map())
 
   useEffect(() => {
     if (!editId) {
@@ -91,7 +92,11 @@ function HybridCourseAddForm() {
 
   useEffect(() => {
     majorApi.list({ limit: 1000 }).then((res) => {
-      setMajorNames(res.items.filter((m) => m.enabled).map((m) => m.name))
+      const enabled = res.items.filter((m) => m.enabled)
+      setMajorNames(enabled.map((m) => m.name))
+      const map = new Map<string, string>()
+      enabled.forEach((m) => map.set(m.name, m.id))
+      majorMapRef.current = map
     }).catch(() => {})
   }, [])
 
@@ -420,13 +425,14 @@ function HybridCourseAddForm() {
     name: rootForm.name || "",
     type: "hybrid",
     category: rootForm.category || "专业核心课程",
-    majorId: undefined,
-    semester: rootForm.semester,
-    className: "",
-    coverImage: rootForm.coverImage,
+    majorId: rootForm.majorId || existing?.majorId || undefined,
+    majorName: rootForm.majorName || existing?.majorName || undefined,
+    semester: rootForm.semester || existing?.semester || undefined,
+    className: existing?.className || "",
+    coverImage: rootForm.coverImage || undefined,
     status: "draft",
-    creatorId: "",
-    coCreatorIds: [],
+    creatorId: existing?.creatorId || "",
+    coCreatorIds: existing?.coCreatorIds || [],
   })
 
   const handleSave = async () => {
@@ -453,9 +459,10 @@ function HybridCourseAddForm() {
         setExisting(created)
         hasSavedRef.current = true
         toast.success(`已保存混合课程：${created.name}`)
+        router.replace(`/lesson/admin/hybrid/add?id=${created.id}`)
       }
-    } catch (e) {
-      toast.error("保存失败，请检查表单后重试")
+    } catch (e: any) {
+      toast.error(e?.message || "保存失败，请检查表单后重试")
     } finally {
       setSaving(false)
     }
@@ -636,7 +643,7 @@ function HybridCourseAddForm() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">所属专业</Label>
-                    <Select value={rootForm.majorName} onValueChange={(v) => updateRootForm({ majorName: v })}>
+                    <Select value={rootForm.majorName} onValueChange={(v) => updateRootForm({ majorName: v, majorId: majorMapRef.current.get(v) || "" })}>
                       <SelectTrigger className="h-9 text-sm">
                         <SelectValue placeholder="请选择所属专业" />
                       </SelectTrigger>
@@ -935,6 +942,7 @@ function HybridCourseAddForm() {
           </div>
         </DialogContent>
       </Dialog>
+      <Toaster />
     </div>
   )
 }

@@ -33,6 +33,7 @@ import type { CareerPosition } from "@/lib/types/job"
 import type { Industry } from "@/lib/types/backend"
 import type { SceneBatch } from "@/lib/types/scene"
 import { useToast } from "@/hooks/use-toast"
+import { Toaster } from "@/components/ui/toaster"
 import { TopNav } from "@/components/portal/top-nav"
 
 interface PositionWithProfession extends CareerPosition {
@@ -877,6 +878,7 @@ function NewScenarioEditForm() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Toaster />
     </div>
   )
 }

@@ -24,7 +24,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react"
-import { toast } from "sonner"
+import { toast, Toaster } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -168,7 +168,9 @@ function AddSystemPageInner() {
   const [courseName, setCourseName] = useState("")
   const [courseCode, setCourseCode] = useState(`AB8G-A1-${Math.floor(10000000 + Math.random() * 90000000)}`)
   const [major, setMajor] = useState("")
+  const [majorId, setMajorId] = useState("")
   const [majorNames, setMajorNames] = useState<string[]>([])
+  const majorMapRef = useRef<Map<string, string>>(new Map())
   const [courseDescription, setCourseDescription] = useState("")
   const [coverImage, setCoverImage] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -192,6 +194,7 @@ function AddSystemPageInner() {
       if (course.description) setCourseDescription(course.description)
       if (course.coverImage) setCoverImage(course.coverImage)
       if (course.majorName) setMajor(course.majorName)
+      if (course.majorId) setMajorId(course.majorId)
       setCourseStatus(course.status || "draft")
       if (nodeRes.items?.length) {
         setNodes(nodeRes.items as unknown as SystemCourseNode[])
@@ -202,7 +205,11 @@ function AddSystemPageInner() {
 
   useEffect(() => {
     majorApi.list({ limit: 1000 }).then((res) => {
-      setMajorNames(res.items.filter((m) => m.enabled).map((m) => m.name))
+      const enabled = res.items.filter((m) => m.enabled)
+      setMajorNames(enabled.map((m) => m.name))
+      const map = new Map<string, string>()
+      enabled.forEach((m) => map.set(m.name, m.id))
+      majorMapRef.current = map
     }).catch(() => {})
   }, [])
 
@@ -468,7 +475,8 @@ function AddSystemPageInner() {
       const payload: any = {
         name: courseName,
         code: courseCode,
-        major: major || undefined,
+        majorId: majorId || undefined,
+        majorName: major || undefined,
         description: courseDescription || undefined,
         coverImage: coverImage || undefined,
         type: "system",
@@ -493,12 +501,12 @@ function AddSystemPageInner() {
         hasSavedRef.current = true
         toast.success("草稿已保存")
       }
-    } catch {
-      toast.error("保存失败")
+    } catch (e: any) {
+      toast.error(e?.message || "保存失败")
     } finally {
       setSaving(false)
     }
-  }, [courseName, courseCode, major, courseDescription, coverImage, isEdit, courseId, courseStatus])
+  }, [courseName, courseCode, major, majorId, courseDescription, coverImage, isEdit, courseId, courseStatus])
 
   const handleSubmit = useCallback(async () => {
     const completeNodes = nodes.filter((n) => n.type !== "original" && checkNodeComplete(n))
@@ -666,7 +674,7 @@ function AddSystemPageInner() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">适用专业</Label>
-                    <Select value={major} onValueChange={setMajor}>
+                    <Select value={major} onValueChange={(v) => { setMajor(v); setMajorId(majorMapRef.current.get(v) || "") }}>
                       <SelectTrigger className="h-9 text-sm">
                         <SelectValue placeholder="请选择适用专业" />
                       </SelectTrigger>
@@ -1099,6 +1107,7 @@ function AddSystemPageInner() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Toaster />
     </div>
   )
 }
