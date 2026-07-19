@@ -23,25 +23,37 @@ type ScenarioTaskListResponse struct {
 }
 
 type CreateScenarioTaskRequest struct {
-	ScenarioID          string   `json:"scenarioId"`
-	Name                string   `json:"name"`
-	Code                string   `json:"code"`
-	SortOrder           int      `json:"sortOrder"`
-	Description         *string  `json:"description"`
-	DetailedDescription *string  `json:"detailedDescription"`
-	EstimatedHours      float64  `json:"estimatedHours"`
-	TaskType            string   `json:"taskType"`
-	Difficulty          int      `json:"difficulty"`
-	Background          *string  `json:"background"`
-	DependencyIDs       []string `json:"dependencyIds"`
-	IsReferenced        bool     `json:"isReferenced"`
-	SourceScenarioID    *string  `json:"sourceScenarioId"`
+	ScenarioID          string           `json:"scenarioId"`
+	Name                string           `json:"name"`
+	Code                string           `json:"code"`
+	SortOrder           int              `json:"sortOrder"`
+	Description         *string          `json:"description"`
+	DetailedDescription *string          `json:"detailedDescription"`
+	EstimatedHours      float64          `json:"estimatedHours"`
+	TaskType            string           `json:"taskType"`
+	Difficulty          int              `json:"difficulty"`
+	Background          *string          `json:"background"`
+	DependencyIDs       []string         `json:"dependencyIds"`
+	IsReferenced        bool             `json:"isReferenced"`
+	SourceScenarioID    *string          `json:"sourceScenarioId"`
+	KnowledgePointIDs   []string         `json:"knowledgePointIds"`
+	AbilityPointIDs     []string         `json:"abilityPointIds"`
+	ResourceIDs         []string         `json:"resourceIds"`
+	EvalData            domain.JSONMap   `json:"evalData"`
 }
 
 type ReorderScenarioTasksRequest struct {
 	ScenarioID string   `json:"scenarioId"`
 	TaskIDs    []string `json:"taskIds"`
 }
+
+const taskSelectColumns = `id, scenario_id, name, code, sort_order, description, detailed_description,
+	estimated_hours, task_type, difficulty, background, dependency_ids, is_referenced, source_scenario_id,
+	knowledge_point_ids, ability_point_ids, resource_ids, eval_data, tenant_id`
+
+const taskInsertColumns = `scenario_id, name, code, sort_order, description, detailed_description,
+	estimated_hours, task_type, difficulty, background, dependency_ids, is_referenced, source_scenario_id,
+	knowledge_point_ids, ability_point_ids, resource_ids, eval_data, tenant_id`
 
 func (h *ScenarioTaskHandler) List(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
@@ -93,13 +105,8 @@ func (h *ScenarioTaskHandler) List(w http.ResponseWriter, r *http.Request) {
 	var total int
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
-	query := `
-		SELECT id, scenario_id, name, code, sort_order, description, detailed_description,
-			estimated_hours, task_type, difficulty, background, dependency_ids, is_referenced, source_scenario_id, tenant_id
-		FROM scenario_tasks
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY sort_order
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
+	query := `SELECT ` + taskSelectColumns + ` FROM scenario_tasks WHERE ` +
+		strings.Join(where, " AND ") + ` ORDER BY sort_order LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
 	args = append(args, limit, offset)
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
@@ -152,12 +159,13 @@ func (h *ScenarioTaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var tenantID *string
 	_ = h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM scenarios WHERE id = $1`, req.ScenarioID).Scan(&tenantID)
 
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO scenario_tasks (scenario_id, name, code, sort_order, description, detailed_description,
-			estimated_hours, task_type, difficulty, background, dependency_ids, is_referenced, source_scenario_id, tenant_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+	_, err := h.DB.Exec(r.Context(), `INSERT INTO scenario_tasks (`+taskInsertColumns+`)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
 	`, req.ScenarioID, req.Name, req.Code, req.SortOrder, req.Description, req.DetailedDescription,
-		req.EstimatedHours, req.TaskType, req.Difficulty, req.Background, coalesceStringSlice(req.DependencyIDs), req.IsReferenced, req.SourceScenarioID, tenantID)
+		req.EstimatedHours, req.TaskType, req.Difficulty, req.Background,
+		coalesceStringSlice(req.DependencyIDs), req.IsReferenced, req.SourceScenarioID,
+		coalesceStringSlice(req.KnowledgePointIDs), coalesceStringSlice(req.AbilityPointIDs),
+		coalesceStringSlice(req.ResourceIDs), jsonMapBytes(req.EvalData), tenantID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create task")
 		return
@@ -186,12 +194,17 @@ func (h *ScenarioTaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err := h.DB.Exec(r.Context(), `
-		UPDATE scenario_tasks SET scenario_id = $1, name = $2, code = $3, sort_order = $4,
-			description = $5, detailed_description = $6, estimated_hours = $7, task_type = $8,
-			difficulty = $9, background = $10, dependency_ids = $11, is_referenced = $12, source_scenario_id = $13
-		WHERE id = $14
+		UPDATE scenario_tasks SET scenario_id=$1, name=$2, code=$3, sort_order=$4,
+			description=$5, detailed_description=$6, estimated_hours=$7, task_type=$8,
+			difficulty=$9, background=$10, dependency_ids=$11, is_referenced=$12,
+			source_scenario_id=$13, knowledge_point_ids=$14, ability_point_ids=$15,
+			resource_ids=$16, eval_data=$17
+		WHERE id=$18
 	`, req.ScenarioID, req.Name, req.Code, req.SortOrder, req.Description, req.DetailedDescription,
-		req.EstimatedHours, req.TaskType, req.Difficulty, req.Background, coalesceStringSlice(req.DependencyIDs), req.IsReferenced, req.SourceScenarioID, id)
+		req.EstimatedHours, req.TaskType, req.Difficulty, req.Background,
+		coalesceStringSlice(req.DependencyIDs), req.IsReferenced, req.SourceScenarioID,
+		coalesceStringSlice(req.KnowledgePointIDs), coalesceStringSlice(req.AbilityPointIDs),
+		coalesceStringSlice(req.ResourceIDs), jsonMapBytes(req.EvalData), id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to update task")
 		return
@@ -263,13 +276,11 @@ func (h *ScenarioTaskHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 
 func (h *ScenarioTaskHandler) fetchTask(ctx context.Context, id string) (*domain.ScenarioTask, error) {
 	var t domain.ScenarioTask
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, scenario_id, name, code, sort_order, description, detailed_description,
-			estimated_hours, task_type, difficulty, background, dependency_ids, is_referenced, source_scenario_id, tenant_id
-		FROM scenario_tasks WHERE id = $1
-	`, id).Scan(
+	err := h.DB.QueryRow(ctx, `SELECT `+taskSelectColumns+` FROM scenario_tasks WHERE id = $1`, id).Scan(
 		&t.ID, &t.ScenarioID, &t.Name, &t.Code, &t.SortOrder, &t.Description, &t.DetailedDescription,
-		&t.EstimatedHours, &t.TaskType, &t.Difficulty, &t.Background, &t.DependencyIDs, &t.IsReferenced, &t.SourceScenarioID, &t.TenantID,
+		&t.EstimatedHours, &t.TaskType, &t.Difficulty, &t.Background, &t.DependencyIDs,
+		&t.IsReferenced, &t.SourceScenarioID,
+		&t.KnowledgePointIDs, &t.AbilityPointIDs, &t.ResourceIDs, &t.EvalData, &t.TenantID,
 	)
 	if err != nil {
 		return nil, err
@@ -279,13 +290,11 @@ func (h *ScenarioTaskHandler) fetchTask(ctx context.Context, id string) (*domain
 
 func (h *ScenarioTaskHandler) fetchTaskByCode(ctx context.Context, code string) (*domain.ScenarioTask, error) {
 	var t domain.ScenarioTask
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, scenario_id, name, code, sort_order, description, detailed_description,
-			estimated_hours, task_type, difficulty, background, dependency_ids, is_referenced, source_scenario_id, tenant_id
-		FROM scenario_tasks WHERE code = $1
-	`, code).Scan(
+	err := h.DB.QueryRow(ctx, `SELECT `+taskSelectColumns+` FROM scenario_tasks WHERE code = $1`, code).Scan(
 		&t.ID, &t.ScenarioID, &t.Name, &t.Code, &t.SortOrder, &t.Description, &t.DetailedDescription,
-		&t.EstimatedHours, &t.TaskType, &t.Difficulty, &t.Background, &t.DependencyIDs, &t.IsReferenced, &t.SourceScenarioID, &t.TenantID,
+		&t.EstimatedHours, &t.TaskType, &t.Difficulty, &t.Background, &t.DependencyIDs,
+		&t.IsReferenced, &t.SourceScenarioID,
+		&t.KnowledgePointIDs, &t.AbilityPointIDs, &t.ResourceIDs, &t.EvalData, &t.TenantID,
 	)
 	if err != nil {
 		return nil, err
@@ -299,11 +308,24 @@ func (h *ScenarioTaskHandler) scanTaskRows(rows pgx.Rows) ([]domain.ScenarioTask
 		var t domain.ScenarioTask
 		if err := rows.Scan(
 			&t.ID, &t.ScenarioID, &t.Name, &t.Code, &t.SortOrder, &t.Description, &t.DetailedDescription,
-			&t.EstimatedHours, &t.TaskType, &t.Difficulty, &t.Background, &t.DependencyIDs, &t.IsReferenced, &t.SourceScenarioID, &t.TenantID,
+			&t.EstimatedHours, &t.TaskType, &t.Difficulty, &t.Background, &t.DependencyIDs,
+			&t.IsReferenced, &t.SourceScenarioID,
+			&t.KnowledgePointIDs, &t.AbilityPointIDs, &t.ResourceIDs, &t.EvalData, &t.TenantID,
 		); err != nil {
 			return nil, err
 		}
 		items = append(items, t)
 	}
 	return items, nil
+}
+
+func jsonMapBytes(m domain.JSONMap) []byte {
+	if m == nil {
+		return []byte("{}")
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return []byte("{}")
+	}
+	return b
 }

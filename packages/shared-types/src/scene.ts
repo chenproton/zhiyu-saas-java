@@ -36,6 +36,10 @@ export interface ScenarioTask {
   dependencyIds: string[]
   isReferenced: boolean
   sourceScenarioId?: string
+  knowledgePointIds: string[]
+  abilityPointIds: string[]
+  resourceIds: string[]
+  evalData?: Record<string, any>
 }
 
 export interface TaskDeliverable {

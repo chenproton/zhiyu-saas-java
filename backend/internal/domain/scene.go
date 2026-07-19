@@ -39,21 +39,25 @@ type Scenario struct {
 }
 
 type ScenarioTask struct {
-	ID                  string   `json:"id"`
-	ScenarioID          string   `json:"scenarioId"`
-	Name                string   `json:"name"`
-	Code                string   `json:"code"`
-	SortOrder           int      `json:"sortOrder"`
-	Description         *string  `json:"description,omitempty"`
-	DetailedDescription *string  `json:"detailedDescription,omitempty"`
-	EstimatedHours      float64  `json:"estimatedHours"`
-	TaskType            string   `json:"taskType"`
-	Difficulty          int      `json:"difficulty"`
-	Background          *string  `json:"background,omitempty"`
-	DependencyIDs       []string `json:"dependencyIds,omitempty"`
-	IsReferenced        bool     `json:"isReferenced"`
-	SourceScenarioID    *string  `json:"sourceScenarioId,omitempty"`
-	TenantID            *string  `json:"tenantId,omitempty"`
+	ID                  string              `json:"id"`
+	ScenarioID          string              `json:"scenarioId"`
+	Name                string              `json:"name"`
+	Code                string              `json:"code"`
+	SortOrder           int                 `json:"sortOrder"`
+	Description         *string             `json:"description,omitempty"`
+	DetailedDescription *string             `json:"detailedDescription,omitempty"`
+	EstimatedHours      float64             `json:"estimatedHours"`
+	TaskType            string              `json:"taskType"`
+	Difficulty          int                 `json:"difficulty"`
+	Background          *string             `json:"background,omitempty"`
+	DependencyIDs       []string            `json:"dependencyIds,omitempty"`
+	IsReferenced        bool                `json:"isReferenced"`
+	SourceScenarioID    *string             `json:"sourceScenarioId,omitempty"`
+	KnowledgePointIDs   []string            `json:"knowledgePointIds,omitempty"`
+	AbilityPointIDs     []string            `json:"abilityPointIds,omitempty"`
+	ResourceIDs         []string            `json:"resourceIds,omitempty"`
+	EvalData            JSONMap             `json:"evalData,omitempty"`
+	TenantID            *string             `json:"tenantId,omitempty"`
 }
 
 type TaskEvaluationConfig struct {
@@ -93,14 +97,16 @@ type TaskReviewStep struct {
 }
 
 type TaskResource struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Type        string    `json:"type"`
-	URL         *string   `json:"url,omitempty"`
-	Description *string   `json:"description,omitempty"`
-	Thumbnail   *string   `json:"thumbnail,omitempty"`
-	UploadedBy  *string   `json:"uploadedBy,omitempty"`
-	UploadedAt  time.Time `json:"uploadedAt"`
+	ID                string    `json:"id"`
+	Name              string    `json:"name"`
+	Type              string    `json:"type"`
+	URL               *string   `json:"url,omitempty"`
+	Description       *string   `json:"description,omitempty"`
+	Thumbnail         *string   `json:"thumbnail,omitempty"`
+	Size              *string   `json:"size,omitempty"`
+	KnowledgePointIDs []string  `json:"knowledgePointIds,omitempty"`
+	UploadedBy        *string   `json:"uploadedBy,omitempty"`
+	UploadedAt        time.Time `json:"uploadedAt"`
 }
 
 type TaskResourceBinding struct {

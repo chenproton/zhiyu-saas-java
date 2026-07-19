@@ -43,6 +43,7 @@ type KnowledgePoint struct {
 	Name              string    `json:"name"`
 	Code              *string   `json:"code,omitempty"`
 	Description       *string   `json:"description,omitempty"`
+	Category          *string   `json:"category,omitempty"`
 	Linked            bool      `json:"linked"`
 	GranularLessonIds JSONSlice `json:"granularLessonIds,omitempty"`
 	CreatorID         *string   `json:"creatorId,omitempty"`

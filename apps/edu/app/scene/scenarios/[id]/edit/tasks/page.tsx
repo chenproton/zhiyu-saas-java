@@ -82,7 +82,7 @@ import {
 } from "lucide-react"
 import NextLink from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { useState, useMemo, useRef, useCallback, useLayoutEffect } from "react"
+import { useState, useMemo, useRef, useCallback, useLayoutEffect, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -112,7 +112,13 @@ import { cn } from "@/lib/utils"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
+import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi } from "@/lib/api"
+import type { ScenarioTask as ApiScenarioTask } from "@/lib/types/scene"
 import {
+  type Task,
+  type PositionAbility,
+  type GradeMapping,
+  // Import module-level mutable arrays; cleared & repopulated from APIs on mount
   scenarios,
   knowledgePoints,
   abilityPoints,
@@ -121,9 +127,7 @@ import {
   questionBank,
   granularLessons,
   professions,
-  type Task,
-  type PositionAbility,
-  type GradeMapping,
+  allTeachers,
 } from "@/lib/mock-data"
 
 // ============ Types & Configs ============
@@ -252,13 +256,9 @@ const questionBankLabels: Record<string, string> = {
   professional: "专业技能题库",
 }
 
-const allQuestions = [
-  ...questionBank.frontend.map(q => ({ ...q, questionBank: "frontend" as string })),
-  ...questionBank.backend.map(q => ({ ...q, questionBank: "backend" as string })),
-  ...questionBank.draft.map(q => ({ ...q, questionBank: "draft" as string })),
-]
+const allQuestions: any[] = []
 
-const paperMocks = [
+const paperMocks: any[] = [
   { id: "paper-1", name: "前端基础综合试卷", questionCount: 20, totalScore: 100 },
   { id: "paper-2", name: "React 进阶测试", questionCount: 15, totalScore: 100 },
   { id: "paper-3", name: "API 设计规范测验", questionCount: 10, totalScore: 100 },
@@ -518,11 +518,97 @@ export default function TasksEditPage() {
   const router = useRouter()
   const scenarioId = params.id as string
 
-  const existingScenario = scenarios.find(s => s.id === scenarioId)
+  const [existingScenario, setExistingScenario] = useState<any>(null)
+  const [dataLoaded, setDataLoaded] = useState(false)
 
-  const [tasks, setTasks] = useState<Task[]>(existingScenario?.tasks || [])
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [taskStates, setTaskStates] = useState<Record<string, TaskState>>({})
 
-  // Helper: generate mock eval points from task deliverables
+  // Load all data from APIs on mount
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [scenarioData, tasksRes, kpRes, apRes, posRes] = await Promise.all([
+          scenarioApi.get(scenarioId),
+          taskApi.list({ scenarioId, limit: 1000 }),
+          knowledgeApi.list({ limit: 1000 }),
+          abilityApi.list({ limit: 1000 }),
+          positionApi.list({ limit: 1000 }),
+        ])
+
+        // Populate module-level arrays with API data
+        scenarios.length = 0
+        scenarios.push(scenarioData as any)
+        setExistingScenario({
+          ...scenarioData,
+          coBuilders: (scenarioData.coBuilderIds || []).map((id: string) => ({ id, name: id })),
+          positionId: scenarioData.careerPositionId,
+          positionName: scenarioData.careerPositionId,
+        })
+
+        knowledgePoints.length = 0
+        kpRes.items.forEach((kp: any) => knowledgePoints.push(kp))
+
+        abilityPoints.length = 0
+        apRes.items.forEach((ap: any) => abilityPoints.push(ap))
+
+        professions.length = 0
+        posRes.items.forEach((p: any) => {
+          const prof = professions.find((pr: any) => pr.name === (p.industryName || "其他"))
+          if (prof) {
+            prof.positions.push({ id: p.id, name: p.name, professionId: prof.id })
+          } else {
+            professions.push({ id: `prof-${professions.length + 1}`, name: p.industryName || "其他", positions: [{ id: p.id, name: p.name, professionId: `prof-${professions.length + 1}` }] })
+          }
+        })
+
+        // Question bank data stays from mock for now (evaluation module not yet migrated)
+
+        // Convert API tasks to mock Task format
+        const apiTasks = tasksRes.items
+        const mockTasks: Task[] = apiTasks.map((at: ApiScenarioTask, idx: number) => ({
+          id: at.id,
+          name: at.name,
+          code: at.code,
+          order: at.sortOrder,
+          description: at.description || "",
+          detailedDescription: at.detailedDescription || undefined,
+          estimatedHours: at.estimatedHours,
+          taskType: at.taskType as "assessment" | "training",
+          difficulty: (at.difficulty || 3) as 1 | 2 | 3 | 4 | 5,
+          background: at.background || "",
+          dependencies: at.dependencyIds || [],
+          resources: at.resourceIds || [],
+          deliverables: [],
+          knowledgePoints: at.knowledgePointIds || [],
+          abilityPoints: at.abilityPointIds || [],
+          assessment: null,
+          isReferenced: at.isReferenced || false,
+          sourceScenarioId: at.sourceScenarioId || undefined,
+          sourceScenarioName: undefined,
+        }))
+
+        setTasks(mockTasks)
+
+        // Initialize taskStates from API task data
+        const count = mockTasks.length
+        const states: Record<string, TaskState> = {}
+        mockTasks.forEach((t, i) => {
+          states[t.id] = makeDefaultTaskState(count, i)
+          if (t.knowledgePoints) states[t.id].knowledgePoints = t.knowledgePoints
+          if (t.abilityPoints) states[t.id].abilityPoints = t.abilityPoints
+          if (t.resources) states[t.id].resources = t.resources
+          if (t.detailedDescription) states[t.id].description = t.detailedDescription
+        })
+        setTaskStates(states)
+        setDataLoaded(true)
+      } catch (err) {
+        console.error("Failed to load task data", err)
+      }
+    }
+    load()
+  }, [scenarioId])
+
   const generateMockEvalPoints = (t: Task): { randomDraw: EvalPoint[]; review: EvalPoint[] } => {
     const subTypePool: EvalSubType[] = ["knowledge_mastery", "operation_standard", "task_completion", "result_quality", "communication", "collaboration", "professionalism", "innovation", "adaptability"]
     const eps = t.deliverables?.flatMap(d => d.evaluationPoints || []) || []
@@ -545,91 +631,6 @@ export default function TasksEditPage() {
     })
     return { randomDraw, review }
   }
-
-  const [taskStates, setTaskStates] = useState<Record<string, TaskState>>(() => {
-    const states: Record<string, TaskState> = {}
-    const count = existingScenario?.tasks.length || 0
-    existingScenario?.tasks.forEach((t, i) => {
-      // Determine evaluation methods from assessment type
-      let methods: string[] = []
-      if (t.assessment?.type === "objective") methods = ["random_draw", "question_bank"]
-      else if (t.assessment?.type === "subjective") methods = ["review"]
-      else if (t.assessment?.type === "mixed") methods = ["random_draw", "review"]
-      else methods = ["review"]
-
-      const mockEps = generateMockEvalPoints(t)
-      const mockQuestions = allQuestions.slice(0, 3).map(q => q.id)
-      const hasPaper = methods.includes("paper")
-
-      states[t.id] = {
-        description: t.detailedDescription || defaultDescriptionTemplate,
-        descriptionPdf: null,
-        knowledgePoints: t.knowledgePoints || [],
-        knowledgeAutoResources: [],
-        abilityPoints: (t as any).abilityPoints || [],
-        abilityLevelMappings: [],
-        resources: t.resources || [],
-        evaluationMethods: methods,
-        randomDrawQuestions: mockQuestions,
-        randomDrawCustomQuestions: [
-          { id: "rdq-1", name: "请简述 React 的虚拟 DOM 工作原理", description: "考察学生对 React 核心机制的理解，包括 diff 算法和 reconciliation 过程。", answer: "虚拟 DOM 是 React 在内存中维护的一颗树形结构，用于描述真实 DOM 的状态。当状态变化时，React 会生成新的虚拟 DOM，通过 Diff 算法比较新旧虚拟 DOM 的差异，计算出最小变更集，最后批量更新真实 DOM。", major: "前端开发" },
-          { id: "rdq-2", name: "什么是闭包？请举例说明其在实际开发中的应用", description: "考察 JavaScript 核心概念闭包的理解及实际应用场景。", answer: "闭包是指有权访问另一个函数作用域中变量的函数。应用场景包括：1. 数据封装和私有变量；2. 函数柯里化；3. 防抖和节流函数的实现；4. 模块化模式。", major: "前端开发" },
-          { id: "rdq-3", name: "HTTP 状态码 301 和 302 的区别是什么", description: "考察对 HTTP 协议重定向状态码的理解。", answer: "301 Moved Permanently 表示资源已被永久移动到新的 URL，搜索引擎会更新索引。302 Found 表示资源临时位于其他 URL，客户端应继续使用原 URL 发起后续请求。", major: "后端开发" },
-          { id: "rdq-4", name: "请解释数据库事务的 ACID 特性", description: "考察关系型数据库核心概念。", answer: "ACID 指原子性（Atomicity，事务要么全部完成要么全部不完成）、一致性（Consistency，事务执行前后数据库处于一致状态）、隔离性（Isolation，并发事务互不干扰）、持久性（Durability，事务一旦提交就永久保存）。", major: "后端开发" },
-          { id: "rdq-5", name: "什么是 RESTful API？设计一个用户资源的 RESTful 接口", description: "考察 RESTful 架构风格的理解和接口设计能力。", answer: "RESTful API 是一种基于 HTTP 协议、使用 URL 定位资源、用 HTTP 方法（GET/POST/PUT/DELETE）操作资源的架构风格。用户资源接口示例：GET /users（查询列表）、GET /users/:id（查询详情）、POST /users（创建）、PUT /users/:id（更新）、DELETE /users/:id（删除）。", major: "后端开发" },
-          { id: "rdq-6", name: "请说明 CSS 中 BFC（块级格式化上下文）的作用及创建方式", description: "考察 CSS 布局核心概念。", answer: "BFC 是页面上的一个独立渲染区域，内部元素的布局不会影响外部。作用：1. 清除浮动；2. 防止外边距合并；3. 阻止元素被浮动元素覆盖。创建方式：overflow 不为 visible、display 为 inline-block/flex/grid、position 为 absolute/fixed、float 不为 none 等。", major: "前端开发" },
-          { id: "rdq-7", name: "TCP 三次握手的过程是什么？为什么需要三次", description: "考察网络协议基础知识。", answer: "三次握手：1. 客户端发送 SYN；2. 服务端回复 SYN+ACK；3. 客户端回复 ACK。需要三次的原因是为了确认双方的收发能力都正常，同时防止历史重复连接初始化造成混乱。", major: "后端开发" },
-          { id: "rdq-8", name: "请简述 Git 中 merge 和 rebase 的区别及使用场景", description: "考察版本控制工具的深入理解。", answer: "merge 会保留分支历史，产生一个新的合并提交，适合保留完整协作历史。rebase 会将当前分支的提交在目标分支上重新播放，历史呈线性，适合清理本地提交历史或在功能分支上保持与主分支同步。", major: "通用" },
-          { id: "rdq-9", name: "什么是跨域？如何解决浏览器的跨域问题", description: "考察前端安全及网络基础知识。", answer: "跨域是指浏览器的同源策略限制了不同源（协议、域名、端口不同）之间的资源访问。解决方案：1. CORS（服务端设置 Access-Control-Allow-Origin）；2. JSONP（仅支持 GET）；3. 反向代理；4. postMessage；5. WebSocket。", major: "前端开发" },
-          { id: "rdq-10", name: "请解释 JavaScript 中的事件循环（Event Loop）机制", description: "考察 JS 异步执行原理。", answer: "JavaScript 是单线程语言，事件循环负责协调同步任务和异步任务的执行。执行栈为空时，事件循环会优先检查微任务队列（Promise、MutationObserver），然后检查宏任务队列（setTimeout、setInterval、I/O），循环往复。", major: "前端开发" },
-          { id: "rdq-11", name: "Redis 有哪些常见的数据类型？分别适用于什么场景", description: "考察缓存数据库的使用经验。", answer: "String：缓存、计数器；List：消息队列、时间线；Set：去重、共同关注；ZSet：排行榜、延时队列；Hash：对象存储；Bitmap：签到统计；HyperLogLog：UV 统计；Geo：地理位置。", major: "后端开发" },
-          { id: "rdq-12", name: "请说明单点登录（SSO）的实现原理", description: "考察认证授权架构设计能力。", answer: "SSO 的核心思想是将用户认证信息集中管理。常见实现：1. 基于 Cookie 的 CAS 协议；2. 基于 Token 的 JWT/OAuth2.0；3. 统一认证中心签发票据，各子系统凭票据换取登录状态。", major: "后端开发" },
-          { id: "rdq-13", name: "什么是防抖（debounce）和节流（throttle）？", description: "考察前端性能优化技巧。", answer: "防抖：事件触发后等待一定时间，若期间再次触发则重新计时，适用于搜索框输入。节流：在固定时间间隔内只执行一次函数，适用于滚动加载、resize 事件。两者都通过闭包实现定时器控制。", major: "前端开发" },
-          { id: "rdq-14", name: "请简述 Docker 容器与虚拟机的区别", description: "考察容器化技术基础。", answer: "虚拟机通过 Hypervisor 在硬件层模拟完整操作系统，资源占用大、启动慢。Docker 容器共享宿主机内核，通过 Namespace 和 Cgroups 实现隔离，轻量、启动快、镜像小。", major: "运维部署" },
-          { id: "rdq-15", name: "前端性能优化有哪些常用手段？", description: "考察前端工程化实践经验。", answer: "1. 资源压缩与合并；2. 使用 CDN；3. 图片懒加载与 WebP 格式；4. 代码分割与懒加载；5. 浏览器缓存策略；6. SSR/SSG；7. 减少重排重绘；8. 使用 Web Worker；9. 服务端压缩（Gzip/Brotli）。", major: "前端开发" },
-          { id: "rdq-16", name: "请解释 MySQL 索引的工作原理及优化原则", description: "考察数据库性能优化能力。", answer: "索引通过 B+Tree 结构存储，加速数据检索。优化原则：1. 最左前缀原则；2. 避免全表扫描；3. 覆盖索引减少回表；4. 控制索引数量；5. 区分度高的列建索引；6. 避免索引失效（如函数操作、类型转换）。", major: "后端开发" },
-          { id: "rdq-17", name: "什么是微前端？有哪些实现方案", description: "考察前端架构设计能力。", answer: "微前端是将大型前端应用拆分为独立部署的子应用的架构。实现方案：1. qiankun（基于 single-spa）；2. Module Federation（Webpack 5）；3. iframe；4. Web Components；5. 路由分发。", major: "前端开发" },
-          { id: "rdq-18", name: "请说明 Linux 中进程和线程的区别", description: "考察操作系统基础知识。", answer: "进程是资源分配的基本单位，拥有独立的地址空间和系统资源。线程是 CPU 调度的基本单位，共享进程的地址空间和资源。线程切换开销小于进程切换。", major: "后端开发" },
-          { id: "rdq-19", name: "请简述敏捷开发（Scrum）的核心流程", description: "考察项目管理方法论。", answer: "Scrum 核心流程：1. 产品待办列表梳理；2. Sprint 计划会议；3. 每日站会（15分钟）；4. Sprint 执行与跟踪（燃尽图）；5. Sprint 评审会议；6. Sprint 回顾会议。通常 Sprint 周期为 1-4 周。", major: "通用" },
-          { id: "rdq-20", name: "WebSocket 与 HTTP 轮询的区别及适用场景", description: "考察实时通信技术选型能力。", answer: "HTTP 轮询：客户端定时请求服务端，实现简单但实时性差、浪费带宽。WebSocket：全双工长连接，服务端可主动推送，实时性好、开销低。适用场景：即时通讯、股票行情、协同编辑、在线游戏。", major: "后端开发" },
-        ],
-        randomDrawSelectedIds: [],
-        randomDrawEvalPoints: mockEps.randomDraw.length > 0 ? mockEps.randomDraw : [mockDefaultEvalPoints[0], mockDefaultEvalPoints[1], mockDefaultEvalPoints[7]],
-        randomDrawScoreType: "eval_points",
-        randomDrawRubricId: null,
-        reviewEvalPoints: mockEps.review.length > 0 ? mockEps.review : [mockDefaultEvalPoints[2], mockDefaultEvalPoints[3], mockDefaultEvalPoints[4], mockDefaultEvalPoints[5]],
-        reviewScoreType: "eval_points",
-        reviewRubricId: null,
-        paperIds: hasPaper ? [paperMocks[0].id] : [],
-        paperWeights: hasPaper ? { [paperMocks[0].id]: 100 } : {},
-        paperEvalPoints: [mockDefaultEvalPoints[3], mockDefaultEvalPoints[4]],
-        questionBankQuestions: methods.includes("question_bank") ? mockQuestions : [],
-        questionBankEvalPoints: [mockDefaultEvalPoints[5], mockDefaultEvalPoints[6]],
-        outcomeEvalPoints: methods.includes("outcome") ? [mockDefaultEvalPoints[2], mockDefaultEvalPoints[3]] : [],
-        outcomeScoreType: "eval_points",
-        outcomeRubricId: null,
-        homeworkEvalPoints: methods.includes("homework") ? [mockDefaultEvalPoints[3], mockDefaultEvalPoints[4]] : [],
-        homeworkScoreType: "eval_points",
-        homeworkRubricId: null,
-        quizQuestions: methods.includes("quiz") ? mockQuestions : [],
-        quizEvalPoints: methods.includes("quiz") ? [mockDefaultEvalPoints[5], mockDefaultEvalPoints[6]] : [],
-        weight: count > 0 ? Math.floor(100 / count) + (i < 100 % count ? 1 : 0) : 0,
-        locked: false,
-        gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)),
-        scoringConfig: { teacherBackground: "", scorerCount: 1, requiresEnterpriseMentor: false },
-        evalObject: "individual",
-        evalSubjects: JSON.parse(JSON.stringify(defaultEvalSubjects)),
-        methodEvalObjects: {},
-        methodEvalSubjects: {},
-        methodWeights: methods.reduce((acc, m, i, arr) => {
-          const base = Math.floor(100 / arr.length)
-          acc[m] = base + (i < 100 % arr.length ? 1 : 0)
-          return acc
-        }, {} as Record<string, number>),
-      }
-    })
-    return states
-  })
 
   const [editingCard, setEditingCard] = useState<{ taskId: string; type: CardType } | null>(null)
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false)
@@ -657,7 +658,7 @@ export default function TasksEditPage() {
   )
 
   const allTasks = useMemo(() =>
-    scenarios.flatMap(s => s.tasks.map(t => ({ ...t, scenarioName: s.name }))),
+    (scenarios as any[]).flatMap((s: any) => (s.tasks || []).map((t: any) => ({ ...t, scenarioName: s.name }))),
     []
   )
 
@@ -866,7 +867,7 @@ export default function TasksEditPage() {
                   {existingScenario && existingScenario.coBuilders.length > 0 && (
                     <span className="ml-2">
                       共建人：
-                      {existingScenario.coBuilders.map((cb, i) => (
+                      {existingScenario.coBuilders.map((cb: { id: string; name: string }, i: number) => (
                         <Badge key={cb.id} variant="outline" className="text-[10px] ml-1">
                           {cb.name}
                         </Badge>
