@@ -458,16 +458,16 @@ function HybridCourseAddForm() {
         if (existing?.status === "approved" || existing?.status === "published") {
           await courseApi.saveDraft(editId)
           setExisting({ ...updated, status: "draft" as const })
-          toast.success(`已更新混合课程：${updated.name}，课程已退回草稿状态`)
+          toast.success("草稿已保存")
         } else {
           setExisting(updated)
-          toast.success(`已更新混合课程：${updated.name}`)
+          toast.success("草稿已保存")
         }
       } else {
         const created = await courseApi.create(payload)
         setExisting(created)
         hasSavedRef.current = true
-        toast.success(`已保存混合课程：${created.name}`)
+        toast.success("草稿已保存")
         router.replace(`/lesson/admin/hybrid/add?id=${created.id}`)
       }
     } catch (e: any) {

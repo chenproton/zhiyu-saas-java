@@ -226,7 +226,7 @@ function PositionEditPageContent({ params }: PageProps) {
       }
       hasSavedRef.current = true
       setPositions((prev) => prev.map((p) => (p.id === position.id ? { ...position, status: 'draft' as const } : p)))
-      toast({ title: '保存成功', description: '岗位完整数据已保存为草稿' })
+      toast({ title: '草稿已保存' })
     } catch (err: any) {
       console.error('Save position failed:', err)
       toast({ variant: 'destructive', title: '保存失败', description: err?.message || '请稍后重试' })

@@ -277,7 +277,7 @@ export default function ScenarioEditPage() {
       if (scenarioStatus === "approved" || scenarioStatus === "published") {
         await scenarioApi.saveDraft(scenarioId)
         setScenarioStatus("draft")
-        toast({ title: "草稿已保存", description: "场景已退回草稿状态" })
+        toast({ title: "草稿已保存" })
       } else {
         toast({ title: "草稿已保存" })
       }

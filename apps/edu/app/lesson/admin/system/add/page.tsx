@@ -494,7 +494,7 @@ function AddSystemPageInner() {
       if (isEdit && courseId) {
         await courseApi.update(courseId, payload)
         hasSavedRef.current = true
-        toast.success("草稿已更新")
+        toast.success("草稿已保存")
       } else {
         const created = await courseApi.create(payload)
         setCourseId(created.id)
