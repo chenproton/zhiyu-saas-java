@@ -75,7 +75,7 @@ export function EditorShell({
   const defaultSaveText = isSaving ? "保存中..." : "保存草稿"
 
   const headerBar = (
-    <div className={`bg-white border-b border-gray-100 ${stickyClass}`}>
+    <div className={`bg-white border-b border-gray-100 ${stickyClass} ${mode === "fullscreen" ? "mt-14" : ""}`}>
       <div className={`${mxWidth} mx-auto px-6 py-4 flex items-center justify-between`}>
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={onBack}>
