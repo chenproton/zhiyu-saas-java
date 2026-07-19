@@ -122,7 +122,7 @@ export interface ContentListPageConfig<T extends ContentListItem> {
 
   mapItem: (backend: any, currentUserId: string) => T
   mapBatch: (backend: any) => ContentBatch
-  afterLoad?: (items: T[]) => Promise<T[]>
+  afterLoad?: (items: T[], batches: ContentBatch[]) => Promise<T[]>
 
   createPayload: (userId: string, entityLabel: string) => any
 
@@ -207,12 +207,12 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
         batchApi.list({ limit: 1000 }),
       ])
       setItems(itemsResp.items)
-      let front = itemsResp.items.map((i: any) => mapItem(i, currentUserId))
-      if (afterLoad) front = await afterLoad(front)
-      setFrontItems(front)
       const mappedBatches = batchesResp.items.map(mapBatch)
       setBatches(mappedBatches)
       setExpandedBatches(mappedBatches.map((b) => b.id))
+      let front = itemsResp.items.map((i: any) => mapItem(i, currentUserId))
+      if (afterLoad) front = await afterLoad(front, mappedBatches)
+      setFrontItems(front)
     } catch (err) {
       console.error(`Failed to load ${entityLabel} data:`, err)
     } finally {

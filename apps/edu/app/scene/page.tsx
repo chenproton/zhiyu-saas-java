@@ -60,16 +60,24 @@ export default function SceneHallPage() {
       ]}
       mapItem={(b) => mapScenario(b, currentUserId)}
       mapBatch={mapSceneBatch}
-      afterLoad={async (items) => {
+      afterLoad={async (items, batches) => {
+        const batchMap = new Map(batches.map((b) => [b.id, b.name]))
         try {
           const tasks = await taskApi.list({ limit: 10000 })
           const counts: Record<string, number> = {}
           tasks.items.forEach((t: any) => {
             counts[t.scenarioId] = (counts[t.scenarioId] || 0) + 1
           })
-          return items.map((item) => ({ ...item, taskCount: counts[item.id] || 0 }))
+          return items.map((item) => ({
+            ...item,
+            batchName: item.batchId ? batchMap.get(item.batchId) || "-" : undefined,
+            taskCount: counts[item.id] || 0,
+          }))
         } catch {
-          return items
+          return items.map((item) => ({
+            ...item,
+            batchName: item.batchId ? batchMap.get(item.batchId) || "-" : undefined,
+          }))
         }
       }}
       createPayload={(uid, _label) => ({
