@@ -1,6 +1,6 @@
 "use client"
 
-import { Copy, Download, Eye, Pencil, Rocket, Send, Trash2, Undo2, CheckCircle, XCircle, ArrowDownFromLine, UserPlus } from "lucide-react"
+import { Copy, Download, Eye, Pencil, Rocket, Send, Trash2, Undo2, CheckCircle, XCircle, ArrowDownFromLine, UserPlus, Archive } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -23,6 +23,7 @@ interface CourseListProps {
   onReject?: (course: Course) => void
   onPublish?: (course: Course) => void
   onUnpublish?: (course: Course) => void
+  onArchive?: (course: Course) => void
   onInviteCoBuild?: (course: Course) => void
   onExport?: (course: Course) => void
   className?: string
@@ -42,6 +43,7 @@ export function CourseList({
   onReject,
   onPublish,
   onUnpublish,
+  onArchive,
   onInviteCoBuild,
   onExport,
   className,
@@ -206,6 +208,20 @@ export function CourseList({
                     >
                       <ArrowDownFromLine className="mr-1 h-3 w-3" />
                       取消发布
+                    </Button>
+                  )}
+                  {course.status !== "pending" && course.status !== "archived" && onArchive && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-purple-600 hover:text-purple-700"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onArchive(course)
+                      }}
+                    >
+                      <Archive className="mr-1 h-3 w-3" />
+                      归档
                     </Button>
                   )}
                   {onClone && (

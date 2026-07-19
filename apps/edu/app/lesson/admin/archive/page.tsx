@@ -21,11 +21,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import {
   Search,
-  Pencil,
   Archive,
   GraduationCap,
   Building2,
-  RotateCcw,
   MoreHorizontal,
 } from "lucide-react"
 import { courseApi, lessonBatchApi } from "@/lib/api"
@@ -91,7 +89,7 @@ export default function LessonArchivePage() {
 
   const handleRestore = async (course: Course) => {
     try {
-      await courseApi.update(course.id, { status: "draft" })
+      await courseApi.saveDraft(course.id)
       await loadData()
       toast({ title: "已恢复" })
     } catch (err: any) {
@@ -99,10 +97,10 @@ export default function LessonArchivePage() {
     }
   }
 
-  const listHref = (type: Course["type"]) => {
-    if (type === "system") return "/lesson/admin/system"
-    if (type === "granular") return "/lesson/admin/granular"
-    return "/lesson/admin/hybrid"
+  const editHref = (type: Course["type"], id: string) => {
+    if (type === "system") return `/lesson/admin/system/add?id=${id}`
+    if (type === "granular") return `/lesson/admin/granular/add?id=${id}`
+    return `/lesson/admin/hybrid/add?id=${id}`
   }
 
   return (
@@ -271,7 +269,7 @@ export default function LessonArchivePage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
-                              <Link href={listHref(course.type)}>
+                              <Link href={editHref(course.type, course.id)}>
                                 查看
                               </Link>
                             </DropdownMenuItem>

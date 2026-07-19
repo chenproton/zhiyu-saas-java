@@ -22,6 +22,7 @@ import {
   X,
   ArrowDownFromLine,
   ArrowUpFromLine,
+  Archive,
 } from "lucide-react"
 import { PageHeaderCard } from "@/components/shared/page-header-card"
 import { Badge } from "@/components/ui/badge"
@@ -241,6 +242,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
   const canBatchWithdraw = selectedCourses.some((c) => c.status === "pending")
   const canBatchUnpublish = selectedCourses.some((c) => c.status === "published")
   const canBatchDelete = selectedCourses.some((c) => c.status === "draft" || c.status === "rejected")
+  const canBatchArchive = selectedCourses.some((c) => ["draft", "rejected", "approved", "published"].includes(c.status))
 
   const handleBatchSubmitApproval = async () => {
     for (const id of selectedIds) {
@@ -285,9 +287,18 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
     await loadData()
   }
 
+  const handleArchive = async (course: Course) => {
+    if (!confirm(`确定要归档课程「${course.name}」吗？归档后可在课程历史档案库中查看。`)) return
+    await courseApi.archive(course.id)
+    await loadData()
+  }
+
   const handleBatchArchive = async () => {
     for (const id of selectedIds) {
-      await courseApi.archive(id)
+      const course = courses.find((c) => c.id === id)
+      if (course && ["draft", "rejected", "approved", "published"].includes(course.status)) {
+        await courseApi.archive(course.id)
+      }
     }
     setSelectedIds([])
     await loadData()
@@ -661,8 +672,8 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
               </Button>
             )}
             {hasPermission("lesson", "courses", "archive") && (
-              <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected} onClick={handleBatchArchive}>
-                <Download className="mr-1 h-3 w-3" />
+              <Button variant="outline" size="sm" className="h-8 text-xs text-purple-600 hover:text-purple-700" disabled={!hasSelected || !canBatchArchive} onClick={handleBatchArchive}>
+                <Archive className="mr-1 h-3 w-3" />
                 归档
               </Button>
             )}
@@ -704,6 +715,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
               onReject={handleReject}
               onPublish={handlePublish}
               onUnpublish={handleUnpublish}
+              onArchive={handleArchive}
               onInviteCoBuild={handleInviteCoBuild}
               onExport={handleExport}
               className="border-0 rounded-none"
@@ -757,6 +769,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
                         onReject={handleReject}
                         onPublish={handlePublish}
                         onUnpublish={handleUnpublish}
+                        onArchive={handleArchive}
                         onInviteCoBuild={handleInviteCoBuild}
                         onExport={handleExport}
                       />
@@ -791,6 +804,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
                   onReject={handleReject}
                   onPublish={handlePublish}
                   onUnpublish={handleUnpublish}
+                  onArchive={handleArchive}
                   onInviteCoBuild={handleInviteCoBuild}
                   onExport={handleExport}
                 />
