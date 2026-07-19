@@ -42,7 +42,6 @@ interface KnowledgePointItem {
   linked: boolean
 }
 
-const CURRENT_USER_ID = "user-1"
 
 function AddGranularPageInner() {
   const router = useRouter()
@@ -182,8 +181,8 @@ function AddGranularPageInner() {
         offlineHours: 0,
         coverImage: coverImage || undefined,
         status: course?.status || "draft",
-        creatorId: course?.creatorId || CURRENT_USER_ID,
-        coCreatorIds: course?.coCreatorIds || [CURRENT_USER_ID],
+        creatorId: course?.creatorId || undefined,
+        coCreatorIds: course?.coCreatorIds ?? [],
       }
       if (editId) {
         await courseApi.update(editId, payload)

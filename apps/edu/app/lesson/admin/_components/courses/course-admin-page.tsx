@@ -327,7 +327,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
           industryId: undefined,
         version: course.version,
         status: "draft",
-        creatorId: currentUserId,
+        creatorId: currentUserId || "",
         coCreatorIds: [],
         batchId: course.batchId,
       })
@@ -499,16 +499,21 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
   }
 
   const handleCreate = async () => {
-    const newCourse = await courseApi.create({
-      code: `${courseType.toUpperCase()}-${Date.now()}`,
-      name: `新建${typeLabel}`,
-      type: courseType,
-      category: "default",
-      status: "draft",
-      creatorId: currentUserId,
-      coCreatorIds: [],
-    })
-    router.push(`${addHref}?id=${newCourse.id}&new=true`)
+    try {
+      const newCourse = await courseApi.create({
+        code: `${courseType.toUpperCase()}-${Date.now()}`,
+        name: `新建${typeLabel}`,
+        type: courseType,
+        category: "default",
+        status: "draft",
+        creatorId: currentUserId || "",
+        coCreatorIds: [],
+      })
+      router.push(`${addHref}?id=${newCourse.id}&new=true`)
+    } catch (err: any) {
+      console.error("Failed to create course:", err)
+      alert(err.message || "创建失败")
+    }
   }
   const typeLabel = courseType === "system" ? "体系课" : courseType === "granular" ? "颗粒课" : "混合课"
 
