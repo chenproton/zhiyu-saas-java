@@ -30,6 +30,8 @@ interface PositionListProps {
   className?: string
   basePath?: string
   configureStepParam?: string
+  industryMap?: Map<string, string>
+  majorMap?: Map<string, string>
 }
 
 export function PositionList({
@@ -45,7 +47,17 @@ export function PositionList({
   className,
   basePath = "/job/positions",
   configureStepParam = "1",
+  industryMap,
+  majorMap,
 }: PositionListProps) {
+  const getIndustryName = (id?: string) => {
+    if (!id) return '-'
+    return industryMap?.get(id) || '-'
+  }
+  const getMajorNames = (ids: string[]) => {
+    if (ids.length === 0) return '-'
+    return ids.map((id) => majorMap?.get(id) || id).join('，')
+  }
   if (positions.length === 0) return null
 
   const allSelected = positions.length > 0 && positions.every((p) => selectedIds.includes(p.id))
@@ -103,9 +115,9 @@ export function PositionList({
                 </Badge>
               </div>
               <div className="col-span-1 text-center text-sm text-slate-600">{position.version}</div>
-              <div className="col-span-1 text-sm text-slate-600 truncate">{position.industry || "-"}</div>
+              <div className="col-span-1 text-sm text-slate-600 truncate">{getIndustryName(position.industry)}</div>
               <div className="col-span-2 text-sm text-slate-600 truncate">
-                {position.majors.length > 0 ? position.majors.join(", ") : "-"}
+                {getMajorNames(position.majors)}
               </div>
               <div className="col-span-1 text-xs text-slate-500 truncate">
                 {position.collaborators.length > 0 ? `${position.collaborators.length}人` : "-"}

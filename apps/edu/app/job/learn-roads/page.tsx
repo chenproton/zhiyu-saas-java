@@ -45,7 +45,8 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { positionApi, batchApi, learnRoadApi, industryApi } from '@/lib/api'
+import { positionApi, batchApi, learnRoadApi } from '@/lib/api'
+import { useIndustryMap, useMajorMap } from '@/lib/use-resource-maps'
 import { convertCareerPositionToPosition, convertJobBatchToBatch } from '@/lib/stores/job-converters'
 import { useToast } from '@/hooks/use-toast'
 import type { Position, PositionStatus, Batch } from '@/lib/types/job-source'
@@ -195,8 +196,9 @@ export default function LearnRoadsPage() {
 
   const [positions, setPositions] = useState<Position[]>([])
   const [batches, setBatches] = useState<Batch[]>([])
-  const [industryMap, setIndustryMap] = useState<Map<string, string>>(new Map())
   const [dataLoading, setDataLoading] = useState(false)
+  const industryMap = useIndustryMap()
+  const majorMap = useMajorMap()
 
   const [view, setView] = useState<'list' | 'edit'>('list')
   const [editingPosition, setEditingPosition] = useState<Position | null>(null)
@@ -217,16 +219,12 @@ export default function LearnRoadsPage() {
   const loadJobData = useCallback(async () => {
     setDataLoading(true)
     try {
-      const [posRes, batchRes, industryRes] = await Promise.all([
+      const [posRes, batchRes] = await Promise.all([
         positionApi.list({ limit: 1000 }),
         batchApi.list({ limit: 1000 }),
-        industryApi.list({ limit: 1000 }),
       ])
       setPositions(posRes.items.map(convertCareerPositionToPosition))
       setBatches(batchRes.items.map(convertJobBatchToBatch))
-      const industryNameMap = new Map<string, string>()
-      industryRes.items.forEach((i) => { if (i.name) industryNameMap.set(i.id, i.name) })
-      setIndustryMap(industryNameMap)
     } catch (err: any) {
       toast({ variant: 'destructive', title: '加载失败', description: err?.message || '请稍后重试' })
     } finally {
@@ -480,7 +478,7 @@ export default function LearnRoadsPage() {
                       <TableCell>{batch ? batch.name : '-'}</TableCell>
                       <TableCell>{(position.industry && industryMap.get(position.industry)) || '-'}</TableCell>
                       <TableCell>
-                        {position.majors.length > 0 ? position.majors.join('，') : '-'}
+                        {position.majors.length > 0 ? position.majors.map((id) => majorMap.get(id) || id).join('，') : '-'}
                       </TableCell>
                       <TableCell>-</TableCell>
                       <TableCell>-</TableCell>

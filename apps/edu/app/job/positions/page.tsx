@@ -54,7 +54,8 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { cn } from "@/lib/utils"
-import { positionApi, batchApi, approvalApi, importExportApi, majorApi } from "@/lib/api"
+import { positionApi, batchApi, approvalApi, importExportApi } from "@/lib/api"
+import { useIndustryMap, useMajorMap } from "@/lib/use-resource-maps"
 import {
   convertCareerPositionToPosition,
   convertJobBatchToBatch,
@@ -77,8 +78,9 @@ export default function PositionsPage() {
 
   const [positions, setPositions] = useState<Position[]>([])
   const [batches, setBatches] = useState<Batch[]>([])
-  const [majorMap, setMajorMap] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
+  const industryMap = useIndustryMap()
+  const majorMap = useMajorMap()
 
   const [activeTab, setActiveTab] = useState<TabType>("my")
   const [viewMode, setViewMode] = useState<ViewMode>("list")
@@ -122,14 +124,6 @@ export default function PositionsPage() {
   useEffect(() => {
     loadData()
   }, [loadData])
-
-  useEffect(() => {
-    majorApi.list({ limit: 1000 }).then((res) => {
-      const map = new Map<string, string>()
-      res.items.forEach((m) => map.set(m.id, m.name))
-      setMajorMap(map)
-    }).catch(() => {})
-  }, [])
 
   const [expandedBatches, setExpandedBatches] = useState<string[]>(batches.map((b) => b.id))
   useEffect(() => {
@@ -719,6 +713,8 @@ export default function PositionsPage() {
               onInviteCoBuild={handleInviteCoBuild}
               configureStepParam="2"
               className="border-0 rounded-none"
+              industryMap={industryMap}
+              majorMap={majorMap}
             />
           </CardContent>
         )}
@@ -763,6 +759,8 @@ export default function PositionsPage() {
                         onWithdrawApproval={handleWithdrawApproval}
                         onInviteCoBuild={handleInviteCoBuild}
                         configureStepParam="2"
+                        industryMap={industryMap}
+                        majorMap={majorMap}
                       />
                     </div>
                   </CollapsibleContent>
@@ -792,6 +790,8 @@ export default function PositionsPage() {
                   onWithdrawApproval={handleWithdrawApproval}
                   onInviteCoBuild={handleInviteCoBuild}
                   configureStepParam="2"
+                  industryMap={industryMap}
+                  majorMap={majorMap}
                 />
               </div>
             </div>

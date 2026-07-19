@@ -56,7 +56,8 @@ import {
 import { cn } from '@/lib/utils'
 import type { PositionType, Position, Batch, PositionRecommendation } from '@/lib/types/job-source'
 import { POSITION_TYPE_LABELS } from '@/lib/types/job-source'
-import { positionApi, batchApi, recommendApi, majorApi, industryApi } from '@/lib/api'
+import { positionApi, batchApi, recommendApi, majorApi } from '@/lib/api'
+import { useIndustryMap } from '@/lib/use-resource-maps'
 import {
   convertCareerPositionToPosition,
   convertJobBatchToBatch,
@@ -79,8 +80,9 @@ export default function PostRecommendPage() {
   const [batches, setBatches] = useState<Batch[]>([])
   const [recommendations, setRecommendations] = useState<PositionRecommendation[]>([])
   const [majorNameToId, setMajorNameToId] = useState<Record<string, string>>({})
-  const [industryMap, setIndustryMap] = useState<Map<string, string>>(new Map())
+  const [majorIdToName, setMajorIdToName] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
+  const industryMap = useIndustryMap()
 
   const [selectedMajor, setSelectedMajor] = useState<string>('')
   const [isAddOpen, setIsAddOpen] = useState(false)
@@ -92,22 +94,25 @@ export default function PostRecommendPage() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [posRes, batchRes, recRes, majorRes, industryRes] = await Promise.all([
+      const [posRes, batchRes, recRes, majorRes] = await Promise.all([
         positionApi.list({ limit: 1000 }),
         batchApi.list({ limit: 1000 }),
         recommendApi.list({ limit: 1000 }),
         majorApi.list({ limit: 1000 }),
-        industryApi.list({ limit: 1000 }),
       ])
       setPositions(posRes.items.map(convertCareerPositionToPosition))
       setBatches(batchRes.items.map(convertJobBatchToBatch))
       setRecommendations(recRes.items.map(convertApiRecommendationToLocal))
       const nameToId: Record<string, string> = {}
-      majorRes.items.forEach((m) => { if (m.name) nameToId[m.name] = m.id })
+      const idToName: Record<string, string> = {}
+      majorRes.items.forEach((m) => {
+        if (m.name) {
+          nameToId[m.name] = m.id
+          idToName[m.id] = m.name
+        }
+      })
       setMajorNameToId(nameToId)
-      const industryNameMap = new Map<string, string>()
-      industryRes.items.forEach((i) => { if (i.name) industryNameMap.set(i.id, i.name) })
-      setIndustryMap(industryNameMap)
+      setMajorIdToName(idToName)
     } catch (err: any) {
       toast({ variant: 'destructive', title: '加载失败', description: err?.message || '请稍后重试' })
     } finally {
@@ -123,9 +128,14 @@ export default function PostRecommendPage() {
     const set = new Set<string>()
     Object.keys(majorNameToId).forEach((name) => set.add(name))
     batches.forEach((b) => { if (b.major) set.add(b.major) })
-    positions.forEach((p) => p.majors.forEach((m) => set.add(m)))
+    positions.forEach((p) => {
+      p.majors.forEach((id) => {
+        const name = majorIdToName[id]
+        if (name) set.add(name)
+      })
+    })
     return Array.from(set).sort()
-  }, [batches, positions, majorNameToId])
+  }, [batches, positions, majorNameToId, majorIdToName])
 
   const currentMajor = selectedMajor || majorOptions[0] || ''
 
@@ -143,11 +153,11 @@ export default function PostRecommendPage() {
   const availablePositions = useMemo(() => {
     return positions.filter(
       (p) =>
-        p.majors.includes(currentMajor) &&
+        p.majors.some((id) => majorIdToName[id] === currentMajor) &&
         p.status === 'published' &&
         !recommendedPositionIds.has(p.id)
     )
-  }, [positions, currentMajor, recommendedPositionIds])
+  }, [positions, currentMajor, recommendedPositionIds, majorIdToName])
 
   const handleMove = async (index: number, direction: -1 | 1) => {
     const newIndex = index + direction

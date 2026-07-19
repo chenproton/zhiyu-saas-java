@@ -41,6 +41,7 @@ import { StatusBadge } from "@/components/shared/status-badge"
 import { LevelMappingDisplay } from "./level-mapping-display"
 import { LevelMappingDialog } from "./level-mapping-dialog"
 import { positionApi } from "@/lib/api"
+import { useIndustryMap } from "@/lib/use-resource-maps"
 import type { Position, RuleStatus, LevelMapping, CareerPosition } from "@/lib/types"
 import { statusConfig, actionConfig, defaultLevelMapping } from "@/lib/types"
 import {
@@ -67,6 +68,7 @@ export function PositionListPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [professionalDirectionFilter, setProfessionalDirectionFilter] = useState<string>("all")
+  const industryMap = useIndustryMap()
 
   useEffect(() => {
     let cancelled = false
@@ -89,12 +91,17 @@ export function PositionListPage() {
     id: cp.id,
     name: cp.name,
     positionCode: cp.shortName || cp.id,
-    professionalDirection: cp.industryId || '未设置',
+    professionalDirection: cp.industryId || '',
     relatedAbilityCount: 0,
     ruleStatus: 'none',
     lastUpdated: cp.updatedAt,
     updatedBy: cp.createdBy || '-',
   })
+
+  const getIndustryName = (id?: string) => {
+    if (!id) return '未设置'
+    return industryMap.get(id) || id
+  }
   
   // 确认弹窗状态
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -105,7 +112,7 @@ export function PositionListPage() {
   }>({ open: false, title: "", description: "", action: () => {} })
 
   // 获取所有专业方向选项
-  const professionalDirections = Array.from(new Set(positions.map(p => p.professionalDirection)))
+  const professionalDirections = Array.from(new Set(positions.map(p => getIndustryName(p.professionalDirection))))
 
   // 筛选后的岗位列表
   const filteredPositions = positions.filter((position) => {
@@ -113,7 +120,7 @@ export function PositionListPage() {
       position.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       position.positionCode.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesProfessionalDirection =
-      professionalDirectionFilter === "all" || position.professionalDirection === professionalDirectionFilter
+      professionalDirectionFilter === "all" || getIndustryName(position.professionalDirection) === professionalDirectionFilter
     return matchesSearch && matchesProfessionalDirection
   })
 
@@ -330,7 +337,7 @@ export function PositionListPage() {
                       {position.positionCode}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {position.professionalDirection}
+                      {getIndustryName(position.professionalDirection)}
                     </TableCell>
                     <TableCell className="text-center">
                       {position.relatedAbilityCount}

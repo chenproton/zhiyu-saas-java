@@ -29,6 +29,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 import { examUsageApi, examResultApi } from "@/lib/api"
+import { useMajorMap } from "@/lib/use-resource-maps"
 import type { ExamUsage } from "@/lib/types"
 
 interface ExamStudentResult {
@@ -53,6 +54,7 @@ function ExamResultsContent() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [passFilter, setPassFilter] = useState<string>("all")
+  const majorMap = useMajorMap()
 
   useEffect(() => {
     if (!usageId) {
@@ -323,7 +325,7 @@ function ExamResultsContent() {
                     <TableCell className="text-sm text-muted-foreground">{result.studentId}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{result.className}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{result.grade}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{result.majorId}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{majorMap.get(result.majorId) || result.majorId || '-'}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDateTime(result.submitTime)}
                     </TableCell>
