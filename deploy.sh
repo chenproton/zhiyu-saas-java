@@ -355,14 +355,16 @@ module.exports = {
 EOF
 }
 
-# 迁移项目内已有上传到部署目录（仅首次）
+# 迁移项目内已有上传到部署目录（仅当部署目录为空时）
 migrate_uploads() {
   local src="$PROJECT_ROOT/public/uploads"
   local dst="$DEPLOY_UPLOAD_DIR"
-  if [[ -d "$src" && ! -d "$dst" ]]; then
-    echo "  迁移已有上传文件到 $dst ..."
+  if [[ -d "$src" ]]; then
     mkdir -p "$dst"
-    rsync -a "$src/" "$dst/" || true
+    if [[ -z "$(ls -A "$dst" 2>/dev/null)" ]]; then
+      echo "  迁移已有上传文件到 $dst ..."
+      rsync -a "$src/" "$dst/" || true
+    fi
   fi
 }
 
