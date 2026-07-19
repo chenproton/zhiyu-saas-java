@@ -154,7 +154,7 @@ export function QuestionListPanel({ bankId }: QuestionListPanelProps) {
   }
 
   const isDraftPool = bank.isDraftPool === true
-  const canEditBank = isDraftPool || ['draft', 'unsubmitted', 'rejected'].includes(bank.status)
+  const canEditBank = isDraftPool || ['draft', 'rejected'].includes(bank.status)
 
   const handleBankUpdate = (data: QuestionBankFormData) => {
     updateQuestionBank(bankId, data)
@@ -227,7 +227,7 @@ export function QuestionListPanel({ bankId }: QuestionListPanelProps) {
   const handleBatchSubmit = () => {
     selectedQuestions.forEach((id) => {
       const q = questions.find((q) => q.id === id)
-      if (q && ['draft', 'unsubmitted', 'rejected'].includes(q.status)) {
+      if (q && ['draft', 'rejected'].includes(q.status)) {
         updateQuestionStatus(id, 'submit')
       }
     })
@@ -272,22 +272,22 @@ export function QuestionListPanel({ bankId }: QuestionListPanelProps) {
   // 其他题库：题目状态跟随题库，不能单个进行提交审批等操作
   const canEditQuestion = (q: Question) =>
     isDraftPool
-      ? ['draft', 'unsubmitted', 'rejected'].includes(q.status)
+      ? ['draft', 'rejected'].includes(q.status)
       : canEditBank
 
   const canDeleteQuestion = (q: Question) =>
     isDraftPool
-      ? ['draft', 'unsubmitted', 'rejected'].includes(q.status)
+      ? ['draft', 'rejected'].includes(q.status)
       : canEditBank
 
   const canSubmitQuestion = (q: Question) =>
-    isDraftPool && ['draft', 'unsubmitted', 'rejected'].includes(q.status)
+    isDraftPool && ['draft', 'rejected'].includes(q.status)
 
   const canWithdrawQuestion = (q: Question) =>
     isDraftPool && q.status === 'pending'
 
   const canPublishQuestion = (q: Question) =>
-    isDraftPool && q.status === 'toPublish'
+    isDraftPool && q.status === 'approved'
 
   const otherBanks = questionBanks.filter((b) => b.id !== bankId)
 

@@ -48,7 +48,7 @@ export function AddQuestionToExamDialog({
   
   // 只显示已发布或可编辑的题库
   const availableBanks = useMemo(() => {
-    return questionBanks.filter(bank => ['published', 'draft', 'unsubmitted', 'rejected'].includes(bank.status))
+    return questionBanks.filter(bank => ['published', 'draft', 'rejected'].includes(bank.status))
   }, [questionBanks])
 
   const scrollRef = useRef<HTMLDivElement>(null)

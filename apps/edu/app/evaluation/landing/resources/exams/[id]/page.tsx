@@ -54,10 +54,9 @@ export default function PaperDetailPage() {
 
   const statusMap: Record<string, { bg: string; color: string; label: string }> = {
     draft: { bg: "#f5f6f7", color: "#8f959e", label: "草稿" },
-    unsubmitted: { bg: "#fef3c7", color: "#d97706", label: "未提交" },
     pending: { bg: "#dbeafe", color: "#3b82f6", label: "审核中" },
     rejected: { bg: "#fee2e2", color: "#dc2626", label: "已驳回" },
-    toPublish: { bg: "#e0e7ff", color: "#4f46e5", label: "待发布" },
+    approved: { bg: "#e0e7ff", color: "#4f46e5", label: "已通过" },
     published: { bg: "#dcfce7", color: "#16a34a", label: "已发布" },
   }
   const st = statusMap[paper.status] || statusMap.draft

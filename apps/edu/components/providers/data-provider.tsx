@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
+import { useToast } from '@/hooks/use-toast'
 import type {
   QuestionBank,
   Question,
@@ -264,6 +265,7 @@ const mapApprovalRecord = (record: ApprovalRecord): ApprovalItem => {
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const { toast } = useToast()
   const [questionBanks, setQuestionBanks] = useState<QuestionBank[]>([])
   const [questions, setQuestions] = useState<Question[]>([])
   const [exams, setExams] = useState<Exam[]>([])
