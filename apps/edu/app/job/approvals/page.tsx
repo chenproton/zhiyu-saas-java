@@ -14,6 +14,7 @@ import { positionApi, batchApi } from "@/lib/api"
 import type { CareerPosition, JobBatch } from "@/lib/types/job"
 import { useApprovals } from "@/hooks/use-approvals"
 import { useApprovalDialogs } from "@/components/shared/approval-dialogs"
+import { Toaster } from "sonner"
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   pending: { label: "待审批", className: "bg-yellow-50 text-yellow-600" },
@@ -149,6 +150,7 @@ export default function JobApprovalsPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
+      <Toaster />
       <div>
         <h1 className="text-2xl font-semibold text-gray-800">审批中心</h1>
         <p className="text-sm text-gray-500 mt-1">审核岗位提交申请，管理审批流程</p>
