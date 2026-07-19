@@ -18,6 +18,7 @@ export interface EditorShellProps {
   onSaveDraft?: () => void
   isSaving?: boolean
   saveText?: string
+  saveDisabled?: boolean
 
   onPreview?: () => void
 
@@ -52,6 +53,7 @@ export function EditorShell({
   onSaveDraft,
   isSaving = false,
   saveText,
+  saveDisabled,
   onPreview,
   onPrev,
   onNext,
@@ -105,7 +107,7 @@ export function EditorShell({
             </span>
           )}
           {onSaveDraft && (
-            <Button variant="outline" size="sm" onClick={onSaveDraft} disabled={isSaving}>
+            <Button variant="outline" size="sm" onClick={onSaveDraft} disabled={isSaving || saveDisabled}>
               <Save className="mr-2 h-4 w-4" />
               {saveText || defaultSaveText}
             </Button>
