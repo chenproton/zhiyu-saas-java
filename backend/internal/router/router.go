@@ -2,6 +2,7 @@ package router
 
 import (
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -86,7 +87,11 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 	bannerHandler := &handler.BannerHandler{DB: db}
 	withdrawalHandler := &handler.WithdrawalHandler{DB: db}
 	statsHandler := &handler.StatsHandler{DB: db}
-	fileHandler := &handler.FileHandler{UploadDir: "../public/uploads"}
+	uploadDir := os.Getenv("UPLOAD_DIR")
+	if uploadDir == "" {
+		uploadDir = "../public/uploads"
+	}
+	fileHandler := &handler.FileHandler{UploadDir: uploadDir}
 	portalHandler := &handler.PortalHandler{DB: db}
 	importExportHandler := &handler.ImportExportHandler{DB: db}
 

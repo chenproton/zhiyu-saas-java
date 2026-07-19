@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 # deploy.sh - 本地构建发布脚本（Next.js 双前端 + Go 后端 + PostgreSQL）
+# 运行时产物部署到代码目录之外（默认 /opt/zhiyu-saas），实现代码与运行数据分离。
 #
 # 用法：
 #   ./deploy.sh                  # 全量部署（前端 + 后端 + 数据库备份）
@@ -65,13 +66,12 @@ EDU_PORT=3020
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR"
 
+# 部署目标目录：代码目录之外，可通过环境变量覆盖
+DEPLOY_DIR="${DEPLOY_DIR:-/opt/zhiyu-saas}"
+
+# 项目内构建目录
 BACKEND_DIR="$PROJECT_ROOT/backend"
-BACKUP_DIR="${BACKUP_DIR:-$PROJECT_ROOT/backups}"
-BACKEND_BIN="$BACKEND_DIR/bin/server"
 BACKEND_BIN_NEW="$BACKEND_DIR/bin/server.new"
-ROLLBACK_DIR="$PROJECT_ROOT/.rollback"
-ROLLBACK_KEEP="${ROLLBACK_KEEP:-10}"
-DEPLOY_TMP_DIR="$PROJECT_ROOT/.deploy"
 
 MARKETPLACE_DIR="$PROJECT_ROOT/apps/marketplace"
 EDU_DIR="$PROJECT_ROOT/apps/edu"
@@ -87,10 +87,30 @@ if [[ -f "$PROJECT_ROOT/.env" ]]; then
   set +a
 fi
 
-# 允许 .env 覆盖端口
+# 允许 .env 覆盖端口和部署目录
 MARKETPLACE_PORT="${MARKETPLACE_PORT_ENV:-$MARKETPLACE_PORT}"
 EDU_PORT="${EDU_PORT_ENV:-$EDU_PORT}"
 BACKEND_PORT="${BACKEND_PORT_ENV:-$BACKEND_PORT}"
+DEPLOY_DIR="${DEPLOY_DIR:-/opt/zhiyu-saas}"
+
+# 部署目录结构（在 .env 加载后重新计算）
+DEPLOY_BACKEND_DIR="$DEPLOY_DIR/backend"
+DEPLOY_BACKEND_BIN="$DEPLOY_BACKEND_DIR/bin/server"
+DEPLOY_MARKETPLACE_DIR="$DEPLOY_DIR/apps/marketplace"
+DEPLOY_EDU_DIR="$DEPLOY_DIR/apps/edu"
+DEPLOY_MARKETPLACE_STANDALONE="$DEPLOY_MARKETPLACE_DIR/.next/standalone/apps/marketplace"
+DEPLOY_EDU_STANDALONE="$DEPLOY_EDU_DIR/.next/standalone/apps/edu"
+
+DEPLOY_DATA_DIR="$DEPLOY_DIR/data"
+DEPLOY_UPLOAD_DIR="${UPLOAD_DIR:-$DEPLOY_DATA_DIR/uploads}"
+DEPLOY_LOG_DIR="$DEPLOY_DIR/logs"
+DEPLOY_BACKUP_DIR="$DEPLOY_DIR/backups"
+DEPLOY_ROLLBACK_DIR="$DEPLOY_DIR/.rollback"
+DEPLOY_TMP_DIR="$DEPLOY_DIR/.deploy"
+DEPLOY_ECOSYSTEM_CONFIG="$DEPLOY_DIR/ecosystem.config.js"
+
+ROLLBACK_KEEP="${ROLLBACK_KEEP:-10}"
+BACKUP_DIR="$DEPLOY_BACKUP_DIR"
 
 # ==================== 清理函数 ====================
 cleanup() {
@@ -217,7 +237,7 @@ health_check() {
   return 1
 }
 
-# 组装单个前端应用的 standalone 产物
+# 组装单个前端应用的 standalone 产物（在项目目录内）
 assemble_standalone() {
   local app_dir="$1"
   local app_name="$2"
@@ -242,6 +262,104 @@ assemble_standalone() {
   fi
 }
 
+# 生成部署目录下的 PM2 生态配置文件
+generate_ecosystem_config() {
+  mkdir -p "$(dirname "$DEPLOY_ECOSYSTEM_CONFIG")"
+  cat > "$DEPLOY_ECOSYSTEM_CONFIG" <<EOF
+module.exports = {
+  apps: [
+    {
+      name: 'zhiyu-backend',
+      cwd: '$DEPLOY_BACKEND_DIR',
+      script: './bin/server',
+      instances: 1,
+      exec_mode: 'fork',
+      env: {
+        PORT: $BACKEND_PORT,
+        UPLOAD_DIR: '$DEPLOY_UPLOAD_DIR',
+      },
+      env_production: {
+        PORT: $BACKEND_PORT,
+        UPLOAD_DIR: '$DEPLOY_UPLOAD_DIR',
+      },
+      error_file: '$DEPLOY_LOG_DIR/backend-error.log',
+      out_file: '$DEPLOY_LOG_DIR/backend-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      autorestart: true,
+      max_restarts: 5,
+      min_uptime: '10s',
+      max_memory_restart: '512M',
+      kill_timeout: 5000,
+      listen_timeout: 10000,
+    },
+    {
+      name: 'zhiyu-marketplace',
+      cwd: '$DEPLOY_MARKETPLACE_STANDALONE',
+      script: 'server.js',
+      instances: 1,
+      exec_mode: 'fork',
+      env: {
+        NODE_ENV: 'production',
+        PORT: $MARKETPLACE_PORT,
+        HOSTNAME: '0.0.0.0',
+      },
+      env_production: {
+        NODE_ENV: 'production',
+        PORT: $MARKETPLACE_PORT,
+        HOSTNAME: '0.0.0.0',
+      },
+      error_file: '$DEPLOY_LOG_DIR/marketplace-error.log',
+      out_file: '$DEPLOY_LOG_DIR/marketplace-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      autorestart: true,
+      max_restarts: 5,
+      min_uptime: '10s',
+      max_memory_restart: '1G',
+      kill_timeout: 5000,
+      listen_timeout: 10000,
+    },
+    {
+      name: 'zhiyu-edu',
+      cwd: '$DEPLOY_EDU_STANDALONE',
+      script: 'server.js',
+      instances: 1,
+      exec_mode: 'fork',
+      env: {
+        NODE_ENV: 'production',
+        PORT: $EDU_PORT,
+        HOSTNAME: '0.0.0.0',
+      },
+      env_production: {
+        NODE_ENV: 'production',
+        PORT: $EDU_PORT,
+        HOSTNAME: '0.0.0.0',
+      },
+      error_file: '$DEPLOY_LOG_DIR/edu-error.log',
+      out_file: '$DEPLOY_LOG_DIR/edu-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      autorestart: true,
+      max_restarts: 5,
+      min_uptime: '10s',
+      max_memory_restart: '1G',
+      kill_timeout: 5000,
+      listen_timeout: 10000,
+    },
+  ],
+};
+EOF
+}
+
+# 迁移项目内已有上传到部署目录（仅首次）
+migrate_uploads() {
+  local src="$PROJECT_ROOT/public/uploads"
+  local dst="$DEPLOY_UPLOAD_DIR"
+  if [[ -d "$src" && ! -d "$dst" ]]; then
+    echo "  迁移已有上传文件到 $dst ..."
+    mkdir -p "$dst"
+    rsync -a "$src/" "$dst/" || true
+  fi
+}
+
 restore_rollback() {
   local snapshot_dir="$1"
   echo ""
@@ -262,30 +380,32 @@ restore_rollback() {
 
   if [[ -f "$snapshot_dir/server" ]]; then
     echo "  恢复后端二进制..."
-    cp "$snapshot_dir/server" "$BACKEND_BIN"
+    mkdir -p "$(dirname "$DEPLOY_BACKEND_BIN")"
+    cp "$snapshot_dir/server" "$DEPLOY_BACKEND_BIN"
   fi
 
   if [[ -d "$snapshot_dir/marketplace" ]]; then
     echo "  恢复商城 standalone 产物..."
-    rm -rf "$MARKETPLACE_STANDALONE"
-    mkdir -p "$(dirname "$MARKETPLACE_STANDALONE")"
-    mv "$snapshot_dir/marketplace" "$MARKETPLACE_STANDALONE"
+    rm -rf "$DEPLOY_MARKETPLACE_STANDALONE"
+    mkdir -p "$(dirname "$DEPLOY_MARKETPLACE_STANDALONE")"
+    mv "$snapshot_dir/marketplace" "$DEPLOY_MARKETPLACE_STANDALONE"
   fi
 
   if [[ -d "$snapshot_dir/edu" ]]; then
     echo "  恢复教育管理 standalone 产物..."
-    rm -rf "$EDU_STANDALONE"
-    mkdir -p "$(dirname "$EDU_STANDALONE")"
-    mv "$snapshot_dir/edu" "$EDU_STANDALONE"
+    rm -rf "$DEPLOY_EDU_STANDALONE"
+    mkdir -p "$(dirname "$DEPLOY_EDU_STANDALONE")"
+    mv "$snapshot_dir/edu" "$DEPLOY_EDU_STANDALONE"
   fi
 
   echo "  重启旧版本服务..."
+  generate_ecosystem_config
   if [[ "$FRONTEND_ONLY" == "true" ]]; then
-    pm2 start "$PROJECT_ROOT/ecosystem.config.js" --only "zhiyu-marketplace,zhiyu-edu" --env production || true
+    pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --only "zhiyu-marketplace,zhiyu-edu" --env production || true
   elif [[ "$BACKEND_ONLY" == "true" ]]; then
-    pm2 start "$PROJECT_ROOT/ecosystem.config.js" --only "zhiyu-backend" --env production || true
+    pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --only "zhiyu-backend" --env production || true
   else
-    pm2 start "$PROJECT_ROOT/ecosystem.config.js" --env production || true
+    pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --env production || true
   fi
   sleep 3
 
@@ -318,7 +438,7 @@ restore_rollback() {
   if [[ "$rollback_ok" == "true" ]]; then
     echo "  ✨ 回滚完成，服务已恢复到部署前状态"
   else
-    echo "  ⚠️ 回滚后服务仍未恢复，请手动检查 PM2 日志" >&2
+    echo "  ⚠️  回滚后服务仍未恢复，请手动检查 PM2 日志" >&2
   fi
 
   echo ""
@@ -326,10 +446,18 @@ restore_rollback() {
   echo "    请检查 $snapshot_dir/snapshot.json 中的 applied_migrations_before，必要时手动执行对应 down migration。" >&2
 }
 
+# ==================== 准备部署目录 ====================
+echo "==> 准备部署目录: $DEPLOY_DIR"
+mkdir -p "$DEPLOY_BACKEND_DIR/bin" "$DEPLOY_MARKETPLACE_DIR" "$DEPLOY_EDU_DIR" \
+  "$DEPLOY_DATA_DIR" "$DEPLOY_UPLOAD_DIR" "$DEPLOY_LOG_DIR" \
+  "$DEPLOY_BACKUP_DIR" "$DEPLOY_ROLLBACK_DIR"
+
+migrate_uploads
+
 # ==================== 创建回滚快照 ====================
 echo "==> 创建部署回滚快照..."
 SNAPSHOT_TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-SNAPSHOT_DIR="$ROLLBACK_DIR/$SNAPSHOT_TIMESTAMP"
+SNAPSHOT_DIR="$DEPLOY_ROLLBACK_DIR/$SNAPSHOT_TIMESTAMP"
 mkdir -p "$SNAPSHOT_DIR"
 
 DEPLOY_MODE="full"
@@ -338,23 +466,23 @@ DEPLOY_MODE="full"
 
 save_snapshot "$SNAPSHOT_DIR" "$DEPLOY_MODE"
 
-if [[ "$FRONTEND_ONLY" != "true" && -f "$BACKEND_BIN" ]]; then
-  cp "$BACKEND_BIN" "$SNAPSHOT_DIR/server"
+if [[ "$FRONTEND_ONLY" != "true" && -f "$DEPLOY_BACKEND_BIN" ]]; then
+  cp "$DEPLOY_BACKEND_BIN" "$SNAPSHOT_DIR/server"
 fi
-if [[ "$BACKEND_ONLY" != "true" && -d "$MARKETPLACE_STANDALONE" ]]; then
-  mv "$MARKETPLACE_STANDALONE" "$SNAPSHOT_DIR/marketplace"
+if [[ "$BACKEND_ONLY" != "true" && -d "$DEPLOY_MARKETPLACE_STANDALONE" ]]; then
+  mv "$DEPLOY_MARKETPLACE_STANDALONE" "$SNAPSHOT_DIR/marketplace"
 fi
-if [[ "$BACKEND_ONLY" != "true" && -d "$EDU_STANDALONE" ]]; then
-  mv "$EDU_STANDALONE" "$SNAPSHOT_DIR/edu"
+if [[ "$BACKEND_ONLY" != "true" && -d "$DEPLOY_EDU_STANDALONE" ]]; then
+  mv "$DEPLOY_EDU_STANDALONE" "$SNAPSHOT_DIR/edu"
 fi
 
-rm -f "$ROLLBACK_DIR/latest"
-ln -s "$SNAPSHOT_DIR" "$ROLLBACK_DIR/latest"
+rm -f "$DEPLOY_ROLLBACK_DIR/latest"
+ln -s "$SNAPSHOT_DIR" "$DEPLOY_ROLLBACK_DIR/latest"
 
 echo "  快照已保存: $SNAPSHOT_DIR"
 
 # 只保留最近 ROLLBACK_KEEP 个快照，超出则删除最旧的
-find "$ROLLBACK_DIR" -maxdepth 1 -type d -name '2*' 2>/dev/null | sort | head -n -"$ROLLBACK_KEEP" | xargs -r rm -rf || true
+find "$DEPLOY_ROLLBACK_DIR" -maxdepth 1 -type d -name '2*' 2>/dev/null | sort | head -n -"$ROLLBACK_KEEP" | xargs -r rm -rf || true
 
 # ==================== 代码检查 ====================
 if [[ "$SKIP_CHECKS" != "true" ]]; then
@@ -438,7 +566,6 @@ if [[ "$SKIP_BACKUP" != "true" && "$FRONTEND_ONLY" != "true" ]]; then
   if pg_isready -d "$DATABASE_URL" > /dev/null 2>&1; then
     pg_dump -d "$DATABASE_URL" -Fc -Z 6 > "$BACKUP_FILE.tmp" && mv "$BACKUP_FILE.tmp" "$BACKUP_FILE" && chmod 600 "$BACKUP_FILE" || {
       echo "错误：数据库备份失败" >&2
-      rm -f "$BACKUP_FILE.tmp" "$BACKUP_FILE"
       exit 1
     }
     echo "  备份完成: $BACKUP_FILE"
@@ -485,15 +612,31 @@ fi
 
 sleep 1
 
-# ==================== 原子交换后端产物 ====================
+# ==================== 原子交换产物到部署目录 ====================
 echo "==> 切换到新版本..."
 
 if [[ "$FRONTEND_ONLY" != "true" && -f "$BACKEND_BIN_NEW" ]]; then
-  [[ -f "$BACKEND_BIN" ]] && mv "$BACKEND_BIN" "$BACKEND_DIR/bin/server.prev"
-  mv "$BACKEND_BIN_NEW" "$BACKEND_BIN"
-  chmod +x "$BACKEND_BIN"
+  mkdir -p "$(dirname "$DEPLOY_BACKEND_BIN")"
+  [[ -f "$DEPLOY_BACKEND_BIN" ]] && mv "$DEPLOY_BACKEND_BIN" "$DEPLOY_BACKEND_DIR/bin/server.prev"
+  mv "$BACKEND_BIN_NEW" "$DEPLOY_BACKEND_BIN"
+  chmod +x "$DEPLOY_BACKEND_BIN"
   echo "  后端已切换"
 fi
+
+if [[ "$BACKEND_ONLY" != "true" && -d "$MARKETPLACE_STANDALONE" ]]; then
+  mkdir -p "$(dirname "$DEPLOY_MARKETPLACE_STANDALONE")"
+  mv "$MARKETPLACE_STANDALONE" "$DEPLOY_MARKETPLACE_STANDALONE"
+  echo "  商城前端已切换"
+fi
+
+if [[ "$BACKEND_ONLY" != "true" && -d "$EDU_STANDALONE" ]]; then
+  mkdir -p "$(dirname "$DEPLOY_EDU_STANDALONE")"
+  mv "$EDU_STANDALONE" "$DEPLOY_EDU_STANDALONE"
+  echo "  教育管理前端已切换"
+fi
+
+# ==================== 生成 PM2 配置文件 ====================
+generate_ecosystem_config
 
 # ==================== 数据库迁移 ====================
 if [[ "$FRONTEND_ONLY" != "true" ]]; then
@@ -510,19 +653,19 @@ echo ""
 echo "==> 本地 PM2 启动服务..."
 
 if [[ "$FRONTEND_ONLY" == "true" ]]; then
-  pm2 start "$PROJECT_ROOT/ecosystem.config.js" --only "zhiyu-marketplace,zhiyu-edu" --env production || {
+  pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --only "zhiyu-marketplace,zhiyu-edu" --env production || {
     echo "错误：PM2 启动失败" >&2
     restore_rollback "$SNAPSHOT_DIR"
     exit 1
   }
 elif [[ "$BACKEND_ONLY" == "true" ]]; then
-  pm2 start "$PROJECT_ROOT/ecosystem.config.js" --only "zhiyu-backend" --env production || {
+  pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --only "zhiyu-backend" --env production || {
     echo "错误：PM2 启动失败" >&2
     restore_rollback "$SNAPSHOT_DIR"
     exit 1
   }
 else
-  pm2 start "$PROJECT_ROOT/ecosystem.config.js" --env production || {
+  pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --env production || {
     echo "错误：PM2 启动失败" >&2
     restore_rollback "$SNAPSHOT_DIR"
     exit 1
@@ -568,12 +711,15 @@ if [[ "$HEALTH_OK" != "true" ]]; then
 fi
 
 # ==================== 清理旧产物 ====================
-[[ -f "$BACKEND_DIR/bin/server.prev" ]] && rm -f "$BACKEND_DIR/bin/server.prev"
+[[ -f "$DEPLOY_BACKEND_DIR/bin/server.prev" ]] && rm -f "$DEPLOY_BACKEND_DIR/bin/server.prev"
 
 echo ""
 echo "✨ 本地发布完成！"
+echo "   部署目录: $DEPLOY_DIR"
 echo "   商城访问: http://localhost:$MARKETPLACE_PORT"
 echo "   教育管理访问: http://localhost:$EDU_PORT"
 echo "   后端 API: http://localhost:$BACKEND_PORT"
+echo "   上传目录: $DEPLOY_UPLOAD_DIR"
+echo "   日志目录: $DEPLOY_LOG_DIR"
 echo "   回滚快照: $SNAPSHOT_DIR"
 echo ""
