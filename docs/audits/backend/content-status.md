@@ -64,7 +64,7 @@
 | 共享类型一致 | PASS | `STATUS_TRANSITIONS` 与后端矩阵一致，`save_draft.from` 包含 `approved`/`published`/`archived` |
 | API 客户端覆盖 | PASS | `createContentApi` 暴露 `saveDraft(id)` 与 `archive(id)` |
 | 前端保存草稿回退 | PASS | 所有内容编辑页均实现 approved/published/archived → draft 回退 |
-| 归档与恢复入口 | PASS | 场景、岗位列表均提供行级/批量归档按钮，并在归档库提供恢复入口 |
+| 归档与恢复入口 | PASS | 课程、场景、岗位列表均提供行级/批量归档按钮，并在归档库提供恢复入口 |
 | 本地验证 | PASS | `go vet ./...`、`go test ./...`、`go build ./cmd/server/main.go`、`pnpm -r typecheck`、`pnpm -r lint`、`pnpm build:edu`、`pnpm build:marketplace` 通过 |
 
 ## 风险与约束
