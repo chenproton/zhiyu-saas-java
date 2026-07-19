@@ -1,6 +1,6 @@
 "use client"
 
-import { Copy, Eye, GitBranch, Pencil, Rocket, Send, Trash2, Undo2, CheckCircle, XCircle, ArrowDownFromLine, MessageSquare, UserPlus } from "lucide-react"
+import { Copy, Eye, GitBranch, Pencil, Rocket, Send, Trash2, Undo2, CheckCircle, XCircle, ArrowDownFromLine, MessageSquare, UserPlus, Archive } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -46,6 +46,7 @@ interface ScenarioListProps<T extends ScenarioListItem = ScenarioListItem> {
   onReject?: (scenario: T) => void
   onPublish?: (scenario: T) => void
   onUnpublish?: (scenario: T) => void
+  onArchive?: (scenario: T) => void
   onViewRejectReason?: (scenario: T) => void
   onInviteCoBuild?: (scenario: T) => void
   className?: string
@@ -65,6 +66,7 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
   onReject,
   onPublish,
   onUnpublish,
+  onArchive,
   onViewRejectReason,
   onInviteCoBuild,
   className,
@@ -307,6 +309,22 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                       >
                         <ArrowDownFromLine className="mr-1 h-3 w-3" />
                         取消发布
+                      </Button>
+                    </PrdAnnotation>
+                  )}
+                  {scenario.status !== "pending" && scenario.status !== "archived" && onArchive && (
+                    <PrdAnnotation data={getAnnotation("row-action-archive")}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-purple-600 hover:text-purple-700"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onArchive(scenario)
+                        }}
+                      >
+                        <Archive className="mr-1 h-3 w-3" />
+                        归档
                       </Button>
                     </PrdAnnotation>
                   )}

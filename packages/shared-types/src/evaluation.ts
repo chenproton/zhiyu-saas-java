@@ -193,7 +193,7 @@ export type StatusAction =
 
 // 状态流转规则：与后端状态机保持一致
 export const STATUS_TRANSITIONS: Record<StatusAction, { from: Status[], to: Status }> = {
-  save_draft: { from: ['draft', 'rejected', 'approved', 'published'], to: 'draft' },
+  save_draft: { from: ['draft', 'rejected', 'approved', 'published', 'archived'], to: 'draft' },
   submit: { from: ['draft', 'rejected'], to: 'pending' },
   withdraw: { from: ['pending'], to: 'draft' },
   approve: { from: ['pending'], to: 'approved' },

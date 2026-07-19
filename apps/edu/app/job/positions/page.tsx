@@ -20,6 +20,7 @@ import {
   X,
   ArrowDownFromLine,
   ArrowUpFromLine,
+  Archive,
   Loader2,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -211,6 +212,7 @@ export default function PositionsPage() {
   const canBatchUnpublish = selectedPositions.some((p) => p.status === "published")
   const canBatchPublish = selectedPositions.some((p) => p.status === "approved")
   const canBatchDelete = selectedPositions.some((p) => p.status === "draft" || p.status === "rejected")
+  const canBatchArchive = selectedPositions.some((p) => ["draft", "rejected", "approved", "published"].includes(p.status))
 
   const handleBatchSubmitApproval = async () => {
     for (const id of selectedIds) {
@@ -282,6 +284,31 @@ export default function PositionsPage() {
         await positionApi.delete(id)
       } catch (err: any) {
         toast({ variant: 'destructive', title: '删除失败', description: err?.message || '请稍后重试' })
+      }
+    }
+    setSelectedIds([])
+    loadData()
+  }
+
+  const handleArchive = async (position: Position) => {
+    if (!confirm(`确定要归档岗位「${position.name}」吗？归档后可在岗位归档库中查看。`)) return
+    try {
+      await positionApi.archive(position.id)
+      loadData()
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: '归档失败', description: err?.message || '请稍后重试' })
+    }
+  }
+
+  const handleBatchArchive = async () => {
+    for (const id of selectedIds) {
+      const position = positions.find((p) => p.id === id)
+      if (position && ["draft", "rejected", "approved", "published"].includes(position.status)) {
+        try {
+          await positionApi.archive(position.id)
+        } catch (err: any) {
+          toast({ variant: 'destructive', title: '归档失败', description: err?.message || '请稍后重试' })
+        }
       }
     }
     setSelectedIds([])
@@ -706,6 +733,10 @@ export default function PositionsPage() {
               <Copy className="mr-1 h-3 w-3" />
               克隆
             </Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs text-purple-600 hover:text-purple-700" disabled={!hasSelected || !canBatchArchive} onClick={handleBatchArchive}>
+              <Archive className="mr-1 h-3 w-3" />
+              归档
+            </Button>
             <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected} onClick={handleBatchMove}>
               <FolderKanban className="mr-1 h-3 w-3" />
               调整批次分组
@@ -730,6 +761,7 @@ export default function PositionsPage() {
               onWithdrawApproval={handleWithdrawApproval}
               onPublish={handlePublish}
               onUnpublish={handleUnpublish}
+              onArchive={handleArchive}
               onInviteCoBuild={handleInviteCoBuild}
               configureStepParam="2"
               className="border-0 rounded-none"
@@ -779,6 +811,7 @@ export default function PositionsPage() {
                         onWithdrawApproval={handleWithdrawApproval}
                         onPublish={handlePublish}
                         onUnpublish={handleUnpublish}
+                        onArchive={handleArchive}
                         onInviteCoBuild={handleInviteCoBuild}
                         configureStepParam="2"
                         industryMap={industryMap}
@@ -812,6 +845,7 @@ export default function PositionsPage() {
                   onWithdrawApproval={handleWithdrawApproval}
                   onPublish={handlePublish}
                   onUnpublish={handleUnpublish}
+                  onArchive={handleArchive}
                   onInviteCoBuild={handleInviteCoBuild}
                   configureStepParam="2"
                   industryMap={industryMap}

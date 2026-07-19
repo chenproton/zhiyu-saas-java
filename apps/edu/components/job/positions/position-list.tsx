@@ -1,6 +1,6 @@
 "use client"
 
-import { Copy, Eye, GitBranch, Pencil, Rocket, Send, Trash2, Undo2, ArrowDownFromLine, UserPlus } from "lucide-react"
+import { Copy, Eye, GitBranch, Pencil, Rocket, Send, Trash2, Undo2, ArrowDownFromLine, UserPlus, Archive } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -28,6 +28,7 @@ interface PositionListProps {
   onWithdrawApproval?: (position: Position) => void
   onPublish?: (position: Position) => void
   onUnpublish?: (position: Position) => void
+  onArchive?: (position: Position) => void
   onInviteCoBuild?: (position: Position) => void
   className?: string
   basePath?: string
@@ -47,6 +48,7 @@ export function PositionList({
   onWithdrawApproval,
   onPublish,
   onUnpublish,
+  onArchive,
   onInviteCoBuild,
   className,
   basePath = "/job/positions",
@@ -225,6 +227,20 @@ export function PositionList({
                     >
                       <ArrowDownFromLine className="mr-1 h-3 w-3" />
                       取消发布
+                    </Button>
+                  )}
+                  {position.status !== "pending" && position.status !== "archived" && onArchive && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-purple-600 hover:text-purple-700"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onArchive(position)
+                      }}
+                    >
+                      <Archive className="mr-1 h-3 w-3" />
+                      归档
                     </Button>
                   )}
                   {onInviteCoBuild && (

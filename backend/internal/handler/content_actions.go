@@ -42,7 +42,7 @@ var allowedStatusTransitions = map[domain.ContentStatus][]domain.ContentStatus{
 	domain.StatusPending:   {domain.StatusDraft, domain.StatusApproved, domain.StatusRejected},
 	domain.StatusApproved:  {domain.StatusDraft, domain.StatusPublished, domain.StatusArchived},
 	domain.StatusPublished: {domain.StatusDraft, domain.StatusArchived},
-	domain.StatusArchived:  {},
+	domain.StatusArchived:  {domain.StatusDraft},
 }
 
 func (c contentActions) canTransition(from, to domain.ContentStatus) bool {

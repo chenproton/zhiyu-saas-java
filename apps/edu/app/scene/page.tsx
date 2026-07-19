@@ -21,6 +21,7 @@ import {
   ArrowDownFromLine,
   ArrowUpFromLine,
   MessageSquare,
+  Archive,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"
@@ -245,6 +246,7 @@ export default function SceneHallPage() {
   const canBatchUnpublish = selectedScenarios.some((s) => s.status === "published")
   const canBatchPublish = selectedScenarios.some((s) => s.status === "approved")
   const canBatchDelete = selectedScenarios.some((s) => s.status === "draft" || s.status === "rejected")
+  const canBatchArchive = selectedScenarios.some((s) => ["draft", "rejected", "approved", "published"].includes(s.status))
 
   const refresh = async () => {
     await loadData()
@@ -312,6 +314,31 @@ export default function SceneHallPage() {
         await scenarioApi.delete(scenario.id)
       } catch (err) {
         console.error("删除失败", err)
+      }
+    }
+    setSelectedIds([])
+    await refresh()
+  }
+
+  const handleArchive = async (scenario: ScenarioListItem) => {
+    if (!confirm(`确定要归档场景「${scenario.name}」吗？归档后可在场景归档库中查看。`)) return
+    try {
+      await scenarioApi.archive(scenario.id)
+      await refresh()
+    } catch (err) {
+      console.error("归档失败", err)
+      alert("归档失败，请稍后重试")
+    }
+  }
+
+  const handleBatchArchive = async () => {
+    for (const scenario of selectedScenarios) {
+      if (["draft", "rejected", "approved", "published"].includes(scenario.status)) {
+        try {
+          await scenarioApi.archive(scenario.id)
+        } catch (err) {
+          console.error("归档失败", err)
+        }
       }
     }
     setSelectedIds([])
@@ -746,6 +773,10 @@ export default function SceneHallPage() {
                 删除
               </Button>
             )}
+            <Button variant="outline" size="sm" className="h-8 text-xs text-purple-600 hover:text-purple-700" disabled={!hasSelected || !canBatchArchive} onClick={handleBatchArchive}>
+              <Archive className="mr-1 h-3 w-3" />
+              归档
+            </Button>
             <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected} onClick={handleBatchClone}>
               <Copy className="mr-1 h-3 w-3" />
               克隆
@@ -777,6 +808,7 @@ export default function SceneHallPage() {
               onReject={handleReject}
               onPublish={handlePublish}
               onUnpublish={handleUnpublish}
+              onArchive={handleArchive}
               onViewRejectReason={handleViewRejectReason}
               onInviteCoBuild={handleInviteCoBuild}
               basePath="/scene/scenarios"
