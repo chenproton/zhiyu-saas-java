@@ -493,7 +493,7 @@ export default function LearnRoadsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right relative">
-                        <div className="flex items-center justify-end gap-1 absolute right-2 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border">
+                        <div className="flex items-center justify-end gap-1 absolute right-2 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
                           <Button
                             variant="ghost"
                             size="sm"
