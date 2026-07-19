@@ -59,6 +59,7 @@ import { ResourceSelector, type ResourceItem } from "../../_components/resources
 import { EvaluationMethodSelector } from "../../_components/assessment/evaluation-method-selector"
 import { CourseEvaluationRulesDialog } from "../../_components/assessment/course-evaluation-rules-dialog"
 import { RichTextEditor } from "../../_components/common/rich-text-editor"
+import { EditorShell } from "@/components/shared/editor-shell"
 
 import CourseNodeTree from "./_components/CourseNodeTree"
 import PublishCheckPanel from "./_components/PublishCheckPanel"
@@ -554,38 +555,16 @@ function AddSystemPageInner() {
   }, [selectedNodeId, nodes, learningGoal, hours, knowledgePoints, selectedResourceIds, resourcePool, selectedEvalMethods])
 
   return (
-    <div className="min-h-screen bg-[#f5f7fa]">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-30">
-        <div className="max-w-[1400px] mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/lesson/admin/system">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="h-4 w-4 mr-1" />
-                  返回列表
-                </Button>
-              </Link>
-              <h1 className="text-lg font-semibold text-gray-900">
-                {isEdit ? "编辑体系课" : "新建体系课"}
-                {courseName && <span className="text-gray-400 font-normal ml-2">- {courseName}</span>}
-              </h1>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-1" onClick={handleSave} disabled={saving}>
-                <Save className="h-4 w-4" />
-                {saving ? "保存中..." : "保存草稿"}
-              </Button>
-              <Button size="sm" className="gap-1 bg-[#1890ff] hover:bg-[#40a9ff]" onClick={handleSubmit} disabled={saving}>
-                <Send className="h-4 w-4" />
-                提交
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-[1400px] mx-auto px-6 py-6">
+    <EditorShell
+      mode="inline"
+      backText="返回列表"
+      onBack={() => router.push("/lesson/admin/system")}
+      onSaveDraft={handleSave}
+      isSaving={saving}
+      onSubmit={handleSubmit}
+      submitText="提交"
+      headerTitle={<>{isEdit ? "编辑体系课" : "新建体系课"}{courseName && <span className="text-gray-400 font-normal ml-2">- {courseName}</span>}</>}
+    >
         {/* ========== Global Course Info (collapsible, spans full width) ========== */}
         <Collapsible open={globalInfoOpen} onOpenChange={setGlobalInfoOpen} className="mb-6">
           <Card className="border-0 shadow-sm">
@@ -956,7 +935,6 @@ function AddSystemPageInner() {
           {/* Right: Publish Check Panel */}
           <PublishCheckPanel node={currentCheckNode} />
         </div>
-      </div>
 
       {/* Convert complete nodes to grain course dialog */}
       <Dialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>
@@ -1063,7 +1041,7 @@ function AddSystemPageInner() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </EditorShell>
   )
 }
 
