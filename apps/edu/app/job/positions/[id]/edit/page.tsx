@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { X, Save, Eye, ArrowRight, ArrowLeft, Check, ImagePlus } from 'lucide-react'
+import { Loader2, ImagePlus } from 'lucide-react'
 import { StepBasicInfo } from '@/components/job/position-builder/step-basic-info'
 import { StepAbilityModeling } from '@/components/job/position-builder/step-ability-modeling'
 import { Step3ResultTable } from '@/components/job/position-builder/ai-assisted-2/step3-result-table'
@@ -41,7 +41,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { Toaster } from '@/components/ui/toaster'
 import { useAuth } from '@/components/auth-provider'
-import { TopNav } from '@/components/portal/top-nav'
+import { EditorShell } from '@/components/shared/editor-shell'
 
 
 
@@ -323,75 +323,28 @@ function PositionEditPageContent({ params }: PageProps) {
   const canGoPrev = currentStepIndex > 0
 
   return (
-    <div className="fixed inset-0 bg-background z-50 overflow-auto">
-      <TopNav />
-      <div className="sticky top-14 z-10 bg-white border-b border-gray-100">
-        <div className="max-w-full mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={async () => {
-              if (isNewPosition && !hasSavedRef.current) {
-                try { await positionApi.delete(position.id) } catch {}
-              }
-              router.push('/job/positions')
-            }}>
-              <X className="h-4 w-4 mr-2" />
-              取消
-            </Button>
-            <div className="h-5 w-px bg-gray-200" />
-            <div className="flex items-center gap-2">
-              <Badge className="bg-primary text-primary-foreground">
-                步骤 {currentStepIndex + 1}
-              </Badge>
-              <span className="text-sm font-medium text-gray-800">{currentStep.label}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {detailsLoading && (
-              <span className="text-xs text-muted-foreground flex items-center">
-                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                加载详情中
-              </span>
-            )}
-            <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving || detailsLoading}>
-              <Save className="mr-2 h-4 w-4" />
-              {isSaving ? '保存中...' : '保存草稿'}
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => window.open('/student.html', '_blank')}>
-              <Eye className="mr-2 h-4 w-4" />
-              预览
-            </Button>
-            {canGoPrev && (
-              <Button variant="outline" size="sm" onClick={handlePrev}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                上一步
-              </Button>
-            )}
-            {canGoNext ? (
-              <Button size="sm" onClick={handleNext}>
-                下一步
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            ) : (
-              position.status === 'draft' && (
-                <Button size="sm" onClick={handleSubmit} disabled={detailsLoading}>
-                  <Check className="mr-2 h-4 w-4" />
-                  提交审批
-                </Button>
-              )
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-full mx-auto px-6 py-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-800">{position.name}</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {batch?.department} - {majorMap.get(batch?.majorId || "") || batch?.major || batch?.majorId} | 版本 {position.version}
-          </p>
-        </div>
-
-        {activeStep === 'basic' ? (
+    <EditorShell
+      mode="fullscreen"
+      backText="取消"
+      onBack={async () => {
+        if (isNewPosition && !hasSavedRef.current) {
+          try { await positionApi.delete(position.id) } catch {}
+        }
+        router.push('/job/positions')
+      }}
+      step={currentStepIndex + 1}
+      stepLabel={currentStep.label}
+      onSaveDraft={handleSave}
+      isSaving={isSaving}
+      onPreview={() => window.open('/student.html', '_blank')}
+      onPrev={canGoPrev ? handlePrev : undefined}
+      onNext={canGoNext ? handleNext : undefined}
+      onSubmit={(!canGoNext && position.status === 'draft') ? handleSubmit : undefined}
+      loadingText={detailsLoading ? "加载详情中" : undefined}
+      title={position.name}
+      subtitle={`${batch?.department} - ${majorMap.get(batch?.majorId || "") || batch?.major || batch?.majorId} | 版本 ${position.version}`}
+    >
+      {activeStep === 'basic' ? (
           <div className="grid grid-cols-3 gap-6">
             <div className="col-span-2">
               <StepBasicInfo position={position} onUpdate={updatePositionData} />
@@ -525,7 +478,6 @@ function PositionEditPageContent({ params }: PageProps) {
             )}
           </div>
         )}
-      </div>
 
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
         <DialogContent size="lg" className="max-h-[80vh] overflow-y-auto">
@@ -587,7 +539,7 @@ function PositionEditPageContent({ params }: PageProps) {
         </DialogContent>
       </Dialog>
       <Toaster />
-    </div>
+    </EditorShell>
   )
 }
 

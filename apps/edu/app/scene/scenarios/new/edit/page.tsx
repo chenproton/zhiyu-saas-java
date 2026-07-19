@@ -35,6 +35,7 @@ import type { SceneBatch } from "@/lib/types/scene"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import { TopNav } from "@/components/portal/top-nav"
+import { EditorShell } from "@/components/shared/editor-shell"
 
 interface PositionWithProfession extends CareerPosition {
   industryName?: string
