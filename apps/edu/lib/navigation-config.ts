@@ -112,6 +112,16 @@ export const adminNavigationConfig: PlatformNavigationConfig = {
       ],
     },
     {
+      id: "approval-center",
+      label: "批次与审批管理",
+      icon: "badgeCheck",
+      children: [
+        { id: "batches", label: "批次分组管理", href: "/lesson/admin/batches", matchers: ["/lesson/admin/batches"] },
+        { id: "workflows", label: "审批流程配置", href: "/lesson/admin/workflows", matchers: ["/lesson/admin/workflows"] },
+        { id: "approvals", label: "审批中心", href: "/lesson/admin/approvals", matchers: ["/lesson/admin/approvals"] },
+      ],
+    },
+    {
       id: "course-open",
       label: "教学空间",
       icon: "layoutGrid",
@@ -124,18 +134,8 @@ export const adminNavigationConfig: PlatformNavigationConfig = {
         { id: "learning-portrait", label: "我的学生画像", href: "/lesson/teacher/learning-portrait", matchers: ["/lesson/teacher/learning-portrait"] },
       ],
     },
-    {
-      id: "approval-center",
-      label: "批次与审批管理",
-      icon: "badgeCheck",
-      children: [
-        { id: "batches", label: "批次分组管理", href: "/lesson/admin/batches", matchers: ["/lesson/admin/batches"] },
-        { id: "workflows", label: "审批流程配置", href: "/lesson/admin/workflows", matchers: ["/lesson/admin/workflows"] },
-        { id: "approvals", label: "审批中心", href: "/lesson/admin/approvals", matchers: ["/lesson/admin/approvals"] },
-      ],
-    },
   ],
-  defaultExpandedSideNavIds: ["resource-center", "hybrid-center", "course-open", "approval-center"],
+  defaultExpandedSideNavIds: ["resource-center", "hybrid-center", "approval-center", "course-open"],
   platformSwitchItems: [],
   shellClassName: "bg-background",
   mainClassName: "min-w-0 flex-1",
@@ -173,15 +173,6 @@ export const jobNavigationConfig: PlatformNavigationConfig = {
       ],
     },
     {
-      id: "batch-center",
-      label: "推荐与学习",
-      icon: "layers",
-      children: [
-        { id: "recommend", label: "岗位推荐", href: "/job/recommend", matchers: ["/job/recommend"] },
-        { id: "learn-roads", label: "学习路径", href: "/job/learn-roads", matchers: ["/job/learn-roads"] },
-      ],
-    },
-    {
       id: "flow-center",
       label: "批次与审批管理",
       icon: "settings",
@@ -191,8 +182,17 @@ export const jobNavigationConfig: PlatformNavigationConfig = {
         { id: "approvals", label: "审批中心", href: "/job/approvals", matchers: ["/job/approvals"] },
       ],
     },
+    {
+      id: "batch-center",
+      label: "岗位展示配置",
+      icon: "layers",
+      children: [
+        { id: "recommend", label: "岗位推荐", href: "/job/recommend", matchers: ["/job/recommend"] },
+        { id: "learn-roads", label: "学习路径", href: "/job/learn-roads", matchers: ["/job/learn-roads"] },
+      ],
+    },
   ],
-  defaultExpandedSideNavIds: ["position-center", "batch-center", "flow-center"],
+  defaultExpandedSideNavIds: ["position-center", "flow-center", "batch-center"],
   platformSwitchItems: [],
   shellClassName: "bg-background",
   mainClassName: "min-w-0 flex-1",
