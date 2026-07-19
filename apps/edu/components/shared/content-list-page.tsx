@@ -125,6 +125,7 @@ export interface ContentListPageConfig<T extends ContentListItem> {
   afterLoad?: (items: T[], batches: ContentBatch[]) => Promise<T[]>
 
   createPayload: (userId: string, entityLabel: string) => any
+  createRedirectUrl?: (id: string) => string
 
   renderList: (props: ListRenderProps<T>) => ReactNode
 
@@ -164,7 +165,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     permissionModule, permissionResource,
     itemApi, batchApi, approvalApi, importExportApi,
     approvalTargetType, importEntityName, exportEntityName,
-    statusFilterOptions, mapItem, mapBatch, createPayload,
+    statusFilterOptions, mapItem, mapBatch, createPayload, createRedirectUrl,
     renderList, extraHeaderActions, listExtraProps, children, afterLoad,
   } = config
 
@@ -552,7 +553,10 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const handleCreate = async () => {
     try {
       const newItem = await itemApi.create(createPayload(currentUserId, entityLabel))
-      router.push(`${addHref}?id=${newItem.id}&new=true`)
+      const url = createRedirectUrl
+        ? createRedirectUrl(newItem.id)
+        : `${addHref}?id=${newItem.id}&new=true`
+      router.push(url)
     } catch (err: any) {
       console.error(`Failed to create ${entityLabel}:`, err)
       alert(err.message || "创建失败")

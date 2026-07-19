@@ -46,6 +46,7 @@ export default function PositionsPage() {
       approvalTargetType="career_position"
       importEntityName="career_positions"
       exportEntityName="career_positions"
+      createRedirectUrl={(id) => `/job/positions/${id}/edit?new=true`}
       statusFilterOptions={[
         { value: "draft", label: "草稿" },
         { value: "pending", label: "审批中" },

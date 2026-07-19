@@ -80,6 +80,7 @@ export default function SceneHallPage() {
           }))
         }
       }}
+      createRedirectUrl={(id) => `/scene/scenarios/${id}/edit?new=true`}
       createPayload={(uid, _label) => ({
         name: "新建场景",
         code: generateCode("SC"),
