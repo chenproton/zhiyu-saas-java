@@ -1,7 +1,6 @@
 "use client"
 
 import {
-  ArrowLeft,
   ArrowRight,
   Book,
   CheckCircle2,
@@ -12,7 +11,6 @@ import {
   Lightbulb,
   Link2,
   Plus,
-  Save,
   Scale,
   Search,
   Star,
@@ -80,7 +78,6 @@ import {
   BookOpen,
   Pencil,
 } from "lucide-react"
-import NextLink from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { useState, useMemo, useRef, useCallback, useLayoutEffect, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
@@ -116,7 +113,7 @@ import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi } from "@/l
 import type { ScenarioTask as ApiScenarioTask } from "@/lib/types/scene"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
-import { TopNav } from "@/components/portal/top-nav"
+import { EditorShell } from "@/components/shared/editor-shell"
 import type {
   Task, PositionAbility, GradeMapping,
 } from "@/lib/mock-data"
@@ -905,50 +902,18 @@ export default function TasksEditPage() {
   }
 
   return (
-    <div className="fixed inset-0 bg-background z-50 overflow-auto">
-      <TopNav />
-      {/* Header */}
-      <div className="sticky top-14 z-10 bg-white border-b border-gray-100">
-        <div className="max-w-[1400px] mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <PrdAnnotation data={getAnnotation("editor-step2-back")}>
-              <Button variant="ghost" size="sm" asChild>
-                <NextLink href={`/scene/scenarios/${scenarioId}/edit`}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  返回上一步
-                </NextLink>
-              </Button>
-            </PrdAnnotation>
-            <div className="h-5 w-px bg-gray-200" />
-            <div className="flex items-center gap-2">
-              <Badge className="bg-primary text-primary-foreground">步骤 2</Badge>
-              <span className="text-sm font-medium text-gray-800">任务链配置</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <PrdAnnotation data={getAnnotation("editor-step2-save")}>
-              <Button variant="outline" size="sm" onClick={handleSaveDraft} disabled={isSaving}>
-                <Save className="mr-2 h-4 w-4" />
-                {isSaving ? "保存中..." : "保存草稿"}
-              </Button>
-            </PrdAnnotation>
-            <PrdAnnotation data={getAnnotation("editor-step2-preview")}>
-              <Button variant="outline" size="sm">
-                <Eye className="mr-2 h-4 w-4" />
-                预览
-              </Button>
-            </PrdAnnotation>
-            <PrdAnnotation data={getAnnotation("editor-step2-finish")}>
-              <Button onClick={handleFinish} disabled={isSaving}>
-                {isSaving ? "保存中..." : "完成配置"}
-                {!isSaving && <ArrowRight className="ml-2 h-4 w-4" />}
-              </Button>
-            </PrdAnnotation>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-[1400px] mx-auto px-6 py-8 space-y-6">
+    <EditorShell
+      mode="fullscreen"
+      backText="返回上一步"
+      onBack={() => router.push(`/scene/scenarios/${scenarioId}/edit`)}
+      step={2}
+      stepLabel="任务链配置"
+      onSaveDraft={handleSaveDraft}
+      isSaving={isSaving}
+      onSubmit={handleFinish}
+      submitText="完成配置"
+      contentMaxWidth="max-w-[1400px]"
+    >
         {/* Scenario Info */}
         <PrdAnnotation data={getAnnotation("editor-scenario-summary")} className="block">
           <Card>
@@ -1145,7 +1110,7 @@ export default function TasksEditPage() {
             )}
           </div>
         </div>
-      </div>
+
 
       {/* Add Task Dialog */}
       <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen}>
@@ -1316,7 +1281,7 @@ export default function TasksEditPage() {
         </DialogContent>
       </Dialog>
       <Toaster />
-    </div>
+    </EditorShell>
   )
 }
 

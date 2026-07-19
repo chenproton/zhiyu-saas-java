@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowRight, ChevronDown, ChevronRight, Eye, ImagePlus, List, ListOrdered, Loader2, Save, Search, Star, X, UserPlus } from "lucide-react"
+import { ChevronDown, ChevronRight, ImagePlus, List, ListOrdered, Loader2, Search, Star, X, UserPlus } from "lucide-react"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -34,7 +34,6 @@ import type { Industry } from "@/lib/types/backend"
 import type { SceneBatch } from "@/lib/types/scene"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
-import { TopNav } from "@/components/portal/top-nav"
 import { EditorShell } from "@/components/shared/editor-shell"
 
 interface PositionWithProfession extends CareerPosition {
@@ -354,54 +353,21 @@ function NewScenarioEditForm() {
   }
 
   return (
-    <div className="fixed inset-0 bg-background z-50 overflow-auto">
-      <TopNav />
-      <div className="sticky top-14 z-10 bg-white border-b border-gray-100">
-        <div className="max-w-full mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <PrdAnnotation data={getAnnotation("editor-step1-cancel")}>
-              <Button variant="ghost" size="sm" onClick={() => router.push("/scene")}>
-                <X className="h-4 w-4 mr-2" />
-                取消
-              </Button>
-            </PrdAnnotation>
-            <div className="h-5 w-px bg-gray-200" />
-            <div className="flex items-center gap-2">
-              <Badge className="bg-primary text-primary-foreground">步骤 1</Badge>
-              <span className="text-sm font-medium text-gray-800">基础信息编辑</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <PrdAnnotation data={getAnnotation("editor-step1-save")}>
-              <Button variant="outline" size="sm" onClick={handleSaveDraft} disabled={isSaving || !scenarioName}>
-                <Save className="mr-2 h-4 w-4" />
-                保存草稿
-              </Button>
-            </PrdAnnotation>
-            <PrdAnnotation data={getAnnotation("editor-step1-preview")}>
-              <Button variant="outline" size="sm" onClick={() => setIsPreviewDialogOpen(true)}>
-                <Eye className="mr-2 h-4 w-4" />
-                预览
-              </Button>
-            </PrdAnnotation>
-            <PrdAnnotation data={getAnnotation("editor-step1-next")}>
-              <Button
-                onClick={handleProceed}
-                disabled={!scenarioName || isSaving}
-              >
-                {isSaving ? "保存中..." : "下一步"}
-                {!isSaving && <ArrowRight className="ml-2 h-4 w-4" />}
-              </Button>
-            </PrdAnnotation>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-full mx-auto px-6 py-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-800">新建实践场景</h1>
-          <p className="text-sm text-gray-500 mt-1">填写场景基础信息，完成后进入任务链配置</p>
-        </div>
+    <EditorShell
+      mode="fullscreen"
+      backText="取消"
+      onBack={() => router.push("/scene")}
+      step={1}
+      stepLabel="基础信息编辑"
+      onSaveDraft={handleSaveDraft}
+      isSaving={isSaving}
+      saveDisabled={!scenarioName}
+      onPreview={() => setIsPreviewDialogOpen(true)}
+      onNext={handleProceed}
+      nextDisabled={!scenarioName}
+      title="新建实践场景"
+      subtitle="填写场景基础信息，完成后进入任务链配置"
+    >
 
         {dataLoading ? (
           <div className="flex items-center justify-center py-20">
@@ -807,7 +773,6 @@ function NewScenarioEditForm() {
             </div>
           </div>
         )}
-      </div>
 
       <Dialog open={isPreviewDialogOpen} onOpenChange={setIsPreviewDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
@@ -880,7 +845,7 @@ function NewScenarioEditForm() {
         </DialogContent>
       </Dialog>
       <Toaster />
-    </div>
+    </EditorShell>
   )
 }
 
