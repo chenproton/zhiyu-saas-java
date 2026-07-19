@@ -75,14 +75,6 @@ export const unifiedNavigationConfig: PlatformNavigationConfig = {
   mainClassName: "min-w-0 flex-1",
 }
 
-/* ============================================================
-   以下为旧子平台配置，保留用于兼容，layout 已统一使用 unifiedNavigationConfig
-   ============================================================ */
-const platformSwitchItems: PlatformNavigationConfig["platformSwitchItems"] = [
-  { id: "admin", label: "课程资源中心", href: "/lesson/admin/system", icon: "folderKanban" },
-  { id: "teacher", label: "课程建设与教学运行", href: "/lesson/teacher/claim", icon: "bookOpen" },
-]
-
 export const adminNavigationConfig: PlatformNavigationConfig = {
   brandTitle: "数字课程服务平台",
   currentPlatformId: "lesson-admin",
@@ -120,6 +112,19 @@ export const adminNavigationConfig: PlatformNavigationConfig = {
       ],
     },
     {
+      id: "course-open",
+      label: "教学空间",
+      icon: "layoutGrid",
+      children: [
+        { id: "claim", label: "开课计划管理", href: "/lesson/teacher/claim", matchers: ["/lesson/teacher/claim"] },
+        { id: "behavior-collection", label: "课程学习跟踪", href: "/lesson/teacher/behavior-collection", matchers: ["/lesson/teacher/behavior-collection"] },
+        { id: "progress-tracking", label: "课程测评跟踪", href: "/lesson/teacher/progress-tracking", matchers: ["/lesson/teacher/progress-tracking"] },
+        { id: "final-assessment", label: "课程期末总评", href: "/lesson/teacher/final-assessment", matchers: ["/lesson/teacher/final-assessment"] },
+        { id: "grade-submit", label: "成绩确认与提交", href: "/lesson/teacher/grade-submit", matchers: ["/lesson/teacher/grade-submit"] },
+        { id: "learning-portrait", label: "我的学生画像", href: "/lesson/teacher/learning-portrait", matchers: ["/lesson/teacher/learning-portrait"] },
+      ],
+    },
+    {
       id: "approval-center",
       label: "批次与审批管理",
       icon: "badgeCheck",
@@ -130,8 +135,8 @@ export const adminNavigationConfig: PlatformNavigationConfig = {
       ],
     },
   ],
-  defaultExpandedSideNavIds: ["resource-center", "hybrid-center", "approval-center"],
-  platformSwitchItems: platformSwitchItems?.filter((p) => p.id !== "admin"),
+  defaultExpandedSideNavIds: ["resource-center", "hybrid-center", "course-open", "approval-center"],
+  platformSwitchItems: [],
   shellClassName: "bg-background",
   mainClassName: "min-w-0 flex-1",
 }
