@@ -240,6 +240,7 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 	stepIdx := record.CurrentStepIdx
 	stepComplete := h.isStepComplete(workflow, &record, stepIdx)
 	if !stepComplete {
+		fmt.Printf("debug: review step not complete targetType=%s targetID=%s stepIdx=%d\n", record.TargetType, record.TargetID, stepIdx)
 		_, err = h.DB.Exec(r.Context(), `
 			UPDATE approval_records SET history = $1, updated_at = NOW() WHERE id = $2
 		`, record.History, id)
@@ -253,6 +254,7 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if h.isLastStep(workflow, stepIdx) {
+		fmt.Printf("debug: review last step, syncing entity targetType=%s targetID=%s\n", record.TargetType, record.TargetID)
 		record.Status = string(domain.ApprovalStatusApproved)
 		record.CurrentStepIdx = stepIdx + 1
 		h.syncEntityStatusQuiet(r.Context(), record.TargetType, record.TargetID, string(domain.ApprovalStatusApproved))
