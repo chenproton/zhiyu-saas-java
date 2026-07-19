@@ -345,9 +345,9 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
         <CardContent>
           <div className="space-y-3">
             {position.responsibilities.map((item, index) => (
-              <div key={item.id} className="flex items-center gap-2">
+              <div key={item.id} className="grid grid-cols-[2rem_1fr_2rem] gap-2 items-center">
                 {!isCreate && (
-                  <Badge variant="outline" className="shrink-0 min-w-6 justify-center">
+                  <Badge variant="outline" className="w-full justify-center">
                     {index + 1}
                   </Badge>
                 )}
@@ -359,7 +359,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                     )
                     onUpdate({ responsibilities: next })
                   }}
-                  className="flex-1 text-sm h-8"
+                  className="text-sm h-8"
                 />
                 <Button
                   variant="ghost"
@@ -371,21 +371,17 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                 </Button>
               </div>
             ))}
-            <div className="flex items-center gap-2">
-              {!isCreate && (
-                <Badge variant="outline" className="shrink-0 invisible min-w-6 justify-center">
-                  1
-                </Badge>
-              )}
+            <div className="grid grid-cols-[2rem_1fr_2rem] gap-2 items-center">
+              {!isCreate && <span />}
               <Button
                 variant="outline"
-                className="flex-1 h-8 border-dashed"
+                className="h-8 border-dashed"
                 onClick={addResponsibility}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 添加工作职责
               </Button>
-              <div className="h-8 w-8 shrink-0" />
+              <span />
             </div>
           </div>
         </CardContent>
@@ -400,9 +396,9 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
         <CardContent>
           <div className="space-y-3">
             {position.requirements.map((item, index) => (
-              <div key={index} className="flex items-center gap-2">
+              <div key={index} className="grid grid-cols-[2rem_1fr_2rem] gap-2 items-center">
                 {!isCreate && (
-                  <Badge variant="outline" className="shrink-0 min-w-6 justify-center">
+                  <Badge variant="outline" className="w-full justify-center">
                     {index + 1}
                   </Badge>
                 )}
@@ -414,7 +410,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                     )
                     onUpdate({ requirements: next })
                   }}
-                  className="flex-1 text-sm h-8"
+                  className="text-sm h-8"
                 />
                 <Button
                   variant="ghost"
@@ -426,21 +422,17 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                 </Button>
               </div>
             ))}
-            <div className="flex items-center gap-2">
-              {!isCreate && (
-                <Badge variant="outline" className="shrink-0 invisible min-w-6 justify-center">
-                  1
-                </Badge>
-              )}
+            <div className="grid grid-cols-[2rem_1fr_2rem] gap-2 items-center">
+              {!isCreate && <span />}
               <Button
                 variant="outline"
-                className="flex-1 h-8 border-dashed"
+                className="h-8 border-dashed"
                 onClick={addRequirement}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 添加任职要求
               </Button>
-              <div className="h-8 w-8 shrink-0" />
+              <span />
             </div>
           </div>
         </CardContent>
