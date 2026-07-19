@@ -437,8 +437,14 @@ function HybridCourseAddForm() {
       const payload = buildCoursePayload()
       if (editId) {
         const updated = await courseApi.update(editId, payload)
-        setExisting(updated)
-        toast.success(`已更新混合课程：${updated.name}`)
+        if (existing?.status === "approved" || existing?.status === "published") {
+          await courseApi.saveDraft(editId)
+          setExisting({ ...updated, status: "draft" as const })
+          toast.success(`已更新混合课程：${updated.name}，课程已退回草稿状态`)
+        } else {
+          setExisting(updated)
+          toast.success(`已更新混合课程：${updated.name}`)
+        }
       } else {
         const created = await courseApi.create(payload)
         setExisting(created)

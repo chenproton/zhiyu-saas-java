@@ -178,7 +178,13 @@ function AddGranularPageInner() {
       }
       if (editId) {
         await courseApi.update(editId, payload)
-        toast.success("颗粒课已保存")
+        if (course?.status === "approved" || course?.status === "published") {
+          await courseApi.saveDraft(editId)
+          setCourse((prev) => (prev ? { ...prev, status: "draft" as const } : prev))
+          toast.success("颗粒课已保存，课程已退回草稿状态")
+        } else {
+          toast.success("颗粒课已保存")
+        }
       } else {
         const c = await courseApi.create(payload as Omit<Course, "id" | "nodeCount" | "resourceCount" | "studyCount" | "createdAt" | "updatedAt">)
         router.replace(`/lesson/admin/granular/add?id=${c.id}`)

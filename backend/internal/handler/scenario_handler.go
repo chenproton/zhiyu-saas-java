@@ -265,6 +265,10 @@ func (h *ScenarioHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusDraft)
 }
 
+func (h *ScenarioHandler) SaveDraft(w http.ResponseWriter, r *http.Request) {
+	h.actions().saveDraft(w, r)
+}
+
 func (h *ScenarioHandler) Review(w http.ResponseWriter, r *http.Request) {
 	h.actions().review(w, r)
 }

@@ -858,7 +858,13 @@ export default function TasksEditPage() {
     setIsSaving(true)
     try {
       await saveTasksToBackend()
-      toast({ title: "草稿已保存" })
+      if (existingScenario?.status === "approved" || existingScenario?.status === "published") {
+        await scenarioApi.saveDraft(scenarioId)
+        setExistingScenario((prev: any) => (prev ? { ...prev, status: "draft" } : prev))
+        toast({ title: "草稿已保存", description: "场景已退回草稿状态" })
+      } else {
+        toast({ title: "草稿已保存" })
+      }
     } catch (err: any) {
       toast({ variant: "destructive", title: "保存失败", description: err.message })
     } finally {
@@ -870,7 +876,13 @@ export default function TasksEditPage() {
     setIsSaving(true)
     try {
       await saveTasksToBackend()
-      toast({ title: "配置已保存" })
+      if (existingScenario?.status === "approved" || existingScenario?.status === "published") {
+        await scenarioApi.saveDraft(scenarioId)
+        setExistingScenario((prev: any) => (prev ? { ...prev, status: "draft" } : prev))
+        toast({ title: "配置已保存", description: "场景已退回草稿状态" })
+      } else {
+        toast({ title: "配置已保存" })
+      }
       router.push("/scene")
     } catch (err: any) {
       toast({ variant: "destructive", title: "保存失败", description: err.message })

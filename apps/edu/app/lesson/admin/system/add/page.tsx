@@ -171,6 +171,7 @@ function AddSystemPageInner() {
   const [coverImage, setCoverImage] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [loadingEdit, setLoadingEdit] = useState(false)
+  const [courseStatus, setCourseStatus] = useState<string>("draft")
 
   /* ========== course node tree ========== */
   const [nodes, setNodes] = useState<SystemCourseNode[]>([])
@@ -189,6 +190,7 @@ function AddSystemPageInner() {
       if (course.description) setCourseDescription(course.description)
       if (course.coverImage) setCoverImage(course.coverImage)
       if (course.majorName) setMajor(course.majorName)
+      setCourseStatus(course.status || "draft")
       if (nodeRes.items?.length) {
         setNodes(nodeRes.items as unknown as SystemCourseNode[])
         setSelectedNodeId(nodeRes.items[0]?.id || null)
@@ -475,7 +477,13 @@ function AddSystemPageInner() {
       }
       if (isEdit && courseId) {
         await courseApi.update(courseId, payload)
-        toast.success("草稿已更新")
+        if (courseStatus === "approved" || courseStatus === "published") {
+          await courseApi.saveDraft(courseId)
+          setCourseStatus("draft")
+          toast.success("草稿已更新，课程已退回草稿状态")
+        } else {
+          toast.success("草稿已更新")
+        }
       } else {
         const created = await courseApi.create(payload)
         setCourseId(created.id)
@@ -486,7 +494,7 @@ function AddSystemPageInner() {
     } finally {
       setSaving(false)
     }
-  }, [courseName, courseCode, major, courseDescription, coverImage, isEdit, courseId])
+  }, [courseName, courseCode, major, courseDescription, coverImage, isEdit, courseId, courseStatus])
 
   const handleSubmit = useCallback(async () => {
     const completeNodes = nodes.filter((n) => n.type !== "original" && checkNodeComplete(n))

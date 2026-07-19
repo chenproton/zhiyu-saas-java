@@ -33,6 +33,8 @@ export function createContentApi<TItem, TCreate, TUpdate>(prefix: string) {
       request<TItem>(`${prefix}/${id}/unpublish`, { method: "POST" }),
     withdraw: (id: string) =>
       request<TItem>(`${prefix}/${id}/withdraw`, { method: "POST" }),
+    saveDraft: (id: string) =>
+      request<TItem>(`${prefix}/${id}/save-draft`, { method: "POST" }),
     invite: (id: string, userId: string) =>
       request<TItem>(`${prefix}/${id}/invite`, { method: "POST", body: JSON.stringify({ userId }) }),
   }

@@ -267,7 +267,7 @@ export default function ExamsPage() {
   const canBatchWithdraw = selectedExams.some((e) => e.status === "pending")
   const canBatchPublish = selectedExams.some((e) => e.status === "approved")
   const canBatchUnpublish = selectedExams.some((e) => e.status === "published")
-  const canBatchDelete = selectedExams.some((e) => e.status === "draft" || e.status === "rejected")
+  const canBatchDelete = selectedExams.some((e) => e.status === "draft" || e.status === "rejected" || e.status === "archived")
 
   const resetCreateForm = () => {
     setNewName("")
@@ -727,7 +727,7 @@ export default function ExamsPage() {
                         取消发布
                       </Button>
                     )}
-                    {(exam.status === "draft" || exam.status === "rejected") && hasPermission("evaluation", "exams", "delete") && (
+                    {(exam.status === "draft" || exam.status === "rejected" || exam.status === "archived") && hasPermission("evaluation", "exams", "delete") && (
                       <Button
                         variant="ghost"
                         size="sm"

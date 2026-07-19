@@ -517,7 +517,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const bank = questionBanks.find((b) => b.id === id)
     switch (action) {
       case 'save_draft':
-        await questionBankApi.update(id, { status: 'draft' })
+        await questionBankApi.saveDraft(id)
         break
       case 'submit': {
         if (!bank?.batchId) {
@@ -628,7 +628,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const exam = exams.find((e) => e.id === id)
     switch (action) {
       case 'save_draft':
-        await examApi.update(id, { status: 'draft' })
+        await examApi.saveDraft(id)
         break
       case 'submit': {
         if (!exam?.batchId) {

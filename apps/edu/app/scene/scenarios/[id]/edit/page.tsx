@@ -159,6 +159,7 @@ export default function ScenarioEditPage() {
   const [coverImage, setCoverImage] = useState("")
   const [coverUploading, setCoverUploading] = useState(false)
   const coverInputRef = useRef<HTMLInputElement>(null)
+  const [scenarioStatus, setScenarioStatus] = useState<string>("draft")
 
   const [coBuilderSearch, setCoBuilderSearch] = useState("")
   const [isCoBuilderDialogOpen, setIsCoBuilderDialogOpen] = useState(false)
@@ -190,6 +191,7 @@ export default function ScenarioEditPage() {
         setCoBuilderIds(scenario.coBuilderIds || [])
         setVersion(scenario.version || "v1.0")
         setCoverImage(scenario.coverImage || "")
+        setScenarioStatus(scenario.status || "draft")
       } catch (err: any) {
         console.error("Failed to load form data", err)
         toast({ variant: "destructive", title: "数据加载失败", description: err.message || "请刷新页面重试" })
@@ -266,7 +268,13 @@ export default function ScenarioEditPage() {
         coverImage: coverImage || undefined,
       }
       await scenarioApi.update(scenarioId, payload as any)
-      toast({ title: "草稿已保存" })
+      if (scenarioStatus === "approved" || scenarioStatus === "published") {
+        await scenarioApi.saveDraft(scenarioId)
+        setScenarioStatus("draft")
+        toast({ title: "草稿已保存", description: "场景已退回草稿状态" })
+      } else {
+        toast({ title: "草稿已保存" })
+      }
     } catch (err: any) {
       toast({ variant: "destructive", title: "保存失败", description: err.message || "请稍后重试" })
     } finally {

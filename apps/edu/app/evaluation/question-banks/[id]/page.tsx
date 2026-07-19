@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload, Copy, Users, Building2, ImageIcon, List, LayoutGrid, FolderInput, MoreHorizontal } from "lucide-react"
+import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload, Copy, Users, Building2, ImageIcon, List, LayoutGrid, FolderInput, MoreHorizontal, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -42,6 +42,7 @@ import { QUESTION_TYPE_LABELS, DIFFICULTY_LABELS } from "@/lib/types"
 
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
+import { useToast } from "@/hooks/use-toast"
 
 export default function QuestionBankDetailPage() {
   const params = useParams()
@@ -51,6 +52,7 @@ export default function QuestionBankDetailPage() {
   const {
     getQuestionBank,
     updateQuestionBank,
+    updateQuestionBankStatus,
     deleteQuestionBank,
     getQuestionsByBank,
     createQuestion,
@@ -62,8 +64,10 @@ export default function QuestionBankDetailPage() {
 
   const bank = getQuestionBank(bankId)
   const questions = getQuestionsByBank(bankId)
+  const { toast } = useToast()
 
   const [search, setSearch] = useState("")
+  const [savingBank, setSavingBank] = useState(false)
   const [typeFilter, setTypeFilter] = useState<QuestionType | "all">("all")
   const [creatorFilter, setCreatorFilter] = useState<string>("all")
   
@@ -118,6 +122,22 @@ export default function QuestionBankDetailPage() {
   const handleBankDelete = () => {
     deleteQuestionBank(bankId)
     router.push("/evaluation/question-banks")
+  }
+
+  const handleSaveBank = async () => {
+    if (bank.status === "approved" || bank.status === "published") {
+      setSavingBank(true)
+      try {
+        await updateQuestionBankStatus(bankId, "save_draft")
+        toast({ title: "保存成功", description: "题库已退回草稿状态" })
+      } catch (err: any) {
+        toast({ variant: "destructive", title: "保存失败", description: err.message || "请稍后重试" })
+      } finally {
+        setSavingBank(false)
+      }
+    } else {
+      toast({ title: "保存成功", description: "题库状态无需变更" })
+    }
   }
 
   const handleQuestionSubmit = (data: QuestionFormData) => {
@@ -331,6 +351,10 @@ export default function QuestionBankDetailPage() {
           </Tabs>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleSaveBank} disabled={savingBank}>
+            <Save className="mr-1 size-3.5" />
+            {savingBank ? "保存中..." : "保存题库"}
+          </Button>
           <PrdAnnotation data={getAnnotation("qbd-btn-import")}>
             <Button variant="outline" size="sm" disabled title="题目导入功能开发中">
               <Upload className="mr-1 size-3.5" />

@@ -220,8 +220,11 @@ function PositionEditPageContent({ params }: PageProps) {
         abilityBindings: position.abilityBindings,
         abilityDomains: position.abilityDomains,
       })
-      setPositions((prev) => prev.map((p) => (p.id === position.id ? { ...position } : p)))
-      toast({ title: '保存成功', description: '岗位完整数据已保存' })
+      if (position.status === 'approved' || position.status === 'published') {
+        await positionApi.saveDraft(position.id)
+      }
+      setPositions((prev) => prev.map((p) => (p.id === position.id ? { ...position, status: 'draft' as const } : p)))
+      toast({ title: '保存成功', description: '岗位完整数据已保存为草稿' })
     } catch (err: any) {
       console.error('Save position failed:', err)
       toast({ variant: 'destructive', title: '保存失败', description: err?.message || '请稍后重试' })

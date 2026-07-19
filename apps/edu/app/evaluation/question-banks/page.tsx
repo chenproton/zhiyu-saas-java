@@ -263,7 +263,7 @@ export default function QuestionBanksPage() {
   const canBatchWithdraw = selectedBanks.some((b) => b.status === "pending")
   const canBatchPublish = selectedBanks.some((b) => b.status === "approved")
   const canBatchUnpublish = selectedBanks.some((b) => b.status === "published")
-  const canBatchDelete = selectedBanks.some((b) => b.status === "draft" || b.status === "rejected")
+  const canBatchDelete = selectedBanks.some((b) => b.status === "draft" || b.status === "rejected" || b.status === "archived")
 
   const resetCreateForm = () => {
     setNewName("")
@@ -738,7 +738,7 @@ export default function QuestionBanksPage() {
                         取消发布
                       </Button>
                     )}
-                    {(bank.status === "draft" || bank.status === "rejected") && (
+                    {(bank.status === "draft" || bank.status === "rejected" || bank.status === "archived") && (
                       <Button
                         variant="ghost"
                         size="sm"

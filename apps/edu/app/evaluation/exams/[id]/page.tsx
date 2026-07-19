@@ -71,8 +71,8 @@ export default function ExamComposerPage() {
     )
   }
 
-  const canEdit = !isPreview && ['draft', 'rejected'].includes(exam.status)
-  const canDelete = !isPreview && ['draft', 'rejected'].includes(exam.status)
+  const canEdit = !isPreview && ['draft', 'rejected', 'approved', 'published'].includes(exam.status)
+  const canDelete = !isPreview && ['draft', 'rejected', 'archived'].includes(exam.status)
   const canSubmit = !isPreview && canPerformAction(exam.status, 'submit')
   const canPublish = !isPreview && canPerformAction(exam.status, 'publish')
   const canUnpublish = !isPreview && canPerformAction(exam.status, 'unpublish')
@@ -233,7 +233,14 @@ export default function ExamComposerPage() {
                 </Button>
               </PrdAnnotation>
               <PrdAnnotation {...getAnnotation("ec-btn-save")}>
-                <Button size="sm" onClick={() => toast({ title: "保存成功", description: "试卷已保存" })}>
+                <Button size="sm" onClick={async () => {
+                  if (exam.status === 'approved' || exam.status === 'published') {
+                    await updateExamStatus(examId, 'save_draft')
+                    toast({ title: "保存成功", description: "试卷已保存为草稿" })
+                  } else {
+                    toast({ title: "保存成功", description: "试卷已保存" })
+                  }
+                }}>
                   <Save className="mr-1 size-4" />
                   保存试卷
                 </Button>

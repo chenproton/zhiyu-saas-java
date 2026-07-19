@@ -54,6 +54,10 @@ func (c contentActions) canTransition(from, to domain.ContentStatus) bool {
 	return false
 }
 
+func (c contentActions) saveDraft(w http.ResponseWriter, r *http.Request) {
+	c.transition(w, r, domain.StatusDraft)
+}
+
 func (c contentActions) transition(w http.ResponseWriter, r *http.Request, status domain.ContentStatus) {
 	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "permission denied")

@@ -332,6 +332,10 @@ func (h *CourseHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusDraft)
 }
 
+func (h *CourseHandler) SaveDraft(w http.ResponseWriter, r *http.Request) {
+	h.actions().saveDraft(w, r)
+}
+
 func (h *CourseHandler) Invite(w http.ResponseWriter, r *http.Request) {
 	h.actions().invite(w, r)
 }

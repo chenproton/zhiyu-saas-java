@@ -710,6 +710,10 @@ func (h *PositionHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusDraft)
 }
 
+func (h *PositionHandler) SaveDraft(w http.ResponseWriter, r *http.Request) {
+	h.actions().saveDraft(w, r)
+}
+
 func (h *PositionHandler) fetchPosition(ctx context.Context, id string) (domain.CareerPosition, error) {
 	var p domain.CareerPosition
 	var batchID, shortName, industryID, coverImage, description, careerPath *string

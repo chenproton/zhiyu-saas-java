@@ -268,6 +268,10 @@ func (h *ExamHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusDraft)
 }
 
+func (h *ExamHandler) SaveDraft(w http.ResponseWriter, r *http.Request) {
+	h.actions().saveDraft(w, r)
+}
+
 func (h *ExamHandler) Invite(w http.ResponseWriter, r *http.Request) {
 	h.actions().invite(w, r)
 }
