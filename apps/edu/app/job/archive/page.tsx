@@ -20,6 +20,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { cn } from "@/lib/utils"
 import {
   Search,
   Archive,
@@ -48,7 +50,6 @@ export default function PositionArchivePage() {
   const [batches, setBatches] = useState<Batch[]>([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState("")
-  const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null)
   const [selectedMajor, setSelectedMajor] = useState<string | null>(null)
   const industryMap = useIndustryMap()
   const majorMap = useMajorMap()
@@ -95,9 +96,6 @@ export default function PositionArchivePage() {
 
   const filtered = useMemo(() => {
     let result = positions
-    if (selectedIndustry) {
-      result = result.filter((p) => industryMap.get(p.industry) === selectedIndustry)
-    }
     if (selectedMajor) {
       result = result.filter((p) => p.majors.some((id) => majorMap.get(id) === selectedMajor))
     }
@@ -112,7 +110,7 @@ export default function PositionArchivePage() {
       )
     }
     return result
-  }, [positions, selectedIndustry, selectedMajor, search, industryMap, majorMap])
+  }, [positions, selectedMajor, search, industryMap, majorMap])
 
   const batchMap = useMemo(() => new Map(batches.map((b) => [b.id, b])), [batches])
 
@@ -132,129 +130,90 @@ export default function PositionArchivePage() {
   }
 
   return (
-    <div className="flex gap-6 h-full -m-6">
-      {/* Left Sidebar */}
-      <div className="w-60 shrink-0 border-r border-gray-200 bg-white flex flex-col">
-        <div className="p-4 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <Archive className="h-4 w-4 text-primary" />
-            <h2 className="font-medium text-sm text-gray-800">按行业归档</h2>
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-0.5">
-          <div
-            onClick={() => setSelectedIndustry(null)}
-            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors ${
-              selectedIndustry === null
-                ? "bg-primary/10 text-primary font-medium"
-                : "text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            <span className="truncate">全部行业</span>
-          </div>
-          {industries.map((ind) => (
-            <div
-              key={ind}
-              onClick={() => setSelectedIndustry(ind)}
-              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors ${
-                selectedIndustry === ind
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              <span className="truncate">{ind}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="p-4 border-t border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="h-4 w-4 text-primary" />
-            <h2 className="font-medium text-sm text-gray-800">按专业归档</h2>
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-0.5">
-          <div
-            onClick={() => setSelectedMajor(null)}
-            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors ${
-              selectedMajor === null
-                ? "bg-primary/10 text-primary font-medium"
-                : "text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            <span className="truncate">全部专业</span>
-          </div>
-          {majors.map((major) => (
-            <div
-              key={major}
-              onClick={() => setSelectedMajor(major)}
-              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors ${
-                selectedMajor === major
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              <span className="truncate">{major}</span>
-            </div>
-          ))}
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold">岗位历史档案库</h1>
+        <p className="text-muted-foreground mt-1">
+          查看已归档的岗位记录，支持恢复为草稿继续编辑
+        </p>
       </div>
 
-      {/* Right Content */}
-      <div className="flex-1 min-w-0 p-6 pl-0 space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold">岗位历史档案库</h1>
-          <p className="text-muted-foreground mt-1">
-            查看已归档的岗位记录，支持恢复为草稿继续编辑
-          </p>
+      <div className="grid grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">归档岗位总数</p>
+                <p className="text-2xl font-bold mt-1">{positions.length}</p>
+              </div>
+              <div className="p-2.5 rounded-lg bg-purple-100 text-purple-600">
+                <Archive className="h-5 w-5" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">覆盖行业</p>
+                <p className="text-2xl font-bold mt-1">{industries.length}</p>
+              </div>
+              <div className="p-2.5 rounded-lg bg-blue-100 text-blue-600">
+                <Building2 className="h-5 w-5" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">覆盖专业</p>
+                <p className="text-2xl font-bold mt-1">{majors.length}</p>
+              </div>
+              <div className="p-2.5 rounded-lg bg-green-100 text-green-600">
+                <GraduationCap className="h-5 w-5" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex gap-4 items-start">
+        <div className="w-64 shrink-0 rounded-lg border border-gray-100 bg-white shadow-sm p-4">
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
+            <GraduationCap className="h-4 w-4 text-primary" />按专业归档
+          </h3>
+          <ScrollArea className="h-[500px]">
+            <div className="space-y-1">
+              <button
+                onClick={() => setSelectedMajor(null)}
+                className={cn(
+                  "w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors",
+                  selectedMajor === null ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                )}
+              >
+                全部专业
+              </button>
+              {majors.map((major) => (
+                <button
+                  key={major}
+                  onClick={() => setSelectedMajor(major)}
+                  className={cn(
+                    "w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors",
+                    selectedMajor === major ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                  )}
+                >
+                  {major}
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">归档岗位总数</p>
-                  <p className="text-2xl font-bold mt-1">{positions.length}</p>
-                </div>
-                <div className="p-2.5 rounded-lg bg-purple-100 text-purple-600">
-                  <Archive className="h-5 w-5" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">覆盖行业</p>
-                  <p className="text-2xl font-bold mt-1">{industries.length}</p>
-                </div>
-                <div className="p-2.5 rounded-lg bg-blue-100 text-blue-600">
-                  <Building2 className="h-5 w-5" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">覆盖专业</p>
-                  <p className="text-2xl font-bold mt-1">{majors.length}</p>
-                </div>
-                <div className="p-2.5 rounded-lg bg-green-100 text-green-600">
-                  <GraduationCap className="h-5 w-5" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Search + Table */}
-        <Card className="border-slate-200 shadow-sm">
-          <CardContent className="flex flex-col gap-4 p-5">
+        <div className="flex-1 space-y-4">
+          <div className="rounded-lg border border-gray-100 bg-white shadow-sm p-4">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -264,9 +223,9 @@ export default function PositionArchivePage() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-          </CardContent>
+          </div>
 
-          <CardContent className="pt-0">
+          <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -345,8 +304,8 @@ export default function PositionArchivePage() {
                 )}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   )
