@@ -56,7 +56,7 @@ import {
 import { cn } from '@/lib/utils'
 import type { PositionType, Position, Batch, PositionRecommendation } from '@/lib/types/job-source'
 import { POSITION_TYPE_LABELS } from '@/lib/types/job-source'
-import { positionApi, batchApi, recommendApi, majorApi } from '@/lib/api'
+import { positionApi, batchApi, recommendApi, majorApi, industryApi } from '@/lib/api'
 import {
   convertCareerPositionToPosition,
   convertJobBatchToBatch,
@@ -79,6 +79,7 @@ export default function PostRecommendPage() {
   const [batches, setBatches] = useState<Batch[]>([])
   const [recommendations, setRecommendations] = useState<PositionRecommendation[]>([])
   const [majorNameToId, setMajorNameToId] = useState<Record<string, string>>({})
+  const [industryMap, setIndustryMap] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(false)
 
   const [selectedMajor, setSelectedMajor] = useState<string>('')
@@ -91,11 +92,12 @@ export default function PostRecommendPage() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [posRes, batchRes, recRes, majorRes] = await Promise.all([
+      const [posRes, batchRes, recRes, majorRes, industryRes] = await Promise.all([
         positionApi.list({ limit: 1000 }),
         batchApi.list({ limit: 1000 }),
         recommendApi.list({ limit: 1000 }),
         majorApi.list({ limit: 1000 }),
+        industryApi.list({ limit: 1000 }),
       ])
       setPositions(posRes.items.map(convertCareerPositionToPosition))
       setBatches(batchRes.items.map(convertJobBatchToBatch))
@@ -103,6 +105,9 @@ export default function PostRecommendPage() {
       const nameToId: Record<string, string> = {}
       majorRes.items.forEach((m) => { if (m.name) nameToId[m.name] = m.id })
       setMajorNameToId(nameToId)
+      const industryNameMap = new Map<string, string>()
+      industryRes.items.forEach((i) => { if (i.name) industryNameMap.set(i.id, i.name) })
+      setIndustryMap(industryNameMap)
     } catch (err: any) {
       toast({ variant: 'destructive', title: '加载失败', description: err?.message || '请稍后重试' })
     } finally {
@@ -230,6 +235,11 @@ export default function PostRecommendPage() {
 
   const selectedPosition = positions.find((p) => p.id === selectedPositionId)
 
+  const getIndustryName = (id?: string) => {
+    if (!id) return '-'
+    return industryMap.get(id) || '-'
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -345,7 +355,7 @@ export default function PostRecommendPage() {
                               {availablePositions.map((position) => (
                                 <CommandItem
                                   key={position.id}
-                                  value={`${position.name} ${position.shortName} ${position.industry}`}
+                                  value={`${position.name} ${position.shortName} ${getIndustryName(position.industry)}`}
                                   onSelect={() => {
                                     setSelectedPositionId(position.id)
                                     setPositionSearchOpen(false)
@@ -360,7 +370,7 @@ export default function PostRecommendPage() {
                                   <div className="flex flex-col">
                                     <span className="text-sm">{position.name}</span>
                                     <span className="text-xs text-muted-foreground">
-                                      {position.shortName} · {position.industry}
+                                      {position.shortName} · {getIndustryName(position.industry)}
                                     </span>
                                   </div>
                                 </CommandItem>
@@ -387,7 +397,7 @@ export default function PostRecommendPage() {
                         </Link>
                       </div>
                       <div className="text-muted-foreground">
-                        行业：{selectedPosition.industry} · 能力点：{selectedPosition.abilityModel?.nodes.length || 0} 个 · 上架时间：{formatDate(selectedPosition.createdAt)}
+                        行业：{getIndustryName(selectedPosition.industry)} · 能力点：{selectedPosition.abilityModel?.nodes.length || 0} 个 · 上架时间：{formatDate(selectedPosition.createdAt)}
                       </div>
                     </div>
                   )}
@@ -460,7 +470,7 @@ export default function PostRecommendPage() {
                         <TableCell>
                           <div className="font-medium">{position?.name || '未知岗位'}</div>
                           <div className="text-xs text-muted-foreground">
-                            {position?.shortName || '-'} · {position?.industry || '-'}
+                            {position?.shortName || '-'} · {getIndustryName(position?.industry)}
                           </div>
                         </TableCell>
                         <TableCell>
