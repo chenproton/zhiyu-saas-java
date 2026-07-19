@@ -19,6 +19,19 @@
 
 ## 记录
 
+### 2026-07-19 内容对象状态机统一
+
+- 审计文档：`docs/audits/backend/content-status.md`
+- 审查人：Agent
+- 结论：收敛
+- PASS 检查点数量：6 / 总检查点数量：6
+- 备注：
+  - 统一岗位、场景、课程、题库、试卷五个内容对象的状态集合与流转矩阵。
+  - 后端新增通用 `save-draft` 端点，统一处理 `approved`/`published` → `draft` 回退。
+  - 前端所有内容编辑页保存草稿时，若原状态为 `approved`/`published`，先保存业务数据再调用 `save-draft` 并本地同步为 `draft`。
+  - 可编辑状态放开为 `draft`/`rejected`/`approved`/`published`，可删除状态为 `draft`/`rejected`/`archived`。
+  - 本地验证通过：`go vet ./...`、`go test ./...`、`go build ./cmd/server/main.go`、`pnpm -r typecheck`、`pnpm -r lint`（0 errors）、`pnpm build:edu`、`pnpm build:marketplace`。
+
 ### 2026-07-16 组织用户体系打通
 
 - 审计文档：`docs/audits/backend/user-org.md`、`docs/audits/frontend/admin.md`
