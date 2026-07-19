@@ -347,7 +347,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
             {position.responsibilities.map((item, index) => (
               <div key={item.id} className="flex items-center gap-2">
                 {!isCreate && (
-                  <Badge variant="outline" className="shrink-0">
+                  <Badge variant="outline" className="shrink-0 min-w-6 justify-center">
                     {index + 1}
                   </Badge>
                 )}
@@ -373,7 +373,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
             ))}
             <div className="flex items-center gap-2">
               {!isCreate && (
-                <Badge variant="outline" className="shrink-0 invisible">
+                <Badge variant="outline" className="shrink-0 invisible min-w-6 justify-center">
                   1
                 </Badge>
               )}
@@ -402,7 +402,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
             {position.requirements.map((item, index) => (
               <div key={index} className="flex items-center gap-2">
                 {!isCreate && (
-                  <Badge variant="outline" className="shrink-0">
+                  <Badge variant="outline" className="shrink-0 min-w-6 justify-center">
                     {index + 1}
                   </Badge>
                 )}
@@ -428,7 +428,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
             ))}
             <div className="flex items-center gap-2">
               {!isCreate && (
-                <Badge variant="outline" className="shrink-0 invisible">
+                <Badge variant="outline" className="shrink-0 invisible min-w-6 justify-center">
                   1
                 </Badge>
               )}
