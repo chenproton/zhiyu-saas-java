@@ -174,6 +174,7 @@ function AddSystemPageInner() {
   const router = useRouter()
   const editId = searchParams.get("id")
   const isEdit = !!editId
+  const isNewCourse = searchParams.get("new") === "true"
 
   /* ========== global config (collapsible) ========== */
   const [globalInfoOpen, setGlobalInfoOpen] = useState(true)
@@ -581,7 +582,7 @@ function AddSystemPageInner() {
       mode="fullscreen"
       backText="取消"
       onBack={async () => {
-        if (!isEdit && courseId && !hasSavedRef.current) {
+        if (isNewCourse && courseId && !hasSavedRef.current) {
           try { await courseApi.delete(courseId) } catch {}
         }
         router.push("/lesson/admin/system")
