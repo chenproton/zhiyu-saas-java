@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { positionApi, batchApi, approvalApi, majorApi, industryApi, abilityApi, positionResponsibilityApi, positionCertificateApi, fileApi } from '@/lib/api'
+import { positionApi, batchApi, majorApi, industryApi, abilityApi, positionResponsibilityApi, positionCertificateApi, fileApi } from '@/lib/api'
 import {
   convertCareerPositionToPosition,
   convertJobBatchToBatch,
@@ -235,11 +235,8 @@ function PositionEditPageContent({ params }: PageProps) {
     }
   }
 
-  const handleSubmit = async () => {
-    if (!batch || !position) {
-      toast({ variant: 'destructive', title: '无法提交', description: '该岗位未关联批次，无法提交审批' })
-      return
-    }
+  const handleFinishConfig = async () => {
+    if (!position) return
     setIsSaving(true)
     try {
       await positionApi.saveFull(position.id, {
@@ -261,17 +258,16 @@ function PositionEditPageContent({ params }: PageProps) {
         abilityBindings: position.abilityBindings,
         abilityDomains: position.abilityDomains,
       })
-      await positionApi.submit(position.id)
+      if (position.status === 'approved' || position.status === 'published') {
+        await positionApi.saveDraft(position.id)
+      }
       hasSavedRef.current = true
-      await approvalApi.create({
-        targetType: 'career_position',
-        targetId: position.id,
-        workflowId: batch.workflowId,
-      } as any)
+      setPositions((prev) => prev.map((p) => (p.id === position.id ? { ...position, status: 'draft' as const } : p)))
+      toast({ title: '配置完成', description: '岗位数据已保存为草稿' })
       router.push('/job/positions')
     } catch (err: any) {
-      console.error('Submit position failed:', err)
-      toast({ variant: 'destructive', title: '提交失败', description: err?.message || '请稍后重试' })
+      console.error('Finish config failed:', err)
+      toast({ variant: 'destructive', title: '保存失败', description: err?.message || '请稍后重试' })
     } finally {
       setIsSaving(false)
     }
@@ -338,7 +334,8 @@ function PositionEditPageContent({ params }: PageProps) {
       onPreview={() => window.open('/student.html', '_blank')}
       onPrev={canGoPrev ? handlePrev : undefined}
       onNext={canGoNext ? handleNext : undefined}
-      onSubmit={(!canGoNext && position.status === 'draft') ? handleSubmit : undefined}
+      onSubmit={!canGoNext ? handleFinishConfig : undefined}
+      submitText="完成配置"
       loadingText={detailsLoading ? "加载详情中" : undefined}
       title={position.name}
       subtitle={`${batch?.department} - ${majorMap.get(batch?.majorId || "") || batch?.major || batch?.majorId} | 版本 ${position.version}`}
