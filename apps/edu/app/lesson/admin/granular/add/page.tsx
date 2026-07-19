@@ -206,6 +206,11 @@ function AddGranularPageInner() {
     }
   }
 
+  const handleFinish = async () => {
+    await handleSave()
+    router.push("/lesson/admin/granular")
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f5f7fa] flex items-center justify-center text-gray-400">
@@ -226,6 +231,8 @@ function AddGranularPageInner() {
       }}
       onSaveDraft={handleSave}
       isSaving={saving}
+      onSubmit={handleFinish}
+      submitText="完成配置"
       title={editId ? "编辑颗粒课" : "新建颗粒课"}
     >
       <div className="grid grid-cols-[1fr_260px] gap-6">

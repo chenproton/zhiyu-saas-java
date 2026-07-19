@@ -234,6 +234,11 @@ function PositionEditPageContent({ params }: PageProps) {
     }
   }
 
+  const handleFinish = async () => {
+    await handleSave()
+    router.push('/job/positions')
+  }
+
   const handleCoverUpload = async (file: File) => {
     setCoverUploading(true)
     try {
@@ -295,6 +300,8 @@ function PositionEditPageContent({ params }: PageProps) {
       onPreview={() => window.open('/student.html', '_blank')}
       onPrev={canGoPrev ? handlePrev : undefined}
       onNext={canGoNext ? handleNext : undefined}
+      onSubmit={!canGoNext ? handleFinish : undefined}
+      submitText="完成配置"
       loadingText={detailsLoading ? "加载详情中" : undefined}
       title={position.name}
       subtitle={`${batch?.department} - ${majorMap.get(batch?.majorId || "") || batch?.major || batch?.majorId} | 版本 ${position.version}`}

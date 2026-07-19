@@ -506,7 +506,11 @@ function AddSystemPageInner() {
     }
   }, [courseName, courseCode, major, courseDescription, coverImage, batchId, isEdit, courseId])
 
-  /* ---------- construct current node for publish check ---------- */
+  const handleFinish = useCallback(async () => {
+    await handleSave()
+    router.push("/lesson/admin/system")
+  }, [handleSave])
+
   const currentCheckNode: SystemCourseNode | undefined = useMemo(() => {
     if (!selectedNodeId) return undefined
     const node = nodes.find((n) => n.id === selectedNodeId)
@@ -566,6 +570,8 @@ function AddSystemPageInner() {
       }}
       onSaveDraft={handleSave}
       isSaving={saving}
+      onSubmit={handleFinish}
+      submitText="完成配置"
       title={isEdit ? "编辑体系课" : "新建体系课"}
     >
         <Toaster />

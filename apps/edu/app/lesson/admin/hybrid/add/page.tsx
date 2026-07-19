@@ -476,6 +476,11 @@ function HybridCourseAddForm() {
     }
   }
 
+  const handleFinish = async () => {
+    await handleSave()
+    router.push("/lesson/admin/hybrid")
+  }
+
   const availableModules = ATOMIC_MODULES.filter(
     (m) => !currentModules.includes(m.key)
   )
@@ -547,6 +552,8 @@ function HybridCourseAddForm() {
       }}
       onSaveDraft={handleSave}
       isSaving={saving}
+      onSubmit={handleFinish}
+      submitText="完成配置"
       title={editId ? "编辑混合课程" : "新建混合课程"}
     >
         {/* ========== Global Course Info (collapsible, spans full width) ========== */}
