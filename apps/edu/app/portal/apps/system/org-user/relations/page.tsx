@@ -34,6 +34,7 @@ import {
 import { Plus, Pencil, Trash2, Search, Loader2, MoreHorizontal } from "lucide-react"
 import { portalUserRelationApi } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { UserSelector } from "@/components/shared/user-selector"
 
 const relationTypes = [
@@ -51,6 +52,7 @@ const typeLabelMap: Record<string, string> = Object.fromEntries(
 
 export default function RelationsPage() {
   const { toast } = useToast()
+  const { tenantId } = usePortalAuth()
   const [relations, setRelations] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchText, setSearchText] = useState("")
@@ -204,6 +206,7 @@ export default function RelationsPage() {
                 onChange={(ids) => setSelectedInitiator(ids[0] || "")}
                 multiple={false}
                 placeholder="搜索选择用户..."
+                tenantId={tenantId}
               />
             </div>
             <div className="space-y-2">
@@ -213,6 +216,7 @@ export default function RelationsPage() {
                 onChange={(ids) => setSelectedTarget(ids[0] || "")}
                 multiple={false}
                 placeholder="搜索选择用户..."
+                tenantId={tenantId}
               />
             </div>
             <div className="space-y-2">

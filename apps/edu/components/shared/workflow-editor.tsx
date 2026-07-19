@@ -39,6 +39,7 @@ interface WorkflowEditorProps {
   steps: WorkflowStepEditor[]
   onStepsChange: (steps: WorkflowStepEditor[]) => void
   error?: string | null
+  tenantId?: string
 }
 
 export function WorkflowEditor({
@@ -52,6 +53,7 @@ export function WorkflowEditor({
   majorIds,
   onMajorIdsChange,
   majors,
+  tenantId,
 }: WorkflowEditorProps) {
   const handleAddStep = () => {
     onStepsChange([...steps, { name: "", approverIds: [], approvalMode: "any" }])
@@ -139,6 +141,7 @@ export function WorkflowEditor({
                     placeholder="选择审批人"
                     excludeStudent
                     usePortalApi={false}
+                    tenantId={tenantId}
                   />
                 </div>
                 <Select

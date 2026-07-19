@@ -132,14 +132,19 @@ func (h *OrgHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *OrgHandler) Tree(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.URL.Query().Get("tenantId")
+	tenantClaims := middleware.CurrentUser(r)
+	effectiveTenantID, ok := tenantFilter(tenantClaims)
+	if !ok {
+		respondError(w, http.StatusForbidden, "missing tenant")
+		return
+	}
 
 	where := "1=1"
 	args := []interface{}{}
 	argIdx := 1
-	if tenantID != "" {
+	if effectiveTenantID != "" {
 		where = "tenant_id = $" + itoa(argIdx)
-		args = append(args, tenantID)
+		args = append(args, effectiveTenantID)
 		argIdx++
 	}
 
@@ -163,7 +168,7 @@ func (h *OrgHandler) Tree(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	counts, err := h.fetchOrgMemberCounts(r.Context(), tenantID)
+	counts, err := h.fetchOrgMemberCounts(r.Context(), effectiveTenantID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to count organization members")
 		return

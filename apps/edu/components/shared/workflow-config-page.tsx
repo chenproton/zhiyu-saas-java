@@ -19,6 +19,7 @@ import {
 import { workflowApi, majorApi } from "@/lib/api"
 import type { Workflow } from "@/lib/types/backend"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/components/auth-provider"
 import { WorkflowEditor, buildWorkflowSteps, WorkflowStepEditor } from "@/components/shared/workflow-editor"
 
 const DEFAULT_STEP: WorkflowStepEditor = { name: "", approverIds: [], approvalMode: "any" }
@@ -30,6 +31,7 @@ interface WorkflowConfigPageProps {
 
 export function WorkflowConfigPage({ scene, subtitle }: WorkflowConfigPageProps) {
   const { toast } = useToast()
+  const { tenantId } = useAuth()
   const [workflows, setWorkflows] = useState<Workflow[]>([])
   const [majors, setMajors] = useState<{ id: string; name: string }[]>([])
   const [loading, setLoading] = useState(false)
@@ -111,7 +113,7 @@ export function WorkflowConfigPage({ scene, subtitle }: WorkflowConfigPageProps)
         <DialogTitle>{isEdit ? "编辑审批流程" : "新增审批流程"}</DialogTitle>
         <DialogDescription>{isEdit ? "修改审批流程配置" : "创建新的审批流程模板"}</DialogDescription>
       </DialogHeader>
-      <WorkflowEditor error={error} name={name} onNameChange={setName} description={description} onDescriptionChange={setDescription} steps={steps} onStepsChange={setSteps} majorIds={majorIds} onMajorIdsChange={setMajorIds} majors={majors} />
+      <WorkflowEditor error={error} name={name} onNameChange={setName} description={description} onDescriptionChange={setDescription} steps={steps} onStepsChange={setSteps} majorIds={majorIds} onMajorIdsChange={setMajorIds} majors={majors} tenantId={tenantId} />
       <DialogFooter>
         <Button variant="outline" onClick={() => { setIsCreateOpen(false); setIsEditOpen(false); reset() }}>取消</Button>
         <Button onClick={handleSave}>{isEdit ? "保存修改" : "创建流程"}</Button>
