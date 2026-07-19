@@ -189,16 +189,18 @@ export type StatusAction =
   | 'reject'          // 驳回
   | 'publish'         // 发布
   | 'unpublish'       // 取消发布
+  | 'archive'         // 归档
 
 // 状态流转规则：与后端状态机保持一致
 export const STATUS_TRANSITIONS: Record<StatusAction, { from: Status[], to: Status }> = {
-  save_draft: { from: ['draft', 'rejected'], to: 'draft' },
+  save_draft: { from: ['draft', 'rejected', 'approved', 'published'], to: 'draft' },
   submit: { from: ['draft', 'rejected'], to: 'pending' },
   withdraw: { from: ['pending'], to: 'draft' },
   approve: { from: ['pending'], to: 'approved' },
   reject: { from: ['pending'], to: 'rejected' },
   publish: { from: ['approved'], to: 'published' },
   unpublish: { from: ['published'], to: 'draft' },
+  archive: { from: ['draft', 'rejected', 'approved', 'published'], to: 'archived' },
 }
 
 // 判断操作是否可用

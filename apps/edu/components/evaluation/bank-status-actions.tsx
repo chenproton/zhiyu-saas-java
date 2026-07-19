@@ -100,8 +100,8 @@ export function BankStatusActions({
     setConfirmType(null)
   }
 
-  const canEdit = ['draft', 'rejected'].includes(status)
-  const canDelete = ['draft', 'rejected'].includes(status)
+  const canEdit = ['draft', 'rejected', 'approved', 'published'].includes(status)
+  const canDelete = ['draft', 'rejected', 'archived'].includes(status)
   const canSubmit = canPerformAction(status, 'submit')
   const canWithdraw = canPerformAction(status, 'withdraw')
   const canApprove = canPerformAction(status, 'approve')

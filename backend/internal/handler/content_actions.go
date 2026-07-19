@@ -40,7 +40,7 @@ var allowedStatusTransitions = map[domain.ContentStatus][]domain.ContentStatus{
 	domain.StatusDraft:     {domain.StatusPending, domain.StatusArchived},
 	domain.StatusRejected:  {domain.StatusPending, domain.StatusArchived},
 	domain.StatusPending:   {domain.StatusDraft, domain.StatusApproved, domain.StatusRejected},
-	domain.StatusApproved:  {domain.StatusPublished, domain.StatusArchived},
+	domain.StatusApproved:  {domain.StatusDraft, domain.StatusPublished, domain.StatusArchived},
 	domain.StatusPublished: {domain.StatusDraft, domain.StatusArchived},
 	domain.StatusArchived:  {},
 }

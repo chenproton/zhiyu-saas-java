@@ -154,7 +154,7 @@ export function QuestionListPanel({ bankId }: QuestionListPanelProps) {
   }
 
   const isDraftPool = bank.isDraftPool === true
-  const canEditBank = isDraftPool || ['draft', 'rejected'].includes(bank.status)
+  const canEditBank = isDraftPool || ['draft', 'rejected', 'approved', 'published'].includes(bank.status)
 
   const handleBankUpdate = (data: QuestionBankFormData) => {
     updateQuestionBank(bankId, data)
@@ -272,12 +272,12 @@ export function QuestionListPanel({ bankId }: QuestionListPanelProps) {
   // 其他题库：题目状态跟随题库，不能单个进行提交审批等操作
   const canEditQuestion = (q: Question) =>
     isDraftPool
-      ? ['draft', 'rejected'].includes(q.status)
+      ? ['draft', 'rejected', 'approved', 'published'].includes(q.status)
       : canEditBank
 
   const canDeleteQuestion = (q: Question) =>
     isDraftPool
-      ? ['draft', 'rejected'].includes(q.status)
+      ? ['draft', 'rejected', 'archived'].includes(q.status)
       : canEditBank
 
   const canSubmitQuestion = (q: Question) =>
