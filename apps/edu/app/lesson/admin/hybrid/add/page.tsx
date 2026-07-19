@@ -1,8 +1,7 @@
 "use client"
 
 import { Suspense, useState, useRef, useCallback, useMemo, useEffect } from "react"
-import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -73,7 +72,10 @@ function MockRichEditor({ value, onChange, placeholder }: { value: string; onCha
 
 function HybridCourseAddForm() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const editId = searchParams.get("id")
+  const hasSavedRef = useRef(false)
+  const isNewCourse = searchParams.get("new") === "true"
   const claimCourse = searchParams.get("claimCourse")
   const claimSessionsParam = searchParams.get("claimSessions")
   const [existing, setExisting] = useState<Course | null>(null)
@@ -437,6 +439,7 @@ function HybridCourseAddForm() {
       const payload = buildCoursePayload()
       if (editId) {
         const updated = await courseApi.update(editId, payload)
+        hasSavedRef.current = true
         if (existing?.status === "approved" || existing?.status === "published") {
           await courseApi.saveDraft(editId)
           setExisting({ ...updated, status: "draft" as const })
@@ -448,6 +451,7 @@ function HybridCourseAddForm() {
       } else {
         const created = await courseApi.create(payload)
         setExisting(created)
+        hasSavedRef.current = true
         toast.success(`已保存混合课程：${created.name}`)
       }
     } catch (e) {
@@ -471,6 +475,7 @@ function HybridCourseAddForm() {
         courseId = created.id
       }
       await courseApi.submit(courseId)
+      hasSavedRef.current = true
       await approvalApi.create({ targetType: "course", targetId: courseId })
       toast.success(`已提交混合课程审批：${rootForm.name}`)
     } catch (e) {
@@ -546,12 +551,15 @@ function HybridCourseAddForm() {
         <div className="max-w-[1400px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/lesson/admin/hybrid">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="h-4 w-4 mr-1" />
-                  返回列表
-                </Button>
-              </Link>
+              <Button variant="ghost" size="sm" onClick={async () => {
+                if (isNewCourse && editId && !hasSavedRef.current) {
+                  try { await courseApi.delete(editId) } catch {}
+                }
+                router.push("/lesson/admin/hybrid")
+              }}>
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                返回列表
+              </Button>
               <h1 className="text-lg font-semibold text-gray-900">
                 {editId ? "编辑混合课程" : "新建混合课程"}
                 {rootForm.name && <span className="text-gray-400 font-normal ml-2">- {rootForm.name}</span>}

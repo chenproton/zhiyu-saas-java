@@ -548,7 +548,7 @@ export default function PositionsPage() {
         collaborators: [currentUserId],
         favoriteCount: 0,
       }))
-      router.push(`/job/positions/${created.id}/edit`)
+      router.push(`/job/positions/${created.id}/edit?new=true`)
     } catch (err: any) {
       toast({ variant: 'destructive', title: '创建失败', description: err?.message || '请稍后重试' })
     }

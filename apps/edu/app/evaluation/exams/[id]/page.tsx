@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, GripVertical, Trash2, Eye, Clock, FileText, Award, Wand2, Hand, Plus, Edit, Send, Save, FileUp, MonitorPlay, Rocket, ArrowDownFromLine } from "lucide-react"
@@ -30,6 +30,8 @@ export default function ExamComposerPage() {
   const searchParams = useSearchParams()
   const examId = params.id as string
   const isPreview = searchParams.get('mode') === 'preview'
+  const hasSavedRef = useRef(false)
+  const isNewExam = searchParams.get('new') === 'true'
 
   const {
     getExam,
@@ -79,6 +81,7 @@ export default function ExamComposerPage() {
 
   const handleExamUpdate = (data: ExamFormData) => {
     updateExam(examId, data)
+    hasSavedRef.current = true
   }
 
   const handleExamDelete = () => {
@@ -90,10 +93,12 @@ export default function ExamComposerPage() {
     questions.forEach(question => {
       addQuestionToExam(examId, question)
     })
+    hasSavedRef.current = true
   }
 
   const handleAddSingleQuestion = (question: Question) => {
     addQuestionToExam(examId, question)
+    hasSavedRef.current = true
   }
 
   const handleRemoveQuestion = () => {
@@ -154,19 +159,19 @@ export default function ExamComposerPage() {
       {/* 头部 */}
       <div className="border-b px-6 py-4">
         <div className="mb-4">
-          {isPreview ? (
-            <Button variant="ghost" size="sm" onClick={() => router.back()}>
-              <ArrowLeft />
-              返回
-            </Button>
-          ) : (
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/evaluation/exams">
-                <ArrowLeft />
-                返回组卷列表
-              </Link>
-            </Button>
-          )}
+          <Button variant="ghost" size="sm" onClick={async () => {
+            if (isNewExam && !hasSavedRef.current) {
+              try { deleteExam(examId) } catch {}
+            }
+            if (isPreview) {
+              router.back()
+            } else {
+              router.push("/evaluation/exams")
+            }
+          }}>
+            <ArrowLeft />
+            {isPreview ? "返回" : "返回组卷列表"}
+          </Button>
         </div>
         <div className="flex items-start justify-between">
           <div>

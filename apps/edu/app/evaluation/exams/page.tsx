@@ -294,7 +294,7 @@ export default function ExamsPage() {
       })) as unknown as BackendExam
       setIsCreateOpen(false)
       resetCreateForm()
-      router.push(`/evaluation/exams/${created.id}`)
+      router.push(`/evaluation/exams/${created.id}?new=true`)
     } catch (err) {
       console.error("创建试卷失败", err)
       alert("创建试卷失败")

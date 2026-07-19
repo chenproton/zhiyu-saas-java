@@ -70,6 +70,8 @@ function PositionEditPageContent({ params }: PageProps) {
   const [detailsLoading, setDetailsLoading] = useState(false)
   const [coverUploading, setCoverUploading] = useState(false)
   const coverInputRef = useRef<HTMLInputElement>(null)
+  const hasSavedRef = useRef(false)
+  const isNewPosition = searchParams.get('new') === 'true'
 
   useEffect(() => {
     let cancelled = false
@@ -223,6 +225,7 @@ function PositionEditPageContent({ params }: PageProps) {
       if (position.status === 'approved' || position.status === 'published') {
         await positionApi.saveDraft(position.id)
       }
+      hasSavedRef.current = true
       setPositions((prev) => prev.map((p) => (p.id === position.id ? { ...position, status: 'draft' as const } : p)))
       toast({ title: '保存成功', description: '岗位完整数据已保存为草稿' })
     } catch (err: any) {
@@ -260,6 +263,7 @@ function PositionEditPageContent({ params }: PageProps) {
         abilityDomains: position.abilityDomains,
       })
       await positionApi.submit(position.id)
+      hasSavedRef.current = true
       await approvalApi.create({
         targetType: 'career_position',
         targetId: position.id,
@@ -324,7 +328,12 @@ function PositionEditPageContent({ params }: PageProps) {
       <div className="sticky top-14 z-10 bg-white border-b border-gray-100">
         <div className="max-w-full mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => router.push('/job/positions')}>
+            <Button variant="ghost" size="sm" onClick={async () => {
+              if (isNewPosition && !hasSavedRef.current) {
+                try { await positionApi.delete(position.id) } catch {}
+              }
+              router.push('/job/positions')
+            }}>
               <X className="h-4 w-4 mr-2" />
               取消
             </Button>

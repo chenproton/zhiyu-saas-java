@@ -495,7 +495,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
       creatorId: currentUserId,
       coCreatorIds: [],
     })
-    router.push(`${addHref}?courseId=${newCourse.id}`)
+    router.push(`${addHref}?id=${newCourse.id}&new=true`)
   }
   const typeLabel = courseType === "system" ? "体系课" : courseType === "granular" ? "颗粒课" : "混合课"
 

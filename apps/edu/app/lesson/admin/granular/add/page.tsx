@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef, Suspense, useMemo } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
-import Link from "next/link"
 import {
   ArrowLeft,
   Save,
@@ -49,6 +48,8 @@ function AddGranularPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const editId = searchParams.get("id")
+  const hasSavedRef = useRef(false)
+  const isNewCourse = searchParams.get("new") === "true"
 
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -178,6 +179,7 @@ function AddGranularPageInner() {
       }
       if (editId) {
         await courseApi.update(editId, payload)
+        hasSavedRef.current = true
         if (course?.status === "approved" || course?.status === "published") {
           await courseApi.saveDraft(editId)
           setCourse((prev) => (prev ? { ...prev, status: "draft" as const } : prev))
@@ -205,6 +207,7 @@ function AddGranularPageInner() {
     setSaving(true)
     try {
       await courseApi.submit(editId)
+      hasSavedRef.current = true
       await approvalApi.create({ targetType: "course", targetId: editId })
       toast.success("颗粒课已提交审批")
     } catch (err: any) {
@@ -229,12 +232,15 @@ function AddGranularPageInner() {
         <div className="max-w-[1400px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/lesson/admin/granular">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="h-4 w-4 mr-1" />
-                  返回列表
-                </Button>
-              </Link>
+              <Button variant="ghost" size="sm" onClick={async () => {
+                if (isNewCourse && editId && !hasSavedRef.current) {
+                  try { await courseApi.delete(editId) } catch {}
+                }
+                router.push("/lesson/admin/granular")
+              }}>
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                返回列表
+              </Button>
               <h1 className="text-lg font-semibold text-gray-900">
                 {editId ? "编辑颗粒课" : "新建颗粒课"}
                 {courseName && <span className="text-gray-400 font-normal ml-2">- {courseName}</span>}

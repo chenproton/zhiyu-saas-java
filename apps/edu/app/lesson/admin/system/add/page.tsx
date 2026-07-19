@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useRef, Suspense, useMemo, useCallback, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
-import Link from "next/link"
+import { useSearchParams, useRouter } from "next/navigation"
 import {
   ArrowLeft,
   Save,
@@ -157,8 +156,11 @@ function ConvertPreviewTree({
 
 function AddSystemPageInner() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const editId = searchParams.get("id")
   const isEdit = !!editId
+  const hasSavedRef = useRef(false)
+  const isNewCourse = searchParams.get("new") === "true"
 
   /* ========== global config (collapsible) ========== */
   const [globalInfoOpen, setGlobalInfoOpen] = useState(true)
@@ -477,6 +479,7 @@ function AddSystemPageInner() {
       }
       if (isEdit && courseId) {
         await courseApi.update(courseId, payload)
+        hasSavedRef.current = true
         if (courseStatus === "approved" || courseStatus === "published") {
           await courseApi.saveDraft(courseId)
           setCourseStatus("draft")
@@ -487,6 +490,7 @@ function AddSystemPageInner() {
       } else {
         const created = await courseApi.create(payload)
         setCourseId(created.id)
+        hasSavedRef.current = true
         toast.success("草稿已保存")
       }
     } catch {
@@ -578,12 +582,15 @@ function AddSystemPageInner() {
         <div className="max-w-[1400px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/lesson/admin/system">
-                <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" onClick={async () => {
+                if (isNewCourse && courseId && !hasSavedRef.current) {
+                  try { await courseApi.delete(courseId) } catch {}
+                }
+                router.push("/lesson/admin/system")
+              }}>
                   <ArrowLeft className="h-4 w-4 mr-1" />
                   返回列表
                 </Button>
-              </Link>
               <h1 className="text-lg font-semibold text-gray-900">
                 {isEdit ? "编辑体系课" : "新建体系课"}
                 {courseName && <span className="text-gray-400 font-normal ml-2">- {courseName}</span>}
@@ -1009,7 +1016,8 @@ function AddSystemPageInner() {
                 if (!courseId) { toast.error("请先保存草稿"); return }
                 setSaving(true)
                 try {
-                  await courseApi.submit(courseId)
+      await courseApi.submit(courseId)
+      hasSavedRef.current = true
       await approvalApi.create({ targetType: "course", targetId: courseId })
                   toast.success("课程已提交审核")
                 } catch { toast.error("提交失败") }

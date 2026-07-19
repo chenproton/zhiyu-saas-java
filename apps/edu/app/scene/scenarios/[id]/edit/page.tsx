@@ -3,7 +3,7 @@
 import { ArrowRight, ChevronDown, ChevronRight, Eye, ImagePlus, List, ListOrdered, Loader2, Save, Search, Star, X, UserPlus } from "lucide-react"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useState, useMemo, useRef, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -136,8 +136,11 @@ function IndustryProfessionSelector({
 export default function ScenarioEditPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const scenarioId = params.id as string
   const { toast } = useToast()
+  const hasSavedRef = useRef(false)
+  const isNewScenario = searchParams.get('new') === 'true'
 
   const [allPositions, setAllPositions] = useState<CareerPosition[]>([])
   const [industries, setIndustries] = useState<Industry[]>([])
@@ -242,6 +245,7 @@ export default function ScenarioEditPage() {
         coverImage: coverImage || undefined,
       }
       await scenarioApi.update(scenarioId, payload as any)
+      hasSavedRef.current = true
       toast({ title: "保存成功" })
       router.push(`/scene/scenarios/${scenarioId}/edit/tasks`)
     } catch (err: any) {
@@ -268,6 +272,7 @@ export default function ScenarioEditPage() {
         coverImage: coverImage || undefined,
       }
       await scenarioApi.update(scenarioId, payload as any)
+      hasSavedRef.current = true
       if (scenarioStatus === "approved" || scenarioStatus === "published") {
         await scenarioApi.saveDraft(scenarioId)
         setScenarioStatus("draft")
@@ -314,7 +319,12 @@ export default function ScenarioEditPage() {
       <div className="sticky top-14 z-10 bg-white border-b border-gray-100">
         <div className="max-w-full mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => router.push("/scene")}>
+            <Button variant="ghost" size="sm" onClick={async () => {
+              if (isNewScenario && !hasSavedRef.current) {
+                try { await scenarioApi.delete(scenarioId) } catch {}
+              }
+              router.push("/scene")
+            }}>
               <X className="h-4 w-4 mr-2" />
               取消
             </Button>

@@ -287,7 +287,7 @@ export default function QuestionBanksPage() {
       })) as unknown as BackendQuestionBank
       setIsCreateOpen(false)
       resetCreateForm()
-      router.push(`/evaluation/question-banks/${created.id}`)
+      router.push(`/evaluation/question-banks/${created.id}?new=true`)
     } catch (err) {
       console.error("创建题库失败", err)
       alert("创建题库失败")

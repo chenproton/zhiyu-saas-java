@@ -586,7 +586,7 @@ export default function SceneHallPage() {
         creatorId: currentUserId,
         coBuilderIds: [currentUserId],
       })
-      router.push(`/scene/scenarios/${newScenario.id}/edit`)
+      router.push(`/scene/scenarios/${newScenario.id}/edit?new=true`)
     } catch (err) {
       console.error("创建场景失败", err)
       alert("创建场景失败，请稍后重试")
