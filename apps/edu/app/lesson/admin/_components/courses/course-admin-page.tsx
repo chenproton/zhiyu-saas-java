@@ -194,6 +194,8 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
     }
     if (selectedStatus) {
       result = result.filter((c) => c.status === selectedStatus)
+    } else {
+      result = result.filter((c) => c.status !== "archived")
     }
     return result
   }, [tabFilteredCourses, searchQuery, selectedBatchId, selectedStatus])
