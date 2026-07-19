@@ -1,6 +1,0 @@
-2026-07-11 01:05:39 +08:00: {"time":"2026-07-11T01:05:39.57127436+08:00","level":"INFO","msg":"starting server","addr":":8080"}
-2026-07-11 01:05:43 +08:00: 2026/07/11 01:05:43 [zhiyu-RvX2x3eM/GrDN9WdFjG-000001] "GET http://127.0.0.1:8080/health HTTP/1.1" from 127.0.0.1:7206 - 200 15B in 47.93µs
-2026-07-11 01:05:49 +08:00: 2026/07/11 01:05:49 [zhiyu-RvX2x3eM/GrDN9WdFjG-000002] "POST http://localhost:8080/api/v1/auth/login HTTP/1.1" from [::1]:53384 - 200 807B in 82.599266ms
-2026-07-11 01:05:49 +08:00: 2026/07/11 01:05:49 [zhiyu-RvX2x3eM/GrDN9WdFjG-000003] "GET http://localhost:8080/api/v1/tenants HTTP/1.1" from [::1]:53392 - 200 479B in 2.118132ms
-2026-07-11 01:05:49 +08:00: 2026/07/11 01:05:49 [zhiyu-RvX2x3eM/GrDN9WdFjG-000004] "GET http://localhost:8080/api/v1/identity-types HTTP/1.1" from [::1]:53398 - 200 1418B in 3.023413ms
-2026-07-11 01:05:49 +08:00: 2026/07/11 01:05:49 [zhiyu-RvX2x3eM/GrDN9WdFjG-000005] "GET http://localhost:8080/api/v1/users HTTP/1.1" from [::1]:53406 - 200 2481B in 2.008316ms

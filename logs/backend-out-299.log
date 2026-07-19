@@ -1,3 +1,0 @@
-2026-07-11 00:15:19 +08:00: 2026/07/11 00:15:19 [zhiyu-RvX2x3eM/7ykuZ5irFq-000131] "GET http://maxkb.pm.zhiyu.com.cn/ HTTP/1.1" from 119.249.100.112 - 404 19B in 29.185µs
-2026-07-11 00:43:56 +08:00: 2026/07/11 00:43:56 [zhiyu-RvX2x3eM/7ykuZ5irFq-000132] "POST http://localhost:8080/api/v1/auth/login HTTP/1.1" from [::1]:49600 - 200 514B in 188.478703ms
-2026-07-11 00:43:56 +08:00: 2026/07/11 00:43:56 [zhiyu-RvX2x3eM/7ykuZ5irFq-000133] "GET http://localhost:8080/api/v1/health HTTP/1.1" from [::1]:49604 - 404 19B in 53.533µs

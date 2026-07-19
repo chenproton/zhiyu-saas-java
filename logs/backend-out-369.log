@@ -1,3 +1,0 @@
-2026-07-11 12:39:25 +08:00: {"time":"2026-07-11T12:39:25.428639438+08:00","level":"INFO","msg":"starting server","addr":":8080"}
-2026-07-11 12:39:28 +08:00: 2026/07/11 12:39:28 [zhiyu-RvX2x3eM/i8bGqGMBer-000001] "GET http://127.0.0.1:8080/health HTTP/1.1" from 127.0.0.1:38508 - 200 15B in 46.568µs
-2026-07-11 13:10:02 +08:00: 2026/07/11 13:10:02 [zhiyu-RvX2x3eM/i8bGqGMBer-000002] "GET http://maxkb.pm.zhiyu.com.cn/ HTTP/1.1" from 195.96.139.111 - 404 19B in 61.76µs

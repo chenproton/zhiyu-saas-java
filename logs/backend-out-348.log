@@ -1,6 +1,0 @@
-2026-07-11 09:57:49 +08:00: {"time":"2026-07-11T09:57:49.464451391+08:00","level":"INFO","msg":"starting server","addr":":8080"}
-2026-07-11 09:57:52 +08:00: 2026/07/11 09:57:52 [zhiyu-RvX2x3eM/YiiUPlpDXK-000001] "GET http://127.0.0.1:8080/health HTTP/1.1" from 127.0.0.1:32704 - 200 15B in 51.578µs
-2026-07-11 09:59:03 +08:00: 2026/07/11 09:59:03 [zhiyu-RvX2x3eM/YiiUPlpDXK-000002] "GET http://127.0.0.1:8080/api/v1/platform-links HTTP/1.1" from 127.0.0.1:59722 - 200 1219B in 2.878475ms
-2026-07-11 09:59:03 +08:00: 2026/07/11 09:59:03 [zhiyu-RvX2x3eM/YiiUPlpDXK-000003] "GET http://127.0.0.1:8080/api/v1/app-modules HTTP/1.1" from 127.0.0.1:59736 - 200 3268B in 1.732169ms
-2026-07-11 09:59:20 +08:00: 2026/07/11 09:59:20 [zhiyu-RvX2x3eM/YiiUPlpDXK-000004] "GET http://127.0.0.1:8080/api/v1/app-modules HTTP/1.1" from 127.0.0.1:38694 - 200 3268B in 786.353µs
-2026-07-11 09:59:20 +08:00: 2026/07/11 09:59:20 [zhiyu-RvX2x3eM/YiiUPlpDXK-000005] "GET http://127.0.0.1:8080/api/v1/platform-links HTTP/1.1" from 127.0.0.1:31106 - 200 1219B in 1.5584ms
