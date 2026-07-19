@@ -400,6 +400,7 @@ export function YiKnowAssistant() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [inputValue, setInputValue] = useState("")
   const [isTyping, setIsTyping] = useState(false)
+  const [dismissed, setDismissed] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const getModules = (platformId: string) => APP_MODULES[platformId] || []
@@ -717,10 +718,20 @@ export function YiKnowAssistant() {
     </div>
   )
 
+  if (dismissed) return null
+
   return (
     <>
       {/* Floating robot button */}
-      <div className="fixed bottom-6 right-5 z-[100] yi-robot-wrap flex items-end gap-3">
+      <div className="fixed bottom-6 right-5 z-[100] yi-robot-wrap flex items-end gap-3 group">
+        {/* Close button — appears on hover */}
+        <button
+          onClick={() => setDismissed(true)}
+          className="absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full bg-muted-foreground/50 hover:bg-muted-foreground/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+          aria-label="关闭 YI KNOW"
+        >
+          <X className="w-3 h-3 text-white" />
+        </button>
         {/* Speech bubble */}
         {!open && (
           <div
