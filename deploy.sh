@@ -624,14 +624,20 @@ if [[ "$FRONTEND_ONLY" != "true" && -f "$BACKEND_BIN_NEW" ]]; then
 fi
 
 if [[ "$BACKEND_ONLY" != "true" && -d "$MARKETPLACE_STANDALONE" ]]; then
+  echo "  复制商城 standalone 到部署目录..."
+  rm -rf "$DEPLOY_MARKETPLACE_STANDALONE"
   mkdir -p "$(dirname "$DEPLOY_MARKETPLACE_STANDALONE")"
-  mv "$MARKETPLACE_STANDALONE" "$DEPLOY_MARKETPLACE_STANDALONE"
+  cp -aL "$MARKETPLACE_STANDALONE" "$DEPLOY_MARKETPLACE_STANDALONE"
+  rm -rf "$MARKETPLACE_STANDALONE"
   echo "  商城前端已切换"
 fi
 
 if [[ "$BACKEND_ONLY" != "true" && -d "$EDU_STANDALONE" ]]; then
+  echo "  复制教育管理 standalone 到部署目录..."
+  rm -rf "$DEPLOY_EDU_STANDALONE"
   mkdir -p "$(dirname "$DEPLOY_EDU_STANDALONE")"
-  mv "$EDU_STANDALONE" "$DEPLOY_EDU_STANDALONE"
+  cp -aL "$EDU_STANDALONE" "$DEPLOY_EDU_STANDALONE"
+  rm -rf "$EDU_STANDALONE"
   echo "  教育管理前端已切换"
 fi
 
