@@ -477,36 +477,6 @@ function HybridCourseAddForm() {
     }
   }
 
-  const handleSubmit = async () => {
-    if (!rootForm.name || !rootForm.code) {
-      toast.error("请填写课程名称和课程编码")
-      return
-    }
-    if (!batchId) {
-      toast.error("请先关联所属批次")
-      return
-    }
-    setSaving(true)
-    try {
-      const batch = batches.find((b) => b.id === batchId)
-      let courseId = editId || existing?.id
-      if (!courseId) {
-        const created = await courseApi.create(buildCoursePayload())
-        setExisting(created)
-        courseId = created.id
-      }
-      await courseApi.submit(courseId)
-      hasSavedRef.current = true
-      await approvalApi.create({ targetType: "course", targetId: courseId, workflowId: batch?.workflowId as string })
-      toast.success(`已提交混合课程审批：${rootForm.name}`)
-      router.push("/lesson/admin/hybrid")
-    } catch (e) {
-      toast.error("提交失败，请重试")
-    } finally {
-      setSaving(false)
-    }
-  }
-
   const availableModules = ATOMIC_MODULES.filter(
     (m) => !currentModules.includes(m.key)
   )
@@ -578,8 +548,6 @@ function HybridCourseAddForm() {
       }}
       onSaveDraft={handleSave}
       isSaving={saving}
-      onSubmit={handleSubmit}
-      submitText="提交审批"
       title={editId ? "编辑混合课程" : "新建混合课程"}
     >
         {/* ========== Global Course Info (collapsible, spans full width) ========== */}

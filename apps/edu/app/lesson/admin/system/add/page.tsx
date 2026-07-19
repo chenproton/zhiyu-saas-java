@@ -508,40 +508,6 @@ function AddSystemPageInner() {
     }
   }, [courseName, courseCode, major, courseDescription, coverImage, batchId, isEdit, courseId])
 
-  const handleSubmit = useCallback(async () => {
-    const completeNodes = nodes.filter((n) => n.type !== "original" && checkNodeComplete(n))
-    if (completeNodes.length > 0) {
-      setConvertedNodeIds(new Set(completeNodes.map((n) => n.id)))
-      setConvertedNodeNames(completeNodes.map((n) => n.name))
-      setNodes((prev) =>
-        prev.map((n) => (completeNodes.some((c) => c.id === n.id) ? { ...n, type: "original" } : n))
-      )
-      setConvertDialogOpen(true)
-      return
-    }
-    if (!courseId) {
-      toast.error("请先保存草稿")
-      return
-    }
-    if (!batchId) {
-      toast.error("请先关联所属批次")
-      return
-    }
-    setSaving(true)
-    try {
-      const batch = batches.find((b) => b.id === batchId)
-      await courseApi.submit(courseId)
-      hasSavedRef.current = true
-      await approvalApi.create({ targetType: "course", targetId: courseId, workflowId: batch?.workflowId as string })
-      toast.success("课程已提交审核")
-      router.push("/lesson/admin/system")
-    } catch {
-      toast.error("提交失败")
-    } finally {
-      setSaving(false)
-    }
-  }, [nodes, checkNodeComplete, courseId, batchId, batches])
-
   /* ---------- construct current node for publish check ---------- */
   const currentCheckNode: SystemCourseNode | undefined = useMemo(() => {
     if (!selectedNodeId) return undefined
@@ -602,8 +568,6 @@ function AddSystemPageInner() {
       }}
       onSaveDraft={handleSave}
       isSaving={saving}
-      onSubmit={handleSubmit}
-      submitText="提交审批"
       title={isEdit ? "编辑体系课" : "新建体系课"}
     >
         <Toaster />
@@ -993,40 +957,6 @@ function AddSystemPageInner() {
         </div>
 
       {/* Convert complete nodes to grain course dialog */}
-      <Dialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>
-        <DialogContent className="sm:max-w-[520px]">
-          <DialogHeader>
-            <DialogTitle>节点已转换为颗粒课</DialogTitle>
-          </DialogHeader>
-          <div className="py-2">
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
-              <div className="flex items-start gap-2">
-                <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
-                <p className="text-xs text-gray-700">
-                  绿色的勾：通过节点完整度校验、提交后另存为颗粒课
-                </p>
-              </div>
-              <div className="flex items-start gap-2">
-                <X className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                <p className="text-xs text-gray-700">
-                  红色的叉：节点未完成建设、提交后无法另外为颗粒课
-                </p>
-              </div>
-            </div>
-            <ConvertPreviewTree nodes={nodes} convertedIds={convertedNodeIds} />
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={() => {
-                setConvertDialogOpen(false)
-                setTimeout(() => handleSubmit(), 100)
-              }}
-            >
-              确认并提交
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Grain course selector dialog for clone / quote */}
       <Dialog open={showGrainSelector} onOpenChange={setShowGrainSelector}>

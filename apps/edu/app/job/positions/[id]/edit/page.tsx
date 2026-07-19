@@ -235,44 +235,6 @@ function PositionEditPageContent({ params }: PageProps) {
     }
   }
 
-  const handleFinishConfig = async () => {
-    if (!position) return
-    setIsSaving(true)
-    try {
-      await positionApi.saveFull(position.id, {
-        batchId: position.batchId,
-        name: position.name,
-        shortName: position.shortName,
-        industry: position.industry,
-        majors: position.majors,
-        positionType: position.positionType,
-        salaryRange: position.salaryRange,
-        coverImage: position.coverImage,
-        description: position.description,
-        requirements: position.requirements,
-        careerPath: position.careerPath,
-        version: position.version,
-        collaborators: position.collaborators,
-        responsibilities: position.responsibilities,
-        certificates: position.certificates,
-        abilityBindings: position.abilityBindings,
-        abilityDomains: position.abilityDomains,
-      })
-      if (position.status === 'approved' || position.status === 'published') {
-        await positionApi.saveDraft(position.id)
-      }
-      hasSavedRef.current = true
-      setPositions((prev) => prev.map((p) => (p.id === position.id ? { ...position, status: 'draft' as const } : p)))
-      toast({ title: '配置完成', description: '岗位数据已保存为草稿' })
-      router.push('/job/positions')
-    } catch (err: any) {
-      console.error('Finish config failed:', err)
-      toast({ variant: 'destructive', title: '保存失败', description: err?.message || '请稍后重试' })
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
   const handleCoverUpload = async (file: File) => {
     setCoverUploading(true)
     try {
@@ -334,8 +296,6 @@ function PositionEditPageContent({ params }: PageProps) {
       onPreview={() => window.open('/student.html', '_blank')}
       onPrev={canGoPrev ? handlePrev : undefined}
       onNext={canGoNext ? handleNext : undefined}
-      onSubmit={!canGoNext ? handleFinishConfig : undefined}
-      submitText="完成配置"
       loadingText={detailsLoading ? "加载详情中" : undefined}
       title={position.name}
       subtitle={`${batch?.department} - ${majorMap.get(batch?.majorId || "") || batch?.major || batch?.majorId} | 版本 ${position.version}`}

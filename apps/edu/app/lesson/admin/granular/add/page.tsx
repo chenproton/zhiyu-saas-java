@@ -207,30 +207,6 @@ function AddGranularPageInner() {
     }
   }
 
-  const handleSubmit = async () => {
-    if (!editId) {
-      toast.error("请先保存草稿")
-      return
-    }
-    if (!batchId) {
-      toast.error("请先关联所属批次")
-      return
-    }
-    setSaving(true)
-    try {
-      const batch = batches.find((b) => b.id === batchId)
-      await courseApi.submit(editId)
-      hasSavedRef.current = true
-      await approvalApi.create({ targetType: "course", targetId: editId, workflowId: batch?.workflowId as string })
-      toast.success("颗粒课已提交审批")
-      router.push("/lesson/admin/granular")
-    } catch (err: any) {
-      toast.error(err.message || "提交失败")
-    } finally {
-      setSaving(false)
-    }
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f5f7fa] flex items-center justify-center text-gray-400">
@@ -251,8 +227,6 @@ function AddGranularPageInner() {
       }}
       onSaveDraft={handleSave}
       isSaving={saving}
-      onSubmit={handleSubmit}
-      submitText="提交审批"
       title={editId ? "编辑颗粒课" : "新建颗粒课"}
     >
       <div className="grid grid-cols-[1fr_260px] gap-6">
