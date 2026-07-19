@@ -206,6 +206,14 @@ func (h *ScenarioHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	name := req.Name
+	if name == "" {
+		name = existing.Name
+	}
+	code := req.Code
+	if code == "" {
+		code = existing.Code
+	}
 	coBuilderIDs := req.CoBuilderIDs
 	if coBuilderIDs == nil {
 		coBuilderIDs = existing.CoBuilderIDs
@@ -217,7 +225,7 @@ func (h *ScenarioHandler) Update(w http.ResponseWriter, r *http.Request) {
 			batch_id = $8, difficulty = $9, version = $10, background = $11, delivery_goal = $12,
 			co_builder_ids = $13, updated_at = NOW()
 		WHERE id = $14
-	`, req.Name, req.Code, req.CoverImage, req.CareerPositionID, req.IndustryID,
+	`, name, code, req.CoverImage, req.CareerPositionID, req.IndustryID,
 		req.ProfessionID, req.ProfessionName, req.BatchID, req.Difficulty, req.Version, req.Background,
 		req.DeliveryGoal, coBuilderIDs, id)
 	if err != nil {

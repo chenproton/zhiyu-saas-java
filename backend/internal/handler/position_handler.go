@@ -258,9 +258,14 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Name == "" || req.PositionType == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
-		return
+	if req.Name == "" {
+		req.Name = existing.Name
+	}
+	if req.PositionType == "" {
+		req.PositionType = string(existing.PositionType)
+	}
+	if req.ShortName == nil || *req.ShortName == "" {
+		req.ShortName = existing.ShortName
 	}
 
 	majorIDs := req.MajorIDs
