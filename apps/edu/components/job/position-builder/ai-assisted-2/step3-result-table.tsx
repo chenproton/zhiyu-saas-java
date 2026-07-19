@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Save, CheckCircle2, Sparkles, AlertCircle } from 'lucide-react'
+import { CheckCircle2, Sparkles, AlertCircle } from 'lucide-react'
 import type { Position, PositionAbilityBinding, CompetencyLevel } from '@/lib/types/job-source'
 import { COMPETENCY_LEVEL_LABELS } from '@/lib/types/job-source'
 
@@ -36,11 +36,10 @@ interface Step3ResultTableProps {
   position: Position
   onUpdate: (data: Partial<Position>) => void
   onPrev: () => void
-  onSave: () => void
   showAiFill?: boolean
 }
 
-export function Step3ResultTable({ position, onUpdate, onPrev, onSave, showAiFill = true }: Step3ResultTableProps) {
+export function Step3ResultTable({ position, onUpdate, onPrev, showAiFill = true }: Step3ResultTableProps) {
   const bindings = position.abilityBindings
   const [aiNotice, setAiNotice] = useState<string | null>(null)
 
@@ -76,10 +75,6 @@ export function Step3ResultTable({ position, onUpdate, onPrev, onSave, showAiFil
               AI 辅助编写
             </Button>
           )}
-          <Button onClick={onSave} className="gap-1">
-            <Save className="h-4 w-4" />
-            保存岗位
-          </Button>
         </div>
       </div>
 

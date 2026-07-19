@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState, useEffect, use } from 'react'
+import { Suspense, useState, useEffect, use, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -28,7 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { positionApi, batchApi, approvalApi, majorApi, industryApi, abilityApi, positionResponsibilityApi, positionCertificateApi } from '@/lib/api'
+import { positionApi, batchApi, approvalApi, majorApi, industryApi, abilityApi, positionResponsibilityApi, positionCertificateApi, fileApi } from '@/lib/api'
 import {
   convertCareerPositionToPosition,
   convertJobBatchToBatch,
@@ -67,6 +67,8 @@ function PositionEditPageContent({ params }: PageProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [detailsLoaded, setDetailsLoaded] = useState(false)
   const [detailsLoading, setDetailsLoading] = useState(false)
+  const [coverUploading, setCoverUploading] = useState(false)
+  const coverInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -268,6 +270,24 @@ function PositionEditPageContent({ params }: PageProps) {
     }
   }
 
+  const handleCoverUpload = async (file: File) => {
+    setCoverUploading(true)
+    try {
+      const res = await fileApi.upload(file)
+      updatePositionData({ coverImage: res.url })
+      toast({ title: '封面上传成功' })
+    } catch (err: any) {
+      console.error('Cover upload failed:', err)
+      toast({ variant: 'destructive', title: '封面上传失败', description: err?.message || '请稍后重试' })
+    } finally {
+      setCoverUploading(false)
+    }
+  }
+
+  const triggerCoverUpload = () => {
+    coverInputRef.current?.click()
+  }
+
   const updatePositionData = (data: Partial<Position>) => {
     setPosition((prev) => (prev ? { ...prev, ...data } : null))
   }
@@ -369,8 +389,19 @@ function PositionEditPageContent({ params }: PageProps) {
                   <Label className="mb-3 block">岗位封面</Label>
                   <div
                     className="aspect-video bg-gray-100 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors overflow-hidden relative group"
-                    onClick={() => !position.coverImage && updatePositionData({ coverImage: '/placeholder.svg?height=200&width=300' })}
+                    onClick={triggerCoverUpload}
                   >
+                    <input
+                      ref={coverInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleCoverUpload(file)
+                        e.target.value = ''
+                      }}
+                    />
                     {position.coverImage ? (
                       <>
                         <img
@@ -385,10 +416,11 @@ function PositionEditPageContent({ params }: PageProps) {
                             className="bg-white/90 text-gray-800 border-white hover:bg-white"
                             onClick={(e) => {
                               e.stopPropagation()
-                              updatePositionData({ coverImage: '/placeholder.svg?height=200&width=300' })
+                              triggerCoverUpload()
                             }}
+                            disabled={coverUploading}
                           >
-                            更换封面
+                            {coverUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : '更换封面'}
                           </Button>
                           <Button
                             variant="outline"
@@ -398,6 +430,7 @@ function PositionEditPageContent({ params }: PageProps) {
                               e.stopPropagation()
                               updatePositionData({ coverImage: '' })
                             }}
+                            disabled={coverUploading}
                           >
                             移除封面
                           </Button>
@@ -405,9 +438,13 @@ function PositionEditPageContent({ params }: PageProps) {
                       </>
                     ) : (
                       <div className="flex flex-col items-center">
-                        <ImagePlus className="h-8 w-8 text-gray-400 mb-2" />
-                        <p className="text-sm text-gray-500">点击设置封面图片</p>
-                        <p className="text-xs text-gray-400 mt-1">建议尺寸 320x200</p>
+                        {coverUploading ? (
+                          <Loader2 className="h-8 w-8 text-gray-400 mb-2 animate-spin" />
+                        ) : (
+                          <ImagePlus className="h-8 w-8 text-gray-400 mb-2" />
+                        )}
+                        <p className="text-sm text-gray-500">{coverUploading ? '上传中...' : '点击上传封面图片'}</p>
+                        <p className="text-xs text-gray-400 mt-1">建议尺寸 320x200，支持 jpg/png/webp</p>
                       </div>
                     )}
                   </div>
@@ -469,7 +506,6 @@ function PositionEditPageContent({ params }: PageProps) {
                 position={position}
                 onUpdate={updatePositionData}
                 onPrev={handlePrev}
-                onSave={handleSave}
                 showAiFill={false}
               />
             )}

@@ -23,7 +23,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
-  Sparkles,
   Plus,
   Search,
   Trash2,
@@ -90,7 +89,6 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [newAbilityName, setNewAbilityName] = useState('')
   const [newAbilityCategory, setNewAbilityCategory] = useState('专业技能')
-  const [isGenerating, setIsGenerating] = useState(false)
   const [aiNotice, setAiNotice] = useState<string | null>(null)
   const [editingRespId, setEditingRespId] = useState<string | null>(null)
   const [editRespName, setEditRespName] = useState('')
@@ -178,14 +176,6 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       ? current.filter((a) => a !== attr)
       : [...current, attr]
     handleUpdateBinding(bindingId, { attributes: next })
-  }
-
-  const handleAIGenerate = async () => {
-    if (!selectedRespId) return
-    setIsGenerating(true)
-    setAiNotice('AI 生成服务暂未接入，请手动填写')
-    await new Promise(resolve => setTimeout(resolve, 300))
-    setIsGenerating(false)
   }
 
   const handleAddResponsibility = () => {
@@ -391,20 +381,6 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                   className="h-8 text-xs text-gray-500 hover:text-gray-800 hover:bg-gray-100"
                 >
                   查看全部
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAIGenerate}
-                  disabled={isGenerating || !selectedRespId}
-                  className="h-8 text-xs border-gray-200 hover:bg-gray-50"
-                >
-                  {isGenerating ? (
-                    <Sparkles className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                  )}
-                  AI 智能匹配
                 </Button>
               </>
             )}
