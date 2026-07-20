@@ -580,40 +580,81 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
 
       {/* 从证书库选择证书对话框 */}
       <Dialog open={isCertDialogOpen} onOpenChange={setIsCertDialogOpen}>
-        <DialogContent>
+        <DialogContent size="xl" className="!h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>从证书库选择证书</DialogTitle>
             <DialogDescription>选择与该岗位相关的职业资格证书</DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-3">
+          <div className="flex-1 flex flex-col min-h-0">
             <Input
               placeholder="搜索证书名称或描述..."
               value={certSearchQuery}
               onChange={(e) => setCertSearchQuery(e.target.value)}
+              className="mb-4"
             />
-            <div className="max-h-80 overflow-y-auto space-y-2">
-              {filteredCertificates.map((cert) => (
-                <div
-                  key={cert.id}
-                  className="flex items-start gap-3 p-3 rounded-lg border hover:bg-accent/50 cursor-pointer"
-                  onClick={() => handleSelectCertificate(cert.id, !selectedCertIds.includes(cert.id))}
-                >
-                  <Checkbox
-                    checked={selectedCertIds.includes(cert.id)}
-                    onCheckedChange={(checked) => handleSelectCertificate(cert.id, !!checked)}
-                  />
-                  <div className="flex-1">
-                    <div className="font-medium">{cert.name}</div>
-                    <div className="text-sm text-muted-foreground">{cert.description}</div>
-                  </div>
+            <div className="flex-1 overflow-y-auto">
+              {filteredCertificates.length === 0 ? (
+                <p className="py-12 text-center text-sm text-muted-foreground">未找到匹配证书</p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pr-1">
+                  {filteredCertificates.map((cert) => {
+                    const isSelected = selectedCertIds.includes(cert.id)
+                    return (
+                      <div
+                        key={cert.id}
+                        onClick={() => handleSelectCertificate(cert.id, !isSelected)}
+                        className={`relative rounded-xl border-2 p-4 cursor-pointer transition-all hover:shadow-md ${
+                          isSelected
+                            ? 'border-primary bg-primary/5 shadow-sm'
+                            : 'border-gray-200 hover:border-gray-300 bg-white'
+                        }`}
+                      >
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(checked) => handleSelectCertificate(cert.id, !!checked)}
+                          className="absolute top-3 right-3"
+                        />
+                        <div className="flex flex-col items-center text-center gap-3">
+                          {cert.image ? (
+                            <img
+                              src={cert.image}
+                              alt={cert.name}
+                              className="h-20 w-20 rounded-lg object-contain bg-gray-50"
+                            />
+                          ) : (
+                            <div className="h-20 w-20 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <Award className="h-10 w-10 text-primary" />
+                            </div>
+                          )}
+                          <div className="space-y-1.5 w-full min-w-0">
+                            <p className="font-semibold text-sm text-gray-900 break-words">{cert.name}</p>
+                            {cert.url && (
+                              <a
+                                href={cert.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-1 text-xs text-primary hover:underline min-w-0"
+                              >
+                                <ExternalLink className="h-3 w-3 shrink-0" />
+                                <span className="truncate">{cert.url}</span>
+                              </a>
+                            )}
+                            {cert.description && (
+                              <p className="text-xs text-muted-foreground line-clamp-1 break-words">
+                                {cert.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-              ))}
-              {filteredCertificates.length === 0 && (
-                <p className="py-8 text-center text-sm text-muted-foreground">未找到匹配证书</p>
               )}
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="pt-4 border-t">
             <Button variant="outline" onClick={() => setIsCertDialogOpen(false)}>
               取消
             </Button>

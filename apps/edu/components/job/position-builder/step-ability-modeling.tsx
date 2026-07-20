@@ -415,10 +415,10 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                     </button>
                   )}
                 </div>
-              )
-            })
-          )}
-        </div>
+                )
+              })
+            )}
+          </div>
       </div>
 
       {/* Content - Ability list grouped by responsibility */}
@@ -839,86 +839,88 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
 
       {/* Ability Library Dialog */}
       <Dialog open={showLibraryDialog} onOpenChange={setShowLibraryDialog}>
-        <DialogContent className="max-w-xl max-h-[70vh] flex flex-col">
+        <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-gray-800">能力点库</DialogTitle>
             <DialogDescription className="text-gray-400">
               系统内全部公共能力点（共 {abilities.length} 个）
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto py-4 space-y-1">
+          <div className="flex-1 overflow-y-auto py-4">
             {abilities.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-gray-400">
                 <Library className="h-10 w-10 mb-3 opacity-30" />
                 <p className="text-sm">暂无能力点</p>
               </div>
             ) : (
-              abilities.map((ability) => {
-                const isEditing = editingAbilityId === ability.id
-                return (
-                  <div
-                    key={ability.id}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors group"
-                  >
-                    <BookOpen className="h-4 w-4 text-gray-500 shrink-0" />
-                    <div className="flex-1 min-w-0 flex items-center gap-2">
-                      {isEditing ? (
-                        <div className="flex items-center gap-1 flex-1" onClick={e => e.stopPropagation()}>
-                          <Input
-                            value={editAbilityName}
-                            onChange={e => setEditAbilityName(e.target.value)}
-                            onKeyDown={e => handleSaveEditAbilityKeyDown(e, ability.id)}
-                            onBlur={() => handleSaveEditAbility(ability.id)}
-                            placeholder="能力点名称..."
-                            className="h-7 text-sm py-0 border-gray-200"
-                            autoFocus
-                          />
-                          <button
-                            className="shrink-0 p-1 rounded text-gray-400 hover:text-gray-600"
-                            onClick={() => handleSaveEditAbility(ability.id)}
-                          >
-                            <Check className="h-3 w-3" />
-                          </button>
-                          <button
-                            className="shrink-0 p-1 rounded text-gray-400 hover:text-gray-600"
-                            onClick={() => { setEditingAbilityId(null); setEditAbilityName('') }}
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-gray-700 truncate">{ability.name}</span>
-                      )}
+              <div className="grid grid-cols-2 gap-1.5">
+                {abilities.map((ability) => {
+                  const isEditing = editingAbilityId === ability.id
+                  return (
+                    <div
+                      key={ability.id}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors group"
+                    >
+                      <BookOpen className="h-4 w-4 text-gray-500 shrink-0" />
+                      <div className="flex-1 min-w-0 flex items-center gap-2">
+                        {isEditing ? (
+                          <div className="flex items-center gap-1 flex-1" onClick={e => e.stopPropagation()}>
+                            <Input
+                              value={editAbilityName}
+                              onChange={e => setEditAbilityName(e.target.value)}
+                              onKeyDown={e => handleSaveEditAbilityKeyDown(e, ability.id)}
+                              onBlur={() => handleSaveEditAbility(ability.id)}
+                              placeholder="能力点名称..."
+                              className="h-7 text-sm py-0 border-gray-200"
+                              autoFocus
+                            />
+                            <button
+                              className="shrink-0 p-1 rounded text-gray-400 hover:text-gray-600"
+                              onClick={() => handleSaveEditAbility(ability.id)}
+                            >
+                              <Check className="h-3 w-3" />
+                            </button>
+                            <button
+                              className="shrink-0 p-1 rounded text-gray-400 hover:text-gray-600"
+                              onClick={() => { setEditingAbilityId(null); setEditAbilityName('') }}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-700 truncate">{ability.name}</span>
+                        )}
+                        {!isEditing && (
+                          <Badge variant="outline" className="text-[10px] rounded-md px-1.5 py-0 shrink-0">
+                            {ability.category}
+                          </Badge>
+                        )}
+                      </div>
                       {!isEditing && (
-                        <Badge variant="outline" className="text-[10px] rounded-md px-1.5 py-0 shrink-0">
-                          {ability.category}
-                        </Badge>
+                        <>
+                          <button
+                            onClick={() => handleStartEditAbility(ability)}
+                            className="p-1 rounded text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                            title="编辑名称"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteAbility(ability.id)
+                            }}
+                            className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                            title="删除能力点"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </>
                       )}
                     </div>
-                    {!isEditing && (
-                      <>
-                        <button
-                          onClick={() => handleStartEditAbility(ability)}
-                          className="p-1 rounded text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-                          title="编辑名称"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDeleteAbility(ability.id)
-                          }}
-                          className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                          title="删除能力点"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )
-              })
+                  )
+                })}
+              </div>
             )}
           </div>
         </DialogContent>
