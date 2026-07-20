@@ -109,7 +109,7 @@ import { cn } from "@/lib/utils"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
-import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi } from "@/lib/api"
+import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryApi, majorApi, userManagementApi } from "@/lib/api"
 import type { ScenarioTask as ApiScenarioTask } from "@/lib/types/scene"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
@@ -535,27 +535,45 @@ export default function TasksEditPage() {
 
   const [tasks, setTasks] = useState<Task[]>([])
   const [taskStates, setTaskStates] = useState<Record<string, TaskState>>({})
+  const [positions, setPositions] = useState<any[]>([])
+  const [industries, setIndustries] = useState<any[]>([])
+  const [majors, setMajors] = useState<any[]>([])
+  const [users, setUsers] = useState<any[]>([])
 
   // Load all data from APIs on mount
   useEffect(() => {
     const load = async () => {
       try {
-        const [scenarioData, tasksRes, kpRes, apRes, posRes] = await Promise.all([
+        const [scenarioData, tasksRes, kpRes, apRes, posRes, indRes, majRes, userRes] = await Promise.all([
           scenarioApi.get(scenarioId),
           taskApi.list({ scenarioId, limit: 1000 }),
           knowledgeApi.list({ limit: 1000 }),
           abilityApi.list({ limit: 1000 }),
           positionApi.list({ limit: 1000 }),
+          industryApi.list({ limit: 1000 }),
+          majorApi.list({ limit: 1000 }),
+          userManagementApi.list({ limit: 1000 }),
         ])
 
         // Populate module-level arrays with API data
         scenarios.length = 0
         scenarios.push(scenarioData as any)
+        setPositions(posRes.items)
+        setIndustries(indRes.items)
+        setMajors(majRes.items)
+        setUsers(userRes.items)
+
+        const positionName = posRes.items.find((p: any) => p.id === scenarioData.careerPositionId)?.name || scenarioData.careerPositionId
+        const industryName = scenarioData.industryName || indRes.items.find((i: any) => i.id === scenarioData.industryId)?.name || scenarioData.industryId
+        const professionName = scenarioData.professionName || majRes.items.find((m: any) => m.id === scenarioData.professionId)?.name || scenarioData.professionId
+        const coBuilderMap = new Map((userRes.items || []).map((u: any) => [u.id, u.name]))
         setExistingScenario({
           ...scenarioData,
-          coBuilders: (scenarioData.coBuilderIds || []).map((id: string) => ({ id, name: id })),
           positionId: scenarioData.careerPositionId,
-          positionName: scenarioData.careerPositionId,
+          positionName,
+          industryName,
+          professionName,
+          coBuilders: (scenarioData.coBuilderIds || []).map((id: string) => ({ id, name: coBuilderMap.get(id) || id })),
         })
 
         knowledgePoints.length = 0
@@ -987,12 +1005,13 @@ export default function TasksEditPage() {
   return (
     <EditorShell
       mode="fullscreen"
-      backText="返回上一步"
-      onBack={() => router.push(`/scene/scenarios/${scenarioId}/edit`)}
+      backText="取消"
+      onBack={() => router.push("/scene")}
       step={2}
       stepLabel="任务链配置"
       onSaveDraft={handleSaveDraft}
       isSaving={isSaving}
+      onPrev={() => router.push(`/scene/scenarios/${scenarioId}/edit`)}
       onSubmit={handleFinish}
       submitText="完成配置"
       contentMaxWidth="max-w-[1400px]"
@@ -1011,7 +1030,11 @@ export default function TasksEditPage() {
                 </div>
                 <CardDescription className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="truncate">
-                    {existingScenario?.positionName} | {existingScenario?.industryName} | {existingScenario?.professionName}
+                    {existingScenario?.positionName || existingScenario?.positionId || "未选择岗位"}
+                    {" | "}
+                    {existingScenario?.industryName || existingScenario?.industryId || "未选择行业"}
+                    {" | "}
+                    {existingScenario?.professionName || existingScenario?.professionId || "未选择专业"}
                   </span>
                   {existingScenario && existingScenario.coBuilders.length > 0 && (
                     <span className="flex flex-wrap items-center gap-1">
@@ -1043,7 +1066,7 @@ export default function TasksEditPage() {
         </PrdAnnotation>
 
         {/* Tasks Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mt-6">
           <div className="flex flex-wrap items-center gap-3">
             <PrdAnnotation data={getAnnotation("editor-task-list-title")}>
               <h2 className="font-semibold text-lg">任务列表</h2>
