@@ -134,3 +134,103 @@ export function checkMenuPermission(menus: unknown, path: string): boolean {
   }
   return true
 }
+
+export interface PermissionAction {
+  action: string
+  label: string
+}
+
+export interface PermissionPage {
+  page: string
+  label: string
+  actions: PermissionAction[]
+}
+
+export interface PermissionModule {
+  module: string
+  label: string
+  pages: PermissionPage[]
+}
+
+export const permissionModuleConfig: PermissionModule[] = [
+  {
+    module: "scene",
+    label: "场景学习平台",
+    pages: [
+      {
+        page: "scenarios",
+        label: "场景管理",
+        actions: [
+          { action: "submit_approval", label: "提交审批" },
+          { action: "withdraw_approval", label: "撤回审批" },
+          { action: "publish", label: "发布" },
+          { action: "unpublish", label: "取消发布" },
+          { action: "delete", label: "删除" },
+          { action: "review", label: "审核" },
+          { action: "reject", label: "驳回" },
+        ],
+      },
+    ],
+  },
+  {
+    module: "job",
+    label: "产业岗位学习平台",
+    pages: [
+      {
+        page: "positions",
+        label: "岗位管理",
+        actions: [
+          { action: "submit_approval", label: "提交审批" },
+          { action: "withdraw_approval", label: "撤回审批" },
+          { action: "publish", label: "发布" },
+          { action: "unpublish", label: "取消发布" },
+          { action: "delete", label: "删除" },
+          { action: "review", label: "审核" },
+          { action: "reject", label: "驳回" },
+        ],
+      },
+    ],
+  },
+  {
+    module: "lesson",
+    label: "数字课程服务平台",
+    pages: [
+      {
+        page: "courses",
+        label: "课程管理",
+        actions: [
+          { action: "submit_approval", label: "提交审批" },
+          { action: "withdraw_approval", label: "撤回审批" },
+          { action: "publish", label: "发布" },
+          { action: "unpublish", label: "取消发布" },
+          { action: "delete", label: "删除" },
+          { action: "review", label: "审核" },
+          { action: "reject", label: "驳回" },
+        ],
+      },
+    ],
+  },
+  {
+    module: "evaluation",
+    label: "能力评价与测评管理平台",
+    pages: [
+      {
+        page: "exams",
+        label: "试卷管理",
+        actions: [
+          { action: "submit_approval", label: "提交审批" },
+          { action: "withdraw_approval", label: "撤回审批" },
+          { action: "publish", label: "发布" },
+          { action: "unpublish", label: "取消发布" },
+          { action: "delete", label: "删除" },
+          { action: "review", label: "审核" },
+          { action: "reject", label: "驳回" },
+        ],
+      },
+    ],
+  },
+]
+
+export function getPermissionModuleConfigForRole(permissions: unknown): PermissionModule[] {
+  return permissionModuleConfig
+}

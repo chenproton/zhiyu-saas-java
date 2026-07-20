@@ -240,15 +240,64 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 
 	// 为新租户创建默认角色。
 	// platform_admin 为跨租户运营角色，仅存在于运营方租户（seed/手工创建），普通租户不生成。
+	// 每个角色包含 menus（页面可见性）与结构化 permissions（按钮级操作权限）。
+	// school_admin 不设 menus，默认全部页面可见。
+	teacherMenus := domain.JSONMap{
+		"/lesson/admin/system": true, "/lesson/admin/granular": true, "/lesson/admin/hybrid": true,
+		"/lesson/admin/archive": true, "/lesson/admin/batches": true, "/lesson/admin/workflows": true,
+		"/lesson/admin/approvals": true, "/lesson/teacher/claim": true, "/lesson/teacher/behavior-collection": true,
+		"/lesson/teacher/progress-tracking": true, "/lesson/teacher/final-assessment": true,
+		"/lesson/teacher/grade-submit": true, "/lesson/teacher/learning-portrait": true,
+		"/scene/": true, "/scene/archive": true, "/scene/batches": true, "/scene/workflows": true, "/scene/approvals": true,
+		"/evaluation/question-banks": true, "/evaluation/exams": true, "/evaluation/exam-usage": true,
+		"/evaluation/methods": true, "/evaluation/batches": true, "/evaluation/workflows": true,
+		"/evaluation/approvals": true, "/evaluation/scene-results": true, "/evaluation/job-ability": true,
+		"/evaluation/certificates/templates": true, "/evaluation/graduation/topics": true, "/evaluation/portraits": true,
+	}
+	// 普通内容操作权限（不含 review/reject）
+	contentActions := []string{"submit_approval", "withdraw_approval", "publish", "unpublish", "delete"}
+	// 管理员内容操作权限（含 review/reject）
+	adminActions := []string{"submit_approval", "withdraw_approval", "publish", "unpublish", "delete", "review", "reject"}
+	modPerms := func(actions []string) domain.JSONMap {
+		return domain.JSONMap{
+			"scenarios": actions,
+		}
+	}
+
 	defaultRoles := []struct {
 		code        string
 		name        string
 		permissions domain.JSONMap
 	}{
-		{"school_admin", "学校管理员", domain.JSONMap{"schoolAdmin": true}},
-		{"teacher", "教师", domain.JSONMap{"teacher": true}},
-		{"student", "学生", domain.JSONMap{"student": true}},
-		{"enterprise_mentor", "企业导师", domain.JSONMap{"enterpriseMentor": true}},
+		{"school_admin", "学校管理员", domain.JSONMap{
+			"scene":      modPerms(adminActions),
+			"lesson":     domain.JSONMap{"courses": adminActions},
+			"evaluation": domain.JSONMap{"exams": adminActions},
+			"job":        domain.JSONMap{"positions": adminActions},
+		}},
+		{"teacher", "教师", domain.JSONMap{
+			"menus":      teacherMenus,
+			"scene":      modPerms(contentActions),
+			"lesson":     domain.JSONMap{"courses": contentActions},
+			"evaluation": domain.JSONMap{"exams": contentActions},
+		}},
+		{"student", "学生", domain.JSONMap{
+			"menus": domain.JSONMap{
+				"/lesson/teacher/claim": true, "/lesson/teacher/behavior-collection": true,
+				"/lesson/teacher/progress-tracking": true,
+			},
+		}},
+		{"enterprise_mentor", "企业导师", domain.JSONMap{
+			"menus": domain.JSONMap{
+				"/job/positions": true, "/job/archive": true, "/job/batches": true,
+				"/job/workflows": true, "/job/approvals": true,
+				"/job/recommend": true, "/job/learn-roads": true,
+				"/scene/": true, "/scene/archive": true, "/scene/batches": true,
+				"/scene/workflows": true, "/scene/approvals": true,
+			},
+			"scene": modPerms(contentActions),
+			"job":   domain.JSONMap{"positions": contentActions},
+		}},
 	}
 	for _, role := range defaultRoles {
 		if _, err := tx.Exec(r.Context(), `

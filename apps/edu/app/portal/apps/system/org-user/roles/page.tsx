@@ -20,8 +20,8 @@ import { roleApi, portalUserManagementApi, type User } from "@/lib/api"
 import type { Role } from "@/lib/types/backend"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { useToast } from "@/hooks/use-toast"
-import { buildMenuTree, normalizeMenuPath } from "@/lib/menu-permissions"
-import type { MenuTreeItem } from "@/lib/menu-permissions"
+import { buildMenuTree, normalizeMenuPath, permissionModuleConfig } from "@/lib/menu-permissions"
+import type { MenuTreeItem, PermissionModule } from "@/lib/menu-permissions"
 
 let roleCounter = 5
 
@@ -125,6 +125,7 @@ export default function RolesPage() {
   const [selectedRole, setSelectedRole] = useState<Role | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [checkedMenus, setCheckedMenus] = useState<Set<string>>(new Set())
+  const [checkedActions, setCheckedActions] = useState<Set<string>>(new Set())
   const [editName, setEditName] = useState("")
   const [isSaving, setIsSaving] = useState(false)
 
@@ -171,6 +172,16 @@ export default function RolesPage() {
     })
   }
 
+  const toggleAction = (module: string, page: string, action: string) => {
+    const key = `${module}:${page}:${action}`
+    setCheckedActions((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
   const roleStatus = (role: Role): "active" | "inactive" => {
     if (role.status === "active" || role.status === "inactive") return role.status as "active" | "inactive"
     return role.status ? "active" : "inactive"
@@ -207,6 +218,28 @@ export default function RolesPage() {
     }
     setCheckedMenus(menuSet)
 
+    const actionSet = new Set<string>()
+    if (perms && typeof perms === "object") {
+      for (const mod of permissionModuleConfig) {
+        const modPerms = (perms as Record<string, unknown>)[mod.module]
+        if (modPerms && typeof modPerms === "object") {
+          for (const page of mod.pages) {
+            const pagePerms = (modPerms as Record<string, unknown>)[page.page]
+            if (Array.isArray(pagePerms)) {
+              for (const a of pagePerms) {
+                if (typeof a === "string") actionSet.add(`${mod.module}:${page.page}:${a}`)
+              }
+            } else if (pagePerms && typeof pagePerms === "object" && Array.isArray((pagePerms as Record<string, unknown>).buttons)) {
+              for (const a of (pagePerms as Record<string, unknown>).buttons as string[]) {
+                actionSet.add(`${mod.module}:${page.page}:${a}`)
+              }
+            }
+          }
+        }
+      }
+    }
+    setCheckedActions(actionSet)
+
     setIsPermDialogOpen(true)
   }
 
@@ -226,6 +259,27 @@ export default function RolesPage() {
       walkMenuTree(menuTree)
 
       const permissions: Record<string, any> = { ...(selectedRole.permissions || {}), menus }
+
+      // 保留已有的非 menus 结构权限（如 scene/job/lesson/evaluation），并根据 checkedActions 更新
+      for (const mod of permissionModuleConfig) {
+        const modPerms: Record<string, string[]> = {}
+        for (const page of mod.pages) {
+          const actions: string[] = []
+          for (const a of page.actions) {
+            if (checkedActions.has(`${mod.module}:${page.page}:${a.action}`)) {
+              actions.push(a.action)
+            }
+          }
+          if (actions.length > 0) {
+            modPerms[page.page] = actions
+          }
+        }
+        if (Object.keys(modPerms).length > 0) {
+          permissions[mod.module] = modPerms
+        } else {
+          delete permissions[mod.module]
+        }
+      }
 
       await roleApi.update(selectedRole.id, { ...selectedRole, permissions })
       await fetchData()
@@ -507,6 +561,7 @@ export default function RolesPage() {
           <Tabs defaultValue="menus" className="mt-4">
             <TabsList>
               <TabsTrigger value="menus">菜单权限</TabsTrigger>
+              <TabsTrigger value="actions">操作权限</TabsTrigger>
               <TabsTrigger value="data">数据权限设置</TabsTrigger>
             </TabsList>
             <TabsContent value="menus" className="mt-4">
@@ -518,6 +573,45 @@ export default function RolesPage() {
                   {menuTree.map((node) => (
                     <SystemCard key={node.id} node={node} checked={checkedMenus} onCheck={toggleMenu} />
                   ))}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+            <TabsContent value="actions" className="mt-4">
+              <div className="text-sm text-muted-foreground mb-3">
+                控制各模块页面的操作按钮权限（提交审批、发布、删除、审核等）。
+              </div>
+              <ScrollArea className="border border-border rounded-lg p-4">
+                <div className="space-y-4">
+                  {permissionModuleConfig.map((mod) => (
+                    <div key={mod.module} className="rounded-lg border border-border p-4">
+                      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border">
+                        <LayoutDashboard className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-medium">{mod.label}</span>
+                      </div>
+                      {mod.pages.map((page) => (
+                        <div key={page.page} className="space-y-2">
+                          <span className="text-sm font-medium text-muted-foreground">{page.label}</span>
+                          <div className="flex flex-wrap gap-3">
+                            {page.actions.map((a) => (
+                              <label
+                                key={`${mod.module}:${page.page}:${a.action}`}
+                                className="flex items-center gap-1.5 p-1.5 rounded hover:bg-accent cursor-pointer text-sm"
+                              >
+                                <Checkbox
+                                  checked={checkedActions.has(`${mod.module}:${page.page}:${a.action}`)}
+                                  onCheckedChange={() => toggleAction(mod.module, page.page, a.action)}
+                                />
+                                <span>{a.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                  {permissionModuleConfig.length === 0 && (
+                    <div className="text-sm text-muted-foreground text-center py-8">暂无可配置的操作权限</div>
+                  )}
                 </div>
               </ScrollArea>
             </TabsContent>
