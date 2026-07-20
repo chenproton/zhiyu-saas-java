@@ -349,25 +349,26 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
   return (
     <div className="flex h-[calc(100vh-280px)] min-h-[500px] rounded-xl border border-gray-200 bg-white overflow-hidden">
       {/* Sidebar - Responsibilities */}
-      <div className="w-[40%] shrink-0 border-r border-gray-100 flex flex-col bg-gray-50/50">
-        <div className="shrink-0 px-4 py-3 border-b border-gray-100">
-          <div className="flex items-center justify-between mb-1">
-            <h3 className="text-sm font-medium text-gray-800">工作职责</h3>
+      <div className="w-[36%] shrink-0 border-r flex flex-col bg-gray-50/30">
+        <div className="shrink-0 px-5 py-4 border-b border-gray-100 bg-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-800">工作职责</h3>
+              <p className="text-[11px] text-gray-400 mt-0.5">{totalResponsibilities} 项职责，{totalBindings} 个能力点</p>
+            </div>
             <Button
               size="sm"
-              variant="ghost"
-              className="h-7 w-7 p-0 text-gray-400 hover:text-gray-600"
+              className="h-7 text-xs rounded-full"
               onClick={handleAddResponsibility}
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="mr-1 h-3.5 w-3.5" />添加
             </Button>
           </div>
-          <p className="text-[11px] text-gray-400">{totalResponsibilities} 项职责</p>
         </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
           {position.responsibilities.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-gray-400">
-              <AlertCircle className="h-6 w-6 mb-2 opacity-40" />
+            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+              <AlertCircle className="h-6 w-6 mb-2 opacity-30" />
               <p className="text-xs">暂无工作职责</p>
             </div>
           ) : (
@@ -375,10 +376,11 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
               const bindingCount = position.abilityBindings.filter(b => b.responsibilityId === resp.id).length
               const isSelected = resp.id === selectedRespId
               const isEditing = resp.id === editingRespId
+              const colorClass = getRespColor(resp.id)
               return (
-                <div key={resp.id} className="group">
+                <div key={resp.id} className="group relative">
                   {isEditing ? (
-                    <div className="flex items-center gap-1 px-2 py-1" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center gap-1 px-3 py-1.5" onClick={e => e.stopPropagation()}>
                       <Input
                         value={editRespName}
                         onChange={e => setEditRespName(e.target.value)}
@@ -388,44 +390,41 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                         }}
                         onBlur={handleSaveEditResp}
                         placeholder="输入职责名称..."
-                        className="h-7 text-xs py-0 border-gray-200"
+                        className="h-7 text-xs border-gray-200"
                         autoFocus
                       />
-                      <button
-                        className="shrink-0 p-1 rounded text-gray-400 hover:text-gray-600"
-                        onClick={handleSaveEditResp}
-                      >
+                      <button className="shrink-0 p-1 rounded text-gray-400 hover:text-gray-600" onClick={handleSaveEditResp}>
                         <Check className="h-3 w-3" />
                       </button>
                     </div>
                   ) : (
                     <button
                       onClick={() => scrollToResp(resp.id)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-2 ${
+                      className={`w-full text-left pl-3 pr-1 py-3 rounded-xl text-sm transition-all flex items-center gap-2.5 ${
                         isSelected
-                          ? 'bg-primary/15 text-primary font-medium shadow-sm'
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
+                          ? 'bg-white shadow-sm border border-gray-200'
+                          : 'hover:bg-white/60'
                       }`}
                     >
-                      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${getRespColor(resp.id)}`} />
-                      <span className="flex-1">{resp.name || <span className="text-gray-400 italic">未命名</span>}</span>
-                      <span className="text-[10px] text-gray-400 shrink-0">{bindingCount}</span>
-                      <div className="hidden group-hover:flex items-center gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${colorClass}`} />
+                      <span className={`flex-1 truncate ${isSelected ? 'font-medium text-gray-900' : 'text-gray-700'}`}>
+                        {resp.name || <span className="text-gray-400 italic">未命名</span>}
+                      </span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                        bindingCount > 0 ? 'bg-gray-100 text-gray-600' : 'text-gray-400'
+                      }`}>
+                        {bindingCount}
+                      </span>
+                      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleStartEditResp(resp)
-                          }}
-                          className="p-0.5 rounded text-gray-300 hover:text-gray-600"
+                          onClick={(e) => { e.stopPropagation(); handleStartEditResp(resp) }}
+                          className="p-1 rounded text-gray-300 hover:text-gray-600 hover:bg-gray-100"
                         >
                           <Pencil className="h-3 w-3" />
                         </button>
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleRemoveResponsibility(resp.id)
-                          }}
-                          className="p-0.5 rounded text-gray-300 hover:text-red-500"
+                          onClick={(e) => { e.stopPropagation(); handleRemoveResponsibility(resp.id) }}
+                          className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50"
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>
@@ -433,24 +432,24 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                     </button>
                   )}
                 </div>
-                )
-              })
-            )}
-          </div>
+              )
+            })
+          )}
+        </div>
       </div>
 
       {/* Content - Ability list grouped by responsibility */}
-      <div className="w-[60%] flex flex-col overflow-hidden bg-gray-50/30">
-        {/* Search bar - sticky */}
-        <div className="shrink-0 px-4 py-3 border-b border-gray-100 bg-white">
+      <div className="w-[64%] flex flex-col overflow-hidden bg-gray-50/30">
+        <div className="shrink-0 px-5 py-4 border-b border-gray-100 bg-white">
           <div className="flex items-center gap-3">
-            <h3 className="text-sm font-medium text-gray-800 shrink-0">能力点列表</h3>
-            <span className="text-xs text-gray-400">{totalBindings} 个能力点</span>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-800">能力点列表</h3>
+              <p className="text-[11px] text-gray-400 mt-0.5">共 {totalBindings} 个能力点</p>
+            </div>
             <div className="flex-1" />
             <Button
-              variant="default"
               size="sm"
-              className="h-8 text-xs shrink-0"
+              className="h-7 text-xs rounded-full"
               onClick={() => {
                 setAbilityPoolSearch('')
                 setAbilityPoolFilterAttr(null)
@@ -464,7 +463,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
             <Button
               variant="outline"
               size="sm"
-              className="h-8 text-xs shrink-0"
+              className="h-7 text-xs rounded-full"
               onClick={() => {
                 setDuplicateName(null)
                 setShowCreateDialog(true)
@@ -476,23 +475,22 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
           </div>
         </div>
 
-        {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto" ref={contentRef}>
           {aiNotice && (
-            <div className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50/50 p-3 flex items-start gap-2 text-sm text-amber-800">
+            <div className="mx-3 mt-3 rounded-lg border border-amber-200 bg-amber-50/50 p-3 flex items-start gap-2 text-xs text-amber-700">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
               <span>{aiNotice}</span>
             </div>
           )}
 
           {position.responsibilities.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-              <Brain className="h-12 w-12 mb-4 opacity-25" />
+            <div className="flex flex-col items-center justify-center py-20 text-gray-300">
+              <Brain className="h-10 w-10 mb-3 opacity-20" />
               <p className="text-sm">暂无工作职责和能力点</p>
-              <p className="text-xs mt-1 text-gray-300">请先在左侧添加工作职责，再为其添加能力点</p>
+              <p className="text-xs mt-1">请先在左侧添加工作职责</p>
             </div>
            ) : (
-            <div className="py-4 space-y-8">
+            <div className="py-4 space-y-6 px-3">
               {position.responsibilities.map((resp) => {
                 const respBindings = position.abilityBindings.filter(b => b.responsibilityId === resp.id)
                 const isSelectedGroup = resp.id === selectedRespId
@@ -500,27 +498,31 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                   <div
                     key={resp.id}
                     ref={(el) => { sectionRefs.current[resp.id] = el }}
-                    className={`mx-4 rounded-xl transition-colors ${isSelectedGroup ? 'bg-primary/[0.04] ring-1 ring-primary/15' : ''}`}
                   >
-                    <div className="flex items-center gap-2 px-1 py-2 border-b border-gray-100">
+                    <div className={`flex items-center gap-2 mb-2 px-1 transition-all ${isSelectedGroup ? '' : ''}`}>
                       <div className={`w-2 h-2 rounded-full ${getRespColor(resp.id)}`} />
-                      <h4 className="text-sm font-medium text-gray-700">{resp.name || '未命名职责'}</h4>
-                      <Badge variant="secondary" className="text-[10px] rounded-md px-1.5 py-0 font-normal">
-                        {respBindings.length} 个能力点
-                      </Badge>
+                      <h4 className="text-sm font-semibold text-gray-700">{resp.name || '未命名职责'}</h4>
+                      {respBindings.length > 0 && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">
+                          {respBindings.length}
+                        </span>
+                      )}
                     </div>
-                    <div className="px-1 py-3">
+                    <div className={`${isSelectedGroup ? 'ring-2 ring-primary/20 rounded-2xl' : ''}`}>
                       {respBindings.length === 0 ? (
-                        <p className="text-xs text-gray-400 py-4 italic">暂未配置能力点 — 点击上方「能力点库」或「新建能力点」按钮添加</p>
+                        <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/50 py-8 flex flex-col items-center justify-center">
+                          <p className="text-xs text-gray-400">暂无能力点</p>
+                          <p className="text-[10px] text-gray-300 mt-1">点击上方按钮添加</p>
+                        </div>
                       ) : (
-                        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))' }}>
+                        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
                           {respBindings.map((binding) => {
                             const levelIdx = COMPETENCY_LEVELS.findIndex(l => l.value === binding.level)
                             const colorClass = getRespColor(binding.responsibilityId)
                             return (
                               <div
                                 key={binding.id}
-                                className="rounded-xl border border-gray-200 bg-white p-4 hover:shadow-md transition-shadow group"
+                                className="rounded-xl border border-gray-200 bg-white p-4 hover:border-gray-300 hover:shadow-sm transition-all group"
                               >
                                 <div className="flex items-start justify-between mb-3">
                                   <div className="flex items-center gap-2 min-w-0 pr-1">
@@ -529,23 +531,23 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                                   </div>
                                   <button
                                     onClick={() => handleRemoveBinding(binding.id)}
-                                    className="shrink-0 p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                                    title="删除"
+                                    className="shrink-0 p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                                    title="移除"
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </button>
                                 </div>
 
-                                <div className="relative pt-3 pb-4 mb-3 mx-1">
-                                  <div className="absolute top-[17px] left-[7px] right-[7px] h-1.5 bg-gray-100 rounded-full" />
+                                <div className="relative mb-3 mx-2">
+                                  <div className="absolute top-2 left-0 right-0 h-1.5 bg-gray-100 rounded-full" />
                                   <div
-                                    className="absolute top-[17px] left-[7px] h-1.5 rounded-full transition-all"
+                                    className="absolute top-2 left-0 h-1.5 rounded-full transition-all duration-300"
                                     style={{
-                                      width: `calc(${(levelIdx / (COMPETENCY_LEVELS.length - 1)) * 100}% - 14px)`,
-                                      background: 'linear-gradient(90deg, #6366f1, #818cf8)',
+                                      width: `${Math.max(0, (levelIdx / (COMPETENCY_LEVELS.length - 1)) * 100)}%`,
+                                      background: 'linear-gradient(90deg, #6366f1, #a78bfa)',
                                     }}
                                   />
-                                  <div className="relative flex justify-between">
+                                  <div className="relative flex justify-between pt-3">
                                     {COMPETENCY_LEVELS.map((level, idx) => {
                                       const isReached = idx <= levelIdx
                                       return (
@@ -553,7 +555,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                                           key={level.value}
                                           type="button"
                                           onClick={() => handleUpdateBinding(binding.id, { level: level.value })}
-                                          className={`w-3.5 h-3.5 rounded-full border-2 transition-all ${
+                                          className={`w-3 h-3 rounded-full border-2 transition-all ${
                                             idx === levelIdx
                                               ? 'border-indigo-500 bg-indigo-500 scale-125'
                                               : isReached
@@ -569,12 +571,12 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                                     {COMPETENCY_LEVELS.map((level, idx) => (
                                       <span
                                         key={level.value}
-                                        className={`text-[10px] transition-colors ${
+                                        className={`text-[9px] font-medium transition-colors ${
                                           idx === levelIdx
-                                            ? 'text-indigo-600 font-medium'
+                                            ? 'text-indigo-600'
                                             : idx <= levelIdx
                                               ? 'text-indigo-400'
-                                              : 'text-gray-400'
+                                              : 'text-gray-300'
                                         }`}
                                       >
                                         {level.label}
@@ -588,7 +590,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                                     value={binding.rubricDescription}
                                     onChange={(e) => handleUpdateBinding(binding.id, { rubricDescription: e.target.value })}
                                     placeholder="胜任标准描述..."
-                                    className="text-xs min-h-[48px] resize-none border-gray-100 focus:border-gray-300 bg-gray-50/50 rounded-lg"
+                                    className="text-[11px] min-h-[44px] resize-none border-gray-100 focus:border-gray-300 bg-gray-50/50 rounded-lg placeholder:text-gray-300"
                                     rows={2}
                                   />
                                 </div>
@@ -604,8 +606,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
             </div>
           )}
 
-          {/* Bottom padding */}
-          <div className="h-8" />
+          <div className="h-6" />
         </div>
       </div>
 
