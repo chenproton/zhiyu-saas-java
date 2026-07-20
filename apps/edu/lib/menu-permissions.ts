@@ -50,29 +50,11 @@ export function buildMenuTree(): MenuTreeItem[] {
       label: "系统设置",
       children: [
         { id: "system-entry-main", label: "系统管理入口", href: "/portal/apps/system" },
-      ],
-    },
-    {
-      id: "tenant",
-      label: "租户信息管理",
-      children: [
         { id: "tenant-config", label: "租户信息管理", href: "/portal/apps/system/tenant" },
-      ],
-    },
-    {
-      id: "resource",
-      label: "系统资源管理",
-      children: [
         { id: "resource-package", label: "套餐情况查看", href: "/portal/apps/system/resource/package" },
         { id: "resource-codes", label: "资源编码管理", href: "/portal/apps/system/resource/codes" },
         { id: "resource-industries", label: "行业管理", href: "/portal/apps/system/resource/industries" },
         { id: "resource-majors", label: "专业管理", href: "/portal/apps/system/resource/majors" },
-      ],
-    },
-    {
-      id: "org-user",
-      label: "组织用户管理",
-      children: [
         { id: "org-user-teachers", label: "教职工管理", href: "/portal/apps/system/org-user/teachers" },
         { id: "org-user-students", label: "学生管理", href: "/portal/apps/system/org-user/students" },
         { id: "org-user-graduates", label: "毕业学生管理", href: "/portal/apps/system/org-user/graduates" },
@@ -83,12 +65,6 @@ export function buildMenuTree(): MenuTreeItem[] {
         { id: "org-user-org-structure", label: "组织架构管理", href: "/portal/apps/system/org-user/org-structure" },
         { id: "org-user-fields", label: "用户字段扩展", href: "/portal/apps/system/org-user/fields" },
         { id: "org-user-relations", label: "关系类型管理", href: "/portal/apps/system/org-user/relations" },
-      ],
-    },
-    {
-      id: "logs",
-      label: "日志管理",
-      children: [
         { id: "logs-login", label: "登录日志查看", href: "/portal/apps/system/logs/login" },
         { id: "logs-operation", label: "操作日志查看", href: "/portal/apps/system/logs/operation" },
       ],
