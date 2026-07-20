@@ -647,6 +647,11 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 				id, tenant_id, career_position_id, responsibility_id, ability_point_id, source,
 				domain, required_level, rubric_description, attributes, weight
 			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			ON CONFLICT (career_position_id, responsibility_id, ability_point_id) DO UPDATE SET
+				domain = EXCLUDED.domain,
+				required_level = EXCLUDED.required_level,
+				rubric_description = EXCLUDED.rubric_description,
+				attributes = EXCLUDED.attributes
 		`, bindingID, claims.TenantID, id, respBackendID, abilityPointID, binding.Source,
 			domainField, binding.Level, rubricDesc, coalesceStringSlice(binding.Attributes), 0)
 		if err != nil {
