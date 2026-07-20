@@ -87,6 +87,7 @@ type OrgType struct {
 	Name        string          `json:"name"`
 	Category    OrgTypeCategory `json:"category"`
 	Description *string         `json:"description,omitempty"`
+	IsDefault   bool            `json:"isDefault"`
 	CreatedAt   time.Time       `json:"createdAt"`
 }
 

@@ -34,6 +34,7 @@ export interface OrgType {
   name: string
   category: "internal" | "business" | "external"
   description?: string
+  isDefault?: boolean
   createdAt: string
 }
 

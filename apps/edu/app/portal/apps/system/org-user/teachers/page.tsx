@@ -18,6 +18,7 @@ import { useOrgTree } from "@/hooks/use-org-tree"
 import { OrgNodePicker } from "@/components/shared/org-node-picker"
 import { OrgFilterTree, collectOrgSubtreeIds } from "@/components/shared/org-filter-tree"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { ResetPasswordDialog } from "@/components/shared/reset-password-dialog"
 import { portalUserManagementApi, portalStaffTitleApi } from "@/lib/api"
 import type { StaffTitle } from "@/lib/types/backend"
 import { MultiSelectSearch } from "@/components/ui/multi-select-search"
@@ -73,6 +74,7 @@ export default function TeachersPage() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [selectedTeachers, setSelectedTeachers] = useState<string[]>([])
   const [batchDeleting, setBatchDeleting] = useState(false)
+  const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null)
 
   const [formName, setFormName] = useState("")
   const [formUsername, setFormUsername] = useState("")
@@ -278,16 +280,8 @@ export default function TeachersPage() {
     await refetch()
   }
 
-  const resetPassword = async (teacher: Teacher) => {
-    const password = window.prompt(`请输入 ${teacher.name} 的新密码：`)
-    if (!password) return
-    try {
-      await portalUserManagementApi.resetPassword(teacher.id, password)
-      toast({ title: "密码重置成功" })
-      await refetch()
-    } catch (err) {
-      toast({ variant: "destructive", title: "重置失败", description: err instanceof Error ? err.message : "未知错误" })
-    }
+  const resetPassword = (teacher: Teacher) => {
+    setResetTarget({ id: teacher.id, name: teacher.name })
   }
 
   return (
@@ -581,6 +575,17 @@ export default function TeachersPage() {
         confirmText="删除"
         variant="destructive"
         onConfirm={confirmDeleteTeacher}
+      />
+
+      <ResetPasswordDialog
+        open={!!resetTarget}
+        onOpenChange={(open) => { if (!open) setResetTarget(null) }}
+        userId={resetTarget?.id}
+        userName={resetTarget?.name}
+        onSuccess={async () => {
+          toast({ title: "密码重置成功" })
+          await refetch()
+        }}
       />
     </div>
   )

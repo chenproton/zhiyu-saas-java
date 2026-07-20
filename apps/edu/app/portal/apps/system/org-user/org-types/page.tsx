@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Plus, Pencil, Trash2, Search, Upload, Download, AlertCircle, MoreHorizontal } from "lucide-react"
 import { orgTypeApi } from "@/lib/api"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import type { OrgType } from "@/lib/types/backend"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { useToast } from "@/hooks/use-toast"
@@ -38,6 +39,7 @@ export default function OrgTypesPage() {
   const [formName, setFormName] = useState("")
   const [formCategory, setFormCategory] = useState<string>("internal")
   const [isSaving, setIsSaving] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<OrgType | null>(null)
 
   const fetchData = async () => {
     if (!tenantId) {
@@ -64,12 +66,14 @@ export default function OrgTypesPage() {
 
   const filteredTypes = orgTypes.filter((type) => type.name.includes(searchTerm))
 
-  const deleteType = async (id: string) => {
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
     try {
-      await orgTypeApi.delete(id)
-      setOrgTypes((prev) => prev.filter((t) => t.id !== id))
+      await orgTypeApi.delete(deleteTarget.id)
+      setOrgTypes((prev) => prev.filter((t) => t.id !== deleteTarget.id))
+      setDeleteTarget(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "删除组织类型失败")
+      toast({ variant: "destructive", title: "删除失败", description: err instanceof Error ? err.message : "删除组织类型失败" })
     }
   }
 
@@ -145,7 +149,14 @@ export default function OrgTypesPage() {
                 ) : (
                   filteredTypes.map((type) => (
                     <TableRow key={type.id} className="border-border">
-                      <TableCell className="font-medium">{type.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {type.name}
+                          {type.isDefault && (
+                            <Badge variant="outline" className="text-xs">系统默认</Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge className={categoryColors[type.category]}>{categoryLabels[type.category]}</Badge>
                       </TableCell>
@@ -161,9 +172,15 @@ export default function OrgTypesPage() {
                             <DropdownMenuItem onClick={() => { setSelectedType(type); setFormName(type.name); setFormCategory(type.category); setIsDialogOpen(true) }}>
                               编辑
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => deleteType(type.id)}>
-                              删除
-                            </DropdownMenuItem>
+                            {!type.isDefault ? (
+                              <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTarget(type)}>
+                                删除
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem disabled>
+                                系统默认类型不可删除
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -223,6 +240,16 @@ export default function OrgTypesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="确认删除"
+        description={`确定删除组织类型「${deleteTarget?.name}」吗？如果该类型仍被组织使用，删除可能会失败。`}
+        confirmText="删除"
+        variant="destructive"
+        onConfirm={confirmDelete}
+      />
     </div>
   )
 }

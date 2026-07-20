@@ -172,6 +172,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 	auth := authmw.JWT(jwtSecret)
 	platformAdmin := authmw.RequireRole("platform_admin")
 	schoolAdmin := authmw.RequireRole("school_admin")
+	systemAdmin := authmw.RequireSystemPermission()
 	portalWorkspace := authmw.RequireRole("teacher", "student", "school_admin")
 	// 业务内容路由不再按角色 code 限制：页面入口由角色菜单权限（roles.permissions.menus）
 	// 在前端控制，写操作由 handler 内的 canModifyContent 控制。
@@ -264,7 +265,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 			r.Get("/evaluation/landing/certifications/{id}/grades", certGradeHandler.ListGrades)
 
 			r.Group(func(r chi.Router) {
-				r.Use(schoolAdmin)
+				r.Use(systemAdmin)
 
 				// Phase 3.1: portal management routes
 				// 认证版租户创建/状态变更为死路径（要求 platform_admin，但该角色仅存在于运营方，
@@ -294,9 +295,9 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 				r.Post("/users/{id}/status", userManagementHandler.UpdateStatus)
 				r.Post("/users/{id}/reset-password", userManagementHandler.ResetPassword)
 				r.Post("/users/{id}/roles", userManagementHandler.BindRoles)
-			r.Post("/users/batch", userManagementHandler.BatchCreate)
-			r.Post("/users/batch-graduate", userManagementHandler.BatchGraduate)
-			r.Post("/users/batch-delete", userManagementHandler.BatchDelete)
+				r.Post("/users/batch", userManagementHandler.BatchCreate)
+				r.Post("/users/batch-graduate", userManagementHandler.BatchGraduate)
+				r.Post("/users/batch-delete", userManagementHandler.BatchDelete)
 
 				r.Route("/staff-titles", func(r chi.Router) {
 					r.Get("/", staffTitleHandler.List)
@@ -337,8 +338,8 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 				r.Put("/industries/{id}", industryHandler.Update)
 				r.Delete("/industries/{id}", industryHandler.Delete)
 
-			r.Get("/resource-codes", resourceCodeHandler.List)
-			r.Get("/resource-codes/{id}", resourceCodeHandler.Get)
+				r.Get("/resource-codes", resourceCodeHandler.List)
+				r.Get("/resource-codes/{id}", resourceCodeHandler.Get)
 
 				r.Get("/logs/login", logHandler.LoginLogs)
 				r.Get("/logs/operation", logHandler.OperationLogs)
@@ -350,8 +351,13 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 				r.Get("/platform-links/{id}", platformLinkHandler.Get)
 
 				r.Get("/app-modules/{id}", appModuleHandler.Get)
+			})
 
-				// Shared workflow & approval routes
+			// Shared workflow & approval routes (kept behind school_admin to preserve
+			// existing access while system settings use the permission-based middleware).
+			r.Group(func(r chi.Router) {
+				r.Use(schoolAdmin)
+
 				r.Get("/workflows", workflowHandler.List)
 				r.Post("/workflows", workflowHandler.Create)
 				r.Get("/workflows/{id}", workflowHandler.Get)

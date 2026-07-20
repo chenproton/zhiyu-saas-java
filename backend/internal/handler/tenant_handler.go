@@ -232,13 +232,13 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 
 	// 为新租户初始化默认组织类型
 	if _, err := tx.Exec(r.Context(), `
-		INSERT INTO org_types (tenant_id, name, category, description)
+		INSERT INTO org_types (tenant_id, name, category, description, is_default)
 		VALUES
-			($1, '学校', 'internal', '学校根节点'),
-			($1, '二级学院', 'internal', '二级学院/系'),
-			($1, '专业', 'internal', '专业节点'),
-			($1, '班级', 'internal', '班级节点'),
-			($1, '行政职能部门', 'internal', '行政职能部门')
+			($1, '学校', 'internal', '学校根节点', TRUE),
+			($1, '二级学院', 'internal', '二级学院/系', TRUE),
+			($1, '专业', 'internal', '专业节点', TRUE),
+			($1, '班级', 'internal', '班级节点', TRUE),
+			($1, '行政职能部门', 'internal', '行政职能部门', TRUE)
 		ON CONFLICT DO NOTHING
 	`, id); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create default org types")

@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sort"
 	"strings"
@@ -241,6 +242,10 @@ func (h *OrgHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if !verifyRequestTenant(w, r, req.TenantID) {
 		return
 	}
+	if err := h.validateOrgRefs(r.Context(), req.TenantID, req.TypeID, req.ParentID); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 
 	id := uuid.NewString()
 
@@ -307,6 +312,11 @@ func (h *OrgHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusBadRequest, "cannot set a descendant node as parent")
 			return
 		}
+	}
+
+	if err := h.validateOrgRefs(r.Context(), org.TenantID, req.TypeID, req.ParentID); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
 	}
 
 	_, err = h.DB.Exec(r.Context(), `
@@ -446,4 +456,24 @@ func computeSubtreeMemberCount(node *OrgTreeNode) int {
 	}
 	node.MemberCount = sum
 	return sum
+}
+
+func (h *OrgHandler) validateOrgRefs(ctx context.Context, tenantID, typeID string, parentID *string) error {
+	var typeExists bool
+	if err := h.DB.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM org_types WHERE id = $1 AND tenant_id = $2)`,
+		typeID, tenantID,
+	).Scan(&typeExists); err != nil || !typeExists {
+		return fmt.Errorf("invalid typeId")
+	}
+	if parentID != nil && *parentID != "" {
+		var parentExists bool
+		if err := h.DB.QueryRow(ctx,
+			`SELECT EXISTS(SELECT 1 FROM organizations WHERE id = $1 AND tenant_id = $2)`,
+			*parentID, tenantID,
+		).Scan(&parentExists); err != nil || !parentExists {
+			return fmt.Errorf("invalid parentId")
+		}
+	}
+	return nil
 }

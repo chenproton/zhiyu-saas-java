@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
@@ -132,4 +133,55 @@ func IsPlatformAdmin(claims *Claims) bool {
 // IsSchoolAdmin is a convenience helper for portal system management routes.
 func IsSchoolAdmin(claims *Claims) bool {
 	return HasRole(claims, "school_admin")
+}
+
+// HasSystemPermission reports whether the user is allowed to access portal
+// system management routes. It mirrors the frontend menu permission model:
+// - no permissions object, or no "menus" key, means no menu restriction
+//   (backward compatible with the default school_admin role).
+// - admin flag grants all permissions.
+// - a granted menu path under /portal/apps/system allows system access.
+func HasSystemPermission(claims *Claims) bool {
+	if claims == nil {
+		return false
+	}
+	if len(claims.Permissions) == 0 {
+		return true
+	}
+	if admin, ok := claims.Permissions["admin"].(bool); ok && admin {
+		return true
+	}
+	menusVal, hasMenus := claims.Permissions["menus"]
+	if !hasMenus {
+		return true
+	}
+	menus, ok := menusVal.(map[string]interface{})
+	if !ok {
+		return true
+	}
+	for path, granted := range menus {
+		if val, ok := granted.(bool); ok && val && strings.HasPrefix(path, "/portal/apps/system") {
+			return true
+		}
+	}
+	return false
+}
+
+// RequireSystemPermission returns a middleware that only allows users with
+// system management menu permission, school_admin role, or platform_admin role.
+func RequireSystemPermission() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims := CurrentUser(r)
+			if claims == nil {
+				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+			if HasSystemPermission(claims) || HasRole(claims, "school_admin") || HasRole(claims, "platform_admin") {
+				next.ServeHTTP(w, r)
+				return
+			}
+			http.Error(w, `{"error":"permission denied"}`, http.StatusForbidden)
+		})
+	}
 }

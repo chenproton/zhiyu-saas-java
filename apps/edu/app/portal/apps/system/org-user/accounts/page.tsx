@@ -15,6 +15,7 @@ import { useOrgTree } from "@/hooks/use-org-tree"
 import { portalUserManagementApi } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
+import { ResetPasswordDialog } from "@/components/shared/reset-password-dialog"
 import { Search, MoreHorizontal, Trash2, Loader2, AlertCircle, RotateCcw, Check, ChevronDown, X, ChevronLeft, ChevronRight } from "lucide-react"
 
 function mapAccountStatus(status: string): { label: string; className: string } {
@@ -41,6 +42,8 @@ export default function AccountsPage() {
   const [bindRoleIds, setBindRoleIds] = useState<string[]>([])
   const [bindSaving, setBindSaving] = useState(false)
   const [rolePickerOpen, setRolePickerOpen] = useState(false)
+
+  const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null)
 
   const openBindDialog = (account: { id: string; name: string; roleIds: string[] }) => {
     setBindTarget({ id: account.id, name: account.name })
@@ -69,16 +72,8 @@ export default function AccountsPage() {
     }
   }
 
-  const handleResetPassword = async (id: string, name: string) => {
-    const password = window.prompt(`请输入 ${name} 的新密码：`)
-    if (!password) return
-    try {
-      await portalUserManagementApi.resetPassword(id, password)
-      toast({ title: "密码重置成功" })
-      await refetch()
-    } catch (err) {
-      toast({ variant: "destructive", title: "重置失败", description: err instanceof Error ? err.message : "未知错误" })
-    }
+  const handleResetPassword = (id: string, name: string) => {
+    setResetTarget({ id, name })
   }
 
   const handleToggleStatus = async (id: string, currentStatus: string) => {
@@ -380,6 +375,17 @@ export default function AccountsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ResetPasswordDialog
+        open={!!resetTarget}
+        onOpenChange={(open) => { if (!open) setResetTarget(null) }}
+        userId={resetTarget?.id}
+        userName={resetTarget?.name}
+        onSuccess={async () => {
+          toast({ title: "密码重置成功" })
+          await refetch()
+        }}
+      />
     </div>
   )
 }

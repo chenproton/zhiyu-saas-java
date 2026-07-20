@@ -419,6 +419,10 @@ func (h *UserManagementHandler) ResetPassword(w http.ResponseWriter, r *http.Req
 		respondError(w, http.StatusBadRequest, "password is required")
 		return
 	}
+	if !isStrongPassword(req.Password) {
+		respondError(w, http.StatusBadRequest, "密码长度至少 8 位，且需同时包含字母和数字")
+		return
+	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {

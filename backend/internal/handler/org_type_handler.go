@@ -88,7 +88,7 @@ func (h *OrgTypeHandler) List(w http.ResponseWriter, r *http.Request) {
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT id, tenant_id, name, category, description, created_at
+		SELECT id, tenant_id, name, category, description, is_default, created_at
 		FROM org_types
 		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY created_at DESC
@@ -235,6 +235,11 @@ func (h *OrgTypeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if orgType.IsDefault {
+		respondError(w, http.StatusConflict, "系统默认组织类型不可删除")
+		return
+	}
+
 	var refCount int
 	if err := h.DB.QueryRow(r.Context(), `SELECT COUNT(*) FROM organizations WHERE type_id = $1`, id).Scan(&refCount); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to check org type references")
@@ -258,10 +263,10 @@ func (h *OrgTypeHandler) fetchOrgType(ctx context.Context, id string) (domain.Or
 	var description *string
 
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, tenant_id, name, category, description, created_at
+		SELECT id, tenant_id, name, category, description, is_default, created_at
 		FROM org_types WHERE id = $1
 	`, id).Scan(
-		&ot.ID, &ot.TenantID, &ot.Name, &ot.Category, &description, &ot.CreatedAt,
+		&ot.ID, &ot.TenantID, &ot.Name, &ot.Category, &description, &ot.IsDefault, &ot.CreatedAt,
 	)
 	if err != nil {
 		return ot, err
@@ -276,7 +281,7 @@ func (h *OrgTypeHandler) scanOrgTypeRows(rows pgx.Rows) ([]domain.OrgType, error
 		var ot domain.OrgType
 		var description *string
 		if err := rows.Scan(
-			&ot.ID, &ot.TenantID, &ot.Name, &ot.Category, &description, &ot.CreatedAt,
+			&ot.ID, &ot.TenantID, &ot.Name, &ot.Category, &description, &ot.IsDefault, &ot.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

@@ -45,7 +45,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { orgApi, orgTypeApi } from "@/lib/api"
+import { orgApi, orgTypeApi, portalUserManagementApi } from "@/lib/api"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import type { Organization, OrgType } from "@/lib/types/backend"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
@@ -219,6 +219,8 @@ export default function OrgStructurePage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<OrgNode | null>(null)
+  const [graduateTarget, setGraduateTarget] = useState<OrgNode | null>(null)
+  const [graduateLoading, setGraduateLoading] = useState(false)
   const nodeRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   useEffect(() => {
@@ -350,6 +352,8 @@ export default function OrgStructurePage() {
       openDialog("edit", node)
     } else if (action === "delete") {
       handleDelete(node)
+    } else if (action === "graduate") {
+      setGraduateTarget(node)
     }
   }
 
@@ -454,6 +458,31 @@ export default function OrgStructurePage() {
       toast({ variant: "destructive", title: "删除失败", description: err instanceof Error ? err.message : "未知错误" })
     } finally {
       setDeleteTarget(null)
+    }
+  }
+
+  const confirmGraduate = async () => {
+    if (!graduateTarget || !tenantId) return
+    setGraduateLoading(true)
+    try {
+      const res = await portalUserManagementApi.list({
+        tenantId,
+        orgNodeId: graduateTarget.id,
+        status: "active",
+        limit: 1000,
+      })
+      const userIds = res.items.map((u) => u.id)
+      if (userIds.length === 0) {
+        toast({ title: "暂无在籍学生", description: "该班级下没有可毕业的在籍学生" })
+        return
+      }
+      await portalUserManagementApi.batchGraduate({ userIds })
+      toast({ title: "批量毕业成功", description: `已将 ${userIds.length} 名学生状态改为毕业` })
+    } catch (err) {
+      toast({ variant: "destructive", title: "批量毕业失败", description: err instanceof Error ? err.message : "未知错误" })
+    } finally {
+      setGraduateLoading(false)
+      setGraduateTarget(null)
     }
   }
 
@@ -670,6 +699,16 @@ export default function OrgStructurePage() {
         confirmText="删除"
         variant="destructive"
         onConfirm={confirmDelete}
+      />
+
+      <ConfirmDialog
+        open={!!graduateTarget}
+        onOpenChange={(open) => !open && !graduateLoading && setGraduateTarget(null)}
+        title="确认批量毕业"
+        description={`确定将「${graduateTarget?.name}」下的在籍学生全部标记为毕业吗？此操作不可撤销。`}
+        confirmText="确认毕业"
+        variant="destructive"
+        onConfirm={confirmGraduate}
       />
     </div>
   )

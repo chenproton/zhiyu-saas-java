@@ -14,13 +14,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+
 import {
   Loader2,
   Pencil,
@@ -85,7 +79,6 @@ export default function TenantPage() {
     address: "",
     enterpriseCode: "",
     description: "",
-    status: "active" as "active" | "inactive",
   })
   const [submitting, setSubmitting] = useState(false)
   const { toast } = useToast()
@@ -99,7 +92,6 @@ export default function TenantPage() {
       address: t.address === "-" ? "" : t.address,
       enterpriseCode: t.enterpriseCode === "-" ? "" : t.enterpriseCode,
       description: t.description === "-" ? "" : t.description,
-      status: t.status,
     })
   }
 
@@ -285,13 +277,11 @@ export default function TenantPage() {
               </div>
               <div className="grid gap-2">
                 <Label>租户状态</Label>
-                <Select value={formData.status} onValueChange={(v) => setFormData((prev) => ({ ...prev, status: v as "active" | "inactive" }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">启用</SelectItem>
-                    <SelectItem value="inactive">停用</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input
+                  value={tenant?.status === "active" ? "启用" : "停用"}
+                  disabled
+                  className="bg-muted"
+                />
               </div>
             </div>
             <div className="grid gap-2">

@@ -5,10 +5,31 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"unicode"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 )
+
+// isStrongPassword requires at least 8 characters and at least one letter and one digit.
+func isStrongPassword(password string) bool {
+	if len(password) < 8 {
+		return false
+	}
+	var hasLetter, hasDigit bool
+	for _, r := range password {
+		switch {
+		case unicode.IsLetter(r):
+			hasLetter = true
+		case unicode.IsDigit(r):
+			hasDigit = true
+		}
+		if hasLetter && hasDigit {
+			return true
+		}
+	}
+	return false
+}
 
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
@@ -61,9 +82,12 @@ func schoolAdminOnly(claims *middleware.Claims) bool {
 	return middleware.HasRole(claims, "school_admin")
 }
 
-// canManagePortal returns true for school admins (portal system management).
+// canManagePortal returns true for portal system management.
+// It prefers the permission-based system menu check so that custom roles
+// granted system settings menus also work, while keeping school_admin and
+// platform_admin as fallbacks for backward compatibility.
 func canManagePortal(claims *middleware.Claims) bool {
-	return schoolAdminOnly(claims)
+	return middleware.HasSystemPermission(claims) || schoolAdminOnly(claims) || canManagePlatform(claims)
 }
 
 // canManagePlatform returns true for platform-level configuration/operation.
