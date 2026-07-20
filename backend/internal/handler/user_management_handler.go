@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -235,6 +236,8 @@ func (h *UserManagementHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.createSingleUser(r.Context(), req)
 	if err != nil {
+		log.Printf("ERROR createSingleUser: %v, req: tenantId=%s roleId=%v username=%s platform=%s",
+			err, req.TenantID, req.RoleID, req.Username, req.Platform)
 		respondError(w, http.StatusInternalServerError, "failed to create user")
 		return
 	}
@@ -619,6 +622,7 @@ func (h *UserManagementHandler) createSingleUserInTx(ctx context.Context, tx pgx
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
+		log.Printf("ERROR bcrypt in createSingleUserInTx: %v", err)
 		return domain.User{}, err
 	}
 
@@ -637,6 +641,8 @@ func (h *UserManagementHandler) createSingleUserInTx(ctx context.Context, tx pgx
 		role, platform, req.Username, string(hash), req.Name, req.Email, req.Phone, req.AvatarURL,
 		req.StudentNo, req.WorkID, req.IDCard, coalesceStringSlice(req.TitleIDs), domain.JSONMap{})
 	if err != nil {
+		log.Printf("ERROR INSERT users in createSingleUserInTx: %v, tenantId=%s roleId=%v username=%s",
+			err, req.TenantID, req.RoleID, req.Username)
 		return domain.User{}, err
 	}
 
