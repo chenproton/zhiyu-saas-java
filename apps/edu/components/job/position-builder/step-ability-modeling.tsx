@@ -515,39 +515,39 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                           <p className="text-[10px] text-gray-300 mt-1">点击上方按钮添加</p>
                         </div>
                       ) : (
-                        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+                        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
                           {respBindings.map((binding) => {
                             const levelIdx = COMPETENCY_LEVELS.findIndex(l => l.value === binding.level)
                             const colorClass = getRespColor(binding.responsibilityId)
                             return (
                               <div
                                 key={binding.id}
-                                className="rounded-xl border border-gray-200 bg-white p-4 hover:border-gray-300 hover:shadow-sm transition-all group"
+                                className="rounded-2xl border border-gray-200 bg-white p-5 hover:border-indigo-200 hover:shadow-md transition-all duration-200 group"
                               >
-                                <div className="flex items-start justify-between mb-3">
-                                  <div className="flex items-center gap-2 min-w-0 pr-1">
-                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${colorClass}`} />
+                                <div className="flex items-start justify-between mb-4">
+                                  <div className="flex items-center gap-2.5 min-w-0 pr-1">
+                                    <div className={`w-2 h-2 rounded-full shrink-0 ${colorClass}`} />
                                     <span className="text-sm font-semibold text-gray-800 block truncate">{binding.name}</span>
                                   </div>
                                   <button
                                     onClick={() => handleRemoveBinding(binding.id)}
-                                    className="shrink-0 p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                                    className="shrink-0 p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
                                     title="移除"
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </button>
                                 </div>
 
-                                <div className="relative mb-3 mx-2">
-                                  <div className="absolute top-2 left-0 right-0 h-1.5 bg-gray-100 rounded-full" />
+                                <div className="relative mb-4 mx-1">
+                                  <div className="absolute top-2.5 left-[6px] right-[6px] h-2 bg-gray-100 rounded-full" />
                                   <div
-                                    className="absolute top-2 left-0 h-1.5 rounded-full transition-all duration-300"
+                                    className="absolute top-2.5 left-[6px] h-2 rounded-full transition-all duration-300"
                                     style={{
-                                      width: `${Math.max(0, (levelIdx / (COMPETENCY_LEVELS.length - 1)) * 100)}%`,
+                                      width: `calc(${Math.max(0, (levelIdx / (COMPETENCY_LEVELS.length - 1)) * 100)}% - 12px)`,
                                       background: 'linear-gradient(90deg, #6366f1, #a78bfa)',
                                     }}
                                   />
-                                  <div className="relative flex justify-between pt-3">
+                                  <div className="relative flex justify-between pt-4">
                                     {COMPETENCY_LEVELS.map((level, idx) => {
                                       const isReached = idx <= levelIdx
                                       return (
@@ -555,23 +555,23 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                                           key={level.value}
                                           type="button"
                                           onClick={() => handleUpdateBinding(binding.id, { level: level.value })}
-                                          className={`w-3 h-3 rounded-full border-2 transition-all ${
+                                          className={`w-3.5 h-3.5 rounded-full border-2 transition-all ${
                                             idx === levelIdx
-                                              ? 'border-indigo-500 bg-indigo-500 scale-125'
+                                              ? 'border-indigo-500 bg-white ring-2 ring-indigo-200 scale-110'
                                               : isReached
                                                 ? 'border-indigo-300 bg-indigo-200'
-                                                : 'border-gray-300 bg-white hover:border-gray-400'
+                                                : 'border-gray-300 bg-white hover:border-indigo-400'
                                           }`}
                                           title={level.description}
                                         />
                                       )
                                     })}
                                   </div>
-                                  <div className="relative flex justify-between mt-1.5">
+                                  <div className="relative flex justify-between mt-2">
                                     {COMPETENCY_LEVELS.map((level, idx) => (
                                       <span
                                         key={level.value}
-                                        className={`text-[9px] font-medium transition-colors ${
+                                        className={`text-[10px] font-medium transition-colors ${
                                           idx === levelIdx
                                             ? 'text-indigo-600'
                                             : idx <= levelIdx
@@ -590,7 +590,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                                     value={binding.rubricDescription}
                                     onChange={(e) => handleUpdateBinding(binding.id, { rubricDescription: e.target.value })}
                                     placeholder="胜任标准描述..."
-                                    className="text-[11px] min-h-[44px] resize-none border-gray-100 focus:border-gray-300 bg-gray-50/50 rounded-lg placeholder:text-gray-300"
+                                    className="text-[11px] min-h-[40px] resize-none border-gray-100 focus:border-indigo-300 bg-gray-50/50 rounded-xl placeholder:text-gray-300"
                                     rows={2}
                                   />
                                 </div>
