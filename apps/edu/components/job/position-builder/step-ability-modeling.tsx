@@ -490,7 +490,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
               <p className="text-xs mt-1">请先在左侧添加工作职责</p>
             </div>
            ) : (
-            <div className="py-5 space-y-12 px-5">
+            <div className="py-5 space-y-6 px-5">
               {position.responsibilities.map((resp) => {
                 const respBindings = position.abilityBindings.filter(b => b.responsibilityId === resp.id)
                 const isSelectedGroup = resp.id === selectedRespId
