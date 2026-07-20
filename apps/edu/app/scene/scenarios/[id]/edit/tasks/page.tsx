@@ -567,6 +567,12 @@ export default function TasksEditPage() {
   const [users, setUsers] = useState<any[]>([])
   const [positionAbilityBindings, setPositionAbilityBindings] = useState<any[]>([])
 
+  const userNameMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    users.forEach((u: any) => { map[u.id] = u.name || u.id })
+    return map
+  }, [users])
+
   // Load all data from APIs on mount
   useEffect(() => {
     const load = async () => {
@@ -1436,6 +1442,7 @@ export default function TasksEditPage() {
           positionId={existingScenario?.positionId}
           toast={toast}
           positionAbilityBindings={positionAbilityBindings}
+          userNameMap={userNameMap}
         />
       )}
 
@@ -1494,6 +1501,7 @@ function EditCardDialog({
   positionId,
   toast,
   positionAbilityBindings,
+  userNameMap,
 }: {
   allTasks: Task[]
   taskId: string
@@ -1508,6 +1516,7 @@ function EditCardDialog({
   positionId?: string
   toast: (opts: { title?: string; description?: string; variant?: "default" | "destructive" }) => void
   positionAbilityBindings: any[]
+  userNameMap: Record<string, string>
 }) {
   const config = cardConfigs.find(c => c.type === cardType)!
   const [localTask, setLocalTask] = useState({ name: task.name, type: task.taskType, difficulty: task.difficulty, hours: task.estimatedHours, background: task.background })
@@ -2814,10 +2823,15 @@ function EditCardDialog({
       case "resources": {
         const resFileInputRef = useRef<HTMLInputElement>(null)
         const types = ["all", "document", "spreadsheet", "image", "link", "audio", "video", "archive", "venue", "facility", "software", "other"]
+        const getUploaderName = (uploadedBy?: string) => {
+          if (!uploadedBy) return "-"
+          return userNameMap[uploadedBy] || uploadedBy
+        }
         const filteredRes = learningResources.filter(r => {
           const matchType = resType === "all" || r.type === resType
           const matchName = !resSearchName || r.name.includes(resSearchName)
-          const matchProvider = !resSearchProvider || r.uploadedBy.includes(resSearchProvider)
+          const uploaderName = getUploaderName(r.uploadedBy)
+          const matchProvider = !resSearchProvider || uploaderName.includes(resSearchProvider)
           return matchType && matchName && matchProvider
         })
 
@@ -2980,7 +2994,7 @@ function EditCardDialog({
                               <p className="text-xs font-medium text-gray-800 truncate mb-1">{r.name}</p>
                               <div className="flex items-center justify-between text-[11px] text-gray-500">
                                 <span className="flex items-center gap-1 truncate max-w-[80px]">
-                                  <Users className="h-3 w-3 shrink-0" />{r.uploadedBy}
+                                  <Users className="h-3 w-3 shrink-0" />{getUploaderName(r.uploadedBy)}
                                 </span>
                                 <span className="shrink-0">{r.uploadedAt}</span>
                               </div>
@@ -3051,7 +3065,7 @@ function EditCardDialog({
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium truncate text-gray-800">{r.name}</p>
-                            <p className="text-[10px] text-gray-400 truncate">{r.uploadedBy} · {r.uploadedAt}</p>
+                            <p className="text-[10px] text-gray-400 truncate">{getUploaderName(r.uploadedBy)} · {r.uploadedAt}</p>
                           </div>
                           <PrdAnnotation data={getAnnotation("resource-action-cancel")}>
                             <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-500 shrink-0" onClick={() => toggleResource(rid)}>
