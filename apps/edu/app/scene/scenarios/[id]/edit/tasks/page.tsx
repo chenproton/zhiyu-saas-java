@@ -111,7 +111,7 @@ import { cn } from "@/lib/utils"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
-import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryApi, majorApi, userManagementApi, fileApi } from "@/lib/api"
+import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryApi, majorApi, userManagementApi, fileApi, taskResourceApi } from "@/lib/api"
 import type { ScenarioTask as ApiScenarioTask } from "@/lib/types/scene"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
@@ -571,11 +571,12 @@ export default function TasksEditPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [scenarioData, tasksRes, kpRes, apRes, posRes, indRes, majRes, userRes] = await Promise.all([
+        const [scenarioData, tasksRes, kpRes, apRes, resRes, posRes, indRes, majRes, userRes] = await Promise.all([
           scenarioApi.get(scenarioId),
           taskApi.list({ scenarioId, limit: 1000 }),
           knowledgeApi.list({ limit: 1000 }),
           abilityApi.list({ limit: 1000 }),
+          taskResourceApi.listResources({ limit: 1000 }),
           positionApi.list({ limit: 1000 }),
           industryApi.list({ limit: 1000 }),
           majorApi.list({ limit: 1000 }),
@@ -621,6 +622,9 @@ export default function TasksEditPage() {
 
         abilityPoints.length = 0
         apRes.items.forEach((ap: any) => abilityPoints.push(ap))
+
+        learningResources.length = 0
+        resRes.items.forEach((res: any) => learningResources.push(res))
 
         professions.length = 0
         posRes.items.forEach((p: any) => {
@@ -930,8 +934,34 @@ export default function TasksEditPage() {
       }
     }
 
+    // Persist custom resources added in this session and map their IDs
+    const resourceIdMapping: Record<string, string> = {}
+    for (const resId of Array.from(customResourceIds)) {
+      const res = learningResources.find(r => r.id === resId)
+      if (!res) continue
+      try {
+        const created = await taskResourceApi.create({
+          name: res.name,
+          type: res.type,
+          url: res.url,
+          description: res.description,
+          thumbnail: res.thumbnail,
+          size: res.size,
+          knowledgePointIds: res.knowledgePoints || res.knowledgePointIds || [],
+          extraData: res.extraData,
+          uploadedBy: res.uploadedBy,
+        } as any)
+        resourceIdMapping[resId] = created.id
+        const idx = learningResources.findIndex(r => r.id === resId)
+        if (idx >= 0) learningResources[idx] = { ...learningResources[idx], id: created.id }
+        customResourceIds.delete(resId)
+      } catch (err: any) {
+        console.error("Failed to persist custom resource", resId, err)
+      }
+    }
+
     // Replace temporary custom IDs with persisted IDs across all task states
-    const replaceIds = (ids: string[]) => ids.map(id => kpIdMapping[id] || abIdMapping[id] || id)
+    const replaceIds = (ids: string[]) => ids.map(id => kpIdMapping[id] || abIdMapping[id] || resourceIdMapping[id] || id)
     const replaceEvalPoints = (points: EvalPoint[]) =>
       points.map(p => ({
         ...p,
@@ -942,11 +972,12 @@ export default function TasksEditPage() {
     const updatedTaskStates: Record<string, TaskState> = { ...taskStates }
     Object.keys(updatedTaskStates).forEach(tid => {
       const s = updatedTaskStates[tid]
-      if (Object.keys(kpIdMapping).length === 0 && Object.keys(abIdMapping).length === 0) return
+      if (Object.keys(kpIdMapping).length === 0 && Object.keys(abIdMapping).length === 0 && Object.keys(resourceIdMapping).length === 0) return
       updatedTaskStates[tid] = {
         ...s,
         knowledgePoints: replaceIds(s.knowledgePoints),
         abilityPoints: replaceIds(s.abilityPoints),
+        resources: replaceIds(s.resources),
         randomDrawEvalPoints: replaceEvalPoints(s.randomDrawEvalPoints),
         reviewEvalPoints: replaceEvalPoints(s.reviewEvalPoints),
         paperEvalPoints: replaceEvalPoints(s.paperEvalPoints),
@@ -1442,9 +1473,10 @@ export default function TasksEditPage() {
 }
 
 
-// Module-level sets to track custom (added/cloned) points across dialog re-opens
+// Module-level sets to track custom (added/cloned) points/resources across dialog re-opens
 const customKnowledgePointIds = new Set<string>()
 const customAbilityPointIds = new Set<string>()
+const customResourceIds = new Set<string>()
 
 // ============ Edit Card Dialog ============
 
@@ -1731,6 +1763,7 @@ function EditCardDialog({
     const fileTypes = ["document", "spreadsheet", "image", "audio", "video", "archive", "other", "software"]
     const isFileType = fileTypes.includes(newResType)
     let fileUrl = newResUrl.trim()
+    let uploadedSize: number | undefined
 
     if (isFileType && newResFile) {
       const err = validateResourceFile(newResFile, newResType)
@@ -1742,6 +1775,7 @@ function EditCardDialog({
       try {
         const res = await fileApi.upload(newResFile)
         fileUrl = res.url
+        uploadedSize = res.size
       } catch (err: any) {
         toast({ variant: "destructive", title: "上传失败", description: err.message })
         return
@@ -1783,11 +1817,14 @@ function EditCardDialog({
       url: fileUrl,
       description: newResDescription.trim(),
       knowledgePoints: [],
+      size: uploadedSize !== undefined ? `${uploadedSize}` : undefined,
       uploadedAt: new Date().toISOString().slice(0, 10),
       uploadedBy: "当前用户",
       thumbnail,
+      extraData,
       ...extraData,
     }
+    customResourceIds.add(newId)
     learningResources.push(newRes as any)
     updateState({ resources: [...state.resources, newId] })
     setNewResName("")

@@ -304,6 +304,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			taskResourceHandler := &handler.TaskResourceHandler{DB: pool}
 			r.Get("/scene/task-resources", taskResourceHandler.ListResources)
 			r.Post("/scene/task-resources", taskResourceHandler.BindResource)
+				r.Post("/scene/task-resources/create", taskResourceHandler.Create)
 			r.Delete("/scene/task-resources/{id}", taskResourceHandler.UnbindResource)
 
 			taskKnowledgeAbilityHandler := &handler.TaskKnowledgeAbilityHandler{DB: pool}

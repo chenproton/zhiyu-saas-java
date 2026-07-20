@@ -801,6 +801,8 @@ export const sceneBatchApi = {
 export const taskResourceApi = {
   listResources: (params?: { taskId?: string; search?: string; limit?: number; offset?: number }) =>
     request<ListResponse<TaskResource>>(`/scene/task-resources${buildQuery(params || {})}`),
+  create: (req: Omit<TaskResource, "id" | "uploadedAt">) =>
+    request<TaskResource>("/scene/task-resources/create", { method: "POST", body: JSON.stringify(req) }),
   bindResource: (data: { taskId: string; resourceId: string }) =>
     request<TaskResourceBinding>(`/scene/task-resources`, { method: "POST", body: JSON.stringify(data) }),
   unbindResource: (id: string) =>

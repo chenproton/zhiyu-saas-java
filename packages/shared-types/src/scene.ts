@@ -60,6 +60,9 @@ export interface TaskResource {
   url?: string
   description?: string
   thumbnail?: string
+  size?: string
+  knowledgePointIds?: string[]
+  extraData?: Record<string, any>
   uploadedBy?: string
   uploadedAt: string
 }

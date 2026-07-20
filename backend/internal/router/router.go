@@ -454,6 +454,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 
 				r.Get("/scene/task-resources", taskResourceHandler.ListResources)
 				r.Post("/scene/task-resources", taskResourceHandler.BindResource)
+					r.Post("/scene/task-resources/create", taskResourceHandler.Create)
 				r.Delete("/scene/task-resources/{id}", taskResourceHandler.UnbindResource)
 
 				r.Post("/scene/task-bindings/knowledge", taskKnowledgeAbilityHandler.BindKnowledge)
