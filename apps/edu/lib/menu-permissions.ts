@@ -72,10 +72,9 @@ export function buildMenuTree(): MenuTreeItem[] {
     },
     {
       id: "tenant",
-      label: "租户与审批",
+      label: "租户信息管理",
       children: [
         { id: "tenant-config", label: "租户信息管理", href: "/portal/apps/system/tenant" },
-        { id: "tenant-approval", label: "审批流程管理", href: "/portal/apps/system/approval" },
       ],
     },
     platformGroup("career", "职业岗位学习平台", jobNavigationConfig),
