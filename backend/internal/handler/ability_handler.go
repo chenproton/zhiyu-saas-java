@@ -154,6 +154,10 @@ func (h *AbilityHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`, id, tenantID, req.Name, req.Description, req.Category, req.IsPublic)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "能力点名称已存在，请使用其他名称")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to create ability point")
 		return
 	}
@@ -190,6 +194,10 @@ func (h *AbilityHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $5
 	`, req.Name, req.Description, req.Category, req.IsPublic, id)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "能力点名称已存在，请使用其他名称")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to update ability point")
 		return
 	}

@@ -155,6 +155,10 @@ func (h *RoleHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, 0, 'active')
 	`, id, req.TenantID, req.Code, req.Name, req.Description, req.Permissions)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "角色代码已存在，请使用其他代码")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to create role")
 		return
 	}

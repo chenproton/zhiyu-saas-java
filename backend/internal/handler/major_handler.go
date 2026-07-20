@@ -156,6 +156,10 @@ func (h *MajorHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`, id, req.TenantID, req.OrgNodeID, req.Code, req.Name, req.Alias, req.Enabled)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "专业代码已存在，请使用其他代码")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to create major")
 		return
 	}
@@ -193,6 +197,10 @@ func (h *MajorHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $6
 	`, req.OrgNodeID, req.Code, req.Name, req.Alias, req.Enabled, id)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "专业代码已存在，请使用其他代码")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to update major")
 		return
 	}

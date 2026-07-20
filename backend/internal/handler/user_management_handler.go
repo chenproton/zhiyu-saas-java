@@ -240,6 +240,10 @@ func (h *UserManagementHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("ERROR createSingleUser: %v, req: tenantId=%s roleId=%v username=%s platform=%s",
 			err, req.TenantID, req.RoleID, req.Username, req.Platform)
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to create user")
 		return
 	}
@@ -291,6 +295,10 @@ func (h *UserManagementHandler) Update(w http.ResponseWriter, r *http.Request) {
 		role, globalLoginName, rawLoginName, req.Name, req.Email, req.Phone, req.AvatarURL,
 		req.StudentNo, req.WorkID, req.IDCard, coalesceStringSlice(req.TitleIDs), id)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to update user")
 		return
 	}
@@ -450,6 +458,10 @@ func (h *UserManagementHandler) BatchCreate(w http.ResponseWriter, r *http.Reque
 		seen[dedupKey] = true
 		user, err := h.createSingleUserInTx(r.Context(), tx, u)
 		if err != nil {
+			if isUniqueViolation(err) {
+				respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
+				return
+			}
 			respondError(w, http.StatusInternalServerError, "failed to create users")
 			return
 		}

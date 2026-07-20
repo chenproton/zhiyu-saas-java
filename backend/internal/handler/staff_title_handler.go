@@ -151,6 +151,10 @@ func (h *StaffTitleHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, 0, $6)
 	`, id, req.TenantID, code, req.Name, req.Description, req.Status)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "职称代码已存在，请使用其他代码")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to create staff title")
 		return
 	}

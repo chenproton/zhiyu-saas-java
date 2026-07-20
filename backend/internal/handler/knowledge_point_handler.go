@@ -166,6 +166,10 @@ func (h *KnowledgePointHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`, id, tenantID, req.Name, req.Code, req.Description, req.Linked, req.GranularLessonIds, creatorID)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "知识点名称已存在，请使用其他名称")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to create knowledge point")
 		return
 	}
@@ -206,6 +210,10 @@ func (h *KnowledgePointHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $6
 	`, req.Name, req.Code, req.Description, req.Linked, req.GranularLessonIds, id)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "知识点名称已存在，请使用其他名称")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to update knowledge point")
 		return
 	}

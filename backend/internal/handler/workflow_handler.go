@@ -168,6 +168,10 @@ func (h *WorkflowHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, 0, $8)
 	`, id, claims.TenantID, req.Name, req.Scene, req.Description, req.Steps, req.MajorIds, status)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "工作流名称已存在，请使用其他名称")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to create workflow")
 		return
 	}
@@ -221,6 +225,10 @@ func (h *WorkflowHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $7
 	`, req.Name, req.Scene, req.Description, req.Steps, req.MajorIds, req.Status, id)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "工作流名称已存在，请使用其他名称")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to update workflow")
 		return
 	}

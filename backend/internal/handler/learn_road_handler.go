@@ -160,6 +160,10 @@ func (h *LearnRoadHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`, id, tenantID, req.Name, req.Description, positionUUIDs, req.Steps)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "学习路线名称已存在，请使用其他名称")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to create learn road")
 		return
 	}
@@ -216,6 +220,10 @@ func (h *LearnRoadHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $5
 	`, req.Name, req.Description, positionUUIDs, steps, id)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "学习路线名称已存在，请使用其他名称")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to update learn road")
 		return
 	}

@@ -156,6 +156,10 @@ func (h *ExamHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, 'draft', 0, $5, $6, $7, $8, $9, 'v1.0', 'mine', $10)
 	`, id, tenantID, req.Name, req.Description, req.Duration, req.CoverImage, coalesceStringSlice(req.CollaboratorIDs), coalesceStringSlice(req.CollaboratorDeptIDs), req.BatchID, claims.UserID)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "考试名称已存在，请使用其他名称")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to create exam")
 		return
 	}
@@ -203,6 +207,10 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $8
 	`, req.Name, req.Description, req.Duration, req.CoverImage, collaboratorIDs, collaboratorDeptIDs, req.BatchID, id)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "考试名称已存在，请使用其他名称")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to update exam")
 		return
 	}

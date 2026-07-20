@@ -215,6 +215,10 @@ func (h *PositionHandler) Create(w http.ResponseWriter, r *http.Request) {
 		coalesceStringSlice(req.Requirements), req.CareerPath, req.Version, status, claims.UserID,
 		coalesceStringSlice(req.Collaborators))
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "岗位名称已存在，请使用其他名称")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to create position")
 		return
 	}
@@ -328,6 +332,10 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 		salaryMin, salaryMax, coverImage, description, requirements,
 		careerPath, version, collaborators, id)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "岗位名称已存在，请使用其他名称")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to update position")
 		return
 	}

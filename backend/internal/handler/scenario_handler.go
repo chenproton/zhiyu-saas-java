@@ -179,6 +179,10 @@ func (h *ScenarioHandler) Create(w http.ResponseWriter, r *http.Request) {
 		req.ProfessionID, req.ProfessionName, req.BatchID, req.Difficulty, req.Version, req.Background,
 		req.DeliveryGoal, claims.UserID, coalesceStringSlice(req.CoBuilderIDs), tenantID)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "场景方案代码已存在，请使用其他代码")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to create scenario")
 		return
 	}
@@ -266,6 +270,10 @@ func (h *ScenarioHandler) Update(w http.ResponseWriter, r *http.Request) {
 		professionID, professionName, batchID, difficulty, version, background,
 		deliveryGoal, coBuilderIDs, id)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "场景方案代码已存在，请使用其他代码")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to update scenario")
 		return
 	}

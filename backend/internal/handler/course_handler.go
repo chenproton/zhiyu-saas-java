@@ -223,6 +223,10 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 		req.OnlineHours, req.OfflineHours, req.OnlineWeight, req.OfflineWeight, req.Semester, req.ClassName,
 		req.CoverColor, req.CoverImage, req.CourseTag, claims.UserID, req.CoCreatorIds, req.BatchID)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "课程代码已存在，请使用其他代码")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to create course")
 		return
 	}
@@ -319,6 +323,10 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		req.OnlineHours, req.OfflineHours, req.OnlineWeight, req.OfflineWeight, req.Semester, req.ClassName,
 		req.CoverColor, req.CoverImage, req.CourseTag, req.CoCreatorIds, batchID, id)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "课程代码已存在，请使用其他代码")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to update course")
 		return
 	}

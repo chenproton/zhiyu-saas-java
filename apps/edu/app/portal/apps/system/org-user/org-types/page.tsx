@@ -21,12 +21,14 @@ import { Plus, Pencil, Trash2, Search, Upload, Download, AlertCircle, MoreHorizo
 import { orgTypeApi } from "@/lib/api"
 import type { OrgType } from "@/lib/types/backend"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
+import { useToast } from "@/hooks/use-toast"
 
 const categoryLabels = { internal: "内部组织", business: "业务组织", external: "外部协作组织" }
 const categoryColors = { internal: "bg-blue-100 text-blue-700", business: "bg-green-100 text-green-700", external: "bg-orange-100 text-orange-700" }
 
 export default function OrgTypesPage() {
   const { tenantId } = usePortalAuth()
+  const { toast } = useToast()
   const [orgTypes, setOrgTypes] = useState<OrgType[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -213,7 +215,7 @@ export default function OrgTypesPage() {
                 }
                 setIsDialogOpen(false)
               } catch (err) {
-                setError(err instanceof Error ? err.message : "保存组织类型失败")
+                toast({ variant: "destructive", title: selectedType ? "保存失败" : "创建失败", description: err instanceof Error ? err.message : "保存组织类型失败" })
               } finally {
                 setIsSaving(false)
               }

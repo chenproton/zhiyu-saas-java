@@ -189,6 +189,10 @@ func (h *GraduationHandler) CreateTopic(w http.ResponseWriter, r *http.Request) 
 		VALUES ($1, $2, $3, $4, $5, $6, 'draft', $7, 0, $8, $9, $10, $11, $12)
 	`, id, tenantID, req.Name, req.CareerPositionID, req.College, req.Source, req.Capacity, req.AdvisorID, req.EnterpriseMentorID, startDate, endDate, req.Description)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "毕业设计题目名称已存在，请使用其他名称")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to create graduation topic")
 		return
 	}
@@ -229,6 +233,10 @@ func (h *GraduationHandler) UpdateTopic(w http.ResponseWriter, r *http.Request) 
 		WHERE id = $11
 	`, req.Name, req.CareerPositionID, req.College, req.Source, req.Capacity, req.AdvisorID, req.EnterpriseMentorID, startDate, endDate, req.Description, id)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "毕业设计题目名称已存在，请使用其他名称")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to update graduation topic")
 		return
 	}

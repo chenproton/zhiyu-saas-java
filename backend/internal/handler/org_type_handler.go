@@ -150,6 +150,10 @@ func (h *OrgTypeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5)
 	`, id, req.TenantID, req.Name, req.Category, req.Description)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "组织类型名称已存在，请使用其他名称")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to create org type")
 		return
 	}
@@ -192,6 +196,10 @@ func (h *OrgTypeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $4
 	`, req.Name, req.Category, req.Description, id)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "组织类型名称已存在，请使用其他名称")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to update org type")
 		return
 	}

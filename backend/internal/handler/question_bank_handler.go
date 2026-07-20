@@ -161,6 +161,10 @@ func (h *QuestionBankHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, 'draft', 0, $6, $7, $8, $9, 'v1.0', 'mine', false)
 	`, id, tenantID, req.Name, req.Description, req.CoverImage, creatorID, coalesceStringSlice(req.CollaboratorIDs), coalesceStringSlice(req.CollaboratorDeptIDs), req.BatchID)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "题库名称已存在，请使用其他名称")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to create question bank")
 		return
 	}
@@ -234,6 +238,10 @@ func (h *QuestionBankHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $7
 	`, req.Name, req.Description, req.CoverImage, collaboratorIDs, collaboratorDeptIDs, req.BatchID, id)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "题库名称已存在，请使用其他名称")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to update question bank")
 		return
 	}

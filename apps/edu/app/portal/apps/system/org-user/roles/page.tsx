@@ -285,7 +285,7 @@ export default function RolesPage() {
       await fetchData()
       setIsPermDialogOpen(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "保存权限失败")
+      toast({ variant: "destructive", title: "保存失败", description: err instanceof Error ? err.message : "保存权限失败" })
     } finally {
       setIsSaving(false)
     }
@@ -313,7 +313,7 @@ export default function RolesPage() {
       await fetchData()
       setIsDialogOpen(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "保存角色失败")
+      toast({ variant: "destructive", title: selectedRole ? "保存失败" : "创建失败", description: err instanceof Error ? err.message : "保存角色失败" })
     } finally {
       setIsSaving(false)
     }

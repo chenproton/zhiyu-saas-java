@@ -148,6 +148,10 @@ func (h *ResourceCodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`, id, req.TenantID, req.Code, req.Name, req.Description, req.Type)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "资源编码已存在，请使用其他编码")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to create resource code")
 		return
 	}
@@ -185,6 +189,10 @@ func (h *ResourceCodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $5
 	`, req.Code, req.Name, req.Description, req.Type, id)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "资源编码已存在，请使用其他编码")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to update resource code")
 		return
 	}
