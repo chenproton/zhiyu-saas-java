@@ -264,7 +264,7 @@ function PositionEditPageContent({ params }: PageProps) {
   const steps = [
     { id: 'basic', label: '基础信息', description: '填写岗位基本信息' },
     { id: 'ability', label: '能力建模', description: '构建能力图谱' },
-    { id: 'competency', label: '胜任力配置', description: '设置达标要求' },
+    { id: 'competency', label: '能力模型汇总', description: '设置达标要求' },
   ]
 
   const currentStepIndex = steps.findIndex((s) => s.id === activeStep)

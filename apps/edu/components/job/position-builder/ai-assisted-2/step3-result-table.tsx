@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -20,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, Sparkles, AlertCircle } from 'lucide-react'
+import { CheckCircle2, AlertCircle } from 'lucide-react'
 import type { Position, PositionAbilityBinding, CompetencyLevel } from '@/lib/types/job-source'
 
 const COMPETENCY_LEVELS: { value: CompetencyLevel; label: string }[] = [
@@ -58,10 +57,6 @@ export function Step3ResultTable({ position, onUpdate, onPrev, showAiFill = true
     })
   }
 
-  const handleAiFillAll = () => {
-    setAiNotice('AI 生成服务暂未接入，请手动填写')
-  }
-
   const groups = new Map<string, typeof bindings>()
   for (const b of bindings) {
     const key = b.domain || '未分类'
@@ -73,26 +68,6 @@ export function Step3ResultTable({ position, onUpdate, onPrev, showAiFill = true
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">步骤三：能力模型汇总</h2>
-          <p className="text-sm text-gray-500 mt-0.5">确认拆解结果并配置胜任力标准，保存后岗位将进入草稿状态</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {showAiFill && (
-            <Button
-              variant="outline"
-              className="border-purple-200 text-purple-700 hover:bg-purple-50 hover:text-purple-800 gap-1"
-              onClick={handleAiFillAll}
-              disabled={bindings.length === 0}
-            >
-              <Sparkles className="h-4 w-4" />
-              AI 辅助编写
-            </Button>
-          )}
-        </div>
-      </div>
 
       {aiNotice && (
         <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 flex items-start gap-2 text-sm text-amber-800">
