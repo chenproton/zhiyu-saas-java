@@ -726,6 +726,7 @@ export default function TasksEditPage() {
           isReferenced: at.isReferenced || false,
           sourceScenarioId: at.sourceScenarioId || undefined,
           sourceScenarioName: undefined,
+          evalData: at.evalData,
         }))
 
         setTasks(mockTasks)
