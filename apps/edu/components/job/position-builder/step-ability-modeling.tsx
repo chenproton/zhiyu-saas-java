@@ -442,38 +442,10 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
 
       {/* Content - Ability list grouped by responsibility */}
       <div className="w-[64%] flex flex-col overflow-hidden bg-gray-50/30">
-        <div className="shrink-0 px-5 py-4 border-b border-gray-100 bg-white">
+        <div className="shrink-0 px-5 py-3 border-b border-gray-100 bg-white">
           <div className="flex items-center gap-3">
-            <div>
-              <h3 className="text-sm font-semibold text-gray-800">能力点列表</h3>
-              <p className="text-[11px] text-gray-400 mt-0.5">共 {totalBindings} 个能力点</p>
-            </div>
-            <div className="flex-1" />
-            <Button
-              size="sm"
-              className="h-7 text-xs rounded-full"
-              onClick={() => {
-                setAbilityPoolSearch('')
-                setAbilityPoolFilterAttr(null)
-                setAbilityPoolFilterDomain(null)
-                setShowAbilityPoolDialog(true)
-              }}
-            >
-              <Library className="mr-1 h-3.5 w-3.5" />
-              从能力点库添加
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs rounded-full"
-              onClick={() => {
-                setDuplicateName(null)
-                setShowCreateDialog(true)
-              }}
-            >
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              新建能力点
-            </Button>
+            <h3 className="text-sm font-semibold text-gray-800">能力点列表</h3>
+            <span className="text-[11px] text-gray-400">共 {totalBindings} 个能力点</span>
           </div>
         </div>
 
@@ -504,11 +476,40 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                   >
                     <div className="flex items-center gap-2 mb-3 px-1">
                       <div className={`w-2 h-2 rounded-full ${getRespColor(resp.id)}`} />
-                      <h4 className="text-sm font-semibold text-gray-700">{resp.name || '未命名职责'}</h4>
+                      <h4 className="text-sm font-semibold text-gray-700 flex-1">{resp.name || '未命名职责'}</h4>
                       {respBindings.length > 0 && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">
                           {respBindings.length}
                         </span>
+                      )}
+                      {isSelectedGroup && (
+                        <div className="flex items-center gap-1.5 ml-2">
+                          <Button
+                            size="sm"
+                            className="h-6 text-[10px] rounded-full px-3"
+                            onClick={() => {
+                              setAbilityPoolSearch('')
+                              setAbilityPoolFilterAttr(null)
+                              setAbilityPoolFilterDomain(null)
+                              setShowAbilityPoolDialog(true)
+                            }}
+                          >
+                            <Library className="mr-1 h-3 w-3" />
+                            添加
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 text-[10px] rounded-full px-3"
+                            onClick={() => {
+                              setDuplicateName(null)
+                              setShowCreateDialog(true)
+                            }}
+                          >
+                            <Plus className="mr-1 h-3 w-3" />
+                            新建
+                          </Button>
+                        </div>
                       )}
                     </div>
                       {respBindings.length === 0 ? (
