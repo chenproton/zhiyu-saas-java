@@ -37,6 +37,7 @@ interface ApprovalView {
   status: string
   submittedAt: string
   stepInfo?: ApprovalStepInfo
+  history?: any[]
 }
 
 export default function EvaluationApprovalsPage() {
@@ -63,6 +64,7 @@ export default function EvaluationApprovalsPage() {
   const { dialogs, approveAction } = useApprovalDialogs({
     entityLabel: "测评资源",
     stepInfo: currentItem?.stepInfo,
+    history: currentItem?.history,
     onApprove: async (comment) => {
       if (!currentItem) return
       if (currentItem.targetType === "question_bank") await approveBank(currentItem.id, comment)
@@ -92,6 +94,7 @@ export default function EvaluationApprovalsPage() {
         status: a.status,
         submittedAt: new Date(a.createdAt).toLocaleDateString(),
         stepInfo: getBankStepInfo(a),
+        history: a.history,
       }
     })
     const examItems: ApprovalView[] = examRecords.map((a) => {
@@ -108,6 +111,7 @@ export default function EvaluationApprovalsPage() {
         status: a.status,
         submittedAt: new Date(a.createdAt).toLocaleDateString(),
         stepInfo: getExamStepInfo(a),
+        history: a.history,
       }
     })
     return [...bankItems, ...examItems]

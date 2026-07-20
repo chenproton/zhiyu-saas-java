@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Check, X } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,11 +15,23 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import type { ApprovalStepInfo } from "@/hooks/use-approvals"
 
+interface ApprovalHistoryItem {
+  action?: string
+  status?: string
+  remark?: string
+  comment?: string
+  stepIdx?: number
+  reviewerId?: string
+  reviewerName?: string
+  createdAt?: string
+}
+
 interface ApprovalDialogsProps {
   entityLabel?: string
   mode?: "single" | "batch"
   selectedCount?: number
   stepInfo?: ApprovalStepInfo
+  history?: ApprovalHistoryItem[]
   onApprove: (comment: string) => Promise<void>
   onReject: (comment: string) => Promise<void>
 }
@@ -33,11 +46,63 @@ function formatStepInfo(info?: ApprovalStepInfo): string {
   return `当前审批步骤：${stepLabel}${progress}，通过后将继续流转至下一步审批。`
 }
 
+function formatDateTime(iso?: string): string {
+  if (!iso) return ""
+  try {
+    return new Date(iso).toLocaleString("zh-CN")
+  } catch {
+    return iso
+  }
+}
+
+function ApprovalHistoryWaterfall({ stepInfo, history }: { stepInfo?: ApprovalStepInfo; history?: ApprovalHistoryItem[] }) {
+  if (!stepInfo || !history || history.length === 0) return null
+
+  const previousItems = history.filter((h) => (h.stepIdx ?? 0) < stepInfo.currentStepIndex)
+  if (previousItems.length === 0) return null
+
+  return (
+    <div className="mt-4 border-t border-slate-100 pt-4">
+      <h4 className="text-sm font-medium text-slate-700 mb-3">前面步骤的审批意见</h4>
+      <div className="space-y-0">
+        {previousItems.map((h, idx) => {
+          const stepIndex = h.stepIdx ?? 0
+          const stepName = stepInfo.steps[stepIndex]?.name || `第 ${stepIndex + 1} 步`
+          const isApproved = (h.action || h.status) === "approved"
+          const isLast = idx === previousItems.length - 1
+          return (
+            <div key={idx} className="relative pl-5 pb-4">
+              {!isLast && <div className="absolute left-[7px] top-3 bottom-0 w-px bg-slate-200" />}
+              <div className="absolute left-0 top-1.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-slate-300 shadow-sm" />
+              <div className="rounded-lg border border-slate-100 bg-slate-50/70 p-3">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <span className="text-xs font-medium text-slate-600">{stepName}</span>
+                  <Badge variant={isApproved ? "default" : "destructive"} className="text-[10px] h-5 px-1.5">
+                    {isApproved ? "通过" : "驳回"}
+                  </Badge>
+                </div>
+                <p className="text-sm text-slate-800 whitespace-pre-wrap">
+                  {h.remark || h.comment || "无审批意见"}
+                </p>
+                <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+                  <span>{h.reviewerName || h.reviewerId || "未知审批人"}</span>
+                  <span>{formatDateTime(h.createdAt)}</span>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function useApprovalDialogs({
   entityLabel = "项目",
   mode = "single",
   selectedCount = 0,
   stepInfo,
+  history,
   onApprove,
   onReject,
 }: ApprovalDialogsProps) {
@@ -85,6 +150,9 @@ export function useApprovalDialogs({
               )}
             </DialogDescription>
           </DialogHeader>
+          {!isBatch && (
+            <ApprovalHistoryWaterfall stepInfo={stepInfo} history={history} />
+          )}
           <div className="py-4">
             <Textarea
               value={comment}
@@ -115,6 +183,9 @@ export function useApprovalDialogs({
               )}
             </DialogDescription>
           </DialogHeader>
+          {!isBatch && (
+            <ApprovalHistoryWaterfall stepInfo={stepInfo} history={history} />
+          )}
           <div className="py-4">
             <Textarea
               value={comment}

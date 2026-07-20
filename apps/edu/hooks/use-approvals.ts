@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react"
 import { approvalApi, workflowApi } from "@/lib/api"
-import type { ApprovalRecord, Workflow } from "@/lib/types/backend"
+import type { ApprovalRecord, Workflow, WorkflowStep } from "@/lib/types/backend"
 import { toast } from "sonner"
 
 export interface ApprovalStepInfo {
@@ -10,6 +10,7 @@ export interface ApprovalStepInfo {
   totalSteps: number
   currentStepName: string
   isFinalStep: boolean
+  steps: WorkflowStep[]
 }
 
 interface UseApprovalsOptions {
@@ -80,6 +81,7 @@ export function useApprovals({ targetType, limit = 1000 }: UseApprovalsOptions):
       totalSteps,
       currentStepName: step?.name || `第 ${currentStepIndex + 1} 步`,
       isFinalStep: currentStepIndex >= totalSteps - 1,
+      steps: workflow?.steps || [],
     }
   }, [workflows])
 

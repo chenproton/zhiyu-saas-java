@@ -35,6 +35,7 @@ interface ApprovalView {
   status: string
   submittedAt: string
   stepInfo?: ApprovalStepInfo
+  history?: any[]
 }
 
 export default function JobApprovalsPage() {
@@ -58,6 +59,7 @@ export default function JobApprovalsPage() {
   const { dialogs, approveAction } = useApprovalDialogs({
     entityLabel: "岗位",
     stepInfo: currentItem?.stepInfo,
+    history: currentItem?.history,
     onApprove: async (comment) => {
       if (currentItem) await approve(currentItem.id, comment)
     },
@@ -81,6 +83,7 @@ export default function JobApprovalsPage() {
         status: a.status,
         submittedAt: new Date(a.createdAt).toLocaleDateString(),
         stepInfo: getStepInfo(a),
+        history: a.history,
       }
     }),
     [records, positionMap, batchMap, getStepInfo]

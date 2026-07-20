@@ -36,6 +36,7 @@ interface ApprovalView {
   status: string
   submittedAt: string
   stepInfo?: ApprovalStepInfo
+  history?: any[]
 }
 
 export default function SceneApprovalsPage() {
@@ -59,6 +60,7 @@ export default function SceneApprovalsPage() {
   const { dialogs, approveAction } = useApprovalDialogs({
     entityLabel: "场景",
     stepInfo: currentItem?.stepInfo,
+    history: currentItem?.history,
     onApprove: async (comment) => {
       if (currentItem) await approve(currentItem.id, comment)
     },
@@ -83,6 +85,7 @@ export default function SceneApprovalsPage() {
         status: a.status,
         submittedAt: new Date(a.createdAt).toLocaleDateString(),
         stepInfo: getStepInfo(a),
+        history: a.history,
       }
     }),
     [records, scenarioMap, batchMap, getStepInfo]

@@ -44,6 +44,7 @@ interface ApprovalView {
   status: string
   submittedAt: string
   stepInfo?: ApprovalStepInfo
+  history?: any[]
 }
 
 export default function CourseApprovalsPage() {
@@ -66,6 +67,7 @@ export default function CourseApprovalsPage() {
   const { dialogs, approveAction } = useApprovalDialogs({
     entityLabel: "课程",
     stepInfo: currentItem?.stepInfo,
+    history: currentItem?.history,
     onApprove: async (comment) => {
       if (currentItem) await approve(currentItem.id, comment)
     },
@@ -91,6 +93,7 @@ export default function CourseApprovalsPage() {
         status: a.status,
         submittedAt: new Date(a.createdAt).toLocaleDateString(),
         stepInfo: getStepInfo(a),
+        history: a.history,
       }
     }),
     [records, courseMap, batchMap, getStepInfo]
