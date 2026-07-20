@@ -141,6 +141,8 @@ export function convertApiAbilityToLocal(a: AbilityPoint): Ability {
     name: a.name,
     category: a.category,
     description: a.description ?? '',
+    domain: a.domain ?? '',
+    attributes: a.attributes || [],
     isPublic: a.isPublic ?? false,
     createdAt: a.createdAt,
   }
@@ -241,8 +243,6 @@ export function convertApiAbilityBindingToLocal(b: ApiPositionAbilityBinding): P
     level: b.requiredLevel as PositionAbilityBinding['level'],
     rubricDescription: b.rubricDescription ?? '',
     description: b.rubricDescription ?? '',
-    attributes: b.attributes || [],
-    domain: b.domain ?? '',
   }
 }
 
@@ -252,10 +252,10 @@ export function convertLocalAbilityBindingToApi(b: PositionAbilityBinding): Omit
     responsibilityId: b.responsibilityId,
     abilityPointId: b.abilityPointId || b.publicAbilityId || '',
     source: b.source,
-    domain: b.domain || undefined,
+    domain: undefined,
     requiredLevel: b.level,
     rubricDescription: b.rubricDescription || undefined,
-    attributes: b.attributes || [],
+    attributes: [],
     weight: 0,
   }
 }

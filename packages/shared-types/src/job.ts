@@ -54,6 +54,8 @@ export interface AbilityPoint {
   name: string
   description?: string
   category: "knowledge" | "skill" | "quality"
+  domain?: string
+  attributes: string[]
   isPublic: boolean
   createdAt: string
 }
@@ -64,10 +66,8 @@ export interface PositionAbilityBinding {
   responsibilityId: string
   abilityPointId: string
   source: "public" | "custom"
-  domain?: string
   requiredLevel: string
   rubricDescription?: string
-  attributes: string[]
   weight: number
 }
 

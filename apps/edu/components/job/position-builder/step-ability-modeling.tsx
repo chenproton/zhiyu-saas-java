@@ -99,7 +99,11 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
   const [searchDialogQuery, setSearchDialogQuery] = useState('')
   const [editingAbilityId, setEditingAbilityId] = useState<string | null>(null)
   const [editAbilityName, setEditAbilityName] = useState('')
+  const [editAbilityDomain, setEditAbilityDomain] = useState('')
+  const [editAbilityAttributes, setEditAbilityAttributes] = useState<string[]>([])
   const [duplicateName, setDuplicateName] = useState<string | null>(null)
+  const [newAbilityDomain, setNewAbilityDomain] = useState('')
+  const [newAbilityAttributes, setNewAbilityAttributes] = useState<string[]>([])
 
   const contentRef = useRef<HTMLDivElement>(null)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -153,11 +157,9 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       publicAbilityId: ability.id,
       name: ability.name,
       category: ability.category,
-      level: 'master',
-      domain: ABILITY_DOMAINS[0],
+      level: 'understand',
       rubricDescription: '',
       description: '',
-      attributes: [],
     }
     onUpdate({ abilityBindings: [...position.abilityBindings, newBinding] })
   }
@@ -186,15 +188,15 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       source: 'custom',
       name: trimmed,
       category: newAbilityCategory,
-      level: 'master',
-      domain: ABILITY_DOMAINS[0],
+      level: 'understand',
       rubricDescription: '',
       description: '',
-      attributes: [],
     }
     onUpdate({ abilityBindings: [...position.abilityBindings, newBinding] })
     setExpandedBindingId(newBinding.id)
     setNewAbilityName('')
+    setNewAbilityDomain('')
+    setNewAbilityAttributes([])
     setShowCreateDialog(false)
     setDuplicateName(null)
   }
@@ -222,16 +224,6 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
         b.id === bindingId ? { ...b, ...updates } : b
       ),
     })
-  }
-
-  const handleSetAttribute = (bindingId: string, attr: string) => {
-    const binding = position.abilityBindings.find((b) => b.id === bindingId)
-    if (!binding) return
-    const current = binding.attributes || []
-    const next = current.includes(attr)
-      ? current.filter((a) => a !== attr)
-      : [...current, attr]
-    handleUpdateBinding(bindingId, { attributes: next })
   }
 
   const handleAddResponsibility = () => {
@@ -287,24 +279,33 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
   const handleStartEditAbility = (ability: Ability) => {
     setEditingAbilityId(ability.id)
     setEditAbilityName(ability.name)
+    setEditAbilityDomain(ability.domain || '')
+    setEditAbilityAttributes(ability.attributes || [])
   }
 
   const handleSaveEditAbility = async (abilityId: string) => {
     const trimmed = editAbilityName.trim()
-    if (!trimmed || trimmed === abilities.find(a => a.id === abilityId)?.name) {
+    const current = abilities.find(a => a.id === abilityId)
+    if (!trimmed || trimmed === current?.name) {
       setEditingAbilityId(null)
       return
     }
     try {
-      const current = abilities.find(a => a.id === abilityId)
-      await abilityApi.update(abilityId, { name: trimmed, category: (current?.category || '专业技能') as any })
-      setAbilities(prev => prev.map(a => a.id === abilityId ? { ...a, name: trimmed } : a))
-      toast.success('能力点名称已更新')
+      await abilityApi.update(abilityId, {
+        name: trimmed,
+        category: (current?.category || '专业技能') as any,
+        domain: editAbilityDomain || undefined,
+        attributes: editAbilityAttributes,
+      })
+      setAbilities(prev => prev.map(a => a.id === abilityId ? { ...a, name: trimmed, domain: editAbilityDomain || '', attributes: editAbilityAttributes } : a))
+      toast.success('能力点已更新')
     } catch (err: any) {
       toast.error(err?.message || '更新失败')
     }
     setEditingAbilityId(null)
     setEditAbilityName('')
+    setEditAbilityDomain('')
+    setEditAbilityAttributes([])
   }
 
   const handleDeleteAbility = async (abilityId: string) => {
@@ -531,46 +532,6 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                                 </div>
                               </div>
 
-                              <div className="space-y-1.5">
-                                <Label className="text-xs text-gray-400 font-medium">所属能力域</Label>
-                                <Select
-                                  value={binding.domain || ABILITY_DOMAINS[0]}
-                                  onValueChange={(v) => handleUpdateBinding(binding.id, { domain: v })}
-                                >
-                                  <SelectTrigger className="h-8 text-sm w-full max-w-xs">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {ABILITY_DOMAINS.map((d) => (
-                                      <SelectItem key={d} value={d}>{d}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-
-                              <div className="space-y-1.5">
-                                <Label className="text-xs text-gray-400 font-medium">能力属性</Label>
-                                <div className="flex gap-2">
-                                  {ABILITY_ATTRIBUTES.map((attr) => {
-                                    const isSelected = (binding.attributes || []).includes(attr)
-                                    return (
-                                      <button
-                                        key={attr}
-                                        type="button"
-                                        onClick={() => handleSetAttribute(binding.id, attr)}
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                                          isSelected
-                                            ? 'bg-gray-900 text-white border-gray-900'
-                                            : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
-                                        }`}
-                                      >
-                                        {attr}
-                                      </button>
-                                    )
-                                  })}
-                                </div>
-                              </div>
-
                               <div className="space-y-2">
                                 <Label className="text-xs text-gray-400 font-medium">掌握程度</Label>
                                 <div className="relative pt-2 pb-1 max-w-md">
@@ -642,9 +603,15 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                                 <span className="text-[11px] text-gray-400 shrink-0">{COMPETENCY_LEVEL_LABELS[binding.level]}</span>
                               </div>
                               <div className="flex items-center gap-1 shrink-0">
-                                <Badge variant="outline" className="text-[10px] rounded-md px-1.5 py-0 text-gray-400">
-                                  {binding.domain || ABILITY_DOMAINS[0]}
-                                </Badge>
+                                {(() => {
+                                  const ab = binding.publicAbilityId ? abilities.find(a => a.id === binding.publicAbilityId) : null
+                                  const dom = ab?.domain || ABILITY_DOMAINS[0]
+                                  return (
+                                    <Badge variant="outline" className="text-[10px] rounded-md px-1.5 py-0 text-gray-400">
+                                      {dom}
+                                    </Badge>
+                                  )
+                                })()}
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
@@ -674,7 +641,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       {/* Create Custom Ability Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={(open) => {
         setShowCreateDialog(open)
-        if (!open) { setDuplicateName(null); setNewAbilityName('') }
+        if (!open) { setDuplicateName(null); setNewAbilityName(''); setNewAbilityDomain(''); setNewAbilityAttributes([]) }
       }}>
         <DialogContent>
           <DialogHeader>
@@ -725,13 +692,52 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
             <>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label className="text-sm text-gray-600">能力点名称</Label>
+                  <Label className="text-sm text-gray-600">能力点名称 <span className="text-red-400">*</span></Label>
                   <Input
                     value={newAbilityName}
                     onChange={(e) => setNewAbilityName(e.target.value)}
                     placeholder="例如：微服务架构设计"
                     className="border-gray-200 focus:border-gray-400"
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm text-gray-600">能力属性</Label>
+                  <div className="flex gap-2">
+                    {ABILITY_ATTRIBUTES.map((attr) => {
+                      const isSelected = newAbilityAttributes.includes(attr)
+                      return (
+                        <button
+                          key={attr}
+                          type="button"
+                          onClick={() => {
+                            setNewAbilityAttributes(prev =>
+                              prev.includes(attr) ? prev.filter(a => a !== attr) : [...prev, attr]
+                            )
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                            isSelected
+                              ? 'bg-gray-900 text-white border-gray-900'
+                              : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
+                          }`}
+                        >
+                          {attr}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm text-gray-600">所属能力域</Label>
+                  <Select value={newAbilityDomain || ABILITY_DOMAINS[0]} onValueChange={setNewAbilityDomain}>
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ABILITY_DOMAINS.map((d) => (
+                        <SelectItem key={d} value={d}>{d}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <DialogFooter className="gap-2">
@@ -856,67 +862,108 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
               <div className="grid grid-cols-2 gap-1.5">
                 {abilities.map((ability) => {
                   const isEditing = editingAbilityId === ability.id
-                  return (
+                  return isEditing ? (
+                    <div
+                      key={ability.id}
+                      className="col-span-2 px-4 py-3 rounded-lg border border-gray-200 bg-gray-50/50 space-y-3"
+                    >
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-gray-500">能力点名称</Label>
+                        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                          <Input
+                            value={editAbilityName}
+                            onChange={e => setEditAbilityName(e.target.value)}
+                            onKeyDown={e => handleSaveEditAbilityKeyDown(e, ability.id)}
+                            placeholder="能力点名称..."
+                            className="h-8 text-sm py-0 border-gray-200"
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-gray-500">能力属性</Label>
+                        <div className="flex gap-2">
+                          {ABILITY_ATTRIBUTES.map((attr) => {
+                            const isSelected = editAbilityAttributes.includes(attr)
+                            return (
+                              <button
+                                key={attr}
+                                type="button"
+                                onClick={() => {
+                                  setEditAbilityAttributes(prev =>
+                                    prev.includes(attr) ? prev.filter(a => a !== attr) : [...prev, attr]
+                                  )
+                                }}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                                  isSelected
+                                    ? 'bg-gray-900 text-white border-gray-900'
+                                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
+                                }`}
+                              >
+                                {attr}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-gray-500">所属能力域</Label>
+                        <Select value={editAbilityDomain || ABILITY_DOMAINS[0]} onValueChange={setEditAbilityDomain}>
+                          <SelectTrigger className="h-8 text-sm w-full max-w-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ABILITY_DOMAINS.map((d) => (
+                              <SelectItem key={d} value={d}>{d}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" className="h-7 text-xs" onClick={() => handleSaveEditAbility(ability.id)}>
+                          <Check className="mr-1 h-3 w-3" /> 保存
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs text-gray-500" onClick={() => { setEditingAbilityId(null); setEditAbilityName(''); setEditAbilityDomain(''); setEditAbilityAttributes([]) }}>
+                          <X className="mr-1 h-3 w-3" /> 取消
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
                     <div
                       key={ability.id}
                       className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors group"
                     >
                       <BookOpen className="h-4 w-4 text-gray-500 shrink-0" />
                       <div className="flex-1 min-w-0 flex items-center gap-2">
-                        {isEditing ? (
-                          <div className="flex items-center gap-1 flex-1" onClick={e => e.stopPropagation()}>
-                            <Input
-                              value={editAbilityName}
-                              onChange={e => setEditAbilityName(e.target.value)}
-                              onKeyDown={e => handleSaveEditAbilityKeyDown(e, ability.id)}
-                              onBlur={() => handleSaveEditAbility(ability.id)}
-                              placeholder="能力点名称..."
-                              className="h-7 text-sm py-0 border-gray-200"
-                              autoFocus
-                            />
-                            <button
-                              className="shrink-0 p-1 rounded text-gray-400 hover:text-gray-600"
-                              onClick={() => handleSaveEditAbility(ability.id)}
-                            >
-                              <Check className="h-3 w-3" />
-                            </button>
-                            <button
-                              className="shrink-0 p-1 rounded text-gray-400 hover:text-gray-600"
-                              onClick={() => { setEditingAbilityId(null); setEditAbilityName('') }}
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
+                        <span className="text-sm text-gray-700 truncate">{ability.name}</span>
+                        {(ability.attributes || []).length > 0 && (
+                          <div className="flex gap-1">
+                            {ability.attributes.map((attr, i) => (
+                              <span key={i} className="text-[10px] px-1 py-0 rounded bg-gray-100 text-gray-500">{attr}</span>
+                            ))}
                           </div>
-                        ) : (
-                          <span className="text-sm text-gray-700 truncate">{ability.name}</span>
                         )}
-                        {!isEditing && (
-                          <Badge variant="outline" className="text-[10px] rounded-md px-1.5 py-0 shrink-0">
-                            {ability.category}
-                          </Badge>
-                        )}
+                        <Badge variant="outline" className="text-[10px] rounded-md px-1.5 py-0 shrink-0">
+                          {ability.category}
+                        </Badge>
                       </div>
-                      {!isEditing && (
-                        <>
-                          <button
-                            onClick={() => handleStartEditAbility(ability)}
-                            className="p-1 rounded text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-                            title="编辑名称"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDeleteAbility(ability.id)
-                            }}
-                            className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                            title="删除能力点"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </>
-                      )}
+                      <button
+                        onClick={() => handleStartEditAbility(ability)}
+                        className="p-1 rounded text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                        title="编辑"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteAbility(ability.id)
+                        }}
+                        className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                        title="删除能力点"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   )
                 })}

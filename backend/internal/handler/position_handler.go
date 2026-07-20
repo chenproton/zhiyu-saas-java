@@ -620,10 +620,15 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 			} else {
 				abilityPointID = uuid.NewString()
 				category := mapCategory(binding.Category)
+				var domainField *string
+				if binding.Domain != nil && *binding.Domain != "" {
+					domainField = binding.Domain
+				}
+				attrArray := coalesceStringSlice(binding.Attributes)
 				_, err = tx.Exec(r.Context(), `
-					INSERT INTO ability_points (id, tenant_id, name, description, category, is_public)
-					VALUES ($1, $2, $3, $4, $5, $6)
-				`, abilityPointID, claims.TenantID, binding.Name, binding.Description, category, false)
+					INSERT INTO ability_points (id, tenant_id, name, description, category, domain, attributes, is_public)
+					VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+				`, abilityPointID, claims.TenantID, binding.Name, binding.Description, category, domainField, attrArray, false)
 				if err != nil {
 					log.Printf("[SaveFull] insert ability_points failed: %v", err)
 					respondError(w, http.StatusInternalServerError, "failed to create ability point")

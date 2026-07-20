@@ -539,38 +539,55 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
               <p>暂无相关证书</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {position.certificates.map((cert) => (
-                <div key={cert.id} className="flex items-start gap-3 p-3 rounded-lg border">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                    <Award className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{cert.name}</span>
-                      {cert.url && (
+                <div key={cert.id} className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+                  {cert.image ? (
+                    <div className="aspect-video w-full overflow-hidden bg-gray-50">
+                      <img src={cert.image} alt={cert.name} className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="aspect-video w-full bg-primary/10 flex items-center justify-center">
+                      <Award className="h-12 w-12 text-primary/50" />
+                    </div>
+                  )}
+                  <div className="p-3 space-y-1.5">
+                    <div className="flex items-start justify-between gap-1">
+                      <p className="text-xs text-muted-foreground shrink-0">证书名称：</p>
+                      <p className="text-sm font-semibold text-gray-900 text-right flex-1 min-w-0 break-words">{cert.name}</p>
+                    </div>
+                    {cert.url && (
+                      <div className="flex items-start gap-1">
+                        <span className="text-xs text-muted-foreground shrink-0">相关网站：</span>
                         <a
                           href={cert.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-primary hover:underline"
+                          className="flex items-center gap-1 text-xs text-primary hover:underline min-w-0 flex-1"
                         >
-                          <ExternalLink className="h-3.5 w-3.5" />
+                          <ExternalLink className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{cert.url}</span>
                         </a>
-                      )}
-                    </div>
+                      </div>
+                    )}
                     {cert.description && (
-                      <p className="text-sm text-muted-foreground mt-0.5">{cert.description}</p>
+                      <div className="flex items-start gap-1">
+                        <span className="text-xs text-muted-foreground shrink-0">证书介绍：</span>
+                        <p className="text-xs text-muted-foreground line-clamp-1">{cert.description}</p>
+                      </div>
                     )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    onClick={() => handleRemoveCertificate(cert.id)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                  <div className="px-3 pb-3">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-muted-foreground hover:text-destructive"
+                      onClick={() => handleRemoveCertificate(cert.id)}
+                    >
+                      <X className="h-3.5 w-3.5 mr-1" />
+                      移除
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -603,32 +620,34 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                       <div
                         key={cert.id}
                         onClick={() => handleSelectCertificate(cert.id, !isSelected)}
-                        className={`relative rounded-xl border-2 p-4 cursor-pointer transition-all hover:shadow-md ${
+                        className={`relative rounded-xl border-2 overflow-hidden cursor-pointer transition-all hover:shadow-md ${
                           isSelected
-                            ? 'border-primary bg-primary/5 shadow-sm'
+                            ? 'border-primary shadow-sm'
                             : 'border-gray-200 hover:border-gray-300 bg-white'
                         }`}
                       >
                         <Checkbox
                           checked={isSelected}
                           onCheckedChange={(checked) => handleSelectCertificate(cert.id, !!checked)}
-                          className="absolute top-3 right-3"
+                          className="absolute top-3 right-3 z-10"
                         />
-                        <div className="flex flex-col items-center text-center gap-3">
-                          {cert.image ? (
-                            <img
-                              src={cert.image}
-                              alt={cert.name}
-                              className="h-20 w-20 rounded-lg object-contain bg-gray-50"
-                            />
-                          ) : (
-                            <div className="h-20 w-20 rounded-lg bg-primary/10 flex items-center justify-center">
-                              <Award className="h-10 w-10 text-primary" />
-                            </div>
-                          )}
-                          <div className="space-y-1.5 w-full min-w-0">
-                            <p className="font-semibold text-sm text-gray-900 break-words">{cert.name}</p>
-                            {cert.url && (
+                        {cert.image ? (
+                          <div className="aspect-video w-full overflow-hidden bg-gray-50">
+                            <img src={cert.image} alt={cert.name} className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className={`aspect-video w-full flex items-center justify-center ${isSelected ? 'bg-primary/10' : 'bg-gray-100'}`}>
+                            <Award className={`h-12 w-12 ${isSelected ? 'text-primary/50' : 'text-gray-300'}`} />
+                          </div>
+                        )}
+                        <div className="p-3 space-y-1.5">
+                          <div className="flex items-start gap-1">
+                            <span className="text-[11px] text-muted-foreground shrink-0">证书名称：</span>
+                            <span className="text-sm font-semibold text-gray-900 break-words">{cert.name}</span>
+                          </div>
+                          {cert.url && (
+                            <div className="flex items-start gap-1">
+                              <span className="text-[11px] text-muted-foreground shrink-0">相关网站：</span>
                               <a
                                 href={cert.url}
                                 target="_blank"
@@ -639,13 +658,14 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                                 <ExternalLink className="h-3 w-3 shrink-0" />
                                 <span className="truncate">{cert.url}</span>
                               </a>
-                            )}
-                            {cert.description && (
-                              <p className="text-xs text-muted-foreground line-clamp-1 break-words">
-                                {cert.description}
-                              </p>
-                            )}
-                          </div>
+                            </div>
+                          )}
+                          {cert.description && (
+                            <div className="flex items-start gap-1">
+                              <span className="text-[11px] text-muted-foreground shrink-0">证书介绍：</span>
+                              <p className="text-xs text-muted-foreground line-clamp-1">{cert.description}</p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )
