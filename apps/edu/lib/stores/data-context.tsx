@@ -260,7 +260,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       name: a.name,
       category: a.category,
       description: a.description ?? '',
-      domain: a.domain ?? '',
       attributes: a.attributes || [],
       isPublic: a.isPublic ?? false,
       createdAt: a.createdAt,

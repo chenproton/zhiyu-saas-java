@@ -27,7 +27,6 @@ type CreateAbilityRequest struct {
 	Name        string   `json:"name"`
 	Description *string  `json:"description"`
 	Category    string   `json:"category"`
-	Domain      *string  `json:"domain"`
 	Attributes  []string `json:"attributes"`
 	IsPublic    bool     `json:"isPublic"`
 }
@@ -36,7 +35,6 @@ type UpdateAbilityRequest struct {
 	Name        string   `json:"name"`
 	Description *string  `json:"description"`
 	Category    string   `json:"category"`
-	Domain      *string  `json:"domain"`
 	Attributes  []string `json:"attributes"`
 	IsPublic    bool     `json:"isPublic"`
 }
@@ -92,7 +90,7 @@ func (h *AbilityHandler) List(w http.ResponseWriter, r *http.Request) {
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT id, name, description, category, domain, attributes, is_public, created_at
+		SELECT id, name, description, category, attributes, is_public, created_at
 		FROM ability_points
 		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY created_at DESC
@@ -154,9 +152,9 @@ func (h *AbilityHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	id := uuid.NewString()
 	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO ability_points (id, tenant_id, name, description, category, domain, attributes, is_public)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-	`, id, tenantID, req.Name, req.Description, req.Category, req.Domain, req.Attributes, req.IsPublic)
+		INSERT INTO ability_points (id, tenant_id, name, description, category, attributes, is_public)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, id, tenantID, req.Name, req.Description, req.Category, req.Attributes, req.IsPublic)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "能力点名称已存在，请使用其他名称")
@@ -194,9 +192,9 @@ func (h *AbilityHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err := h.DB.Exec(r.Context(), `
-		UPDATE ability_points SET name = $1, description = $2, category = $3, domain = $4, attributes = $5, is_public = $6
-		WHERE id = $7
-	`, req.Name, req.Description, req.Category, req.Domain, req.Attributes, req.IsPublic, id)
+		UPDATE ability_points SET name = $1, description = $2, category = $3, attributes = $4, is_public = $5
+		WHERE id = $6
+	`, req.Name, req.Description, req.Category, req.Attributes, req.IsPublic, id)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "能力点名称已存在，请使用其他名称")
@@ -233,19 +231,17 @@ func (h *AbilityHandler) Delete(w http.ResponseWriter, r *http.Request) {
 func (h *AbilityHandler) fetchAbility(ctx context.Context, id string) (domain.AbilityPoint, error) {
 	var a domain.AbilityPoint
 	var description *string
-	var domainStr *string
 
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, description, category, domain, attributes, is_public, created_at
+		SELECT id, name, description, category, attributes, is_public, created_at
 		FROM ability_points WHERE id = $1
 	`, id).Scan(
-		&a.ID, &a.Name, &description, &a.Category, &domainStr, &a.Attributes, &a.IsPublic, &a.CreatedAt,
+		&a.ID, &a.Name, &description, &a.Category, &a.Attributes, &a.IsPublic, &a.CreatedAt,
 	)
 	if err != nil {
 		return a, err
 	}
 	a.Description = description
-	a.Domain = domainStr
 	return a, nil
 }
 
@@ -254,14 +250,12 @@ func (h *AbilityHandler) scanAbilityRows(rows pgx.Rows) ([]domain.AbilityPoint, 
 	for rows.Next() {
 		var a domain.AbilityPoint
 		var description *string
-		var domainStr *string
 		if err := rows.Scan(
-			&a.ID, &a.Name, &description, &a.Category, &domainStr, &a.Attributes, &a.IsPublic, &a.CreatedAt,
+			&a.ID, &a.Name, &description, &a.Category, &a.Attributes, &a.IsPublic, &a.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
 		a.Description = description
-		a.Domain = domainStr
 		items = append(items, a)
 	}
 	return items, nil

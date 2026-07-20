@@ -73,7 +73,6 @@ export interface Ability {
   name: string
   category: string
   description: string
-  domain?: string
   attributes: string[]
   isPublic: boolean
   createdAt: string

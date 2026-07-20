@@ -99,15 +99,12 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
   const [editRespName, setEditRespName] = useState('')
   const [editingAbilityId, setEditingAbilityId] = useState<string | null>(null)
   const [editAbilityName, setEditAbilityName] = useState('')
-  const [editAbilityDomain, setEditAbilityDomain] = useState('')
   const [editAbilityAttributes, setEditAbilityAttributes] = useState<string[]>([])
   const [duplicateName, setDuplicateName] = useState<string | null>(null)
-  const [newAbilityDomain, setNewAbilityDomain] = useState('')
   const [newAbilityAttributes, setNewAbilityAttributes] = useState<string[]>([])
   const [showAbilityPoolDialog, setShowAbilityPoolDialog] = useState(false)
   const [abilityPoolSearch, setAbilityPoolSearch] = useState('')
   const [abilityPoolFilterAttr, setAbilityPoolFilterAttr] = useState<string | null>(null)
-  const [abilityPoolFilterDomain, setAbilityPoolFilterDomain] = useState<string | null>(null)
 
   const contentRef = useRef<HTMLDivElement>(null)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -133,10 +130,9 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
         !a.name.toLowerCase().includes(abilityPoolSearch.toLowerCase()) &&
         !a.category.toLowerCase().includes(abilityPoolSearch.toLowerCase())) return false
       if (abilityPoolFilterAttr && !(a.attributes || []).includes(abilityPoolFilterAttr)) return false
-      if (abilityPoolFilterDomain && (a.domain || ABILITY_DOMAINS[0]) !== abilityPoolFilterDomain) return false
       return true
     })
-  }, [abilities, abilityPoolSearch, abilityPoolFilterAttr, abilityPoolFilterDomain])
+  }, [abilities, abilityPoolSearch, abilityPoolFilterAttr])
 
   const scrollToResp = (respId: string) => {
     setSelectedRespId(respId)
@@ -200,12 +196,11 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       level: 'understand',
       rubricDescription: '',
       description: '',
-      domain: newAbilityDomain || ABILITY_DOMAINS[0],
+      domain: ABILITY_DOMAINS[0],
       attributes: newAbilityAttributes,
     }
     onUpdate({ abilityBindings: [...position.abilityBindings, newBinding] })
     setNewAbilityName('')
-    setNewAbilityDomain('')
     setNewAbilityAttributes([])
     setShowCreateDialog(false)
     setDuplicateName(null)
@@ -289,23 +284,18 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
   const handleStartEditAbility = (ability: Ability) => {
     setEditingAbilityId(ability.id)
     setEditAbilityName(ability.name)
-    setEditAbilityDomain(ability.domain || '')
     setEditAbilityAttributes(ability.attributes || [])
   }
 
   const handleSaveEditAbility = async (abilityId: string) => {
     const trimmed = editAbilityName.trim()
-    if (!trimmed) {
-      return
-    }
+    if (!trimmed) return
     const current = abilities.find(a => a.id === abilityId)
     const same = trimmed === (current?.name || '')
-      && (editAbilityDomain || '') === (current?.domain || '')
       && arrayEquals(editAbilityAttributes, current?.attributes || [])
     if (same) {
       setEditingAbilityId(null)
       setEditAbilityName('')
-      setEditAbilityDomain('')
       setEditAbilityAttributes([])
       return
     }
@@ -313,17 +303,15 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       await abilityApi.update(abilityId, {
         name: trimmed,
         category: (current?.category || '专业技能') as any,
-        domain: editAbilityDomain || undefined,
         attributes: editAbilityAttributes,
       })
-      setAbilities(prev => prev.map(a => a.id === abilityId ? { ...a, name: trimmed, domain: editAbilityDomain || '', attributes: editAbilityAttributes } : a))
+      setAbilities(prev => prev.map(a => a.id === abilityId ? { ...a, name: trimmed, attributes: editAbilityAttributes } : a))
       toast.success('能力点已更新')
     } catch (err: any) {
       toast.error(err?.message || '更新失败')
     }
     setEditingAbilityId(null)
     setEditAbilityName('')
-    setEditAbilityDomain('')
     setEditAbilityAttributes([])
   }
 
@@ -490,9 +478,8 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                             className="h-6 text-[10px] rounded-full px-3"
                             onClick={() => {
                               setAbilityPoolSearch('')
-                              setAbilityPoolFilterAttr(null)
-                              setAbilityPoolFilterDomain(null)
-                              setShowAbilityPoolDialog(true)
+                setAbilityPoolFilterAttr(null)
+                setShowAbilityPoolDialog(true)
                             }}
                           >
                             <Library className="mr-1 h-3 w-3" />
@@ -589,6 +576,22 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                                   </div>
                                 </div>
 
+                                <div className="mb-3">
+                                  <Select
+                                    value={binding.domain || ABILITY_DOMAINS[0]}
+                                    onValueChange={(v) => handleUpdateBinding(binding.id, { domain: v })}
+                                  >
+                                    <SelectTrigger className="h-7 text-[11px] w-full border-gray-100 bg-gray-50/50 rounded-lg">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {ABILITY_DOMAINS.map((d) => (
+                                        <SelectItem key={d} value={d}>{d}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
                                 <div>
                                   <Textarea
                                     value={binding.rubricDescription}
@@ -616,7 +619,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       {/* Create Custom Ability Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={(open) => {
         setShowCreateDialog(open)
-        if (!open) { setDuplicateName(null); setNewAbilityName(''); setNewAbilityDomain(''); setNewAbilityAttributes([]) }
+        if (!open) { setDuplicateName(null); setNewAbilityName(''); setNewAbilityAttributes([]) }
       }}>
         <DialogContent>
           <DialogHeader>
@@ -701,19 +704,6 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                     })}
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-sm text-gray-600">所属能力域</Label>
-                  <Select value={newAbilityDomain || ABILITY_DOMAINS[0]} onValueChange={setNewAbilityDomain}>
-                    <SelectTrigger className="h-9 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ABILITY_DOMAINS.map((d) => (
-                        <SelectItem key={d} value={d}>{d}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
               <DialogFooter className="gap-2">
                 <Button variant="outline" className="border-gray-200 hover:bg-gray-50" onClick={() => setShowCreateDialog(false)}>
@@ -735,7 +725,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       {/* Ability Pool Dialog */}
       <Dialog open={showAbilityPoolDialog} onOpenChange={(open) => {
         setShowAbilityPoolDialog(open)
-        if (!open) { setAbilityPoolSearch(''); setAbilityPoolFilterAttr(null); setAbilityPoolFilterDomain(null) }
+        if (!open) { setAbilityPoolSearch(''); setAbilityPoolFilterAttr(null) }
       }}>
         <DialogContent size="xl" className="!h-[85vh] flex flex-col">
           <DialogHeader className="pb-0">
@@ -772,23 +762,9 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                   {attr}
                 </button>
               ))}
-              <span className="text-[11px] font-medium text-gray-500 ml-3 mr-1">能力领域</span>
-              {ABILITY_DOMAINS.map((dom) => (
+              {abilityPoolFilterAttr && (
                 <button
-                  key={dom}
-                  onClick={() => setAbilityPoolFilterDomain(abilityPoolFilterDomain === dom ? null : dom)}
-                  className={`px-3 py-1 rounded-full text-[11px] transition-colors ${
-                    abilityPoolFilterDomain === dom
-                      ? 'bg-gray-800 text-white font-medium shadow-sm'
-                      : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-400 hover:text-gray-700'
-                  }`}
-                >
-                  {dom}
-                </button>
-              ))}
-              {(abilityPoolFilterAttr || abilityPoolFilterDomain) && (
-                <button
-                  onClick={() => { setAbilityPoolFilterAttr(null); setAbilityPoolFilterDomain(null) }}
+                  onClick={() => setAbilityPoolFilterAttr(null)}
                   className="text-[11px] text-gray-400 hover:text-gray-600 ml-2"
                 >
                   清空
@@ -807,7 +783,6 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                     className="mt-3 text-xs text-indigo-500 hover:text-indigo-600 font-medium"
                     onClick={() => {
                       setNewAbilityName(abilityPoolSearch.trim())
-                      setNewAbilityDomain('')
                       setNewAbilityAttributes([])
                       setDuplicateName(null)
                       setShowCreateDialog(true)
@@ -822,7 +797,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                 <thead>
                   <tr className="border-b bg-gray-50/80 sticky top-0 z-10">
                     <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[34%]">能力点名称</th>
-                    <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[26%]">属性 · 领域</th>
+                    <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[26%]">能力属性</th>
                     <th className="text-right text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[40%]">操作</th>
                   </tr>
                 </thead>
@@ -865,24 +840,13 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                                       </button>
                                     )
                                   })}
-                                  <span className="text-[11px] text-gray-400 shrink-0 ml-3">领域</span>
-                                  <Select value={editAbilityDomain || ABILITY_DOMAINS[0]} onValueChange={setEditAbilityDomain}>
-                                    <SelectTrigger className="h-6 text-[11px] w-28 bg-white">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {ABILITY_DOMAINS.map((d) => (
-                                        <SelectItem key={d} value={d}>{d}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 <Button size="sm" className="h-7 text-xs" onClick={() => handleSaveEditAbility(ability.id)}>
                                   <Check className="mr-1 h-3 w-3" />保存
                                 </Button>
-                                <Button size="sm" variant="ghost" className="h-7 text-xs text-gray-500" onClick={() => { setEditingAbilityId(null); setEditAbilityName(''); setEditAbilityDomain(''); setEditAbilityAttributes([]) }}>
+                                <Button size="sm" variant="ghost" className="h-7 text-xs text-gray-500" onClick={() => { setEditingAbilityId(null); setEditAbilityName(''); setEditAbilityAttributes([]) }}>
                                   取消
                                 </Button>
                               </div>
@@ -901,8 +865,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                             {(ability.attributes || []).map((attr, i) => (
                               <span key={i} className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200">{attr}</span>
                             ))}
-                            {((ability.attributes || []).length > 0) && <span className="text-gray-300 text-[10px]">·</span>}
-                            <span className="text-[11px] text-gray-400">{ability.domain || ABILITY_DOMAINS[0]}</span>
+                            {(ability.attributes || []).length === 0 && <span className="text-[11px] text-gray-300">-</span>}
                           </div>
                         </td>
                         <td className="px-4 py-3">

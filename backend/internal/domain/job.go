@@ -85,7 +85,6 @@ type AbilityPoint struct {
 	Description *string         `json:"description,omitempty"`
 	Category    AbilityCategory `json:"category"`
 	Code        *string         `json:"code,omitempty"`
-	Domain      *string         `json:"domain,omitempty"`
 	Attributes  []string        `json:"attributes"`
 	IsPublic    bool            `json:"isPublic"`
 	CreatedAt   time.Time       `json:"createdAt"`

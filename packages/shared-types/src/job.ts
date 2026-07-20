@@ -54,7 +54,6 @@ export interface AbilityPoint {
   name: string
   description?: string
   category: "knowledge" | "skill" | "quality"
-  domain?: string
   attributes: string[]
   isPublic: boolean
   createdAt: string
