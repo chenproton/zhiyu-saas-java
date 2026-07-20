@@ -142,8 +142,10 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
     setSelectedRespId(respId)
     const el = sectionRefs.current[respId]
     if (el && contentRef.current) {
-      const offsetTop = el.offsetTop - 80
-      contentRef.current.scrollTo({ top: offsetTop, behavior: 'smooth' })
+      const elTop = el.getBoundingClientRect().top
+      const containerTop = contentRef.current.getBoundingClientRect().top
+      const y = contentRef.current.scrollTop + (elTop - containerTop) - 16
+      contentRef.current.scrollTo({ top: y, behavior: 'smooth' })
     }
   }
 
