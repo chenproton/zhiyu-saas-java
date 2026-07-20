@@ -91,11 +91,11 @@ export default function SceneResultsPage() {
   }, [results, statusFilter, searchQuery, scenes])
 
   return (
-    <div className="container mx-auto py-6 space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold">场景任务测评结果</h1>
-          <p className="text-sm text-muted-foreground">查看并评分学生提交的场景任务测评结果</p>
+          <h1 className="text-2xl font-semibold text-gray-800">场景任务测评结果</h1>
+          <p className="text-sm text-gray-500 mt-1">查看并评分学生提交的场景任务测评结果</p>
         </div>
       </div>
 

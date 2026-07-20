@@ -56,7 +56,6 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { PageHeaderCard } from "@/components/shared/page-header-card"
 import { useData } from "@/components/providers/data-provider"
 import type { MicroCertTemplate, MicroCertTemplateFormData, CertType } from "@/lib/types"
 
@@ -206,46 +205,48 @@ export default function MicroCertTemplatesPage() {
     })
   }, [microCertTemplates, search, typeFilter])
 
-  const stats = useMemo(() => {
-    const typeCount = certTypes.length
-    return [
-      {
-        label: "模板总数",
-        value: microCertTemplates.length,
-        icon: <FileText className="size-3.5 text-blue-600" />,
-        iconClassName: "bg-blue-50",
-      },
-      {
-        label: "认证类型",
-        value: typeCount,
-        icon: <Settings className="size-3.5 text-green-600" />,
-        iconClassName: "bg-green-50",
-      },
-    ]
-  }, [microCertTemplates, certTypes])
-
   return (
-    <div className="px-8 py-6">
-      <PageHeaderCard
-        title="微证书模板管理"
-        description="管理微证书模板，支持自定义证书内容和认证类型"
-        stats={stats}
-        actions={
-          <>
-            <Button size="sm" variant="outline" onClick={openTypeConfig}>
-              <Settings className="mr-1.5 size-4" />
-              认证类型配置
-            </Button>
-            <Button size="sm" onClick={openCreateDialog}>
-              <Plus className="mr-1.5 size-4" />
-              新建模板
-            </Button>
-          </>
-        }
-      />
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-800">微证书模板管理</h1>
+          <p className="text-sm text-gray-500 mt-1">管理微证书模板，支持自定义证书内容和认证类型</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={openTypeConfig}>
+            <Settings className="mr-1.5 size-4" />
+            认证类型配置
+          </Button>
+          <Button size="sm" onClick={openCreateDialog}>
+            <Plus className="mr-1.5 size-4" />
+            新建模板
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="flex items-center gap-3 rounded-lg border bg-white px-4 py-3">
+          <div className="flex size-8 items-center justify-center rounded-md bg-blue-50">
+            <FileText className="size-3.5 text-blue-600" />
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">模板总数</div>
+            <div className="text-sm font-semibold">{microCertTemplates.length}</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 rounded-lg border bg-white px-4 py-3">
+          <div className="flex size-8 items-center justify-center rounded-md bg-green-50">
+            <Settings className="size-3.5 text-green-600" />
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">认证类型</div>
+            <div className="text-sm font-semibold">{certTypes.length}</div>
+          </div>
+        </div>
+      </div>
 
       {/* Search & Filter */}
-      <div className="flex gap-4 mb-4">
+      <div className="flex gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
           <Input

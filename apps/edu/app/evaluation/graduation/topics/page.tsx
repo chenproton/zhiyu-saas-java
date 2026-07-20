@@ -215,8 +215,8 @@ export default function GraduationProjectTopicsPage() {
   const selectedScene = SCENE_OPTIONS.find(s => s.id === formData.sceneId)
 
   return (
-    <div className="px-8 py-6">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">毕业设计选题管理</h1>
           <p className="text-muted-foreground">发布、配置、审核毕设选题，管理选题全生命周期</p>
@@ -229,7 +229,7 @@ export default function GraduationProjectTopicsPage() {
         </div>
       </div>
 
-      <div className="mb-4 flex gap-3">
+      <div className="flex gap-3">
         <div className="flex flex-1 items-center gap-3 rounded-lg border bg-white px-4 py-3">
           <div className="flex size-8 items-center justify-center rounded-md bg-blue-50"><BookOpen className="size-4 text-blue-600" /></div>
           <div className="min-w-0 flex-1">
@@ -261,7 +261,7 @@ export default function GraduationProjectTopicsPage() {
       </div>
 
       {/* 学院 Tab 切换 */}
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2">
         {COLLEGES.map((college) => (
           <Button
             key={college}
@@ -275,7 +275,7 @@ export default function GraduationProjectTopicsPage() {
         ))}
       </div>
 
-      <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="relative flex-1 sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="搜索选题名称、岗位、导师..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />

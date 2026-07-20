@@ -143,8 +143,8 @@ function ExamResultsContent() {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
+    <div className="space-y-6">
+      <div>
         <Button variant="ghost" size="sm" asChild className="mb-4">
           <Link href="/evaluation/exam-usage">
             <ArrowLeft className="mr-1 size-4" />
@@ -169,7 +169,7 @@ function ExamResultsContent() {
       </div>
 
       {/* 统计卡片 */}
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
         <Card className="bg-gradient-to-br from-slate-50 to-white">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground">参考人数</CardTitle>
@@ -221,7 +221,7 @@ function ExamResultsContent() {
       </div>
 
       {/* 筛选栏 */}
-      <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="relative flex-1 sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input

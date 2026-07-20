@@ -57,7 +57,6 @@ import {
   XCircle,
   CheckCircle,
 } from "lucide-react"
-import { PageHeaderCard } from "@/components/shared/page-header-card"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 
@@ -234,15 +233,14 @@ export function PositionListPage() {
   }
 
   return (
-    <div className="px-8 py-6">
-      <PageHeaderCard
-        title="岗位能力认定规则配置"
-        description="管理各岗位的能力认定规则配置"
-        className="mb-4"
-      />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-800">岗位能力认定规则配置</h1>
+        <p className="text-sm text-gray-500 mt-1">管理各岗位的能力认定规则配置</p>
+      </div>
 
         {/* 搜索和筛选 */}
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input

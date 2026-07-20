@@ -23,7 +23,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useData } from "@/components/providers/data-provider"
-import { PageHeaderCard } from "@/components/shared/page-header-card"
 import type { EvaluationMethod } from "@/lib/types"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
@@ -101,15 +100,14 @@ export default function EvaluationMethodsPage() {
   }
 
   return (
-    <div className="px-8 py-6">
-      <PageHeaderCard
-        title="测评方式管理"
-        description="管理测评方式分类与前台展示状态"
-        className="mb-4"
-      />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-800">测评方式管理</h1>
+        <p className="text-sm text-gray-500 mt-1">管理测评方式分类与前台展示状态</p>
+      </div>
 
       {/* 搜索 */}
-      <div className="mb-4">
+      <div>
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input

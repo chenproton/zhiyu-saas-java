@@ -15,7 +15,6 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useData } from "@/components/providers/data-provider"
 import { StudentPortraitModal } from "@/components/shared/student-portrait-modal"
-import { PageHeaderCard } from "@/components/shared/page-header-card"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 
@@ -148,15 +147,14 @@ export default function JobAbilityResultsPage() {
       </div>
 
       {/* 右侧结果列表 */}
-      <div className="flex-1 overflow-auto px-8 py-6">
-        <PageHeaderCard
-          title="岗位能力认定结果"
-          description={`查看 ${positionsList.find(p => p.id === selectedPositionId)?.name || ''} 的认定结果`}
-          className="mb-4"
-        />
+      <div className="flex-1 overflow-auto p-6 space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-800">岗位能力认定结果</h1>
+          <p className="text-sm text-gray-500 mt-1">查看 {positionsList.find(p => p.id === selectedPositionId)?.name || ''} 的认定结果</p>
+        </div>
 
         {/* 筛选栏 */}
-        <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="relative flex-1 sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input

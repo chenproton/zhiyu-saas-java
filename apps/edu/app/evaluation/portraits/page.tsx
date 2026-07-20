@@ -116,9 +116,12 @@ export default function StudentAbilityPortraitsPage() {
   const formatDate = (date: Date) => new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date)
 
   return (
-    <div className="px-8 py-6">
-      <div className="mb-4 flex items-center justify-between">
-        <div><h1 className="text-2xl font-bold tracking-tight">学生画像管理</h1><p className="text-muted-foreground">基于课程任务、实践场景、毕设评价、档案材料等全量数据，自动生成学生能力画像</p></div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-800">学生画像管理</h1>
+          <p className="text-sm text-gray-500 mt-1">基于课程任务、实践场景、毕设评价、档案材料等全量数据，自动生成学生能力画像</p>
+        </div>
         <div className="flex items-center gap-2">
           <PrdAnnotation data={getAnnotation("sp-btn-generate")}><Button variant="outline" onClick={() => setGenerateOpen(true)}><RefreshCw className="mr-2 size-4" />手动更新画像</Button></PrdAnnotation>
           <PrdAnnotation data={getAnnotation("sp-btn-config-time")}><Button variant="outline" onClick={() => setConfigOpen(true)}><Settings className="mr-2 size-4" />画像更新时间</Button></PrdAnnotation>
