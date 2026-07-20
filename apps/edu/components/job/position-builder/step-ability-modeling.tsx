@@ -498,7 +498,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                   <div
                     key={resp.id}
                     ref={(el) => { sectionRefs.current[resp.id] = el }}
-                    className={`${isSelectedGroup ? 'ring-2 ring-primary/20 rounded-2xl p-4 -m-4' : ''}`}
+                    className={`${isSelectedGroup ? 'bg-indigo-50/40 rounded-2xl p-4 -m-4' : ''}`}
                   >
                     <div className="flex items-center gap-2 mb-3 px-1">
                       <div className={`w-2 h-2 rounded-full ${getRespColor(resp.id)}`} />
