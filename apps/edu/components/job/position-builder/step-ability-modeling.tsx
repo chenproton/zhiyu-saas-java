@@ -508,7 +508,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                         </span>
                       )}
                     </div>
-                    <div className={`${isSelectedGroup ? 'ring-2 ring-primary/20 rounded-2xl' : ''}`}>
+                    <div className={`${isSelectedGroup ? 'ring-2 ring-primary/20 rounded-2xl p-3 -m-3' : ''}`}>
                       {respBindings.length === 0 ? (
                         <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/50 py-8 flex flex-col items-center justify-center">
                           <p className="text-xs text-gray-400">暂无能力点</p>
