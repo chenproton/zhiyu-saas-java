@@ -70,6 +70,7 @@ import {
   PieChart as PieChartIcon,
   Headphones,
   Loader2,
+  Download,
   Archive,
   Building2,
   RotateCcw,
@@ -1771,6 +1772,7 @@ function EditCardDialog({
       case "description": {
         const [descMode, setDescMode] = useState<"rich_text" | "pdf">("rich_text")
         const [pdfUploading, setPdfUploading] = useState(false)
+        const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false)
         const pdfInputRef = useRef<HTMLInputElement>(null)
 
         const pdfFileName = state.descriptionPdf ? state.descriptionPdf.split('/').pop() || state.descriptionPdf : ""
@@ -1918,6 +1920,14 @@ function EditCardDialog({
                 )}
                 {state.descriptionPdf && (
                   <div className="flex items-center gap-2 pointer-events-auto" onClick={e => e.stopPropagation()}>
+                    <Button variant="outline" size="sm" onClick={() => setPdfPreviewOpen(true)}>
+                      <Eye className="h-4 w-4 mr-1" />预览
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={state.descriptionPdf} download={pdfFileName} target="_blank" rel="noreferrer">
+                        <Download className="h-4 w-4 mr-1" />下载
+                      </a>
+                    </Button>
                     <Button variant="outline" size="sm" disabled={pdfUploading} onClick={() => pdfInputRef.current?.click()}>
                       <Upload className="h-4 w-4 mr-1" />重新上传
                     </Button>
@@ -1928,6 +1938,37 @@ function EditCardDialog({
                 )}
               </div>
             )}
+
+            {/* PDF Preview Dialog */}
+            <Dialog open={pdfPreviewOpen} onOpenChange={setPdfPreviewOpen}>
+              <DialogContent className="sm:max-w-4xl h-[80vh] flex flex-col">
+                <DialogHeader className="shrink-0">
+                  <DialogTitle className="flex items-center gap-2">
+                    <File className="h-5 w-5 text-red-500" />
+                    <span className="truncate">{pdfFileName || "任务说明书预览"}</span>
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="flex-1 min-h-0 border rounded-lg overflow-hidden bg-gray-50">
+                  {state.descriptionPdf ? (
+                    <iframe
+                      src={state.descriptionPdf}
+                      title={pdfFileName || "PDF 预览"}
+                      className="w-full h-full"
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-gray-400">暂无文件</div>
+                  )}
+                </div>
+                <DialogFooter className="shrink-0 gap-2">
+                  <Button variant="outline" onClick={() => setPdfPreviewOpen(false)}>关闭</Button>
+                  <Button asChild>
+                    <a href={state.descriptionPdf || undefined} download={pdfFileName} target="_blank" rel="noreferrer">
+                      <Download className="h-4 w-4 mr-1" />下载
+                    </a>
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         )
       }
