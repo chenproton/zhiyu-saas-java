@@ -344,66 +344,6 @@ export default function ScenarioEditPage() {
             <div className="col-span-2 space-y-6">
               <Card>
                 <CardContent className="pt-6 space-y-5">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <PrdAnnotation data={getAnnotation("editor-field-position")} className="block">
-                        <Label htmlFor="position">目标岗位</Label>
-                      </PrdAnnotation>
-                      <div className="relative">
-                        <Select value={positionId} onValueChange={setPositionId}>
-                          <SelectTrigger id="position" className={positionId ? "pr-8" : ""}>
-                            <SelectValue placeholder="请选择岗位" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Object.entries(positioningGroups).map(([group, positions]) => (
-                              <div key={group}>
-                                <div className="px-2 py-1 text-xs font-medium text-gray-500 bg-gray-50">{group}</div>
-                                {positions.map((pos) => (
-                                  <SelectItem key={pos.id} value={pos.id}>{pos.name}</SelectItem>
-                                ))}
-                              </div>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {positionId && (
-                          <button
-                            type="button"
-                            onClick={() => setPositionId("")}
-                            className="absolute right-8 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="grid gap-2">
-                      <PrdAnnotation data={getAnnotation("editor-field-batch")} className="block">
-                        <Label htmlFor="batch">所属批次</Label>
-                      </PrdAnnotation>
-                      <div className="relative">
-                        <Select value={batchId} onValueChange={setBatchId}>
-                          <SelectTrigger id="batch" className={batchId ? "pr-8" : ""}>
-                            <SelectValue placeholder="请选择批次" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {batches.map((b) => (
-                              <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {batchId && (
-                          <button
-                            type="button"
-                            onClick={() => setBatchId("")}
-                            className="absolute right-8 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="grid gap-2">
                     <PrdAnnotation data={getAnnotation("editor-field-name")} className="block">
                       <Label htmlFor="name">场景名称 <span className="text-red-500">*</span></Label>
@@ -580,6 +520,68 @@ export default function ScenarioEditPage() {
                         <p className="text-xs text-gray-400 mt-1">建议尺寸 320x200，支持 jpg/png/webp</p>
                       </div>
                     )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6 space-y-4">
+                  <div className="grid gap-2">
+                    <PrdAnnotation data={getAnnotation("editor-field-position")} className="block">
+                      <Label htmlFor="position">目标岗位</Label>
+                    </PrdAnnotation>
+                    <div className="relative">
+                      <Select value={positionId} onValueChange={setPositionId}>
+                        <SelectTrigger id="position" className={positionId ? "pr-8" : ""}>
+                          <SelectValue placeholder="请选择岗位" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(positioningGroups).map(([group, positions]) => (
+                            <div key={group}>
+                              <div className="px-2 py-1 text-xs font-medium text-gray-500 bg-gray-50">{group}</div>
+                              {positions.map((pos) => (
+                                <SelectItem key={pos.id} value={pos.id}>{pos.name}</SelectItem>
+                              ))}
+                            </div>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {positionId && (
+                        <button
+                          type="button"
+                          onClick={() => setPositionId("")}
+                          className="absolute right-8 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <PrdAnnotation data={getAnnotation("editor-field-batch")} className="block">
+                      <Label htmlFor="batch">所属批次</Label>
+                    </PrdAnnotation>
+                    <div className="relative">
+                      <Select value={batchId} onValueChange={setBatchId}>
+                        <SelectTrigger id="batch" className={batchId ? "pr-8" : ""}>
+                          <SelectValue placeholder="请选择批次" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {batches.map((b) => (
+                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {batchId && (
+                        <button
+                          type="button"
+                          onClick={() => setBatchId("")}
+                          className="absolute right-8 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

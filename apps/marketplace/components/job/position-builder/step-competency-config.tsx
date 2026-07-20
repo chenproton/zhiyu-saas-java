@@ -36,11 +36,11 @@ interface StepCompetencyConfigProps {
 }
 
 const PRESET_DOMAINS = [
-  { id: 'domain-business', name: '业务洞察', description: '对业务场景、用户需求的理解与洞察能力' },
-  { id: 'domain-tools', name: '专业工具', description: '专业领域内的工具使用与技术应用能力' },
-  { id: 'domain-quality', name: '通用素质', description: '通用职业素养与基础素质能力' },
-  { id: 'domain-team', name: '团队协作', description: '团队沟通、协作与领导能力' },
-  { id: 'domain-innovation', name: '创新思维', description: '创新意识、问题解决与学习能力' },
+  { id: 'domain-business', name: '岗位与行业认知', description: '对所在岗位及行业的认知与理解能力' },
+  { id: 'domain-tools', name: '专业知识', description: '岗位所需的专业领域知识与理论基础' },
+  { id: 'domain-quality', name: '职业素养/价值观', description: '职业态度、责任心与价值取向等素养' },
+  { id: 'domain-team', name: '专业技能', description: '岗位所需的实操技能与技术应用能力' },
+  { id: 'domain-innovation', name: '通用能力', description: '沟通协作、学习创新等通用能力' },
 ]
 
 export function StepCompetencyConfig({
