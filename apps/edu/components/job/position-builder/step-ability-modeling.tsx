@@ -307,6 +307,16 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
     setEditAbilityName('')
   }
 
+  const handleDeleteAbility = async (abilityId: string) => {
+    try {
+      await abilityApi.delete(abilityId)
+      setAbilities(prev => prev.filter(a => a.id !== abilityId))
+      toast.success('能力点已删除')
+    } catch (err: any) {
+      toast.error(err?.message || '删除失败')
+    }
+  }
+
   const handleSaveEditAbilityKeyDown = (e: React.KeyboardEvent, abilityId: string) => {
     if (e.key === 'Enter') handleSaveEditAbility(abilityId)
     if (e.key === 'Escape') {
@@ -442,7 +452,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
               onClick={() => setShowLibraryDialog(true)}
             >
               <Library className="mr-1 h-3.5 w-3.5" />
-              查看功能点库
+               查看能力点库
             </Button>
             <Button
               variant="outline"
@@ -831,7 +841,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       <Dialog open={showLibraryDialog} onOpenChange={setShowLibraryDialog}>
         <DialogContent className="max-w-xl max-h-[70vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle className="text-gray-800">功能点库</DialogTitle>
+            <DialogTitle className="text-gray-800">能力点库</DialogTitle>
             <DialogDescription className="text-gray-400">
               系统内全部公共能力点（共 {abilities.length} 个）
             </DialogDescription>
@@ -886,13 +896,25 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                       )}
                     </div>
                     {!isEditing && (
-                      <button
-                        onClick={() => handleStartEditAbility(ability)}
-                        className="p-1 rounded text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-                        title="编辑名称"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleStartEditAbility(ability)}
+                          className="p-1 rounded text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                          title="编辑名称"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteAbility(ability.id)
+                          }}
+                          className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                          title="删除能力点"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </>
                     )}
                   </div>
                 )
