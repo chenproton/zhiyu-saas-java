@@ -66,8 +66,10 @@ export interface PositionAbilityBinding {
   responsibilityId: string
   abilityPointId: string
   source: "public" | "custom"
+  domain?: string
   requiredLevel: string
   rubricDescription?: string
+  attributes: string[]
   weight: number
 }
 

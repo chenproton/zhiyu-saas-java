@@ -191,6 +191,8 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       level: 'understand',
       rubricDescription: '',
       description: '',
+      domain: newAbilityDomain || ABILITY_DOMAINS[0],
+      attributes: newAbilityAttributes,
     }
     onUpdate({ abilityBindings: [...position.abilityBindings, newBinding] })
     setExpandedBindingId(newBinding.id)

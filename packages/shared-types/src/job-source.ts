@@ -106,6 +106,8 @@ export interface PositionAbilityBinding {
   level: CompetencyLevel
   rubricDescription: string      // 量规表现描述
   description?: string           // 能力描述
+  attributes?: string[]          // 保存时传给后端创建ability_point
+  domain?: string                // 保存时传给后端创建ability_point
 }
 
 // 能力领域
