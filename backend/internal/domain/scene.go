@@ -46,6 +46,7 @@ type ScenarioTask struct {
 	SortOrder           int                 `json:"sortOrder"`
 	Description         *string             `json:"description,omitempty"`
 	DetailedDescription *string             `json:"detailedDescription,omitempty"`
+	DescriptionPdf      *string             `json:"descriptionPdf,omitempty"`
 	EstimatedHours      float64             `json:"estimatedHours"`
 	TaskType            string              `json:"taskType"`
 	Difficulty          int                 `json:"difficulty"`

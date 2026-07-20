@@ -29,6 +29,7 @@ export interface ScenarioTask {
   sortOrder: number
   description?: string
   detailedDescription?: string
+  descriptionPdf?: string
   estimatedHours: number
   taskType: "assessment" | "training"
   difficulty: number

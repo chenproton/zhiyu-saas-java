@@ -29,6 +29,7 @@ type CreateScenarioTaskRequest struct {
 	SortOrder           int              `json:"sortOrder"`
 	Description         *string          `json:"description"`
 	DetailedDescription *string          `json:"detailedDescription"`
+	DescriptionPdf      *string          `json:"descriptionPdf"`
 	EstimatedHours      float64          `json:"estimatedHours"`
 	TaskType            string           `json:"taskType"`
 	Difficulty          int              `json:"difficulty"`
@@ -47,11 +48,11 @@ type ReorderScenarioTasksRequest struct {
 	TaskIDs    []string `json:"taskIds"`
 }
 
-const taskSelectColumns = `id, scenario_id, name, code, sort_order, description, detailed_description,
+const taskSelectColumns = `id, scenario_id, name, code, sort_order, description, detailed_description, description_pdf,
 	estimated_hours, task_type, difficulty, background, dependency_ids, is_referenced, source_scenario_id,
 	knowledge_point_ids, ability_point_ids, resource_ids, eval_data, tenant_id`
 
-const taskInsertColumns = `scenario_id, name, code, sort_order, description, detailed_description,
+const taskInsertColumns = `scenario_id, name, code, sort_order, description, detailed_description, description_pdf,
 	estimated_hours, task_type, difficulty, background, dependency_ids, is_referenced, source_scenario_id,
 	knowledge_point_ids, ability_point_ids, resource_ids, eval_data, tenant_id`
 
@@ -160,8 +161,8 @@ func (h *ScenarioTaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 	_ = h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM scenarios WHERE id = $1`, req.ScenarioID).Scan(&tenantID)
 
 	_, err := h.DB.Exec(r.Context(), `INSERT INTO scenario_tasks (`+taskInsertColumns+`)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
-	`, req.ScenarioID, req.Name, req.Code, req.SortOrder, req.Description, req.DetailedDescription,
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+	`, req.ScenarioID, req.Name, req.Code, req.SortOrder, req.Description, req.DetailedDescription, req.DescriptionPdf,
 		req.EstimatedHours, req.TaskType, req.Difficulty, req.Background,
 		coalesceStringSlice(req.DependencyIDs), req.IsReferenced, req.SourceScenarioID,
 		coalesceStringSlice(req.KnowledgePointIDs), coalesceStringSlice(req.AbilityPointIDs),
@@ -195,12 +196,12 @@ func (h *ScenarioTaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	_, err := h.DB.Exec(r.Context(), `
 		UPDATE scenario_tasks SET scenario_id=$1, name=$2, code=$3, sort_order=$4,
-			description=$5, detailed_description=$6, estimated_hours=$7, task_type=$8,
-			difficulty=$9, background=$10, dependency_ids=$11, is_referenced=$12,
-			source_scenario_id=$13, knowledge_point_ids=$14, ability_point_ids=$15,
-			resource_ids=$16, eval_data=$17
-		WHERE id=$18
-	`, req.ScenarioID, req.Name, req.Code, req.SortOrder, req.Description, req.DetailedDescription,
+			description=$5, detailed_description=$6, description_pdf=$7, estimated_hours=$8, task_type=$9,
+			difficulty=$10, background=$11, dependency_ids=$12, is_referenced=$13,
+			source_scenario_id=$14, knowledge_point_ids=$15, ability_point_ids=$16,
+			resource_ids=$17, eval_data=$18
+		WHERE id=$19
+	`, req.ScenarioID, req.Name, req.Code, req.SortOrder, req.Description, req.DetailedDescription, req.DescriptionPdf,
 		req.EstimatedHours, req.TaskType, req.Difficulty, req.Background,
 		coalesceStringSlice(req.DependencyIDs), req.IsReferenced, req.SourceScenarioID,
 		coalesceStringSlice(req.KnowledgePointIDs), coalesceStringSlice(req.AbilityPointIDs),
@@ -277,7 +278,7 @@ func (h *ScenarioTaskHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 func (h *ScenarioTaskHandler) fetchTask(ctx context.Context, id string) (*domain.ScenarioTask, error) {
 	var t domain.ScenarioTask
 	err := h.DB.QueryRow(ctx, `SELECT `+taskSelectColumns+` FROM scenario_tasks WHERE id = $1`, id).Scan(
-		&t.ID, &t.ScenarioID, &t.Name, &t.Code, &t.SortOrder, &t.Description, &t.DetailedDescription,
+		&t.ID, &t.ScenarioID, &t.Name, &t.Code, &t.SortOrder, &t.Description, &t.DetailedDescription, &t.DescriptionPdf,
 		&t.EstimatedHours, &t.TaskType, &t.Difficulty, &t.Background, &t.DependencyIDs,
 		&t.IsReferenced, &t.SourceScenarioID,
 		&t.KnowledgePointIDs, &t.AbilityPointIDs, &t.ResourceIDs, &t.EvalData, &t.TenantID,
@@ -291,7 +292,7 @@ func (h *ScenarioTaskHandler) fetchTask(ctx context.Context, id string) (*domain
 func (h *ScenarioTaskHandler) fetchTaskByCode(ctx context.Context, code string) (*domain.ScenarioTask, error) {
 	var t domain.ScenarioTask
 	err := h.DB.QueryRow(ctx, `SELECT `+taskSelectColumns+` FROM scenario_tasks WHERE code = $1`, code).Scan(
-		&t.ID, &t.ScenarioID, &t.Name, &t.Code, &t.SortOrder, &t.Description, &t.DetailedDescription,
+		&t.ID, &t.ScenarioID, &t.Name, &t.Code, &t.SortOrder, &t.Description, &t.DetailedDescription, &t.DescriptionPdf,
 		&t.EstimatedHours, &t.TaskType, &t.Difficulty, &t.Background, &t.DependencyIDs,
 		&t.IsReferenced, &t.SourceScenarioID,
 		&t.KnowledgePointIDs, &t.AbilityPointIDs, &t.ResourceIDs, &t.EvalData, &t.TenantID,
@@ -307,7 +308,7 @@ func (h *ScenarioTaskHandler) scanTaskRows(rows pgx.Rows) ([]domain.ScenarioTask
 	for rows.Next() {
 		var t domain.ScenarioTask
 		if err := rows.Scan(
-			&t.ID, &t.ScenarioID, &t.Name, &t.Code, &t.SortOrder, &t.Description, &t.DetailedDescription,
+			&t.ID, &t.ScenarioID, &t.Name, &t.Code, &t.SortOrder, &t.Description, &t.DetailedDescription, &t.DescriptionPdf,
 			&t.EstimatedHours, &t.TaskType, &t.Difficulty, &t.Background, &t.DependencyIDs,
 			&t.IsReferenced, &t.SourceScenarioID,
 			&t.KnowledgePointIDs, &t.AbilityPointIDs, &t.ResourceIDs, &t.EvalData, &t.TenantID,

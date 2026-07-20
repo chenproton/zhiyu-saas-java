@@ -69,6 +69,7 @@ import {
   File,
   PieChart as PieChartIcon,
   Headphones,
+  Loader2,
   Archive,
   Building2,
   RotateCcw,
@@ -109,7 +110,7 @@ import { cn } from "@/lib/utils"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
-import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryApi, majorApi, userManagementApi } from "@/lib/api"
+import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryApi, majorApi, userManagementApi, fileApi } from "@/lib/api"
 import type { ScenarioTask as ApiScenarioTask } from "@/lib/types/scene"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
@@ -539,6 +540,7 @@ export default function TasksEditPage() {
   const [industries, setIndustries] = useState<any[]>([])
   const [majors, setMajors] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
+  const [positionAbilityBindings, setPositionAbilityBindings] = useState<any[]>([])
 
   // Load all data from APIs on mount
   useEffect(() => {
@@ -562,6 +564,19 @@ export default function TasksEditPage() {
         setIndustries(indRes.items)
         setMajors(majRes.items)
         setUsers(userRes.items)
+
+        // Load position-ability bindings for the target position
+        if (scenarioData.careerPositionId) {
+          try {
+            const bindingsRes = await abilityApi.listBindings({ careerPositionId: scenarioData.careerPositionId })
+            setPositionAbilityBindings(bindingsRes.items)
+          } catch (err) {
+            console.error("Failed to load position ability bindings", err)
+            setPositionAbilityBindings([])
+          }
+        } else {
+          setPositionAbilityBindings([])
+        }
 
         const positionName = posRes.items.find((p: any) => p.id === scenarioData.careerPositionId)?.name || scenarioData.careerPositionId
         const industryName = scenarioData.industryName || indRes.items.find((i: any) => i.id === scenarioData.industryId)?.name || scenarioData.industryId
@@ -603,6 +618,7 @@ export default function TasksEditPage() {
           order: at.sortOrder,
           description: at.description || "",
           detailedDescription: at.detailedDescription || undefined,
+          descriptionPdf: at.descriptionPdf || undefined,
           estimatedHours: at.estimatedHours,
           taskType: at.taskType as "assessment" | "training",
           difficulty: (at.difficulty || 3) as 1 | 2 | 3 | 4 | 5,
@@ -629,6 +645,7 @@ export default function TasksEditPage() {
           if (t.abilityPoints) states[t.id].abilityPoints = t.abilityPoints
           if (t.resources) states[t.id].resources = t.resources
           if (t.detailedDescription) states[t.id].description = t.detailedDescription
+          if (t.descriptionPdf) states[t.id].descriptionPdf = t.descriptionPdf
         })
         setTaskStates(states)
         setDataLoaded(true)
@@ -926,6 +943,7 @@ export default function TasksEditPage() {
         sortOrder: i,
         description: t.description,
         detailedDescription: ts.description || t.detailedDescription,
+        descriptionPdf: ts.descriptionPdf || t.descriptionPdf || null,
         estimatedHours: t.estimatedHours,
         taskType: t.taskType,
         difficulty: t.difficulty,
@@ -1360,6 +1378,8 @@ export default function TasksEditPage() {
           updateAnyState={(id, updates) => updateState(id, updates)}
           onClose={() => setEditingCard(null)}
           positionId={existingScenario?.positionId}
+          toast={toast}
+          positionAbilityBindings={positionAbilityBindings}
         />
       )}
 
@@ -1415,6 +1435,8 @@ function EditCardDialog({
   updateAnyState,
   onClose,
   positionId,
+  toast,
+  positionAbilityBindings,
 }: {
   allTasks: Task[]
   taskId: string
@@ -1427,6 +1449,8 @@ function EditCardDialog({
   updateAnyState: (id: string, u: Partial<TaskState>) => void
   onClose: () => void
   positionId?: string
+  toast: (opts: { title?: string; description?: string; variant?: "default" | "destructive" }) => void
+  positionAbilityBindings: any[]
 }) {
   const config = cardConfigs.find(c => c.type === cardType)!
   const [localTask, setLocalTask] = useState({ name: task.name, type: task.taskType, difficulty: task.difficulty, hours: task.estimatedHours, background: task.background })
@@ -1746,6 +1770,40 @@ function EditCardDialog({
 
       case "description": {
         const [descMode, setDescMode] = useState<"rich_text" | "pdf">("rich_text")
+        const [pdfUploading, setPdfUploading] = useState(false)
+        const pdfInputRef = useRef<HTMLInputElement>(null)
+
+        const pdfFileName = state.descriptionPdf ? state.descriptionPdf.split('/').pop() || state.descriptionPdf : ""
+
+        const handlePdfUpload = async (file: File) => {
+          if (!file) return
+          if (file.type !== "application/pdf") {
+            toast({ variant: "destructive", title: "请上传 PDF 文件" })
+            return
+          }
+          if (file.size > 20 * 1024 * 1024) {
+            toast({ variant: "destructive", title: "文件大小超过 20MB" })
+            return
+          }
+          setPdfUploading(true)
+          try {
+            const res = await fileApi.upload(file)
+            updateState({ descriptionPdf: res.url })
+            toast({ title: "上传成功" })
+          } catch (err: any) {
+            toast({ variant: "destructive", title: "上传失败", description: err.message })
+          } finally {
+            setPdfUploading(false)
+          }
+        }
+
+        const onPdfDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          const file = e.dataTransfer.files?.[0]
+          if (file) handlePdfUpload(file)
+        }
+
         return (
           <div className="space-y-3 h-full flex flex-col">
             <Tabs value={descMode} onValueChange={v => setDescMode(v as "rich_text" | "pdf")}>
@@ -1822,31 +1880,51 @@ function EditCardDialog({
                 ) : null}
               </div>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-8 space-y-4">
+              <div
+                className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-8 space-y-4 cursor-pointer hover:border-primary/30 hover:bg-gray-50/50 transition-colors"
+                onClick={() => !pdfUploading && pdfInputRef.current?.click()}
+                onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+                onDrop={onPdfDrop}
+              >
+                <input
+                  ref={pdfInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0]
+                    if (file) handlePdfUpload(file)
+                    e.target.value = ""
+                  }}
+                />
                 {state.descriptionPdf ? (
-                  <div className="text-center space-y-3">
+                  <div className="text-center space-y-3 pointer-events-none">
                     <div className="w-24 h-32 bg-red-50 border border-red-200 rounded-lg flex flex-col items-center justify-center mx-auto">
                       <File className="h-10 w-10 text-red-500 mb-2" />
                       <span className="text-[10px] text-red-600 font-medium">PDF</span>
                     </div>
-                    <p className="text-sm font-medium text-gray-700">{state.descriptionPdf}</p>
-                    <Button variant="outline" size="sm" onClick={() => updateState({ descriptionPdf: null })}>
-                      <Trash2 className="h-4 w-4 mr-1" />移除文件
-                    </Button>
+                    <p className="text-sm font-medium text-gray-700 max-w-xs truncate">{pdfFileName}</p>
                   </div>
                 ) : (
                   <>
                     <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center">
-                      <Upload className="h-8 w-8 text-gray-400" />
+                      {pdfUploading ? <Loader2 className="h-8 w-8 text-gray-400 animate-spin" /> : <Upload className="h-8 w-8 text-gray-400" />}
                     </div>
                     <div className="text-center">
                       <p className="text-sm font-medium text-gray-700">点击或拖拽上传任务说明书</p>
                       <p className="text-xs text-gray-500 mt-1">支持 PDF 格式，最大 20MB</p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => updateState({ descriptionPdf: "任务说明书示例.pdf" })}>
-                      <Upload className="h-4 w-4 mr-1" />模拟上传
-                    </Button>
                   </>
+                )}
+                {state.descriptionPdf && (
+                  <div className="flex items-center gap-2 pointer-events-auto" onClick={e => e.stopPropagation()}>
+                    <Button variant="outline" size="sm" disabled={pdfUploading} onClick={() => pdfInputRef.current?.click()}>
+                      <Upload className="h-4 w-4 mr-1" />重新上传
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => updateState({ descriptionPdf: null })}>
+                      <Trash2 className="h-4 w-4 mr-1" />移除文件
+                    </Button>
+                  </div>
                 )}
               </div>
             )}
@@ -2131,7 +2209,7 @@ function EditCardDialog({
                       value={newKpForm.description}
                       onChange={e => setNewKpForm({ ...newKpForm, description: e.target.value })}
                       placeholder="输入知识点描述"
-                      className="mt-1.5"
+                      className="mt-1.5 max-h-[120px] overflow-y-auto resize-none"
                       rows={3}
                     />
                   </div>
@@ -2349,8 +2427,39 @@ function EditCardDialog({
         const positionNameMap: Record<string, string> = {}
         professions.forEach((p: any) => p.positions.forEach((pos: any) => { positionNameMap[pos.id] = pos.name }))
 
-        // Filter abilities related to current position
-        const relatedAbilities = abilityPoints.filter(ab => ab.positionIds?.includes(positionId))
+        // Build abilities related to current position from bindings
+        const bindings = positionAbilityBindings.filter((b: any) => b.careerPositionId === positionId)
+        const bindingMap = new Map(bindings.map((b: any) => [b.abilityPointId, b]))
+        const relatedAbilities = abilityPoints
+          .filter((ab: any) => bindingMap.has(ab.id))
+          .map((ab: any) => {
+            const binding = bindingMap.get(ab.id)
+            return {
+              ...ab,
+              positionIds: [positionId],
+              domain: binding?.domain || ab.domain || "其他",
+              requiredLevel: binding?.requiredLevel || ab.requiredLevel,
+              proficiencyDesc: binding?.rubricDescription || ab.proficiencyDesc,
+            }
+          })
+
+        if (relatedAbilities.length === 0) {
+          return (
+            <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 py-16">
+              <Award className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p className="text-sm font-medium text-gray-600 mb-1">目标岗位暂无关联能力点</p>
+              <p className="text-xs text-gray-400 mb-4">请先去岗位配置页关联能力点后，再回到本页面选择</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => positionId && window.open(`/job/positions/${positionId}/edit`, "_blank")}
+              >
+                去岗位配置页关联
+                <ArrowRight className="h-3.5 w-3.5 ml-1" />
+              </Button>
+            </div>
+          )
+        }
 
         const toggleAbility = (abId: string) => {
           const selected = state.abilityPoints.includes(abId)

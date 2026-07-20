@@ -136,6 +136,7 @@ export interface Task {
   order: number
   description: string
   detailedDescription?: string
+  descriptionPdf?: string
   estimatedHours: number
   taskType: "assessment" | "training"
   difficulty: 1 | 2 | 3 | 4 | 5
