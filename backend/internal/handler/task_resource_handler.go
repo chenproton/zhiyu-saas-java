@@ -28,11 +28,14 @@ type TaskResourceBindingListResponse struct {
 }
 
 type CreateTaskResourceRequest struct {
-	Name        string  `json:"name"`
-	Type        string  `json:"type"`
-	URL         *string `json:"url"`
-	Description *string `json:"description"`
-	Thumbnail   *string `json:"thumbnail"`
+	Name              string           `json:"name"`
+	Type              string           `json:"type"`
+	URL               *string          `json:"url"`
+	Description       *string          `json:"description"`
+	Thumbnail         *string          `json:"thumbnail"`
+	Size              *string          `json:"size"`
+	KnowledgePointIDs []string         `json:"knowledgePointIds"`
+	ExtraData         domain.JSONMap   `json:"extraData"`
 }
 
 type BindTaskResourceRequest struct {
