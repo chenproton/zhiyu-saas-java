@@ -223,48 +223,50 @@ export default function SceneApprovalsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <>
       <Toaster />
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-800">审批中心</h1>
-        <p className="text-sm text-gray-500 mt-1">审核场景提交申请，管理审批流程</p>
-      </div>
-
-      {selectedPendingIds.length > 0 && (
-        <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <span className="text-sm text-gray-700">已选 {selectedPendingIds.length} 条待审批记录</span>
-          <div className="flex items-center gap-3">
-            {batchActionButtons()}
-          </div>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-800">审批中心</h1>
+          <p className="text-sm text-gray-500 mt-1">审核场景提交申请，管理审批流程</p>
         </div>
-      )}
 
-      <Tabs defaultValue="pending" onValueChange={() => setSelectedIds(new Set())}>
-        <TabsList>
-          <TabsTrigger value="pending" className="gap-2 w-full">
-            待审批
-            {pendingItems.length > 0 && (
-              <Badge variant="secondary" className="ml-1 h-5 px-1.5 bg-yellow-100 text-yellow-700">
-                {pendingItems.length}
-              </Badge>
+        {selectedPendingIds.length > 0 && (
+          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <span className="text-sm text-gray-700">已选 {selectedPendingIds.length} 条待审批记录</span>
+            <div className="flex items-center gap-3">
+              {batchActionButtons()}
+            </div>
+          </div>
+        )}
+
+        <Tabs defaultValue="pending" onValueChange={() => setSelectedIds(new Set())}>
+          <TabsList>
+            <TabsTrigger value="pending" className="gap-2 w-full">
+              待审批
+              {pendingItems.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 bg-yellow-100 text-yellow-700">
+                  {pendingItems.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="processed" className="w-full">已审批</TabsTrigger>
+          </TabsList>
+          <TabsContent value="pending" className="mt-6">
+            {pendingItems.length > 0 ? renderTable(pendingItems) : (
+              <Card><CardContent className="py-12 text-center"><CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" /><h3 className="text-lg font-medium text-gray-700">暂无待审批项</h3><p className="text-sm text-gray-500 mt-1">所有提交的场景都已处理完毕</p></CardContent></Card>
             )}
-          </TabsTrigger>
-          <TabsTrigger value="processed" className="w-full">已审批</TabsTrigger>
-        </TabsList>
-        <TabsContent value="pending" className="mt-6">
-          {pendingItems.length > 0 ? renderTable(pendingItems) : (
-            <Card><CardContent className="py-12 text-center"><CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" /><h3 className="text-lg font-medium text-gray-700">暂无待审批项</h3><p className="text-sm text-gray-500 mt-1">所有提交的场景都已处理完毕</p></CardContent></Card>
-          )}
-        </TabsContent>
-        <TabsContent value="processed" className="mt-6">
-          {processedItems.length > 0 ? renderTable(processedItems) : (
-            <Card><CardContent className="py-12 text-center"><CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" /><h3 className="text-lg font-medium text-gray-700">暂无已处理记录</h3></CardContent></Card>
-          )}
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+          <TabsContent value="processed" className="mt-6">
+            {processedItems.length > 0 ? renderTable(processedItems) : (
+              <Card><CardContent className="py-12 text-center"><CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" /><h3 className="text-lg font-medium text-gray-700">暂无已处理记录</h3></CardContent></Card>
+            )}
+          </TabsContent>
+        </Tabs>
 
-      {dialogs}
-      {batchDialogs}
-    </div>
+        {dialogs}
+        {batchDialogs}
+      </div>
+    </>
   )
 }

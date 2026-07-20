@@ -84,9 +84,10 @@ export default function LearningPortraitPage() {
   }, [studentAbilityPortraits, navSearch])
 
   return (
-    <div className="px-8 py-6">
-      <div className="mb-4">
-        <div><h1 className="text-2xl font-bold tracking-tight">我的学生画像</h1><p className="text-muted-foreground">基于课程任务、实践场景、毕设评价、档案材料等全量数据，自动生成学生能力画像</p></div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold">我的学生画像</h1>
+        <p className="text-muted-foreground mt-1">基于课程任务、实践场景、毕设评价、档案材料等全量数据，自动生成学生能力画像</p>
       </div>
 
       <div className="grid grid-cols-12 gap-6">

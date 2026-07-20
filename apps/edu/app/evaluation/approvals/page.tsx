@@ -162,16 +162,16 @@ export default function EvaluationApprovalsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right whitespace-nowrap sticky right-0 bg-white z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-3">
                         <Button variant="outline" size="sm" asChild>
                           <Link href={detailHref(item)}>
                             <Eye className="mr-1 h-3 w-3" />查看
                           </Link>
                         </Button>
                         {approveAction ? (
-                          <span onClick={() => setCurrentItem(item)} key={item.id}>
+                          <div className="inline-flex" onClick={() => setCurrentItem(item)}>
                             {approveAction(item.status)}
-                          </span>
+                          </div>
                         ) : null}
                       </div>
                     </TableCell>
@@ -186,7 +186,7 @@ export default function EvaluationApprovalsPage() {
   )
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-gray-800">审批中心</h1>
         <p className="text-sm text-gray-500 mt-1">审核题库、试卷提交申请，管理审批流程</p>
