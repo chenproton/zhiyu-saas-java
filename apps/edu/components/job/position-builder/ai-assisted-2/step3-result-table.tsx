@@ -31,11 +31,11 @@ const COMPETENCY_LEVELS: { value: CompetencyLevel; label: string }[] = [
 ]
 
 const ABILITY_DOMAINS = [
-  '业务洞察',
-  '专业工具',
-  '通用素质',
-  '团队协作',
-  '创新思维',
+  '岗位与行业认知',
+  '专业知识',
+  '职业素养/价值观',
+  '专业技能',
+  '通用能力',
 ]
 
 interface Step3ResultTableProps {
