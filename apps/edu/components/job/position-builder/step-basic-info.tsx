@@ -54,6 +54,10 @@ interface Certificate {
 
 type AiSuggestionField = 'description' | 'responsibilities' | 'requirements' | 'careerPath'
 
+function isValidImageUrl(url?: string): boolean {
+  return !!url && !url.startsWith('blob:')
+}
+
 export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'default' }: StepBasicInfoProps) {
   const isCreate = variant === 'create'
   const [industries, setIndustries] = useState<{ id: string; name: string }[]>([])
@@ -555,7 +559,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                   >
                     <X className="h-3.5 w-3.5" />
                   </Button>
-                  {cert.image ? (
+                  {isValidImageUrl(cert.image) ? (
                     <div className="aspect-video w-full overflow-hidden bg-gray-50">
                       <img src={cert.image} alt={cert.name} className="w-full h-full object-cover" />
                     </div>
@@ -633,7 +637,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                           onCheckedChange={(checked) => handleSelectCertificate(cert.id, !!checked)}
                           className="absolute top-3 right-3 z-10"
                         />
-                        {cert.image ? (
+                        {isValidImageUrl(cert.image) ? (
                           <div className="aspect-video w-full overflow-hidden bg-gray-50">
                             <img src={cert.image} alt={cert.name} className="w-full h-full object-cover" />
                           </div>

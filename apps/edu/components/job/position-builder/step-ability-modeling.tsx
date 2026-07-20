@@ -350,7 +350,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
   return (
     <div className="flex h-[calc(100vh-280px)] min-h-[500px] rounded-xl border border-gray-200 bg-white overflow-hidden">
       {/* Sidebar - Responsibilities */}
-      <div className="w-60 shrink-0 border-r border-gray-100 flex flex-col bg-gray-50/50">
+      <div className="w-1/2 shrink-0 border-r border-gray-100 flex flex-col bg-gray-50/50">
         <div className="shrink-0 px-4 py-3 border-b border-gray-100">
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-sm font-medium text-gray-800">工作职责</h3>
@@ -441,7 +441,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       </div>
 
       {/* Content - Ability list grouped by responsibility */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="w-1/2 flex flex-col overflow-hidden">
         {/* Search bar - sticky */}
         <div className="shrink-0 px-4 py-3 border-b border-gray-100 bg-white">
           <div className="flex items-center gap-3">
