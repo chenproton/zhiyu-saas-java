@@ -546,6 +546,65 @@ function makeDefaultTaskState(count: number, index: number): TaskState {
   }
 }
 
+function normalizeEvalPoints(points: unknown): EvalPoint[] {
+  if (!Array.isArray(points)) return []
+  return points.filter((p): p is EvalPoint => p && typeof p === "object" && typeof p.id === "string" && typeof p.name === "string")
+}
+
+function normalizeStringArray(arr: unknown): string[] {
+  if (!Array.isArray(arr)) return []
+  return arr.filter((v): v is string => typeof v === "string")
+}
+
+function normalizeEvalSubjects(subjects: unknown): EvalSubjectConfig[] {
+  if (!Array.isArray(subjects)) return []
+  return subjects.filter((s): s is EvalSubjectConfig => s && typeof s === "object" && typeof s.type === "string" && typeof s.enabled === "boolean")
+}
+
+function restoreTaskStateFromEvalData(defaultState: TaskState, evalData: Record<string, any> | undefined): TaskState {
+  if (!evalData || typeof evalData !== "object") return defaultState
+  const methods = normalizeStringArray(evalData.evaluationMethods)
+  const state: TaskState = {
+    ...defaultState,
+    evaluationMethods: methods.length > 0 ? methods : defaultState.evaluationMethods,
+    methodWeights: evalData.methodWeights && typeof evalData.methodWeights === "object" ? evalData.methodWeights : defaultState.methodWeights,
+    randomDrawQuestions: normalizeStringArray(evalData.randomDrawQuestions),
+    randomDrawCustomQuestions: Array.isArray(evalData.randomDrawCustomQuestions) ? evalData.randomDrawCustomQuestions.filter((c: any) => c && typeof c.id === "string") : defaultState.randomDrawCustomQuestions,
+    randomDrawSelectedIds: normalizeStringArray(evalData.randomDrawSelectedIds),
+    randomDrawEvalPoints: normalizeEvalPoints(evalData.randomDrawEvalPoints),
+    randomDrawScoreType: evalData.randomDrawScoreType === "ability_levels" ? "ability_levels" : "eval_points",
+    randomDrawRubricId: typeof evalData.randomDrawRubricId === "string" ? evalData.randomDrawRubricId : null,
+    reviewEvalPoints: normalizeEvalPoints(evalData.reviewEvalPoints),
+    reviewScoreType: evalData.reviewScoreType === "ability_levels" ? "ability_levels" : "eval_points",
+    reviewRubricId: typeof evalData.reviewRubricId === "string" ? evalData.reviewRubricId : null,
+    paperIds: normalizeStringArray(evalData.paperIds),
+    paperWeights: evalData.paperWeights && typeof evalData.paperWeights === "object" ? evalData.paperWeights : defaultState.paperWeights,
+    paperEvalPoints: normalizeEvalPoints(evalData.paperEvalPoints),
+    questionBankQuestions: normalizeStringArray(evalData.questionBankQuestions),
+    questionBankEvalPoints: normalizeEvalPoints(evalData.questionBankEvalPoints),
+    outcomeEvalPoints: normalizeEvalPoints(evalData.outcomeEvalPoints),
+    outcomeScoreType: evalData.outcomeScoreType === "ability_levels" ? "ability_levels" : "eval_points",
+    outcomeRubricId: typeof evalData.outcomeRubricId === "string" ? evalData.outcomeRubricId : null,
+    homeworkEvalPoints: normalizeEvalPoints(evalData.homeworkEvalPoints),
+    homeworkScoreType: evalData.homeworkScoreType === "ability_levels" ? "ability_levels" : "eval_points",
+    homeworkRubricId: typeof evalData.homeworkRubricId === "string" ? evalData.homeworkRubricId : null,
+    quizQuestions: normalizeStringArray(evalData.quizQuestions),
+    quizEvalPoints: normalizeEvalPoints(evalData.quizEvalPoints),
+    locked: typeof evalData.locked === "boolean" ? evalData.locked : defaultState.locked,
+    gradeMapping: Array.isArray(evalData.gradeMapping) ? evalData.gradeMapping : defaultState.gradeMapping,
+    scoringConfig: evalData.scoringConfig && typeof evalData.scoringConfig === "object" ? { ...defaultState.scoringConfig, ...evalData.scoringConfig } : defaultState.scoringConfig,
+    evalObject: evalData.evalObject === "group" ? "group" : "individual",
+    evalSubjects: normalizeEvalSubjects(evalData.evalSubjects),
+    methodEvalObjects: evalData.methodEvalObjects && typeof evalData.methodEvalObjects === "object" ? evalData.methodEvalObjects : defaultState.methodEvalObjects,
+    methodEvalSubjects: evalData.methodEvalSubjects && typeof evalData.methodEvalSubjects === "object" ? evalData.methodEvalSubjects : defaultState.methodEvalSubjects,
+  }
+  // Ensure methodWeights only contains current methods
+  const cleanedWeights: Record<string, number> = {}
+  state.evaluationMethods.forEach(m => { cleanedWeights[m] = typeof state.methodWeights[m] === "number" ? state.methodWeights[m] : 0 })
+  state.methodWeights = cleanedWeights
+  return state
+}
+
 
 // ============ Main Page ============
 
@@ -675,7 +734,8 @@ export default function TasksEditPage() {
         const count = mockTasks.length
         const states: Record<string, TaskState> = {}
         mockTasks.forEach((t, i) => {
-          states[t.id] = makeDefaultTaskState(count, i)
+          const defaultState = makeDefaultTaskState(count, i)
+          states[t.id] = restoreTaskStateFromEvalData(defaultState, t.evalData)
           if (t.knowledgePoints) states[t.id].knowledgePoints = t.knowledgePoints
           if (t.abilityPoints) states[t.id].abilityPoints = t.abilityPoints
           if (t.resources) states[t.id].resources = t.resources
@@ -1022,6 +1082,33 @@ export default function TasksEditPage() {
           weight: ts.weight,
           locked: ts.locked,
           gradeMapping: ts.gradeMapping,
+          randomDrawQuestions: ts.randomDrawQuestions,
+          randomDrawCustomQuestions: ts.randomDrawCustomQuestions,
+          randomDrawSelectedIds: ts.randomDrawSelectedIds,
+          randomDrawEvalPoints: ts.randomDrawEvalPoints,
+          randomDrawScoreType: ts.randomDrawScoreType,
+          randomDrawRubricId: ts.randomDrawRubricId,
+          reviewEvalPoints: ts.reviewEvalPoints,
+          reviewScoreType: ts.reviewScoreType,
+          reviewRubricId: ts.reviewRubricId,
+          paperIds: ts.paperIds,
+          paperWeights: ts.paperWeights,
+          paperEvalPoints: ts.paperEvalPoints,
+          questionBankQuestions: ts.questionBankQuestions,
+          questionBankEvalPoints: ts.questionBankEvalPoints,
+          outcomeEvalPoints: ts.outcomeEvalPoints,
+          outcomeScoreType: ts.outcomeScoreType,
+          outcomeRubricId: ts.outcomeRubricId,
+          homeworkEvalPoints: ts.homeworkEvalPoints,
+          homeworkScoreType: ts.homeworkScoreType,
+          homeworkRubricId: ts.homeworkRubricId,
+          quizQuestions: ts.quizQuestions,
+          quizEvalPoints: ts.quizEvalPoints,
+          scoringConfig: ts.scoringConfig,
+          evalObject: ts.evalObject,
+          evalSubjects: ts.evalSubjects,
+          methodEvalObjects: ts.methodEvalObjects,
+          methodEvalSubjects: ts.methodEvalSubjects,
         },
       }
       if (t.id.startsWith("task-")) {
@@ -2827,6 +2914,11 @@ function EditCardDialog({
           if (!uploadedBy) return "-"
           return userNameMap[uploadedBy] || uploadedBy
         }
+        const formatDate = (dateStr?: string) => {
+          if (!dateStr) return "-"
+          const d = new Date(dateStr)
+          return isNaN(d.getTime()) ? dateStr : d.toISOString().slice(0, 10)
+        }
         const filteredRes = learningResources.filter(r => {
           const matchType = resType === "all" || r.type === resType
           const matchName = !resSearchName || r.name.includes(resSearchName)
@@ -2996,7 +3088,7 @@ function EditCardDialog({
                                 <span className="flex items-center gap-1 truncate max-w-[80px]">
                                   <Users className="h-3 w-3 shrink-0" />{getUploaderName(r.uploadedBy)}
                                 </span>
-                                <span className="shrink-0">{r.uploadedAt}</span>
+                                <span className="shrink-0">{formatDate(r.uploadedAt)}</span>
                               </div>
                             </div>
                             {/* Actions */}
@@ -3065,7 +3157,7 @@ function EditCardDialog({
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium truncate text-gray-800">{r.name}</p>
-                            <p className="text-[10px] text-gray-400 truncate">{getUploaderName(r.uploadedBy)} · {r.uploadedAt}</p>
+                            <p className="text-[10px] text-gray-400 truncate">{getUploaderName(r.uploadedBy)} · {formatDate(r.uploadedAt)}</p>
                           </div>
                           <PrdAnnotation data={getAnnotation("resource-action-cancel")}>
                             <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-500 shrink-0" onClick={() => toggleResource(rid)}>

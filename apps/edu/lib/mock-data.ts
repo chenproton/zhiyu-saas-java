@@ -150,6 +150,7 @@ export interface Task {
   isReferenced?: boolean
   sourceScenarioId?: string
   sourceScenarioName?: string
+  evalData?: Record<string, any>
   evalPoints?: {
     randomDraw?: TaskEvalPoint[]
     review?: TaskEvalPoint[]
