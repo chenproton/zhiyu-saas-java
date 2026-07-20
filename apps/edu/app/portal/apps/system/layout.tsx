@@ -35,15 +35,6 @@ const menuItems = [
     ],
   },
   {
-    id: "logs",
-    label: "日志管理",
-    icon: History,
-    children: [
-      { id: "login-logs", label: "登录日志查看", href: "/portal/apps/system/logs/login" },
-      { id: "operation-logs", label: "操作日志查看", href: "/portal/apps/system/logs/operation" },
-    ],
-  },
-  {
     id: "org-user",
     label: "组织用户管理",
     icon: Users,
@@ -58,6 +49,15 @@ const menuItems = [
       { id: "graduates", label: "毕业学生管理", href: "/portal/apps/system/org-user/graduates" },
       { id: "roles", label: "角色权限管理", href: "/portal/apps/system/org-user/roles" },
       { id: "positions", label: "职位管理", href: "/portal/apps/system/org-user/positions" },
+    ],
+  },
+  {
+    id: "logs",
+    label: "日志管理",
+    icon: History,
+    children: [
+      { id: "login-logs", label: "登录日志查看", href: "/portal/apps/system/logs/login" },
+      { id: "operation-logs", label: "操作日志查看", href: "/portal/apps/system/logs/operation" },
     ],
   },
 ]

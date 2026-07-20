@@ -35,7 +35,40 @@ function platformGroup(id: string, label: string, config: PlatformNavigationConf
 }
 
 export function buildMenuTree(): MenuTreeItem[] {
+  const career = platformGroup("career", "职业岗位学习平台", jobNavigationConfig)
+  career.children?.push({ id: "career-landing", label: "前台落地页", href: "/job/landing" })
+  const course = platformGroup("course", "数字课程服务平台", unifiedNavigationConfig)
+  course.children?.push({ id: "course-landing", label: "前台落地页", href: "/lesson/landing" })
+  const scene = platformGroup("scene", "实践场景学习平台", sceneNavigationConfig)
+  scene.children?.push({ id: "scene-landing", label: "前台落地页", href: "/scene/landing" })
+  const ability = platformGroup("ability", "能力评价与测评资源管理平台", evaluationNavigationConfig)
+  ability.children?.push({ id: "ability-landing", label: "前台落地页", href: "/evaluation/landing" })
+
   return [
+    {
+      id: "system-entry",
+      label: "系统设置",
+      children: [
+        { id: "system-entry-main", label: "系统管理入口", href: "/portal/apps/system" },
+      ],
+    },
+    {
+      id: "tenant",
+      label: "租户信息管理",
+      children: [
+        { id: "tenant-config", label: "租户信息管理", href: "/portal/apps/system/tenant" },
+      ],
+    },
+    {
+      id: "resource",
+      label: "系统资源管理",
+      children: [
+        { id: "resource-package", label: "套餐情况查看", href: "/portal/apps/system/resource/package" },
+        { id: "resource-codes", label: "资源编码管理", href: "/portal/apps/system/resource/codes" },
+        { id: "resource-industries", label: "行业管理", href: "/portal/apps/system/resource/industries" },
+        { id: "resource-majors", label: "专业管理", href: "/portal/apps/system/resource/majors" },
+      ],
+    },
     {
       id: "org-user",
       label: "组织用户管理",
@@ -53,16 +86,6 @@ export function buildMenuTree(): MenuTreeItem[] {
       ],
     },
     {
-      id: "resource",
-      label: "系统资源管理",
-      children: [
-        { id: "resource-package", label: "套餐情况查看", href: "/portal/apps/system/resource/package" },
-        { id: "resource-codes", label: "资源编码管理", href: "/portal/apps/system/resource/codes" },
-        { id: "resource-industries", label: "行业管理", href: "/portal/apps/system/resource/industries" },
-        { id: "resource-majors", label: "专业管理", href: "/portal/apps/system/resource/majors" },
-      ],
-    },
-    {
       id: "logs",
       label: "日志管理",
       children: [
@@ -70,17 +93,10 @@ export function buildMenuTree(): MenuTreeItem[] {
         { id: "logs-operation", label: "操作日志查看", href: "/portal/apps/system/logs/operation" },
       ],
     },
-    {
-      id: "tenant",
-      label: "租户信息管理",
-      children: [
-        { id: "tenant-config", label: "租户信息管理", href: "/portal/apps/system/tenant" },
-      ],
-    },
-    platformGroup("career", "职业岗位学习平台", jobNavigationConfig),
-    platformGroup("course", "数字课程服务平台", unifiedNavigationConfig),
-    platformGroup("scene", "实践场景学习平台", sceneNavigationConfig),
-    platformGroup("ability", "能力评价与测评资源管理平台", evaluationNavigationConfig),
+    career,
+    course,
+    scene,
+    ability,
   ]
 }
 
