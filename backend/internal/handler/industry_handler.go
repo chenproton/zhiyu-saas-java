@@ -156,6 +156,10 @@ func (h *IndustryHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`, id, req.TenantID, req.Code, req.Name, req.ParentID, req.Enabled, req.SortOrder)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "行业代码已存在，请使用其他代码")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to create industry")
 		return
 	}
@@ -193,6 +197,10 @@ func (h *IndustryHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $6
 	`, req.Code, req.Name, req.ParentID, req.Enabled, req.SortOrder, id)
 	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "行业代码已存在，请使用其他代码")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "failed to update industry")
 		return
 	}

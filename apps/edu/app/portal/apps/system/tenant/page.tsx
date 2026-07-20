@@ -211,7 +211,7 @@ export default function TenantPage() {
 
   const handleCreateOrUpdate = async () => {
     if (!formData.name || !formData.contact || !formData.phone) {
-      setError("请填写企业名称、联系人、联系电话")
+      setError("请填写学校名称、联系人、联系电话")
       return
     }
     setSubmitting(true)
@@ -273,7 +273,7 @@ export default function TenantPage() {
       <div className="mb-4 flex items-center gap-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="搜索企业名称、标识或联系人..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
+          <Input placeholder="搜索学校名称、标识或联系人..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
         </div>
         <Button variant="outline" size="sm">
           <Filter className="h-4 w-4 mr-1" />
@@ -307,7 +307,7 @@ export default function TenantPage() {
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
                   <TableHead className="text-muted-foreground">租户标识</TableHead>
-                  <TableHead className="text-muted-foreground">企业名称</TableHead>
+                  <TableHead className="text-muted-foreground">学校名称</TableHead>
                   <TableHead className="text-muted-foreground">联系人</TableHead>
                   <TableHead className="text-muted-foreground">联系电话</TableHead>
 
@@ -502,13 +502,13 @@ export default function TenantPage() {
               </div>
             </div>
             <div className="grid gap-2">
-              <Label>企业名称 <span className="text-destructive">*</span></Label>
+              <Label>学校名称 <span className="text-destructive">*</span></Label>
               <Input placeholder="如：清华大学" value={formData.name} onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>联系人 <span className="text-destructive">*</span></Label>
-                <Input placeholder="企业联系人姓名" value={formData.contact} onChange={(e) => setFormData((prev) => ({ ...prev, contact: e.target.value }))} />
+                <Input placeholder="学校联系人姓名" value={formData.contact} onChange={(e) => setFormData((prev) => ({ ...prev, contact: e.target.value }))} />
               </div>
               <div className="grid gap-2">
                 <Label>联系电话 <span className="text-destructive">*</span></Label>
@@ -526,16 +526,16 @@ export default function TenantPage() {
               </div>
             </div>
             <div className="grid gap-2">
-              <Label>企业地址</Label>
-              <Input placeholder="企业详细地址" value={formData.address} onChange={(e) => setFormData((prev) => ({ ...prev, address: e.target.value }))} />
+              <Label>学校地址</Label>
+              <Input placeholder="学校详细地址" value={formData.address} onChange={(e) => setFormData((prev) => ({ ...prev, address: e.target.value }))} />
             </div>
             <div className="grid gap-2">
-              <Label>企业代码</Label>
+              <Label>学校代码</Label>
               <Input placeholder="统一社会信用代码" value={formData.enterpriseCode} onChange={(e) => setFormData((prev) => ({ ...prev, enterpriseCode: e.target.value }))} />
             </div>
             <div className="grid gap-2">
-              <Label>企业简介</Label>
-              <Textarea placeholder="企业简介描述" value={formData.description} onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))} rows={3} />
+              <Label>学校简介</Label>
+              <Textarea placeholder="学校简介描述" value={formData.description} onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))} rows={3} />
             </div>
           </div>
           {error && (
