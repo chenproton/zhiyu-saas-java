@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CheckSquare, Eye } from "lucide-react"
 import { scenarioApi, sceneBatchApi } from "@/lib/api"
 import type { Scenario, SceneBatch } from "@/lib/types/scene"
-import { useApprovals } from "@/hooks/use-approvals"
+import { useApprovals, type ApprovalStepInfo } from "@/hooks/use-approvals"
 import { useSubmitterNames } from "@/hooks/use-submitter-names"
 import { useApprovalDialogs } from "@/components/shared/approval-dialogs"
 import { Toaster } from "sonner"
@@ -35,10 +35,11 @@ interface ApprovalView {
   submitterId: string
   status: string
   submittedAt: string
+  stepInfo?: ApprovalStepInfo
 }
 
 export default function SceneApprovalsPage() {
-  const { records, loading, approve, reject, batchApprove, batchReject } = useApprovals({ targetType: "scenario" })
+  const { records, loading, approve, reject, batchApprove, batchReject, getStepInfo } = useApprovals({ targetType: "scenario" })
   const { getName } = useSubmitterNames()
   const [scenarioMap, setScenarioMap] = useState<Map<string, Scenario>>(new Map())
   const [batchMap, setBatchMap] = useState<Map<string, SceneBatch>>(new Map())
@@ -57,6 +58,7 @@ export default function SceneApprovalsPage() {
 
   const { dialogs, approveAction } = useApprovalDialogs({
     entityLabel: "场景",
+    stepInfo: currentItem?.stepInfo,
     onApprove: async (comment) => {
       if (currentItem) await approve(currentItem.id, comment)
     },
@@ -80,9 +82,10 @@ export default function SceneApprovalsPage() {
         submitterId: a.submitterId,
         status: a.status,
         submittedAt: new Date(a.createdAt).toLocaleDateString(),
+        stepInfo: getStepInfo(a),
       }
     }),
-    [records, scenarioMap, batchMap]
+    [records, scenarioMap, batchMap, getStepInfo]
   )
 
   const selectedPendingIds = useMemo(
@@ -166,14 +169,15 @@ export default function SceneApprovalsPage() {
                   <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">创建人</TableHead>
                   <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">提交审批日期</TableHead>
                   <TableHead className="text-xs font-medium text-slate-500 text-center whitespace-nowrap">状态</TableHead>
+                  <TableHead className="text-xs font-medium text-slate-500 text-center whitespace-nowrap">当前步骤</TableHead>
                   <TableHead className="text-xs font-medium text-slate-500 text-right whitespace-nowrap sticky right-0 bg-slate-50 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={10} className="text-center py-8 text-gray-500">加载中...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={11} className="text-center py-8 text-gray-500">加载中...</TableCell></TableRow>
                 ) : data.length === 0 ? (
-                  <TableRow><TableCell colSpan={10} className="text-center py-12 text-gray-500">暂无数据</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={11} className="text-center py-12 text-gray-500">暂无数据</TableCell></TableRow>
                 ) : (
                   data.map((item) => (
                     <TableRow key={item.id}>
@@ -196,6 +200,18 @@ export default function SceneApprovalsPage() {
                         <Badge variant="secondary" className={STATUS_CONFIG[item.status]?.className}>
                           {STATUS_CONFIG[item.status]?.label}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-center whitespace-nowrap">
+                        {item.stepInfo ? (
+                          <Badge variant="outline" className="text-xs">
+                            {item.stepInfo.currentStepName}
+                            {item.stepInfo.totalSteps > 1 && (
+                              <span className="ml-1 text-gray-400">({item.stepInfo.currentStepIndex + 1}/{item.stepInfo.totalSteps})</span>
+                            )}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-gray-400">-</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right whitespace-nowrap sticky right-0 bg-white z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">
                         <div className="flex items-center justify-end gap-3">

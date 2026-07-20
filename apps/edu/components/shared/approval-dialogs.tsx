@@ -12,19 +12,32 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
+import type { ApprovalStepInfo } from "@/hooks/use-approvals"
 
 interface ApprovalDialogsProps {
   entityLabel?: string
   mode?: "single" | "batch"
   selectedCount?: number
+  stepInfo?: ApprovalStepInfo
   onApprove: (comment: string) => Promise<void>
   onReject: (comment: string) => Promise<void>
+}
+
+function formatStepInfo(info?: ApprovalStepInfo): string {
+  if (!info) return ""
+  const stepLabel = info.currentStepName || `第 ${info.currentStepIndex + 1} 步`
+  const progress = info.totalSteps > 1 ? `（第 ${info.currentStepIndex + 1} / ${info.totalSteps} 步）` : ""
+  if (info.isFinalStep) {
+    return `当前审批步骤：${stepLabel}${progress}，通过后该资源将最终生效。`
+  }
+  return `当前审批步骤：${stepLabel}${progress}，通过后将继续流转至下一步审批。`
 }
 
 export function useApprovalDialogs({
   entityLabel = "项目",
   mode = "single",
   selectedCount = 0,
+  stepInfo,
   onApprove,
   onReject,
 }: ApprovalDialogsProps) {
@@ -67,6 +80,9 @@ export function useApprovalDialogs({
               {isBatch
                 ? `请填写审批备注（可选），确认批量通过 ${countLabel}${entityLabel}。`
                 : `请填写审批备注（可选），确认通过该${entityLabel}审批。`}
+              {!isBatch && stepInfo && (
+                <span className="block mt-1.5 text-amber-600">{formatStepInfo(stepInfo)}</span>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -94,6 +110,9 @@ export function useApprovalDialogs({
               {isBatch
                 ? `请填写驳回原因，将批量驳回 ${countLabel}${entityLabel}。`
                 : "请填写驳回原因，建设者将收到修改通知。"}
+              {!isBatch && (
+                <span className="block mt-1.5 text-amber-600">驳回后该审批将直接结束。</span>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">

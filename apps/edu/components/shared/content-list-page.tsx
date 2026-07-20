@@ -64,6 +64,7 @@ export interface ContentListItem {
   batchId?: string
   creatorId?: string
   coCreatorIds?: string[]
+  rejectReason?: string
 }
 
 export interface ContentBatch {
@@ -212,6 +213,40 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       setExpandedBatches(mappedBatches.map((b) => b.id))
       let front = itemsResp.items.map((i: any) => mapItem(i, currentUserId))
       if (afterLoad) front = await afterLoad(front, mappedBatches)
+
+      const rejectedItems = front.filter((item) => item.status === "rejected")
+      if (rejectedItems.length > 0) {
+        try {
+          const approvalsResp = await approvalApi.list({
+            targetType: approvalTargetType,
+            status: "rejected",
+            limit: 1000,
+          })
+          const reasonMap = new Map<string, string>()
+          for (const record of approvalsResp.items) {
+            if (reasonMap.has(record.targetId)) continue
+            const history = (record.history || []) as any[]
+            for (let i = history.length - 1; i >= 0; i--) {
+              const h = history[i]
+              const action = h.action || h.status
+              const remark = h.remark || h.comment
+              if (action === "rejected" && remark) {
+                reasonMap.set(record.targetId, remark)
+                break
+              }
+            }
+          }
+          front = front.map((item) => {
+            if (item.status === "rejected" && reasonMap.has(item.id)) {
+              return { ...item, rejectReason: reasonMap.get(item.id) }
+            }
+            return item
+          })
+        } catch (_) {
+          // 审批记录读取失败不影响列表展示
+        }
+      }
+
       setFrontItems(front)
     } catch (err) {
       console.error(`Failed to load ${entityLabel} data:`, err)
@@ -940,8 +975,8 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
-              审批人已驳回此{entityLabel}的提交申请，请根据审批意见修改后重新提交。
+            <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700 whitespace-pre-wrap">
+              {rejectReasonItem?.rejectReason || `审批人已驳回此${entityLabel}的提交申请，请根据审批意见修改后重新提交。`}
             </div>
           </div>
           <DialogFooter>

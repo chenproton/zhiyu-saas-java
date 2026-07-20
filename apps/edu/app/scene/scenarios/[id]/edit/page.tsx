@@ -283,7 +283,7 @@ export default function ScenarioEditPage() {
       }
       await scenarioApi.update(scenarioId, payload as any)
       hasSavedRef.current = true
-      if (scenarioStatus === "approved" || scenarioStatus === "published") {
+      if (scenarioStatus === "approved" || scenarioStatus === "published" || scenarioStatus === "rejected") {
         await scenarioApi.saveDraft(scenarioId)
         setScenarioStatus("draft")
         toast.success("草稿已保存")

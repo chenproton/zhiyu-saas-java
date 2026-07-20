@@ -220,7 +220,7 @@ function PositionEditPageContent({ params }: PageProps) {
         abilityBindings: position.abilityBindings,
         abilityDomains: position.abilityDomains,
       })
-      if (position.status === 'approved' || position.status === 'published') {
+      if (position.status === 'approved' || position.status === 'published' || position.status === 'rejected') {
         await positionApi.saveDraft(position.id)
       }
       hasSavedRef.current = true

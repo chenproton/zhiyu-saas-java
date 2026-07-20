@@ -187,7 +187,7 @@ function AddGranularPageInner() {
       if (editId) {
         await courseApi.update(editId, payload)
         hasSavedRef.current = true
-        if (course?.status === "approved" || course?.status === "published") {
+        if (course?.status === "approved" || course?.status === "published" || course?.status === "rejected") {
           await courseApi.saveDraft(editId)
           setCourse((prev) => (prev ? { ...prev, status: "draft" as const } : prev))
           toast.success("草稿已保存")

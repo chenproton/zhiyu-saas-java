@@ -1,9 +1,16 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { approvalApi } from "@/lib/api"
-import type { ApprovalRecord } from "@/lib/types/backend"
+import { approvalApi, workflowApi } from "@/lib/api"
+import type { ApprovalRecord, Workflow } from "@/lib/types/backend"
 import { toast } from "sonner"
+
+export interface ApprovalStepInfo {
+  currentStepIndex: number
+  totalSteps: number
+  currentStepName: string
+  isFinalStep: boolean
+}
 
 interface UseApprovalsOptions {
   targetType: string
@@ -18,17 +25,39 @@ interface UseApprovalsReturn {
   batchApprove: (ids: string[], comment?: string) => Promise<void>
   batchReject: (ids: string[], comment?: string) => Promise<void>
   refresh: () => Promise<void>
+  getStepInfo: (record?: ApprovalRecord | null) => ApprovalStepInfo | undefined
 }
 
 export function useApprovals({ targetType, limit = 1000 }: UseApprovalsOptions): UseApprovalsReturn {
   const [records, setRecords] = useState<ApprovalRecord[]>([])
   const [loading, setLoading] = useState(false)
+  const [workflows, setWorkflows] = useState<Map<string, Workflow>>(new Map())
 
   const refresh = useCallback(async () => {
     setLoading(true)
     try {
       const res = await approvalApi.list({ targetType, limit })
       setRecords(res.items)
+
+      const workflowIds = Array.from(
+        new Set(
+          res.items
+            .filter((a) => a.status === "pending" && a.workflowId)
+            .map((a) => a.workflowId as string)
+        )
+      )
+      if (workflowIds.length > 0) {
+        try {
+          const wfRes = await workflowApi.list({ limit: 1000 })
+          const map = new Map<string, Workflow>()
+          wfRes.items.forEach((w) => {
+            if (workflowIds.includes(w.id)) map.set(w.id, w)
+          })
+          setWorkflows(map)
+        } catch (_) {
+          // 工作流加载失败不影响审批列表
+        }
+      }
     } catch (err: any) {
       toast.error(err.message || "无法获取审批数据")
     } finally {
@@ -39,6 +68,20 @@ export function useApprovals({ targetType, limit = 1000 }: UseApprovalsOptions):
   useEffect(() => {
     refresh()
   }, [refresh])
+
+  const getStepInfo = useCallback((record?: ApprovalRecord | null): ApprovalStepInfo | undefined => {
+    if (!record || record.status !== "pending") return undefined
+    const workflow = record.workflowId ? workflows.get(record.workflowId) : undefined
+    const totalSteps = workflow?.steps?.length || 1
+    const currentStepIndex = Math.min(record.currentStepIdx, Math.max(0, totalSteps - 1))
+    const step = workflow?.steps?.[currentStepIndex]
+    return {
+      currentStepIndex,
+      totalSteps,
+      currentStepName: step?.name || `第 ${currentStepIndex + 1} 步`,
+      isFinalStep: currentStepIndex >= totalSteps - 1,
+    }
+  }, [workflows])
 
   const approve = useCallback(async (id: string, comment?: string) => {
     try {
@@ -96,5 +139,5 @@ export function useApprovals({ targetType, limit = 1000 }: UseApprovalsOptions):
     await batchReview(ids, "rejected", comment)
   }, [batchReview])
 
-  return { records, loading, approve, reject, batchApprove, batchReject, refresh }
+  return { records, loading, approve, reject, batchApprove, batchReject, refresh, getStepInfo }
 }

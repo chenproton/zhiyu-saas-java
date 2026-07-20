@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CheckSquare, Eye } from "lucide-react"
 import { questionBankApi, examApi, evaluationBatchApi } from "@/lib/api"
 import type { QuestionBank, Exam, EvaluationBatch } from "@/lib/types"
-import { useApprovals } from "@/hooks/use-approvals"
+import { useApprovals, type ApprovalStepInfo } from "@/hooks/use-approvals"
 import { useApprovalDialogs } from "@/components/shared/approval-dialogs"
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
@@ -36,11 +36,12 @@ interface ApprovalView {
   submitterId: string
   status: string
   submittedAt: string
+  stepInfo?: ApprovalStepInfo
 }
 
 export default function EvaluationApprovalsPage() {
-  const bankApprovals = useApprovals({ targetType: "question_bank" })
-  const examApprovals = useApprovals({ targetType: "exam" })
+  const { records: bankRecords, loading: bankLoading, getStepInfo: getBankStepInfo, approve: approveBank, reject: rejectBank } = useApprovals({ targetType: "question_bank" })
+  const { records: examRecords, loading: examLoading, getStepInfo: getExamStepInfo, approve: approveExam, reject: rejectExam } = useApprovals({ targetType: "exam" })
   const [bankMap, setBankMap] = useState<Map<string, QuestionBank>>(new Map())
   const [examMap, setExamMap] = useState<Map<string, Exam>>(new Map())
   const [batchMap, setBatchMap] = useState<Map<string, EvaluationBatch>>(new Map())
@@ -57,25 +58,27 @@ export default function EvaluationApprovalsPage() {
     }).catch(() => {})
   }, [])
 
+  const [currentItem, setCurrentItem] = useState<ApprovalView | null>(null)
+
   const { dialogs, approveAction } = useApprovalDialogs({
     entityLabel: "测评资源",
+    stepInfo: currentItem?.stepInfo,
     onApprove: async (comment) => {
       if (!currentItem) return
-      if (currentItem.targetType === "question_bank") await bankApprovals.approve(currentItem.id, comment)
-      else await examApprovals.approve(currentItem.id, comment)
+      if (currentItem.targetType === "question_bank") await approveBank(currentItem.id, comment)
+      else await approveExam(currentItem.id, comment)
     },
     onReject: async (comment) => {
       if (!currentItem) return
-      if (currentItem.targetType === "question_bank") await bankApprovals.reject(currentItem.id, comment)
-      else await examApprovals.reject(currentItem.id, comment)
+      if (currentItem.targetType === "question_bank") await rejectBank(currentItem.id, comment)
+      else await rejectExam(currentItem.id, comment)
     },
   })
-  const [currentItem, setCurrentItem] = useState<ApprovalView | null>(null)
 
-  const loading = bankApprovals.loading || examApprovals.loading
+  const loading = bankLoading || examLoading
 
   const items: ApprovalView[] = useMemo(() => {
-    const bankItems: ApprovalView[] = bankApprovals.records.map((a) => {
+    const bankItems: ApprovalView[] = bankRecords.map((a) => {
       const bank = bankMap.get(a.targetId)
       const batch = bank?.batchId ? batchMap.get(bank.batchId) : undefined
       return {
@@ -88,9 +91,10 @@ export default function EvaluationApprovalsPage() {
         submitterId: a.submitterId,
         status: a.status,
         submittedAt: new Date(a.createdAt).toLocaleDateString(),
+        stepInfo: getBankStepInfo(a),
       }
     })
-    const examItems: ApprovalView[] = examApprovals.records.map((a) => {
+    const examItems: ApprovalView[] = examRecords.map((a) => {
       const exam = examMap.get(a.targetId)
       const batch = exam?.batchId ? batchMap.get(exam.batchId) : undefined
       return {
@@ -103,10 +107,11 @@ export default function EvaluationApprovalsPage() {
         submitterId: a.submitterId,
         status: a.status,
         submittedAt: new Date(a.createdAt).toLocaleDateString(),
+        stepInfo: getExamStepInfo(a),
       }
     })
     return [...bankItems, ...examItems]
-  }, [bankApprovals.records, examApprovals.records, bankMap, examMap, batchMap])
+  }, [bankRecords, examRecords, bankMap, examMap, batchMap, getBankStepInfo, getExamStepInfo])
 
   const pendingItems = items.filter((a) => a.status === "pending")
   const processedItems = items.filter((a) => a.status !== "pending")
@@ -137,14 +142,15 @@ export default function EvaluationApprovalsPage() {
                 <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">创建人</TableHead>
                 <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">提交审批日期</TableHead>
                 <TableHead className="text-xs font-medium text-slate-500 text-center whitespace-nowrap">状态</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500 text-center whitespace-nowrap">当前步骤</TableHead>
                 <TableHead className="text-xs font-medium text-slate-500 text-right whitespace-nowrap sticky right-0 bg-slate-50 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={8} className="text-center py-8 text-gray-500">加载中...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center py-8 text-gray-500">加载中...</TableCell></TableRow>
               ) : data.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="text-center py-12 text-gray-500">暂无数据</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center py-12 text-gray-500">暂无数据</TableCell></TableRow>
               ) : (
                 data.map((item) => (
                   <TableRow key={item.id}>
@@ -160,6 +166,18 @@ export default function EvaluationApprovalsPage() {
                       <Badge variant="secondary" className={STATUS_CONFIG[item.status]?.className}>
                         {STATUS_CONFIG[item.status]?.label}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-center whitespace-nowrap">
+                      {item.stepInfo ? (
+                        <Badge variant="outline" className="text-xs">
+                          {item.stepInfo.currentStepName}
+                          {item.stepInfo.totalSteps > 1 && (
+                            <span className="ml-1 text-gray-400">({item.stepInfo.currentStepIndex + 1}/{item.stepInfo.totalSteps})</span>
+                          )}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-gray-400">-</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right whitespace-nowrap sticky right-0 bg-white z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">
                       <div className="flex items-center justify-end gap-3">
