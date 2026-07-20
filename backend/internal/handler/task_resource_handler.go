@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -94,7 +95,7 @@ func (h *TaskResourceHandler) ListResources(w http.ResponseWriter, r *http.Reque
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT tr.id, tr.name, tr.type, tr.url, tr.description, tr.thumbnail, tr.uploaded_by, tr.uploaded_at
+		SELECT tr.id, tr.name, tr.type, tr.url, tr.description, tr.thumbnail, tr.size, tr.knowledge_point_ids, tr.uploaded_by, tr.uploaded_at
 		FROM task_resources tr
 		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY tr.uploaded_at DESC
@@ -115,6 +116,44 @@ func (h *TaskResourceHandler) ListResources(w http.ResponseWriter, r *http.Reque
 	}
 
 	respondJSON(w, http.StatusOK, TaskResourceListResponse{Items: items, Total: total})
+}
+
+func (h *TaskResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	var req CreateTaskResourceRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.Name == "" || req.Type == "" {
+		respondError(w, http.StatusBadRequest, "missing required fields")
+		return
+	}
+
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
+	id := uuid.NewString()
+	uploadedBy := claims.UserID
+	_, err := h.DB.Exec(r.Context(), `
+		INSERT INTO task_resources (id, tenant_id, name, type, url, description, thumbnail, size, knowledge_point_ids, extra_data, uploaded_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+	`, id, tenantID, req.Name, req.Type, req.URL, req.Description, req.Thumbnail, req.Size,
+		coalesceStringSlice(req.KnowledgePointIDs), jsonMapBytes(req.ExtraData), uploadedBy)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to create resource")
+		return
+	}
+
+	resource, _ := h.fetchResource(r.Context(), id)
+	respondJSON(w, http.StatusCreated, resource)
 }
 
 func (h *TaskResourceHandler) BindResource(w http.ResponseWriter, r *http.Request) {
@@ -181,11 +220,26 @@ func (h *TaskResourceHandler) fetchBinding(ctx context.Context, id string) (*dom
 	return &b, nil
 }
 
+func (h *TaskResourceHandler) fetchResource(ctx context.Context, id string) (*domain.TaskResource, error) {
+	var res domain.TaskResource
+	err := h.DB.QueryRow(ctx, `
+		SELECT id, name, type, url, description, thumbnail, size, knowledge_point_ids, uploaded_by, uploaded_at
+		FROM task_resources WHERE id = $1
+	`, id).Scan(
+		&res.ID, &res.Name, &res.Type, &res.URL, &res.Description, &res.Thumbnail,
+		&res.Size, &res.KnowledgePointIDs, &res.UploadedBy, &res.UploadedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
 func (h *TaskResourceHandler) scanResourceRows(rows pgx.Rows) ([]domain.TaskResource, error) {
 	items := make([]domain.TaskResource, 0)
 	for rows.Next() {
 		var res domain.TaskResource
-		if err := rows.Scan(&res.ID, &res.Name, &res.Type, &res.URL, &res.Description, &res.Thumbnail, &res.UploadedBy, &res.UploadedAt); err != nil {
+		if err := rows.Scan(&res.ID, &res.Name, &res.Type, &res.URL, &res.Description, &res.Thumbnail, &res.Size, &res.KnowledgePointIDs, &res.UploadedBy, &res.UploadedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, res)

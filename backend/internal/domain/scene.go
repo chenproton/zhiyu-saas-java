@@ -106,6 +106,7 @@ type TaskResource struct {
 	Thumbnail         *string   `json:"thumbnail,omitempty"`
 	Size              *string   `json:"size,omitempty"`
 	KnowledgePointIDs []string  `json:"knowledgePointIds,omitempty"`
+	ExtraData         JSONMap   `json:"extraData,omitempty"`
 	UploadedBy        *string   `json:"uploadedBy,omitempty"`
 	UploadedAt        time.Time `json:"uploadedAt"`
 }
