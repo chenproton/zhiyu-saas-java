@@ -725,6 +725,36 @@ if [[ "$HEALTH_OK" != "true" ]]; then
   exit 1
 fi
 
+# ==================== 同步反向代理配置 ====================
+NGINX_CONF_SRC="$PROJECT_ROOT/deploy/nginx/conf.d/zhiyu-saas.conf"
+NGINX_CONF_DST="/opt/1panel/www/conf.d/zhiyu-saas.conf"
+NGINX_CONTAINER="${NGINX_CONTAINER:-openresty}"
+
+if [[ -f "$NGINX_CONF_SRC" ]]; then
+  echo "==> 同步反向代理配置..."
+
+  if [[ -f "$NGINX_CONF_DST" ]]; then
+    if ! cmp -s "$NGINX_CONF_SRC" "$NGINX_CONF_DST"; then
+      cp "$NGINX_CONF_SRC" "$NGINX_CONF_DST"
+      echo "  已更新: $NGINX_CONF_DST"
+    else
+      echo "  配置未变更，跳过"
+    fi
+  else
+    cp "$NGINX_CONF_SRC" "$NGINX_CONF_DST"
+    echo "  已安装: $NGINX_CONF_DST"
+  fi
+
+  if docker exec "$NGINX_CONTAINER" nginx -t 2>/dev/null; then
+    docker exec "$NGINX_CONTAINER" nginx -s reload 2>/dev/null || true
+    echo "  OpenResty 重载成功"
+  else
+    echo "  警告：OpenResty 容器未就绪或配置测试失败，跳过重载" >&2
+  fi
+else
+  echo "==> 未找到反向代理配置模板，跳过 nginx 同步"
+fi
+
 # ==================== 清理旧产物 ====================
 [[ -f "$DEPLOY_BACKEND_DIR/bin/server.prev" ]] && rm -f "$DEPLOY_BACKEND_DIR/bin/server.prev"
 
