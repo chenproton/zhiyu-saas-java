@@ -530,7 +530,7 @@ export default function RolesPage() {
                 {roleUsers.map((u) => (
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">{u.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{u.loginName || u.username}</TableCell>
+                     <TableCell className="text-muted-foreground">{u.username || u.loginName}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {(u.roleNames ?? []).map((rn) => (

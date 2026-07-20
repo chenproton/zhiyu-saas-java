@@ -288,7 +288,7 @@ export default function PositionsPage() {
                       </div>
                       <span className="text-sm">{user.name}</span>
                     </div>
-                    <Badge variant="outline">{user.loginName || user.username}</Badge>
+                    <Badge variant="outline">{user.username || user.loginName}</Badge>
                   </div>
                 ))}
                 {titleUsers.length > 5 && (

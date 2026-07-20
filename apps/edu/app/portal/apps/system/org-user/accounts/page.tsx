@@ -146,7 +146,7 @@ export default function AccountsPage() {
       roleIds: user.roleIds ?? [],
       orgNodeName: orgNode?.name || "—",
       orgTypeName: orgTypeName || undefined,
-      loginName: user.loginName || user.username || "",
+      loginName: user.username || user.loginName || "",
       rawLoginName: user.loginName || "",
       status: user.status,
       statusLabel: statusStyle.label,

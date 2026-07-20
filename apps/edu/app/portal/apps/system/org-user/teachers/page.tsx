@@ -86,7 +86,7 @@ export default function TeachersPage() {
         return {
           id: u.id,
           name: u.name,
-          loginAccount: u.loginName || u.username,
+          loginAccount: u.username || u.loginName || "",
           department: orgNode?.name || institution?.name || "—",
           orgNodeId: u.orgNodeId,
           roles: u.roleNames ?? [],

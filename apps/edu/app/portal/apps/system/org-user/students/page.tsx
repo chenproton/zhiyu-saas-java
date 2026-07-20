@@ -115,7 +115,7 @@ export default function StudentsPage() {
         return {
           id: u.id,
           name: u.name,
-          loginAccount: u.loginName || u.username,
+          loginAccount: u.username || u.loginName || "",
           className,
           department: departmentName,
           orgNodeId: u.orgNodeId,
