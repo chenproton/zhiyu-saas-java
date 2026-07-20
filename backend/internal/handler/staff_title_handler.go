@@ -98,8 +98,11 @@ func (h *StaffTitleHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for i := range items {
-		items[i].UserCount = h.countUsersByTitle(r.Context(), items[i].ID, tenantID)
+	if len(items) > 0 {
+		counts := h.batchCountUsersByTitle(r.Context(), tenantID, items)
+		for i := range items {
+			items[i].UserCount = counts[items[i].ID]
+		}
 	}
 
 	respondJSON(w, http.StatusOK, StaffTitleListResponse{Items: items, Total: total})
@@ -232,6 +235,19 @@ func (h *StaffTitleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var userCount int
+	if err := h.DB.QueryRow(r.Context(),
+		`SELECT COUNT(*) FROM users WHERE tenant_id = $1 AND $2 = ANY(title_ids)`,
+		title.TenantID, id,
+	).Scan(&userCount); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to check title references")
+		return
+	}
+	if userCount > 0 {
+		respondError(w, http.StatusConflict, "该职位仍有用户关联，不可删除")
+		return
+	}
+
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM staff_titles WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete staff title")
@@ -317,6 +333,32 @@ func (h *StaffTitleHandler) scanStaffTitleRows(rows pgx.Rows) ([]domain.StaffTit
 		items = append(items, title)
 	}
 	return items, nil
+}
+
+func (h *StaffTitleHandler) batchCountUsersByTitle(ctx context.Context, tenantID string, titles []domain.StaffTitle) map[string]int {
+	ids := make([]string, len(titles))
+	for i, t := range titles {
+		ids[i] = t.ID
+	}
+	rows, err := h.DB.Query(ctx, `
+		SELECT title_id, COUNT(*) FROM users, unnest(title_ids) AS title_id
+		WHERE tenant_id = $1 AND title_id = ANY($2::uuid[])
+		GROUP BY title_id
+	`, tenantID, ids)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	counts := make(map[string]int)
+	for rows.Next() {
+		var id string
+		var count int
+		if err := rows.Scan(&id, &count); err != nil {
+			continue
+		}
+		counts[id] = count
+	}
+	return counts
 }
 
 func (h *StaffTitleHandler) countUsersByTitle(ctx context.Context, titleID, tenantID string) int {

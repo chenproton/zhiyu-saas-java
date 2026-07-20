@@ -24,7 +24,7 @@ import { MultiSelectSearch } from "@/components/ui/multi-select-search"
 import { useToast } from "@/hooks/use-toast"
 import {
   Plus, MoreHorizontal, Power, Trash2, Search, Filter, Upload, Download,
-  FolderTree, Key, Loader2, AlertCircle, RotateCcw, Pencil
+  FolderTree, Key, Loader2, AlertCircle, RotateCcw, Pencil, ChevronLeft, ChevronRight
 } from "lucide-react"
 
 interface Teacher {
@@ -57,10 +57,11 @@ export default function TeachersPage() {
   const { institution, institutionId, tenantId } = usePortalAuth()
   const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
-  const { users, roles: tenantRoles, loading, error, refetch } = usePortalUsers({
+  const { users, roles: tenantRoles, total, page, pageSize, setPage, loading, error, refetch } = usePortalUsers({
     roleCode: "teacher",
     search: searchTerm || undefined,
   })
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const { orgs, orgMap, orgTypeMap, loading: orgLoading } = useOrgTree(tenantId)
 
   const [teachers, setTeachers] = useState<Teacher[]>([])
@@ -263,21 +264,16 @@ export default function TeachersPage() {
 
   const handleBatchDelete = async () => {
     if (selectedTeachers.length === 0) return
+    if (!window.confirm(`确定要删除选中的 ${selectedTeachers.length} 名教师吗？此操作不可撤销。`)) return
     setBatchDeleting(true)
-    let success = 0
-    let fail = 0
-    for (const id of selectedTeachers) {
-      try {
-        await portalUserManagementApi.delete(id)
-        success++
-      } catch {
-        fail++
-      }
-    }
-    setBatchDeleting(false)
-    setSelectedTeachers([])
-    if (success > 0) {
-      toast({ title: `成功删除 ${success} 个教师` + (fail > 0 ? `，${fail} 个失败` : "") })
+    try {
+      await portalUserManagementApi.batchDelete(selectedTeachers)
+      toast({ title: `成功删除 ${selectedTeachers.length} 名教师` })
+    } catch (err) {
+      toast({ variant: "destructive", title: "批量删除失败", description: err instanceof Error ? err.message : "未知错误" })
+    } finally {
+      setBatchDeleting(false)
+      setSelectedTeachers([])
     }
     await refetch()
   }
@@ -496,7 +492,28 @@ export default function TeachersPage() {
             </Table>
           </div>
 
-          <div className="text-sm text-muted-foreground">共 {filteredTeachers.length} 条记录{selectedTeachers.length > 0 ? `，已选择 ${selectedTeachers.length} 条` : ""}</div>
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <span>共 {total} 条记录{selectedTeachers.length > 0 ? `，已选择 ${selectedTeachers.length} 条` : ""}</span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage(page - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span>{page} / {totalPages}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage(page + 1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 

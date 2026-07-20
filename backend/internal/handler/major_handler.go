@@ -236,6 +236,19 @@ func (h *MajorHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var userCount int
+	if err := h.DB.QueryRow(r.Context(),
+		`SELECT COUNT(*) FROM users WHERE major_id = $1`,
+		id,
+	).Scan(&userCount); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to check major references")
+		return
+	}
+	if userCount > 0 {
+		respondError(w, http.StatusConflict, "该专业下仍有学生，请先将学生调整到其他专业")
+		return
+	}
+
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM majors WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete major")

@@ -15,7 +15,7 @@ import { useOrgTree } from "@/hooks/use-org-tree"
 import { portalUserManagementApi } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { Search, MoreHorizontal, Trash2, Loader2, AlertCircle, RotateCcw, Check, ChevronDown, X } from "lucide-react"
+import { Search, MoreHorizontal, Trash2, Loader2, AlertCircle, RotateCcw, Check, ChevronDown, X, ChevronLeft, ChevronRight } from "lucide-react"
 
 function mapAccountStatus(status: string): { label: string; className: string } {
   if (status === "active") {
@@ -28,9 +28,10 @@ export default function AccountsPage() {
   const { toast } = useToast()
   const { tenantId } = usePortalAuth()
   const [searchText, setSearchText] = useState("")
-  const { users, roles, loading, error, refetch } = usePortalUsers({
+  const { users, roles, total, page, pageSize, setPage, loading, error, refetch } = usePortalUsers({
     search: searchText || undefined,
   })
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const { orgMap, orgTypeMap } = useOrgTree(tenantId)
 
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([])
@@ -116,21 +117,16 @@ export default function AccountsPage() {
 
   const handleBatchDelete = async () => {
     if (selectedAccounts.length === 0) return
+    if (!window.confirm(`确定要删除选中的 ${selectedAccounts.length} 个账户吗？此操作不可撤销。`)) return
     setBatchDeleting(true)
-    let success = 0
-    let fail = 0
-    for (const id of selectedAccounts) {
-      try {
-        await portalUserManagementApi.delete(id)
-        success++
-      } catch {
-        fail++
-      }
-    }
-    setBatchDeleting(false)
-    setSelectedAccounts([])
-    if (success > 0) {
-      toast({ title: `成功删除 ${success} 个账户` + (fail > 0 ? `，${fail} 个失败` : "") })
+    try {
+      await portalUserManagementApi.batchDelete(selectedAccounts)
+      toast({ title: `成功删除 ${selectedAccounts.length} 个账户` })
+    } catch (err) {
+      toast({ variant: "destructive", title: "批量删除失败", description: err instanceof Error ? err.message : "未知错误" })
+    } finally {
+      setBatchDeleting(false)
+      setSelectedAccounts([])
     }
     await refetch()
   }
@@ -294,6 +290,31 @@ export default function AccountsPage() {
           </TableBody>
         </Table>
       </div>
+
+      {total > 0 && (
+        <div className="mt-4 flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">共 {total} 条记录</span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-muted-foreground">{page} / {totalPages}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage(page + 1)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       <Dialog open={!!bindTarget} onOpenChange={(open) => { if (!open) setBindTarget(null) }}>
         <DialogContent size="sm">

@@ -174,9 +174,16 @@ func (h *UserRelationHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "permission denied")
 		return
 	}
+	effectiveTenantID, ok := tenantFilter(claims)
+	if !ok {
+		respondError(w, http.StatusForbidden, "missing tenant")
+		return
+	}
 
 	id := chi.URLParam(r, "id")
-	result, err := h.DB.Exec(r.Context(), `DELETE FROM user_relations WHERE id = $1`, id)
+	result, err := h.DB.Exec(r.Context(),
+		`DELETE FROM user_relations WHERE id = $1 AND tenant_id = $2`,
+		id, effectiveTenantID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete user relation")
 		return

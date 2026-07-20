@@ -2,12 +2,10 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -21,21 +19,6 @@ type ResourceCodeHandler struct {
 type ResourceCodeListResponse struct {
 	Items []domain.ResourceCode `json:"items"`
 	Total int                   `json:"total"`
-}
-
-type CreateResourceCodeRequest struct {
-	TenantID    string  `json:"tenantId"`
-	Code        string  `json:"code"`
-	Name        string  `json:"name"`
-	Description *string `json:"description"`
-	Type        string  `json:"type"`
-}
-
-type UpdateResourceCodeRequest struct {
-	Code        string  `json:"code"`
-	Name        string  `json:"name"`
-	Description *string `json:"description"`
-	Type        string  `json:"type"`
 }
 
 func (h *ResourceCodeHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -124,116 +107,6 @@ func (h *ResourceCodeHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, http.StatusOK, resourceCode)
-}
-
-func (h *ResourceCodeHandler) Create(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-
-	var req CreateResourceCodeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	if req.TenantID == "" || req.Code == "" || req.Name == "" || req.Type == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
-		return
-	}
-	if !verifyRequestTenant(w, r, req.TenantID) {
-		return
-	}
-
-	id := uuid.NewString()
-
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO resource_codes (id, tenant_id, code, name, description, type)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, id, req.TenantID, req.Code, req.Name, req.Description, req.Type)
-	if err != nil {
-		if isUniqueViolation(err) {
-			respondError(w, http.StatusConflict, "资源编码已存在，请使用其他编码")
-			return
-		}
-		respondError(w, http.StatusInternalServerError, "failed to create resource code")
-		return
-	}
-
-	resourceCode, _ := h.fetchResourceCode(r.Context(), id)
-	respondJSON(w, http.StatusCreated, resourceCode)
-}
-
-func (h *ResourceCodeHandler) Update(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	rc, err := h.fetchResourceCode(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "resource code not found")
-		return
-	}
-	if !verifyTenantOwnership(w, r, rc.TenantID) {
-		return
-	}
-
-	var req UpdateResourceCodeRequest
-	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	if req.Code == "" || req.Name == "" || req.Type == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
-		return
-	}
-
-	_, err = h.DB.Exec(r.Context(), `
-		UPDATE resource_codes SET code = $1, name = $2, description = $3, type = $4
-		WHERE id = $5
-	`, req.Code, req.Name, req.Description, req.Type, id)
-	if err != nil {
-		if isUniqueViolation(err) {
-			respondError(w, http.StatusConflict, "资源编码已存在，请使用其他编码")
-			return
-		}
-		respondError(w, http.StatusInternalServerError, "failed to update resource code")
-		return
-	}
-
-	resourceCode, _ := h.fetchResourceCode(r.Context(), id)
-	respondJSON(w, http.StatusOK, resourceCode)
-}
-
-func (h *ResourceCodeHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	rc, err := h.fetchResourceCode(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "resource code not found")
-		return
-	}
-	if !verifyTenantOwnership(w, r, rc.TenantID) {
-		return
-	}
-
-	_, err = h.DB.Exec(r.Context(), `DELETE FROM resource_codes WHERE id = $1`, id)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete resource code")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 
 func (h *ResourceCodeHandler) fetchResourceCode(ctx context.Context, id string) (domain.ResourceCode, error) {

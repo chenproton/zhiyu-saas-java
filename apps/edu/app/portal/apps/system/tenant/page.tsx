@@ -1,16 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import {
   Dialog,
   DialogContent,
@@ -32,12 +24,20 @@ import {
 import {
   Loader2,
   Pencil,
-  Search,
+  Building,
+  Phone,
+  Globe,
+  MapPin,
+  Hash,
+  FileText,
+  Calendar,
+  Shield,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
 import type { Tenant as BackendTenant } from "@/lib/types/backend"
+import { Spinner } from "@/components/ui/spinner"
 
 interface Tenant {
   id: string
@@ -73,12 +73,10 @@ function mapBackendTenant(t: BackendTenant): Tenant {
 
 export default function TenantPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
-  const [tenants, setTenants] = useState<Tenant[]>([])
+  const [tenant, setTenant] = useState<Tenant | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null)
-  const [searchTerm, setSearchTerm] = useState("")
   const [formData, setFormData] = useState({
     name: "",
     contact: "",
@@ -92,16 +90,16 @@ export default function TenantPage() {
   const [submitting, setSubmitting] = useState(false)
   const { toast } = useToast()
 
-  const loadTenantToForm = (tenant: Tenant) => {
+  const loadTenantToForm = (t: Tenant) => {
     setFormData({
-      name: tenant.enterpriseName,
-      contact: tenant.contact === "-" ? "" : tenant.contact,
-      phone: tenant.phone === "-" ? "" : tenant.phone,
-      domain: tenant.domain === "-" ? "" : tenant.domain,
-      address: tenant.address === "-" ? "" : tenant.address,
-      enterpriseCode: tenant.enterpriseCode === "-" ? "" : tenant.enterpriseCode,
-      description: tenant.description === "-" ? "" : tenant.description,
-      status: tenant.status,
+      name: t.enterpriseName,
+      contact: t.contact === "-" ? "" : t.contact,
+      phone: t.phone === "-" ? "" : t.phone,
+      domain: t.domain === "-" ? "" : t.domain,
+      address: t.address === "-" ? "" : t.address,
+      enterpriseCode: t.enterpriseCode === "-" ? "" : t.enterpriseCode,
+      description: t.description === "-" ? "" : t.description,
+      status: t.status,
     })
   }
 
@@ -111,7 +109,9 @@ export default function TenantPage() {
     setError(null)
     try {
       const res = await portalRequest<BackendTenant>(`/tenants/${tenantId}`)
-      setTenants([mapBackendTenant(res)])
+      const t = mapBackendTenant(res)
+      setTenant(t)
+      loadTenantToForm(t)
     } catch (err) {
       setError(err instanceof Error ? err.message : "加载租户信息失败")
     } finally {
@@ -124,26 +124,15 @@ export default function TenantPage() {
     fetchTenant()
   }, [fetchTenant, authLoading])
 
-  const filteredTenants = useMemo(
-    () =>
-      tenants.filter(
-        (tenant) =>
-          tenant.enterpriseName.includes(searchTerm) ||
-          tenant.code.includes(searchTerm) ||
-          tenant.contact.includes(searchTerm)
-      ),
-    [tenants, searchTerm]
-  )
-
   const handleUpdate = async () => {
-    if (!formData.name || !formData.contact || !formData.phone || !selectedTenant) {
+    if (!formData.name || !formData.contact || !formData.phone || !tenant) {
       setError("请填写学校名称、联系人、联系电话")
       return
     }
     setSubmitting(true)
     setError(null)
     try {
-      await portalRequest(`/tenants/${selectedTenant.id}`, {
+      await portalRequest(`/tenants/${tenant.id}`, {
         method: "PUT",
         body: JSON.stringify({
           name: formData.name,
@@ -165,27 +154,37 @@ export default function TenantPage() {
     }
   }
 
+  const openEdit = () => {
+    if (!tenant) return
+    loadTenantToForm(tenant)
+    setIsEditDialogOpen(true)
+  }
+
+  if (authLoading || loading) {
+    return (
+      <div className="flex h-64 items-center justify-center gap-2 text-muted-foreground">
+        <Spinner className="h-5 w-5" />
+        加载中...
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 bg-[#f5f7fa] min-h-full">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-foreground">租户信息管理</h1>
-        <p className="mt-1 text-sm text-muted-foreground">查看和编辑当前租户信息</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">租户信息管理</h1>
+          <p className="mt-1 text-sm text-muted-foreground">查看和编辑当前租户信息</p>
+        </div>
+        {tenant && (
+          <Button size="sm" onClick={openEdit}>
+            <Pencil className="h-4 w-4 mr-1" />
+            编辑
+          </Button>
+        )}
       </div>
 
-      <div className="mb-4 flex items-center gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="搜索关键词..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
-        </div>
-      </div>
-
-      {(loading || authLoading) && (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      )}
-
-      {error && !loading && (
+      {error && !tenant && (
         <div className="mb-4 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
           {error}
         </div>
@@ -198,55 +197,78 @@ export default function TenantPage() {
         </div>
       )}
 
-      {!loading && tenantId && (
-        <>
-          <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="text-muted-foreground">租户标识</TableHead>
-                  <TableHead className="text-muted-foreground">学校名称</TableHead>
-                  <TableHead className="text-muted-foreground">联系人</TableHead>
-                  <TableHead className="text-muted-foreground">联系电话</TableHead>
-                  <TableHead className="text-muted-foreground">管理员数</TableHead>
-                  <TableHead className="text-muted-foreground">状态</TableHead>
-                  <TableHead className="text-muted-foreground">创建时间</TableHead>
-                  <TableHead className="text-muted-foreground text-right">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTenants.map((tenant) => (
-                  <TableRow key={tenant.id} className="border-border">
-                    <TableCell className="font-mono text-sm text-muted-foreground">{tenant.code}</TableCell>
-                    <TableCell className="font-medium">{tenant.enterpriseName}</TableCell>
-                    <TableCell>{tenant.contact}</TableCell>
-                    <TableCell className="text-muted-foreground">{tenant.phone}</TableCell>
-                    <TableCell>{tenant.adminCount}</TableCell>
-                    <TableCell>
-                      <Badge variant={tenant.status === "active" ? "default" : "secondary"}>
-                        {tenant.status === "active" ? "启用" : "停用"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{tenant.createdAt}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => { setSelectedTenant(tenant); loadTenantToForm(tenant); setIsEditDialogOpen(true) }}>
-                        <Pencil className="h-4 w-4 mr-1" />
-                        编辑
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {filteredTenants.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
-                      暂无租户信息
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+      {tenant && (
+        <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
+          <div className="px-6 py-5 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Building className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">{tenant.enterpriseName}</h2>
+                <p className="text-sm text-muted-foreground font-mono">{tenant.code}</p>
+              </div>
+              <Badge variant={tenant.status === "active" ? "default" : "secondary"} className="ml-auto">
+                {tenant.status === "active" ? "启用" : "停用"}
+              </Badge>
+            </div>
           </div>
-        </>
+          <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex items-start gap-3">
+              <Phone className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">联系人</p>
+                <p className="text-sm">{tenant.contact} / {tenant.phone}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <Globe className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">绑定域名</p>
+                <p className="text-sm">{tenant.domain}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">学校地址</p>
+                <p className="text-sm">{tenant.address}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <Hash className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">学校代码</p>
+                <p className="text-sm font-mono">{tenant.enterpriseCode}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <Calendar className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">创建时间</p>
+                <p className="text-sm">{tenant.createdAt}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <Shield className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">管理员数量</p>
+                <p className="text-sm">{tenant.adminCount} 人</p>
+              </div>
+            </div>
+          </div>
+          {tenant.description && tenant.description !== "-" && (
+            <div className="px-6 py-4 border-t border-gray-100">
+              <div className="flex items-start gap-3">
+                <FileText className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs text-muted-foreground">学校简介</p>
+                  <p className="text-sm mt-1 leading-relaxed">{tenant.description}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -259,7 +281,7 @@ export default function TenantPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>租户唯一标识</Label>
-                <Input value={selectedTenant?.code || ""} disabled className="bg-muted font-mono" />
+                <Input value={tenant?.code || ""} disabled className="bg-muted font-mono" />
               </div>
               <div className="grid gap-2">
                 <Label>租户状态</Label>

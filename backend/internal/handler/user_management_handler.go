@@ -83,6 +83,10 @@ type BatchGraduateRequest struct {
 	GraduateYear *int     `json:"graduateYear"`
 }
 
+type BatchDeleteUsersRequest struct {
+	UserIDs []string `json:"userIds"`
+}
+
 type BindUserRolesRequest struct {
 	RoleIDs []string `json:"roleIds"`
 }
@@ -537,7 +541,8 @@ func (h *UserManagementHandler) BatchGraduate(w http.ResponseWriter, r *http.Req
 	}
 
 	_, err := h.DB.Exec(r.Context(),
-		`UPDATE users SET status = 'graduated', graduate_year = $1, updated_at = NOW() WHERE id = ANY($2::uuid[]) AND tenant_id = $3`,
+		`UPDATE users SET status = 'graduated', graduate_year = $1, updated_at = NOW()
+		 WHERE id = ANY($2::uuid[]) AND tenant_id = $3 AND status = 'active'`,
 		graduateYear, uuids, callerTenantID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to batch graduate")
@@ -545,6 +550,60 @@ func (h *UserManagementHandler) BatchGraduate(w http.ResponseWriter, r *http.Req
 	}
 
 	respondJSON(w, http.StatusOK, map[string]int{"count": len(req.UserIDs)})
+}
+
+func (h *UserManagementHandler) BatchDelete(w http.ResponseWriter, r *http.Request) {
+	if !h.canManageUsers(r) {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+
+	claims := middleware.CurrentUser(r)
+	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
+		respondError(w, http.StatusForbidden, "missing tenant")
+		return
+	}
+	callerTenantID := *claims.TenantID
+
+	var req BatchDeleteUsersRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if len(req.UserIDs) == 0 {
+		respondError(w, http.StatusBadRequest, "userIds is required")
+		return
+	}
+
+	uuids := make([]uuid.UUID, len(req.UserIDs))
+	for i, id := range req.UserIDs {
+		uid, err := uuid.Parse(id)
+		if err != nil {
+			respondError(w, http.StatusBadRequest, "invalid userId: "+id)
+			return
+		}
+		uuids[i] = uid
+	}
+
+	tag, err := h.DB.Exec(r.Context(),
+		`DELETE FROM user_roles WHERE user_id = ANY($1::uuid[]) AND user_id IN (
+			SELECT id FROM users WHERE tenant_id = $2 AND id = ANY($1::uuid[])
+		)`, uuids, callerTenantID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to delete user roles")
+		return
+	}
+
+	result, err := h.DB.Exec(r.Context(),
+		`DELETE FROM users WHERE id = ANY($1::uuid[]) AND tenant_id = $2`,
+		uuids, callerTenantID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to delete users")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]int64{"count": result.RowsAffected() + tag.RowsAffected()})
 }
 
 // BindRoles replaces the user's role bindings with the given set (at least one),

@@ -285,6 +285,30 @@ func (h *OrgHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.ParentID != nil && *req.ParentID != "" {
+		if *req.ParentID == id {
+			respondError(w, http.StatusBadRequest, "cannot set parent to itself")
+			return
+		}
+		var descendantOfSelf bool
+		if err := h.DB.QueryRow(r.Context(),
+			`SELECT EXISTS(
+				WITH RECURSIVE subtree AS (
+					SELECT id, parent_id FROM organizations WHERE id = $1
+					UNION ALL
+					SELECT o.id, o.parent_id FROM organizations o JOIN subtree s ON o.id = s.parent_id
+				)
+				SELECT 1 FROM subtree WHERE id = $2
+			)`, id, *req.ParentID).Scan(&descendantOfSelf); err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to check parent")
+			return
+		}
+		if descendantOfSelf {
+			respondError(w, http.StatusBadRequest, "cannot set a descendant node as parent")
+			return
+		}
+	}
+
 	_, err = h.DB.Exec(r.Context(), `
 		UPDATE organizations SET name = $1, type_id = $2, parent_id = $3, sort_order = $4, updated_at = NOW()
 		WHERE id = $5

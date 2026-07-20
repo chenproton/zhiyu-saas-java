@@ -181,9 +181,6 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			resourceCodeHandler := &handler.ResourceCodeHandler{DB: pool}
 			r.Get("/resource-codes", resourceCodeHandler.List)
 			r.Get("/resource-codes/{id}", resourceCodeHandler.Get)
-			r.Post("/resource-codes", resourceCodeHandler.Create)
-			r.Put("/resource-codes/{id}", resourceCodeHandler.Update)
-			r.Delete("/resource-codes/{id}", resourceCodeHandler.Delete)
 
 			logHandler := &handler.LogHandler{DB: pool}
 			r.Get("/logs/login", logHandler.LoginLogs)

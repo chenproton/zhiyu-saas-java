@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/handler/testhelper"
 )
@@ -150,7 +151,7 @@ func TestIndustry_CRUD(t *testing.T) {
 	}
 }
 
-func TestResourceCode_CRUD(t *testing.T) {
+func TestResourceCode_Read(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
 	ctx := context.Background()
@@ -159,20 +160,15 @@ func TestResourceCode_CRUD(t *testing.T) {
 		return env.DoWithToken(method, path, body, schoolAdminToken)
 	}
 
-	wc := do("POST", "/api/v1/resource-codes", map[string]string{
-		"tenantId": testhelper.TestTenantID,
-		"code":     "test-rc",
-		"name":     "Test Resource Code",
-		"type":     "resource",
-	})
-	if wc.Code != http.StatusCreated {
-		t.Fatalf("create: %d %s", wc.Code, testhelper.ErrMsg(wc))
-	}
-	rc, err := testhelper.Unmarshal[domain.ResourceCode](wc)
+	id := uuid.NewString()
+	_, err := env.DB.Exec(ctx, `
+		INSERT INTO resource_codes (id, tenant_id, code, name, description, type)
+		VALUES ($1, $2, 'test-rc', 'Test Resource Code', 'Test', 'resource')
+	`, id, testhelper.TestTenantID)
 	if err != nil {
-		t.Fatalf("unmarshal create: %v", err)
+		t.Fatalf("seed resource code: %v", err)
 	}
-	defer env.DB.Exec(ctx, "DELETE FROM resource_codes WHERE id = $1", rc.ID)
+	defer env.DB.Exec(ctx, "DELETE FROM resource_codes WHERE id = $1", id)
 
 	wList := do("GET", "/api/v1/resource-codes?tenantId="+testhelper.TestTenantID, nil)
 	if wList.Code != http.StatusOK {
@@ -186,37 +182,16 @@ func TestResourceCode_CRUD(t *testing.T) {
 		t.Fatal("expected items > 0")
 	}
 
-	wGet := do("GET", "/api/v1/resource-codes/"+rc.ID, nil)
+	wGet := do("GET", "/api/v1/resource-codes/"+id, nil)
 	if wGet.Code != http.StatusOK {
-		t.Fatalf("get: %d", wGet.Code)
+		t.Fatalf("get: %d %s", wGet.Code, testhelper.ErrMsg(wGet))
 	}
 	rcGet, err := testhelper.Unmarshal[domain.ResourceCode](wGet)
 	if err != nil {
 		t.Fatalf("unmarshal get: %v", err)
 	}
-	if rcGet.ID != rc.ID {
-		t.Fatalf("expected id %s, got %s", rc.ID, rcGet.ID)
-	}
-
-	wUpd := do("PUT", "/api/v1/resource-codes/"+rc.ID, map[string]string{
-		"code": "test-rc-upd",
-		"name": "Updated RC",
-		"type": "resource",
-	})
-	if wUpd.Code != http.StatusOK {
-		t.Fatalf("update: %d %s", wUpd.Code, testhelper.ErrMsg(wUpd))
-	}
-	rcUpd, err := testhelper.Unmarshal[domain.ResourceCode](wUpd)
-	if err != nil {
-		t.Fatalf("unmarshal update: %v", err)
-	}
-	if rcUpd.Name != "Updated RC" {
-		t.Fatalf("expected name 'Updated RC', got %s", rcUpd.Name)
-	}
-
-	wDel := do("DELETE", "/api/v1/resource-codes/"+rc.ID, nil)
-	if wDel.Code != http.StatusOK {
-		t.Fatalf("delete: %d %s", wDel.Code, testhelper.ErrMsg(wDel))
+	if rcGet.ID != id {
+		t.Fatalf("expected id %s, got %s", id, rcGet.ID)
 	}
 }
 

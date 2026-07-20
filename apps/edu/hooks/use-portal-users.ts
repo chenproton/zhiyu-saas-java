@@ -6,27 +6,33 @@ import { portalUserManagementApi, roleApi, type User } from "@/lib/api"
 import type { Role } from "@/lib/types/backend"
 
 export interface UsePortalUsersOptions {
-  /** role code to filter by, e.g. "teacher" or "student" */
   roleCode?: "teacher" | "student"
-  /** server-side search across username/name/email */
   search?: string
-  /** server-side status filter */
   status?: string
+  page?: number
+  pageSize?: number
 }
 
 export interface UsePortalUsersResult {
   users: User[]
   roles: Role[]
   roleMap: Map<string, Role>
+  total: number
+  page: number
+  pageSize: number
   loading: boolean
   error?: string
   refetch: () => void
+  setPage: (page: number) => void
 }
 
 export function usePortalUsers(options: UsePortalUsersOptions = {}): UsePortalUsersResult {
   const { tenantId } = usePortalAuth()
   const [users, setUsers] = useState<User[]>([])
   const [roles, setRoles] = useState<Role[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(options.page ?? 1)
+  const pageSize = options.pageSize ?? 20
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>()
   const [refetchKey, setRefetchKey] = useState(0)
@@ -57,10 +63,12 @@ export function usePortalUsers(options: UsePortalUsersOptions = {}): UsePortalUs
           ...(options.roleCode ? { roleCode: options.roleCode } : {}),
           ...(options.search ? { search: options.search } : {}),
           ...(options.status ? { status: options.status } : {}),
-          limit: 1000,
+          limit: pageSize,
+          offset: (page - 1) * pageSize,
         })
         if (cancelled) return
         setUsers(usersRes.items)
+        setTotal(usersRes.total)
       } catch (err) {
         if (cancelled) return
         setError(err instanceof Error ? err.message : "加载失败")
@@ -73,7 +81,7 @@ export function usePortalUsers(options: UsePortalUsersOptions = {}): UsePortalUs
     return () => {
       cancelled = true
     }
-  }, [tenantId, options.roleCode, options.search, options.status, refetchKey])
+  }, [tenantId, options.roleCode, options.search, options.status, page, pageSize, refetchKey])
 
-  return { users, roles, roleMap, loading, error, refetch }
+  return { users, roles, roleMap, total, page, pageSize, loading, error, refetch, setPage }
 }

@@ -236,6 +236,19 @@ func (h *IndustryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var childCount int
+	if err := h.DB.QueryRow(r.Context(),
+		`SELECT COUNT(*) FROM industries WHERE parent_id = $1`,
+		id,
+	).Scan(&childCount); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to check child industries")
+		return
+	}
+	if childCount > 0 {
+		respondError(w, http.StatusConflict, "该行业下仍有子行业，请先删除子行业")
+		return
+	}
+
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM industries WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete industry")
