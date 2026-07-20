@@ -111,6 +111,8 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
   const [duplicateName, setDuplicateName] = useState<string | null>(null)
   const [newAbilityDomain, setNewAbilityDomain] = useState('')
   const [newAbilityAttributes, setNewAbilityAttributes] = useState<string[]>([])
+  const [libraryFilterAttr, setLibraryFilterAttr] = useState<string | null>(null)
+  const [libraryFilterDomain, setLibraryFilterDomain] = useState<string | null>(null)
 
   const contentRef = useRef<HTMLDivElement>(null)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -137,6 +139,14 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       a.category.toLowerCase().includes(searchDialogQuery.toLowerCase())
     )
   }, [abilities, searchDialogQuery])
+
+  const libraryFiltered = useMemo(() => {
+    return abilities.filter(a => {
+      if (libraryFilterAttr && !(a.attributes || []).includes(libraryFilterAttr)) return false
+      if (libraryFilterDomain && (a.domain || ABILITY_DOMAINS[0]) !== libraryFilterDomain) return false
+      return true
+    })
+  }, [abilities, libraryFilterAttr, libraryFilterDomain])
 
   const scrollToResp = (respId: string) => {
     setSelectedRespId(respId)
@@ -862,130 +872,179 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       </Dialog>
 
       {/* Ability Library Dialog */}
-      <Dialog open={showLibraryDialog} onOpenChange={setShowLibraryDialog}>
-        <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+      <Dialog open={showLibraryDialog} onOpenChange={(open) => {
+        setShowLibraryDialog(open)
+        if (!open) { setLibraryFilterAttr(null); setLibraryFilterDomain(null) }
+      }}>
+        <DialogContent size="xl" className="!h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-gray-800">能力点库</DialogTitle>
             <DialogDescription className="text-gray-400">
-              系统内全部公共能力点（共 {abilities.length} 个）
+              系统内全部公共能力点（共 {abilities.length} 个，筛选后 {libraryFiltered.length} 个）
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto py-4">
-            {abilities.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+          {/* Filters */}
+          <div className="shrink-0 flex items-center gap-3 pb-3 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500 shrink-0">能力属性</span>
+              {ABILITY_ATTRIBUTES.map((attr) => (
+                <button
+                  key={attr}
+                  onClick={() => setLibraryFilterAttr(libraryFilterAttr === attr ? null : attr)}
+                  className={`px-2.5 py-1 rounded-md text-xs border transition-all ${
+                    libraryFilterAttr === attr
+                      ? 'bg-gray-800 text-white border-gray-800'
+                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  {attr}
+                </button>
+              ))}
+            </div>
+            <div className="w-px h-6 bg-gray-200" />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500 shrink-0">所属能力域</span>
+              {ABILITY_DOMAINS.map((dom) => (
+                <button
+                  key={dom}
+                  onClick={() => setLibraryFilterDomain(libraryFilterDomain === dom ? null : dom)}
+                  className={`px-2.5 py-1 rounded-md text-xs border transition-all ${
+                    libraryFilterDomain === dom
+                      ? 'bg-gray-800 text-white border-gray-800'
+                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  {dom}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Table */}
+          <div className="flex-1 overflow-y-auto">
+            {libraryFiltered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-gray-400">
                 <Library className="h-10 w-10 mb-3 opacity-30" />
                 <p className="text-sm">暂无能力点</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-1.5">
-                {abilities.map((ability) => {
-                  const isEditing = editingAbilityId === ability.id
-                  return isEditing ? (
-                    <div
-                      key={ability.id}
-                      className="col-span-2 px-4 py-3 rounded-lg border border-gray-200 bg-gray-50/50 space-y-3"
-                    >
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-gray-500">能力点名称</Label>
-                        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                          <Input
-                            value={editAbilityName}
-                            onChange={e => setEditAbilityName(e.target.value)}
-                            onKeyDown={e => handleSaveEditAbilityKeyDown(e, ability.id)}
-                            placeholder="能力点名称..."
-                            className="h-8 text-sm py-0 border-gray-200"
-                            autoFocus
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-gray-500">能力属性</Label>
-                        <div className="flex gap-2">
-                          {ABILITY_ATTRIBUTES.map((attr) => {
-                            const isSelected = editAbilityAttributes.includes(attr)
-                            return (
-                              <button
-                                key={attr}
-                                type="button"
-                                onClick={() => {
-                                  setEditAbilityAttributes(prev =>
-                                    prev.includes(attr) ? prev.filter(a => a !== attr) : [...prev, attr]
+              <table className="w-full">
+                <thead className="sticky top-0 bg-white z-10">
+                  <tr className="border-b border-gray-100">
+                    <th className="text-left text-xs font-medium text-gray-400 py-2.5 px-4 w-[35%]">名称</th>
+                    <th className="text-left text-xs font-medium text-gray-400 py-2.5 px-4 w-[25%]">能力属性</th>
+                    <th className="text-left text-xs font-medium text-gray-400 py-2.5 px-4 w-[25%]">所属能力域</th>
+                    <th className="text-right text-xs font-medium text-gray-400 py-2.5 px-4 w-[15%]">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {libraryFiltered.map((ability) => {
+                    const isEditing = editingAbilityId === ability.id
+                    return isEditing ? (
+                      <tr key={ability.id} className="border-b border-gray-50 bg-gray-50/50">
+                        <td className="px-3 py-2" colSpan={4}>
+                          <div className="space-y-3 p-3 rounded-lg border border-gray-200 bg-white">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-gray-500">能力点名称</Label>
+                              <Input
+                                value={editAbilityName}
+                                onChange={e => setEditAbilityName(e.target.value)}
+                                onKeyDown={e => handleSaveEditAbilityKeyDown(e, ability.id)}
+                                placeholder="能力点名称..."
+                                className="h-8 text-sm border-gray-200"
+                                autoFocus
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-gray-500">能力属性</Label>
+                              <div className="flex gap-2">
+                                {ABILITY_ATTRIBUTES.map((attr) => {
+                                  const isSel = editAbilityAttributes.includes(attr)
+                                  return (
+                                    <button
+                                      key={attr}
+                                      type="button"
+                                      onClick={() => {
+                                        setEditAbilityAttributes(prev =>
+                                          prev.includes(attr) ? prev.filter(a => a !== attr) : [...prev, attr]
+                                        )
+                                      }}
+                                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                                        isSel
+                                          ? 'bg-gray-900 text-white border-gray-900'
+                                          : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
+                                      }`}
+                                    >
+                                      {attr}
+                                    </button>
                                   )
-                                }}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                                  isSelected
-                                    ? 'bg-gray-900 text-white border-gray-900'
-                                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
-                                }`}
-                              >
-                                {attr}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-gray-500">所属能力域</Label>
-                        <Select value={editAbilityDomain || ABILITY_DOMAINS[0]} onValueChange={setEditAbilityDomain}>
-                          <SelectTrigger className="h-8 text-sm w-full max-w-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ABILITY_DOMAINS.map((d) => (
-                              <SelectItem key={d} value={d}>{d}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" className="h-7 text-xs" onClick={() => handleSaveEditAbility(ability.id)}>
-                          <Check className="mr-1 h-3 w-3" /> 保存
-                        </Button>
-                        <Button size="sm" variant="ghost" className="h-7 text-xs text-gray-500" onClick={() => { setEditingAbilityId(null); setEditAbilityName(''); setEditAbilityDomain(''); setEditAbilityAttributes([]) }}>
-                          <X className="mr-1 h-3 w-3" /> 取消
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div
-                      key={ability.id}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors group"
-                    >
-                      <BookOpen className="h-4 w-4 text-gray-500 shrink-0" />
-                      <div className="flex-1 min-w-0 flex items-center gap-2">
-                        <span className="text-sm text-gray-700 truncate">{ability.name}</span>
-                        {(ability.attributes || []).length > 0 && (
-                          <div className="flex gap-1">
-                            {ability.attributes.map((attr, i) => (
-                              <span key={i} className="text-[10px] px-1 py-0 rounded bg-gray-100 text-gray-500">{attr}</span>
-                            ))}
+                                })}
+                              </div>
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-gray-500">所属能力域</Label>
+                              <Select value={editAbilityDomain || ABILITY_DOMAINS[0]} onValueChange={setEditAbilityDomain}>
+                                <SelectTrigger className="h-8 text-sm w-full max-w-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {ABILITY_DOMAINS.map((d) => (
+                                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" className="h-7 text-xs" onClick={() => handleSaveEditAbility(ability.id)}>
+                                <Check className="mr-1 h-3 w-3" /> 保存
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-7 text-xs text-gray-500" onClick={() => { setEditingAbilityId(null); setEditAbilityName(''); setEditAbilityDomain(''); setEditAbilityAttributes([]) }}>
+                                <X className="mr-1 h-3 w-3" /> 取消
+                              </Button>
+                            </div>
                           </div>
-                        )}
-                        <Badge variant="outline" className="text-[10px] rounded-md px-1.5 py-0 shrink-0">
-                          {ability.category}
-                        </Badge>
-                      </div>
-                      <button
-                        onClick={() => handleStartEditAbility(ability)}
-                        className="p-1 rounded text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-                        title="编辑"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDeleteAbility(ability.id)
-                        }}
-                        className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                        title="删除能力点"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={ability.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
+                        <td className="px-4 py-2.5">
+                          <span className="text-sm text-gray-700">{ability.name}</span>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex gap-1">
+                            {(ability.attributes || []).length > 0
+                              ? ability.attributes.map((attr, i) => (
+                                  <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{attr}</span>
+                                ))
+                              : <span className="text-xs text-gray-400">-</span>
+                            }
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span className="text-xs text-gray-600">{ability.domain || ABILITY_DOMAINS[0]}</span>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => handleStartEditAbility(ability)}
+                              className="p-1 rounded text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                              title="编辑"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAbility(ability.id)}
+                              className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                              title="删除能力点"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             )}
           </div>
         </DialogContent>
