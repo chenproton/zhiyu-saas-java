@@ -734,79 +734,73 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
         if (!open) { setAbilityPoolSearch(''); setAbilityPoolFilterAttr(null); setAbilityPoolFilterDomain(null) }
       }}>
         <DialogContent size="xl" className="!h-[85vh] flex flex-col">
-          <DialogHeader>
+          <DialogHeader className="pb-0">
             <DialogTitle className="text-gray-800">从能力点库添加</DialogTitle>
             <DialogDescription className="text-gray-400">
               搜索能力点，添加到当前岗位的工作职责中
             </DialogDescription>
           </DialogHeader>
 
-          <div className="shrink-0 flex items-center gap-2 mb-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-300" />
+          <div className="shrink-0 rounded-xl border bg-gray-50/50 p-3 space-y-2.5">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
-                placeholder="输入名称搜索..."
-                className="pl-9 h-8 text-sm"
+                placeholder="输入名称搜索能力点..."
+                className="pl-9 h-9 text-sm bg-white border-gray-200"
                 value={abilityPoolSearch}
                 onChange={(e) => setAbilityPoolSearch(e.target.value)}
+                autoFocus
               />
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] font-medium text-gray-500 mr-1">能力属性</span>
+              {ABILITY_ATTRIBUTES.map((attr) => (
+                <button
+                  key={attr}
+                  onClick={() => setAbilityPoolFilterAttr(abilityPoolFilterAttr === attr ? null : attr)}
+                  className={`px-3 py-1 rounded-full text-[11px] transition-colors ${
+                    abilityPoolFilterAttr === attr
+                      ? 'bg-gray-800 text-white font-medium shadow-sm'
+                      : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-400 hover:text-gray-700'
+                  }`}
+                >
+                  {attr}
+                </button>
+              ))}
+              <span className="text-[11px] font-medium text-gray-500 ml-3 mr-1">能力领域</span>
+              {ABILITY_DOMAINS.map((dom) => (
+                <button
+                  key={dom}
+                  onClick={() => setAbilityPoolFilterDomain(abilityPoolFilterDomain === dom ? null : dom)}
+                  className={`px-3 py-1 rounded-full text-[11px] transition-colors ${
+                    abilityPoolFilterDomain === dom
+                      ? 'bg-gray-800 text-white font-medium shadow-sm'
+                      : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-400 hover:text-gray-700'
+                  }`}
+                >
+                  {dom}
+                </button>
+              ))}
+              {(abilityPoolFilterAttr || abilityPoolFilterDomain) && (
+                <button
+                  onClick={() => { setAbilityPoolFilterAttr(null); setAbilityPoolFilterDomain(null) }}
+                  className="text-[11px] text-gray-400 hover:text-gray-600 ml-2"
+                >
+                  清空
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="shrink-0 flex items-center gap-2 mb-3">
-            <span className="text-[12px] text-gray-400 w-14 shrink-0">能力属性</span>
-            {ABILITY_ATTRIBUTES.map((attr) => (
-              <button
-                key={attr}
-                onClick={() => setAbilityPoolFilterAttr(abilityPoolFilterAttr === attr ? null : attr)}
-                className={`px-2.5 py-1 rounded text-xs border transition-colors ${
-                  abilityPoolFilterAttr === attr
-                    ? 'bg-gray-800 text-white border-gray-800'
-                    : 'border-gray-200 text-gray-500 hover:border-gray-400'
-                }`}
-              >
-                {attr}
-              </button>
-            ))}
-          </div>
-
-          <div className="shrink-0 flex items-center gap-2 mb-4">
-            <span className="text-[12px] text-gray-400 w-14 shrink-0">能力领域</span>
-            {ABILITY_DOMAINS.map((dom) => (
-              <button
-                key={dom}
-                onClick={() => setAbilityPoolFilterDomain(abilityPoolFilterDomain === dom ? null : dom)}
-                className={`px-2.5 py-1 rounded text-xs border transition-colors ${
-                  abilityPoolFilterDomain === dom
-                    ? 'bg-gray-800 text-white border-gray-800'
-                    : 'border-gray-200 text-gray-500 hover:border-gray-400'
-                }`}
-              >
-                {dom}
-              </button>
-            ))}
-            {(abilityPoolFilterAttr || abilityPoolFilterDomain) && (
-              <button
-                onClick={() => { setAbilityPoolFilterAttr(null); setAbilityPoolFilterDomain(null) }}
-                className="text-xs text-gray-400 hover:text-gray-600 ml-2"
-              >
-                清空筛选
-              </button>
-            )}
-          </div>
-
-          <div className="flex-1 overflow-y-auto rounded-lg border border-gray-100">
+          <div className="flex-1 overflow-y-auto mt-3 rounded-lg border bg-white">
             {abilityPoolResults.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-gray-300">
-                <Search className="h-8 w-8 mb-2 opacity-30" />
-                <p className="text-sm">
-                  {abilityPoolSearch || abilityPoolFilterAttr || abilityPoolFilterDomain
-                    ? '没有匹配的能力点'
-                    : '暂无能力点'}
-                </p>
+              <div className="flex flex-col items-center justify-center py-16 text-gray-300">
+                <Search className="h-8 w-8 mb-2 opacity-25" />
+                <p className="text-sm">暂无匹配的能力点</p>
                 {abilityPoolSearch.trim() && (
                   <button
-                    className="mt-2 text-xs text-gray-400 hover:text-gray-600 underline"
+                    className="mt-3 text-xs text-indigo-500 hover:text-indigo-600 font-medium"
                     onClick={() => {
                       setNewAbilityName(abilityPoolSearch.trim())
                       setNewAbilityDomain('')
@@ -815,17 +809,17 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                       setShowCreateDialog(true)
                     }}
                   >
-                    新建「{abilityPoolSearch.trim()}」
+                    + 库中不存在，点击新建「{abilityPoolSearch.trim()}」
                   </button>
                 )}
               </div>
             ) : (
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50/50">
-                    <th className="text-left text-xs font-medium text-gray-400 py-2 px-4 w-[36%]">名称</th>
-                    <th className="text-left text-xs font-medium text-gray-400 py-2 px-4 w-[20%]">属性 / 领域</th>
-                    <th className="text-right text-xs font-medium text-gray-400 py-2 px-4 w-[44%]">操作</th>
+                  <tr className="border-b bg-gray-50/80 sticky top-0 z-10">
+                    <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[34%]">能力点名称</th>
+                    <th className="text-left text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[26%]">属性 · 领域</th>
+                    <th className="text-right text-[11px] font-medium text-gray-500 py-2.5 px-4 w-[40%]">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -834,112 +828,113 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                     const alreadyAdded = selectedRespId && position.abilityBindings.some(
                       b => b.responsibilityId === selectedRespId && b.publicAbilityId === ability.id
                     )
-                    return isEditing ? (
-                      <tr key={ability.id} className="bg-blue-50/20">
-                        <td colSpan={3} className="px-4 py-3">
-                          <div className="flex items-start gap-3">
-                            <div className="flex-1 space-y-2">
-                              <Input
-                                value={editAbilityName}
-                                onChange={e => setEditAbilityName(e.target.value)}
-                                onKeyDown={e => handleSaveEditAbilityKeyDown(e, ability.id)}
-                                placeholder="能力点名称"
-                                className="h-8 text-sm"
-                                autoFocus
-                              />
-                              <div className="flex items-center gap-2">
-                                <span className="text-[11px] text-gray-400">属性</span>
-                                {ABILITY_ATTRIBUTES.map((attr) => {
-                                  const isSel = editAbilityAttributes.includes(attr)
-                                  return (
-                                    <button
-                                      key={attr}
-                                      type="button"
-                                      onClick={() => setEditAbilityAttributes(prev =>
-                                        prev.includes(attr) ? prev.filter(a => a !== attr) : [...prev, attr]
-                                      )}
-                                      className={`px-2 py-0.5 rounded text-[11px] border ${isSel ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-500'}`}
-                                    >
-                                      {attr}
-                                    </button>
-                                  )
-                                })}
-                                <span className="text-[11px] text-gray-400 ml-2">领域</span>
-                                <Select value={editAbilityDomain || ABILITY_DOMAINS[0]} onValueChange={setEditAbilityDomain}>
-                                  <SelectTrigger className="h-6 text-[11px] w-28">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {ABILITY_DOMAINS.map((d) => (
-                                      <SelectItem key={d} value={d}>{d}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                    if (isEditing) {
+                      return (
+                        <tr key={ability.id} className="bg-indigo-50/40">
+                          <td colSpan={3} className="px-4 py-3">
+                            <div className="flex items-start gap-4">
+                              <div className="flex-1 space-y-2">
+                                <Input
+                                  value={editAbilityName}
+                                  onChange={e => setEditAbilityName(e.target.value)}
+                                  onKeyDown={e => handleSaveEditAbilityKeyDown(e, ability.id)}
+                                  placeholder="能力点名称"
+                                  className="h-8 text-sm bg-white"
+                                  autoFocus
+                                />
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[11px] text-gray-400 shrink-0">属性</span>
+                                  {ABILITY_ATTRIBUTES.map((attr) => {
+                                    const isSel = editAbilityAttributes.includes(attr)
+                                    return (
+                                      <button
+                                        key={attr}
+                                        type="button"
+                                        onClick={() => setEditAbilityAttributes(prev =>
+                                          prev.includes(attr) ? prev.filter(a => a !== attr) : [...prev, attr]
+                                        )}
+                                        className={`px-2 py-0.5 rounded text-[11px] border transition-colors ${
+                                          isSel ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                                        }`}
+                                      >
+                                        {attr}
+                                      </button>
+                                    )
+                                  })}
+                                  <span className="text-[11px] text-gray-400 shrink-0 ml-3">领域</span>
+                                  <Select value={editAbilityDomain || ABILITY_DOMAINS[0]} onValueChange={setEditAbilityDomain}>
+                                    <SelectTrigger className="h-6 text-[11px] w-28 bg-white">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {ABILITY_DOMAINS.map((d) => (
+                                        <SelectItem key={d} value={d}>{d}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <Button size="sm" className="h-7 text-xs" onClick={() => handleSaveEditAbility(ability.id)}>
+                                  <Check className="mr-1 h-3 w-3" />保存
+                                </Button>
+                                <Button size="sm" variant="ghost" className="h-7 text-xs text-gray-500" onClick={() => { setEditingAbilityId(null); setEditAbilityName(''); setEditAbilityDomain(''); setEditAbilityAttributes([]) }}>
+                                  取消
+                                </Button>
                               </div>
                             </div>
-                            <div className="flex items-center gap-1 shrink-0 pt-0.5">
-                              <Button size="sm" className="h-7 text-xs" onClick={() => handleSaveEditAbility(ability.id)}>
-                                <Check className="mr-1 h-3 w-3" />保存
-                              </Button>
-                              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setEditingAbilityId(null); setEditAbilityName(''); setEditAbilityDomain(''); setEditAbilityAttributes([]) }}>
-                                取消
-                              </Button>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      <tr key={ability.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-4 py-2.5">
+                          </td>
+                        </tr>
+                      )
+                    }
+                    return (
+                      <tr key={ability.id} className="hover:bg-gray-50/80 transition-colors">
+                        <td className="px-4 py-3">
                           <span className="text-sm text-gray-800">{ability.name}</span>
                         </td>
-                        <td className="px-4 py-2.5">
-                          <div className="flex items-center gap-1 flex-wrap">
-                            {(ability.attributes || []).length > 0 && (
-                              <>
-                                {ability.attributes.map((attr, i) => (
-                                  <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{attr}</span>
-                                ))}
-                                <span className="text-gray-300 mx-0.5">·</span>
-                              </>
-                            )}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            {(ability.attributes || []).map((attr, i) => (
+                              <span key={i} className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200">{attr}</span>
+                            ))}
+                            {((ability.attributes || []).length > 0) && <span className="text-gray-300 text-[10px]">·</span>}
                             <span className="text-[11px] text-gray-400">{ability.domain || ABILITY_DOMAINS[0]}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-2.5">
-                          <div className="flex items-center justify-end gap-2">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-1.5">
                             {selectedRespId && (
                               alreadyAdded ? (
-                                <span className="text-xs text-gray-400 flex items-center gap-1">
-                                  <Check className="h-3 w-3 text-green-500" />已添加
+                                <span className="inline-flex items-center gap-1 text-[11px] text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-100">
+                                  <Check className="h-3 w-3" />已添加
                                 </span>
                               ) : (
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-7 text-xs"
+                                  className="h-7 text-[11px] rounded-full px-3"
                                   onClick={() => handleAddFromPool(ability)}
                                 >
-                                  添加关联
+                                  <Plus className="mr-1 h-3 w-3" />添加
                                 </Button>
                               )
                             )}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 text-xs"
-                              onClick={() => handleStartEditAbility(ability)}
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 text-xs text-gray-400 hover:text-red-500"
-                              onClick={() => handleDeleteAbility(ability.id)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                            <div className="flex items-center gap-0.5 border border-gray-200 rounded-full overflow-hidden">
+                              <button
+                                onClick={() => handleStartEditAbility(ability)}
+                                className="px-2.5 py-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                                title="编辑"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteAbility(ability.id)}
+                                className="px-2.5 py-1 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors border-l border-gray-200"
+                                title="删除"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
                           </div>
                         </td>
                       </tr>
