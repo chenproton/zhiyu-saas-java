@@ -81,7 +81,6 @@ const fallbackModules: Record<string, ModuleItem[]> = {
     { id: "career-position-center", title: "岗位中心", desc: "产业岗位标准管理", note: "建设和发布产业岗位标准", href: "/job/positions" },
     { id: "career-archive", title: "岗位归档", desc: "历史岗位归档查看", note: "查看已归档的历史岗位数据", href: "/job/archive" },
     { id: "career-approval", title: "审批中心", desc: "岗位审批流程", note: "处理岗位相关的审批申请", href: "/job/approvals" },
-    { id: "career-landing", title: "前台落地页", desc: "岗位学习前台展示", note: "面向学生的岗位学习前台页面", href: "/job/landing" },
   ],
   course: [
     { id: "course-online-resources", title: "在线课资源库", desc: "体系课管理", note: "管理在线课程体系课资源", href: "/lesson/admin/system" },
@@ -90,20 +89,17 @@ const fallbackModules: Record<string, ModuleItem[]> = {
     { id: "course-archive", title: "混合课历史", desc: "历史档案库", note: "查看混合课历史档案", href: "/lesson/admin/archive" },
     { id: "course-teaching-space", title: "教学空间", desc: "开课计划与教学跟踪", note: "管理开课计划和跟踪学生学习", href: "/lesson/teacher/claim" },
     { id: "course-approval", title: "审批中心", desc: "课程审批流程", note: "处理课程相关的审批申请", href: "/lesson/admin/approvals" },
-    { id: "course-landing", title: "前台落地页", desc: "课程前台展示", note: "面向学生的课程学习前台页面", href: "/lesson/landing" },
   ],
   scene: [
     { id: "scene-center", title: "场景中心", desc: "实践场景与任务设计", note: "创建和管理产业实践场景", href: "/scene/" },
     { id: "scene-archive", title: "场景归档", desc: "历史场景查看", note: "查看已归档的历史场景数据", href: "/scene/archive" },
     { id: "scene-approval", title: "审批中心", desc: "场景审批流程", note: "处理场景相关的审批申请", href: "/scene/approvals" },
-    { id: "scene-landing", title: "前台落地页", desc: "场景前台展示", note: "面向学生的场景实践前台页面", href: "/scene/landing" },
   ],
   ability: [
     { id: "ability-exam-resources", title: "题库管理", desc: "题库与试卷管理", note: "建设题库和组织试卷", href: "/evaluation/question-banks" },
     { id: "ability-exams", title: "试卷管理", desc: "试卷创建与管理", note: "创建和管理考试试卷", href: "/evaluation/exams" },
     { id: "ability-exam-usage", title: "考试管理", desc: "考试安排与管理", note: "安排和管理考试流程", href: "/evaluation/exam-usage" },
     { id: "ability-approval", title: "审批中心", desc: "测评审批流程", note: "处理测评相关的审批申请", href: "/evaluation/approvals" },
-    { id: "ability-landing", title: "前台落地页", desc: "测评前台展示", note: "面向学生的测评前台页面", href: "/evaluation/landing" },
   ],
   affairs: [
     { id: "affairs-entry", title: "教务服务", desc: "暂未开放", note: "教务管理功能即将上线", href: "#" },
