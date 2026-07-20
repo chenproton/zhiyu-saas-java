@@ -475,26 +475,26 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                         <div className="flex items-center gap-1.5 shrink-0">
                           <Button
                             size="sm"
-                            className="h-6 text-[10px] rounded-full px-3"
+                            className="h-7 text-xs rounded-full"
                             onClick={() => {
                               setAbilityPoolSearch('')
                 setAbilityPoolFilterAttr(null)
                 setShowAbilityPoolDialog(true)
                             }}
                           >
-                            <Library className="mr-1 h-3 w-3" />
+                            <Library className="mr-1 h-3.5 w-3.5" />
                             从能力点库添加
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-6 text-[10px] rounded-full px-3"
+                            className="h-7 text-xs rounded-full"
                             onClick={() => {
                               setDuplicateName(null)
                               setShowCreateDialog(true)
                             }}
                           >
-                            <Plus className="mr-1 h-3 w-3" />
+                            <Plus className="mr-1 h-3.5 w-3.5" />
                             新建能力点
                           </Button>
                         </div>
@@ -538,7 +538,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                                       background: 'linear-gradient(90deg, #6366f1, #a78bfa)',
                                     }}
                                   />
-                                  <div className="relative flex justify-between pt-4">
+                                  <div className="relative flex justify-between" style={{ paddingTop: 4 }}>
                                     {COMPETENCY_LEVELS.map((level, idx) => {
                                       const isReached = idx <= levelIdx
                                       return (
