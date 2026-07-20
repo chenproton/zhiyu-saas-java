@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import {
+  Check,
   ChevronDown,
   ChevronRight,
   Copy,
@@ -54,6 +55,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth-provider"
+import { majorApi, workflowApi } from "@/lib/api"
+import type { Major, Workflow } from "@/lib/types/backend"
 
 // ─── Types ───────────────────────────────────────────────────────────────
 
@@ -170,12 +173,14 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   } = config
 
   const router = useRouter()
-  const { hasPermission, user } = useAuth()
+  const { hasPermission, user, tenantId } = useAuth()
   const currentUserId = user?.id ?? ""
 
   const [items, setItems] = useState<any[]>([])
   const [frontItems, setFrontItems] = useState<T[]>([])
   const [batches, setBatches] = useState<ContentBatch[]>([])
+  const [majors, setMajors] = useState<Major[]>([])
+  const [workflows, setWorkflows] = useState<Workflow[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   const [activeTab, setActiveTab] = useState<TabType>("my")
@@ -191,6 +196,11 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isBatchMoveDialogOpen, setIsBatchMoveDialogOpen] = useState(false)
   const [moveTargetBatchId, setMoveTargetBatchId] = useState("")
+  const [moveSelectedMajorId, setMoveSelectedMajorId] = useState("all")
+  const [isSubmitBatchDialogOpen, setIsSubmitBatchDialogOpen] = useState(false)
+  const [submitBatchTarget, setSubmitBatchTarget] = useState<T | null>(null)
+  const [submitSelectedBatchId, setSubmitSelectedBatchId] = useState("")
+  const [submitSelectedMajorId, setSubmitSelectedMajorId] = useState("all")
   const [isCloneRenameDialogOpen, setIsCloneRenameDialogOpen] = useState(false)
   const [cloneRenameValue, setCloneRenameValue] = useState("")
   const [cloneTarget, setCloneTarget] = useState<T | null>(null)
@@ -211,6 +221,19 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       const mappedBatches = batchesResp.items.map(mapBatch)
       setBatches(mappedBatches)
       setExpandedBatches(mappedBatches.map((b) => b.id))
+
+      if (tenantId) {
+        try {
+          const [majorsResp, workflowsResp] = await Promise.all([
+            majorApi.list({ tenantId, limit: 1000 }),
+            workflowApi.list({ limit: 1000 }),
+          ])
+          setMajors((majorsResp.items as Major[]).filter((m) => m.enabled))
+          setWorkflows(workflowsResp.items as Workflow[])
+        } catch (_) {
+          // 专业/审批流加载失败不影响列表展示
+        }
+      }
       let front = itemsResp.items.map((i: any) => mapItem(i, currentUserId))
       if (afterLoad) front = await afterLoad(front, mappedBatches)
 
@@ -323,6 +346,22 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     batches.forEach((b) => map.set(b.id, b.name))
     return map
   }, [batches])
+
+  const moveFilteredBatches = useMemo(() => {
+    if (moveSelectedMajorId === "all") return batches
+    return batches.filter((b) => {
+      const wf = workflows.find((w) => w.id === b.workflowId)
+      return wf && (wf.majorIds || []).includes(moveSelectedMajorId)
+    })
+  }, [batches, workflows, moveSelectedMajorId])
+
+  const submitFilteredBatches = useMemo(() => {
+    if (submitSelectedMajorId === "all") return batches
+    return batches.filter((b) => {
+      const wf = workflows.find((w) => w.id === b.workflowId)
+      return wf && (wf.majorIds || []).includes(submitSelectedMajorId)
+    })
+  }, [batches, workflows, submitSelectedMajorId])
 
   const handleSelectId = (id: string, checked: boolean) => {
     setSelectedIds((prev) => (checked ? [...prev, id] : prev.filter((sid) => sid !== id)))
@@ -457,7 +496,11 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     setSelectedIds([])
   }
 
-  const handleBatchMove = () => { setIsBatchMoveDialogOpen(true) }
+  const handleBatchMove = () => {
+    setMoveSelectedMajorId("all")
+    setMoveTargetBatchId("")
+    setIsBatchMoveDialogOpen(true)
+  }
 
   const handleConfirmMove = async () => {
     if (!moveTargetBatchId) return
@@ -498,7 +541,10 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
 
   const handleSubmitApproval = async (item: T) => {
     if (!item.batchId) {
-      alert(`该${entityLabel}未关联批次，无法提交审批`)
+      setSubmitBatchTarget(item)
+      setSubmitSelectedMajorId("all")
+      setSubmitSelectedBatchId("")
+      setIsSubmitBatchDialogOpen(true)
       return
     }
     const batch = batches.find((b) => b.id === item.batchId)
@@ -509,6 +555,25 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     try {
       await itemApi.submit(item.id)
       await approvalApi.create({ targetType: approvalTargetType, targetId: item.id, workflowId: batch.workflowId })
+      await refresh()
+    } catch (err) {
+      console.error("提交审批失败", err)
+      alert("提交审批失败，请稍后重试")
+    }
+  }
+
+  const handleConfirmSubmitBatch = async () => {
+    if (!submitBatchTarget || !submitSelectedBatchId) return
+    const batch = batches.find((b) => b.id === submitSelectedBatchId)
+    if (!batch) return
+    try {
+      await itemApi.update(submitBatchTarget.id, { batchId: submitSelectedBatchId })
+      await itemApi.submit(submitBatchTarget.id)
+      await approvalApi.create({ targetType: approvalTargetType, targetId: submitBatchTarget.id, workflowId: batch.workflowId })
+      setIsSubmitBatchDialogOpen(false)
+      setSubmitBatchTarget(null)
+      setSubmitSelectedBatchId("")
+      setSubmitSelectedMajorId("all")
       await refresh()
     } catch (err) {
       console.error("提交审批失败", err)
@@ -596,6 +661,60 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     batchMap,
     extraProps: listExtraProps,
   }
+
+  const renderBatchSelector = (
+    selectedMajorId: string,
+    onMajorChange: (value: string) => void,
+    selectedBatchId: string,
+    onBatchChange: (id: string) => void,
+    filteredBatches: ContentBatch[]
+  ) => (
+    <div className="space-y-4">
+      {majors.length > 0 && (
+        <Tabs value={selectedMajorId} onValueChange={onMajorChange}>
+          <TabsList className="h-auto flex-wrap justify-start">
+            <TabsTrigger value="all">全部专业</TabsTrigger>
+            {majors.map((m) => (
+              <TabsTrigger key={m.id} value={m.id}>
+                {m.name}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      )}
+      <div className="rounded-lg border border-slate-200 bg-white overflow-hidden max-h-[260px] overflow-y-auto">
+        {filteredBatches.length === 0 ? (
+          <div className="px-4 py-6 text-sm text-gray-500 text-center">
+            暂无批次分组
+          </div>
+        ) : (
+          filteredBatches.map((batch) => {
+            const selected = selectedBatchId === batch.id
+            return (
+              <div
+                key={batch.id}
+                onClick={() => onBatchChange(batch.id)}
+                className={cn(
+                  "px-4 py-3 cursor-pointer border-b border-slate-100 last:border-b-0 hover:bg-slate-50 flex items-center justify-between gap-3",
+                  selected && "bg-primary/5"
+                )}
+              >
+                <div className="min-w-0">
+                  <div className={cn("font-medium text-sm", selected && "text-primary")}>
+                    {batch.name}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    ID: {batch.id.slice(0, 8)}
+                  </div>
+                </div>
+                {selected && <Check className="h-4 w-4 text-primary shrink-0" />}
+              </div>
+            )
+          })
+        )}
+      </div>
+    </div>
+  )
 
   // ─── Render ────────────────────────────────────────────────────────────
 
@@ -918,28 +1037,48 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
 
       {/* Batch Move Dialog */}
       <Dialog open={isBatchMoveDialogOpen} onOpenChange={setIsBatchMoveDialogOpen}>
-        <DialogContent className="sm:max-w-[450px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>调整批次分组</DialogTitle>
             <DialogDescription>将选中的 {selectedIds.length} 个{entityLabel}移动到指定批次</DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <Select value={moveTargetBatchId} onValueChange={setMoveTargetBatchId}>
-              <SelectTrigger>
-                <SelectValue placeholder="选择目标批次" />
-              </SelectTrigger>
-              <SelectContent>
-                {batches.map((batch) => (
-                  <SelectItem key={batch.id} value={batch.id}>
-                    {batch.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {renderBatchSelector(
+              moveSelectedMajorId,
+              setMoveSelectedMajorId,
+              moveTargetBatchId,
+              setMoveTargetBatchId,
+              moveFilteredBatches
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsBatchMoveDialogOpen(false)}>取消</Button>
             <Button onClick={handleConfirmMove} disabled={!moveTargetBatchId}>确认移动</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Submit With Batch Dialog */}
+      <Dialog open={isSubmitBatchDialogOpen} onOpenChange={setIsSubmitBatchDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>选择批次并提交审批</DialogTitle>
+            <DialogDescription>
+              {entityLabel}「{submitBatchTarget?.name}」未关联批次，请选择批次分组后继续提交审批
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {renderBatchSelector(
+              submitSelectedMajorId,
+              setSubmitSelectedMajorId,
+              submitSelectedBatchId,
+              setSubmitSelectedBatchId,
+              submitFilteredBatches
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsSubmitBatchDialogOpen(false)}>取消</Button>
+            <Button onClick={handleConfirmSubmitBatch} disabled={!submitSelectedBatchId}>确认并提交审批</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
