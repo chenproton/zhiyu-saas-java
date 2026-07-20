@@ -497,6 +497,17 @@ func ensureSeedData(t *testing.T, db *pgxpool.Pool, token string) {
 	t.Helper()
 	ctx := context.Background()
 
+	// 清理旧测试数据，避免 UNIQUE 约束冲突
+	tables := []string{
+		"learn_roads", "graduation_project_topics", "workflows",
+		"career_positions", "ability_points", "knowledge_points",
+		"exams", "question_banks", "scenarios", "courses",
+		"staff_titles", "industries", "majors", "org_types",
+	}
+	for _, tbl := range tables {
+		db.Exec(ctx, "DELETE FROM "+tbl+" WHERE tenant_id = $1", TestTenantID)
+	}
+
 	db.Exec(ctx, `INSERT INTO tenants (id, name, code, status) VALUES ($1, 'Test Tenant', 'test', 'active') ON CONFLICT (id) DO NOTHING`, TestTenantID)
 
 	pw, _ := bcrypt.GenerateFromPassword([]byte("test123"), bcrypt.DefaultCost)

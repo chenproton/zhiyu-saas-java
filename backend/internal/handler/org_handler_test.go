@@ -15,9 +15,10 @@ func createTestOrgType(t *testing.T, env *testhelper.TestEnv) string {
 	t.Helper()
 	ctx := context.Background()
 	id := uuid.NewString()
+	name := "TestOrgType_" + id[:8]
 	_, err := env.DB.Exec(ctx,
 		`INSERT INTO org_types (id, tenant_id, name, category) VALUES ($1, $2, $3, 'internal')`,
-		id, testhelper.TestTenantID, "TestOrgType",
+		id, testhelper.TestTenantID, name,
 	)
 	if err != nil {
 		t.Fatalf("create org type: %v", err)

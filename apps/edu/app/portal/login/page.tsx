@@ -6,8 +6,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { AlertCircle, GraduationCap, User, Lock, MessageCircle, QrCode } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { AlertCircle, GraduationCap, User, Lock, MessageCircle, QrCode, Building2 } from "lucide-react"
 import { authApi, setToken } from "@/lib/api"
+import type { TenantOption } from "@/lib/api"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { useAuth } from "@/components/auth-provider"
 import { resolveActiveRole } from "@/lib/active-role"
@@ -41,6 +43,31 @@ export default function PortalLoginPage() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [loginMethod, setLoginMethod] = useState<LoginMethod>("password")
+  const [tenantOptions, setTenantOptions] = useState<TenantOption[]>([])
+  const [preAuthToken, setPreAuthToken] = useState("")
+  const [showTenantSelect, setShowTenantSelect] = useState(false)
+  const [selectingTenant, setSelectingTenant] = useState(false)
+
+  const doLogin = async (token: string) => {
+    setToken(token, "portal")
+    await Promise.all([refresh(), refreshRootAuth()])
+    const me = await authApi.portalMe()
+    const activeRole = resolveActiveRole(me.user?.id, me.roles)
+    router.replace(getPostLoginPath(activeRole?.code))
+  }
+
+  const handleSelectTenant = async (tenantId: string) => {
+    setSelectingTenant(true)
+    try {
+      const res = await authApi.selectTenant({ preAuthToken, tenantId })
+      await doLogin(res.token)
+    } catch (err: any) {
+      setError(err.message || "选择租户失败")
+      setShowTenantSelect(false)
+    } finally {
+      setSelectingTenant(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,14 +77,16 @@ export default function PortalLoginPage() {
 
     try {
       const res = await authApi.portalLogin({ username, password })
-      setToken(res.token, "portal")
-      await Promise.all([refresh(), refreshRootAuth()])
-      const me = await authApi.portalMe()
-      const activeRole = resolveActiveRole(me.user?.id, me.roles)
-      router.replace(getPostLoginPath(activeRole?.code))
+      if (res.needsTenantSelection && res.preAuthToken && res.tenants) {
+        setTenantOptions(res.tenants)
+        setPreAuthToken(res.preAuthToken)
+        setShowTenantSelect(true)
+        setLoading(false)
+        return
+      }
+      await doLogin(res.token)
     } catch (err: any) {
       setError(err.message || "登录失败")
-    } finally {
       setLoading(false)
     }
   }
@@ -182,6 +211,40 @@ export default function PortalLoginPage() {
           © {new Date().getFullYear()} 场景化数智教学服务平台 All Rights Reserved
         </p>
       </div>
+
+      <Dialog open={showTenantSelect} onOpenChange={setShowTenantSelect}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>选择租户</DialogTitle>
+            <DialogDescription>
+              您的账号关联了多个学校，请选择要登录的学校
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 py-4">
+            {tenantOptions.map((t) => (
+              <Button
+                key={t.tenantId}
+                variant="outline"
+                className="justify-start gap-3 h-auto py-4"
+                onClick={() => handleSelectTenant(t.tenantId)}
+                disabled={selectingTenant}
+              >
+                <Building2 className="h-5 w-5 text-primary shrink-0" />
+                <div className="text-left">
+                  <div className="font-medium">{t.tenantName}</div>
+                  <div className="text-xs text-muted-foreground">{t.tenantId}</div>
+                </div>
+              </Button>
+            ))}
+          </div>
+          {error && (
+            <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {error}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

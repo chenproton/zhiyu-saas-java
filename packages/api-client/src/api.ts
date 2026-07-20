@@ -136,6 +136,20 @@ export interface LoginRequest {
 export interface LoginResponse {
   token: string
   user: User
+  needsTenantSelection?: boolean
+  preAuthToken?: string
+  tenants?: TenantOption[]
+}
+
+export interface TenantOption {
+  tenantId: string
+  tenantName: string
+  userId: string
+}
+
+export interface SelectTenantRequest {
+  preAuthToken: string
+  tenantId: string
 }
 
 export interface User {
@@ -392,6 +406,7 @@ export const authApi = {
   login: (req: LoginRequest) => request<LoginResponse>("/auth/login", { method: "POST", body: JSON.stringify(req) }),
   saasLogin: (req: LoginRequest) => request<LoginResponse>("/auth/saas/login", { method: "POST", body: JSON.stringify(req) }),
   portalLogin: (req: LoginRequest) => portalRequest<LoginResponse>("/auth/portal/login", { method: "POST", body: JSON.stringify(req) }),
+  selectTenant: (req: SelectTenantRequest) => request<LoginResponse>("/auth/select-tenant", { method: "POST", body: JSON.stringify(req) }),
   me: () => request<MeResponse>("/auth/me"),
   saasMe: () => request<MeResponse>("/auth/saas/me"),
   portalMe: () => portalRequest<MeResponse>("/auth/portal/me"),

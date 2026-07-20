@@ -32,36 +32,38 @@ type CreateUserRequest struct {
 	InstitutionID *string             `json:"institutionId"`
 	RoleID        *string             `json:"roleId"`
 	OrgNodeID     *string             `json:"orgNodeId"`
-	MajorID        *string             `json:"majorId"`
-	Username       string              `json:"username"`
-	Password       string              `json:"password"`
-	Name           string              `json:"name"`
-	Email          string              `json:"email"`
-	Phone          *string             `json:"phone"`
-	AvatarURL      *string             `json:"avatarUrl"`
-	StudentNo      *string             `json:"studentNo"`
-	WorkID         *string             `json:"workId"`
-	IDCard         *string             `json:"idCard"`
-	TitleIDs       []string            `json:"titleIds"`
-	Role           *string             `json:"role"`
-	Platform       domain.UserPlatform `json:"platform"`
+	MajorID       *string             `json:"majorId"`
+	Username      string              `json:"username"`
+	LoginName     *string             `json:"loginName"`
+	Password      string              `json:"password"`
+	Name          string              `json:"name"`
+	Email         string              `json:"email"`
+	Phone         *string             `json:"phone"`
+	AvatarURL     *string             `json:"avatarUrl"`
+	StudentNo     *string             `json:"studentNo"`
+	WorkID        *string             `json:"workId"`
+	IDCard        *string             `json:"idCard"`
+	TitleIDs      []string            `json:"titleIds"`
+	Role          *string             `json:"role"`
+	Platform      domain.UserPlatform `json:"platform"`
 }
 
 type UpdateUserRequest struct {
 	InstitutionID *string  `json:"institutionId"`
 	RoleID        *string  `json:"roleId"`
 	OrgNodeID     *string  `json:"orgNodeId"`
-	MajorID        *string  `json:"majorId"`
-	Username       string   `json:"username"`
-	Name           string   `json:"name"`
-	Email          string   `json:"email"`
-	Phone          *string  `json:"phone"`
-	AvatarURL      *string  `json:"avatarUrl"`
-	StudentNo      *string  `json:"studentNo"`
-	WorkID         *string  `json:"workId"`
-	IDCard         *string  `json:"idCard"`
-	TitleIDs       []string `json:"titleIds"`
-	Role           *string  `json:"role"`
+	MajorID       *string  `json:"majorId"`
+	Username      string   `json:"username"`
+	LoginName     *string  `json:"loginName"`
+	Name          string   `json:"name"`
+	Email         string   `json:"email"`
+	Phone         *string  `json:"phone"`
+	AvatarURL     *string  `json:"avatarUrl"`
+	StudentNo     *string  `json:"studentNo"`
+	WorkID        *string  `json:"workId"`
+	IDCard        *string  `json:"idCard"`
+	TitleIDs      []string `json:"titleIds"`
+	Role          *string  `json:"role"`
 }
 
 type UpdateUserStatusRequest struct {
@@ -271,13 +273,22 @@ func (h *UserManagementHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	role := h.resolveRole(req.Role, oldUser.Role)
 
+	rawLoginName := req.Username
+	if req.LoginName != nil && *req.LoginName != "" {
+		rawLoginName = *req.LoginName
+	}
+	globalLoginName := ""
+	if oldUser.TenantID != nil {
+		globalLoginName = *oldUser.TenantID + "_" + rawLoginName
+	}
+
 	_, err = h.DB.Exec(r.Context(), `
 		UPDATE users SET institution_id = $1, org_node_id = $2, major_id = $3,
-			role = $4, username = $5, name = $6, email = $7, phone = $8, avatar_url = $9,
-			student_no = $10, work_id = $11, id_card = $12, title_ids = $13, updated_at = NOW()
-		WHERE id = $14
+			role = $4, login_name = $5, username = $6, name = $7, email = $8, phone = $9, avatar_url = $10,
+			student_no = $11, work_id = $12, id_card = $13, title_ids = $14, updated_at = NOW()
+		WHERE id = $15
 	`, req.InstitutionID, req.OrgNodeID, req.MajorID,
-		role, req.Username, req.Name, req.Email, req.Phone, req.AvatarURL,
+		role, globalLoginName, rawLoginName, req.Name, req.Email, req.Phone, req.AvatarURL,
 		req.StudentNo, req.WorkID, req.IDCard, coalesceStringSlice(req.TitleIDs), id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to update user")
@@ -632,13 +643,19 @@ func (h *UserManagementHandler) createSingleUserInTx(ctx context.Context, tx pgx
 		platform = domain.UserPlatformSaas
 	}
 
+	rawLoginName := req.Username
+	if req.LoginName != nil && *req.LoginName != "" {
+		rawLoginName = *req.LoginName
+	}
+	globalLoginName := req.TenantID + "_" + rawLoginName
+
 	_, err = tx.Exec(ctx, `
 		INSERT INTO users (id, tenant_id, institution_id, org_node_id, major_id,
-			role, platform, username, password_hash, name, email, phone, avatar_url,
+			role, platform, login_name, username, password_hash, name, email, phone, avatar_url,
 			student_no, work_id, id_card, title_ids, oauth, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, 'active')
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 'active')
 	`, id, req.TenantID, req.InstitutionID, req.OrgNodeID, req.MajorID,
-		role, platform, req.Username, string(hash), req.Name, req.Email, req.Phone, req.AvatarURL,
+		role, platform, globalLoginName, rawLoginName, string(hash), req.Name, req.Email, req.Phone, req.AvatarURL,
 		req.StudentNo, req.WorkID, req.IDCard, coalesceStringSlice(req.TitleIDs), domain.JSONMap{})
 	if err != nil {
 		log.Printf("ERROR INSERT users in createSingleUserInTx: %v, tenantId=%s roleId=%v username=%s",
