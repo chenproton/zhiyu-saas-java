@@ -120,7 +120,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
   const selectedResp = position.responsibilities.find(r => r.id === selectedRespId)
 
   const searchDialogResults = useMemo(() => {
-    if (!searchDialogQuery.trim()) return abilities
+    if (!searchDialogQuery.trim()) return []
     return abilities.filter(a =>
       a.name.toLowerCase().includes(searchDialogQuery.toLowerCase()) ||
       a.category.toLowerCase().includes(searchDialogQuery.toLowerCase())
