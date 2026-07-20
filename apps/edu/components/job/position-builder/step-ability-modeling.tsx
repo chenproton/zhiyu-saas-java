@@ -32,12 +32,10 @@ import {
   X,
   Pencil,
   Library,
-  GripVertical,
 } from 'lucide-react'
 import { abilityApi } from '@/lib/api'
 import { convertApiAbilityToLocal } from '@/lib/stores/job-converters'
 import type { Position, PositionAbilityBinding, CompetencyLevel, Ability } from '@/lib/types/job-source'
-import { COMPETENCY_LEVEL_LABELS } from '@/lib/types/job-source'
 import { toast } from 'sonner'
 
 interface StepAbilityModelingProps {
@@ -100,7 +98,6 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
   const [aiNotice, setAiNotice] = useState<string | null>(null)
   const [editingRespId, setEditingRespId] = useState<string | null>(null)
   const [editRespName, setEditRespName] = useState('')
-  const [expandedBindingId, setExpandedBindingId] = useState<string | null>(null)
   const [editingAbilityId, setEditingAbilityId] = useState<string | null>(null)
   const [editAbilityName, setEditAbilityName] = useState('')
   const [editAbilityDomain, setEditAbilityDomain] = useState('')
@@ -206,7 +203,6 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       attributes: newAbilityAttributes,
     }
     onUpdate({ abilityBindings: [...position.abilityBindings, newBinding] })
-    setExpandedBindingId(newBinding.id)
     setNewAbilityName('')
     setNewAbilityDomain('')
     setNewAbilityAttributes([])
@@ -496,8 +492,8 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
               <p className="text-sm">暂无工作职责和能力点</p>
               <p className="text-xs mt-1 text-gray-300">请先在左侧添加工作职责，再为其添加能力点</p>
             </div>
-          ) : (
-            <div className="py-3 space-y-1">
+           ) : (
+            <div className="py-4 space-y-8">
               {position.responsibilities.map((resp) => {
                 const respBindings = position.abilityBindings.filter(b => b.responsibilityId === resp.id)
                 const isSelectedGroup = resp.id === selectedRespId
@@ -505,132 +501,100 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                   <div
                     key={resp.id}
                     ref={(el) => { sectionRefs.current[resp.id] = el }}
-                    className={`mx-3 rounded-xl transition-colors ${isSelectedGroup ? 'bg-primary/[0.04] ring-1 ring-primary/15' : ''}`}
+                    className={`mx-4 rounded-xl transition-colors ${isSelectedGroup ? 'bg-primary/[0.04] ring-1 ring-primary/15' : ''}`}
                   >
-                    {/* Group header */}
-                    <div className="flex items-center gap-2 px-3 py-2 sticky top-0 bg-white/95 backdrop-blur-sm z-10 border-b border-gray-50">
+                    <div className="flex items-center gap-2 px-1 py-2 border-b border-gray-100">
                       <div className={`w-2 h-2 rounded-full ${getRespColor(resp.id)}`} />
                       <h4 className="text-sm font-medium text-gray-700">{resp.name || '未命名职责'}</h4>
                       <Badge variant="secondary" className="text-[10px] rounded-md px-1.5 py-0 font-normal">
                         {respBindings.length} 个能力点
                       </Badge>
                     </div>
-
-                    {/* Bindings for this responsibility */}
-                    <div className="px-3 py-2 space-y-1.5">
+                    <div className="px-1 py-3">
                       {respBindings.length === 0 ? (
-                        <p className="text-xs text-gray-400 py-2 px-1 italic">暂未配置能力点</p>
+                        <p className="text-xs text-gray-400 py-4 italic">暂未配置能力点 — 点击上方「能力点库」或「新建能力点」按钮添加</p>
                       ) : (
-                        respBindings.map((binding) => {
-                          const isExpanded = expandedBindingId === binding.id
-                          return isExpanded ? (
-                            <div key={binding.id} className="rounded-xl border border-gray-300 bg-white p-4 space-y-3 shadow-sm ml-2">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-semibold text-gray-800">{binding.name}</span>
-                                  <span className="text-[11px] text-gray-400">{COMPETENCY_LEVEL_LABELS[binding.level]}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Button size="sm" variant="ghost" className="h-7 px-2 text-gray-500 hover:text-gray-800 text-xs" onClick={() => setExpandedBindingId(null)}>
-                                    收起
-                                  </Button>
+                        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
+                          {respBindings.map((binding) => {
+                            const levelIdx = COMPETENCY_LEVELS.findIndex(l => l.value === binding.level)
+                            return (
+                              <div
+                                key={binding.id}
+                                className="rounded-xl border border-gray-100 bg-white p-4 hover:border-blue-200 hover:shadow-sm transition-all group"
+                              >
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex-1 min-w-0 pr-1">
+                                    <span className="text-sm font-semibold text-gray-800 block truncate">{binding.name}</span>
+                                  </div>
                                   <button
-                                    className="p-1.5 rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
                                     onClick={() => handleRemoveBinding(binding.id)}
+                                    className="shrink-0 p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                    title="删除"
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="h-3.5 w-3.5" />
                                   </button>
                                 </div>
-                              </div>
 
-                              <div className="space-y-2">
-                                <Label className="text-xs text-gray-400 font-medium">掌握程度</Label>
-                                <div className="relative pt-2 pb-1 max-w-md">
-                                  <div className="absolute top-[14px] left-0 right-0 h-1 bg-gray-100 rounded-full" />
+                                <div className="relative pt-3 pb-4 mb-3 mx-1">
+                                  <div className="absolute top-[17px] left-[7px] right-[7px] h-1.5 bg-gray-100 rounded-full" />
                                   <div
-                                    className="absolute top-[14px] left-0 h-1 bg-gray-800 rounded-full transition-all"
+                                    className="absolute top-[17px] left-[7px] h-1.5 rounded-full transition-all"
                                     style={{
-                                      width: `${(COMPETENCY_LEVELS.findIndex(l => l.value === binding.level) / (COMPETENCY_LEVELS.length - 1)) * 100}%`,
+                                      width: `calc(${(levelIdx / (COMPETENCY_LEVELS.length - 1)) * 100}% - 14px)`,
+                                      background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
                                     }}
                                   />
                                   <div className="relative flex justify-between">
-                                    {COMPETENCY_LEVELS.map((level) => {
-                                      const currentIdx = COMPETENCY_LEVELS.findIndex(l => l.value === binding.level)
-                                      const idx = COMPETENCY_LEVELS.findIndex(l => l.value === level.value)
-                                      const isActive = idx <= currentIdx
-                                      const isSelected = binding.level === level.value
+                                    {COMPETENCY_LEVELS.map((level, idx) => {
+                                      const isReached = idx <= levelIdx
                                       return (
                                         <button
                                           key={level.value}
                                           type="button"
                                           onClick={() => handleUpdateBinding(binding.id, { level: level.value })}
-                                          className="flex flex-col items-center gap-1 group"
-                                        >
-                                          <div
-                                            className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center transition-all ${
-                                              isSelected
-                                                ? 'border-gray-800 bg-gray-800 scale-110'
-                                                : isActive
-                                                  ? 'border-gray-800 bg-gray-800/15'
-                                                  : 'border-gray-300 bg-white group-hover:border-gray-400'
-                                            }`}
-                                          >
-                                            {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                                          </div>
-                                          <span
-                                            className={`text-[10px] font-medium transition-colors ${
-                                              isSelected ? 'text-gray-900' : isActive ? 'text-gray-700' : 'text-gray-400'
-                                            }`}
-                                          >
-                                            {level.label}
-                                          </span>
-                                        </button>
+                                          className={`w-3.5 h-3.5 rounded-full border-2 transition-all ${
+                                            idx === levelIdx
+                                              ? 'border-blue-500 bg-blue-500 scale-125'
+                                              : isReached
+                                                ? 'border-blue-300 bg-blue-200'
+                                                : 'border-gray-300 bg-white hover:border-gray-400'
+                                          }`}
+                                          title={level.description}
+                                        />
                                       )
                                     })}
                                   </div>
+                                  <div className="relative flex justify-between mt-1.5">
+                                    {COMPETENCY_LEVELS.map((level, idx) => (
+                                      <span
+                                        key={level.value}
+                                        className={`text-[10px] transition-colors ${
+                                          idx === levelIdx
+                                            ? 'text-blue-600 font-medium'
+                                            : idx <= levelIdx
+                                              ? 'text-blue-400'
+                                              : 'text-gray-400'
+                                        }`}
+                                      >
+                                        {level.label}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <Textarea
+                                    value={binding.rubricDescription}
+                                    onChange={(e) => handleUpdateBinding(binding.id, { rubricDescription: e.target.value })}
+                                    placeholder="胜任标准描述..."
+                                    className="text-xs min-h-[48px] resize-none border-gray-100 focus:border-gray-300 bg-gray-50/50 rounded-lg"
+                                    rows={2}
+                                  />
                                 </div>
                               </div>
-
-                              <div className="space-y-1.5">
-                                <Label className="text-xs text-gray-400 font-medium">胜任标准描述</Label>
-                                <Textarea
-                                  value={binding.rubricDescription}
-                                  onChange={(e) => handleUpdateBinding(binding.id, { rubricDescription: e.target.value })}
-                                  placeholder="描述该能力点在本岗位中的具体达标表现..."
-                                  className="text-sm min-h-[56px] resize-none border-gray-200 focus:border-gray-400"
-                                  rows={2}
-                                />
-                              </div>
-                            </div>
-                          ) : (
-                            <div
-                              key={binding.id}
-                              onClick={() => setExpandedBindingId(binding.id)}
-                              className="flex items-center justify-between pl-3 pr-3 py-2.5 ml-2 rounded-lg border border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50/50 transition-colors cursor-pointer relative overflow-hidden"
-                            >
-                              <div className={`absolute left-0 top-0 bottom-0 w-1 ${getRespColor(binding.responsibilityId)}`} />
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <GripVertical className="h-3.5 w-3.5 text-gray-300 shrink-0" />
-                                <span className="text-sm text-gray-700 truncate">{binding.name}</span>
-                                <span className="text-[11px] text-gray-400 shrink-0">{COMPETENCY_LEVEL_LABELS[binding.level]}</span>
-                              </div>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium text-white ${getRespColor(binding.responsibilityId)}`}>
-                                  {COMPETENCY_LEVEL_LABELS[binding.level]}
-                                </span>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleRemoveBinding(binding.id)
-                                  }}
-                                  className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </button>
-                              </div>
-                            </div>
-                          )
-                        })
+                            )
+                          })}
+                        </div>
                       )}
                     </div>
                   </div>
