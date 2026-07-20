@@ -258,6 +258,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       name: a.name,
       category: a.category,
       description: a.description ?? '',
+      attributes: a.attributes || [],
       isPublic: a.isPublic ?? false,
       createdAt: a.createdAt,
     }
