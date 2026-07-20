@@ -918,21 +918,24 @@ export default function TasksEditPage() {
         <PrdAnnotation data={getAnnotation("editor-scenario-summary")} className="block">
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <CardTitle className="text-lg">{existingScenario?.name || "新建场景"}</CardTitle>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <CardTitle className="text-lg truncate">{existingScenario?.name || "新建场景"}</CardTitle>
                   {existingScenario && existingScenario.coBuilders.length > 0 && (
                     <Badge variant="secondary" className="text-[10px]">共建</Badge>
                   )}
                 </div>
-                <CardDescription>
-                  {existingScenario?.positionName} | {existingScenario?.industryName} | {existingScenario?.professionName}
+                <CardDescription className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="truncate">
+                    {existingScenario?.positionName} | {existingScenario?.industryName} | {existingScenario?.professionName}
+                  </span>
                   {existingScenario && existingScenario.coBuilders.length > 0 && (
-                    <span className="ml-2">
-                      共建人：
-                      {existingScenario.coBuilders.map((cb: { id: string; name: string }, i: number) => (
-                        <Badge key={cb.id} variant="outline" className="text-[10px] ml-1">
+                    <span className="flex flex-wrap items-center gap-1">
+                      <span className="text-gray-400">|</span>
+                      <span>共建人：</span>
+                      {existingScenario.coBuilders.map((cb: { id: string; name: string }) => (
+                        <Badge key={cb.id} variant="outline" className="text-[10px]">
                           {cb.name}
                         </Badge>
                       ))}
@@ -940,7 +943,7 @@ export default function TasksEditPage() {
                   )}
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 shrink-0">
                 <div className="flex items-center gap-1">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Star key={i} className={cn("h-4 w-4", i < (existingScenario?.difficulty || 3) ? "fill-amber-400 text-amber-400" : "text-gray-200")} />
@@ -957,8 +960,8 @@ export default function TasksEditPage() {
         </PrdAnnotation>
 
         {/* Tasks Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
             <PrdAnnotation data={getAnnotation("editor-task-list-title")}>
               <h2 className="font-semibold text-lg">任务列表</h2>
             </PrdAnnotation>
@@ -973,7 +976,7 @@ export default function TasksEditPage() {
               </div>
             </PrdAnnotation>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <PrdAnnotation data={getAnnotation("editor-add-task")}>
               <Button size="sm" onClick={() => setIsAddTaskOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
@@ -996,20 +999,22 @@ export default function TasksEditPage() {
         </div>
 
         {/* Task List with unified horizontal scroll */}
-        <div className="overflow-x-auto pb-2">
-          {/* Column Headers */}
-          <div className="flex items-start gap-3 pl-10 min-w-max">
+        <div className="overflow-x-auto pb-2 -mx-2 px-2">
+          {/* Column Headers — mirror row structure for precise alignment */}
+          <div className="flex items-start gap-3 min-w-max pr-2">
+            <div className="w-8 shrink-0" />
             {cardConfigs.map(c => (
               <PrdAnnotation key={c.type} data={getAnnotation(`editor-card-${c.type}`)} className="w-52 shrink-0">
-                <div className="w-52 shrink-0 text-xs text-gray-500 text-center whitespace-pre-line leading-tight py-1">
+                <div className="w-52 shrink-0 text-xs text-gray-500 text-center whitespace-pre-line leading-tight py-2">
                   {c.title}
                 </div>
               </PrdAnnotation>
             ))}
+            <div className="w-8 shrink-0" />
           </div>
 
           {/* Task Rows */}
-          <div className="space-y-3 min-w-max">
+          <div className="space-y-4 min-w-max pr-2">
             {tasks.map((task, idx) => (
               <div
                 key={task.id}
@@ -1033,12 +1038,12 @@ export default function TasksEditPage() {
                   taskApi.reorder(scenarioId, reordered.map(t => t.id)).catch(() => {})
                 }}
                 className={cn(
-                  "flex items-center gap-3 p-3 bg-white rounded-xl border hover:border-primary/30 transition-colors group",
+                  "flex items-center gap-3 p-4 bg-white rounded-xl border shadow-sm hover:shadow-md hover:border-primary/30 transition-all group",
                   draggedIdx === idx && "opacity-50 border-dashed border-primary"
                 )}
               >
                 {/* Order */}
-                <div className="flex items-center gap-1 shrink-0 w-8 cursor-grab">
+                <div className="flex items-center justify-center gap-1 shrink-0 w-8 cursor-grab rounded-md hover:bg-gray-100 py-4">
                   <GripVertical className="h-4 w-4 text-gray-400" />
                   <span className="text-xs text-gray-400 font-medium">{idx + 1}</span>
                 </div>
@@ -1057,17 +1062,17 @@ export default function TasksEditPage() {
                         onClick={() => !isRef && !isWeightReadonly && setEditingCard({ taskId: task.id, type: config.type })}
                         disabled={isRef || isWeightReadonly}
                         className={cn(
-                          "w-52 h-36 shrink-0 rounded-lg border p-3 text-left transition-all flex flex-col",
+                          "w-52 h-40 shrink-0 rounded-lg border p-3.5 text-left transition-all flex flex-col",
                           isRef || isWeightReadonly
                             ? "bg-gray-100 border-gray-200 cursor-not-allowed opacity-60"
                             : configured
                               ? "bg-white border-gray-200 hover:border-primary hover:shadow-sm"
-                              : "bg-gray-50 border-dashed border-gray-300 hover:border-primary"
+                              : "bg-gray-50/70 border-dashed border-gray-300 hover:border-primary hover:bg-gray-50"
                         )}
                       >
-                        <div className="flex items-center gap-1.5 mb-1.5">
+                        <div className="flex items-center gap-2 mb-2">
                           <div className={cn(
-                            "p-1 rounded",
+                            "p-1.5 rounded-md",
                             configured ? "bg-primary/10 text-primary" : "bg-gray-100 text-gray-400"
                           )}>
                             {config.icon}
