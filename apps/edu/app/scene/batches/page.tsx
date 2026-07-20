@@ -10,6 +10,7 @@ export default function BatchesPage() {
       subtitle="管理场景建设批次分组，关联审批流程"
       namePlaceholder="例如：2026春季电商实训场景开发"
       workflowHint="批次内所有场景将强制使用相同的审批流程"
+      scene="scene"
     />
   )
 }

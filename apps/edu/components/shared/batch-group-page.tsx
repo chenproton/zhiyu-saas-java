@@ -1,6 +1,6 @@
 "use client"
 
-import { FolderKanban, MoreHorizontal, Plus, RotateCcw, Search } from "lucide-react"
+import { Check, FolderKanban, MoreHorizontal, Plus, RotateCcw, Search } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
@@ -39,18 +39,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { MajorSelect } from "@/components/shared/major-select"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/components/auth-provider"
 import { workflowApi, majorApi } from "@/lib/api"
 import type { Workflow, Major } from "@/lib/types/backend"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 
 export interface BatchGroupItem {
   id: string
   name: string
   code?: string
-  majorId?: string
-  majorName?: string
   workflowId?: string
   status: string
 }
@@ -69,18 +68,19 @@ interface BatchGroupPageProps {
   namePlaceholder: string
   workflowHint: string
   detailHref?: (id: string) => string
+  scene?: string
 }
 
 interface BatchView extends BatchGroupItem {
   workflowName?: string
 }
 
-export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, detailHref }: BatchGroupPageProps) {
+export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, detailHref, scene }: BatchGroupPageProps) {
   const { toast } = useToast()
   const { tenantId } = useAuth()
   const [batches, setBatches] = useState<BatchView[]>([])
   const [workflows, setWorkflows] = useState<Workflow[]>([])
-  const [majorMap, setMajorMap] = useState<Map<string, Major>>(new Map())
+  const [majors, setMajors] = useState<Major[]>([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<"all" | "open" | "closed">("all")
@@ -89,16 +89,16 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
   const [editingBatch, setEditingBatch] = useState<BatchView | null>(null)
   const [newBatchName, setNewBatchName] = useState("")
   const [newBatchWorkflow, setNewBatchWorkflow] = useState("")
-  const [newBatchMajorId, setNewBatchMajorId] = useState("")
+  const [selectedMajorId, setSelectedMajorId] = useState("all")
 
   useEffect(() => {
     if (!tenantId) {
-      setMajorMap(new Map())
+      setMajors([])
       return
     }
     majorApi.list({ tenantId, limit: 1000 })
       .then((res) => {
-        setMajorMap(new Map(res.items.map((m) => [m.id, m])))
+        setMajors(res.items.filter((m) => m.enabled))
       })
       .catch((err: any) => {
         toast({ variant: "destructive", title: "加载专业失败", description: err.message || "请稍后重试" })
@@ -110,7 +110,7 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
     try {
       const [batchRes, wfRes] = await Promise.all([
         api.list({ limit: 1000 }),
-        workflowApi.list({ limit: 1000 }),
+        workflowApi.list({ scene, limit: 1000 }),
       ])
       setWorkflows(wfRes.items)
       const wfMap = new Map(wfRes.items.map((w) => [w.id, w.name]))
@@ -132,8 +132,10 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const majorName = (batch: BatchView) =>
-    majorMap.get(batch.majorId || "")?.name || batch.majorName || ""
+  const filteredWorkflows = useMemo(() => {
+    if (selectedMajorId === "all") return workflows
+    return workflows.filter((wf) => (wf.majorIds || []).includes(selectedMajorId))
+  }, [workflows, selectedMajorId])
 
   const filteredBatches = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
@@ -141,30 +143,27 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
       const matchesSearch =
         !q ||
         batch.name.toLowerCase().includes(q) ||
-        (batch.code || "").toLowerCase().includes(q) ||
-        majorName(batch).toLowerCase().includes(q)
+        (batch.code || "").toLowerCase().includes(q)
       const matchesStatus = filterStatus === "all" || batch.status === filterStatus
       return matchesSearch && matchesStatus
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [batches, searchQuery, filterStatus, majorMap])
+  }, [batches, searchQuery, filterStatus])
 
   const resetForm = () => {
     setNewBatchName("")
     setNewBatchWorkflow("")
-    setNewBatchMajorId("")
+    setSelectedMajorId("all")
     setEditingBatch(null)
   }
 
   const handleAddBatch = async () => {
-    if (!newBatchName || !newBatchWorkflow || !newBatchMajorId) return
+    if (!newBatchName || !newBatchWorkflow) return
     try {
       await api.create({
         name: newBatchName,
-        code: `BG-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, "0")}`,
+        code: "BG-" + new Date().getFullYear() + "-" + String(Math.floor(Math.random() * 10000)).padStart(4, "0"),
         workflowId: newBatchWorkflow,
         status: "open",
-        majorId: newBatchMajorId,
       })
       await loadData()
       setIsCreateDialogOpen(false)
@@ -179,7 +178,7 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
     setEditingBatch(batch)
     setNewBatchName(batch.name)
     setNewBatchWorkflow(batch.workflowId || "")
-    setNewBatchMajorId(batch.majorId || "")
+    setSelectedMajorId("all")
     setIsEditDialogOpen(true)
   }
 
@@ -191,7 +190,6 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
         code: editingBatch.code,
         workflowId: newBatchWorkflow,
         status: editingBatch.status,
-        majorId: newBatchMajorId || undefined,
       })
       await loadData()
       setIsEditDialogOpen(false)
@@ -236,31 +234,53 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
         />
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="major">所属专业 <span className="text-red-500">*</span></Label>
-        <MajorSelect
-          tenantId={tenantId}
-          value={newBatchMajorId}
-          onChange={(value) => setNewBatchMajorId(value || "")}
-          placeholder="选择专业"
-        />
-      </div>
-      <div className="grid gap-2">
         <Label htmlFor="workflow">关联审批流 <span className="text-red-500">*</span></Label>
-        <Select value={newBatchWorkflow} onValueChange={setNewBatchWorkflow}>
-          <SelectTrigger id="workflow">
-            <SelectValue placeholder="选择审批流程" />
-          </SelectTrigger>
-          <SelectContent>
-            {workflows.map((wf) => (
-              <SelectItem key={wf.id} value={wf.id}>
-                <span className="inline-flex items-center">
-                  <span>{wf.name}</span>
-                  <span className="text-xs text-gray-400 ml-2">({(wf.steps || []).length}步)</span>
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {majors.length > 0 && (
+          <Tabs value={selectedMajorId} onValueChange={setSelectedMajorId}>
+            <TabsList className="h-auto flex-wrap justify-start">
+              <TabsTrigger value="all">全部专业</TabsTrigger>
+              {majors.map((m) => (
+                <TabsTrigger key={m.id} value={m.id}>
+                  {m.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        )}
+        <div className="rounded-lg border border-slate-200 bg-white overflow-hidden max-h-[260px] overflow-y-auto">
+          {filteredWorkflows.length === 0 ? (
+            <div className="px-4 py-6 text-sm text-gray-500 text-center">
+              暂无审批流程
+            </div>
+          ) : (
+            filteredWorkflows.map((wf) => {
+              const selected = newBatchWorkflow === wf.id
+              return (
+                <div
+                  key={wf.id}
+                  onClick={() => setNewBatchWorkflow(wf.id)}
+                  className={cn(
+                    "px-4 py-3 cursor-pointer border-b border-slate-100 last:border-b-0 hover:bg-slate-50 flex items-start justify-between gap-3",
+                    selected && "bg-primary/5"
+                  )}
+                >
+                  <div className="min-w-0">
+                    <div className={cn("font-medium text-sm", selected && "text-primary")}>
+                      {wf.name}
+                    </div>
+                    {wf.description ? (
+                      <div className="text-xs text-gray-500 mt-0.5 truncate">{wf.description}</div>
+                    ) : null}
+                    <div className="text-xs text-gray-400 mt-1">
+                      {(wf.steps || []).length} 个审批步骤
+                    </div>
+                  </div>
+                  {selected && <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />}
+                </div>
+              )
+            })
+          )}
+        </div>
         <p className="text-xs text-gray-500">{workflowHint}</p>
       </div>
     </div>
@@ -290,7 +310,7 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
               <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                 取消
               </Button>
-              <Button onClick={handleAddBatch} disabled={!newBatchName || !newBatchWorkflow || !newBatchMajorId}>
+              <Button onClick={handleAddBatch} disabled={!newBatchName || !newBatchWorkflow}>
                 创建批次
               </Button>
             </DialogFooter>
@@ -322,7 +342,7 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="搜索批次名称、编号、专业..."
+                placeholder="搜索批次名称、编号..."
                 className="pl-9"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -363,7 +383,6 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
                 <TableRow className="bg-slate-50">
                   <TableHead className="text-xs font-medium text-slate-500">分组名称</TableHead>
                   <TableHead className="text-xs font-medium text-slate-500">批次编号</TableHead>
-                  <TableHead className="text-xs font-medium text-slate-500">专业</TableHead>
                   <TableHead className="text-xs font-medium text-slate-500">审批流程</TableHead>
                   <TableHead className="text-xs font-medium text-slate-500">状态</TableHead>
                   <TableHead className="w-12"></TableHead>
@@ -372,13 +391,13 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                       加载中...
                     </TableCell>
                   </TableRow>
                 ) : filteredBatches.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                       暂无批次数据
                     </TableCell>
                   </TableRow>
@@ -395,7 +414,6 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-gray-600">{batch.code || "-"}</TableCell>
-                      <TableCell className="text-sm text-gray-600">{majorName(batch) || "—"}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
                           {batch.workflowName || "-"}
