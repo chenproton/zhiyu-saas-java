@@ -440,7 +440,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       </div>
 
       {/* Content - Ability list grouped by responsibility */}
-      <div className="w-[60%] flex flex-col overflow-hidden">
+      <div className="w-[60%] flex flex-col overflow-hidden bg-gray-50/30">
         {/* Search bar - sticky */}
         <div className="shrink-0 px-4 py-3 border-b border-gray-100 bg-white">
           <div className="flex items-center gap-3">
@@ -513,16 +513,18 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                       {respBindings.length === 0 ? (
                         <p className="text-xs text-gray-400 py-4 italic">暂未配置能力点 — 点击上方「能力点库」或「新建能力点」按钮添加</p>
                       ) : (
-                        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
+                        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))' }}>
                           {respBindings.map((binding) => {
                             const levelIdx = COMPETENCY_LEVELS.findIndex(l => l.value === binding.level)
+                            const colorClass = getRespColor(binding.responsibilityId)
                             return (
                               <div
                                 key={binding.id}
-                                className="rounded-xl border border-gray-100 bg-white p-4 hover:border-blue-200 hover:shadow-sm transition-all group"
+                                className="rounded-xl border border-gray-200 bg-white p-4 hover:shadow-md transition-shadow group"
                               >
                                 <div className="flex items-start justify-between mb-3">
-                                  <div className="flex-1 min-w-0 pr-1">
+                                  <div className="flex items-center gap-2 min-w-0 pr-1">
+                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${colorClass}`} />
                                     <span className="text-sm font-semibold text-gray-800 block truncate">{binding.name}</span>
                                   </div>
                                   <button
@@ -540,7 +542,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                                     className="absolute top-[17px] left-[7px] h-1.5 rounded-full transition-all"
                                     style={{
                                       width: `calc(${(levelIdx / (COMPETENCY_LEVELS.length - 1)) * 100}% - 14px)`,
-                                      background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
+                                      background: 'linear-gradient(90deg, #6366f1, #818cf8)',
                                     }}
                                   />
                                   <div className="relative flex justify-between">
@@ -553,9 +555,9 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                                           onClick={() => handleUpdateBinding(binding.id, { level: level.value })}
                                           className={`w-3.5 h-3.5 rounded-full border-2 transition-all ${
                                             idx === levelIdx
-                                              ? 'border-blue-500 bg-blue-500 scale-125'
+                                              ? 'border-indigo-500 bg-indigo-500 scale-125'
                                               : isReached
-                                                ? 'border-blue-300 bg-blue-200'
+                                                ? 'border-indigo-300 bg-indigo-200'
                                                 : 'border-gray-300 bg-white hover:border-gray-400'
                                           }`}
                                           title={level.description}
@@ -569,9 +571,9 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                                         key={level.value}
                                         className={`text-[10px] transition-colors ${
                                           idx === levelIdx
-                                            ? 'text-blue-600 font-medium'
+                                            ? 'text-indigo-600 font-medium'
                                             : idx <= levelIdx
-                                              ? 'text-blue-400'
+                                              ? 'text-indigo-400'
                                               : 'text-gray-400'
                                         }`}
                                       >
