@@ -34,7 +34,7 @@ import {
   Image as ImageIcon,
   AlertCircle,
 } from 'lucide-react'
-import { industryApi, majorApi, certificateLibraryApi } from '@/lib/api'
+import { industryApi, majorApi, certificateLibraryApi, fileApi } from '@/lib/api'
 import type { Position, PositionResponsibility } from '@/lib/types/job-source'
 
 interface StepBasicInfoProps {
@@ -138,6 +138,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
     description: '',
     image: '',
   })
+  const [certImageFile, setCertImageFile] = useState<File | null>(null)
 
   const handleAIGenerate = async (field: AiSuggestionField, _direction?: string) => {
     setIsGenerating(field)
@@ -211,11 +212,16 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
   const handleAddNewCertificate = async () => {
     if (!newCert.name) return
     try {
+      let imageUrl = newCert.image || undefined
+      if (certImageFile) {
+        const uploadRes = await fileApi.upload(certImageFile)
+        imageUrl = uploadRes.url
+      }
       const created = await certificateLibraryApi.create({
         name: newCert.name,
         url: newCert.url || undefined,
         description: newCert.description || undefined,
-        imageUrl: newCert.image || undefined,
+        imageUrl,
       })
       const cert: Certificate = {
         id: created.id,
@@ -224,9 +230,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
         description: created.description ?? '',
         image: created.imageUrl ?? '',
       }
-      // Add to local library cache
       setCertificateLibrary((prev) => [cert, ...prev])
-      // Add to position
       onUpdate({
         certificates: [
           ...(position.certificates || []),
@@ -241,6 +245,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
         ],
       })
       setNewCert({ name: '', url: '', description: '', image: '' })
+      setCertImageFile(null)
       setIsNewCertDialogOpen(false)
     } catch {
       setAiNotice('新增证书失败，请稍后重试')
@@ -539,9 +544,17 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
               <p>暂无相关证书</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-stretch">
               {position.certificates.map((cert) => (
-                <div key={cert.id} className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+                <div key={cert.id} className="relative rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm flex flex-col">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2 z-10 h-7 w-7 bg-white/80 hover:bg-white hover:text-destructive rounded-full"
+                    onClick={() => handleRemoveCertificate(cert.id)}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
                   {cert.image ? (
                     <div className="aspect-video w-full overflow-hidden bg-gray-50">
                       <img src={cert.image} alt={cert.name} className="w-full h-full object-cover" />
@@ -551,10 +564,10 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                       <Award className="h-12 w-12 text-primary/50" />
                     </div>
                   )}
-                  <div className="p-3 space-y-1.5">
-                    <div className="flex items-start justify-between gap-1">
+                  <div className="p-3 space-y-1.5 flex-1">
+                    <div className="flex items-start gap-1">
                       <p className="text-xs text-muted-foreground shrink-0">证书名称：</p>
-                      <p className="text-sm font-semibold text-gray-900 text-right flex-1 min-w-0 break-words">{cert.name}</p>
+                      <p className="text-sm font-semibold text-gray-900 break-words">{cert.name}</p>
                     </div>
                     {cert.url && (
                       <div className="flex items-start gap-1">
@@ -563,7 +576,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                           href={cert.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs text-primary hover:underline min-w-0 flex-1"
+                          className="flex items-center gap-1 text-xs text-primary hover:underline min-w-0"
                         >
                           <ExternalLink className="h-3 w-3 shrink-0" />
                           <span className="truncate">{cert.url}</span>
@@ -576,17 +589,6 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                         <p className="text-xs text-muted-foreground line-clamp-1">{cert.description}</p>
                       </div>
                     )}
-                  </div>
-                  <div className="px-3 pb-3">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full text-muted-foreground hover:text-destructive"
-                      onClick={() => handleRemoveCertificate(cert.id)}
-                    >
-                      <X className="h-3.5 w-3.5 mr-1" />
-                      移除
-                    </Button>
                   </div>
                 </div>
               ))}
@@ -727,8 +729,8 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                   input.onchange = (e) => {
                     const file = (e.target as HTMLInputElement).files?.[0]
                     if (file) {
-                      const url = URL.createObjectURL(file)
-                      setNewCert({ ...newCert, image: url })
+                      setCertImageFile(file)
+                      setNewCert({ ...newCert, image: URL.createObjectURL(file) })
                     }
                   }
                   input.click()
