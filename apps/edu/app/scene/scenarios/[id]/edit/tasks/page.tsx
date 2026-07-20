@@ -200,6 +200,30 @@ const resourceTypeColors: Record<string, string> = {
   other: "bg-gray-50 text-gray-600 border-gray-200",
 }
 
+const resourceTypeAccept: Record<string, string> = {
+  document: ".pdf,.doc,.docx,.txt,.ppt,.pptx,.md",
+  spreadsheet: ".xls,.xlsx,.csv",
+  image: ".jpg,.jpeg,.png,.gif,.webp,.svg,.bmp",
+  audio: ".mp3,.wav,.ogg,.m4a,.flac,.aac",
+  video: ".mp4,.webm,.mov,.avi,.mkv,.flv",
+  archive: ".zip,.rar,.7z,.tar,.gz,.bz2",
+  other: "",
+  software: ".exe,.dmg,.pkg,.deb,.rpm,.zip,.msi,.apk",
+}
+
+const resourceTypeExtensionMap: Record<string, string[]> = {
+  document: ["pdf", "doc", "docx", "txt", "ppt", "pptx", "md"],
+  spreadsheet: ["xls", "xlsx", "csv"],
+  image: ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp"],
+  audio: ["mp3", "wav", "ogg", "m4a", "flac", "aac"],
+  video: ["mp4", "webm", "mov", "avi", "mkv", "flv"],
+  archive: ["zip", "rar", "7z", "tar", "gz", "bz2"],
+  other: [],
+  software: ["exe", "dmg", "pkg", "deb", "rpm", "zip", "msi", "apk"],
+}
+
+const RESOURCE_MAX_FILE_SIZE = 100 * 1024 * 1024
+
 const evaluationMethodOptions = [
   // 平台通用 - 知识评价
   { key: "question_bank", label: "题库", icon: <Database className="h-5 w-5" />, color: "bg-orange-50 text-orange-600 border-orange-200", available: true, desc: "从题库选题组成测评资源", primaryCategory: "platform", secondaryCategory: "知识评价" },
@@ -1522,7 +1546,10 @@ function EditCardDialog({
   const [newResQuantity, setNewResQuantity] = useState("")
   const [newResVersion, setNewResVersion] = useState("")
   const [newResLicense, setNewResLicense] = useState("")
+  const [newResFile, setNewResFile] = useState<File | null>(null)
+  const [newResUploading, setNewResUploading] = useState(false)
   const [showUploadTypePicker, setShowUploadTypePicker] = useState(false)
+  const [previewRes, setPreviewRes] = useState<any | null>(null)
 
   // For question bank config
   const [questionTab, setQuestionTab] = useState<"my" | "collab" | "public">("my")
@@ -1685,13 +1712,54 @@ function EditCardDialog({
     setShowAddAbility(false)
   }
 
-  const handleUploadResource = () => {
+  const validateResourceFile = (file: File, type: string): string | null => {
+    if (file.size > RESOURCE_MAX_FILE_SIZE) {
+      return "文件大小超过 100MB"
+    }
+    const allowed = resourceTypeExtensionMap[type] || []
+    if (allowed.length === 0) return null
+    const ext = file.name.split(".").pop()?.toLowerCase() || ""
+    if (!allowed.includes(ext)) {
+      return `不支持的文件格式，请上传 ${allowed.map(e => `.${e}`).join("、")} 文件`
+    }
+    return null
+  }
+
+  const handleUploadResource = async () => {
     if (!newResName.trim()) return
+
+    const fileTypes = ["document", "spreadsheet", "image", "audio", "video", "archive", "other", "software"]
+    const isFileType = fileTypes.includes(newResType)
+    let fileUrl = newResUrl.trim()
+
+    if (isFileType && newResFile) {
+      const err = validateResourceFile(newResFile, newResType)
+      if (err) {
+        toast({ variant: "destructive", title: "文件校验失败", description: err })
+        return
+      }
+      setNewResUploading(true)
+      try {
+        const res = await fileApi.upload(newResFile)
+        fileUrl = res.url
+      } catch (err: any) {
+        toast({ variant: "destructive", title: "上传失败", description: err.message })
+        return
+      } finally {
+        setNewResUploading(false)
+      }
+    }
+
+    if (newResType === "link" && !fileUrl) {
+      toast({ variant: "destructive", title: "请填写链接地址" })
+      return
+    }
+
     const newId = `lr-upload-${Date.now()}`
     let extraData: Record<string, any> = {}
     switch (newResType) {
       case "link":
-        extraData = { url: newResUrl.trim(), description: newResDescription.trim() }
+        extraData = { url: fileUrl, description: newResDescription.trim() }
         break
       case "venue":
         extraData = { address: newResAddress.trim(), openTime: newResOpenTime.trim(), capacity: newResCapacity.trim(), contact: newResContact.trim(), description: newResDescription.trim() }
@@ -1700,22 +1768,24 @@ function EditCardDialog({
         extraData = { location: newResLocation.trim(), quantity: newResQuantity.trim(), description: newResDescription.trim() }
         break
       case "software":
-        extraData = { version: newResVersion.trim(), url: newResUrl.trim(), license: newResLicense.trim(), description: newResDescription.trim() }
+        extraData = { version: newResVersion.trim(), url: fileUrl, license: newResLicense.trim(), description: newResDescription.trim() }
         break
       default:
         extraData = { description: newResDescription.trim() }
         break
     }
+
+    const thumbnail = newResType === "image" && fileUrl ? fileUrl : "/placeholder.svg"
     const newRes = {
       id: newId,
       name: newResName.trim(),
       type: newResType as any,
-      url: newResUrl.trim() || "",
+      url: fileUrl,
       description: newResDescription.trim(),
       knowledgePoints: [],
       uploadedAt: new Date().toISOString().slice(0, 10),
       uploadedBy: "当前用户",
-      thumbnail: "/placeholder.svg",
+      thumbnail,
       ...extraData,
     }
     learningResources.push(newRes as any)
@@ -1723,6 +1793,8 @@ function EditCardDialog({
     setNewResName("")
     setNewResType("document")
     setNewResUrl("")
+    setNewResFile(null)
+    setNewResUploading(false)
     setNewResDescription("")
     setNewResAddress("")
     setNewResOpenTime("")
@@ -1733,6 +1805,7 @@ function EditCardDialog({
     setNewResVersion("")
     setNewResLicense("")
     setShowUploadRes(false)
+    toast({ title: "资源已上传并选中" })
   }
 
   // Rich text editor mock toolbar items
@@ -2702,6 +2775,7 @@ function EditCardDialog({
       }
 
       case "resources": {
+        const resFileInputRef = useRef<HTMLInputElement>(null)
         const types = ["all", "document", "spreadsheet", "image", "link", "audio", "video", "archive", "venue", "facility", "software", "other"]
         const filteredRes = learningResources.filter(r => {
           const matchType = resType === "all" || r.type === resType
@@ -2720,6 +2794,42 @@ function EditCardDialog({
           setResSearchName("")
           setResSearchProvider("")
         }
+
+        const handleResFileSelect = (file: File) => {
+          const err = validateResourceFile(file, newResType)
+          if (err) {
+            toast({ variant: "destructive", title: "文件校验失败", description: err })
+            return
+          }
+          setNewResFile(file)
+        }
+
+        const onResFileDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          const file = e.dataTransfer.files?.[0]
+          if (file) handleResFileSelect(file)
+        }
+
+        const fileTypesWithUpload = ["document", "spreadsheet", "image", "audio", "video", "archive", "other", "software"]
+        const canPreview = (r: any) => r.url && r.url !== "#"
+        const canDownload = (r: any) => r.url && r.url !== "#"
+
+        const getPreviewContent = (r: any) => {
+          if (!r?.url) return null
+          if (r.type === "image") {
+            return <img src={r.url} alt={r.name} className="max-w-full max-h-full object-contain" />
+          }
+          if (r.type === "audio") {
+            return <audio controls src={r.url} className="w-full" />
+          }
+          if (r.type === "video") {
+            return <video controls src={r.url} className="max-w-full max-h-full" />
+          }
+          return <iframe src={r.url} title={r.name} className="w-full h-full" />
+        }
+
+        const isPreviewableInline = (r: any) => ["image", "audio", "video"].includes(r?.type)
 
         return (
           <div className="h-full flex flex-col">
@@ -2839,17 +2949,29 @@ function EditCardDialog({
                               </div>
                             </div>
                             {/* Actions */}
-                            <div className="px-2 pb-2 flex items-center gap-1.5">
+                            <div className="px-2 pb-2 flex items-center gap-1">
                               <PrdAnnotation data={getAnnotation("resource-action-preview")}>
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-6 text-[10px] px-1.5 flex-1 text-gray-500 hover:text-primary"
-                                  onClick={(e) => { e.stopPropagation(); window.open(r.url || "#", "_blank") }}
+                                  className="h-6 text-[10px] px-1 flex-1 text-gray-500 hover:text-primary"
+                                  onClick={(e) => { e.stopPropagation(); canPreview(r) ? setPreviewRes(r) : window.open(r.url || "#", "_blank") }}
                                 >
                                   <Eye className="h-3 w-3 mr-0.5" />预览
                                 </Button>
                               </PrdAnnotation>
+                              {canDownload(r) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 text-[10px] px-1 flex-1 text-gray-500 hover:text-primary"
+                                  asChild
+                                >
+                                  <a href={r.url} download={r.name} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+                                    <Download className="h-3 w-3 mr-0.5" />下载
+                                  </a>
+                                </Button>
+                              )}
                               <PrdAnnotation data={selected ? getAnnotation("resource-action-cancel") : getAnnotation("resource-action-select")}>
                                 <Button
                                   variant={selected ? "outline" : "default"}
@@ -3046,15 +3168,60 @@ function EditCardDialog({
                   </div>
 
                   {/* File upload for file-based types */}
-                  {["document", "spreadsheet", "image", "audio", "video", "archive", "other"].includes(newResType) && (
-                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center space-y-3">
-                      <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto">
-                        <Upload className="h-6 w-6 text-gray-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-700">点击或拖拽上传文件</p>
-                        <p className="text-xs text-gray-500 mt-1">支持多种格式，最大 100MB</p>
-                      </div>
+                  {fileTypesWithUpload.includes(newResType) && (
+                    <div
+                      className={cn(
+                        "border-2 border-dashed rounded-xl p-6 text-center space-y-3 transition-colors",
+                        newResUploading ? "border-primary/30 bg-gray-50/50" : "border-gray-200 hover:border-primary/30 hover:bg-gray-50/50 cursor-pointer"
+                      )}
+                      onClick={() => !newResUploading && resFileInputRef.current?.click()}
+                      onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+                      onDrop={onResFileDrop}
+                    >
+                      <input
+                        ref={resFileInputRef}
+                        type="file"
+                        accept={resourceTypeAccept[newResType]}
+                        className="hidden"
+                        onChange={e => {
+                          const file = e.target.files?.[0]
+                          if (file) handleResFileSelect(file)
+                          e.target.value = ""
+                        }}
+                      />
+                      {newResFile ? (
+                        <div className="text-center space-y-2 pointer-events-none">
+                          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                            <File className="h-6 w-6 text-primary" />
+                          </div>
+                          <p className="text-sm font-medium text-gray-700">{newResFile.name}</p>
+                          <p className="text-xs text-gray-500">{(newResFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto">
+                            {newResUploading ? <Loader2 className="h-6 w-6 text-gray-400 animate-spin" /> : <Upload className="h-6 w-6 text-gray-400" />}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">点击或拖拽上传文件</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {resourceTypeAccept[newResType]
+                                ? `支持 ${resourceTypeAccept[newResType]}，最大 100MB`
+                                : "支持多种格式，最大 100MB"}
+                            </p>
+                          </div>
+                        </>
+                      )}
+                      {newResFile && !newResUploading && (
+                        <div className="flex items-center justify-center gap-2 pointer-events-auto" onClick={e => e.stopPropagation()}>
+                          <Button variant="outline" size="sm" onClick={() => resFileInputRef.current?.click()}>
+                            <Upload className="h-3.5 w-3.5 mr-1" />重新选择
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setNewResFile(null)}>
+                            <X className="h-3.5 w-3.5 mr-1" />清除
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -3062,10 +3229,44 @@ function EditCardDialog({
                   <Button variant="outline" onClick={() => setShowUploadRes(false)}>取消</Button>
                   <Button
                     onClick={handleUploadResource}
-                    disabled={!newResName.trim() || (newResType === "link" && !newResUrl.trim())}
+                    disabled={
+                      !newResName.trim() ||
+                      newResUploading ||
+                      (newResType === "link" && !newResUrl.trim()) ||
+                      (fileTypesWithUpload.includes(newResType) && !newResFile && !newResUrl.trim())
+                    }
                   >
+                    {newResUploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
                     上传并选中
                   </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Resource Preview Dialog */}
+            <Dialog open={!!previewRes} onOpenChange={open => !open && setPreviewRes(null)}>
+              <DialogContent className={cn("flex flex-col", isPreviewableInline(previewRes) ? "sm:max-w-2xl" : "sm:max-w-4xl h-[80vh]")}>
+                <DialogHeader className="shrink-0">
+                  <DialogTitle className="flex items-center gap-2">
+                    {previewRes && resourceTypeIcons[previewRes.type]}
+                    <span className="truncate">{previewRes?.name || "资源预览"}</span>
+                  </DialogTitle>
+                </DialogHeader>
+                <div className={cn(
+                  "flex-1 min-h-0 border rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center",
+                  isPreviewableInline(previewRes) ? "p-4" : ""
+                )}>
+                  {previewRes ? getPreviewContent(previewRes) : <div className="text-gray-400">暂无预览</div>}
+                </div>
+                <DialogFooter className="shrink-0 gap-2">
+                  <Button variant="outline" onClick={() => setPreviewRes(null)}>关闭</Button>
+                  {canDownload(previewRes) && (
+                    <Button asChild>
+                      <a href={previewRes.url} download={previewRes.name} target="_blank" rel="noreferrer">
+                        <Download className="h-4 w-4 mr-1" />下载
+                      </a>
+                    </Button>
+                  )}
                 </DialogFooter>
               </DialogContent>
             </Dialog>
