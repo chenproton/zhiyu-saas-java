@@ -475,15 +475,16 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                     className={`${isSelectedGroup ? 'bg-indigo-50/40 rounded-2xl' : ''} px-4 py-3`}
                   >
                     <div className="flex items-center gap-2 mb-3 px-1">
-                      <div className={`w-2 h-2 rounded-full ${getRespColor(resp.id)}`} />
-                      <h4 className="text-sm font-semibold text-gray-700 flex-1">{resp.name || '未命名职责'}</h4>
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${getRespColor(resp.id)}`} />
+                      <h4 className="text-sm font-semibold text-gray-700 truncate max-w-[140px]">{resp.name || '未命名职责'}</h4>
                       {respBindings.length > 0 && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium shrink-0">
                           {respBindings.length}
                         </span>
                       )}
+                      <div className="flex-1" />
                       {isSelectedGroup && (
-                        <div className="flex items-center gap-1.5 ml-2">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <Button
                             size="sm"
                             className="h-6 text-[10px] rounded-full px-3"
@@ -495,7 +496,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                             }}
                           >
                             <Library className="mr-1 h-3 w-3" />
-                            添加
+                            从能力点库添加
                           </Button>
                           <Button
                             variant="outline"
@@ -507,7 +508,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                             }}
                           >
                             <Plus className="mr-1 h-3 w-3" />
-                            新建
+                            新建能力点
                           </Button>
                         </div>
                       )}
