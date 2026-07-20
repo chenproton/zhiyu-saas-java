@@ -143,6 +143,9 @@ func (h *RoleHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "missing required fields")
 		return
 	}
+	if !verifyRequestTenant(w, r, req.TenantID) {
+		return
+	}
 
 	if req.Permissions == nil {
 		req.Permissions = domain.JSONMap{}
@@ -175,13 +178,17 @@ func (h *RoleHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchRole(r.Context(), id); err != nil {
+	role, err := h.fetchRole(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "role not found")
+		return
+	}
+	if !verifyTenantOwnership(w, r, role.TenantID) {
 		return
 	}
 
 	var req UpdateRoleRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -195,7 +202,7 @@ func (h *RoleHandler) Update(w http.ResponseWriter, r *http.Request) {
 		req.Permissions = domain.JSONMap{}
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
+	_, err = h.DB.Exec(r.Context(), `
 		UPDATE roles SET name = $1, description = $2, permissions = $3
 		WHERE id = $4
 	`, req.Name, req.Description, req.Permissions, id)
@@ -204,7 +211,7 @@ func (h *RoleHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	role, _ := h.fetchRole(r.Context(), id)
+	role, _ = h.fetchRole(r.Context(), id)
 	respondJSON(w, http.StatusOK, role)
 }
 
@@ -216,12 +223,21 @@ func (h *RoleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchRole(r.Context(), id); err != nil {
+	role, err := h.fetchRole(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "role not found")
 		return
 	}
+	if !verifyTenantOwnership(w, r, role.TenantID) {
+		return
+	}
 
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM roles WHERE id = $1`, id)
+	if _, err := h.DB.Exec(r.Context(), `DELETE FROM user_roles WHERE role_id = $1`, id); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to delete role bindings")
+		return
+	}
+
+	_, err = h.DB.Exec(r.Context(), `DELETE FROM roles WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete role")
 		return
@@ -237,8 +253,12 @@ func (h *RoleHandler) Assign(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchRole(r.Context(), id); err != nil {
+	role, err := h.fetchRole(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "role not found")
+		return
+	}
+	if !verifyTenantOwnership(w, r, role.TenantID) {
 		return
 	}
 
@@ -253,7 +273,7 @@ func (h *RoleHandler) Assign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
+	_, err = h.DB.Exec(r.Context(), `
 		INSERT INTO user_roles (id, user_id, role_id)
 		VALUES ($1, $2, $3)
 		ON CONFLICT (user_id, role_id) DO NOTHING

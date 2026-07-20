@@ -235,6 +235,9 @@ func (h *OrgHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "missing required fields")
 		return
 	}
+	if !verifyRequestTenant(w, r, req.TenantID) {
+		return
+	}
 
 	id := uuid.NewString()
 
@@ -259,8 +262,12 @@ func (h *OrgHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchOrg(r.Context(), id); err != nil {
+	org, err := h.fetchOrg(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "organization not found")
+		return
+	}
+	if !verifyTenantOwnership(w, r, org.TenantID) {
 		return
 	}
 
@@ -275,7 +282,7 @@ func (h *OrgHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
+	_, err = h.DB.Exec(r.Context(), `
 		UPDATE organizations SET name = $1, type_id = $2, parent_id = $3, sort_order = $4, updated_at = NOW()
 		WHERE id = $5
 	`, req.Name, req.TypeID, req.ParentID, req.SortOrder, id)
@@ -284,7 +291,7 @@ func (h *OrgHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	org, _ := h.fetchOrg(r.Context(), id)
+	org, _ = h.fetchOrg(r.Context(), id)
 	respondJSON(w, http.StatusOK, org)
 }
 
@@ -296,12 +303,40 @@ func (h *OrgHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchOrg(r.Context(), id); err != nil {
+	org, err := h.fetchOrg(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "organization not found")
 		return
 	}
+	if !verifyTenantOwnership(w, r, org.TenantID) {
+		return
+	}
 
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM organizations WHERE id = $1`, id)
+	var childCount int
+	if err := h.DB.QueryRow(r.Context(),
+		`SELECT COUNT(*) FROM organizations WHERE parent_id = $1`, id,
+	).Scan(&childCount); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to check child organizations")
+		return
+	}
+	if childCount > 0 {
+		respondError(w, http.StatusConflict, "该组织下仍有子节点，请先删除子节点")
+		return
+	}
+
+	var userCount int
+	if err := h.DB.QueryRow(r.Context(),
+		`SELECT COUNT(*) FROM users WHERE org_node_id = $1`, id,
+	).Scan(&userCount); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to check organization members")
+		return
+	}
+	if userCount > 0 {
+		respondError(w, http.StatusConflict, "该组织下仍有用户，请先移除用户")
+		return
+	}
+
+	_, err = h.DB.Exec(r.Context(), `DELETE FROM organizations WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete organization")
 		return

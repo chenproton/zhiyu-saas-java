@@ -131,6 +131,9 @@ func (h *StaffTitleHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "missing required fields")
 		return
 	}
+	if !verifyRequestTenant(w, r, req.TenantID) {
+		return
+	}
 
 	if req.Status == "" {
 		req.Status = "active"
@@ -170,13 +173,17 @@ func (h *StaffTitleHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchStaffTitle(r.Context(), id); err != nil {
+	title, err := h.fetchStaffTitle(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "staff title not found")
+		return
+	}
+	if !verifyTenantOwnership(w, r, title.TenantID) {
 		return
 	}
 
 	var req UpdateStaffTitleRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -191,7 +198,7 @@ func (h *StaffTitleHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
+	_, err = h.DB.Exec(r.Context(), `
 		UPDATE staff_titles SET name = $1, description = $2, status = COALESCE(NULLIF($3, ''), status), updated_at = NOW()
 		WHERE id = $4
 	`, req.Name, req.Description, req.Status, id)
@@ -200,7 +207,7 @@ func (h *StaffTitleHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	title, _ := h.fetchStaffTitle(r.Context(), id)
+	title, _ = h.fetchStaffTitle(r.Context(), id)
 	title.UserCount = h.countUsersByTitle(r.Context(), id)
 	respondJSON(w, http.StatusOK, title)
 }
@@ -212,12 +219,16 @@ func (h *StaffTitleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchStaffTitle(r.Context(), id); err != nil {
+	title, err := h.fetchStaffTitle(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "staff title not found")
 		return
 	}
+	if !verifyTenantOwnership(w, r, title.TenantID) {
+		return
+	}
 
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM staff_titles WHERE id = $1`, id)
+	_, err = h.DB.Exec(r.Context(), `DELETE FROM staff_titles WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete staff title")
 		return
@@ -232,13 +243,17 @@ func (h *StaffTitleHandler) ToggleStatus(w http.ResponseWriter, r *http.Request)
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchStaffTitle(r.Context(), id); err != nil {
+	title, err := h.fetchStaffTitle(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "staff title not found")
+		return
+	}
+	if !verifyTenantOwnership(w, r, title.TenantID) {
 		return
 	}
 
 	var req ToggleStaffTitleStatusRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -248,13 +263,13 @@ func (h *StaffTitleHandler) ToggleStatus(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `UPDATE staff_titles SET status = $1, updated_at = NOW() WHERE id = $2`, req.Status, id)
+	_, err = h.DB.Exec(r.Context(), `UPDATE staff_titles SET status = $1, updated_at = NOW() WHERE id = $2`, req.Status, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to update status")
 		return
 	}
 
-	title, _ := h.fetchStaffTitle(r.Context(), id)
+	title, _ = h.fetchStaffTitle(r.Context(), id)
 	title.UserCount = h.countUsersByTitle(r.Context(), id)
 	respondJSON(w, http.StatusOK, title)
 }

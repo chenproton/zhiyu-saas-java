@@ -26,9 +26,12 @@ func (h *SubscriptionHandler) Get(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
 	if tenantID == "" {
 		claims := middleware.CurrentUser(r)
-		if claims != nil && claims.TenantID != nil {
-			tenantID = *claims.TenantID
+		effectiveTenantID, ok := tenantFilter(claims)
+		if !ok {
+			respondError(w, http.StatusForbidden, "missing tenant")
+			return
 		}
+		tenantID = effectiveTenantID
 	}
 
 	if tenantID == "" {

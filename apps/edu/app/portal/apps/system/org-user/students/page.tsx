@@ -52,6 +52,7 @@ function mapStudentStatus(status: string): Student["status"] {
   if (status === "inactive") return "休学"
   if (status === "disabled") return "退学"
   if (status === "graduated") return "毕业"
+  if (status === "completed") return "结业"
   return "在籍"
 }
 
@@ -60,6 +61,7 @@ function toBackendStatus(status: Student["status"]): string {
   if (status === "休学") return "inactive"
   if (status === "退学") return "disabled"
   if (status === "毕业") return "graduated"
+  if (status === "结业") return "completed"
   return "active"
 }
 
@@ -138,11 +140,10 @@ export default function StudentsPage() {
     return true
   })
 
-  const toggleStatus = async (student: Student) => {
-    const backendStatus = toBackendStatus(student.status)
-    const nextBackendStatus = backendStatus === "active" ? "inactive" : "active"
+  const changeStatus = async (student: Student, targetStatus: Student["status"]) => {
+    const backendStatus = toBackendStatus(targetStatus)
     try {
-      await portalUserManagementApi.updateStatus(student.id, nextBackendStatus)
+      await portalUserManagementApi.updateStatus(student.id, backendStatus)
       toast({ title: "状态已更新" })
       await refetch()
     } catch (err) {
@@ -478,8 +479,17 @@ export default function StudentsPage() {
                               <DropdownMenuItem onClick={() => resetPassword(student)}>
                                 重置密码
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => toggleStatus(student)}>
-                                {student.status === "在籍" ? "设为休学" : "设为在籍"}
+                              <DropdownMenuItem onClick={() => changeStatus(student, "在籍")}>
+                                {student.status !== "在籍" ? "设为在籍" : "✓ 在籍"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => changeStatus(student, "休学")}>
+                                {student.status !== "休学" ? "设为休学" : "✓ 休学"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => changeStatus(student, "退学")}>
+                                {student.status !== "退学" ? "设为退学" : "✓ 退学"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => changeStatus(student, "毕业")}>
+                                {student.status !== "毕业" ? "设为毕业" : "✓ 毕业"}
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleDeleteClick(student.id)} className="text-destructive">
                                 删除

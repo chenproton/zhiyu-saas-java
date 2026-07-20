@@ -172,7 +172,7 @@ func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	query := `
 		SELECT id, tenant_id, institution_id, org_node_id, major_id,
-			role, platform, login_name, username, password_hash, name, email, phone, avatar_url,
+			role, platform, login_name, username, name, email, phone, avatar_url,
 			student_no, work_id, id_card, title_ids, oauth, status, graduate_year, last_login_at, created_at, updated_at
 		FROM users
 		WHERE ` + strings.Join(where, " AND ") + `
@@ -263,6 +263,9 @@ func (h *UserManagementHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "user not found")
 		return
 	}
+	if oldUser.TenantID == nil || !verifyTenantOwnership(w, r, *oldUser.TenantID) {
+		return
+	}
 
 	var req UpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -273,6 +276,13 @@ func (h *UserManagementHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if req.Username == "" || req.Name == "" {
 		respondError(w, http.StatusBadRequest, "missing required fields")
 		return
+	}
+
+	if oldUser.TenantID != nil {
+		if err := h.validateUserOrgMajor(r.Context(), *oldUser.TenantID, req.OrgNodeID, req.MajorID); err != nil {
+			respondError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 	}
 
 	role := h.resolveRole(req.Role, oldUser.Role)
@@ -327,8 +337,10 @@ func (h *UserManagementHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "user not found")
 		return
 	}
+	if user.TenantID == nil || !verifyTenantOwnership(w, r, *user.TenantID) {
+		return
+	}
 
-	_ = user
 	h.decRoleCountsForUser(r.Context(), id)
 
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM users WHERE id = $1`, id)
@@ -346,8 +358,12 @@ func (h *UserManagementHandler) UpdateStatus(w http.ResponseWriter, r *http.Requ
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchUser(r.Context(), id); err != nil {
+	user, err := h.fetchUser(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "user not found")
+		return
+	}
+	if user.TenantID == nil || !verifyTenantOwnership(w, r, *user.TenantID) {
 		return
 	}
 
@@ -362,13 +378,13 @@ func (h *UserManagementHandler) UpdateStatus(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`, req.Status, id)
+	_, err = h.DB.Exec(r.Context(), `UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`, req.Status, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to update status")
 		return
 	}
 
-	user, _ := h.fetchUser(r.Context(), id)
+	user, _ = h.fetchUser(r.Context(), id)
 	user.PasswordHash = ""
 	respondJSON(w, http.StatusOK, user)
 }
@@ -380,8 +396,12 @@ func (h *UserManagementHandler) ResetPassword(w http.ResponseWriter, r *http.Req
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchUser(r.Context(), id); err != nil {
+	user, err := h.fetchUser(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "user not found")
+		return
+	}
+	if user.TenantID == nil || !verifyTenantOwnership(w, r, *user.TenantID) {
 		return
 	}
 
@@ -483,6 +503,13 @@ func (h *UserManagementHandler) BatchGraduate(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	claims := middleware.CurrentUser(r)
+	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
+		respondError(w, http.StatusForbidden, "missing tenant")
+		return
+	}
+	callerTenantID := *claims.TenantID
+
 	var req BatchGraduateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
@@ -510,8 +537,8 @@ func (h *UserManagementHandler) BatchGraduate(w http.ResponseWriter, r *http.Req
 	}
 
 	_, err := h.DB.Exec(r.Context(),
-		`UPDATE users SET status = 'graduated', graduate_year = $1, updated_at = NOW() WHERE id = ANY($2::uuid[])`,
-		graduateYear, uuids)
+		`UPDATE users SET status = 'graduated', graduate_year = $1, updated_at = NOW() WHERE id = ANY($2::uuid[]) AND tenant_id = $3`,
+		graduateYear, uuids, callerTenantID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to batch graduate")
 		return
@@ -532,6 +559,9 @@ func (h *UserManagementHandler) BindRoles(w http.ResponseWriter, r *http.Request
 	user, err := h.fetchUser(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "user not found")
+		return
+	}
+	if user.TenantID == nil || !verifyTenantOwnership(w, r, *user.TenantID) {
 		return
 	}
 
@@ -678,6 +708,10 @@ func (h *UserManagementHandler) createSingleUserInTx(ctx context.Context, tx pgx
 	if err != nil {
 		log.Printf("ERROR INSERT users in createSingleUserInTx: %v, tenantId=%s roleId=%v username=%s",
 			err, req.TenantID, req.RoleID, req.Username)
+		return domain.User{}, err
+	}
+
+	if err := h.validateUserOrgMajor(ctx, req.TenantID, req.OrgNodeID, req.MajorID); err != nil {
 		return domain.User{}, err
 	}
 
@@ -852,7 +886,7 @@ func (h *UserManagementHandler) scanUserRows(rows pgx.Rows) ([]domain.User, erro
 		var oauth domain.JSONMap
 		if err := rows.Scan(
 			&user.ID, &tenantID, &institutionID, &orgNodeID, &majorID,
-			&user.Role, &user.Platform, &loginName, &user.Username, &user.PasswordHash, &user.Name, &user.Email,
+			&user.Role, &user.Platform, &loginName, &user.Username, &user.Name, &user.Email,
 			&phone, &avatarURL, &studentNo, &workID, &idCard, &titleIDs, &oauth, &user.Status,
 			&user.GraduateYear, &user.LastLoginAt, &user.CreatedAt, &user.UpdatedAt,
 		); err != nil {

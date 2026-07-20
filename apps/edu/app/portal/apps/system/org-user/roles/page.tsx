@@ -23,8 +23,6 @@ import { useToast } from "@/hooks/use-toast"
 import { buildMenuTree, normalizeMenuPath, permissionModuleConfig } from "@/lib/menu-permissions"
 import type { MenuTreeItem, PermissionModule } from "@/lib/menu-permissions"
 
-let roleCounter = 5
-
 const orgTree = [
   {
     id: "1",
@@ -159,8 +157,11 @@ export default function RolesPage() {
   )
 
   const generateRoleCode = () => {
-    roleCounter++
-    return `ROLE${String(roleCounter).padStart(3, "0")}`
+    const maxSuffix = roles.reduce((max, r) => {
+      const match = r.code.match(/^ROLE(\d+)$/)
+      return match ? Math.max(max, parseInt(match[1], 10)) : max
+    }, 0)
+    return `ROLE${String(maxSuffix + 1).padStart(3, "0")}`
   }
 
   const toggleMenu = (id: string) => {
@@ -183,8 +184,8 @@ export default function RolesPage() {
   }
 
   const roleStatus = (role: Role): "active" | "inactive" => {
-    if (role.status === "active" || role.status === "inactive") return role.status as "active" | "inactive"
-    return role.status ? "active" : "inactive"
+    if (role.status === "active") return "active"
+    return "inactive"
   }
 
   const openPermDialog = (role: Role) => {

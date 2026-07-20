@@ -148,6 +148,9 @@ func (h *IndustryHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "missing required fields")
 		return
 	}
+	if !verifyRequestTenant(w, r, req.TenantID) {
+		return
+	}
 
 	id := uuid.NewString()
 
@@ -176,8 +179,12 @@ func (h *IndustryHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchIndustry(r.Context(), id); err != nil {
+	industry, err := h.fetchIndustry(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "industry not found")
+		return
+	}
+	if !verifyTenantOwnership(w, r, industry.TenantID) {
 		return
 	}
 
@@ -192,7 +199,7 @@ func (h *IndustryHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
+	_, err = h.DB.Exec(r.Context(), `
 		UPDATE industries SET code = $1, name = $2, parent_id = $3, enabled = $4, sort_order = $5, updated_at = NOW()
 		WHERE id = $6
 	`, req.Code, req.Name, req.ParentID, req.Enabled, req.SortOrder, id)
@@ -205,7 +212,7 @@ func (h *IndustryHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	industry, _ := h.fetchIndustry(r.Context(), id)
+	industry, _ = h.fetchIndustry(r.Context(), id)
 	respondJSON(w, http.StatusOK, industry)
 }
 
@@ -217,12 +224,16 @@ func (h *IndustryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchIndustry(r.Context(), id); err != nil {
+	industry, err := h.fetchIndustry(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "industry not found")
 		return
 	}
+	if !verifyTenantOwnership(w, r, industry.TenantID) {
+		return
+	}
 
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM industries WHERE id = $1`, id)
+	_, err = h.DB.Exec(r.Context(), `DELETE FROM industries WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete industry")
 		return

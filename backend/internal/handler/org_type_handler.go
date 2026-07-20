@@ -138,6 +138,9 @@ func (h *OrgTypeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "missing required fields")
 		return
 	}
+	if !verifyRequestTenant(w, r, req.TenantID) {
+		return
+	}
 
 	if req.Category != domain.OrgTypeCategoryInternal && req.Category != domain.OrgTypeCategoryBusiness && req.Category != domain.OrgTypeCategoryExternal {
 		req.Category = domain.OrgTypeCategoryInternal
@@ -170,8 +173,12 @@ func (h *OrgTypeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchOrgType(r.Context(), id); err != nil {
+	orgType, err := h.fetchOrgType(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "org type not found")
+		return
+	}
+	if !verifyTenantOwnership(w, r, orgType.TenantID) {
 		return
 	}
 
@@ -191,7 +198,7 @@ func (h *OrgTypeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
+	_, err = h.DB.Exec(r.Context(), `
 		UPDATE org_types SET name = $1, category = $2, description = $3
 		WHERE id = $4
 	`, req.Name, req.Category, req.Description, id)
@@ -204,7 +211,7 @@ func (h *OrgTypeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orgType, _ := h.fetchOrgType(r.Context(), id)
+	orgType, _ = h.fetchOrgType(r.Context(), id)
 	respondJSON(w, http.StatusOK, orgType)
 }
 
@@ -216,8 +223,12 @@ func (h *OrgTypeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchOrgType(r.Context(), id); err != nil {
+	orgType, err := h.fetchOrgType(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "org type not found")
+		return
+	}
+	if !verifyTenantOwnership(w, r, orgType.TenantID) {
 		return
 	}
 
@@ -231,7 +242,7 @@ func (h *OrgTypeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM org_types WHERE id = $1`, id)
+	_, err = h.DB.Exec(r.Context(), `DELETE FROM org_types WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete org type")
 		return

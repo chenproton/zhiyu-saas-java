@@ -140,6 +140,9 @@ func (h *ResourceCodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "missing required fields")
 		return
 	}
+	if !verifyRequestTenant(w, r, req.TenantID) {
+		return
+	}
 
 	id := uuid.NewString()
 
@@ -168,13 +171,17 @@ func (h *ResourceCodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchResourceCode(r.Context(), id); err != nil {
+	rc, err := h.fetchResourceCode(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "resource code not found")
+		return
+	}
+	if !verifyTenantOwnership(w, r, rc.TenantID) {
 		return
 	}
 
 	var req UpdateResourceCodeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -184,7 +191,7 @@ func (h *ResourceCodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
+	_, err = h.DB.Exec(r.Context(), `
 		UPDATE resource_codes SET code = $1, name = $2, description = $3, type = $4
 		WHERE id = $5
 	`, req.Code, req.Name, req.Description, req.Type, id)
@@ -209,12 +216,16 @@ func (h *ResourceCodeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchResourceCode(r.Context(), id); err != nil {
+	rc, err := h.fetchResourceCode(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "resource code not found")
 		return
 	}
+	if !verifyTenantOwnership(w, r, rc.TenantID) {
+		return
+	}
 
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM resource_codes WHERE id = $1`, id)
+	_, err = h.DB.Exec(r.Context(), `DELETE FROM resource_codes WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete resource code")
 		return

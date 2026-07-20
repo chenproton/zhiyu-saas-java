@@ -148,6 +148,9 @@ func (h *MajorHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "missing required fields")
 		return
 	}
+	if !verifyRequestTenant(w, r, req.TenantID) {
+		return
+	}
 
 	id := uuid.NewString()
 
@@ -176,8 +179,12 @@ func (h *MajorHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchMajor(r.Context(), id); err != nil {
+	major, err := h.fetchMajor(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "major not found")
+		return
+	}
+	if !verifyTenantOwnership(w, r, major.TenantID) {
 		return
 	}
 
@@ -192,7 +199,7 @@ func (h *MajorHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
+	_, err = h.DB.Exec(r.Context(), `
 		UPDATE majors SET org_node_id = $1, code = $2, name = $3, alias = $4, enabled = $5, updated_at = NOW()
 		WHERE id = $6
 	`, req.OrgNodeID, req.Code, req.Name, req.Alias, req.Enabled, id)
@@ -205,7 +212,7 @@ func (h *MajorHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	major, _ := h.fetchMajor(r.Context(), id)
+	major, _ = h.fetchMajor(r.Context(), id)
 	respondJSON(w, http.StatusOK, major)
 }
 
@@ -217,12 +224,16 @@ func (h *MajorHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchMajor(r.Context(), id); err != nil {
+	major, err := h.fetchMajor(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "major not found")
 		return
 	}
+	if !verifyTenantOwnership(w, r, major.TenantID) {
+		return
+	}
 
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM majors WHERE id = $1`, id)
+	_, err = h.DB.Exec(r.Context(), `DELETE FROM majors WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete major")
 		return

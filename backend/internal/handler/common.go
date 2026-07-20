@@ -142,3 +142,33 @@ func ptrEqual[T comparable](a, b *T) bool {
 	}
 	return *a == *b
 }
+
+// verifyTenantOwnership checks that the entity's tenantID matches the caller's tenant.
+// Writes a 403 response and returns false when they don't match.
+func verifyTenantOwnership(w http.ResponseWriter, r *http.Request, entityTenantID string) bool {
+	claims := middleware.CurrentUser(r)
+	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
+		respondError(w, http.StatusForbidden, "missing tenant")
+		return false
+	}
+	if entityTenantID != *claims.TenantID {
+		respondError(w, http.StatusForbidden, "access denied: entity does not belong to your tenant")
+		return false
+	}
+	return true
+}
+
+// verifyRequestTenant validates that the tenantId from the request body matches the
+// caller's tenant. Writes a 403 and returns false if they differ.
+func verifyRequestTenant(w http.ResponseWriter, r *http.Request, requestTenantID string) bool {
+	claims := middleware.CurrentUser(r)
+	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
+		respondError(w, http.StatusForbidden, "missing tenant")
+		return false
+	}
+	if requestTenantID != *claims.TenantID {
+		respondError(w, http.StatusForbidden, "access denied: cannot create entity for another tenant")
+		return false
+	}
+	return true
+}
