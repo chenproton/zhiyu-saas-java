@@ -24,7 +24,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { CertificateCard, AddCertificateButton } from './certificate-card'
-import { industryApi, majorApi } from '@/lib/api'
+import { industryApi, majorApi, certificateLibraryApi } from '@/lib/api'
 import type { Position, PositionCertificate, PositionResponsibility } from '@/lib/types/job-source'
 
 export interface Step1Draft extends Position {
@@ -33,27 +33,20 @@ export interface Step1Draft extends Position {
   rawCareerPath: string
 }
 
+type LibraryCert = { id: string; name: string; url?: string; description?: string }
+
 interface Step1BasicInfoProps {
   draft: Step1Draft
   onUpdate: (data: Partial<Step1Draft>) => void
   onNext: () => void
 }
 
-// 常用证书库（保留在组件内部，不引用 mock 文件）
-const COMMON_CERTIFICATES: PositionCertificate[] = [
-  { id: 'cert-1', name: '软件设计师', url: 'https://www.ruankao.org.cn', description: '国家软件设计师资格认证' },
-  { id: 'cert-2', name: '系统架构设计师', url: 'https://www.ruankao.org.cn', description: '国家系统架构设计师资格认证' },
-  { id: 'cert-3', name: 'PMP', url: 'https://www.pmi.org', description: '项目管理专业人士资格认证' },
-  { id: 'cert-4', name: 'AWS 云从业者', url: 'https://aws.amazon.com/certification', description: 'AWS 云计算基础认证' },
-  { id: 'cert-5', name: 'CKA', url: 'https://www.cncf.io', description: 'Kubernetes 管理员认证' },
-  { id: 'cert-6', name: '数据库系统工程师', url: 'https://www.ruankao.org.cn', description: '国家数据库系统工程师资格认证' },
-]
-
 export function Step1BasicInfo({ draft, onUpdate, onNext }: Step1BasicInfoProps) {
   const [industries, setIndustries] = useState<{ id: string; name: string }[]>([])
   const [majors, setMajors] = useState<{ id: string; name: string }[]>([])
   const [optionsLoading, setOptionsLoading] = useState(false)
   const [aiNotice, setAiNotice] = useState<string | null>(null)
+  const [certificateLibrary, setCertificateLibrary] = useState<LibraryCert[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -61,23 +54,24 @@ export function Step1BasicInfo({ draft, onUpdate, onNext }: Step1BasicInfoProps)
     Promise.all([
       industryApi.list({ limit: 1000 }),
       majorApi.list({ limit: 1000 }),
+      certificateLibraryApi.list({ limit: 1000 }),
     ])
-      .then(([indRes, majorRes]) => {
+      .then(([indRes, majorRes, libRes]) => {
         if (cancelled) return
         setIndustries((indRes.items || []).filter((i) => i.enabled).map((i) => ({ id: i.id, name: i.name })))
         setMajors((majorRes.items || []).filter((m) => m.enabled).map((m) => ({ id: m.id, name: m.name })))
+        setCertificateLibrary(libRes.items.map((item) => ({ id: item.id, name: item.name, url: item.url, description: item.description })))
       })
       .catch(() => {
         if (cancelled) return
         setIndustries([])
         setMajors([])
+        setCertificateLibrary([])
       })
       .finally(() => {
         if (!cancelled) setOptionsLoading(false)
       })
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [])
 
   const [suggestedCertificates, setSuggestedCertificates] = useState<PositionCertificate[] | null>(null)
@@ -98,15 +92,25 @@ export function Step1BasicInfo({ draft, onUpdate, onNext }: Step1BasicInfoProps)
   }
 
   const showCertSelector = () => {
-    setSuggestedCertificates(COMMON_CERTIFICATES)
+    setSuggestedCertificates(certificateLibrary as unknown as PositionCertificate[])
     setSelectedCertIds([])
     setCertSelectorOpen(true)
   }
 
   const adoptCertificates = () => {
-    const selected = COMMON_CERTIFICATES.filter((c) => selectedCertIds.includes(c.id))
+    const existingLibraryIds = new Set(draft.certificates.map((c) => c.libraryId || c.id))
+    const selected = certificateLibrary.filter(
+      (c) => selectedCertIds.includes(c.id) && !existingLibraryIds.has(c.id)
+    )
     if (selected.length > 0) {
-      onUpdate({ certificates: [...draft.certificates, ...selected] })
+      const newCerts: PositionCertificate[] = selected.map((c) => ({
+        id: `cert-ref-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        libraryId: c.id,
+        name: c.name,
+        url: c.url ?? '',
+        description: c.description ?? '',
+      }))
+      onUpdate({ certificates: [...draft.certificates, ...newCerts] })
     }
     setCertSelectorOpen(false)
     setSelectedCertIds([])
@@ -407,7 +411,25 @@ export function Step1BasicInfo({ draft, onUpdate, onNext }: Step1BasicInfoProps)
                 onRemove={() => removeCertificate(index)}
               />
             ))}
-            <AddCertificateButton onAdd={(cert) => onUpdate({ certificates: [...draft.certificates, cert] })} />
+            <AddCertificateButton onAdd={async (cert) => {
+              try {
+                const created = await certificateLibraryApi.create({
+                  name: cert.name,
+                  url: cert.url || undefined,
+                  description: cert.description || undefined,
+                })
+                const newCert: PositionCertificate = {
+                  id: `cert-ref-${Date.now()}`,
+                  libraryId: created.id,
+                  name: created.name,
+                  url: created.url ?? '',
+                  description: created.description ?? '',
+                }
+                onUpdate({ certificates: [...draft.certificates, newCert] })
+              } catch {
+                setAiNotice('新增证书失败')
+              }
+            }} />
           </div>
         </CardContent>
       </Card>

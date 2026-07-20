@@ -60,6 +60,7 @@ export type CareerPath = string
 // 岗位证书
 export interface PositionCertificate {
   id: string
+  libraryId?: string       // certificate_library id (set when loaded from API)
   name: string
   url?: string
   description?: string

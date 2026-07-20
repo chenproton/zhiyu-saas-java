@@ -20,6 +20,7 @@ import type {
 import type {
   CareerPosition,
   PositionCertificate,
+  CertificateLibraryItem,
   PositionResponsibility,
   AbilityPoint,
   PositionAbilityBinding,
@@ -749,6 +750,17 @@ export const positionCertificateApi = {
   update: (id: string, req: Partial<Omit<PositionCertificate, "id">>) =>
     request<PositionCertificate>(`/job/position-certificates/${id}`, { method: "PUT", body: JSON.stringify(req) }),
   delete: (id: string) => request<{ id: string }>(`/job/position-certificates/${id}`, { method: "DELETE" }),
+}
+
+export const certificateLibraryApi = {
+  list: (params?: { search?: string; limit?: number; offset?: number }) =>
+    request<ListResponse<CertificateLibraryItem>>(`/job/certificate-library${buildQuery(params || {})}`),
+  get: (id: string) => request<CertificateLibraryItem>(`/job/certificate-library/${id}`),
+  create: (req: Omit<CertificateLibraryItem, "id" | "tenantId" | "createdAt">) =>
+    request<CertificateLibraryItem>("/job/certificate-library", { method: "POST", body: JSON.stringify(req) }),
+  update: (id: string, req: Partial<Omit<CertificateLibraryItem, "id" | "tenantId" | "createdAt">>) =>
+    request<CertificateLibraryItem>(`/job/certificate-library/${id}`, { method: "PUT", body: JSON.stringify(req) }),
+  delete: (id: string) => request<{ id: string }>(`/job/certificate-library/${id}`, { method: "DELETE" }),
 }
 
 export const batchApi = {

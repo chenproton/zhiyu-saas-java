@@ -107,23 +107,29 @@ export function CertificateCard({ certificate, onChange, onRemove }: Certificate
 }
 
 interface AddCertificateButtonProps {
-  onAdd: (cert: PositionCertificate) => void
+  onAdd: (cert: PositionCertificate) => void | Promise<void>
 }
 
 export function AddCertificateButton({ onAdd }: AddCertificateButtonProps) {
   const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [draft, setDraft] = useState<Partial<PositionCertificate>>({ name: '', description: '', url: '' })
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!draft.name?.trim()) return
-    onAdd({
-      id: `cert-custom-${Date.now()}`,
-      name: draft.name.trim(),
-      description: draft.description || '',
-      url: draft.url || '',
-    })
-    setDraft({ name: '', description: '', url: '' })
-    setIsEditing(false)
+    setIsSaving(true)
+    try {
+      await onAdd({
+        id: `cert-custom-${Date.now()}`,
+        name: draft.name.trim(),
+        description: draft.description || '',
+        url: draft.url || '',
+      })
+      setDraft({ name: '', description: '', url: '' })
+      setIsEditing(false)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   if (!isEditing) {

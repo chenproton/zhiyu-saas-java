@@ -24,10 +24,21 @@ export interface CareerPosition {
 export interface PositionCertificate {
   id: string
   careerPositionId: string
+  certificateLibraryId: string
   name: string
   url?: string
   description?: string
   imageUrl?: string
+}
+
+export interface CertificateLibraryItem {
+  id: string
+  tenantId: string
+  name: string
+  url?: string
+  description?: string
+  imageUrl?: string
+  createdAt: string
 }
 
 export interface PositionResponsibility {

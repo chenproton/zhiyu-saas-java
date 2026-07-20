@@ -685,10 +685,27 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		if cert.Name == "" {
 			continue
 		}
+		// Find or create certificate in library
+		var libraryID string
+		err = tx.QueryRow(r.Context(), `
+			SELECT id FROM certificate_library WHERE tenant_id = $1 AND name = $2
+		`, claims.TenantID, cert.Name).Scan(&libraryID)
+		if err != nil {
+			libraryID = uuid.NewString()
+			_, err = tx.Exec(r.Context(), `
+				INSERT INTO certificate_library (id, tenant_id, name, url, description, image_url)
+				VALUES ($1, $2, $3, $4, $5, $6)
+			`, libraryID, claims.TenantID, cert.Name, cert.URL, cert.Description, cert.Image)
+			if err != nil {
+				log.Printf("[SaveFull] insert certificate_library failed: %v", err)
+				respondError(w, http.StatusInternalServerError, "failed to create certificate in library")
+				return
+			}
+		}
 		_, err = tx.Exec(r.Context(), `
-			INSERT INTO position_certificates (id, tenant_id, career_position_id, name, url, description, image_url)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
-		`, uuid.NewString(), claims.TenantID, id, cert.Name, cert.URL, cert.Description, cert.Image)
+			INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id)
+			VALUES ($1, $2, $3, $4)
+		`, uuid.NewString(), claims.TenantID, id, libraryID)
 		if err != nil {
 			log.Printf("[SaveFull] insert position_certificates failed: %v", err)
 			respondError(w, http.StatusInternalServerError, "failed to create certificate")

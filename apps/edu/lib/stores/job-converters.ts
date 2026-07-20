@@ -210,6 +210,7 @@ export function convertLocalResponsibilityToApi(r: PositionResponsibility): Omit
 export function convertApiCertificateToLocal(c: ApiPositionCertificate): PositionCertificate {
   return {
     id: c.id,
+    libraryId: c.certificateLibraryId,
     name: c.name,
     url: c.url ?? '',
     description: c.description ?? '',
@@ -220,6 +221,7 @@ export function convertApiCertificateToLocal(c: ApiPositionCertificate): Positio
 export function convertLocalCertificateToApi(c: PositionCertificate): Omit<ApiPositionCertificate, 'id'> {
   return {
     careerPositionId: '', // filled by caller
+    certificateLibraryId: c.libraryId || '',
     name: c.name,
     url: c.url || undefined,
     description: c.description || undefined,

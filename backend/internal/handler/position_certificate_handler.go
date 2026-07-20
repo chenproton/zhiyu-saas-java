@@ -73,10 +73,12 @@ func (h *PositionCertificateHandler) List(w http.ResponseWriter, r *http.Request
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT id, career_position_id, name, url, description, image_url
-		FROM position_certificates
+		SELECT pc.id, pc.career_position_id, pc.certificate_library_id,
+			cl.name, cl.url, cl.description, cl.image_url
+		FROM position_certificates pc
+		JOIN certificate_library cl ON cl.id = pc.certificate_library_id
 		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY name ASC
+		ORDER BY cl.name ASC
 		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
 	args = append(args, limit, offset)
 
@@ -91,6 +93,10 @@ func (h *PositionCertificateHandler) List(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to scan certificates")
 		return
+	}
+
+	if items == nil {
+		items = []domain.PositionCertificate{}
 	}
 
 	respondJSON(w, http.StatusOK, PositionCertificateListResponse{Items: items, Total: total})
@@ -128,11 +134,34 @@ func (h *PositionCertificateHandler) Create(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	claims := middleware.CurrentUser(r)
+	tenantID := ""
+	if claims != nil && claims.TenantID != nil {
+		tenantID = *claims.TenantID
+	}
+
+	// Find or create in certificate library
+	var libraryID string
+	err := h.DB.QueryRow(r.Context(), `
+		SELECT id FROM certificate_library WHERE tenant_id = $1 AND name = $2
+	`, tenantID, req.Name).Scan(&libraryID)
+	if err != nil {
+		libraryID = uuid.NewString()
+		_, err = h.DB.Exec(r.Context(), `
+			INSERT INTO certificate_library (id, tenant_id, name, url, description, image_url)
+			VALUES ($1, $2, $3, $4, $5, $6)
+		`, libraryID, tenantID, req.Name, req.URL, req.Description, req.ImageURL)
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to create certificate in library")
+			return
+		}
+	}
+
 	id := uuid.NewString()
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO position_certificates (id, career_position_id, name, url, description, image_url)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, id, req.CareerPositionID, req.Name, req.URL, req.Description, req.ImageURL)
+	_, err = h.DB.Exec(r.Context(), `
+		INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id)
+		VALUES ($1, $2, $3, $4)
+	`, id, tenantID, req.CareerPositionID, libraryID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create certificate")
 		return
@@ -160,16 +189,46 @@ func (h *PositionCertificateHandler) Update(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if req.CareerPositionID == "" || req.Name == "" {
+	if req.CareerPositionID == "" {
 		respondError(w, http.StatusBadRequest, "missing required fields")
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE position_certificates SET
-			career_position_id = $1, name = $2, url = $3, description = $4, image_url = $5
-		WHERE id = $6
-	`, req.CareerPositionID, req.Name, req.URL, req.Description, req.ImageURL, id)
+	claims := middleware.CurrentUser(r)
+	tenantID := ""
+	if claims != nil && claims.TenantID != nil {
+		tenantID = *claims.TenantID
+	}
+
+	// Find or create in certificate library if name provided
+	var libraryID string
+	var err error
+	if req.Name != "" {
+		err = h.DB.QueryRow(r.Context(), `
+			SELECT id FROM certificate_library WHERE tenant_id = $1 AND name = $2
+		`, tenantID, req.Name).Scan(&libraryID)
+		if err != nil {
+			libraryID = uuid.NewString()
+			_, err = h.DB.Exec(r.Context(), `
+				INSERT INTO certificate_library (id, tenant_id, name, url, description, image_url)
+				VALUES ($1, $2, $3, $4, $5, $6)
+			`, libraryID, tenantID, req.Name, req.URL, req.Description, req.ImageURL)
+			if err != nil {
+				respondError(w, http.StatusInternalServerError, "failed to create certificate in library")
+				return
+			}
+		}
+		_, err = h.DB.Exec(r.Context(), `
+			UPDATE position_certificates SET
+				career_position_id = $1, certificate_library_id = $2
+			WHERE id = $3
+		`, req.CareerPositionID, libraryID, id)
+	} else {
+		_, err = h.DB.Exec(r.Context(), `
+			UPDATE position_certificates SET career_position_id = $1
+			WHERE id = $2
+		`, req.CareerPositionID, id)
+	}
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to update certificate")
 		return
@@ -204,10 +263,14 @@ func (h *PositionCertificateHandler) fetchCertificate(ctx context.Context, id st
 	var url, description, imageURL *string
 
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, career_position_id, name, url, description, image_url
-		FROM position_certificates WHERE id = $1
+		SELECT pc.id, pc.career_position_id, pc.certificate_library_id,
+			cl.name, cl.url, cl.description, cl.image_url
+		FROM position_certificates pc
+		JOIN certificate_library cl ON cl.id = pc.certificate_library_id
+		WHERE pc.id = $1
 	`, id).Scan(
-		&item.ID, &item.CareerPositionID, &item.Name, &url, &description, &imageURL,
+		&item.ID, &item.CareerPositionID, &item.CertificateLibraryID,
+		&item.Name, &url, &description, &imageURL,
 	)
 	if err != nil {
 		return item, err
@@ -224,7 +287,8 @@ func (h *PositionCertificateHandler) scanCertificateRows(rows pgx.Rows) ([]domai
 		var item domain.PositionCertificate
 		var url, description, imageURL *string
 		if err := rows.Scan(
-			&item.ID, &item.CareerPositionID, &item.Name, &url, &description, &imageURL,
+			&item.ID, &item.CareerPositionID, &item.CertificateLibraryID,
+			&item.Name, &url, &description, &imageURL,
 		); err != nil {
 			return nil, err
 		}

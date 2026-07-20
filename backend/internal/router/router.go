@@ -126,6 +126,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 	positionAbilityHandler := &handler.PositionAbilityHandler{DB: db}
 	positionResponsibilityHandler := &handler.PositionResponsibilityHandler{DB: db}
 	positionCertificateHandler := &handler.PositionCertificateHandler{DB: db}
+	certificateLibraryHandler := &handler.CertificateLibraryHandler{DB: db}
 	abilityDomainHandler := &handler.AbilityDomainHandler{DB: db}
 	jobBatchHandler := handler.NewJobBatchHandler(db)
 	recommendHandler := &handler.RecommendHandler{DB: db}
@@ -399,6 +400,12 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 				r.Post("/job/position-certificates", positionCertificateHandler.Create)
 				r.Put("/job/position-certificates/{id}", positionCertificateHandler.Update)
 				r.Delete("/job/position-certificates/{id}", positionCertificateHandler.Delete)
+
+				r.Get("/job/certificate-library", certificateLibraryHandler.List)
+				r.Get("/job/certificate-library/{id}", certificateLibraryHandler.Get)
+				r.Post("/job/certificate-library", certificateLibraryHandler.Create)
+				r.Put("/job/certificate-library/{id}", certificateLibraryHandler.Update)
+				r.Delete("/job/certificate-library/{id}", certificateLibraryHandler.Delete)
 
 				r.Get("/job/ability-domains", abilityDomainHandler.List)
 				r.Post("/job/ability-domains", abilityDomainHandler.Create)

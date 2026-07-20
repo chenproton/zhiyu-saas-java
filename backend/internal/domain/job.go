@@ -51,13 +51,24 @@ type CareerPosition struct {
 	UpdatedAt     time.Time            `json:"updatedAt"`
 }
 
+type CertificateLibraryItem struct {
+	ID          string    `json:"id"`
+	TenantID    string    `json:"tenantId"`
+	Name        string    `json:"name"`
+	URL         *string   `json:"url,omitempty"`
+	Description *string   `json:"description,omitempty"`
+	ImageURL    *string   `json:"imageUrl,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
+}
+
 type PositionCertificate struct {
-	ID               string  `json:"id"`
-	CareerPositionID string  `json:"careerPositionId"`
-	Name             string  `json:"name"`
-	URL              *string `json:"url,omitempty"`
-	Description      *string `json:"description,omitempty"`
-	ImageURL         *string `json:"imageUrl,omitempty"`
+	ID                   string  `json:"id"`
+	CareerPositionID     string  `json:"careerPositionId"`
+	CertificateLibraryID string  `json:"certificateLibraryId"`
+	Name                 string  `json:"name"`
+	URL                  *string `json:"url,omitempty"`
+	Description          *string `json:"description,omitempty"`
+	ImageURL             *string `json:"imageUrl,omitempty"`
 }
 
 type PositionResponsibility struct {

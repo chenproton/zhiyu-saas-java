@@ -34,7 +34,7 @@ import {
   Image as ImageIcon,
   AlertCircle,
 } from 'lucide-react'
-import { industryApi, majorApi } from '@/lib/api'
+import { industryApi, majorApi, certificateLibraryApi } from '@/lib/api'
 import type { Position, PositionResponsibility } from '@/lib/types/job-source'
 
 interface StepBasicInfoProps {
@@ -44,18 +44,8 @@ interface StepBasicInfoProps {
   variant?: 'default' | 'create'
 }
 
-// 常用证书库（保留在组件内部，不引用 mock 文件）
-const MOCK_CERTIFICATES = [
-  { id: 'cert-1', name: '软件设计师', url: 'https://www.ruankao.org.cn', description: '国家软件设计师资格认证' },
-  { id: 'cert-2', name: '系统架构设计师', url: 'https://www.ruankao.org.cn', description: '国家系统架构设计师资格认证' },
-  { id: 'cert-3', name: 'PMP', url: 'https://www.pmi.org', description: '项目管理专业人士资格认证' },
-  { id: 'cert-4', name: 'AWS 云从业者', url: 'https://aws.amazon.com/certification', description: 'AWS 云计算基础认证' },
-  { id: 'cert-5', name: 'CKA', url: 'https://www.cncf.io', description: 'Kubernetes 管理员认证' },
-  { id: 'cert-6', name: '数据库系统工程师', url: 'https://www.ruankao.org.cn', description: '国家数据库系统工程师资格认证' },
-]
-
 interface Certificate {
-  id: string
+  id: string        // certificate_library id
   name: string
   url: string
   description: string
@@ -71,6 +61,10 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
   const [optionsLoading, setOptionsLoading] = useState(false)
   const [isGenerating, setIsGenerating] = useState<string | null>(null)
   const [aiNotice, setAiNotice] = useState<string | null>(null)
+
+  // 证书库相关状态
+  const [certificateLibrary, setCertificateLibrary] = useState<Certificate[]>([])
+  const [libraryLoading, setLibraryLoading] = useState(false)
 
 
 
@@ -106,13 +100,35 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
   const [certSearchQuery, setCertSearchQuery] = useState('')
   const [selectedCertIds, setSelectedCertIds] = useState<string[]>([])
 
+  // 加载证书库
+  useEffect(() => {
+    let cancelled = false
+    setLibraryLoading(true)
+    certificateLibraryApi.list({ limit: 1000 })
+      .then((res) => {
+        if (cancelled) return
+        setCertificateLibrary(res.items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          url: item.url ?? '',
+          description: item.description ?? '',
+          image: item.imageUrl ?? '',
+        })))
+      })
+      .catch(() => {
+        if (!cancelled) setCertificateLibrary([])
+      })
+      .finally(() => { if (!cancelled) setLibraryLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
   // 同步已选证书状态，防止异步加载/重新进入编辑页后选择框与保存数据不一致
   useEffect(() => {
-    setSelectedCertIds(position.certificates?.map((c) => c.id) || [])
+    setSelectedCertIds(position.certificates?.map((c) => c.libraryId || c.id) || [])
   }, [position.certificates])
 
   const openCertDialog = () => {
-    setSelectedCertIds(position.certificates?.map((c) => c.id) || [])
+    setSelectedCertIds(position.certificates?.map((c) => c.libraryId || c.id) || [])
     setIsCertDialogOpen(true)
   }
 
@@ -160,35 +176,83 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
   }
 
   const filteredCertificates = useMemo(() => {
-    if (!certSearchQuery.trim()) return MOCK_CERTIFICATES
+    if (!certSearchQuery.trim()) return certificateLibrary
     const q = certSearchQuery.trim().toLowerCase()
-    return MOCK_CERTIFICATES.filter(
+    return certificateLibrary.filter(
       (c) => c.name.toLowerCase().includes(q) || (c.description?.toLowerCase().includes(q) ?? false)
     )
-  }, [certSearchQuery])
+  }, [certSearchQuery, certificateLibrary])
 
   const handleConfirmCertificates = () => {
-    const selectedCerts = MOCK_CERTIFICATES.filter((c) => selectedCertIds.includes(c.id))
-    const existingCustomCerts =
-      position.certificates?.filter((c) => !MOCK_CERTIFICATES.some((mc) => mc.id === c.id)) || []
-    onUpdate({ certificates: [...selectedCerts, ...existingCustomCerts] })
+    const existingCerts = position.certificates || []
+    const existingLibraryIds = new Set(existingCerts.map((c) => c.libraryId || c.id))
+
+    // Keep certs whose libraryId is still selected
+    const keptCerts = existingCerts.filter((c) => selectedCertIds.includes(c.libraryId || c.id))
+
+    // Add newly selected library entries
+    for (const libItem of certificateLibrary) {
+      if (selectedCertIds.includes(libItem.id) && !existingLibraryIds.has(libItem.id)) {
+        keptCerts.push({
+          id: `cert-ref-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          libraryId: libItem.id,
+          name: libItem.name,
+          url: libItem.url,
+          description: libItem.description,
+          image: libItem.image,
+        })
+      }
+    }
+
+    onUpdate({ certificates: keptCerts })
     setIsCertDialogOpen(false)
   }
 
-  const handleAddNewCertificate = () => {
+  const handleAddNewCertificate = async () => {
     if (!newCert.name) return
-    const cert: Certificate = {
-      id: `cert-custom-${Date.now()}`,
-      ...newCert,
+    try {
+      const created = await certificateLibraryApi.create({
+        name: newCert.name,
+        url: newCert.url || undefined,
+        description: newCert.description || undefined,
+        imageUrl: newCert.image || undefined,
+      })
+      const cert: Certificate = {
+        id: created.id,
+        name: created.name,
+        url: created.url ?? '',
+        description: created.description ?? '',
+        image: created.imageUrl ?? '',
+      }
+      // Add to local library cache
+      setCertificateLibrary((prev) => [cert, ...prev])
+      // Add to position
+      onUpdate({
+        certificates: [
+          ...(position.certificates || []),
+          {
+            id: `cert-ref-${Date.now()}`,
+            libraryId: created.id,
+            name: created.name,
+            url: created.url ?? '',
+            description: created.description ?? '',
+            image: created.imageUrl ?? '',
+          },
+        ],
+      })
+      setNewCert({ name: '', url: '', description: '', image: '' })
+      setIsNewCertDialogOpen(false)
+    } catch {
+      setAiNotice('新增证书失败，请稍后重试')
     }
-    onUpdate({ certificates: [...(position.certificates || []), cert] })
-    setNewCert({ name: '', url: '', description: '', image: '' })
-    setIsNewCertDialogOpen(false)
   }
 
   const handleRemoveCertificate = (certId: string) => {
+    const cert = position.certificates?.find((c) => c.id === certId)
     onUpdate({ certificates: position.certificates?.filter((c) => c.id !== certId) || [] })
-    setSelectedCertIds(selectedCertIds.filter((id) => id !== certId))
+    if (cert) {
+      setSelectedCertIds((prev) => prev.filter((id) => id !== (cert.libraryId || cert.id)))
+    }
   }
 
   const renderAIButton = (field: AiSuggestionField, label: string) => {
