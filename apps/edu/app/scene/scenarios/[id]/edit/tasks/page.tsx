@@ -128,6 +128,18 @@ const questionBank: Record<string, any[]> = { frontend: [], backend: [], draft: 
 const granularLessons: any[] = []
 const professions: any[] = []
 
+// Generate a valid v4 UUID for custom items so they can be stored in backend UUID[] columns
+function generateUUID(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+    const r = (Math.random() * 16) | 0
+    const v = c === "x" ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
+
 // ============ Types & Configs ============
 
 type CardType = "info" | "description" | "knowledge" | "ability" | "resources" | "evaluation" | "evaluationRules" | "weight"
@@ -814,10 +826,81 @@ export default function TasksEditPage() {
   }
 
   const saveTasksToBackend = async () => {
-    const results = []
+    // Persist custom knowledge points added in this session and map their IDs
+    const kpIdMapping: Record<string, string> = {}
+    for (const kpId of Array.from(customKnowledgePointIds)) {
+      const kp = knowledgePoints.find(k => k.id === kpId)
+      if (!kp) continue
+      try {
+        const created = await knowledgeApi.create({
+          name: kp.name,
+          code: kp.code,
+          description: kp.description,
+          linked: false,
+          granularLessonIds: kp.granularLessons || [],
+        } as any)
+        kpIdMapping[kpId] = created.id
+        const idx = knowledgePoints.findIndex(k => k.id === kpId)
+        if (idx >= 0) knowledgePoints[idx] = { ...knowledgePoints[idx], id: created.id }
+        customKnowledgePointIds.delete(kpId)
+      } catch (err: any) {
+        console.error("Failed to persist custom knowledge point", kpId, err)
+      }
+    }
+
+    // Persist custom ability points added in this session and map their IDs
+    const abIdMapping: Record<string, string> = {}
+    for (const abId of Array.from(customAbilityPointIds)) {
+      const ap = abilityPoints.find(a => a.id === abId)
+      if (!ap) continue
+      try {
+        const created = await abilityApi.create({
+          name: ap.name,
+          description: ap.description,
+          category: ap.category,
+          attributes: [],
+          isPublic: false,
+        } as any)
+        abIdMapping[abId] = created.id
+        const idx = abilityPoints.findIndex(a => a.id === abId)
+        if (idx >= 0) abilityPoints[idx] = { ...abilityPoints[idx], id: created.id }
+        customAbilityPointIds.delete(abId)
+      } catch (err: any) {
+        console.error("Failed to persist custom ability point", abId, err)
+      }
+    }
+
+    // Replace temporary custom IDs with persisted IDs across all task states
+    const replaceIds = (ids: string[]) => ids.map(id => kpIdMapping[id] || abIdMapping[id] || id)
+    const replaceEvalPoints = (points: EvalPoint[]) =>
+      points.map(p => ({
+        ...p,
+        knowledgePointIds: p.knowledgePointIds ? replaceIds(p.knowledgePointIds) : p.knowledgePointIds,
+        abilityPointIds: p.abilityPointIds ? replaceIds(p.abilityPointIds) : p.abilityPointIds,
+      }))
+
+    const updatedTaskStates: Record<string, TaskState> = { ...taskStates }
+    Object.keys(updatedTaskStates).forEach(tid => {
+      const s = updatedTaskStates[tid]
+      if (Object.keys(kpIdMapping).length === 0 && Object.keys(abIdMapping).length === 0) return
+      updatedTaskStates[tid] = {
+        ...s,
+        knowledgePoints: replaceIds(s.knowledgePoints),
+        abilityPoints: replaceIds(s.abilityPoints),
+        randomDrawEvalPoints: replaceEvalPoints(s.randomDrawEvalPoints),
+        reviewEvalPoints: replaceEvalPoints(s.reviewEvalPoints),
+        paperEvalPoints: replaceEvalPoints(s.paperEvalPoints),
+        questionBankEvalPoints: replaceEvalPoints(s.questionBankEvalPoints),
+        outcomeEvalPoints: replaceEvalPoints(s.outcomeEvalPoints),
+        homeworkEvalPoints: replaceEvalPoints(s.homeworkEvalPoints),
+        quizEvalPoints: replaceEvalPoints(s.quizEvalPoints),
+      }
+    })
+    setTaskStates(updatedTaskStates)
+
     for (let i = 0; i < tasks.length; i++) {
       const t = tasks[i]
-      const ts = taskStates[t.id] || makeDefaultTaskState(0, 0)
+      const ts = updatedTaskStates[t.id] || makeDefaultTaskState(0, 0)
       const payload: any = {
         scenarioId,
         name: t.name,
@@ -1291,8 +1374,9 @@ export default function TasksEditPage() {
 }
 
 
-// Module-level set to track custom (added/cloned) knowledge points across dialog re-opens
+// Module-level sets to track custom (added/cloned) points across dialog re-opens
 const customKnowledgePointIds = new Set<string>()
+const customAbilityPointIds = new Set<string>()
 
 // ============ Edit Card Dialog ============
 
@@ -1533,7 +1617,8 @@ function EditCardDialog({
 
   const handleAddKnowledge = () => {
     if (!newKnowledgeName.trim()) return
-    const newId = `kp-new-${Date.now()}`
+    const newId = generateUUID()
+    customKnowledgePointIds.add(newId)
     knowledgePoints.push({ id: newId, name: newKnowledgeName.trim(), description: newKnowledgeDesc.trim(), category: newKnowledgeCategory })
     updateState({ knowledgePoints: [...state.knowledgePoints, newId] })
     setNewKnowledgeName("")
@@ -1543,7 +1628,8 @@ function EditCardDialog({
 
   const handleAddAbility = () => {
     if (!newAbilityName.trim()) return
-    const newId = `ab-new-${Date.now()}`
+    const newId = generateUUID()
+    customAbilityPointIds.add(newId)
     abilityPoints.push({ id: newId, name: newAbilityName.trim(), description: newAbilityDesc.trim(), category: newAbilityCategory })
     updateState({ abilityPoints: [...state.abilityPoints, newId] })
     setNewAbilityName("")
@@ -1795,7 +1881,7 @@ function EditCardDialog({
             setKpActionOpen(false)
             return
           }
-          const newId = `kp-${kpActionMode}-${Date.now()}`
+          const newId = generateUUID()
           const newKp = {
             id: newId,
             name: newKpForm.name.trim(),
