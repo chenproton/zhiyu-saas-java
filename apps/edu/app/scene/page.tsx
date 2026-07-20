@@ -8,6 +8,13 @@ import {
   type ContentBatch,
 } from "@/components/shared/content-list-page"
 
+function draftSuffix() {
+  const d = new Date()
+  const ds = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+  const c = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  return `${ds}_${c[Math.floor(Math.random() * 36)]}${c[Math.floor(Math.random() * 36)]}`
+}
+
 function generateCode(prefix: string) {
   return `${prefix}-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, "0")}`
 }
@@ -85,7 +92,7 @@ export default function SceneHallPage() {
       }}
       createRedirectUrl={(id) => `/scene/scenarios/${id}/edit?new=true`}
       createPayload={(uid, _label) => ({
-        name: "新建场景",
+        name: `新建场景_${draftSuffix()}`,
         code: generateCode("SC"),
         difficulty: 1,
         version: "V1.0",
