@@ -81,11 +81,11 @@ export default function OrgTypesPage() {
           <p className="mt-1 text-sm text-muted-foreground">管理组织架构中的节点类型</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" disabled title="即将上线">
             <Upload className="h-4 w-4 mr-1" />
             批量导入
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" disabled title="即将上线">
             <Download className="h-4 w-4 mr-1" />
             批量导出
           </Button>

@@ -43,13 +43,14 @@ type ToggleStaffTitleStatusRequest struct {
 }
 
 func (h *StaffTitleHandler) List(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.URL.Query().Get("tenantId")
 	search := r.URL.Query().Get("search")
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
 
-	if tenantID == "" {
-		respondError(w, http.StatusBadRequest, "tenantId is required")
+	tenantClaims := middleware.CurrentUser(r)
+	tenantID, ok := tenantFilter(tenantClaims)
+	if !ok {
+		respondError(w, http.StatusForbidden, "missing tenant")
 		return
 	}
 
@@ -98,7 +99,7 @@ func (h *StaffTitleHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for i := range items {
-		items[i].UserCount = h.countUsersByTitle(r.Context(), items[i].ID)
+		items[i].UserCount = h.countUsersByTitle(r.Context(), items[i].ID, tenantID)
 	}
 
 	respondJSON(w, http.StatusOK, StaffTitleListResponse{Items: items, Total: total})
@@ -111,7 +112,10 @@ func (h *StaffTitleHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "staff title not found")
 		return
 	}
-	title.UserCount = h.countUsersByTitle(r.Context(), id)
+	if !verifyTenantOwnership(w, r, title.TenantID) {
+		return
+	}
+	title.UserCount = h.countUsersByTitle(r.Context(), id, title.TenantID)
 	respondJSON(w, http.StatusOK, title)
 }
 
@@ -208,7 +212,7 @@ func (h *StaffTitleHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	title, _ = h.fetchStaffTitle(r.Context(), id)
-	title.UserCount = h.countUsersByTitle(r.Context(), id)
+	title.UserCount = h.countUsersByTitle(r.Context(), id, title.TenantID)
 	respondJSON(w, http.StatusOK, title)
 }
 
@@ -270,7 +274,7 @@ func (h *StaffTitleHandler) ToggleStatus(w http.ResponseWriter, r *http.Request)
 	}
 
 	title, _ = h.fetchStaffTitle(r.Context(), id)
-	title.UserCount = h.countUsersByTitle(r.Context(), id)
+	title.UserCount = h.countUsersByTitle(r.Context(), id, title.TenantID)
 	respondJSON(w, http.StatusOK, title)
 }
 
@@ -315,11 +319,11 @@ func (h *StaffTitleHandler) scanStaffTitleRows(rows pgx.Rows) ([]domain.StaffTit
 	return items, nil
 }
 
-func (h *StaffTitleHandler) countUsersByTitle(ctx context.Context, titleID string) int {
+func (h *StaffTitleHandler) countUsersByTitle(ctx context.Context, titleID, tenantID string) int {
 	var count int
 	_ = h.DB.QueryRow(ctx, `
-		SELECT COUNT(*) FROM users WHERE $1 = ANY(title_ids)
-	`, titleID).Scan(&count)
+		SELECT COUNT(*) FROM users WHERE tenant_id = $1 AND $2 = ANY(title_ids)
+	`, tenantID, titleID).Scan(&count)
 	return count
 }
 

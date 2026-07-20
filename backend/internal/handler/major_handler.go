@@ -128,6 +128,9 @@ func (h *MajorHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "major not found")
 		return
 	}
+	if !verifyTenantOwnership(w, r, major.TenantID) {
+		return
+	}
 	respondJSON(w, http.StatusOK, major)
 }
 

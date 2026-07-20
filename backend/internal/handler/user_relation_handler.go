@@ -142,6 +142,15 @@ func (h *UserRelationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var validUsers int
+	_ = h.DB.QueryRow(r.Context(), `
+		SELECT COUNT(*) FROM users WHERE tenant_id = $1 AND id = ANY($2::uuid[])
+	`, effectiveTenantID, []string{req.InitiatorID, req.TargetID}).Scan(&validUsers)
+	if validUsers != 2 {
+		respondError(w, http.StatusBadRequest, "initiator or target not found in tenant")
+		return
+	}
+
 	id := uuid.NewString()
 	var description *string
 	if req.Description != "" {

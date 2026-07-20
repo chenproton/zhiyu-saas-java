@@ -120,6 +120,9 @@ func (h *ResourceCodeHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "resource code not found")
 		return
 	}
+	if !verifyTenantOwnership(w, r, resourceCode.TenantID) {
+		return
+	}
 	respondJSON(w, http.StatusOK, resourceCode)
 }
 

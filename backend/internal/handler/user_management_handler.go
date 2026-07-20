@@ -96,7 +96,6 @@ func (h *UserManagementHandler) canManageUsers(r *http.Request) bool {
 }
 
 func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.URL.Query().Get("tenantId")
 	institutionID := r.URL.Query().Get("institutionId")
 	roleID := r.URL.Query().Get("roleId")
 	roleCode := r.URL.Query().Get("roleCode")
@@ -130,11 +129,6 @@ func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
 		argIdx++
 	}
 
-	if tenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, tenantID)
-		argIdx++
-	}
 	if institutionID != "" {
 		where = append(where, "institution_id = $"+itoa(argIdx))
 		args = append(args, institutionID)
@@ -204,6 +198,9 @@ func (h *UserManagementHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "user not found")
 		return
 	}
+	if user.TenantID == nil || !verifyTenantOwnership(w, r, *user.TenantID) {
+		return
+	}
 	user.PasswordHash = ""
 	respondJSON(w, http.StatusOK, user)
 }
@@ -229,6 +226,9 @@ func (h *UserManagementHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.InstitutionID == nil && claims != nil && claims.InstitutionID != nil {
 		req.InstitutionID = claims.InstitutionID
+	}
+	if !verifyRequestTenant(w, r, req.TenantID) {
+		return
 	}
 
 	if req.TenantID == "" || req.Username == "" || req.Password == "" || req.Name == "" {

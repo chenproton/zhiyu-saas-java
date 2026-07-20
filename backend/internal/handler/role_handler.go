@@ -42,7 +42,6 @@ type AssignRoleRequest struct {
 }
 
 func (h *RoleHandler) List(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.URL.Query().Get("tenantId")
 	status := r.URL.Query().Get("status")
 	search := r.URL.Query().Get("search")
 	limitStr := r.URL.Query().Get("limit")
@@ -72,11 +71,6 @@ func (h *RoleHandler) List(w http.ResponseWriter, r *http.Request) {
 		argIdx++
 	}
 
-	if tenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, tenantID)
-		argIdx++
-	}
 	if status != "" {
 		where = append(where, "status = $"+itoa(argIdx))
 		args = append(args, status)
@@ -121,6 +115,9 @@ func (h *RoleHandler) Get(w http.ResponseWriter, r *http.Request) {
 	role, err := h.fetchRole(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "role not found")
+		return
+	}
+	if !verifyTenantOwnership(w, r, role.TenantID) {
 		return
 	}
 	respondJSON(w, http.StatusOK, role)

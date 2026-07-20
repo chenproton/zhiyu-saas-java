@@ -49,6 +49,7 @@ function toBackendStatus(status: Teacher["status"]): string {
   if (status === "在职") return "active"
   if (status === "离职") return "inactive"
   if (status === "禁用") return "disabled"
+  if (status === "外聘") return "active"
   return "active"
 }
 
@@ -221,11 +222,9 @@ export default function TeachersPage() {
     }
   }
 
-  const toggleStatus = async (teacher: Teacher) => {
-    const backendStatus = toBackendStatus(teacher.status)
-    const nextBackendStatus = backendStatus === "active" ? "inactive" : "active"
+  const changeStatus = async (teacher: Teacher, targetStatus: Teacher["status"]) => {
     try {
-      await portalUserManagementApi.updateStatus(teacher.id, nextBackendStatus)
+      await portalUserManagementApi.updateStatus(teacher.id, toBackendStatus(targetStatus))
       toast({ title: "状态已更新" })
       await refetch()
     } catch (err) {
@@ -307,10 +306,10 @@ export default function TeachersPage() {
             {batchDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
             {selectedTeachers.length > 0 ? `批量删除(${selectedTeachers.length})` : "批量删除"}
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" disabled title="即将上线">
             <Upload className="h-4 w-4 mr-1" />导入
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" disabled title="即将上线">
             <Download className="h-4 w-4 mr-1" />导出
           </Button>
           <Button size="sm" onClick={openCreateDialog}>
@@ -461,8 +460,17 @@ export default function TeachersPage() {
                                 <DropdownMenuItem onClick={() => openEditDialog(teacher)}>
                                   编辑
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => toggleStatus(teacher)}>
-                                  {teacher.status === "在职" ? "设为离职" : "设为在职"}
+                                <DropdownMenuItem onClick={() => changeStatus(teacher, "在职")}>
+                                  {teacher.status !== "在职" ? "设为在职" : "✓ 在职"}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => changeStatus(teacher, "离职")}>
+                                  {teacher.status !== "离职" ? "设为离职" : "✓ 离职"}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => changeStatus(teacher, "外聘")}>
+                                  {teacher.status !== "外聘" ? "设为外聘" : "✓ 外聘"}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => changeStatus(teacher, "禁用")}>
+                                  {teacher.status !== "禁用" ? "设为禁用" : "✓ 禁用"}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => resetPassword(teacher)}>
                                   重置密码

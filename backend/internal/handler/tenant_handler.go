@@ -139,6 +139,13 @@ func (h *TenantHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "tenant not found")
 		return
 	}
+	claims := middleware.CurrentUser(r)
+	if !canManagePlatform(claims) {
+		if claims == nil || claims.TenantID == nil || *claims.TenantID != tenant.ID {
+			respondError(w, http.StatusForbidden, "can only view own tenant")
+			return
+		}
+	}
 	respondJSON(w, http.StatusOK, tenant)
 }
 

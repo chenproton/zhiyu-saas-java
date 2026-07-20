@@ -25,7 +25,6 @@ type OperationLogListResponse struct {
 }
 
 func (h *LogHandler) LoginLogs(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.URL.Query().Get("tenantId")
 	userID := r.URL.Query().Get("userId")
 	status := r.URL.Query().Get("status")
 	limitStr := r.URL.Query().Get("limit")
@@ -55,11 +54,6 @@ func (h *LogHandler) LoginLogs(w http.ResponseWriter, r *http.Request) {
 		argIdx++
 	}
 
-	if tenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, tenantID)
-		argIdx++
-	}
 	if userID != "" {
 		where = append(where, "user_id = $"+itoa(argIdx))
 		args = append(args, userID)
@@ -100,7 +94,6 @@ func (h *LogHandler) LoginLogs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *LogHandler) OperationLogs(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.URL.Query().Get("tenantId")
 	userID := r.URL.Query().Get("userId")
 	module := r.URL.Query().Get("module")
 	action := r.URL.Query().Get("action")
@@ -131,11 +124,6 @@ func (h *LogHandler) OperationLogs(w http.ResponseWriter, r *http.Request) {
 		argIdx++
 	}
 
-	if tenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, tenantID)
-		argIdx++
-	}
 	if userID != "" {
 		where = append(where, "user_id = $"+itoa(argIdx))
 		args = append(args, userID)

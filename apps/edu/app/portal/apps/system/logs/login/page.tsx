@@ -73,7 +73,7 @@ export default function LoginLogsPage() {
             <RefreshCw className={`h-4 w-4 mr-1 ${loading ? "animate-spin" : ""}`} />
             刷新
           </Button>
-          <Button variant="outline" size="sm" disabled>
+          <Button variant="outline" size="sm" disabled title="即将上线">
             <Download className="h-4 w-4 mr-1" />
             导出
           </Button>

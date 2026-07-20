@@ -128,6 +128,9 @@ func (h *IndustryHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "industry not found")
 		return
 	}
+	if !verifyTenantOwnership(w, r, industry.TenantID) {
+		return
+	}
 	respondJSON(w, http.StatusOK, industry)
 }
 

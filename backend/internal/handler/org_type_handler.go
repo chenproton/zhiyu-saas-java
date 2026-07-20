@@ -118,6 +118,9 @@ func (h *OrgTypeHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "org type not found")
 		return
 	}
+	if !verifyTenantOwnership(w, r, orgType.TenantID) {
+		return
+	}
 	respondJSON(w, http.StatusOK, orgType)
 }
 

@@ -30,9 +30,10 @@ type UpdateUserExtensionFieldRequest struct {
 }
 
 func (h *UserExtensionFieldHandler) List(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.URL.Query().Get("tenantId")
-	if tenantID == "" {
-		respondError(w, http.StatusBadRequest, "tenantId is required")
+	claims := middleware.CurrentUser(r)
+	tenantID, ok := tenantFilter(claims)
+	if !ok {
+		respondError(w, http.StatusForbidden, "missing tenant")
 		return
 	}
 
@@ -86,6 +87,9 @@ func (h *UserExtensionFieldHandler) Update(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	existing.ApplicableRoleCodes = applicableCodes
+	if !verifyTenantOwnership(w, r, existing.TenantID) {
+		return
+	}
 
 	var req UpdateUserExtensionFieldRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

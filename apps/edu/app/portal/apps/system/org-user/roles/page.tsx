@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Spinner } from "@/components/ui/spinner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Plus, MoreHorizontal, Pencil, Trash2, Search, Upload, Download, Eye, Settings, ChevronRight, ChevronDown, FolderTree, AlertCircle, LayoutDashboard } from "lucide-react"
+import { Plus, MoreHorizontal, Pencil, Trash2, Search, Upload, Download, Eye, Settings, AlertCircle, LayoutDashboard } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { roleApi, portalUserManagementApi, type User } from "@/lib/api"
 import type { Role } from "@/lib/types/backend"
@@ -22,42 +22,6 @@ import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { buildMenuTree, normalizeMenuPath, permissionModuleConfig } from "@/lib/menu-permissions"
 import type { MenuTreeItem, PermissionModule } from "@/lib/menu-permissions"
-
-const orgTree = [
-  {
-    id: "1",
-    name: "清华大学",
-    children: [
-      { id: "1-1", name: "信息学院", children: [{ id: "1-1-1", name: "计算机系" }, { id: "1-1-2", name: "软件工程系" }] },
-      { id: "1-2", name: "经济管理学院", children: [{ id: "1-2-1", name: "会计系" }] },
-      { id: "1-3", name: "教务处" },
-    ],
-  },
-]
-
-function OrgNode({ node, level = 0 }: { node: any; level?: number }) {
-  const [expanded, setExpanded] = useState(true)
-  const hasChildren = node.children && node.children.length > 0
-
-  return (
-    <div>
-      <div className={cn("flex items-center gap-2 py-1.5", level > 0 && "ml-6")}>
-        {hasChildren ? (
-          <button onClick={() => setExpanded(!expanded)} className="w-4 h-4">
-            {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          </button>
-        ) : (
-          <span className="w-4" />
-        )}
-        <FolderTree className="w-4 h-4 text-primary" />
-        <span className="text-sm">{node.name}</span>
-      </div>
-      {hasChildren && expanded && node.children.map((child: any) => (
-        <OrgNode key={child.id} node={child} level={level + 1} />
-      ))}
-    </div>
-  )
-}
 
 function SystemCard({ node, checked, onCheck }: { node: MenuTreeItem; checked: Set<string>; onCheck: (id: string) => void }) {
   const childPages = useMemo(() => {
@@ -356,11 +320,11 @@ export default function RolesPage() {
           <p className="mt-1 text-sm text-muted-foreground">管理系统角色及权限配置</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" disabled title="即将上线">
             <Upload className="h-4 w-4 mr-1" />
             导入
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" disabled title="即将上线">
             <Download className="h-4 w-4 mr-1" />
             导出
           </Button>
@@ -563,7 +527,6 @@ export default function RolesPage() {
             <TabsList>
               <TabsTrigger value="menus">菜单权限</TabsTrigger>
               <TabsTrigger value="actions">操作权限</TabsTrigger>
-              <TabsTrigger value="data">数据权限设置</TabsTrigger>
             </TabsList>
             <TabsContent value="menus" className="mt-4">
               <div className="text-sm text-muted-foreground mb-3">
@@ -614,14 +577,6 @@ export default function RolesPage() {
                     <div className="text-sm text-muted-foreground text-center py-8">暂无可配置的操作权限</div>
                   )}
                 </div>
-              </ScrollArea>
-            </TabsContent>
-            <TabsContent value="data" className="mt-4">
-              <div className="text-sm text-muted-foreground mb-3">组织数据范围（仅展示）</div>
-              <ScrollArea className="h-[350px] border border-border rounded-lg p-4">
-                {orgTree.map((node) => (
-                  <OrgNode key={node.id} node={node} />
-                ))}
               </ScrollArea>
             </TabsContent>
           </Tabs>
