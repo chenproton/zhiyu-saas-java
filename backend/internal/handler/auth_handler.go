@@ -2,10 +2,13 @@ package handler
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -16,8 +19,9 @@ import (
 )
 
 type AuthHandler struct {
-	DB        *pgxpool.Pool
-	JWTSecret string
+	DB         *pgxpool.Pool
+	JWTSecret  string
+	usedNonces sync.Map // map[string]time.Time
 }
 
 type LoginRequest struct {
@@ -45,9 +49,10 @@ type SelectTenantRequest struct {
 }
 
 type preAuthClaims struct {
-	Username  string          `json:"username"`
-	Platform  string          `json:"platform"`
-	TenantIDs []TenantOption  `json:"tenantIds"`
+	Username  string         `json:"username"`
+	Platform  string         `json:"platform"`
+	TenantIDs []TenantOption `json:"tenantIds"`
+	JTI       string         `json:"jti"`
 	jwt.RegisteredClaims
 }
 
@@ -155,12 +160,16 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 			UserID:     c.user.ID,
 		}
 	}
+	jtiBytes := make([]byte, 16)
+	rand.Read(jtiBytes)
+	jti := hex.EncodeToString(jtiBytes)
 	preAuthClaims := preAuthClaims{
 		Username:  req.Username,
 		Platform:  string(platform),
 		TenantIDs: options,
+		JTI:       jti,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(5 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
@@ -200,6 +209,17 @@ func (h *AuthHandler) SelectTenant(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		respondError(w, http.StatusUnauthorized, "invalid pre-auth token claims")
 		return
+	}
+
+	if claims.JTI != "" {
+		if v, loaded := h.usedNonces.Load(claims.JTI); loaded {
+			if t, ok := v.(time.Time); ok && time.Since(t) < 2*time.Minute {
+				respondError(w, http.StatusUnauthorized, "pre-auth token already used")
+				return
+			}
+			h.usedNonces.Delete(claims.JTI)
+		}
+		h.usedNonces.Store(claims.JTI, time.Now())
 	}
 
 	var targetUserID string

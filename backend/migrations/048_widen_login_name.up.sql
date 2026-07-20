@@ -1,0 +1,1 @@
+ALTER TABLE users ALTER COLUMN login_name TYPE VARCHAR(255);

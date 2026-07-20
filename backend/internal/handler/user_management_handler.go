@@ -429,6 +429,7 @@ func (h *UserManagementHandler) BatchCreate(w http.ResponseWriter, r *http.Reque
 	defer tx.Rollback(r.Context())
 
 	created := make([]domain.User, 0, len(req.Users))
+	seen := make(map[string]bool, len(req.Users))
 	for _, u := range req.Users {
 		if u.Platform == "" && claims != nil {
 			u.Platform = claims.Platform
@@ -442,6 +443,11 @@ func (h *UserManagementHandler) BatchCreate(w http.ResponseWriter, r *http.Reque
 		if u.TenantID == "" || u.Username == "" || u.Password == "" || u.Name == "" {
 			continue
 		}
+		dedupKey := u.TenantID + ":" + string(u.Platform) + ":" + u.Username
+		if seen[dedupKey] {
+			continue
+		}
+		seen[dedupKey] = true
 		user, err := h.createSingleUserInTx(r.Context(), tx, u)
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, "failed to create users")
