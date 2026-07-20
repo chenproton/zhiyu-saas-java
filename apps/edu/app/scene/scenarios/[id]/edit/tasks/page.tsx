@@ -2849,8 +2849,8 @@ function EditCardDialog({
         }
 
         const fileTypesWithUpload = ["document", "spreadsheet", "image", "audio", "video", "archive", "other", "software"]
-        const canPreview = (r: any) => r.url && r.url !== "#"
-        const canDownload = (r: any) => r.url && r.url !== "#"
+        const canPreview = (r: any) => r?.url && r.url !== "#"
+        const canDownload = (r: any) => r?.url && r.url !== "#"
 
         const getPreviewContent = (r: any) => {
           if (!r?.url) return null
