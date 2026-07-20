@@ -15,11 +15,21 @@ import { Textarea } from "@/components/ui/textarea"
 
 interface ApprovalDialogsProps {
   entityLabel?: string
+  mode?: "single" | "batch"
+  selectedCount?: number
   onApprove: (comment: string) => Promise<void>
   onReject: (comment: string) => Promise<void>
 }
 
-export function useApprovalDialogs({ entityLabel = "项目", onApprove, onReject }: ApprovalDialogsProps) {
+export function useApprovalDialogs({
+  entityLabel = "项目",
+  mode = "single",
+  selectedCount = 0,
+  onApprove,
+  onReject,
+}: ApprovalDialogsProps) {
+  const isBatch = mode === "batch"
+  const countLabel = selectedCount > 0 ? `${selectedCount} 条` : ""
   const [approveOpen, setApproveOpen] = useState(false)
   const [rejectOpen, setRejectOpen] = useState(false)
   const [comment, setComment] = useState("")
@@ -52,9 +62,11 @@ export function useApprovalDialogs({ entityLabel = "项目", onApprove, onReject
       <Dialog open={approveOpen} onOpenChange={setApproveOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>通过审批</DialogTitle>
+            <DialogTitle>{isBatch ? `批量通过 ${countLabel}${entityLabel}` : "通过审批"}</DialogTitle>
             <DialogDescription>
-              请填写审批备注（可选），确认通过该{entityLabel}审批。
+              {isBatch
+                ? `请填写审批备注（可选），确认批量通过 ${countLabel}${entityLabel}。`
+                : `请填写审批备注（可选），确认通过该${entityLabel}审批。`}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -77,9 +89,11 @@ export function useApprovalDialogs({ entityLabel = "项目", onApprove, onReject
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{`驳回${entityLabel}`}</DialogTitle>
+            <DialogTitle>{isBatch ? `批量驳回 ${countLabel}${entityLabel}` : `驳回${entityLabel}`}</DialogTitle>
             <DialogDescription>
-              请填写驳回原因，建设者将收到修改通知。
+              {isBatch
+                ? `请填写驳回原因，将批量驳回 ${countLabel}${entityLabel}。`
+                : "请填写驳回原因，建设者将收到修改通知。"}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -128,5 +142,23 @@ export function useApprovalDialogs({ entityLabel = "项目", onApprove, onReject
     )
   }
 
-  return { dialogs, approveAction: actionButtons }
+  const batchActionButtons = () => (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        className="text-red-500 hover:text-red-600 hover:bg-red-50"
+        onClick={openReject}
+      >
+        <X className="mr-1 h-3 w-3" />
+        批量驳回
+      </Button>
+      <Button size="sm" onClick={openApprove}>
+        <Check className="mr-1 h-3 w-3" />
+        批量通过
+      </Button>
+    </>
+  )
+
+  return { dialogs, approveAction: actionButtons, batchActionButtons }
 }

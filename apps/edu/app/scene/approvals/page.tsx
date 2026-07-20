@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
@@ -13,6 +14,7 @@ import { CheckSquare, Eye } from "lucide-react"
 import { scenarioApi, sceneBatchApi } from "@/lib/api"
 import type { Scenario, SceneBatch } from "@/lib/types/scene"
 import { useApprovals } from "@/hooks/use-approvals"
+import { useSubmitterNames } from "@/hooks/use-submitter-names"
 import { useApprovalDialogs } from "@/components/shared/approval-dialogs"
 import { Toaster } from "sonner"
 
@@ -36,9 +38,11 @@ interface ApprovalView {
 }
 
 export default function SceneApprovalsPage() {
-  const { records, loading, approve, reject } = useApprovals({ targetType: "scenario" })
+  const { records, loading, approve, reject, batchApprove, batchReject } = useApprovals({ targetType: "scenario" })
+  const { getName } = useSubmitterNames()
   const [scenarioMap, setScenarioMap] = useState<Map<string, Scenario>>(new Map())
   const [batchMap, setBatchMap] = useState<Map<string, SceneBatch>>(new Map())
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     Promise.all([scenarioApi.list({ limit: 1000 }), sceneBatchApi.list({ limit: 1000 })]).then(
@@ -49,6 +53,8 @@ export default function SceneApprovalsPage() {
     ).catch(() => {})
   }, [])
 
+  const [currentItem, setCurrentItem] = useState<ApprovalView | null>(null)
+
   const { dialogs, approveAction } = useApprovalDialogs({
     entityLabel: "场景",
     onApprove: async (comment) => {
@@ -58,7 +64,6 @@ export default function SceneApprovalsPage() {
       if (currentItem) await reject(currentItem.id, comment)
     },
   })
-  const [currentItem, setCurrentItem] = useState<ApprovalView | null>(null)
 
   const items: ApprovalView[] = useMemo(() =>
     records.map((a) => {
@@ -80,87 +85,161 @@ export default function SceneApprovalsPage() {
     [records, scenarioMap, batchMap]
   )
 
+  const selectedPendingIds = useMemo(
+    () => items.filter((i) => selectedIds.has(i.id) && i.status === "pending").map((i) => i.id),
+    [selectedIds, items]
+  )
+
+  const { dialogs: batchDialogs, batchActionButtons } = useApprovalDialogs({
+    entityLabel: "场景",
+    mode: "batch",
+    selectedCount: selectedPendingIds.length,
+    onApprove: async (comment) => {
+      if (selectedPendingIds.length > 0) {
+        await batchApprove(selectedPendingIds, comment)
+        setSelectedIds(new Set())
+      }
+    },
+    onReject: async (comment) => {
+      if (selectedPendingIds.length > 0) {
+        await batchReject(selectedPendingIds, comment)
+        setSelectedIds(new Set())
+      }
+    },
+  })
+
   const pendingItems = items.filter((a) => a.status === "pending")
   const processedItems = items.filter((a) => a.status !== "pending")
 
-  const renderTable = (data: ApprovalView[]) => (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <CheckSquare className="h-4 w-4" />
-          审批记录列表
-        </CardTitle>
-        <CardDescription>共 {data.length} 条审批记录</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="rounded-lg border border-slate-200 bg-white overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-slate-50">
-                <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">场景名称</TableHead>
-                <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">场景编码</TableHead>
-                <TableHead className="text-xs font-medium text-slate-500 text-center whitespace-nowrap">版本</TableHead>
-                <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">所属岗位</TableHead>
-                <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">所属批次分组</TableHead>
-                <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">创建人</TableHead>
-                <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">提交审批日期</TableHead>
-                <TableHead className="text-xs font-medium text-slate-500 text-center whitespace-nowrap">状态</TableHead>
-                <TableHead className="text-xs font-medium text-slate-500 text-right whitespace-nowrap sticky right-0 bg-slate-50 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow><TableCell colSpan={9} className="text-center py-8 text-gray-500">加载中...</TableCell></TableRow>
-              ) : data.length === 0 ? (
-                <TableRow><TableCell colSpan={9} className="text-center py-12 text-gray-500">暂无数据</TableCell></TableRow>
-              ) : (
-                data.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium whitespace-nowrap">{item.scenarioName}</TableCell>
-                    <TableCell className="text-sm text-gray-600 whitespace-nowrap">{item.scenarioCode}</TableCell>
-                    <TableCell className="text-center text-sm text-gray-600 whitespace-nowrap">{item.version}</TableCell>
-                    <TableCell className="text-sm text-gray-600 whitespace-nowrap">{item.positionName || "-"}</TableCell>
-                    <TableCell className="text-sm text-gray-600 whitespace-nowrap">{item.batchName || "-"}</TableCell>
-                    <TableCell className="text-sm text-gray-600 whitespace-nowrap">{item.submitterId}</TableCell>
-                    <TableCell className="text-sm text-gray-600 whitespace-nowrap">{item.submittedAt}</TableCell>
-                    <TableCell className="text-center whitespace-nowrap">
-                      <Badge variant="secondary" className={STATUS_CONFIG[item.status]?.className}>
-                        {STATUS_CONFIG[item.status]?.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right whitespace-nowrap sticky right-0 bg-white z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`/scene/scenarios/${item.scenarioId}/edit`}>
-                            <Eye className="mr-1 h-3 w-3" />查看
-                          </Link>
-                        </Button>
-                        {approveAction ? (
-                          <span onClick={() => setCurrentItem(item)} key={item.id}>
-                            {approveAction(item.status)}
-                          </span>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
-  )
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleAll = (data: ApprovalView[]) => {
+    const selectableIds = data.filter((i) => i.status === "pending").map((i) => i.id)
+    const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedIds.has(id))
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      selectableIds.forEach((id) => {
+        if (allSelected) next.delete(id)
+        else next.add(id)
+      })
+      return next
+    })
+  }
+
+  const renderTable = (data: ApprovalView[]) => {
+    const selectableIds = data.filter((i) => i.status === "pending").map((i) => i.id)
+    const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedIds.has(id))
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <CheckSquare className="h-4 w-4" />
+            审批记录列表
+          </CardTitle>
+          <CardDescription>共 {data.length} 条审批记录</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="rounded-lg border border-slate-200 bg-white overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50">
+                  <TableHead className="w-12 text-center">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={() => toggleAll(data)}
+                      aria-label="全选"
+                    />
+                  </TableHead>
+                  <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">场景名称</TableHead>
+                  <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">场景编码</TableHead>
+                  <TableHead className="text-xs font-medium text-slate-500 text-center whitespace-nowrap">版本</TableHead>
+                  <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">所属岗位</TableHead>
+                  <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">所属批次分组</TableHead>
+                  <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">创建人</TableHead>
+                  <TableHead className="text-xs font-medium text-slate-500 whitespace-nowrap">提交审批日期</TableHead>
+                  <TableHead className="text-xs font-medium text-slate-500 text-center whitespace-nowrap">状态</TableHead>
+                  <TableHead className="text-xs font-medium text-slate-500 text-right whitespace-nowrap sticky right-0 bg-slate-50 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow><TableCell colSpan={10} className="text-center py-8 text-gray-500">加载中...</TableCell></TableRow>
+                ) : data.length === 0 ? (
+                  <TableRow><TableCell colSpan={10} className="text-center py-12 text-gray-500">暂无数据</TableCell></TableRow>
+                ) : (
+                  data.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="text-center">
+                        <Checkbox
+                          checked={selectedIds.has(item.id)}
+                          disabled={item.status !== "pending"}
+                          onCheckedChange={() => toggleSelection(item.id)}
+                          aria-label={`选择审批 ${item.scenarioName}`}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium whitespace-nowrap">{item.scenarioName}</TableCell>
+                      <TableCell className="text-sm text-gray-600 whitespace-nowrap">{item.scenarioCode}</TableCell>
+                      <TableCell className="text-center text-sm text-gray-600 whitespace-nowrap">{item.version}</TableCell>
+                      <TableCell className="text-sm text-gray-600 whitespace-nowrap">{item.positionName || "-"}</TableCell>
+                      <TableCell className="text-sm text-gray-600 whitespace-nowrap">{item.batchName || "-"}</TableCell>
+                      <TableCell className="text-sm text-gray-600 whitespace-nowrap">{getName(item.submitterId)}</TableCell>
+                      <TableCell className="text-sm text-gray-600 whitespace-nowrap">{item.submittedAt}</TableCell>
+                      <TableCell className="text-center whitespace-nowrap">
+                        <Badge variant="secondary" className={STATUS_CONFIG[item.status]?.className}>
+                          {STATUS_CONFIG[item.status]?.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap sticky right-0 bg-white z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">
+                        <div className="flex items-center justify-end gap-3">
+                          <Button variant="outline" size="sm" asChild>
+                            <Link href={`/scene/scenarios/${item.scenarioId}/edit`}>
+                              <Eye className="mr-1 h-3 w-3" />查看
+                            </Link>
+                          </Button>
+                          {approveAction ? (
+                            <span onClick={() => setCurrentItem(item)}>
+                              {approveAction(item.status)}
+                            </span>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-[1440px] w-full mx-auto space-y-6">
       <Toaster />
       <div>
         <h1 className="text-2xl font-semibold text-gray-800">审批中心</h1>
         <p className="text-sm text-gray-500 mt-1">审核场景提交申请，管理审批流程</p>
       </div>
 
-      <Tabs defaultValue="pending">
+      {selectedPendingIds.length > 0 && (
+        <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <span className="text-sm text-gray-700">已选 {selectedPendingIds.length} 条待审批记录</span>
+          <div className="flex items-center gap-3">
+            {batchActionButtons()}
+          </div>
+        </div>
+      )}
+
+      <Tabs defaultValue="pending" onValueChange={() => setSelectedIds(new Set())}>
         <TabsList>
           <TabsTrigger value="pending" className="gap-2 w-full">
             待审批
@@ -185,6 +264,7 @@ export default function SceneApprovalsPage() {
       </Tabs>
 
       {dialogs}
+      {batchDialogs}
     </div>
   )
 }
