@@ -450,6 +450,7 @@ func (h *PositionHandler) actions() contentActions {
 		db:         h.DB,
 		table:      "career_positions",
 		entityName: "position",
+		targetType: "career_position",
 		inviteCol:  "collaborators",
 		fetch: func(ctx context.Context, id string) (interface{}, error) {
 			return h.fetchPosition(ctx, id)

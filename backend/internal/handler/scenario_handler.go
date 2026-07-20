@@ -307,6 +307,7 @@ func (h *ScenarioHandler) actions() contentActions {
 		db:         h.DB,
 		table:      "scenarios",
 		entityName: "scenario",
+		targetType: "scenario",
 		inviteCol:  "co_builder_ids",
 		fetch: func(ctx context.Context, id string) (interface{}, error) {
 			return h.fetchScenario(ctx, id)

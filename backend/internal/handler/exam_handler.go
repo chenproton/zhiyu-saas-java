@@ -245,6 +245,7 @@ func (h *ExamHandler) actions() contentActions {
 		db:         h.DB,
 		table:      "exams",
 		entityName: "exam",
+		targetType: "exam",
 		inviteCol:  "collaborator_ids",
 		fetch: func(ctx context.Context, id string) (interface{}, error) {
 			return h.fetchExam(ctx, id)

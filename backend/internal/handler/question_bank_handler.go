@@ -300,6 +300,7 @@ func (h *QuestionBankHandler) actions() contentActions {
 		db:         h.DB,
 		table:      "question_banks",
 		entityName: "question bank",
+		targetType: "question_bank",
 		inviteCol:  "collaborator_ids",
 		fetch: func(ctx context.Context, id string) (interface{}, error) {
 			return h.fetchQuestionBank(ctx, id)

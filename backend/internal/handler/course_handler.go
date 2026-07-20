@@ -360,6 +360,7 @@ func (h *CourseHandler) actions() contentActions {
 		db:         h.DB,
 		table:      "courses",
 		entityName: "course",
+		targetType: "course",
 		inviteCol:  "co_creator_ids",
 		fetch: func(ctx context.Context, id string) (interface{}, error) {
 			return h.fetchCourse(ctx, id)

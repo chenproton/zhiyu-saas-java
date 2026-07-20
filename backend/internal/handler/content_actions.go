@@ -30,6 +30,7 @@ type contentActions struct {
 	db         *pgxpool.Pool
 	table      string
 	entityName string
+	targetType string
 	inviteCol  string
 	fetch      func(ctx context.Context, id string) (interface{}, error)
 }
@@ -81,10 +82,34 @@ func (c contentActions) transition(w http.ResponseWriter, r *http.Request, statu
 		return
 	}
 
-	if _, err := c.db.Exec(r.Context(), `UPDATE `+c.table+` SET status = $1, updated_at = NOW() WHERE id = $2`, status, id); err != nil {
+	tx, err := c.db.Begin(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	if _, err := tx.Exec(r.Context(), `UPDATE `+c.table+` SET status = $1, updated_at = NOW() WHERE id = $2`, status, id); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to update status")
 		return
 	}
+
+	// 从审批中撤回时，同步删除审批中心对应的待审批记录
+	if current == domain.StatusPending && status == domain.StatusDraft && c.targetType != "" {
+		if _, err := tx.Exec(r.Context(), `
+			DELETE FROM approval_records
+			WHERE target_type = $1 AND target_id = $2 AND status = $3
+		`, c.targetType, id, string(domain.ApprovalStatusPending)); err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to delete approval record")
+			return
+		}
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
+		return
+	}
+
 	entity, err := c.fetch(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, c.entityName+" not found")
