@@ -360,7 +360,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
   return (
     <div className="flex h-[calc(100vh-280px)] min-h-[500px] rounded-xl border border-gray-200 bg-white overflow-hidden">
       {/* Sidebar - Responsibilities */}
-      <div className="w-1/2 shrink-0 border-r border-gray-100 flex flex-col bg-gray-50/50">
+      <div className="w-[40%] shrink-0 border-r border-gray-100 flex flex-col bg-gray-50/50">
         <div className="shrink-0 px-4 py-3 border-b border-gray-100">
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-sm font-medium text-gray-800">工作职责</h3>
@@ -451,7 +451,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       </div>
 
       {/* Content - Ability list grouped by responsibility */}
-      <div className="w-1/2 flex flex-col overflow-hidden">
+      <div className="w-[60%] flex flex-col overflow-hidden">
         {/* Search bar - sticky */}
         <div className="shrink-0 px-4 py-3 border-b border-gray-100 bg-white">
           <div className="flex items-center gap-3">
@@ -623,23 +623,18 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                             <div
                               key={binding.id}
                               onClick={() => setExpandedBindingId(binding.id)}
-                              className="flex items-center justify-between px-3 py-2.5 ml-2 rounded-lg border border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50/50 transition-colors cursor-pointer"
+                              className="flex items-center justify-between pl-3 pr-3 py-2.5 ml-2 rounded-lg border border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50/50 transition-colors cursor-pointer relative overflow-hidden"
                             >
+                              <div className={`absolute left-0 top-0 bottom-0 w-1 ${getRespColor(binding.responsibilityId)}`} />
                               <div className="flex items-center gap-2.5 min-w-0">
                                 <GripVertical className="h-3.5 w-3.5 text-gray-300 shrink-0" />
                                 <span className="text-sm text-gray-700 truncate">{binding.name}</span>
                                 <span className="text-[11px] text-gray-400 shrink-0">{COMPETENCY_LEVEL_LABELS[binding.level]}</span>
                               </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                {(() => {
-                                  const ab = binding.publicAbilityId ? abilities.find(a => a.id === binding.publicAbilityId) : null
-                                  const dom = ab?.domain || ABILITY_DOMAINS[0]
-                                  return (
-                                    <Badge variant="outline" className="text-[10px] rounded-md px-1.5 py-0 text-gray-400">
-                                      {dom}
-                                    </Badge>
-                                  )
-                                })()}
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium text-white ${getRespColor(binding.responsibilityId)}`}>
+                                  {COMPETENCY_LEVEL_LABELS[binding.level]}
+                                </span>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()

@@ -418,13 +418,13 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
         <CardContent>
           <div className="space-y-3">
             {position.responsibilities.map((item, index) => (
-              <div key={item.id} className="grid grid-cols-[2rem_1fr_2rem] gap-2 items-center">
+              <div key={item.id} className="grid grid-cols-[2rem_1fr_2rem] gap-2 items-start">
                 {!isCreate && (
                   <Badge variant="outline" className="w-full justify-center">
                     {index + 1}
                   </Badge>
                 )}
-                <Input
+                <Textarea
                   value={item.name}
                   onChange={(e) => {
                     const next = position.responsibilities.map((r, i) =>
@@ -432,7 +432,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                     )
                     onUpdate({ responsibilities: next })
                   }}
-                  className="text-sm h-8"
+                  className="text-sm min-h-8 py-1"
                 />
                 <Button
                   variant="ghost"
@@ -469,13 +469,13 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
         <CardContent>
           <div className="space-y-3">
             {position.requirements.map((item, index) => (
-              <div key={index} className="grid grid-cols-[2rem_1fr_2rem] gap-2 items-center">
+              <div key={index} className="grid grid-cols-[2rem_1fr_2rem] gap-2 items-start">
                 {!isCreate && (
                   <Badge variant="outline" className="w-full justify-center">
                     {index + 1}
                   </Badge>
                 )}
-                <Input
+                <Textarea
                   value={item}
                   onChange={(e) => {
                     const next = position.requirements.map((r, i) =>
@@ -483,7 +483,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                     )
                     onUpdate({ requirements: next })
                   }}
-                  className="text-sm h-8"
+                  className="text-sm min-h-8 py-1"
                 />
                 <Button
                   variant="ghost"
