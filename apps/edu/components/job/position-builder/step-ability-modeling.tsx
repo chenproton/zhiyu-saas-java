@@ -83,6 +83,13 @@ function getRespColor(respId: string) {
   return RESP_COLORS[Math.abs(hash) % RESP_COLORS.length]
 }
 
+function arrayEquals(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false
+  const sortedA = [...a].sort()
+  const sortedB = [...b].sort()
+  return sortedA.every((v, i) => v === sortedB[i])
+}
+
 export function StepAbilityModeling({ position, onUpdate, aiMode = false }: StepAbilityModelingProps) {
   const [abilities, setAbilities] = useState<Ability[]>([])
   const [selectedRespId, setSelectedRespId] = useState<string | null>(null)
@@ -287,9 +294,18 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
 
   const handleSaveEditAbility = async (abilityId: string) => {
     const trimmed = editAbilityName.trim()
+    if (!trimmed) {
+      return
+    }
     const current = abilities.find(a => a.id === abilityId)
-    if (!trimmed || trimmed === current?.name) {
+    const same = trimmed === (current?.name || '')
+      && (editAbilityDomain || '') === (current?.domain || '')
+      && arrayEquals(editAbilityAttributes, current?.attributes || [])
+    if (same) {
       setEditingAbilityId(null)
+      setEditAbilityName('')
+      setEditAbilityDomain('')
+      setEditAbilityAttributes([])
       return
     }
     try {
