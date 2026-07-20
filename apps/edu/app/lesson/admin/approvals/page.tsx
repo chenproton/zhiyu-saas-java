@@ -218,9 +218,9 @@ export default function CourseApprovalsPage() {
                               <Eye className="mr-1 h-3 w-3" />查看
                             </Link>
                           </Button>
-                          <span onClick={() => setCurrentItem(item)}>
+                          <div className="inline-flex" onClick={() => setCurrentItem(item)}>
                             {approveAction(item.status)}
-                          </span>
+                          </div>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -235,7 +235,7 @@ export default function CourseApprovalsPage() {
   }
 
   return (
-    <div className="max-w-[1440px] w-full mx-auto space-y-6">
+    <div className="space-y-6">
       <Toaster />
       <div>
         <h1 className="text-2xl font-semibold text-gray-800">审批中心</h1>

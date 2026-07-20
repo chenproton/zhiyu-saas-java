@@ -124,7 +124,7 @@ export function useApprovalDialogs({
   const actionButtons = (status: string) => {
     if (status !== "pending") return null
     return (
-      <>
+      <div className="flex items-center gap-3">
         <Button
           variant="outline"
           size="sm"
@@ -138,7 +138,7 @@ export function useApprovalDialogs({
           <Check className="mr-1 h-3 w-3" />
           通过
         </Button>
-      </>
+      </div>
     )
   }
 

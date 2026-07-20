@@ -205,9 +205,9 @@ export default function SceneApprovalsPage() {
                             </Link>
                           </Button>
                           {approveAction ? (
-                            <span onClick={() => setCurrentItem(item)}>
+                            <div className="inline-flex" onClick={() => setCurrentItem(item)}>
                               {approveAction(item.status)}
-                            </span>
+                            </div>
                           ) : null}
                         </div>
                       </TableCell>
@@ -223,7 +223,7 @@ export default function SceneApprovalsPage() {
   }
 
   return (
-    <div className="max-w-[1440px] w-full mx-auto space-y-6">
+    <div className="space-y-6">
       <Toaster />
       <div>
         <h1 className="text-2xl font-semibold text-gray-800">审批中心</h1>
