@@ -479,12 +479,12 @@ export default function TenantPage() {
 
       {/* 新增/编辑租户对话框 */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent size="lg" className="max-h-[80vh] overflow-y-auto">
+        <DialogContent size="lg" className="max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{selectedTenant ? "编辑租户" : "新增租户"}</DialogTitle>
             <DialogDescription>{selectedTenant ? "修改租户信息，租户标识创建后不可修改" : "创建新的租户"}</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-4 overflow-y-auto flex-1 min-h-0">
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>租户唯一标识</Label>
