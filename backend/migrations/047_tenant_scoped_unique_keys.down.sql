@@ -1,0 +1,14 @@
+DROP INDEX IF EXISTS uq_org_types_tenant_name;
+DROP INDEX IF EXISTS uq_majors_tenant_code;
+DROP INDEX IF EXISTS uq_industries_tenant_code;
+DROP INDEX IF EXISTS uq_staff_titles_tenant_code;
+DROP INDEX IF EXISTS uq_courses_tenant_code;
+DROP INDEX IF EXISTS uq_scenarios_tenant_code;
+DROP INDEX IF EXISTS uq_question_banks_tenant_name;
+DROP INDEX IF EXISTS uq_exams_tenant_name;
+DROP INDEX IF EXISTS uq_knowledge_points_tenant_name;
+DROP INDEX IF EXISTS uq_ability_points_tenant_name;
+DROP INDEX IF EXISTS uq_career_positions_tenant_name;
+DROP INDEX IF EXISTS uq_workflows_tenant_name;
+DROP INDEX IF EXISTS uq_graduation_topics_tenant_name;
+DROP INDEX IF EXISTS uq_learn_roads_tenant_name;
