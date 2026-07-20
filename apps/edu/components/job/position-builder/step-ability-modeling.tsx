@@ -529,16 +529,17 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                                   </button>
                                 </div>
 
-                                <div className="relative mb-4 mx-1">
-                                  <div className="absolute top-2.5 left-[6px] right-[6px] h-2 bg-gray-100 rounded-full" />
+                                <div className="relative mb-3 mx-1" style={{ height: 38 }}>
+                                  <div className="absolute top-2 left-0 right-0 h-2 bg-gray-100 rounded-full" style={{ margin: '0 5px' }} />
                                   <div
-                                    className="absolute top-2.5 left-[6px] h-2 rounded-full transition-all duration-300"
+                                    className="absolute top-2 left-0 h-2 rounded-full transition-all duration-300"
                                     style={{
-                                      width: `calc(${Math.max(0, (levelIdx / (COMPETENCY_LEVELS.length - 1)) * 100)}% - 12px)`,
+                                      width: `calc(${Math.max(0, (levelIdx / (COMPETENCY_LEVELS.length - 1)) * 100)}% - 10px)`,
                                       background: 'linear-gradient(90deg, #6366f1, #a78bfa)',
+                                      marginLeft: 5,
                                     }}
                                   />
-                                  <div className="relative flex justify-between" style={{ paddingTop: 4 }}>
+                                  <div className="absolute top-[4px] left-0 right-0 flex justify-between" style={{ padding: '0 5px' }}>
                                     {COMPETENCY_LEVELS.map((level, idx) => {
                                       const isReached = idx <= levelIdx
                                       return (
@@ -558,7 +559,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                                       )
                                     })}
                                   </div>
-                                  <div className="relative flex justify-between mt-2">
+                                  <div className="absolute bottom-0 left-0 right-0 flex justify-between" style={{ padding: '0 5px' }}>
                                     {COMPETENCY_LEVELS.map((level, idx) => (
                                       <span
                                         key={level.value}
