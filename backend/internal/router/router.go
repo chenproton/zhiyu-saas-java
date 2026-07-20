@@ -171,7 +171,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 
 	auth := authmw.JWT(jwtSecret)
 	platformAdmin := authmw.RequireRole("platform_admin")
-	schoolAdmin := authmw.RequireRole("school_admin")
+
 	systemAdmin := authmw.RequireSystemPermission()
 	portalWorkspace := authmw.RequireRole("teacher", "student", "school_admin")
 	// 业务内容路由不再按角色 code 限制：页面入口由角色菜单权限（roles.permissions.menus）
@@ -356,7 +356,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 			// Shared workflow & approval routes (kept behind school_admin to preserve
 			// existing access while system settings use the permission-based middleware).
 			r.Group(func(r chi.Router) {
-				r.Use(schoolAdmin)
+				r.Use(authmw.RequireRole("school_admin", "teacher"))
 
 				r.Get("/workflows", workflowHandler.List)
 				r.Post("/workflows", workflowHandler.Create)
