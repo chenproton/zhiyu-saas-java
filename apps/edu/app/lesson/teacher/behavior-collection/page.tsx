@@ -36,6 +36,18 @@ const emptyAggregate: LessonBehaviorAggregate = {
   studentDetails: [],
 }
 
+function normalizeAggregate(res: LessonBehaviorAggregate): LessonBehaviorAggregate {
+  return {
+    signIn: res.signIn ?? emptyAggregate.signIn,
+    signInDaily: res.signInDaily ?? [],
+    quizResults: res.quizResults ?? [],
+    rushAnswerRanking: res.rushAnswerRanking ?? [],
+    classInteraction: res.classInteraction ?? [],
+    attendanceRateData: res.attendanceRateData ?? [],
+    studentDetails: res.studentDetails ?? [],
+  }
+}
+
 export default function BehaviorCollectionPage() {
   const [selection, setSelection] = useState<CourseClassSelection | null>(null)
   const [data, setData] = useState<LessonBehaviorAggregate>(emptyAggregate)
@@ -46,7 +58,7 @@ export default function BehaviorCollectionPage() {
     setLoading(true)
     lessonBehaviorApi
       .aggregate({ courseId: selection.courseId })
-      .then((res) => setData(res))
+      .then((res) => setData(normalizeAggregate(res)))
       .catch(() => setData(emptyAggregate))
       .finally(() => setLoading(false))
   }, [selection?.courseId])
