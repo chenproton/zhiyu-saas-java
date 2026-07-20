@@ -27,10 +27,10 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { positionApi, industryApi, sceneBatchApi, userManagementApi, scenarioApi, fileApi } from "@/lib/api"
+import { positionApi, industryApi, sceneBatchApi, userManagementApi, scenarioApi, fileApi, majorApi } from "@/lib/api"
 import type { User } from "@/lib/api"
 import type { CareerPosition } from "@/lib/types/job"
-import type { Industry } from "@/lib/types/backend"
+import type { Industry, Major } from "@/lib/types/backend"
 import type { SceneBatch } from "@/lib/types/scene"
 import { toast, Toaster } from "sonner"
 import { EditorShell } from "@/components/shared/editor-shell"
@@ -143,6 +143,7 @@ export default function ScenarioEditPage() {
 
   const [allPositions, setAllPositions] = useState<CareerPosition[]>([])
   const [industries, setIndustries] = useState<Industry[]>([])
+  const [majors, setMajors] = useState<Major[]>([])
   const [batches, setBatches] = useState<SceneBatch[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [dataLoading, setDataLoading] = useState(true)
@@ -151,6 +152,7 @@ export default function ScenarioEditPage() {
   const [scenarioName, setScenarioName] = useState("")
   const [scenarioCode, setScenarioCode] = useState("")
   const [positionId, setPositionId] = useState("")
+  const [professionId, setProfessionId] = useState("")
   const [batchId, setBatchId] = useState("")
   const [industryIds, setIndustryIds] = useState<string[]>([])
   const [difficulty, setDifficulty] = useState<number>(3)
@@ -171,21 +173,24 @@ export default function ScenarioEditPage() {
     const loadData = async () => {
       setDataLoading(true)
       try {
-        const [posRes, indRes, batchRes, userRes, scenario] = await Promise.all([
+        const [posRes, indRes, batchRes, userRes, majRes, scenario] = await Promise.all([
           positionApi.list({ limit: 1000 }),
           industryApi.list({ limit: 1000 }),
           sceneBatchApi.list({ limit: 1000 }),
           userManagementApi.list({ limit: 1000 }),
+          majorApi.list({ limit: 1000 }),
           scenarioApi.get(scenarioId),
         ])
         setAllPositions(posRes.items)
         setIndustries(indRes.items)
         setBatches(batchRes.items)
         setUsers(userRes.items)
+        setMajors(majRes.items.filter(m => m.enabled))
 
         setScenarioName(scenario.name || "")
         setScenarioCode(scenario.code || "")
         setPositionId(scenario.careerPositionId || "")
+        setProfessionId(scenario.professionId || "")
         setBatchId(scenario.batchId || "")
         setIndustryIds(scenario.industryId ? [scenario.industryId] : [])
         setDifficulty(scenario.difficulty || 3)
@@ -231,12 +236,15 @@ export default function ScenarioEditPage() {
     if (!scenarioName.trim()) return
     setIsSaving(true)
     try {
+      const selectedMajor = majors.find(m => m.id === professionId)
       const payload: Record<string, any> = {
         name: scenarioName.trim(),
         code: scenarioCode,
         careerPositionId: positionId || undefined,
         batchId: batchId || undefined,
         industryId: industryIds[0] || undefined,
+        professionId: professionId || undefined,
+        professionName: selectedMajor?.name || undefined,
         difficulty,
         background: background || undefined,
         version,
@@ -258,12 +266,15 @@ export default function ScenarioEditPage() {
     if (!scenarioName.trim()) return
     setIsSaving(true)
     try {
+      const selectedMajor = majors.find(m => m.id === professionId)
       const payload: Record<string, any> = {
         name: scenarioName.trim(),
         code: scenarioCode,
         careerPositionId: positionId || undefined,
         batchId: batchId || undefined,
         industryId: industryIds[0] || undefined,
+        professionId: professionId || undefined,
+        professionName: selectedMajor?.name || undefined,
         difficulty,
         background: background || undefined,
         version,
@@ -381,13 +392,13 @@ export default function ScenarioEditPage() {
                     </div>
                     <div className="grid gap-2">
                       <Label>适用专业</Label>
-                      <Select value={positionId ? allPositions.find(p => p.id === positionId)?.majorIds?.[0] || "" : ""} disabled>
+                      <Select value={professionId} onValueChange={setProfessionId}>
                         <SelectTrigger>
-                          <SelectValue placeholder="根据岗位自动填充" />
+                          <SelectValue placeholder="选择适用专业" />
                         </SelectTrigger>
                         <SelectContent>
-                          {(allPositions.find(p => p.id === positionId)?.majorIds || []).map((mid: string) => (
-                            <SelectItem key={mid} value={mid}>{mid}</SelectItem>
+                          {majors.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>{m.name}{m.code ? ` (${m.code})` : ""}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -776,6 +787,10 @@ export default function ScenarioEditPage() {
               <div className="p-3 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">面向行业</p>
                 <p className="font-medium text-sm">{industryIds.length > 0 ? industryIds.map(id => industries.find(i => i.id === id)?.name).filter(Boolean).join("、") : "未选择"}</p>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500 mb-1">适用专业</p>
+                <p className="font-medium text-sm">{majors.find(m => m.id === professionId)?.name || "未选择"}</p>
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">难度等级</p>

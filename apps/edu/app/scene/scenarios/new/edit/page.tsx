@@ -27,10 +27,10 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { positionApi, industryApi, sceneBatchApi, userManagementApi, orgApi, scenarioApi, fileApi } from "@/lib/api"
+import { positionApi, industryApi, sceneBatchApi, userManagementApi, orgApi, scenarioApi, fileApi, majorApi } from "@/lib/api"
 import type { User } from "@/lib/api"
 import type { CareerPosition } from "@/lib/types/job"
-import type { Industry } from "@/lib/types/backend"
+import type { Industry, Major } from "@/lib/types/backend"
 import type { SceneBatch } from "@/lib/types/scene"
 import { toast, Toaster } from "sonner"
 import { EditorShell } from "@/components/shared/editor-shell"
@@ -153,6 +153,7 @@ function NewScenarioEditForm() {
 
   const [allPositions, setAllPositions] = useState<PositionWithProfession[]>([])
   const [industries, setIndustries] = useState<Industry[]>([])
+  const [majors, setMajors] = useState<Major[]>([])
   const [batches, setBatches] = useState<SceneBatch[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [deptTree, setDeptTree] = useState<DeptNode[]>([])
@@ -162,6 +163,7 @@ function NewScenarioEditForm() {
   const [scenarioName, setScenarioName] = useState("")
   const [scenarioCode, setScenarioCode] = useState(`SC-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, "0")}`)
   const [positionId, setPositionId] = useState(positionIdFromQuery || "")
+  const [professionId, setProfessionId] = useState("")
   const [batchId, setBatchId] = useState(batchIdFromQuery || "")
   const [industryIds, setIndustryIds] = useState<string[]>([])
   const [difficulty, setDifficulty] = useState<number>(3)
@@ -182,11 +184,12 @@ function NewScenarioEditForm() {
     const loadData = async () => {
       setDataLoading(true)
       try {
-        const [posRes, indRes, batchRes, userRes, orgTreeRes] = await Promise.all([
+        const [posRes, indRes, batchRes, userRes, majRes, orgTreeRes] = await Promise.all([
           positionApi.list({ limit: 1000 }),
           industryApi.list({ limit: 1000 }),
           sceneBatchApi.list({ limit: 1000 }),
           userManagementApi.list({ limit: 1000 }),
+          majorApi.list({ limit: 1000 }),
           orgApi.tree({}),
         ])
         const posList = posRes.items
@@ -198,6 +201,7 @@ function NewScenarioEditForm() {
         setIndustries(indList)
         setBatches(batchList)
         setUsers(userList)
+        setMajors(majRes.items.filter((m: Major) => m.enabled))
 
         const orgNodes = orgTreeRes.items || []
         const flatOrgs = flattenOrgTree(orgNodes)
@@ -264,12 +268,15 @@ function NewScenarioEditForm() {
     if (!scenarioName.trim()) return
     setIsSaving(true)
     try {
+      const selectedMajor = majors.find(m => m.id === professionId)
       const payload = {
         name: scenarioName.trim(),
         code: scenarioCode,
         careerPositionId: positionId || undefined,
         batchId: batchId || undefined,
         industryId: industryIds[0] || undefined,
+        professionId: professionId || undefined,
+        professionName: selectedMajor?.name || undefined,
         difficulty,
         background: background || undefined,
         version,
@@ -291,12 +298,15 @@ function NewScenarioEditForm() {
     if (!scenarioName.trim()) return
     setIsSaving(true)
     try {
+      const selectedMajor = majors.find(m => m.id === professionId)
       const payload = {
         name: scenarioName.trim(),
         code: scenarioCode,
         careerPositionId: positionId || undefined,
         batchId: batchId || undefined,
         industryId: industryIds[0] || undefined,
+        professionId: professionId || undefined,
+        professionName: selectedMajor?.name || undefined,
         difficulty,
         background: background || undefined,
         version,
@@ -473,13 +483,13 @@ function NewScenarioEditForm() {
                     </div>
                     <div className="grid gap-2">
                       <Label>适用专业</Label>
-                      <Select value={positionId ? allPositions.find(p => p.id === positionId)?.majorIds?.[0] || "" : ""} disabled>
+                      <Select value={professionId} onValueChange={setProfessionId}>
                         <SelectTrigger>
-                          <SelectValue placeholder="根据岗位自动填充" />
+                          <SelectValue placeholder="选择适用专业" />
                         </SelectTrigger>
                         <SelectContent>
-                          {(allPositions.find(p => p.id === positionId)?.majorIds || []).map((mid: string) => (
-                            <SelectItem key={mid} value={mid}>{mid}</SelectItem>
+                          {majors.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>{m.name}{m.code ? ` (${m.code})` : ""}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -806,6 +816,10 @@ function NewScenarioEditForm() {
               <div className="p-3 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">面向行业</p>
                 <p className="font-medium text-sm">{industryIds.length > 0 ? industryIds.map(id => industries.find(i => i.id === id)?.name).filter(Boolean).join("、") : "未选择"}</p>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500 mb-1">适用专业</p>
+                <p className="font-medium text-sm">{majors.find(m => m.id === professionId)?.name || "未选择"}</p>
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">难度等级</p>
