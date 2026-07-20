@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -28,7 +27,6 @@ import {
   Trash2,
   BookOpen,
   Brain,
-  CheckCircle2,
   AlertCircle,
   Check,
   X,
@@ -88,7 +86,7 @@ function getRespColor(respId: string) {
 export function StepAbilityModeling({ position, onUpdate, aiMode = false }: StepAbilityModelingProps) {
   const [abilities, setAbilities] = useState<Ability[]>([])
   const [selectedRespId, setSelectedRespId] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [isInitialized, setIsInitialized] = useState(false)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [newAbilityName, setNewAbilityName] = useState('')
   const [newAbilityCategory, setNewAbilityCategory] = useState('专业技能')
@@ -97,6 +95,8 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
   const [editRespName, setEditRespName] = useState('')
   const [expandedBindingId, setExpandedBindingId] = useState<string | null>(null)
   const [showLibraryDialog, setShowLibraryDialog] = useState(false)
+  const [showSearchDialog, setShowSearchDialog] = useState(false)
+  const [searchDialogQuery, setSearchDialogQuery] = useState('')
   const [editingAbilityId, setEditingAbilityId] = useState<string | null>(null)
   const [editAbilityName, setEditAbilityName] = useState('')
   const [duplicateName, setDuplicateName] = useState<string | null>(null)
@@ -110,15 +110,22 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       .catch(() => {})
   }, [])
 
+  useEffect(() => {
+    if (!isInitialized && position.responsibilities.length > 0) {
+      setSelectedRespId(position.responsibilities[0].id)
+      setIsInitialized(true)
+    }
+  }, [position.responsibilities, isInitialized])
+
   const selectedResp = position.responsibilities.find(r => r.id === selectedRespId)
 
-  const filteredPublicAbilities = useMemo(() => {
-    if (!searchQuery.trim()) return []
+  const searchDialogResults = useMemo(() => {
+    if (!searchDialogQuery.trim()) return abilities
     return abilities.filter(a =>
-      a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.category.toLowerCase().includes(searchQuery.toLowerCase())
+      a.name.toLowerCase().includes(searchDialogQuery.toLowerCase()) ||
+      a.category.toLowerCase().includes(searchDialogQuery.toLowerCase())
     )
-  }, [abilities, searchQuery])
+  }, [abilities, searchDialogQuery])
 
   const scrollToResp = (respId: string) => {
     setSelectedRespId(respId)
@@ -153,7 +160,6 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       attributes: [],
     }
     onUpdate({ abilityBindings: [...position.abilityBindings, newBinding] })
-    setSearchQuery('')
   }
 
   const handleCreateCustom = () => {
@@ -241,12 +247,13 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
   }
 
   const handleRemoveResponsibility = (respId: string) => {
+    const remaining = position.responsibilities.filter(r => r.id !== respId)
     onUpdate({
-      responsibilities: position.responsibilities.filter(r => r.id !== respId),
+      responsibilities: remaining,
       abilityBindings: position.abilityBindings.filter(b => b.responsibilityId !== respId),
     })
     if (selectedRespId === respId) {
-      setSelectedRespId(null)
+      setSelectedRespId(remaining.length > 0 ? remaining[0].id : null)
     }
   }
 
@@ -259,11 +266,10 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
     if (!editingRespId) return
     const trimmed = editRespName.trim()
     if (!trimmed) {
-      onUpdate({
-        responsibilities: position.responsibilities.filter(r => r.id !== editingRespId),
-      })
+      const remaining = position.responsibilities.filter(r => r.id !== editingRespId)
+      onUpdate({ responsibilities: remaining })
       if (selectedRespId === editingRespId) {
-        setSelectedRespId(null)
+        setSelectedRespId(remaining.length > 0 ? remaining[0].id : null)
       }
       setEditingRespId(null)
       setEditRespName('')
@@ -369,7 +375,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                       onClick={() => scrollToResp(resp.id)}
                       className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-2 ${
                         isSelected
-                          ? 'bg-primary/10 text-primary font-medium'
+                          ? 'bg-primary/15 text-primary font-medium shadow-sm'
                           : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
                       }`}
                     >
@@ -413,15 +419,22 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
             <h3 className="text-sm font-medium text-gray-800 shrink-0">能力点列表</h3>
             <span className="text-xs text-gray-400">{totalBindings} 个能力点</span>
             <div className="flex-1" />
-            <div className="relative w-56">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-              <Input
-                placeholder="搜索公共能力点库..."
-                className="pl-8 h-8 text-xs"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+            <Button
+              variant="default"
+              size="sm"
+              className="h-8 text-xs shrink-0"
+              onClick={() => {
+                if (!selectedRespId) {
+                  toast.error('请先在左侧选择一个工作职责')
+                  return
+                }
+                setSearchDialogQuery('')
+                setShowSearchDialog(true)
+              }}
+            >
+              <Search className="mr-1 h-3.5 w-3.5" />
+              从库中添加
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -436,10 +449,6 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
               size="sm"
               className="h-8 text-xs shrink-0"
               onClick={() => {
-                if (!selectedRespId) {
-                  toast.error('请先在左侧选择一个工作职责')
-                  return
-                }
                 setDuplicateName(null)
                 setShowCreateDialog(true)
               }}
@@ -448,58 +457,6 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
               新建能力点
             </Button>
           </div>
-
-          {/* Search results dropdown */}
-          {searchQuery.trim() && selectedRespId && (
-            <div className="mt-2 rounded-lg border border-gray-200 bg-white p-3 space-y-2 max-h-56 overflow-y-auto shadow-sm">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-gray-500 font-medium">公共能力点库（{abilities.length}）</p>
-                <p className="text-xs text-gray-400">搜索「{searchQuery}」</p>
-              </div>
-              {filteredPublicAbilities.length === 0 ? (
-                <div className="py-3 text-center">
-                  <p className="text-sm text-gray-400">未找到匹配的能力点</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="mt-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50/50 text-xs"
-                    onClick={() => {
-                      setNewAbilityName(searchQuery)
-                      setDuplicateName(null)
-                      setShowCreateDialog(true)
-                    }}
-                  >
-                    <Plus className="mr-1 h-3.5 w-3.5" />
-                    新建「{searchQuery}」
-                  </Button>
-                </div>
-              ) : (
-                filteredPublicAbilities.map((ability) => (
-                  <div
-                    key={ability.id}
-                    className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => handleAddFromPool(ability)}
-                  >
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="h-3.5 w-3.5 text-gray-500" />
-                      <span className="text-sm text-gray-700">{ability.name}</span>
-                      <Badge variant="outline" className="text-[10px] rounded-md px-1.5 py-0">{ability.category}</Badge>
-                    </div>
-                    <Button size="sm" variant="ghost" className="h-6 px-2 text-gray-400 hover:text-primary">
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-          {searchQuery.trim() && !selectedRespId && filteredPublicAbilities.length > 0 && (
-            <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5">
-              <p className="text-xs text-amber-700">
-                请先在左侧点击一个工作职责，再添加能力点
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Scrollable content */}
@@ -521,11 +478,12 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
             <div className="py-3 space-y-1">
               {position.responsibilities.map((resp) => {
                 const respBindings = position.abilityBindings.filter(b => b.responsibilityId === resp.id)
+                const isSelectedGroup = resp.id === selectedRespId
                 return (
                   <div
                     key={resp.id}
                     ref={(el) => { sectionRefs.current[resp.id] = el }}
-                    className="mx-3"
+                    className={`mx-3 rounded-xl transition-colors ${isSelectedGroup ? 'bg-primary/[0.04] ring-1 ring-primary/15' : ''}`}
                   >
                     {/* Group header */}
                     <div className="flex items-center gap-2 px-3 py-2 sticky top-0 bg-white/95 backdrop-blur-sm z-10 border-b border-gray-50">
@@ -783,6 +741,92 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
         </DialogContent>
       </Dialog>
 
+      {/* Search & Add from Library Dialog */}
+      <Dialog open={showSearchDialog} onOpenChange={(open) => {
+        setShowSearchDialog(open)
+        if (!open) setSearchDialogQuery('')
+      }}>
+        <DialogContent className="max-w-xl max-h-[70vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-gray-800">从能力点库添加</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              {selectedResp
+                ? `为「${selectedResp.name}」选择能力点`
+                : '请先点击左侧选择一个工作职责'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="shrink-0 pb-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="搜索能力点名称或分类..."
+                className="pl-9 h-9 text-sm"
+                value={searchDialogQuery}
+                onChange={(e) => setSearchDialogQuery(e.target.value)}
+                autoFocus
+              />
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-1 -mx-1">
+            {searchDialogResults.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-sm text-gray-400">未找到匹配的能力点</p>
+                {searchDialogQuery.trim() && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50/50 text-xs"
+                    onClick={() => {
+                      setNewAbilityName(searchDialogQuery.trim())
+                      setDuplicateName(null)
+                      setShowSearchDialog(false)
+                      setShowCreateDialog(true)
+                    }}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                    新建「{searchDialogQuery.trim()}」
+                  </Button>
+                )}
+              </div>
+            ) : (
+              searchDialogResults.map((ability) => {
+                const alreadyAdded = position.abilityBindings.some(
+                  b => b.responsibilityId === selectedRespId && b.publicAbilityId === ability.id
+                )
+                return (
+                  <div
+                    key={ability.id}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <BookOpen className="h-4 w-4 text-gray-500 shrink-0" />
+                    <div className="flex-1 min-w-0 flex items-center gap-2">
+                      <span className="text-sm text-gray-700 truncate">{ability.name}</span>
+                      <Badge variant="outline" className="text-[10px] rounded-md px-1.5 py-0 shrink-0">
+                        {ability.category}
+                      </Badge>
+                    </div>
+                    {alreadyAdded ? (
+                      <span className="text-xs text-gray-400 shrink-0">已添加</span>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-3 text-xs text-primary hover:text-primary hover:bg-primary/10"
+                        disabled={!selectedRespId}
+                        onClick={() => handleAddFromPool(ability)}
+                      >
+                        <Plus className="mr-1 h-3 w-3" />
+                        添加
+                      </Button>
+                    )}
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Ability Library Dialog */}
       <Dialog open={showLibraryDialog} onOpenChange={setShowLibraryDialog}>
         <DialogContent className="max-w-xl max-h-[70vh] flex flex-col">
@@ -796,7 +840,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
             {abilities.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-gray-400">
                 <Library className="h-10 w-10 mb-3 opacity-30" />
-                <p className="text-sm">暂无能点</p>
+                <p className="text-sm">暂无能力点</p>
               </div>
             ) : (
               abilities.map((ability) => {
