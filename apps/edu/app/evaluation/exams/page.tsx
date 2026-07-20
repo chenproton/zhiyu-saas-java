@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import {
   ArrowDownFromLine,
   ArrowUpFromLine,
+  Check,
   CheckCircle,
   ChevronDown,
   ChevronRight,
@@ -28,8 +29,9 @@ import {
   X,
   XCircle,
 } from "lucide-react"
-import { examApi, evaluationBatchApi, importExportApi, approvalApi } from "@/lib/api"
+import { examApi, evaluationBatchApi, importExportApi, approvalApi, majorApi, workflowApi } from "@/lib/api"
 import type { Exam, EvaluationBatch } from "@/lib/types"
+import type { Major, Workflow } from "@/lib/types/backend"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -120,11 +122,13 @@ function formatDate(iso: string) {
 
 export default function ExamsPage() {
   const router = useRouter()
-  const { hasPermission, user } = useAuth()
+  const { hasPermission, user, tenantId } = useAuth()
   const currentUserId = user?.id ?? ""
 
   const [exams, setExams] = useState<BackendExam[]>([])
   const [batches, setBatches] = useState<EvaluationBatch[]>([])
+  const [majors, setMajors] = useState<Major[]>([])
+  const [workflows, setWorkflows] = useState<Workflow[]>([])
   const [loading, setLoading] = useState(true)
 
   const [activeTab, setActiveTab] = useState<TabType>("my")
@@ -148,6 +152,11 @@ export default function ExamsPage() {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isBatchMoveDialogOpen, setIsBatchMoveDialogOpen] = useState(false)
   const [moveTargetBatchId, setMoveTargetBatchId] = useState("")
+  const [moveSelectedMajorId, setMoveSelectedMajorId] = useState("all")
+  const [isSubmitBatchDialogOpen, setIsSubmitBatchDialogOpen] = useState(false)
+  const [submitBatchTarget, setSubmitBatchTarget] = useState<BackendExam | null>(null)
+  const [submitSelectedBatchId, setSubmitSelectedBatchId] = useState("")
+  const [submitSelectedMajorId, setSubmitSelectedMajorId] = useState("all")
 
   const [isCloneRenameDialogOpen, setIsCloneRenameDialogOpen] = useState(false)
   const [cloneRenameValue, setCloneRenameValue] = useState("")
@@ -169,13 +178,26 @@ export default function ExamsPage() {
       ])
       setExams(examsRes.items)
       setBatches(batchesRes.items)
+
+      if (tenantId) {
+        try {
+          const [majorsRes, workflowsRes] = await Promise.all([
+            majorApi.list({ tenantId, limit: 1000 }),
+            workflowApi.list({ limit: 1000 }),
+          ])
+          setMajors((majorsRes.items as Major[]).filter((m) => m.enabled))
+          setWorkflows(workflowsRes.items as Workflow[])
+        } catch (_) {
+          // 专业/审批流加载失败不影响列表展示
+        }
+      }
     } catch (err) {
       console.error("加载数据失败", err)
       alert("加载数据失败，请稍后重试")
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [tenantId])
 
   useEffect(() => {
     loadData()
@@ -244,6 +266,22 @@ export default function ExamsPage() {
     () => filteredExams.filter((e) => !e.batchId && e.status === "draft"),
     [filteredExams]
   )
+
+  const filteredBatchesByMajor = useMemo(() => {
+    if (moveSelectedMajorId === "all") return batches
+    return batches.filter((b) => {
+      const wf = workflows.find((w) => w.id === b.workflowId)
+      return wf && (wf.majorIds || []).includes(moveSelectedMajorId)
+    })
+  }, [batches, workflows, moveSelectedMajorId])
+
+  const submitFilteredBatches = useMemo(() => {
+    if (submitSelectedMajorId === "all") return batches
+    return batches.filter((b) => {
+      const wf = workflows.find((w) => w.id === b.workflowId)
+      return wf && (wf.majorIds || []).includes(submitSelectedMajorId)
+    })
+  }, [batches, workflows, submitSelectedMajorId])
 
   const handleSelectId = (id: string, checked: boolean) => {
     setSelectedIds((prev) => (checked ? [...prev, id] : prev.filter((sid) => sid !== id)))
@@ -316,13 +354,35 @@ export default function ExamsPage() {
   const handleSubmitApproval = async (id: string) => {
     const exam = exams.find((e) => e.id === id)
     if (!exam?.batchId) {
-      alert("该试卷未关联批次，无法提交审批")
+      setSubmitBatchTarget(exam || null)
+      setSubmitSelectedMajorId("all")
+      setSubmitSelectedBatchId("")
+      setIsSubmitBatchDialogOpen(true)
       return
     }
     const batch = batches.find((b) => b.id === exam.batchId)
     try {
       await examApi.submit(id)
       await approvalApi.create({ targetType: "exam", targetId: id, workflowId: batch?.workflowId })
+      await loadData()
+    } catch (err) {
+      console.error("提交审批失败", err)
+      alert("提交审批失败")
+    }
+  }
+
+  const handleConfirmSubmitBatch = async () => {
+    if (!submitBatchTarget || !submitSelectedBatchId) return
+    const batch = batches.find((b) => b.id === submitSelectedBatchId)
+    if (!batch) return
+    try {
+      await examApi.update(submitBatchTarget.id, { batchId: submitSelectedBatchId })
+      await examApi.submit(submitBatchTarget.id)
+      await approvalApi.create({ targetType: "exam", targetId: submitBatchTarget.id, workflowId: batch.workflowId })
+      setIsSubmitBatchDialogOpen(false)
+      setSubmitBatchTarget(null)
+      setSubmitSelectedBatchId("")
+      setSubmitSelectedMajorId("all")
       await loadData()
     } catch (err) {
       console.error("提交审批失败", err)
@@ -921,7 +981,7 @@ export default function ExamsPage() {
               <Copy className="mr-1 h-3 w-3" />
               克隆
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected} onClick={() => setIsBatchMoveDialogOpen(true)}>
+            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected} onClick={() => { setMoveSelectedMajorId("all"); setMoveTargetBatchId(""); setIsBatchMoveDialogOpen(true) }}>
               <FolderKanban className="mr-1 h-3 w-3" />
               调整批次分组
             </Button>
@@ -1128,28 +1188,120 @@ export default function ExamsPage() {
 
       {/* Batch Move Dialog */}
       <Dialog open={isBatchMoveDialogOpen} onOpenChange={setIsBatchMoveDialogOpen}>
-        <DialogContent size="sm">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>调整批次分组</DialogTitle>
             <DialogDescription>将选中的 {selectedIds.length} 个试卷移动到指定批次</DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Select value={moveTargetBatchId} onValueChange={setMoveTargetBatchId}>
-              <SelectTrigger>
-                <SelectValue placeholder="选择目标批次" />
-              </SelectTrigger>
-              <SelectContent>
-                {batches.map((batch) => (
-                  <SelectItem key={batch.id} value={batch.id}>
-                    {batch.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="py-4 space-y-4">
+            {majors.length > 0 && (
+              <Tabs value={moveSelectedMajorId} onValueChange={setMoveSelectedMajorId}>
+                <TabsList className="h-auto flex-wrap justify-start">
+                  <TabsTrigger value="all">全部专业</TabsTrigger>
+                  {majors.map((m) => (
+                    <TabsTrigger key={m.id} value={m.id}>
+                      {m.name}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            )}
+            <div className="rounded-lg border border-slate-200 bg-white overflow-hidden max-h-[260px] overflow-y-auto">
+              {filteredBatchesByMajor.length === 0 ? (
+                <div className="px-4 py-6 text-sm text-gray-500 text-center">
+                  暂无批次分组
+                </div>
+              ) : (
+                filteredBatchesByMajor.map((batch) => {
+                  const selected = moveTargetBatchId === batch.id
+                  return (
+                    <div
+                      key={batch.id}
+                      onClick={() => setMoveTargetBatchId(batch.id)}
+                      className={cn(
+                        "px-4 py-3 cursor-pointer border-b border-slate-100 last:border-b-0 hover:bg-slate-50 flex items-center justify-between gap-3",
+                        selected && "bg-primary/5"
+                      )}
+                    >
+                      <div className="min-w-0">
+                        <div className={cn("font-medium text-sm", selected && "text-primary")}>
+                          {batch.name}
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          ID: {batch.id.slice(0, 8)}
+                        </div>
+                      </div>
+                      {selected && <Check className="h-4 w-4 text-primary shrink-0" />}
+                    </div>
+                  )
+                })
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsBatchMoveDialogOpen(false)}>取消</Button>
             <Button onClick={handleBatchMove} disabled={!moveTargetBatchId}>确认移动</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Submit With Batch Dialog */}
+      <Dialog open={isSubmitBatchDialogOpen} onOpenChange={setIsSubmitBatchDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>选择批次并提交审批</DialogTitle>
+            <DialogDescription>
+              试卷「{submitBatchTarget?.name}」未关联批次，请选择批次分组后继续提交审批
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            {majors.length > 0 && (
+              <Tabs value={submitSelectedMajorId} onValueChange={setSubmitSelectedMajorId}>
+                <TabsList className="h-auto flex-wrap justify-start">
+                  <TabsTrigger value="all">全部专业</TabsTrigger>
+                  {majors.map((m) => (
+                    <TabsTrigger key={m.id} value={m.id}>
+                      {m.name}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            )}
+            <div className="rounded-lg border border-slate-200 bg-white overflow-hidden max-h-[260px] overflow-y-auto">
+              {submitFilteredBatches.length === 0 ? (
+                <div className="px-4 py-6 text-sm text-gray-500 text-center">
+                  暂无批次分组
+                </div>
+              ) : (
+                submitFilteredBatches.map((batch) => {
+                  const selected = submitSelectedBatchId === batch.id
+                  return (
+                    <div
+                      key={batch.id}
+                      onClick={() => setSubmitSelectedBatchId(batch.id)}
+                      className={cn(
+                        "px-4 py-3 cursor-pointer border-b border-slate-100 last:border-b-0 hover:bg-slate-50 flex items-center justify-between gap-3",
+                        selected && "bg-primary/5"
+                      )}
+                    >
+                      <div className="min-w-0">
+                        <div className={cn("font-medium text-sm", selected && "text-primary")}>
+                          {batch.name}
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          ID: {batch.id.slice(0, 8)}
+                        </div>
+                      </div>
+                      {selected && <Check className="h-4 w-4 text-primary shrink-0" />}
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsSubmitBatchDialogOpen(false)}>取消</Button>
+            <Button onClick={handleConfirmSubmitBatch} disabled={!submitSelectedBatchId}>确认并提交审批</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
