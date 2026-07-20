@@ -22,7 +22,6 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { CheckCircle2, Sparkles, AlertCircle } from 'lucide-react'
 import type { Position, PositionAbilityBinding, CompetencyLevel } from '@/lib/types/job-source'
-import { COMPETENCY_LEVEL_LABELS } from '@/lib/types/job-source'
 
 const COMPETENCY_LEVELS: { value: CompetencyLevel; label: string }[] = [
   { value: 'understand', label: '了解' },
@@ -30,6 +29,14 @@ const COMPETENCY_LEVELS: { value: CompetencyLevel; label: string }[] = [
   { value: 'master', label: '掌握' },
   { value: 'proficient', label: '熟练' },
   { value: 'expert', label: '精通' },
+]
+
+const ABILITY_DOMAINS = [
+  '业务洞察',
+  '专业工具',
+  '通用素质',
+  '团队协作',
+  '创新思维',
 ]
 
 interface Step3ResultTableProps {
@@ -54,6 +61,15 @@ export function Step3ResultTable({ position, onUpdate, onPrev, showAiFill = true
   const handleAiFillAll = () => {
     setAiNotice('AI 生成服务暂未接入，请手动填写')
   }
+
+  const groups = new Map<string, typeof bindings>()
+  for (const b of bindings) {
+    const key = b.domain || '未分类'
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(b)
+  }
+
+  const domainCount = new Set(bindings.map((b) => b.domain).filter(Boolean)).size + (bindings.some(b => !b.domain) ? 1 : 0)
 
   return (
     <div className="space-y-5">
@@ -102,9 +118,7 @@ export function Step3ResultTable({ position, onUpdate, onPrev, showAiFill = true
         <Card>
           <CardContent className="py-4 text-center">
             <p className="text-xs text-gray-500">能力域</p>
-            <p className="text-2xl font-semibold text-gray-900 mt-1">
-              {new Set(bindings.map((b) => b.domain).filter(Boolean)).size}
-            </p>
+            <p className="text-2xl font-semibold text-gray-900 mt-1">{domainCount}</p>
           </CardContent>
         </Card>
       </div>
@@ -126,8 +140,9 @@ export function Step3ResultTable({ position, onUpdate, onPrev, showAiFill = true
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50">
-                    <TableHead className="w-[120px]">能力域名称</TableHead>
-                    <TableHead className="w-[160px]">能力点名称</TableHead>
+                    <TableHead className="w-[120px]">所属能力领域</TableHead>
+                    <TableHead className="w-[140px]">能力点名称</TableHead>
+                    <TableHead className="w-[120px]">能力领域</TableHead>
                     <TableHead className="w-[80px]">能力属性</TableHead>
                     <TableHead className="w-[120px]">掌握程度</TableHead>
                     <TableHead>胜任标准描述</TableHead>
@@ -135,28 +150,37 @@ export function Step3ResultTable({ position, onUpdate, onPrev, showAiFill = true
                 </TableHeader>
                 <TableBody>
                   {(() => {
-                    const groups = new Map<string, typeof bindings>()
-                    for (const b of bindings) {
-                      const key = b.domain || '未分类'
-                      if (!groups.has(key)) groups.set(key, [])
-                      groups.get(key)!.push(b)
-                    }
                     const rows: React.ReactNode[] = []
-                    for (const [, group] of groups) {
+                    for (const [domain, group] of groups) {
                       group.forEach((binding, idx) => {
                         rows.push(
                           <TableRow key={binding.id}>
                             {idx === 0 && (
                               <TableCell rowSpan={group.length} className="align-middle">
                                 <Badge variant="outline" className="text-[10px]">
-                                  {binding.domain || '未分类'}
+                                  {domain}
                                 </Badge>
                               </TableCell>
                             )}
                             <TableCell className="font-medium text-sm">{binding.name}</TableCell>
                             <TableCell>
+                              <Select
+                                value={binding.domain || ''}
+                                onValueChange={(v) => handleUpdateBinding(binding.id, { domain: v || undefined })}
+                              >
+                                <SelectTrigger className="h-7 text-[11px] w-[110px]">
+                                  <SelectValue placeholder="选择领域" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {ABILITY_DOMAINS.map((d) => (
+                                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
                               <span className="text-xs text-gray-700">
-                                {(binding.attributes || [])[0] || '-'}
+                                {(binding.attributes || []).join('、') || '-'}
                               </span>
                             </TableCell>
                             <TableCell>

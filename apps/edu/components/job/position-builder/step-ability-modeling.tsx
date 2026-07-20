@@ -577,22 +577,6 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                                   </div>
                                 </div>
 
-                                <div className="mb-3">
-                                  <Select
-                                    value={binding.domain || ABILITY_DOMAINS[0]}
-                                    onValueChange={(v) => handleUpdateBinding(binding.id, { domain: v })}
-                                  >
-                                    <SelectTrigger className="h-7 text-[11px] w-full border-gray-100 bg-gray-50/50 rounded-lg">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {ABILITY_DOMAINS.map((d) => (
-                                        <SelectItem key={d} value={d}>{d}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-
                                 <div>
                                   <Textarea
                                     value={binding.rubricDescription}
