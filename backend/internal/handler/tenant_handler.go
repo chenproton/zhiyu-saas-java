@@ -286,8 +286,8 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 		}},
 		{"enterprise_mentor", "企业导师", domain.JSONMap{
 			"menus": domain.JSONMap{
-				"/job/landing": true,
-				"/scene/landing": true,
+				"/job/positions": true, "/job/landing": true,
+				"/scene/": true, "/scene/landing": true,
 			},
 			"scene": modPerms(adminActions),
 			"job":   domain.JSONMap{"positions": adminActions},
