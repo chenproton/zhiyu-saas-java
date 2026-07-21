@@ -95,8 +95,6 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 		r.Post("/api/v1/files/upload", fileHandler.Upload)
 	})
 
-	r.Use(middleware.Timeout(30 * time.Second))
-
 	authHandler := &handler.AuthHandler{DB: db, JWTSecret: jwtSecret}
 	institutionHandler := &handler.InstitutionHandler{DB: db}
 	resourceHandler := &handler.ResourceHandler{DB: db}
@@ -193,6 +191,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 	r.Get("/uploads/{filename}", fileHandler.Serve)
 
 	r.Route("/api/v1", func(r chi.Router) {
+		r.Use(middleware.Timeout(30 * time.Second))
 		r.Post("/auth/login", authHandler.Login)
 		r.Post("/auth/saas/login", authHandler.SaasLogin)
 		r.Post("/auth/portal/login", authHandler.PortalLogin)
@@ -203,6 +202,10 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 		r.Post("/resources/{id}/view", resourceHandler.IncrementView)
 		r.Get("/platform-links", platformLinkHandler.List)
 		r.Get("/app-modules", appModuleHandler.List)
+
+		// Public job views: allow anonymous users to browse published positions only.
+		r.Get("/job/public/positions", positionHandler.List)
+		r.Get("/job/public/positions/{id}", positionHandler.Get)
 
 		// Superadmin console (internal hidden page, unauthenticated by product decision)
 		r.Get("/admin/tenants", tenantHandler.AdminList)

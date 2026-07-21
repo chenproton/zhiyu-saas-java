@@ -127,16 +127,12 @@ export default function ScenarioEditPage() {
 
   const selectedPosition = allPositions.find(p => p.id === positionId)
 
-  const filteredUsers = useMemo(() => {
-    if (!coBuilderSearch) return users
-    return users.filter(u =>
-      u.name.toLowerCase().includes(coBuilderSearch.toLowerCase())
-    )
-  }, [coBuilderSearch, users])
-
-  const selectedCoBuilders = users.filter(u => coBuilderIds.includes(u.id))
-
   const batch = batches.find(b => b.id === batchId)
+  const coBuilderNameMap = useMemo(() => {
+    const map = new Map<string, string>()
+    users.forEach((u) => map.set(u.id, u.name || u.username))
+    return map
+  }, [users])
 
   const buildPayload = () => {
     return {
@@ -187,14 +183,6 @@ export default function ScenarioEditPage() {
     } finally {
       setIsSaving(false)
     }
-  }
-
-  const toggleCoBuilder = (userId: string) => {
-    setCoBuilderIds(prev =>
-      prev.includes(userId)
-        ? prev.filter(id => id !== userId)
-        : [...prev, userId]
-    )
   }
 
   const handleCoverUpload = async (file: File) => {
@@ -498,38 +486,14 @@ export default function ScenarioEditPage() {
                     <PrdAnnotation data={getAnnotation("editor-sidebar-cobuilders")} className="block">
                       <Label className="mb-2 block">共建人/共建部门</Label>
                     </PrdAnnotation>
-
-                    <div
-                      className="border rounded-lg p-3 cursor-pointer hover:bg-gray-50 transition-colors"
-                      onClick={() => setIsCoBuilderDialogOpen(true)}
-                    >
-                      {selectedCoBuilders.length === 0 ? (
-                        <div className="flex items-center gap-2 text-gray-400">
-                          <UserPlus className="h-4 w-4" />
-                          <span className="text-sm">点击选择共建人</span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-wrap gap-2">
-                          {selectedCoBuilders.map((user) => (
-                            <div
-                              key={user.id}
-                              className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-primary/10 text-primary"
-                            >
-                              <span>{user.name}</span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  toggleCoBuilder(user.id)
-                                }}
-                                className="hover:bg-primary/20 rounded-full p-0.5"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <UserSelector
+                      value={coBuilderIds}
+                      onChange={(ids) => setCoBuilderIds(ids.filter((id) => id !== creatorId))}
+                      multiple
+                      placeholder="点击选择共建人"
+                      tenantId={tenantId}
+                      excludeUserIds={creatorId ? [creatorId] : undefined}
+                    />
                   </div>
 
                   <div className="pt-3 border-t border-gray-100">
@@ -540,103 +504,6 @@ export default function ScenarioEditPage() {
                   </div>
                 </CardContent>
               </Card>
-
-              <Dialog open={isCoBuilderDialogOpen} onOpenChange={setIsCoBuilderDialogOpen}>
-                <DialogContent className="sm:max-w-[640px] max-h-[80vh] overflow-hidden flex flex-col">
-                  <DialogHeader>
-                    <PrdAnnotation data={getAnnotation("dialog-cobuilder-select")}>
-                      <div>
-                        <DialogTitle>选择共建人/共建部门</DialogTitle>
-                        <DialogDescription>
-                          从组织架构中选择共建人，选中的用户将参与该场景的建设
-                        </DialogDescription>
-                      </div>
-                    </PrdAnnotation>
-                  </DialogHeader>
-                  <div className="flex-1 overflow-hidden py-4">
-                    <div className="border rounded-lg overflow-hidden h-full">
-                      <div className="p-3 border-b bg-gray-50">
-                        <div className="relative">
-                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input
-                            placeholder="搜索用户..."
-                            value={coBuilderSearch}
-                            onChange={(e) => setCoBuilderSearch(e.target.value)}
-                            className="h-9 pl-8 text-sm"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 divide-x" style={{ minHeight: 400, maxHeight: 500 }}>
-                        <div className="flex flex-col">
-                          <div className="px-3 py-2.5 bg-gray-50 border-b text-sm font-medium text-gray-500">
-                            用户列表
-                          </div>
-                          <div className="flex-1 overflow-y-auto p-3 space-y-0.5">
-                            {filteredUsers.map((user) => (
-                              <div
-                                key={user.id}
-                                onClick={() => toggleCoBuilder(user.id)}
-                                className={cn(
-                                  "flex items-center gap-2 px-2 py-1.5 rounded text-sm cursor-pointer hover:bg-gray-50",
-                                  coBuilderIds.includes(user.id) && "bg-primary/5 text-primary"
-                                )}
-                              >
-                                <div className={cn(
-                                  "w-4 h-4 rounded border flex items-center justify-center flex-shrink-0",
-                                  coBuilderIds.includes(user.id) ? "bg-primary border-primary" : "border-gray-300"
-                                )}>
-                                  {coBuilderIds.includes(user.id) && (
-                                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                  )}
-                                </div>
-                                <span className="truncate">{user.name}</span>
-                                <span className="text-xs text-gray-400 ml-auto">{user.username}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col">
-                          <div className="px-3 py-2.5 bg-gray-50 border-b text-sm font-medium text-gray-500 flex items-center justify-between">
-                            <span>已选共建人</span>
-                            <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">{selectedCoBuilders.length}</span>
-                          </div>
-                          <div className="flex-1 overflow-y-auto p-3 space-y-1">
-                            {selectedCoBuilders.length === 0 && (
-                              <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                                <UserPlus className="h-8 w-8 mb-2" />
-                                <span className="text-sm">从左侧面板选择共建人</span>
-                              </div>
-                            )}
-                            {selectedCoBuilders.map((user) => (
-                              <div
-                                key={user.id}
-                                className="flex items-center gap-2 px-2 py-2 rounded text-sm bg-primary/5 text-primary"
-                              >
-                                <span className="flex-1 truncate">{user.name}</span>
-                                <button
-                                  onClick={() => toggleCoBuilder(user.id)}
-                                  className="ml-1 hover:bg-primary/10 rounded-full p-0.5"
-                                >
-                                  <X className="h-4 w-4" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsCoBuilderDialogOpen(false)}>
-                      完成
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
             </div>
           </div>
         )}
@@ -696,12 +563,12 @@ export default function ScenarioEditPage() {
             <div className="p-3 bg-gray-50 rounded-lg">
               <p className="text-xs text-gray-500 mb-1">创建人</p>
               <p className="font-medium text-sm">{creatorName}</p>
-              {selectedCoBuilders.length > 0 && (
+              {coBuilderIds.length > 0 && (
                 <div className="mt-2">
                   <p className="text-xs text-gray-500 mb-1">共建人</p>
                   <div className="flex flex-wrap gap-1">
-                    {selectedCoBuilders.map(t => (
-                      <Badge key={t.id} variant="secondary" className="text-xs">{t.name}</Badge>
+                    {coBuilderIds.map((id) => (
+                      <Badge key={id} variant="secondary" className="text-xs">{coBuilderNameMap.get(id) || id}</Badge>
                     ))}
                   </div>
                 </div>

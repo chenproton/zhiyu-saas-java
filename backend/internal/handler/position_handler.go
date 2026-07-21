@@ -59,10 +59,8 @@ type UpdatePositionRequest struct {
 }
 
 func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
+	claims := middleware.CurrentUser(r)
+	publicOnly := claims == nil
 
 	batchID := r.URL.Query().Get("batchId")
 	status := r.URL.Query().Get("status")
@@ -83,31 +81,39 @@ func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 	where := []string{"1=1"}
 	args := []interface{}{}
 	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "missing tenant")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
 
-	if batchID != "" {
-		where = append(where, "batch_id = $"+itoa(argIdx))
-		args = append(args, batchID)
-		argIdx++
-	}
-	if status != "" {
+	if publicOnly {
+		// Anonymous public view only sees published positions across all tenants.
 		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
+		args = append(args, string(domain.StatusPublished))
 		argIdx++
 	} else {
-		where = append(where, "status != $"+itoa(argIdx))
-		args = append(args, "archived")
-		argIdx++
+		tenantClaims := middleware.CurrentUser(r)
+		effectiveTenantID, ok := tenantFilter(tenantClaims)
+		if !ok {
+			respondError(w, http.StatusForbidden, "missing tenant")
+			return
+		}
+		if effectiveTenantID != "" {
+			where = append(where, "tenant_id = $"+itoa(argIdx))
+			args = append(args, effectiveTenantID)
+			argIdx++
+		}
+
+		if batchID != "" {
+			where = append(where, "batch_id = $"+itoa(argIdx))
+			args = append(args, batchID)
+			argIdx++
+		}
+		if status != "" {
+			where = append(where, "status = $"+itoa(argIdx))
+			args = append(args, status)
+			argIdx++
+		} else {
+			where = append(where, "status != $"+itoa(argIdx))
+			args = append(args, "archived")
+			argIdx++
+		}
 	}
 	if positionType != "" {
 		where = append(where, "position_type = $"+itoa(argIdx))

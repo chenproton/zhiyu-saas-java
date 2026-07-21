@@ -17,7 +17,7 @@ import { Loader2, ImagePlus } from 'lucide-react'
 import { StepBasicInfo } from '@/components/job/position-builder/step-basic-info'
 import { StepAbilityModeling } from '@/components/job/position-builder/step-ability-modeling'
 import { Step3ResultTable } from '@/components/job/position-builder/ai-assisted-2/step3-result-table'
-import { CoBuilderSelector } from '@/components/job/position-builder/co-builder-selector'
+import { UserSelector } from '@/components/shared/user-selector'
 import type { Position, Batch } from '@/lib/types/job-source'
 import {
   Dialog,
@@ -53,7 +53,7 @@ function PositionEditPageContent({ params }: PageProps) {
   const { id } = use(params)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user } = useAuth()
+  const { user, tenantId } = useAuth()
   const currentUser = user ? { id: user.id, name: user.name || user.username || user.id } : { id: '', name: '' }
   const [positions, setPositions] = useState<Position[]>([])
   const [batches, setBatches] = useState<Batch[]>([])
@@ -394,9 +394,13 @@ function PositionEditPageContent({ params }: PageProps) {
 
                   <div>
                     <Label className="text-gray-500 text-xs">共建人</Label>
-                    <CoBuilderSelector
-                      selectedIds={position.collaborators}
-                      onChange={(ids) => updatePositionData({ collaborators: ids })}
+                    <UserSelector
+                      value={position.collaborators.filter((id) => id !== position.createdBy)}
+                      onChange={(ids) => updatePositionData({ collaborators: ids.filter((id) => id !== position.createdBy) })}
+                      multiple
+                      placeholder="点击选择共建人"
+                      tenantId={tenantId}
+                      excludeUserIds={position.createdBy ? [position.createdBy] : undefined}
                     />
                   </div>
 
