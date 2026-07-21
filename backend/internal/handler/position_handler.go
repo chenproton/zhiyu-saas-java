@@ -608,6 +608,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 	}
 
 	abilityPointMap := make(map[string]string)
+	abilityNameMap := make(map[string]string)
 	bindingIDMap := make(map[string]string)
 	for _, binding := range req.AbilityBindings {
 		if binding.Source == "public" && binding.PublicAbilityID != nil && *binding.PublicAbilityID != "" {
@@ -629,17 +630,36 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 			if binding.AbilityPointID != nil && *binding.AbilityPointID != "" {
 				abilityPointID = *binding.AbilityPointID
 			} else {
-				abilityPointID = uuid.NewString()
-				category := mapCategory(binding.Category)
-				attrArray := coalesceStringSlice(binding.Attributes)
-				_, err = tx.Exec(r.Context(), `
-					INSERT INTO ability_points (id, tenant_id, name, description, category, attributes, is_public)
-					VALUES ($1, $2, $3, $4, $5, $6, $7)
-				`, abilityPointID, claims.TenantID, binding.Name, binding.Description, category, attrArray, false)
-				if err != nil {
-					log.Printf("[SaveFull] insert ability_points failed: %v", err)
-					respondError(w, http.StatusInternalServerError, "failed to create ability point")
-					return
+				// Cache by name within this request so multiple bindings referencing the
+				// same ability point do not attempt duplicate inserts or queries.
+				if cachedID, ok := abilityNameMap[binding.Name]; ok {
+					abilityPointID = cachedID
+				} else {
+					category := mapCategory(binding.Category)
+					attrArray := coalesceStringSlice(binding.Attributes)
+
+					// Reuse existing ability point with the same name in this tenant to avoid
+					// violating the uq_ability_points_tenant_name unique constraint.
+					var existingAbilityID string
+					err = tx.QueryRow(r.Context(), `
+						SELECT id FROM ability_points WHERE tenant_id = $1 AND name = $2
+					`, claims.TenantID, binding.Name).Scan(&existingAbilityID)
+					if err == nil {
+						abilityPointID = existingAbilityID
+						log.Printf("[SaveFull] reused existing ability_point id=%s name=%s", abilityPointID, binding.Name)
+					} else {
+						abilityPointID = uuid.NewString()
+						_, err = tx.Exec(r.Context(), `
+							INSERT INTO ability_points (id, tenant_id, name, description, category, attributes, is_public)
+							VALUES ($1, $2, $3, $4, $5, $6, $7)
+						`, abilityPointID, claims.TenantID, binding.Name, binding.Description, category, attrArray, false)
+						if err != nil {
+							log.Printf("[SaveFull] insert ability_points failed: %v", err)
+							respondError(w, http.StatusInternalServerError, "failed to create ability point")
+							return
+						}
+					}
+					abilityNameMap[binding.Name] = abilityPointID
 				}
 			}
 			abilityPointMap[binding.ID] = abilityPointID

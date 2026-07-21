@@ -299,6 +299,67 @@ func TestPosition_SaveFull(t *testing.T) {
 			t.Errorf("certificate not saved correctly")
 		}
 	})
+
+	// Regression: saving another binding with the same custom ability name should
+	// reuse the existing ability point instead of violating the tenant+name unique
+	// constraint and returning 500.
+	t.Run("SaveFull_DuplicateAbilityName", func(t *testing.T) {
+		body := map[string]interface{}{
+			"batchId":       "",
+			"name":          "Updated Full Position",
+			"shortName":     "Updated",
+			"industry":      "",
+			"majors":        []string{},
+			"positionType":  "enterprise",
+			"salaryRange":   [2]int{5000, 10000},
+			"description":   "updated description",
+			"requirements":  []string{"req1", "req2"},
+			"careerPath":    "updated path",
+			"version":       "v1.0",
+			"collaborators": []string{},
+			"responsibilities": []map[string]interface{}{
+				{"id": "resp-1", "name": "Responsibility 1", "description": "desc 1"},
+				{"id": "resp-2", "name": "Responsibility 2"},
+			},
+			"certificates": []map[string]interface{}{
+				{"id": "cert-1", "name": "Certificate 1", "url": "https://example.com"},
+			},
+			"abilityBindings": []map[string]interface{}{
+				// Existing binding from the previous SaveFull call.
+				{"id": "bind-1", "responsibilityId": "resp-1", "source": "custom", "name": "Custom Ability", "category": "专业技能", "level": "master", "rubricDescription": "rubric", "attributes": []string{"技能"}, "domain": "业务洞察"},
+				// New binding referencing the same ability name under a different responsibility.
+				{"id": "bind-2", "responsibilityId": "resp-2", "source": "custom", "name": "Custom Ability", "category": "专业技能", "level": "understand", "rubricDescription": "", "attributes": []string{"技能"}, "domain": ""},
+			},
+			"abilityDomains": []map[string]interface{}{
+				{"id": "domain-1", "name": "Domain 1", "bindingIds": []string{"bind-1", "bind-2"}},
+			},
+		}
+		w := env.Do("PUT", fmt.Sprintf("/api/v1/job/positions/%s/save-full", createdID), body)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+	})
+
+	t.Run("VerifyAbilityBindings", func(t *testing.T) {
+		w := env.Do("GET", fmt.Sprintf("/api/v1/job/position-abilities?careerPositionId=%s", createdID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		}
+		items, total, err := testhelper.UnmarshalList[domain.PositionAbilityBinding](w)
+		if err != nil {
+			t.Fatalf("unmarshal list: %v", err)
+		}
+		if total != 2 {
+			t.Errorf("total = %d, want 2", total)
+		}
+		if len(items) != 2 {
+			t.Errorf("items length = %d, want 2", len(items))
+			return
+		}
+		if items[0].AbilityPointID != items[1].AbilityPointID {
+			t.Errorf("ability points not reused: %q != %q", items[0].AbilityPointID, items[1].AbilityPointID)
+		}
+	})
 }
 
 func TestPosition_ValidationErrors(t *testing.T) {
