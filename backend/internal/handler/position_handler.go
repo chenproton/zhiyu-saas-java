@@ -144,7 +144,7 @@ func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 				JOIN users u ON u.id = c.id
 			), '{}') AS collaborator_names,
 			(SELECT COUNT(*) FROM position_favorites pf WHERE pf.career_position_id = cp.id) AS favorite_count,
-			(SELECT COUNT(*) FROM view_logs WHERE target_type = 'career_position' AND target_id = cp.id) AS view_count,
+			cp.view_count,
 			cp.created_at, cp.updated_at
 		FROM career_positions cp
 		WHERE ` + strings.Join(where, " AND ") + `
@@ -173,6 +173,7 @@ func (h *PositionHandler) Get(w http.ResponseWriter, r *http.Request) {
 	publicOnly := claims == nil
 
 	id := chi.URLParam(r, "id")
+	_ = h.incrementViewCount(r.Context(), id)
 	pos, err := h.fetchPosition(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "position not found")
@@ -245,7 +246,7 @@ func (h *PositionHandler) PublicList(w http.ResponseWriter, r *http.Request) {
 				JOIN users u ON u.id = c.id
 			), '{}') AS collaborator_names,
 			(SELECT COUNT(*) FROM position_favorites pf WHERE pf.career_position_id = cp.id) AS favorite_count,
-			(SELECT COUNT(*) FROM view_logs WHERE target_type = 'career_position' AND target_id = cp.id) AS view_count,
+			cp.view_count,
 			cp.created_at, cp.updated_at
 		FROM career_positions cp
 		WHERE ` + strings.Join(where, " AND ") + `
@@ -290,6 +291,8 @@ func (h *PositionHandler) PublicGet(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "position not found")
 		return
 	}
+
+	_ = h.incrementViewCount(r.Context(), id)
 
 	pos, err := h.fetchPosition(r.Context(), id)
 	if err != nil || pos.Status != domain.StatusPublished {
@@ -1035,7 +1038,7 @@ func (h *PositionHandler) fetchPosition(ctx context.Context, id string) (domain.
 				JOIN users u ON u.id = c.id
 			), '{}') AS collaborator_names,
 			(SELECT COUNT(*) FROM position_favorites pf WHERE pf.career_position_id = cp.id) AS favorite_count,
-			(SELECT COUNT(*) FROM view_logs WHERE target_type = 'career_position' AND target_id = cp.id) AS view_count,
+			cp.view_count,
 			cp.created_at, cp.updated_at
 		FROM career_positions cp WHERE cp.id = $1
 	`, id).Scan(
@@ -1094,6 +1097,13 @@ func (h *PositionHandler) scanPositionRows(rows pgx.Rows) ([]domain.CareerPositi
 		items = append(items, p)
 	}
 	return items, nil
+}
+
+func (h *PositionHandler) incrementViewCount(ctx context.Context, id string) error {
+	_, err := h.DB.Exec(ctx, `
+		UPDATE career_positions SET view_count = view_count + 1 WHERE id = $1
+	`, id)
+	return err
 }
 
 func coalesceStringSlice(s []string) []string {
