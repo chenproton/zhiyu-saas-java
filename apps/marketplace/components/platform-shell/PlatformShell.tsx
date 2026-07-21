@@ -104,13 +104,13 @@ export function PlatformTopNav({ config }: { config: PlatformNavigationConfig })
   }, [])
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 flex h-14 items-center justify-between border-b border-gray-100 bg-white px-6 shadow-sm">
-      <div className="flex items-center gap-8">
+    <header className="fixed top-0 left-0 right-0 z-50 flex h-14 items-center justify-between border-b border-gray-100 bg-white px-3 md:px-6 shadow-sm">
+      <div className="flex items-center gap-4 md:gap-8">
         <Link href={config.brandHref || "/"} className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <BrandIcon className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span className="text-base font-semibold text-gray-800">{config.brandTitle}</span>
+          <span className="hidden sm:inline whitespace-nowrap text-base font-semibold text-gray-800">{config.brandTitle}</span>
         </Link>
 
         <nav className="flex items-center gap-1">
@@ -118,7 +118,7 @@ export function PlatformTopNav({ config }: { config: PlatformNavigationConfig })
             const Icon = resolvePlatformIcon(item.icon)
             const active = isTopItemActive(pathname, item)
             const itemClassName = cn(
-              "relative flex items-center gap-1.5 rounded-md px-4 py-2 text-sm transition-colors",
+              "relative flex items-center gap-1.5 rounded-md px-3 md:px-4 py-2 text-sm transition-colors whitespace-nowrap",
               item.disabled
                 ? "cursor-default text-gray-400"
                 : active
@@ -127,25 +127,26 @@ export function PlatformTopNav({ config }: { config: PlatformNavigationConfig })
             )
             return item.disabled ? (
               <span key={item.id} className={itemClassName}>
-                <Icon className="h-4 w-4" />
-                {item.label}
+                <Icon className="h-5 w-5 md:h-4 md:w-4" />
+                <span className="hidden md:inline">{item.label}</span>
               </span>
             ) : (
               <Link
                 key={item.id}
                 href={item.href}
+                title={item.label}
                 className={itemClassName}
               >
-                <Icon className="h-4 w-4" />
-                {item.label}
-                {active ? <span className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full bg-primary" /> : null}
+                <Icon className="h-5 w-5 md:h-4 md:w-4" />
+                <span className="hidden md:inline">{item.label}</span>
+                {active ? <span className="absolute bottom-0 left-2 right-2 md:left-4 md:right-4 h-0.5 rounded-full bg-primary" /> : null}
               </Link>
             )
           })}
         </nav>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4">
         {config.showCollegeFilter && config.collegeOptions && config.collegeOptions.length > 0 && !pathname.startsWith("/landingpage") && (
           <select
             value={selectedCollege}
@@ -169,7 +170,7 @@ export function PlatformTopNav({ config }: { config: PlatformNavigationConfig })
           </Link>
         )}
 
-        {config.showCurrentTime !== false && mounted ? <div className="text-sm text-gray-400 hidden lg:block">{currentTime}</div> : null}
+        {config.showCurrentTime !== false && mounted ? <div className="text-sm text-gray-400 hidden md:block whitespace-nowrap">{currentTime}</div> : null}
 
         {config.showUserMenu !== false ? (
           <div className="relative" ref={menuRef}>
@@ -181,9 +182,9 @@ export function PlatformTopNav({ config }: { config: PlatformNavigationConfig })
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
                 {(config.currentUserName || "管理员").slice(0, 1)}
               </div>
-              <div className="text-left">
-                <div className="text-sm text-gray-700">{config.currentUserName || "管理员"}</div>
-                <div className="text-xs text-gray-400">
+              <div className="hidden sm:block text-left">
+                <div className="whitespace-nowrap text-sm text-gray-700">{config.currentUserName || "管理员"}</div>
+                <div className="whitespace-nowrap text-xs text-gray-400">
                   {config.currentUserRoleLabel || config.currentPlatformLabel}
                 </div>
               </div>

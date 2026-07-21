@@ -60,17 +60,17 @@ export function TopNav() {
 
   return (
     <>
-      <header className="h-14 bg-white/70 backdrop-blur-xl border-b border-white/20 flex items-center justify-between px-6 shrink-0 fixed top-0 left-0 right-0 z-50 shadow-sm">
-        <div className="flex items-center gap-8">
+      <header className="h-14 bg-white/70 backdrop-blur-xl border-b border-white/20 flex items-center justify-between px-3 md:px-6 shrink-0 fixed top-0 left-0 right-0 z-50 shadow-sm">
+        <div className="flex items-center gap-4 md:gap-8">
           <Link href="/portal" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <svg className="w-5 h-5 text-primary-foreground" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
               </svg>
             </div>
-            <span className="font-semibold text-foreground text-base">场景化数智教学服务平台</span>
+            <span className="hidden sm:inline font-semibold text-foreground text-base whitespace-nowrap">场景化数智教学服务平台</span>
           </Link>
-          
+
           {isLoggedIn && (
             <nav className="flex items-center gap-1">
               {navItems.map((item) => {
@@ -80,16 +80,17 @@ export function TopNav() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-1.5 px-4 py-2 text-sm rounded-md transition-colors relative ${
+                    title={item.label}
+                    className={`flex items-center gap-1.5 px-3 md:px-4 py-2 text-sm rounded-md transition-colors relative whitespace-nowrap ${
                       active
                         ? "text-primary font-medium"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted"
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
-                    {item.label}
+                    <Icon className="w-5 h-5 md:w-4 md:h-4" />
+                    <span className="hidden md:inline whitespace-nowrap">{item.label}</span>
                     {active && (
-                      <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-primary rounded-full" />
+                      <span className="absolute bottom-0 left-2 right-2 md:left-4 md:right-4 h-0.5 bg-primary rounded-full" />
                     )}
                   </Link>
                 )
@@ -97,10 +98,10 @@ export function TopNav() {
             </nav>
           )}
         </div>
-        
-        <div className="flex items-center gap-6">
+
+        <div className="flex items-center gap-3 md:gap-6">
           {mounted && (
-            <div className="text-sm text-muted-foreground">
+            <div className="hidden md:block text-sm text-muted-foreground whitespace-nowrap">
               {currentTime}
             </div>
           )}
@@ -112,9 +113,9 @@ export function TopNav() {
                   <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-sm font-medium">
                     {user.name?.charAt(0).toUpperCase() || "U"}
                   </div>
-                  <div className="text-left">
-                    <div className="text-sm text-foreground">{user.name}</div>
-                    <div className="text-xs text-muted-foreground">{activeRole?.name || "用户"} · {institution?.name || "组织"}</div>
+                  <div className="hidden sm:block text-left">
+                    <div className="text-sm text-foreground whitespace-nowrap">{user.name}</div>
+                    <div className="text-xs text-muted-foreground whitespace-nowrap">{activeRole?.name || "用户"} · {institution?.name || "组织"}</div>
                   </div>
                   <ChevronDown className="w-4 h-4 text-muted-foreground" />
                 </Button>
@@ -168,9 +169,9 @@ export function TopNav() {
               className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5"
               asChild
             >
-              <Link href="/portal/login">
-                <LogIn className="w-4 h-4" />
-                登录
+              <Link href="/portal/login" title="登录">
+                <LogIn className="w-5 h-5 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">登录</span>
               </Link>
             </Button>
           )}
