@@ -250,10 +250,11 @@ export default function LearnRoadsPage() {
     try {
       const scenarioRes = await scenarioApi.list({
         careerPositionId: positionId,
-        status: 'published',
         limit: 1000,
       })
-      const scens = scenarioRes.items || []
+      const scens = (scenarioRes.items || []).filter(
+        (s) => s.status && s.status !== 'archived'
+      )
       const taskResults = scens.length
         ? await Promise.all(scens.map((s) => taskApi.list({ scenarioId: s.id, limit: 1000 })))
         : []
@@ -297,15 +298,18 @@ export default function LearnRoadsPage() {
           loadedScenes = stepsToScenes(existing.steps || [], scenarios, tasks)
           console.log('[learn-roads] loaded scenes from existing road', loadedScenes.length, loadedScenes.map((s) => ({ id: s.id, name: s.name })))
         } else if (scenarios.length) {
+          const steps = scenesToSteps(scenarios.map((s) => scenarioToScene(s, tasks)))
+          console.log('[learn-roads] creating road with steps', steps.length)
           const created = await learnRoadApi.create({
             name: `${position.name}学习路径`,
             positionIds: [position.id],
-            steps: scenesToSteps(scenarios.map((s) => scenarioToScene(s, tasks))),
+            steps,
           })
           setLearnRoads((prev) => [created, ...prev])
           setLearnRoadId(created.id)
           loadedScenes = stepsToScenes(created.steps || [], scenarios, tasks)
         } else {
+          console.log('[learn-roads] creating empty road')
           const created = await learnRoadApi.create({
             name: `${position.name}学习路径`,
             positionIds: [position.id],
