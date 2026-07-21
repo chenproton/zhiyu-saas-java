@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import { useParams } from "next/navigation"
 import {
   publicPositionApi,
@@ -108,7 +109,7 @@ export default function JobStudentDetailPage() {
         <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8]">
           <Briefcase className="w-16 h-16 mb-4 opacity-40" />
           <div className="text-lg font-semibold text-[#475569]">岗位不存在或暂未公开</div>
-          <a href="/job/student" className="text-blue-600 hover:underline mt-2">返回岗位列表</a>
+          <Link href="/job/student" className="text-blue-600 hover:underline mt-2">返回岗位列表</Link>
         </div>
         <PlatformFooter />
       </div>
