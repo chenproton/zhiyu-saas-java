@@ -145,6 +145,12 @@ func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {
 		args = append(args, batchID)
 		argIdx++
 	}
+	careerPositionID := r.URL.Query().Get("careerPositionId")
+	if careerPositionID != "" {
+		where = append(where, "s.career_position_id = $"+itoa(argIdx))
+		args = append(args, careerPositionID)
+		argIdx++
+	}
 	if search != "" {
 		where = append(where, "(name ILIKE $"+itoa(argIdx)+" OR code ILIKE $"+itoa(argIdx)+")")
 		args = append(args, "%"+search+"%")

@@ -5,14 +5,14 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   Search, Flag, Heart, Crosshair, Sparkles, Filter, X,
-  TrendingUp, GraduationCap, ChevronRight, Newspaper,
+  TrendingUp, GraduationCap, ChevronRight,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { publicPositionApi } from "@/lib/api"
+import { publicPositionApi, scenarioApi } from "@/lib/api"
 import { useAuth } from "@/components/auth-provider"
 import { useIndustryMap } from "@/lib/use-resource-maps"
-import type { CareerPosition } from "@/lib/types"
+import type { CareerPosition, Scenario } from "@/lib/types"
 import { StatsBar } from "./stats-bar"
 import { JobCard } from "./job-card"
 import { Pagination } from "./pagination"
@@ -27,13 +27,6 @@ const SORT_OPTIONS = [
   { value: "update", label: "最近更新" },
 ]
 
-const HERO_INFO = [
-  { badge: "热", badgeClass: "bg-red-500", text: "人工智能训练师岗位能力标准发布", date: "06-12" },
-  { badge: "新", badgeClass: "bg-green-500", text: "新增“低空经济”相关岗位资源 32 个", date: "06-10" },
-  { badge: "荐", badgeClass: "bg-blue-500", text: "数字化转型背景下的复合型岗位解读", date: "06-08" },
-  { badge: "荐", badgeClass: "bg-blue-500", text: "2024 智能制造行业人才需求白皮书", date: "06-05" },
-]
-
 export function JobHome() {
   const router = useRouter()
   const { user } = useAuth()
@@ -41,6 +34,7 @@ export function JobHome() {
   const listRef = useRef<HTMLDivElement>(null)
 
   const [positions, setPositions] = useState<CareerPosition[]>([])
+  const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [loading, setLoading] = useState(true)
 
   const [currentPage, setCurrentPage] = useState(1)
@@ -57,6 +51,23 @@ export function JobHome() {
       .catch(() => setPositions([]))
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    scenarioApi
+      .list({ status: "published", limit: 1000 })
+      .then((res) => setScenarios(res.items || []))
+      .catch(() => setScenarios([]))
+  }, [])
+
+  const scenarioCountMap = useMemo(() => {
+    const map = new Map<string, number>()
+    scenarios.forEach((s) => {
+      if (s.careerPositionId) {
+        map.set(s.careerPositionId, (map.get(s.careerPositionId) || 0) + 1)
+      }
+    })
+    return map
+  }, [scenarios])
 
   const industries = useMemo(() => {
     const set = new Set<string>()
@@ -176,27 +187,6 @@ export function JobHome() {
             >
               浏览岗位 <ChevronRight className="w-4 h-4" />
             </Button>
-          </div>
-
-          <div className="w-[360px] shrink-0 bg-white/12 backdrop-blur-[14px] border border-white/20 rounded-2xl p-5 text-white">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2 text-[15px] font-bold">
-                <Newspaper className="w-4 h-4" />
-                岗位前沿信息
-              </div>
-              <div className="text-xs text-white/70 cursor-pointer">更多 <ChevronRight className="w-3 h-3 inline" /></div>
-            </div>
-            <div className="flex flex-col gap-3.5">
-              {HERO_INFO.map((info, i) => (
-                <div key={i} className="flex items-center gap-2.5 text-[13px]">
-                  <span className={`w-[18px] h-[18px] rounded text-[11px] flex items-center justify-center shrink-0 ${info.badgeClass}`}>
-                    {info.badge}
-                  </span>
-                  <span className="flex-1 truncate">{info.text}</span>
-                  <span className="text-white/60 text-xs shrink-0">{info.date}</span>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </div>
@@ -402,7 +392,7 @@ export function JobHome() {
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {pageItems.map((pos, i) => (
-                  <JobCard key={pos.id} position={pos} index={i} hideHot={i > 2} />
+                  <JobCard key={pos.id} position={pos} index={i} hideHot={i > 2} scenarioCount={scenarioCountMap.get(pos.id) ?? 0} />
                 ))}
               </div>
               <Pagination

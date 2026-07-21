@@ -9,6 +9,8 @@ import {
   abilityApi,
   positionCertificateApi,
   learnRoadApi,
+  scenarioApi,
+  taskApi,
 } from "@/lib/api"
 import { useAuth } from "@/components/auth-provider"
 import { useIndustryMap } from "@/lib/use-resource-maps"
@@ -20,7 +22,9 @@ import type {
   AbilityPoint,
   PositionAbilityBinding,
   AbilityDomain,
-} from "@/lib/types/job"
+  Scenario,
+  ScenarioTask,
+} from "@/lib/types"
 import { PositionHeader } from "@/components/job/student/position-header"
 import { StatsBox } from "@/components/job/student/stats-box"
 import { OverviewTab } from "@/components/job/student/overview-tab"
@@ -65,6 +69,8 @@ export default function JobStudentDetailPage() {
   const [certificates, setCertificates] = useState<PositionCertificate[]>([])
   const [roads, setRoads] = useState<LearnRoad[]>([])
   const [allPositions, setAllPositions] = useState<CareerPosition[]>([])
+  const [scenarios, setScenarios] = useState<Scenario[]>([])
+  const [scenarioTasks, setScenarioTasks] = useState<ScenarioTask[]>([])
 
   useEffect(() => {
     if (!id) return
@@ -83,6 +89,22 @@ export default function JobStudentDetailPage() {
       .list({ status: "published", limit: 20 })
       .then((res) => setAllPositions(res.items || []))
       .catch(() => setAllPositions([]))
+
+    scenarioApi
+      .list({ careerPositionId: id, status: "published", limit: 1000 })
+      .then((res) => {
+        const scens = res.items || []
+        setScenarios(scens)
+        return Promise.all(scens.map((s: Scenario) => taskApi.list({ scenarioId: s.id, limit: 1000 })))
+      })
+      .then((results) => {
+        const allTasks = results.flatMap((r) => r.items || [])
+        setScenarioTasks(allTasks)
+      })
+      .catch(() => {
+        setScenarios([])
+        setScenarioTasks([])
+      })
 
     if (!user) return
 
@@ -110,6 +132,13 @@ export default function JobStudentDetailPage() {
     if (!position?.industryId) return undefined
     return industryMap.get(position.industryId)
   }, [position, industryMap])
+
+  const scenarioCount = scenarios.length
+  const taskCount = scenarioTasks.length
+  const abilityPointCount = useMemo(
+    () => new Set(bindings.map((b) => b.abilityPointId).filter(Boolean)).size,
+    [bindings]
+  )
 
   if (loading) {
     return (
@@ -159,7 +188,7 @@ export default function JobStudentDetailPage() {
       case "graph":
         return user ? <KnowledgeGraph position={position} bindings={bindings} abilityPoints={abilityPoints} relatedPositions={allPositions} /> : <LoginPrompt text="知识图谱需登录后查看" desc="登录账号后可查看岗位知识图谱" />
       case "scenes":
-        return <SceneList />
+        return <SceneList scenarios={scenarios} tasks={scenarioTasks} />
       case "learning":
         return user ? <LearningPath roads={roads} /> : <LoginPrompt text="学习路径需登录后查看" desc="登录账号后可查看岗位关联的学习路径" />
       case "related":
@@ -174,7 +203,12 @@ export default function JobStudentDetailPage() {
       <PositionHeader position={position} industryName={industryName} />
 
       <main className="flex-1 max-w-[1400px] mx-auto px-8 py-6 w-full">
-        <StatsBox position={position} />
+        <StatsBox
+          position={position}
+          scenarioCount={scenarioCount}
+          taskCount={taskCount}
+          abilityPointCount={abilityPointCount}
+        />
 
         <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(69,26,3,0.06)] overflow-hidden">
           {/* Tabs */}
