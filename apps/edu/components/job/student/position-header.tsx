@@ -6,14 +6,13 @@ import { Heart, ArrowLeft, Share2, MapPin, Building2, GraduationCap, Clock, Cale
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/components/auth-provider"
+import { positionApi } from "@/lib/api"
 import type { CareerPosition } from "@/lib/types"
 
 interface PositionHeaderProps {
   position: CareerPosition
   industryName?: string
 }
-
-const HEART_JOBS_KEY = "zhiyu_heart_jobs"
 
 function formatSalary(min?: number | null, max?: number | null) {
   if ((min ?? 0) > 0 && (max ?? 0) > 0) return `¥${min} - ¥${max}`
@@ -25,34 +24,38 @@ function formatSalary(min?: number | null, max?: number | null) {
 export function PositionHeader({ position, industryName }: PositionHeaderProps) {
   const { user } = useAuth()
   const [isHeart, setIsHeart] = useState(false)
+  const [favoriteCount, setFavoriteCount] = useState(position.favoriteCount ?? 0)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (typeof window === "undefined") return
-    const jobs = JSON.parse(localStorage.getItem(HEART_JOBS_KEY) || "[]")
-    setIsHeart(jobs.some((j: { id?: string }) => j.id === position.id))
-  }, [position.id])
+    if (!user) {
+      setIsHeart(false)
+      return
+    }
+    positionApi.getFavorite(position.id)
+      .then((res) => {
+        setIsHeart(res.isFavorite)
+        setFavoriteCount(res.favoriteCount)
+      })
+      .catch(() => {})
+  }, [user, position.id])
 
-  const toggleHeart = () => {
+  const toggleHeart = async () => {
     if (!user) {
       alert("请先登录后再收藏岗位")
       return
     }
-    const jobs = JSON.parse(localStorage.getItem(HEART_JOBS_KEY) || "[]")
-    const idx = jobs.findIndex((j: { id?: string }) => j.id === position.id)
-    if (idx >= 0) {
-      jobs.splice(idx, 1)
-      setIsHeart(false)
-    } else {
-      jobs.push({
-        id: position.id,
-        name: position.name,
-        industry: industryName || "",
-        major: position.majorNames?.[0] || "",
-        addedAt: new Date().toISOString(),
-      })
-      setIsHeart(true)
+    if (loading) return
+    setLoading(true)
+    try {
+      const res = await positionApi.favorite(position.id)
+      setIsHeart(res.isFavorite)
+      setFavoriteCount(res.favoriteCount)
+    } catch {
+      alert("操作失败，请稍后再试")
+    } finally {
+      setLoading(false)
     }
-    localStorage.setItem(HEART_JOBS_KEY, JSON.stringify(jobs))
   }
 
   return (
@@ -93,11 +96,15 @@ export function PositionHeader({ position, industryName }: PositionHeaderProps) 
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
-                className={`rounded-full px-4 ${isHeart ? "border-blue-500 text-blue-600" : "text-[#475569]"}`}
+                disabled={loading}
+                className={`rounded-full px-4 transition-all ${isHeart ? "border-rose-500 text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700" : "text-[#475569] hover:border-rose-300 hover:text-rose-500"}`}
                 onClick={toggleHeart}
               >
                 <Heart className={`w-4 h-4 mr-1.5 ${isHeart ? "fill-current" : ""}`} />
                 {isHeart ? "已设为心仪岗位" : "设为心仪岗位"}
+                {favoriteCount > 0 && (
+                  <span className="ml-1.5 text-xs opacity-80">({favoriteCount})</span>
+                )}
               </Button>
               <Button variant="outline" size="icon" className="rounded-full text-[#475569]">
                 <Share2 className="w-4 h-4" />
@@ -111,7 +118,7 @@ export function PositionHeader({ position, industryName }: PositionHeaderProps) 
             { icon: MapPin, label: "工作地点", value: "全国" },
             { icon: Clock, label: "更新日期", value: position.updatedAt?.slice(0, 10) || "-" },
             { icon: Calendar, label: "发布日期", value: position.createdAt?.slice(0, 10) || "-" },
-            { icon: Eye, label: "浏览次数", value: "128+" },
+            { icon: Eye, label: "收藏次数", value: favoriteCount.toLocaleString() },
           ].map((s, i) => (
             <div key={i} className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-[#f8fafc] flex items-center justify-center text-[#64748b]">

@@ -136,7 +136,9 @@ func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
 			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
 			cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by,
-			cp.collaborators, cp.created_at, cp.updated_at
+			cp.collaborators,
+			(SELECT COUNT(*) FROM position_favorites pf WHERE pf.career_position_id = cp.id) AS favorite_count,
+			cp.created_at, cp.updated_at
 		FROM career_positions cp
 		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY cp.created_at DESC
@@ -740,6 +742,86 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, SaveFullPositionResponse{Position: pos})
 }
 
+type FavoriteStatusResponse struct {
+	IsFavorite    bool `json:"isFavorite"`
+	FavoriteCount int  `json:"favoriteCount"`
+}
+
+func (h *PositionHandler) GetFavorite(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	if _, err := h.fetchPosition(r.Context(), id); err != nil {
+		respondError(w, http.StatusNotFound, "position not found")
+		return
+	}
+
+	var count int
+	_ = h.DB.QueryRow(r.Context(), `SELECT COUNT(*) FROM position_favorites WHERE career_position_id = $1`, id).Scan(&count)
+
+	var isFavorite bool
+	_ = h.DB.QueryRow(r.Context(), `SELECT EXISTS(SELECT 1 FROM position_favorites WHERE user_id = $1 AND career_position_id = $2)`, claims.UserID, id).Scan(&isFavorite)
+
+	respondJSON(w, http.StatusOK, FavoriteStatusResponse{IsFavorite: isFavorite, FavoriteCount: count})
+}
+
+func (h *PositionHandler) ToggleFavorite(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	if _, err := h.fetchPosition(r.Context(), id); err != nil {
+		respondError(w, http.StatusNotFound, "position not found")
+		return
+	}
+
+	ctx := r.Context()
+	var exists bool
+	_ = h.DB.QueryRow(ctx, `
+		SELECT EXISTS(SELECT 1 FROM position_favorites WHERE user_id = $1 AND career_position_id = $2)
+	`, claims.UserID, id).Scan(&exists)
+
+	tx, err := h.DB.Begin(ctx)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to start transaction")
+		return
+	}
+	defer tx.Rollback(ctx)
+
+	if exists {
+		_, err = tx.Exec(ctx, `
+			DELETE FROM position_favorites WHERE user_id = $1 AND career_position_id = $2
+		`, claims.UserID, id)
+	} else {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO position_favorites (user_id, career_position_id) VALUES ($1, $2)
+		`, claims.UserID, id)
+	}
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to toggle favorite")
+		return
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
+		return
+	}
+
+	var count int
+	_ = h.DB.QueryRow(ctx, `
+		SELECT COUNT(*) FROM position_favorites WHERE career_position_id = $1
+	`, id).Scan(&count)
+
+	respondJSON(w, http.StatusOK, FavoriteStatusResponse{IsFavorite: !exists, FavoriteCount: count})
+}
+
 func strPtr(s string) *string {
 	if s == "" {
 		return nil
@@ -804,12 +886,15 @@ func (h *PositionHandler) fetchPosition(ctx context.Context, id string) (domain.
 			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
 			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
 			cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by,
-			cp.collaborators, cp.created_at, cp.updated_at
+			cp.collaborators,
+			(SELECT COUNT(*) FROM position_favorites pf WHERE pf.career_position_id = cp.id) AS favorite_count,
+			cp.created_at, cp.updated_at
 		FROM career_positions cp WHERE cp.id = $1
 	`, id).Scan(
 		&p.ID, &batchID, &p.Name, &shortName, &industryID, &majorIDs, &majorNames, &p.PositionType,
 		&salaryMin, &salaryMax, &coverImage, &description, &requirements, &careerPath,
-		&p.Version, &p.Status, &p.CreatedBy, &collaborators, &p.CreatedAt, &p.UpdatedAt,
+		&p.Version, &p.Status, &p.CreatedBy, &collaborators, &p.FavoriteCount,
+		&p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
 		return p, err
@@ -840,7 +925,8 @@ func (h *PositionHandler) scanPositionRows(rows pgx.Rows) ([]domain.CareerPositi
 		if err := rows.Scan(
 			&p.ID, &batchID, &p.Name, &shortName, &industryID, &majorIDs, &majorNames, &p.PositionType,
 			&salaryMin, &salaryMax, &coverImage, &description, &requirements, &careerPath,
-			&p.Version, &p.Status, &p.CreatedBy, &collaborators, &p.CreatedAt, &p.UpdatedAt,
+			&p.Version, &p.Status, &p.CreatedBy, &collaborators, &p.FavoriteCount,
+			&p.CreatedAt, &p.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

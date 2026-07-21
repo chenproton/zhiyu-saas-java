@@ -1,111 +1,142 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useMemo, useState } from "react"
+import Link from "next/link"
 import { Trophy, ChevronLeft, ChevronRight, Heart } from "lucide-react"
 import { Button } from "@/components/ui/button"
-
-interface RankingJob {
-  title: string
-  category: string
-  icon: string
-  fav: string
-}
-
-const DEFAULT_RANKING: RankingJob[] = [
-  { title: "游戏特效设计师", category: "文化创意", icon: "🎮", fav: "8,500" },
-  { title: "供应链管理专员", category: "财经商贸", icon: "📦", fav: "8,100" },
-  { title: "健康管理师", category: "医药健康", icon: "🏥", fav: "7,800" },
-  { title: "无人机应用技术员", category: "交通运输", icon: "🚁", fav: "7,400" },
-  { title: "数字营养配餐师", category: "现代服务", icon: "🍎", fav: "7,000" },
-  { title: "工业机器人操作员", category: "智能制造", icon: "🤖", fav: "6,800" },
-  { title: "云计算运维工程师", category: "信息技术", icon: "☁️", fav: "6,500" },
-  { title: "跨境电商主播", category: "电子商务", icon: "🎥", fav: "6,200" },
-  { title: "财务数据分析师", category: "财经商贸", icon: "📊", fav: "5,900" },
-  { title: "新能源汽车技师", category: "智能制造", icon: "🚗", fav: "5,600" },
-  { title: "用户体验研究员", category: "文化创意", icon: "🔍", fav: "5,300" },
-  { title: "智慧养老护理员", category: "现代服务", icon: "👴", fav: "5,000" },
-  { title: "网络安全工程师", category: "信息技术", icon: "🔒", fav: "4,800" },
-  { title: "茶艺师", category: "现代服务", icon: "🍵", fav: "4,500" },
-  { title: "无人机测绘员", category: "交通运输", icon: "🗺️", fav: "4,200" },
-]
+import type { CareerPosition } from "@/lib/types"
 
 interface RankingListProps {
-  items?: RankingJob[]
+  positions?: CareerPosition[]
+  industryMap?: Map<string, string>
 }
 
-export function RankingList({ items = DEFAULT_RANKING }: RankingListProps) {
+const ROWS_PER_PAGE = 10
+
+export function RankingList({ positions = [], industryMap }: RankingListProps) {
   const [page, setPage] = useState(0)
-  const rowsPerPage = 10
-  const totalPages = Math.ceil(items.length / rowsPerPage)
+
+  const ranked = useMemo(() => {
+    const list = [...positions]
+      .filter((p) => p.status === "published")
+      .sort((a, b) => {
+        const countA = a.favoriteCount ?? 0
+        const countB = b.favoriteCount ?? 0
+        if (countB !== countA) return countB - countA
+        return a.name.localeCompare(b.name, "zh-CN")
+      })
+    return list
+  }, [positions])
+
+  const totalPages = Math.max(1, Math.ceil(ranked.length / ROWS_PER_PAGE))
+  const pageItems = useMemo(() => {
+    const start = page * ROWS_PER_PAGE
+    return ranked.slice(start, start + ROWS_PER_PAGE)
+  }, [ranked, page])
 
   const cols = useMemo(() => {
-    const start = page * rowsPerPage
-    const pageItems = items.slice(start, start + rowsPerPage)
-    const left: RankingJob[] = []
-    const right: RankingJob[] = []
+    const left: CareerPosition[] = []
+    const right: CareerPosition[] = []
     pageItems.forEach((job, idx) => {
       if (idx % 2 === 0) left.push(job)
       else right.push(job)
     })
     return [left, right]
-  }, [items, page])
+  }, [pageItems])
 
-  const getRankClass = (rank: number) => {
+  const getRankStyle = (rank: number) => {
     if (rank === 1) return "bg-gradient-to-br from-amber-400 to-yellow-300 text-white"
     if (rank === 2) return "bg-gradient-to-br from-slate-400 to-slate-300 text-white"
     if (rank === 3) return "bg-gradient-to-br from-amber-600 to-amber-500 text-white"
-    return "bg-[#f1f5f9] text-[#94a3b8]"
+    return "bg-slate-100 text-slate-400"
+  }
+
+  const formatCount = (n?: number) => {
+    if (!n || n <= 0) return "0"
+    if (n >= 10000) return `${(n / 10000).toFixed(1)}w`
+    return n.toLocaleString()
+  }
+
+  const categoryFor = (pos: CareerPosition) => {
+    if (pos.industryId && industryMap?.get(pos.industryId)) {
+      return industryMap.get(pos.industryId)!
+    }
+    return pos.positionType === "enterprise" ? "企业" : "教学"
+  }
+
+  if (ranked.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-[#e7e5e4] p-5 mb-6">
+        <div className="flex items-center gap-2 text-sm font-bold text-[#0f172a] mb-3">
+          <Trophy className="w-4 h-4 text-amber-500" />
+          心仪岗位排行榜
+        </div>
+        <div className="text-center py-8 text-[#94a3b8] text-sm">暂无岗位数据</div>
+      </div>
+    )
   }
 
   return (
     <div className="bg-white rounded-2xl border border-[#e7e5e4] p-5 mb-6">
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-sm font-bold text-[#0f172a] flex items-center gap-2">
-          <Trophy className="w-4 h-4 text-amber-500" />
-          心仪岗位排行榜
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Trophy className="w-5 h-5 text-amber-500" />
+          <div>
+            <div className="text-[15px] font-bold text-[#0f172a]">心仪岗位排行榜</div>
+            <div className="text-xs text-[#94a3b8]">按全站收藏数实时排序</div>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="icon"
-            className="h-6 w-6 rounded-md border-[#e2e8f0] bg-white text-[#64748b] hover:border-blue-500 hover:text-blue-500 disabled:opacity-40"
+            className="h-7 w-7 rounded-lg border-[#e2e8f0] bg-white text-[#64748b] hover:border-blue-500 hover:text-blue-500 disabled:opacity-40"
             disabled={page <= 0}
             onClick={() => setPage(page - 1)}
           >
-            <ChevronLeft className="w-3 h-3" />
+            <ChevronLeft className="w-4 h-4" />
           </Button>
-          <span className="text-xs text-[#94a3b8] min-w-[36px] text-center">{page + 1} / {totalPages}</span>
+          <span className="text-xs text-[#64748b] min-w-[40px] text-center font-medium">{page + 1} / {totalPages}</span>
           <Button
             variant="outline"
             size="icon"
-            className="h-6 w-6 rounded-md border-[#e2e8f0] bg-white text-[#64748b] hover:border-blue-500 hover:text-blue-500 disabled:opacity-40"
+            className="h-7 w-7 rounded-lg border-[#e2e8f0] bg-white text-[#64748b] hover:border-blue-500 hover:text-blue-500 disabled:opacity-40"
             disabled={page >= totalPages - 1}
             onClick={() => setPage(page + 1)}
           >
-            <ChevronRight className="w-3 h-3" />
+            <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1">
         {cols.map((col, colIdx) => (
           <div key={colIdx} className="flex flex-col gap-1">
-            {col.map((job, idx) => {
-              const globalRank = page * rowsPerPage + colIdx * Math.ceil(col.length) + idx + 1
+            {col.map((pos, idx) => {
+              const globalRank = page * ROWS_PER_PAGE + colIdx * Math.ceil(pageItems.length / 2) + idx + 1
+              const display = pos.shortName || pos.name
+              const initial = display.charAt(0)
+              const count = pos.favoriteCount ?? 0
               return (
-                <div
-                  key={idx}
-                  className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#f8fafc] cursor-pointer transition-colors even:bg-[#fafafa]"
-                >
-                  <span className={`w-[22px] h-[22px] rounded-md flex items-center justify-center text-xs font-bold ${getRankClass(globalRank)}`}>
-                    {globalRank}
-                  </span>
-                  <span className="text-base">{job.icon}</span>
-                  <span className="flex-1 text-[13px] font-semibold text-[#0f172a] truncate">{job.title}</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-[#eff6ff] text-blue-600 whitespace-nowrap">{job.category}</span>
-                  <span className="text-[11px] text-red-500 flex items-center gap-1 whitespace-nowrap min-w-[60px] justify-end">
-                    <Heart className="w-3 h-3" /> {job.fav}
-                  </span>
-                </div>
+                <Link key={pos.id} href={`/job/student/${pos.id}`}>
+                  <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#f8fafc] cursor-pointer transition-colors group">
+                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${getRankStyle(globalRank)}`}>
+                      {globalRank}
+                    </span>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-600 flex items-center justify-center text-sm font-bold shrink-0 border border-blue-100">
+                      {initial}
+                    </div>
+                    <span className="flex-1 text-[13px] font-semibold text-[#0f172a] truncate group-hover:text-blue-600 transition-colors">
+                      {display}
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-[#eff6ff] text-blue-600 whitespace-nowrap">
+                      {categoryFor(pos)}
+                    </span>
+                    <span className="text-xs text-rose-500 flex items-center gap-1 whitespace-nowrap min-w-[50px] justify-end font-medium">
+                      <Heart className={`w-3 h-3 ${count > 0 ? "fill-current" : ""}`} /> {formatCount(count)}
+                    </span>
+                  </div>
+                </Link>
               )
             })}
           </div>

@@ -47,6 +47,7 @@ type CareerPosition struct {
 	Status        CareerPositionStatus `json:"status"`
 	CreatedBy     string               `json:"createdBy"`
 	Collaborators []string             `json:"collaborators"`
+	FavoriteCount int                  `json:"favoriteCount"`
 	CreatedAt     time.Time            `json:"createdAt"`
 	UpdatedAt     time.Time            `json:"updatedAt"`
 }

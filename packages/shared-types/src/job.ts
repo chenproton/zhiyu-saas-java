@@ -17,6 +17,7 @@ export interface CareerPosition {
   status: "draft" | "pending" | "approved" | "rejected" | "published" | "archived"
   createdBy: string
   collaborators: string[]
+  favoriteCount?: number
   createdAt: string
   updatedAt: string
 }

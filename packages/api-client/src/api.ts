@@ -706,6 +706,8 @@ export const positionApi = {
     }[]
     abilityDomains: { id: string; name: string; description?: string; bindingIds: string[] }[]
   }) => request<{ position: CareerPosition }>(`/job/positions/${id}/save-full`, { method: "PUT", body: JSON.stringify(req) }),
+  getFavorite: (id: string) => request<{ isFavorite: boolean; favoriteCount: number }>(`/job/positions/${id}/favorite`),
+  favorite: (id: string) => request<{ isFavorite: boolean; favoriteCount: number }>(`/job/positions/${id}/favorite`, { method: "POST" }),
 }
 
 export const abilityApi = {
