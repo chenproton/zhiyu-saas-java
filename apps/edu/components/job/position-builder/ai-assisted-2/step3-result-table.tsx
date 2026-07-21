@@ -117,8 +117,8 @@ export function Step3ResultTable({ position, onUpdate, onPrev, showAiFill = true
                   <TableRow className="bg-slate-50">
                     <TableHead className="w-[120px]">所属能力领域</TableHead>
                     <TableHead className="w-[140px]">能力点名称</TableHead>
-                    <TableHead className="w-[120px]">能力领域</TableHead>
                     <TableHead className="w-[80px]">能力属性</TableHead>
+                    <TableHead className="w-[120px]">能力领域</TableHead>
                     <TableHead className="w-[120px]">掌握程度</TableHead>
                     <TableHead>胜任标准描述</TableHead>
                   </TableRow>
@@ -139,6 +139,11 @@ export function Step3ResultTable({ position, onUpdate, onPrev, showAiFill = true
                             )}
                             <TableCell className="font-medium text-sm">{binding.name}</TableCell>
                             <TableCell>
+                              <span className="text-xs text-gray-700">
+                                {(binding.attributes || []).join('、') || '-'}
+                              </span>
+                            </TableCell>
+                            <TableCell>
                               <Select
                                 value={binding.domain || ''}
                                 onValueChange={(v) => handleUpdateBinding(binding.id, { domain: v || undefined })}
@@ -152,11 +157,6 @@ export function Step3ResultTable({ position, onUpdate, onPrev, showAiFill = true
                                   ))}
                                 </SelectContent>
                               </Select>
-                            </TableCell>
-                            <TableCell>
-                              <span className="text-xs text-gray-700">
-                                {(binding.attributes || []).join('、') || '-'}
-                              </span>
                             </TableCell>
                             <TableCell>
                               <Select
