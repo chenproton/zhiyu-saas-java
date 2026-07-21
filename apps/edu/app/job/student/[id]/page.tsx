@@ -190,7 +190,7 @@ export default function JobStudentDetailPage() {
           <LoginPrompt text="胜任标准需登录后查看" desc="登录账号后可查看岗位能力点的目标等级" />
         )
       case "graph":
-        return user ? <KnowledgeGraph position={position} bindings={bindings} abilityPoints={abilityPoints} relatedPositions={allPositions} /> : <LoginPrompt text="知识图谱需登录后查看" desc="登录账号后可查看岗位知识图谱" />
+        return user ? <KnowledgeGraph position={position} bindings={bindings} abilityPoints={abilityPoints} abilityDomains={abilityDomains} relatedPositions={allPositions} /> : <LoginPrompt text="知识图谱需登录后查看" desc="登录账号后可查看岗位知识图谱" />
       case "scenes":
         return <SceneList scenarios={scenarios} tasks={scenarioTasks} />
       case "learning":
