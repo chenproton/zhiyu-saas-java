@@ -253,18 +253,21 @@ export default function LearnRoadsPage() {
     try {
       const scenarioRes = await scenarioApi.list({
         careerPositionId: positionId,
-        status: 'published',
         limit: 1000,
       })
-      const scens = scenarioRes.items || []
+      const scens = (scenarioRes.items || []).filter(
+        (s) => s.status && s.status !== 'archived'
+      )
       const taskResults = scens.length
         ? await Promise.all(scens.map((s) => taskApi.list({ scenarioId: s.id, limit: 1000 })))
         : []
       const allTasks = taskResults.flatMap((r) => r.items || [])
       setPositionScenarios(scens)
       setPositionTasks(allTasks)
+      console.log('[learn-roads] loaded scenes for', positionId, scens.length, 'tasks', allTasks.length)
       return { scenarios: scens, tasks: allTasks }
     } catch (err) {
+      console.error('[learn-roads] load scenes failed', err)
       toast({
         title: '加载场景失败',
         description: err instanceof Error ? err.message : '请稍后重试',
@@ -291,20 +294,24 @@ export default function LearnRoadsPage() {
         setLearnRoads(roads)
 
         const existing = roads.find((r) => r.positionIds?.includes(position.id))
+        console.log('[learn-roads] existing road', existing?.id, 'steps', existing?.steps?.length)
         let loadedScenes: Scene[] = []
         if (existing?.id) {
           setLearnRoadId(existing.id)
           loadedScenes = stepsToScenes(existing.steps || [], scenarios, tasks)
         } else if (scenarios.length) {
+          const steps = scenesToSteps(scenarios.map((s) => scenarioToScene(s, tasks)))
+          console.log('[learn-roads] creating road with steps', steps.length)
           const created = await learnRoadApi.create({
             name: `${position.name}学习路径`,
             positionIds: [position.id],
-            steps: scenesToSteps(scenarios.map((s) => scenarioToScene(s, tasks))),
+            steps,
           })
           setLearnRoads((prev) => [created, ...prev])
           setLearnRoadId(created.id)
           loadedScenes = stepsToScenes(created.steps || [], scenarios, tasks)
         } else {
+          console.log('[learn-roads] creating empty road')
           const created = await learnRoadApi.create({
             name: `${position.name}学习路径`,
             positionIds: [position.id],
@@ -593,6 +600,10 @@ export default function LearnRoadsPage() {
               <h1 className="text-2xl font-bold text-foreground">{editingPosition.name}</h1>
               <p className="text-muted-foreground mt-1">
                 {batch ? batch.name : '未关联批次'} · {editingPosition.shortName}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                已加载 {positionScenarios.length} 个场景，{positionTasks.length} 个任务
+                {scenes.length === 0 && positionScenarios.length > 0 && ' · 点击下方“保存顺序”生成学习路径'}
               </p>
             </div>
           </div>
