@@ -193,8 +193,9 @@ func (h *PositionHandler) PublicList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	isPlatformAdmin := platformAdminOnly(claims)
 	tenantID, ok := tenantFilter(claims)
-	if !ok {
+	if !isPlatformAdmin && !ok {
 		respondError(w, http.StatusForbidden, "missing tenant")
 		return
 	}
@@ -213,9 +214,14 @@ func (h *PositionHandler) PublicList(w http.ResponseWriter, r *http.Request) {
 		offset = v
 	}
 
-	where := []string{"cp.status = $1", "cp.tenant_id = $2"}
-	args := []interface{}{string(domain.StatusPublished), tenantID}
-	argIdx := 3
+	where := []string{"cp.status = $1"}
+	args := []interface{}{string(domain.StatusPublished)}
+	argIdx := 2
+	if !isPlatformAdmin {
+		where = append(where, "cp.tenant_id = $"+itoa(argIdx))
+		args = append(args, tenantID)
+		argIdx++
+	}
 
 	if positionType != "" {
 		where = append(where, "cp.position_type = $"+itoa(argIdx))
@@ -277,19 +283,22 @@ func (h *PositionHandler) PublicGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	isPlatformAdmin := platformAdminOnly(claims)
 	tenantID, ok := tenantFilter(claims)
-	if !ok {
+	if !isPlatformAdmin && !ok {
 		respondError(w, http.StatusForbidden, "missing tenant")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 
-	var posTenantID string
-	err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM career_positions WHERE id = $1`, id).Scan(&posTenantID)
-	if err != nil || posTenantID != tenantID {
-		respondError(w, http.StatusNotFound, "position not found")
-		return
+	if !isPlatformAdmin {
+		var posTenantID string
+		err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM career_positions WHERE id = $1`, id).Scan(&posTenantID)
+		if err != nil || posTenantID != tenantID {
+			respondError(w, http.StatusNotFound, "position not found")
+			return
+		}
 	}
 
 	_ = h.incrementViewCount(r.Context(), id)

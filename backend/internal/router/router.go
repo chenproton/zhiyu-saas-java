@@ -184,7 +184,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 	// 业务内容路由不再按角色 code 限制：页面入口由角色菜单权限（roles.permissions.menus）
 	// 在前端控制，写操作由 handler 内的 canModifyContent 控制。
 	businessUser := authmw.RequireRole()
-	jobViewer := authmw.RequireRole("teacher", "student", "school_admin", "enterprise_mentor")
+	jobViewer := authmw.RequireRole("teacher", "student", "school_admin", "enterprise_mentor", "platform_admin")
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"status":"ok"}`))
