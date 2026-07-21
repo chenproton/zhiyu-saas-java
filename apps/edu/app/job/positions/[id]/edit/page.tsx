@@ -220,11 +220,13 @@ function PositionEditPageContent({ params }: PageProps) {
         abilityBindings: position.abilityBindings,
         abilityDomains: position.abilityDomains,
       })
-      if (position.status === 'approved' || position.status === 'published' || position.status === 'rejected') {
+      if (position.status !== 'draft') {
         await positionApi.saveDraft(position.id)
       }
       hasSavedRef.current = true
-      setPositions((prev) => prev.map((p) => (p.id === position.id ? { ...position, status: 'draft' as const } : p)))
+      const savedPosition = { ...position, status: 'draft' as const }
+      setPosition(savedPosition)
+      setPositions((prev) => prev.map((p) => (p.id === position.id ? savedPosition : p)))
       toast.success('草稿已保存')
     } catch (err: any) {
       console.error('Save position failed:', err)

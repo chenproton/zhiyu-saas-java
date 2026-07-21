@@ -187,13 +187,11 @@ function AddGranularPageInner() {
       if (editId) {
         await courseApi.update(editId, payload)
         hasSavedRef.current = true
-        if (course?.status === "approved" || course?.status === "published" || course?.status === "rejected") {
+        if (course?.status !== "draft") {
           await courseApi.saveDraft(editId)
           setCourse((prev) => (prev ? { ...prev, status: "draft" as const } : prev))
-          toast.success("草稿已保存")
-        } else {
-          toast.success("草稿已保存")
         }
+        toast.success("草稿已保存")
       } else {
         const c = await courseApi.create(payload as Omit<Course, "id" | "nodeCount" | "resourceCount" | "studyCount" | "createdAt" | "updatedAt">)
         router.replace(`/lesson/admin/granular/add?id=${c.id}`)

@@ -185,8 +185,8 @@ function AddSystemPageInner() {
   const [major, setMajor] = useState("")
   const [courseDescription, setCourseDescription] = useState("")
   const [coverImage, setCoverImage] = useState("")
-    const [batchId, setBatchId] = useState("")
-
+  const [batchId, setBatchId] = useState("")
+  const [originalStatus, setOriginalStatus] = useState("draft")
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const hasSavedRef = useRef(false)
@@ -210,6 +210,7 @@ function AddSystemPageInner() {
       if (course.coverImage) setCoverImage(course.coverImage)
       if (course.majorId) setMajor(course.majorId)
       if (course.batchId) setBatchId(course.batchId)
+      setOriginalStatus(course.status || "draft")
       if (nodeRes.items?.length) {
         setNodes(nodeRes.items as unknown as SystemCourseNode[])
         setSelectedNodeId(nodeRes.items[0]?.id || null)
@@ -491,6 +492,10 @@ function AddSystemPageInner() {
       }
       if (isEdit && courseId) {
         await courseApi.update(courseId, payload)
+        if (originalStatus !== "draft") {
+          await courseApi.saveDraft(courseId)
+          setOriginalStatus("draft")
+        }
         hasSavedRef.current = true
         toast.success("草稿已保存")
       } else {
@@ -504,7 +509,7 @@ function AddSystemPageInner() {
     } finally {
       setSaving(false)
     }
-  }, [courseName, courseCode, major, courseDescription, coverImage, batchId, isEdit, courseId])
+  }, [courseName, courseCode, major, courseDescription, coverImage, batchId, isEdit, courseId, originalStatus])
 
   const handleFinish = useCallback(async () => {
     await handleSave()

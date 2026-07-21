@@ -239,7 +239,7 @@ export default function ExamComposerPage() {
               </PrdAnnotation>
               <PrdAnnotation {...getAnnotation("ec-btn-save")}>
                 <Button size="sm" onClick={async () => {
-                  if (exam.status === 'approved' || exam.status === 'published' || exam.status === 'rejected') {
+                  if (exam.status !== 'draft') {
                     await updateExamStatus(examId, 'save_draft')
                     toast({ title: "保存成功", description: "试卷已保存为草稿" })
                   } else {

@@ -52,6 +52,7 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
   const [batchId, setBatchId] = useState(defaultBatchId || "")
   const [industryIds, setIndustryIds] = useState<string[]>([])
   const [coBuilderIds, setCoBuilderIds] = useState<string[]>([])
+  const [originalStatus, setOriginalStatus] = useState<string>("draft")
 
   const isEdit = Boolean(scenarioId)
 
@@ -91,6 +92,7 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
         setBatchId(s.batchId || "")
         setIndustryIds(s.industryIds || [])
         setCoBuilderIds(s.coBuilderIds || [])
+        setOriginalStatus(s.status || "draft")
       })
       .catch((err: any) => {
         toast({ variant: "destructive", title: "加载场景失败", description: err.message || "请稍后重试" })
@@ -135,6 +137,10 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
       let id = scenarioId
       if (isEdit && id) {
         await scenarioApi.update(id, payload)
+        if (originalStatus !== "draft") {
+          await scenarioApi.saveDraft(id)
+          setOriginalStatus("draft")
+        }
       } else {
         const created = await scenarioApi.create({
           ...payload,
