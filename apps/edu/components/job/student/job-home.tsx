@@ -9,7 +9,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { publicPositionApi, scenarioApi, positionApi } from "@/lib/api"
+import { publicPositionApi, scenarioApi, taskApi, positionApi } from "@/lib/api"
 import { useAuth } from "@/components/auth-provider"
 import { useIndustryMap } from "@/lib/use-resource-maps"
 import type { CareerPosition, Scenario } from "@/lib/types"
@@ -35,6 +35,7 @@ export function JobHome() {
 
   const [positions, setPositions] = useState<CareerPosition[]>([])
   const [scenarios, setScenarios] = useState<Scenario[]>([])
+  const [taskCountMap, setTaskCountMap] = useState<Map<string, number>>(new Map())
   const [favoritePositions, setFavoritePositions] = useState<CareerPosition[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -56,8 +57,30 @@ export function JobHome() {
   useEffect(() => {
     scenarioApi
       .list({ status: "published", limit: 1000 })
-      .then((res) => setScenarios(res.items || []))
-      .catch(() => setScenarios([]))
+      .then(async (res) => {
+        const scens = res.items || []
+        setScenarios(scens)
+        const related = scens.filter((s) => s.careerPositionId)
+        if (related.length === 0) {
+          setTaskCountMap(new Map())
+          return
+        }
+        const results = await Promise.all(
+          related.map((s) => taskApi.list({ scenarioId: s.id, limit: 1000 }).catch(() => ({ items: [], total: 0 })))
+        )
+        const map = new Map<string, number>()
+        related.forEach((s, idx) => {
+          const count = results[idx]?.items?.length ?? 0
+          if (count > 0 && s.careerPositionId) {
+            map.set(s.careerPositionId, (map.get(s.careerPositionId) || 0) + count)
+          }
+        })
+        setTaskCountMap(map)
+      })
+      .catch(() => {
+        setScenarios([])
+        setTaskCountMap(new Map())
+      })
   }, [])
 
   useEffect(() => {
@@ -250,23 +273,39 @@ export function JobHome() {
               <div className="flex-1 flex flex-col gap-1 overflow-hidden">
                 {favoritePositions.slice(0, 5).map((pos) => {
                   const display = pos.shortName || pos.name
-                  const count = pos.favoriteCount ?? 0
                   const category = pos.industryId && industryMap.get(pos.industryId)
                     ? industryMap.get(pos.industryId)
                     : (pos.positionType === "enterprise" ? "企业" : "教学")
+                  const majors = pos.majorNames?.filter(Boolean) || []
+                  const majorText = majors.length === 0
+                    ? "未分类"
+                    : majors.length === 1
+                      ? majors[0]
+                      : `${majors[0]} +${majors.length - 1}`
                   return (
                     <Link key={pos.id} href={`/job/student/${pos.id}`}>
-                      <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#f8fafc] cursor-pointer transition-colors group">
-                        <span className="text-base flex-shrink-0">{display.charAt(0)}</span>
-                        <span className="flex-1 text-[13px] font-semibold text-[#0f172a] truncate group-hover:text-blue-600 transition-colors">
-                          {display}
-                        </span>
-                        <span className="hidden xl:inline-flex text-[10px] px-2 py-0.5 rounded bg-[#eff6ff] text-blue-600 whitespace-nowrap">
-                          {category}
-                        </span>
-                        <span className="text-[11px] text-rose-500 flex items-center gap-0.5 whitespace-nowrap min-w-[52px] justify-end">
-                          <Heart className={`w-3 h-3 ${count > 0 ? "fill-current" : ""}`} /> {count > 0 ? count.toLocaleString() : "0"}
-                        </span>
+                      <div className="flex items-start gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#f8fafc] cursor-pointer transition-colors group">
+                        <div className="flex-1 min-w-0 flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="flex-1 text-[13px] font-semibold text-[#0f172a] truncate group-hover:text-blue-600 transition-colors">
+                              {display}
+                            </span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#475569] whitespace-nowrap">
+                              v{pos.version || "1.0"}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[11px]">
+                            <span className="px-1.5 py-0.5 rounded bg-[#eff6ff] text-blue-600 truncate max-w-[80px]">
+                              {category}
+                            </span>
+                            <span
+                              className="px-1.5 py-0.5 rounded bg-[#f0fdf4] text-emerald-600 truncate max-w-[120px]"
+                              title={majors.join("、") || "未分类"}
+                            >
+                              {majorText}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </Link>
                   )
@@ -434,7 +473,14 @@ export function JobHome() {
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {pageItems.map((pos, i) => (
-                  <JobCard key={pos.id} position={pos} index={i} hideHot={i > 2} scenarioCount={scenarioCountMap.get(pos.id) ?? 0} />
+                  <JobCard
+                    key={pos.id}
+                    position={pos}
+                    index={i}
+                    hideHot={i > 2}
+                    scenarioCount={scenarioCountMap.get(pos.id) ?? 0}
+                    taskCount={taskCountMap.get(pos.id) ?? 0}
+                  />
                 ))}
               </div>
               <Pagination

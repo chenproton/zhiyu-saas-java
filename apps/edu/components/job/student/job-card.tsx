@@ -9,6 +9,7 @@ interface JobCardProps {
   index?: number
   hideHot?: boolean
   scenarioCount?: number
+  taskCount?: number
 }
 
 const coverGradients = [
@@ -31,7 +32,7 @@ function formatDate(dateStr?: string) {
   }
 }
 
-export function JobCard({ position, index = 0, hideHot, scenarioCount = 0 }: JobCardProps) {
+export function JobCard({ position, index = 0, hideHot, scenarioCount = 0, taskCount = 0 }: JobCardProps) {
   const displayTitle = position.shortName || position.name
   const coverStyle = position.coverImage
     ? { backgroundImage: `url('${position.coverImage}')` }
@@ -39,8 +40,8 @@ export function JobCard({ position, index = 0, hideHot, scenarioCount = 0 }: Job
 
   const industryName = position.positionType === "enterprise" ? "企业" : "教学"
   const majorName = position.majorNames?.[0] || "未分类"
-  const viewCount = 120 + ((position.id.charCodeAt(position.id.length - 1) || 0) % 880)
-  const relatedScenes = Math.max(1, (position.majorNames?.length || 0) + 1)
+  const viewCount = position.viewCount ?? 0
+  const relatedScenes = scenarioCount
 
   return (
     <Link href={`/job/student/${position.id}`}>
@@ -81,7 +82,7 @@ export function JobCard({ position, index = 0, hideHot, scenarioCount = 0 }: Job
               <div className="text-xs text-[#94a3b8]">关联场景</div>
             </div>
             <div className="bg-[#fafaf9] rounded-[10px] p-2.5 text-center">
-              <div className="text-lg font-extrabold text-[#0f172a]">{scenarioCount || "-"}</div>
+              <div className="text-lg font-extrabold text-[#0f172a]">{taskCount || "-"}</div>
               <div className="text-xs text-[#94a3b8]">场景任务</div>
             </div>
           </div>

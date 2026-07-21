@@ -54,28 +54,46 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
     return pos.positionType === "enterprise" ? "企业" : "教学"
   }
 
+  const majorLabel = (pos: CareerPosition) => {
+    const majors = pos.majorNames?.filter(Boolean) || []
+    if (majors.length === 0) return "未分类"
+    if (majors.length === 1) return majors[0]
+    return `${majors[0]} +${majors.length - 1}`
+  }
+
   const renderItem = (pos: CareerPosition, idx: number) => {
     const globalRank = page * ROWS_PER_PAGE * 2 + idx + 1
     const display = pos.shortName || pos.name
     const count = pos.favoriteCount ?? 0
     return (
       <Link key={pos.id} href={`/job/student/${pos.id}`}>
-        <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#f8fafc] cursor-pointer transition-colors group">
+        <div className="flex items-start gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#f8fafc] cursor-pointer transition-colors group">
           <span
-            className={`w-[22px] h-[22px] rounded-md flex items-center justify-center text-xs font-bold shrink-0 ${getRankStyle(globalRank)}`}
+            className={`w-[22px] h-[22px] rounded-md flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 ${getRankStyle(globalRank)}`}
           >
             {globalRank}
           </span>
-          <span className="text-base flex-shrink-0">{display.charAt(0)}</span>
-          <span className="flex-1 text-[13px] font-semibold text-[#0f172a] truncate group-hover:text-blue-600 transition-colors">
-            {display}
-          </span>
-          <span className="hidden xl:inline-flex text-[10px] px-2 py-0.5 rounded bg-[#eff6ff] text-blue-600 whitespace-nowrap">
-            {categoryFor(pos)}
-          </span>
-          <span className="text-[11px] text-rose-500 flex items-center gap-0.5 whitespace-nowrap min-w-[52px] justify-end">
-            <Heart className={`w-3 h-3 ${count > 0 ? "fill-current" : ""}`} /> {formatCount(count)}
-          </span>
+          <div className="flex-1 min-w-0 flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className="flex-1 text-[13px] font-semibold text-[#0f172a] truncate group-hover:text-blue-600 transition-colors">
+                {display}
+              </span>
+              <span className="text-[11px] text-rose-500 flex items-center gap-0.5 whitespace-nowrap">
+                <Heart className={`w-3 h-3 ${count > 0 ? "fill-current" : ""}`} /> {formatCount(count)}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px]">
+              <span className="px-1.5 py-0.5 rounded bg-[#eff6ff] text-blue-600 truncate max-w-[80px]">
+                {categoryFor(pos)}
+              </span>
+              <span
+                className="px-1.5 py-0.5 rounded bg-[#f0fdf4] text-emerald-600 truncate max-w-[120px]"
+                title={pos.majorNames?.filter(Boolean).join("、") || "未分类"}
+              >
+                {majorLabel(pos)}
+              </span>
+            </div>
+          </div>
         </div>
       </Link>
     )
