@@ -2807,10 +2807,15 @@ function EditCardDialog({
                                     )}
                                   </div>
                                 </div>
-                                {/* Row 2: description + standard description label */}
+                                {/* Row 2: description + standard description */}
                                 <div className="flex items-center gap-2 mt-1 ml-6">
                                   <p className="text-xs text-gray-500 line-clamp-1 flex-1">{ab.description}</p>
-                                  <span className="text-[10px] text-gray-500 shrink-0">岗位胜任标准描述</span>
+                                  <span
+                                    className="text-[10px] text-gray-500 shrink-0 line-clamp-1 max-w-[50%] text-right"
+                                    title={ab.proficiencyDesc || undefined}
+                                  >
+                                    {ab.proficiencyDesc || "岗位胜任标准描述"}
+                                  </span>
                                 </div>
                               </div>
                             )
@@ -2876,7 +2881,7 @@ function EditCardDialog({
                       </p>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-500">熟练程度描述</Label>
+                      <Label className="text-xs text-gray-500">岗位胜任标准描述</Label>
                       <p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{detailAb.proficiencyDesc || "-"}</p>
                     </div>
                   </div>
