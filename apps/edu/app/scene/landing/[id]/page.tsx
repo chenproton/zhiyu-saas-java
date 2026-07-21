@@ -15,7 +15,6 @@ import {
   scenarioApi,
   taskApi,
   taskResourceApi,
-  taskEvaluationApi,
   knowledgeApi,
   abilityApi,
 } from "@/lib/api"
@@ -23,9 +22,6 @@ import type {
   Scenario,
   ScenarioTask,
   TaskResource,
-  TaskEvaluationConfig,
-  TaskEvalPoint,
-  TaskReviewStep,
   KnowledgePoint,
   AbilityPoint,
 } from "@/lib/types"
@@ -75,10 +71,7 @@ export default function SceneDetailPage() {
   const [activeTab, setActiveTab] = useState("tasks")
 
   const [tasks, setTasks] = useState<ScenarioTask[]>([])
-  const [taskResources, setTaskResources] = useState<Map<string, TaskResource[]>>(new Map())
-  const [taskEvalConfigs, setTaskEvalConfigs] = useState<Map<string, TaskEvaluationConfig[]>>(new Map())
-  const [evalPoints, setEvalPoints] = useState<Map<string, TaskEvalPoint[]>>(new Map())
-  const [reviewSteps, setReviewSteps] = useState<Map<string, TaskReviewStep[]>>(new Map())
+  const [allResourceMap, setAllResourceMap] = useState<Map<string, TaskResource>>(new Map())
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
   const [abilityMap, setAbilityMap] = useState<Map<string, AbilityPoint>>(new Map())
 
@@ -100,51 +93,17 @@ export default function SceneDetailPage() {
       .then((res) => {
         const taskList = res.items || []
         setTasks(taskList)
-
-        Promise.all(taskList.map((t) =>
-          taskResourceApi.listResources({ taskId: t.id, limit: 100 })
-            .then((r) => ({ taskId: t.id, items: r.items || [] }))
-            .catch(() => ({ taskId: t.id, items: [] }))
-        )).then((results) => {
-          const rMap = new Map<string, TaskResource[]>()
-          results.forEach((r) => rMap.set(r.taskId, r.items))
-          setTaskResources(rMap)
-        }).catch(() => {})
-
-        Promise.all(taskList.map((t) =>
-          taskEvaluationApi.listConfigs({ taskId: t.id })
-            .then(async (r) => {
-              const configs = r.items || []
-              const pointsMap = new Map<string, TaskEvalPoint[]>()
-              const stepsMap = new Map<string, TaskReviewStep[]>()
-              await Promise.all(configs.map(async (c) => {
-                try {
-                  const pts = await taskEvaluationApi.listEvalPoints(c.id)
-                  pointsMap.set(c.id, pts.items || [])
-                } catch { pointsMap.set(c.id, []) }
-                try {
-                  const stps = await taskEvaluationApi.listReviewSteps(c.id)
-                  stepsMap.set(c.id, stps.items || [])
-                } catch { stepsMap.set(c.id, []) }
-              }))
-              return { taskId: t.id, configs, pointsMap, stepsMap }
-            })
-            .catch(() => ({ taskId: t.id, configs: [], pointsMap: new Map(), stepsMap: new Map() }))
-        )).then((results) => {
-          const cMap = new Map<string, TaskEvaluationConfig[]>()
-          const pMap = new Map<string, TaskEvalPoint[]>()
-          const sMap = new Map<string, TaskReviewStep[]>()
-          results.forEach((r) => {
-            cMap.set(r.taskId, r.configs)
-            r.pointsMap.forEach((v, k) => pMap.set(k, v))
-            r.stepsMap.forEach((v, k) => sMap.set(k, v))
-          })
-          setTaskEvalConfigs(cMap)
-          setEvalPoints(pMap)
-          setReviewSteps(sMap)
-        }).catch(() => {})
       })
       .catch(() => setTasks([]))
+
+    taskResourceApi
+      .listResources({ limit: 10000 })
+      .then((res) => {
+        const rMap = new Map<string, TaskResource>()
+        ;(res.items || []).forEach((r) => rMap.set(r.id, r))
+        setAllResourceMap(rMap)
+      })
+      .catch(() => setAllResourceMap(new Map()))
 
     Promise.all([
       knowledgeApi.list({ limit: 1000 }).catch(() => ({ items: [], total: 0 })),
@@ -164,9 +123,9 @@ export default function SceneDetailPage() {
   const totalHours = assessmentHours + trainingHours
   const totalResources = useMemo(() => {
     let count = 0
-    taskResources.forEach((r) => { count += r.length })
+    tasks.forEach((t) => { count += (t.resourceIds || []).length })
     return count
-  }, [taskResources])
+  }, [tasks])
   const uniqueAbilityIds = useMemo(() => {
     const ids = new Set<string>()
     tasks.forEach((t) => t.abilityPointIds?.forEach((aid) => ids.add(aid)))
@@ -179,9 +138,17 @@ export default function SceneDetailPage() {
   }, [tasks])
   const totalEvalConfigs = useMemo(() => {
     let count = 0
-    taskEvalConfigs.forEach((c) => { count += c.length })
+    tasks.forEach((t) => {
+      if (t.evalData?.evaluationMethods) {
+        count += (t.evalData.evaluationMethods as string[]).length
+      }
+    })
     return count
-  }, [taskEvalConfigs])
+  }, [tasks])
+
+  function getTaskResources(task: ScenarioTask): TaskResource[] {
+    return (task.resourceIds || []).map((id) => allResourceMap.get(id)).filter(Boolean) as TaskResource[]
+  }
 
   const diff = difficultyMap[scenario?.difficulty ?? 3] || difficultyMap[3]
   const industryName = scenario?.industryNames?.[0] || (scenario?.industryIds?.length ? "已关联" : "未分类")
@@ -233,7 +200,7 @@ export default function SceneDetailPage() {
             ) : (
               <div className="space-y-3">
                 {tasks.map((task, idx) => {
-                  const taskRes = taskResources.get(task.id) || []
+                  const taskRes = getTaskResources(task)
                   const taskAbs = task.abilityPointIds?.length || 0
                   const taskKs = task.knowledgePointIds?.length || 0
                   return (
@@ -300,7 +267,7 @@ export default function SceneDetailPage() {
             ) : (
               <div className="space-y-5">
                 {tasks.map((task) => {
-                  const resources = taskResources.get(task.id) || []
+                  const resources = getTaskResources(task)
                   if (resources.length === 0) return null
                   return (
                     <div key={task.id}>
@@ -418,38 +385,61 @@ export default function SceneDetailPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {tasks.filter((t) => (taskEvalConfigs.get(t.id) || []).length > 0).map((task, idx) => {
-                      const configs = taskEvalConfigs.get(task.id) || []
-                      return (
-                        <tr key={task.id} className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors">
-                          <td className="py-3 px-3 text-slate-400">{idx + 1}</td>
-                          <td className="py-3 px-3">
-                            <div className="font-semibold text-slate-800">{task.name}</div>
-                            <div className="text-[11px] text-slate-400">{taskTypeLabels[task.taskType]}</div>
-                          </td>
-                          <td className="py-3 px-3 text-slate-600">
-                            {configs.map((c) => c.methodKey).join("、") || "-"}
-                          </td>
-                          <td className="py-3 px-3">
-                            {configs.map((c, ci) => (
-                              <div key={ci} className="text-blue-600 font-semibold">{Math.round(c.weight * 100)}%</div>
-                            ))}
-                          </td>
-                          <td className="py-3 px-3">
-                            <div className="flex flex-wrap gap-1.5">
-                              {(evalPoints.get(configs[0]?.id) || []).map((pt) => (
-                                <span key={pt.id} className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-                                  {pt.name}({pt.maxScore}分)
-                                </span>
+                    {(() => {
+                      const tasksWithEval = tasks.filter((t) => t.evalData?.evaluationMethods?.length > 0)
+                      return tasksWithEval.map((task, idx) => {
+                        const ed = task.evalData!
+                        const methods: string[] = ed.evaluationMethods || []
+                        const weights: Record<string, number> = ed.methodWeights || {}
+                        const methodPointsMap: Record<string, { name: string; scoreInfo: string }[]> = {
+                          random_draw: ed.randomDrawEvalPoints || [],
+                          review: ed.reviewEvalPoints || [],
+                          paper: ed.paperEvalPoints || [],
+                          question_bank: ed.questionBankEvalPoints || [],
+                          outcome: ed.outcomeEvalPoints || [],
+                          homework: ed.homeworkEvalPoints || [],
+                          quiz: ed.quizEvalPoints || [],
+                        }
+                        const allPoints: { name: string; scoreInfo: string }[] = []
+                        for (const m of methods) {
+                          ;(methodPointsMap[m] || []).forEach((pt: any) => {
+                            let scoreInfo = ""
+                            if (pt.gradeMapping?.length > 0) {
+                              scoreInfo = `${pt.gradeMapping[pt.gradeMapping.length - 1].maxScore}分`
+                            }
+                            allPoints.push({ name: pt.name, scoreInfo })
+                          })
+                        }
+                        return (
+                          <tr key={task.id} className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors">
+                            <td className="py-3 px-3 text-slate-400">{idx + 1}</td>
+                            <td className="py-3 px-3">
+                              <div className="font-semibold text-slate-800">{task.name}</div>
+                              <div className="text-[11px] text-slate-400">{taskTypeLabels[task.taskType]}</div>
+                            </td>
+                            <td className="py-3 px-3 text-slate-600">
+                              {methods.join("、") || "-"}
+                            </td>
+                            <td className="py-3 px-3">
+                              {methods.map((m, mi) => (
+                                <div key={mi} className="text-blue-600 font-semibold">{Math.round(weights[m] || 0)}%</div>
                               ))}
-                              {configs.every((c) => (evalPoints.get(c.id) || []).length === 0) && (
-                                <span className="text-xs text-slate-400">-</span>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
+                            </td>
+                            <td className="py-3 px-3">
+                              <div className="flex flex-wrap gap-1.5">
+                                {allPoints.length > 0 ? allPoints.map((pt, pi) => (
+                                  <span key={pi} className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                                    {pt.name}{pt.scoreInfo ? `(${pt.scoreInfo})` : ""}
+                                  </span>
+                                )) : (
+                                  <span className="text-xs text-slate-400">-</span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })
+                    })()}
                   </tbody>
                 </table>
               </div>
