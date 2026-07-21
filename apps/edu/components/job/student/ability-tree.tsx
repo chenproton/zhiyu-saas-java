@@ -85,7 +85,7 @@ export function AbilityTree({ responsibilities, bindings, abilityPoints, ability
               <Target className="w-4 h-4" />
               {domain}
             </div>
-            <div className="p-3">
+            <div className="p-3 max-h-[300px] overflow-y-auto">
               {items.map((ab) => {
                 const info = abilityMap[ab.abilityPointId]
                 return (
