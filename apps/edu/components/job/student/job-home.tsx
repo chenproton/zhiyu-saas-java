@@ -56,17 +56,16 @@ export function JobHome() {
   }, [])
 
   useEffect(() => {
-    if (!user?.majorId) {
-      setHotPositions([])
-      return
-    }
     recommendApi
-      .list({ majorId: user.majorId, limit: 1000 })
+      .list({ limit: 1000 })
       .then((res) => {
-        const items = (res.items || [])
+        let items = (res.items || [])
           .filter((rec) => rec.isEnabled)
           .sort((a, b) => a.sortOrder - b.sortOrder)
-          .map((rec) => ({ positionId: rec.careerPositionId, order: rec.sortOrder }))
+          .map((rec) => ({ positionId: rec.careerPositionId, order: rec.sortOrder, majorId: rec.majorId }))
+        if (user?.majorId) {
+          items = items.filter((rec) => rec.majorId === user.majorId)
+        }
         setHotPositions(items)
       })
       .catch(() => setHotPositions([]))

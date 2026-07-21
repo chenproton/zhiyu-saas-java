@@ -179,15 +179,12 @@ export default function LearnRoadsPage() {
   const [saving, setSaving] = useState(false)
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchInput, setSearchInput] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | PositionStatus>('all')
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSearchQuery(searchInput.trim())
-    }, 400)
-    return () => clearTimeout(timer)
-  }, [searchInput])
+  const applySearch = () => {
+    setSearchQuery(searchInputRef.current?.value.trim() || '')
+  }
 
   const loadJobData = useCallback(async () => {
     setDataLoading(true)
@@ -406,13 +403,10 @@ export default function LearnRoadsPage() {
               <Input
                 placeholder="搜索岗位名称、简称..."
                 className="pl-9"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    setSearchQuery(searchInput.trim())
-                  }
-                }}
+                defaultValue=""
+                ref={searchInputRef}
+                onKeyDown={(e) => { if (e.key === 'Enter') applySearch() }}
+                onBlur={applySearch}
               />
             </div>
             <Select
