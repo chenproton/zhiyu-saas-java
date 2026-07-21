@@ -27,6 +27,7 @@ interface UserSelectorProps {
   onChange: (userIds: string[]) => void
   multiple?: boolean
   excludeStudent?: boolean
+  excludeUserIds?: string[]
   placeholder?: string
   disabled?: boolean
   tenantId?: string
@@ -102,6 +103,7 @@ function collectSubtreeIds(orgMap: Map<string, Organization & { children?: Organ
 
 export function UserSelector({
   value, onChange, multiple = true, excludeStudent = true,
+  excludeUserIds = [],
   placeholder = "选择用户", disabled = false, tenantId, usePortalApi = true,
 }: UserSelectorProps) {
   const [open, setOpen] = useState(false)
@@ -168,6 +170,10 @@ export function UserSelector({
       let filtered = res.items
       if (excludeStudent) {
         filtered = filtered.filter((u) => !(u.roleCodes || []).includes("student"))
+      }
+      if (excludeUserIds.length > 0) {
+        const excludeSet = new Set(excludeUserIds)
+        filtered = filtered.filter((u) => !excludeSet.has(u.id))
       }
       setUsers(filtered)
       mergeUserCache(res.items)

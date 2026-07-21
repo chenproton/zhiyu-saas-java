@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronDown, ChevronRight, ImagePlus, List, ListOrdered, Loader2, Search, Star, X, UserPlus } from "lucide-react"
+import { ChevronDown, ChevronRight, ImagePlus, List, ListOrdered, Loader2, Star, X } from "lucide-react"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
@@ -34,6 +34,8 @@ import type { CareerPosition } from "@/lib/types/job"
 import type { Industry, Major } from "@/lib/types/backend"
 import type { SceneBatch } from "@/lib/types/scene"
 import { toast, Toaster } from "sonner"
+import { useAuth } from "@/components/auth-provider"
+import { UserSelector } from "@/components/shared/user-selector"
 import { EditorShell } from "@/components/shared/editor-shell"
 
 export default function ScenarioEditPage() {
@@ -43,6 +45,7 @@ export default function ScenarioEditPage() {
   const scenarioId = params.id as string
   const hasSavedRef = useRef(false)
   const isNewScenario = searchParams.get('new') === 'true'
+  const { user: currentUser, tenantId } = useAuth()
 
   const [allPositions, setAllPositions] = useState<CareerPosition[]>([])
   const [industries, setIndustries] = useState<Industry[]>([])
@@ -61,6 +64,7 @@ export default function ScenarioEditPage() {
   const [difficulty, setDifficulty] = useState<number>(3)
   const [background, setBackground] = useState("")
   const [creatorName, setCreatorName] = useState("当前用户")
+  const [creatorId, setCreatorId] = useState<string>("")
   const [coBuilderIds, setCoBuilderIds] = useState<string[]>([])
   const [version, setVersion] = useState("v1.0")
   const [coverImage, setCoverImage] = useState("")
@@ -68,8 +72,6 @@ export default function ScenarioEditPage() {
   const coverInputRef = useRef<HTMLInputElement>(null)
   const [scenarioStatus, setScenarioStatus] = useState<string>("draft")
 
-  const [coBuilderSearch, setCoBuilderSearch] = useState("")
-  const [isCoBuilderDialogOpen, setIsCoBuilderDialogOpen] = useState(false)
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false)
 
   useEffect(() => {
@@ -98,7 +100,8 @@ export default function ScenarioEditPage() {
         setIndustryIds(scenario.industryIds || [])
         setDifficulty(scenario.difficulty || 3)
         setBackground(scenario.background || "")
-        setCoBuilderIds(scenario.coBuilderIds || [])
+        setCreatorId(scenario.creatorId || "")
+        setCoBuilderIds((scenario.coBuilderIds || []).filter((id) => id !== scenario.creatorId))
         setVersion(scenario.version || "v1.0")
         setCoverImage(scenario.coverImage || "")
         setScenarioStatus(scenario.status || "draft")
