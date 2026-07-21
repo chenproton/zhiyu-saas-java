@@ -118,6 +118,10 @@ if [[ -n "$BRANCH_NAME" ]]; then
         exit 1
       }
     }
+    if [[ "$BACKEND_ONLY" != "true" && -d "$ORIGINAL_PROJECT_ROOT/node_modules" ]]; then
+      echo "  复制 node_modules 避免重复下载..."
+      cp -a "$ORIGINAL_PROJECT_ROOT/node_modules" "$BUILD_TREE/"
+    fi
   fi
 
   echo "  合并分支 $BRANCH_NAME ..."
