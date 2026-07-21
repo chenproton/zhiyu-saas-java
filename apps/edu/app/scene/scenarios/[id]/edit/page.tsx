@@ -232,26 +232,29 @@ export default function ScenarioEditPage() {
 
   const batch = batches.find(b => b.id === batchId)
 
+  const buildPayload = () => {
+    const selectedMajor = majors.find(m => m.id === professionId)
+    return {
+      name: scenarioName.trim(),
+      code: scenarioCode,
+      careerPositionId: positionId || null,
+      batchId: batchId || null,
+      industryId: industryIds[0] || null,
+      professionId: professionId || null,
+      professionName: selectedMajor?.name || null,
+      difficulty,
+      background: background || null,
+      version,
+      coBuilderIds,
+      coverImage: coverImage || null,
+    }
+  }
+
   const handleProceed = async () => {
     if (!scenarioName.trim()) return
     setIsSaving(true)
     try {
-      const selectedMajor = majors.find(m => m.id === professionId)
-      const payload: Record<string, any> = {
-        name: scenarioName.trim(),
-        code: scenarioCode,
-        careerPositionId: positionId || undefined,
-        batchId: batchId || undefined,
-        industryId: industryIds[0] || undefined,
-        professionId: professionId || undefined,
-        professionName: selectedMajor?.name || undefined,
-        difficulty,
-        background: background || undefined,
-        version,
-        coBuilderIds,
-        coverImage: coverImage || undefined,
-      }
-      await scenarioApi.update(scenarioId, payload as any)
+      await scenarioApi.update(scenarioId, buildPayload() as any)
       hasSavedRef.current = true
       toast.success("保存成功")
       router.push(`/scene/scenarios/${scenarioId}/edit/tasks`)
@@ -266,22 +269,7 @@ export default function ScenarioEditPage() {
     if (!scenarioName.trim()) return
     setIsSaving(true)
     try {
-      const selectedMajor = majors.find(m => m.id === professionId)
-      const payload: Record<string, any> = {
-        name: scenarioName.trim(),
-        code: scenarioCode,
-        careerPositionId: positionId || undefined,
-        batchId: batchId || undefined,
-        industryId: industryIds[0] || undefined,
-        professionId: professionId || undefined,
-        professionName: selectedMajor?.name || undefined,
-        difficulty,
-        background: background || undefined,
-        version,
-        coBuilderIds,
-        coverImage: coverImage || undefined,
-      }
-      await scenarioApi.update(scenarioId, payload as any)
+      await scenarioApi.update(scenarioId, buildPayload() as any)
       hasSavedRef.current = true
       if (scenarioStatus === "approved" || scenarioStatus === "published" || scenarioStatus === "rejected") {
         await scenarioApi.saveDraft(scenarioId)

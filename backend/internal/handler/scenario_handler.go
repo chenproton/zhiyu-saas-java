@@ -39,6 +39,44 @@ type CreateScenarioRequest struct {
 	CoBuilderIDs     []string `json:"coBuilderIds"`
 }
 
+// NullableString tracks whether a JSON field was explicitly provided so that
+// omitted fields can keep their existing value while explicit null/empty values
+// can clear the column.
+type NullableString struct {
+	Value   *string
+	Present bool
+}
+
+func (n *NullableString) UnmarshalJSON(data []byte) error {
+	n.Present = true
+	if string(data) == "null" {
+		n.Value = nil
+		return nil
+	}
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	n.Value = &s
+	return nil
+}
+
+type UpdateScenarioRequest struct {
+	Name             string         `json:"name"`
+	Code             string         `json:"code"`
+	CoverImage       NullableString `json:"coverImage"`
+	CareerPositionID NullableString `json:"careerPositionId"`
+	IndustryID       NullableString `json:"industryId"`
+	ProfessionID     NullableString `json:"professionId"`
+	ProfessionName   NullableString `json:"professionName"`
+	BatchID          NullableString `json:"batchId"`
+	Difficulty       int            `json:"difficulty"`
+	Version          string         `json:"version"`
+	Background       NullableString `json:"background"`
+	DeliveryGoal     NullableString `json:"deliveryGoal"`
+	CoBuilderIDs     []string       `json:"coBuilderIds"`
+}
+
 func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "permission denied")
@@ -204,7 +242,7 @@ func (h *ScenarioHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req CreateScenarioRequest
+	var req UpdateScenarioRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
@@ -230,35 +268,25 @@ func (h *ScenarioHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if coBuilderIDs == nil {
 		coBuilderIDs = existing.CoBuilderIDs
 	}
-	coverImage := req.CoverImage
-	if coverImage == nil {
-		coverImage = existing.CoverImage
+
+	resolveNullable := func(n NullableString, existing *string) *string {
+		if !n.Present {
+			return existing
+		}
+		if n.Value != nil && *n.Value == "" {
+			return nil
+		}
+		return n.Value
 	}
-	careerPositionID := req.CareerPositionID
-	if careerPositionID == nil {
-		careerPositionID = existing.CareerPositionID
-	}
-	industryID := req.IndustryID
-	if industryID == nil {
-		industryID = existing.IndustryID
-	}
-	professionID := req.ProfessionID
-	if professionID == nil {
-		professionID = existing.ProfessionID
-	}
-	professionName := req.ProfessionName
-	if professionName == nil {
-		professionName = existing.ProfessionName
-	}
-	batchID := req.BatchID
-	background := req.Background
-	if background == nil {
-		background = existing.Background
-	}
-	deliveryGoal := req.DeliveryGoal
-	if deliveryGoal == nil {
-		deliveryGoal = existing.DeliveryGoal
-	}
+
+	coverImage := resolveNullable(req.CoverImage, existing.CoverImage)
+	careerPositionID := resolveNullable(req.CareerPositionID, existing.CareerPositionID)
+	industryID := resolveNullable(req.IndustryID, existing.IndustryID)
+	professionID := resolveNullable(req.ProfessionID, existing.ProfessionID)
+	professionName := resolveNullable(req.ProfessionName, existing.ProfessionName)
+	batchID := resolveNullable(req.BatchID, existing.BatchID)
+	background := resolveNullable(req.Background, existing.Background)
+	deliveryGoal := resolveNullable(req.DeliveryGoal, existing.DeliveryGoal)
 
 	_, err = h.DB.Exec(r.Context(), `
 		UPDATE scenarios SET name = $1, code = $2, cover_image = $3, career_position_id = $4,

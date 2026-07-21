@@ -723,6 +723,74 @@ func TestScenarioCreateWithInvalidPositionId(t *testing.T) {
 	}
 }
 
+func TestScenario_ClearNullableFields(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	code := fmt.Sprintf("test-clear-%s", t.Name())
+
+	// Create scenario with a careerPositionId
+	w := env.Do("POST", "/api/v1/scene/scenarios", map[string]interface{}{
+		"name":             "Clearable Scenario",
+		"code":             code,
+		"difficulty":       3,
+		"version":          "v1.0",
+		"careerPositionId": "00000000-0000-0000-0000-00000000dead",
+		"background":       "original background",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	scenario, _ := testhelper.Unmarshal[domain.Scenario](w)
+	id := scenario.ID
+	defer env.DB.Exec(ctx, "DELETE FROM scenarios WHERE id = $1", id)
+	if scenario.CareerPositionID == nil {
+		t.Fatal("expected careerPositionId to be set after create")
+	}
+
+	// Update with explicit nulls to clear fields
+	w = env.Do("PUT", "/api/v1/scene/scenarios/"+id, map[string]interface{}{
+		"name":             "Clearable Scenario",
+		"code":             code,
+		"difficulty":       3,
+		"version":          "v1.0",
+		"careerPositionId": nil,
+		"background":       nil,
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("update: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	updated, err := testhelper.Unmarshal[domain.Scenario](w)
+	if err != nil {
+		t.Fatalf("unmarshal update: %v", err)
+	}
+	if updated.CareerPositionID != nil {
+		t.Fatalf("careerPositionId should be nil, got %v", *updated.CareerPositionID)
+	}
+	if updated.Background != nil {
+		t.Fatalf("background should be nil, got %v", *updated.Background)
+	}
+
+	// Verify partial update keeps cleared values when fields are omitted
+	w = env.Do("PUT", "/api/v1/scene/scenarios/"+id, map[string]interface{}{
+		"name": "Clearable Scenario Renamed",
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("partial update: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	partial, err := testhelper.Unmarshal[domain.Scenario](w)
+	if err != nil {
+		t.Fatalf("unmarshal partial update: %v", err)
+	}
+	if partial.Name != "Clearable Scenario Renamed" {
+		t.Fatalf("name not updated: %s", partial.Name)
+	}
+	if partial.CareerPositionID != nil {
+		t.Fatalf("careerPositionId should remain nil after partial update, got %v", *partial.CareerPositionID)
+	}
+}
+
 func TestTaskBindKnowledgeWithInvalidId(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
