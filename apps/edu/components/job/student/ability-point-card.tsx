@@ -77,7 +77,7 @@ export function AbilityPointCard({ binding, abilityPoint, index }: AbilityPointC
           className="text-[11px] px-1.5 py-0.5 rounded border"
           style={{ color: levelColor, background: `rgba(${hexToRgb(levelColor)},0.12)`, borderColor: `rgba(${hexToRgb(levelColor)},0.25)` }}
         >
-          {binding.requiredLevel}
+          胜任标准：{binding.requiredLevel}
         </span>
       </div>
 
