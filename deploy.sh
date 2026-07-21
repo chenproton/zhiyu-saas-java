@@ -217,21 +217,17 @@ cleanup() {
 
 trap 'cleanup' EXIT
 
-# ==================== Git 自动提交推送 ====================
+# ==================== Git 未提交修改检查 ====================
 if [[ -n "$BRANCH_NAME" ]]; then
-  echo "==> 分支隔离模式，跳过自动提交（构建基于 master + $BRANCH_NAME）"
+  echo "==> 分支隔离模式，跳过本地修改检查（构建基于 master + $BRANCH_NAME）"
 else
-  # 每次部署前自动提交所有未保存的修改，确保代码仓库与线上一致
   echo "==> 检查本地未提交修改..."
-  cd "$PROJECT_ROOT"
-  if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
-    STAMP="$(date '+%Y-%m-%d_%H:%M:%S')"
-    git add -A
-    git commit -m "deploy(auto): $STAMP — 部署前自动提交未保存的修改" || true
-    git push 2>/dev/null || echo "  警告：git push 失败，继续部署..."
-    echo "  已自动提交并推送未保存的修改 ($STAMP)"
+  if [[ -n "$(git -C "$PROJECT_ROOT" status --porcelain 2>/dev/null)" ]]; then
+    echo "  警告：工作区存在未提交修改，非分支模式下不会自动提交" >&2
+    echo "  建议：使用 --branch <分支名> 进行隔离部署，避免引入其他 Agent 的中间代码" >&2
+    echo "  继续使用当前工作区内容部署..."
   else
-    echo "  无未提交修改，跳过"
+    echo "  无未提交修改"
   fi
 fi
 
