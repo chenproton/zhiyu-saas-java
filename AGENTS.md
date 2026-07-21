@@ -39,6 +39,22 @@
 - 若分支与 master 存在冲突，先 `git checkout feat/xxx && git rebase master` 解决后再部署
 - 禁止直接在 master 分支上修改代码，master 仅用于拉取最新代码和合并已验证分支
 - 多个 Agent 并行开发时，各自在不同分支上互不干扰；部署时 `--branch` 参数保证只编译「master + 当前分支」的代码
+- **推荐：使用独立工作树开发**。多个 Agent 在同一台服务器上用同一目录开发，未提交的文件会互相可见。建议每个 Agent 在自己的 git worktree 中开发，做到开发和部署完全隔离：
+  ```bash
+  # Agent A：在自己的目录中开发
+  git worktree add /tmp/agent-a feat/<agent>-<任务简述> && cd /tmp/agent-a
+  # ... 修改代码、提交、推送 ...
+  ./deploy.sh --branch feat/<agent>-<任务简述>
+
+  # Agent B：同理，完全隔离
+  git worktree add /tmp/agent-b feat/<agent>-<任务简述> && cd /tmp/agent-b
+  # ... 修改代码、提交、推送 ...
+  ./deploy.sh --branch feat/<agent>-<任务简述>
+
+  # 任务完成后清理 worktree：
+  git worktree remove /tmp/agent-a
+  ```
+  工作树创建后可正常使用所有开发工具（go build、pnpm dev 等），不同 Agent 的工作树互不影响。
 
 ## 三、交付要求
 
