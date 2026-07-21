@@ -559,8 +559,8 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
         {isScene && (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-5 mb-6">
             {/* 行业覆盖热力标签 */}
-            <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6">
-              <div className="flex items-center gap-2.5 text-[15px] font-bold text-[#0f172a] mb-5">
+            <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-5">
+              <div className="flex items-center gap-2.5 text-[15px] font-bold text-[#0f172a] mb-3">
                 <div className="w-1 h-5 rounded-full bg-gradient-to-b from-amber-400 to-orange-500" />
                 <Factory className="w-4 h-4 text-amber-500" />
                 行业覆盖
@@ -571,7 +571,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                 scenarios.forEach((s) => s.industryNames?.forEach((n) => n && counts.set(n, (counts.get(n) || 0) + 1)))
                 const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1])
                 const max = sorted[0]?.[1] || 1
-                if (sorted.length === 0) return <div className="text-sm text-[#94a3b8] text-center py-8">暂无行业数据</div>
+                if (sorted.length === 0) return <div className="text-sm text-[#94a3b8] text-center py-6">暂无行业数据</div>
                 const palettes = [
                   { bg: "rgba(249,115,22,{a})", text: "rgb(194,65,12)", border: "rgba(249,115,22,{b})" },
                   { bg: "rgba(59,130,246,{a})", text: "rgb(29,78,216)", border: "rgba(59,130,246,{b})" },
@@ -580,19 +580,19 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                   { bg: "rgba(236,72,153,{a})", text: "rgb(190,24,93)", border: "rgba(236,72,153,{b})" },
                 ]
                 return (
-                  <div className="flex flex-wrap gap-2.5">
+                  <div className="flex flex-wrap gap-2">
                     {sorted.slice(0, 15).map(([name, count], i) => {
                       const ratio = count / max
                       const p = palettes[i % palettes.length]
                       return (
                         <span
                           key={name}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105 hover:shadow-md cursor-default"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all hover:scale-105 hover:shadow-sm cursor-default"
                           style={{
                             backgroundColor: p.bg.replace("{a}", String(0.08 + ratio * 0.18)),
                             color: p.text,
                             border: `1px solid ${p.border.replace("{b}", String(0.2 + ratio * 0.25))}`,
-                            fontSize: `${12 + ratio * 5}px`,
+                            fontSize: `${12 + ratio * 4}px`,
                           }}
                         >
                           {name}
@@ -609,8 +609,8 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
             </div>
 
             {/* 场景难度分布 */}
-            <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6">
-              <div className="flex items-center gap-2.5 text-[15px] font-bold text-[#0f172a] mb-5">
+            <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-5">
+              <div className="flex items-center gap-2.5 text-[15px] font-bold text-[#0f172a] mb-3">
                 <div className="w-1 h-5 rounded-full bg-gradient-to-b from-violet-400 to-purple-500" />
                 <BarChart3 className="w-4 h-4 text-purple-500" />
                 难度分布
@@ -627,17 +627,17 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                 ]
                 const maxCount = Math.max(...Object.values(diffCounts), 1)
                 return (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {entries.map((e) => {
                       const count = diffCounts[e.key] || 0
                       const pct = Math.max(count / maxCount * 100, count > 0 ? 5 : 0)
                       return (
                         <div key={e.key} className="group">
-                          <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center justify-between mb-1">
                             <span className="text-[13px] font-semibold text-[#374151]">{e.label}</span>
                             <span className="text-[13px] font-bold text-[#475569]">{count} 个</span>
                           </div>
-                          <div className="h-2.5 bg-[#f1f5f9] rounded-full overflow-hidden shadow-inner">
+                          <div className="h-2 bg-[#f1f5f9] rounded-full overflow-hidden shadow-inner">
                             <div
                               className="h-full rounded-full transition-all duration-700 ease-out group-hover:brightness-110 shadow-[0_0_8px_rgba(0,0,0,0.08)]"
                               style={{
