@@ -1102,7 +1102,7 @@ export default function TasksEditPage() {
     setIsSaving(true)
     try {
       await saveTasksToBackend()
-      if (existingScenario?.status === "approved" || existingScenario?.status === "published" || existingScenario?.status === "rejected") {
+      if (existingScenario?.status !== "draft") {
         await scenarioApi.saveDraft(scenarioId)
         setExistingScenario((prev: any) => (prev ? { ...prev, status: "draft" } : prev))
         toast({ title: "草稿已保存", description: "场景已退回草稿状态" })
@@ -1120,7 +1120,7 @@ export default function TasksEditPage() {
     setIsSaving(true)
     try {
       await saveTasksToBackend()
-      if (existingScenario?.status === "approved" || existingScenario?.status === "published" || existingScenario?.status === "rejected") {
+      if (existingScenario?.status !== "draft") {
         await scenarioApi.saveDraft(scenarioId)
         setExistingScenario((prev: any) => (prev ? { ...prev, status: "draft" } : prev))
         toast({ title: "配置已保存", description: "场景已退回草稿状态" })
