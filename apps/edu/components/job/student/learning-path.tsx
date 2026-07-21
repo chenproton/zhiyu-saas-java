@@ -148,7 +148,7 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
         </p>
       </div>
 
-      <div className="relative px-10 pb-6 overflow-hidden">
+      <div className="relative px-10 pt-8 pb-6 overflow-visible">
         <button
           onClick={() => navigate(-1)}
           disabled={activeIndex === 0}
