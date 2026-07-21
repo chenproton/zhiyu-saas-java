@@ -1,292 +1,395 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import {
-  Briefcase, Award, MapPin, Search, Target,
-  Star, TrendingUp, Layers, Users, BarChart3,
+  Search, Flag, Heart, Crosshair, Briefcase, GraduationCap,
+  Factory, Eye, Sparkles, Filter, X,
 } from "lucide-react"
-import { useData } from "@/components/providers/data-provider"
-import { positionApi, learnRoadApi } from "@/lib/api"
-import type { CareerPosition, LearnRoad } from "@/lib/types"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { publicPositionApi } from "@/lib/api"
+import { useAuth } from "@/components/auth-provider"
+import { useIndustryMap } from "@/lib/use-resource-maps"
+import type { CareerPosition } from "@/lib/types"
+import { StatsBar } from "@/components/job/student/stats-bar"
+import { JobCard } from "@/components/job/student/job-card"
+import { Pagination } from "@/components/job/student/pagination"
+import { RankingList } from "@/components/job/student/ranking-list"
+import { PlatformFooter } from "@/components/job/student/platform-footer"
 
-function SectionHeader({ title, subtitle, moreHref }: { title: string; subtitle?: string; moreHref?: string }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 20 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-        <h2 style={{ fontSize: 20, fontWeight: "bold", color: "#1e293b", position: "relative", paddingLeft: 12 }}>
-          <span style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", width: 4, height: 20, background: "linear-gradient(180deg, #7c3aed, #8b5cf6)", borderRadius: 2 }} />
-          {title}
-        </h2>
-        {subtitle && <span style={{ color: "#94a3b8", fontSize: 13 }}>{subtitle}</span>}
-      </div>
-      {moreHref && (
-        <Link href={moreHref} style={{ color: "#7c3aed", fontSize: 13, textDecoration: "none" }}
-          onMouseEnter={(e) => { e.currentTarget.style.textDecoration = "underline" }}
-          onMouseLeave={(e) => { e.currentTarget.style.textDecoration = "none" }}>
-          查看全部 ›
-        </Link>
-      )}
-    </div>
-  )
-}
-
-const statusColors: Record<string, { color: string; label: string }> = {
-  published: { color: "#16a34a", label: "已发布" },
-  draft: { color: "#64748b", label: "草稿" },
-  pending: { color: "#2563eb", label: "审核中" },
-  approved: { color: "#8b5cf6", label: "已通过" },
-  archived: { color: "#94a3b8", label: "已归档" },
-}
-
-const coverGradients = [
-  "linear-gradient(135deg, #7c3aed, #a78bfa)",
-  "linear-gradient(135deg, #db2777, #f472b6)",
-  "linear-gradient(135deg, #0891b2, #22d3ee)",
-  "linear-gradient(135deg, #ea580c, #fb923c)",
-  "linear-gradient(135deg, #4f46e5, #818cf8)",
-  "linear-gradient(135deg, #be185d, #f472b6)",
+const CARDS_PER_PAGE = 12
+const SORT_OPTIONS = [
+  { value: "default", label: "默认排序" },
+  { value: "recent", label: "最近收录" },
+  { value: "update", label: "最近更新" },
 ]
 
 export default function JobLandingPage() {
-  const { positionsList, jobAbilityResults } = useData()
+  const router = useRouter()
+  const { user } = useAuth()
+  const industryMap = useIndustryMap()
+
   const [positions, setPositions] = useState<CareerPosition[]>([])
-  const [learnRoads, setLearnRoads] = useState<LearnRoad[]>([])
+  const [loading, setLoading] = useState(true)
+  const [total, setTotal] = useState(0)
+
+  const [currentPage, setCurrentPage] = useState(1)
+  const [sort, setSort] = useState("default")
+  const [keyword, setKeyword] = useState("")
+  const [selectedIndustry, setSelectedIndustry] = useState<string>("全部")
+  const [selectedMajor, setSelectedMajor] = useState<string>("全部")
 
   useEffect(() => {
-    Promise.all([
-      positionApi.list({ limit: 100 }),
-      learnRoadApi.list({ limit: 100 }),
-    ]).then(([posRes, roadRes]) => {
-      setPositions(posRes.items || [])
-      setLearnRoads(roadRes.items || [])
-    }).catch(() => {})
+    setLoading(true)
+    publicPositionApi
+      .list({ status: "published", limit: 1000 })
+      .then((res) => {
+        setPositions(res.items || [])
+        setTotal(res.total || 0)
+      })
+      .catch(() => {
+        setPositions([])
+        setTotal(0)
+      })
+      .finally(() => setLoading(false))
   }, [])
 
-  const publishedPositions = positions.filter((p) => p.status === "published").slice(0, 6)
-  const displayLearnRoads = learnRoads.slice(0, 4)
-  const positionTypeMap: Record<string, string> = { enterprise: "企业", teaching: "教学" }
+  const industries = useMemo(() => {
+    const set = new Set<string>()
+    positions.forEach((p) => {
+      if (p.industryId) {
+        const name = industryMap.get(p.industryId)
+        if (name) set.add(name)
+      }
+    })
+    return ["全部", ...Array.from(set).sort()]
+  }, [positions, industryMap])
 
-  const stats = [
-    { num: positions.length, label: "岗位数量", icon: <Briefcase className="h-5 w-5" /> },
-    { num: publishedPositions.length, label: "已发布", icon: <Award className="h-5 w-5" /> },
-    { num: jobAbilityResults.length, label: "能力评估记录", icon: <BarChart3 className="h-5 w-5" /> },
-    { num: learnRoads.length, label: "学习路径", icon: <TrendingUp className="h-5 w-5" /> },
-  ]
+  const majors = useMemo(() => {
+    const set = new Set<string>()
+    positions.forEach((p) => {
+      p.majorNames?.forEach((m) => {
+        if (m) set.add(m)
+      })
+    })
+    return ["全部", ...Array.from(set).sort()]
+  }, [positions])
+
+  const filtered = useMemo(() => {
+    let list = [...positions]
+    if (selectedIndustry !== "全部") {
+      list = list.filter((p) => p.industryId && industryMap.get(p.industryId) === selectedIndustry)
+    }
+    if (selectedMajor !== "全部") {
+      list = list.filter((p) => p.majorNames?.includes(selectedMajor))
+    }
+    if (keyword.trim()) {
+      const k = keyword.trim().toLowerCase()
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(k) ||
+          (p.shortName?.toLowerCase().includes(k) ?? false) ||
+          p.id.toLowerCase().includes(k)
+      )
+    }
+    if (sort === "recent") {
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    } else if (sort === "update") {
+      list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    }
+    return list
+  }, [positions, selectedIndustry, selectedMajor, keyword, sort, industryMap])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / CARDS_PER_PAGE))
+  const pageItems = useMemo(() => {
+    const start = (currentPage - 1) * CARDS_PER_PAGE
+    return filtered.slice(start, start + CARDS_PER_PAGE)
+  }, [filtered, currentPage])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedIndustry, selectedMajor, keyword, sort])
+
+  const activeFilters = useMemo(() => {
+    const filters: { type: string; label: string }[] = []
+    if (selectedIndustry !== "全部") filters.push({ type: "industry", label: `行业：${selectedIndustry}` })
+    if (selectedMajor !== "全部") filters.push({ type: "major", label: `专业：${selectedMajor}` })
+    if (keyword.trim()) filters.push({ type: "keyword", label: `关键词：${keyword.trim()}` })
+    return filters
+  }, [selectedIndustry, selectedMajor, keyword])
+
+  const stats = useMemo(() => {
+    const industrySet = new Set<string>()
+    const majorSet = new Set<string>()
+    positions.forEach((p) => {
+      if (p.industryId) industrySet.add(p.industryId)
+      p.majorNames?.forEach((m) => majorSet.add(m))
+    })
+    return {
+      total: positions.length,
+      industryCount: industrySet.size,
+      majorCount: majorSet.size,
+    }
+  }, [positions])
 
   return (
-    <div>
-      {/* ═══ Hero Banner ═══ */}
-      <div style={{
-        background: "linear-gradient(135deg, #3b0764 0%, #6b21a8 40%, #7c3aed 100%)",
-        color: "#fff", padding: "60px 20px 50px", textAlign: "center", position: "relative", overflow: "hidden", minHeight: 360,
-      }}>
-        <div style={{ maxWidth: 720, margin: "0 auto", position: "relative", zIndex: 1 }}>
-          <h1 style={{ fontSize: 40, fontWeight: "bold", marginBottom: 12, letterSpacing: 1 }}>岗位能力培养平台</h1>
-          <p style={{ fontSize: 15, opacity: 0.85, marginBottom: 28 }}>对接企业岗位标准，梳理能力模型，规划学习路径，实现精准人才培养</p>
-          <div style={{
-            background: "#fff", borderRadius: 50, padding: "5px 5px 5px 24px",
-            display: "flex", alignItems: "center", boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
-          }}>
-            <Search style={{ width: 18, height: 18, color: "#94a3b8", marginRight: 10 }} />
-            <input type="text" placeholder="搜索岗位、能力项、学习路径"
-              style={{ flex: 1, border: "none", outline: "none", fontSize: 14, padding: "12px 0", color: "#333", background: "transparent" }} />
-            <button style={{
-              background: "linear-gradient(135deg, #7c3aed, #8b5cf6)", color: "#fff", border: "none",
-              padding: "11px 32px", borderRadius: 50, cursor: "pointer", fontSize: 14, fontWeight: 500,
-            }}>搜索</button>
+    <div className="min-h-screen flex flex-col">
+      {/* Hero Banner */}
+      <div className="relative w-full mt-14 min-h-[420px] flex items-end overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/85 via-blue-500/75 to-violet-500/75 z-[1]" />
+        <div
+          className="absolute inset-0 bg-cover bg-center z-0"
+          style={{ backgroundImage: "url('/student-hero-bg.png')" }}
+        />
+        <div className="relative z-[2] max-w-[1400px] mx-auto px-8 pb-12 w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-10">
+          <div className="flex-1">
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs border border-white/20 mb-4">
+              <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+              对接产业前沿 · 赋能岗位能力学习
+            </div>
+            <h1 className="text-4xl md:text-[57px] font-extrabold text-white leading-tight mb-4">
+              对接产业前沿<br />开启岗位能力学习新征程
+            </h1>
+            <p className="text-base text-white/85 mb-6">
+              链接真实岗位场景，构建从认知到胜任的能力进阶闭环
+            </p>
+          </div>
+          <div className="w-full md:w-[360px] bg-white/15 backdrop-blur-md border border-white/20 rounded-2xl p-5 text-white">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-[15px] font-bold flex items-center gap-2">
+                <Crosshair className="w-4 h-4" />
+                岗位前沿信息
+              </div>
+              <div className="text-xs text-white/70 cursor-pointer hover:text-white">更多 ›</div>
+            </div>
+            <div className="flex flex-col gap-3">
+              {[
+                { badge: "热", badgeColor: "bg-red-500", text: "人工智能训练师岗位能力标准发布", date: "06-12" },
+                { badge: "新", badgeColor: "bg-green-500", text: "新增“低空经济”相关岗位资源 32 个", date: "06-10" },
+                { badge: "荐", badgeColor: "bg-blue-500", text: "数字化转型背景下的复合型岗位解读", date: "06-08" },
+                { badge: "荐", badgeColor: "bg-blue-500", text: "2024 智能制造行业人才需求白皮书", date: "06-05" },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-2.5 text-[13px]">
+                  <span className={`${item.badgeColor} w-[18px] h-[18px] rounded flex items-center justify-center text-[11px] font-medium shrink-0`}>
+                    {item.badge}
+                  </span>
+                  <span className="flex-1 truncate">{item.text}</span>
+                  <span className="text-white/60 text-xs shrink-0">{item.date}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ═══ 主内容 ═══ */}
-      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "40px 20px 0" }}>
+      <StatsBar
+        total={stats.total}
+        majorCount={stats.majorCount}
+        industryCount={stats.industryCount}
+        viewCount={1286 + Math.floor(Math.random() * 500)}
+      />
 
-        {/* ── 数据看板 ── */}
-        <section style={{ marginBottom: 50 }}>
-          <div style={{
-            background: "#fff", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", padding: 24,
-            display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20,
-          }}>
-            {stats.map((s, i) => (
-              <div key={i} style={{ textAlign: "center", borderRight: i < stats.length - 1 ? "1px solid #f1f5f9" : "none" }}>
-                <div style={{ display: "flex", justifyContent: "center", marginBottom: 8, color: "#7c3aed" }}>{s.icon}</div>
-                <div style={{ fontSize: 28, fontWeight: "bold", color: "#7c3aed", lineHeight: 1.2 }}>{s.num}</div>
-                <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 6 }}>{s.label}</div>
+      <main className="max-w-[1400px] mx-auto px-8 py-6 w-full flex-1">
+        {/* Dashboard */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+          <div className="bg-white rounded-2xl border border-[#e7e5e4] p-3 flex flex-col">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <div className="text-[15px] font-bold text-[#0f172a] flex items-center gap-2">
+                <Flag className="w-4 h-4 text-blue-500" />
+                目标推荐岗位
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── 岗位能力库 ── */}
-        <section style={{ marginBottom: 50 }}>
-          <SectionHeader title="岗位能力认证库" subtitle="已发布的企业/教学岗位标准" />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
-            {publishedPositions.map((pos, i) => {
-              const st = statusColors[pos.status] || statusColors.draft
-              return (
-                <div key={pos.id} style={{
-                  background: "#fff", borderRadius: 10, overflow: "hidden",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.06)", transition: "all 0.25s", cursor: "pointer",
-                }}
-                  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.08)" }}
-                  onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.06)" }}>
-                  <div style={{
-                    height: 120, background: coverGradients[i % coverGradients.length],
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "#fff", fontSize: 16, fontWeight: "bold", position: "relative",
-                  }}>
-                    {pos.name.slice(0, 8)}
-                    <span style={{
-                      position: "absolute", top: 10, right: 10,
-                      padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 500,
-                      background: "rgba(255,255,255,0.25)", color: "#fff",
-                    }}>
-                      {st.label}
-                    </span>
-                  </div>
-                  <div style={{ padding: 16 }}>
-                    <h3 style={{ fontSize: 15, marginBottom: 8, color: "#1e293b", fontWeight: 600 }}>{pos.name}</h3>
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
-                      <span style={{
-                        padding: "2px 8px", borderRadius: 4, fontSize: 11,
-                        background: "#f3e8ff", color: "#7c3aed", fontWeight: 500,
-                      }}>{positionTypeMap[pos.positionType] || pos.positionType}</span>
-                      {pos.majorNames?.[0] && (
-                        <span style={{ fontSize: 12, color: "#94a3b8", display: "flex", alignItems: "center", gap: 3 }}>
-                          <MapPin className="h-3 w-3" /> {pos.majorNames[0]}
-                        </span>
-                      )}
-                    </div>
-                    <p style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, height: 36, overflow: "hidden" }}>
-                      {pos.description || "暂无岗位描述"}
-                    </p>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, color: "#94a3b8" }}>
-                      <span className="flex items-center gap-1"><Target className="h-3 w-3" /> {pos.requirements?.length || 0} 项要求</span>
-                      <span>版本：{pos.version}</span>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-            {publishedPositions.length === 0 && (
-              <div style={{ gridColumn: "span 3", textAlign: "center", padding: 40, color: "#94a3b8", background: "#fff", borderRadius: 10 }}>暂无已发布岗位</div>
-            )}
-          </div>
-        </section>
-
-        {/* ── 学习路径规划 ── */}
-        <section style={{ marginBottom: 50 }}>
-          <SectionHeader title="学习路径规划" subtitle="岗位能力提升路径" />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
-            {displayLearnRoads.map((road, i) => (
-              <div key={road.id} style={{
-                background: "#fff", borderRadius: 10, padding: 22,
-                boxShadow: "0 1px 3px rgba(0,0,0,0.06)", transition: "all 0.25s", cursor: "pointer",
-                borderLeft: "4px solid #7c3aed",
-              }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.08)" }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.06)" }}>
-                <h3 style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", marginBottom: 8 }}>{road.name}</h3>
-                <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6, marginBottom: 14 }}>
-                  {road.description || "暂无路径说明"}
-                </p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {road.steps?.slice(0, 4).map((step, si) => (
-                    <span key={si} style={{
-                      background: "#f3e8ff", color: "#7c3aed",
-                      padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 500,
-                    }}>{step.name}</span>
-                  ))}
-                  {(!road.steps || road.steps.length === 0) && (
-                    <span style={{ fontSize: 12, color: "#94a3b8" }}>暂无步骤</span>
-                  )}
-                </div>
-                <div style={{
-                  marginTop: 14, paddingTop: 12, borderTop: "1px dashed #f1f5f9",
-                  textAlign: "center", fontSize: 13, color: "#7c3aed", fontWeight: 500,
-                }}>
-                  查看完整学习路径 ›
-                </div>
-              </div>
-            ))}
-            {displayLearnRoads.length === 0 && (
-              <div style={{ gridColumn: "span 2", textAlign: "center", padding: 40, color: "#94a3b8", background: "#fff", borderRadius: 10 }}>暂无学习路径</div>
-            )}
-          </div>
-        </section>
-
-        {/* ── 平台优势 ── */}
-        <section style={{ marginBottom: 50 }}>
-          <SectionHeader title="培养特色" />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
-            {[
-              { title: "企业标准对接", desc: "基于真实企业岗位需求提炼能力模型，确保培养内容与行业标准一致", icon: <Briefcase className="h-6 w-6" /> },
-              { title: "能力精准画像", desc: "多维度评估学生能力项，生成个人能力画像与岗位匹配度分析", icon: <Star className="h-6 w-6" /> },
-              { title: "路径可视导航", desc: "学习路径逐步解锁，任务驱动的能力进阶，让学生清晰看到成长方向", icon: <TrendingUp className="h-6 w-6" /> },
-            ].map((item, i) => (
-              <div key={i} style={{
-                background: "#fff", borderRadius: 10, padding: 28,
-                boxShadow: "0 1px 3px rgba(0,0,0,0.06)", textAlign: "center",
-                transition: "all 0.25s",
-              }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.08)" }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.06)" }}>
-                <div style={{ display: "flex", justifyContent: "center", marginBottom: 14, color: "#7c3aed" }}>{item.icon}</div>
-                <h3 style={{ fontSize: 16, fontWeight: 600, color: "#1e293b", marginBottom: 8 }}>{item.title}</h3>
-                <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.8, margin: 0 }}>{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Footer */}
-        <footer style={{ background: '#141a2e', marginTop: 60, width: '100vw', position: 'relative', left: 'calc(-50vw + 50%)' }}>
-          <div style={{ height: 3, background: 'linear-gradient(90deg, #8b5cf6, #818cf8, #22d3ee)' }} />
-          <div style={{ padding: '48px 5% 32px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 32, maxWidth: 1280, margin: '0 auto' }}>
-              <div>
-                <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 12 }}>场景化数智教学服务平台</h3>
-                <p style={{ fontSize: 13, color: '#a8b3cf', lineHeight: 1.8, margin: 0 }}>专注职业教育数字化</p>
-                <div style={{ fontSize: 12, color: '#6b7a99', marginTop: 8 }}>版本：V3.2.1</div>
-                <a href="#" style={{ color: '#22d3ee', fontSize: 13, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8 }}>访问官网 →</a>
-              </div>
-              <div>
-                <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 12 }}>教学资源</h3>
-                <p style={{ fontSize: 13, color: '#a8b3cf', lineHeight: 1.8, margin: 0 }}>岗位标准、实践场景、企业导师</p>
-                <a href="#" style={{ color: '#22d3ee', fontSize: 13, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8 }}>进入资源商城 →</a>
-              </div>
-              <div>
-                <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 12 }}>技术支持</h3>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  <li style={{ fontSize: 13, color: '#a8b3cf', lineHeight: 1.8 }}>服务热线：400-888-8888</li>
-                  <li style={{ fontSize: 13, color: '#a8b3cf', lineHeight: 1.8 }}>邮箱：support@example.com</li>
-                  <li><a href="#" style={{ color: '#22d3ee', fontSize: 13, textDecoration: 'none' }}>使用手册</a></li>
-                  <li><a href="#" style={{ color: '#22d3ee', fontSize: 13, textDecoration: 'none' }}>常见问题</a></li>
-                </ul>
-              </div>
-              <div>
-                <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 12 }}>校内支持</h3>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  <li style={{ fontSize: 13, color: '#a8b3cf', lineHeight: 1.8 }}>授权院校：XX职业技术学院</li>
-                  <li style={{ fontSize: 13, color: '#a8b3cf', lineHeight: 1.8 }}>校内管理员：张老师</li>
-                  <li style={{ fontSize: 13, color: '#a8b3cf', lineHeight: 1.8 }}>管理员电话：0000-12345678</li>
-                </ul>
-              </div>
+              <span className="text-xs text-[#94a3b8] cursor-pointer hover:text-blue-500">全部 ›</span>
             </div>
-            <hr style={{ border: 'none', borderTop: '1px solid #29324a', margin: '40px 0 24px' }} />
-            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, fontSize: 12, color: '#6b7a99', maxWidth: 1280, margin: '0 auto' }}>
-              <div>
-                <a href="#" style={{ color: '#6b7a99', textDecoration: 'none' }}>隐私政策</a>
-                <span style={{ color: '#29324a' }}>&nbsp;|&nbsp;</span>
-                <a href="#" style={{ color: '#6b7a99', textDecoration: 'none' }}>用户协议</a>
-              </div>
-              <div style={{ textAlign: 'right' }}>版权所有 © 2020-2026 杭州知与未来科技有限公司 ｜ 软件著作权登记号：2020SR0123456 ｜ 京ICP备2025105397号-1</div>
+            <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8] p-6 text-center">
+              <Flag className="w-9 h-9 mb-2 opacity-40" />
+              <div className="text-sm font-semibold text-[#475569]">暂无目标推荐岗位</div>
+              <div className="text-xs mt-1">完成能力测评后，系统将为你推荐匹配岗位</div>
             </div>
           </div>
-        </footer>
 
-      </div>
+          <div className="bg-white rounded-2xl border border-[#e7e5e4] p-3 flex flex-col">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <div className="text-[15px] font-bold text-[#0f172a] flex items-center gap-2">
+                <Heart className="w-4 h-4 text-red-500" />
+                我的心仪岗位
+              </div>
+              <span className="text-xs text-[#94a3b8] cursor-pointer hover:text-blue-500">全部 ›</span>
+            </div>
+            <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8] p-6 text-center">
+              <Heart className="w-9 h-9 mb-2 opacity-40" />
+              <div className="text-sm font-semibold text-[#475569]">快去查看岗位点击收藏吧！</div>
+              <div className="text-xs mt-1">浏览岗位资源，收藏你感兴趣的岗位</div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-indigo-500 to-violet-500 rounded-2xl p-6 text-white flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2.5 mb-2">
+                <div className="w-9 h-9 rounded-[10px] bg-white/20 flex items-center justify-center">
+                  <Crosshair className="w-5 h-5" />
+                </div>
+                <div className="text-[17px] font-bold">学前能力基线测评</div>
+              </div>
+              <p className="text-[13px] text-white/85 leading-relaxed">
+                学习前先测一测，精准定位你的能力起点，量身规划学习路径
+              </p>
+            </div>
+            <Button
+              className="self-start mt-4 bg-white text-indigo-500 hover:bg-white/90 rounded-full px-5 py-2 h-auto text-[13px] font-semibold"
+              onClick={() => router.push("/evaluation")}
+            >
+              开始测评 <Briefcase className="w-3.5 h-3.5 ml-1" />
+            </Button>
+          </div>
+        </div>
+
+        <RankingList />
+
+        {/* Filter */}
+        <div className="bg-white rounded-2xl border border-[#e7e5e4] p-5 mb-4">
+          <div className="flex items-center gap-2 text-[16px] font-bold text-[#0f172a] mb-4 pl-3 border-l-4 border-blue-500">
+            <Filter className="w-4 h-4" />
+            岗位筛选
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-start gap-4 py-2 border-b border-dashed border-[#e7e5e4]">
+              <span className="text-sm text-[#374151] font-medium min-w-[40px] pt-1.5">行业</span>
+              <div className="flex flex-wrap gap-2">
+                {industries.map((item) => (
+                  <button
+                    key={item}
+                    onClick={() => setSelectedIndustry(item)}
+                    className={`
+                      px-3.5 py-1.5 rounded-full text-[13px] border transition-all whitespace-nowrap
+                      ${selectedIndustry === item
+                        ? "bg-blue-500 text-white border-blue-500"
+                        : "bg-white text-[#475569] border-[#e5e7eb] hover:border-blue-300 hover:text-blue-500"
+                      }
+                    `}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4 py-2">
+              <span className="text-sm text-[#374151] font-medium min-w-[40px] pt-1.5">专业</span>
+              <div className="flex flex-wrap gap-2">
+                {majors.map((item) => (
+                  <button
+                    key={item}
+                    onClick={() => setSelectedMajor(item)}
+                    className={`
+                      px-3.5 py-1.5 rounded-full text-[13px] border transition-all whitespace-nowrap
+                      ${selectedMajor === item
+                        ? "bg-blue-500 text-white border-blue-500"
+                        : "bg-white text-[#475569] border-[#e5e7eb] hover:border-blue-300 hover:text-blue-500"
+                      }
+                    `}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {activeFilters.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3 pt-4 mt-4 border-t border-dashed border-[#e7e5e4]">
+              <span className="text-[13px] text-[#64748b]">已选条件：</span>
+              {activeFilters.map((f) => (
+                <span
+                  key={f.type}
+                  className="inline-flex items-center gap-1 bg-[#eff6ff] text-blue-600 text-xs px-2.5 py-1 rounded-full"
+                >
+                  {f.label}
+                  <X
+                    className="w-3 h-3 cursor-pointer"
+                    onClick={() => {
+                      if (f.type === "industry") setSelectedIndustry("全部")
+                      if (f.type === "major") setSelectedMajor("全部")
+                      if (f.type === "keyword") setKeyword("")
+                    }}
+                  />
+                </span>
+              ))}
+              <button
+                onClick={() => { setSelectedIndustry("全部"); setSelectedMajor("全部"); setKeyword("") }}
+                className="text-[13px] text-blue-500 hover:underline"
+              >
+                清空筛选
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Toolbar */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-[#e7e5e4]">
+            {SORT_OPTIONS.map((s) => (
+              <button
+                key={s.value}
+                onClick={() => setSort(s.value)}
+                className={`
+                  px-4 py-2 rounded-[10px] text-[13px] transition-all
+                  ${sort === s.value ? "bg-[#eff6ff] text-blue-600 font-medium" : "text-[#475569] hover:text-blue-500"}
+                `}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+          <div className="relative w-full md:w-[320px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94a3b8]" />
+            <Input
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder="搜索岗位名称、岗位编码或关键词"
+              className="pl-9 pr-4 py-2.5 h-auto bg-[#f8fafc] border-[#e7e5e4] rounded-[10px] text-sm"
+            />
+          </div>
+        </div>
+
+        <div className="text-sm text-[#64748b] mb-4">
+          当前共展示 <b className="text-blue-600">{filtered.length}</b> 个岗位查看入口
+        </div>
+
+        {/* Grid */}
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-[#e7e5e4] h-[360px] animate-pulse" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20 text-[#94a3b8] bg-white rounded-2xl border border-[#e7e5e4]">
+            <Search className="w-14 h-14 mx-auto mb-4 opacity-40" />
+            <div className="text-[15px]">暂无匹配的岗位，试试调整筛选条件或搜索关键词</div>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {pageItems.map((pos, i) => (
+                <JobCard key={pos.id} position={pos} index={i} hideHot={i > 2} />
+              ))}
+            </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={(p) => {
+                setCurrentPage(p)
+                window.scrollTo({ top: 0, behavior: "smooth" })
+              }}
+            />
+          </>
+        )}
+      </main>
+
+      <PlatformFooter />
     </div>
   )
 }

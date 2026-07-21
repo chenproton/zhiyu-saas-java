@@ -8,7 +8,7 @@ export default function JobLandingLayout({
   children: React.ReactNode
 }>) {
   return (
-    <div className="pt-14" style={{ background: "#f5f7fa", color: "#333", fontFamily: '"Microsoft YaHei", Arial, sans-serif', minHeight: "100vh" }}>
+    <div className="pt-14 min-h-screen bg-[#F1FAFF] text-[#1f2937]" style={{ fontFamily: '"Microsoft YaHei", Arial, sans-serif' }}>
       <TopNav />
       {children}
     </div>
