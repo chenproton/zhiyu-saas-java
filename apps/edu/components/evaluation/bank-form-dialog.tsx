@@ -23,10 +23,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { X, Upload, ImageIcon, UserPlus } from "lucide-react"
-import type { QuestionBank, QuestionBankFormData, User } from "@/lib/types"
-import { evaluationBatchApi, userManagementApi, fileApi } from "@/lib/api"
-import { CoBuilderDialog } from "@/components/shared/co-builder-dialog"
+import { X, Upload, ImageIcon } from "lucide-react"
+import type { QuestionBank, QuestionBankFormData } from "@/lib/types"
+import { evaluationBatchApi, fileApi } from "@/lib/api"
+import { UserSelector } from "@/components/shared/user-selector"
+import { useAuth } from "@/components/auth-provider"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 
@@ -43,35 +44,22 @@ export function BankFormDialog({
   bank,
   onSubmit,
 }: BankFormDialogProps) {
+  const { tenantId } = useAuth()
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [coverUrl, setCoverUrl] = useState<string>("")
   const [collaboratorIds, setCollaboratorIds] = useState<string[]>([])
   const [batchId, setBatchId] = useState<string>("")
-  const [collaboratorDialogOpen, setCollaboratorDialogOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const fieldGroupRef = useRef<HTMLDivElement>(null)
 
-  const [users, setUsers] = useState<User[]>([])
   const [batches, setBatches] = useState<{ id: string; name: string }[]>([])
-  const [loadingUsers, setLoadingUsers] = useState(false)
   const [loadingBatches, setLoadingBatches] = useState(false)
 
   useEffect(() => {
     if (!open) return
     let cancelled = false
-    setLoadingUsers(true)
     setLoadingBatches(true)
-    userManagementApi.list({ limit: 1000 })
-      .then((res) => {
-        if (!cancelled) setUsers(res.items)
-      })
-      .catch((err) => {
-        if (!cancelled) console.error('Failed to load users', err)
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingUsers(false)
-      })
     evaluationBatchApi.list({ limit: 1000 })
       .then((res) => {
         if (!cancelled) setBatches(res.items.map((b) => ({ id: b.id, name: b.name })))
@@ -142,12 +130,6 @@ export function BankFormDialog({
       fileInputRef.current.value = ""
     }
   }
-
-  const removeCollaborator = (userId: string) => {
-    setCollaboratorIds(collaboratorIds.filter(id => id !== userId))
-  }
-
-  const getUserName = (id: string) => users.find(u => u.id === id)?.name || id
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -228,32 +210,16 @@ export function BankFormDialog({
                 <PrdAnnotation data={getAnnotation("bf-collaborators")}>共建人</PrdAnnotation>
               </FieldLabel>
               <FieldDescription>选择可以共同维护此题库的用户</FieldDescription>
-              {collaboratorIds.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {collaboratorIds.map(id => (
-                    <Badge key={id} variant="secondary" className="gap-1">
-                      {getUserName(id)}
-                      <button
-                        type="button"
-                        onClick={() => removeCollaborator(id)}
-                        className="ml-1 rounded-full hover:bg-muted"
-                      >
-                        <X className="size-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-2"
-                onClick={() => setCollaboratorDialogOpen(true)}
-              >
-                <UserPlus className="mr-1 size-3.5" />
-                选择共建人
-              </Button>
+              <div className="mt-2">
+                <UserSelector
+                  value={collaboratorIds}
+                  onChange={setCollaboratorIds}
+                  multiple
+                  tenantId={tenantId}
+                  excludeUserIds={bank?.creatorId ? [bank.creatorId] : undefined}
+                  placeholder="点击选择共建人"
+                />
+              </div>
             </Field>
             <Field>
               <FieldLabel>
@@ -297,15 +263,6 @@ export function BankFormDialog({
         </form>
       </DialogContent>
 
-      <CoBuilderDialog
-        open={collaboratorDialogOpen}
-        onOpenChange={setCollaboratorDialogOpen}
-        annotationContext="bank-co-builder"
-        title="选择共建人"
-        description="选择可以共同维护此题库的用户"
-        selectedIds={collaboratorIds}
-        onChange={setCollaboratorIds}
-      />
     </Dialog>
   )
 }
