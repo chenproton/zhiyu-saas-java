@@ -14,6 +14,7 @@ import { GraphNodeDetail, GraphDetailStack } from "./graph-node-detail"
 import { cn } from "@/lib/utils"
 import type { GraphNode, GraphEdge } from "./types"
 
+const SIMULATION_ALPHA = 0.3
 type GraphViewProps = {
   nodes: GraphNode[]
   edges: GraphEdge[]
@@ -144,7 +145,7 @@ export function KnowledgeGraphD3View({ nodes, edges, title, description, compact
       })
 
     const dragBehavior = d3.drag<SVGGElement, SimNode>()
-      .on("start", (ev, d) => { if (!ev.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y })
+      .on("start", (ev, d) => { if (!ev.active) simulation.alphaTarget(SIMULATION_ALPHA).restart(); d.fx = d.x; d.fy = d.y })
       .on("drag", (ev, d) => { d.fx = ev.x; d.fy = ev.y })
       .on("end", (ev, d) => { if (!ev.active) simulation.alphaTarget(0); d.fx = null; d.fy = null })
     nodeG.call(dragBehavior as any)
