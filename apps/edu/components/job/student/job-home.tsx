@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import {
   Search, Flag, Heart, Crosshair, Sparkles, Filter, X,
   TrendingUp, GraduationCap, ChevronRight,
+  Layers, ListChecks, Factory, Building2, BarChart3,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -284,11 +285,22 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
     if (isScene) {
       const industrySet = new Set<string>()
       let totalTasks = 0
+      const positionSet = new Set<string>()
+      const diffSet = new Set<number>()
       scenarios.forEach((s) => {
         s.industryNames?.forEach((n) => n && industrySet.add(n))
         totalTasks += taskCountMap.get(s.id) ?? 0
+        if (s.careerPositionId) positionSet.add(s.careerPositionId)
+        if (s.difficulty) diffSet.add(s.difficulty)
       })
-      return { total: scenarios.length, industryCount: industrySet.size, taskCount: totalTasks, majorCount: 0, favoriteTotal: 0 }
+      return {
+        total: scenarios.length,
+        industryCount: industrySet.size,
+        taskCount: totalTasks,
+        majorCount: totalTasks,
+        favoriteTotal: positionSet.size,
+        difficultyLevels: diffSet.size,
+      }
     }
     const industrySet = new Set<string>()
     const majorSet = new Set<string>()
@@ -304,6 +316,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
       majorCount: majorSet.size,
       favoriteTotal,
       taskCount: 0,
+      difficultyLevels: 0,
     }
   }, [isScene, scenarios, positions, taskCountMap])
 
@@ -319,14 +332,14 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
   return (
     <div className="min-h-screen flex flex-col bg-[#F1FAFF]">
       {/* Hero Banner */}
-      <div className="relative w-full pt-16 overflow-hidden min-h-[420px]">
+      <div className="relative w-full pt-16 overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: isScene ? "url('/scene-hero-bg.png')" : "url('/student-hero-bg.png')" }}
         />
         <div className="absolute inset-0 bg-gradient-to-br from-[rgba(30,64,175,0.85)] via-[rgba(59,130,246,0.75)] to-[rgba(124,58,237,0.75)]" />
-        <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-12 h-full min-h-[420px] flex flex-col lg:flex-row justify-between items-center gap-8">
-          <div className="flex-1">
+        <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-14 pt-2 flex flex-col lg:flex-row justify-between items-start gap-8">
+          <div className="flex-1 pt-4">
             <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-3.5 py-1.5 rounded-full text-[13px] border border-white/20 mb-5">
               <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
               {isScene ? "场景化实践 · 任务驱动教学" : "对接产业前沿 · 赋能岗位能力学习"}
@@ -351,15 +364,83 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
             </Button>
           </div>
 
-          <StatsBar
-            total={stats.total}
-            majorCount={isScene ? stats.taskCount : stats.majorCount}
-            industryCount={stats.industryCount}
-            favoriteTotal={!isScene ? stats.favoriteTotal : undefined}
-            mode={isScene ? "scene" : "job"}
-          />
+          {isScene ? (
+            <div className="w-full lg:w-[500px] shrink-0 flex flex-col gap-3 pt-4">
+              {/* 目标岗位配套场景 */}
+              <div className="bg-white/12 backdrop-blur-[16px] border border-white/20 rounded-2xl p-4 text-white">
+                <div className="flex items-center gap-2 mb-3">
+                  <Flag className="w-4 h-4 text-yellow-300" />
+                  <span className="text-[14px] font-bold">目标岗位配套场景</span>
+                </div>
+                <div className="flex flex-col items-center justify-center text-white/60 text-center py-4">
+                  <Flag className="w-8 h-8 mb-2 opacity-50" />
+                  <div className="text-sm font-semibold text-white/80">暂无目标岗位配套场景</div>
+                  <div className="text-xs mt-0.5 text-white/50">完成能力测评后，系统将为你推荐匹配岗位，关联场景将在此展示</div>
+                </div>
+              </div>
+              {/* 心仪岗位配套场景 */}
+              <div className="bg-white/12 backdrop-blur-[16px] border border-white/20 rounded-2xl p-4 text-white">
+                <div className="flex items-center gap-2 mb-3">
+                  <Heart className="w-4 h-4 text-rose-300" />
+                  <span className="text-[14px] font-bold">心仪岗位配套场景</span>
+                </div>
+                {favoritePositionScenarios.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center text-white/60 text-center py-4">
+                    <Heart className="w-8 h-8 mb-2 opacity-50" />
+                    <div className="text-sm font-semibold text-white/80">快去收藏岗位吧！</div>
+                    <div className="text-xs mt-0.5 text-white/50">在岗位列表收藏你感兴趣的岗位，关联场景将在此展示</div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {favoritePositionScenarios.slice(0, 4).map((sc) => (
+                      <Link key={sc.id} href={`/scene/landing/${sc.id}`}>
+                        <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors group">
+                          <span className="flex-1 text-[13px] truncate group-hover:text-yellow-300 transition-colors">
+                            {sc.name}
+                          </span>
+                          <span className="text-[11px] text-white/50 shrink-0">v{sc.version || "1.0"}</span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <StatsBar
+              total={stats.total}
+              majorCount={stats.majorCount}
+              industryCount={stats.industryCount}
+              favoriteTotal={stats.favoriteTotal}
+            />
+          )}
         </div>
       </div>
+
+      {/* Stats bar for scene mode - 5 indicators below hero */}
+      {isScene && (
+        <div className="max-w-[1400px] mx-auto px-8 -mt-8 relative z-20">
+          <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_8px_32px_rgba(0,0,0,0.08)] px-6 py-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            {[
+              { icon: Layers, value: stats.total, label: "实践场景", gradient: "from-blue-500 to-blue-400" },
+              { icon: ListChecks, value: stats.taskCount, label: "任务总数", gradient: "from-violet-500 to-violet-400" },
+              { icon: Factory, value: stats.industryCount, label: "覆盖行业", gradient: "from-emerald-500 to-emerald-400" },
+              { icon: Building2, value: stats.favoriteTotal, label: "关联岗位", gradient: "from-amber-500 to-amber-400" },
+              { icon: BarChart3, value: stats.difficultyLevels ?? 0, label: "难度等级", gradient: "from-rose-500 to-rose-400" },
+            ].map((s, i) => (
+              <div key={i} className="flex items-center gap-4 p-2">
+                <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-white shadow-lg bg-gradient-to-br ${s.gradient} shrink-0`}>
+                  <s.icon className="w-7 h-7" strokeWidth={1.8} />
+                </div>
+                <div>
+                  <div className="text-2xl font-extrabold text-[#1e293b] leading-none">{s.value.toLocaleString()}</div>
+                  <div className="text-[13px] text-[#64748b] mt-1">{s.label}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <main className="max-w-[1400px] mx-auto px-8 py-6 w-full flex-1">
         {/* Dashboard (job mode only) */}
@@ -456,75 +537,23 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
           </div>
         )}
 
-        {/* Scene mode dashboard */}
+        {/* Scene mode assessment card */}
         {isScene && (
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_340px] gap-5 mb-6">
-            {/* 目标岗位配套场景 */}
-            <div className="bg-white rounded-2xl border border-[#e7e5e4] p-3 flex flex-col min-h-[178px]">
-              <div className="flex items-center justify-between mb-2.5">
-                <div className="flex items-center gap-2 text-[15px] font-bold text-[#0f172a]">
-                  <Flag className="w-4 h-4 text-blue-500" />
-                  目标岗位配套场景
-                </div>
-              </div>
-              <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8] text-center px-4">
-                <Flag className="w-9 h-9 mb-2 text-[#cbd5e1]" />
-                <div className="text-sm font-semibold text-[#475569]">暂无目标岗位配套场景</div>
-                <div className="text-xs mt-0.5">完成能力测评后，系统将为你推荐匹配岗位，关联场景将在此展示</div>
-              </div>
-            </div>
-
-            {/* 心仪岗位配套场景 */}
-            <div className="bg-white rounded-2xl border border-[#e7e5e4] p-3 flex flex-col min-h-[178px]">
-              <div className="flex items-center justify-between mb-2.5">
-                <div className="flex items-center gap-2 text-[15px] font-bold text-[#0f172a]">
-                  <Heart className="w-4 h-4 text-rose-500" />
-                  心仪岗位配套场景
-                </div>
-              </div>
-              {favoritePositionScenarios.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8] text-center px-4">
-                  <Heart className="w-9 h-9 mb-2 text-[#cbd5e1]" />
-                  <div className="text-sm font-semibold text-[#475569]">快去收藏岗位吧！</div>
-                  <div className="text-xs mt-0.5">在岗位列表收藏你感兴趣的岗位，关联场景将在此展示</div>
-                </div>
-              ) : (
-                <div className="flex-1 flex flex-col gap-1 overflow-hidden">
-                  {favoritePositionScenarios.slice(0, 5).map((sc) => (
-                    <Link key={sc.id} href={`/scene/landing/${sc.id}`}>
-                      <div className="flex items-start gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#f8fafc] cursor-pointer transition-colors group">
-                        <div className="flex-1 min-w-0 flex flex-col gap-1">
-                          <span className="text-[13px] font-semibold text-[#0f172a] truncate group-hover:text-blue-600 transition-colors">
-                            {sc.name}
-                          </span>
-                          <div className="flex items-center gap-1.5 text-[11px]">
-                            <span className="px-1.5 py-0.5 rounded bg-[#eff6ff] text-blue-600 truncate max-w-[80px]">
-                              v{sc.version || "1.0"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 学前能力基线测评 */}
-            <div className="rounded-2xl p-6 text-white bg-gradient-to-br from-indigo-500 to-violet-600 flex flex-col justify-between min-h-[178px]">
+          <div className="mb-6">
+            <div className="rounded-2xl p-6 text-white bg-gradient-to-br from-indigo-500 to-violet-600 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                <div className="flex items-center gap-2.5 mb-2.5">
+                <div className="flex items-center gap-2.5 mb-2">
                   <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
                     <Crosshair className="w-5 h-5" />
                   </div>
                   <div className="text-[17px] font-bold">学前能力基线测评</div>
                 </div>
-                <p className="text-[13px] text-white/85 leading-relaxed">
+                <p className="text-[13px] text-white/85 leading-relaxed max-w-lg">
                   学习前先测一测，精准定位你的能力起点，量身规划学习路径
                 </p>
               </div>
               <Button
-                className="self-start bg-white text-indigo-600 hover:bg-white/90 rounded-full h-9 px-5 text-[13px] font-semibold"
+                className="shrink-0 bg-white text-indigo-600 hover:bg-white/90 rounded-full h-9 px-5 text-[13px] font-semibold"
                 onClick={() => router.push("/evaluation")}
               >
                 开始测评 <ChevronRight className="w-4 h-4 ml-1" />
