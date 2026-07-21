@@ -69,7 +69,7 @@
 
 ## 三、交付要求
 
-1. **部署验证**。所有修改后，必须通过 `deploy.sh` 完成部署验证。根据变更范围选参数：`--frontend-only` / `--backend-only` / 默认全部。
+1. **部署验证**。所有修改后，必须通过 `deploy.sh --branch <分支名>` 完成部署验证（`--branch` 为必填参数，不支持无分支部署）。可选参数：`--frontend-only` / `--backend-only` / `--skip-checks`。
 2. **提交前检查**：后端 `go vet ./...` `go test ./...`，前端 `pnpm exec tsc --noEmit` `pnpm lint`，migration 需配对 `.down.sql`。
 3. **文档变更独立提交**。修改 `AGENTS.md` 或 `docs/audits/*.md` 必须独立 commit。
 4. **版本控制**。每次任务完成后 git 提交并推送，单次 commit 只含当次变更。
