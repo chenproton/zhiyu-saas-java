@@ -24,12 +24,10 @@ import {
   ArrowUp,
   ArrowDown,
   Save,
-  RotateCcw,
   Search,
   ArrowLeft,
   Pencil,
   FolderOpen,
-  Eye,
   ChevronRight,
   Flag,
   ShoppingCart,
@@ -42,7 +40,6 @@ import {
   GripVertical,
   Loader2,
 } from 'lucide-react'
-import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { positionApi, batchApi, learnRoadApi, scenarioApi, taskApi } from '@/lib/api'
 
@@ -386,16 +383,6 @@ export default function LearnRoadsPage() {
     }
   }
 
-  const handleReset = () => {
-    const road = learnRoads.find((r) => r.id === learnRoadId)
-    const loaded = road
-      ? stepsToScenes(road.steps || [], positionScenarios, positionTasks)
-      : positionScenarios.map((s) => scenarioToScene(s, positionTasks))
-    setScenes(loaded)
-    setSelectedSceneId(loaded[0]?.id || null)
-    setSaved(false)
-  }
-
   const ListView = () => (
     <div className="space-y-6">
       <div>
@@ -579,16 +566,6 @@ export default function LearnRoadsPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleReset} disabled={editLoading || saving}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              重置
-            </Button>
-            <Link href={`/job/student/${editingPosition.id}`} target="_blank">
-              <Button variant="outline" disabled={editLoading || saving}>
-                <Eye className="mr-2 h-4 w-4" />
-                预览学生端
-              </Button>
-            </Link>
             <Button onClick={handleSave} disabled={editLoading || saving || !learnRoadId}>
               {saving ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -800,7 +777,7 @@ export default function LearnRoadsPage() {
 
   return (
     <div className="space-y-6">
-      {view === 'list' ? <ListView /> : <EditView />}
+      {view === 'list' ? ListView() : <EditView />}
     </div>
   )
 }

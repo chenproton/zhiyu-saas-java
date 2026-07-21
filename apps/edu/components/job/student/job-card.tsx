@@ -7,7 +7,7 @@ import type { CareerPosition } from "@/lib/types"
 interface JobCardProps {
   position: CareerPosition
   index?: number
-  hideHot?: boolean
+  isHot?: boolean
   scenarioCount?: number
   taskCount?: number
 }
@@ -32,7 +32,7 @@ function formatDate(dateStr?: string) {
   }
 }
 
-export function JobCard({ position, index = 0, hideHot, scenarioCount = 0, taskCount = 0 }: JobCardProps) {
+export function JobCard({ position, index = 0, isHot, scenarioCount = 0, taskCount = 0 }: JobCardProps) {
   const displayTitle = position.shortName || position.name
   const coverStyle = position.coverImage
     ? { backgroundImage: `url('${position.coverImage}')` }
@@ -51,7 +51,7 @@ export function JobCard({ position, index = 0, hideHot, scenarioCount = 0, taskC
           style={coverStyle}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-[rgba(69,26,3,0.85)] via-[rgba(69,26,3,0.2)] to-transparent" />
-          {!hideHot && (
+          {isHot && (
             <div className="absolute top-3 right-3 z-10 bg-gradient-to-br from-red-500 to-red-400 text-white text-xs font-semibold px-2.5 py-1 rounded-md flex items-center gap-1">
               热门
             </div>
