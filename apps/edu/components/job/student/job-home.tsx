@@ -457,36 +457,44 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
         {/* Dashboard (job mode only) */}
         {!isScene && (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_340px] gap-5 mb-6">
-            <div className="bg-white rounded-2xl border border-[#e7e5e4] p-3 flex flex-col min-h-[178px]">
-              <div className="flex items-center justify-between mb-2.5">
-                <div className="flex items-center gap-2 text-[15px] font-bold text-[#0f172a]">
-                  <Flag className="w-4 h-4 text-blue-500" />
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-4 flex flex-col min-h-[178px]">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2 text-[15px] font-bold text-slate-800">
+                  <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <Flag className="w-4 h-4 text-blue-500" />
+                  </div>
                   目标推荐岗位
                 </div>
-                <div className="text-xs text-[#94a3b8] cursor-pointer">全部 <ChevronRight className="w-3 h-3 inline" /></div>
+                <div className="text-xs text-slate-400 cursor-pointer hover:text-blue-600 transition-colors">全部 <ChevronRight className="w-3 h-3 inline" /></div>
               </div>
-              <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8] text-center px-4">
-                <Flag className="w-9 h-9 mb-2 text-[#cbd5e1]" />
-                <div className="text-sm font-semibold text-[#475569]">暂无目标推荐岗位</div>
-                <div className="text-xs mt-0.5">完成能力测评后，系统将为你推荐匹配岗位</div>
+              <div className="flex-1 flex flex-col items-center justify-center text-slate-400 text-center px-4">
+                <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mb-3">
+                  <Flag className="w-7 h-7 text-slate-300" />
+                </div>
+                <div className="text-sm font-semibold text-slate-600">暂无目标推荐岗位</div>
+                <div className="text-xs mt-1">完成能力测评后，系统将为你推荐匹配岗位</div>
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-[#e7e5e4] p-3 flex flex-col min-h-[178px]">
-              <div className="flex items-center justify-between mb-2.5">
-                <div className="flex items-center gap-2 text-[15px] font-bold text-[#0f172a]">
-                  <Heart className="w-4 h-4 text-rose-500" />
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-4 flex flex-col min-h-[178px]">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2 text-[15px] font-bold text-slate-800">
+                  <div className="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center">
+                    <Heart className="w-4 h-4 text-rose-500" />
+                  </div>
                   我的心仪岗位
                 </div>
-                <Link href="/job/student" className="text-xs text-[#94a3b8] hover:text-blue-600 cursor-pointer">
+                <Link href="/job/student" className="text-xs text-slate-400 hover:text-blue-600 cursor-pointer transition-colors">
                   全部 <ChevronRight className="w-3 h-3 inline" />
                 </Link>
               </div>
               {favoritePositions.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8] text-center px-4">
-                  <Heart className="w-9 h-9 mb-2 text-[#cbd5e1]" />
-                  <div className="text-sm font-semibold text-[#475569]">快去查看岗位点击收藏吧！</div>
-                  <div className="text-xs mt-0.5">浏览岗位资源，收藏你感兴趣的岗位</div>
+                <div className="flex-1 flex flex-col items-center justify-center text-slate-400 text-center px-4">
+                  <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mb-3">
+                    <Heart className="w-7 h-7 text-slate-300" />
+                  </div>
+                  <div className="text-sm font-semibold text-slate-600">快去查看岗位点击收藏吧！</div>
+                  <div className="text-xs mt-1">浏览岗位资源，收藏你感兴趣的岗位</div>
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col gap-1 overflow-hidden">
@@ -499,21 +507,21 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                     const majorText = majors.length === 0 ? "未分类" : majors.length === 1 ? majors[0] : `${majors[0]} +${majors.length - 1}`
                     return (
                       <Link key={pos.id} href={`/job/student/${pos.id}`}>
-                        <div className="flex items-start gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#f8fafc] cursor-pointer transition-colors group">
+                        <div className="flex items-start gap-2.5 px-2.5 py-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group">
                           <div className="flex-1 min-w-0 flex flex-col gap-1">
                             <div className="flex items-center gap-2">
-                              <span className="flex-1 text-[13px] font-semibold text-[#0f172a] truncate group-hover:text-blue-600 transition-colors">
+                              <span className="flex-1 text-[13px] font-semibold text-slate-800 truncate group-hover:text-blue-600 transition-colors">
                                 {display}
                               </span>
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#475569] whitespace-nowrap">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 whitespace-nowrap font-medium">
                                 v{pos.version || "1.0"}
                               </span>
                             </div>
                             <div className="flex items-center gap-1.5 text-[11px]">
-                              <span className="px-1.5 py-0.5 rounded bg-[#eff6ff] text-blue-600 truncate max-w-[80px]">
+                              <span className="px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-600 truncate max-w-[80px] font-medium border border-blue-100">
                                 {category}
                               </span>
-                              <span className="px-1.5 py-0.5 rounded bg-[#f0fdf4] text-emerald-600 truncate max-w-[120px]" title={majors.join("、") || "未分类"}>
+                              <span className="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600 truncate max-w-[120px] font-medium border border-emerald-100" title={majors.join("、") || "未分类"}>
                                 {majorText}
                               </span>
                             </div>
@@ -526,10 +534,10 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
               )}
             </div>
 
-            <div className="rounded-2xl p-6 text-white bg-gradient-to-br from-indigo-500 to-violet-600 flex flex-col justify-between min-h-[178px]">
+            <div className="rounded-2xl p-6 text-white bg-gradient-to-br from-indigo-500 to-violet-600 flex flex-col justify-between min-h-[178px] shadow-lg shadow-indigo-500/20">
               <div>
-                <div className="flex items-center gap-2.5 mb-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+                <div className="flex items-center gap-2.5 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shadow-sm">
                     <Crosshair className="w-5 h-5" />
                   </div>
                   <div className="text-[17px] font-bold">学前能力基线测评</div>
@@ -539,7 +547,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                 </p>
               </div>
               <Button
-                className="self-start bg-white text-indigo-600 hover:bg-white/90 rounded-full h-9 px-5 text-[13px] font-semibold"
+                className="self-start bg-white text-indigo-600 hover:bg-blue-50 hover:-translate-y-0.5 rounded-full h-10 px-6 text-[13px] font-semibold shadow-lg transition-all"
                 onClick={() => router.push("/evaluation")}
               >
                 开始测评 <ChevronRight className="w-4 h-4 ml-1" />
