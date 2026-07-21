@@ -281,7 +281,16 @@ export default function QuestionBankDetailPage() {
                 </CardDescription>
               </div>
             </div>
-            {/* 题库操作已移至列表页 */}
+            <div className="flex items-start gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setBankFormOpen(true)}
+              >
+                <Edit className="mr-1 size-3.5" />
+                编辑信息
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

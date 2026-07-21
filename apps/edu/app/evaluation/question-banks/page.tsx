@@ -16,6 +16,7 @@ import {
   GitBranch,
   LayoutGrid,
   List,
+  Pencil,
   Plus,
   Rocket,
   RotateCcw,
@@ -68,8 +69,10 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { PageHeaderCard } from "@/components/shared/page-header-card"
+import { BankFormDialog } from "@/components/evaluation/bank-form-dialog"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth-provider"
+import type { QuestionBankFormData } from "@/lib/types"
 
 
 type TabType = "my" | "collab" | "public"
@@ -157,6 +160,9 @@ export default function QuestionBanksPage() {
   const [isCloneRenameDialogOpen, setIsCloneRenameDialogOpen] = useState(false)
   const [cloneRenameValue, setCloneRenameValue] = useState("")
   const [cloneTargetBank, setCloneTargetBank] = useState<BackendQuestionBank | null>(null)
+
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editingBank, setEditingBank] = useState<BackendQuestionBank | null>(null)
 
   const [importFile, setImportFile] = useState<File | null>(null)
   const [isImporting, setIsImporting] = useState(false)
@@ -341,6 +347,24 @@ export default function QuestionBanksPage() {
         console.error("删除失败", err)
         alert("删除失败")
       }
+    }
+  }
+
+  const handleEdit = (bank: BackendQuestionBank) => {
+    setEditingBank(bank)
+    setIsEditDialogOpen(true)
+  }
+
+  const handleEditSubmit = async (data: QuestionBankFormData) => {
+    if (!editingBank) return
+    try {
+      await questionBankApi.update(editingBank.id, data)
+      setIsEditDialogOpen(false)
+      setEditingBank(null)
+      await loadData()
+    } catch (err) {
+      console.error("编辑题库失败", err)
+      alert("编辑题库失败")
     }
   }
 
@@ -715,6 +739,15 @@ export default function QuestionBanksPage() {
                     >
                       <Eye className="mr-1 h-3 w-3" />
                       查看
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => handleEdit(bank)}
+                    >
+                      <Pencil className="mr-1 h-3 w-3" />
+                      编辑
                     </Button>
                     <Button
                       variant="ghost"
@@ -1317,6 +1350,14 @@ export default function QuestionBanksPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Bank Dialog */}
+      <BankFormDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        bank={editingBank as unknown as import("@/lib/types").QuestionBank}
+        onSubmit={handleEditSubmit}
+      />
     </div>
   )
 }
