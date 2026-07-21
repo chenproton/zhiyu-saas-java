@@ -29,7 +29,6 @@ import {
   ArrowLeft,
   Pencil,
   FolderOpen,
-  GraduationCap,
   Eye,
   ChevronRight,
   Flag,
@@ -397,23 +396,9 @@ export default function LearnRoadsPage() {
 
   const ListView = () => (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">岗位学习路径管理</h1>
-          <p className="text-muted-foreground mt-1">按岗位管理学习路径中场景与任务的展示顺序</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link href="/learning-route">
-            <Button variant="outline">
-              <Eye className="mr-2 h-4 w-4" />
-              预览
-            </Button>
-          </Link>
-          <Button variant="outline" disabled>
-            <GraduationCap className="mr-2 h-4 w-4" />
-            岗位学习路径
-          </Button>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">岗位学习路径管理</h1>
+        <p className="text-muted-foreground mt-1">按岗位管理学习路径中场景与任务的展示顺序</p>
       </div>
 
       <Card>
@@ -609,10 +594,10 @@ export default function LearnRoadsPage() {
               <RotateCcw className="mr-2 h-4 w-4" />
               重置
             </Button>
-            <Link href="/learning-route">
+            <Link href={`/job/student/${editingPosition.id}`} target="_blank">
               <Button variant="outline" disabled={editLoading || saving}>
                 <Eye className="mr-2 h-4 w-4" />
-                预览
+                预览学生端
               </Button>
             </Link>
             <Button onClick={handleSave} disabled={editLoading || saving || !learnRoadId}>
