@@ -143,9 +143,6 @@ export default function QuestionBanksPage() {
 
   // Dialogs
   const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [newName, setNewName] = useState("")
-  const [newDescription, setNewDescription] = useState("")
-  const [newBatchId, setNewBatchId] = useState("")
 
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
@@ -309,28 +306,21 @@ export default function QuestionBanksPage() {
   const canBatchUnpublish = selectedBanks.some((b) => b.status === "published")
   const canBatchDelete = selectedBanks.some((b) => b.status === "draft" || b.status === "rejected" || b.status === "archived")
 
-  const resetCreateForm = () => {
-    setNewName("")
-    setNewDescription("")
-    setNewBatchId("")
-  }
-
-  const handleCreate = async () => {
-    if (!newName.trim()) return
+  const handleCreateSubmit = async (data: QuestionBankFormData) => {
     try {
       const created = (await questionBankApi.create({
-        name: newName.trim(),
-        description: newDescription.trim(),
+        name: data.name,
+        description: data.description,
+        coverImage: data.coverImage,
+        collaboratorIds: data.collaboratorIds,
+        collaboratorDeptIds: [],
+        batchId: data.batchId,
         status: "draft",
         ownerType: "mine",
         version: "v1.0",
         isDraftPool: false,
-        collaboratorIds: [],
-        collaboratorDeptIds: [],
-        batchId: newBatchId || undefined,
       })) as unknown as BackendQuestionBank
       setIsCreateOpen(false)
-      resetCreateForm()
       router.push(`/evaluation/question-banks/${created.id}?new=true`)
     } catch (err) {
       console.error("创建题库失败", err)
@@ -864,7 +854,7 @@ export default function QuestionBanksPage() {
               导入题库
             </Button>
 
-            <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={() => { resetCreateForm(); setIsCreateOpen(true) }}>
+            <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={() => setIsCreateOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               新建题库
             </Button>
@@ -1088,7 +1078,7 @@ export default function QuestionBanksPage() {
           </div>
           <h3 className="mb-2 text-lg font-medium text-slate-700">暂无题库</h3>
           <p className="mb-4 text-sm text-slate-500">当前筛选条件下没有题库数据</p>
-          <Button size="sm" onClick={() => { resetCreateForm(); setIsCreateOpen(true) }}>
+          <Button size="sm" onClick={() => setIsCreateOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             新建题库
           </Button>
@@ -1102,54 +1092,11 @@ export default function QuestionBanksPage() {
       )}
 
       {/* Create Dialog */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent size="sm">
-          <DialogHeader>
-            <DialogTitle>新建题库</DialogTitle>
-            <DialogDescription>创建一个新的题库来管理题目</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="bankName">题库名称 <span className="text-red-500">*</span></Label>
-              <Input
-                id="bankName"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="请输入题库名称"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="bankDesc">题库简介</Label>
-              <Input
-                id="bankDesc"
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                placeholder="请输入题库简介（可选）"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="bankBatch">所属批次</Label>
-              <Select value={newBatchId || "none"} onValueChange={(v) => setNewBatchId(v === "none" ? "" : v)}>
-                <SelectTrigger id="bankBatch">
-                  <SelectValue placeholder="选择所属批次" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">不设置批次</SelectItem>
-                  {batches.map((batch) => (
-                    <SelectItem key={batch.id} value={batch.id}>
-                      {batch.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>取消</Button>
-            <Button onClick={handleCreate} disabled={!newName.trim()}>创建</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <BankFormDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        onSubmit={handleCreateSubmit}
+      />
 
       {/* Import Dialog */}
       <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
