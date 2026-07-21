@@ -4,28 +4,13 @@ import { useMemo, useState } from "react"
 import { ListChecks, ChevronLeft, ChevronRight, X, Star } from "lucide-react"
 import type { PositionResponsibility, PositionAbilityBinding, AbilityPoint } from "@/lib/types/job"
 import { Button } from "@/components/ui/button"
+import { AbilityPointCard } from "./ability-point-card"
 
 interface DutyTableProps {
   responsibilities: PositionResponsibility[]
   bindings: PositionAbilityBinding[]
   abilityPoints: AbilityPoint[]
   requirements: string[]
-}
-
-const LEVELS = ["了解", "理解", "掌握", "熟练", "精通"]
-const DOMAIN_COLORS: Record<string, [string, string]> = {
-  "专业工具": ["#3b82f6", "#60a5fa"],
-  "团队协作": ["#10b981", "#34d399"],
-  "通用素质": ["#f59e0b", "#fbbf24"],
-  "业务洞察": ["#8b5cf6", "#a78bfa"],
-  "创新思维": ["#ec4899", "#f472b6"],
-}
-const LEVEL_COLORS: Record<string, string> = {
-  "了解": "#94a3b8",
-  "理解": "#60a5fa",
-  "掌握": "#34d399",
-  "熟练": "#fbbf24",
-  "精通": "#f87171",
 }
 
 export function DutyTable({ responsibilities, bindings, abilityPoints, requirements }: DutyTableProps) {
@@ -46,20 +31,16 @@ export function DutyTable({ responsibilities, bindings, abilityPoints, requireme
     }))
   }, [responsibilities, bindings])
 
-  const abilityNameMap = useMemo(() => {
-    const map: Record<string, string> = {}
-    abilityPoints.forEach((a) => { map[a.id] = a.name })
+  const abilityMap = useMemo(() => {
+    const map: Record<string, AbilityPoint> = {}
+    abilityPoints.forEach((a) => { map[a.id] = a })
     return map
   }, [abilityPoints])
 
   const modalAbilities = useMemo(() => {
     if (!modalDuty) return []
-    const items = grouped.find((g) => g.responsibility.id === modalDuty.id)?.abilities || []
-    return items.map((ab) => ({
-      ...ab,
-      name: abilityNameMap[ab.abilityPointId] || ab.domain || "未命名能力",
-    }))
-  }, [modalDuty, grouped, abilityNameMap])
+    return grouped.find((g) => g.responsibility.id === modalDuty.id)?.abilities || []
+  }, [modalDuty, grouped])
 
   const perPage = 6
   const totalPages = Math.max(1, Math.ceil(modalAbilities.length / perPage))
@@ -154,39 +135,14 @@ export function DutyTable({ responsibilities, bindings, abilityPoints, requireme
               ) : (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {pageItems.map((ab, idx) => {
-                      const globalIdx = page * perPage + idx
-                      const colors = DOMAIN_COLORS[ab.domain || "专业工具"] || DOMAIN_COLORS["专业工具"]
-                      const levelColor = LEVEL_COLORS[ab.requiredLevel] || "#94a3b8"
-                      return (
-                        <div key={ab.id} className="bg-white border border-[#e2e8f0] rounded-xl p-4 relative overflow-hidden shadow-sm hover:shadow-md transition-all">
-                          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-blue-500 to-emerald-500" />
-                          <div className="flex gap-3 mb-3">
-                            <div
-                              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0"
-                              style={{ background: `linear-gradient(135deg, ${colors[0]}, ${colors[1]})` }}
-                            >
-                              {globalIdx + 1}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-semibold text-[#1f2937] leading-snug">{ab.name}</div>
-                              <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                <span className="text-[11px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#475569] border border-[#e2e8f0]">{ab.domain || "专业工具"}</span>
-                                <span
-                                  className="text-[11px] px-1.5 py-0.5 rounded border"
-                                  style={{ color: levelColor, background: `rgba(${hexToRgb(levelColor)},0.12)`, borderColor: `rgba(${hexToRgb(levelColor)},0.25)` }}
-                                >
-                                  {ab.requiredLevel}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          {ab.rubricDescription && (
-                            <div className="text-xs text-[#64748b] leading-relaxed line-clamp-3">{ab.rubricDescription}</div>
-                          )}
-                        </div>
-                      )
-                    })}
+                    {pageItems.map((ab, idx) => (
+                      <AbilityPointCard
+                        key={ab.id}
+                        binding={ab}
+                        abilityPoint={abilityMap[ab.abilityPointId]}
+                        index={page * perPage + idx}
+                      />
+                    ))}
                   </div>
 
                   {totalPages > 1 && (
@@ -229,9 +185,4 @@ export function DutyTable({ responsibilities, bindings, abilityPoints, requireme
   )
 }
 
-function hexToRgb(hex: string) {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
-  return result
-    ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`
-    : "148, 163, 184"
-}
+

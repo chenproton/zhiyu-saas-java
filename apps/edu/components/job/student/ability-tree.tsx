@@ -1,8 +1,9 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Layers, Sparkles, Target, ChevronDown, ChevronUp, X } from "lucide-react"
+import { Layers, Sparkles, Target, X } from "lucide-react"
 import type { PositionResponsibility, PositionAbilityBinding, AbilityPoint, AbilityDomain } from "@/lib/types/job"
+import { AbilityPointCard } from "./ability-point-card"
 
 interface AbilityTreeProps {
   responsibilities: PositionResponsibility[]
@@ -12,40 +13,30 @@ interface AbilityTreeProps {
 }
 
 export function AbilityTree({ responsibilities, bindings, abilityPoints, abilityDomains }: AbilityTreeProps) {
-  const [selectedAbility, setSelectedAbility] = useState<{ abilityPointId: string; name: string; desc?: string; attributes?: string[] } | null>(null)
+  const [selectedAbility, setSelectedAbility] = useState<{ binding: PositionAbilityBinding; abilityPoint?: AbilityPoint } | null>(null)
 
-  const abilityInfoMap = useMemo(() => {
-    const map: Record<string, { name: string; desc: string; attributes: string[] }> = {}
-    abilityPoints.forEach((a) => {
-      map[a.id] = {
-        name: a.name,
-        desc: a.description || "",
-        attributes: a.attributes || [],
-      }
-    })
+  const abilityMap = useMemo(() => {
+    const map: Record<string, AbilityPoint> = {}
+    abilityPoints.forEach((a) => { map[a.id] = a })
     return map
   }, [abilityPoints])
 
   const groupedByDomain = useMemo(() => {
-    const groups = new Map<string, (PositionAbilityBinding & { name: string })[]>()
+    const groups = new Map<string, PositionAbilityBinding[]>()
 
     if (abilityDomains && abilityDomains.length > 0) {
       abilityDomains.forEach((d) => groups.set(d.name, []))
       bindings.forEach((b) => {
         const domain = abilityDomains.find((d) => d.bindingIds.includes(b.id))?.name || b.domain || "其他"
-        const info = abilityInfoMap[b.abilityPointId]
-        const name = info?.name || b.domain || "未命名能力"
         const list = groups.get(domain) || []
-        list.push({ ...b, name })
+        list.push(b)
         groups.set(domain, list)
       })
     } else {
       bindings.forEach((b) => {
         const domain = b.domain || "综合能力"
-        const info = abilityInfoMap[b.abilityPointId]
-        const name = info?.name || "未命名能力"
         const list = groups.get(domain) || []
-        list.push({ ...b, name })
+        list.push(b)
         groups.set(domain, list)
       })
     }
@@ -53,7 +44,7 @@ export function AbilityTree({ responsibilities, bindings, abilityPoints, ability
     return Array.from(groups.entries())
       .map(([domain, items]) => ({ domain, items }))
       .filter((g) => g.items.length > 0)
-  }, [bindings, abilityDomains, abilityInfoMap])
+  }, [bindings, abilityDomains])
 
   if (groupedByDomain.length === 0) {
     return (
@@ -90,15 +81,15 @@ export function AbilityTree({ responsibilities, bindings, abilityPoints, ability
             </div>
             <div className="p-3">
               {items.map((ab) => {
-                const info = abilityInfoMap[ab.abilityPointId]
+                const info = abilityMap[ab.abilityPointId]
                 return (
                   <div
                     key={ab.id}
                     className="flex items-start justify-between py-2 px-2 border-b border-[#f5f5f5] last:border-b-0 rounded hover:bg-[#eff6ff] cursor-pointer transition-colors gap-2"
-                    onClick={() => setSelectedAbility({ abilityPointId: ab.abilityPointId, name: ab.name, desc: info?.desc || "", attributes: info?.attributes || [] })}
+                    onClick={() => setSelectedAbility({ binding: ab, abilityPoint: info })}
                   >
                     <div className="flex flex-col min-w-0 gap-1">
-                      <span className="text-sm text-[#1f2937] truncate">{ab.name}</span>
+                      <span className="text-sm text-[#1f2937] truncate">{info?.name || ab.domain || "未命名能力"}</span>
                       <span className="text-[10px] text-[#94a3b8] truncate font-mono">ID：{ab.abilityPointId}</span>
                       {(info?.attributes?.length ?? 0) > 0 && (
                         <div className="flex flex-wrap gap-1">
@@ -120,28 +111,14 @@ export function AbilityTree({ responsibilities, bindings, abilityPoints, ability
 
       {selectedAbility && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setSelectedAbility(null)}>
-          <div className="bg-white rounded-2xl w-[440px] max-w-[95vw] p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <div className="text-base font-semibold text-[#1f2937] flex items-center gap-2">
-                  {selectedAbility.name}
-                </div>
-                <div className="text-xs text-[#94a3b8] mt-1 font-mono">ID：{selectedAbility.abilityPointId}</div>
-              </div>
+          <div className="bg-white rounded-2xl w-[520px] max-w-[95vw] p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-4">
+              <div className="text-base font-semibold text-[#1f2937]">能力点详情</div>
               <button className="text-[#94a3b8] hover:text-[#1f2937]" onClick={() => setSelectedAbility(null)}>
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-sm text-[#64748b] leading-relaxed mb-3">{selectedAbility.desc || "暂无能力点说明"}</p>
-            {(selectedAbility.attributes?.length ?? 0) > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {selectedAbility.attributes?.map((attr) => (
-                  <span key={attr} className="text-xs px-2 py-1 rounded bg-[#f1f5f9] text-[#64748b]">
-                    {attr}
-                  </span>
-                ))}
-              </div>
-            )}
+            <AbilityPointCard binding={selectedAbility.binding} abilityPoint={selectedAbility.abilityPoint} />
           </div>
         </div>
       )}
