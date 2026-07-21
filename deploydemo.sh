@@ -63,8 +63,10 @@ SITE_NAME="saas"
 FRONTEND_PORT="$DEMO_PORT"
 
 EDU_DIR="$PROJECT_ROOT/apps/edu"
-STANDALONE_DIR="$EDU_DIR/.next/standalone"
-APP_DIR="$STANDALONE_DIR/apps/edu"
+STANDALONE_DIR="$EDU_DIR/.next/standalone/apps/edu"
+STATIC_DIR="$EDU_DIR/.next/static"
+PUBLIC_DIR="$EDU_DIR/public"
+SERVER_DIR="$EDU_DIR/.next/server"
 TMP_PKG_DIR="/dev/shm/zhiyu-saas-demo-pkg"
 
 # ==================== 加载环境变量 ====================
@@ -157,21 +159,37 @@ if [[ "$SKIP_BUILD" != "true" ]]; then
   echo ""
   echo "==> 构建前端（API 指向: $DEMO_API_URL）..."
 
+  # 清理旧构建
+  rm -rf "$STANDALONE_DIR" "$STATIC_DIR" "$SERVER_DIR"
+
   # 演示环境通过 Next.js rewrite 代理 API 请求到远程后端
   # DEMO_API_URL 形如 http://host:port/api/v1，取前缀作为代理目标
   API_PROXY_URL="${DEMO_API_URL%/api/v1}"
   API_PROXY_URL="${API_PROXY_URL%/api}"
   export API_PROXY_URL
-  rm -rf "$STANDALONE_DIR"
   pnpm --filter @zhiyu/edu build || {
     echo "错误：前端构建失败" >&2
     exit 1
   }
 
-  echo "==> standalone 产物已由 Next.js 自动生成"
+  echo "==> 组装 standalone 产物..."
+  if [[ -d "$SERVER_DIR" ]]; then
+    mkdir -p "$STANDALONE_DIR/.next/server"
+    rsync -a --delete --exclude="*.map" "$SERVER_DIR/" "$STANDALONE_DIR/.next/server/"
+  fi
+
+  if [[ -d "$STATIC_DIR" ]]; then
+    mkdir -p "$STANDALONE_DIR/.next/static"
+    rsync -a --delete --exclude="*.map" "$STATIC_DIR/" "$STANDALONE_DIR/.next/static/"
+  fi
+
+  if [[ -d "$PUBLIC_DIR" ]]; then
+    mkdir -p "$STANDALONE_DIR/public"
+    rsync -a --delete --exclude="*.map" "$PUBLIC_DIR/" "$STANDALONE_DIR/public/"
+  fi
 else
-  if [[ ! -f "$APP_DIR/server.js" ]]; then
-    echo "错误：--skip-build 模式下本地 standalone 产物不存在：$APP_DIR/server.js" >&2
+  if [[ ! -f "$STANDALONE_DIR/server.js" ]]; then
+    echo "错误：--skip-build 模式下本地 standalone 产物不存在：$STANDALONE_DIR/server.js" >&2
     echo "   请先运行一次完整构建，或去掉 --skip-build" >&2
     exit 1
   fi
@@ -206,7 +224,7 @@ module.exports = {
   apps: [
     {
       name: '${SITE_NAME}',
-      cwd: '${REMOTE_DIR}/apps/edu',
+      cwd: '${REMOTE_DIR}',
       script: 'server.js',
       instances: 1,
       exec_mode: 'fork',
@@ -285,8 +303,8 @@ echo ""
 echo "==> 等待演示环境服务就绪..."
 sleep 3
 
-if $SSH_CMD "$DEMO_USER@$DEMO_HOST" "curl -sf -o /dev/null http://127.0.0.1:$FRONTEND_PORT/portal/login" > /dev/null 2>&1; then
-  echo "  演示前端健康检查通过: http://$DEMO_HOST:$FRONTEND_PORT/portal/login"
+if $SSH_CMD "$DEMO_USER@$DEMO_HOST" "curl -sf -o /dev/null http://127.0.0.1:$FRONTEND_PORT/login" > /dev/null 2>&1; then
+  echo "  演示前端健康检查通过: http://$DEMO_HOST:$FRONTEND_PORT/login"
 else
   echo "  警告：演示前端健康检查未通过，请登录远程服务器查看 PM2 日志" >&2
   echo "       ssh $DEMO_USER@$DEMO_HOST" >&2
