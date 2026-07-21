@@ -2,6 +2,44 @@
 
 > **首要约束：禁止还原/覆盖他人代码。** 无论如何不得对工作区中非当次任务的文件执行 `git checkout`、`git restore`、`git reset` 等还原操作。部署时若遇到与本次任务无关的编译/类型错误，直接报错停止，告知用户即可，禁止擅自修复或还原他人未提交的修改。
 
+## 二、分支隔离工作流（多 Agent 协作）
+
+> **核心原则：每个 Agent 基于 master 创建特性分支，在分支上开发提交，通过 `--branch` 进行隔离部署（仅构建 master + 当前分支变更），验证通过后再合并回 master，确保 master 始终可编译可部署。**
+
+### 工作流程
+
+1. **创建特性分支**（基于最新 master）
+   ```bash
+   git checkout master && git pull && git checkout -b feat/<agent>-<任务简述>
+   ```
+
+2. **开发并提交**
+   ```bash
+   git add -A && git commit -m "feat: 任务描述"
+   git push -u origin feat/<agent>-<任务简述>
+   ```
+
+3. **隔离部署验证**（只会编译 master + 当前分支内容，不引入其他 Agent 中间修改）
+   ```bash
+   ./deploy.sh --branch feat/<agent>-<任务简述>
+   # 也可组合其他参数：
+   ./deploy.sh --branch feat/<agent>-<任务简述> --frontend-only
+   ./deploy.sh --branch feat/<agent>-<任务简述> --backend-only --skip-checks
+   ```
+
+4. **验证通过后合并回 master**
+   ```bash
+   git checkout master && git pull && git merge feat/<agent>-<任务简述> && git push
+   ```
+
+### 注意事项
+
+- 分支名建议格式：`feat/<agent>-<简短描述>`，如 `feat/agent-A-student-profile`
+- 部署前确保分支已推送至远程仓库
+- 若分支与 master 存在冲突，先 `git checkout feat/xxx && git rebase master` 解决后再部署
+- 禁止直接在 master 分支上修改代码，master 仅用于拉取最新代码和合并已验证分支
+- 多个 Agent 并行开发时，各自在不同分支上互不干扰；部署时 `--branch` 参数保证只编译「master + 当前分支」的代码
+
 ## 三、交付要求
 
 1. **部署验证**。所有修改后，必须通过 `deploy.sh` 完成部署验证。根据变更范围选参数：`--frontend-only` / `--backend-only` / 默认全部。

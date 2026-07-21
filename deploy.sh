@@ -18,6 +18,9 @@ FRONTEND_ONLY=false
 SKIP_BACKUP=false
 SKIP_CHECKS=false
 FORCE_INSTALL=0
+BRANCH_NAME=""
+BUILD_TREE=""
+ORIGINAL_PROJECT_ROOT=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -41,13 +44,17 @@ while [[ $# -gt 0 ]]; do
       FORCE_INSTALL=1
       shift
       ;;
+    --branch)
+      BRANCH_NAME="$2"
+      shift 2
+      ;;
     --help|-h)
-      echo "用法：$0 [--backend-only|-b] [--frontend-only|-f] [--skip-backup] [--skip-checks] [--force-install]"
+      echo "用法：$0 [--backend-only|-b] [--frontend-only|-f] [--skip-backup] [--skip-checks] [--force-install] [--branch <branch-name>]"
       exit 0
       ;;
     *)
       echo "错误：未知参数 $1" >&2
-      echo "用法：$0 [--backend-only|-b] [--frontend-only|-f] [--skip-backup] [--skip-checks] [--force-install]" >&2
+      echo "用法：$0 [--backend-only|-b] [--frontend-only|-f] [--skip-backup] [--skip-checks] [--force-install] [--branch <branch-name>]" >&2
       exit 1
       ;;
   esac
@@ -82,6 +89,53 @@ EDU_STANDALONE_ROOT="$EDU_DIR/.next/standalone"
 # 前端 standalone 产物内应用目录（PM2 工作目录）
 MARKETPLACE_STANDALONE="$MARKETPLACE_STANDALONE_ROOT/apps/marketplace"
 EDU_STANDALONE="$EDU_STANDALONE_ROOT/apps/edu"
+
+# ==================== 分支隔离部署（基于 master 构建工作树） ====================
+if [[ -n "$BRANCH_NAME" ]]; then
+  ORIGINAL_PROJECT_ROOT="$PROJECT_ROOT"
+  BUILD_TREE="/tmp/zhiyu-deploy-$(date +%s)-$$"
+  echo "==> 分支隔离部署模式"
+  echo "  目标分支: $BRANCH_NAME"
+  echo "  构建工作树: $BUILD_TREE"
+
+  git -C "$ORIGINAL_PROJECT_ROOT" fetch origin master 2>/dev/null || true
+
+  git -C "$ORIGINAL_PROJECT_ROOT" worktree add "$BUILD_TREE" origin/master 2>/dev/null || {
+    echo "  尝试基于本地 master..."
+    git -C "$ORIGINAL_PROJECT_ROOT" worktree add "$BUILD_TREE" master || {
+      echo "错误：无法创建 git worktree，请确认网络连接或本地 master 分支存在" >&2
+      rm -rf "$BUILD_TREE"
+      exit 1
+    }
+  }
+
+  echo "  合并分支 $BRANCH_NAME ..."
+  if git -C "$BUILD_TREE" merge "origin/$BRANCH_NAME" --no-edit 2>/dev/null; then
+    echo "  已合并 origin/$BRANCH_NAME"
+  elif git -C "$BUILD_TREE" merge "$BRANCH_NAME" --no-edit 2>/dev/null; then
+    echo "  已合并本地 $BRANCH_NAME（请确认分支已推送）"
+  else
+    echo "错误：分支 $BRANCH_NAME 与 master 存在冲突，请先 rebase: git checkout $BRANCH_NAME && git rebase master" >&2
+    rm -rf "$BUILD_TREE"
+    exit 1
+  fi
+
+  if [[ -f "$ORIGINAL_PROJECT_ROOT/.env" ]]; then
+    cp "$ORIGINAL_PROJECT_ROOT/.env" "$BUILD_TREE/.env"
+  fi
+
+  PROJECT_ROOT="$BUILD_TREE"
+  BACKEND_DIR="$PROJECT_ROOT/backend"
+  BACKEND_BIN_NEW="$BACKEND_DIR/bin/server.new"
+  MARKETPLACE_DIR="$PROJECT_ROOT/apps/marketplace"
+  EDU_DIR="$PROJECT_ROOT/apps/edu"
+  MARKETPLACE_STANDALONE_ROOT="$MARKETPLACE_DIR/.next/standalone"
+  EDU_STANDALONE_ROOT="$EDU_DIR/.next/standalone"
+  MARKETPLACE_STANDALONE="$MARKETPLACE_STANDALONE_ROOT/apps/marketplace"
+  EDU_STANDALONE="$EDU_STANDALONE_ROOT/apps/edu"
+
+  echo "  构建根目录: $PROJECT_ROOT"
+fi
 
 # ==================== 加载环境变量 ====================
 if [[ -f "$PROJECT_ROOT/.env" ]]; then
@@ -132,22 +186,30 @@ echo "  已获取部署锁"
 cleanup() {
   exec {LOCK_FD}>&- 2>/dev/null || true
   rm -rf "$DEPLOY_TMP_DIR"
+  if [[ -n "${BUILD_TREE:-}" && -d "$BUILD_TREE" ]]; then
+    echo "==> 清理构建工作树..."
+    git -C "${ORIGINAL_PROJECT_ROOT:-$PROJECT_ROOT}" worktree remove "$BUILD_TREE" --force 2>/dev/null || rm -rf "$BUILD_TREE"
+  fi
 }
 
 trap 'cleanup' EXIT
 
 # ==================== Git 自动提交推送 ====================
-# 每次部署前自动提交所有未保存的修改，确保代码仓库与线上一致
-echo "==> 检查本地未提交修改..."
-cd "$PROJECT_ROOT"
-if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
-  STAMP="$(date '+%Y-%m-%d_%H:%M:%S')"
-  git add -A
-  git commit -m "deploy(auto): $STAMP — 部署前自动提交未保存的修改" || true
-  git push 2>/dev/null || echo "  警告：git push 失败，继续部署..."
-  echo "  已自动提交并推送未保存的修改 ($STAMP)"
+if [[ -n "$BRANCH_NAME" ]]; then
+  echo "==> 分支隔离模式，跳过自动提交（构建基于 master + $BRANCH_NAME）"
 else
-  echo "  无未提交修改，跳过"
+  # 每次部署前自动提交所有未保存的修改，确保代码仓库与线上一致
+  echo "==> 检查本地未提交修改..."
+  cd "$PROJECT_ROOT"
+  if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
+    STAMP="$(date '+%Y-%m-%d_%H:%M:%S')"
+    git add -A
+    git commit -m "deploy(auto): $STAMP — 部署前自动提交未保存的修改" || true
+    git push 2>/dev/null || echo "  警告：git push 失败，继续部署..."
+    echo "  已自动提交并推送未保存的修改 ($STAMP)"
+  else
+    echo "  无未提交修改，跳过"
+  fi
 fi
 
 # ==================== 必需变量校验 ====================
@@ -778,4 +840,9 @@ echo "   后端 API: http://localhost:$BACKEND_PORT"
 echo "   上传目录: $DEPLOY_UPLOAD_DIR"
 echo "   日志目录: $DEPLOY_LOG_DIR"
 echo "   回滚快照: $SNAPSHOT_DIR"
+if [[ -n "$BRANCH_NAME" ]]; then
+  echo ""
+  echo "📌 部署已验证通过，请合并分支到 master："
+  echo "   git checkout master && git merge $BRANCH_NAME && git push"
+fi
 echo ""
