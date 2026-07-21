@@ -45,7 +45,7 @@ import {
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { positionApi, batchApi, learnRoadApi, scenarioApi, taskApi } from '@/lib/api'
-import { useIndustryMap, useMajorMap } from '@/lib/use-resource-maps'
+
 import { convertCareerPositionToPosition, convertJobBatchToBatch } from '@/lib/stores/job-converters'
 import { useToast } from '@/hooks/use-toast'
 import type { Position, PositionStatus, Batch } from '@/lib/types/job-source'
@@ -165,8 +165,6 @@ export default function LearnRoadsPage() {
   const [positions, setPositions] = useState<Position[]>([])
   const [batches, setBatches] = useState<Batch[]>([])
   const [dataLoading, setDataLoading] = useState(false)
-  const industryMap = useIndustryMap()
-  const majorMap = useMajorMap()
 
   const [view, setView] = useState<'list' | 'edit'>('list')
   const [editingPosition, setEditingPosition] = useState<Position | null>(null)
@@ -448,11 +446,6 @@ export default function LearnRoadsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>岗位名称</TableHead>
-                <TableHead>所属批次</TableHead>
-                <TableHead>所属行业</TableHead>
-                <TableHead>所属专业</TableHead>
-                <TableHead>创建人</TableHead>
-                <TableHead>共建人</TableHead>
                 <TableHead>场景数</TableHead>
                 <TableHead>任务数</TableHead>
                 <TableHead className="text-right">操作</TableHead>
@@ -461,7 +454,7 @@ export default function LearnRoadsPage() {
             <TableBody>
               {filteredPositions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="h-32 text-center">
+                  <TableCell colSpan={4} className="h-32 text-center">
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <FolderOpen className="h-10 w-10 mb-2" />
                       <p>暂无岗位数据</p>
@@ -470,7 +463,6 @@ export default function LearnRoadsPage() {
                 </TableRow>
               ) : (
                 filteredPositions.map((position) => {
-                  const batch = batches.find((b) => b.id === position.batchId)
                   const { sceneCount, taskCount } = countScenesAndTasks(
                     getRoadForPosition(position.id)
                   )
@@ -481,13 +473,6 @@ export default function LearnRoadsPage() {
                         <span className="font-medium text-foreground">{position.name}</span>
                         <p className="text-xs text-muted-foreground mt-0.5">{position.shortName}</p>
                       </TableCell>
-                      <TableCell>{batch ? batch.name : '-'}</TableCell>
-                      <TableCell>{(position.industry && industryMap.get(position.industry)) || '-'}</TableCell>
-                      <TableCell>
-                        {position.majors.length > 0 ? position.majors.map((id) => majorMap.get(id) || id).join('，') : '-'}
-                      </TableCell>
-                      <TableCell>-</TableCell>
-                      <TableCell>-</TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="bg-blue-50 text-blue-600 hover:bg-blue-50">
                           {sceneCount}
