@@ -2165,7 +2165,7 @@ function EditCardDialog({
       }
 
       case "knowledge": {
-        const filteredKp = knowledgePoints.filter(k => !kpSearch || k.name.includes(kpSearch) || k.description.includes(kpSearch) || (k.code && k.code.includes(kpSearch)))
+        const filteredKp = knowledgePoints.filter(k => !kpSearch || (k.name || "").includes(kpSearch) || (k.description || "").includes(kpSearch) || (k.code || "").includes(kpSearch))
         const hasResults = kpSearch ? filteredKp.length > 0 : false
 
         const generateKpCode = () => `KP-${Date.now().toString().slice(-6)}`
@@ -2753,9 +2753,9 @@ function EditCardDialog({
                 {Object.entries(domainGroups).map(([domain, abilities]: [string, any]) => {
                   const filtered = abilities.filter((a: any) =>
                     !abilitySearch ||
-                    a.name.includes(abilitySearch) ||
-                    a.description.includes(abilitySearch) ||
-                    (a.code && a.code.includes(abilitySearch))
+                    (a.name || "").includes(abilitySearch) ||
+                    (a.description || "").includes(abilitySearch) ||
+                    (a.code || "").includes(abilitySearch)
                   )
                   if (filtered.length === 0) return null
                   const expanded = expandedDomains[domain] !== false
@@ -2828,9 +2828,9 @@ function EditCardDialog({
                 {Object.entries(domainGroups).filter(([_, abilities]: [string, any]) =>
                   abilities.some((a: any) =>
                     !abilitySearch ||
-                    a.name.includes(abilitySearch) ||
-                    a.description.includes(abilitySearch) ||
-                    (a.code && a.code.includes(abilitySearch))
+                    (a.name || "").includes(abilitySearch) ||
+                    (a.description || "").includes(abilitySearch) ||
+                    (a.code || "").includes(abilitySearch)
                   )
                 ).length === 0 && (
                   <div className="col-span-full text-center text-gray-400 py-16">
@@ -7001,7 +7001,7 @@ function EditCardDialog({
                   const pointId = rubricAbTargetPointId
                   const ep = field && pointId ? getEvalPoints(field as EvalPointField).find(p => p.id === pointId) : null
                   const selectedIds = ep?.abilityPointIds || []
-                  const filteredAb = abilityPoints.filter(a => !rubricAbSearch || a.name.includes(rubricAbSearch) || a.description.includes(rubricAbSearch) || (a.code && a.code.includes(rubricAbSearch)))
+                  const filteredAb = abilityPoints.filter(a => !rubricAbSearch || (a.name || "").includes(rubricAbSearch) || (a.description || "").includes(rubricAbSearch) || (a.code || "").includes(rubricAbSearch))
 
                   const toggleAb = (abId: string) => {
                     if (!field || !pointId) return
