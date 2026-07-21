@@ -91,25 +91,35 @@ EDU_STANDALONE_ROOT="$EDU_DIR/.next/standalone"
 MARKETPLACE_STANDALONE="$MARKETPLACE_STANDALONE_ROOT/apps/marketplace"
 EDU_STANDALONE="$EDU_STANDALONE_ROOT/apps/edu"
 
-# ==================== 分支隔离部署（基于 master 构建工作树） ====================
+# ==================== 分支隔离部署（基于 master 构建独立工作树） ====================
 if [[ -n "$BRANCH_NAME" ]]; then
   ORIGINAL_PROJECT_ROOT="$PROJECT_ROOT"
-  BUILD_TREE="/tmp/zhiyu-build-cache"
+  # 每个分支独立缓存目录，避免交叉污染
+  BUILD_TREE="/tmp/zhiyu-build-cache-${BRANCH_NAME//\//-}"
   echo "==> 分支隔离部署模式"
   echo "  目标分支: $BRANCH_NAME"
 
   git -C "$ORIGINAL_PROJECT_ROOT" fetch origin master "$BRANCH_NAME" 2>/dev/null || true
 
-  if [[ -d "$BUILD_TREE/.git" ]]; then
+  # 自动清理残留 worktree 注册信息
+  git -C "$ORIGINAL_PROJECT_ROOT" worktree prune 2>/dev/null || true
+
+  # 判断是否为有效 git 仓库（worktree 中 .git 是文件，clone 中 .git 是目录）
+  if [[ -e "$BUILD_TREE/.git" ]] && git -C "$BUILD_TREE" rev-parse --git-dir >/dev/null 2>&1; then
     echo "  复用构建缓存: $BUILD_TREE"
     git -C "$BUILD_TREE" fetch origin master "$BRANCH_NAME" 2>/dev/null || true
     git -C "$BUILD_TREE" checkout --detach --force origin/master || {
       echo "错误：无法切换到最新 master" >&2
       exit 1
     }
-    echo "  清理上次构建产物（保留 node_modules）..."
+    echo "  清理上次构建产物..."
     rm -rf "$BUILD_TREE/apps/marketplace/.next" "$BUILD_TREE/apps/edu/.next" "$BUILD_TREE/backend/bin" "$BUILD_TREE/backend/tmp"
   else
+    # 目录存在但非有效 git 仓库 → 清理掉重建
+    if [[ -d "$BUILD_TREE" ]]; then
+      echo "  清理残留目录: $BUILD_TREE"
+      rm -rf "$BUILD_TREE"
+    fi
     echo "  创建构建工作树: $BUILD_TREE"
     git -C "$ORIGINAL_PROJECT_ROOT" worktree add --detach "$BUILD_TREE" origin/master 2>/dev/null || {
       echo "  尝试基于本地 master..."
@@ -119,10 +129,6 @@ if [[ -n "$BRANCH_NAME" ]]; then
         exit 1
       }
     }
-    if [[ "$BACKEND_ONLY" != "true" && -d "$ORIGINAL_PROJECT_ROOT/node_modules" ]]; then
-      echo "  复制 node_modules 避免重复下载..."
-      cp -a "$ORIGINAL_PROJECT_ROOT/node_modules" "$BUILD_TREE/"
-    fi
   fi
 
   echo "  合并分支 $BRANCH_NAME ..."
@@ -142,13 +148,20 @@ if [[ -n "$BRANCH_NAME" ]]; then
 
   if [[ "$BACKEND_ONLY" != "true" ]]; then
     echo "  安装/更新前端依赖..."
-    (cd "$BUILD_TREE" && pnpm install --frozen-lockfile) || {
-      echo "  提示：frozen-lockfile 安装失败，尝试更新 lockfile..."
+    if [[ "$FORCE_INSTALL" == "1" ]]; then
       (cd "$BUILD_TREE" && pnpm install --no-frozen-lockfile) || {
         echo "错误：pnpm install 失败" >&2
         exit 1
       }
-    }
+    else
+      (cd "$BUILD_TREE" && pnpm install --frozen-lockfile) || {
+        echo "  提示：frozen-lockfile 安装失败，尝试更新 lockfile..."
+        (cd "$BUILD_TREE" && pnpm install --no-frozen-lockfile) || {
+          echo "错误：pnpm install 失败" >&2
+          exit 1
+        }
+      }
+    fi
   fi
 
   PROJECT_ROOT="$BUILD_TREE"
@@ -461,6 +474,8 @@ migrate_uploads() {
 
 restore_rollback() {
   local snapshot_dir="$1"
+  # 确保 cwd 存在，避免 pm2 uv_cwd 错误
+  cd /tmp 2>/dev/null || cd / 2>/dev/null || true
   echo ""
   echo "==> 部署失败，开始回滚..."
 
@@ -611,8 +626,8 @@ cd "$PROJECT_ROOT"
 
 # ==================== 安装前端依赖 ====================
 if [[ "$BACKEND_ONLY" != "true" ]]; then
-  if [[ -n "$BRANCH_NAME" ]]; then
-    echo "==> 分支模式依赖已在上一步安装，跳过"
+  if [[ -n "$BRANCH_NAME" && "$FORCE_INSTALL" != "1" ]]; then
+    echo "==> 分支模式依赖已在上一步安装，跳过（使用 --force-install 可强制重装）"
   elif [[ ! -d "node_modules" || "$FORCE_INSTALL" == "1" ]]; then
     echo "==> 安装前端依赖..."
     pnpm install --prefer-offline --no-frozen-lockfile
