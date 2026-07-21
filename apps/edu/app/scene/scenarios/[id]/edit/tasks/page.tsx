@@ -121,6 +121,7 @@ import { useAuth } from "@/components/auth-provider"
 import type {
   Task, PositionAbility, GradeMapping,
 } from "@/lib/mock-data"
+import { COMPETENCY_LEVEL_LABELS } from "@/lib/types/job-source"
 
 // Module-level mutable arrays — populated from APIs on mount, zero mock data
 const scenarios: any[] = []
@@ -2771,10 +2772,12 @@ function EditCardDialog({
                         <Badge className="text-[10px] bg-white text-sky-600 border-sky-200 shrink-0">{filtered.length} 个能力点</Badge>
                       </button>
                       {expanded && (
-                        <div className="divide-y divide-gray-100">
+                        <div className="divide-y divide-gray-100 max-h-[180px] overflow-y-auto">
                           {filtered.map((ab: any) => {
                             const selected = state.abilityPoints.includes(ab.id)
-                            const positionNames = ab.positionIds?.map((pid: any) => positionNameMap[pid]).filter(Boolean) || []
+                            const levelLabel = ab.requiredLevel
+                              ? (COMPETENCY_LEVEL_LABELS[ab.requiredLevel as keyof typeof COMPETENCY_LEVEL_LABELS] || ab.requiredLevel)
+                              : undefined
                             return (
                               <div
                                 key={ab.id}
@@ -2797,28 +2800,17 @@ function EditCardDialog({
                                   <span className="text-sm font-medium text-gray-800 truncate">{ab.name}</span>
                                   {ab.code && <span className="text-[11px] text-gray-400 font-mono shrink-0">{ab.code}</span>}
                                   <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-                                    {ab.requiredLevel && (
-                                      <Badge variant="outline" className={cn("text-[10px] font-medium h-5 px-1", requiredLevelColors[ab.requiredLevel] || "")}>
-                                        掌握程度：{ab.requiredLevel}
+                                    {levelLabel && (
+                                      <Badge variant="outline" className={cn("text-[10px] font-medium h-5 px-1", requiredLevelColors[levelLabel] || "")}>
+                                        胜任标准：{levelLabel}
                                       </Badge>
                                     )}
                                   </div>
                                 </div>
-                                {/* Row 2: description + positions */}
+                                {/* Row 2: description + standard description label */}
                                 <div className="flex items-center gap-2 mt-1 ml-6">
                                   <p className="text-xs text-gray-500 line-clamp-1 flex-1">{ab.description}</p>
-                                  {positionNames.length > 0 && (
-                                    <div className="flex items-center gap-1 shrink-0">
-                                      {positionNames.slice(0, 2).map((name: any, i: number) => (
-                                        <Badge key={i} variant="secondary" className="text-[10px] font-normal bg-gray-100 text-gray-600 h-5 px-1">
-                                          {name}
-                                        </Badge>
-                                      ))}
-                                      {positionNames.length > 2 && (
-                                        <span className="text-[10px] text-gray-400">+{positionNames.length - 2}</span>
-                                      )}
-                                    </div>
-                                  )}
+                                  <span className="text-[10px] text-gray-500 shrink-0">岗位胜任标准描述</span>
                                 </div>
                               </div>
                             )
@@ -2876,8 +2868,12 @@ function EditCardDialog({
                       </div>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-500">掌握程度要求</Label>
-                      <p className="text-sm text-gray-700 mt-1">{detailAb.requiredLevel || "-"}</p>
+                      <Label className="text-xs text-gray-500">胜任标准</Label>
+                      <p className="text-sm text-gray-700 mt-1">
+                        {detailAb.requiredLevel
+                          ? (COMPETENCY_LEVEL_LABELS[detailAb.requiredLevel as keyof typeof COMPETENCY_LEVEL_LABELS] || detailAb.requiredLevel)
+                          : "-"}
+                      </p>
                     </div>
                     <div>
                       <Label className="text-xs text-gray-500">熟练程度描述</Label>
