@@ -11,29 +11,15 @@ interface AbilityTreeProps {
   abilityDomains?: AbilityDomain[]
 }
 
-const categoryLabels: Record<string, string> = {
-  knowledge: "知识",
-  skill: "技能",
-  quality: "素养",
-}
-
-const categoryClasses: Record<string, string> = {
-  knowledge: "bg-[#eff6ff] text-[#1e40af]",
-  skill: "bg-[#f6ffed] text-[#389e0d]",
-  quality: "bg-[#fff7e6] text-[#d46b08]",
-}
-
 export function AbilityTree({ responsibilities, bindings, abilityPoints, abilityDomains }: AbilityTreeProps) {
-  const [selectedAbility, setSelectedAbility] = useState<{ name: string; code?: string; desc?: string; category?: string; attributes?: string[] } | null>(null)
+  const [selectedAbility, setSelectedAbility] = useState<{ abilityPointId: string; name: string; desc?: string; attributes?: string[] } | null>(null)
 
   const abilityInfoMap = useMemo(() => {
-    const map: Record<string, { name: string; code?: string; desc: string; category: string; attributes: string[] }> = {}
+    const map: Record<string, { name: string; desc: string; attributes: string[] }> = {}
     abilityPoints.forEach((a) => {
       map[a.id] = {
         name: a.name,
-        code: a.code,
         desc: a.description || "",
-        category: a.category,
         attributes: a.attributes || [],
       }
     })
@@ -105,18 +91,15 @@ export function AbilityTree({ responsibilities, bindings, abilityPoints, ability
             <div className="p-3">
               {items.map((ab) => {
                 const info = abilityInfoMap[ab.abilityPointId]
-                const category = info?.category
                 return (
                   <div
                     key={ab.id}
                     className="flex items-start justify-between py-2 px-2 border-b border-[#f5f5f5] last:border-b-0 rounded hover:bg-[#eff6ff] cursor-pointer transition-colors gap-2"
-                    onClick={() => setSelectedAbility({ name: ab.name, code: info?.code, desc: info?.desc || "", category, attributes: info?.attributes || [] })}
+                    onClick={() => setSelectedAbility({ abilityPointId: ab.abilityPointId, name: ab.name, desc: info?.desc || "", attributes: info?.attributes || [] })}
                   >
                     <div className="flex flex-col min-w-0 gap-1">
                       <span className="text-sm text-[#1f2937] truncate">{ab.name}</span>
-                      {info?.code && (
-                        <span className="text-[10px] text-[#94a3b8] truncate">编码：{info.code}</span>
-                      )}
+                      <span className="text-[10px] text-[#94a3b8] truncate font-mono">ID：{ab.abilityPointId}</span>
                       {(info?.attributes?.length ?? 0) > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {info.attributes.map((attr) => (
@@ -125,13 +108,6 @@ export function AbilityTree({ responsibilities, bindings, abilityPoints, ability
                             </span>
                           ))}
                         </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0 pt-0.5">
-                      {category && (
-                        <span className={`text-[11px] px-1.5 py-0.5 rounded ${categoryClasses[category] || "bg-slate-100 text-slate-600"}`}>
-                          {categoryLabels[category] || category}
-                        </span>
                       )}
                     </div>
                   </div>
@@ -149,15 +125,8 @@ export function AbilityTree({ responsibilities, bindings, abilityPoints, ability
               <div>
                 <div className="text-base font-semibold text-[#1f2937] flex items-center gap-2">
                   {selectedAbility.name}
-                  {selectedAbility.category && (
-                    <span className={`text-[11px] px-2 py-0.5 rounded ${categoryClasses[selectedAbility.category] || ""}`}>
-                      {categoryLabels[selectedAbility.category] || selectedAbility.category}
-                    </span>
-                  )}
                 </div>
-                {selectedAbility.code && (
-                  <div className="text-xs text-[#94a3b8] mt-1">编码：{selectedAbility.code}</div>
-                )}
+                <div className="text-xs text-[#94a3b8] mt-1 font-mono">ID：{selectedAbility.abilityPointId}</div>
               </div>
               <button className="text-[#94a3b8] hover:text-[#1f2937]" onClick={() => setSelectedAbility(null)}>
                 <X className="w-5 h-5" />
