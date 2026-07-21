@@ -263,8 +263,10 @@ export default function LearnRoadsPage() {
       const allTasks = taskResults.flatMap((r) => r.items || [])
       setPositionScenarios(scens)
       setPositionTasks(allTasks)
+      console.log('[learn-roads] loaded scenes for', positionId, 'scenes', scens.length, 'tasks', allTasks.length, scens.map((s) => ({ id: s.id, name: s.name, status: s.status })))
       return { scenarios: scens, tasks: allTasks }
     } catch (err) {
+      console.error('[learn-roads] load scenes failed', err)
       toast({
         title: '加载场景失败',
         description: err instanceof Error ? err.message : '请稍后重试',
@@ -291,10 +293,12 @@ export default function LearnRoadsPage() {
         setLearnRoads(roads)
 
         const existing = roads.find((r) => r.positionIds?.includes(position.id))
+        console.log('[learn-roads] existing road', existing?.id, 'positionIds', existing?.positionIds, 'steps', existing?.steps?.length)
         let loadedScenes: Scene[] = []
         if (existing?.id) {
           setLearnRoadId(existing.id)
           loadedScenes = stepsToScenes(existing.steps || [], scenarios, tasks)
+          console.log('[learn-roads] loaded scenes from existing road', loadedScenes.length, loadedScenes.map((s) => ({ id: s.id, name: s.name })))
         } else if (scenarios.length) {
           const created = await learnRoadApi.create({
             name: `${position.name}学习路径`,
@@ -593,6 +597,10 @@ export default function LearnRoadsPage() {
               <h1 className="text-2xl font-bold text-foreground">{editingPosition.name}</h1>
               <p className="text-muted-foreground mt-1">
                 {batch ? batch.name : '未关联批次'} · {editingPosition.shortName}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                已加载 {positionScenarios.length} 个场景，{positionTasks.length} 个任务
+                {scenes.length === 0 && positionScenarios.length > 0 && ' · 点击下方“保存顺序”生成学习路径'}
               </p>
             </div>
           </div>
