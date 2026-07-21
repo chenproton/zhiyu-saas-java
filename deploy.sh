@@ -4,11 +4,12 @@
 # 运行时产物部署到代码目录之外（默认 /opt/zhiyu-saas），实现代码与运行数据分离。
 #
 # 用法：
-#   ./deploy.sh                  # 全量部署（前端 + 后端 + 数据库备份）
-#   ./deploy.sh --backend-only   # 仅部署后端
-#   ./deploy.sh --frontend-only  # 仅部署前端（商城 + 教育管理）
-#   ./deploy.sh --skip-backup    # 跳过数据库备份
-#   ./deploy.sh --skip-checks    # 跳过代码检查
+#   ./deploy.sh --branch <分支名>                    # 全量部署（前端 + 后端 + 数据库备份）
+#   ./deploy.sh --branch <分支名> --backend-only     # 仅部署后端
+#   ./deploy.sh --branch <分支名> --frontend-only    # 仅部署前端（商城 + 教育管理）
+#   ./deploy.sh --branch <分支名> --skip-backup      # 跳过数据库备份
+#   ./deploy.sh --branch <分支名> --skip-checks      # 跳过代码检查
+#   ./deploy.sh --branch <分支名> --force-install    # 强制重装依赖
 #
 set -euo pipefail
 
@@ -49,12 +50,12 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --help|-h)
-      echo "用法：$0 [--backend-only|-b] [--frontend-only|-f] [--skip-backup] [--skip-checks] [--force-install] [--branch <branch-name>]"
+      echo "用法：$0 --branch <分支名> [--backend-only|-b] [--frontend-only|-f] [--skip-backup] [--skip-checks] [--force-install]"
       exit 0
       ;;
     *)
       echo "错误：未知参数 $1" >&2
-      echo "用法：$0 [--backend-only|-b] [--frontend-only|-f] [--skip-backup] [--skip-checks] [--force-install] [--branch <branch-name>]" >&2
+      echo "用法：$0 --branch <分支名> [--backend-only|-b] [--frontend-only|-f] [--skip-backup] [--skip-checks] [--force-install]" >&2
       exit 1
       ;;
   esac
@@ -217,18 +218,16 @@ cleanup() {
 
 trap 'cleanup' EXIT
 
-# ==================== Git 未提交修改检查 ====================
-if [[ -n "$BRANCH_NAME" ]]; then
-  echo "==> 分支隔离模式，跳过本地修改检查（构建基于 master + $BRANCH_NAME）"
-else
-  echo "==> 检查本地未提交修改..."
-  if [[ -n "$(git -C "$PROJECT_ROOT" status --porcelain 2>/dev/null)" ]]; then
-    echo "  警告：工作区存在未提交修改，非分支模式下不会自动提交" >&2
-    echo "  建议：使用 --branch <分支名> 进行隔离部署，避免引入其他 Agent 的中间代码" >&2
-    echo "  继续使用当前工作区内容部署..."
-  else
-    echo "  无未提交修改"
-  fi
+# ==================== --branch 强制校验 ====================
+if [[ -z "$BRANCH_NAME" ]]; then
+  echo "错误：多 Agent 协作模式下必须指定 --branch <分支名>" >&2
+  echo "" >&2
+  echo "用法: $0 --branch <分支名> [其他参数]" >&2
+  echo "" >&2
+  echo "  基于 master 创建干净工作树，仅合入指定分支的改动，确保不引入其他 Agent 的中间代码。" >&2
+  echo "" >&2
+  echo "示例: $0 --branch feat/agent-A-学生档案 --frontend-only" >&2
+  exit 1
 fi
 
 # ==================== 必需变量校验 ====================
