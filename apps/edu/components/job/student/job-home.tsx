@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   Search, Flag, Heart, Crosshair, Sparkles, Filter, X,
-  TrendingUp, GraduationCap, ChevronRight,
+  TrendingUp, GraduationCap, ChevronRight, Layers,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -129,7 +129,6 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
   }, [isScene])
 
   useEffect(() => {
-    if (isScene) { setFavoritePositions([]); return }
     if (!user) { setFavoritePositions([]); return }
     positionApi
       .listFavorites()
@@ -147,6 +146,18 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
     })
     return map
   }, [scenarios, isScene])
+
+  const favoritePositionScenarios = useMemo(() => {
+    if (!isScene || favoritePositions.length === 0) return []
+    const fpIds = new Set(favoritePositions.map((p) => p.id))
+    return scenarios.filter((s) => s.careerPositionId && fpIds.has(s.careerPositionId))
+  }, [isScene, scenarios, favoritePositions])
+
+  const hotPositionScenarios = useMemo(() => {
+    if (!isScene || hotPositions.length === 0) return []
+    const hpIds = new Set(hotPositions.map((h) => h.positionId))
+    return scenarios.filter((s) => s.careerPositionId && hpIds.has(s.careerPositionId))
+  }, [isScene, scenarios, hotPositions])
 
   const industries = useMemo(() => {
     if (isScene) {
@@ -451,23 +462,96 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
           </div>
         )}
 
-        {/* Scene mode dashboard - ability baseline assessment */}
+        {/* Scene mode dashboard */}
         {isScene && (
-          <div className="mb-6">
-            <div className="rounded-2xl p-6 text-white bg-gradient-to-br from-indigo-500 to-violet-600 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_340px] gap-5 mb-6">
+            {/* 目标岗位配套场景 */}
+            <div className="bg-white rounded-2xl border border-[#e7e5e4] p-3 flex flex-col min-h-[178px]">
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center gap-2 text-[15px] font-bold text-[#0f172a]">
+                  <Flag className="w-4 h-4 text-blue-500" />
+                  目标岗位配套场景
+                </div>
+              </div>
+              {hotPositionScenarios.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8] text-center px-4">
+                  <Layers className="w-9 h-9 mb-2 text-[#cbd5e1]" />
+                  <div className="text-sm font-semibold text-[#475569]">暂无目标岗位配套场景</div>
+                  <div className="text-xs mt-0.5">联系管理员配置岗位推荐，关联场景将在此展示</div>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col gap-1 overflow-hidden">
+                  {hotPositionScenarios.slice(0, 5).map((sc) => (
+                    <Link key={sc.id} href={`/scene/landing/${sc.id}`}>
+                      <div className="flex items-start gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#f8fafc] cursor-pointer transition-colors group">
+                        <div className="flex-1 min-w-0 flex flex-col gap-1">
+                          <span className="text-[13px] font-semibold text-[#0f172a] truncate group-hover:text-blue-600 transition-colors">
+                            {sc.name}
+                          </span>
+                          <div className="flex items-center gap-1.5 text-[11px]">
+                            <span className="px-1.5 py-0.5 rounded bg-[#eff6ff] text-blue-600 truncate max-w-[80px]">
+                              v{sc.version || "1.0"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 心仪岗位配套场景 */}
+            <div className="bg-white rounded-2xl border border-[#e7e5e4] p-3 flex flex-col min-h-[178px]">
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center gap-2 text-[15px] font-bold text-[#0f172a]">
+                  <Heart className="w-4 h-4 text-rose-500" />
+                  心仪岗位配套场景
+                </div>
+              </div>
+              {favoritePositionScenarios.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8] text-center px-4">
+                  <Heart className="w-9 h-9 mb-2 text-[#cbd5e1]" />
+                  <div className="text-sm font-semibold text-[#475569]">快去收藏岗位吧！</div>
+                  <div className="text-xs mt-0.5">在岗位列表收藏你感兴趣的岗位，关联场景将在此展示</div>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col gap-1 overflow-hidden">
+                  {favoritePositionScenarios.slice(0, 5).map((sc) => (
+                    <Link key={sc.id} href={`/scene/landing/${sc.id}`}>
+                      <div className="flex items-start gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#f8fafc] cursor-pointer transition-colors group">
+                        <div className="flex-1 min-w-0 flex flex-col gap-1">
+                          <span className="text-[13px] font-semibold text-[#0f172a] truncate group-hover:text-blue-600 transition-colors">
+                            {sc.name}
+                          </span>
+                          <div className="flex items-center gap-1.5 text-[11px]">
+                            <span className="px-1.5 py-0.5 rounded bg-[#eff6ff] text-blue-600 truncate max-w-[80px]">
+                              v{sc.version || "1.0"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 学前能力基线测评 */}
+            <div className="rounded-2xl p-6 text-white bg-gradient-to-br from-indigo-500 to-violet-600 flex flex-col justify-between min-h-[178px]">
               <div>
-                <div className="flex items-center gap-2.5 mb-2">
+                <div className="flex items-center gap-2.5 mb-2.5">
                   <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
                     <Crosshair className="w-5 h-5" />
                   </div>
                   <div className="text-[17px] font-bold">学前能力基线测评</div>
                 </div>
-                <p className="text-[13px] text-white/85 leading-relaxed max-w-lg">
+                <p className="text-[13px] text-white/85 leading-relaxed">
                   学习前先测一测，精准定位你的能力起点，量身规划学习路径
                 </p>
               </div>
               <Button
-                className="shrink-0 bg-white text-indigo-600 hover:bg-white/90 rounded-full h-9 px-5 text-[13px] font-semibold"
+                className="self-start bg-white text-indigo-600 hover:bg-white/90 rounded-full h-9 px-5 text-[13px] font-semibold"
                 onClick={() => router.push("/evaluation")}
               >
                 开始测评 <ChevronRight className="w-4 h-4 ml-1" />

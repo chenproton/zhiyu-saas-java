@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import {
-  ArrowLeft, PlayCircle, FileText, ListChecks, FolderOpen,
-  Lightbulb, Target, GitBranch, Layers, Clock, MapPin,
-  BarChart3, Calendar, ChevronDown,
+  ArrowLeft, PlayCircle, ListChecks, FolderOpen,
+  Lightbulb, Target, GitBranch, Layers, Clock,
+  BarChart3, Calendar, ChevronDown, BookOpen,
+  Users, Eye, Share2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -31,20 +32,19 @@ import type {
 import { PlatformFooter } from "@/components/job/student/platform-footer"
 
 const TABS = [
-  { value: "overview", label: "场景概述", icon: FileText },
-  { value: "tasks", label: "任务列表", icon: ListChecks },
-  { value: "resources", label: "关联资源", icon: FolderOpen },
-  { value: "abilities", label: "考查能力点", icon: Lightbulb },
-  { value: "evaluation", label: "评分量规", icon: Target },
+  { value: "tasks", label: "任务概览", icon: ListChecks },
+  { value: "resources", label: "资源中心", icon: FolderOpen },
+  { value: "abilities", label: "能力模型", icon: Lightbulb },
+  { value: "evaluation", label: "评价标准", icon: Target },
   { value: "knowledge", label: "知识图谱", icon: GitBranch },
 ]
 
 const coverGradients = [
-  "linear-gradient(135deg,#1e3a8a,#3b7cff)",
-  "linear-gradient(135deg,#7c2d12,#dc2626)",
-  "linear-gradient(135deg,#064e3b,#0891b2)",
-  "linear-gradient(135deg,#334155,#64748b)",
-  "linear-gradient(135deg,#581c87,#a855f7)",
+  "linear-gradient(135deg,#667eea,#764ba2)",
+  "linear-gradient(135deg,#f093fb,#f5576c)",
+  "linear-gradient(135deg,#4facfe,#00f2fe)",
+  "linear-gradient(135deg,#fa709a,#fee140)",
+  "linear-gradient(135deg,#30cfd0,#330867)",
 ]
 
 const difficultyMap: Record<number, { color: string; label: string }> = {
@@ -56,8 +56,8 @@ const difficultyMap: Record<number, { color: string; label: string }> = {
 }
 
 const taskTypeLabels: Record<string, string> = {
-  assessment: "测评任务",
-  training: "训练任务",
+  assessment: "考核",
+  training: "训练",
 }
 
 function formatDate(dateStr?: string) {
@@ -72,7 +72,7 @@ export default function SceneDetailPage() {
 
   const [scenario, setScenario] = useState<Scenario | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("overview")
+  const [activeTab, setActiveTab] = useState("tasks")
 
   const [tasks, setTasks] = useState<ScenarioTask[]>([])
   const [taskResources, setTaskResources] = useState<Map<string, TaskResource[]>>(new Map())
@@ -159,7 +159,9 @@ export default function SceneDetailPage() {
     }).catch(() => {})
   }, [id, scenario])
 
-  const totalHours = useMemo(() => tasks.reduce((sum, t) => sum + (t.estimatedHours || 0), 0), [tasks])
+  const assessmentHours = useMemo(() => tasks.filter((t) => t.taskType === "assessment").reduce((s, t) => s + (t.estimatedHours || 0), 0), [tasks])
+  const trainingHours = useMemo(() => tasks.filter((t) => t.taskType === "training").reduce((s, t) => s + (t.estimatedHours || 0), 0), [tasks])
+  const totalHours = assessmentHours + trainingHours
   const totalResources = useMemo(() => {
     let count = 0
     taskResources.forEach((r) => { count += r.length })
@@ -175,16 +177,21 @@ export default function SceneDetailPage() {
     tasks.forEach((t) => t.knowledgePointIds?.forEach((kid) => ids.add(kid)))
     return ids
   }, [tasks])
+  const totalEvalConfigs = useMemo(() => {
+    let count = 0
+    taskEvalConfigs.forEach((c) => { count += c.length })
+    return count
+  }, [taskEvalConfigs])
 
   const diff = difficultyMap[scenario?.difficulty ?? 3] || difficultyMap[3]
   const industryName = scenario?.industryNames?.[0] || (scenario?.industryIds?.length ? "已关联" : "未分类")
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col bg-[#F9FAFC]">
-        <Skeleton className="h-[280px] w-full" />
-        <div className="max-w-[1400px] mx-auto px-8 py-8 w-full flex-1">
-          <Skeleton className="h-[400px] w-full rounded-2xl" />
+      <div className="min-h-screen flex flex-col bg-[#f5f5f5]">
+        <Skeleton className="h-[320px] w-full" />
+        <div className="max-w-[1400px] mx-auto px-6 py-6 w-full flex-1">
+          <Skeleton className="h-[500px] w-full rounded-xl" />
         </div>
         <PlatformFooter />
       </div>
@@ -193,7 +200,7 @@ export default function SceneDetailPage() {
 
   if (!scenario) {
     return (
-      <div className="min-h-screen flex flex-col bg-[#F9FAFC]">
+      <div className="min-h-screen flex flex-col bg-[#f5f5f5]">
         <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8]">
           <Layers className="w-16 h-16 mb-4 opacity-40" />
           <div className="text-lg font-semibold text-[#475569]">场景不存在或暂未公开</div>
@@ -210,96 +217,58 @@ export default function SceneDetailPage() {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case "overview":
-        return (
-          <div className="space-y-6">
-            {scenario.background && (
-              <div>
-                <h3 className="text-[15px] font-semibold text-[#0f172a] mb-3">场景背景</h3>
-                <p className="text-sm text-[#475569] leading-relaxed whitespace-pre-wrap">{scenario.background}</p>
-              </div>
-            )}
-            {scenario.deliveryGoal && (
-              <div>
-                <h3 className="text-[15px] font-semibold text-[#0f172a] mb-3">教学目标</h3>
-                <p className="text-sm text-[#475569] leading-relaxed whitespace-pre-wrap">{scenario.deliveryGoal}</p>
-              </div>
-            )}
-            {!scenario.background && !scenario.deliveryGoal && (
-              <div className="text-center py-12 text-[#94a3b8]">
-                <FileText className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                <div>暂无场景概述信息</div>
-              </div>
-            )}
-            <div>
-              <h3 className="text-[15px] font-semibold text-[#0f172a] mb-3">基本信息</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-[#fafaf9] rounded-lg p-3">
-                  <div className="text-xs text-[#94a3b8] mb-1">场景编码</div>
-                  <div className="text-sm font-medium text-[#0f172a]">{scenario.code || scenario.id.slice(0, 8)}</div>
-                </div>
-                <div className="bg-[#fafaf9] rounded-lg p-3">
-                  <div className="text-xs text-[#94a3b8] mb-1">版本号</div>
-                  <div className="text-sm font-medium text-[#0f172a]">{scenario.version}</div>
-                </div>
-                <div className="bg-[#fafaf9] rounded-lg p-3">
-                  <div className="text-xs text-[#94a3b8] mb-1">创建时间</div>
-                  <div className="text-sm font-medium text-[#0f172a]">{formatDate(scenario.createdAt)}</div>
-                </div>
-                <div className="bg-[#fafaf9] rounded-lg p-3">
-                  <div className="text-xs text-[#94a3b8] mb-1">更新时间</div>
-                  <div className="text-sm font-medium text-[#0f172a]">{formatDate(scenario.updatedAt)}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-
       case "tasks":
         return (
           <div>
-            <div className="text-sm text-[#64748b] mb-4">
-              共 <strong className="text-blue-500">{tasks.length}</strong> 个任务，
-              合计 <strong className="text-blue-500">{totalHours}</strong> 课时
-            </div>
             {tasks.length === 0 ? (
               <div className="text-center py-12 text-[#94a3b8]">
                 <ListChecks className="w-12 h-12 mx-auto mb-3 opacity-40" />
                 <div>暂无任务</div>
               </div>
             ) : (
-              <div className="space-y-2">
-                {tasks.map((task, idx) => (
-                  <div key={task.id} className="bg-white rounded-xl border border-[#f5f5f4] overflow-hidden">
-                    <div className="flex items-center justify-between p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[#eff6ff] text-blue-600 flex items-center justify-center text-sm font-bold">
+              <div className="space-y-3">
+                {tasks.map((task, idx) => {
+                  const taskRes = taskResources.get(task.id) || []
+                  const taskAbs = task.abilityPointIds?.length || 0
+                  const taskKs = task.knowledgePointIds?.length || 0
+                  return (
+                    <div key={task.id} className="bg-white rounded-xl border border-[#f0f0f0] overflow-hidden hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] transition-shadow">
+                      <div className="flex items-center gap-4 p-5">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-400 text-white flex items-center justify-center text-sm font-bold shrink-0 shadow-[0_2px_8px_rgba(59,130,246,0.3)]">
                           {idx + 1}
                         </div>
-                        <div>
-                          <div className="text-[14px] font-medium text-[#1f2937]">{task.name}</div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[11px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#64748b]">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="text-[15px] font-semibold text-[#1f2937] truncate">{task.name}</div>
+                            <span className="text-[11px] px-2 py-0.5 rounded text-xs shrink-0"
+                              style={{ backgroundColor: task.taskType === "assessment" ? "#fef2f2" : "#eff6ff", color: task.taskType === "assessment" ? "#dc2626" : "#2563eb" }}
+                            >
                               {taskTypeLabels[task.taskType] || task.taskType}
                             </span>
-                            {task.code && (
-                              <span className="text-[11px] text-[#94a3b8]">{task.code}</span>
-                            )}
+                            {task.code && <span className="text-[11px] text-[#94a3b8] shrink-0">{task.code}</span>}
                           </div>
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-[#94a3b8]">
+                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{task.estimatedHours || 0} 课时</span>
+                            <span className="flex items-center gap-1"><BarChart3 className="w-3 h-3" />Lv.{task.difficulty}</span>
+                            {taskRes.length > 0 && <span className="flex items-center gap-1"><FolderOpen className="w-3 h-3" />{taskRes.length} 个资源</span>}
+                            {taskAbs > 0 && <span className="flex items-center gap-1"><Lightbulb className="w-3 h-3" />{taskAbs} 个能力点</span>}
+                            {taskKs > 0 && <span className="flex items-center gap-1"><GitBranch className="w-3 h-3" />{taskKs} 个知识点</span>}
+                          </div>
+                          {(task.description || task.detailedDescription) && (
+                            <p className="text-xs text-[#94a3b8] mt-2 line-clamp-2 leading-relaxed">
+                              {task.detailedDescription || task.description}
+                            </p>
+                          )}
                         </div>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs text-[#94a3b8]">
-                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{task.estimatedHours || 0}h</span>
-                        <span className="flex items-center gap-1"><BarChart3 className="w-3 h-3" />Lv.{task.difficulty}</span>
+                        <Link href={`/scene/landing/${id}/learn?task=${task.id}`} className="shrink-0">
+                          <Button size="sm" className="rounded-md h-8 px-4 text-xs bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white">
+                            <PlayCircle className="w-3 h-3 mr-1" /> 开始任务
+                          </Button>
+                        </Link>
                       </div>
                     </div>
-                    {(task.description || task.detailedDescription) && (
-                      <div className="px-4 pb-4 border-t border-[#f5f5f4] pt-3">
-                        <p className="text-sm text-[#475569] leading-relaxed">{task.detailedDescription || task.description}</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
@@ -324,23 +293,23 @@ export default function SceneDetailPage() {
                   return (
                     <div key={task.id}>
                       <div className="text-sm font-medium text-[#0f172a] mb-2 flex items-center gap-2">
-                        <ListChecks className="w-3.5 h-3.5 text-blue-500" />
+                        <BookOpen className="w-3.5 h-3.5 text-blue-500" />
                         {task.name}
-                        <span className="text-xs text-[#94a3b8] font-normal">({resources.length} 个资源)</span>
+                        <span className="text-xs text-[#94a3b8] font-normal">({resources.length})</span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {resources.map((r) => (
-                          <div key={r.id} className="bg-[#fafaf9] rounded-lg p-3 border border-[#f5f5f4]">
-                            <div className="text-sm font-medium text-[#0f172a] mb-1 truncate">{r.name}</div>
-                            <div className="flex items-center gap-2 text-xs text-[#94a3b8]">
-                              <span className="px-1.5 py-0.5 rounded bg-[#f1f5f9]">{r.type}</span>
-                              {r.size && <span>{r.size}</span>}
+                        {resources.map((r) => {
+                          const typeColors: Record<string, string> = { document: "bg-[#eff6ff] text-blue-600", video: "bg-[#fef3c7] text-amber-600", link: "bg-[#f3e8ff] text-purple-600", file: "bg-[#f0fdf4] text-emerald-600" }
+                          return (
+                            <div key={r.id} className="bg-[#fafaf9] rounded-lg p-3 border border-[#f0f0f0] hover:border-blue-200 transition-colors">
+                              <div className="text-sm font-medium text-[#0f172a] mb-1 truncate">{r.name}</div>
+                              <div className="flex items-center gap-2 text-xs text-[#94a3b8]">
+                                <span className={`px-1.5 py-0.5 rounded ${typeColors[r.type] || "bg-[#f1f5f9] text-[#64748b]"}`}>{r.type}</span>
+                                {r.size && <span>{r.size}</span>}
+                              </div>
                             </div>
-                            {r.description && (
-                              <p className="text-xs text-[#94a3b8] mt-1 line-clamp-2">{r.description}</p>
-                            )}
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     </div>
                   )
@@ -362,31 +331,35 @@ export default function SceneDetailPage() {
                 <div>暂无考查能力点</div>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {tasks.filter((t) => t.abilityPointIds?.length > 0).map((task) => (
                   <div key={task.id}>
-                    <div className="text-sm font-medium text-[#0f172a] mb-2 flex items-center gap-2">
-                      <ListChecks className="w-3.5 h-3.5 text-violet-500" />
+                    <div className="text-sm font-semibold text-[#1f2937] mb-3 flex items-center gap-2">
+                      <Target className="w-3.5 h-3.5 text-violet-500" />
                       {task.name}
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {task.abilityPointIds?.map((aid) => {
                         const ap = abilityMap.get(aid)
-                        const catColors: Record<string, string> = {
-                          knowledge: "bg-[#eff6ff] text-blue-600",
-                          skill: "bg-[#fef3c7] text-amber-600",
-                          quality: "bg-[#f3e8ff] text-purple-600",
+                        const catConfig: Record<string, { label: string; classes: string; border: string }> = {
+                          knowledge: { label: "知识", classes: "text-blue-600 bg-blue-50", border: "border-blue-100" },
+                          skill: { label: "技能", classes: "text-amber-600 bg-amber-50", border: "border-amber-100" },
+                          quality: { label: "素养", classes: "text-purple-600 bg-purple-50", border: "border-purple-100" },
                         }
+                        const cfg = catConfig[ap?.category || ""] || { label: "", classes: "text-[#64748b] bg-gray-50", border: "border-gray-100" }
                         return (
-                          <div key={aid} className="bg-white border border-[#f5f5f4] rounded-lg px-3 py-2">
-                            <div className="text-sm font-medium text-[#0f172a]">
-                              {ap?.name || "能力点"}
+                          <div key={aid} className={`bg-white border ${cfg.border} rounded-lg p-3.5 hover:shadow-sm transition-shadow`}>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-[#0f172a] mb-1">{ap?.name || "能力点"}</div>
+                                {ap?.description && <div className="text-[11px] text-[#94a3b8] line-clamp-1">{ap.description}</div>}
+                              </div>
+                              {cfg.label && (
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${cfg.classes}`}>
+                                  {cfg.label}
+                                </span>
+                              )}
                             </div>
-                            {ap?.category && (
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${catColors[ap.category] || "bg-[#f1f5f9] text-[#64748b]"}`}>
-                                {ap.category === "knowledge" ? "知识" : ap.category === "skill" ? "技能" : "素养"}
-                              </span>
-                            )}
                           </div>
                         )
                       })}
@@ -401,83 +374,61 @@ export default function SceneDetailPage() {
       case "evaluation":
         return (
           <div>
-            {tasks.filter((t) => (taskEvalConfigs.get(t.id) || []).length > 0).length === 0 ? (
+            <div className="text-sm text-[#64748b] mb-4">
+              共 <strong className="text-blue-500">{totalEvalConfigs}</strong> 个评价配置
+            </div>
+            {totalEvalConfigs === 0 ? (
               <div className="text-center py-12 text-[#94a3b8]">
                 <Target className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                <div>暂无评分量规</div>
+                <div>暂未配置评价标准</div>
               </div>
             ) : (
-              <div className="space-y-6">
-                {tasks.filter((t) => (taskEvalConfigs.get(t.id) || []).length > 0).map((task) => {
-                  const configs = taskEvalConfigs.get(task.id) || []
-                  return (
-                    <div key={task.id}>
-                      <div className="text-sm font-medium text-[#0f172a] mb-3 flex items-center gap-2">
-                        <Target className="w-3.5 h-3.5 text-orange-500" />
-                        {task.name}
-                      </div>
-                      {configs.map((config) => {
-                        const pts = evalPoints.get(config.id) || []
-                        const stps = reviewSteps.get(config.id) || []
-                        return (
-                          <div key={config.id} className="bg-[#fafaf9] rounded-lg p-4 mb-3 border border-[#f5f5f4]">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="text-sm font-medium text-[#0f172a]">
-                                评价方式：{config.methodKey}
-                              </div>
-                              <span className="text-xs text-[#94a3b8]">权重：{config.weight * 100}%</span>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[#e5e7eb]">
+                      <th className="text-left py-3 px-3 font-medium text-[#64748b] text-xs w-[40px]">#</th>
+                      <th className="text-left py-3 px-3 font-medium text-[#64748b] text-xs">任务名称</th>
+                      <th className="text-left py-3 px-3 font-medium text-[#64748b] text-xs">评价方式</th>
+                      <th className="text-left py-3 px-3 font-medium text-[#64748b] text-xs">场景权重</th>
+                      <th className="text-left py-3 px-3 font-medium text-[#64748b] text-xs">评分点</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tasks.filter((t) => (taskEvalConfigs.get(t.id) || []).length > 0).map((task, idx) => {
+                      const configs = taskEvalConfigs.get(task.id) || []
+                      return (
+                        <tr key={task.id} className="border-b border-[#f5f5f4] hover:bg-[#f8faff] transition-colors">
+                          <td className="py-3 px-3 text-[#64748b]">{idx + 1}</td>
+                          <td className="py-3 px-3">
+                            <div className="font-medium text-[#0f172a]">{task.name}</div>
+                            <div className="text-[11px] text-[#94a3b8]">{taskTypeLabels[task.taskType]}</div>
+                          </td>
+                          <td className="py-3 px-3 text-[#475569]">
+                            {configs.map((c) => c.methodKey).join("、") || "-"}
+                          </td>
+                          <td className="py-3 px-3">
+                            {configs.map((c, ci) => (
+                              <div key={ci} className="text-[#2563eb] font-medium">{Math.round(c.weight * 100)}%</div>
+                            ))}
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="flex flex-wrap gap-1">
+                              {(evalPoints.get(configs[0]?.id) || []).map((pt) => (
+                                <span key={pt.id} className="inline-block text-[10px] px-2 py-0.5 rounded bg-[#f1f5f9] text-[#475569]">
+                                  {pt.name}({pt.maxScore}分)
+                                </span>
+                              ))}
+                              {configs.every((c) => (evalPoints.get(c.id) || []).length === 0) && (
+                                <span className="text-xs text-[#94a3b8]">-</span>
+                              )}
                             </div>
-                            {pts.length > 0 && (
-                              <div className="mb-3">
-                                <div className="text-xs text-[#94a3b8] mb-2 font-medium">评分点</div>
-                                <div className="overflow-x-auto">
-                                  <table className="w-full text-sm">
-                                    <thead>
-                                      <tr className="border-b border-[#e5e7eb]">
-                                        <th className="text-left py-2 px-2 font-medium text-[#64748b] text-xs">评分点</th>
-                                        <th className="text-left py-2 px-2 font-medium text-[#64748b] text-xs">满分</th>
-                                        <th className="text-left py-2 px-2 font-medium text-[#64748b] text-xs">方式</th>
-                                        <th className="text-left py-2 px-2 font-medium text-[#64748b] text-xs">权重</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {pts.map((pt) => (
-                                        <tr key={pt.id} className="border-b border-[#f5f5f4]">
-                                          <td className="py-2 px-2 text-[#1f2937]">{pt.name}</td>
-                                          <td className="py-2 px-2 text-[#0f172a] font-medium">{pt.maxScore}</td>
-                                          <td className="py-2 px-2 text-[#64748b]">{pt.scoringMethod}</td>
-                                          <td className="py-2 px-2 text-[#64748b]">{pt.weight * 100}%</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </div>
-                            )}
-                            {stps.length > 0 && (
-                              <div>
-                                <div className="text-xs text-[#94a3b8] mb-2 font-medium">评审步骤</div>
-                                <div className="space-y-1">
-                                  {stps.map((st) => (
-                                    <div key={st.id} className="flex items-center gap-2 text-sm text-[#475569]">
-                                      <span className="w-5 h-5 rounded-full bg-[#eff6ff] text-blue-600 flex items-center justify-center text-[10px] font-bold">
-                                        {st.sortOrder}
-                                      </span>
-                                      <span>{st.label}</span>
-                                      {!st.enabled && (
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#94a3b8]">已禁用</span>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )
-                })}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
@@ -498,21 +449,17 @@ export default function SceneDetailPage() {
               <div className="space-y-4">
                 {tasks.filter((t) => t.knowledgePointIds?.length > 0).map((task) => (
                   <div key={task.id}>
-                    <div className="text-sm font-medium text-[#0f172a] mb-2 flex items-center gap-2">
-                      <ListChecks className="w-3.5 h-3.5 text-teal-500" />
+                    <div className="text-sm font-semibold text-[#1f2937] mb-2 flex items-center gap-2">
+                      <BookOpen className="w-3.5 h-3.5 text-teal-500" />
                       {task.name}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {task.knowledgePointIds?.map((kid) => {
                         const kp = knowledgeMap.get(kid)
                         return (
-                          <div key={kid} className="bg-white border border-[#f5f5f4] rounded-lg px-3 py-2">
-                            <div className="text-sm font-medium text-[#0f172a]">
-                              {kp?.name || "知识点"}
-                            </div>
-                            {kp?.code && (
-                              <div className="text-[10px] text-[#94a3b8]">{kp.code}</div>
-                            )}
+                          <div key={kid} className="bg-white border border-[#f0f0f0] rounded-lg px-3.5 py-2.5 hover:border-blue-200 transition-colors">
+                            <div className="text-sm font-medium text-[#0f172a]">{kp?.name || "知识点"}</div>
+                            {kp?.code && <div className="text-[10px] text-[#94a3b8] mt-0.5">编码：{kp.code}</div>}
                           </div>
                         )
                       })}
@@ -530,77 +477,159 @@ export default function SceneDetailPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F9FAFC]">
-      {/* Scene Header */}
-      <div className="bg-white border-b border-[#e7e5e4]">
-        <div className="max-w-[1400px] mx-auto px-8 py-6">
-          <div className="flex items-center gap-2 mb-5">
-            <Link href="/scene/landing">
-              <Button variant="ghost" size="sm" className="text-[#64748b] hover:text-blue-600 pl-0">
-                <ArrowLeft className="w-4 h-4 mr-1" /> 返回场景列表
-              </Button>
-            </Link>
+    <div className="min-h-screen flex flex-col bg-[#f5f5f5]" style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" }}>
+      {/* Header */}
+      <div className="bg-white border-b border-[#f0f0f0]">
+        <div className="max-w-[1400px] mx-auto px-6 py-4">
+          <div className="flex items-center gap-2 mb-4 text-sm text-[#64748b]">
+            <Link href="/scene/landing" className="hover:text-blue-600 transition-colors">首页</Link>
+            <span>/</span>
+            <span className="text-[#1f2937] font-medium truncate">{scenario.name}</span>
           </div>
 
-          <div className="bg-white rounded-2xl border border-[#e7e5e4] p-6 shadow-[0_4px_20px_rgba(69,26,3,0.06)]">
-            <div className="flex flex-col lg:flex-row gap-6">
-              <div
-                className="w-full lg:w-[280px] h-[180px] rounded-xl bg-cover bg-center flex items-center justify-center shrink-0 relative overflow-hidden self-stretch"
-                style={coverStyle}
-              >
-                {!scenario.coverImage && (
-                  <span className="text-white text-[48px] font-bold opacity-25 select-none">
-                    {scenario.name.charAt(0)}
-                  </span>
-                )}
-                <span className="absolute top-3 left-3 bg-white/25 text-white px-3 py-1 rounded text-sm font-semibold backdrop-blur-sm">
-                  {scenario.version}
-                </span>
-                <span className="absolute bottom-3 right-0 translate-x-0 bg-black/40 text-white px-3 py-1 rounded-l text-xs">
-                  {scenario.id.slice(0, 8)}
-                </span>
-              </div>
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Left: Cover + Info */}
+            <div className="flex-1">
+              <div className="bg-white rounded-xl border border-[#f0f0f0] overflow-hidden">
+                <div className="flex flex-col sm:flex-row gap-6 p-6">
+                  <div
+                    className="w-full sm:w-[260px] h-[170px] rounded-xl bg-cover bg-center flex items-center justify-center shrink-0 self-stretch shadow-[0_4px_16px_rgba(102,126,234,0.25)]"
+                    style={coverStyle}
+                  >
+                    {!scenario.coverImage && (
+                      <svg className="w-14 h-14 text-white/85" viewBox="0 0 24 24" fill="currentColor" style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))" }}>
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                      </svg>
+                    )}
+                    <span className="absolute bottom-2 right-0 bg-black/40 text-white px-3 py-1 rounded-l text-xs">{scenario.id.slice(0, 8)}</span>
+                  </div>
 
-              <div className="flex-1 flex flex-col">
-                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-3">
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <h1 className="text-2xl font-bold text-[#0f172a]">{scenario.name}</h1>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      <span
-                        className="px-3 py-1 rounded-md text-xs border flex items-center gap-1"
-                        style={{ backgroundColor: diff.color + "15", color: diff.color, borderColor: diff.color + "30" }}
-                      >
-                        <BarChart3 className="w-3 h-3" /> {diff.label}
-                      </span>
-                      <span className="px-3 py-1 rounded-md text-xs border bg-[#fff7ed] border-[#ffedd5] text-[#c2410c] flex items-center gap-1">
-                        <MapPin className="w-3 h-3" /> 行业：{industryName}
-                      </span>
-                      {scenario.industryNames && scenario.industryNames.length > 1 && (
-                        <span className="px-3 py-1 rounded-md text-xs border bg-[#f1f5f9] text-[#475569]">
-                          +{scenario.industryNames.length - 1} 个
+                  <div className="flex-1 flex flex-col min-w-0">
+                    <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                      <div className="flex items-center gap-2.5 flex-wrap min-w-0">
+                        <h1 className="text-2xl font-semibold text-[#1f2937] truncate">{scenario.name}</h1>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs border border-[#d9d9d9] bg-[#f5f5f5] text-[#64748b] font-medium shrink-0">
+                          {scenario.version}
                         </span>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <Button variant="ghost" size="sm" className="h-9 px-3 text-xs text-[#64748b] hover:text-blue-600 border border-[#d9d9d9] rounded-md">
+                          <Share2 className="w-3.5 h-3.5 mr-1" /> 分享
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-[#94a3b8] mb-3">
+                      <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> 创建人：{scenario.creatorId.slice(0, 8)}</span>
+                      <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> 更新于 {formatDate(scenario.updatedAt)}</span>
+                      <span className="flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" /> 浏览 0 次</span>
+                    </div>
+
+                    {scenario.background && (
+                      <p className="text-sm text-[#64748b] leading-relaxed mb-4 line-clamp-3">
+                        {scenario.background}
+                      </p>
+                    )}
+
+                    <div className="flex flex-col gap-2 text-xs">
+                      {scenario.industryNames && scenario.industryNames.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[#94a3b8] shrink-0">面向行业：</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {scenario.industryNames.slice(0, 3).map((n) => (
+                              <span key={n} className="px-2.5 py-0.5 rounded text-[11px] bg-[#fff7ed] text-[#c2410c] border border-[#ffedd5]">{n}</span>
+                            ))}
+                          </div>
+                        </div>
                       )}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[#94a3b8] shrink-0">难度等级：</span>
+                        <span
+                          className="px-2.5 py-0.5 rounded text-[11px] border"
+                          style={{ backgroundColor: diff.color + "15", color: diff.color, borderColor: diff.color + "30" }}
+                        >
+                          {diff.label}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-3 mt-auto pt-4">
+                      <Link href={`/scene/landing/${id}/learn`}>
+                        <Button className="rounded-md px-6 h-10 bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white font-medium text-sm">
+                          <PlayCircle className="w-4 h-4 mr-1.5" /> 开始学习
+                        </Button>
+                      </Link>
+                      <Button variant="ghost" className="rounded-md px-5 h-10 text-[#64748b] border border-[#d9d9d9] hover:text-blue-600 hover:border-blue-300 text-sm" onClick={() => tabsRef.current?.scrollIntoView({ behavior: "smooth" })}>
+                        查看任务列表 <ChevronDown className="w-4 h-4 ml-1" />
+                      </Button>
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
 
-                <div className="flex flex-col gap-2.5 mb-4">
-                  <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#64748b]">
-                    <span className="flex items-center gap-2"><Calendar className="w-4 h-4 text-[#94a3b8]" /> 创建时间：{formatDate(scenario.createdAt)}</span>
-                    <span className="flex items-center gap-2"><Calendar className="w-4 h-4 text-[#94a3b8]" /> 更新时间：{formatDate(scenario.updatedAt)}</span>
-                  </div>
+            {/* Right: Stats Sidebar */}
+            <div className="lg:w-[300px] shrink-0">
+              <div className="bg-white rounded-xl border border-[#f0f0f0] overflow-hidden">
+                <div className="px-5 py-4 border-b border-[#f0f0f0] flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-blue-500" />
+                  <span className="text-sm font-semibold text-[#1f2937]">课时统计</span>
                 </div>
-
-                <div className="flex flex-wrap gap-3 mt-auto">
-                  <Button className="rounded-md px-6 h-10 bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white font-medium">
-                    <PlayCircle className="w-4 h-4 mr-1.5" /> 开始学习
-                  </Button>
-                  <Button variant="outline" className="rounded-md px-5 h-10 text-[#475569]" onClick={() => tabsRef.current?.scrollIntoView({ behavior: "smooth" })}>
-                    查看任务列表 <ChevronDown className="w-4 h-4 ml-1" />
-                  </Button>
+                <div className="p-5">
+                  <div className="flex items-center justify-center mb-5">
+                    <div className="relative w-[120px] h-[120px]">
+                      <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
+                        <circle cx="60" cy="60" r="50" fill="none" stroke="#f0f0f0" strokeWidth="10" />
+                        {totalHours > 0 && (
+                          <circle
+                            cx="60" cy="60" r="50" fill="none" stroke="#2563eb"
+                            strokeWidth="10" strokeLinecap="round"
+                            strokeDasharray={`${(assessmentHours / totalHours) * Math.PI * 100 || 0} ${Math.PI * 100}`}
+                          />
+                        )}
+                        {totalHours > 0 && trainingHours > 0 && (
+                          <circle
+                            cx="60" cy="60" r="50" fill="none" stroke="#22c55e"
+                            strokeWidth="10" strokeLinecap="round"
+                            strokeDasharray={`${(trainingHours / totalHours) * Math.PI * 100 || 0} ${Math.PI * 100}`}
+                            strokeDashoffset={-1 * (assessmentHours / totalHours) * Math.PI * 100}
+                          />
+                        )}
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <div className="text-[28px] font-bold text-[#1f2937]">{totalHours}</div>
+                        <div className="text-xs text-[#94a3b8]">总课时</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-center gap-6 text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                      <span>考核 {assessmentHours} 课时</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                      <span>训练 {trainingHours} 课时</span>
+                    </div>
+                  </div>
+                  <div className="mt-5 pt-4 border-t border-[#f0f0f0] grid grid-cols-2 gap-3">
+                    <div className="text-center">
+                      <div className="text-xl font-bold text-[#1f2937]">{tasks.length}</div>
+                      <div className="text-[11px] text-[#94a3b8]">任务总数</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xl font-bold text-[#1f2937]">{uniqueAbilityIds.size}</div>
+                      <div className="text-[11px] text-[#94a3b8]">能力点数</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xl font-bold text-[#1f2937]">{totalResources}</div>
+                      <div className="text-[11px] text-[#94a3b8]">资源数</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xl font-bold text-[#1f2937]">{diff.label}</div>
+                      <div className="text-[11px] text-[#94a3b8]">难度</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -608,47 +637,42 @@ export default function SceneDetailPage() {
         </div>
       </div>
 
-      <main className="flex-1 max-w-[1400px] mx-auto px-8 py-6 w-full">
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          {[
-            { icon: ListChecks, value: tasks.length, label: "任务数量" },
-            { icon: Clock, value: totalHours, label: "总课时(h)", locale: false },
-            { icon: Lightbulb, value: uniqueAbilityIds.size, label: "能力点数" },
-            { icon: FolderOpen, value: totalResources, label: "资源数" },
-            { icon: BarChart3, value: diff.label, label: "难度等级", locale: false },
-          ].map((s, i) => (
-            <div
-              key={i}
-              className="bg-white rounded-xl border border-[#e2e8f0] shadow-[0_1px_3px_rgba(0,0,0,0.04)] px-3 py-5 text-center transition-all hover:border-blue-200 hover:shadow-[0_4px_12px_rgba(37,99,235,0.08)]"
-            >
-              <div className="text-[28px] font-bold text-[#1e293b] leading-tight mb-1.5">
-                {typeof s.value === "number" ? s.value.toLocaleString() : s.value}
-              </div>
-              <div className="text-[13px] text-[#64748b] flex items-center justify-center gap-1.5">
-                <s.icon className="w-3.5 h-3.5" />
-                {s.label}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div ref={tabsRef} className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(69,26,3,0.06)] overflow-hidden">
-          {/* Tabs */}
-          <div className="flex gap-8 border-b border-[#f5f5f4] px-6 overflow-x-auto">
+      <main className="flex-1 max-w-[1400px] mx-auto px-6 py-6 w-full">
+        <div ref={tabsRef} className="bg-white rounded-xl border border-[#f0f0f0] overflow-hidden">
+          <div className="flex border-b border-[#f0f0f0] px-6 overflow-x-auto">
             {TABS.map((t) => (
               <button
                 key={t.value}
                 onClick={() => setActiveTab(t.value)}
                 className={`
-                  py-4 text-[15px] whitespace-nowrap relative transition-colors cursor-pointer
-                  ${activeTab === t.value ? "text-blue-500 font-semibold" : "text-[#64748b] hover:text-blue-600"}
+                  py-4 px-5 text-[14px] whitespace-nowrap relative transition-colors cursor-pointer flex items-center gap-1.5
+                  ${activeTab === t.value ? "text-[#1677ff] font-medium" : "text-[#64748b] hover:text-[#1677ff] hover:bg-[#1677ff08]"}
                 `}
               >
-                <t.icon className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
+                <t.icon className="w-4 h-4" />
                 {t.label}
+                {t.value === "tasks" && tasks.length > 0 && (
+                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? "bg-[#e6f4ff] text-[#1677ff]" : "bg-[#f0f0f0] text-[#64748b]"}`}>
+                    {tasks.length}
+                  </span>
+                )}
+                {t.value === "resources" && totalResources > 0 && (
+                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? "bg-[#e6f4ff] text-[#1677ff]" : "bg-[#f0f0f0] text-[#64748b]"}`}>
+                    {totalResources}
+                  </span>
+                )}
+                {t.value === "abilities" && uniqueAbilityIds.size > 0 && (
+                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? "bg-[#e6f4ff] text-[#1677ff]" : "bg-[#f0f0f0] text-[#64748b]"}`}>
+                    {uniqueAbilityIds.size}
+                  </span>
+                )}
+                {t.value === "evaluation" && totalEvalConfigs > 0 && (
+                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? "bg-[#e6f4ff] text-[#1677ff]" : "bg-[#f0f0f0] text-[#64748b]"}`}>
+                    {totalEvalConfigs}
+                  </span>
+                )}
                 {activeTab === t.value && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 rounded-t" />
+                  <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-[#1677ff] rounded-t" />
                 )}
               </button>
             ))}
