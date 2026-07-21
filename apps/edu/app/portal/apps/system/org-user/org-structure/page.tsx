@@ -385,7 +385,7 @@ export default function OrgStructurePage() {
       return
     }
     if (!formName.trim() || !formTypeId) {
-      setFormError("请填写节点名称并选择类型")
+      setFormError("请填写节点组织名称并选择组织类型")
       return
     }
     setSaving(true)
@@ -607,7 +607,7 @@ export default function OrgStructurePage() {
             </div>
             <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label>节点名称</Label>
+                  <Label>节点组织名称</Label>
                   <Input
                     placeholder="如：信息学院"
                     value={formName}
@@ -615,7 +615,7 @@ export default function OrgStructurePage() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label>节点类型</Label>
+                  <Label>组织类型</Label>
                   <div className="grid grid-cols-4 gap-2">
                     {orgTypes.map((type) => {
                       const meta = typeMetaFor(type.name)
