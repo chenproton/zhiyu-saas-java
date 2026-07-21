@@ -119,6 +119,16 @@ export function UserSelector({
   const [userCache, setUserCache] = useState<Record<string, User>>({})
   const fetchedIdsRef = useRef<Set<string>>(new Set())
 
+  // Parent components often pass a fresh array literal on every render (e.g.
+  // `excludeUserIds={bank?.creatorId ? [bank.creatorId] : undefined}`). Without
+  // stabilizing the value, the loadUsers callback is recreated continuously,
+  // which triggers the user list effect in a loop.
+  const stableExcludeUserIds = useMemo(
+    () => excludeUserIds,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(excludeUserIds)]
+  )
+
   const orgTypeMap = useMemo(() => {
     const map = new Map<string, OrgType>()
     orgTypes.forEach((t) => map.set(t.id, t))
@@ -171,15 +181,15 @@ export function UserSelector({
       if (excludeStudent) {
         filtered = filtered.filter((u) => !(u.roleCodes || []).includes("student"))
       }
-      if (excludeUserIds.length > 0) {
-        const excludeSet = new Set(excludeUserIds)
+      if (stableExcludeUserIds.length > 0) {
+        const excludeSet = new Set(stableExcludeUserIds)
         filtered = filtered.filter((u) => !excludeSet.has(u.id))
       }
       setUsers(filtered)
       mergeUserCache(res.items)
     } catch { /* ignore */ }
     finally { setUsersLoading(false) }
-  }, [selectedOrgId, userSearch, tenantId, usePortalApi, excludeStudent, excludeUserIds, orgMap, mergeUserCache])
+  }, [selectedOrgId, userSearch, tenantId, usePortalApi, excludeStudent, stableExcludeUserIds, orgMap, mergeUserCache])
 
   useEffect(() => { loadOrgTree() }, [loadOrgTree])
   useEffect(() => { if (open) loadUsers() }, [open, loadUsers])
