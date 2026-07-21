@@ -708,6 +708,7 @@ export const positionApi = {
   }) => request<{ position: CareerPosition }>(`/job/positions/${id}/save-full`, { method: "PUT", body: JSON.stringify(req) }),
   getFavorite: (id: string) => request<{ isFavorite: boolean; favoriteCount: number }>(`/job/positions/${id}/favorite`),
   favorite: (id: string) => request<{ isFavorite: boolean; favoriteCount: number }>(`/job/positions/${id}/favorite`, { method: "POST" }),
+  listFavorites: () => request<ListResponse<CareerPosition>>("/job/positions/favorites"),
 }
 
 export const abilityApi = {

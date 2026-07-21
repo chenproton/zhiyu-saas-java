@@ -392,6 +392,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 				r.Put("/job/positions/{id}/save-full", positionHandler.SaveFull)
 				r.Get("/job/positions/{id}/favorite", positionHandler.GetFavorite)
 				r.Post("/job/positions/{id}/favorite", positionHandler.ToggleFavorite)
+				r.Get("/job/positions/favorites", positionHandler.ListFavorites)
 
 				r.Get("/job/abilities", abilityHandler.List)
 				r.Get("/job/abilities/{id}", abilityHandler.Get)
