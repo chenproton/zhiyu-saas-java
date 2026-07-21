@@ -7,7 +7,7 @@ import {
   ArrowLeft, PlayCircle, ListChecks, FolderOpen,
   Lightbulb, Target, GitBranch, Layers, Clock,
   BarChart3, Calendar, BookOpen,
-  Users, Eye, Share2,
+  Users, Eye, Share2, Sparkles, X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -73,11 +73,15 @@ const categoryMeta: Record<string, { label: string; color: string; bg: string; b
   quality: { label: "素养", color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe" },
 }
 
-const abilityCategoryOrder = ["knowledge", "skill", "quality"]
-
 function formatDate(dateStr?: string) {
   if (!dateStr) return "-"
   return dateStr.split("T")[0] || dateStr.split(" ")[0] || dateStr
+}
+
+const ATTRIBUTE_COLORS: Record<string, [string, string]> = {
+  "知识": ["#3b82f6", "#60a5fa"],
+  "素养": ["#f59e0b", "#fbbf24"],
+  "技能": ["#10b981", "#34d399"],
 }
 
 interface AbilitiesTabProps {
@@ -87,35 +91,35 @@ interface AbilitiesTabProps {
 }
 
 function AbilitiesTab({ tasks, abilityMap, uniqueAbilityIds }: AbilitiesTabProps) {
-  const { abilityByCategory, categoryStats } = useMemo(() => {
-    const byCat: Record<string, { ap: AbilityPoint; taskNames: string[] }[]> = {
-      knowledge: [],
-      skill: [],
-      quality: [],
-    }
+  const [selectedAbility, setSelectedAbility] = useState<{ ap: AbilityPoint; taskNames: string[] } | null>(null)
+
+  const groupedByCategory = useMemo(() => {
+    const groups = new Map<string, { ap: AbilityPoint; taskNames: string[] }[]>()
     const seen = new Map<string, string[]>()
+
     tasks.forEach((t) => {
       t.abilityPointIds?.forEach((aid) => {
         const ap = abilityMap.get(aid)
         if (!ap) return
-        const cat = ap.category || "knowledge"
         const entry = seen.get(aid)
         if (entry) {
           entry.push(t.name)
         } else {
           seen.set(aid, [t.name])
-          if (!byCat[cat]) byCat[cat] = []
-          byCat[cat].push({ ap, taskNames: [t.name] })
+          const cat = ap.category || "knowledge"
+          const catLabel = categoryMeta[cat]?.label || "知识"
+          const list = groups.get(catLabel) || []
+          list.push({ ap, taskNames: [t.name] })
+          groups.set(catLabel, list)
         }
       })
     })
-    const stats = abilityCategoryOrder
-      .filter((c) => byCat[c]?.length > 0)
-      .map((c) => ({ key: c, count: byCat[c].length, ...categoryMeta[c] }))
-    return { abilityByCategory: byCat, categoryStats: stats }
+
+    return Array.from(groups.entries())
+      .map(([category, items]) => ({ category, items }))
+      .filter((g) => g.items.length > 0)
   }, [tasks, abilityMap])
 
-  const total = categoryStats.reduce((s, c) => s + c.count, 0)
   if (uniqueAbilityIds.size === 0) {
     return (
       <div className="text-center py-16 text-slate-400">
@@ -129,63 +133,97 @@ function AbilitiesTab({ tasks, abilityMap, uniqueAbilityIds }: AbilitiesTabProps
   }
 
   return (
-    <div>
-      <div className="text-sm text-slate-500 mb-5">
-        共 <strong className="text-blue-600">{uniqueAbilityIds.size}</strong> 个能力点，
-        覆盖 <strong className="text-blue-600">{categoryStats.length}</strong> 个维度
+    <div className="space-y-5">
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-100">
+        <div className="flex items-center gap-2 text-blue-800 font-bold mb-2">
+          <Sparkles className="w-5 h-5" />
+          能力模型说明
+        </div>
+        <p className="text-sm text-[#475569]">
+          本场景将能力体系拆解为知识、技能、素养三个维度，每个维度下关联对应的能力点，帮助学生明确学习目标。
+        </p>
       </div>
 
-      <div className="flex items-center gap-2 mb-5 bg-slate-50 rounded-xl p-3 border border-slate-100">
-        {categoryStats.map((cat) => {
-          const pct = total > 0 ? Math.round((cat.count / total) * 100) : 0
-          return (
-            <div
-              key={cat.key}
-              className="flex-1 rounded-lg px-3 py-2 text-center"
-              style={{ backgroundColor: cat.bg, border: `1px solid ${cat.border}` }}
-            >
-              <div className="text-lg font-bold" style={{ color: cat.color }}>{cat.count}</div>
-              <div className="text-[10px] font-medium" style={{ color: cat.color }}>{cat.label} · {pct}%</div>
+      <div className="text-sm text-[#64748b] mb-2">
+        共 <strong className="text-blue-500">{groupedByCategory.length}</strong> 个能力维度，
+        <strong className="text-blue-500"> {uniqueAbilityIds.size}</strong> 个能力点
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {groupedByCategory.map(({ category, items }) => (
+          <div key={category} className="border border-[#f5f5f4] rounded-xl overflow-hidden bg-white">
+            <div className="bg-[#eff6ff] px-4 py-3 font-medium text-blue-600 flex items-center gap-2 text-sm">
+              <Target className="w-4 h-4" />
+              {category}能力
             </div>
-          )
-        })}
-      </div>
-
-      <div className="space-y-5">
-        {abilityCategoryOrder.map((catKey) => {
-          const items = abilityByCategory[catKey]
-          if (!items || items.length === 0) return null
-          const meta = categoryMeta[catKey] || categoryMeta.knowledge
-          return (
-            <div key={catKey}>
-              <div
-                className="text-xs font-bold mb-3 flex items-center gap-2 px-3 py-2 rounded-lg"
-                style={{ backgroundColor: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}
-              >
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: meta.color }} />
-                {meta.label}能力 ({items.length})
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {items.map(({ ap, taskNames }, i) => (
-                  <div key={`${catKey}-${ap.id}-${i}`} className={`bg-white border ${meta.border} rounded-xl p-3.5 hover:shadow-md hover:-translate-y-0.5 transition-all`}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-slate-800 mb-1">{ap.name}</div>
-                        {ap.description && <div className="text-[11px] text-slate-400 line-clamp-1 mb-2">{ap.description}</div>}
-                        <div className="flex flex-wrap gap-1">
-                          {taskNames.map((tn) => (
-                            <span key={tn} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">{tn}</span>
-                          ))}
-                        </div>
+            <div className="p-3 max-h-[300px] overflow-y-auto">
+              {items.map(({ ap, taskNames }, i) => {
+                const colors = ATTRIBUTE_COLORS[category] || ["#64748b", "#94a3b8"]
+                return (
+                  <div
+                    key={`${ap.id}-${i}`}
+                    className="flex items-start justify-between py-2 px-2 border-b border-[#f5f5f5] last:border-b-0 rounded hover:bg-[#eff6ff] cursor-pointer transition-colors gap-2"
+                    onClick={() => setSelectedAbility({ ap, taskNames })}
+                  >
+                    <div className="flex flex-col min-w-0 gap-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm text-[#1f2937] truncate">{ap.name}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {taskNames.map((tn) => (
+                          <span key={tn} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">{tn}</span>
+                        ))}
                       </div>
                     </div>
                   </div>
-                ))}
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {selectedAbility && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setSelectedAbility(null)}>
+          <div className="bg-white rounded-2xl w-[520px] max-w-[95vw] p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-4">
+              <div className="text-base font-semibold text-[#1f2937]">能力点详情</div>
+              <button className="text-[#94a3b8] hover:text-[#1f2937]" onClick={() => setSelectedAbility(null)}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="bg-white border border-[#e2e8f0] rounded-xl p-4 relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-blue-500 to-emerald-500" />
+              <div className="text-sm font-semibold text-[#1f2937] mb-3">{selectedAbility.ap.name}</div>
+              {selectedAbility.ap.code && (
+                <div className="text-xs text-[#94a3b8] mb-2 font-mono">ID：{selectedAbility.ap.code}</div>
+              )}
+              <div className="space-y-2 text-xs">
+                <div>
+                  <span className="font-medium text-[#94a3b8]">能力维度：</span>
+                  <span className="text-[#475569]">{categoryMeta[selectedAbility.ap.category]?.label || selectedAbility.ap.category || "未分类"}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-[#94a3b8]">能力属性：</span>
+                  <span className="text-[#475569]">
+                    {selectedAbility.ap.attributes?.length ? selectedAbility.ap.attributes.join("、") : "未配置"}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-medium text-[#94a3b8]">关联任务：</span>
+                  <span className="text-[#475569]">{selectedAbility.taskNames.join("、")}</span>
+                </div>
+                <div>
+                  <div className="font-medium text-[#94a3b8] mb-1">能力描述：</div>
+                  <div className="text-[#64748b] leading-relaxed">
+                    {selectedAbility.ap.description || "暂无描述"}
+                  </div>
+                </div>
               </div>
             </div>
-          )
-        })}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
