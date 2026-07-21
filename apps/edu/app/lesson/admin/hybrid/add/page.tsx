@@ -454,14 +454,13 @@ function HybridCourseAddForm() {
       if (editId) {
         const updated = await courseApi.update(editId, payload)
         hasSavedRef.current = true
-        if (existing?.status === "approved" || existing?.status === "published" || existing?.status === "rejected") {
+        if (existing?.status !== "draft") {
           await courseApi.saveDraft(editId)
           setExisting({ ...updated, status: "draft" as const })
-          toast.success("草稿已保存")
         } else {
           setExisting(updated)
-          toast.success("草稿已保存")
         }
+        toast.success("草稿已保存")
       } else {
         const created = await courseApi.create(payload)
         setExisting(created)

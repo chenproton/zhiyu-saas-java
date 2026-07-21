@@ -129,7 +129,7 @@ export default function QuestionBankDetailPage() {
 
   const handleSaveBank = async () => {
     hasSavedRef.current = true
-    if (bank.status === "approved" || bank.status === "published" || bank.status === "rejected") {
+    if (bank.status !== "draft") {
       setSavingBank(true)
       try {
         await updateQuestionBankStatus(bankId, "save_draft")
