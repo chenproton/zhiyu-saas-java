@@ -9,7 +9,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { publicPositionApi, scenarioApi, taskApi, positionApi } from "@/lib/api"
+import { publicPositionApi, scenarioApi, taskApi, positionApi, recommendApi } from "@/lib/api"
 import { useAuth } from "@/components/auth-provider"
 import { useIndustryMap } from "@/lib/use-resource-maps"
 import type { CareerPosition, Scenario } from "@/lib/types"
@@ -37,6 +37,7 @@ export function JobHome() {
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [taskCountMap, setTaskCountMap] = useState<Map<string, number>>(new Map())
   const [favoritePositions, setFavoritePositions] = useState<CareerPosition[]>([])
+  const [hotPositions, setHotPositions] = useState<Array<{ positionId: string; order: number }>>([])
   const [loading, setLoading] = useState(true)
 
   const [currentPage, setCurrentPage] = useState(1)
@@ -53,6 +54,23 @@ export function JobHome() {
       .catch(() => setPositions([]))
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (!user?.majorId) {
+      setHotPositions([])
+      return
+    }
+    recommendApi
+      .list({ majorId: user.majorId, limit: 1000 })
+      .then((res) => {
+        const items = (res.items || [])
+          .filter((rec) => rec.isEnabled)
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .map((rec) => ({ positionId: rec.careerPositionId, order: rec.sortOrder }))
+        setHotPositions(items)
+      })
+      .catch(() => setHotPositions([]))
+  }, [user?.majorId])
 
   useEffect(() => {
     scenarioApi
@@ -121,6 +139,9 @@ export function JobHome() {
     return ["全部", ...Array.from(set).sort()]
   }, [positions])
 
+  const hotPositionIds = useMemo(() => new Set(hotPositions.map((h) => h.positionId)), [hotPositions])
+  const hotOrderMap = useMemo(() => new Map(hotPositions.map((h) => [h.positionId, h.order])), [hotPositions])
+
   const filtered = useMemo(() => {
     let list = [...positions]
     if (selectedIndustry !== "全部") {
@@ -148,12 +169,20 @@ export function JobHome() {
       case "update":
         list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
         break
-      default:
-        list.sort((a, b) => a.name.localeCompare(b.name, "zh-CN"))
+      default: {
+        list.sort((a, b) => {
+          const aOrder = hotOrderMap.get(a.id)
+          const bOrder = hotOrderMap.get(b.id)
+          if (aOrder !== undefined && bOrder !== undefined) return aOrder - bOrder
+          if (aOrder !== undefined) return -1
+          if (bOrder !== undefined) return 1
+          return a.name.localeCompare(b.name, "zh-CN")
+        })
         break
+      }
     }
     return list
-  }, [positions, selectedIndustry, selectedMajor, keyword, sort, industryMap])
+  }, [positions, selectedIndustry, selectedMajor, keyword, sort, industryMap, hotOrderMap])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / CARDS_PER_PAGE))
   const pageItems = useMemo(() => {
@@ -477,7 +506,7 @@ export function JobHome() {
                     key={pos.id}
                     position={pos}
                     index={i}
-                    hideHot={i > 2}
+                    isHot={hotPositionIds.has(pos.id)}
                     scenarioCount={scenarioCountMap.get(pos.id) ?? 0}
                     taskCount={taskCountMap.get(pos.id) ?? 0}
                   />
