@@ -97,6 +97,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
       importEntityName="courses"
       exportEntityName="courses"
       listParams={{ type: courseType }}
+      coBuilderField="coCreatorIds"
       statusFilterOptions={[
         { value: "draft", label: "草稿" },
         { value: "pending", label: "审批中" },
@@ -114,7 +115,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
         category: "default",
         status: "draft",
         creatorId: uid || "",
-        coCreatorIds: uid ? [uid] : [],
+        coCreatorIds: [],
       })}
       extraHeaderActions={
         <Button variant="outline" size="sm" onClick={() => setResourceImportOpen(true)}>

@@ -55,6 +55,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth-provider"
+import { UserSelector } from "@/components/shared/user-selector"
 import { majorApi, workflowApi } from "@/lib/api"
 import type { Major, Workflow } from "@/lib/types/backend"
 
@@ -132,6 +133,8 @@ export interface ContentListPageConfig<T extends ContentListItem> {
   createRedirectUrl?: (id: string) => string
   listParams?: Record<string, any>
 
+  coBuilderField?: string
+
   renderList: (props: ListRenderProps<T>) => ReactNode
 
   extraHeaderActions?: ReactNode
@@ -170,6 +173,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     approvalTargetType, importEntityName, exportEntityName,
     statusFilterOptions, mapItem, mapBatch, createPayload, createRedirectUrl, listParams,
     renderList, extraHeaderActions, listExtraProps, children, afterLoad,
+    coBuilderField = "coCreatorIds",
   } = config
 
   const router = useRouter()
@@ -206,6 +210,9 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const [cloneTarget, setCloneTarget] = useState<T | null>(null)
   const [isRejectReasonDialogOpen, setIsRejectReasonDialogOpen] = useState(false)
   const [rejectReasonItem, setRejectReasonItem] = useState<T | null>(null)
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
+  const [inviteTarget, setInviteTarget] = useState<T | null>(null)
+  const [inviteSelectedIds, setInviteSelectedIds] = useState<string[]>([])
   const [importFile, setImportFile] = useState<File | null>(null)
   const [isImporting, setIsImporting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -593,10 +600,22 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     try { await itemApi.unpublish(item.id); await refresh() } catch (_) {}
   }
 
-  const handleInviteCoBuild = async (item: T) => {
-    const userId = window.prompt(`请输入要邀请共建「${item.name}」的用户 ID`)
-    if (!userId) return
-    try { await itemApi.invite(item.id, userId); await refresh() } catch (_) {}
+  const handleInviteCoBuild = (item: T) => {
+    setInviteTarget(item)
+    setInviteSelectedIds((item.coCreatorIds || []).filter((id) => id !== item.creatorId))
+    setIsInviteDialogOpen(true)
+  }
+
+  const handleInviteConfirm = async () => {
+    if (!inviteTarget) return
+    try {
+      await itemApi.update(inviteTarget.id, { [coBuilderField]: inviteSelectedIds })
+      setIsInviteDialogOpen(false)
+      setInviteTarget(null)
+      await refresh()
+    } catch (_) {
+      alert("调整共建人失败，请稍后重试")
+    }
   }
 
   const handleViewRejectReason = (item: T) => {
@@ -1120,6 +1139,32 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsRejectReasonDialogOpen(false)}>关闭</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invite Co-builders Dialog */}
+      <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>调整共建人</DialogTitle>
+            <DialogDescription>
+              选择参与共建「{inviteTarget?.name}」的用户
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <UserSelector
+              value={inviteSelectedIds}
+              onChange={setInviteSelectedIds}
+              multiple
+              placeholder="点击选择共建人"
+              tenantId={tenantId}
+              excludeUserIds={inviteTarget?.creatorId ? [inviteTarget.creatorId] : undefined}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsInviteDialogOpen(false)}>取消</Button>
+            <Button onClick={handleInviteConfirm}>保存</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

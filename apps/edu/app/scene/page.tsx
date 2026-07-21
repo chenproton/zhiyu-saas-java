@@ -91,6 +91,7 @@ export default function SceneHallPage() {
         }
       }}
       createRedirectUrl={(id) => `/scene/scenarios/${id}/edit?new=true`}
+      coBuilderField="coBuilderIds"
       createPayload={(uid, _label) => ({
         name: `新建场景_${draftSuffix()}`,
         code: generateCode("SC"),

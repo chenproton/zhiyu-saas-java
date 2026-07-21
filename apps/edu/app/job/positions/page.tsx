@@ -54,6 +54,7 @@ export default function PositionsPage() {
       importEntityName="career_positions"
       exportEntityName="career_positions"
       createRedirectUrl={(id) => `/job/positions/${id}/edit?new=true`}
+      coBuilderField="collaborators"
       statusFilterOptions={[
         { value: "draft", label: "草稿" },
         { value: "pending", label: "审批中" },
