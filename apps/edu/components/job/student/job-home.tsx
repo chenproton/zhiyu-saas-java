@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import {
   Search, Flag, Heart, Crosshair, Sparkles, Filter, X,
   TrendingUp, GraduationCap, ChevronRight,
-  Layers, ListChecks, Factory, Building2,
+  Layers, ListChecks, Factory, Building2, BarChart3,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -540,6 +540,94 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
         {!isScene && (
           <div className="mb-6">
             <RankingList positions={positions} industryMap={industryMap} />
+          </div>
+        )}
+
+        {/* Scene mode: industry cloud + difficulty distribution */}
+        {isScene && (
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-5 mb-6">
+            {/* 行业覆盖热力标签 */}
+            <div className="bg-white rounded-2xl border border-[#e7e5e4] p-5">
+              <div className="flex items-center gap-2 text-[15px] font-bold text-[#0f172a] mb-4 pl-3 border-l-4 border-orange-400">
+                <Factory className="w-4 h-4 text-orange-500" /> 行业覆盖
+              </div>
+              {(() => {
+                const counts = new Map<string, number>()
+                scenarios.forEach((s) => s.industryNames?.forEach((n) => n && counts.set(n, (counts.get(n) || 0) + 1)))
+                const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1])
+                const max = sorted[0]?.[1] || 1
+                if (sorted.length === 0) return <div className="text-sm text-[#94a3b8] text-center py-6">暂无行业数据</div>
+                return (
+                  <div className="flex flex-wrap gap-2.5">
+                    {sorted.slice(0, 12).map(([name, count], i) => {
+                      const ratio = count / max
+                      const r = Math.round(255 - ratio * 100)
+                      const g = Math.round(160 - ratio * 80)
+                      const b = Math.round(255 - ratio * 60)
+                      return (
+                        <span
+                          key={name}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all hover:scale-105 cursor-default"
+                          style={{
+                            backgroundColor: `rgba(${r},${g},255,${0.15 + ratio * 0.2})`,
+                            color: `rgb(${Math.max(0, r - 80)},${Math.max(0, g - 80)},${b})`,
+                            border: `1px solid rgba(${r},${g},255,${0.25 + ratio * 0.15})`,
+                            fontSize: `${12 + ratio * 4}px`,
+                          }}
+                        >
+                          {name}
+                          <span className="text-[10px] opacity-70 rounded-full bg-white/50 px-1.5">{count}</span>
+                        </span>
+                      )
+                    })}
+                    {sorted.length > 12 && (
+                      <span className="text-[13px] text-[#94a3b8] self-end">+{sorted.length - 12} 更多</span>
+                    )}
+                  </div>
+                )
+              })()}
+            </div>
+
+            {/* 场景难度分布 */}
+            <div className="bg-white rounded-2xl border border-[#e7e5e4] p-5">
+              <div className="flex items-center gap-2 text-[15px] font-bold text-[#0f172a] mb-4 pl-3 border-l-4 border-purple-400">
+                <BarChart3 className="w-4 h-4 text-purple-500" /> 难度分布
+              </div>
+              {(() => {
+                const diffCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+                scenarios.forEach((s) => { if (s.difficulty) diffCounts[s.difficulty] = (diffCounts[s.difficulty] || 0) + 1 })
+                const entries = [
+                  { key: 1, label: "入门", color: "#22c55e", bg: "#f0fdf4" },
+                  { key: 2, label: "初级", color: "#eab308", bg: "#fefce8" },
+                  { key: 3, label: "中级", color: "#f97316", bg: "#fff7ed" },
+                  { key: 4, label: "高级", color: "#ef4444", bg: "#fef2f2" },
+                  { key: 5, label: "专家", color: "#8b5cf6", bg: "#f5f3ff" },
+                ]
+                const maxCount = Math.max(...Object.values(diffCounts), 1)
+                return (
+                  <div className="space-y-3.5">
+                    {entries.map((e) => (
+                      <div key={e.key} className="flex items-center gap-3">
+                        <span className="text-[13px] font-medium text-[#374151] w-10 shrink-0">{e.label}</span>
+                        <div className="flex-1 h-7 bg-[#f1f5f9] rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-700 flex items-center justify-end pr-2 min-w-[32px]"
+                            style={{
+                              width: `${Math.max((diffCounts[e.key] || 0) / maxCount * 100, 4)}%`,
+                              backgroundColor: e.color,
+                            }}
+                          >
+                            <span className="text-[11px] font-bold text-white">
+                              {diffCounts[e.key] || 0}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
+            </div>
           </div>
         )}
 
