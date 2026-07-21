@@ -1,6 +1,6 @@
 "use client"
 
-import { Briefcase, GraduationCap, Factory, Heart } from "lucide-react"
+import { Briefcase, GraduationCap, Factory, Heart, BarChart3 } from "lucide-react"
 
 interface StatsBarProps {
   total: number
@@ -11,32 +11,37 @@ interface StatsBarProps {
 
 export function StatsBar({ total, majorCount, industryCount, favoriteTotal = 0 }: StatsBarProps) {
   const stats = [
-    { icon: Briefcase, label: "收录岗位数", value: total, gradient: "from-blue-500 to-blue-700" },
-    { icon: GraduationCap, label: "覆盖专业数", value: majorCount, gradient: "from-violet-500 to-violet-700" },
-    { icon: Factory, label: "涉及行业", value: industryCount, gradient: "from-emerald-500 to-emerald-700" },
-    { icon: Heart, label: "累计收藏", value: favoriteTotal, gradient: "from-orange-500 to-orange-700" },
+    { icon: Briefcase, label: "收录岗位数", value: total, gradient: "from-blue-400 to-blue-600" },
+    { icon: GraduationCap, label: "覆盖专业数", value: majorCount, gradient: "from-violet-400 to-violet-600" },
+    { icon: Factory, label: "涉及行业", value: industryCount, gradient: "from-emerald-400 to-emerald-600" },
+    { icon: Heart, label: "累计收藏", value: favoriteTotal, gradient: "from-orange-400 to-orange-600" },
   ]
 
   return (
-    <div className="max-w-[1400px] mx-auto px-8 relative z-10 -mt-16">
-      <div className="bg-white rounded-t-[20px] px-12 py-8 shadow-[0_-8px_30px_rgba(0,0,0,0.08)]">
-        <div className="flex justify-around items-center">
-          {stats.map((s, i) => (
-            <div key={i} className="flex flex-col items-center text-center gap-2.5">
-              <div
-                className={`w-[52px] h-[52px] rounded-[14px] flex items-center justify-center text-white text-2xl shadow-lg bg-gradient-to-br ${s.gradient}`}
-              >
-                <s.icon className="w-6 h-6" strokeWidth={2} />
-              </div>
-              <div>
-                <div className="text-[28px] font-extrabold text-[#0f172a] leading-none">
-                  {s.value.toLocaleString()}
-                </div>
-                <div className="text-sm text-[#64748b] mt-2">{s.label}</div>
-              </div>
+    <div className="w-full lg:w-[360px] shrink-0 bg-white/12 backdrop-blur-[16px] border border-white/20 rounded-2xl p-6 text-white shadow-[0_8px_32px_rgba(0,0,0,0.2)]">
+      <div className="flex items-center gap-2 text-[15px] font-bold mb-5">
+        <BarChart3 className="w-4 h-4 text-white/80" />
+        平台数据概览
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        {stats.map((s, i) => (
+          <div
+            key={i}
+            className="bg-white/10 hover:bg-white/15 transition-colors rounded-xl p-4 flex items-center gap-3"
+          >
+            <div
+              className={`w-11 h-11 rounded-xl flex items-center justify-center text-white shadow-lg bg-gradient-to-br ${s.gradient}`}
+            >
+              <s.icon className="w-5 h-5" strokeWidth={2} />
             </div>
-          ))}
-        </div>
+            <div>
+              <div className="text-[24px] font-extrabold leading-none">
+                {s.value.toLocaleString()}
+              </div>
+              <div className="text-[12px] text-white/70 mt-1">{s.label}</div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )

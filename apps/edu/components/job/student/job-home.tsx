@@ -169,7 +169,7 @@ export function JobHome() {
           style={{ backgroundImage: "url('/student-hero-bg.png')" }}
         />
         <div className="absolute inset-0 bg-gradient-to-br from-[rgba(30,64,175,0.85)] via-[rgba(59,130,246,0.75)] to-[rgba(124,58,237,0.75)]" />
-        <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-12 h-full min-h-[420px] flex justify-between items-end gap-10">
+        <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-12 h-full min-h-[420px] flex flex-col lg:flex-row justify-between items-center gap-8">
           <div className="flex-1">
             <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-3.5 py-1.5 rounded-full text-[13px] border border-white/20 mb-5">
               <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
@@ -188,15 +188,15 @@ export function JobHome() {
               浏览岗位 <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
+
+          <StatsBar
+            total={stats.total}
+            majorCount={stats.majorCount}
+            industryCount={stats.industryCount}
+            favoriteTotal={stats.favoriteTotal}
+          />
         </div>
       </div>
-
-      <StatsBar
-        total={stats.total}
-        majorCount={stats.majorCount}
-        industryCount={stats.industryCount}
-        favoriteTotal={stats.favoriteTotal}
-      />
 
       <main className="max-w-[1400px] mx-auto px-8 py-6 w-full flex-1">
         {/* Dashboard */}
