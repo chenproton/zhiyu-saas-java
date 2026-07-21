@@ -116,6 +116,8 @@ import type { ScenarioTask as ApiScenarioTask } from "@/lib/types/scene"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import { EditorShell } from "@/components/shared/editor-shell"
+import { MajorSelect } from "@/components/shared/major-select"
+import { useAuth } from "@/components/auth-provider"
 import type {
   Task, PositionAbility, GradeMapping,
 } from "@/lib/mock-data"
@@ -583,6 +585,7 @@ export default function TasksEditPage() {
   const router = useRouter()
   const scenarioId = params.id as string
   const { toast } = useToast()
+  const { tenantId, orgNodeId } = useAuth()
 
   const [existingScenario, setExistingScenario] = useState<any>(null)
   const [dataLoaded, setDataLoaded] = useState(false)
@@ -1505,6 +1508,8 @@ export default function TasksEditPage() {
           toast={toast}
           positionAbilityBindings={positionAbilityBindings}
           userNameMap={userNameMap}
+          tenantId={tenantId}
+          orgNodeId={orgNodeId}
         />
       )}
 
@@ -1564,6 +1569,8 @@ function EditCardDialog({
   toast,
   positionAbilityBindings,
   userNameMap,
+  tenantId,
+  orgNodeId,
 }: {
   allTasks: Task[]
   taskId: string
@@ -1579,6 +1586,8 @@ function EditCardDialog({
   toast: (opts: { title?: string; description?: string; variant?: "default" | "destructive" }) => void
   positionAbilityBindings: any[]
   userNameMap: Record<string, string>
+  tenantId?: string
+  orgNodeId?: string
 }) {
   const config = cardConfigs.find(c => c.type === cardType)!
   const [localTask, setLocalTask] = useState({ name: task.name, type: task.taskType, difficulty: task.difficulty, hours: task.estimatedHours, background: task.background })
@@ -5216,22 +5225,6 @@ function EditCardDialog({
             updateState({ methodEvalSubjects: { ...state.methodEvalSubjects, [methodKey]: newSubjects } })
           }
 
-          const backgroundOptions = [
-            "计算机/软件工程相关专业",
-            "电子信息工程",
-            "自动化/控制工程",
-            "数学/统计学",
-            "设计/艺术相关专业",
-            "工商管理/市场营销",
-            "财务会计/金融",
-            "机械工程/制造业",
-            "建筑工程/土木工程",
-            "医学/护理学",
-            "教育学/心理学",
-            "法学/政治学",
-            "其他专业",
-          ]
-
           const allowedSubjectsForMethod: Record<string, string[]> = {
             paper: ["teacher", "enterprise_mentor"],
             question_bank: ["teacher", "enterprise_mentor"],
@@ -5270,16 +5263,14 @@ function EditCardDialog({
                             <div className="grid grid-cols-2 gap-2">
                               <div>
                                 <Label className="text-[11px] text-gray-500">专业背景要求</Label>
-                                <Select value={subject.params?.teacherBackground || ""} onValueChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, teacherBackground: v } })}>
-                                  <SelectTrigger className="mt-0.5 text-xs h-8">
-                                    <SelectValue placeholder="选择专业背景" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {backgroundOptions.map(bg => (
-                                      <SelectItem key={bg} value={bg}>{bg}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                <MajorSelect
+                                  tenantId={tenantId}
+                                  orgNodeId={orgNodeId}
+                                  value={subject.params?.teacherBackground || ""}
+                                  onChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, teacherBackground: v || "" } })}
+                                  placeholder="选择专业背景"
+                                  className="mt-0.5 text-xs h-8"
+                                />
                               </div>
                               <div>
                                 <Label className="text-[11px] text-gray-500">评分人数</Label>
@@ -5316,16 +5307,14 @@ function EditCardDialog({
                               <div className="grid grid-cols-2 gap-2">
                                 <div>
                                   <Label className="text-[11px] text-gray-500">专业领域</Label>
-                                  <Select value={subject.params?.expertise || ""} onValueChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, expertise: v } })}>
-                                    <SelectTrigger className="mt-0.5 text-xs h-8">
-                                      <SelectValue placeholder="选择专业领域" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {backgroundOptions.map(bg => (
-                                        <SelectItem key={bg} value={bg}>{bg}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+                                  <MajorSelect
+                                    tenantId={tenantId}
+                                    orgNodeId={orgNodeId}
+                                    value={subject.params?.expertise || ""}
+                                    onChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, expertise: v || "" } })}
+                                    placeholder="选择专业领域"
+                                    className="mt-0.5 text-xs h-8"
+                                  />
                                 </div>
                                 <div>
                                   <Label className="text-[11px] text-gray-500">工作年限要求 (年)</Label>
