@@ -67,21 +67,9 @@ const evalMethodLabels: Record<string, string> = {
   quiz: "测验",
 }
 
-const categoryMeta: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  knowledge: { label: "知识", color: "#2563eb", bg: "#eff6ff", border: "#bfdbfe" },
-  skill: { label: "技能", color: "#d97706", bg: "#fffbeb", border: "#fde68a" },
-  quality: { label: "素养", color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe" },
-}
-
 function formatDate(dateStr?: string) {
   if (!dateStr) return "-"
   return dateStr.split("T")[0] || dateStr.split(" ")[0] || dateStr
-}
-
-const ATTRIBUTE_COLORS: Record<string, [string, string]> = {
-  "知识": ["#3b82f6", "#60a5fa"],
-  "素养": ["#f59e0b", "#fbbf24"],
-  "技能": ["#10b981", "#34d399"],
 }
 
 interface AbilitiesTabProps {
@@ -93,7 +81,7 @@ interface AbilitiesTabProps {
 function AbilitiesTab({ tasks, abilityMap, uniqueAbilityIds }: AbilitiesTabProps) {
   const [selectedAbility, setSelectedAbility] = useState<{ ap: AbilityPoint; taskNames: string[] } | null>(null)
 
-  const groupedByCategory = useMemo(() => {
+  const groupedByAttribute = useMemo(() => {
     const groups = new Map<string, { ap: AbilityPoint; taskNames: string[] }[]>()
     const seen = new Map<string, string[]>()
 
@@ -106,17 +94,18 @@ function AbilitiesTab({ tasks, abilityMap, uniqueAbilityIds }: AbilitiesTabProps
           entry.push(t.name)
         } else {
           seen.set(aid, [t.name])
-          const cat = ap.category || "knowledge"
-          const catLabel = categoryMeta[cat]?.label || "知识"
-          const list = groups.get(catLabel) || []
-          list.push({ ap, taskNames: [t.name] })
-          groups.set(catLabel, list)
+          const attrs = ap.attributes?.length ? ap.attributes : ["未分类"]
+          attrs.forEach((attr) => {
+            const list = groups.get(attr) || []
+            list.push({ ap, taskNames: [t.name] })
+            groups.set(attr, list)
+          })
         }
       })
     })
 
     return Array.from(groups.entries())
-      .map(([category, items]) => ({ category, items }))
+      .map(([attr, items]) => ({ attr, items }))
       .filter((g) => g.items.length > 0)
   }, [tasks, abilityMap])
 
@@ -140,44 +129,41 @@ function AbilitiesTab({ tasks, abilityMap, uniqueAbilityIds }: AbilitiesTabProps
           能力模型说明
         </div>
         <p className="text-sm text-[#475569]">
-          本场景将能力体系拆解为知识、技能、素养三个维度，每个维度下关联对应的能力点，帮助学生明确学习目标。
+          本场景将能力体系按属性拆解，每个属性下关联对应的能力点，帮助学生明确学习目标。
         </p>
       </div>
 
       <div className="text-sm text-[#64748b] mb-2">
-        共 <strong className="text-blue-500">{groupedByCategory.length}</strong> 个能力维度，
+        共 <strong className="text-blue-500">{groupedByAttribute.length}</strong> 个能力属性，
         <strong className="text-blue-500"> {uniqueAbilityIds.size}</strong> 个能力点
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {groupedByCategory.map(({ category, items }) => (
-          <div key={category} className="border border-[#f5f5f4] rounded-xl overflow-hidden bg-white">
+        {groupedByAttribute.map(({ attr, items }) => (
+          <div key={attr} className="border border-[#f5f5f4] rounded-xl overflow-hidden bg-white">
             <div className="bg-[#eff6ff] px-4 py-3 font-medium text-blue-600 flex items-center gap-2 text-sm">
               <Target className="w-4 h-4" />
-              {category}能力
+              {attr}
             </div>
             <div className="p-3 max-h-[300px] overflow-y-auto">
-              {items.map(({ ap, taskNames }, i) => {
-                const colors = ATTRIBUTE_COLORS[category] || ["#64748b", "#94a3b8"]
-                return (
-                  <div
-                    key={`${ap.id}-${i}`}
-                    className="flex items-start justify-between py-2 px-2 border-b border-[#f5f5f5] last:border-b-0 rounded hover:bg-[#eff6ff] cursor-pointer transition-colors gap-2"
-                    onClick={() => setSelectedAbility({ ap, taskNames })}
-                  >
-                    <div className="flex flex-col min-w-0 gap-1">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm text-[#1f2937] truncate">{ap.name}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {taskNames.map((tn) => (
-                          <span key={tn} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">{tn}</span>
-                        ))}
-                      </div>
+              {items.map(({ ap, taskNames }, i) => (
+                <div
+                  key={`${ap.id}-${i}`}
+                  className="flex items-start justify-between py-2 px-2 border-b border-[#f5f5f5] last:border-b-0 rounded hover:bg-[#eff6ff] cursor-pointer transition-colors gap-2"
+                  onClick={() => setSelectedAbility({ ap, taskNames })}
+                >
+                  <div className="flex flex-col min-w-0 gap-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm text-[#1f2937] truncate">{ap.name}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {taskNames.map((tn) => (
+                        <span key={tn} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">{tn}</span>
+                      ))}
                     </div>
                   </div>
-                )
-              })}
+                </div>
+              ))}
             </div>
           </div>
         ))}
@@ -199,10 +185,6 @@ function AbilitiesTab({ tasks, abilityMap, uniqueAbilityIds }: AbilitiesTabProps
                 <div className="text-xs text-[#94a3b8] mb-2 font-mono">ID：{selectedAbility.ap.code}</div>
               )}
               <div className="space-y-2 text-xs">
-                <div>
-                  <span className="font-medium text-[#94a3b8]">能力维度：</span>
-                  <span className="text-[#475569]">{categoryMeta[selectedAbility.ap.category]?.label || selectedAbility.ap.category || "未分类"}</span>
-                </div>
                 <div>
                   <span className="font-medium text-[#94a3b8]">能力属性：</span>
                   <span className="text-[#475569]">
