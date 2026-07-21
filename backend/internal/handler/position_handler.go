@@ -136,7 +136,7 @@ func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
 			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
 			cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by,
-			COALESCE((SELECT u.name FROM users u WHERE u.id = cp.created_by), cp.created_by) AS created_by_name,
+			COALESCE((SELECT u.name FROM users u WHERE u.id = cp.created_by), cp.created_by::text) AS created_by_name,
 			cp.collaborators,
 			COALESCE((
 				SELECT array_agg(u.name ORDER BY ord)
@@ -244,7 +244,7 @@ func (h *PositionHandler) PublicList(w http.ResponseWriter, r *http.Request) {
 			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
 			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
 			cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by,
-			COALESCE((SELECT u.name FROM users u WHERE u.id = cp.created_by), cp.created_by) AS created_by_name,
+			COALESCE((SELECT u.name FROM users u WHERE u.id = cp.created_by), cp.created_by::text) AS created_by_name,
 			cp.collaborators,
 			COALESCE((
 				SELECT array_agg(u.name ORDER BY ord)
@@ -1039,7 +1039,7 @@ func (h *PositionHandler) fetchPosition(ctx context.Context, id string) (domain.
 			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
 			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
 			cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by,
-			COALESCE((SELECT u.name FROM users u WHERE u.id = cp.created_by), cp.created_by) AS created_by_name,
+			COALESCE((SELECT u.name FROM users u WHERE u.id = cp.created_by), cp.created_by::text) AS created_by_name,
 			cp.collaborators,
 			COALESCE((
 				SELECT array_agg(u.name ORDER BY ord)
