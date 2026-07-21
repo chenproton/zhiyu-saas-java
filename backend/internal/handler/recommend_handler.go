@@ -131,7 +131,7 @@ func (h *RecommendHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.MajorID == nil || *req.MajorID == "" || req.CareerPositionID == "" || req.PositionType == "" {
+	if req.CareerPositionID == "" || req.PositionType == "" {
 		respondError(w, http.StatusBadRequest, "missing required fields")
 		return
 	}
@@ -174,7 +174,7 @@ func (h *RecommendHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.MajorID == nil || *req.MajorID == "" || req.CareerPositionID == "" || req.PositionType == "" {
+	if req.CareerPositionID == "" || req.PositionType == "" {
 		respondError(w, http.StatusBadRequest, "missing required fields")
 		return
 	}
