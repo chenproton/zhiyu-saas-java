@@ -167,7 +167,7 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
         <div ref={wrapperRef} className="overflow-x-auto pb-6 hide-scrollbar">
           <div ref={trackRef} className="flex items-start min-w-max px-4 py-5 relative">
             <div
-              className="absolute top-[56px] left-20 right-20 h-[3px] rounded"
+              className="absolute top-[80px] left-20 right-20 h-[3px] rounded"
               style={{ background: "linear-gradient(90deg, #3b82f6, #52c41a, #f59e0b, #eb2f96, #722ed1, #fa541c, #fadb14)" }}
             />
 

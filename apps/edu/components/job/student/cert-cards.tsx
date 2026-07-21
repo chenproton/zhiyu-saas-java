@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Award, Building2, ExternalLink, ChevronDown, ChevronUp } from "lucide-react"
+import { Award, Building2, ExternalLink, ChevronDown, ChevronUp, ZoomIn, X } from "lucide-react"
 import type { PositionCertificate } from "@/lib/types"
 
 interface CertCardsProps {
@@ -16,6 +16,7 @@ const GRADIENTS = [
 
 export function CertCards({ certificates }: CertCardsProps) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
 
   if (certificates.length === 0) {
     return (
@@ -37,9 +38,15 @@ export function CertCards({ certificates }: CertCardsProps) {
           return (
             <div key={cert.id} className="bg-white rounded-2xl border border-[#f5f5f4] overflow-hidden transition-all hover:shadow-md hover:border-[#d9d9d9]">
               <div
-                className="h-40 flex items-center justify-center text-white relative bg-cover bg-center"
+                className={`h-40 flex items-center justify-center text-white relative bg-cover bg-center ${cert.imageUrl ? "cursor-pointer" : ""}`}
                 style={cert.imageUrl ? { backgroundImage: `url('${cert.imageUrl}')` } : { background: GRADIENTS[i % GRADIENTS.length] }}
+                onClick={() => cert.imageUrl && setSelectedImage(cert.imageUrl)}
               >
+                {cert.imageUrl && (
+                  <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/40 text-white rounded text-xs pointer-events-none">
+                    <ZoomIn className="w-3 h-3" /> 点击放大
+                  </div>
+                )}
                 {!cert.imageUrl && <Award className="w-14 h-14 opacity-40" />}
               </div>
               <div className="p-5">
@@ -80,6 +87,26 @@ export function CertCards({ certificates }: CertCardsProps) {
           )
         })}
       </div>
+
+      {selectedImage && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-8"
+          onClick={() => setSelectedImage(null)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            onClick={() => setSelectedImage(null)}
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <img
+            src={selectedImage}
+            alt="证书放大图"
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   )
 }

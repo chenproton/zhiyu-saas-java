@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import {
@@ -59,6 +59,12 @@ export default function JobStudentDetailPage() {
   const [position, setPosition] = useState<CareerPosition | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("overview")
+  const tabsRef = useRef<HTMLDivElement>(null)
+
+  const handleStartLearning = () => {
+    setActiveTab("learning")
+    tabsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
 
   const [responsibilities, setResponsibilities] = useState<PositionResponsibility[]>([])
   const [bindings, setBindings] = useState<PositionAbilityBinding[]>([])
@@ -196,7 +202,7 @@ export default function JobStudentDetailPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F9FAFC]">
-      <PositionHeader position={position} industryName={industryName} />
+      <PositionHeader position={position} industryName={industryName} onStartLearning={handleStartLearning} />
 
       <main className="flex-1 max-w-[1400px] mx-auto px-8 py-6 w-full">
         <StatsBox
@@ -206,7 +212,7 @@ export default function JobStudentDetailPage() {
           abilityPointCount={abilityPointCount}
         />
 
-        <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(69,26,3,0.06)] overflow-hidden">
+        <div ref={tabsRef} className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(69,26,3,0.06)] overflow-hidden">
           {/* Tabs */}
           <div className="flex gap-8 border-b border-[#f5f5f4] px-6 overflow-x-auto">
             {TABS.map((t) => (

@@ -62,13 +62,8 @@ export function TopNav() {
     <>
       <header className="h-14 bg-white/70 backdrop-blur-xl border-b border-white/20 flex items-center justify-between px-3 md:px-6 shrink-0 fixed top-0 left-0 right-0 z-50 shadow-sm">
         <div className="flex items-center gap-4 md:gap-8">
-          <Link href="/portal" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-primary-foreground" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-              </svg>
-            </div>
-            <span className="hidden sm:inline font-semibold text-foreground text-base whitespace-nowrap">场景化数智教学服务平台</span>
+          <Link href="/portal" className="flex items-center">
+            <img src="/logo.png" alt="知育" className="h-8 w-auto object-contain" />
           </Link>
 
           {isLoggedIn && (

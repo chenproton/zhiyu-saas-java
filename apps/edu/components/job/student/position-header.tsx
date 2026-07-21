@@ -11,6 +11,7 @@ import type { CareerPosition } from "@/lib/types"
 interface PositionHeaderProps {
   position: CareerPosition
   industryName?: string
+  onStartLearning?: () => void
 }
 
 function formatSalary(min?: number | null, max?: number | null) {
@@ -27,7 +28,7 @@ function formatDate(dateStr?: string) {
   return dateStr.split("T")[0] || dateStr.split(" ")[0] || dateStr
 }
 
-export function PositionHeader({ position, industryName }: PositionHeaderProps) {
+export function PositionHeader({ position, industryName, onStartLearning }: PositionHeaderProps) {
   const { user } = useAuth()
   const [isHeart, setIsHeart] = useState(false)
   const [favoriteCount, setFavoriteCount] = useState(position.favoriteCount ?? 0)
@@ -139,7 +140,10 @@ export function PositionHeader({ position, industryName }: PositionHeaderProps) 
               </div>
 
               <div className="flex flex-wrap gap-3 mt-auto">
-                <Button className="rounded-md px-6 h-10 bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white font-medium">
+                <Button
+                  className="rounded-md px-6 h-10 bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white font-medium"
+                  onClick={onStartLearning}
+                >
                   <PlayCircle className="w-4 h-4 mr-1.5" /> 开始学习
                 </Button>
                 <Button
