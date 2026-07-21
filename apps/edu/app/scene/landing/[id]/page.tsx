@@ -57,9 +57,260 @@ const taskTypeLabels: Record<string, string> = {
   training: "训练",
 }
 
+const evalMethodLabels: Record<string, string> = {
+  random_draw: "随机抽题",
+  review: "评审",
+  paper: "试卷",
+  question_bank: "题库",
+  outcome: "成果",
+  homework: "作业",
+  quiz: "测验",
+}
+
+const categoryMeta: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  knowledge: { label: "知识", color: "#2563eb", bg: "#eff6ff", border: "#bfdbfe" },
+  skill: { label: "技能", color: "#d97706", bg: "#fffbeb", border: "#fde68a" },
+  quality: { label: "素养", color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe" },
+}
+
+const abilityCategoryOrder = ["knowledge", "skill", "quality"]
+
 function formatDate(dateStr?: string) {
   if (!dateStr) return "-"
   return dateStr.split("T")[0] || dateStr.split(" ")[0] || dateStr
+}
+
+interface AbilitiesTabProps {
+  tasks: ScenarioTask[]
+  abilityMap: Map<string, AbilityPoint>
+  uniqueAbilityIds: Set<string>
+}
+
+function AbilitiesTab({ tasks, abilityMap, uniqueAbilityIds }: AbilitiesTabProps) {
+  const { abilityByCategory, categoryStats } = useMemo(() => {
+    const byCat: Record<string, { ap: AbilityPoint; taskNames: string[] }[]> = {
+      knowledge: [],
+      skill: [],
+      quality: [],
+    }
+    const seen = new Map<string, string[]>()
+    tasks.forEach((t) => {
+      t.abilityPointIds?.forEach((aid) => {
+        const ap = abilityMap.get(aid)
+        if (!ap) return
+        const cat = ap.category || "knowledge"
+        const entry = seen.get(aid)
+        if (entry) {
+          entry.push(t.name)
+        } else {
+          seen.set(aid, [t.name])
+          if (!byCat[cat]) byCat[cat] = []
+          byCat[cat].push({ ap, taskNames: [t.name] })
+        }
+      })
+    })
+    const stats = abilityCategoryOrder
+      .filter((c) => byCat[c]?.length > 0)
+      .map((c) => ({ key: c, count: byCat[c].length, ...categoryMeta[c] }))
+    return { abilityByCategory: byCat, categoryStats: stats }
+  }, [tasks, abilityMap])
+
+  const total = categoryStats.reduce((s, c) => s + c.count, 0)
+  if (uniqueAbilityIds.size === 0) {
+    return (
+      <div className="text-center py-16 text-slate-400">
+        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
+          <Lightbulb className="w-8 h-8 opacity-40" />
+        </div>
+        <div className="text-[15px] font-medium text-slate-600">暂无考查能力点</div>
+        <div className="text-[13px] mt-1">该场景暂未关联能力点</div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div className="text-sm text-slate-500 mb-5">
+        共 <strong className="text-blue-600">{uniqueAbilityIds.size}</strong> 个能力点，
+        覆盖 <strong className="text-blue-600">{categoryStats.length}</strong> 个维度
+      </div>
+
+      <div className="flex items-center gap-2 mb-5 bg-slate-50 rounded-xl p-3 border border-slate-100">
+        {categoryStats.map((cat) => {
+          const pct = total > 0 ? Math.round((cat.count / total) * 100) : 0
+          return (
+            <div
+              key={cat.key}
+              className="flex-1 rounded-lg px-3 py-2 text-center"
+              style={{ backgroundColor: cat.bg, border: `1px solid ${cat.border}` }}
+            >
+              <div className="text-lg font-bold" style={{ color: cat.color }}>{cat.count}</div>
+              <div className="text-[10px] font-medium" style={{ color: cat.color }}>{cat.label} · {pct}%</div>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="space-y-5">
+        {abilityCategoryOrder.map((catKey) => {
+          const items = abilityByCategory[catKey]
+          if (!items || items.length === 0) return null
+          const meta = categoryMeta[catKey] || categoryMeta.knowledge
+          return (
+            <div key={catKey}>
+              <div
+                className="text-xs font-bold mb-3 flex items-center gap-2 px-3 py-2 rounded-lg"
+                style={{ backgroundColor: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}
+              >
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: meta.color }} />
+                {meta.label}能力 ({items.length})
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {items.map(({ ap, taskNames }, i) => (
+                  <div key={`${catKey}-${ap.id}-${i}`} className={`bg-white border ${meta.border} rounded-xl p-3.5 hover:shadow-md hover:-translate-y-0.5 transition-all`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-slate-800 mb-1">{ap.name}</div>
+                        {ap.description && <div className="text-[11px] text-slate-400 line-clamp-1 mb-2">{ap.description}</div>}
+                        <div className="flex flex-wrap gap-1">
+                          {taskNames.map((tn) => (
+                            <span key={tn} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">{tn}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+interface EvaluationTabProps {
+  tasks: ScenarioTask[]
+  totalEvalConfigs: number
+}
+
+function EvaluationTab({ tasks, totalEvalConfigs }: EvaluationTabProps) {
+  if (totalEvalConfigs === 0) {
+    return (
+      <div className="text-center py-16 text-slate-400">
+        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
+          <Target className="w-8 h-8 opacity-40" />
+        </div>
+        <div className="text-[15px] font-medium text-slate-600">暂未配置评价标准</div>
+        <div className="text-[13px] mt-1">该场景暂未设置评价方式</div>
+      </div>
+    )
+  }
+
+  const tasksWithEval = tasks.filter((t) => t.evalData?.evaluationMethods?.length > 0)
+  const methodColorMap: Record<string, string> = {
+    random_draw: "#6366f1", review: "#f43f5e", paper: "#0ea5e9",
+    question_bank: "#8b5cf6", outcome: "#10b981", homework: "#f59e0b", quiz: "#06b6d4",
+  }
+
+  return (
+    <div>
+      <div className="text-sm text-slate-500 mb-4">
+        共 <strong className="text-blue-600">{totalEvalConfigs}</strong> 个评价配置
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {tasksWithEval.map((task) => {
+          const ed = task.evalData!
+          const methods: string[] = ed.evaluationMethods || []
+          const weights: Record<string, number> = ed.methodWeights || {}
+          const methodPointsMap: Record<string, { name: string; scoreInfo: string }[]> = {
+            random_draw: ed.randomDrawEvalPoints || [],
+            review: ed.reviewEvalPoints || [],
+            paper: ed.paperEvalPoints || [],
+            question_bank: ed.questionBankEvalPoints || [],
+            outcome: ed.outcomeEvalPoints || [],
+            homework: ed.homeworkEvalPoints || [],
+            quiz: ed.quizEvalPoints || [],
+          }
+          const allPoints: { name: string; scoreInfo: string }[] = []
+          for (const m of methods) {
+            (methodPointsMap[m] || []).forEach((pt: any) => {
+              let scoreInfo = ""
+              if (pt.gradeMapping?.length > 0) {
+                scoreInfo = `${pt.gradeMapping[pt.gradeMapping.length - 1].maxScore}分`
+              }
+              allPoints.push({ name: pt.name, scoreInfo })
+            })
+          }
+
+          return (
+            <div key={task.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:border-blue-200 hover:shadow-md transition-all">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-400 text-white flex items-center justify-center text-xs font-bold shrink-0">
+                  <Target className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-slate-800 truncate">{task.name}</div>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                    style={{
+                      backgroundColor: task.taskType === "assessment" ? "#fef2f2" : "#eff6ff",
+                      color: task.taskType === "assessment" ? "#dc2626" : "#2563eb",
+                    }}
+                  >
+                    {taskTypeLabels[task.taskType] || task.taskType}
+                  </span>
+                </div>
+              </div>
+
+              {methods.length > 0 && (
+                <div className="mb-3">
+                  <div className="text-[11px] text-slate-400 mb-2 font-medium">评价方式</div>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {methods.map((m) => (
+                      <span key={m} className="text-[11px] px-2 py-0.5 rounded-full font-medium text-white"
+                        style={{ backgroundColor: methodColorMap[m] || "#94a3b8" }}
+                      >
+                        {evalMethodLabels[m] || m}
+                      </span>
+                    ))}
+                  </div>
+                  {methods.map((m) => (
+                    <div key={m} className="flex items-center gap-2 mb-1.5">
+                      <span className="text-[11px] text-slate-500 w-16 shrink-0 truncate">{evalMethodLabels[m] || m}</span>
+                      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${Math.round(weights[m] || 0)}%`,
+                            backgroundColor: methodColorMap[m] || "#94a3b8",
+                          }}
+                        />
+                      </div>
+                      <span className="text-[11px] font-semibold text-slate-500 w-8 text-right">{Math.round(weights[m] || 0)}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {allPoints.length > 0 && (
+                <div>
+                  <div className="text-[11px] text-slate-400 mb-2 font-medium">评分点</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {allPoints.map((pt, pi) => (
+                      <span key={pi} className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                        {pt.name}{pt.scoreInfo ? ` (${pt.scoreInfo})` : ""}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 export default function SceneDetailPage() {
@@ -306,146 +557,16 @@ export default function SceneDetailPage() {
 
       case "abilities":
         return (
-          <div>
-            <div className="text-sm text-slate-500 mb-4">
-              共 <strong className="text-blue-600">{uniqueAbilityIds.size}</strong> 个能力点
-            </div>
-            {uniqueAbilityIds.size === 0 ? (
-              <div className="text-center py-16 text-slate-400">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
-                  <Lightbulb className="w-8 h-8 opacity-40" />
-                </div>
-                <div className="text-[15px] font-medium text-slate-600">暂无考查能力点</div>
-                <div className="text-[13px] mt-1">该场景暂未关联能力点</div>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {tasks.filter((t) => t.abilityPointIds?.length > 0).map((task) => (
-                  <div key={task.id}>
-                    <div className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-                      <Target className="w-4 h-4 text-violet-500" />
-                      {task.name}
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {task.abilityPointIds?.map((aid) => {
-                        const ap = abilityMap.get(aid)
-                        const catConfig: Record<string, { label: string; classes: string; border: string }> = {
-                          knowledge: { label: "知识", classes: "text-blue-600 bg-blue-50", border: "border-blue-100" },
-                          skill: { label: "技能", classes: "text-amber-600 bg-amber-50", border: "border-amber-100" },
-                          quality: { label: "素养", classes: "text-purple-600 bg-purple-50", border: "border-purple-100" },
-                        }
-                        const cfg = catConfig[ap?.category || ""] || { label: "", classes: "text-slate-500 bg-slate-50", border: "border-slate-100" }
-                        return (
-                          <div key={aid} className={`bg-white border ${cfg.border} rounded-xl p-3.5 hover:shadow-md hover:-translate-y-0.5 transition-all`}>
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm font-semibold text-slate-800 mb-1">{ap?.name || "能力点"}</div>
-                                {ap?.description && <div className="text-[11px] text-slate-400 line-clamp-1">{ap.description}</div>}
-                              </div>
-                              {cfg.label && (
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${cfg.classes}`}>
-                                  {cfg.label}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <AbilitiesTab
+            tasks={tasks}
+            abilityMap={abilityMap}
+            uniqueAbilityIds={uniqueAbilityIds}
+          />
         )
 
       case "evaluation":
         return (
-          <div>
-            <div className="text-sm text-slate-500 mb-4">
-              共 <strong className="text-blue-600">{totalEvalConfigs}</strong> 个评价配置
-            </div>
-            {totalEvalConfigs === 0 ? (
-              <div className="text-center py-16 text-slate-400">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
-                  <Target className="w-8 h-8 opacity-40" />
-                </div>
-                <div className="text-[15px] font-medium text-slate-600">暂未配置评价标准</div>
-                <div className="text-[13px] mt-1">该场景暂未设置评价方式</div>
-              </div>
-            ) : (
-              <div className="overflow-x-auto rounded-xl border border-slate-200">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-50">
-                    <tr className="border-b border-slate-200">
-                      <th className="text-left py-3 px-3 font-semibold text-slate-500 text-xs w-[40px]">#</th>
-                      <th className="text-left py-3 px-3 font-semibold text-slate-500 text-xs">任务名称</th>
-                      <th className="text-left py-3 px-3 font-semibold text-slate-500 text-xs">评价方式</th>
-                      <th className="text-left py-3 px-3 font-semibold text-slate-500 text-xs">场景权重</th>
-                      <th className="text-left py-3 px-3 font-semibold text-slate-500 text-xs">评分点</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      const tasksWithEval = tasks.filter((t) => t.evalData?.evaluationMethods?.length > 0)
-                      return tasksWithEval.map((task, idx) => {
-                        const ed = task.evalData!
-                        const methods: string[] = ed.evaluationMethods || []
-                        const weights: Record<string, number> = ed.methodWeights || {}
-                        const methodPointsMap: Record<string, { name: string; scoreInfo: string }[]> = {
-                          random_draw: ed.randomDrawEvalPoints || [],
-                          review: ed.reviewEvalPoints || [],
-                          paper: ed.paperEvalPoints || [],
-                          question_bank: ed.questionBankEvalPoints || [],
-                          outcome: ed.outcomeEvalPoints || [],
-                          homework: ed.homeworkEvalPoints || [],
-                          quiz: ed.quizEvalPoints || [],
-                        }
-                        const allPoints: { name: string; scoreInfo: string }[] = []
-                        for (const m of methods) {
-                          ;(methodPointsMap[m] || []).forEach((pt: any) => {
-                            let scoreInfo = ""
-                            if (pt.gradeMapping?.length > 0) {
-                              scoreInfo = `${pt.gradeMapping[pt.gradeMapping.length - 1].maxScore}分`
-                            }
-                            allPoints.push({ name: pt.name, scoreInfo })
-                          })
-                        }
-                        return (
-                          <tr key={task.id} className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors">
-                            <td className="py-3 px-3 text-slate-400">{idx + 1}</td>
-                            <td className="py-3 px-3">
-                              <div className="font-semibold text-slate-800">{task.name}</div>
-                              <div className="text-[11px] text-slate-400">{taskTypeLabels[task.taskType]}</div>
-                            </td>
-                            <td className="py-3 px-3 text-slate-600">
-                              {methods.join("、") || "-"}
-                            </td>
-                            <td className="py-3 px-3">
-                              {methods.map((m, mi) => (
-                                <div key={mi} className="text-blue-600 font-semibold">{Math.round(weights[m] || 0)}%</div>
-                              ))}
-                            </td>
-                            <td className="py-3 px-3">
-                              <div className="flex flex-wrap gap-1.5">
-                                {allPoints.length > 0 ? allPoints.map((pt, pi) => (
-                                  <span key={pi} className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-                                    {pt.name}{pt.scoreInfo ? `(${pt.scoreInfo})` : ""}
-                                  </span>
-                                )) : (
-                                  <span className="text-xs text-slate-400">-</span>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })
-                    })()}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          <EvaluationTab tasks={tasks} totalEvalConfigs={totalEvalConfigs} />
         )
 
       case "knowledge":
