@@ -148,7 +148,7 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
         </p>
       </div>
 
-      <div className="relative px-10 pt-8 pb-6 overflow-visible">
+      <div className="relative px-10 pb-6 overflow-hidden">
         <button
           onClick={() => navigate(-1)}
           disabled={activeIndex === 0}
@@ -186,10 +186,12 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
                   onClick={() => { setActiveIndex(i) }}
                   className={`flex flex-col items-center min-w-[180px] px-6 pb-5 relative z-10 cursor-pointer ${isActive ? "active" : ""}`}
                 >
-                  {(isStart || isEnd) && (
-                    <div className="absolute -top-7 text-xs text-[#94a3b8] font-medium whitespace-nowrap">
+                  {(isStart || isEnd) ? (
+                    <div className="text-xs text-[#94a3b8] font-medium whitespace-nowrap mb-2 h-4">
                       {label}
                     </div>
+                  ) : (
+                    <div className="h-4 mb-2" />
                   )}
                   {scenario.coverImage ? (
                     <div
