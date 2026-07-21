@@ -1,10 +1,10 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
-  Search, Flag, Heart, Crosshair, Briefcase, Sparkles, Filter, X,
+  Search, Flag, Heart, Crosshair, Sparkles, Filter, X,
   TrendingUp, GraduationCap, ChevronRight,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -31,6 +31,7 @@ export function JobHome() {
   const router = useRouter()
   const { user } = useAuth()
   const industryMap = useIndustryMap()
+  const listRef = useRef<HTMLDivElement>(null)
 
   const [positions, setPositions] = useState<CareerPosition[]>([])
   const [loading, setLoading] = useState(true)
@@ -134,19 +135,26 @@ export function JobHome() {
     }
   }, [positions])
 
+  const executeSearch = () => {
+    setCurrentPage(1)
+    setTimeout(() => {
+      listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }, 50)
+  }
+
   const heroSearch = (
-    <div className="relative w-full md:w-[480px]">
+    <div className="relative w-full md:w-[520px]">
       <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94a3b8]" />
       <Input
         value={keyword}
         onChange={(e) => setKeyword(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Enter") setCurrentPage(1) }}
+        onKeyDown={(e) => { if (e.key === "Enter") executeSearch() }}
         placeholder="搜索岗位名称、岗位编码或关键词"
         className="pl-11 pr-28 py-3 h-12 bg-white/95 border-0 rounded-full text-sm shadow-lg shadow-blue-900/10 focus-visible:ring-2 focus-visible:ring-blue-300"
       />
       <Button
         className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full px-5 h-9 bg-blue-600 hover:bg-blue-700 text-white text-sm"
-        onClick={() => setCurrentPage(1)}
+        onClick={executeSearch}
       >
         搜索
       </Button>
@@ -190,9 +198,86 @@ export function JobHome() {
       />
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-8 py-8 w-full flex-1">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Top action cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+          <div className="h-40 bg-white rounded-2xl border border-[#e7e5e4] p-5 shadow-sm flex flex-col">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <Flag className="w-5 h-5" />
+              </div>
+              <div className="text-[15px] font-bold text-[#0f172a]">目标推荐岗位</div>
+            </div>
+            <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8] text-center">
+              <div className="text-sm font-semibold text-[#475569]">暂无目标推荐</div>
+              <div className="text-xs mt-0.5">完成能力测评后为你推荐</div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full rounded-full mt-auto"
+              onClick={() => router.push("/evaluation")}
+            >
+              <GraduationCap className="w-3.5 h-3.5 mr-1" /> 去测评
+            </Button>
+          </div>
+
+          <div className="h-40 bg-white rounded-2xl border border-[#e7e5e4] p-5 shadow-sm flex flex-col">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                <Heart className="w-5 h-5" />
+              </div>
+              <div className="text-[15px] font-bold text-[#0f172a]">我的心仪岗位</div>
+            </div>
+            <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8] text-center">
+              <div className="text-sm font-semibold text-[#475569]">暂无收藏岗位</div>
+              <div className="text-xs mt-0.5">登录后收藏感兴趣的岗位</div>
+            </div>
+            {!user ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full rounded-full mt-auto"
+                onClick={() => router.push("/portal/login")}
+              >
+                去登录
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full rounded-full mt-auto"
+                onClick={() => router.push("/job/student")}
+              >
+                去浏览 <ChevronRight className="w-3.5 h-3.5 ml-1" />
+              </Button>
+            )}
+          </div>
+
+          <div className="h-40 relative overflow-hidden rounded-2xl p-5 text-white bg-gradient-to-br from-indigo-600 to-violet-600 shadow-md flex flex-col">
+            <div className="absolute top-0 right-0 w-28 h-28 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+            <div className="relative z-10 flex flex-col h-full">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+                  <Crosshair className="w-5 h-5" />
+                </div>
+                <div className="text-[15px] font-bold">学前能力基线测评</div>
+              </div>
+              <p className="text-xs text-white/85 leading-relaxed mb-auto">
+                精准定位能力起点，量身规划学习路径
+              </p>
+              <Button
+                className="w-full bg-white text-indigo-600 hover:bg-white/90 rounded-full h-9 text-[13px] font-semibold shadow-sm"
+                onClick={() => router.push("/evaluation")}
+              >
+                开始测评 <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Left main */}
-          <div className="lg:col-span-2 space-y-5">
+          <div className="lg:col-span-3 space-y-5" ref={listRef}>
             {/* Filter */}
             <div className="bg-white rounded-2xl border border-[#e7e5e4] p-5 shadow-sm">
               <div className="flex items-center gap-2 text-[15px] font-bold text-[#0f172a] mb-4 pl-3 border-l-4 border-blue-600">
@@ -293,8 +378,8 @@ export function JobHome() {
 
             {/* Grid */}
             {loading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {Array.from({ length: 8 }).map((_, i) => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {Array.from({ length: 9 }).map((_, i) => (
                   <div key={i} className="bg-white rounded-2xl border border-[#e7e5e4] h-[360px] animate-pulse" />
                 ))}
               </div>
@@ -305,7 +390,7 @@ export function JobHome() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {pageItems.map((pos, i) => (
                     <JobCard key={pos.id} position={pos} index={i} hideHot={i > 2} />
                   ))}
@@ -322,79 +407,9 @@ export function JobHome() {
             )}
           </div>
 
-          {/* Right sidebar */}
-          <div className="space-y-5">
-            {/* Assessment CTA */}
-            <div className="relative overflow-hidden rounded-2xl p-6 text-white bg-gradient-to-br from-indigo-600 to-violet-600 shadow-lg">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-              <div className="relative z-10">
-                <div className="flex items-center gap-2.5 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                    <Crosshair className="w-5 h-5" />
-                  </div>
-                  <div className="text-[17px] font-bold">学前能力基线测评</div>
-                </div>
-                <p className="text-[13px] text-white/85 leading-relaxed mb-4">
-                  学习前先测一测，精准定位你的能力起点，量身规划学习路径
-                </p>
-                <Button
-                  className="bg-white text-indigo-600 hover:bg-white/90 rounded-full px-5 h-10 text-[13px] font-semibold shadow-sm"
-                  onClick={() => router.push("/evaluation")}
-                >
-                  开始测评 <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
-              </div>
-            </div>
-
+          {/* Right sidebar: ranking */}
+          <div className="lg:col-span-1">
             <RankingList positions={positions} industryMap={industryMap} />
-
-            {/* My heart jobs */}
-            <div className="bg-white rounded-2xl border border-[#e7e5e4] p-5 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-[15px] font-bold text-[#0f172a] flex items-center gap-2">
-                  <Heart className="w-4 h-4 text-rose-500" />
-                  我的心仪岗位
-                </div>
-              </div>
-              <div className="flex flex-col items-center justify-center text-[#94a3b8] py-6 text-center">
-                <Heart className="w-10 h-10 mb-3 opacity-40" />
-                <div className="text-sm font-semibold text-[#475569]">暂无收藏岗位</div>
-                <div className="text-xs mt-1">登录后浏览岗位并点击收藏，即可在此查看</div>
-                {!user && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-4 rounded-full"
-                    onClick={() => router.push("/portal/login")}
-                  >
-                    去登录
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* Target recommendations */}
-            <div className="bg-white rounded-2xl border border-[#e7e5e4] p-5 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-[15px] font-bold text-[#0f172a] flex items-center gap-2">
-                  <Flag className="w-4 h-4 text-blue-500" />
-                  目标推荐岗位
-                </div>
-              </div>
-              <div className="flex flex-col items-center justify-center text-[#94a3b8] py-6 text-center">
-                <TrendingUp className="w-10 h-10 mb-3 opacity-40" />
-                <div className="text-sm font-semibold text-[#475569]">暂无目标推荐</div>
-                <div className="text-xs mt-1">完成能力测评后，系统将为你推荐匹配岗位</div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-4 rounded-full"
-                  onClick={() => router.push("/evaluation")}
-                >
-                  <GraduationCap className="w-3.5 h-3.5 mr-1" /> 去测评
-                </Button>
-              </div>
-            </div>
           </div>
         </div>
       </main>
