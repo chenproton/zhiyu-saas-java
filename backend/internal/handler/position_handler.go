@@ -136,8 +136,15 @@ func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
 			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
 			cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by,
+			COALESCE((SELECT u.name FROM users u WHERE u.id = cp.created_by), cp.created_by) AS created_by_name,
 			cp.collaborators,
+			COALESCE((
+				SELECT array_agg(u.name ORDER BY ord)
+				FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord)
+				JOIN users u ON u.id = c.id
+			), '{}') AS collaborator_names,
 			(SELECT COUNT(*) FROM position_favorites pf WHERE pf.career_position_id = cp.id) AS favorite_count,
+			(SELECT COUNT(*) FROM view_logs WHERE target_type = 'career_position' AND target_id = cp.id) AS view_count,
 			cp.created_at, cp.updated_at
 		FROM career_positions cp
 		WHERE ` + strings.Join(where, " AND ") + `
@@ -230,8 +237,15 @@ func (h *PositionHandler) PublicList(w http.ResponseWriter, r *http.Request) {
 			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
 			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
 			cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by,
+			COALESCE((SELECT u.name FROM users u WHERE u.id = cp.created_by), cp.created_by) AS created_by_name,
 			cp.collaborators,
+			COALESCE((
+				SELECT array_agg(u.name ORDER BY ord)
+				FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord)
+				JOIN users u ON u.id = c.id
+			), '{}') AS collaborator_names,
 			(SELECT COUNT(*) FROM position_favorites pf WHERE pf.career_position_id = cp.id) AS favorite_count,
+			(SELECT COUNT(*) FROM view_logs WHERE target_type = 'career_position' AND target_id = cp.id) AS view_count,
 			cp.created_at, cp.updated_at
 		FROM career_positions cp
 		WHERE ` + strings.Join(where, " AND ") + `
@@ -1013,14 +1027,21 @@ func (h *PositionHandler) fetchPosition(ctx context.Context, id string) (domain.
 			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
 			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
 			cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by,
+			COALESCE((SELECT u.name FROM users u WHERE u.id = cp.created_by), cp.created_by) AS created_by_name,
 			cp.collaborators,
+			COALESCE((
+				SELECT array_agg(u.name ORDER BY ord)
+				FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord)
+				JOIN users u ON u.id = c.id
+			), '{}') AS collaborator_names,
 			(SELECT COUNT(*) FROM position_favorites pf WHERE pf.career_position_id = cp.id) AS favorite_count,
+			(SELECT COUNT(*) FROM view_logs WHERE target_type = 'career_position' AND target_id = cp.id) AS view_count,
 			cp.created_at, cp.updated_at
 		FROM career_positions cp WHERE cp.id = $1
 	`, id).Scan(
 		&p.ID, &batchID, &p.Name, &shortName, &industryID, &majorIDs, &majorNames, &p.PositionType,
 		&salaryMin, &salaryMax, &coverImage, &description, &requirements, &careerPath,
-		&p.Version, &p.Status, &p.CreatedBy, &collaborators, &p.FavoriteCount,
+		&p.Version, &p.Status, &p.CreatedBy, &p.CreatedByName, &collaborators, &p.CollaboratorNames, &p.FavoriteCount, &p.ViewCount,
 		&p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
@@ -1047,12 +1068,12 @@ func (h *PositionHandler) scanPositionRows(rows pgx.Rows) ([]domain.CareerPositi
 		var p domain.CareerPosition
 		var batchID, shortName, industryID, coverImage, description, careerPath *string
 		var salaryMin, salaryMax *int
-		var majorIDs, majorNames, requirements, collaborators []string
+		var majorIDs, majorNames, requirements, collaborators, collaboratorNames []string
 
 		if err := rows.Scan(
 			&p.ID, &batchID, &p.Name, &shortName, &industryID, &majorIDs, &majorNames, &p.PositionType,
 			&salaryMin, &salaryMax, &coverImage, &description, &requirements, &careerPath,
-			&p.Version, &p.Status, &p.CreatedBy, &collaborators, &p.FavoriteCount,
+			&p.Version, &p.Status, &p.CreatedBy, &p.CreatedByName, &collaborators, &collaboratorNames, &p.FavoriteCount, &p.ViewCount,
 			&p.CreatedAt, &p.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -1069,6 +1090,7 @@ func (h *PositionHandler) scanPositionRows(rows pgx.Rows) ([]domain.CareerPositi
 		p.Requirements = requirements
 		p.CareerPath = careerPath
 		p.Collaborators = collaborators
+		p.CollaboratorNames = collaboratorNames
 		items = append(items, p)
 	}
 	return items, nil

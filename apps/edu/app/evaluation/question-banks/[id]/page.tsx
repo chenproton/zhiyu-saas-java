@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useMemo, useRef } from "react"
-import { useParams, useRouter, useSearchParams } from "next/navigation"
+import { useState, useMemo } from "react"
+import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload, Copy, Users, Building2, ImageIcon, List, LayoutGrid, FolderInput, MoreHorizontal, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -47,10 +47,7 @@ import { useToast } from "@/hooks/use-toast"
 export default function QuestionBankDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const searchParams = useSearchParams()
   const bankId = params.id as string
-  const hasSavedRef = useRef(false)
-  const isNewBank = searchParams.get("new") === "true"
 
   const {
     getQuestionBank,
@@ -128,7 +125,6 @@ export default function QuestionBankDetailPage() {
   }
 
   const handleSaveBank = async () => {
-    hasSavedRef.current = true
     if (bank.status !== "draft") {
       setSavingBank(true)
       try {
@@ -245,12 +241,7 @@ export default function QuestionBankDetailPage() {
     <div className="p-6">
       {/* 返回按钮 */}
       <div className="mb-4">
-        <Button variant="ghost" size="sm" onClick={async () => {
-          if (isNewBank && !hasSavedRef.current) {
-            try { deleteQuestionBank(bankId) } catch {}
-          }
-          router.push("/evaluation/question-banks")
-        }}>
+        <Button variant="ghost" size="sm" onClick={() => router.push("/evaluation/question-banks")}>
           <ArrowLeft />
           返回题库列表
         </Button>

@@ -15,7 +15,7 @@ export function StatsBox({ position, scenarioCount = 0, taskCount = 0, abilityPo
     { icon: Layers, value: scenarioCount, label: "关联场景数" },
     { icon: ClipboardList, value: taskCount, label: "涉及任务数" },
     { icon: Lightbulb, value: abilityPointCount, label: "能力点数" },
-    { icon: Eye, value: 1286, label: "岗位浏览量" },
+    { icon: Eye, value: position.viewCount ?? 0, label: "岗位浏览量" },
     { icon: Heart, value: position.favoriteCount ?? 0, label: "岗位收藏量" },
   ]
 

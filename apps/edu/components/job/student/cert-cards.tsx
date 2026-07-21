@@ -37,10 +37,10 @@ export function CertCards({ certificates }: CertCardsProps) {
           return (
             <div key={cert.id} className="bg-white rounded-2xl border border-[#f5f5f4] overflow-hidden transition-all hover:shadow-md hover:border-[#d9d9d9]">
               <div
-                className="h-40 flex items-center justify-center text-white relative"
-                style={{ background: GRADIENTS[i % GRADIENTS.length] }}
+                className="h-40 flex items-center justify-center text-white relative bg-cover bg-center"
+                style={cert.imageUrl ? { backgroundImage: `url('${cert.imageUrl}')` } : { background: GRADIENTS[i % GRADIENTS.length] }}
               >
-                <Award className="w-14 h-14 opacity-40" />
+                {!cert.imageUrl && <Award className="w-14 h-14 opacity-40" />}
               </div>
               <div className="p-5">
                 <div className="text-base font-semibold text-[#1f2937] mb-2">{cert.name}</div>

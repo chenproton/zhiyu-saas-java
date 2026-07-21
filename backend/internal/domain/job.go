@@ -29,27 +29,30 @@ const (
 // BatchStatus type and constants now defined in status.go (shared)
 
 type CareerPosition struct {
-	ID            string               `json:"id"`
-	BatchID       *string              `json:"batchId,omitempty"`
-	Name          string               `json:"name"`
-	ShortName     *string              `json:"shortName,omitempty"`
-	IndustryID    *string              `json:"industryId,omitempty"`
-	MajorIDs      []string             `json:"majorIds"`
-	MajorNames    []string             `json:"majorNames,omitempty"`
-	PositionType  PositionType         `json:"positionType"`
-	SalaryMin     *int                 `json:"salaryMin,omitempty"`
-	SalaryMax     *int                 `json:"salaryMax,omitempty"`
-	CoverImage    *string              `json:"coverImage,omitempty"`
-	Description   *string              `json:"description,omitempty"`
-	Requirements  []string             `json:"requirements"`
-	CareerPath    *string              `json:"careerPath,omitempty"`
-	Version       string               `json:"version"`
-	Status        CareerPositionStatus `json:"status"`
-	CreatedBy     string               `json:"createdBy"`
-	Collaborators []string             `json:"collaborators"`
-	FavoriteCount int                  `json:"favoriteCount"`
-	CreatedAt     time.Time            `json:"createdAt"`
-	UpdatedAt     time.Time            `json:"updatedAt"`
+	ID               string               `json:"id"`
+	BatchID          *string              `json:"batchId,omitempty"`
+	Name             string               `json:"name"`
+	ShortName        *string              `json:"shortName,omitempty"`
+	IndustryID       *string              `json:"industryId,omitempty"`
+	MajorIDs         []string             `json:"majorIds"`
+	MajorNames       []string             `json:"majorNames,omitempty"`
+	PositionType     PositionType         `json:"positionType"`
+	SalaryMin        *int                 `json:"salaryMin,omitempty"`
+	SalaryMax        *int                 `json:"salaryMax,omitempty"`
+	CoverImage       *string              `json:"coverImage,omitempty"`
+	Description      *string              `json:"description,omitempty"`
+	Requirements     []string             `json:"requirements"`
+	CareerPath       *string              `json:"careerPath,omitempty"`
+	Version          string               `json:"version"`
+	Status           CareerPositionStatus `json:"status"`
+	CreatedBy        string               `json:"createdBy"`
+	CreatedByName    string               `json:"createdByName,omitempty"`
+	Collaborators    []string             `json:"collaborators"`
+	CollaboratorNames []string            `json:"collaboratorNames,omitempty"`
+	FavoriteCount    int                  `json:"favoriteCount"`
+	ViewCount        int                  `json:"viewCount"`
+	CreatedAt        time.Time            `json:"createdAt"`
+	UpdatedAt        time.Time            `json:"updatedAt"`
 }
 
 type CertificateLibraryItem struct {

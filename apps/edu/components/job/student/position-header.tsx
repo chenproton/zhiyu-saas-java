@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Heart, ArrowLeft, Share2, User, Users, Calendar, Edit3, PlayCircle, Briefcase } from "lucide-react"
+import { Heart, ArrowLeft, Share2, User, Users, Calendar, Edit3, PlayCircle, Briefcase, GraduationCap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/auth-provider"
 import { positionApi } from "@/lib/api"
@@ -14,9 +14,11 @@ interface PositionHeaderProps {
 }
 
 function formatSalary(min?: number | null, max?: number | null) {
-  if ((min ?? 0) > 0 && (max ?? 0) > 0) return `¥${min} - ¥${max}`
-  if ((min ?? 0) > 0) return `¥${min}起`
-  if ((max ?? 0) > 0) return `¥${max}以内`
+  if ((min ?? 0) > 0 && (max ?? 0) > 0) {
+    return `${Math.floor(min! / 1000)}K-${Math.floor(max! / 1000)}K`
+  }
+  if ((min ?? 0) > 0) return `${Math.floor(min! / 1000)}K起`
+  if ((max ?? 0) > 0) return `${Math.floor(max! / 1000)}K以内`
   return "面议"
 }
 
@@ -63,7 +65,13 @@ export function PositionHeader({ position, industryName }: PositionHeaderProps) 
   }
 
   const displayTitle = position.shortName || position.name
-  const firstChar = displayTitle.charAt(0)
+  const majorsText = position.majorNames?.filter(Boolean).join("、") || "未分类"
+  const creatorName = position.createdByName || position.createdBy || "-"
+  const coBuilderNames = position.collaboratorNames?.filter(Boolean).join(", ") || "-"
+
+  const coverStyle = position.coverImage
+    ? { backgroundImage: `url('${position.coverImage}')` }
+    : undefined
 
   return (
     <div className="bg-white border-b border-[#e7e5e4]">
@@ -79,8 +87,15 @@ export function PositionHeader({ position, industryName }: PositionHeaderProps) 
         <div className="bg-white rounded-2xl border border-[#e7e5e4] p-6 shadow-[0_4px_20px_rgba(69,26,3,0.06)]">
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Cover */}
-            <div className="w-full lg:w-[280px] h-[180px] rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shrink-0 relative overflow-hidden self-stretch">
-              <span className="text-white text-[48px] font-bold opacity-25 select-none">{firstChar}</span>
+            <div
+              className="w-full lg:w-[280px] h-[180px] rounded-xl bg-cover bg-center bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shrink-0 relative overflow-hidden self-stretch"
+              style={coverStyle}
+            >
+              {!position.coverImage && (
+                <span className="text-white text-[48px] font-bold opacity-25 select-none">
+                  {displayTitle.charAt(0)}
+                </span>
+              )}
               <span className="absolute top-3 left-3 bg-white/25 text-white px-3 py-1 rounded text-sm font-semibold backdrop-blur-sm">
                 {position.version}
               </span>
@@ -105,20 +120,17 @@ export function PositionHeader({ position, industryName }: PositionHeaderProps) 
                     <span className="px-3 py-1 rounded-md text-xs border bg-[#fff7ed] border-[#ffedd5] text-[#c2410c] flex items-center gap-1">
                       <Briefcase className="w-3 h-3" /> 面向行业：{industryName || (position.positionType === "enterprise" ? "企业" : "教学")}
                     </span>
-                    {position.majorNames?.map((m) => (
-                      <span key={m} className="px-3 py-1 rounded-md text-xs border bg-[#dcfce7] border-[#bbf7d0] text-[#15803d] flex items-center gap-1">
-                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-                        适用专业：{m}
-                      </span>
-                    ))}
+                    <span className="px-3 py-1 rounded-md text-xs border bg-[#dcfce7] border-[#bbf7d0] text-[#15803d] flex items-center gap-1">
+                      <GraduationCap className="w-3 h-3" /> 适用专业：{majorsText}
+                    </span>
                   </div>
                 </div>
               </div>
 
               <div className="flex flex-col gap-2.5 mb-4">
                 <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#64748b]">
-                  <span className="flex items-center gap-2"><User className="w-4 h-4 text-[#94a3b8]" /> 创建人：{position.createdBy || "-"}</span>
-                  <span className="flex items-center gap-2"><Users className="w-4 h-4 text-[#94a3b8]" /> 共建人：{position.collaborators?.join(", ") || "知与未来"}</span>
+                  <span className="flex items-center gap-2"><User className="w-4 h-4 text-[#94a3b8]" /> 创建人：{creatorName}</span>
+                  <span className="flex items-center gap-2"><Users className="w-4 h-4 text-[#94a3b8]" /> 共建人：{coBuilderNames}</span>
                 </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#64748b]">
                   <span className="flex items-center gap-2"><Calendar className="w-4 h-4 text-[#94a3b8]" /> 创建时间：{formatDate(position.createdAt)}</span>

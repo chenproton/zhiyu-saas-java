@@ -90,7 +90,7 @@ func (h *AbilityHandler) List(w http.ResponseWriter, r *http.Request) {
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT id, name, description, category, attributes, is_public, created_at
+		SELECT id, name, code, description, category, attributes, is_public, created_at
 		FROM ability_points
 		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY created_at DESC
@@ -233,10 +233,10 @@ func (h *AbilityHandler) fetchAbility(ctx context.Context, id string) (domain.Ab
 	var description *string
 
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, description, category, attributes, is_public, created_at
+		SELECT id, name, code, description, category, attributes, is_public, created_at
 		FROM ability_points WHERE id = $1
 	`, id).Scan(
-		&a.ID, &a.Name, &description, &a.Category, &a.Attributes, &a.IsPublic, &a.CreatedAt,
+		&a.ID, &a.Name, &a.Code, &description, &a.Category, &a.Attributes, &a.IsPublic, &a.CreatedAt,
 	)
 	if err != nil {
 		return a, err
@@ -249,13 +249,14 @@ func (h *AbilityHandler) scanAbilityRows(rows pgx.Rows) ([]domain.AbilityPoint, 
 	items := make([]domain.AbilityPoint, 0)
 	for rows.Next() {
 		var a domain.AbilityPoint
-		var description *string
+		var description, code *string
 		if err := rows.Scan(
-			&a.ID, &a.Name, &description, &a.Category, &a.Attributes, &a.IsPublic, &a.CreatedAt,
+			&a.ID, &a.Name, &code, &description, &a.Category, &a.Attributes, &a.IsPublic, &a.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
 		a.Description = description
+		a.Code = code
 		items = append(items, a)
 	}
 	return items, nil

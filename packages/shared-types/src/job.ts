@@ -16,8 +16,11 @@ export interface CareerPosition {
   version: string
   status: "draft" | "pending" | "approved" | "rejected" | "published" | "archived"
   createdBy: string
+  createdByName?: string
   collaborators: string[]
+  collaboratorNames?: string[]
   favoriteCount?: number
+  viewCount?: number
   createdAt: string
   updatedAt: string
 }
@@ -53,6 +56,7 @@ export interface PositionResponsibility {
 export interface AbilityPoint {
   id: string
   name: string
+  code?: string
   description?: string
   category: "knowledge" | "skill" | "quality"
   attributes: string[]

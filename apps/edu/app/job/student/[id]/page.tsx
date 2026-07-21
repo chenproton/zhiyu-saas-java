@@ -35,7 +35,6 @@ import { CompetencyStandards } from "@/components/job/student/competency-standar
 import { KnowledgeGraph } from "@/components/job/student/knowledge-graph"
 import { SceneList } from "@/components/job/student/scene-list"
 import { LearningPath } from "@/components/job/student/learning-path"
-import { RelatedPositions } from "@/components/job/student/related-positions"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Briefcase, FileText, ListChecks, Award, Layers, Target, GitBranch, BookOpen, BriefcaseIcon } from "lucide-react"
@@ -49,7 +48,6 @@ const TABS = [
   { value: "graph", label: "知识图谱", icon: GitBranch },
   { value: "scenes", label: "实践场景", icon: BookOpen },
   { value: "learning", label: "学习路径", icon: BriefcaseIcon },
-  { value: "related", label: "相关岗位", icon: Briefcase },
 ]
 
 export default function JobStudentDetailPage() {
@@ -191,8 +189,6 @@ export default function JobStudentDetailPage() {
         return <SceneList scenarios={scenarios} tasks={scenarioTasks} />
       case "learning":
         return user ? <LearningPath roads={roads} /> : <LoginPrompt text="学习路径需登录后查看" desc="登录账号后可查看岗位关联的学习路径" />
-      case "related":
-        return <RelatedPositions positions={allPositions} currentId={position.id} />
       default:
         return null
     }
