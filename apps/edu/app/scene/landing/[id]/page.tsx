@@ -188,7 +188,7 @@ export default function SceneDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col bg-[#f5f5f5]">
+      <div className="min-h-screen flex flex-col bg-[#f8fafc]">
         <Skeleton className="h-[320px] w-full" />
         <div className="max-w-[1400px] mx-auto px-6 py-6 w-full flex-1">
           <Skeleton className="h-[500px] w-full rounded-xl" />
@@ -200,11 +200,13 @@ export default function SceneDetailPage() {
 
   if (!scenario) {
     return (
-      <div className="min-h-screen flex flex-col bg-[#f5f5f5]">
-        <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8]">
-          <Layers className="w-16 h-16 mb-4 opacity-40" />
-          <div className="text-lg font-semibold text-[#475569]">场景不存在或暂未公开</div>
-          <Link href="/scene/landing" className="text-blue-600 hover:underline mt-2">返回场景列表</Link>
+      <div className="min-h-screen flex flex-col bg-[#f8fafc]">
+        <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
+          <div className="w-20 h-20 mb-5 rounded-3xl bg-slate-100 flex items-center justify-center">
+            <Layers className="w-10 h-10 opacity-40" />
+          </div>
+          <div className="text-lg font-semibold text-slate-600">场景不存在或暂未公开</div>
+          <Link href="/scene/landing" className="text-blue-600 hover:text-blue-700 mt-3 text-sm font-medium">返回场景列表</Link>
         </div>
         <PlatformFooter />
       </div>
@@ -221,9 +223,12 @@ export default function SceneDetailPage() {
         return (
           <div>
             {tasks.length === 0 ? (
-              <div className="text-center py-12 text-[#94a3b8]">
-                <ListChecks className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                <div>暂无任务</div>
+              <div className="text-center py-16 text-slate-400">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
+                  <ListChecks className="w-8 h-8 opacity-40" />
+                </div>
+                <div className="text-[15px] font-medium text-slate-600">暂无任务</div>
+                <div className="text-[13px] mt-1">该场景暂未配置任务</div>
               </div>
             ) : (
               <div className="space-y-3">
@@ -232,37 +237,41 @@ export default function SceneDetailPage() {
                   const taskAbs = task.abilityPointIds?.length || 0
                   const taskKs = task.knowledgePointIds?.length || 0
                   return (
-                    <div key={task.id} className="bg-white rounded-xl border border-[#f0f0f0] overflow-hidden hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] transition-shadow">
+                    <div key={task.id} className="group bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-blue-200 transition-all">
                       <div className="flex items-center gap-4 p-5">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-400 text-white flex items-center justify-center text-sm font-bold shrink-0 shadow-[0_2px_8px_rgba(59,130,246,0.3)]">
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-blue-400 text-white flex items-center justify-center text-sm font-bold shrink-0 shadow-lg shadow-blue-500/25">
                           {idx + 1}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className="text-[15px] font-semibold text-[#1f2937] truncate">{task.name}</div>
-                            <span className="text-[11px] px-2 py-0.5 rounded text-xs shrink-0"
-                              style={{ backgroundColor: task.taskType === "assessment" ? "#fef2f2" : "#eff6ff", color: task.taskType === "assessment" ? "#dc2626" : "#2563eb" }}
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <div className="text-[15px] font-semibold text-slate-800 truncate">{task.name}</div>
+                            <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium shrink-0 border"
+                              style={{
+                                backgroundColor: task.taskType === "assessment" ? "#fef2f2" : "#eff6ff",
+                                color: task.taskType === "assessment" ? "#dc2626" : "#2563eb",
+                                borderColor: task.taskType === "assessment" ? "#fecaca" : "#bfdbfe",
+                              }}
                             >
                               {taskTypeLabels[task.taskType] || task.taskType}
                             </span>
-                            {task.code && <span className="text-[11px] text-[#94a3b8] shrink-0">{task.code}</span>}
+                            {task.code && <span className="text-[11px] text-slate-400 shrink-0">{task.code}</span>}
                           </div>
-                          <div className="flex flex-wrap items-center gap-3 text-xs text-[#94a3b8]">
-                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{task.estimatedHours || 0} 课时</span>
-                            <span className="flex items-center gap-1"><BarChart3 className="w-3 h-3" />Lv.{task.difficulty}</span>
-                            {taskRes.length > 0 && <span className="flex items-center gap-1"><FolderOpen className="w-3 h-3" />{taskRes.length} 个资源</span>}
-                            {taskAbs > 0 && <span className="flex items-center gap-1"><Lightbulb className="w-3 h-3" />{taskAbs} 个能力点</span>}
-                            {taskKs > 0 && <span className="flex items-center gap-1"><GitBranch className="w-3 h-3" />{taskKs} 个知识点</span>}
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                            <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{task.estimatedHours || 0} 课时</span>
+                            <span className="flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5" />Lv.{task.difficulty}</span>
+                            {taskRes.length > 0 && <span className="flex items-center gap-1"><FolderOpen className="w-3.5 h-3.5" />{taskRes.length} 个资源</span>}
+                            {taskAbs > 0 && <span className="flex items-center gap-1"><Lightbulb className="w-3.5 h-3.5" />{taskAbs} 个能力点</span>}
+                            {taskKs > 0 && <span className="flex items-center gap-1"><GitBranch className="w-3.5 h-3.5" />{taskKs} 个知识点</span>}
                           </div>
                           {(task.description || task.detailedDescription) && (
-                            <p className="text-xs text-[#94a3b8] mt-2 line-clamp-2 leading-relaxed">
+                            <p className="text-xs text-slate-400 mt-2 line-clamp-2 leading-relaxed">
                               {task.detailedDescription || task.description}
                             </p>
                           )}
                         </div>
                         <Link href={`/scene/landing/${id}/learn?task=${task.id}`} className="shrink-0">
-                          <Button size="sm" className="rounded-md h-8 px-4 text-xs bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white">
-                            <PlayCircle className="w-3 h-3 mr-1" /> 开始任务
+                          <Button size="sm" className="rounded-lg h-9 px-4 text-xs bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 transition-all">
+                            <PlayCircle className="w-3.5 h-3.5 mr-1" /> 开始任务
                           </Button>
                         </Link>
                       </div>
@@ -277,34 +286,42 @@ export default function SceneDetailPage() {
       case "resources":
         return (
           <div>
-            <div className="text-sm text-[#64748b] mb-4">
-              共 <strong className="text-blue-500">{totalResources}</strong> 个资源
+            <div className="text-sm text-slate-500 mb-4">
+              共 <strong className="text-blue-600">{totalResources}</strong> 个资源
             </div>
             {totalResources === 0 ? (
-              <div className="text-center py-12 text-[#94a3b8]">
-                <FolderOpen className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                <div>暂无关联资源</div>
+              <div className="text-center py-16 text-slate-400">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
+                  <FolderOpen className="w-8 h-8 opacity-40" />
+                </div>
+                <div className="text-[15px] font-medium text-slate-600">暂无关联资源</div>
+                <div className="text-[13px] mt-1">该场景暂未配置学习资源</div>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {tasks.map((task) => {
                   const resources = taskResources.get(task.id) || []
                   if (resources.length === 0) return null
                   return (
                     <div key={task.id}>
-                      <div className="text-sm font-medium text-[#0f172a] mb-2 flex items-center gap-2">
-                        <BookOpen className="w-3.5 h-3.5 text-blue-500" />
+                      <div className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                        <BookOpen className="w-4 h-4 text-blue-500" />
                         {task.name}
-                        <span className="text-xs text-[#94a3b8] font-normal">({resources.length})</span>
+                        <span className="text-xs text-slate-400 font-normal">({resources.length})</span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {resources.map((r) => {
-                          const typeColors: Record<string, string> = { document: "bg-[#eff6ff] text-blue-600", video: "bg-[#fef3c7] text-amber-600", link: "bg-[#f3e8ff] text-purple-600", file: "bg-[#f0fdf4] text-emerald-600" }
+                          const typeColors: Record<string, string> = {
+                            document: "bg-blue-50 text-blue-600 border-blue-100",
+                            video: "bg-amber-50 text-amber-600 border-amber-100",
+                            link: "bg-purple-50 text-purple-600 border-purple-100",
+                            file: "bg-emerald-50 text-emerald-600 border-emerald-100",
+                          }
                           return (
-                            <div key={r.id} className="bg-[#fafaf9] rounded-lg p-3 border border-[#f0f0f0] hover:border-blue-200 transition-colors">
-                              <div className="text-sm font-medium text-[#0f172a] mb-1 truncate">{r.name}</div>
-                              <div className="flex items-center gap-2 text-xs text-[#94a3b8]">
-                                <span className={`px-1.5 py-0.5 rounded ${typeColors[r.type] || "bg-[#f1f5f9] text-[#64748b]"}`}>{r.type}</span>
+                            <div key={r.id} className="group bg-slate-50 rounded-xl p-3.5 border border-slate-100 hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5 transition-all">
+                              <div className="text-sm font-semibold text-slate-800 mb-1.5 truncate">{r.name}</div>
+                              <div className="flex items-center gap-2 text-xs text-slate-400">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${typeColors[r.type] || "bg-slate-100 text-slate-500 border-slate-200"}`}>{r.type}</span>
                                 {r.size && <span>{r.size}</span>}
                               </div>
                             </div>
@@ -322,20 +339,23 @@ export default function SceneDetailPage() {
       case "abilities":
         return (
           <div>
-            <div className="text-sm text-[#64748b] mb-4">
-              共 <strong className="text-blue-500">{uniqueAbilityIds.size}</strong> 个能力点
+            <div className="text-sm text-slate-500 mb-4">
+              共 <strong className="text-blue-600">{uniqueAbilityIds.size}</strong> 个能力点
             </div>
             {uniqueAbilityIds.size === 0 ? (
-              <div className="text-center py-12 text-[#94a3b8]">
-                <Lightbulb className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                <div>暂无考查能力点</div>
+              <div className="text-center py-16 text-slate-400">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
+                  <Lightbulb className="w-8 h-8 opacity-40" />
+                </div>
+                <div className="text-[15px] font-medium text-slate-600">暂无考查能力点</div>
+                <div className="text-[13px] mt-1">该场景暂未关联能力点</div>
               </div>
             ) : (
-              <div className="space-y-5">
+              <div className="space-y-6">
                 {tasks.filter((t) => t.abilityPointIds?.length > 0).map((task) => (
                   <div key={task.id}>
-                    <div className="text-sm font-semibold text-[#1f2937] mb-3 flex items-center gap-2">
-                      <Target className="w-3.5 h-3.5 text-violet-500" />
+                    <div className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                      <Target className="w-4 h-4 text-violet-500" />
                       {task.name}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -346,13 +366,13 @@ export default function SceneDetailPage() {
                           skill: { label: "技能", classes: "text-amber-600 bg-amber-50", border: "border-amber-100" },
                           quality: { label: "素养", classes: "text-purple-600 bg-purple-50", border: "border-purple-100" },
                         }
-                        const cfg = catConfig[ap?.category || ""] || { label: "", classes: "text-[#64748b] bg-gray-50", border: "border-gray-100" }
+                        const cfg = catConfig[ap?.category || ""] || { label: "", classes: "text-slate-500 bg-slate-50", border: "border-slate-100" }
                         return (
-                          <div key={aid} className={`bg-white border ${cfg.border} rounded-lg p-3.5 hover:shadow-sm transition-shadow`}>
+                          <div key={aid} className={`bg-white border ${cfg.border} rounded-xl p-3.5 hover:shadow-md hover:-translate-y-0.5 transition-all`}>
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
-                                <div className="text-sm font-medium text-[#0f172a] mb-1">{ap?.name || "能力点"}</div>
-                                {ap?.description && <div className="text-[11px] text-[#94a3b8] line-clamp-1">{ap.description}</div>}
+                                <div className="text-sm font-semibold text-slate-800 mb-1">{ap?.name || "能力点"}</div>
+                                {ap?.description && <div className="text-[11px] text-slate-400 line-clamp-1">{ap.description}</div>}
                               </div>
                               {cfg.label && (
                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${cfg.classes}`}>
@@ -374,53 +394,56 @@ export default function SceneDetailPage() {
       case "evaluation":
         return (
           <div>
-            <div className="text-sm text-[#64748b] mb-4">
-              共 <strong className="text-blue-500">{totalEvalConfigs}</strong> 个评价配置
+            <div className="text-sm text-slate-500 mb-4">
+              共 <strong className="text-blue-600">{totalEvalConfigs}</strong> 个评价配置
             </div>
             {totalEvalConfigs === 0 ? (
-              <div className="text-center py-12 text-[#94a3b8]">
-                <Target className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                <div>暂未配置评价标准</div>
+              <div className="text-center py-16 text-slate-400">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
+                  <Target className="w-8 h-8 opacity-40" />
+                </div>
+                <div className="text-[15px] font-medium text-slate-600">暂未配置评价标准</div>
+                <div className="text-[13px] mt-1">该场景暂未设置评价方式</div>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
                 <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[#e5e7eb]">
-                      <th className="text-left py-3 px-3 font-medium text-[#64748b] text-xs w-[40px]">#</th>
-                      <th className="text-left py-3 px-3 font-medium text-[#64748b] text-xs">任务名称</th>
-                      <th className="text-left py-3 px-3 font-medium text-[#64748b] text-xs">评价方式</th>
-                      <th className="text-left py-3 px-3 font-medium text-[#64748b] text-xs">场景权重</th>
-                      <th className="text-left py-3 px-3 font-medium text-[#64748b] text-xs">评分点</th>
+                  <thead className="bg-slate-50">
+                    <tr className="border-b border-slate-200">
+                      <th className="text-left py-3 px-3 font-semibold text-slate-500 text-xs w-[40px]">#</th>
+                      <th className="text-left py-3 px-3 font-semibold text-slate-500 text-xs">任务名称</th>
+                      <th className="text-left py-3 px-3 font-semibold text-slate-500 text-xs">评价方式</th>
+                      <th className="text-left py-3 px-3 font-semibold text-slate-500 text-xs">场景权重</th>
+                      <th className="text-left py-3 px-3 font-semibold text-slate-500 text-xs">评分点</th>
                     </tr>
                   </thead>
                   <tbody>
                     {tasks.filter((t) => (taskEvalConfigs.get(t.id) || []).length > 0).map((task, idx) => {
                       const configs = taskEvalConfigs.get(task.id) || []
                       return (
-                        <tr key={task.id} className="border-b border-[#f5f5f4] hover:bg-[#f8faff] transition-colors">
-                          <td className="py-3 px-3 text-[#64748b]">{idx + 1}</td>
+                        <tr key={task.id} className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors">
+                          <td className="py-3 px-3 text-slate-400">{idx + 1}</td>
                           <td className="py-3 px-3">
-                            <div className="font-medium text-[#0f172a]">{task.name}</div>
-                            <div className="text-[11px] text-[#94a3b8]">{taskTypeLabels[task.taskType]}</div>
+                            <div className="font-semibold text-slate-800">{task.name}</div>
+                            <div className="text-[11px] text-slate-400">{taskTypeLabels[task.taskType]}</div>
                           </td>
-                          <td className="py-3 px-3 text-[#475569]">
+                          <td className="py-3 px-3 text-slate-600">
                             {configs.map((c) => c.methodKey).join("、") || "-"}
                           </td>
                           <td className="py-3 px-3">
                             {configs.map((c, ci) => (
-                              <div key={ci} className="text-[#2563eb] font-medium">{Math.round(c.weight * 100)}%</div>
+                              <div key={ci} className="text-blue-600 font-semibold">{Math.round(c.weight * 100)}%</div>
                             ))}
                           </td>
                           <td className="py-3 px-3">
-                            <div className="flex flex-wrap gap-1">
+                            <div className="flex flex-wrap gap-1.5">
                               {(evalPoints.get(configs[0]?.id) || []).map((pt) => (
-                                <span key={pt.id} className="inline-block text-[10px] px-2 py-0.5 rounded bg-[#f1f5f9] text-[#475569]">
+                                <span key={pt.id} className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
                                   {pt.name}({pt.maxScore}分)
                                 </span>
                               ))}
                               {configs.every((c) => (evalPoints.get(c.id) || []).length === 0) && (
-                                <span className="text-xs text-[#94a3b8]">-</span>
+                                <span className="text-xs text-slate-400">-</span>
                               )}
                             </div>
                           </td>
@@ -437,29 +460,32 @@ export default function SceneDetailPage() {
       case "knowledge":
         return (
           <div>
-            <div className="text-sm text-[#64748b] mb-4">
-              共 <strong className="text-blue-500">{uniqueKnowledgeIds.size}</strong> 个知识点
+            <div className="text-sm text-slate-500 mb-4">
+              共 <strong className="text-blue-600">{uniqueKnowledgeIds.size}</strong> 个知识点
             </div>
             {uniqueKnowledgeIds.size === 0 ? (
-              <div className="text-center py-12 text-[#94a3b8]">
-                <GitBranch className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                <div>暂无关联知识点</div>
+              <div className="text-center py-16 text-slate-400">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
+                  <GitBranch className="w-8 h-8 opacity-40" />
+                </div>
+                <div className="text-[15px] font-medium text-slate-600">暂无关联知识点</div>
+                <div className="text-[13px] mt-1">该场景暂未关联知识点</div>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {tasks.filter((t) => t.knowledgePointIds?.length > 0).map((task) => (
                   <div key={task.id}>
-                    <div className="text-sm font-semibold text-[#1f2937] mb-2 flex items-center gap-2">
-                      <BookOpen className="w-3.5 h-3.5 text-teal-500" />
+                    <div className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-teal-500" />
                       {task.name}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {task.knowledgePointIds?.map((kid) => {
                         const kp = knowledgeMap.get(kid)
                         return (
-                          <div key={kid} className="bg-white border border-[#f0f0f0] rounded-lg px-3.5 py-2.5 hover:border-blue-200 transition-colors">
-                            <div className="text-sm font-medium text-[#0f172a]">{kp?.name || "知识点"}</div>
-                            {kp?.code && <div className="text-[10px] text-[#94a3b8] mt-0.5">编码：{kp.code}</div>}
+                          <div key={kid} className="bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5 transition-all">
+                            <div className="text-sm font-semibold text-slate-800">{kp?.name || "知识点"}</div>
+                            {kp?.code && <div className="text-[10px] text-slate-400 mt-0.5">编码：{kp.code}</div>}
                           </div>
                         )
                       })}
@@ -477,56 +503,59 @@ export default function SceneDetailPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f5f5f5]" style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" }}>
+    <div className="min-h-screen flex flex-col bg-[#f8fafc]" style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" }}>
       {/* Header */}
-      <div className="bg-white border-b border-[#f0f0f0]">
-        <div className="max-w-[1400px] mx-auto px-6 py-4">
-          <div className="flex items-center gap-2 mb-4 text-sm text-[#64748b]">
-            <Link href="/scene/landing" className="hover:text-blue-600 transition-colors">首页</Link>
-            <span>/</span>
-            <span className="text-[#1f2937] font-medium truncate">{scenario.name}</span>
+      <div className="bg-white border-b border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+        <div className="max-w-[1400px] mx-auto px-6 py-5">
+          <div className="flex items-center gap-2 mb-5 text-sm text-slate-500">
+            <Link href="/scene/landing" className="hover:text-blue-600 transition-colors flex items-center gap-1">
+              <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-colors">←</span> 首页
+            </Link>
+            <span className="text-slate-300">/</span>
+            <span className="text-slate-800 font-medium truncate">{scenario.name}</span>
           </div>
 
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Left: Cover + Info */}
             <div className="flex-1">
-              <div className="bg-white rounded-xl border border-[#f0f0f0] overflow-hidden">
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
                 <div className="flex flex-col sm:flex-row gap-6 p-6">
                   <div
-                    className="w-full sm:w-[260px] h-[170px] rounded-xl bg-cover bg-center flex items-center justify-center shrink-0 self-stretch shadow-[0_4px_16px_rgba(102,126,234,0.25)]"
+                    className="w-full sm:w-[280px] h-[190px] rounded-2xl bg-cover bg-center flex items-center justify-center shrink-0 self-stretch shadow-[0_12px_40px_rgba(0,0,0,0.15)] relative overflow-hidden"
                     style={coverStyle}
                   >
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
                     {!scenario.coverImage && (
-                      <svg className="w-14 h-14 text-white/85" viewBox="0 0 24 24" fill="currentColor" style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))" }}>
+                      <svg className="w-16 h-16 text-white/90 relative z-10" viewBox="0 0 24 24" fill="currentColor" style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.2))" }}>
                         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                       </svg>
                     )}
-                    <span className="absolute bottom-2 right-0 bg-black/40 text-white px-3 py-1 rounded-l text-xs">{scenario.id.slice(0, 8)}</span>
+                    <span className="absolute bottom-3 right-3 z-10 bg-black/40 backdrop-blur-sm text-white px-2.5 py-1 rounded-lg text-[11px] border border-white/10">{scenario.id.slice(0, 8)}</span>
                   </div>
 
                   <div className="flex-1 flex flex-col min-w-0">
                     <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
                       <div className="flex items-center gap-2.5 flex-wrap min-w-0">
-                        <h1 className="text-2xl font-semibold text-[#1f2937] truncate">{scenario.name}</h1>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs border border-[#d9d9d9] bg-[#f5f5f5] text-[#64748b] font-medium shrink-0">
-                          {scenario.version}
+                        <h1 className="text-[26px] font-bold text-slate-900 truncate">{scenario.name}</h1>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600 font-medium shrink-0 border border-slate-200">
+                          v{scenario.version}
                         </span>
                       </div>
                       <div className="flex gap-2 shrink-0">
-                        <Button variant="ghost" size="sm" className="h-9 px-3 text-xs text-[#64748b] hover:text-blue-600 border border-[#d9d9d9] rounded-md">
+                        <Button variant="ghost" size="sm" className="h-9 px-3 text-xs text-slate-500 hover:text-blue-600 border border-slate-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-all">
                           <Share2 className="w-3.5 h-3.5 mr-1" /> 分享
                         </Button>
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-[#94a3b8] mb-3">
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-slate-400 mb-3">
                       <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> 创建人：{scenario.creatorId.slice(0, 8)}</span>
                       <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> 更新于 {formatDate(scenario.updatedAt)}</span>
                       <span className="flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" /> 浏览 0 次</span>
                     </div>
 
                     {scenario.background && (
-                      <p className="text-sm text-[#64748b] leading-relaxed mb-4 line-clamp-3">
+                      <p className="text-sm text-slate-600 leading-relaxed mb-4 line-clamp-3">
                         {scenario.background}
                       </p>
                     )}
@@ -534,18 +563,18 @@ export default function SceneDetailPage() {
                     <div className="flex flex-col gap-2 text-xs">
                       {scenario.industryNames && scenario.industryNames.length > 0 && (
                         <div className="flex items-center gap-2">
-                          <span className="text-[#94a3b8] shrink-0">面向行业：</span>
+                          <span className="text-slate-400 shrink-0">面向行业：</span>
                           <div className="flex flex-wrap gap-1.5">
                             {scenario.industryNames.slice(0, 3).map((n) => (
-                              <span key={n} className="px-2.5 py-0.5 rounded text-[11px] bg-[#fff7ed] text-[#c2410c] border border-[#ffedd5]">{n}</span>
+                              <span key={n} className="px-2.5 py-0.5 rounded-full text-[11px] bg-orange-50 text-orange-700 border border-orange-100 font-medium">{n}</span>
                             ))}
                           </div>
                         </div>
                       )}
                       <div className="flex items-center gap-2">
-                        <span className="text-[#94a3b8] shrink-0">难度等级：</span>
+                        <span className="text-slate-400 shrink-0">难度等级：</span>
                         <span
-                          className="px-2.5 py-0.5 rounded text-[11px] border"
+                          className="px-2.5 py-0.5 rounded-full text-[11px] border font-medium"
                           style={{ backgroundColor: diff.color + "15", color: diff.color, borderColor: diff.color + "30" }}
                         >
                           {diff.label}
@@ -553,13 +582,13 @@ export default function SceneDetailPage() {
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-3 mt-auto pt-4">
+                    <div className="flex flex-wrap gap-3 mt-auto pt-5">
                       <Link href={`/scene/landing/${id}/learn`}>
-                        <Button className="rounded-md px-6 h-10 bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white font-medium text-sm">
+                        <Button className="rounded-xl px-7 h-11 bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white font-semibold text-sm shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all">
                           <PlayCircle className="w-4 h-4 mr-1.5" /> 开始学习
                         </Button>
                       </Link>
-                      <Button variant="ghost" className="rounded-md px-5 h-10 text-[#64748b] border border-[#d9d9d9] hover:text-blue-600 hover:border-blue-300 text-sm" onClick={() => tabsRef.current?.scrollIntoView({ behavior: "smooth" })}>
+                      <Button variant="ghost" className="rounded-xl px-5 h-11 text-slate-600 border border-slate-200 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50/50 text-sm transition-all" onClick={() => tabsRef.current?.scrollIntoView({ behavior: "smooth" })}>
                         查看任务列表 <ChevronDown className="w-4 h-4 ml-1" />
                       </Button>
                     </div>
@@ -569,66 +598,63 @@ export default function SceneDetailPage() {
             </div>
 
             {/* Right: Stats Sidebar */}
-            <div className="lg:w-[300px] shrink-0">
-              <div className="bg-white rounded-xl border border-[#f0f0f0] overflow-hidden">
-                <div className="px-5 py-4 border-b border-[#f0f0f0] flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-blue-500" />
-                  <span className="text-sm font-semibold text-[#1f2937]">课时统计</span>
+            <div className="lg:w-[320px] shrink-0">
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+                <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <BarChart3 className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <span className="text-sm font-bold text-slate-800">课时统计</span>
                 </div>
                 <div className="p-5">
                   <div className="flex items-center justify-center mb-5">
-                    <div className="relative w-[120px] h-[120px]">
-                      <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
-                        <circle cx="60" cy="60" r="50" fill="none" stroke="#f0f0f0" strokeWidth="10" />
+                    <div className="relative w-[140px] h-[140px]">
+                      <svg className="w-full h-full -rotate-90" viewBox="0 0 140 140">
+                        <circle cx="70" cy="70" r="58" fill="none" stroke="#f1f5f9" strokeWidth="10" />
                         {totalHours > 0 && (
                           <circle
-                            cx="60" cy="60" r="50" fill="none" stroke="#2563eb"
+                            cx="70" cy="70" r="58" fill="none" stroke="#3b82f6"
                             strokeWidth="10" strokeLinecap="round"
-                            strokeDasharray={`${(assessmentHours / totalHours) * Math.PI * 100 || 0} ${Math.PI * 100}`}
+                            strokeDasharray={`${(assessmentHours / totalHours) * Math.PI * 116 || 0} ${Math.PI * 116}`}
                           />
                         )}
                         {totalHours > 0 && trainingHours > 0 && (
                           <circle
-                            cx="60" cy="60" r="50" fill="none" stroke="#22c55e"
+                            cx="70" cy="70" r="58" fill="none" stroke="#22c55e"
                             strokeWidth="10" strokeLinecap="round"
-                            strokeDasharray={`${(trainingHours / totalHours) * Math.PI * 100 || 0} ${Math.PI * 100}`}
-                            strokeDashoffset={-1 * (assessmentHours / totalHours) * Math.PI * 100}
+                            strokeDasharray={`${(trainingHours / totalHours) * Math.PI * 116 || 0} ${Math.PI * 116}`}
+                            strokeDashoffset={-1 * (assessmentHours / totalHours) * Math.PI * 116}
                           />
                         )}
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <div className="text-[28px] font-bold text-[#1f2937]">{totalHours}</div>
-                        <div className="text-xs text-[#94a3b8]">总课时</div>
+                        <div className="text-[32px] font-bold text-slate-800 leading-none">{totalHours}</div>
+                        <div className="text-xs text-slate-400 mt-1">总课时</div>
                       </div>
                     </div>
                   </div>
                   <div className="flex justify-center gap-6 text-xs">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 text-slate-600">
                       <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
                       <span>考核 {assessmentHours} 课时</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 text-slate-600">
                       <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
                       <span>训练 {trainingHours} 课时</span>
                     </div>
                   </div>
-                  <div className="mt-5 pt-4 border-t border-[#f0f0f0] grid grid-cols-2 gap-3">
-                    <div className="text-center">
-                      <div className="text-xl font-bold text-[#1f2937]">{tasks.length}</div>
-                      <div className="text-[11px] text-[#94a3b8]">任务总数</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xl font-bold text-[#1f2937]">{uniqueAbilityIds.size}</div>
-                      <div className="text-[11px] text-[#94a3b8]">能力点数</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xl font-bold text-[#1f2937]">{totalResources}</div>
-                      <div className="text-[11px] text-[#94a3b8]">资源数</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xl font-bold text-[#1f2937]">{diff.label}</div>
-                      <div className="text-[11px] text-[#94a3b8]">难度</div>
-                    </div>
+                  <div className="mt-5 pt-4 border-t border-slate-100 grid grid-cols-2 gap-3">
+                    {[
+                      { value: tasks.length, label: "任务总数", color: "text-blue-600" },
+                      { value: uniqueAbilityIds.size, label: "能力点数", color: "text-violet-600" },
+                      { value: totalResources, label: "资源数", color: "text-emerald-600" },
+                      { value: diff.label, label: "难度", color: "text-amber-600" },
+                    ].map((s, i) => (
+                      <div key={i} className="text-center p-2 rounded-xl hover:bg-slate-50 transition-colors">
+                        <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>
+                        <div className="text-[11px] text-slate-400 mt-0.5">{s.label}</div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -638,41 +664,41 @@ export default function SceneDetailPage() {
       </div>
 
       <main className="flex-1 max-w-[1400px] mx-auto px-6 py-6 w-full">
-        <div ref={tabsRef} className="bg-white rounded-xl border border-[#f0f0f0] overflow-hidden">
-          <div className="flex border-b border-[#f0f0f0] px-6 overflow-x-auto">
+        <div ref={tabsRef} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+          <div className="flex border-b border-slate-100 px-6 overflow-x-auto">
             {TABS.map((t) => (
               <button
                 key={t.value}
                 onClick={() => setActiveTab(t.value)}
                 className={`
-                  py-4 px-5 text-[14px] whitespace-nowrap relative transition-colors cursor-pointer flex items-center gap-1.5
-                  ${activeTab === t.value ? "text-[#1677ff] font-medium" : "text-[#64748b] hover:text-[#1677ff] hover:bg-[#1677ff08]"}
+                  py-4 px-5 text-[14px] whitespace-nowrap relative transition-all cursor-pointer flex items-center gap-1.5
+                  ${activeTab === t.value ? "text-blue-600 font-semibold" : "text-slate-500 hover:text-blue-600 hover:bg-blue-50/40"}
                 `}
               >
-                <t.icon className="w-4 h-4" />
+                <t.icon className={`w-4 h-4 ${activeTab === t.value ? "text-blue-500" : "text-slate-400"}`} />
                 {t.label}
                 {t.value === "tasks" && tasks.length > 0 && (
-                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? "bg-[#e6f4ff] text-[#1677ff]" : "bg-[#f0f0f0] text-[#64748b]"}`}>
+                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-500"}`}>
                     {tasks.length}
                   </span>
                 )}
                 {t.value === "resources" && totalResources > 0 && (
-                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? "bg-[#e6f4ff] text-[#1677ff]" : "bg-[#f0f0f0] text-[#64748b]"}`}>
+                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-500"}`}>
                     {totalResources}
                   </span>
                 )}
                 {t.value === "abilities" && uniqueAbilityIds.size > 0 && (
-                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? "bg-[#e6f4ff] text-[#1677ff]" : "bg-[#f0f0f0] text-[#64748b]"}`}>
+                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-500"}`}>
                     {uniqueAbilityIds.size}
                   </span>
                 )}
                 {t.value === "evaluation" && totalEvalConfigs > 0 && (
-                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? "bg-[#e6f4ff] text-[#1677ff]" : "bg-[#f0f0f0] text-[#64748b]"}`}>
+                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] leading-none ${activeTab === t.value ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-500"}`}>
                     {totalEvalConfigs}
                   </span>
                 )}
                 {activeTab === t.value && (
-                  <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-[#1677ff] rounded-t" />
+                  <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-blue-500 rounded-t-full" />
                 )}
               </button>
             ))}

@@ -337,27 +337,36 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: isScene ? "url('/scene-hero-bg.png')" : "url('/student-hero-bg.png')" }}
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-[rgba(30,64,175,0.85)] via-[rgba(59,130,246,0.75)] to-[rgba(124,58,237,0.75)]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[rgba(30,64,175,0.88)] via-[rgba(59,130,246,0.78)] to-[rgba(124,58,237,0.78)]" />
+        <div
+          className="absolute inset-0 opacity-[0.12]"
+          style={{
+            backgroundImage: `linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)`,
+            backgroundSize: "48px 48px",
+          }}
+        />
+        <div className="absolute top-[-80px] right-[10%] w-[420px] h-[420px] rounded-full bg-white/10 blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-[-60px] left-[5%] w-[320px] h-[320px] rounded-full bg-blue-400/15 blur-[90px] pointer-events-none" />
         <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-14 pt-2 flex flex-col lg:flex-row justify-between items-start gap-8">
           <div className="flex-1 pt-4">
-            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-3.5 py-1.5 rounded-full text-[13px] border border-white/20 mb-5">
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md text-white px-3.5 py-1.5 rounded-full text-[13px] border border-white/25 mb-5 shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
               <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
               {isScene ? "场景化实践 · 任务驱动教学" : "对接产业前沿 · 赋能岗位能力学习"}
             </div>
-            <h1 className="text-[57px] font-extrabold text-white leading-[1.2] mb-4">
+            <h1 className="text-[42px] sm:text-[48px] lg:text-[52px] font-bold text-white leading-[1.15] mb-5 drop-shadow-sm">
               {isScene ? (
                 <>场景化实践教学<br />以真实场景驱动能力成长</>
               ) : (
                 <>对接产业前沿<br />开启岗位能力学习新征程</>
               )}
             </h1>
-            <p className="text-[17px] text-white/85 mb-6 max-w-xl">
+            <p className="text-[17px] text-white/85 mb-7 max-w-2xl leading-relaxed">
               {isScene
                 ? "基于真实业务场景的任务化训练，从入门到专家，系统提升综合实战能力"
                 : "链接真实岗位场景，构建从认知到胜任的能力进阶闭环"}
             </p>
             <Button
-              className="inline-flex items-center gap-2 bg-white text-blue-600 hover:bg-white/90 px-6 h-11 rounded-full text-sm font-semibold shadow-lg"
+              className="inline-flex items-center gap-2 bg-white text-blue-600 hover:bg-blue-50 hover:-translate-y-0.5 px-7 h-12 rounded-full text-sm font-semibold shadow-lg transition-all"
               onClick={() => listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
             >
               {isScene ? "浏览场景" : "浏览岗位"} <ChevronRight className="w-4 h-4" />
@@ -365,40 +374,40 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
           </div>
 
           {isScene ? (
-            <div className="w-full lg:w-[520px] shrink-0 flex flex-col gap-3 pt-4">
+            <div className="w-full lg:w-[520px] shrink-0 flex flex-col gap-4 pt-4">
               {/* 目标岗位配套场景 */}
-              <div className="bg-white/[0.08] backdrop-blur-[20px] border border-white/15 rounded-2xl p-5 text-white shadow-[0_4px_24px_rgba(0,0,0,0.15)]">
+              <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.18)]">
                 <div className="flex items-center gap-2.5 mb-3">
-                  <div className="w-7 h-7 rounded-lg bg-white/15 flex items-center justify-center">
-                    <Flag className="w-3.5 h-3.5 text-yellow-300" />
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-yellow-400/30 to-orange-500/30 border border-white/15 flex items-center justify-center shadow-sm">
+                    <Flag className="w-4 h-4 text-yellow-300" />
                   </div>
-                  <span className="text-[14px] font-bold">目标岗位配套场景</span>
+                  <span className="text-[15px] font-bold">目标岗位配套场景</span>
                 </div>
-                <div className="flex flex-col items-center justify-center text-white/50 text-center py-5">
-                  <Flag className="w-8 h-8 mb-2 opacity-40" />
-                  <div className="text-sm font-semibold text-white/70">暂无目标岗位配套场景</div>
-                  <div className="text-[12px] mt-1 text-white/40 leading-relaxed">完成能力测评后，系统将为你推荐匹配岗位，关联场景将在此展示</div>
+                <div className="flex flex-col items-center justify-center text-white/50 text-center py-6">
+                  <Flag className="w-9 h-9 mb-3 opacity-40" />
+                  <div className="text-sm font-semibold text-white/80">暂无目标岗位配套场景</div>
+                  <div className="text-[12px] mt-1.5 text-white/50 leading-relaxed max-w-[320px]">完成能力测评后，系统将为你推荐匹配岗位，关联场景将在此展示</div>
                 </div>
               </div>
               {/* 心仪岗位配套场景 */}
-              <div className="bg-white/[0.08] backdrop-blur-[20px] border border-white/15 rounded-2xl p-5 text-white shadow-[0_4px_24px_rgba(0,0,0,0.15)]">
+              <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.18)]">
                 <div className="flex items-center gap-2.5 mb-3">
-                  <div className="w-7 h-7 rounded-lg bg-white/15 flex items-center justify-center">
-                    <Heart className="w-3.5 h-3.5 text-rose-300" />
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-400/30 to-pink-500/30 border border-white/15 flex items-center justify-center shadow-sm">
+                    <Heart className="w-4 h-4 text-rose-300" />
                   </div>
-                  <span className="text-[14px] font-bold">心仪岗位配套场景</span>
+                  <span className="text-[15px] font-bold">心仪岗位配套场景</span>
                 </div>
                 {favoritePositionScenarios.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center text-white/50 text-center py-5">
-                    <Heart className="w-8 h-8 mb-2 opacity-40" />
-                    <div className="text-sm font-semibold text-white/70">快去收藏岗位吧！</div>
-                    <div className="text-[12px] mt-1 text-white/40 leading-relaxed">在岗位列表收藏你感兴趣的岗位，关联场景将在此展示</div>
+                  <div className="flex flex-col items-center justify-center text-white/50 text-center py-6">
+                    <Heart className="w-9 h-9 mb-3 opacity-40" />
+                    <div className="text-sm font-semibold text-white/80">快去收藏岗位吧！</div>
+                    <div className="text-[12px] mt-1.5 text-white/50 leading-relaxed max-w-[320px]">在岗位列表收藏你感兴趣的岗位，关联场景将在此展示</div>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-1">
                     {favoritePositionScenarios.slice(0, 4).map((sc) => (
                       <Link key={sc.id} href={`/scene/landing/${sc.id}`}>
-                        <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 cursor-pointer transition-all group">
+                        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/15 cursor-pointer transition-all group">
                           <span className="flex-1 text-[13px] truncate group-hover:text-yellow-200 transition-colors">{sc.name}</span>
                           <span className="text-[11px] text-white/40 shrink-0">v{sc.version || "1.0"}</span>
                         </div>
@@ -422,19 +431,20 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
       {/* Stats bar for scene mode - 4 indicators below hero */}
       {isScene && (
         <div className="max-w-[1400px] mx-auto px-8 -mt-10 relative z-20 w-full">
-          <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_24px_rgba(0,0,0,0.06)] p-6 grid grid-cols-4 gap-4">
+          <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_8px_32px_rgba(0,0,0,0.06)] p-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { icon: Layers, value: stats.total, label: "实践场景", gradient: "from-blue-500 to-blue-400", bg: "bg-blue-50" },
-              { icon: ListChecks, value: stats.taskCount, label: "任务总数", gradient: "from-violet-500 to-violet-400", bg: "bg-violet-50" },
-              { icon: Factory, value: stats.industryCount, label: "覆盖行业", gradient: "from-emerald-500 to-emerald-400", bg: "bg-emerald-50" },
-              { icon: Building2, value: stats.favoriteTotal, label: "关联岗位", gradient: "from-amber-500 to-amber-400", bg: "bg-amber-50" },
+              { icon: Layers, value: stats.total, label: "实践场景", gradient: "from-blue-500 to-blue-400", light: "from-blue-500/20 to-blue-400/5" },
+              { icon: ListChecks, value: stats.taskCount, label: "任务总数", gradient: "from-violet-500 to-violet-400", light: "from-violet-500/20 to-violet-400/5" },
+              { icon: Factory, value: stats.industryCount, label: "覆盖行业", gradient: "from-emerald-500 to-emerald-400", light: "from-emerald-500/20 to-emerald-400/5" },
+              { icon: Building2, value: stats.favoriteTotal, label: "关联岗位", gradient: "from-amber-500 to-amber-400", light: "from-amber-500/20 to-amber-400/5" },
             ].map((s, i) => (
-              <div key={i} className="flex items-center gap-5 p-3 rounded-xl transition-all hover:bg-[#f8fafc] hover:shadow-sm cursor-default">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg bg-gradient-to-br ${s.gradient} shrink-0`}>
-                  <s.icon className="w-7 h-7" strokeWidth={1.8} />
+              <div key={i} className="flex items-center gap-4 p-4 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md hover:bg-[#f8fafc] cursor-default group">
+                <div className={`relative w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg bg-gradient-to-br ${s.gradient} shrink-0 overflow-hidden`}>
+                  <div className={`absolute inset-0 bg-gradient-to-br ${s.light} opacity-0 group-hover:opacity-100 transition-opacity`} />
+                  <s.icon className="w-7 h-7 relative z-10" strokeWidth={1.8} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[28px] font-extrabold text-[#0f172a] leading-none tracking-tight">{s.value.toLocaleString()}</div>
+                  <div className="text-[28px] font-bold text-[#0f172a] leading-none tracking-tight">{s.value.toLocaleString()}</div>
                   <div className="text-[13px] text-[#64748b] mt-1 font-medium">{s.label}</div>
                 </div>
               </div>
@@ -549,7 +559,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
         {isScene && (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-5 mb-6">
             {/* 行业覆盖热力标签 */}
-            <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6">
+            <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6">
               <div className="flex items-center gap-2.5 text-[15px] font-bold text-[#0f172a] mb-5">
                 <div className="w-1 h-5 rounded-full bg-gradient-to-b from-amber-400 to-orange-500" />
                 <Factory className="w-4 h-4 text-amber-500" />
@@ -577,7 +587,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                       return (
                         <span
                           key={name}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105 hover:shadow-sm cursor-default"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105 hover:shadow-md cursor-default"
                           style={{
                             backgroundColor: p.bg.replace("{a}", String(0.08 + ratio * 0.18)),
                             color: p.text,
@@ -586,7 +596,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                           }}
                         >
                           {name}
-                          <span className="text-[10px] opacity-60 rounded-full bg-black/8 px-1.5 py-0.5 leading-none font-medium">{count}</span>
+                          <span className="text-[10px] opacity-70 rounded-full bg-black/[0.06] px-1.5 py-0.5 leading-none font-medium">{count}</span>
                         </span>
                       )
                     })}
@@ -599,7 +609,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
             </div>
 
             {/* 场景难度分布 */}
-            <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6">
+            <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6">
               <div className="flex items-center gap-2.5 text-[15px] font-bold text-[#0f172a] mb-5">
                 <div className="w-1 h-5 rounded-full bg-gradient-to-b from-violet-400 to-purple-500" />
                 <BarChart3 className="w-4 h-4 text-purple-500" />
@@ -627,9 +637,9 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                             <span className="text-[13px] font-semibold text-[#374151]">{e.label}</span>
                             <span className="text-[13px] font-bold text-[#475569]">{count} 个</span>
                           </div>
-                          <div className="h-3 bg-[#f1f5f9] rounded-full overflow-hidden shadow-inner">
+                          <div className="h-2.5 bg-[#f1f5f9] rounded-full overflow-hidden shadow-inner">
                             <div
-                              className="h-full rounded-full transition-all duration-700 ease-out group-hover:brightness-110"
+                              className="h-full rounded-full transition-all duration-700 ease-out group-hover:brightness-110 shadow-[0_0_8px_rgba(0,0,0,0.08)]"
                               style={{
                                 width: `${pct}%`,
                                 background: `linear-gradient(90deg, ${e.from}, ${e.to})`,
@@ -649,7 +659,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
 
         <div ref={listRef}>
           {/* Filter */}
-          <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6 mb-5">
+          <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6 mb-5">
             <div className="flex items-center gap-2.5 text-[16px] font-bold text-[#0f172a] mb-5">
               <div className="w-1 h-5 rounded-full bg-gradient-to-b from-blue-400 to-blue-600" />
               <Filter className="w-4 h-4 text-blue-500" />
@@ -666,8 +676,8 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                       className={`
                         px-3.5 py-1.5 rounded-full text-[13px] border transition-all whitespace-nowrap
                         ${selectedIndustry === item
-                          ? "bg-blue-500 text-white border-blue-500"
-                          : "bg-white text-[#475569] border-[#e5e7eb] hover:border-blue-300 hover:text-blue-600"
+                          ? "bg-blue-500 text-white border-blue-500 shadow-sm"
+                          : "bg-slate-50 text-[#475569] border-slate-200 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50"
                         }
                       `}
                     >
@@ -687,8 +697,8 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                         className={`
                           px-3.5 py-1.5 rounded-full text-[13px] border transition-all whitespace-nowrap
                           ${selectedMajor === item
-                            ? "bg-blue-500 text-white border-blue-500"
-                            : "bg-white text-[#475569] border-[#e5e7eb] hover:border-blue-300 hover:text-blue-600"
+                            ? "bg-blue-500 text-white border-blue-500 shadow-sm"
+                            : "bg-slate-50 text-[#475569] border-slate-200 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50"
                           }
                         `}
                       >
@@ -708,8 +718,8 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                         className={`
                           px-3.5 py-1.5 rounded-full text-[13px] border transition-all whitespace-nowrap
                           ${selectedDifficulty === item
-                            ? "bg-blue-500 text-white border-blue-500"
-                            : "bg-white text-[#475569] border-[#e5e7eb] hover:border-blue-300 hover:text-blue-600"
+                            ? "bg-blue-500 text-white border-blue-500 shadow-sm"
+                            : "bg-slate-50 text-[#475569] border-slate-200 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50"
                           }
                         `}
                       >
@@ -726,11 +736,11 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                 {activeFilters.map((f) => (
                   <span
                     key={f.type}
-                    className="inline-flex items-center gap-1 bg-[#eff6ff] text-blue-600 text-xs px-2.5 py-1 rounded-full"
+                    className="inline-flex items-center gap-1.5 bg-[#eff6ff] text-blue-600 text-xs px-2.5 py-1 rounded-full border border-blue-100"
                   >
                     {f.label}
                     <X
-                      className="w-3 h-3 cursor-pointer"
+                      className="w-3 h-3 cursor-pointer hover:text-red-500 transition-colors"
                       onClick={() => {
                         if (f.type === "industry") setSelectedIndustry("全部")
                         if (f.type === "major") setSelectedMajor("全部")
@@ -742,7 +752,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                 ))}
                 <button
                   onClick={() => { setSelectedIndustry("全部"); setSelectedMajor("全部"); setSelectedDifficulty("全部"); setKeyword("") }}
-                  className="text-[13px] text-blue-600 hover:underline"
+                  className="text-[13px] text-blue-600 hover:text-blue-700 font-medium"
                 >
                   清空筛选
                 </button>
@@ -759,24 +769,24 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                   onClick={() => setSort(s.value)}
                   className={`
                     px-5 py-2 rounded-[10px] text-[13px] transition-all font-medium
-                    ${sort === s.value ? "bg-blue-500 text-white shadow-sm" : "text-[#475569] hover:text-blue-600 hover:bg-[#f8fafc]"}
+                    ${sort === s.value ? "bg-blue-500 text-white shadow-md" : "text-[#475569] hover:text-blue-600 hover:bg-[#f8fafc]"}
                   `}
                 >
                   {s.label}
                 </button>
               ))}
             </div>
-            <div className="relative w-[340px]">
+            <div className="relative w-full sm:w-[340px]">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94a3b8]" />
               <Input
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") executeSearch() }}
                 placeholder={isScene ? "搜索场景名称、编码或关键词" : "搜索岗位名称、岗位编码或关键词"}
-                className="pl-10 pr-[72px] h-11 bg-[#f8fafc] border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-blue-300 focus:ring-2 focus:ring-blue-50"
+                className="pl-10 pr-[72px] h-11 bg-[#f8fafc] border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-blue-300 focus:ring-2 focus:ring-blue-100 focus:bg-white transition-all"
               />
               <Button
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-[10px] px-5 h-8 bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white text-xs font-medium shadow-sm"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-[10px] px-5 h-8 bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white text-xs font-medium shadow-sm hover:shadow-md transition-all"
                 onClick={executeSearch}
               >
                 搜索

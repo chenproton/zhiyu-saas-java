@@ -27,9 +27,9 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
   }
 
   return (
-    <div className="flex items-center justify-center gap-2 mt-7">
+    <div className="flex items-center justify-center gap-2 mt-8">
       <button
-        className="w-8 h-8 border border-[#e7e5e4] rounded-lg bg-white text-[#475569] flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed hover:border-blue-500 hover:text-blue-500"
+        className="w-9 h-9 border border-slate-200 rounded-xl bg-white text-slate-500 flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50"
         disabled={currentPage <= 1}
         onClick={() => onPageChange(currentPage - 1)}
       >
@@ -38,16 +38,16 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
       <div className="flex items-center gap-1.5">
         {pages.map((p, i) =>
           p === "..." ? (
-            <span key={`ellipsis-${i}`} className="px-2 text-[#94a3b8]">...</span>
+            <span key={`ellipsis-${i}`} className="px-2 text-slate-400">...</span>
           ) : (
             <button
               key={p}
               onClick={() => onPageChange(p as number)}
               className={`
-                min-w-[32px] h-8 px-2 rounded-lg border text-[13px] flex items-center justify-center transition-colors
+                min-w-[36px] h-9 px-2.5 rounded-xl border text-[13px] flex items-center justify-center transition-all
                 ${currentPage === p
-                  ? "bg-blue-500 border-blue-500 text-white font-medium"
-                  : "bg-white border-[#e7e5e4] text-[#475569] hover:border-blue-500 hover:text-blue-500"
+                  ? "bg-blue-500 border-blue-500 text-white font-semibold shadow-md shadow-blue-500/20"
+                  : "bg-white border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50"
                 }
               `}
             >
@@ -57,7 +57,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
         )}
       </div>
       <button
-        className="w-8 h-8 border border-[#e7e5e4] rounded-lg bg-white text-[#475569] flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed hover:border-blue-500 hover:text-blue-500"
+        className="w-9 h-9 border border-slate-200 rounded-xl bg-white text-slate-500 flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50"
         disabled={currentPage >= totalPages}
         onClick={() => onPageChange(currentPage + 1)}
       >

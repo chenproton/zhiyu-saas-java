@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Clock, Layers, BarChart3, MapPin } from "lucide-react"
+import { Clock, Layers, BarChart3, MapPin, Star } from "lucide-react"
 import type { Scenario } from "@/lib/types"
 
 interface SceneCardProps {
@@ -22,12 +22,16 @@ const coverGradients = [
   "linear-gradient(135deg,#0f766e,#14b8a6)",
 ]
 
-const difficultyMap: Record<number, { color: string; label: string }> = {
-  1: { color: "#22c55e", label: "入门" },
-  2: { color: "#eab308", label: "初级" },
-  3: { color: "#f97316", label: "中级" },
-  4: { color: "#ef4444", label: "高级" },
-  5: { color: "#8b5cf6", label: "专家" },
+const difficultyMap: Record<number, { color: string; label: string; bg: string; border: string }> = {
+  1: { color: "#16a34a", label: "入门", bg: "#f0fdf4", border: "#bbf7d0" },
+  2: { color: "#ca8a04", label: "初级", bg: "#fefce8", border: "#fde047" },
+  3: { color: "#ea580c", label: "中级", bg: "#fff7ed", border: "#fed7aa" },
+  4: { color: "#dc2626", label: "高级", bg: "#fef2f2", border: "#fecaca" },
+  5: { color: "#7c3aed", label: "专家", bg: "#f5f3ff", border: "#ddd6fe" },
+}
+
+const industryTagMap: Record<string, { bg: string; text: string; border: string }> = {
+  default: { bg: "#fff7ed", text: "#c2410c", border: "#ffedd5" },
 }
 
 function formatDate(dateStr?: string) {
@@ -47,70 +51,74 @@ export function SceneCard({ scenario, index = 0, hideHot, taskCount = 0 }: Scene
 
   const diff = difficultyMap[scenario.difficulty] || difficultyMap[3]
   const industryName = scenario.industryNames?.[0] || (scenario.industryIds?.length ? "已关联" : "未分类")
+  const industryTag = industryTagMap.default
 
   return (
     <Link href={`/scene/landing/${scenario.id}`}>
-      <div className="bg-white rounded-2xl overflow-hidden border border-[#e7e5e4] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(69,26,3,0.1)] cursor-pointer h-full flex flex-col">
+      <div className="group bg-white rounded-2xl overflow-hidden border border-[#e7e5e4] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(0,0,0,0.1)] hover:border-blue-200 cursor-pointer h-full flex flex-col">
         <div
-          className="h-40 relative bg-cover bg-center flex flex-col justify-end p-4 text-white"
+          className="h-44 relative bg-cover bg-center flex flex-col justify-end p-4 text-white"
           style={coverStyle}
         >
-          <div className="absolute inset-0 bg-gradient-to-t from-[rgba(69,26,3,0.85)] via-[rgba(69,26,3,0.2)] to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,23,42,0.88)] via-[rgba(15,23,42,0.35)] to-transparent" />
           {!hideHot && (
-            <div className="absolute top-3 right-3 z-10 bg-gradient-to-br from-blue-500 to-blue-400 text-white text-xs font-semibold px-2.5 py-1 rounded-md flex items-center gap-1">
-              推荐
+            <div className="absolute top-3 right-3 z-10 bg-gradient-to-br from-amber-400 to-orange-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-lg shadow-orange-500/25">
+              <Star className="w-3 h-3 fill-current" /> 推荐
             </div>
           )}
           <div className="absolute top-3 left-3 right-3 z-10 flex justify-between">
             <div className="flex gap-1.5">
-              <span className="bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-md text-[11px] text-white">
+              <span className="bg-white/25 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-white font-medium border border-white/10">
                 {scenario.version || "v1.0"}
               </span>
-              <span className="bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-md text-[11px] text-white">
+              <span className="bg-white/25 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-white font-medium border border-white/10">
                 {formatDate(scenario.createdAt)} 收录
               </span>
             </div>
           </div>
           <div className="relative z-10">
-            <div className="text-base font-bold leading-snug mb-1">{displayTitle}</div>
-            <div className="text-xs opacity-90">场景编码：{scenario.code || scenario.id.slice(0, 8)} · {formatDate(scenario.updatedAt)}</div>
+            <div className="text-base font-bold leading-snug mb-1 line-clamp-2 group-hover:text-blue-100 transition-colors">{displayTitle}</div>
+            <div className="text-xs text-white/80">场景编码：{scenario.code || scenario.id.slice(0, 8)} · {formatDate(scenario.updatedAt)}</div>
           </div>
         </div>
-        <div className="p-[18px] flex-1 flex flex-col">
+        <div className="p-5 flex-1 flex flex-col">
           <div className="grid grid-cols-3 gap-2 mb-4">
-            <div className="bg-[#fafaf9] rounded-[10px] p-2.5 text-center">
-              <div className="text-lg font-extrabold text-[#0f172a]">{taskCount || "-"}</div>
-              <div className="text-xs text-[#94a3b8]">任务数量</div>
+            <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
+              <div className="text-lg font-bold text-slate-800">{taskCount || "-"}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">任务数量</div>
             </div>
-            <div className="bg-[#fafaf9] rounded-[10px] p-2.5 text-center">
-              <div className="text-lg font-extrabold text-[#0f172a]">{scenario.difficulty || "-"}</div>
-              <div className="text-xs text-[#94a3b8]">难度等级</div>
+            <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
+              <div className="text-lg font-bold text-slate-800">{scenario.difficulty || "-"}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">难度等级</div>
             </div>
-            <div className="bg-[#fafaf9] rounded-[10px] p-2.5 text-center">
-              <div className="text-lg font-extrabold text-[#0f172a]">{scenario.version || "v1.0"}</div>
-              <div className="text-xs text-[#94a3b8]">版本号</div>
+            <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
+              <div className="text-lg font-bold text-slate-800">{scenario.version || "v1.0"}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">版本号</div>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 mb-3">
-            <span className="text-xs px-2.5 py-1 rounded-md bg-[#ffedd5] text-[#c2410c] flex items-center gap-1">
-              <MapPin className="w-3 h-3" /> 行业：{industryName}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <span
+              className="text-[11px] px-2.5 py-1 rounded-full flex items-center gap-1 font-medium border"
+              style={{ backgroundColor: industryTag.bg, color: industryTag.text, borderColor: industryTag.border }}
+            >
+              <MapPin className="w-3 h-3" /> {industryName}
             </span>
             <span
-              className="text-xs px-2.5 py-1 rounded-md flex items-center gap-1"
-              style={{ backgroundColor: diff.color + "15", color: diff.color }}
+              className="text-[11px] px-2.5 py-1 rounded-full flex items-center gap-1 font-medium border"
+              style={{ backgroundColor: diff.bg, color: diff.color, borderColor: diff.border }}
             >
               <BarChart3 className="w-3 h-3" /> {diff.label}
             </span>
           </div>
-          <div className="mt-auto grid grid-cols-[1fr_auto] gap-x-8 gap-y-2">
-            <span className="text-xs text-[#64748b] flex items-center gap-1">
-              <Layers className="w-3 h-3" /> 版本：{scenario.version || "v1.0"}
+          <div className="mt-auto grid grid-cols-[1fr_auto] gap-x-6 gap-y-2.5">
+            <span className="text-xs text-slate-500 flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-slate-400" /> 版本：{scenario.version || "v1.0"}
             </span>
-            <span className="text-xs text-[#64748b]">收录：{formatDate(scenario.createdAt)}</span>
-            <span className="text-xs text-[#64748b] flex items-center gap-1">
-              <Clock className="w-3 h-3" /> 任务：{taskCount || 0} 项
+            <span className="text-xs text-slate-500">收录：{formatDate(scenario.createdAt)}</span>
+            <span className="text-xs text-slate-500 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-slate-400" /> 任务：{taskCount || 0} 项
             </span>
-            <span className="text-xs text-[#64748b]">更新：{formatDate(scenario.updatedAt)}</span>
+            <span className="text-xs text-slate-500">更新：{formatDate(scenario.updatedAt)}</span>
           </div>
         </div>
       </div>
