@@ -118,8 +118,19 @@ DEPLOY_ECOSYSTEM_CONFIG="$DEPLOY_DIR/ecosystem.config.js"
 ROLLBACK_KEEP="${ROLLBACK_KEEP:-10}"
 BACKUP_DIR="$DEPLOY_BACKUP_DIR"
 
+# ==================== 部署锁（防止并行冲突） ====================
+LOCK_FILE="/tmp/zhiyu-deploy.lock"
+exec {LOCK_FD}>"$LOCK_FILE"
+echo "==> 检查部署锁..."
+if ! flock --nonblock "$LOCK_FD" 2>/dev/null; then
+  echo "  另一部署正在进行中，等待其完成..."
+  flock "$LOCK_FD"
+fi
+echo "  已获取部署锁"
+
 # ==================== 清理函数 ====================
 cleanup() {
+  exec {LOCK_FD}>&- 2>/dev/null || true
   rm -rf "$DEPLOY_TMP_DIR"
 }
 
