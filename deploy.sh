@@ -702,6 +702,12 @@ if [[ "$FRONTEND_ONLY" != "true" && -f "$BACKEND_BIN_NEW" ]]; then
   mv "$BACKEND_BIN_NEW" "$DEPLOY_BACKEND_BIN"
   chmod +x "$DEPLOY_BACKEND_BIN"
   echo "  后端已切换"
+
+  # 复制 .env 到后端部署目录，供 godotenv 加载敏感配置
+  if [[ -f "$PROJECT_ROOT/.env" ]]; then
+    cp "$PROJECT_ROOT/.env" "$DEPLOY_BACKEND_DIR/.env"
+    chmod 600 "$DEPLOY_BACKEND_DIR/.env"
+  fi
 fi
 
 if [[ "$BACKEND_ONLY" != "true" && -d "$MARKETPLACE_STANDALONE_ROOT" ]]; then
