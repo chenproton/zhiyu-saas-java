@@ -669,6 +669,9 @@ export const appModuleApi = {
 
 // ==================== Phase 3.2: Job APIs ====================
 
+// Public read-only views for unauthenticated students.
+export const publicPositionApi = createCrudApi<CareerPosition, never, never>("/job/public/positions")
+
 export const positionApi = {
   ...createContentApi<CareerPosition, Omit<CareerPosition, "id" | "createdAt" | "updatedAt">, Partial<Omit<CareerPosition, "id" | "createdAt" | "updatedAt">>>("/job/positions"),
   saveFull: (id: string, req: {

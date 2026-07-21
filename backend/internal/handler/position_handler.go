@@ -160,14 +160,16 @@ func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PositionHandler) Get(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
+	claims := middleware.CurrentUser(r)
+	publicOnly := claims == nil
 
 	id := chi.URLParam(r, "id")
 	pos, err := h.fetchPosition(r.Context(), id)
 	if err != nil {
+		respondError(w, http.StatusNotFound, "position not found")
+		return
+	}
+	if publicOnly && pos.Status != domain.StatusPublished {
 		respondError(w, http.StatusNotFound, "position not found")
 		return
 	}

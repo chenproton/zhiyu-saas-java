@@ -98,7 +98,7 @@ export default function SceneHallPage() {
         version: "V1.0",
         status: "draft",
         creatorId: uid,
-        coBuilderIds: [uid],
+        coBuilderIds: [],
       })}
       renderList={(props) => (
         <ScenarioList

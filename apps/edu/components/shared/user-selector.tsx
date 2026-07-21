@@ -179,7 +179,7 @@ export function UserSelector({
       mergeUserCache(res.items)
     } catch { /* ignore */ }
     finally { setUsersLoading(false) }
-  }, [selectedOrgId, userSearch, tenantId, usePortalApi, excludeStudent, orgMap, mergeUserCache])
+  }, [selectedOrgId, userSearch, tenantId, usePortalApi, excludeStudent, excludeUserIds, orgMap, mergeUserCache])
 
   useEffect(() => { loadOrgTree() }, [loadOrgTree])
   useEffect(() => { if (open) loadUsers() }, [open, loadUsers])

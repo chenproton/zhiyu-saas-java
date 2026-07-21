@@ -78,7 +78,7 @@ export default function PositionsPage() {
         version: "V1.0",
         status: "draft",
         createdBy: uid,
-        collaborators: [uid],
+        collaborators: [],
       } as any)}
       listExtraProps={{ configureStepParam: "2", industryMap, majorMap }}
       renderList={(props) => (

@@ -293,7 +293,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       case "my":
         return frontItems.filter((i) => i.creatorId === currentUserId)
       case "collab":
-        return frontItems.filter((i) => i.coCreatorIds?.includes(currentUserId))
+        return frontItems.filter((i) => i.creatorId !== currentUserId && i.coCreatorIds?.includes(currentUserId))
       default:
         return frontItems.filter((i) => i.status === "published")
     }
