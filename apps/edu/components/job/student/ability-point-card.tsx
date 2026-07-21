@@ -28,6 +28,14 @@ const DOMAIN_COLORS: Record<string, [string, string]> = {
   "创新思维": ["#ec4899", "#f472b6"],
 }
 
+const LEVEL_LABELS: Record<string, string> = {
+  understand: "了解",
+  comprehend: "理解",
+  master: "掌握",
+  proficient: "熟练",
+  expert: "精通",
+}
+
 const LEVEL_COLORS: Record<string, string> = {
   "了解": "#94a3b8",
   "理解": "#60a5fa",
@@ -41,7 +49,8 @@ export function AbilityPointCard({ binding, abilityPoint, index }: AbilityPointC
   const categoryLabel = CATEGORY_LABELS[categoryKey] || "知识"
   const categoryColors = CATEGORY_COLORS[categoryKey] || CATEGORY_COLORS["knowledge"]
   const domainColors = DOMAIN_COLORS[binding.domain || "专业工具"] || DOMAIN_COLORS["专业工具"]
-  const levelColor = LEVEL_COLORS[binding.requiredLevel] || "#94a3b8"
+  const levelLabel = LEVEL_LABELS[binding.requiredLevel] || binding.requiredLevel
+  const levelColor = LEVEL_COLORS[levelLabel] || "#94a3b8"
 
   return (
     <div className="bg-white border border-[#e2e8f0] rounded-xl p-4 relative overflow-hidden shadow-sm hover:shadow-md transition-all h-full flex flex-col">
@@ -77,7 +86,7 @@ export function AbilityPointCard({ binding, abilityPoint, index }: AbilityPointC
           className="text-[11px] px-1.5 py-0.5 rounded border"
           style={{ color: levelColor, background: `rgba(${hexToRgb(levelColor)},0.12)`, borderColor: `rgba(${hexToRgb(levelColor)},0.25)` }}
         >
-          胜任标准：{binding.requiredLevel}
+          胜任标准：{levelLabel}
         </span>
       </div>
 
