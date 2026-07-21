@@ -515,10 +515,10 @@ export default function SceneDetailPage() {
             <span className="text-slate-800 font-medium truncate">{scenario.name}</span>
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex flex-col lg:flex-row gap-6 items-stretch">
             {/* Left: Cover + Info */}
-            <div className="flex-1">
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+            <div className="flex-1 flex">
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)] w-full">
                 <div className="flex flex-col sm:flex-row gap-6 p-6">
                   <div
                     className="w-full sm:w-[280px] h-[190px] rounded-2xl bg-cover bg-center flex items-center justify-center shrink-0 self-stretch shadow-[0_12px_40px_rgba(0,0,0,0.15)] relative overflow-hidden"
@@ -540,11 +540,6 @@ export default function SceneDetailPage() {
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600 font-medium shrink-0 border border-slate-200">
                           v{scenario.version}
                         </span>
-                      </div>
-                      <div className="flex gap-2 shrink-0">
-                        <Button variant="ghost" size="sm" className="h-9 px-3 text-xs text-slate-500 hover:text-blue-600 border border-slate-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-all">
-                          <Share2 className="w-3.5 h-3.5 mr-1" /> 分享
-                        </Button>
                       </div>
                     </div>
 
@@ -588,6 +583,9 @@ export default function SceneDetailPage() {
                           <PlayCircle className="w-4 h-4 mr-1.5" /> 开始学习
                         </Button>
                       </Link>
+                      <Button variant="ghost" className="rounded-xl h-11 w-11 p-0 text-slate-500 hover:text-blue-600 border border-slate-200 hover:bg-blue-50 hover:border-blue-200 transition-all">
+                        <Share2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -595,8 +593,8 @@ export default function SceneDetailPage() {
             </div>
 
             {/* Right: Stats Sidebar */}
-            <div className="lg:w-[320px] shrink-0">
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+            <div className="lg:w-[320px] shrink-0 flex">
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)] w-full">
                 <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
                     <BarChart3 className="w-4 h-4 text-blue-500" />
