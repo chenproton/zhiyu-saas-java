@@ -9,7 +9,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { publicPositionApi, scenarioApi } from "@/lib/api"
+import { publicPositionApi, scenarioApi, positionApi } from "@/lib/api"
 import { useAuth } from "@/components/auth-provider"
 import { useIndustryMap } from "@/lib/use-resource-maps"
 import type { CareerPosition, Scenario } from "@/lib/types"
@@ -35,6 +35,7 @@ export function JobHome() {
 
   const [positions, setPositions] = useState<CareerPosition[]>([])
   const [scenarios, setScenarios] = useState<Scenario[]>([])
+  const [favoritePositions, setFavoritePositions] = useState<CareerPosition[]>([])
   const [loading, setLoading] = useState(true)
 
   const [currentPage, setCurrentPage] = useState(1)
@@ -58,6 +59,17 @@ export function JobHome() {
       .then((res) => setScenarios(res.items || []))
       .catch(() => setScenarios([]))
   }, [])
+
+  useEffect(() => {
+    if (!user) {
+      setFavoritePositions([])
+      return
+    }
+    positionApi
+      .listFavorites()
+      .then((res) => setFavoritePositions(res.items || []))
+      .catch(() => setFavoritePositions([]))
+  }, [user])
 
   const scenarioCountMap = useMemo(() => {
     const map = new Map<string, number>()
@@ -224,13 +236,43 @@ export function JobHome() {
                 <Heart className="w-4 h-4 text-rose-500" />
                 我的心仪岗位
               </div>
-              <div className="text-xs text-[#94a3b8] cursor-pointer">全部 <ChevronRight className="w-3 h-3 inline" /></div>
+              <Link href="/job/student" className="text-xs text-[#94a3b8] hover:text-blue-600 cursor-pointer">
+                全部 <ChevronRight className="w-3 h-3 inline" />
+              </Link>
             </div>
-            <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8] text-center px-4">
-              <Heart className="w-9 h-9 mb-2 text-[#cbd5e1]" />
-              <div className="text-sm font-semibold text-[#475569]">快去查看岗位点击收藏吧！</div>
-              <div className="text-xs mt-0.5">浏览岗位资源，收藏你感兴趣的岗位</div>
-            </div>
+            {favoritePositions.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8] text-center px-4">
+                <Heart className="w-9 h-9 mb-2 text-[#cbd5e1]" />
+                <div className="text-sm font-semibold text-[#475569]">快去查看岗位点击收藏吧！</div>
+                <div className="text-xs mt-0.5">浏览岗位资源，收藏你感兴趣的岗位</div>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col gap-1 overflow-hidden">
+                {favoritePositions.slice(0, 5).map((pos) => {
+                  const display = pos.shortName || pos.name
+                  const count = pos.favoriteCount ?? 0
+                  const category = pos.industryId && industryMap.get(pos.industryId)
+                    ? industryMap.get(pos.industryId)
+                    : (pos.positionType === "enterprise" ? "企业" : "教学")
+                  return (
+                    <Link key={pos.id} href={`/job/student/${pos.id}`}>
+                      <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#f8fafc] cursor-pointer transition-colors group">
+                        <span className="text-base flex-shrink-0">{display.charAt(0)}</span>
+                        <span className="flex-1 text-[13px] font-semibold text-[#0f172a] truncate group-hover:text-blue-600 transition-colors">
+                          {display}
+                        </span>
+                        <span className="hidden xl:inline-flex text-[10px] px-2 py-0.5 rounded bg-[#eff6ff] text-blue-600 whitespace-nowrap">
+                          {category}
+                        </span>
+                        <span className="text-[11px] text-rose-500 flex items-center gap-0.5 whitespace-nowrap min-w-[52px] justify-end">
+                          <Heart className={`w-3 h-3 ${count > 0 ? "fill-current" : ""}`} /> {count > 0 ? count.toLocaleString() : "0"}
+                        </span>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {/* 学前能力基线测评 */}

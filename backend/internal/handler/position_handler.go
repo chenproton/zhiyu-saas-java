@@ -975,6 +975,85 @@ func (h *PositionHandler) ToggleFavorite(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, http.StatusOK, FavoriteStatusResponse{IsFavorite: !exists, FavoriteCount: count})
 }
 
+func (h *PositionHandler) ListFavorites(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+
+	isPlatformAdmin := platformAdminOnly(claims)
+	tenantID, ok := tenantFilter(claims)
+	if !isPlatformAdmin && !ok {
+		respondError(w, http.StatusForbidden, "missing tenant")
+		return
+	}
+
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+
+	limit := 50
+	offset := 0
+	if v, err := parseInt(limitStr, 50); err == nil && v > 0 {
+		limit = v
+	}
+	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
+		offset = v
+	}
+
+	where := []string{"cp.status = $1", "pf.user_id = $2"}
+	args := []interface{}{string(domain.StatusPublished), claims.UserID}
+	argIdx := 3
+
+	if !isPlatformAdmin {
+		where = append(where, "cp.tenant_id = $"+itoa(argIdx))
+		args = append(args, tenantID)
+		argIdx++
+	}
+
+	countQuery := "SELECT COUNT(*) FROM position_favorites pf JOIN career_positions cp ON cp.id = pf.career_position_id WHERE " + strings.Join(where, " AND ")
+	var total int
+	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
+
+	query := `
+		SELECT cp.id, cp.batch_id, cp.name, cp.short_name, cp.industry_id,
+			COALESCE((SELECT array_agg(cpm.major_id) FROM career_position_majors cpm WHERE cpm.career_position_id = cp.id), '{}') AS major_ids,
+			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
+			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
+			cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by,
+			COALESCE((SELECT u.name FROM users u WHERE u.id = cp.created_by), cp.created_by::text) AS created_by_name,
+			cp.collaborators,
+			COALESCE((
+				SELECT array_agg(u.name ORDER BY ord)
+				FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord)
+				JOIN users u ON u.id = c.id
+			), '{}') AS collaborator_names,
+			(SELECT COUNT(*) FROM position_favorites pf2 WHERE pf2.career_position_id = cp.id) AS favorite_count,
+			cp.view_count,
+			cp.created_at, cp.updated_at
+		FROM position_favorites pf
+		JOIN career_positions cp ON cp.id = pf.career_position_id
+		WHERE ` + strings.Join(where, " AND ") + `
+		ORDER BY pf.created_at DESC
+		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
+	args = append(args, limit, offset)
+
+	rows, err := h.DB.Query(r.Context(), query, args...)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to list favorite positions")
+		return
+	}
+	defer rows.Close()
+
+	items, err := h.scanPositionRows(rows)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to scan favorite positions")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, PositionListResponse{Items: items, Total: total})
+}
+
 func strPtr(s string) *string {
 	if s == "" {
 		return nil
