@@ -26,7 +26,7 @@ const levelColors: Record<string, string> = {
 
 export function AbilityTree({ responsibilities, bindings, abilityNames = {} }: AbilityTreeProps) {
   const grouped = useMemo(() => {
-    const map = new Map<string, StudentAbilityBinding[]>()
+    const map = new Map<string, PositionAbilityBinding[]>()
     responsibilities.forEach((r) => map.set(r.id, []))
     bindings.forEach((b) => {
       const list = map.get(b.responsibilityId) || []
