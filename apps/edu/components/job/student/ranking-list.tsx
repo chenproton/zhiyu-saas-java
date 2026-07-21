@@ -13,6 +13,15 @@ interface RankingListProps {
 
 const ROWS_PER_PAGE = 5
 
+const cardBgPalette = [
+  { bg: "bg-blue-50/70", hover: "hover:bg-blue-100/60", border: "border-blue-100" },
+  { bg: "bg-emerald-50/70", hover: "hover:bg-emerald-100/60", border: "border-emerald-100" },
+  { bg: "bg-violet-50/70", hover: "hover:bg-violet-100/60", border: "border-violet-100" },
+  { bg: "bg-amber-50/70", hover: "hover:bg-amber-100/60", border: "border-amber-100" },
+  { bg: "bg-rose-50/70", hover: "hover:bg-rose-100/60", border: "border-rose-100" },
+  { bg: "bg-cyan-50/70", hover: "hover:bg-cyan-100/60", border: "border-cyan-100" },
+]
+
 export function RankingList({ positions = [], industryMap }: RankingListProps) {
   const [page, setPage] = useState(0)
 
@@ -65,9 +74,10 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
     const globalRank = page * ROWS_PER_PAGE * 2 + idx + 1
     const display = pos.shortName || pos.name
     const count = pos.favoriteCount ?? 0
+    const palette = cardBgPalette[idx % cardBgPalette.length]
     return (
       <Link key={pos.id} href={`/job/student/${pos.id}`}>
-        <div className="flex items-start gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-all group">
+        <div className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border ${palette.bg} ${palette.hover} cursor-pointer transition-all group`}>
           <span
             className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 ${getRankStyle(globalRank)}`}
           >
@@ -83,11 +93,11 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
               </span>
             </div>
             <div className="flex items-center gap-1.5 text-[11px]">
-              <span className="px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-600 truncate max-w-[80px] font-medium border border-blue-100">
+              <span className="px-1.5 py-0.5 rounded-md bg-white/70 text-blue-600 truncate max-w-[80px] font-medium border border-blue-100">
                 {categoryFor(pos)}
               </span>
               <span
-                className="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600 truncate max-w-[120px] font-medium border border-emerald-100"
+                className="px-1.5 py-0.5 rounded-md bg-white/70 text-emerald-600 truncate max-w-[120px] font-medium border border-emerald-100"
                 title={pos.majorNames?.filter(Boolean).join("、") || "未分类"}
               >
                 {majorLabel(pos)}

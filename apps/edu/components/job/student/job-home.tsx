@@ -497,31 +497,38 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                   <div className="text-xs mt-1">浏览岗位资源，收藏你感兴趣的岗位</div>
                 </div>
               ) : (
-                <div className="flex-1 flex flex-col gap-1 overflow-hidden">
-                  {favoritePositions.slice(0, 5).map((pos) => {
+                <div className="flex-1 flex flex-col gap-1.5 overflow-hidden">
+                  {favoritePositions.slice(0, 5).map((pos, i) => {
                     const display = pos.shortName || pos.name
                     const category = pos.industryId && industryMap.get(pos.industryId)
                       ? industryMap.get(pos.industryId)
                       : (pos.positionType === "enterprise" ? "企业" : "教学")
                     const majors = pos.majorNames?.filter(Boolean) || []
                     const majorText = majors.length === 0 ? "未分类" : majors.length === 1 ? majors[0] : `${majors[0]} +${majors.length - 1}`
+                    const palette = [
+                      { bg: "bg-blue-50/70", hover: "hover:bg-blue-100/60", border: "border-blue-100" },
+                      { bg: "bg-emerald-50/70", hover: "hover:bg-emerald-100/60", border: "border-emerald-100" },
+                      { bg: "bg-violet-50/70", hover: "hover:bg-violet-100/60", border: "border-violet-100" },
+                      { bg: "bg-amber-50/70", hover: "hover:bg-amber-100/60", border: "border-amber-100" },
+                      { bg: "bg-rose-50/70", hover: "hover:bg-rose-100/60", border: "border-rose-100" },
+                    ][i % 5]
                     return (
                       <Link key={pos.id} href={`/job/student/${pos.id}`}>
-                        <div className="flex items-start gap-2.5 px-2.5 py-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group">
+                        <div className={`flex items-start gap-2.5 px-2.5 py-2 rounded-xl border ${palette.bg} ${palette.hover} cursor-pointer transition-all group`}>
                           <div className="flex-1 min-w-0 flex flex-col gap-1">
                             <div className="flex items-center gap-2">
                               <span className="flex-1 text-[13px] font-semibold text-slate-800 truncate group-hover:text-blue-600 transition-colors">
                                 {display}
                               </span>
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 whitespace-nowrap font-medium">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/70 text-slate-500 whitespace-nowrap font-medium border border-slate-200">
                                 v{pos.version || "1.0"}
                               </span>
                             </div>
                             <div className="flex items-center gap-1.5 text-[11px]">
-                              <span className="px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-600 truncate max-w-[80px] font-medium border border-blue-100">
+                              <span className="px-1.5 py-0.5 rounded-md bg-white/70 text-blue-600 truncate max-w-[80px] font-medium border border-blue-100">
                                 {category}
                               </span>
-                              <span className="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600 truncate max-w-[120px] font-medium border border-emerald-100" title={majors.join("、") || "未分类"}>
+                              <span className="px-1.5 py-0.5 rounded-md bg-white/70 text-emerald-600 truncate max-w-[120px] font-medium border border-emerald-100" title={majors.join("、") || "未分类"}>
                                 {majorText}
                               </span>
                             </div>
