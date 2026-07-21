@@ -67,7 +67,7 @@ export function KnowledgeGraph({
     return map
   }, [abilityPoints])
 
-  const { nodes, edges } = useMemo(() => {
+  const { nodes, edges, allDomains } = useMemo(() => {
     const graphNodes: GraphNode[] = []
     const graphEdges: GraphEdge[] = []
 
@@ -78,46 +78,72 @@ export function KnowledgeGraph({
       type: "position",
     })
 
-    // 能力领域
-    abilityDomains.forEach((domain) => {
+    // 合并真实能力领域 + 从 binding.domain 生成的兜底领域
+    const domainByName = new Map<string, AbilityDomain>()
+    abilityDomains.forEach((d) => domainByName.set(d.name, d))
+
+    const coveredBindingIds = new Set<string>()
+    abilityDomains.forEach((d) => (d.bindingIds || []).forEach((id) => coveredBindingIds.add(id)))
+
+    const fallbackDomains: AbilityDomain[] = []
+    bindings.forEach((b) => {
+      if (coveredBindingIds.has(b.id)) return
+      const name = b.domain || "综合能力"
+      if (!domainByName.has(name)) {
+        domainByName.set(name, {
+          id: `domain-fallback-${name}`,
+          careerPositionId: position.id,
+          name,
+          bindingIds: [],
+          sortOrder: 0,
+        })
+        fallbackDomains.push(domainByName.get(name)!)
+      }
+    })
+
+    const allDomains = [...abilityDomains, ...fallbackDomains]
+
+    // 能力领域节点
+    allDomains.forEach((domain) => {
       graphNodes.push({ id: domain.id, label: domain.name, type: "domain" })
       graphEdges.push({ source: position.id, target: domain.id })
     })
 
     // 能力单元：通过 binding 关联到领域
     const unitNodeIds = new Set<string>()
-    abilityDomains.forEach((domain) => {
+    allDomains.forEach((domain) => {
       const domainBindingIds = new Set(domain.bindingIds || [])
+      const hasExplicitBindings = domainBindingIds.size > 0
       bindings
-        .filter((b) => domainBindingIds.has(b.id))
+        .filter((b) => {
+          if (hasExplicitBindings) return domainBindingIds.has(b.id)
+          return (b.domain || "综合能力") === domain.name
+        })
         .forEach((b) => {
           const abilityPoint = abilityPointMap.get(b.abilityPointId)
-          if (!abilityPoint) return
-          if (!unitNodeIds.has(abilityPoint.id)) {
-            unitNodeIds.add(abilityPoint.id)
-            graphNodes.push({
-              id: abilityPoint.id,
-              label: abilityPoint.name,
-              type: "unit",
-            })
+          const unitId = abilityPoint?.id || b.abilityPointId
+          const unitLabel = abilityPoint?.name || b.domain || "未命名能力"
+          if (!unitNodeIds.has(unitId)) {
+            unitNodeIds.add(unitId)
+            graphNodes.push({ id: unitId, label: unitLabel, type: "unit" })
           }
-          graphEdges.push({ source: domain.id, target: abilityPoint.id })
+          graphEdges.push({ source: domain.id, target: unitId })
         })
     })
 
     // 知识点与教材课件保留结构，暂不生成节点和边
 
-    return { nodes: graphNodes, edges: graphEdges }
+    return { nodes: graphNodes, edges: graphEdges, allDomains }
   }, [position, abilityDomains, bindings, abilityPointMap])
 
   const graphData = useMemo(
     () => ({
       position,
-      domains: abilityDomains,
+      domains: allDomains,
       units: abilityPoints,
       bindings,
     }),
-    [position, abilityDomains, abilityPoints, bindings]
+    [position, allDomains, abilityPoints, bindings]
   )
 
   const toolbarSlot = <ViewToggle mode={viewMode} onChange={setViewMode} />

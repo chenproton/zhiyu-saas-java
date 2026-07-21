@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { useGraphData } from "./graph-data-context"
 import type { GraphNode } from "./types"
 import { cn } from "@/lib/utils"
+import type { PositionAbilityBinding, AbilityDomain } from "@zhiyu/shared-types"
 
 export type NodeLite = { id: string; type: GraphNode["type"]; label: string }
 
@@ -83,6 +84,11 @@ function Chips({
   )
 }
 
+function bindingBelongsToDomain(b: PositionAbilityBinding, d: AbilityDomain): boolean {
+  if (d.bindingIds && d.bindingIds.length > 0) return d.bindingIds.includes(b.id)
+  return (b.domain || "综合能力") === d.name
+}
+
 export function GraphNodeDetail({
   node,
   onNavigate,
@@ -93,26 +99,31 @@ export function GraphNodeDetail({
   const { position, domains, units, bindings } = useGraphData()
 
   if (node.type === "position") {
-    const relatedDomains = domains ?? []
-    const relatedUnits = units ?? []
+    const relatedDomainItems: NodeLite[] = (domains ?? []).map((d) => ({ id: d.id, type: "domain", label: d.name }))
+
+    const unitIdSet = new Set<string>()
+    const relatedUnitItems: NodeLite[] = []
+    bindings?.forEach((b) => {
+      if (unitIdSet.has(b.abilityPointId)) return
+      unitIdSet.add(b.abilityPointId)
+      const abilityPoint = units?.find((u) => u.id === b.abilityPointId)
+      relatedUnitItems.push({
+        id: b.abilityPointId,
+        type: "unit",
+        label: abilityPoint?.name || b.domain || "未命名能力",
+      })
+    })
+
     return (
       <div className="space-y-4">
         <div className="divide-y">
           <Field label="岗位名称" value={position?.name} />
         </div>
-        <Section title="关联能力领域" count={relatedDomains.length}>
-          <Chips
-            items={relatedDomains.map((d) => ({ id: d.id, type: "domain", label: d.name }))}
-            empty="暂无关联能力领域"
-            onNavigate={onNavigate}
-          />
+        <Section title="关联能力领域" count={relatedDomainItems.length}>
+          <Chips items={relatedDomainItems} empty="暂无关联能力领域" onNavigate={onNavigate} />
         </Section>
-        <Section title="关联能力单元" count={relatedUnits.length}>
-          <Chips
-            items={relatedUnits.map((u) => ({ id: u.id, type: "unit", label: u.name }))}
-            empty="暂无关联能力单元"
-            onNavigate={onNavigate}
-          />
+        <Section title="关联能力单元" count={relatedUnitItems.length}>
+          <Chips items={relatedUnitItems} empty="暂无关联能力单元" onNavigate={onNavigate} />
         </Section>
       </div>
     )
@@ -120,12 +131,19 @@ export function GraphNodeDetail({
 
   if (node.type === "domain") {
     const dom = domains?.find((d) => d.id === node.id)
-    const relatedUnitIds = new Set(
-      (bindings ?? [])
-        .filter((b) => dom?.bindingIds?.includes(b.id))
-        .map((b) => b.abilityPointId)
-    )
-    const relatedUnits = (units ?? []).filter((u) => relatedUnitIds.has(u.id))
+    const unitIdSet = new Set<string>()
+    const relatedUnitItems: NodeLite[] = []
+    bindings?.forEach((b) => {
+      if (!dom || !bindingBelongsToDomain(b, dom)) return
+      if (unitIdSet.has(b.abilityPointId)) return
+      unitIdSet.add(b.abilityPointId)
+      const abilityPoint = units?.find((u) => u.id === b.abilityPointId)
+      relatedUnitItems.push({
+        id: b.abilityPointId,
+        type: "unit",
+        label: abilityPoint?.name || b.domain || "未命名能力",
+      })
+    })
     return (
       <div className="space-y-4">
         <div className="divide-y">
@@ -137,12 +155,8 @@ export function GraphNodeDetail({
             </Section>
           )}
         </div>
-        <Section title="关联能力单元" count={relatedUnits.length}>
-          <Chips
-            items={relatedUnits.map((u) => ({ id: u.id, type: "unit", label: u.name }))}
-            empty="暂无关联能力单元"
-            onNavigate={onNavigate}
-          />
+        <Section title="关联能力单元" count={relatedUnitItems.length}>
+          <Chips items={relatedUnitItems} empty="暂无关联能力单元" onNavigate={onNavigate} />
         </Section>
       </div>
     )
@@ -150,9 +164,15 @@ export function GraphNodeDetail({
 
   if (node.type === "unit") {
     const unit = units?.find((u) => u.id === node.id)
-    const relatedDomains = (domains ?? []).filter((d) =>
-      (bindings ?? []).some((b) => b.abilityPointId === node.id && d.bindingIds?.includes(b.id))
-    )
+    const relatedDomainItems: NodeLite[] = []
+    const domainIdSet = new Set<string>()
+    domains?.forEach((d) => {
+      const belongs = bindings?.some((b) => b.abilityPointId === node.id && bindingBelongsToDomain(b, d))
+      if (belongs && !domainIdSet.has(d.id)) {
+        domainIdSet.add(d.id)
+        relatedDomainItems.push({ id: d.id, type: "domain", label: d.name })
+      }
+    })
     return (
       <div className="space-y-4">
         <div className="divide-y">
@@ -164,12 +184,8 @@ export function GraphNodeDetail({
             <p className="text-sm leading-relaxed text-muted-foreground">{unit.description}</p>
           </Section>
         )}
-        <Section title="关联能力领域" count={relatedDomains.length}>
-          <Chips
-            items={relatedDomains.map((d) => ({ id: d.id, type: "domain", label: d.name }))}
-            empty="暂无关联能力领域"
-            onNavigate={onNavigate}
-          />
+        <Section title="关联能力领域" count={relatedDomainItems.length}>
+          <Chips items={relatedDomainItems} empty="暂无关联能力领域" onNavigate={onNavigate} />
         </Section>
         <Section title="关联知识点" count={0}>
           <span className="text-xs text-muted-foreground">暂无关联知识点</span>
