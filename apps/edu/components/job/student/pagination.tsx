@@ -1,7 +1,6 @@
 "use client"
 
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { Button } from "@/components/ui/button"
 
 interface PaginationProps {
   currentPage: number
@@ -29,15 +28,13 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
 
   return (
     <div className="flex items-center justify-center gap-2 mt-7">
-      <Button
-        variant="outline"
-        size="icon"
-        className="h-8 w-8 rounded-lg border-[#e7e5e4] bg-white text-[#475569] hover:border-blue-500 hover:text-blue-500 disabled:opacity-40"
+      <button
+        className="w-8 h-8 border border-[#e7e5e4] rounded-lg bg-white text-[#475569] flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed hover:border-blue-500 hover:text-blue-500"
         disabled={currentPage <= 1}
         onClick={() => onPageChange(currentPage - 1)}
       >
         <ChevronLeft className="w-4 h-4" />
-      </Button>
+      </button>
       <div className="flex items-center gap-1.5">
         {pages.map((p, i) =>
           p === "..." ? (
@@ -47,7 +44,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
               key={p}
               onClick={() => onPageChange(p as number)}
               className={`
-                min-w-[32px] h-8 px-2 rounded-lg border text-sm flex items-center justify-center transition-colors
+                min-w-[32px] h-8 px-2 rounded-lg border text-[13px] flex items-center justify-center transition-colors
                 ${currentPage === p
                   ? "bg-blue-500 border-blue-500 text-white font-medium"
                   : "bg-white border-[#e7e5e4] text-[#475569] hover:border-blue-500 hover:text-blue-500"
@@ -59,15 +56,13 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
           )
         )}
       </div>
-      <Button
-        variant="outline"
-        size="icon"
-        className="h-8 w-8 rounded-lg border-[#e7e5e4] bg-white text-[#475569] hover:border-blue-500 hover:text-blue-500 disabled:opacity-40"
+      <button
+        className="w-8 h-8 border border-[#e7e5e4] rounded-lg bg-white text-[#475569] flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed hover:border-blue-500 hover:text-blue-500"
         disabled={currentPage >= totalPages}
         onClick={() => onPageChange(currentPage + 1)}
       >
         <ChevronRight className="w-4 h-4" />
-      </Button>
+      </button>
     </div>
   )
 }
