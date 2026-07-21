@@ -44,7 +44,6 @@ import {
   Trash2,
   Sparkles,
   Briefcase,
-  Eye,
   Check,
   ChevronsUpDown,
   ExternalLink,
@@ -209,12 +208,6 @@ export default function PostRecommendPage() {
             配置前台"为你推荐"模块展示的岗位及顺序，支持企业岗位与教学岗位混合推荐
           </p>
         </div>
-        <Link href="/explore">
-          <Button variant="outline">
-            <Eye className="mr-2 h-4 w-4" />
-            前台预览
-          </Button>
-        </Link>
       </div>
 
       <Card>
