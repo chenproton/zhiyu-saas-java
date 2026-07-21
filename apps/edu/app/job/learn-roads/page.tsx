@@ -45,21 +45,25 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { positionApi, batchApi, learnRoadApi } from '@/lib/api'
+import { positionApi, batchApi, learnRoadApi, scenarioApi, taskApi } from '@/lib/api'
 import { useIndustryMap, useMajorMap } from '@/lib/use-resource-maps'
 import { convertCareerPositionToPosition, convertJobBatchToBatch } from '@/lib/stores/job-converters'
 import { useToast } from '@/hooks/use-toast'
 import type { Position, PositionStatus, Batch } from '@/lib/types/job-source'
 import type { LearnRoad, LearnRoadStep } from '@/lib/types/job'
+import type { Scenario, ScenarioTask } from '@/lib/types/scene'
 
 interface Task {
   id: string
   name: string
+  estimatedHours?: number
 }
 
 interface Scene {
   id: string
   name: string
+  coverImage?: string
+  hours: number
   tasks: Task[]
 }
 
@@ -74,120 +78,85 @@ const NODE_COLORS = [
   { bg: 'bg-rose-500' },
 ]
 
-const defaultScenes: Scene[] = [
-  {
-    id: 'scene-0',
-    name: '基础学习',
-    tasks: [
-      { id: 'task-0-0', name: 'HTML5 语义化标签' },
-      { id: 'task-0-1', name: 'CSS3 核心选择器' },
-      { id: 'task-0-2', name: 'Flex 弹性布局' },
-      { id: 'task-0-3', name: 'Grid 网格布局' },
-      { id: 'task-0-4', name: 'JavaScript 基础语法' },
-      { id: 'task-0-5', name: 'DOM 操作与事件' },
-      { id: 'task-0-6', name: 'CSS 动画与过渡' },
-      { id: 'task-0-7', name: '基础综合实战' },
-    ],
-  },
-  {
-    id: 'scene-1',
-    name: '电商后台管理系统',
-    tasks: [
-      { id: 'task-1-0', name: 'Vue3 项目初始化' },
-      { id: 'task-1-1', name: '登录鉴权模块' },
-      { id: 'task-1-2', name: '商品管理 CRUD' },
-      { id: 'task-1-3', name: '订单与权限管理' },
-      { id: 'task-1-4', name: '后台界面优化' },
-      { id: 'task-1-5', name: '数据报表与导出' },
-      { id: 'task-1-6', name: '表单校验与提交' },
-    ],
-  },
-  {
-    id: 'scene-2',
-    name: '移动端H5活动页',
-    tasks: [
-      { id: 'task-2-0', name: '移动端适配方案' },
-      { id: 'task-2-1', name: '活动页面布局' },
-      { id: 'task-2-2', name: 'H5 动画特效' },
-      { id: 'task-2-3', name: '微信分享与埋点' },
-      { id: 'task-2-4', name: '微信授权登录' },
-      { id: 'task-2-5', name: '活动抽奖动画' },
-      { id: 'task-2-6', name: 'H5 性能优化' },
-    ],
-  },
-  {
-    id: 'scene-3',
-    name: '数据可视化大屏',
-    tasks: [
-      { id: 'task-3-0', name: '大屏布局自适应' },
-      { id: 'task-3-1', name: 'ECharts 图表配置' },
-      { id: 'task-3-2', name: '数据实时刷新' },
-      { id: 'task-3-3', name: '大屏主题与动效' },
-      { id: 'task-3-4', name: '地图可视化' },
-      { id: 'task-3-5', name: '实时数据推送' },
-      { id: 'task-3-6', name: '大屏适配与投屏' },
-    ],
-  },
-  {
-    id: 'scene-4',
-    name: '前端工程化实践',
-    tasks: [
-      { id: 'task-4-0', name: 'Git 工作流实践' },
-      { id: 'task-4-1', name: '自动化部署' },
-      { id: 'task-4-2', name: '代码规范与 ESLint' },
-      { id: 'task-4-3', name: '构建性能优化' },
-      { id: 'task-4-4', name: '单元测试与覆盖率' },
-      { id: 'task-4-5', name: '组件库封装' },
-      { id: 'task-4-6', name: '性能监控与埋点' },
-    ],
-  },
-  {
-    id: 'scene-5',
-    name: '团队协作开发实战',
-    tasks: [
-      { id: 'task-5-0', name: '需求分析与拆分' },
-      { id: 'task-5-1', name: '代码评审与重构' },
-      { id: 'task-5-2', name: '接口联调与文档' },
-      { id: 'task-5-3', name: '项目上线与复盘' },
-      { id: 'task-5-4', name: '跨部门沟通协作' },
-      { id: 'task-5-5', name: '技术方案评审' },
-      { id: 'task-5-6', name: '线上问题应急响应' },
-    ],
-  },
-  {
-    id: 'scene-6',
-    name: '全栈实战',
-    tasks: [
-      { id: 'task-6-0', name: 'Node.js 接口开发' },
-      { id: 'task-6-1', name: '数据库设计与操作' },
-      { id: 'task-6-2', name: '前后端联调部署' },
-      { id: 'task-6-3', name: '全栈项目答辩' },
-      { id: 'task-6-4', name: '用户认证与权限' },
-      { id: 'task-6-5', name: '服务端接口测试' },
-      { id: 'task-6-6', name: '项目部署与运维' },
-    ],
-  },
-]
+function tasksForScenario(scenarioId: string, allTasks: ScenarioTask[]): Task[] {
+  return allTasks
+    .filter((t) => t.scenarioId === scenarioId)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((t) => ({ id: t.id, name: t.name, estimatedHours: t.estimatedHours }))
+}
 
-function stepsToScenes(steps?: LearnRoadStep[]): Scene[] {
-  return (steps || []).map((step, idx) => ({
-    id: `scene-${idx}`,
-    name: step.name,
-    tasks: Array.isArray(step.tasks)
+function scenarioToScene(scenario: Scenario, allTasks: ScenarioTask[]): Scene {
+  const tasks = tasksForScenario(scenario.id, allTasks)
+  return {
+    id: scenario.id,
+    name: scenario.name,
+    coverImage: scenario.coverImage,
+    hours: tasks.reduce((sum, t) => sum + (t.estimatedHours || 0), 0),
+    tasks,
+  }
+}
+
+function stepsToScenes(
+  steps: LearnRoadStep[],
+  scenarios: Scenario[],
+  allTasks: ScenarioTask[]
+): Scene[] {
+  const scenarioMap = new Map(scenarios.map((s) => [s.id, s]))
+  const result: Scene[] = []
+  const usedScenarioIds = new Set<string>()
+
+  for (const step of steps) {
+    if (step.scenarioId && scenarioMap.has(step.scenarioId)) {
+      const sc = scenarioMap.get(step.scenarioId)!
+      result.push(scenarioToScene(sc, allTasks))
+      usedScenarioIds.add(sc.id)
+      continue
+    }
+    // 兼容旧数据：按名称匹配场景
+    const matched = scenarios.find((s) => s.name === step.name && !usedScenarioIds.has(s.id))
+    if (matched) {
+      result.push(scenarioToScene(matched, allTasks))
+      usedScenarioIds.add(matched.id)
+      continue
+    }
+    // 未匹配到真实场景的步骤，保留名称和缓存的任务
+    const orphanTasks = Array.isArray(step.tasks)
       ? step.tasks.map((t) => ({ id: String(t.id), name: String(t.name) }))
-      : [],
-  }))
+      : []
+    result.push({
+      id: `orphan-${step.name}-${Math.random().toString(36).slice(2, 8)}`,
+      name: step.name,
+      hours: 0,
+      tasks: orphanTasks,
+    })
+  }
+
+  // 追加尚未纳入学习路径的新场景
+  for (const sc of scenarios) {
+    if (!usedScenarioIds.has(sc.id)) {
+      result.push(scenarioToScene(sc, allTasks))
+    }
+  }
+
+  return result
 }
 
 function scenesToSteps(scenes: Scene[]): LearnRoadStep[] {
-  return scenes.map((scene) => ({ name: scene.name, tasks: scene.tasks }))
+  return scenes.map((scene) => ({
+    name: scene.name,
+    scenarioId: scene.id.startsWith('orphan-') ? undefined : scene.id,
+    tasks: scene.tasks,
+  }))
 }
 
 function countScenesAndTasks(road?: LearnRoad): { sceneCount: number; taskCount: number } {
-  const scenes = road?.steps?.length ? stepsToScenes(road.steps) : defaultScenes
+  const steps = road?.steps || []
   return {
-    sceneCount: scenes.length,
-    taskCount: scenes.reduce((sum, scene) => sum + scene.tasks.length, 0),
+    sceneCount: steps.length,
+    taskCount: steps.reduce(
+      (sum, step) => sum + (Array.isArray(step.tasks) ? step.tasks.length : 0),
+      0
+    ),
   }
 }
 
@@ -203,11 +172,13 @@ export default function LearnRoadsPage() {
   const [view, setView] = useState<'list' | 'edit'>('list')
   const [editingPosition, setEditingPosition] = useState<Position | null>(null)
 
-  const [scenes, setScenes] = useState<Scene[]>(defaultScenes)
-  const [selectedSceneId, setSelectedSceneId] = useState<string>(defaultScenes[0].id)
+  const [scenes, setScenes] = useState<Scene[]>([])
+  const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const [learnRoadId, setLearnRoadId] = useState<string | null>(null)
   const [learnRoads, setLearnRoads] = useState<LearnRoad[]>([])
+  const [positionScenarios, setPositionScenarios] = useState<Scenario[]>([])
+  const [positionTasks, setPositionTasks] = useState<ScenarioTask[]>([])
 
   const [listLoading, setListLoading] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
@@ -278,58 +249,100 @@ export default function LearnRoadsPage() {
     return result
   }, [positions, searchQuery, filterStatus])
 
-  const handleEdit = async (position: Position) => {
-    setEditingPosition(position)
-    setView('edit')
-    setSaved(false)
-    setEditLoading(true)
-
+  const loadPositionScenes = useCallback(async (positionId: string) => {
     try {
-      const res = await learnRoadApi.list({ limit: 1000 })
-      const roads = res.items || []
-      setLearnRoads(roads)
-
-      const existing = roads.find((r) => r.positionIds?.includes(position.id))
-      if (existing?.id) {
-        setLearnRoadId(existing.id)
-        const loaded = stepsToScenes(existing.steps).length
-          ? stepsToScenes(existing.steps)
-          : defaultScenes
-        setScenes(loaded)
-        setSelectedSceneId(loaded[0]?.id || defaultScenes[0].id)
-      } else {
-        const created = await learnRoadApi.create({
-          name: `${position.name}学习路径`,
-          positionIds: [position.id],
-          steps: scenesToSteps(defaultScenes),
-        })
-        setLearnRoads((prev) => [created, ...prev])
-        setLearnRoadId(created.id)
-        const loaded = stepsToScenes(created.steps).length
-          ? stepsToScenes(created.steps)
-          : defaultScenes
-        setScenes(loaded)
-        setSelectedSceneId(loaded[0]?.id || defaultScenes[0].id)
-      }
+      const scenarioRes = await scenarioApi.list({
+        careerPositionId: positionId,
+        status: 'published',
+        limit: 1000,
+      })
+      const scens = scenarioRes.items || []
+      const taskResults = scens.length
+        ? await Promise.all(scens.map((s) => taskApi.list({ scenarioId: s.id, limit: 1000 })))
+        : []
+      const allTasks = taskResults.flatMap((r) => r.items || [])
+      setPositionScenarios(scens)
+      setPositionTasks(allTasks)
+      return { scenarios: scens, tasks: allTasks }
     } catch (err) {
       toast({
-        title: '加载失败',
+        title: '加载场景失败',
         description: err instanceof Error ? err.message : '请稍后重试',
         variant: 'destructive',
       })
-      setLearnRoadId(null)
-      setScenes(defaultScenes)
-      setSelectedSceneId(defaultScenes[0].id)
-    } finally {
-      setEditLoading(false)
+      setPositionScenarios([])
+      setPositionTasks([])
+      return { scenarios: [] as Scenario[], tasks: [] as ScenarioTask[] }
     }
-  }
+  }, [toast])
+
+  const handleEdit = useCallback(
+    async (position: Position) => {
+      setEditingPosition(position)
+      setView('edit')
+      setSaved(false)
+      setEditLoading(true)
+
+      try {
+        const [{ items: roads = [] }, { scenarios, tasks }] = await Promise.all([
+          learnRoadApi.list({ limit: 1000 }),
+          loadPositionScenes(position.id),
+        ])
+        setLearnRoads(roads)
+
+        const existing = roads.find((r) => r.positionIds?.includes(position.id))
+        let loadedScenes: Scene[] = []
+        if (existing?.id) {
+          setLearnRoadId(existing.id)
+          loadedScenes = stepsToScenes(existing.steps || [], scenarios, tasks)
+        } else if (scenarios.length) {
+          const created = await learnRoadApi.create({
+            name: `${position.name}学习路径`,
+            positionIds: [position.id],
+            steps: scenesToSteps(scenarios.map((s) => scenarioToScene(s, tasks))),
+          })
+          setLearnRoads((prev) => [created, ...prev])
+          setLearnRoadId(created.id)
+          loadedScenes = stepsToScenes(created.steps || [], scenarios, tasks)
+        } else {
+          const created = await learnRoadApi.create({
+            name: `${position.name}学习路径`,
+            positionIds: [position.id],
+            steps: [],
+          })
+          setLearnRoads((prev) => [created, ...prev])
+          setLearnRoadId(created.id)
+          loadedScenes = []
+        }
+        setScenes(loadedScenes)
+        setSelectedSceneId(loadedScenes[0]?.id || null)
+      } catch (err) {
+        toast({
+          title: '加载失败',
+          description: err instanceof Error ? err.message : '请稍后重试',
+          variant: 'destructive',
+        })
+        setLearnRoadId(null)
+        setScenes([])
+        setSelectedSceneId(null)
+        setPositionScenarios([])
+        setPositionTasks([])
+      } finally {
+        setEditLoading(false)
+      }
+    },
+    [loadPositionScenes, toast]
+  )
 
   const handleBack = () => {
     setView('list')
     setEditingPosition(null)
     setSaved(false)
     setLearnRoadId(null)
+    setScenes([])
+    setSelectedSceneId(null)
+    setPositionScenarios([])
+    setPositionTasks([])
   }
 
   const moveScene = (index: number, direction: -1 | 1) => {
@@ -369,8 +382,12 @@ export default function LearnRoadsPage() {
   }
 
   const handleReset = () => {
-    setScenes(defaultScenes)
-    setSelectedSceneId(defaultScenes[0].id)
+    const road = learnRoads.find((r) => r.id === learnRoadId)
+    const loaded = road
+      ? stepsToScenes(road.steps || [], positionScenarios, positionTasks)
+      : positionScenarios.map((s) => scenarioToScene(s, positionTasks))
+    setScenes(loaded)
+    setSelectedSceneId(loaded[0]?.id || null)
     setSaved(false)
   }
 
@@ -641,15 +658,30 @@ export default function LearnRoadsPage() {
                         <div className="h-5 text-xs text-slate-400">
                           {idx === 0 ? 'START · 第1站' : `第${idx + 1}站`}
                         </div>
-                        <div
-                          className={cn(
-                            'mt-2 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-transform',
-                            color.bg,
-                            isSelected && 'ring-4 ring-white scale-110'
-                          )}
-                        >
-                          <Icon className="h-6 w-6" />
-                        </div>
+                        {scene.coverImage ? (
+                          <div
+                            className={cn(
+                              'mt-2 flex h-14 w-14 items-center justify-center rounded-full overflow-hidden shadow-lg transition-transform bg-white',
+                              isSelected && 'ring-4 ring-white scale-110'
+                            )}
+                          >
+                            <img
+                              src={scene.coverImage}
+                              alt={scene.name}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div
+                            className={cn(
+                              'mt-2 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-transform',
+                              color.bg,
+                              isSelected && 'ring-4 ring-white scale-110'
+                            )}
+                          >
+                            <Icon className="h-6 w-6" />
+                          </div>
+                        )}
                         <div
                           className={cn(
                             'mt-3 text-sm font-bold text-center max-w-[140px]',
@@ -659,7 +691,7 @@ export default function LearnRoadsPage() {
                           {scene.name}
                         </div>
                         <div className="text-xs text-slate-500 mt-1">
-                          {scene.tasks.length} 任务 · {scene.tasks.length * 2} 课时
+                          {scene.tasks.length} 任务 · {scene.hours} 课时
                         </div>
                       </button>
                     )
@@ -667,6 +699,12 @@ export default function LearnRoadsPage() {
                 </div>
               </div>
             </div>
+            {scenes.length === 0 && !editLoading && (
+              <div className="text-center py-10 text-slate-500">
+                <Layers className="h-10 w-10 mx-auto mb-2 opacity-40" />
+                <p>该岗位下暂无已发布场景，请先创建并发布场景</p>
+              </div>
+            )}
           </div>
 
           <Card>
@@ -703,24 +741,37 @@ export default function LearnRoadsPage() {
                       >
                         <GripVertical className="h-5 w-5" />
                       </span>
-                      <span
-                        className={cn(
-                          'flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors',
-                          isSelected
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200'
-                        )}
-                      >
-                        {index + 1}
-                      </span>
-                      <span
-                        className={cn(
-                          'font-medium transition-colors',
-                          isSelected ? 'text-blue-700' : 'text-slate-900'
-                        )}
-                      >
-                        {scene.name}
-                      </span>
+                      {scene.coverImage ? (
+                        <img
+                          src={scene.coverImage}
+                          alt={scene.name}
+                          className="h-8 w-8 rounded-full object-cover border border-slate-200"
+                        />
+                      ) : (
+                        <span
+                          className={cn(
+                            'flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors',
+                            isSelected
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200'
+                          )}
+                        >
+                          {index + 1}
+                        </span>
+                      )}
+                      <div>
+                        <div
+                          className={cn(
+                            'font-medium transition-colors',
+                            isSelected ? 'text-blue-700' : 'text-slate-900'
+                          )}
+                        >
+                          {scene.name}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {scene.tasks.length} 任务 · {scene.hours} 课时
+                        </div>
+                      </div>
                     </div>
                     <div className="flex items-center gap-1">
                       {isSelected && (
@@ -752,6 +803,12 @@ export default function LearnRoadsPage() {
                   </div>
                 )
               })}
+              {scenes.length === 0 && !editLoading && (
+                <div className="text-center py-8 text-slate-500">
+                  <FolderOpen className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                  <p>暂无可排序的场景</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

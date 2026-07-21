@@ -149,6 +149,7 @@ type PositionRecommendation struct {
 type LearnRoadStep struct {
 	Name        string   `json:"name"`
 	Description *string  `json:"description,omitempty"`
+	ScenarioID  *string  `json:"scenarioId,omitempty"`
 	ResourceIDs []string `json:"resourceIds,omitempty"`
 }
 

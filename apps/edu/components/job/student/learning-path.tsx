@@ -1,11 +1,14 @@
 "use client"
 
 import { useMemo, useRef, useState, useEffect } from "react"
-import { Route, ChevronLeft, ChevronRight, Flag, ShoppingCart, Smartphone, LineChart, GitBranch, Users, Trophy } from "lucide-react"
+import { Route, ChevronLeft, ChevronRight, Flag, ShoppingCart, Smartphone, LineChart, GitBranch, Users, Trophy, Layers, Play } from "lucide-react"
 import type { LearnRoad } from "@/lib/types"
+import type { Scenario, ScenarioTask } from "@/lib/types/scene"
 
 interface LearningPathProps {
   roads: LearnRoad[]
+  scenarios?: Scenario[]
+  tasks?: ScenarioTask[]
 }
 
 const DEFAULT_STEPS = [
@@ -27,16 +30,75 @@ const COLORS = [
   "linear-gradient(135deg, #fadb14, #ffec3d)",
 ]
 
-export function LearningPath({ roads }: LearningPathProps) {
+export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPathProps) {
   const [activeIndex, setActiveIndex] = useState(0)
   const trackRef = useRef<HTMLDivElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
 
   const road = roads[0]
+
+  const orderedScenarios = useMemo(() => {
+    if (!scenarios.length) return []
+    if (!road?.steps?.length) return scenarios
+    const scenarioMap = new Map(scenarios.map((s) => [s.id, s]))
+    const usedIds = new Set<string>()
+    const result: Scenario[] = []
+
+    for (const step of road.steps) {
+      if (step.scenarioId && scenarioMap.has(step.scenarioId) && !usedIds.has(step.scenarioId)) {
+        const sc = scenarioMap.get(step.scenarioId)!
+        result.push(sc)
+        usedIds.add(sc.id)
+        continue
+      }
+      // 兼容旧数据：按名称匹配
+      const matched = scenarios.find((s) => s.name === step.name && !usedIds.has(s.id))
+      if (matched) {
+        result.push(matched)
+        usedIds.add(matched.id)
+      }
+    }
+
+    for (const sc of scenarios) {
+      if (!usedIds.has(sc.id)) result.push(sc)
+    }
+    return result
+  }, [road, scenarios])
+
+  const taskMap = useMemo(() => {
+    const map = new Map<string, ScenarioTask[]>()
+    tasks.forEach((t) => {
+      const list = map.get(t.scenarioId) || []
+      list.push(t)
+      map.set(t.scenarioId, list)
+    })
+    for (const list of map.values()) {
+      list.sort((a, b) => a.sortOrder - b.sortOrder)
+    }
+    return map
+  }, [tasks])
+
+  const getScenarioTasks = (scenarioId: string) => taskMap.get(scenarioId) || []
+  const getScenarioHours = (scenarioId: string) =>
+    getScenarioTasks(scenarioId).reduce((sum, t) => sum + (t.estimatedHours || 0), 0)
+
   const steps = useMemo(() => {
+    if (orderedScenarios.length) {
+      return orderedScenarios.map((s) => ({
+        name: s.name,
+        description: s.background || "",
+        scenarioId: s.id,
+      }))
+    }
     if (!road || !road.steps || road.steps.length === 0) return DEFAULT_STEPS
     return road.steps.map((s) => ({ name: s.name, description: s.description || "" }))
-  }, [road])
+  }, [road, orderedScenarios])
+
+  useEffect(() => {
+    if (activeIndex >= steps.length && steps.length > 0) {
+      setActiveIndex(0)
+    }
+  }, [steps, activeIndex])
 
   useEffect(() => {
     const wrapper = wrapperRef.current
@@ -60,6 +122,18 @@ export function LearningPath({ roads }: LearningPathProps) {
       const item = trackRef.current?.children[next]
       if (item) item.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" })
     }
+  }
+
+  const activeScenarioId = orderedScenarios[activeIndex]?.id
+  const activeTasks = activeScenarioId ? getScenarioTasks(activeScenarioId) : []
+
+  if (orderedScenarios.length === 0) {
+    return (
+      <div className="text-center py-12 text-[#94a3b8] bg-white rounded-2xl border border-[#e7e5e4]">
+        <Layers className="w-12 h-12 mx-auto mb-3 opacity-40" />
+        <div>暂无关联实践场景</div>
+      </div>
+    )
   }
 
   return (
@@ -97,17 +171,18 @@ export function LearningPath({ roads }: LearningPathProps) {
               style={{ background: "linear-gradient(90deg, #3b82f6, #52c41a, #f59e0b, #eb2f96, #722ed1, #fa541c, #fadb14)" }}
             />
 
-            {steps.map((step, i) => {
+            {orderedScenarios.map((scenario, i) => {
               const isStart = i === 0
-              const isEnd = i === steps.length - 1
+              const isEnd = i === orderedScenarios.length - 1
               const isActive = i === activeIndex
               const Icon = ICONS[i % ICONS.length]
               const label = isStart ? "START · 起点" : isEnd ? "GOAL · 终点" : `第${i}站`
-              const meta = isEnd ? "达成认证" : `${(step.description?.length || 0) % 6 + 3}任务 · ${(step.name.length % 4) + 6}课时`
+              const scenarioTasks = getScenarioTasks(scenario.id)
+              const hours = getScenarioHours(scenario.id)
 
               return (
                 <div
-                  key={i}
+                  key={scenario.id}
                   onClick={() => { setActiveIndex(i) }}
                   className={`flex flex-col items-center min-w-[180px] px-6 pb-5 relative z-10 cursor-pointer ${isActive ? "active" : ""}`}
                 >
@@ -116,18 +191,31 @@ export function LearningPath({ roads }: LearningPathProps) {
                       {label}
                     </div>
                   )}
-                  <div
-                    className={`w-[72px] h-[72px] rounded-full flex items-center justify-center text-white text-[28px] mb-4 transition-all shadow-lg ${
-                      isActive ? "scale-110" : ""
-                    }`}
-                    style={{ background: COLORS[i % COLORS.length], boxShadow: isActive ? "0 6px 24px rgba(245,158,11,0.35)" : "0 4px 16px rgba(0,0,0,0.2)" }}
-                  >
-                    <Icon className="w-7 h-7" />
-                  </div>
+                  {scenario.coverImage ? (
+                    <div
+                      className={`w-[72px] h-[72px] rounded-full flex items-center justify-center overflow-hidden mb-4 transition-all shadow-lg ${
+                        isActive ? "scale-110" : ""
+                      }`}
+                      style={{ boxShadow: isActive ? "0 6px 24px rgba(245,158,11,0.35)" : "0 4px 16px rgba(0,0,0,0.2)" }}
+                    >
+                      <img src={scenario.coverImage} alt={scenario.name} className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div
+                      className={`w-[72px] h-[72px] rounded-full flex items-center justify-center text-white text-[28px] mb-4 transition-all shadow-lg ${
+                        isActive ? "scale-110" : ""
+                      }`}
+                      style={{ background: COLORS[i % COLORS.length], boxShadow: isActive ? "0 6px 24px rgba(245,158,11,0.35)" : "0 4px 16px rgba(0,0,0,0.2)" }}
+                    >
+                      <Icon className="w-7 h-7" />
+                    </div>
+                  )}
                   <div className={`text-[15px] font-semibold text-center whitespace-nowrap mb-1 ${isActive ? "text-blue-500" : "text-[#1f2937]"}`}>
-                    {step.name}
+                    {scenario.name}
                   </div>
-                  <div className="text-[13px] text-[#94a3b8] text-center whitespace-nowrap">{meta}</div>
+                  <div className="text-[13px] text-[#94a3b8] text-center whitespace-nowrap">
+                    {scenarioTasks.length} 任务 · {hours} 课时
+                  </div>
                 </div>
               )
             })}
@@ -141,10 +229,43 @@ export function LearningPath({ roads }: LearningPathProps) {
       </div>
 
       <div className="mt-4 p-5 rounded-xl bg-[#f8fafc] border border-[#f1f5f9]">
-        <div className="text-sm font-semibold text-[#1f2937] mb-1">
-          {steps[activeIndex]?.name} {activeIndex === 0 ? "（起点）" : activeIndex === steps.length - 1 ? "（终点）" : ""}
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-sm font-semibold text-[#1f2937]">
+            {orderedScenarios[activeIndex]?.name} {activeIndex === 0 ? "（起点）" : activeIndex === orderedScenarios.length - 1 ? "（终点）" : ""}
+          </div>
+          <div className="text-xs text-[#64748b]">
+            {activeTasks.length} 任务 · {getScenarioHours(activeScenarioId || "")} 课时
+          </div>
         </div>
-        <p className="text-sm text-[#64748b]">{steps[activeIndex]?.description || "暂无步骤说明"}</p>
+        {activeTasks.length === 0 ? (
+          <p className="text-sm text-[#64748b]">该场景暂无任务</p>
+        ) : (
+          <div className="space-y-2">
+            {activeTasks.map((task, idx) => (
+              <div key={task.id} className="flex items-center justify-between py-2 border-t border-[#f1f5f9] first:border-t-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full bg-[#eff6ff] text-blue-600 flex items-center justify-center text-xs font-bold">
+                    {idx + 1}
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-[#1f2937]">{task.name}</div>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#64748b]">
+                        {task.taskType === "assessment" ? "测评任务" : "训练任务"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-[#94a3b8]">{task.estimatedHours}课时</span>
+                  <button className="text-xs px-3 py-1.5 rounded-md bg-blue-500 text-white hover:bg-blue-600 flex items-center gap-1">
+                    <Play className="w-3 h-3" /> 去学习
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <style jsx>{`
