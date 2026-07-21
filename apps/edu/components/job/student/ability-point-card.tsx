@@ -39,7 +39,7 @@ const LEVEL_COLORS: Record<string, string> = {
 }
 
 export function AbilityPointCard({ binding, abilityPoint, index }: AbilityPointCardProps) {
-  const attributes = abilityPoint?.attributes?.length ? abilityPoint.attributes : binding.attributes
+  const attributes = binding.attributes?.length ? binding.attributes : abilityPoint?.attributes || []
   const domainColors = DOMAIN_COLORS[binding.domain || "专业工具"] || DOMAIN_COLORS["专业工具"]
   const levelLabel = LEVEL_LABELS[binding.requiredLevel] || binding.requiredLevel
   const levelColor = LEVEL_COLORS[levelLabel] || "#94a3b8"
