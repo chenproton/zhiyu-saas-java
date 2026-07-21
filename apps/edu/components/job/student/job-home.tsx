@@ -365,40 +365,42 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
           </div>
 
           {isScene ? (
-            <div className="w-full lg:w-[500px] shrink-0 flex flex-col gap-3 pt-4">
+            <div className="w-full lg:w-[520px] shrink-0 flex flex-col gap-3 pt-4">
               {/* 目标岗位配套场景 */}
-              <div className="bg-white/12 backdrop-blur-[16px] border border-white/20 rounded-2xl p-4 text-white">
-                <div className="flex items-center gap-2 mb-3">
-                  <Flag className="w-4 h-4 text-yellow-300" />
+              <div className="bg-white/[0.08] backdrop-blur-[20px] border border-white/15 rounded-2xl p-5 text-white shadow-[0_4px_24px_rgba(0,0,0,0.15)]">
+                <div className="flex items-center gap-2.5 mb-3">
+                  <div className="w-7 h-7 rounded-lg bg-white/15 flex items-center justify-center">
+                    <Flag className="w-3.5 h-3.5 text-yellow-300" />
+                  </div>
                   <span className="text-[14px] font-bold">目标岗位配套场景</span>
                 </div>
-                <div className="flex flex-col items-center justify-center text-white/60 text-center py-4">
-                  <Flag className="w-8 h-8 mb-2 opacity-50" />
-                  <div className="text-sm font-semibold text-white/80">暂无目标岗位配套场景</div>
-                  <div className="text-xs mt-0.5 text-white/50">完成能力测评后，系统将为你推荐匹配岗位，关联场景将在此展示</div>
+                <div className="flex flex-col items-center justify-center text-white/50 text-center py-5">
+                  <Flag className="w-8 h-8 mb-2 opacity-40" />
+                  <div className="text-sm font-semibold text-white/70">暂无目标岗位配套场景</div>
+                  <div className="text-[12px] mt-1 text-white/40 leading-relaxed">完成能力测评后，系统将为你推荐匹配岗位，关联场景将在此展示</div>
                 </div>
               </div>
               {/* 心仪岗位配套场景 */}
-              <div className="bg-white/12 backdrop-blur-[16px] border border-white/20 rounded-2xl p-4 text-white">
-                <div className="flex items-center gap-2 mb-3">
-                  <Heart className="w-4 h-4 text-rose-300" />
+              <div className="bg-white/[0.08] backdrop-blur-[20px] border border-white/15 rounded-2xl p-5 text-white shadow-[0_4px_24px_rgba(0,0,0,0.15)]">
+                <div className="flex items-center gap-2.5 mb-3">
+                  <div className="w-7 h-7 rounded-lg bg-white/15 flex items-center justify-center">
+                    <Heart className="w-3.5 h-3.5 text-rose-300" />
+                  </div>
                   <span className="text-[14px] font-bold">心仪岗位配套场景</span>
                 </div>
                 {favoritePositionScenarios.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center text-white/60 text-center py-4">
-                    <Heart className="w-8 h-8 mb-2 opacity-50" />
-                    <div className="text-sm font-semibold text-white/80">快去收藏岗位吧！</div>
-                    <div className="text-xs mt-0.5 text-white/50">在岗位列表收藏你感兴趣的岗位，关联场景将在此展示</div>
+                  <div className="flex flex-col items-center justify-center text-white/50 text-center py-5">
+                    <Heart className="w-8 h-8 mb-2 opacity-40" />
+                    <div className="text-sm font-semibold text-white/70">快去收藏岗位吧！</div>
+                    <div className="text-[12px] mt-1 text-white/40 leading-relaxed">在岗位列表收藏你感兴趣的岗位，关联场景将在此展示</div>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-1">
                     {favoritePositionScenarios.slice(0, 4).map((sc) => (
                       <Link key={sc.id} href={`/scene/landing/${sc.id}`}>
-                        <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors group">
-                          <span className="flex-1 text-[13px] truncate group-hover:text-yellow-300 transition-colors">
-                            {sc.name}
-                          </span>
-                          <span className="text-[11px] text-white/50 shrink-0">v{sc.version || "1.0"}</span>
+                        <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 cursor-pointer transition-all group">
+                          <span className="flex-1 text-[13px] truncate group-hover:text-yellow-200 transition-colors">{sc.name}</span>
+                          <span className="text-[11px] text-white/40 shrink-0">v{sc.version || "1.0"}</span>
                         </div>
                       </Link>
                     ))}
@@ -419,21 +421,21 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
 
       {/* Stats bar for scene mode - 4 indicators below hero */}
       {isScene && (
-        <div className="max-w-[1400px] mx-auto px-8 -mt-8 relative z-20 w-full">
-          <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_8px_32px_rgba(0,0,0,0.08)] p-5 grid grid-cols-4 gap-5">
+        <div className="max-w-[1400px] mx-auto px-8 -mt-10 relative z-20 w-full">
+          <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_24px_rgba(0,0,0,0.06)] p-6 grid grid-cols-4 gap-4">
             {[
-              { icon: Layers, value: stats.total, label: "实践场景", gradient: "from-blue-500 to-blue-400" },
-              { icon: ListChecks, value: stats.taskCount, label: "任务总数", gradient: "from-violet-500 to-violet-400" },
-              { icon: Factory, value: stats.industryCount, label: "覆盖行业", gradient: "from-emerald-500 to-emerald-400" },
-              { icon: Building2, value: stats.favoriteTotal, label: "关联岗位", gradient: "from-amber-500 to-amber-400" },
+              { icon: Layers, value: stats.total, label: "实践场景", gradient: "from-blue-500 to-blue-400", bg: "bg-blue-50" },
+              { icon: ListChecks, value: stats.taskCount, label: "任务总数", gradient: "from-violet-500 to-violet-400", bg: "bg-violet-50" },
+              { icon: Factory, value: stats.industryCount, label: "覆盖行业", gradient: "from-emerald-500 to-emerald-400", bg: "bg-emerald-50" },
+              { icon: Building2, value: stats.favoriteTotal, label: "关联岗位", gradient: "from-amber-500 to-amber-400", bg: "bg-amber-50" },
             ].map((s, i) => (
-              <div key={i} className="flex items-center gap-5 py-2">
-                <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-white shadow-md bg-gradient-to-br ${s.gradient} shrink-0`}>
+              <div key={i} className="flex items-center gap-5 p-3 rounded-xl transition-all hover:bg-[#f8fafc] hover:shadow-sm cursor-default">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg bg-gradient-to-br ${s.gradient} shrink-0`}>
                   <s.icon className="w-7 h-7" strokeWidth={1.8} />
                 </div>
-                <div>
-                  <div className="text-[28px] font-extrabold text-[#1e293b] leading-none">{s.value.toLocaleString()}</div>
-                  <div className="text-[13px] text-[#64748b] mt-1">{s.label}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[28px] font-extrabold text-[#0f172a] leading-none tracking-tight">{s.value.toLocaleString()}</div>
+                  <div className="text-[13px] text-[#64748b] mt-1 font-medium">{s.label}</div>
                 </div>
               </div>
             ))}
@@ -547,41 +549,49 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
         {isScene && (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-5 mb-6">
             {/* 行业覆盖热力标签 */}
-            <div className="bg-white rounded-2xl border border-[#e7e5e4] p-5">
-              <div className="flex items-center gap-2 text-[15px] font-bold text-[#0f172a] mb-4 pl-3 border-l-4 border-orange-400">
-                <Factory className="w-4 h-4 text-orange-500" /> 行业覆盖
+            <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6">
+              <div className="flex items-center gap-2.5 text-[15px] font-bold text-[#0f172a] mb-5">
+                <div className="w-1 h-5 rounded-full bg-gradient-to-b from-amber-400 to-orange-500" />
+                <Factory className="w-4 h-4 text-amber-500" />
+                行业覆盖
+                <span className="text-xs text-[#94a3b8] font-normal ml-auto">{(() => { const s = new Set<string>(); scenarios.forEach((sc) => sc.industryNames?.forEach((n) => n && s.add(n))); return s.size })()} 个行业</span>
               </div>
               {(() => {
                 const counts = new Map<string, number>()
                 scenarios.forEach((s) => s.industryNames?.forEach((n) => n && counts.set(n, (counts.get(n) || 0) + 1)))
                 const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1])
                 const max = sorted[0]?.[1] || 1
-                if (sorted.length === 0) return <div className="text-sm text-[#94a3b8] text-center py-6">暂无行业数据</div>
+                if (sorted.length === 0) return <div className="text-sm text-[#94a3b8] text-center py-8">暂无行业数据</div>
+                const palettes = [
+                  { bg: "rgba(249,115,22,{a})", text: "rgb(194,65,12)", border: "rgba(249,115,22,{b})" },
+                  { bg: "rgba(59,130,246,{a})", text: "rgb(29,78,216)", border: "rgba(59,130,246,{b})" },
+                  { bg: "rgba(139,92,246,{a})", text: "rgb(109,40,217)", border: "rgba(139,92,246,{b})" },
+                  { bg: "rgba(16,185,129,{a})", text: "rgb(4,120,87)", border: "rgba(16,185,129,{b})" },
+                  { bg: "rgba(236,72,153,{a})", text: "rgb(190,24,93)", border: "rgba(236,72,153,{b})" },
+                ]
                 return (
                   <div className="flex flex-wrap gap-2.5">
-                    {sorted.slice(0, 12).map(([name, count], i) => {
+                    {sorted.slice(0, 15).map(([name, count], i) => {
                       const ratio = count / max
-                      const r = Math.round(255 - ratio * 100)
-                      const g = Math.round(160 - ratio * 80)
-                      const b = Math.round(255 - ratio * 60)
+                      const p = palettes[i % palettes.length]
                       return (
                         <span
                           key={name}
-                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all hover:scale-105 cursor-default"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105 hover:shadow-sm cursor-default"
                           style={{
-                            backgroundColor: `rgba(${r},${g},255,${0.15 + ratio * 0.2})`,
-                            color: `rgb(${Math.max(0, r - 80)},${Math.max(0, g - 80)},${b})`,
-                            border: `1px solid rgba(${r},${g},255,${0.25 + ratio * 0.15})`,
-                            fontSize: `${12 + ratio * 4}px`,
+                            backgroundColor: p.bg.replace("{a}", String(0.08 + ratio * 0.18)),
+                            color: p.text,
+                            border: `1px solid ${p.border.replace("{b}", String(0.2 + ratio * 0.25))}`,
+                            fontSize: `${12 + ratio * 5}px`,
                           }}
                         >
                           {name}
-                          <span className="text-[10px] opacity-70 rounded-full bg-white/50 px-1.5">{count}</span>
+                          <span className="text-[10px] opacity-60 rounded-full bg-black/8 px-1.5 py-0.5 leading-none font-medium">{count}</span>
                         </span>
                       )
                     })}
-                    {sorted.length > 12 && (
-                      <span className="text-[13px] text-[#94a3b8] self-end">+{sorted.length - 12} 更多</span>
+                    {sorted.length > 15 && (
+                      <span className="text-[13px] text-[#94a3b8] self-end pb-1">+{sorted.length - 15} 更多</span>
                     )}
                   </div>
                 )
@@ -589,41 +599,47 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
             </div>
 
             {/* 场景难度分布 */}
-            <div className="bg-white rounded-2xl border border-[#e7e5e4] p-5">
-              <div className="flex items-center gap-2 text-[15px] font-bold text-[#0f172a] mb-4 pl-3 border-l-4 border-purple-400">
-                <BarChart3 className="w-4 h-4 text-purple-500" /> 难度分布
+            <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6">
+              <div className="flex items-center gap-2.5 text-[15px] font-bold text-[#0f172a] mb-5">
+                <div className="w-1 h-5 rounded-full bg-gradient-to-b from-violet-400 to-purple-500" />
+                <BarChart3 className="w-4 h-4 text-purple-500" />
+                难度分布
               </div>
               {(() => {
                 const diffCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
                 scenarios.forEach((s) => { if (s.difficulty) diffCounts[s.difficulty] = (diffCounts[s.difficulty] || 0) + 1 })
                 const entries = [
-                  { key: 1, label: "入门", color: "#22c55e", bg: "#f0fdf4" },
-                  { key: 2, label: "初级", color: "#eab308", bg: "#fefce8" },
-                  { key: 3, label: "中级", color: "#f97316", bg: "#fff7ed" },
-                  { key: 4, label: "高级", color: "#ef4444", bg: "#fef2f2" },
-                  { key: 5, label: "专家", color: "#8b5cf6", bg: "#f5f3ff" },
+                  { key: 1, label: "入门", color: "#22c55e", from: "#22c55e", to: "#16a34a", bg: "#f0fdf4" },
+                  { key: 2, label: "初级", color: "#eab308", from: "#facc15", to: "#ca8a04", bg: "#fefce8" },
+                  { key: 3, label: "中级", color: "#f97316", from: "#fb923c", to: "#ea580c", bg: "#fff7ed" },
+                  { key: 4, label: "高级", color: "#ef4444", from: "#f87171", to: "#dc2626", bg: "#fef2f2" },
+                  { key: 5, label: "专家", color: "#8b5cf6", from: "#a78bfa", to: "#7c3aed", bg: "#f5f3ff" },
                 ]
                 const maxCount = Math.max(...Object.values(diffCounts), 1)
                 return (
-                  <div className="space-y-3.5">
-                    {entries.map((e) => (
-                      <div key={e.key} className="flex items-center gap-3">
-                        <span className="text-[13px] font-medium text-[#374151] w-10 shrink-0">{e.label}</span>
-                        <div className="flex-1 h-7 bg-[#f1f5f9] rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all duration-700 flex items-center justify-end pr-2 min-w-[32px]"
-                            style={{
-                              width: `${Math.max((diffCounts[e.key] || 0) / maxCount * 100, 4)}%`,
-                              backgroundColor: e.color,
-                            }}
-                          >
-                            <span className="text-[11px] font-bold text-white">
-                              {diffCounts[e.key] || 0}
-                            </span>
+                  <div className="space-y-4">
+                    {entries.map((e) => {
+                      const count = diffCounts[e.key] || 0
+                      const pct = Math.max(count / maxCount * 100, count > 0 ? 5 : 0)
+                      return (
+                        <div key={e.key} className="group">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[13px] font-semibold text-[#374151]">{e.label}</span>
+                            <span className="text-[13px] font-bold text-[#475569]">{count} 个</span>
+                          </div>
+                          <div className="h-3 bg-[#f1f5f9] rounded-full overflow-hidden shadow-inner">
+                            <div
+                              className="h-full rounded-full transition-all duration-700 ease-out group-hover:brightness-110"
+                              style={{
+                                width: `${pct}%`,
+                                background: `linear-gradient(90deg, ${e.from}, ${e.to})`,
+                                minWidth: count > 0 ? "20px" : "0px",
+                              }}
+                            />
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )
               })()}
@@ -633,9 +649,10 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
 
         <div ref={listRef}>
           {/* Filter */}
-          <div className="bg-white rounded-2xl border border-[#e7e5e4] p-5 mb-4">
-            <div className="flex items-center gap-2 text-[16px] font-bold text-[#0f172a] mb-4 pl-3 border-l-4 border-blue-500">
-              <Filter className="w-4 h-4" />
+          <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6 mb-5">
+            <div className="flex items-center gap-2.5 text-[16px] font-bold text-[#0f172a] mb-5">
+              <div className="w-1 h-5 rounded-full bg-gradient-to-b from-blue-400 to-blue-600" />
+              <Filter className="w-4 h-4 text-blue-500" />
               {isScene ? "场景筛选" : "岗位筛选"}
             </div>
             <div className="space-y-0">
@@ -735,31 +752,31 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
 
           {/* Toolbar */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-[#e7e5e4]">
+            <div className="flex items-center gap-0.5 bg-white p-1 rounded-xl border border-[#e7e5e4] shadow-sm">
               {sortOptions.map((s) => (
                 <button
                   key={s.value}
                   onClick={() => setSort(s.value)}
                   className={`
-                    px-4 py-2 rounded-[10px] text-[13px] transition-all
-                    ${sort === s.value ? "bg-[#eff6ff] text-blue-600 font-medium" : "text-[#475569] hover:text-blue-600"}
+                    px-5 py-2 rounded-[10px] text-[13px] transition-all font-medium
+                    ${sort === s.value ? "bg-blue-500 text-white shadow-sm" : "text-[#475569] hover:text-blue-600 hover:bg-[#f8fafc]"}
                   `}
                 >
                   {s.label}
                 </button>
               ))}
             </div>
-            <div className="relative w-[320px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94a3b8]" />
+            <div className="relative w-[340px]">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94a3b8]" />
               <Input
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") executeSearch() }}
                 placeholder={isScene ? "搜索场景名称、编码或关键词" : "搜索岗位名称、岗位编码或关键词"}
-                className="pl-10 pr-20 h-10 bg-[#f8fafc] border-[#e7e5e4] rounded-[10px] text-sm"
+                className="pl-10 pr-[72px] h-11 bg-[#f8fafc] border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-blue-300 focus:ring-2 focus:ring-blue-50"
               />
               <Button
-                className="absolute right-1 top-1/2 -translate-y-1/2 rounded-[10px] px-4 h-8 bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white text-xs"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-[10px] px-5 h-8 bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white text-xs font-medium shadow-sm"
                 onClick={executeSearch}
               >
                 搜索
@@ -767,23 +784,29 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
             </div>
           </div>
 
-          <div className="text-sm text-[#64748b] mb-4">
-            当前共展示 <b className="text-blue-600">{filtered.length}</b> {isScene ? "个场景查看入口" : "个岗位查看入口"}
+          <div className="text-[13px] text-[#64748b] mb-5">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+              当前共展示 <b className="text-blue-600">{filtered.length}</b> {isScene ? "个场景查看入口" : "个岗位查看入口"}
+            </span>
           </div>
 
           {/* Grid */}
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
               {Array.from({ length: 12 }).map((_, i) => (
-                <div key={i} className="bg-white rounded-2xl border border-[#e7e5e4] h-[360px] animate-pulse" />
+                <div key={i} className="bg-white rounded-2xl border border-[#e7e5e4] h-[360px] animate-pulse shadow-sm" />
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="text-center py-20 text-[#94a3b8] bg-white rounded-2xl border border-[#e7e5e4]">
-              <Search className="w-14 h-14 mx-auto mb-4 opacity-40" />
-              <div className="text-[15px]">
-                {isScene ? "暂无匹配的场景，试试调整筛选条件或搜索关键词" : "暂无匹配的岗位，试试调整筛选条件或搜索关键词"}
+            <div className="text-center py-20 text-[#94a3b8] bg-white rounded-2xl border border-[#e7e5e4] shadow-sm">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[#f8fafc] flex items-center justify-center">
+                <Search className="w-8 h-8 opacity-30" />
               </div>
+              <div className="text-[15px] font-medium text-[#475569]">
+                {isScene ? "暂无匹配的场景" : "暂无匹配的岗位"}
+              </div>
+              <div className="text-[13px] mt-1">试试调整筛选条件或搜索关键词</div>
             </div>
           ) : (
             <>
