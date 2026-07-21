@@ -59,17 +59,14 @@ export function JobHome() {
     recommendApi
       .list({ limit: 1000 })
       .then((res) => {
-        let items = (res.items || [])
+        const items = (res.items || [])
           .filter((rec) => rec.isEnabled)
           .sort((a, b) => a.sortOrder - b.sortOrder)
-          .map((rec) => ({ positionId: rec.careerPositionId, order: rec.sortOrder, majorId: rec.majorId }))
-        if (user?.majorId) {
-          items = items.filter((rec) => rec.majorId === user.majorId)
-        }
+          .map((rec) => ({ positionId: rec.careerPositionId, order: rec.sortOrder }))
         setHotPositions(items)
       })
       .catch(() => setHotPositions([]))
-  }, [user?.majorId])
+  }, [])
 
   useEffect(() => {
     scenarioApi
