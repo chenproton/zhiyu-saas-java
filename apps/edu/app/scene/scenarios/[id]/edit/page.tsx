@@ -171,13 +171,11 @@ export default function ScenarioEditPage() {
     try {
       await scenarioApi.update(scenarioId, buildPayload() as any)
       hasSavedRef.current = true
-      if (scenarioStatus === "approved" || scenarioStatus === "published" || scenarioStatus === "rejected") {
+      if (scenarioStatus !== "draft") {
         await scenarioApi.saveDraft(scenarioId)
         setScenarioStatus("draft")
-        toast.success("草稿已保存")
-      } else {
-        toast.success("草稿已保存")
       }
+      toast.success("草稿已保存")
     } catch (err: any) {
       toast.error(err.message || "请稍后重试")
     } finally {
