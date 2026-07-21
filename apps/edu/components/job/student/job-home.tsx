@@ -420,19 +420,19 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
       {/* Stats bar for scene mode - 4 indicators below hero */}
       {isScene && (
         <div className="max-w-[1400px] mx-auto px-8 -mt-8 relative z-20">
-          <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_8px_32px_rgba(0,0,0,0.08)] p-5 grid grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_8px_32px_rgba(0,0,0,0.08)] p-6 flex flex-col gap-6">
             {[
               { icon: Layers, value: stats.total, label: "实践场景", gradient: "from-blue-500 to-blue-400" },
               { icon: ListChecks, value: stats.taskCount, label: "任务总数", gradient: "from-violet-500 to-violet-400" },
               { icon: Factory, value: stats.industryCount, label: "覆盖行业", gradient: "from-emerald-500 to-emerald-400" },
               { icon: Building2, value: stats.favoriteTotal, label: "关联岗位", gradient: "from-amber-500 to-amber-400" },
             ].map((s, i) => (
-              <div key={i} className="flex items-center gap-4 p-2">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-md bg-gradient-to-br ${s.gradient} shrink-0`}>
-                  <s.icon className="w-6 h-6" strokeWidth={1.8} />
+              <div key={i} className="flex items-center gap-5">
+                <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-white shadow-md bg-gradient-to-br ${s.gradient} shrink-0`}>
+                  <s.icon className="w-7 h-7" strokeWidth={1.8} />
                 </div>
                 <div>
-                  <div className="text-2xl font-extrabold text-[#1e293b] leading-none">{s.value.toLocaleString()}</div>
+                  <div className="text-[28px] font-extrabold text-[#1e293b] leading-none">{s.value.toLocaleString()}</div>
                   <div className="text-[13px] text-[#64748b] mt-1">{s.label}</div>
                 </div>
               </div>
