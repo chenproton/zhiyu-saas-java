@@ -15,6 +15,7 @@ import { useIndustryMap } from "@/lib/use-resource-maps"
 import type { CareerPosition, Scenario } from "@/lib/types"
 import { StatsBar } from "./stats-bar"
 import { JobCard } from "./job-card"
+import { SceneCard } from "@/components/scene/student/scene-card"
 import { Pagination } from "./pagination"
 import { RankingList } from "./ranking-list"
 import { PlatformFooter } from "./platform-footer"
@@ -26,12 +27,27 @@ const SORT_OPTIONS = [
   { value: "recent", label: "最近收录" },
   { value: "update", label: "最近更新" },
 ]
+const SCENE_SORT_OPTIONS = [
+  { value: "default", label: "默认排序" },
+  { value: "recent", label: "最近收录" },
+  { value: "update", label: "最近更新" },
+  { value: "tasks", label: "最多任务" },
+]
 
-export function JobHome() {
+const difficultyMap: Record<number, string> = {
+  1: "入门", 2: "初级", 3: "中级", 4: "高级", 5: "专家",
+}
+
+interface JobHomeProps {
+  mode?: "job" | "scene"
+}
+
+export function JobHome({ mode = "job" }: JobHomeProps) {
   const router = useRouter()
   const { user } = useAuth()
   const industryMap = useIndustryMap()
   const listRef = useRef<HTMLDivElement>(null)
+  const isScene = mode === "scene"
 
   const [positions, setPositions] = useState<CareerPosition[]>([])
   const [scenarios, setScenarios] = useState<Scenario[]>([])
@@ -44,27 +60,45 @@ export function JobHome() {
   const [keyword, setKeyword] = useState("")
   const [selectedIndustry, setSelectedIndustry] = useState<string>("全部")
   const [selectedMajor, setSelectedMajor] = useState<string>("全部")
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string>("全部")
 
   useEffect(() => {
     setLoading(true)
-    publicPositionApi
-      .list({ status: "published", limit: 1000 })
-      .then((res) => setPositions(res.items || []))
-      .catch(() => setPositions([]))
-      .finally(() => setLoading(false))
-  }, [])
+    if (isScene) {
+      scenarioApi
+        .list({ status: "published", limit: 1000 })
+        .then(async (res) => {
+          const scens = res.items || []
+          setScenarios(scens)
+          const results = await Promise.all(
+            scens.map((s) => taskApi.list({ scenarioId: s.id, limit: 1000 }).catch(() => ({ items: [], total: 0 })))
+          )
+          const map = new Map<string, number>()
+          scens.forEach((s, idx) => {
+            map.set(s.id, results[idx]?.items?.length ?? 0)
+          })
+          setTaskCountMap(map)
+        })
+        .catch(() => { setScenarios([]); setTaskCountMap(new Map()) })
+        .finally(() => setLoading(false))
+    } else {
+      publicPositionApi
+        .list({ status: "published", limit: 1000 })
+        .then((res) => setPositions(res.items || []))
+        .catch(() => setPositions([]))
+        .finally(() => setLoading(false))
+    }
+  }, [isScene])
 
   useEffect(() => {
+    if (isScene) return
     scenarioApi
       .list({ status: "published", limit: 1000 })
       .then(async (res) => {
         const scens = res.items || []
         setScenarios(scens)
         const related = scens.filter((s) => s.careerPositionId)
-        if (related.length === 0) {
-          setTaskCountMap(new Map())
-          return
-        }
+        if (related.length === 0) { setTaskCountMap(new Map()); return }
         const results = await Promise.all(
           related.map((s) => taskApi.list({ scenarioId: s.id, limit: 1000 }).catch(() => ({ items: [], total: 0 })))
         )
@@ -77,34 +111,35 @@ export function JobHome() {
         })
         setTaskCountMap(map)
       })
-      .catch(() => {
-        setScenarios([])
-        setTaskCountMap(new Map())
-      })
-  }, [])
+      .catch(() => { setScenarios([]); setTaskCountMap(new Map()) })
+  }, [isScene])
 
   useEffect(() => {
-    if (!user) {
-      setFavoritePositions([])
-      return
-    }
+    if (isScene) { setFavoritePositions([]); return }
+    if (!user) { setFavoritePositions([]); return }
     positionApi
       .listFavorites()
       .then((res) => setFavoritePositions(res.items || []))
       .catch(() => setFavoritePositions([]))
-  }, [user])
+  }, [user, isScene])
 
   const scenarioCountMap = useMemo(() => {
     const map = new Map<string, number>()
+    if (isScene) return map
     scenarios.forEach((s) => {
       if (s.careerPositionId) {
         map.set(s.careerPositionId, (map.get(s.careerPositionId) || 0) + 1)
       }
     })
     return map
-  }, [scenarios])
+  }, [scenarios, isScene])
 
   const industries = useMemo(() => {
+    if (isScene) {
+      const set = new Set<string>()
+      scenarios.forEach((s) => { s.industryNames?.forEach((n) => n && set.add(n)) })
+      return ["全部", ...Array.from(set).sort()]
+    }
     const set = new Set<string>()
     positions.forEach((p) => {
       if (p.industryId) {
@@ -113,7 +148,7 @@ export function JobHome() {
       }
     })
     return ["全部", ...Array.from(set).sort()]
-  }, [positions, industryMap])
+  }, [isScene, scenarios, positions, industryMap])
 
   const majors = useMemo(() => {
     const set = new Set<string>()
@@ -121,7 +156,48 @@ export function JobHome() {
     return ["全部", ...Array.from(set).sort()]
   }, [positions])
 
-  const filtered = useMemo(() => {
+  const difficulties = useMemo(() => {
+    const nums = new Set<number>()
+    scenarios.forEach((s) => { if (s.difficulty) nums.add(s.difficulty) })
+    return ["全部", ...Array.from(nums).sort().map((n) => difficultyMap[n] || String(n))]
+  }, [scenarios])
+
+  const sceneFiltered = useMemo(() => {
+    let list = [...scenarios]
+    if (selectedIndustry !== "全部") {
+      list = list.filter((s) => s.industryNames?.includes(selectedIndustry))
+    }
+    if (selectedDifficulty !== "全部") {
+      list = list.filter((s) => difficultyMap[s.difficulty] === selectedDifficulty)
+    }
+    if (keyword.trim()) {
+      const k = keyword.trim().toLowerCase()
+      list = list.filter(
+        (s) =>
+          s.name.toLowerCase().includes(k) ||
+          (s.code?.toLowerCase().includes(k) ?? false) ||
+          (s.background?.toLowerCase().includes(k) ?? false) ||
+          s.id.toLowerCase().includes(k)
+      )
+    }
+    switch (sort) {
+      case "tasks":
+        list.sort((a, b) => (taskCountMap.get(b.id) ?? 0) - (taskCountMap.get(a.id) ?? 0) || a.name.localeCompare(b.name, "zh-CN"))
+        break
+      case "recent":
+        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        break
+      case "update":
+        list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        break
+      default:
+        list.sort((a, b) => a.name.localeCompare(b.name, "zh-CN"))
+        break
+    }
+    return list
+  }, [scenarios, selectedIndustry, selectedDifficulty, keyword, sort, taskCountMap])
+
+  const jobFiltered = useMemo(() => {
     let list = [...positions]
     if (selectedIndustry !== "全部") {
       list = list.filter((p) => p.industryId && industryMap.get(p.industryId) === selectedIndustry)
@@ -155,23 +231,35 @@ export function JobHome() {
     return list
   }, [positions, selectedIndustry, selectedMajor, keyword, sort, industryMap])
 
+  const filtered = isScene ? sceneFiltered : jobFiltered
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / CARDS_PER_PAGE))
   const pageItems = useMemo(() => {
     const start = (currentPage - 1) * CARDS_PER_PAGE
     return filtered.slice(start, start + CARDS_PER_PAGE)
   }, [filtered, currentPage])
 
-  useEffect(() => { setCurrentPage(1) }, [selectedIndustry, selectedMajor, keyword, sort])
+  useEffect(() => { setCurrentPage(1) }, [selectedIndustry, selectedMajor, selectedDifficulty, keyword, sort])
 
   const activeFilters = useMemo(() => {
     const filters: { type: string; label: string }[] = []
     if (selectedIndustry !== "全部") filters.push({ type: "industry", label: `行业：${selectedIndustry}` })
-    if (selectedMajor !== "全部") filters.push({ type: "major", label: `专业：${selectedMajor}` })
+    if (!isScene && selectedMajor !== "全部") filters.push({ type: "major", label: `专业：${selectedMajor}` })
+    if (isScene && selectedDifficulty !== "全部") filters.push({ type: "difficulty", label: `难度：${selectedDifficulty}` })
     if (keyword.trim()) filters.push({ type: "keyword", label: `关键词：${keyword.trim()}` })
     return filters
-  }, [selectedIndustry, selectedMajor, keyword])
+  }, [selectedIndustry, selectedMajor, selectedDifficulty, keyword, isScene])
 
   const stats = useMemo(() => {
+    if (isScene) {
+      const industrySet = new Set<string>()
+      let totalTasks = 0
+      scenarios.forEach((s) => {
+        s.industryNames?.forEach((n) => n && industrySet.add(n))
+        totalTasks += taskCountMap.get(s.id) ?? 0
+      })
+      return { total: scenarios.length, industryCount: industrySet.size, taskCount: totalTasks, majorCount: 0, favoriteTotal: 0 }
+    }
     const industrySet = new Set<string>()
     const majorSet = new Set<string>()
     let favoriteTotal = 0
@@ -185,8 +273,9 @@ export function JobHome() {
       industryCount: industrySet.size,
       majorCount: majorSet.size,
       favoriteTotal,
+      taskCount: 0,
     }
-  }, [positions])
+  }, [isScene, scenarios, positions, taskCountMap])
 
   const executeSearch = () => {
     setCurrentPage(1)
@@ -195,158 +284,186 @@ export function JobHome() {
     }, 50)
   }
 
+  const sortOptions = isScene ? SCENE_SORT_OPTIONS : SORT_OPTIONS
+
   return (
     <div className="min-h-screen flex flex-col bg-[#F1FAFF]">
       {/* Hero Banner */}
       <div className="relative w-full pt-16 overflow-hidden min-h-[420px]">
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url('/student-hero-bg.png')" }}
+          style={{ backgroundImage: isScene ? "url('/scene-hero-bg.png')" : "url('/student-hero-bg.png')" }}
         />
         <div className="absolute inset-0 bg-gradient-to-br from-[rgba(30,64,175,0.85)] via-[rgba(59,130,246,0.75)] to-[rgba(124,58,237,0.75)]" />
         <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-12 h-full min-h-[420px] flex flex-col lg:flex-row justify-between items-center gap-8">
           <div className="flex-1">
             <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-3.5 py-1.5 rounded-full text-[13px] border border-white/20 mb-5">
               <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-              对接产业前沿 · 赋能岗位能力学习
+              {isScene ? "场景化实践 · 任务驱动教学" : "对接产业前沿 · 赋能岗位能力学习"}
             </div>
             <h1 className="text-[57px] font-extrabold text-white leading-[1.2] mb-4">
-              对接产业前沿<br />开启岗位能力学习新征程
+              {isScene ? (
+                <>场景化实践教学<br />以真实场景驱动能力成长</>
+              ) : (
+                <>对接产业前沿<br />开启岗位能力学习新征程</>
+              )}
             </h1>
             <p className="text-[17px] text-white/85 mb-6 max-w-xl">
-              链接真实岗位场景，构建从认知到胜任的能力进阶闭环
+              {isScene
+                ? "基于真实业务场景的任务化训练，从入门到专家，系统提升综合实战能力"
+                : "链接真实岗位场景，构建从认知到胜任的能力进阶闭环"}
             </p>
             <Button
               className="inline-flex items-center gap-2 bg-white text-blue-600 hover:bg-white/90 px-6 h-11 rounded-full text-sm font-semibold shadow-lg"
               onClick={() => listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
             >
-              浏览岗位 <ChevronRight className="w-4 h-4" />
+              {isScene ? "浏览场景" : "浏览岗位"} <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
 
           <StatsBar
             total={stats.total}
-            majorCount={stats.majorCount}
+            majorCount={isScene ? stats.taskCount : stats.majorCount}
             industryCount={stats.industryCount}
-            favoriteTotal={stats.favoriteTotal}
+            favoriteTotal={!isScene ? stats.favoriteTotal : undefined}
+            mode={isScene ? "scene" : "job"}
           />
         </div>
       </div>
 
       <main className="max-w-[1400px] mx-auto px-8 py-6 w-full flex-1">
-        {/* Dashboard */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_340px] gap-5 mb-6">
-          {/* 目标推荐岗位 */}
-          <div className="bg-white rounded-2xl border border-[#e7e5e4] p-3 flex flex-col min-h-[178px]">
-            <div className="flex items-center justify-between mb-2.5">
-              <div className="flex items-center gap-2 text-[15px] font-bold text-[#0f172a]">
-                <Flag className="w-4 h-4 text-blue-500" />
-                目标推荐岗位
+        {/* Dashboard (job mode only) */}
+        {!isScene && (
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_340px] gap-5 mb-6">
+            <div className="bg-white rounded-2xl border border-[#e7e5e4] p-3 flex flex-col min-h-[178px]">
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center gap-2 text-[15px] font-bold text-[#0f172a]">
+                  <Flag className="w-4 h-4 text-blue-500" />
+                  目标推荐岗位
+                </div>
+                <div className="text-xs text-[#94a3b8] cursor-pointer">全部 <ChevronRight className="w-3 h-3 inline" /></div>
               </div>
-              <div className="text-xs text-[#94a3b8] cursor-pointer">全部 <ChevronRight className="w-3 h-3 inline" /></div>
-            </div>
-            <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8] text-center px-4">
-              <Flag className="w-9 h-9 mb-2 text-[#cbd5e1]" />
-              <div className="text-sm font-semibold text-[#475569]">暂无目标推荐岗位</div>
-              <div className="text-xs mt-0.5">完成能力测评后，系统将为你推荐匹配岗位</div>
-            </div>
-          </div>
-
-          {/* 我的心仪岗位 */}
-          <div className="bg-white rounded-2xl border border-[#e7e5e4] p-3 flex flex-col min-h-[178px]">
-            <div className="flex items-center justify-between mb-2.5">
-              <div className="flex items-center gap-2 text-[15px] font-bold text-[#0f172a]">
-                <Heart className="w-4 h-4 text-rose-500" />
-                我的心仪岗位
-              </div>
-              <Link href="/job/student" className="text-xs text-[#94a3b8] hover:text-blue-600 cursor-pointer">
-                全部 <ChevronRight className="w-3 h-3 inline" />
-              </Link>
-            </div>
-            {favoritePositions.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8] text-center px-4">
-                <Heart className="w-9 h-9 mb-2 text-[#cbd5e1]" />
-                <div className="text-sm font-semibold text-[#475569]">快去查看岗位点击收藏吧！</div>
-                <div className="text-xs mt-0.5">浏览岗位资源，收藏你感兴趣的岗位</div>
+                <Flag className="w-9 h-9 mb-2 text-[#cbd5e1]" />
+                <div className="text-sm font-semibold text-[#475569]">暂无目标推荐岗位</div>
+                <div className="text-xs mt-0.5">完成能力测评后，系统将为你推荐匹配岗位</div>
               </div>
-            ) : (
-              <div className="flex-1 flex flex-col gap-1 overflow-hidden">
-                {favoritePositions.slice(0, 5).map((pos) => {
-                  const display = pos.shortName || pos.name
-                  const category = pos.industryId && industryMap.get(pos.industryId)
-                    ? industryMap.get(pos.industryId)
-                    : (pos.positionType === "enterprise" ? "企业" : "教学")
-                  const majors = pos.majorNames?.filter(Boolean) || []
-                  const majorText = majors.length === 0
-                    ? "未分类"
-                    : majors.length === 1
-                      ? majors[0]
-                      : `${majors[0]} +${majors.length - 1}`
-                  return (
-                    <Link key={pos.id} href={`/job/student/${pos.id}`}>
-                      <div className="flex items-start gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#f8fafc] cursor-pointer transition-colors group">
-                        <div className="flex-1 min-w-0 flex flex-col gap-1">
-                          <div className="flex items-center gap-2">
-                            <span className="flex-1 text-[13px] font-semibold text-[#0f172a] truncate group-hover:text-blue-600 transition-colors">
-                              {display}
-                            </span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#475569] whitespace-nowrap">
-                              v{pos.version || "1.0"}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-[11px]">
-                            <span className="px-1.5 py-0.5 rounded bg-[#eff6ff] text-blue-600 truncate max-w-[80px]">
-                              {category}
-                            </span>
-                            <span
-                              className="px-1.5 py-0.5 rounded bg-[#f0fdf4] text-emerald-600 truncate max-w-[120px]"
-                              title={majors.join("、") || "未分类"}
-                            >
-                              {majorText}
-                            </span>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-[#e7e5e4] p-3 flex flex-col min-h-[178px]">
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center gap-2 text-[15px] font-bold text-[#0f172a]">
+                  <Heart className="w-4 h-4 text-rose-500" />
+                  我的心仪岗位
+                </div>
+                <Link href="/job/student" className="text-xs text-[#94a3b8] hover:text-blue-600 cursor-pointer">
+                  全部 <ChevronRight className="w-3 h-3 inline" />
+                </Link>
+              </div>
+              {favoritePositions.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8] text-center px-4">
+                  <Heart className="w-9 h-9 mb-2 text-[#cbd5e1]" />
+                  <div className="text-sm font-semibold text-[#475569]">快去查看岗位点击收藏吧！</div>
+                  <div className="text-xs mt-0.5">浏览岗位资源，收藏你感兴趣的岗位</div>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col gap-1 overflow-hidden">
+                  {favoritePositions.slice(0, 5).map((pos) => {
+                    const display = pos.shortName || pos.name
+                    const category = pos.industryId && industryMap.get(pos.industryId)
+                      ? industryMap.get(pos.industryId)
+                      : (pos.positionType === "enterprise" ? "企业" : "教学")
+                    const majors = pos.majorNames?.filter(Boolean) || []
+                    const majorText = majors.length === 0 ? "未分类" : majors.length === 1 ? majors[0] : `${majors[0]} +${majors.length - 1}`
+                    return (
+                      <Link key={pos.id} href={`/job/student/${pos.id}`}>
+                        <div className="flex items-start gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#f8fafc] cursor-pointer transition-colors group">
+                          <div className="flex-1 min-w-0 flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <span className="flex-1 text-[13px] font-semibold text-[#0f172a] truncate group-hover:text-blue-600 transition-colors">
+                                {display}
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#475569] whitespace-nowrap">
+                                v{pos.version || "1.0"}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[11px]">
+                              <span className="px-1.5 py-0.5 rounded bg-[#eff6ff] text-blue-600 truncate max-w-[80px]">
+                                {category}
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded bg-[#f0fdf4] text-emerald-600 truncate max-w-[120px]" title={majors.join("、") || "未分类"}>
+                                {majorText}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* 学前能力基线测评 */}
-          <div className="rounded-2xl p-6 text-white bg-gradient-to-br from-indigo-500 to-violet-600 flex flex-col justify-between min-h-[178px]">
-            <div>
-              <div className="flex items-center gap-2.5 mb-2.5">
-                <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
-                  <Crosshair className="w-5 h-5" />
+                      </Link>
+                    )
+                  })}
                 </div>
-                <div className="text-[17px] font-bold">学前能力基线测评</div>
-              </div>
-              <p className="text-[13px] text-white/85 leading-relaxed">
-                学习前先测一测，精准定位你的能力起点，量身规划学习路径
-              </p>
+              )}
             </div>
-            <Button
-              className="self-start bg-white text-indigo-600 hover:bg-white/90 rounded-full h-9 px-5 text-[13px] font-semibold"
-              onClick={() => router.push("/evaluation")}
-            >
-              开始测评 <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
-          </div>
-        </div>
 
-        {/* 心仪岗位排行榜 */}
-        <div className="mb-6">
-          <RankingList positions={positions} industryMap={industryMap} />
-        </div>
+            <div className="rounded-2xl p-6 text-white bg-gradient-to-br from-indigo-500 to-violet-600 flex flex-col justify-between min-h-[178px]">
+              <div>
+                <div className="flex items-center gap-2.5 mb-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+                    <Crosshair className="w-5 h-5" />
+                  </div>
+                  <div className="text-[17px] font-bold">学前能力基线测评</div>
+                </div>
+                <p className="text-[13px] text-white/85 leading-relaxed">
+                  学习前先测一测，精准定位你的能力起点，量身规划学习路径
+                </p>
+              </div>
+              <Button
+                className="self-start bg-white text-indigo-600 hover:bg-white/90 rounded-full h-9 px-5 text-[13px] font-semibold"
+                onClick={() => router.push("/evaluation")}
+              >
+                开始测评 <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Scene mode dashboard - ability baseline assessment */}
+        {isScene && (
+          <div className="mb-6">
+            <div className="rounded-2xl p-6 text-white bg-gradient-to-br from-indigo-500 to-violet-600 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2.5 mb-2">
+                  <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+                    <Crosshair className="w-5 h-5" />
+                  </div>
+                  <div className="text-[17px] font-bold">学前能力基线测评</div>
+                </div>
+                <p className="text-[13px] text-white/85 leading-relaxed max-w-lg">
+                  学习前先测一测，精准定位你的能力起点，量身规划学习路径
+                </p>
+              </div>
+              <Button
+                className="shrink-0 bg-white text-indigo-600 hover:bg-white/90 rounded-full h-9 px-5 text-[13px] font-semibold"
+                onClick={() => router.push("/evaluation")}
+              >
+                开始测评 <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Ranking (job mode only) */}
+        {!isScene && (
+          <div className="mb-6">
+            <RankingList positions={positions} industryMap={industryMap} />
+          </div>
+        )}
 
         <div ref={listRef}>
           {/* Filter */}
           <div className="bg-white rounded-2xl border border-[#e7e5e4] p-5 mb-4">
             <div className="flex items-center gap-2 text-[16px] font-bold text-[#0f172a] mb-4 pl-3 border-l-4 border-blue-500">
               <Filter className="w-4 h-4" />
-              岗位筛选
+              {isScene ? "场景筛选" : "岗位筛选"}
             </div>
             <div className="space-y-0">
               <div className="flex items-start gap-3 sm:gap-4 py-3 border-b border-dashed border-[#e7e5e4]">
@@ -369,26 +486,49 @@ export function JobHome() {
                   ))}
                 </div>
               </div>
-              <div className="flex items-start gap-3 sm:gap-4 py-3">
-                <span className="text-sm text-[#374151] font-medium min-w-[40px] pt-1.5">专业</span>
-                <div className="flex flex-wrap gap-2.5">
-                  {majors.map((item) => (
-                    <button
-                      key={item}
-                      onClick={() => setSelectedMajor(item)}
-                      className={`
-                        px-3.5 py-1.5 rounded-full text-[13px] border transition-all whitespace-nowrap
-                        ${selectedMajor === item
-                          ? "bg-blue-500 text-white border-blue-500"
-                          : "bg-white text-[#475569] border-[#e5e7eb] hover:border-blue-300 hover:text-blue-600"
-                        }
-                      `}
-                    >
-                      {item}
-                    </button>
-                  ))}
+              {!isScene ? (
+                <div className="flex items-start gap-3 sm:gap-4 py-3">
+                  <span className="text-sm text-[#374151] font-medium min-w-[40px] pt-1.5">专业</span>
+                  <div className="flex flex-wrap gap-2.5">
+                    {majors.map((item) => (
+                      <button
+                        key={item}
+                        onClick={() => setSelectedMajor(item)}
+                        className={`
+                          px-3.5 py-1.5 rounded-full text-[13px] border transition-all whitespace-nowrap
+                          ${selectedMajor === item
+                            ? "bg-blue-500 text-white border-blue-500"
+                            : "bg-white text-[#475569] border-[#e5e7eb] hover:border-blue-300 hover:text-blue-600"
+                          }
+                        `}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-start gap-3 sm:gap-4 py-3">
+                  <span className="text-sm text-[#374151] font-medium min-w-[40px] pt-1.5">难度</span>
+                  <div className="flex flex-wrap gap-2.5">
+                    {difficulties.map((item) => (
+                      <button
+                        key={item}
+                        onClick={() => setSelectedDifficulty(item)}
+                        className={`
+                          px-3.5 py-1.5 rounded-full text-[13px] border transition-all whitespace-nowrap
+                          ${selectedDifficulty === item
+                            ? "bg-blue-500 text-white border-blue-500"
+                            : "bg-white text-[#475569] border-[#e5e7eb] hover:border-blue-300 hover:text-blue-600"
+                          }
+                        `}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             {activeFilters.length > 0 && (
               <div className="flex flex-wrap items-center gap-3 pt-4 mt-3 border-t border-dashed border-[#e7e5e4]">
@@ -404,13 +544,14 @@ export function JobHome() {
                       onClick={() => {
                         if (f.type === "industry") setSelectedIndustry("全部")
                         if (f.type === "major") setSelectedMajor("全部")
+                        if (f.type === "difficulty") setSelectedDifficulty("全部")
                         if (f.type === "keyword") setKeyword("")
                       }}
                     />
                   </span>
                 ))}
                 <button
-                  onClick={() => { setSelectedIndustry("全部"); setSelectedMajor("全部"); setKeyword("") }}
+                  onClick={() => { setSelectedIndustry("全部"); setSelectedMajor("全部"); setSelectedDifficulty("全部"); setKeyword("") }}
                   className="text-[13px] text-blue-600 hover:underline"
                 >
                   清空筛选
@@ -422,7 +563,7 @@ export function JobHome() {
           {/* Toolbar */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
             <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-[#e7e5e4]">
-              {SORT_OPTIONS.map((s) => (
+              {sortOptions.map((s) => (
                 <button
                   key={s.value}
                   onClick={() => setSort(s.value)}
@@ -441,7 +582,7 @@ export function JobHome() {
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") executeSearch() }}
-                placeholder="搜索岗位名称、岗位编码或关键词"
+                placeholder={isScene ? "搜索场景名称、编码或关键词" : "搜索岗位名称、岗位编码或关键词"}
                 className="pl-10 pr-20 h-10 bg-[#f8fafc] border-[#e7e5e4] rounded-[10px] text-sm"
               />
               <Button
@@ -454,7 +595,7 @@ export function JobHome() {
           </div>
 
           <div className="text-sm text-[#64748b] mb-4">
-            当前共展示 <b className="text-blue-600">{filtered.length}</b> 个岗位查看入口
+            当前共展示 <b className="text-blue-600">{filtered.length}</b> {isScene ? "个场景查看入口" : "个岗位查看入口"}
           </div>
 
           {/* Grid */}
@@ -467,21 +608,33 @@ export function JobHome() {
           ) : filtered.length === 0 ? (
             <div className="text-center py-20 text-[#94a3b8] bg-white rounded-2xl border border-[#e7e5e4]">
               <Search className="w-14 h-14 mx-auto mb-4 opacity-40" />
-              <div className="text-[15px]">暂无匹配的岗位，试试调整筛选条件或搜索关键词</div>
+              <div className="text-[15px]">
+                {isScene ? "暂无匹配的场景，试试调整筛选条件或搜索关键词" : "暂无匹配的岗位，试试调整筛选条件或搜索关键词"}
+              </div>
             </div>
           ) : (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                {pageItems.map((pos, i) => (
-                  <JobCard
-                    key={pos.id}
-                    position={pos}
-                    index={i}
-                    hideHot={i > 2}
-                    scenarioCount={scenarioCountMap.get(pos.id) ?? 0}
-                    taskCount={taskCountMap.get(pos.id) ?? 0}
-                  />
-                ))}
+                {isScene
+                  ? (pageItems as Scenario[]).map((scenario, i) => (
+                      <SceneCard
+                        key={scenario.id}
+                        scenario={scenario}
+                        index={i}
+                        hideHot={i > 2}
+                        taskCount={taskCountMap.get(scenario.id) ?? 0}
+                      />
+                    ))
+                  : (pageItems as CareerPosition[]).map((pos, i) => (
+                      <JobCard
+                        key={pos.id}
+                        position={pos}
+                        index={i}
+                        hideHot={i > 2}
+                        scenarioCount={scenarioCountMap.get(pos.id) ?? 0}
+                        taskCount={taskCountMap.get(pos.id) ?? 0}
+                      />
+                    ))}
               </div>
               <Pagination
                 currentPage={currentPage}
