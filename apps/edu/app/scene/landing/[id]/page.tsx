@@ -26,6 +26,7 @@ import type {
   AbilityPoint,
 } from "@/lib/types"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
+import { SceneKnowledgeGraph } from "@/components/scene/student/knowledge-graph"
 
 const TABS = [
   { value: "tasks", label: "任务概览", icon: ListChecks },
@@ -448,44 +449,7 @@ export default function SceneDetailPage() {
         )
 
       case "knowledge":
-        return (
-          <div>
-            <div className="text-sm text-slate-500 mb-4">
-              共 <strong className="text-blue-600">{uniqueKnowledgeIds.size}</strong> 个知识点
-            </div>
-            {uniqueKnowledgeIds.size === 0 ? (
-              <div className="text-center py-16 text-slate-400">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
-                  <GitBranch className="w-8 h-8 opacity-40" />
-                </div>
-                <div className="text-[15px] font-medium text-slate-600">暂无关联知识点</div>
-                <div className="text-[13px] mt-1">该场景暂未关联知识点</div>
-              </div>
-            ) : (
-              <div className="space-y-5">
-                {tasks.filter((t) => t.knowledgePointIds?.length > 0).map((task) => (
-                  <div key={task.id}>
-                    <div className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-teal-500" />
-                      {task.name}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {task.knowledgePointIds?.map((kid) => {
-                        const kp = knowledgeMap.get(kid)
-                        return (
-                          <div key={kid} className="bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5 transition-all">
-                            <div className="text-sm font-semibold text-slate-800">{kp?.name || "知识点"}</div>
-                            {kp?.code && <div className="text-[10px] text-slate-400 mt-0.5">编码：{kp.code}</div>}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )
+        return <SceneKnowledgeGraph scenario={scenario} tasks={tasks} knowledgeMap={knowledgeMap} abilityMap={abilityMap} />
 
       default:
         return null
