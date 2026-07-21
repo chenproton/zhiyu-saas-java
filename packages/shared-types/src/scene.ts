@@ -4,10 +4,10 @@ export interface Scenario {
   code: string
   coverImage?: string
   careerPositionId?: string
-  industryId?: string
-  industryName?: string
-  professionId?: string
-  professionName?: string
+  industryIds?: string[]
+  industryNames?: string[]
+  professionIds?: string[]
+  professionNames?: string[]
   batchId?: string
   difficulty: number
   version: string

@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { MultiSelect } from "@/components/ui/multi-select"
 import { industryApi, positionApi, sceneBatchApi, scenarioApi, userManagementApi } from "@/lib/api"
 import type { Scenario } from "@/lib/types/scene"
 import type { CareerPosition } from "@/lib/types/job"
@@ -49,7 +50,7 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
   const [deliveryGoal, setDeliveryGoal] = useState("")
   const [careerPositionId, setCareerPositionId] = useState(defaultPositionId || "")
   const [batchId, setBatchId] = useState(defaultBatchId || "")
-  const [industryId, setIndustryId] = useState("")
+  const [industryIds, setIndustryIds] = useState<string[]>([])
   const [coBuilderIds, setCoBuilderIds] = useState<string[]>([])
 
   const isEdit = Boolean(scenarioId)
@@ -88,7 +89,7 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
         setDeliveryGoal(s.deliveryGoal || "")
         setCareerPositionId(s.careerPositionId || "")
         setBatchId(s.batchId || "")
-        setIndustryId(s.industryId || "")
+        setIndustryIds(s.industryIds || [])
         setCoBuilderIds(s.coBuilderIds || [])
       })
       .catch((err: any) => {
@@ -128,7 +129,7 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
         deliveryGoal: deliveryGoal.trim() || undefined,
         careerPositionId: careerPositionId || undefined,
         batchId: batchId || undefined,
-        industryId: industryId || undefined,
+        industryIds: industryIds.length > 0 ? industryIds : undefined,
         coBuilderIds,
       }
       let id = scenarioId
@@ -252,19 +253,12 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="industry">所属行业</Label>
-              <Select value={industryId || "__none__"} onValueChange={(v) => setIndustryId(v === "__none__" ? "" : v)}>
-                <SelectTrigger id="industry">
-                  <SelectValue placeholder="请选择行业" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">不选择</SelectItem>
-                  {industries.map((ind) => (
-                    <SelectItem key={ind.id} value={ind.id}>
-                      {ind.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <MultiSelect
+                options={industries.map(ind => ({ label: ind.name, value: ind.id }))}
+                value={industryIds}
+                onChange={setIndustryIds}
+                placeholder="请选择行业"
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="position">目标岗位</Label>

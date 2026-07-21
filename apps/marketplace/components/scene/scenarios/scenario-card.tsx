@@ -73,7 +73,7 @@ export function ScenarioCard({ scenario }: ScenarioCardProps) {
           <div className="flex items-center gap-2 mb-2">
             {renderDifficulty(scenario.difficulty)}
             <Badge variant="secondary" className="bg-gray-50 text-gray-500 text-xs">
-              {scenario.professionName || scenario.professionId || "未分类"}
+              {scenario.professionNames?.join("、") || scenario.professionIds?.join("、") || "未分类"}
             </Badge>
           </div>
 

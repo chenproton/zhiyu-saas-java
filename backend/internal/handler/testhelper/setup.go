@@ -530,11 +530,13 @@ func runTestMigrations(t *testing.T, db *pgxpool.Pool) {
 
 	conn, err := db.Acquire(ctx)
 	if err != nil {
-		return
+		t.Fatalf("acquire connection for migrations: %v", err)
 	}
 	defer conn.Release()
 
-	conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(255) PRIMARY KEY, applied_at TIMESTAMPTZ DEFAULT NOW())`)
+	if _, err := conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(255) PRIMARY KEY, applied_at TIMESTAMPTZ DEFAULT NOW())`); err != nil {
+		t.Fatalf("create schema_migrations table: %v", err)
+	}
 
 	migrationsDir := "migrations"
 	candidates := []string{
@@ -550,7 +552,7 @@ func runTestMigrations(t *testing.T, db *pgxpool.Pool) {
 
 	files, err := os.ReadDir(migrationsDir)
 	if err != nil {
-		return
+		t.Fatalf("read migrations directory %s: %v", migrationsDir, err)
 	}
 
 	var migrations []string
@@ -564,18 +566,22 @@ func runTestMigrations(t *testing.T, db *pgxpool.Pool) {
 	for _, name := range migrations {
 		version := strings.TrimSuffix(name, ".up.sql")
 		var exists bool
-		_ = conn.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = $1)`, version).Scan(&exists)
+		if err := conn.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = $1)`, version).Scan(&exists); err != nil {
+			t.Fatalf("check migration %s: %v", version, err)
+		}
 		if exists {
 			continue
 		}
 		sql, err := os.ReadFile(filepath.Join(migrationsDir, name))
 		if err != nil {
-			continue
+			t.Fatalf("read migration %s: %v", name, err)
 		}
 		if _, err := conn.Exec(ctx, string(sql)); err != nil {
-			continue
+			t.Fatalf("apply migration %s: %v", name, err)
 		}
-		conn.Exec(ctx, `INSERT INTO schema_migrations (version) VALUES ($1)`, version)
+		if _, err := conn.Exec(ctx, `INSERT INTO schema_migrations (version) VALUES ($1)`, version); err != nil {
+			t.Fatalf("record migration %s: %v", name, err)
+		}
 	}
 }
 

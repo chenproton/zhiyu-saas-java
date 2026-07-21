@@ -70,7 +70,6 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(30 * time.Second))
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -84,6 +83,20 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 		})
 	})
 
+	uploadDir := os.Getenv("UPLOAD_DIR")
+	if uploadDir == "" {
+		uploadDir = "../public/uploads"
+	}
+	fileHandler := &handler.FileHandler{UploadDir: uploadDir}
+
+	r.Group(func(r chi.Router) {
+		r.Use(authmw.JWT(jwtSecret))
+		r.Use(authmw.OperationLog(db))
+		r.Post("/api/v1/files/upload", fileHandler.Upload)
+	})
+
+	r.Use(middleware.Timeout(30 * time.Second))
+
 	authHandler := &handler.AuthHandler{DB: db, JWTSecret: jwtSecret}
 	institutionHandler := &handler.InstitutionHandler{DB: db}
 	resourceHandler := &handler.ResourceHandler{DB: db}
@@ -91,11 +104,6 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 	bannerHandler := &handler.BannerHandler{DB: db}
 	withdrawalHandler := &handler.WithdrawalHandler{DB: db}
 	statsHandler := &handler.StatsHandler{DB: db}
-	uploadDir := os.Getenv("UPLOAD_DIR")
-	if uploadDir == "" {
-		uploadDir = "../public/uploads"
-	}
-	fileHandler := &handler.FileHandler{UploadDir: uploadDir}
 	portalHandler := &handler.PortalHandler{DB: db}
 	importExportHandler := &handler.ImportExportHandler{DB: db}
 
@@ -228,7 +236,6 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 			r.Post("/resources/{id}/publish", resourceHandler.Publish)
 			r.Post("/resources/{id}/offline", resourceHandler.Offline)
 
-			r.Post("/files/upload", fileHandler.Upload)
 			r.Get("/export/{entity}", importExportHandler.Export)
 			r.Post("/import/{entity}", importExportHandler.Import)
 

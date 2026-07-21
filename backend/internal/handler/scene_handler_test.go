@@ -730,7 +730,7 @@ func TestScenario_ClearNullableFields(t *testing.T) {
 
 	code := fmt.Sprintf("test-clear-%s", t.Name())
 
-	// Create scenario with a careerPositionId
+	// Create scenario with nullable/array fields populated
 	w := env.Do("POST", "/api/v1/scene/scenarios", map[string]interface{}{
 		"name":             "Clearable Scenario",
 		"code":             code,
@@ -738,6 +738,8 @@ func TestScenario_ClearNullableFields(t *testing.T) {
 		"version":          "v1.0",
 		"careerPositionId": "00000000-0000-0000-0000-00000000dead",
 		"background":       "original background",
+		"industryIds":      []string{"ind-001", "ind-002"},
+		"professionIds":    []string{"00000000-0000-0000-0000-0000000000a1", "00000000-0000-0000-0000-0000000000a2"},
 	})
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
@@ -748,8 +750,11 @@ func TestScenario_ClearNullableFields(t *testing.T) {
 	if scenario.CareerPositionID == nil {
 		t.Fatal("expected careerPositionId to be set after create")
 	}
+	if len(scenario.IndustryIDs) != 2 || len(scenario.ProfessionIDs) != 2 {
+		t.Fatalf("expected arrays with 2 items, got industry=%v profession=%v", scenario.IndustryIDs, scenario.ProfessionIDs)
+	}
 
-	// Update with explicit nulls to clear fields
+	// Update with explicit nulls/empty arrays to clear fields
 	w = env.Do("PUT", "/api/v1/scene/scenarios/"+id, map[string]interface{}{
 		"name":             "Clearable Scenario",
 		"code":             code,
@@ -757,6 +762,8 @@ func TestScenario_ClearNullableFields(t *testing.T) {
 		"version":          "v1.0",
 		"careerPositionId": nil,
 		"background":       nil,
+		"industryIds":      []string{},
+		"professionIds":    []string{},
 	})
 	if w.Code != http.StatusOK {
 		t.Fatalf("update: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
@@ -770,6 +777,12 @@ func TestScenario_ClearNullableFields(t *testing.T) {
 	}
 	if updated.Background != nil {
 		t.Fatalf("background should be nil, got %v", *updated.Background)
+	}
+	if len(updated.IndustryIDs) != 0 {
+		t.Fatalf("industryIds should be empty, got %v", updated.IndustryIDs)
+	}
+	if len(updated.ProfessionIDs) != 0 {
+		t.Fatalf("professionIds should be empty, got %v", updated.ProfessionIDs)
 	}
 
 	// Verify partial update keeps cleared values when fields are omitted
@@ -788,6 +801,12 @@ func TestScenario_ClearNullableFields(t *testing.T) {
 	}
 	if partial.CareerPositionID != nil {
 		t.Fatalf("careerPositionId should remain nil after partial update, got %v", *partial.CareerPositionID)
+	}
+	if len(partial.IndustryIDs) != 0 {
+		t.Fatalf("industryIds should remain empty after partial update, got %v", partial.IndustryIDs)
+	}
+	if len(partial.ProfessionIDs) != 0 {
+		t.Fatalf("professionIds should remain empty after partial update, got %v", partial.ProfessionIDs)
 	}
 }
 

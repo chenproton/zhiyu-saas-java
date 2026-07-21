@@ -71,7 +71,7 @@ export default function SceneArchivePage() {
   const professions = useMemo(() => {
     const set = new Set<string>()
     scenarios.forEach((s) => {
-      if (s.professionName) set.add(s.professionName)
+      (s.professionNames || s.professionIds || []).forEach((name) => set.add(name))
     })
     return Array.from(set).sort()
   }, [scenarios])
@@ -79,7 +79,9 @@ export default function SceneArchivePage() {
   const filtered = useMemo(() => {
     let result = scenarios
     if (selectedProfession) {
-      result = result.filter((s) => s.professionName === selectedProfession)
+      result = result.filter((s) =>
+        (s.professionNames || s.professionIds || []).includes(selectedProfession)
+      )
     }
     if (search.trim()) {
       const q = search.toLowerCase()
@@ -87,8 +89,8 @@ export default function SceneArchivePage() {
         (s) =>
           s.name.toLowerCase().includes(q) ||
           s.code.toLowerCase().includes(q) ||
-          (s.professionName || "").toLowerCase().includes(q) ||
-          (s.industryName || "").toLowerCase().includes(q)
+          (s.professionNames || s.professionIds || []).some((v) => v.toLowerCase().includes(q)) ||
+          (s.industryNames || s.industryIds || []).some((v) => v.toLowerCase().includes(q))
       )
     }
     return result
@@ -197,14 +199,14 @@ export default function SceneArchivePage() {
                           <div>
                             <span className="font-medium">{entry.name}</span>
                             <p className="text-xs text-muted-foreground">
-                              {entry.professionName || "-"} · {entry.industryName || "-"}
+                              {(entry.professionNames || entry.professionIds || []).join("、") || "-"} · {(entry.industryNames || entry.industryIds || []).join("、") || "-"}
                             </p>
                           </div>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{entry.code}</TableCell>
                         <TableCell className="text-sm">{entry.version}</TableCell>
-                        <TableCell className="text-sm">{entry.industryName || "-"}</TableCell>
-                        <TableCell className="text-sm">{entry.professionName || "-"}</TableCell>
+                        <TableCell className="text-sm">{(entry.industryNames || entry.industryIds || []).join("、") || "-"}</TableCell>
+                        <TableCell className="text-sm">{(entry.professionNames || entry.professionIds || []).join("、") || "-"}</TableCell>
                         <TableCell className="text-sm">{entry.batchId ? batchMap.get(entry.batchId)?.name || "-" : "-"}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {new Date(entry.updatedAt).toLocaleDateString()}

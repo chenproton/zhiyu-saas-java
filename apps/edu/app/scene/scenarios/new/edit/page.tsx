@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { MultiSelect } from "@/components/ui/multi-select"
 import { cn } from "@/lib/utils"
 import { positionApi, industryApi, sceneBatchApi, userManagementApi, orgApi, scenarioApi, fileApi, majorApi } from "@/lib/api"
 import type { User } from "@/lib/api"
@@ -37,104 +38,6 @@ import { EditorShell } from "@/components/shared/editor-shell"
 
 interface PositionWithProfession extends CareerPosition {
   industryName?: string
-}
-
-function IndustryProfessionSelector({
-  options,
-  selectedIds,
-  onChange,
-  placeholder,
-}: {
-  options: { id: string; name: string }[]
-  selectedIds: string[]
-  onChange: (ids: string[]) => void
-  placeholder: string
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
-
-  const toggleOption = (id: string) => {
-    onChange(selectedIds.includes(id) ? selectedIds.filter(i => i !== id) : [...selectedIds, id])
-  }
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="flex h-auto min-h-[36px] w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {selectedIds.length === 0 ? (
-          <span className="text-muted-foreground">{placeholder}</span>
-        ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {selectedIds.map(id => {
-              const opt = options.find(o => o.id === id)
-              if (!opt) return null
-              return (
-                <span
-                  key={id}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary"
-                >
-                  {opt.name}
-                  <button
-                    type="button"
-                    onClick={e => {
-                      e.stopPropagation()
-                      toggleOption(id)
-                    }}
-                    className="hover:bg-primary/20 rounded-full p-0.5"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              )
-            })}
-          </div>
-        )}
-        <ChevronDown className="h-4 w-4 opacity-50 ml-2 shrink-0" />
-      </button>
-
-      {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-none">
-          <div className="p-2 max-h-[240px] overflow-y-auto">
-            {options.map(opt => (
-              <div
-                key={opt.id}
-                onClick={() => toggleOption(opt.id)}
-                className={cn(
-                  "flex items-center gap-2 px-2 py-1.5 rounded text-sm cursor-pointer hover:bg-gray-50",
-                  selectedIds.includes(opt.id) && "bg-primary/5 text-primary"
-                )}
-              >
-                <div className={cn(
-                  "w-4 h-4 rounded border flex items-center justify-center flex-shrink-0",
-                  selectedIds.includes(opt.id) ? "bg-primary border-primary" : "border-gray-300"
-                )}>
-                  {selectedIds.includes(opt.id) && (
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-                <span>{opt.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
 }
 
 interface DeptNode {
@@ -163,7 +66,7 @@ function NewScenarioEditForm() {
   const [scenarioName, setScenarioName] = useState("")
   const [scenarioCode, setScenarioCode] = useState(`SC-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, "0")}`)
   const [positionId, setPositionId] = useState(positionIdFromQuery || "")
-  const [professionId, setProfessionId] = useState("")
+  const [professionIds, setProfessionIds] = useState<string[]>([])
   const [batchId, setBatchId] = useState(batchIdFromQuery || "")
   const [industryIds, setIndustryIds] = useState<string[]>([])
   const [difficulty, setDifficulty] = useState<number>(3)
@@ -264,27 +167,26 @@ function NewScenarioEditForm() {
 
   const batch = batches.find(b => b.id === batchId)
 
+  const buildPayload = () => ({
+    name: scenarioName.trim(),
+    code: scenarioCode,
+    careerPositionId: positionId || undefined,
+    batchId: batchId || undefined,
+    industryIds: industryIds.length > 0 ? industryIds : undefined,
+    professionIds: professionIds.length > 0 ? professionIds : undefined,
+    difficulty,
+    background: background || undefined,
+    version,
+    coBuilderIds,
+    status: "draft" as const,
+    coverImage: coverImage || undefined,
+  })
+
   const handleProceed = async () => {
     if (!scenarioName.trim()) return
     setIsSaving(true)
     try {
-      const selectedMajor = majors.find(m => m.id === professionId)
-      const payload = {
-        name: scenarioName.trim(),
-        code: scenarioCode,
-        careerPositionId: positionId || undefined,
-        batchId: batchId || undefined,
-        industryId: industryIds[0] || undefined,
-        professionId: professionId || undefined,
-        professionName: selectedMajor?.name || undefined,
-        difficulty,
-        background: background || undefined,
-        version,
-        coBuilderIds,
-        status: "draft" as const,
-        coverImage: coverImage || undefined,
-      }
-      const created = await scenarioApi.create(payload as any)
+      const created = await scenarioApi.create(buildPayload() as any)
       toast.success("创建成功")
       router.push(`/scene/scenarios/${created.id}/edit/tasks`)
     } catch (err: any) {
@@ -298,23 +200,7 @@ function NewScenarioEditForm() {
     if (!scenarioName.trim()) return
     setIsSaving(true)
     try {
-      const selectedMajor = majors.find(m => m.id === professionId)
-      const payload = {
-        name: scenarioName.trim(),
-        code: scenarioCode,
-        careerPositionId: positionId || undefined,
-        batchId: batchId || undefined,
-        industryId: industryIds[0] || undefined,
-        professionId: professionId || undefined,
-        professionName: selectedMajor?.name || undefined,
-        difficulty,
-        background: background || undefined,
-        version,
-        coBuilderIds,
-        status: "draft" as const,
-        coverImage: coverImage || undefined,
-      }
-      const created = await scenarioApi.create(payload as any)
+      const created = await scenarioApi.create(buildPayload() as any)
       toast.success("草稿已保存")
       router.push(`/scene/scenarios/${created.id}/edit`)
     } catch (err: any) {
@@ -474,25 +360,21 @@ function NewScenarioEditForm() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
                       <Label>面向行业</Label>
-                      <IndustryProfessionSelector
-                        options={industries.map(i => ({ id: i.id, name: i.name }))}
-                        selectedIds={industryIds}
+                      <MultiSelect
+                        options={industries.map(i => ({ label: i.name, value: i.id }))}
+                        value={industryIds}
                         onChange={setIndustryIds}
                         placeholder="选择行业"
                       />
                     </div>
                     <div className="grid gap-2">
                       <Label>适用专业</Label>
-                      <Select value={professionId} onValueChange={setProfessionId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="选择适用专业" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {majors.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>{m.name}{m.code ? ` (${m.code})` : ""}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <MultiSelect
+                        options={majors.map(m => ({ label: `${m.name}${m.code ? ` (${m.code})` : ""}`, value: m.id }))}
+                        value={professionIds}
+                        onChange={setProfessionIds}
+                        placeholder="选择适用专业"
+                      />
                     </div>
                   </div>
 
@@ -819,7 +701,7 @@ function NewScenarioEditForm() {
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">适用专业</p>
-                <p className="font-medium text-sm">{majors.find(m => m.id === professionId)?.name || "未选择"}</p>
+                <p className="font-medium text-sm">{professionIds.length > 0 ? professionIds.map(id => majors.find(m => m.id === id)?.name).filter(Boolean).join("、") : "未选择"}</p>
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">难度等级</p>

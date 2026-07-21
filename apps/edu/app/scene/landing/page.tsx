@@ -163,9 +163,9 @@ export default function SceneLandingPage() {
                         padding: "2px 8px", borderRadius: 4, fontSize: 11,
                         background: diff.color + "15", color: diff.color, fontWeight: 500,
                       }}>{diff.label}</span>
-                      {scenario.industryName && (
+                      {(scenario.industryNames || scenario.industryIds || []).length > 0 && (
                         <span style={{ fontSize: 12, color: "#94a3b8", display: "flex", alignItems: "center", gap: 3 }}>
-                          <MapPin className="h-3 w-3" /> {scenario.industryName}
+                          <MapPin className="h-3 w-3" /> {(scenario.industryNames || scenario.industryIds || []).join("、")}
                         </span>
                       )}
                     </div>

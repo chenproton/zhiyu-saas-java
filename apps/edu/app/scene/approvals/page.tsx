@@ -79,7 +79,7 @@ export default function SceneApprovalsPage() {
         scenarioName: scenario?.name || a.targetId,
         scenarioCode: scenario?.code || "-",
         version: scenario?.version || "-",
-        positionName: scenario?.professionName || scenario?.careerPositionId || undefined,
+        positionName: scenario?.professionNames?.join("、") || scenario?.careerPositionId || undefined,
         batchName: batch?.name,
         submitterId: a.submitterId,
         status: a.status,

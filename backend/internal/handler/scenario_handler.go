@@ -28,9 +28,8 @@ type CreateScenarioRequest struct {
 	Code             string   `json:"code"`
 	CoverImage       *string  `json:"coverImage"`
 	CareerPositionID *string  `json:"careerPositionId"`
-	IndustryID       *string  `json:"industryId"`
-	ProfessionID     *string  `json:"professionId"`
-	ProfessionName   *string  `json:"professionName"`
+	IndustryIDs      []string `json:"industryIds"`
+	ProfessionIDs    []string `json:"professionIds"`
 	BatchID          *string  `json:"batchId"`
 	Difficulty       int      `json:"difficulty"`
 	Version          string   `json:"version"`
@@ -61,20 +60,39 @@ func (n *NullableString) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// NullableStringSlice tracks whether a JSON array field was explicitly provided.
+type NullableStringSlice struct {
+	Value   []string
+	Present bool
+}
+
+func (n *NullableStringSlice) UnmarshalJSON(data []byte) error {
+	n.Present = true
+	if string(data) == "null" {
+		n.Value = nil
+		return nil
+	}
+	var s []string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	n.Value = s
+	return nil
+}
+
 type UpdateScenarioRequest struct {
-	Name             string         `json:"name"`
-	Code             string         `json:"code"`
-	CoverImage       NullableString `json:"coverImage"`
-	CareerPositionID NullableString `json:"careerPositionId"`
-	IndustryID       NullableString `json:"industryId"`
-	ProfessionID     NullableString `json:"professionId"`
-	ProfessionName   NullableString `json:"professionName"`
-	BatchID          NullableString `json:"batchId"`
-	Difficulty       int            `json:"difficulty"`
-	Version          string         `json:"version"`
-	Background       NullableString `json:"background"`
-	DeliveryGoal     NullableString `json:"deliveryGoal"`
-	CoBuilderIDs     []string       `json:"coBuilderIds"`
+	Name             string                `json:"name"`
+	Code             string                `json:"code"`
+	CoverImage       NullableString        `json:"coverImage"`
+	CareerPositionID NullableString        `json:"careerPositionId"`
+	IndustryIDs      NullableStringSlice   `json:"industryIds"`
+	ProfessionIDs    NullableStringSlice   `json:"professionIds"`
+	BatchID          NullableString        `json:"batchId"`
+	Difficulty       int                   `json:"difficulty"`
+	Version          string                `json:"version"`
+	Background       NullableString        `json:"background"`
+	DeliveryGoal     NullableString        `json:"deliveryGoal"`
+	CoBuilderIDs     []string              `json:"coBuilderIds"`
 }
 
 func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -138,12 +156,13 @@ func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT s.id, s.name, s.code, s.cover_image, s.career_position_id, s.industry_id, COALESCE(i.name, '') AS industry_name,
-			s.profession_id, s.profession_name, s.batch_id, s.difficulty, s.version, s.status, s.background,
+		SELECT s.id, s.name, s.code, s.cover_image, s.career_position_id,
+			s.industry_ids, COALESCE((SELECT array_agg(i.name) FROM industries i WHERE i.id::text = ANY(s.industry_ids)), '{}') AS industry_names,
+			s.profession_ids, COALESCE((SELECT array_agg(m.name) FROM majors m WHERE m.id = ANY(s.profession_ids)), '{}') AS profession_names,
+			s.batch_id, s.difficulty, s.version, s.status, s.background,
 			s.delivery_goal, s.creator_id, s.co_builder_ids, s.tenant_id, s.created_at, s.updated_at, s.publish_time,
 			(SELECT COUNT(*) FROM view_logs WHERE target_type = 'scenario' AND target_id = s.id) AS view_count
 		FROM scenarios s
-		LEFT JOIN industries i ON i.id = s.industry_id
 		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY s.created_at DESC
 		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
@@ -209,12 +228,12 @@ func (h *ScenarioHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO scenarios (id, name, code, cover_image, career_position_id, industry_id,
-			profession_id, profession_name, batch_id, difficulty, version, status, background,
+		INSERT INTO scenarios (id, name, code, cover_image, career_position_id, industry_ids,
+			profession_ids, batch_id, difficulty, version, status, background,
 			delivery_goal, creator_id, co_builder_ids, tenant_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'draft', $12, $13, $14, $15, $16)
-	`, id, req.Name, req.Code, req.CoverImage, req.CareerPositionID, req.IndustryID,
-		req.ProfessionID, req.ProfessionName, req.BatchID, req.Difficulty, req.Version, req.Background,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'draft', $11, $12, $13, $14, $15)
+	`, id, req.Name, req.Code, req.CoverImage, req.CareerPositionID, coalesceStringSlice(req.IndustryIDs),
+		coalesceStringSlice(req.ProfessionIDs), req.BatchID, req.Difficulty, req.Version, req.Background,
 		req.DeliveryGoal, claims.UserID, coalesceStringSlice(req.CoBuilderIDs), tenantID)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -278,24 +297,29 @@ func (h *ScenarioHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 		return n.Value
 	}
+	resolveNullableSlice := func(n NullableStringSlice, existing []string) []string {
+		if !n.Present {
+			return existing
+		}
+		return coalesceStringSlice(n.Value)
+	}
 
 	coverImage := resolveNullable(req.CoverImage, existing.CoverImage)
 	careerPositionID := resolveNullable(req.CareerPositionID, existing.CareerPositionID)
-	industryID := resolveNullable(req.IndustryID, existing.IndustryID)
-	professionID := resolveNullable(req.ProfessionID, existing.ProfessionID)
-	professionName := resolveNullable(req.ProfessionName, existing.ProfessionName)
+	industryIDs := resolveNullableSlice(req.IndustryIDs, existing.IndustryIDs)
+	professionIDs := resolveNullableSlice(req.ProfessionIDs, existing.ProfessionIDs)
 	batchID := resolveNullable(req.BatchID, existing.BatchID)
 	background := resolveNullable(req.Background, existing.Background)
 	deliveryGoal := resolveNullable(req.DeliveryGoal, existing.DeliveryGoal)
 
 	_, err = h.DB.Exec(r.Context(), `
 		UPDATE scenarios SET name = $1, code = $2, cover_image = $3, career_position_id = $4,
-			industry_id = $5, profession_id = $6, profession_name = $7,
-			batch_id = $8, difficulty = $9, version = $10, background = $11, delivery_goal = $12,
-			co_builder_ids = $13, updated_at = NOW()
-		WHERE id = $14
-	`, name, code, coverImage, careerPositionID, industryID,
-		professionID, professionName, batchID, difficulty, version, background,
+			industry_ids = $5, profession_ids = $6,
+			batch_id = $7, difficulty = $8, version = $9, background = $10, delivery_goal = $11,
+			co_builder_ids = $12, updated_at = NOW()
+		WHERE id = $13
+	`, name, code, coverImage, careerPositionID, industryIDs,
+		professionIDs, batchID, difficulty, version, background,
 		deliveryGoal, coBuilderIDs, id)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -378,16 +402,17 @@ func (h *ScenarioHandler) Invite(w http.ResponseWriter, r *http.Request) {
 func (h *ScenarioHandler) fetchScenario(ctx context.Context, id string) (*domain.Scenario, error) {
 	var s domain.Scenario
 	err := h.DB.QueryRow(ctx, `
-		SELECT s.id, s.name, s.code, s.cover_image, s.career_position_id, s.industry_id, COALESCE(i.name, '') AS industry_name,
-			s.profession_id, s.profession_name, s.batch_id, s.difficulty, s.version, s.status, s.background,
+		SELECT s.id, s.name, s.code, s.cover_image, s.career_position_id,
+			s.industry_ids, COALESCE((SELECT array_agg(i.name) FROM industries i WHERE i.id::text = ANY(s.industry_ids)), '{}') AS industry_names,
+			s.profession_ids, COALESCE((SELECT array_agg(m.name) FROM majors m WHERE m.id = ANY(s.profession_ids)), '{}') AS profession_names,
+			s.batch_id, s.difficulty, s.version, s.status, s.background,
 			s.delivery_goal, s.creator_id, s.co_builder_ids, s.tenant_id, s.created_at, s.updated_at, s.publish_time,
 			(SELECT COUNT(*) FROM view_logs WHERE target_type = 'scenario' AND target_id = s.id) AS view_count
 		FROM scenarios s
-		LEFT JOIN industries i ON i.id = s.industry_id
 		WHERE s.id = $1
 	`, id).Scan(
-		&s.ID, &s.Name, &s.Code, &s.CoverImage, &s.CareerPositionID, &s.IndustryID, &s.IndustryName,
-		&s.ProfessionID, &s.ProfessionName, &s.BatchID, &s.Difficulty, &s.Version, &s.Status, &s.Background,
+		&s.ID, &s.Name, &s.Code, &s.CoverImage, &s.CareerPositionID, &s.IndustryIDs, &s.IndustryNames,
+		&s.ProfessionIDs, &s.ProfessionNames, &s.BatchID, &s.Difficulty, &s.Version, &s.Status, &s.Background,
 		&s.DeliveryGoal, &s.CreatorID, &s.CoBuilderIDs, &s.TenantID, &s.CreatedAt, &s.UpdatedAt, &s.PublishTime, &s.ViewCount,
 	)
 	if err != nil {
@@ -401,8 +426,8 @@ func (h *ScenarioHandler) scanScenarioRows(rows pgx.Rows) ([]domain.Scenario, er
 	for rows.Next() {
 		var s domain.Scenario
 		if err := rows.Scan(
-			&s.ID, &s.Name, &s.Code, &s.CoverImage, &s.CareerPositionID, &s.IndustryID, &s.IndustryName,
-			&s.ProfessionID, &s.ProfessionName, &s.BatchID, &s.Difficulty, &s.Version, &s.Status, &s.Background,
+			&s.ID, &s.Name, &s.Code, &s.CoverImage, &s.CareerPositionID, &s.IndustryIDs, &s.IndustryNames,
+			&s.ProfessionIDs, &s.ProfessionNames, &s.BatchID, &s.Difficulty, &s.Version, &s.Status, &s.Background,
 			&s.DeliveryGoal, &s.CreatorID, &s.CoBuilderIDs, &s.TenantID, &s.CreatedAt, &s.UpdatedAt, &s.PublishTime, &s.ViewCount,
 		); err != nil {
 			return nil, err

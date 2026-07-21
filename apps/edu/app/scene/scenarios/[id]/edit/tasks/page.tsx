@@ -640,8 +640,12 @@ export default function TasksEditPage() {
         }
 
         const positionName = posRes.items.find((p: any) => p.id === scenarioData.careerPositionId)?.name || scenarioData.careerPositionId
-        const industryName = scenarioData.industryName || indRes.items.find((i: any) => i.id === scenarioData.industryId)?.name || scenarioData.industryId
-        const professionName = scenarioData.professionName || majRes.items.find((m: any) => m.id === scenarioData.professionId)?.name || scenarioData.professionId
+        const industryName = (scenarioData.industryNames || []).join("、") ||
+          (scenarioData.industryIds || []).map((id: string) => indRes.items.find((i: any) => i.id === id)?.name).filter(Boolean).join("、") ||
+          (scenarioData.industryIds || []).join("、")
+        const professionName = (scenarioData.professionNames || []).join("、") ||
+          (scenarioData.professionIds || []).map((id: string) => majRes.items.find((m: any) => m.id === id)?.name).filter(Boolean).join("、") ||
+          (scenarioData.professionIds || []).join("、")
         const coBuilderMap = new Map((userRes.items || []).map((u: any) => [u.id, u.name]))
         setExistingScenario({
           ...scenarioData,

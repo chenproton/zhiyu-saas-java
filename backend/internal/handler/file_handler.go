@@ -13,6 +13,7 @@ import (
 )
 
 const MaxUploadSize = 100 << 20 // 100MB
+const maxFormMemory = 32 << 20  // 32MB in-memory, rest to temp files
 
 type FileHandler struct {
 	UploadDir string
@@ -32,7 +33,7 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, MaxUploadSize)
-	if err := r.ParseMultipartForm(MaxUploadSize); err != nil {
+	if err := r.ParseMultipartForm(maxFormMemory); err != nil {
 		respondError(w, http.StatusBadRequest, "file too large or invalid form")
 		return
 	}
