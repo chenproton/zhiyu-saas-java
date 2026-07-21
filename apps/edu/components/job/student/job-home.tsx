@@ -9,7 +9,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { publicPositionApi, scenarioApi, positionApi } from "@/lib/api"
+import { publicPositionApi, scenarioApi, taskApi, positionApi } from "@/lib/api"
 import { useAuth } from "@/components/auth-provider"
 import { useIndustryMap } from "@/lib/use-resource-maps"
 import type { CareerPosition, Scenario } from "@/lib/types"
@@ -35,6 +35,7 @@ export function JobHome() {
 
   const [positions, setPositions] = useState<CareerPosition[]>([])
   const [scenarios, setScenarios] = useState<Scenario[]>([])
+  const [taskCountMap, setTaskCountMap] = useState<Map<string, number>>(new Map())
   const [favoritePositions, setFavoritePositions] = useState<CareerPosition[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -56,8 +57,30 @@ export function JobHome() {
   useEffect(() => {
     scenarioApi
       .list({ status: "published", limit: 1000 })
-      .then((res) => setScenarios(res.items || []))
-      .catch(() => setScenarios([]))
+      .then(async (res) => {
+        const scens = res.items || []
+        setScenarios(scens)
+        const related = scens.filter((s) => s.careerPositionId)
+        if (related.length === 0) {
+          setTaskCountMap(new Map())
+          return
+        }
+        const results = await Promise.all(
+          related.map((s) => taskApi.list({ scenarioId: s.id, limit: 1000 }).catch(() => ({ items: [], total: 0 })))
+        )
+        const map = new Map<string, number>()
+        related.forEach((s, idx) => {
+          const count = results[idx]?.items?.length ?? 0
+          if (count > 0 && s.careerPositionId) {
+            map.set(s.careerPositionId, (map.get(s.careerPositionId) || 0) + count)
+          }
+        })
+        setTaskCountMap(map)
+      })
+      .catch(() => {
+        setScenarios([])
+        setTaskCountMap(new Map())
+      })
   }, [])
 
   useEffect(() => {
@@ -450,7 +473,14 @@ export function JobHome() {
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {pageItems.map((pos, i) => (
-                  <JobCard key={pos.id} position={pos} index={i} hideHot={i > 2} scenarioCount={scenarioCountMap.get(pos.id) ?? 0} />
+                  <JobCard
+                    key={pos.id}
+                    position={pos}
+                    index={i}
+                    hideHot={i > 2}
+                    scenarioCount={scenarioCountMap.get(pos.id) ?? 0}
+                    taskCount={taskCountMap.get(pos.id) ?? 0}
+                  />
                 ))}
               </div>
               <Pagination
