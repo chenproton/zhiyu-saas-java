@@ -11,6 +11,7 @@ import type {
 } from "@zhiyu/shared-types"
 import { GraphDataProvider } from "@/components/knowledge-graph/graph-data-context"
 import type { GraphNode, GraphEdge } from "@/components/knowledge-graph/types"
+import { ChunkErrorBoundary } from "@/components/chunk-error-handler"
 
 const KnowledgeGraphView = dynamic(
   () => import("@/components/knowledge-graph/knowledge-graph-view").then((mod) => mod.KnowledgeGraphView),
@@ -162,9 +163,9 @@ export function KnowledgeGraph({
     <GraphDataProvider value={graphData}>
       <div className="flex flex-col h-[600px]">
         {viewMode === "static" ? (
-          <KnowledgeGraphView {...sharedProps} />
+          <ChunkErrorBoundary Component={KnowledgeGraphView} componentProps={sharedProps} />
         ) : (
-          <KnowledgeGraphD3View {...sharedProps} />
+          <ChunkErrorBoundary Component={KnowledgeGraphD3View} componentProps={sharedProps} />
         )}
       </div>
     </GraphDataProvider>
