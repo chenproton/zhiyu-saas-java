@@ -7,7 +7,7 @@ import {
   ArrowLeft, PlayCircle, ListChecks, FolderOpen,
   Lightbulb, Target, GitBranch, Layers, Clock,
   BarChart3, Calendar, BookOpen,
-  Users, Eye, Share2, Sparkles, X,
+  Users, Eye, Share2, Sparkles, X, ExternalLink,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -57,6 +57,18 @@ const taskTypeLabels: Record<string, string> = {
   training: "训练",
 }
 
+const resourceTypeLabels: Record<string, string> = {
+  document: "文档",
+  video: "视频",
+  link: "链接",
+  file: "文件",
+  spreadsheet: "表格",
+  presentation: "演示",
+  image: "图片",
+  audio: "音频",
+  pdf: "PDF",
+}
+
 const evalMethodLabels: Record<string, string> = {
   random_draw: "随机抽题",
   review: "评审",
@@ -65,6 +77,11 @@ const evalMethodLabels: Record<string, string> = {
   outcome: "成果",
   homework: "作业",
   quiz: "测验",
+}
+
+const methodColorMap: Record<string, string> = {
+  random_draw: "#6366f1", review: "#f43f5e", paper: "#0ea5e9",
+  question_bank: "#8b5cf6", outcome: "#10b981", homework: "#f59e0b", quiz: "#06b6d4",
 }
 
 function formatDate(dateStr?: string) {
@@ -195,12 +212,6 @@ function AbilitiesTab({ tasks, abilityMap, uniqueAbilityIds }: AbilitiesTabProps
                   <span className="font-medium text-[#94a3b8]">关联任务：</span>
                   <span className="text-[#475569]">{selectedAbility.taskNames.join("、")}</span>
                 </div>
-                <div>
-                  <div className="font-medium text-[#94a3b8] mb-1">能力描述：</div>
-                  <div className="text-[#64748b] leading-relaxed">
-                    {selectedAbility.ap.description || "暂无描述"}
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -229,10 +240,6 @@ function EvaluationTab({ tasks, totalEvalConfigs }: EvaluationTabProps) {
   }
 
   const tasksWithEval = tasks.filter((t) => t.evalData?.evaluationMethods?.length > 0)
-  const methodColorMap: Record<string, string> = {
-    random_draw: "#6366f1", review: "#f43f5e", paper: "#0ea5e9",
-    question_bank: "#8b5cf6", outcome: "#10b981", homework: "#f59e0b", quiz: "#06b6d4",
-  }
 
   return (
     <div>
@@ -244,25 +251,6 @@ function EvaluationTab({ tasks, totalEvalConfigs }: EvaluationTabProps) {
           const ed = task.evalData!
           const methods: string[] = ed.evaluationMethods || []
           const weights: Record<string, number> = ed.methodWeights || {}
-          const methodPointsMap: Record<string, { name: string; scoreInfo: string }[]> = {
-            random_draw: ed.randomDrawEvalPoints || [],
-            review: ed.reviewEvalPoints || [],
-            paper: ed.paperEvalPoints || [],
-            question_bank: ed.questionBankEvalPoints || [],
-            outcome: ed.outcomeEvalPoints || [],
-            homework: ed.homeworkEvalPoints || [],
-            quiz: ed.quizEvalPoints || [],
-          }
-          const allPoints: { name: string; scoreInfo: string }[] = []
-          for (const m of methods) {
-            (methodPointsMap[m] || []).forEach((pt: any) => {
-              let scoreInfo = ""
-              if (pt.gradeMapping?.length > 0) {
-                scoreInfo = `${pt.gradeMapping[pt.gradeMapping.length - 1].maxScore}分`
-              }
-              allPoints.push({ name: pt.name, scoreInfo })
-            })
-          }
 
           return (
             <div key={task.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:border-blue-200 hover:shadow-md transition-all">
@@ -310,19 +298,6 @@ function EvaluationTab({ tasks, totalEvalConfigs }: EvaluationTabProps) {
                       <span className="text-[11px] font-semibold text-slate-500 w-8 text-right">{Math.round(weights[m] || 0)}%</span>
                     </div>
                   ))}
-                </div>
-              )}
-
-              {allPoints.length > 0 && (
-                <div>
-                  <div className="text-[11px] text-slate-400 mb-2 font-medium">评分点</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {allPoints.map((pt, pi) => (
-                      <span key={pi} className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-                        {pt.name}{pt.scoreInfo ? ` (${pt.scoreInfo})` : ""}
-                      </span>
-                    ))}
-                  </div>
                 </div>
               )}
             </div>
@@ -507,6 +482,17 @@ export default function SceneDetailPage() {
                               {task.detailedDescription || task.description}
                             </p>
                           )}
+                          {(task.evalData?.evaluationMethods?.length > 0) && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {(task.evalData!.evaluationMethods as string[]).map((m) => (
+                                <span key={m} className="text-[10px] px-2 py-0.5 rounded-full font-medium text-white"
+                                  style={{ backgroundColor: methodColorMap[m] || "#94a3b8" }}
+                                >
+                                  {evalMethodLabels[m] || m}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <Link href={`/scene/landing/${id}/learn?task=${task.id}`} className="shrink-0">
                           <Button size="sm" className="rounded-lg h-9 px-4 text-xs bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 transition-all">
@@ -558,10 +544,27 @@ export default function SceneDetailPage() {
                           }
                           return (
                             <div key={r.id} className="group bg-slate-50 rounded-xl p-3.5 border border-slate-100 hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5 transition-all">
-                              <div className="text-sm font-semibold text-slate-800 mb-1.5 truncate">{r.name}</div>
-                              <div className="flex items-center gap-2 text-xs text-slate-400">
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${typeColors[r.type] || "bg-slate-100 text-slate-500 border-slate-200"}`}>{r.type}</span>
-                                {r.size && <span>{r.size}</span>}
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-semibold text-slate-800 mb-1.5 truncate">{r.name}</div>
+                                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${typeColors[r.type] || "bg-slate-100 text-slate-500 border-slate-200"}`}>
+                                      {resourceTypeLabels[r.type] || r.type}
+                                    </span>
+                                    {r.size && <span>{r.size}</span>}
+                                  </div>
+                                </div>
+                                {r.url && (
+                                  <a
+                                    href={r.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="shrink-0 mt-0.5 w-7 h-7 rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100 flex items-center justify-center transition-colors"
+                                    title="查看资源"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                  </a>
+                                )}
                               </div>
                             </div>
                           )
@@ -590,7 +593,7 @@ export default function SceneDetailPage() {
         )
 
       case "knowledge":
-        return <SceneKnowledgeGraph scenario={scenario} tasks={tasks} knowledgeMap={knowledgeMap} abilityMap={abilityMap} />
+        return <SceneKnowledgeGraph scenario={scenario} tasks={tasks} knowledgeMap={knowledgeMap} />
 
       default:
         return null
