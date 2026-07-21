@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Heart, ArrowLeft, Share2, MapPin, Building2, GraduationCap, Clock, Calendar, Eye } from "lucide-react"
+import { Heart, ArrowLeft, Share2, User, Users, Calendar, Edit3, PlayCircle, Briefcase } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/components/auth-provider"
 import { positionApi } from "@/lib/api"
 import type { CareerPosition } from "@/lib/types"
@@ -19,6 +18,11 @@ function formatSalary(min?: number | null, max?: number | null) {
   if ((min ?? 0) > 0) return `¥${min}起`
   if ((max ?? 0) > 0) return `¥${max}以内`
   return "面议"
+}
+
+function formatDate(dateStr?: string) {
+  if (!dateStr) return "-"
+  return dateStr.split("T")[0] || dateStr.split(" ")[0] || dateStr
 }
 
 export function PositionHeader({ position, industryName }: PositionHeaderProps) {
@@ -58,78 +62,90 @@ export function PositionHeader({ position, industryName }: PositionHeaderProps) 
     }
   }
 
+  const displayTitle = position.shortName || position.name
+  const firstChar = displayTitle.charAt(0)
+
   return (
     <div className="bg-white border-b border-[#e7e5e4]">
-      <div className="max-w-[1400px] mx-auto px-8 py-8">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="max-w-[1400px] mx-auto px-8 py-6">
+        <div className="flex items-center gap-2 mb-5">
           <Link href="/job/student">
-            <Button variant="ghost" size="sm" className="text-[#64748b] hover:text-blue-600">
+            <Button variant="ghost" size="sm" className="text-[#64748b] hover:text-blue-600 pl-0">
               <ArrowLeft className="w-4 h-4 mr-1" /> 返回岗位列表
             </Button>
           </Link>
         </div>
 
-        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
-          <div className="flex-1">
-            <div className="flex flex-wrap items-center gap-2 mb-3">
-              <Badge variant="secondary" className="bg-[#eff6ff] text-blue-600 hover:bg-[#eff6ff]">
-                {position.positionType === "enterprise" ? "企业岗位" : "教学岗位"}
-              </Badge>
-              {industryName && (
-                <Badge variant="outline" className="text-[#64748b]">
-                  <Building2 className="w-3 h-3 mr-1" /> {industryName}
-                </Badge>
-              )}
-              {position.majorNames?.map((m) => (
-                <Badge key={m} variant="outline" className="text-[#64748b]">
-                  <GraduationCap className="w-3 h-3 mr-1" /> {m}
-                </Badge>
-              ))}
+        <div className="bg-white rounded-2xl border border-[#e7e5e4] p-6 shadow-[0_4px_20px_rgba(69,26,3,0.06)]">
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Cover */}
+            <div className="w-full lg:w-[280px] h-[180px] rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shrink-0 relative overflow-hidden self-stretch">
+              <span className="text-white text-[48px] font-bold opacity-25 select-none">{firstChar}</span>
+              <span className="absolute top-3 left-3 bg-white/25 text-white px-3 py-1 rounded text-sm font-semibold backdrop-blur-sm">
+                {position.version}
+              </span>
+              <span className="absolute bottom-3 right-0 translate-x-0 bg-black/40 text-white px-3 py-1 rounded-l text-xs">
+                {position.id.slice(0, 8)}
+              </span>
             </div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-[#0f172a] mb-2">{position.name}</h1>
-            <div className="text-sm text-[#94a3b8] mb-4">岗位编码：{position.id.slice(0, 8)} · 版本：{position.version}</div>
-            <p className="text-sm text-[#475569] leading-relaxed max-w-3xl">{position.description || "暂无岗位描述"}</p>
-          </div>
 
-          <div className="flex flex-col gap-3 lg:items-end">
-            <div className="text-2xl font-extrabold text-blue-600">{formatSalary(position.salaryMin, position.salaryMax)}</div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                disabled={loading}
-                className={`rounded-full px-4 transition-all ${isHeart ? "border-rose-500 text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700" : "text-[#475569] hover:border-rose-300 hover:text-rose-500"}`}
-                onClick={toggleHeart}
-              >
-                <Heart className={`w-4 h-4 mr-1.5 ${isHeart ? "fill-current" : ""}`} />
-                {isHeart ? "已设为心仪岗位" : "设为心仪岗位"}
-                {favoriteCount > 0 && (
-                  <span className="ml-1.5 text-xs opacity-80">({favoriteCount})</span>
-                )}
-              </Button>
-              <Button variant="outline" size="icon" className="rounded-full text-[#475569]">
-                <Share2 className="w-4 h-4" />
-              </Button>
+            {/* Info */}
+            <div className="flex-1 flex flex-col">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-3">
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h1 className="text-2xl font-bold text-[#0f172a]">{position.name}</h1>
+                    <span className="text-2xl font-bold text-blue-600 leading-none">{formatSalary(position.salaryMin, position.salaryMax)}</span>
+                  </div>
+                  {position.shortName && position.shortName !== position.name && (
+                    <p className="text-sm text-[#64748b] mb-3">别名：{position.shortName}</p>
+                  )}
+
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <span className="px-3 py-1 rounded-md text-xs border bg-[#fff7ed] border-[#ffedd5] text-[#c2410c] flex items-center gap-1">
+                      <Briefcase className="w-3 h-3" /> 面向行业：{industryName || (position.positionType === "enterprise" ? "企业" : "教学")}
+                    </span>
+                    {position.majorNames?.map((m) => (
+                      <span key={m} className="px-3 py-1 rounded-md text-xs border bg-[#dcfce7] border-[#bbf7d0] text-[#15803d] flex items-center gap-1">
+                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                        适用专业：{m}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2.5 mb-4">
+                <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#64748b]">
+                  <span className="flex items-center gap-2"><User className="w-4 h-4 text-[#94a3b8]" /> 创建人：{position.createdBy || "-"}</span>
+                  <span className="flex items-center gap-2"><Users className="w-4 h-4 text-[#94a3b8]" /> 共建人：{position.collaborators?.join(", ") || "知与未来"}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#64748b]">
+                  <span className="flex items-center gap-2"><Calendar className="w-4 h-4 text-[#94a3b8]" /> 创建时间：{formatDate(position.createdAt)}</span>
+                  <span className="flex items-center gap-2"><Edit3 className="w-4 h-4 text-[#94a3b8]" /> 更新时间：{formatDate(position.updatedAt)}</span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3 mt-auto">
+                <Button className="rounded-md px-6 h-10 bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white font-medium">
+                  <PlayCircle className="w-4 h-4 mr-1.5" /> 开始学习
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={loading}
+                  className={`rounded-md px-5 h-10 transition-all ${isHeart ? "border-rose-500 text-rose-600 bg-rose-50 hover:bg-rose-100" : "text-[#475569] hover:border-rose-300 hover:text-rose-500"}`}
+                  onClick={toggleHeart}
+                >
+                  <Heart className={`w-4 h-4 mr-1.5 ${isHeart ? "fill-current" : ""}`} />
+                  {isHeart ? "已设为心仪岗位" : "设为心仪岗位"}
+                  {favoriteCount > 0 && <span className="ml-1.5 text-xs opacity-80">({favoriteCount})</span>}
+                </Button>
+                <Button variant="outline" size="icon" className="rounded-md h-10 w-10 text-[#475569]">
+                  <Share2 className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-[#f1f5f9]">
-          {[
-            { icon: MapPin, label: "工作地点", value: "全国" },
-            { icon: Clock, label: "更新日期", value: position.updatedAt?.slice(0, 10) || "-" },
-            { icon: Calendar, label: "发布日期", value: position.createdAt?.slice(0, 10) || "-" },
-            { icon: Eye, label: "收藏次数", value: favoriteCount.toLocaleString() },
-          ].map((s, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#f8fafc] flex items-center justify-center text-[#64748b]">
-                <s.icon className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-xs text-[#94a3b8]">{s.label}</div>
-                <div className="text-sm font-semibold text-[#0f172a]">{s.value}</div>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>

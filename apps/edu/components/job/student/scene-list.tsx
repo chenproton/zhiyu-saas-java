@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDown, Play, LaptopIcon, ShoppingCart, Smartphone, LineChart, GitBranch, UserCog } from "lucide-react"
+import { ChevronDown, Play, LaptopIcon, ShoppingCart, Smartphone, LineChart, GitBranch, UserCog, Expand, Shrink } from "lucide-react"
 
 interface Scene {
   name: string
@@ -84,76 +84,82 @@ export function SceneList() {
     setExpanded((prev) => ({ ...prev, [idx]: !prev[idx] }))
   }
 
+  const expandAll = () => setExpanded(DEFAULT_SCENES.reduce((acc, _, i) => ({ ...acc, [i]: true }), {}))
+  const collapseAll = () => setExpanded({})
+
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between mb-2">
+    <div>
+      <div className="flex items-center justify-between mb-4">
         <span className="text-sm text-[#64748b]">
-          共关联 <strong className="text-blue-600">{DEFAULT_SCENES.length}</strong> 个实践场景
+          共关联 <strong className="text-blue-500">{DEFAULT_SCENES.length}</strong> 个实践场景，
+          <strong className="text-blue-500">{DEFAULT_SCENES.reduce((sum, s) => sum + s.tasks.length, 0)}</strong> 个任务
         </span>
         <div className="flex gap-2">
           <button
-            className="btn px-3 py-1.5 text-xs border border-[#e7e5e4] rounded-md bg-white text-[#475569] hover:bg-[#f8fafc]"
-            onClick={() => setExpanded(DEFAULT_SCENES.reduce((acc, _, i) => ({ ...acc, [i]: true }), {}))}
+            className="px-3 py-1.5 text-xs border border-[#e7e5e4] rounded-md bg-white text-[#475569] hover:bg-[#f8fafc] flex items-center gap-1"
+            onClick={expandAll}
           >
-            全部展开
+            <Expand className="w-3 h-3" /> 全部展开
           </button>
           <button
-            className="btn px-3 py-1.5 text-xs border border-[#e7e5e4] rounded-md bg-white text-[#475569] hover:bg-[#f8fafc]"
-            onClick={() => setExpanded({})}
+            className="px-3 py-1.5 text-xs border border-[#e7e5e4] rounded-md bg-white text-[#475569] hover:bg-[#f8fafc] flex items-center gap-1"
+            onClick={collapseAll}
           >
-            全部收起
+            <Shrink className="w-3 h-3" /> 全部收起
           </button>
         </div>
       </div>
 
-      {DEFAULT_SCENES.map((scene, idx) => (
-        <div key={idx} className="bg-white rounded-xl border border-[#e7e5e4] overflow-hidden">
-          <div
-            className="flex items-center justify-between p-4 cursor-pointer hover:bg-[#f8fafc]"
-            onClick={() => toggle(idx)}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl ${scene.color} flex items-center justify-center text-white`}>
-                {scene.icon}
+      <div className="space-y-2">
+        {DEFAULT_SCENES.map((scene, idx) => (
+          <div key={idx} className="bg-white rounded-xl border border-[#f5f5f4] overflow-hidden">
+            <div
+              className="flex items-center justify-between p-4 cursor-pointer hover:bg-[#f8fafc] transition-colors"
+              onClick={() => toggle(idx)}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-lg ${scene.color} flex items-center justify-center text-white`}>
+                  {scene.icon}
+                </div>
+                <div>
+                  <div className="text-[15px] font-medium text-[#1f2937]">{scene.name}</div>
+                  <div className="text-xs text-[#64748b]">{scene.meta}</div>
+                </div>
               </div>
-              <div>
-                <div className="text-[15px] font-bold text-[#0f172a]">{scene.name}</div>
-                <div className="text-xs text-[#94a3b8]">{scene.meta}</div>
+              <div className="flex items-center gap-3">
+                <button className="text-xs px-3 py-1.5 rounded-md bg-blue-500 text-white hover:bg-blue-600 flex items-center gap-1">
+                  <Play className="w-3 h-3" /> 去学习
+                </button>
+                <ChevronDown className={`w-5 h-5 text-[#94a3b8] transition-transform ${expanded[idx] ? "rotate-180" : ""}`} />
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <button className="text-xs px-3 py-1.5 rounded-md bg-blue-500 text-white hover:bg-blue-600 flex items-center gap-1">
-                <Play className="w-3 h-3" /> 去学习
-              </button>
-              <ChevronDown className={`w-5 h-5 text-[#94a3b8] transition-transform ${expanded[idx] ? "rotate-180" : ""}`} />
-            </div>
-          </div>
-          {expanded[idx] && (
-            <div className="px-4 pb-4">
-              {scene.tasks.map((task, ti) => (
-                <div key={ti} className="flex items-center justify-between py-3 border-t border-[#f1f5f9]">
-                  <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-full bg-[#eff6ff] text-blue-600 flex items-center justify-center text-xs font-bold">
-                      {ti + 1}
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-[#0f172a]">{task.name}</div>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {task.tags.map((tag) => (
-                          <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#64748b]">
-                            {tag}
-                          </span>
-                        ))}
+            {expanded[idx] && (
+              <div className="px-4 pb-4">
+                {scene.tasks.map((task, ti) => (
+                  <div key={ti} className="flex items-center justify-between py-3 border-t border-[#f5f5f4]">
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-full bg-[#eff6ff] text-blue-600 flex items-center justify-center text-xs font-bold">
+                        {ti + 1}
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-[#1f2937]">{task.name}</div>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {task.tags.map((tag) => (
+                            <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#64748b]">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
+                    <span className="text-xs text-[#94a3b8]">{task.hours}</span>
                   </div>
-                  <span className="text-xs text-[#94a3b8]">{task.hours}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
