@@ -91,11 +91,10 @@ EDU_STANDALONE_ROOT="$EDU_DIR/.next/standalone"
 MARKETPLACE_STANDALONE="$MARKETPLACE_STANDALONE_ROOT/apps/marketplace"
 EDU_STANDALONE="$EDU_STANDALONE_ROOT/apps/edu"
 
-# ==================== 分支隔离部署（基于 master 构建独立工作树） ====================
+# ==================== 分支隔离部署（基于 master 构建工作树） ====================
 if [[ -n "$BRANCH_NAME" ]]; then
   ORIGINAL_PROJECT_ROOT="$PROJECT_ROOT"
-  # 每个分支独立缓存目录，避免交叉污染
-  BUILD_TREE="/tmp/zhiyu-build-cache-${BRANCH_NAME//\//-}"
+  BUILD_TREE="/tmp/zhiyu-build-cache"
   echo "==> 分支隔离部署模式"
   echo "  目标分支: $BRANCH_NAME"
 
@@ -104,7 +103,7 @@ if [[ -n "$BRANCH_NAME" ]]; then
   # 自动清理残留 worktree 注册信息
   git -C "$ORIGINAL_PROJECT_ROOT" worktree prune 2>/dev/null || true
 
-  # 判断是否为有效 git 仓库（worktree 中 .git 是文件，clone 中 .git 是目录）
+  # 判断是否为有效 git 仓库（worktree 中 .git 是文件，普通 clone 中 .git 是目录）
   if [[ -e "$BUILD_TREE/.git" ]] && git -C "$BUILD_TREE" rev-parse --git-dir >/dev/null 2>&1; then
     echo "  复用构建缓存: $BUILD_TREE"
     git -C "$BUILD_TREE" fetch origin master "$BRANCH_NAME" 2>/dev/null || true
