@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 
@@ -148,6 +149,7 @@ func (h *RecommendHandler) Create(w http.ResponseWriter, r *http.Request) {
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`, id, tenantID, req.MajorID, req.CareerPositionID, req.PositionType, req.Reason, req.SortOrder, req.IsEnabled, claims.UserID)
 	if err != nil {
+		log.Printf("[recommend create error] majorId=%v positionId=%s positionType=%s sortOrder=%d err=%v", req.MajorID, req.CareerPositionID, req.PositionType, req.SortOrder, err)
 		respondError(w, http.StatusInternalServerError, "failed to create recommendation")
 		return
 	}
