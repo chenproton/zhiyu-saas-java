@@ -8,9 +8,10 @@
 
 ### 工作流程
 
-1. **创建特性分支**（基于最新 master）
+1. **创建独立工作树**（基于 master，零接触共享目录）
    ```bash
-   git checkout master && git pull && git checkout -b feat/<agent>-<任务简述>
+   # 一条命令完成：创建工作树 + 基于 master 创建新分支
+   git worktree add -b feat/<agent>-<任务简述> /tmp/<agent> master && cd /tmp/<agent>
    ```
 
 2. **开发并提交**
@@ -29,7 +30,17 @@
 
 4. **验证通过后合并回 master**
    ```bash
-   git checkout master && git pull && git merge feat/<agent>-<任务简述> && git push
+   git fetch origin master && git merge origin/master --no-edit
+   # 如有冲突先解决，然后：
+   git push  # 先推送合并后的分支
+   # 从任意工作目录合并到 master：
+   cd /root/projects/zhiyu-saas && git checkout master && git pull && git merge feat/<agent>-<任务简述> && git push
+   ```
+
+5. **清理工作树**
+   ```bash
+   # 先切到其他目录再删除
+   cd / && git worktree remove /tmp/<agent>
    ```
 
 ### 注意事项
