@@ -8,16 +8,10 @@ interface AbilityPointCardProps {
   index?: number
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  knowledge: "知识",
-  skill: "技能",
-  quality: "素养",
-}
-
-const CATEGORY_COLORS: Record<string, [string, string]> = {
-  knowledge: ["#3b82f6", "#60a5fa"],
-  skill: ["#10b981", "#34d399"],
-  quality: ["#f59e0b", "#fbbf24"],
+const ATTRIBUTE_COLORS: Record<string, [string, string]> = {
+  "知识": ["#3b82f6", "#60a5fa"],
+  "素养": ["#f59e0b", "#fbbf24"],
+  "技能": ["#10b981", "#34d399"],
 }
 
 const DOMAIN_COLORS: Record<string, [string, string]> = {
@@ -45,9 +39,7 @@ const LEVEL_COLORS: Record<string, string> = {
 }
 
 export function AbilityPointCard({ binding, abilityPoint, index }: AbilityPointCardProps) {
-  const categoryKey = abilityPoint?.category || "knowledge"
-  const categoryLabel = CATEGORY_LABELS[categoryKey] || "知识"
-  const categoryColors = CATEGORY_COLORS[categoryKey] || CATEGORY_COLORS["knowledge"]
+  const attributes = abilityPoint?.attributes?.length ? abilityPoint.attributes : binding.attributes
   const domainColors = DOMAIN_COLORS[binding.domain || "专业工具"] || DOMAIN_COLORS["专业工具"]
   const levelLabel = LEVEL_LABELS[binding.requiredLevel] || binding.requiredLevel
   const levelColor = LEVEL_COLORS[levelLabel] || "#94a3b8"
@@ -73,12 +65,23 @@ export function AbilityPointCard({ binding, abilityPoint, index }: AbilityPointC
       </div>
 
       <div className="flex flex-wrap gap-1.5 mb-3">
-        <span
-          className="text-[11px] px-1.5 py-0.5 rounded border text-white"
-          style={{ background: `linear-gradient(135deg, ${categoryColors[0]}, ${categoryColors[1]})`, borderColor: categoryColors[0] }}
-        >
-          {categoryLabel}
-        </span>
+        {attributes.map((attr) => {
+          const colors = ATTRIBUTE_COLORS[attr] || ["#64748b", "#94a3b8"]
+          return (
+            <span
+              key={attr}
+              className="text-[11px] px-1.5 py-0.5 rounded border text-white"
+              style={{ background: `linear-gradient(135deg, ${colors[0]}, ${colors[1]})`, borderColor: colors[0] }}
+            >
+              {attr}
+            </span>
+          )
+        })}
+        {attributes.length === 0 && (
+          <span className="text-[11px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#475569] border border-[#e2e8f0]">
+            未配置属性
+          </span>
+        )}
         <span className="text-[11px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#475569] border border-[#e2e8f0]">
           {binding.domain || "专业工具"}
         </span>
