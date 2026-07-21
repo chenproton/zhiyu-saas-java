@@ -184,6 +184,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 	// 业务内容路由不再按角色 code 限制：页面入口由角色菜单权限（roles.permissions.menus）
 	// 在前端控制，写操作由 handler 内的 canModifyContent 控制。
 	businessUser := authmw.RequireRole()
+	jobViewer := authmw.RequireRole("teacher", "student", "school_admin", "enterprise_mentor")
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"status":"ok"}`))
@@ -203,10 +204,6 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 		r.Get("/platform-links", platformLinkHandler.List)
 		r.Get("/app-modules", appModuleHandler.List)
 
-		// Public job views: allow anonymous users to browse published positions only.
-		r.Get("/job/public/positions", positionHandler.List)
-		r.Get("/job/public/positions/{id}", positionHandler.Get)
-
 		// Superadmin console (internal hidden page, unauthenticated by product decision)
 		r.Get("/admin/tenants", tenantHandler.AdminList)
 		r.Post("/admin/tenants", tenantHandler.AdminCreate)
@@ -223,6 +220,12 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 			r.Get("/auth/saas/me", authHandler.SaasMe)
 			r.Get("/auth/portal/me", authHandler.PortalMe)
 			r.Get("/stats/me", statsHandler.MyStats)
+
+			r.Group(func(r chi.Router) {
+				r.Use(jobViewer)
+				r.Get("/job/public/positions", positionHandler.PublicList)
+				r.Get("/job/public/positions/{id}", positionHandler.PublicGet)
+			})
 
 			r.Get("/institutions", institutionHandler.List)
 			r.Get("/institutions/{id}", institutionHandler.Get)

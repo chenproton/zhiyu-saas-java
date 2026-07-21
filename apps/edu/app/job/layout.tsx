@@ -15,13 +15,13 @@ export default function JobLayout({
   const router = useRouter()
   const pathname = usePathname()
   const { user, loading, hasMenuPermission } = useAuth()
-  const isPublicJob = pathname.startsWith("/job/landing") || pathname.startsWith("/job/student")
+  const isJobViewerPage = pathname.startsWith("/job/landing") || pathname.startsWith("/job/student")
 
   useEffect(() => {
-    if (!loading && !user && !isPublicJob) {
+    if (!loading && !user) {
       router.replace("/portal/login")
     }
-  }, [loading, user, isPublicJob, router])
+  }, [loading, user, router])
 
   const allowed = !loading && !!user && hasMenuPermission(pathname)
 
@@ -30,7 +30,7 @@ export default function JobLayout({
     sideBackHref: "/portal/apps",
   }
 
-  const content = isPublicJob ? (
+  const content = isJobViewerPage ? (
     <>{children}</>
   ) : (
     <PlatformShell config={config}>
@@ -38,18 +38,26 @@ export default function JobLayout({
     </PlatformShell>
   )
 
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-50 flex h-screen items-center justify-center bg-[#f5f7fa]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return null
+  }
+
   return (
     <>
       {content}
-      {!isPublicJob && (loading || !allowed) && (
+      {!isJobViewerPage && !allowed && (
         <div className="fixed inset-0 z-50 flex h-screen items-center justify-center bg-[#f5f7fa]">
-          {loading ? (
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          ) : (
-            <div className="text-sm text-muted-foreground">
-              当前角色暂无权限访问该页面，请联系管理员在角色权限中开通
-            </div>
-          )}
+          <div className="text-sm text-muted-foreground">
+            当前角色暂无权限访问该页面，请联系管理员在角色权限中开通
+          </div>
         </div>
       )}
     </>

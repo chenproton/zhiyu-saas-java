@@ -178,6 +178,113 @@ func (h *PositionHandler) Get(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, pos)
 }
 
+func (h *PositionHandler) PublicList(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusUnauthorized, "请先登录")
+		return
+	}
+
+	tenantID, ok := tenantFilter(claims)
+	if !ok {
+		respondError(w, http.StatusForbidden, "missing tenant")
+		return
+	}
+
+	positionType := r.URL.Query().Get("positionType")
+	search := r.URL.Query().Get("search")
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+
+	limit := 50
+	offset := 0
+	if v, err := parseInt(limitStr, 50); err == nil && v > 0 {
+		limit = v
+	}
+	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
+		offset = v
+	}
+
+	where := []string{"cp.status = $1", "cp.tenant_id = $2"}
+	args := []interface{}{string(domain.StatusPublished), tenantID}
+	argIdx := 3
+
+	if positionType != "" {
+		where = append(where, "cp.position_type = $"+itoa(argIdx))
+		args = append(args, positionType)
+		argIdx++
+	}
+	if search != "" {
+		where = append(where, "cp.name ILIKE $"+itoa(argIdx))
+		args = append(args, "%"+search+"%")
+		argIdx++
+	}
+
+	countQuery := "SELECT COUNT(*) FROM career_positions cp WHERE " + strings.Join(where, " AND ")
+	var total int
+	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
+
+	query := `
+		SELECT cp.id, cp.batch_id, cp.name, cp.short_name, cp.industry_id,
+			COALESCE((SELECT array_agg(cpm.major_id) FROM career_position_majors cpm WHERE cpm.career_position_id = cp.id), '{}') AS major_ids,
+			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
+			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
+			cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by,
+			cp.collaborators,
+			(SELECT COUNT(*) FROM position_favorites pf WHERE pf.career_position_id = cp.id) AS favorite_count,
+			cp.created_at, cp.updated_at
+		FROM career_positions cp
+		WHERE ` + strings.Join(where, " AND ") + `
+		ORDER BY cp.created_at DESC
+		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
+	args = append(args, limit, offset)
+
+	rows, err := h.DB.Query(r.Context(), query, args...)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to list positions")
+		return
+	}
+	defer rows.Close()
+
+	items, err := h.scanPositionRows(rows)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to scan positions")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, PositionListResponse{Items: items, Total: total})
+}
+
+func (h *PositionHandler) PublicGet(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusUnauthorized, "请先登录")
+		return
+	}
+
+	tenantID, ok := tenantFilter(claims)
+	if !ok {
+		respondError(w, http.StatusForbidden, "missing tenant")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+
+	var posTenantID string
+	err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM career_positions WHERE id = $1`, id).Scan(&posTenantID)
+	if err != nil || posTenantID != tenantID {
+		respondError(w, http.StatusNotFound, "position not found")
+		return
+	}
+
+	pos, err := h.fetchPosition(r.Context(), id)
+	if err != nil || pos.Status != domain.StatusPublished {
+		respondError(w, http.StatusNotFound, "position not found")
+		return
+	}
+	respondJSON(w, http.StatusOK, pos)
+}
+
 func (h *PositionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
