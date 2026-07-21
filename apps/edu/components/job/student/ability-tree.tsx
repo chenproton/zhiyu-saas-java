@@ -5,12 +5,6 @@ import { Layers, Sparkles, Target, X } from "lucide-react"
 import type { PositionResponsibility, PositionAbilityBinding, AbilityPoint, AbilityDomain } from "@/lib/types/job"
 import { AbilityPointCard } from "./ability-point-card"
 
-const ATTRIBUTE_COLORS: Record<string, [string, string]> = {
-  "知识": ["#3b82f6", "#60a5fa"],
-  "素养": ["#f59e0b", "#fbbf24"],
-  "技能": ["#10b981", "#34d399"],
-}
-
 interface AbilityTreeProps {
   responsibilities: PositionResponsibility[]
   bindings: PositionAbilityBinding[]
@@ -95,26 +89,17 @@ export function AbilityTree({ responsibilities, bindings, abilityPoints, ability
                     onClick={() => setSelectedAbility({ binding: ab, abilityPoint: info })}
                   >
                     <div className="flex flex-col min-w-0 gap-1">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm text-[#1f2937] truncate">{info?.name || ab.domain || "未命名能力"}</span>
-                        {(info?.attributes?.length ?? 0) > 0 && (
-                          <div className="flex flex-wrap gap-1 shrink-0">
-                            {info.attributes.map((attr) => {
-                              const colors = ATTRIBUTE_COLORS[attr] || ["#64748b", "#94a3b8"]
-                              return (
-                                <span
-                                  key={attr}
-                                  className="text-[10px] px-1.5 py-0.5 rounded border text-white"
-                                  style={{ background: `linear-gradient(135deg, ${colors[0]}, ${colors[1]})`, borderColor: colors[0] }}
-                                >
-                                  {attr}
-                                </span>
-                              )
-                            })}
-                          </div>
-                        )}
-                      </div>
+                      <span className="text-sm text-[#1f2937] truncate">{info?.name || ab.domain || "未命名能力"}</span>
                       <span className="text-[10px] text-[#94a3b8] truncate font-mono">ID：{ab.abilityPointId}</span>
+                      {(info?.attributes?.length ?? 0) > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {info.attributes.map((attr) => (
+                            <span key={attr} className="text-[10px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#64748b]">
+                              {attr}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
