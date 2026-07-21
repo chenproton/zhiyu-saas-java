@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   Search, Flag, Heart, Crosshair, Sparkles, Filter, X,
-  TrendingUp, GraduationCap, ChevronRight, Layers,
+  TrendingUp, GraduationCap, ChevronRight,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -152,12 +152,6 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
     const fpIds = new Set(favoritePositions.map((p) => p.id))
     return scenarios.filter((s) => s.careerPositionId && fpIds.has(s.careerPositionId))
   }, [isScene, scenarios, favoritePositions])
-
-  const hotPositionScenarios = useMemo(() => {
-    if (!isScene || hotPositions.length === 0) return []
-    const hpIds = new Set(hotPositions.map((h) => h.positionId))
-    return scenarios.filter((s) => s.careerPositionId && hpIds.has(s.careerPositionId))
-  }, [isScene, scenarios, hotPositions])
 
   const industries = useMemo(() => {
     if (isScene) {
@@ -473,32 +467,11 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                   目标岗位配套场景
                 </div>
               </div>
-              {hotPositionScenarios.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8] text-center px-4">
-                  <Layers className="w-9 h-9 mb-2 text-[#cbd5e1]" />
-                  <div className="text-sm font-semibold text-[#475569]">暂无目标岗位配套场景</div>
-                  <div className="text-xs mt-0.5">联系管理员配置岗位推荐，关联场景将在此展示</div>
-                </div>
-              ) : (
-                <div className="flex-1 flex flex-col gap-1 overflow-hidden">
-                  {hotPositionScenarios.slice(0, 5).map((sc) => (
-                    <Link key={sc.id} href={`/scene/landing/${sc.id}`}>
-                      <div className="flex items-start gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#f8fafc] cursor-pointer transition-colors group">
-                        <div className="flex-1 min-w-0 flex flex-col gap-1">
-                          <span className="text-[13px] font-semibold text-[#0f172a] truncate group-hover:text-blue-600 transition-colors">
-                            {sc.name}
-                          </span>
-                          <div className="flex items-center gap-1.5 text-[11px]">
-                            <span className="px-1.5 py-0.5 rounded bg-[#eff6ff] text-blue-600 truncate max-w-[80px]">
-                              v{sc.version || "1.0"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
+              <div className="flex-1 flex flex-col items-center justify-center text-[#94a3b8] text-center px-4">
+                <Flag className="w-9 h-9 mb-2 text-[#cbd5e1]" />
+                <div className="text-sm font-semibold text-[#475569]">暂无目标岗位配套场景</div>
+                <div className="text-xs mt-0.5">完成能力测评后，系统将为你推荐匹配岗位，关联场景将在此展示</div>
+              </div>
             </div>
 
             {/* 心仪岗位配套场景 */}
