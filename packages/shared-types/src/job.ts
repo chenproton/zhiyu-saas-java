@@ -131,6 +131,7 @@ export interface BannerConfig {
 export interface LearnRoadStep {
   name: string
   description?: string
+  scenarioId?: string
   resourceIds?: string[]
   tasks?: { id: string; name: string }[]
 }

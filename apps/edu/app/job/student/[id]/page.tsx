@@ -188,7 +188,7 @@ export default function JobStudentDetailPage() {
       case "scenes":
         return <SceneList scenarios={scenarios} tasks={scenarioTasks} />
       case "learning":
-        return user ? <LearningPath roads={roads} /> : <LoginPrompt text="学习路径需登录后查看" desc="登录账号后可查看岗位关联的学习路径" />
+        return user ? <LearningPath roads={roads} scenarios={scenarios} tasks={scenarioTasks} /> : <LoginPrompt text="学习路径需登录后查看" desc="登录账号后可查看岗位关联的学习路径" />
       default:
         return null
     }
