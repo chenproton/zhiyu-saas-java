@@ -6,7 +6,7 @@ import { useParams } from "next/navigation"
 import {
   ArrowLeft, PlayCircle, ListChecks, FolderOpen,
   Lightbulb, Target, GitBranch, Layers, Clock,
-  BarChart3, Calendar, ChevronDown, BookOpen,
+  BarChart3, Calendar, BookOpen,
   Users, Eye, Share2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -560,7 +560,7 @@ export default function SceneDetailPage() {
                       </p>
                     )}
 
-                    <div className="flex flex-col gap-2 text-xs">
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs">
                       {scenario.industryNames && scenario.industryNames.length > 0 && (
                         <div className="flex items-center gap-2">
                           <span className="text-slate-400 shrink-0">面向行业：</span>
@@ -588,9 +588,6 @@ export default function SceneDetailPage() {
                           <PlayCircle className="w-4 h-4 mr-1.5" /> 开始学习
                         </Button>
                       </Link>
-                      <Button variant="ghost" className="rounded-xl px-5 h-11 text-slate-600 border border-slate-200 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50/50 text-sm transition-all" onClick={() => tabsRef.current?.scrollIntoView({ behavior: "smooth" })}>
-                        查看任务列表 <ChevronDown className="w-4 h-4 ml-1" />
-                      </Button>
                     </div>
                   </div>
                 </div>
@@ -642,19 +639,6 @@ export default function SceneDetailPage() {
                       <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
                       <span>训练 {trainingHours} 课时</span>
                     </div>
-                  </div>
-                  <div className="mt-5 pt-4 border-t border-slate-100 grid grid-cols-2 gap-3">
-                    {[
-                      { value: tasks.length, label: "任务总数", color: "text-blue-600" },
-                      { value: uniqueAbilityIds.size, label: "能力点数", color: "text-violet-600" },
-                      { value: totalResources, label: "资源数", color: "text-emerald-600" },
-                      { value: diff.label, label: "难度", color: "text-amber-600" },
-                    ].map((s, i) => (
-                      <div key={i} className="text-center p-2 rounded-xl hover:bg-slate-50 transition-colors">
-                        <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">{s.label}</div>
-                      </div>
-                    ))}
                   </div>
                 </div>
               </div>
