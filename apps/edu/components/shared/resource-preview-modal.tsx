@@ -3,8 +3,14 @@
 import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Download, ExternalLink, X, FileText, Loader2 } from "lucide-react"
+import { Download, ExternalLink, X, FileText, Loader2, AlertTriangle } from "lucide-react"
 import type { TaskResource } from "@/lib/types"
+
+function isZipBuffer(buffer: ArrayBuffer): boolean {
+  if (buffer.byteLength < 4) return false
+  const view = new Uint8Array(buffer, 0, 4)
+  return view[0] === 0x50 && view[1] === 0x4b // PK
+}
 
 function OfficePreview({ resource }: { resource: TaskResource }) {
   const [html, setHtml] = useState<string | null>(null)
@@ -19,11 +25,20 @@ function OfficePreview({ resource }: { resource: TaskResource }) {
 
     fetch(resource.url, { credentials: "include" })
       .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const ct = res.headers.get("content-type") || ""
+        if (!res.ok) throw new Error(`服务端错误 (${res.status})`)
+        if (ct.includes("text/html") || ct.includes("application/json")) {
+          throw new Error("服务端返回了非文件内容，请检查文件是否存在")
+        }
         return res.arrayBuffer()
       })
       .then(async (buffer) => {
+        if (buffer.byteLength === 0) throw new Error("文件为空")
+
         if (resource.type === "document") {
+          if (!isZipBuffer(buffer)) {
+            throw new Error("此文件为旧版 .doc 格式，暂不支持在线预览，请下载后查看")
+          }
           const mammoth = (await import("mammoth")).default
           const result = await mammoth.convertToHtml({ arrayBuffer: buffer })
           setHtml(result.value)
@@ -31,10 +46,10 @@ function OfficePreview({ resource }: { resource: TaskResource }) {
           const XLSX = await import("xlsx")
           const workbook = XLSX.read(buffer, { type: "array" })
           const sheetName = workbook.SheetNames[0]
-          if (!sheetName) throw new Error("无法读取表格数据")
+          if (!sheetName) throw new Error("表格中没有找到工作表")
           setHtml(XLSX.utils.sheet_to_html(workbook.Sheets[sheetName], { id: "", editable: false }))
         } else {
-          throw new Error("不支持的类型")
+          throw new Error("不支持的文件类型")
         }
       })
       .catch((err) => {
@@ -54,10 +69,22 @@ function OfficePreview({ resource }: { resource: TaskResource }) {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center gap-3 text-gray-400">
-        <FileText className="h-10 w-10 opacity-40" />
-        <span className="text-sm">无法加载预览</span>
-        <span className="text-xs text-gray-400">{error}</span>
+      <div className="flex flex-col items-center gap-3 px-6 text-center">
+        <AlertTriangle className="h-10 w-10 text-amber-400" />
+        <span className="text-sm text-gray-500 font-medium">预览失败</span>
+        <span className="text-xs text-gray-400 max-w-md">{error}</span>
+        <div className="flex gap-2 mt-2">
+          <Button size="sm" variant="outline" asChild>
+            <a href={resource.url} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-3.5 w-3.5 mr-1" />新窗口打开
+            </a>
+          </Button>
+          <Button size="sm" asChild>
+            <a href={resource.url} download={resource.name}>
+              <Download className="h-3.5 w-3.5 mr-1" />下载文件
+            </a>
+          </Button>
+        </div>
       </div>
     )
   }
