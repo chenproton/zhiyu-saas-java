@@ -378,7 +378,7 @@ export default function SceneLearnPage() {
           ) : (
             <>
               {/* collapsed layout: left 3 cards + right sticky tab card */}
-              <div className="flex flex-1 gap-4 p-4 overflow-hidden">
+              <div className="flex flex-1 gap-4 p-4">
                 {/* left column: 3 cards */}
                 <div className="flex-1 overflow-y-auto space-y-4">
                   {/* 任务背景 */}
@@ -416,14 +416,12 @@ export default function SceneLearnPage() {
                         </div>
                         任务说明书
                         {activeTask.descriptionPdf && (
-                          <a
-                            href={activeTask.descriptionPdf}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            onClick={() => setPreviewResource({ url: activeTask.descriptionPdf, name: "任务说明书 PDF", type: "pdf" } as any)}
                             className="ml-auto text-xs font-normal text-violet-600 hover:text-violet-700 hover:underline flex items-center gap-1"
                           >
                             <Eye className="h-3.5 w-3.5" />查看 PDF
-                          </a>
+                          </button>
                         )}
                       </CardTitle>
                     </CardHeader>
