@@ -6,10 +6,7 @@ import Link from "next/link"
 
 import {
   BookOpen,
-  PlayCircle,
   FileText,
-  CheckCircle2,
-  StickyNote,
   Clock,
   MonitorPlay,
   Lightbulb,
@@ -24,6 +21,9 @@ import {
   Sparkles,
   X,
   ArrowLeft,
+  Download,
+  Eye,
+  Layers,
 } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -42,17 +42,25 @@ import { PlatformFooter } from "@/components/job/student/platform-footer"
 
 /* ---------- constants ---------- */
 
-const difficultyMap: Record<number, { color: string; label: string }> = {
-  1: { color: "#16a34a", label: "入门" },
-  2: { color: "#ca8a04", label: "初级" },
-  3: { color: "#ea580c", label: "中级" },
-  4: { color: "#dc2626", label: "高级" },
-  5: { color: "#7c3aed", label: "专家" },
+const difficultyMap: Record<number, { color: string; label: string; bg: string }> = {
+  1: { color: "#16a34a", label: "入门", bg: "#f0fdf4" },
+  2: { color: "#ca8a04", label: "初级", bg: "#fefce8" },
+  3: { color: "#ea580c", label: "中级", bg: "#fff7ed" },
+  4: { color: "#dc2626", label: "高级", bg: "#fef2f2" },
+  5: { color: "#7c3aed", label: "专家", bg: "#f5f3ff" },
 }
 
 const resourceTypeLabels: Record<string, string> = {
   document: "文档", video: "视频", link: "链接", file: "文件",
   spreadsheet: "表格", presentation: "演示", image: "图片", audio: "音频", pdf: "PDF",
+}
+
+const resourceTypeIcons: Record<string, string> = {
+  document: "text-[#3b82f6] bg-blue-50", video: "text-[#f59e0b] bg-amber-50",
+  link: "text-[#8b5cf6] bg-purple-50", file: "text-[#10b981] bg-emerald-50",
+  spreadsheet: "text-[#16a34a] bg-green-50", presentation: "text-[#f97316] bg-orange-50",
+  image: "text-[#ec4899] bg-pink-50", audio: "text-[#06b6d4] bg-cyan-50",
+  pdf: "text-[#ef4444] bg-red-50",
 }
 
 const evalMethodLabels: Record<string, string> = {
@@ -81,9 +89,8 @@ export default function SceneLearnPage() {
   const [resourceMap, setResourceMap] = useState<Map<string, TaskResource>>(new Map())
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
   const [abilityMap, setAbilityMap] = useState<Map<string, AbilityPoint>>(new Map())
-  const [showResources, setShowResources] = useState(true)
+  const [showResources, setShowResources] = useState(false)
 
-  // fetch scenario
   useEffect(() => {
     if (!id) return
     setLoading(true)
@@ -94,7 +101,6 @@ export default function SceneLearnPage() {
       .finally(() => setLoading(false))
   }, [id])
 
-  // fetch tasks
   useEffect(() => {
     if (!id || !scenario) return
     taskApi
@@ -112,7 +118,6 @@ export default function SceneLearnPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, scenario])
 
-  // fetch resources / knowledge / abilities
   useEffect(() => {
     if (!id || !scenario) return
     taskResourceApi
@@ -175,7 +180,7 @@ export default function SceneLearnPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-[#f8fafc]">
-        <header className="bg-white border-b border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.03)] shrink-0 h-16 flex items-center px-6">
+        <header className="bg-white border-b border-gray-200 shrink-0 h-16 flex items-center px-6">
           <Skeleton className="h-5 w-48" />
         </header>
         <div className="flex-1 flex">
@@ -195,11 +200,14 @@ export default function SceneLearnPage() {
     return (
       <div className="min-h-screen flex flex-col bg-[#f8fafc]">
         <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
-          <div className="w-20 h-20 mb-5 rounded-3xl bg-gray-50 flex items-center justify-center">
-            <BookOpen className="w-10 h-10 opacity-40" />
+          <div className="relative w-24 h-24 mb-6">
+            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-100 to-indigo-100 opacity-60" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <BookOpen className="w-12 h-12 text-blue-300/60" />
+            </div>
           </div>
           <div className="text-lg font-semibold text-gray-600">场景不存在</div>
-          <Link href="/scene/landing" className="text-blue-600 hover:text-blue-700 mt-2 text-sm font-medium">返回场景列表</Link>
+          <Link href="/scene/landing" className="text-blue-600 hover:text-blue-700 mt-2 text-sm font-medium transition-colors">返回场景列表</Link>
         </div>
         <PlatformFooter />
       </div>
@@ -207,50 +215,53 @@ export default function SceneLearnPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8fafc]">
+    <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)" }}>
       {/* ---------- header ---------- */}
-      <header className="bg-white border-b border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.03)] shrink-0">
+      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200/60 shrink-0 sticky top-0 z-30">
         <div className="max-w-[1400px] mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link
               href={`/scene/landing/${id}`}
-              className="group flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition-colors"
+              className="group flex items-center gap-2.5 text-sm text-gray-500 hover:text-blue-600 transition-all duration-200"
             >
-              <span className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center group-hover:bg-blue-50 transition-colors">
-                <ArrowLeft className="w-4 h-4" />
+              <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-gray-100 to-gray-50 border border-gray-200/60 flex items-center justify-center group-hover:from-blue-50 group-hover:to-blue-100/50 group-hover:border-blue-200 group-hover:shadow-sm transition-all duration-200">
+                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform duration-200" />
               </span>
-              <span className="font-medium truncate max-w-[300px] sm:max-w-[400px] lg:max-w-[500px]">{scenario.name}</span>
+              <span className="font-semibold truncate max-w-[360px] lg:max-w-[520px] text-gray-700 group-hover:text-blue-600 transition-colors">{scenario.name}</span>
             </Link>
           </div>
-          <div className="flex items-center gap-4 text-sm text-gray-500 bg-gray-50 px-4 py-1.5 rounded-full border border-gray-100">
-            <span className="flex items-center gap-1.5"><ListChecks className="w-3.5 h-3.5 text-blue-500" /> {tasks.length} 个任务</span>
-            <span className="w-px h-3 bg-gray-300" />
-            <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-blue-500" /> {totalHours} 课时</span>
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-white px-3 py-1.5 rounded-full border border-gray-200/80 shadow-sm">
+              <ListChecks className="w-3.5 h-3.5 text-blue-500" /> {tasks.length} 个任务
+            </span>
+            <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-white px-3 py-1.5 rounded-full border border-gray-200/80 shadow-sm">
+              <Clock className="w-3.5 h-3.5 text-blue-500" /> {totalHours} 课时
+            </span>
           </div>
         </div>
       </header>
 
       {/* ---------- body ---------- */}
-      <div className="flex-1 flex max-w-[1400px] mx-auto w-full overflow-hidden bg-white">
+      <div className="flex-1 flex max-w-[1400px] mx-auto w-full overflow-hidden">
         {/* ---------- left sidebar: task list ---------- */}
-        <aside className="flex w-[300px] flex-shrink-0 flex-col border-r border-gray-100 bg-white">
+        <aside className="flex w-[300px] flex-shrink-0 flex-col border-r border-gray-200/60 bg-white/80 backdrop-blur-sm">
           {/* scenario header */}
-          <div className="border-b border-gray-100 px-5 py-4">
-            <div className="flex items-start gap-2">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-blue-700 text-xs font-bold text-white">
+          <div className="relative border-b border-gray-100 px-5 py-5 overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-bold text-white shadow-lg shadow-blue-500/25">
                 场
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="truncate text-sm font-bold text-gray-800">《{scenario.name}》</h2>
-                <Badge variant="secondary" className="mt-1 bg-blue-50 text-blue-600 hover:bg-blue-50">
+                <h2 className="truncate text-sm font-bold text-gray-800">{scenario.name}</h2>
+                <Badge variant="secondary" className="mt-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 hover:from-blue-100 hover:to-indigo-100 border-0 text-[11px]">
                   场景学习
                 </Badge>
               </div>
             </div>
-            <div className="mt-2 flex items-center text-xs text-gray-400">
-              <span>
-                共 {tasks.length} 个任务 · {totalHours} 课时
-              </span>
+            <div className="mt-3 flex items-center gap-3 text-[11px]">
+              <span className="flex items-center gap-1 text-gray-400"><Layers className="w-3 h-3" />{tasks.length} 任务</span>
+              <span className="flex items-center gap-1 text-gray-400"><Clock className="w-3 h-3" />{totalHours} 课时</span>
             </div>
           </div>
 
@@ -262,63 +273,55 @@ export default function SceneLearnPage() {
                 const diff = difficultyMap[task.difficulty] || difficultyMap[3]
 
                 return (
-                  <div
+                  <button
                     key={task.id}
+                    onClick={() => selectTask(task.id)}
                     className={cn(
-                      "border-b border-gray-50 last:border-b-0",
-                      isActive && "bg-blue-50/50"
+                      "relative flex w-full items-center gap-3 px-4 py-3 text-left transition-all duration-200 group",
+                      isActive
+                        ? "bg-gradient-to-r from-blue-50 via-blue-50/80 to-transparent"
+                        : "hover:bg-gray-50/80"
                     )}
                   >
-                    <button
-                      onClick={() => selectTask(task.id)}
+                    {isActive && (
+                      <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-gradient-to-b from-blue-500 to-indigo-500 rounded-r-full" />
+                    )}
+                    <div
                       className={cn(
-                        "flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-gray-50",
-                        isActive && "hover:bg-blue-50/80"
+                        "flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-[11px] font-bold transition-all duration-200",
+                        isActive
+                          ? "bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-md shadow-blue-500/20"
+                          : "bg-gray-100 text-gray-500 group-hover:bg-gray-200 group-hover:text-gray-600"
                       )}
                     >
-                      <div className="flex min-w-0 flex-1 items-center gap-2">
-                        <div
-                          className={cn(
-                            "flex h-5 w-5 flex-shrink-0 items-center justify-center rounded text-[10px] font-bold",
-                            isActive ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-400"
-                          )}
-                        >
-                          {idx + 1}
-                        </div>
-                        <span
-                          className={cn(
-                            "truncate text-sm",
-                            isActive ? "font-semibold text-blue-600" : "text-gray-700"
-                          )}
-                        >
-                          {task.name}
-                        </span>
+                      {idx + 1}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className={cn(
+                        "text-[13px] font-semibold truncate transition-colors duration-200",
+                        isActive ? "text-blue-700" : "text-gray-700 group-hover:text-gray-900"
+                      )}>
+                        {task.name}
                       </div>
-                    </button>
-
-                    {/* task info bar */}
-                    <div className="px-4 pb-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 text-[10px] text-gray-400">
-                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{task.estimatedHours || 0}h</span>
-                          <span className="flex items-center gap-1" style={{ color: diff.color }}>
-                            <BarChart3 className="h-3 w-3" />
-                            {diff.label}
-                          </span>
-                        </div>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                          <Clock className="h-2.5 w-2.5" />{task.estimatedHours || 0}h
+                        </span>
+                        <span className="text-[10px] flex items-center gap-1" style={{ color: diff.color }}>
+                          <BarChart3 className="h-2.5 w-2.5" />{diff.label}
+                        </span>
                         <span
-                          className="text-[10px] px-1.5 py-0.5 rounded-full border font-medium"
+                          className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
                           style={{
                             backgroundColor: task.taskType === "assessment" ? "#fef2f2" : "#eff6ff",
                             color: task.taskType === "assessment" ? "#dc2626" : "#2563eb",
-                            borderColor: task.taskType === "assessment" ? "#fecaca" : "#bfdbfe",
                           }}
                         >
                           {task.taskType === "assessment" ? "考核" : "训练"}
                         </span>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 )
               })}
             </div>
@@ -326,45 +329,88 @@ export default function SceneLearnPage() {
         </aside>
 
         {/* ---------- right main area ---------- */}
-        <main className="flex flex-1 flex-col overflow-y-auto bg-gray-50/50">
+        <main className="flex flex-1 flex-col overflow-y-auto" style={{ background: "linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%)" }}>
           {!activeTask ? (
-            <div className="flex flex-col items-center justify-center flex-1 text-gray-400">
-              <div className="w-16 h-16 mb-4 rounded-2xl bg-gray-50 flex items-center justify-center">
-                <BookOpen className="w-8 h-8 opacity-40" />
+            <div className="flex flex-col items-center justify-center flex-1">
+              <div className="relative w-24 h-24 mb-5">
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-100 to-indigo-100 opacity-50 animate-pulse" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <BookOpen className="w-12 h-12 text-blue-300/50" />
+                </div>
               </div>
-              <p className="text-sm text-gray-500">从左侧任务列表中选择一个任务</p>
+              <p className="text-sm font-medium text-gray-400">选择一个任务开始学习</p>
+              <p className="text-xs text-gray-300 mt-1">从左侧任务列表中点击任务</p>
             </div>
           ) : (
             <>
               {/* content area: resource preview */}
-              <div className="relative mx-4 mt-4 rounded-lg bg-slate-900 overflow-hidden flex-shrink-0">
-                <div className="flex w-full max-h-[50vh] aspect-video items-center justify-center">
-                  <div className="text-center">
+              <div className="relative mx-4 mt-4 rounded-2xl overflow-hidden flex-shrink-0 shadow-xl shadow-slate-900/10 group">
+                <div
+                  className="flex w-full max-h-[48vh] aspect-video items-center justify-center relative"
+                  style={{ background: "linear-gradient(135deg, #1e293b 0%, #0f172a 40%, #1e1b4b 100%)" }}
+                >
+                  <div className="absolute inset-0 opacity-[0.03]"
+                    style={{
+                      backgroundImage: "radial-gradient(circle at 20% 50%, rgba(59,130,246,0.3) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(99,102,241,0.2) 0%, transparent 50%), radial-gradient(circle at 50% 80%, rgba(139,92,246,0.15) 0%, transparent 50%)",
+                    }}
+                  />
+                  <div className="text-center relative z-10">
                     {taskResources.length > 0 ? (
                       <>
-                        <div className="mx-auto h-16 w-16 rounded-2xl bg-slate-800 flex items-center justify-center">
-                          <FileText className="h-8 w-8 text-slate-500" />
+                        <div className="mx-auto h-20 w-20 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center shadow-2xl shadow-black/20 mb-1">
+                          <FileText className="h-10 w-10 text-blue-400/80" />
                         </div>
-                        <p className="mt-4 text-sm text-slate-300">{taskResources[0].name}</p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {resourceTypeLabels[taskResources[0].type] || taskResources[0].type}
-                          {taskResources[0].size && ` · ${taskResources[0].size}`}
-                        </p>
+                        <p className="mt-4 text-base font-semibold text-white/90">{taskResources[0].name}</p>
+                        <p className="mt-1.5 text-xs text-slate-400">{resourceTypeLabels[taskResources[0].type] || taskResources[0].type}{taskResources[0].size ? ` · ${taskResources[0].size}` : ""}</p>
+                        {taskResources.length > 1 && (
+                          <p className="mt-2 text-[11px] text-slate-500">+{taskResources.length - 1} 个更多资源</p>
+                        )}
                       </>
                     ) : (
                       <>
-                        <MonitorPlay className="mx-auto h-16 w-16 text-slate-600" />
-                        <p className="mt-4 text-sm text-slate-400">任务资源预览区域</p>
-                        <p className="mt-1 text-xs text-slate-600">{activeTask.name}</p>
+                        <div className="mx-auto h-20 w-20 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center">
+                          <MonitorPlay className="h-10 w-10 text-slate-600" />
+                        </div>
+                        <p className="mt-4 text-base font-medium text-slate-400">{activeTask.name}</p>
+                        <p className="mt-1 text-xs text-slate-600">暂无关联资源</p>
                       </>
                     )}
                   </div>
                 </div>
-                <div className="absolute bottom-4 left-4 flex items-center gap-2">
-                  <Badge variant="outline" className="border-slate-600 bg-slate-800/80 text-slate-300">
-                    {activeTask.taskType === "assessment" ? "考核" : "训练"}
-                  </Badge>
-                  <span className="text-xs text-slate-400">{activeTask.estimatedHours || 0} 课时</span>
+
+                {/* bottom info bar */}
+                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      className="border-0 text-[11px] px-2.5 py-1 font-semibold backdrop-blur-sm"
+                      style={{
+                        background: activeTask.taskType === "assessment"
+                          ? "linear-gradient(135deg, rgba(239,68,68,0.2), rgba(220,38,38,0.15))"
+                          : "linear-gradient(135deg, rgba(59,130,246,0.2), rgba(37,99,235,0.15))",
+                        color: activeTask.taskType === "assessment" ? "#fca5a5" : "#93c5fd",
+                      }}
+                    >
+                      {activeTask.taskType === "assessment" ? "考核任务" : "训练任务"}
+                    </Badge>
+                    <span className="text-xs text-slate-500 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />{activeTask.estimatedHours || 0} 课时
+                    </span>
+                    <span className="text-xs text-slate-500" style={{ color: difficultyMap[activeTask.difficulty]?.color }}>
+                      {difficultyMap[activeTask.difficulty]?.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {activeTask.knowledgePointIds?.length > 0 && (
+                      <span className="text-[10px] text-slate-500 bg-white/5 rounded-full px-2 py-0.5 border border-white/5">
+                        {activeTask.knowledgePointIds.length} 知识点
+                      </span>
+                    )}
+                    {activeTask.abilityPointIds?.length > 0 && (
+                      <span className="text-[10px] text-slate-500 bg-white/5 rounded-full px-2 py-0.5 border border-white/5">
+                        {activeTask.abilityPointIds.length} 能力点
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* 任务资源浮动入口 */}
@@ -372,44 +418,57 @@ export default function SceneLearnPage() {
                   <>
                     <button
                       onClick={() => setShowResources((v) => !v)}
-                      className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-slate-800/80 border border-slate-600 text-slate-300 text-xs hover:bg-slate-700 hover:text-white transition-colors z-10"
+                      className="absolute top-4 left-4 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 text-slate-300 text-xs font-medium hover:bg-white/20 hover:text-white hover:border-white/20 transition-all duration-200 z-10 shadow-lg shadow-black/10"
                     >
                       <FolderOpen className="h-3.5 w-3.5" />
                       任务资源
+                      <span className="text-[10px] text-slate-500 bg-white/10 rounded-full px-1.5 py-0.5">{taskResources.length}</span>
                     </button>
 
                     {showResources && (
-                      <div className="absolute top-12 left-3 w-[320px] max-h-[360px] overflow-y-auto rounded-lg bg-slate-800/95 backdrop-blur-sm border border-slate-600 shadow-lg z-20">
-                        <div className="px-3 py-2.5 border-b border-slate-700 flex items-center justify-between">
-                          <span className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
-                            <FolderOpen className="h-3.5 w-3.5" />
-                            任务资源
-                          </span>
-                          <button onClick={() => setShowResources(false)} className="text-slate-500 hover:text-slate-300">
-                            <X className="h-3.5 w-3.5" />
-                          </button>
+                      <>
+                        <div className="fixed inset-0 z-20" onClick={() => setShowResources(false)} />
+                        <div className="absolute top-16 left-4 w-[340px] max-h-[400px] overflow-y-auto rounded-2xl bg-slate-900/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/30 z-30">
+                          <div className="sticky top-0 z-10 px-4 py-3 border-b border-white/10 bg-slate-900/95 backdrop-blur-xl flex items-center justify-between rounded-t-2xl">
+                            <span className="text-sm font-semibold text-white flex items-center gap-2">
+                              <FolderOpen className="h-4 w-4 text-blue-400" />
+                              任务资源 ({taskResources.length})
+                            </span>
+                            <button onClick={() => setShowResources(false)} className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/20 transition-colors">
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <div className="p-3 space-y-2">
+                            {taskResources.map((r) => (
+                              <a
+                                key={r.id}
+                                href={r.url || "#"}
+                                target={r.url ? "_blank" : undefined}
+                                rel={r.url ? "noopener noreferrer" : undefined}
+                                className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-white/10 transition-all duration-200 cursor-pointer group/item"
+                              >
+                                <div className={cn(
+                                  "flex h-10 w-10 items-center justify-center rounded-xl shrink-0 transition-all duration-200 group-hover/item:scale-105",
+                                  resourceTypeIcons[r.type] || "text-gray-400 bg-white/5"
+                                )}>
+                                  <FileText className="h-5 w-5" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm text-slate-200 truncate font-medium group-hover/item:text-white transition-colors">
+                                    {r.name}
+                                  </p>
+                                  <p className="text-[11px] text-slate-500 mt-0.5">
+                                    {resourceTypeLabels[r.type] || r.type}{r.size ? ` · ${r.size}` : ""}
+                                  </p>
+                                </div>
+                                <span className="shrink-0 w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-slate-500 group-hover/item:text-blue-400 group-hover/item:bg-blue-400/10 transition-all duration-200">
+                                  <Eye className="h-3 w-3" />
+                                </span>
+                              </a>
+                            ))}
+                          </div>
                         </div>
-                        <div className="p-2 space-y-1.5">
-                          {taskResources.map((r) => (
-                            <div
-                              key={r.id}
-                              className="flex items-center gap-3 rounded-md px-2.5 py-2 hover:bg-slate-700/50 transition-colors cursor-pointer group"
-                            >
-                              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-700 text-slate-400 group-hover:bg-blue-600/50 group-hover:text-blue-300 shrink-0">
-                                <FileText className="h-4 w-4" />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-xs text-slate-200 truncate group-hover:text-white transition-colors">
-                                  {r.name}
-                                </p>
-                                <p className="text-[10px] text-slate-500">
-                                  {resourceTypeLabels[r.type] || r.type}{r.size ? ` · ${r.size}` : ""}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                      </>
                     )}
                   </>
                 )}
@@ -418,73 +477,98 @@ export default function SceneLearnPage() {
               {/* tabs content */}
               <div className="p-6">
                 <Tabs defaultValue="basic" className="w-full">
-                  <TabsList className="mb-4">
-                    <TabsTrigger value="basic">
-                      <Info className="mr-1.5 h-4 w-4" />
-                      任务基础信息
-                    </TabsTrigger>
-                    <TabsTrigger value="description">
-                      <FileText className="mr-1.5 h-4 w-4" />
-                      任务说明
-                    </TabsTrigger>
-                    <TabsTrigger value="knowledge">
-                      <BrainCircuit className="mr-1.5 h-4 w-4" />
-                      考查知识点
-                    </TabsTrigger>
-                    <TabsTrigger value="ability">
-                      <Target className="mr-1.5 h-4 w-4" />
-                      考查能力点
-                    </TabsTrigger>
-                    <TabsTrigger value="resource">
-                      <FolderOpen className="mr-1.5 h-4 w-4" />
-                      任务资源
-                    </TabsTrigger>
-                    <TabsTrigger value="evaluation">
-                      <ClipboardList className="mr-1.5 h-4 w-4" />
-                      任务测评形式
-                    </TabsTrigger>
-                  </TabsList>
+                  <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm p-1.5 mb-6 overflow-x-auto">
+                    <TabsList className="bg-transparent p-0 h-auto gap-1">
+                      <TabsTrigger value="basic" className="rounded-xl px-4 py-2 text-[13px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all duration-200">
+                        <Info className="mr-1.5 h-4 w-4" />
+                        任务基础信息
+                      </TabsTrigger>
+                      <TabsTrigger value="description" className="rounded-xl px-4 py-2 text-[13px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all duration-200">
+                        <FileText className="mr-1.5 h-4 w-4" />
+                        任务说明
+                      </TabsTrigger>
+                      <TabsTrigger value="knowledge" className="rounded-xl px-4 py-2 text-[13px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all duration-200">
+                        <BrainCircuit className="mr-1.5 h-4 w-4" />
+                        考查知识点
+                      </TabsTrigger>
+                      <TabsTrigger value="ability" className="rounded-xl px-4 py-2 text-[13px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all duration-200">
+                        <Target className="mr-1.5 h-4 w-4" />
+                        考查能力点
+                      </TabsTrigger>
+                      <TabsTrigger value="resource" className="rounded-xl px-4 py-2 text-[13px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all duration-200">
+                        <FolderOpen className="mr-1.5 h-4 w-4" />
+                        任务资源
+                      </TabsTrigger>
+                      <TabsTrigger value="evaluation" className="rounded-xl px-4 py-2 text-[13px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all duration-200">
+                        <ClipboardList className="mr-1.5 h-4 w-4" />
+                        任务测评形式
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
 
                   {/* 任务基础信息 */}
                   <TabsContent value="basic" className="mt-0">
-                    <Card>
-                      <CardHeader>
+                    <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
+                      <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
                         <CardTitle className="text-base flex items-center gap-2">
-                          <Info className="h-4 w-4 text-[#3b82f6]" />
+                          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+                            <Info className="h-4 w-4 text-blue-600" />
+                          </div>
                           任务基础信息
                         </CardTitle>
                       </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 gap-3">
-                          <InfoRow label="任务类型" value={activeTask.taskType === "assessment" ? "考核" : "训练"} />
-                          {activeTask.code && <InfoRow label="任务编码" value={activeTask.code} />}
-                          <InfoRow label="预计课时" value={`${activeTask.estimatedHours || 0} 课时`} />
-                          <InfoRow label="难度等级" value={`Lv.${activeTask.difficulty} ${difficultyMap[activeTask.difficulty]?.label || ""}`} />
-                          <InfoRow label="排序序号" value={String(activeTask.sortOrder)} />
-                          <InfoRow label="关联知识点" value={`${activeTask.knowledgePointIds?.length || 0} 个`} />
-                          <InfoRow label="关联能力点" value={`${activeTask.abilityPointIds?.length || 0} 个`} />
-                          <InfoRow label="关联资源" value={`${activeTask.resourceIds?.length || 0} 个`} />
+                      <CardContent className="pt-5">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-0">
+                          <StatCard
+                            icon={<ListChecks className="h-4 w-4" />}
+                            label="任务类型"
+                            value={activeTask.taskType === "assessment" ? "考核" : "训练"}
+                            color={activeTask.taskType === "assessment" ? "#ef4444" : "#3b82f6"}
+                          />
+                          <StatCard
+                            icon={<Clock className="h-4 w-4" />}
+                            label="预计课时"
+                            value={`${activeTask.estimatedHours || 0} 课时`}
+                            color="#3b82f6"
+                          />
+                          <StatCard
+                            icon={<BarChart3 className="h-4 w-4" />}
+                            label="难度等级"
+                            value={difficultyMap[activeTask.difficulty]?.label || `Lv.${activeTask.difficulty}`}
+                            color={difficultyMap[activeTask.difficulty]?.color || "#3b82f6"}
+                          />
+                          <StatCard
+                            icon={<Layers className="h-4 w-4" />}
+                            label="排序序号"
+                            value={`第 ${activeTask.sortOrder} 位`}
+                            color="#8b5cf6"
+                          />
                         </div>
 
                         {dependencyTasks.length > 0 && (
                           <>
                             <Separator className="my-5" />
-                            <div className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                              <Lightbulb className="w-4 h-4 text-amber-500" />
-                              前置依赖任务
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 flex items-center justify-center">
+                                <Lightbulb className="w-4 h-4 text-amber-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold text-gray-800">前置依赖任务</p>
+                                <p className="text-[11px] text-gray-400">{dependencyTasks.length} 个依赖</p>
+                              </div>
                             </div>
                             <div className="space-y-2">
                               {dependencyTasks.map((dt, i) => (
                                 <button
                                   key={dt.id}
                                   onClick={() => selectTask(dt.id)}
-                                  className="flex items-center gap-3 w-full text-left p-3 rounded-lg border border-gray-100 bg-gray-50/50 hover:border-blue-200 hover:bg-blue-50/30 transition-colors"
+                                  className="flex items-center gap-3 w-full text-left p-3.5 rounded-xl border border-gray-200 bg-white hover:border-blue-300 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-white hover:shadow-sm transition-all duration-200 group"
                                 >
-                                  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-[10px] font-bold">
+                                  <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-100 to-blue-50 text-blue-600 text-xs font-bold border border-blue-100 group-hover:scale-105 transition-transform">
                                     {i + 1}
                                   </span>
-                                  <span className="text-sm font-medium text-gray-700">{dt.name}</span>
-                                  <span className="text-xs text-gray-400 ml-auto">
+                                  <span className="text-sm font-medium text-gray-700 flex-1 truncate">{dt.name}</span>
+                                  <span className="text-[11px] text-gray-400 bg-gray-50 rounded-full px-2 py-0.5">
                                     {dt.estimatedHours || 0}h · Lv.{dt.difficulty}
                                   </span>
                                 </button>
@@ -501,14 +585,16 @@ export default function SceneLearnPage() {
                     {(activeTask.background || activeTask.description || activeTask.detailedDescription) ? (
                       <div className="space-y-4">
                         {activeTask.background && (
-                          <Card>
-                            <CardHeader>
+                          <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
+                            <CardHeader className="bg-gradient-to-r from-blue-50/80 to-white border-b border-blue-100/60">
                               <CardTitle className="text-base flex items-center gap-2">
-                                <FileText className="h-4 w-4 text-[#3b82f6]" />
+                                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-400 flex items-center justify-center shadow-sm">
+                                  <FileText className="h-4 w-4 text-white" />
+                                </div>
                                 任务背景
                               </CardTitle>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="pt-5">
                               <div className="prose prose-sm max-w-none text-gray-600 whitespace-pre-line leading-relaxed">
                                 {activeTask.background}
                               </div>
@@ -516,14 +602,16 @@ export default function SceneLearnPage() {
                           </Card>
                         )}
                         {(activeTask.detailedDescription || activeTask.description) && (
-                          <Card>
-                            <CardHeader>
+                          <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
+                            <CardHeader className="bg-gradient-to-r from-violet-50/80 to-white border-b border-violet-100/60">
                               <CardTitle className="text-base flex items-center gap-2">
-                                <FileText className="h-4 w-4 text-[#8b5cf6]" />
+                                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-sm">
+                                  <FileText className="h-4 w-4 text-white" />
+                                </div>
                                 任务描述
                               </CardTitle>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="pt-5">
                               <div className="prose prose-sm max-w-none text-gray-600 whitespace-pre-line leading-relaxed">
                                 {activeTask.detailedDescription || activeTask.description}
                               </div>
@@ -532,9 +620,9 @@ export default function SceneLearnPage() {
                         )}
                       </div>
                     ) : (
-                      <Card>
+                      <Card className="shadow-sm border-gray-200/60 rounded-2xl">
                         <CardContent className="py-16">
-                          <p className="text-xs text-gray-400 text-center">暂无任务说明</p>
+                          <EmptyState icon={<FileText className="w-10 h-10" />} text="暂无任务说明" />
                         </CardContent>
                       </Card>
                     )}
@@ -543,38 +631,46 @@ export default function SceneLearnPage() {
                   {/* 考查知识点 */}
                   <TabsContent value="knowledge" className="mt-0">
                     {taskKnowledgePoints.length > 0 ? (
-                      <div>
-                        <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                          <BrainCircuit className="w-4 h-4 text-[#3b82f6]" />
-                          考查知识点
-                          <span className="text-xs font-normal text-gray-400">({taskKnowledgePoints.length} 项)</span>
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {taskKnowledgePoints.map((kp) => (
-                            <div
-                              key={kp.id}
-                              className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer group"
-                            >
-                              <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 group-hover:bg-blue-100 transition-colors">
-                                <BrainCircuit className="w-4 h-4 text-blue-500" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-0.5">
-                                  <p className="text-sm font-medium text-gray-700">{kp.name}</p>
-                                  {kp.code && <span className="text-[10px] font-mono text-gray-400">{kp.code}</span>}
-                                </div>
-                                {kp.description && (
-                                  <p className="text-xs text-gray-500 leading-relaxed">{kp.description}</p>
-                                )}
-                              </div>
+                      <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
+                        <CardHeader className="bg-gradient-to-r from-blue-50/80 to-white border-b border-blue-100/60">
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+                              <BrainCircuit className="h-4 w-4 text-blue-600" />
                             </div>
-                          ))}
-                        </div>
-                      </div>
+                            考查知识点
+                            <span className="text-xs font-normal text-gray-400 ml-1">({taskKnowledgePoints.length} 项)</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-5">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {taskKnowledgePoints.map((kp, i) => (
+                              <div
+                                key={kp.id}
+                                className="flex items-start gap-3.5 p-4 rounded-xl border border-gray-100 bg-white hover:border-blue-200 hover:bg-gradient-to-r hover:from-blue-50/30 hover:to-white hover:shadow-md transition-all duration-200 cursor-pointer group"
+                              >
+                                <div className="relative flex-shrink-0">
+                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform duration-200">
+                                    <span className="text-[11px] font-bold text-white">{i + 1}</span>
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <p className="text-sm font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">{kp.name}</p>
+                                    {kp.code && <span className="text-[10px] font-mono text-gray-400 bg-gray-50 rounded-full px-1.5 py-0.5">{kp.code}</span>}
+                                  </div>
+                                  {kp.description && (
+                                    <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{kp.description}</p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
                     ) : (
-                      <Card>
+                      <Card className="shadow-sm border-gray-200/60 rounded-2xl">
                         <CardContent className="py-16">
-                          <p className="text-xs text-gray-400 text-center">该任务暂未关联知识点</p>
+                          <EmptyState icon={<BrainCircuit className="w-10 h-10" />} text="该任务暂未关联知识点" />
                         </CardContent>
                       </Card>
                     )}
@@ -585,9 +681,9 @@ export default function SceneLearnPage() {
                     {taskAbilityPoints.length > 0 ? (
                       <AbilityTab abilityPoints={taskAbilityPoints} />
                     ) : (
-                      <Card>
+                      <Card className="shadow-sm border-gray-200/60 rounded-2xl">
                         <CardContent className="py-16">
-                          <p className="text-xs text-gray-400 text-center">该任务暂未关联能力点</p>
+                          <EmptyState icon={<Target className="w-10 h-10" />} text="该任务暂未关联能力点" />
                         </CardContent>
                       </Card>
                     )}
@@ -596,53 +692,62 @@ export default function SceneLearnPage() {
                   {/* 任务资源 */}
                   <TabsContent value="resource" className="mt-0">
                     {taskResources.length > 0 ? (
-                      <div>
-                        <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                          <FolderOpen className="w-4 h-4 text-[#3b82f6]" />
-                          任务资源
-                          <span className="text-xs font-normal text-gray-400">({taskResources.length} 项)</span>
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {taskResources.map((r) => {
-                            const typeColors: Record<string, string> = {
-                              document: "bg-blue-50 text-blue-600 border-blue-100",
-                              video: "bg-amber-50 text-amber-600 border-amber-100",
-                              link: "bg-purple-50 text-purple-600 border-purple-100",
-                              file: "bg-emerald-50 text-emerald-600 border-emerald-100",
-                            }
-                            return (
+                      <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
+                        <CardHeader className="bg-gradient-to-r from-blue-50/80 to-white border-b border-blue-100/60">
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+                              <FolderOpen className="h-4 w-4 text-blue-600" />
+                            </div>
+                            任务资源
+                            <span className="text-xs font-normal text-gray-400 ml-1">({taskResources.length} 项)</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-5">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {taskResources.map((r) => (
                               <div
                                 key={r.id}
-                                className="flex items-start justify-between gap-2 p-3 rounded-lg border border-gray-100 bg-gray-50/50 hover:border-blue-200 hover:shadow-sm transition-all"
+                                className="flex items-center gap-3.5 p-4 rounded-xl border border-gray-100 bg-white hover:border-blue-200 hover:bg-gradient-to-r hover:from-blue-50/30 hover:to-white hover:shadow-md transition-all duration-200 group"
                               >
+                                <div className={cn(
+                                  "flex h-11 w-11 items-center justify-center rounded-xl shrink-0 transition-transform duration-200 group-hover:scale-105",
+                                  resourceTypeIcons[r.type] || "text-gray-400 bg-gray-50"
+                                )}>
+                                  <FileText className="h-5 w-5" />
+                                </div>
                                 <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-semibold text-gray-800 mb-1.5 truncate">{r.name}</div>
-                                  <div className="flex items-center gap-2 text-xs">
-                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${typeColors[r.type] || "bg-gray-100 text-gray-500 border-gray-200"}`}>
+                                  <div className="text-sm font-semibold text-gray-800 truncate group-hover:text-blue-600 transition-colors">{r.name}</div>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
                                       {resourceTypeLabels[r.type] || r.type}
                                     </span>
-                                    {r.size && <span className="text-gray-400">{r.size}</span>}
+                                    {r.size && <span className="text-[11px] text-gray-400">{r.size}</span>}
                                   </div>
                                 </div>
-                                {r.url && (
+                                {r.url ? (
                                   <a
                                     href={r.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="shrink-0 w-7 h-7 rounded-lg bg-white border border-gray-200 text-gray-400 hover:text-blue-500 hover:border-blue-200 flex items-center justify-center transition-colors"
+                                    className="shrink-0 w-8 h-8 rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-500 hover:text-white flex items-center justify-center transition-all duration-200 shadow-sm hover:shadow-md"
+                                    title="查看资源"
                                   >
                                     <ExternalLink className="w-3.5 h-3.5" />
                                   </a>
+                                ) : (
+                                  <span className="shrink-0 w-8 h-8 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center">
+                                    <Download className="w-3.5 h-3.5" />
+                                  </span>
                                 )}
                               </div>
-                            )
-                          })}
-                        </div>
-                      </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
                     ) : (
-                      <Card>
+                      <Card className="shadow-sm border-gray-200/60 rounded-2xl">
                         <CardContent className="py-16">
-                          <p className="text-xs text-gray-400 text-center">该任务暂未关联学习资源</p>
+                          <EmptyState icon={<FolderOpen className="w-10 h-10" />} text="该任务暂未关联学习资源" />
                         </CardContent>
                       </Card>
                     )}
@@ -651,50 +756,55 @@ export default function SceneLearnPage() {
                   {/* 任务测评形式 */}
                   <TabsContent value="evaluation" className="mt-0">
                     {taskEvalMethods.methods.length > 0 ? (
-                      <Card>
-                        <CardHeader>
+                      <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
+                        <CardHeader className="bg-gradient-to-r from-blue-50/80 to-white border-b border-blue-100/60">
                           <CardTitle className="text-base flex items-center gap-2">
-                            <ClipboardList className="h-4 w-4 text-[#3b82f6]" />
+                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+                              <ClipboardList className="h-4 w-4 text-blue-600" />
+                            </div>
                             任务测评形式
-                            <span className="text-xs font-normal text-gray-400">({taskEvalMethods.methods.length} 种)</span>
+                            <span className="text-xs font-normal text-gray-400 ml-1">({taskEvalMethods.methods.length} 种)</span>
                           </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="flex flex-wrap gap-1.5 mb-2">
-                            {taskEvalMethods.methods.map((m) => (
-                              <span
-                                key={m}
-                                className="text-[11px] px-2.5 py-1 rounded-full font-medium text-white"
-                                style={{ backgroundColor: methodColorMap[m] || "#94a3b8" }}
-                              >
-                                {evalMethodLabels[m] || m}
-                              </span>
-                            ))}
-                          </div>
-                          {taskEvalMethods.methods.map((m) => {
-                            const w = taskEvalMethods.weights[m] || 0
-                            return (
-                              <div key={m} className="flex items-center gap-3">
-                                <span className="text-xs text-gray-600 w-20 shrink-0">{evalMethodLabels[m] || m}</span>
-                                <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                                  <div
-                                    className="h-full rounded-full transition-all"
-                                    style={{
-                                      width: `${Math.round(w)}%`,
-                                      backgroundColor: methodColorMap[m] || "#94a3b8",
-                                    }}
-                                  />
+                        <CardContent className="pt-6">
+                          <div className="space-y-5">
+                            {taskEvalMethods.methods.map((m) => {
+                              const w = taskEvalMethods.weights[m] || 0
+                              const color = methodColorMap[m] || "#94a3b8"
+                              return (
+                                <div key={m} className="flex items-center gap-4">
+                                  <span
+                                    className="text-xs font-semibold px-3 py-1.5 rounded-xl shrink-0 min-w-[72px] text-center shadow-sm"
+                                    style={{ backgroundColor: color + "18", color, border: `1px solid ${color}30` }}
+                                  >
+                                    {evalMethodLabels[m] || m}
+                                  </span>
+                                  <div className="flex-1 flex items-center gap-3">
+                                    <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden shadow-inner">
+                                      <div
+                                        className="h-full rounded-full transition-all duration-700 ease-out relative overflow-hidden"
+                                        style={{
+                                          width: `${Math.max(Math.round(w), 2)}%`,
+                                          background: `linear-gradient(90deg, ${color}dd, ${color})`,
+                                        }}
+                                      >
+                                        <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent" />
+                                      </div>
+                                    </div>
+                                    <span className="text-xs font-bold w-10 text-right" style={{ color }}>
+                                      {Math.round(w)}%
+                                    </span>
+                                  </div>
                                 </div>
-                                <span className="text-xs font-semibold text-gray-600 w-10 text-right">{Math.round(w)}%</span>
-                              </div>
-                            )
-                          })}
+                              )
+                            })}
+                          </div>
                         </CardContent>
                       </Card>
                     ) : (
-                      <Card>
+                      <Card className="shadow-sm border-gray-200/60 rounded-2xl">
                         <CardContent className="py-16">
-                          <p className="text-xs text-gray-400 text-center">该任务暂未设置评价方式</p>
+                          <EmptyState icon={<ClipboardList className="w-10 h-10" />} text="该任务暂未设置评价方式" />
                         </CardContent>
                       </Card>
                     )}
@@ -707,6 +817,35 @@ export default function SceneLearnPage() {
       </div>
 
       <PlatformFooter />
+    </div>
+  )
+}
+
+/* ---------- sub components ---------- */
+
+function EmptyState({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="relative w-16 h-16">
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-50 opacity-60" />
+        <div className="absolute inset-0 flex items-center justify-center text-gray-300">
+          {icon}
+        </div>
+      </div>
+      <p className="text-sm text-gray-400 font-medium">{text}</p>
+    </div>
+  )
+}
+
+function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: string }) {
+  return (
+    <div className="relative p-4 rounded-xl border border-gray-100 bg-white hover:border-gray-200 hover:shadow-md transition-all duration-200 group">
+      <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200" style={{ backgroundColor: color }} />
+      <div className="flex items-center gap-2 mb-2" style={{ color }}>
+        {icon}
+      </div>
+      <p className="text-[11px] text-gray-400 font-medium mb-0.5">{label}</p>
+      <p className="text-sm font-bold text-gray-800">{value}</p>
     </div>
   )
 }
@@ -738,24 +877,33 @@ function AbilityTab({ abilityPoints }: { abilityPoints: AbilityPoint[] }) {
       .filter((g) => g.items.length > 0)
   }, [abilityPoints])
 
-  const categoryLabels: Record<string, { color: string; label: string }> = {
-    knowledge: { color: "#2563eb", label: "知识" },
-    skill: { color: "#16a34a", label: "技能" },
-    quality: { color: "#7c3aed", label: "素养" },
+  const categoryLabels: Record<string, { color: string; label: string; bg: string }> = {
+    knowledge: { color: "#2563eb", label: "知识", bg: "#eff6ff" },
+    skill: { color: "#16a34a", label: "技能", bg: "#f0fdf4" },
+    quality: { color: "#7c3aed", label: "素养", bg: "#f5f3ff" },
   }
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardContent className="p-4">
-          <div className="rounded-lg p-4" style={{ background: "linear-gradient(135deg, #eff6ff, #eef2ff)" }}>
-            <div className="flex items-center gap-2 text-blue-800 font-bold mb-2 text-sm">
+    <div className="space-y-5">
+      <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
+        <CardContent className="p-5">
+          <div
+            className="rounded-xl p-5 relative overflow-hidden"
+            style={{ background: "linear-gradient(135deg, #eff6ff 0%, #eef2ff 50%, #faf5ff 100%)" }}
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 opacity-[0.06]">
+              <Sparkles className="w-full h-full" />
+            </div>
+            <div className="flex items-center gap-2 text-blue-800 font-bold mb-2 text-sm relative z-10">
               <Sparkles className="w-4 h-4" />
               能力模型
             </div>
-            <p className="text-xs text-gray-600 leading-relaxed">
-              共 <strong className="text-blue-600">{groupedByAttribute.length}</strong> 个能力属性，
-              <strong className="text-blue-600"> {abilityPoints.length}</strong> 个能力点
+            <p className="text-xs text-gray-600 leading-relaxed relative z-10">
+              本任务按能力属性拆解，共
+              <strong className="text-blue-600 mx-0.5">{groupedByAttribute.length}</strong>
+              个能力属性、
+              <strong className="text-blue-600 mx-0.5">{abilityPoints.length}</strong>
+              个能力点
             </p>
           </div>
         </CardContent>
@@ -763,26 +911,34 @@ function AbilityTab({ abilityPoints }: { abilityPoints: AbilityPoint[] }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {groupedByAttribute.map(({ attr, items }) => (
-          <Card key={attr} className="overflow-hidden">
-            <div className="bg-blue-50 px-4 py-3 font-medium text-blue-600 flex items-center gap-2 text-sm border-b border-blue-100">
+          <Card key={attr} className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden hover:shadow-md transition-all duration-200">
+            <div
+              className="px-4 py-3.5 font-semibold text-sm flex items-center gap-2 border-b"
+              style={{
+                background: "linear-gradient(135deg, #eff6ff, #eef2ff)",
+                color: "#2563eb",
+                borderColor: "#bfdbfe",
+              }}
+            >
               <Target className="w-4 h-4" />
               {attr}
+              <span className="ml-auto text-[11px] font-normal opacity-60">{items.length} 项</span>
             </div>
-            <CardContent className="p-3 max-h-[260px] overflow-y-auto">
+            <CardContent className="p-2 max-h-[280px] overflow-y-auto">
               {items.map((ap) => {
-                const cat = categoryLabels[ap.category] || { color: "#94a3b8", label: ap.category }
+                const cat = categoryLabels[ap.category] || { color: "#94a3b8", label: ap.category, bg: "#f8fafc" }
                 return (
                   <button
                     key={ap.id}
                     onClick={() => setSelectedAbility(ap)}
-                    className="flex items-start justify-between w-full text-left py-2 px-2 border-b border-gray-50 last:border-b-0 rounded hover:bg-blue-50/30 transition-colors gap-2"
+                    className="flex items-center justify-between w-full text-left p-2.5 rounded-lg hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-transparent transition-all duration-200 gap-2 group"
                   >
                     <div className="flex flex-col min-w-0 gap-1">
-                      <span className="text-sm text-gray-700 font-medium">{ap.name}</span>
+                      <span className="text-[13px] font-semibold text-gray-700 group-hover:text-blue-600 transition-colors">{ap.name}</span>
                       <span
-                        className="text-[10px] px-1.5 py-0.5 rounded-full w-fit border"
+                        className="text-[10px] px-2 py-0.5 rounded-full w-fit font-medium border"
                         style={{
-                          backgroundColor: cat.color + "12",
+                          backgroundColor: cat.bg,
                           color: cat.color,
                           borderColor: cat.color + "30",
                         }}
@@ -790,6 +946,11 @@ function AbilityTab({ abilityPoints }: { abilityPoints: AbilityPoint[] }) {
                         {cat.label}
                       </span>
                     </div>
+                    <span className="shrink-0 text-gray-300 group-hover:text-blue-400 transition-colors">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </span>
                   </button>
                 )
               })}
@@ -799,39 +960,65 @@ function AbilityTab({ abilityPoints }: { abilityPoints: AbilityPoint[] }) {
       </div>
 
       {selectedAbility && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setSelectedAbility(null)}>
-          <div className="bg-white rounded-2xl w-[520px] max-w-[95vw] p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-start justify-between mb-4">
-              <div className="text-base font-semibold text-gray-800">能力点详情</div>
-              <button className="text-gray-400 hover:text-gray-600" onClick={() => setSelectedAbility(null)}>
-                <X className="w-5 h-5" />
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: "rgba(15,23,42,0.5)", backdropFilter: "blur(4px)" }}
+          onClick={() => setSelectedAbility(null)}
+        >
+          <div
+            className="bg-white rounded-2xl w-[540px] max-w-[92vw] shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-sm">
+                  <Target className="w-4 h-4 text-white" />
+                </div>
+                <span className="font-semibold text-gray-800">能力点详情</span>
+              </div>
+              <button
+                className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all duration-200"
+                onClick={() => setSelectedAbility(null)}
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-4 relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-blue-500 to-emerald-500" />
-              <div className="text-sm font-semibold text-gray-800 mb-3">{selectedAbility.name}</div>
-              {selectedAbility.code && (
-                <div className="text-xs text-gray-400 mb-2 font-mono">ID：{selectedAbility.code}</div>
-              )}
-              <div className="space-y-2 text-xs">
-                <div>
-                  <span className="font-medium text-gray-400">能力属性：</span>
-                  <span className="text-gray-600">
-                    {selectedAbility.attributes?.length ? selectedAbility.attributes.join("、") : "未配置"}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-400">能力类别：</span>
-                  <span className="text-gray-600">
-                    {categoryLabels[selectedAbility.category]?.label || selectedAbility.category}
-                  </span>
-                </div>
-                {selectedAbility.description && (
-                  <div>
-                    <span className="font-medium text-gray-400">描述：</span>
-                    <span className="text-gray-600">{selectedAbility.description}</span>
+            <div className="p-6">
+              <div className="relative rounded-xl p-5 overflow-hidden border border-gray-100" style={{ background: "linear-gradient(135deg, #f8fafc, #fff)" }}>
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
+                <h3 className="text-base font-bold text-gray-800 mb-4">{selectedAbility.name}</h3>
+                <div className="space-y-3 text-sm">
+                  {selectedAbility.code && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-400 shrink-0 w-16">编码</span>
+                      <span className="font-mono text-xs text-gray-500 bg-gray-50 rounded-lg px-2 py-0.5">{selectedAbility.code}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-400 shrink-0 w-16">属性</span>
+                    <span className="text-gray-700 font-medium">
+                      {selectedAbility.attributes?.length ? selectedAbility.attributes.join("、") : "未配置"}
+                    </span>
                   </div>
-                )}
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-400 shrink-0 w-16">类别</span>
+                    <span
+                      className="px-2 py-0.5 rounded-full text-xs font-medium"
+                      style={{
+                        backgroundColor: (categoryLabels[selectedAbility.category] || categoryLabels.knowledge).bg,
+                        color: (categoryLabels[selectedAbility.category] || categoryLabels.knowledge).color,
+                      }}
+                    >
+                      {(categoryLabels[selectedAbility.category] || categoryLabels.knowledge).label}
+                    </span>
+                  </div>
+                  {selectedAbility.description && (
+                    <div className="flex gap-2">
+                      <span className="text-gray-400 shrink-0 w-16">描述</span>
+                      <span className="text-gray-600 leading-relaxed">{selectedAbility.description}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
