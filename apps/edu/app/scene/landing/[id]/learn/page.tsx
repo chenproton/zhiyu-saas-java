@@ -522,7 +522,7 @@ export default function SceneLearnPage() {
 
         {/* right panel: sticky tabs - outside main, same level as sidebar */}
         {sidebarCollapsed && activeTask && (
-          <div className="flex w-[360px] flex-shrink-0 sticky top-[7.5rem] self-start" style={{ maxHeight: "calc(100vh - 8.5rem)" }}>
+          <div className="flex w-[360px] flex-shrink-0 sticky top-14 self-start" style={{ maxHeight: "calc(100vh - 3.5rem)" }}>
             <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_8px_32px_rgba(0,0,0,0.06)] overflow-hidden flex flex-col w-full">
               <Tabs defaultValue="collapsed-knowledge" className="w-full flex flex-col h-full">
                 <CardHeader className="border-b border-gray-100 p-2 shrink-0">
