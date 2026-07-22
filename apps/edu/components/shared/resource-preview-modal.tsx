@@ -13,7 +13,7 @@ function getFileExt(url: string): string {
   return dot > 0 ? name.slice(dot).toLowerCase() : ""
 }
 
-type ConvertResult = { html?: string; images?: string[] }
+type ConvertResult = { html?: string; images?: string[]; pdf?: string }
 type OverlayFn = (msg: string) => void
 
 async function convertViaServer(fileUrl: string, format: string): Promise<ConvertResult> {
@@ -70,7 +70,7 @@ function SlideViewer({ images, resource }: { images: string[]; resource: TaskRes
 
 function OfficePreview({ resource }: { resource: TaskResource }) {
   const [html, setHtml] = useState<string | null>(null)
-  const [slideImages, setSlideImages] = useState<string[] | null>(null)
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadingMsg, setLoadingMsg] = useState("正在加载预览...")
   const [error, setError] = useState<string | null>(null)
@@ -82,14 +82,15 @@ function OfficePreview({ resource }: { resource: TaskResource }) {
     setLoading(true)
     setError(null)
     setHtml(null)
-    setSlideImages(null)
+    setPdfUrl(null)
 
     if (ext === ".ppt") {
-      setLoadingMsg("正在转换幻灯片...")
-      convertViaServer(url, "png")
+      setLoadingMsg("正在转换幻灯片为PDF...")
+      convertViaServer(url, "pdf")
         .then((r) => {
-          if (!r.images?.length) throw new Error("转换后无内容")
-          setSlideImages(r.images)
+          if (!r.pdf) throw new Error("转换失败")
+          const blob = new Blob([Uint8Array.from(atob(r.pdf), (c) => c.charCodeAt(0))], { type: "application/pdf" })
+          setPdfUrl(URL.createObjectURL(blob))
         })
         .catch((e) => setError(e.message || "转换失败"))
         .finally(() => setLoading(false))
@@ -190,8 +191,8 @@ function OfficePreview({ resource }: { resource: TaskResource }) {
     )
   }
 
-  if (slideImages) {
-    return <SlideViewer images={slideImages} resource={resource} />
+  if (pdfUrl) {
+    return <iframe src={pdfUrl} title={resource.name} className="w-full h-full border-0 rounded" />
   }
 
   if (!html) return null
