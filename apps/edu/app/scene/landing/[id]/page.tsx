@@ -25,7 +25,6 @@ import type {
   TaskResource,
   KnowledgePoint,
   AbilityPoint,
-  AbilityDomain,
 } from "@/lib/types"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
 import { SceneKnowledgeGraph } from "@/components/scene/student/knowledge-graph"
@@ -96,7 +95,7 @@ interface AbilitiesTabProps {
   tasks: ScenarioTask[]
   abilityMap: Map<string, AbilityPoint>
   uniqueAbilityIds: Set<string>
-  abilityDomains?: AbilityDomain[]
+  abilityDomainMap: Map<string, string>
 }
 
 const ATTRIBUTE_COLORS: Record<string, [string, string]> = {
@@ -105,54 +104,32 @@ const ATTRIBUTE_COLORS: Record<string, [string, string]> = {
   "技能": ["#10b981", "#34d399"],
 }
 
-function AbilitiesTab({ tasks, abilityMap, uniqueAbilityIds, abilityDomains }: AbilitiesTabProps) {
+function AbilitiesTab({ tasks, abilityMap, uniqueAbilityIds, abilityDomainMap }: AbilitiesTabProps) {
   const [selectedAbility, setSelectedAbility] = useState<{ ap: AbilityPoint; taskNames: string[] } | null>(null)
 
   const groupedByDomain = useMemo(() => {
     const groups = new Map<string, { ap: AbilityPoint; taskNames: string[] }[]>()
 
-    if (abilityDomains && abilityDomains.length > 0) {
-      abilityDomains.forEach((d) => groups.set(d.name, []))
-      tasks.forEach((t) => {
-        t.abilityPointIds?.forEach((aid) => {
-          const ap = abilityMap.get(aid)
-          if (!ap) return
-          const domain = abilityDomains.find((d) => d.bindingIds?.includes(aid))?.name
-            || "其他"
-          const list = groups.get(domain) || []
-          const existing = list.find((item) => item.ap.id === ap.id)
-          if (existing) {
-            if (!existing.taskNames.includes(t.name)) existing.taskNames.push(t.name)
-          } else {
-            list.push({ ap, taskNames: [t.name] })
-          }
-          groups.set(domain, list)
-        })
+    tasks.forEach((t) => {
+      t.abilityPointIds?.forEach((aid) => {
+        const ap = abilityMap.get(aid)
+        if (!ap) return
+        const domain = abilityDomainMap.get(aid) || "其他"
+        const list = groups.get(domain) || []
+        const existing = list.find((item) => item.ap.id === ap.id)
+        if (existing) {
+          if (!existing.taskNames.includes(t.name)) existing.taskNames.push(t.name)
+        } else {
+          list.push({ ap, taskNames: [t.name] })
+        }
+        groups.set(domain, list)
       })
-    } else {
-      tasks.forEach((t) => {
-        t.abilityPointIds?.forEach((aid) => {
-          const ap = abilityMap.get(aid)
-          if (!ap) return
-          const attrs = ap.attributes?.length ? ap.attributes : ["未分类"]
-          attrs.forEach((attr) => {
-            const list = groups.get(attr) || []
-            const existing = list.find((item) => item.ap.id === ap.id)
-            if (existing) {
-              if (!existing.taskNames.includes(t.name)) existing.taskNames.push(t.name)
-            } else {
-              list.push({ ap, taskNames: [t.name] })
-            }
-            groups.set(attr, list)
-          })
-        })
-      })
-    }
+    })
 
     return Array.from(groups.entries())
       .map(([name, items]) => ({ name, items }))
       .filter((g) => g.items.length > 0)
-  }, [tasks, abilityMap, abilityDomains])
+  }, [tasks, abilityMap, abilityDomainMap])
 
   if (uniqueAbilityIds.size === 0) {
     return (
@@ -166,7 +143,7 @@ function AbilitiesTab({ tasks, abilityMap, uniqueAbilityIds, abilityDomains }: A
     )
   }
 
-  const groupLabel = abilityDomains && abilityDomains.length > 0 ? "能力领域" : "能力属性"
+  const groupLabel = "能力领域"
 
   return (
     <div className="space-y-5">
@@ -364,7 +341,7 @@ export default function SceneDetailPage() {
   const [allResourceMap, setAllResourceMap] = useState<Map<string, TaskResource>>(new Map())
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
   const [abilityMap, setAbilityMap] = useState<Map<string, AbilityPoint>>(new Map())
-  const [abilityDomains, setAbilityDomains] = useState<AbilityDomain[]>([])
+  const [abilityDomainMap, setAbilityDomainMap] = useState<Map<string, string>>(new Map())
   const [previewResource, setPreviewResource] = useState<TaskResource | null>(null)
 
   useEffect(() => {
@@ -413,9 +390,15 @@ export default function SceneDetailPage() {
   useEffect(() => {
     if (!scenario?.careerPositionId) return
     abilityApi
-      .listDomains(scenario.careerPositionId)
-      .then((res) => setAbilityDomains(res.items || []))
-      .catch(() => setAbilityDomains([]))
+      .listBindings({ careerPositionId: scenario.careerPositionId })
+      .then((res) => {
+        const map = new Map<string, string>()
+        ;(res.items || []).forEach((b) => {
+          if (b.domain && b.abilityPointId) map.set(b.abilityPointId, b.domain)
+        })
+        setAbilityDomainMap(map)
+      })
+      .catch(() => setAbilityDomainMap(new Map()))
   }, [scenario?.careerPositionId])
 
   const assessmentHours = useMemo(() => tasks.filter((t) => t.taskType === "assessment").reduce((s, t) => s + (t.estimatedHours || 0), 0), [tasks])
@@ -635,7 +618,7 @@ export default function SceneDetailPage() {
             tasks={tasks}
             abilityMap={abilityMap}
             uniqueAbilityIds={uniqueAbilityIds}
-            abilityDomains={abilityDomains}
+            abilityDomainMap={abilityDomainMap}
           />
         )
 
