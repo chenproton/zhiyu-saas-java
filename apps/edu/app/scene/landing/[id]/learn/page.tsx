@@ -518,8 +518,8 @@ export default function SceneLearnPage() {
 
                 {/* right column: sticky knowledge/ability/resource card */}
                 {sidebarCollapsed && (
-                <div className="w-[360px] shrink-0 self-start">
-                  <Card className="sticky top-[4.5rem] rounded-2xl border border-[#e7e5e4] shadow-[0_8px_32px_rgba(0,0,0,0.06)] overflow-hidden hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col" style={{ maxHeight: "calc(100vh - 5.5rem)" }}>
+                <div className="w-[360px] shrink-0 self-start sticky top-[4.5rem]" style={{ maxHeight: "calc(100vh - 5.5rem)" }}>
+                  <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_8px_32px_rgba(0,0,0,0.06)] overflow-hidden hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col h-full">
                     <Tabs defaultValue="collapsed-knowledge" className="w-full flex flex-col" style={{ maxHeight: "calc(100vh - 5.5rem)" }}>
                       <CardHeader className="border-b border-gray-100 p-2 shrink-0">
                         <TabsList className="bg-transparent p-0 h-auto gap-1 w-full">
