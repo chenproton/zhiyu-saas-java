@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import {
   ArrowLeft, PlayCircle, ListChecks, FolderOpen,
   Lightbulb, Target, GitBranch, Layers, Clock,
@@ -353,6 +353,7 @@ function EvaluationTab({ tasks, totalEvalConfigs }: EvaluationTabProps) {
 export default function SceneDetailPage() {
   const params = useParams()
   const id = params.id as string
+  const router = useRouter()
   const tabsRef = useRef<HTMLDivElement>(null)
 
   const [scenario, setScenario] = useState<Scenario | null>(null)
@@ -657,9 +658,9 @@ export default function SceneDetailPage() {
       <div className="bg-white border-b border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
         <div className="max-w-[1400px] mx-auto px-6 py-5">
           <div className="flex items-center gap-2 mb-5 text-sm text-slate-500">
-            <Link href="/scene/landing" className="hover:text-blue-600 transition-colors flex items-center gap-1">
-              <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-colors">←</span> 首页
-            </Link>
+            <button onClick={() => router.back()} className="hover:text-blue-600 transition-colors flex items-center gap-1 cursor-pointer">
+              <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-colors">←</span> 返回上一页
+            </button>
             <span className="text-slate-300">/</span>
             <span className="text-slate-800 font-medium truncate">{scenario.name}</span>
           </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Heart, ArrowLeft, Share2, User, Users, Calendar, Edit3, PlayCircle, Briefcase, GraduationCap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/auth-provider"
@@ -30,6 +30,7 @@ function formatDate(dateStr?: string) {
 
 export function PositionHeader({ position, industryName, onStartLearning }: PositionHeaderProps) {
   const { user } = useAuth()
+  const router = useRouter()
   const [isHeart, setIsHeart] = useState(false)
   const [favoriteCount, setFavoriteCount] = useState(position.favoriteCount ?? 0)
   const [loading, setLoading] = useState(false)
@@ -78,11 +79,9 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
     <div className="bg-white border-b border-[#e7e5e4]">
       <div className="max-w-[1400px] mx-auto px-8 py-6">
         <div className="flex items-center gap-2 mb-5">
-          <Link href="/job/student">
-            <Button variant="ghost" size="sm" className="text-[#64748b] hover:text-blue-600 pl-0">
-              <ArrowLeft className="w-4 h-4 mr-1" /> 返回岗位列表
-            </Button>
-          </Link>
+          <Button variant="ghost" size="sm" className="text-[#64748b] hover:text-blue-600 pl-0" onClick={() => router.back()}>
+            <ArrowLeft className="w-4 h-4 mr-1" /> 返回上一页
+          </Button>
         </div>
 
         <div className="bg-white rounded-2xl border border-[#e7e5e4] p-6 shadow-[0_4px_20px_rgba(69,26,3,0.06)]">
