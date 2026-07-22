@@ -35,6 +35,7 @@ import type { Industry, Major } from "@/lib/types/backend"
 import type { SceneBatch } from "@/lib/types/scene"
 import { toast, Toaster } from "sonner"
 import { EditorShell } from "@/components/shared/editor-shell"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 
 interface PositionWithProfession extends CareerPosition {
   industryName?: string
@@ -82,6 +83,8 @@ function NewScenarioEditForm() {
   const [coBuilderSearch, setCoBuilderSearch] = useState("")
   const [isCoBuilderDialogOpen, setIsCoBuilderDialogOpen] = useState(false)
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false)
+  const [isPreviewConfirmOpen, setIsPreviewConfirmOpen] = useState(false)
+  const [previewScenarioId, setPreviewScenarioId] = useState("")
 
   useEffect(() => {
     const loadData = async () => {
@@ -196,6 +199,20 @@ function NewScenarioEditForm() {
     }
   }
 
+  const handlePreview = async () => {
+    if (!scenarioName.trim()) return
+    setIsSaving(true)
+    try {
+      const created = await scenarioApi.create(buildPayload() as any)
+      setPreviewScenarioId(created.id)
+      setIsPreviewConfirmOpen(true)
+    } catch (err: any) {
+      toast.error(err.message || "请稍后重试")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const handleSaveDraft = async () => {
     if (!scenarioName.trim()) return
     setIsSaving(true)
@@ -256,7 +273,7 @@ function NewScenarioEditForm() {
       onSaveDraft={handleSaveDraft}
       isSaving={isSaving}
       saveDisabled={!scenarioName}
-      onPreview={() => setIsPreviewDialogOpen(true)}
+      onPreview={handlePreview}
       onNext={handleProceed}
       nextDisabled={!scenarioName}
       title="新建实践场景"
@@ -664,80 +681,15 @@ function NewScenarioEditForm() {
           </div>
         )}
 
-      <Dialog open={isPreviewDialogOpen} onOpenChange={setIsPreviewDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>场景基础信息预览</DialogTitle>
-            <DialogDescription>预览当前填写的基础信息</DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
-              {coverImage ? (
-                <img src={coverImage} alt="场景封面" className="w-full h-full object-cover" />
-              ) : (
-                <ImagePlus className="h-12 w-12 text-gray-300" />
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">场景名称</p>
-                <p className="font-medium text-sm">{scenarioName || "未填写"}</p>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">场景编码</p>
-                <p className="font-medium text-sm">{scenarioCode}</p>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">所属岗位</p>
-                <p className="font-medium text-sm">{selectedPosition?.name || "未选择"}</p>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">所属批次</p>
-                <p className="font-medium text-sm">{batch?.name || "未选择"}</p>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">面向行业</p>
-                <p className="font-medium text-sm">{industryIds.length > 0 ? industryIds.map(id => industries.find(i => i.id === id)?.name).filter(Boolean).join("、") : "未选择"}</p>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">适用专业</p>
-                <p className="font-medium text-sm">{professionIds.length > 0 ? professionIds.map(id => majors.find(m => m.id === id)?.name).filter(Boolean).join("、") : "未选择"}</p>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">难度等级</p>
-                <div className="flex items-center gap-1 mt-1">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className={cn("h-4 w-4", i < difficulty ? "fill-amber-400 text-amber-400" : "text-gray-200")} />
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-500 mb-1">场景介绍</p>
-              <p className="text-sm">{background || "暂无介绍"}</p>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-500 mb-1">创建人</p>
-              <p className="font-medium text-sm">{creatorName}</p>
-              {selectedCoBuilders.length > 0 && (
-                <div className="mt-2">
-                  <p className="text-xs text-gray-500 mb-1">共建人</p>
-                  <div className="flex flex-wrap gap-1">
-                    {selectedCoBuilders.map(t => (
-                      <Badge key={t.id} variant="secondary" className="text-xs">{t.name}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsPreviewDialogOpen(false)}>
-              关闭
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={isPreviewConfirmOpen}
+        onOpenChange={setIsPreviewConfirmOpen}
+        title="即将离开当前页面"
+        description="请确认是否已经保存数据"
+        confirmText="跳转预览"
+        cancelText="取消"
+        onConfirm={() => router.push(`/scene/landing/${previewScenarioId}`)}
+      />
       <Toaster />
     </EditorShell>
   )

@@ -3,7 +3,6 @@
 import { Suspense, useState, useEffect, use, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import {
@@ -19,14 +18,6 @@ import { StepAbilityModeling } from '@/components/job/position-builder/step-abil
 import { Step3ResultTable } from '@/components/job/position-builder/ai-assisted-2/step3-result-table'
 import { UserSelector } from '@/components/shared/user-selector'
 import type { Position, Batch } from '@/lib/types/job-source'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { positionApi, batchApi, majorApi, industryApi, abilityApi, positionResponsibilityApi, positionCertificateApi, fileApi } from '@/lib/api'
 import {
   convertCareerPositionToPosition,
@@ -41,6 +32,7 @@ import { toast, Toaster } from 'sonner'
 import { useAuth } from '@/components/auth-provider'
 import { EditorShell } from '@/components/shared/editor-shell'
 import { BatchSelector } from '@/components/shared/batch-selector'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 
 
 
@@ -64,6 +56,7 @@ function PositionEditPageContent({ params }: PageProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [position, setPosition] = useState<Position | null>(null)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [isPreviewConfirmOpen, setIsPreviewConfirmOpen] = useState(false)
   const [detailsLoaded, setDetailsLoaded] = useState(false)
   const [detailsLoading, setDetailsLoading] = useState(false)
   const [coverUploading, setCoverUploading] = useState(false)
@@ -299,7 +292,7 @@ function PositionEditPageContent({ params }: PageProps) {
       stepLabel={currentStep.label}
       onSaveDraft={handleSave}
       isSaving={isSaving}
-      onPreview={() => window.open('/student.html', '_blank')}
+      onPreview={() => setIsPreviewConfirmOpen(true)}
       onPrev={canGoPrev ? handlePrev : undefined}
       onNext={canGoNext ? handleNext : undefined}
       onSubmit={!canGoNext ? handleFinish : undefined}
@@ -430,65 +423,15 @@ function PositionEditPageContent({ params }: PageProps) {
           </div>
         )}
 
-      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent size="lg" className="max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>岗位信息预览</DialogTitle>
-            <DialogDescription>预览当前填写的岗位信息</DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">岗位名称</p>
-                <p className="font-medium text-sm">{position.name}</p>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">所属批次</p>
-                <p className="font-medium text-sm">{batch?.name || '未关联'}</p>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">面向行业</p>
-                <p className="font-medium text-sm">{industryMap.get(position.industry) || position.industry || '-'}</p>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">适用专业</p>
-                <p className="font-medium text-sm">{position.majors.map((id) => majorMap.get(id) || id).join('、') || '-'}</p>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">薪资范围</p>
-                <p className="font-medium text-sm">{position.salaryRange[0]} - {position.salaryRange[1]}</p>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">当前版本</p>
-                <p className="font-medium text-sm">{position.version}</p>
-              </div>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-500 mb-1">岗位描述</p>
-              <p className="text-sm">{position.description || '暂无描述'}</p>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-500 mb-1">工作职责 ({position.responsibilities.length})</p>
-              <ul className="text-sm space-y-1 mt-1">
-                {position.responsibilities.map((r) => (
-                  <li key={r.id}>• {r.name}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-500 mb-1">能力绑定 ({position.abilityBindings.length})</p>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {position.abilityBindings.map((b) => (
-                  <Badge key={b.id} variant="secondary" className="text-xs">{b.name}</Badge>
-                ))}
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsPreviewOpen(false)}>关闭</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={isPreviewConfirmOpen}
+        onOpenChange={setIsPreviewConfirmOpen}
+        title="即将离开当前页面"
+        description="请确认是否已经保存数据"
+        confirmText="跳转预览"
+        cancelText="取消"
+        onConfirm={() => router.push(`/job/student/${id}`)}
+      />
       <Toaster />
     </EditorShell>
   )
