@@ -2943,27 +2943,18 @@ function EditCardDialog({
         const canPreview = (r: any) => r?.url && r.url !== "#"
         const canDownload = (r: any) => r?.url && r.url !== "#"
 
-        const getPreviewUrl = (r: any) => {
-          if (!r?.url) return null
-          if (r.type === "document" || r.type === "spreadsheet" || r.type === "presentation") {
-            return `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(r.url)}`
-          }
-          return r.url
-        }
-
         const getPreviewContent = (r: any) => {
-          const previewUrl = getPreviewUrl(r)
-          if (!previewUrl) return null
+          if (!r?.url) return null
           if (r.type === "image") {
-            return <img src={previewUrl} alt={r.name} className="max-w-full max-h-full object-contain" />
+            return <img src={r.url} alt={r.name} className="max-w-full max-h-full object-contain" />
           }
           if (r.type === "audio") {
-            return <audio controls src={previewUrl} className="w-full" />
+            return <audio controls src={r.url} className="w-full" />
           }
           if (r.type === "video") {
-            return <video controls src={previewUrl} className="max-w-full max-h-full" />
+            return <video controls src={r.url} className="max-w-full max-h-full" />
           }
-          return <iframe src={previewUrl} title={r.name} className="w-full h-full" />
+          return <iframe src={r.url} title={r.name} className="w-full h-full" />
         }
 
         const isPreviewableInline = (r: any) => ["image", "audio", "video"].includes(r?.type)
