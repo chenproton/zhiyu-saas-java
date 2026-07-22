@@ -1,12 +1,15 @@
 package handler
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/google/uuid"
@@ -146,11 +149,36 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 	}
 	defer os.RemoveAll(tmpDir)
 
+	base := strings.TrimSuffix(name, ext)
+
+	if format == "png" {
+		cmd := exec.Command("libreoffice", "--headless", "--convert-to", "png", "--outdir", tmpDir, path)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			respondError(w, http.StatusInternalServerError, "file conversion failed: "+string(out))
+			return
+		}
+		entries, _ := os.ReadDir(tmpDir)
+		var images []string
+		for _, e := range entries {
+			if strings.HasSuffix(strings.ToLower(e.Name()), ".png") {
+				data, err := os.ReadFile(filepath.Join(tmpDir, e.Name()))
+				if err == nil {
+					images = append(images, base64.StdEncoding.EncodeToString(data))
+				}
+			}
+		}
+		sort.Slice(images, func(i, j int) bool { return i < j })
+		if len(images) == 0 {
+			respondError(w, http.StatusInternalServerError, "no slides generated")
+			return
+		}
+		respondJSON(w, http.StatusOK, map[string]any{"images": images})
+		return
+	}
+
 	outExt := "html"
-	contentType := "text/html; charset=utf-8"
 	if format == "pdf" {
 		outExt = "pdf"
-		contentType = "application/pdf"
 	}
 
 	cmd := exec.Command("libreoffice", "--headless", "--convert-to", outExt, "--outdir", tmpDir, path)
@@ -159,7 +187,6 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	base := strings.TrimSuffix(name, ext)
 	outPath := filepath.Join(tmpDir, base+"."+outExt)
 	outBytes, err := os.ReadFile(outPath)
 	if err != nil {
@@ -167,13 +194,16 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", contentType)
-
 	if format == "pdf" {
+		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Content-Disposition", "inline; filename=\""+base+".pdf\"")
+		enc := base64.StdEncoding.EncodeToString(outBytes)
+		json.NewEncoder(w).Encode(map[string]string{"pdf": enc})
+		return
 	}
 
-	w.Write(outBytes)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"html": string(outBytes)})
 }
 
 func (h *FileHandler) absUploadDir(projectRoot string) string {

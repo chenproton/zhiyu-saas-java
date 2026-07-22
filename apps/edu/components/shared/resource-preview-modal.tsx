@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Download, ExternalLink, X, FileText, Loader2, AlertTriangle } from "lucide-react"
+import { Download, ExternalLink, X, FileText, Loader2, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react"
 import { getToken } from "@/lib/api"
 import type { TaskResource } from "@/lib/types"
 
@@ -13,13 +13,10 @@ function getFileExt(url: string): string {
   return dot > 0 ? name.slice(dot).toLowerCase() : ""
 }
 
-function isZipBuffer(buffer: ArrayBuffer): boolean {
-  if (buffer.byteLength < 4) return false
-  const view = new Uint8Array(buffer, 0, 4)
-  return view[0] === 0x50 && view[1] === 0x4b
-}
+type ConvertResult = { html?: string; images?: string[] }
+type OverlayFn = (msg: string) => void
 
-async function convertViaServer(fileUrl: string, format = "html"): Promise<string> {
+async function convertViaServer(fileUrl: string, format: string): Promise<ConvertResult> {
   const filename = fileUrl.split("/").pop() || ""
   const token = getToken()
   const headers: Record<string, string> = {}
@@ -29,62 +26,128 @@ async function convertViaServer(fileUrl: string, format = "html"): Promise<strin
     const body = await res.json().catch(() => ({}))
     throw new Error((body as any).error || `转换失败 (${res.status})`)
   }
-  if (format === "pdf") {
-    const blob = await res.blob()
-    return URL.createObjectURL(blob)
-  }
-  return res.text()
+  const data = await res.json()
+  return data as ConvertResult
+}
+
+function SlideViewer({ images, resource }: { images: string[]; resource: TaskResource }) {
+  const [idx, setIdx] = useState(0)
+  const prev = useCallback(() => setIdx((i) => (i > 0 ? i - 1 : images.length - 1)), [images.length])
+  const next = useCallback(() => setIdx((i) => (i < images.length - 1 ? i + 1 : 0)), [images.length])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") prev()
+      else if (e.key === "ArrowRight") next()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [prev, next])
+
+  return (
+    <div className="w-full h-full flex flex-col bg-gray-900">
+      <div className="flex-1 flex items-center justify-center p-4 min-h-0">
+        <img
+          src={`data:image/png;base64,${images[idx]}`}
+          alt={`slide ${idx + 1}`}
+          className="max-w-full max-h-full object-contain rounded shadow-2xl"
+        />
+      </div>
+      <div className="shrink-0 flex items-center justify-center gap-3 py-3 bg-gray-900/90 border-t border-white/10">
+        <Button variant="ghost" size="sm" onClick={prev} className="text-gray-400 hover:text-white">
+          <ChevronLeft className="h-4 w-4 mr-1" />上一页
+        </Button>
+        <span className="text-xs text-gray-400 select-none">
+          {idx + 1} / {images.length}
+        </span>
+        <Button variant="ghost" size="sm" onClick={next} className="text-gray-400 hover:text-white">
+          下一页<ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
+      </div>
+    </div>
+  )
 }
 
 function OfficePreview({ resource }: { resource: TaskResource }) {
   const [html, setHtml] = useState<string | null>(null)
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+  const [slideImages, setSlideImages] = useState<string[] | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadingMsg, setLoadingMsg] = useState("正在加载预览...")
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const url = resource?.url
     if (!url) return
+    const ext = getFileExt(url)
     setLoading(true)
     setError(null)
     setHtml(null)
-    setPdfUrl(null)
+    setSlideImages(null)
 
-    const ext = getFileExt(url)
-    const isSlide = [".ppt", ".pptx"].includes(ext)
-    const needsServerConvert = [".doc", ".ppt", ".pptx", ".xls"].includes(ext)
+    if (ext === ".ppt") {
+      setLoadingMsg("正在转换幻灯片...")
+      convertViaServer(url, "png")
+        .then((r) => {
+          if (!r.images?.length) throw new Error("转换后无内容")
+          setSlideImages(r.images)
+        })
+        .catch((e) => setError(e.message || "转换失败"))
+        .finally(() => setLoading(false))
+      return
+    }
 
     const load = async () => {
       try {
-        if (isSlide) {
-          const objUrl = await convertViaServer(url, "pdf")
-          setPdfUrl(objUrl)
-          return
-        }
-
         const fileRes = await fetch(url, { credentials: "include" })
-        if (!fileRes.ok) throw new Error(`服务端错误 (${fileRes.status})`)
-
+        if (!fileRes.ok) throw new Error(`HTTP ${fileRes.status}`)
         const buffer = await fileRes.arrayBuffer()
         if (buffer.byteLength === 0) throw new Error("文件为空")
 
+        if (ext === ".pptx") {
+          setLoadingMsg("正在解析幻灯片...")
+          const { init } = await import("pptx-preview")
+          const container = document.createElement("div")
+          container.style.cssText = "width:100%;height:100%;overflow:auto"
+          const previewer = init(container, { mode: "slide" })
+          await (previewer as any).preview(buffer)
+          setHtml(container.innerHTML)
+          return
+        }
+
         if (ext === ".docx") {
+          setLoadingMsg("正在解析文档...")
           const mammoth = (await import("mammoth")).default
           const result = await mammoth.convertToHtml({ arrayBuffer: buffer })
           setHtml(result.value)
-        } else if (ext === ".xlsx") {
+          return
+        }
+
+        if (ext === ".xlsx" || ext === ".xls") {
+          setLoadingMsg("正在解析表格...")
           const XLSX = await import("xlsx")
           const workbook = XLSX.read(buffer, { type: "array" })
           const sheetName = workbook.SheetNames[0]
           if (!sheetName) throw new Error("表格中没有找到工作表")
           setHtml(XLSX.utils.sheet_to_html(workbook.Sheets[sheetName], { id: "", editable: false }))
-        } else if ([".doc", ".xls"].includes(ext)) {
-          const result = await convertViaServer(url, "html")
-          setHtml(result)
-        } else {
-          throw new Error("不支持的文件格式")
+          return
         }
+
+        if (ext === ".doc") {
+          setLoadingMsg("正在转换文档...")
+          const r = await convertViaServer(url, "html")
+          if (r.html) setHtml(r.html)
+          return
+        }
+
+        throw new Error("不支持的文件格式")
       } catch (err: any) {
+        if (ext === ".xlsx" || ext === ".xls") {
+          try {
+            setLoadingMsg("客户端解析失败，尝试服务端转换...")
+            const r = await convertViaServer(url, "html")
+            if (r.html) { setHtml(r.html); return }
+          } catch {}
+        }
         setError(err.message || "加载失败")
       } finally {
         setLoading(false)
@@ -95,13 +158,10 @@ function OfficePreview({ resource }: { resource: TaskResource }) {
   }, [resource?.url])
 
   if (loading) {
-    const ext = getFileExt(resource?.url || "")
-    const isSlide = [".ppt", ".pptx"].includes(ext)
-    const needsServerConvert = [".doc", ".ppt", ".pptx", ".xls"].includes(ext)
     return (
       <div className="flex flex-col items-center gap-3 text-gray-400">
         <Loader2 className="h-10 w-10 animate-spin" />
-        <span className="text-sm">{isSlide ? "正在转换幻灯片为PDF..." : needsServerConvert ? "正在转换中..." : "正在加载预览..."}</span>
+        <span className="text-sm">{loadingMsg}</span>
       </div>
     )
   }
@@ -128,8 +188,8 @@ function OfficePreview({ resource }: { resource: TaskResource }) {
     )
   }
 
-  if (pdfUrl) {
-    return <iframe src={pdfUrl} title={resource.name} className="w-full h-full border-0 rounded" />
+  if (slideImages) {
+    return <SlideViewer images={slideImages} resource={resource} />
   }
 
   if (!html) return null
@@ -146,7 +206,6 @@ function OfficePreview({ resource }: { resource: TaskResource }) {
 
 function renderPreviewContent(resource: TaskResource) {
   if (!resource?.url) return null
-
   const ext = getFileExt(resource.url)
 
   switch (ext) {
