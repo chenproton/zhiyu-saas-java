@@ -1,28 +1,46 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import Link from "next/link"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { useParams, useSearchParams } from "next/navigation"
+import Link from "next/link"
+
 import {
-  ArrowLeft, Clock, BarChart3,
-  FileText, ListChecks, BookOpen,
-  Info, BrainCircuit, Target, FolderOpen, ClipboardList,
-  ExternalLink, Sparkles, X, Lightbulb,
+  BookOpen,
+  PlayCircle,
+  FileText,
+  CheckCircle2,
+  StickyNote,
+  Clock,
+  MonitorPlay,
+  Lightbulb,
+  FolderOpen,
+  ClipboardList,
+  Target,
+  Info,
+  BrainCircuit,
+  BarChart3,
+  ListChecks,
+  ExternalLink,
+  Sparkles,
+  X,
+  ArrowLeft,
 } from "lucide-react"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
+
 import { scenarioApi, taskApi, taskResourceApi, knowledgeApi, abilityApi } from "@/lib/api"
-import type {
-  Scenario, ScenarioTask, TaskResource,
-  KnowledgePoint, AbilityPoint,
-} from "@/lib/types"
+import type { Scenario, ScenarioTask, TaskResource, KnowledgePoint, AbilityPoint } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
+
+/* ---------- constants ---------- */
 
 const difficultyMap: Record<number, { color: string; label: string }> = {
   1: { color: "#16a34a", label: "入门" },
@@ -47,6 +65,8 @@ const methodColorMap: Record<string, string> = {
   question_bank: "#8b5cf6", outcome: "#10b981", homework: "#f59e0b", quiz: "#06b6d4",
 }
 
+/* ---------- page ---------- */
+
 export default function SceneLearnPage() {
   const params = useParams()
   const searchParams = useSearchParams()
@@ -61,7 +81,9 @@ export default function SceneLearnPage() {
   const [resourceMap, setResourceMap] = useState<Map<string, TaskResource>>(new Map())
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
   const [abilityMap, setAbilityMap] = useState<Map<string, AbilityPoint>>(new Map())
+  const [showResources, setShowResources] = useState(true)
 
+  // fetch scenario
   useEffect(() => {
     if (!id) return
     setLoading(true)
@@ -72,6 +94,7 @@ export default function SceneLearnPage() {
       .finally(() => setLoading(false))
   }, [id])
 
+  // fetch tasks
   useEffect(() => {
     if (!id || !scenario) return
     taskApi
@@ -86,9 +109,10 @@ export default function SceneLearnPage() {
         }
       })
       .catch(() => setTasks([]))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, scenario])
 
+  // fetch resources / knowledge / abilities
   useEffect(() => {
     if (!id || !scenario) return
     taskResourceApi
@@ -118,38 +142,35 @@ export default function SceneLearnPage() {
 
   const taskKnowledgePoints = useMemo(() => {
     if (!activeTask) return []
-    return (activeTask.knowledgePointIds || [])
-      .map((kid) => knowledgeMap.get(kid))
-      .filter(Boolean) as KnowledgePoint[]
+    return (activeTask.knowledgePointIds || []).map((kid) => knowledgeMap.get(kid)).filter(Boolean) as KnowledgePoint[]
   }, [activeTask, knowledgeMap])
 
   const taskAbilityPoints = useMemo(() => {
     if (!activeTask) return []
-    return (activeTask.abilityPointIds || [])
-      .map((aid) => abilityMap.get(aid))
-      .filter(Boolean) as AbilityPoint[]
+    return (activeTask.abilityPointIds || []).map((aid) => abilityMap.get(aid)).filter(Boolean) as AbilityPoint[]
   }, [activeTask, abilityMap])
 
   const taskResources = useMemo(() => {
     if (!activeTask) return []
-    return (activeTask.resourceIds || [])
-      .map((rid) => resourceMap.get(rid))
-      .filter(Boolean) as TaskResource[]
+    return (activeTask.resourceIds || []).map((rid) => resourceMap.get(rid)).filter(Boolean) as TaskResource[]
   }, [activeTask, resourceMap])
 
   const taskEvalMethods = useMemo(() => {
     if (!activeTask?.evalData) return { methods: [] as string[], weights: {} as Record<string, number> }
-    const methods: string[] = activeTask.evalData.evaluationMethods || []
-    const weights: Record<string, number> = activeTask.evalData.methodWeights || {}
-    return { methods, weights }
+    return {
+      methods: (activeTask.evalData.evaluationMethods || []) as string[],
+      weights: (activeTask.evalData.methodWeights || {}) as Record<string, number>,
+    }
   }, [activeTask])
 
   const dependencyTasks = useMemo(() => {
     if (!activeTask?.dependencyIds?.length) return []
-    return activeTask.dependencyIds
-      .map((did) => tasks.find((t) => t.id === did))
-      .filter(Boolean) as ScenarioTask[]
+    return activeTask.dependencyIds.map((did) => tasks.find((t) => t.id === did)).filter(Boolean) as ScenarioTask[]
   }, [activeTask, tasks])
+
+  const selectTask = useCallback((taskId: string) => {
+    setActiveTaskId(taskId)
+  }, [])
 
   if (loading) {
     return (
@@ -209,7 +230,7 @@ export default function SceneLearnPage() {
         </div>
       </header>
 
-      {/* ---------- body: sidebar + main ---------- */}
+      {/* ---------- body ---------- */}
       <div className="flex-1 flex max-w-[1400px] mx-auto w-full overflow-hidden bg-white">
         {/* ---------- left sidebar: task list ---------- */}
         <aside className="flex w-[300px] flex-shrink-0 flex-col border-r border-gray-100 bg-white">
@@ -227,7 +248,9 @@ export default function SceneLearnPage() {
               </div>
             </div>
             <div className="mt-2 flex items-center text-xs text-gray-400">
-              <span>共 {tasks.length} 个任务 · {totalHours} 课时</span>
+              <span>
+                共 {tasks.length} 个任务 · {totalHours} 课时
+              </span>
             </div>
           </div>
 
@@ -239,33 +262,63 @@ export default function SceneLearnPage() {
                 const diff = difficultyMap[task.difficulty] || difficultyMap[3]
 
                 return (
-                  <button
+                  <div
                     key={task.id}
-                    onClick={() => setActiveTaskId(task.id)}
                     className={cn(
-                      "flex w-full items-center gap-2 rounded-md px-4 py-2.5 text-left transition-colors",
-                      isActive
-                        ? "bg-blue-100 text-blue-700"
-                        : "text-gray-600 hover:bg-gray-50"
+                      "border-b border-gray-50 last:border-b-0",
+                      isActive && "bg-blue-50/50"
                     )}
                   >
-                    <div
+                    <button
+                      onClick={() => selectTask(task.id)}
                       className={cn(
-                        "flex h-5 w-5 flex-shrink-0 items-center justify-center rounded text-[10px] font-bold",
-                        isActive
-                          ? "bg-blue-500 text-white"
-                          : "bg-gray-100 text-gray-400"
+                        "flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-gray-50",
+                        isActive && "hover:bg-blue-50/80"
                       )}
                     >
-                      {idx + 1}
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <div
+                          className={cn(
+                            "flex h-5 w-5 flex-shrink-0 items-center justify-center rounded text-[10px] font-bold",
+                            isActive ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-400"
+                          )}
+                        >
+                          {idx + 1}
+                        </div>
+                        <span
+                          className={cn(
+                            "truncate text-sm",
+                            isActive ? "font-semibold text-blue-600" : "text-gray-700"
+                          )}
+                        >
+                          {task.name}
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* task info bar */}
+                    <div className="px-4 pb-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 text-[10px] text-gray-400">
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{task.estimatedHours || 0}h</span>
+                          <span className="flex items-center gap-1" style={{ color: diff.color }}>
+                            <BarChart3 className="h-3 w-3" />
+                            {diff.label}
+                          </span>
+                        </div>
+                        <span
+                          className="text-[10px] px-1.5 py-0.5 rounded-full border font-medium"
+                          style={{
+                            backgroundColor: task.taskType === "assessment" ? "#fef2f2" : "#eff6ff",
+                            color: task.taskType === "assessment" ? "#dc2626" : "#2563eb",
+                            borderColor: task.taskType === "assessment" ? "#fecaca" : "#bfdbfe",
+                          }}
+                        >
+                          {task.taskType === "assessment" ? "考核" : "训练"}
+                        </span>
+                      </div>
                     </div>
-                    <span className={cn("min-w-0 flex-1 truncate text-xs", isActive && "font-semibold")}>
-                      {task.name}
-                    </span>
-                    <span className="flex-shrink-0 text-[10px] text-gray-300">
-                      {task.estimatedHours || 0}h
-                    </span>
-                  </button>
+                  </div>
                 )
               })}
             </div>
@@ -275,7 +328,6 @@ export default function SceneLearnPage() {
         {/* ---------- right main area ---------- */}
         <main className="flex flex-1 flex-col overflow-y-auto bg-gray-50/50">
           {!activeTask ? (
-            /* empty state */
             <div className="flex flex-col items-center justify-center flex-1 text-gray-400">
               <div className="w-16 h-16 mb-4 rounded-2xl bg-gray-50 flex items-center justify-center">
                 <BookOpen className="w-8 h-8 opacity-40" />
@@ -284,38 +336,83 @@ export default function SceneLearnPage() {
             </div>
           ) : (
             <>
-              {/* task header */}
-              <div className="mx-4 mt-4 rounded-lg bg-white border border-gray-100 overflow-hidden flex-shrink-0">
-                <div className="p-5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge
-                      variant="outline"
-                      className="text-[11px] px-2.5 py-0.5 font-medium"
-                      style={{
-                        backgroundColor: activeTask.taskType === "assessment" ? "#fef2f2" : "#eff6ff",
-                        color: activeTask.taskType === "assessment" ? "#dc2626" : "#2563eb",
-                        borderColor: activeTask.taskType === "assessment" ? "#fecaca" : "#bfdbfe",
-                      }}
-                    >
-                      {activeTask.taskType === "assessment" ? "考核" : "训练"}
-                    </Badge>
-                    {activeTask.code && <span className="text-xs text-gray-400">{activeTask.code}</span>}
-                  </div>
-                  <h1 className="text-lg font-bold text-gray-800 mb-3">{activeTask.name}</h1>
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
-                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{activeTask.estimatedHours || 0} 课时</span>
-                    <span className="flex items-center gap-1" style={{ color: difficultyMap[activeTask.difficulty]?.color }}>
-                      <BarChart3 className="w-3.5 h-3.5" />
-                      {difficultyMap[activeTask.difficulty]?.label || `Lv.${activeTask.difficulty}`}
-                    </span>
-                    <span className="flex items-center gap-1"><BrainCircuit className="w-3.5 h-3.5" />{activeTask.knowledgePointIds?.length || 0} 个知识点</span>
-                    <span className="flex items-center gap-1"><Target className="w-3.5 h-3.5" />{activeTask.abilityPointIds?.length || 0} 个能力点</span>
-                    <span className="flex items-center gap-1"><FolderOpen className="w-3.5 h-3.5" />{activeTask.resourceIds?.length || 0} 个资源</span>
-                    {activeTask.dependencyIds?.length > 0 && (
-                      <span className="flex items-center gap-1"><ListChecks className="w-3.5 h-3.5" />前置依赖 {activeTask.dependencyIds.length} 个</span>
+              {/* content area: resource preview */}
+              <div className="relative mx-4 mt-4 rounded-lg bg-slate-900 overflow-hidden flex-shrink-0">
+                <div className="flex w-full max-h-[50vh] aspect-video items-center justify-center">
+                  <div className="text-center">
+                    {taskResources.length > 0 ? (
+                      <>
+                        <div className="mx-auto h-16 w-16 rounded-2xl bg-slate-800 flex items-center justify-center">
+                          <FileText className="h-8 w-8 text-slate-500" />
+                        </div>
+                        <p className="mt-4 text-sm text-slate-300">{taskResources[0].name}</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {resourceTypeLabels[taskResources[0].type] || taskResources[0].type}
+                          {taskResources[0].size && ` · ${taskResources[0].size}`}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <MonitorPlay className="mx-auto h-16 w-16 text-slate-600" />
+                        <p className="mt-4 text-sm text-slate-400">任务资源预览区域</p>
+                        <p className="mt-1 text-xs text-slate-600">{activeTask.name}</p>
+                      </>
                     )}
                   </div>
                 </div>
+                <div className="absolute bottom-4 left-4 flex items-center gap-2">
+                  <Badge variant="outline" className="border-slate-600 bg-slate-800/80 text-slate-300">
+                    {activeTask.taskType === "assessment" ? "考核" : "训练"}
+                  </Badge>
+                  <span className="text-xs text-slate-400">{activeTask.estimatedHours || 0} 课时</span>
+                </div>
+
+                {/* 任务资源浮动入口 */}
+                {taskResources.length > 0 && (
+                  <>
+                    <button
+                      onClick={() => setShowResources((v) => !v)}
+                      className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-slate-800/80 border border-slate-600 text-slate-300 text-xs hover:bg-slate-700 hover:text-white transition-colors z-10"
+                    >
+                      <FolderOpen className="h-3.5 w-3.5" />
+                      任务资源
+                    </button>
+
+                    {showResources && (
+                      <div className="absolute top-12 left-3 w-[320px] max-h-[360px] overflow-y-auto rounded-lg bg-slate-800/95 backdrop-blur-sm border border-slate-600 shadow-lg z-20">
+                        <div className="px-3 py-2.5 border-b border-slate-700 flex items-center justify-between">
+                          <span className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                            <FolderOpen className="h-3.5 w-3.5" />
+                            任务资源
+                          </span>
+                          <button onClick={() => setShowResources(false)} className="text-slate-500 hover:text-slate-300">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <div className="p-2 space-y-1.5">
+                          {taskResources.map((r) => (
+                            <div
+                              key={r.id}
+                              className="flex items-center gap-3 rounded-md px-2.5 py-2 hover:bg-slate-700/50 transition-colors cursor-pointer group"
+                            >
+                              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-700 text-slate-400 group-hover:bg-blue-600/50 group-hover:text-blue-300 shrink-0">
+                                <FileText className="h-4 w-4" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs text-slate-200 truncate group-hover:text-white transition-colors">
+                                  {r.name}
+                                </p>
+                                <p className="text-[10px] text-slate-500">
+                                  {resourceTypeLabels[r.type] || r.type}{r.size ? ` · ${r.size}` : ""}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
 
               {/* tabs content */}
@@ -380,7 +477,7 @@ export default function SceneLearnPage() {
                               {dependencyTasks.map((dt, i) => (
                                 <button
                                   key={dt.id}
-                                  onClick={() => setActiveTaskId(dt.id)}
+                                  onClick={() => selectTask(dt.id)}
                                   className="flex items-center gap-3 w-full text-left p-3 rounded-lg border border-gray-100 bg-gray-50/50 hover:border-blue-200 hover:bg-blue-50/30 transition-colors"
                                 >
                                   <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-[10px] font-bold">
@@ -401,7 +498,7 @@ export default function SceneLearnPage() {
 
                   {/* 任务说明 */}
                   <TabsContent value="description" className="mt-0">
-                    {activeTask.background || activeTask.description || activeTask.detailedDescription ? (
+                    {(activeTask.background || activeTask.description || activeTask.detailedDescription) ? (
                       <div className="space-y-4">
                         {activeTask.background && (
                           <Card>
@@ -446,38 +543,34 @@ export default function SceneLearnPage() {
                   {/* 考查知识点 */}
                   <TabsContent value="knowledge" className="mt-0">
                     {taskKnowledgePoints.length > 0 ? (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-base flex items-center gap-2">
-                            <BrainCircuit className="h-4 w-4 text-[#3b82f6]" />
-                            考查知识点
-                            <span className="text-xs font-normal text-gray-400">({taskKnowledgePoints.length} 项)</span>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {taskKnowledgePoints.map((kp) => (
-                              <div
-                                key={kp.id}
-                                className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer group"
-                              >
-                                <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 group-hover:bg-blue-100 transition-colors">
-                                  <BrainCircuit className="w-4 h-4 text-blue-500" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-0.5">
-                                    <p className="text-sm font-medium text-gray-700">{kp.name}</p>
-                                    {kp.code && <span className="text-[10px] font-mono text-gray-400">{kp.code}</span>}
-                                  </div>
-                                  {kp.description && (
-                                    <p className="text-xs text-gray-500 leading-relaxed">{kp.description}</p>
-                                  )}
-                                </div>
+                      <div>
+                        <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                          <BrainCircuit className="w-4 h-4 text-[#3b82f6]" />
+                          考查知识点
+                          <span className="text-xs font-normal text-gray-400">({taskKnowledgePoints.length} 项)</span>
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {taskKnowledgePoints.map((kp) => (
+                            <div
+                              key={kp.id}
+                              className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer group"
+                            >
+                              <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 group-hover:bg-blue-100 transition-colors">
+                                <BrainCircuit className="w-4 h-4 text-blue-500" />
                               </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-0.5">
+                                  <p className="text-sm font-medium text-gray-700">{kp.name}</p>
+                                  {kp.code && <span className="text-[10px] font-mono text-gray-400">{kp.code}</span>}
+                                </div>
+                                {kp.description && (
+                                  <p className="text-xs text-gray-500 leading-relaxed">{kp.description}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     ) : (
                       <Card>
                         <CardContent className="py-16">
@@ -503,53 +596,49 @@ export default function SceneLearnPage() {
                   {/* 任务资源 */}
                   <TabsContent value="resource" className="mt-0">
                     {taskResources.length > 0 ? (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-base flex items-center gap-2">
-                            <FolderOpen className="h-4 w-4 text-[#3b82f6]" />
-                            任务资源
-                            <span className="text-xs font-normal text-gray-400">({taskResources.length} 项)</span>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {taskResources.map((r) => {
-                              const typeColors: Record<string, string> = {
-                                document: "bg-blue-50 text-blue-600 border-blue-100",
-                                video: "bg-amber-50 text-amber-600 border-amber-100",
-                                link: "bg-purple-50 text-purple-600 border-purple-100",
-                                file: "bg-emerald-50 text-emerald-600 border-emerald-100",
-                              }
-                              return (
-                                <div
-                                  key={r.id}
-                                  className="flex items-start justify-between gap-2 p-3 rounded-lg border border-gray-100 bg-gray-50/50 hover:border-blue-200 hover:shadow-sm transition-all"
-                                >
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-sm font-semibold text-gray-800 mb-1.5 truncate">{r.name}</div>
-                                    <div className="flex items-center gap-2 text-xs">
-                                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${typeColors[r.type] || "bg-gray-100 text-gray-500 border-gray-200"}`}>
-                                        {resourceTypeLabels[r.type] || r.type}
-                                      </span>
-                                      {r.size && <span className="text-gray-400">{r.size}</span>}
-                                    </div>
+                      <div>
+                        <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                          <FolderOpen className="w-4 h-4 text-[#3b82f6]" />
+                          任务资源
+                          <span className="text-xs font-normal text-gray-400">({taskResources.length} 项)</span>
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {taskResources.map((r) => {
+                            const typeColors: Record<string, string> = {
+                              document: "bg-blue-50 text-blue-600 border-blue-100",
+                              video: "bg-amber-50 text-amber-600 border-amber-100",
+                              link: "bg-purple-50 text-purple-600 border-purple-100",
+                              file: "bg-emerald-50 text-emerald-600 border-emerald-100",
+                            }
+                            return (
+                              <div
+                                key={r.id}
+                                className="flex items-start justify-between gap-2 p-3 rounded-lg border border-gray-100 bg-gray-50/50 hover:border-blue-200 hover:shadow-sm transition-all"
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-semibold text-gray-800 mb-1.5 truncate">{r.name}</div>
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${typeColors[r.type] || "bg-gray-100 text-gray-500 border-gray-200"}`}>
+                                      {resourceTypeLabels[r.type] || r.type}
+                                    </span>
+                                    {r.size && <span className="text-gray-400">{r.size}</span>}
                                   </div>
-                                  {r.url && (
-                                    <a
-                                      href={r.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="shrink-0 w-7 h-7 rounded-lg bg-white border border-gray-200 text-gray-400 hover:text-blue-500 hover:border-blue-200 flex items-center justify-center transition-colors"
-                                    >
-                                      <ExternalLink className="w-3.5 h-3.5" />
-                                    </a>
-                                  )}
                                 </div>
-                              )
-                            })}
-                          </div>
-                        </CardContent>
-                      </Card>
+                                {r.url && (
+                                  <a
+                                    href={r.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="shrink-0 w-7 h-7 rounded-lg bg-white border border-gray-200 text-gray-400 hover:text-blue-500 hover:border-blue-200 flex items-center justify-center transition-colors"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                  </a>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
                     ) : (
                       <Card>
                         <CardContent className="py-16">
@@ -617,7 +706,6 @@ export default function SceneLearnPage() {
         </main>
       </div>
 
-      {/* ---------- footer ---------- */}
       <PlatformFooter />
     </div>
   )
