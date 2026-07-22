@@ -77,7 +77,9 @@ export interface QuestionBank {
   status: Status
   questionCount: number
   creatorId?: string
+  creatorName?: string
   collaboratorIds?: string[]
+  collaboratorNames?: string[]
   collaboratorDeptIds?: string[]
   batchId?: string
   version: string

@@ -13,7 +13,9 @@ type QuestionBank struct {
 	Status              string    `json:"status"`
 	QuestionCount       int       `json:"questionCount"`
 	CreatorID           *string   `json:"creatorId,omitempty"`
+	CreatorName         string    `json:"creatorName,omitempty"`
 	CollaboratorIDs     []string  `json:"collaboratorIds,omitempty"`
+	CollaboratorNames   []string  `json:"collaboratorNames,omitempty"`
 	CollaboratorDeptIDs []string  `json:"collaboratorDeptIds,omitempty"`
 	BatchID             *string   `json:"batchId,omitempty"`
 	Version             string    `json:"version"`

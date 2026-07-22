@@ -80,7 +80,6 @@ export default function QuestionBankDetailPage() {
   const [batchDeleteConfirm, setBatchDeleteConfirm] = useState(false)
   const [batchMoveOpen, setBatchMoveOpen] = useState(false)
   const [moveSearch, setMoveSearch] = useState("")
-
   // 获取题目创建人列表（后端暂无用户姓名查询，直接展示 ID）
   const creators = useMemo(() => {
     const creatorIds = new Set(questions.map(q => q.creatorId).filter(Boolean))
@@ -233,7 +232,7 @@ export default function QuestionBankDetailPage() {
     }).format(date)
   }
 
-  const getCollaboratorNames = () => (bank.collaboratorIds || []).filter(Boolean)
+  const getCollaboratorNames = () => (bank.collaboratorNames || bank.collaboratorIds || []).filter(Boolean)
 
   const getCollaboratorDeptNames = () => (bank.collaboratorDeptIds || []).filter(Boolean)
 
@@ -295,6 +294,10 @@ export default function QuestionBankDetailPage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-6 text-sm">
+            <div>
+              <span className="text-muted-foreground">创建人:</span>{" "}
+              <strong>{bank.creatorName || bank.creatorId || "-"}</strong>
+            </div>
             <div>
               <span className="text-muted-foreground">题目数量:</span>{" "}
               <strong>{bank.questionCount}</strong>
