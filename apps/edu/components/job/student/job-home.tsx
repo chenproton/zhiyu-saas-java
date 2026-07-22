@@ -397,7 +397,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                   </div>
                   <span className="text-[15px] font-bold">目标岗位配套场景</span>
                 </div>
-                {recommendedPositions.length === 0 ? (
+                {true ? (
                   <div className="flex flex-col items-center justify-center text-white/50 text-center py-6">
                     <Flag className="w-9 h-9 mb-3 opacity-40" />
                     <div className="text-sm font-semibold text-white/80">暂无目标推荐岗位</div>
