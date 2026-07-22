@@ -527,10 +527,10 @@ export default function SceneLearnPage() {
 
                 {/* right column: sticky knowledge/ability/resource card */}
                 {sidebarCollapsed && (
-                <div className="w-[360px] shrink-0 sticky top-4 self-start">
-                  <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_8px_32px_rgba(0,0,0,0.06)] overflow-hidden hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition-all duration-300">
-                    <Tabs defaultValue="collapsed-knowledge" className="w-full">
-                      <CardHeader className="border-b border-gray-100 p-2">
+                <div className="w-[360px] shrink-0 self-start">
+                  <Card className="sticky top-[4.5rem] rounded-2xl border border-[#e7e5e4] shadow-[0_8px_32px_rgba(0,0,0,0.06)] overflow-hidden hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col" style={{ maxHeight: "calc(100vh - 5.5rem)" }}>
+                    <Tabs defaultValue="collapsed-knowledge" className="w-full flex flex-col" style={{ maxHeight: "calc(100vh - 5.5rem)" }}>
+                      <CardHeader className="border-b border-gray-100 p-2 shrink-0">
                         <TabsList className="bg-transparent p-0 h-auto gap-1 w-full">
                           <TabsTrigger value="collapsed-knowledge" className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">
                             <BrainCircuit className="mr-1 h-3.5 w-3.5" />知识点
@@ -543,7 +543,7 @@ export default function SceneLearnPage() {
                           </TabsTrigger>
                         </TabsList>
                       </CardHeader>
-                      <CardContent className="max-h-[80vh] overflow-y-auto p-3">
+                      <CardContent className="flex-1 overflow-y-auto p-3">
                         <TabsContent value="collapsed-knowledge" className="mt-0 space-y-2">
                           {taskKnowledgePoints.length > 0 ? taskKnowledgePoints.map((kp, i) => (
                             <div key={kp.id} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 hover:shadow-sm hover:-translate-y-0.5 transition-all cursor-pointer">
