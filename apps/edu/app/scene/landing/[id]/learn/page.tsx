@@ -186,16 +186,20 @@ export default function SceneLearnPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col bg-[#f8fafc]">
-        <header className="bg-white border-b border-gray-200 shrink-0 h-16 flex items-center px-6">
-          <Skeleton className="h-5 w-48" />
+      <div className="min-h-screen flex flex-col relative" style={{ background: "#F1FAFF" }}>
+        <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute top-[-120px] right-[5%] w-[480px] h-[480px] rounded-full bg-blue-400/10 blur-[120px]" />
+          <div className="absolute bottom-[-80px] left-[5%] w-[360px] h-[360px] rounded-full bg-indigo-400/10 blur-[100px]" />
+        </div>
+        <header className="relative z-10 bg-gradient-to-br from-[rgba(30,64,175,0.92)] via-[rgba(59,130,246,0.85)] to-[rgba(124,58,237,0.85)] border-b border-white/10 shrink-0 h-16 flex items-center px-6">
+          <Skeleton className="h-5 w-48 bg-white/20" />
         </header>
-        <div className="flex-1 flex">
-          <div className="w-[300px] shrink-0 border-r border-gray-100 bg-white p-5">
-            <Skeleton className="h-[200px] w-full rounded-lg" />
+        <div className="relative z-10 flex-1 flex p-4">
+          <div className="w-[300px] shrink-0 rounded-2xl border border-[#e7e5e4] bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.06)]">
+            <Skeleton className="h-[200px] w-full rounded-xl" />
           </div>
-          <div className="flex-1 bg-gray-50/50 p-6">
-            <Skeleton className="h-[400px] w-full rounded-lg" />
+          <div className="flex-1 p-4">
+            <Skeleton className="h-[400px] w-full rounded-2xl" />
           </div>
         </div>
         <PlatformFooter />
@@ -205,12 +209,17 @@ export default function SceneLearnPage() {
 
   if (!scenario) {
     return (
-      <div className="min-h-screen flex flex-col bg-[#f8fafc]">
-        <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+      <div className="min-h-screen flex flex-col relative" style={{ background: "#F1FAFF" }}>
+        <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute top-[-120px] right-[5%] w-[480px] h-[480px] rounded-full bg-blue-400/10 blur-[120px]" />
+          <div className="absolute bottom-[-80px] left-[5%] w-[360px] h-[360px] rounded-full bg-indigo-400/10 blur-[100px]" />
+        </div>
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-gray-400 p-8">
           <div className="relative w-24 h-24 mb-6">
+            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-200 to-indigo-200 opacity-40 blur-xl" />
             <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-100 to-indigo-100 opacity-60" />
             <div className="absolute inset-0 flex items-center justify-center">
-              <BookOpen className="w-12 h-12 text-blue-300/60" />
+              <BookOpen className="w-12 h-12 text-blue-400/70" />
             </div>
           </div>
           <div className="text-lg font-semibold text-gray-600">场景不存在</div>
@@ -222,42 +231,64 @@ export default function SceneLearnPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)" }}>
+    <div className="min-h-screen flex flex-col relative" style={{ background: "#F1FAFF" }}>
+      {/* ---------- ambient background ---------- */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-[-120px] right-[5%] w-[480px] h-[480px] rounded-full bg-blue-400/10 blur-[120px]" />
+        <div className="absolute bottom-[-80px] left-[5%] w-[360px] h-[360px] rounded-full bg-indigo-400/10 blur-[100px]" />
+        <div
+          className="absolute inset-0 opacity-[0.35]"
+          style={{
+            backgroundImage: `linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px)`,
+            backgroundSize: "48px 48px",
+          }}
+        />
+      </div>
+
       {/* ---------- header ---------- */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200/60 shrink-0 sticky top-0 z-30">
-        <div className="max-w-[1400px] mx-auto px-6 h-16 flex items-center justify-between">
+      <header className="relative z-30 shrink-0 sticky top-0 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-[rgba(30,64,175,0.92)] via-[rgba(59,130,246,0.85)] to-[rgba(124,58,237,0.85)]" />
+        <div
+          className="absolute inset-0 opacity-[0.12]"
+          style={{
+            backgroundImage: `linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px)`,
+            backgroundSize: "40px 40px",
+          }}
+        />
+        <div className="absolute top-[-40px] right-[8%] w-[260px] h-[260px] rounded-full bg-white/10 blur-[80px] pointer-events-none" />
+        <div className="relative z-10 max-w-[1400px] mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link
               href={`/scene/landing/${id}`}
-              className="group flex items-center gap-2.5 text-sm text-gray-500 hover:text-blue-600 transition-all duration-200"
+              className="group flex items-center gap-2.5 text-sm text-white/80 hover:text-white transition-all duration-200"
             >
-              <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-gray-100 to-gray-50 border border-gray-200/60 flex items-center justify-center group-hover:from-blue-50 group-hover:to-blue-100/50 group-hover:border-blue-200 group-hover:shadow-sm transition-all duration-200">
+              <span className="w-8 h-8 rounded-xl bg-white/15 border border-white/25 backdrop-blur-md flex items-center justify-center group-hover:bg-white/25 group-hover:border-white/40 transition-all duration-200">
                 <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform duration-200" />
               </span>
-              <span className="font-semibold truncate max-w-[360px] lg:max-w-[520px] text-gray-700 group-hover:text-blue-600 transition-colors">{scenario.name}</span>
+              <span className="font-semibold truncate max-w-[360px] lg:max-w-[520px] text-white/90 group-hover:text-white transition-colors drop-shadow-sm">{scenario.name}</span>
             </Link>
           </div>
           <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-white px-3 py-1.5 rounded-full border border-gray-200/80 shadow-sm">
-              <ListChecks className="w-3.5 h-3.5 text-blue-500" /> {tasks.length} 个任务
+            <span className="flex items-center gap-1.5 text-xs font-medium text-white/90 bg-white/15 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/25 shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
+              <ListChecks className="w-3.5 h-3.5 text-yellow-300" /> {tasks.length} 个任务
             </span>
-            <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-white px-3 py-1.5 rounded-full border border-gray-200/80 shadow-sm">
-              <Clock className="w-3.5 h-3.5 text-blue-500" /> {totalHours} 课时
+            <span className="flex items-center gap-1.5 text-xs font-medium text-white/90 bg-white/15 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/25 shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
+              <Clock className="w-3.5 h-3.5 text-yellow-300" /> {totalHours} 课时
             </span>
           </div>
         </div>
       </header>
 
       {/* ---------- body ---------- */}
-      <div className="flex-1 flex max-w-[1400px] mx-auto w-full">
+      <div className="relative z-10 flex-1 flex max-w-[1400px] mx-auto w-full">
         {/* ---------- left sidebar: task list ---------- */}
         <aside className={cn(
-          "flex flex-shrink-0 flex-col border-r border-gray-200/60 bg-white/80 backdrop-blur-sm transition-all duration-300 sticky top-14 self-start",
-          sidebarCollapsed ? "w-[60px]" : "w-[300px]"
-        )} style={{ height: "calc(100vh - 3.5rem)" }}>
+          "flex flex-shrink-0 flex-col rounded-2xl border border-[#e7e5e4] bg-white shadow-[0_8px_32px_rgba(0,0,0,0.06)] transition-all duration-300 sticky self-start mx-4 mt-4 overflow-hidden",
+          sidebarCollapsed ? "w-[68px]" : "w-[300px]"
+        )} style={{ top: "4.5rem", height: "calc(100vh - 5.5rem)" }}>
           {/* sidebar header */}
           <div className="relative border-b border-gray-100 overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 shadow-sm" />
             <div className={cn("flex items-center", sidebarCollapsed ? "px-2 py-3 justify-center" : "px-5 py-3")}>
               {!sidebarCollapsed && (
                 <div className="flex-1 flex items-center gap-3">
@@ -294,10 +325,10 @@ export default function SceneLearnPage() {
                       <button
                         onClick={() => selectTask(task.id)}
                         className={cn(
-                          "flex h-9 w-9 items-center justify-center rounded-lg text-[11px] font-bold transition-all duration-200",
+                          "flex h-9 w-9 items-center justify-center rounded-xl text-[11px] font-bold transition-all duration-200",
                           isActive
-                            ? "bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-md shadow-blue-500/20"
-                            : "bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-600"
+                            ? "bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-500/30"
+                            : "bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-600 hover:-translate-y-0.5"
                         )}
                         title={`${idx + 1}. ${task.name} (${diff.label}, ${task.estimatedHours || 0}h)`}
                       >
@@ -315,18 +346,18 @@ export default function SceneLearnPage() {
                       "relative flex w-full items-center gap-3 px-4 py-3 text-left transition-all duration-200 group",
                       isActive
                         ? "bg-gradient-to-r from-blue-50 via-blue-50/80 to-transparent"
-                        : "hover:bg-gray-50/80"
+                        : "hover:bg-gray-50/80 hover:pl-5"
                     )}
                   >
                     {isActive && (
-                      <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-gradient-to-b from-blue-500 to-indigo-500 rounded-r-full" />
+                      <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-gradient-to-b from-blue-500 to-indigo-500 rounded-r-full shadow-[0_0_8px_rgba(59,130,246,0.4)]" />
                     )}
                     <div
                       className={cn(
                         "flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-[11px] font-bold transition-all duration-200",
                         isActive
-                          ? "bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-md shadow-blue-500/20"
-                          : "bg-gray-100 text-gray-500 group-hover:bg-gray-200 group-hover:text-gray-600"
+                          ? "bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-md shadow-blue-500/25"
+                          : "bg-gray-100 text-gray-500 group-hover:bg-gray-200 group-hover:text-gray-600 group-hover:-translate-y-0.5"
                       )}
                     >
                       {idx + 1}
@@ -364,17 +395,18 @@ export default function SceneLearnPage() {
         </aside>
 
         {/* ---------- right main area ---------- */}
-        <main className="flex flex-1 flex-col overflow-y-auto" style={{ background: "linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%)" }}>
+        <main className="flex flex-1 flex-col overflow-y-auto relative">
           {!activeTask ? (
-            <div className="flex flex-col items-center justify-center flex-1">
-              <div className="relative w-24 h-24 mb-5">
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-100 to-indigo-100 opacity-50 animate-pulse" />
+            <div className="flex flex-col items-center justify-center flex-1 p-8">
+              <div className="relative w-28 h-28 mb-6">
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-200 to-indigo-200 opacity-40 blur-xl animate-pulse" />
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-100 to-indigo-100 opacity-60" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <BookOpen className="w-12 h-12 text-blue-300/50" />
+                  <BookOpen className="w-12 h-12 text-blue-400/70" />
                 </div>
               </div>
-              <p className="text-sm font-medium text-gray-400">选择一个任务开始学习</p>
-              <p className="text-xs text-gray-300 mt-1">从左侧任务列表中点击任务</p>
+              <p className="text-base font-semibold text-gray-600">选择一个任务开始学习</p>
+              <p className="text-sm text-gray-400 mt-1.5">从左侧任务列表中点击任务</p>
             </div>
           ) : (
             <>
@@ -383,17 +415,17 @@ export default function SceneLearnPage() {
                 {/* left column: 3 cards */}
                 <div className="flex-1 space-y-4">
                   {/* 任务背景 */}
-                  <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
-                    <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
-                          <BookOpen className="h-4 w-4 text-blue-600" />
+                  <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300">
+                    <CardHeader className="bg-gradient-to-r from-blue-50/70 to-white border-b border-blue-100/50">
+                      <CardTitle className="text-base flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-400 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                          <BookOpen className="h-4 w-4" />
                         </div>
                         任务背景
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="pt-4">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                    <CardContent className="pt-5">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                         <StatCard icon={<ListChecks className="h-4 w-4" />} label="任务类型" value={activeTask.taskType === "assessment" ? "考核" : "训练"} color={activeTask.taskType === "assessment" ? "#ef4444" : "#3b82f6"} />
                         <StatCard icon={<Clock className="h-4 w-4" />} label="预计课时" value={`${activeTask.estimatedHours || 0} 课时`} color="#3b82f6" />
                         <StatCard icon={<BarChart3 className="h-4 w-4" />} label="难度等级" value={difficultyMap[activeTask.difficulty]?.label || `Lv.${activeTask.difficulty}`} color={difficultyMap[activeTask.difficulty]?.color || "#3b82f6"} />
@@ -409,24 +441,24 @@ export default function SceneLearnPage() {
                   </Card>
 
                   {/* 任务说明书 */}
-                  <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
-                    <CardHeader className="bg-gradient-to-r from-violet-50/80 to-white border-b border-violet-100/60">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-sm">
-                          <FileText className="h-4 w-4 text-white" />
+                  <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300">
+                    <CardHeader className="bg-gradient-to-r from-violet-50/70 to-white border-b border-violet-100/50">
+                      <CardTitle className="text-base flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white shadow-md shadow-violet-500/20">
+                          <FileText className="h-4 w-4" />
                         </div>
                         任务说明书
                         {activeTask.descriptionPdf && (
                           <button
                             onClick={() => setPreviewResource({ url: activeTask.descriptionPdf, name: "任务说明书 PDF", type: "pdf" } as any)}
-                            className="ml-auto text-xs font-normal text-violet-600 hover:text-violet-700 hover:underline flex items-center gap-1"
+                            className="ml-auto text-xs font-medium text-violet-600 hover:text-violet-700 hover:underline flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-violet-50 transition-colors"
                           >
                             <Eye className="h-3.5 w-3.5" />查看 PDF
                           </button>
                         )}
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="pt-4">
+                    <CardContent className="pt-5">
                       {(activeTask.detailedDescription || activeTask.description) ? (
                         <div className="prose prose-sm max-w-none text-gray-600 whitespace-pre-line leading-relaxed">
                           {activeTask.detailedDescription || activeTask.description}
@@ -438,16 +470,16 @@ export default function SceneLearnPage() {
                   </Card>
 
                   {/* 任务测评形式 */}
-                  <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
-                    <CardHeader className="bg-gradient-to-r from-blue-50/80 to-white border-b border-blue-100/60">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
-                          <ClipboardList className="h-4 w-4 text-blue-600" />
+                  <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300">
+                    <CardHeader className="bg-gradient-to-r from-emerald-50/70 to-white border-b border-emerald-100/50">
+                      <CardTitle className="text-base flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-400 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
+                          <ClipboardList className="h-4 w-4" />
                         </div>
                         任务测评形式
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="pt-4">
+                    <CardContent className="pt-5">
                       {taskEvalMethods.methods.length > 0 ? (
                         <div className="space-y-3">
                           {taskEvalMethods.methods.map((m) => {
@@ -476,17 +508,17 @@ export default function SceneLearnPage() {
                 {/* right column: sticky knowledge/ability/resource card */}
                 {sidebarCollapsed && (
                 <div className="w-[360px] shrink-0 sticky top-4 self-start">
-                  <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
+                  <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_8px_32px_rgba(0,0,0,0.06)] overflow-hidden hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition-all duration-300">
                     <Tabs defaultValue="collapsed-knowledge" className="w-full">
                       <CardHeader className="border-b border-gray-100 p-2">
                         <TabsList className="bg-transparent p-0 h-auto gap-1 w-full">
-                          <TabsTrigger value="collapsed-knowledge" className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600">
+                          <TabsTrigger value="collapsed-knowledge" className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">
                             <BrainCircuit className="mr-1 h-3.5 w-3.5" />知识点
                           </TabsTrigger>
-                          <TabsTrigger value="collapsed-ability" className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600">
+                          <TabsTrigger value="collapsed-ability" className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">
                             <Target className="mr-1 h-3.5 w-3.5" />能力点
                           </TabsTrigger>
-                          <TabsTrigger value="collapsed-resource" className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600">
+                          <TabsTrigger value="collapsed-resource" className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">
                             <FolderOpen className="mr-1 h-3.5 w-3.5" />资源
                           </TabsTrigger>
                         </TabsList>
@@ -494,8 +526,8 @@ export default function SceneLearnPage() {
                       <CardContent className="max-h-[80vh] overflow-y-auto p-3">
                         <TabsContent value="collapsed-knowledge" className="mt-0 space-y-2">
                           {taskKnowledgePoints.length > 0 ? taskKnowledgePoints.map((kp, i) => (
-                            <div key={kp.id} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer">
-                              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0">{i + 1}</div>
+                            <div key={kp.id} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 hover:shadow-sm hover:-translate-y-0.5 transition-all cursor-pointer">
+                              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0 shadow-sm shadow-blue-500/20">{i + 1}</div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-gray-700">{kp.name}</p>
                                 {kp.description && <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">{kp.description}</p>}
@@ -507,8 +539,8 @@ export default function SceneLearnPage() {
                           {taskAbilityPoints.length > 0 ? taskAbilityPoints.map((ap, i) => {
                             const cat = ({ knowledge: { label: "知识", color: "#2563eb" }, skill: { label: "技能", color: "#16a34a" }, quality: { label: "素养", color: "#7c3aed" } } as any)[ap.category] || { label: ap.category, color: "#94a3b8" }
                             return (
-                              <div key={ap.id} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer">
-                                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0">{i + 1}</div>
+                              <div key={ap.id} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 hover:shadow-sm hover:-translate-y-0.5 transition-all cursor-pointer">
+                                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0 shadow-sm shadow-blue-500/20">{i + 1}</div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium text-gray-700">{ap.name}</p>
                                   <span className="text-[10px] px-1.5 py-0.5 rounded-full mt-0.5" style={{ backgroundColor: cat.color + "15", color: cat.color }}>{cat.label}</span>
@@ -519,8 +551,8 @@ export default function SceneLearnPage() {
                         </TabsContent>
                         <TabsContent value="collapsed-resource" className="mt-0 space-y-2">
                           {taskResources.length > 0 ? taskResources.map((r) => (
-                            <div key={r.id} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer" onClick={() => setPreviewResource(r)}>
-                              <div className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center ${resourceTypeIcons[r.type] || "text-gray-400 bg-gray-50"}`}>
+                            <div key={r.id} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 hover:shadow-sm hover:-translate-y-0.5 transition-all cursor-pointer" onClick={() => setPreviewResource(r)}>
+                              <div className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center shadow-sm ${resourceTypeIcons[r.type] || "text-gray-400 bg-gray-50"}`}>
                                 <FileText className="h-3.5 w-3.5" />
                               </div>
                               <div className="flex-1 min-w-0">
@@ -558,7 +590,8 @@ function EmptyState({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
     <div className="flex flex-col items-center gap-3">
       <div className="relative w-16 h-16">
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-50 opacity-60" />
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 opacity-40 blur-lg" />
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-50 opacity-80" />
         <div className="absolute inset-0 flex items-center justify-center text-gray-300">
           {icon}
         </div>
@@ -570,13 +603,14 @@ function EmptyState({ icon, text }: { icon: React.ReactNode; text: string }) {
 
 function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: string }) {
   return (
-    <div className="relative p-4 rounded-xl border border-gray-100 bg-white hover:border-gray-200 hover:shadow-md transition-all duration-200 group">
-      <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200" style={{ backgroundColor: color }} />
-      <div className="flex items-center gap-2 mb-2" style={{ color }}>
+    <div className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group">
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md shrink-0" style={{ background: `linear-gradient(135deg, ${color}, ${color}dd)` }}>
         {icon}
       </div>
-      <p className="text-[11px] text-gray-400 font-medium mb-0.5">{label}</p>
-      <p className="text-sm font-bold text-gray-800">{value}</p>
+      <div className="flex-1 min-w-0">
+        <p className="text-[11px] text-gray-400 font-medium mb-0.5">{label}</p>
+        <p className="text-sm font-bold text-gray-800">{value}</p>
+      </div>
     </div>
   )
 }
@@ -616,7 +650,7 @@ function AbilityTab({ abilityPoints }: { abilityPoints: AbilityPoint[] }) {
 
   return (
     <div className="space-y-5">
-      <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
+      <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden">
         <CardContent className="p-5">
           <div
             className="rounded-xl p-5 relative overflow-hidden"
@@ -642,7 +676,7 @@ function AbilityTab({ abilityPoints }: { abilityPoints: AbilityPoint[] }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {groupedByAttribute.map(({ attr, items }) => (
-          <Card key={attr} className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden hover:shadow-md transition-all duration-200">
+          <Card key={attr} className="rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300">
             <div
               className="px-4 py-3.5 font-semibold text-sm flex items-center gap-2 border-b"
               style={{
@@ -702,8 +736,8 @@ function AbilityTab({ abilityPoints }: { abilityPoints: AbilityPoint[] }) {
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-sm">
-                  <Target className="w-4 h-4 text-white" />
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                  <Target className="w-4 h-4" />
                 </div>
                 <span className="font-semibold text-gray-800">能力点详情</span>
               </div>
