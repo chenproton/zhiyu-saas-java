@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import {
-  publicPositionApi,
+  positionApi,
   positionResponsibilityApi,
   abilityApi,
   positionCertificateApi,
@@ -74,7 +74,7 @@ export default function JobStudentDetailPage() {
   useEffect(() => {
     if (!id) return
     setLoading(true)
-    publicPositionApi
+    positionApi
       .get(id)
       .then(setPosition)
       .catch(() => setPosition(null))
@@ -84,7 +84,7 @@ export default function JobStudentDetailPage() {
   useEffect(() => {
     if (!id || !position) return
 
-    publicPositionApi
+    positionApi
       .list({ status: "published", limit: 20 })
       .then((res) => setAllPositions(res.items || []))
       .catch(() => setAllPositions([]))
