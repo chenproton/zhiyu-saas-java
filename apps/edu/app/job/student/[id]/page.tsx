@@ -2,13 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import {
   publicPositionApi,
   positionResponsibilityApi,
   abilityApi,
   positionCertificateApi,
-  learnRoadApi,
   scenarioApi,
   taskApi,
 } from "@/lib/api"
@@ -18,7 +17,6 @@ import type {
   CareerPosition,
   PositionResponsibility,
   PositionCertificate,
-  LearnRoad,
   AbilityPoint,
   PositionAbilityBinding,
   AbilityDomain,
@@ -34,10 +32,9 @@ import { AbilityTree } from "@/components/job/student/ability-tree"
 import { CompetencyStandards } from "@/components/job/student/competency-standards"
 import { KnowledgeGraph } from "@/components/job/student/knowledge-graph"
 import { SceneList } from "@/components/job/student/scene-list"
-import { LearningPath } from "@/components/job/student/learning-path"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Briefcase, FileText, ListChecks, Award, Layers, Target, GitBranch, BookOpen, BriefcaseIcon } from "lucide-react"
+import { Briefcase, FileText, ListChecks, Award, Layers, Target, GitBranch, BookOpen } from "lucide-react"
 
 const TABS = [
   { value: "overview", label: "岗位概况", icon: FileText },
@@ -47,12 +44,12 @@ const TABS = [
   { value: "competency", label: "胜任标准", icon: Target },
   { value: "graph", label: "知识图谱", icon: GitBranch },
   { value: "scenes", label: "实践场景", icon: BookOpen },
-  { value: "learning", label: "学习路径", icon: BriefcaseIcon },
 ]
 
 export default function JobStudentDetailPage() {
   const params = useParams()
   const id = params.id as string
+  const router = useRouter()
   const { user } = useAuth()
   const industryMap = useIndustryMap()
 
@@ -62,8 +59,7 @@ export default function JobStudentDetailPage() {
   const tabsRef = useRef<HTMLDivElement>(null)
 
   const handleStartLearning = () => {
-    setActiveTab("learning")
-    tabsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    router.push(`/job/student/${id}/learn`)
   }
 
   const [responsibilities, setResponsibilities] = useState<PositionResponsibility[]>([])
@@ -71,7 +67,6 @@ export default function JobStudentDetailPage() {
   const [abilityPoints, setAbilityPoints] = useState<AbilityPoint[]>([])
   const [abilityDomains, setAbilityDomains] = useState<AbilityDomain[]>([])
   const [certificates, setCertificates] = useState<PositionCertificate[]>([])
-  const [roads, setRoads] = useState<LearnRoad[]>([])
   const [allPositions, setAllPositions] = useState<CareerPosition[]>([])
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [scenarioTasks, setScenarioTasks] = useState<ScenarioTask[]>([])
@@ -118,16 +113,13 @@ export default function JobStudentDetailPage() {
       abilityApi.list({ limit: 1000 }),
       abilityApi.listDomains(id),
       positionCertificateApi.list({ careerPositionId: id }),
-      learnRoadApi.list({ limit: 100 }),
     ])
-      .then(([respRes, bindingRes, abilityRes, domainRes, certRes, roadRes]) => {
+      .then(([respRes, bindingRes, abilityRes, domainRes, certRes]) => {
         setResponsibilities(respRes.items || [])
         setBindings(bindingRes.items || [])
         setAbilityPoints(abilityRes.items || [])
         setAbilityDomains(domainRes.items || [])
         setCertificates(certRes.items || [])
-        const relatedRoads = (roadRes.items || []).filter((r: LearnRoad) => r.positionIds?.includes(id))
-        setRoads(relatedRoads)
       })
       .catch(() => {})
   }, [id, position, user])
@@ -193,8 +185,6 @@ export default function JobStudentDetailPage() {
         return user ? <KnowledgeGraph position={position} bindings={bindings} abilityPoints={abilityPoints} abilityDomains={abilityDomains} relatedPositions={allPositions} /> : <LoginPrompt text="知识图谱需登录后查看" desc="登录账号后可查看岗位知识图谱" />
       case "scenes":
         return <SceneList scenarios={scenarios} tasks={scenarioTasks} />
-      case "learning":
-        return user ? <LearningPath roads={roads} scenarios={scenarios} tasks={scenarioTasks} /> : <LoginPrompt text="学习路径需登录后查看" desc="登录账号后可查看岗位关联的学习路径" />
       default:
         return null
     }
