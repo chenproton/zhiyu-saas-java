@@ -777,15 +777,28 @@ export default function QuestionBanksPage() {
                       <Eye className="mr-1 h-3 w-3" />
                       查看
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => handleEdit(bank)}
-                    >
-                      <Pencil className="mr-1 h-3 w-3" />
-                      编辑
-                    </Button>
+                    {bank.status !== "archived" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => handleEdit(bank)}
+                      >
+                        <Pencil className="mr-1 h-3 w-3" />
+                        编辑
+                      </Button>
+                    )}
+                    {bank.status === "archived" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
+                        onClick={() => handleUnpublish(bank.id)}
+                      >
+                        <RotateCcw className="mr-1 h-3 w-3" />
+                        恢复
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
