@@ -515,73 +515,73 @@ export default function SceneLearnPage() {
                     </CardContent>
                   </Card>
                 </div>
-
-                {/* right column: sticky knowledge/ability/resource card */}
-                {sidebarCollapsed && (
-                <div className="w-[360px] shrink-0 self-start sticky top-[4.5rem]" style={{ maxHeight: "calc(100vh - 5.5rem)" }}>
-                  <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_8px_32px_rgba(0,0,0,0.06)] overflow-hidden hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col h-full">
-                    <Tabs defaultValue="collapsed-knowledge" className="w-full flex flex-col" style={{ maxHeight: "calc(100vh - 5.5rem)" }}>
-                      <CardHeader className="border-b border-gray-100 p-2 shrink-0">
-                        <TabsList className="bg-transparent p-0 h-auto gap-1 w-full">
-                          <TabsTrigger value="collapsed-knowledge" className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">
-                            <BrainCircuit className="mr-1 h-3.5 w-3.5" />知识点
-                          </TabsTrigger>
-                          <TabsTrigger value="collapsed-ability" className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">
-                            <Target className="mr-1 h-3.5 w-3.5" />能力点
-                          </TabsTrigger>
-                          <TabsTrigger value="collapsed-resource" className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">
-                            <FolderOpen className="mr-1 h-3.5 w-3.5" />资源
-                          </TabsTrigger>
-                        </TabsList>
-                      </CardHeader>
-                      <CardContent className="flex-1 overflow-y-auto p-3">
-                        <TabsContent value="collapsed-knowledge" className="mt-0 space-y-2">
-                          {taskKnowledgePoints.length > 0 ? taskKnowledgePoints.map((kp, i) => (
-                            <div key={kp.id} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 hover:shadow-sm hover:-translate-y-0.5 transition-all cursor-pointer">
-                              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0 shadow-sm shadow-blue-500/20">{i + 1}</div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-700">{kp.name}</p>
-                                {kp.description && <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">{kp.description}</p>}
-                              </div>
-                            </div>
-                          )) : <p className="text-xs text-gray-400 text-center py-8">暂无知识点</p>}
-                        </TabsContent>
-                        <TabsContent value="collapsed-ability" className="mt-0 space-y-2">
-                          {taskAbilityPoints.length > 0 ? taskAbilityPoints.map((ap, i) => {
-                            const cat = ({ knowledge: { label: "知识", color: "#2563eb" }, skill: { label: "技能", color: "#16a34a" }, quality: { label: "素养", color: "#7c3aed" } } as any)[ap.category] || { label: ap.category, color: "#94a3b8" }
-                            return (
-                              <div key={ap.id} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 hover:shadow-sm hover:-translate-y-0.5 transition-all cursor-pointer">
-                                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0 shadow-sm shadow-blue-500/20">{i + 1}</div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-gray-700">{ap.name}</p>
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full mt-0.5" style={{ backgroundColor: cat.color + "15", color: cat.color }}>{cat.label}</span>
-                                </div>
-                              </div>
-                            )
-                          }) : <p className="text-xs text-gray-400 text-center py-8">暂无能力点</p>}
-                        </TabsContent>
-                        <TabsContent value="collapsed-resource" className="mt-0 space-y-2">
-                          {taskResources.length > 0 ? taskResources.map((r) => (
-                            <div key={r.id} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 hover:shadow-sm hover:-translate-y-0.5 transition-all cursor-pointer" onClick={() => setPreviewResource(r)}>
-                              <div className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center shadow-sm ${resourceTypeIcons[r.type] || "text-gray-400 bg-gray-50"}`}>
-                                <FileText className="h-3.5 w-3.5" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-700 truncate">{r.name}</p>
-                                <p className="text-[11px] text-gray-400">{resourceTypeLabels[r.type] || r.type}{r.size ? ` · ${formatFileSize(r.size)}` : ""}</p>
-                              </div>
-                            </div>
-                          )) : <p className="text-xs text-gray-400 text-center py-8">暂无资源</p>}
-                        </TabsContent>
-                      </CardContent>
-                    </Tabs>
-                  </Card>
-                </div>
-                )}
               </div>
             </>
           )}
         </main>
+
+        {/* right panel: sticky tabs - outside main, same level as sidebar */}
+        {sidebarCollapsed && activeTask && (
+          <div className="flex w-[360px] flex-shrink-0 sticky top-14 self-start" style={{ maxHeight: "calc(100vh - 3.5rem)" }}>
+            <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_8px_32px_rgba(0,0,0,0.06)] overflow-hidden flex flex-col w-full">
+              <Tabs defaultValue="collapsed-knowledge" className="w-full flex flex-col h-full">
+                <CardHeader className="border-b border-gray-100 p-2 shrink-0">
+                  <TabsList className="bg-transparent p-0 h-auto gap-1 w-full">
+                    <TabsTrigger value="collapsed-knowledge" className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">
+                      <BrainCircuit className="mr-1 h-3.5 w-3.5" />知识点
+                    </TabsTrigger>
+                    <TabsTrigger value="collapsed-ability" className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">
+                      <Target className="mr-1 h-3.5 w-3.5" />能力点
+                    </TabsTrigger>
+                    <TabsTrigger value="collapsed-resource" className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">
+                      <FolderOpen className="mr-1 h-3.5 w-3.5" />资源
+                    </TabsTrigger>
+                  </TabsList>
+                </CardHeader>
+                <CardContent className="flex-1 overflow-y-auto p-3">
+                  <TabsContent value="collapsed-knowledge" className="mt-0 space-y-2">
+                    {taskKnowledgePoints.length > 0 ? taskKnowledgePoints.map((kp, i) => (
+                      <div key={kp.id} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer">
+                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0">{i + 1}</div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-700">{kp.name}</p>
+                          {kp.description && <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">{kp.description}</p>}
+                        </div>
+                      </div>
+                    )) : <p className="text-xs text-gray-400 text-center py-8">暂无知识点</p>}
+                  </TabsContent>
+                  <TabsContent value="collapsed-ability" className="mt-0 space-y-2">
+                    {taskAbilityPoints.length > 0 ? taskAbilityPoints.map((ap, i) => {
+                      const cat = ({ knowledge: { label: "知识", color: "#2563eb" }, skill: { label: "技能", color: "#16a34a" }, quality: { label: "素养", color: "#7c3aed" } } as any)[ap.category] || { label: ap.category, color: "#94a3b8" }
+                      return (
+                        <div key={ap.id} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer">
+                          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0">{i + 1}</div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-700">{ap.name}</p>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full mt-0.5" style={{ backgroundColor: cat.color + "15", color: cat.color }}>{cat.label}</span>
+                          </div>
+                        </div>
+                      )
+                    }) : <p className="text-xs text-gray-400 text-center py-8">暂无能力点</p>}
+                  </TabsContent>
+                  <TabsContent value="collapsed-resource" className="mt-0 space-y-2">
+                    {taskResources.length > 0 ? taskResources.map((r) => (
+                      <div key={r.id} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer" onClick={() => setPreviewResource(r)}>
+                        <div className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center ${resourceTypeIcons[r.type] || "text-gray-400 bg-gray-50"}`}>
+                          <FileText className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-700 truncate">{r.name}</p>
+                          <p className="text-[11px] text-gray-400">{resourceTypeLabels[r.type] || r.type}{r.size ? ` · ${r.size}` : ""}</p>
+                        </div>
+                      </div>
+                    )) : <p className="text-xs text-gray-400 text-center py-8">暂无资源</p>}
+                  </TabsContent>
+                </CardContent>
+              </Tabs>
+            </Card>
+          </div>
+        )}
       </div>
 
       <ResourcePreviewModal
