@@ -22,6 +22,19 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import {
   Plus,
   Search,
   Trash2,
@@ -31,8 +44,9 @@ import {
   X,
   Pencil,
   Library,
+  ChevronsUpDown,
 } from 'lucide-react'
-import { abilityApi } from '@/lib/api'
+import { abilityApi, positionApi } from '@/lib/api'
 import { convertApiAbilityToLocal } from '@/lib/stores/job-converters'
 import type { Position, PositionAbilityBinding, CompetencyLevel, Ability } from '@/lib/types/job-source'
 import { toast } from 'sonner'
@@ -105,6 +119,9 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
   const [showAbilityPoolDialog, setShowAbilityPoolDialog] = useState(false)
   const [abilityPoolSearch, setAbilityPoolSearch] = useState('')
   const [abilityPoolFilterAttr, setAbilityPoolFilterAttr] = useState<string | null>(null)
+  const [abilityPoolFilterPosition, setAbilityPoolFilterPosition] = useState<string | null>(null)
+  const [abilityPoolFilterPositionAbilities, setAbilityPoolFilterPositionAbilities] = useState<Set<string>>(new Set())
+  const [abilityPoolPositions, setAbilityPoolPositions] = useState<{ id: string; name: string }[]>([])
 
   const contentRef = useRef<HTMLDivElement>(null)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -112,6 +129,9 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
   useEffect(() => {
     abilityApi.list({ limit: 1000, isPublic: true })
       .then((res) => setAbilities(res.items.map(convertApiAbilityToLocal)))
+      .catch(() => {})
+    positionApi.list({ limit: 1000 })
+      .then((res) => setAbilityPoolPositions(res.items.map(p => ({ id: p.id, name: p.name }))))
       .catch(() => {})
   }, [])
 
@@ -122,6 +142,22 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
     }
   }, [position.responsibilities, isInitialized])
 
+  useEffect(() => {
+    if (!abilityPoolFilterPosition) {
+      setAbilityPoolFilterPositionAbilities(new Set())
+      return
+    }
+    abilityApi.listBindings({ careerPositionId: abilityPoolFilterPosition })
+      .then((res) => {
+        const ids = new Set<string>()
+        res.items.forEach(b => {
+          if (b.abilityPointId) ids.add(b.abilityPointId)
+        })
+        setAbilityPoolFilterPositionAbilities(ids)
+      })
+      .catch(() => {})
+  }, [abilityPoolFilterPosition])
+
   const selectedResp = position.responsibilities.find(r => r.id === selectedRespId)
 
   const abilityPoolResults = useMemo(() => {
@@ -130,9 +166,11 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
         !a.name.toLowerCase().includes(abilityPoolSearch.toLowerCase()) &&
         !a.category.toLowerCase().includes(abilityPoolSearch.toLowerCase())) return false
       if (abilityPoolFilterAttr && !(a.attributes || []).includes(abilityPoolFilterAttr)) return false
+      if (abilityPoolFilterPosition && abilityPoolFilterPositionAbilities.size > 0 &&
+        !abilityPoolFilterPositionAbilities.has(a.id)) return false
       return true
     })
-  }, [abilities, abilityPoolSearch, abilityPoolFilterAttr])
+  }, [abilities, abilityPoolSearch, abilityPoolFilterAttr, abilityPoolFilterPosition, abilityPoolFilterPositionAbilities])
 
   const scrollToResp = (respId: string) => {
     setSelectedRespId(respId)
@@ -479,6 +517,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                             onClick={() => {
                               setAbilityPoolSearch('')
                 setAbilityPoolFilterAttr(null)
+                setAbilityPoolFilterPosition(null)
                 setShowAbilityPoolDialog(true)
                             }}
                           >
@@ -710,7 +749,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
       {/* Ability Pool Dialog */}
       <Dialog open={showAbilityPoolDialog} onOpenChange={(open) => {
         setShowAbilityPoolDialog(open)
-        if (!open) { setAbilityPoolSearch(''); setAbilityPoolFilterAttr(null) }
+        if (!open) { setAbilityPoolSearch(''); setAbilityPoolFilterAttr(null); setAbilityPoolFilterPosition(null) }
       }}>
         <DialogContent size="xl" className="!h-[85vh] flex flex-col">
           <DialogHeader className="pb-0">
@@ -751,6 +790,57 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                 <button
                   onClick={() => setAbilityPoolFilterAttr(null)}
                   className="text-[11px] text-gray-400 hover:text-gray-600 ml-2"
+                >
+                  清空
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] font-medium text-gray-500 mr-1">关联岗位</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] bg-white text-gray-500 border border-gray-200 hover:border-gray-400 hover:text-gray-700 transition-colors min-w-0">
+                    {abilityPoolFilterPosition
+                      ? (abilityPoolPositions.find(p => p.id === abilityPoolFilterPosition)?.name || '已选岗位')
+                      : '选择岗位'}
+                    <ChevronsUpDown className="h-3 w-3 shrink-0 text-gray-400" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[260px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="搜索岗位..." className="h-8 text-xs" />
+                    <CommandList>
+                      <CommandEmpty className="py-3 text-center text-xs text-gray-400">暂无匹配岗位</CommandEmpty>
+                      <CommandGroup>
+                        {abilityPoolPositions.map((p) => (
+                          <CommandItem
+                            key={p.id}
+                            value={p.name}
+                            onSelect={() => {
+                              setAbilityPoolFilterPosition(
+                                abilityPoolFilterPosition === p.id ? null : p.id
+                              )
+                            }}
+                            className="text-xs"
+                          >
+                            <Check
+                              className={`h-3 w-3 shrink-0 ${
+                                abilityPoolFilterPosition === p.id ? 'opacity-100' : 'opacity-0'
+                              }`}
+                            />
+                            {p.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {abilityPoolFilterPosition && (
+                <button
+                  onClick={() => setAbilityPoolFilterPosition(null)}
+                  className="text-[11px] text-gray-400 hover:text-gray-600 ml-1"
                 >
                   清空
                 </button>
