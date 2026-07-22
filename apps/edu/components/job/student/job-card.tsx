@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { MapPin, Eye, Layers, ClipboardList, Flame } from "lucide-react"
+import { MapPin, Flame } from "lucide-react"
 import type { CareerPosition } from "@/lib/types"
 
 interface JobCardProps {
@@ -10,6 +10,7 @@ interface JobCardProps {
   isHot?: boolean
   scenarioCount?: number
   taskCount?: number
+  industryName?: string
 }
 
 const coverGradients = [
@@ -32,13 +33,12 @@ function formatDate(dateStr?: string) {
   }
 }
 
-export function JobCard({ position, index = 0, isHot, scenarioCount = 0, taskCount = 0 }: JobCardProps) {
+export function JobCard({ position, index = 0, isHot, scenarioCount = 0, taskCount = 0, industryName }: JobCardProps) {
   const displayTitle = position.shortName || position.name
   const coverStyle = position.coverImage
     ? { backgroundImage: `url('${position.coverImage}')` }
     : { background: coverGradients[index % coverGradients.length] }
 
-  const industryName = position.positionType === "enterprise" ? "企业" : "教学"
   const majorName = position.majorNames?.[0] || "未分类"
   const viewCount = position.viewCount ?? 0
   const relatedScenes = scenarioCount
@@ -62,13 +62,13 @@ export function JobCard({ position, index = 0, isHot, scenarioCount = 0, taskCou
                 {position.version || "v1.0"}
               </span>
               <span className="bg-white/25 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-white font-medium border border-white/10">
-                {formatDate(position.createdAt)} 收录
+                {formatDate(position.updatedAt)} 收录
               </span>
             </div>
           </div>
           <div className="relative z-10">
             <div className="text-base font-bold leading-snug mb-1 line-clamp-2 group-hover:text-blue-100 transition-colors">{displayTitle}</div>
-            <div className="text-xs text-white/80">岗位编码：{position.id.slice(0, 8)} · {formatDate(position.updatedAt)}</div>
+            <div className="text-xs text-white/80">岗位编码：{position.id.slice(0, 8)}</div>
           </div>
         </div>
         <div className="p-5 flex-1 flex flex-col">
@@ -88,22 +88,14 @@ export function JobCard({ position, index = 0, isHot, scenarioCount = 0, taskCou
           </div>
           <div className="flex flex-wrap gap-2 mb-4">
             <span className="text-[11px] px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-100 font-medium">
-              面向行业：{industryName}
+              面向行业：{industryName || "未分类"}
             </span>
             <span className="text-[11px] px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100 font-medium flex items-center gap-1">
               <MapPin className="w-3 h-3" /> 适用专业：{majorName}
             </span>
           </div>
-          <div className="mt-auto grid grid-cols-[1fr_auto] gap-x-6 gap-y-2.5">
-            <span className="text-xs text-slate-500 flex items-center gap-1.5">
-              <Eye className="w-3.5 h-3.5 text-slate-400" /> 浏览量：{viewCount}
-            </span>
-            <span className="text-xs text-slate-500 flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-slate-400" /> 版本：{position.version || "v1.0"}
-            </span>
-            <span className="text-xs text-slate-500 flex items-center gap-1.5">
-              <ClipboardList className="w-3.5 h-3.5 text-slate-400" /> 要求：{position.requirements?.length || 0} 项
-            </span>
+          <div className="mt-auto grid grid-cols-2 gap-x-6 gap-y-2.5">
+            <span className="text-xs text-slate-500">收录：{formatDate(position.createdAt)}</span>
             <span className="text-xs text-slate-500">更新：{formatDate(position.updatedAt)}</span>
           </div>
         </div>

@@ -11,6 +11,7 @@ export interface Scenario {
   batchId?: string
   difficulty: number
   version: string
+  viewCount?: number
   status: "draft" | "pending" | "approved" | "rejected" | "published" | "archived"
   background?: string
   deliveryGoal?: string

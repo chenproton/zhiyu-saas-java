@@ -842,7 +842,6 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                         key={scenario.id}
                         scenario={scenario}
                         index={i}
-                        hideHot={i > 2}
                         taskCount={taskCountMap.get(scenario.id) ?? 0}
                       />
                     ))
@@ -854,6 +853,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                         isHot={hotPositionIds.has(pos.id)}
                         scenarioCount={scenarioCountMap.get(pos.id) ?? 0}
                         taskCount={taskCountMap.get(pos.id) ?? 0}
+                        industryName={pos.industryId ? industryMap.get(pos.industryId) : undefined}
                       />
                     ))}
               </div>

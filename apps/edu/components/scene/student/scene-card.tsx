@@ -1,13 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { Clock, Layers, BarChart3, MapPin, Star } from "lucide-react"
+import { MapPin } from "lucide-react"
 import type { Scenario } from "@/lib/types"
 
 interface SceneCardProps {
   scenario: Scenario
   index?: number
-  hideHot?: boolean
   taskCount?: number
 }
 
@@ -30,6 +29,10 @@ const difficultyMap: Record<number, { color: string; label: string; bg: string; 
   5: { color: "#7c3aed", label: "专家", bg: "#f5f3ff", border: "#ddd6fe" },
 }
 
+const professionTagMap: Record<string, { bg: string; text: string; border: string }> = {
+  default: { bg: "#f5f3ff", text: "#6d28d9", border: "#ddd6fe" },
+}
+
 const industryTagMap: Record<string, { bg: string; text: string; border: string }> = {
   default: { bg: "#fff7ed", text: "#c2410c", border: "#ffedd5" },
 }
@@ -43,7 +46,7 @@ function formatDate(dateStr?: string) {
   }
 }
 
-export function SceneCard({ scenario, index = 0, hideHot, taskCount = 0 }: SceneCardProps) {
+export function SceneCard({ scenario, index = 0, taskCount = 0 }: SceneCardProps) {
   const displayTitle = scenario.name
   const coverStyle = scenario.coverImage
     ? { backgroundImage: `url('${scenario.coverImage}')` }
@@ -52,6 +55,9 @@ export function SceneCard({ scenario, index = 0, hideHot, taskCount = 0 }: Scene
   const diff = difficultyMap[scenario.difficulty] || difficultyMap[3]
   const industryName = scenario.industryNames?.[0] || (scenario.industryIds?.length ? "已关联" : "未分类")
   const industryTag = industryTagMap.default
+  const professionName = scenario.professionNames?.[0] || (scenario.professionIds?.length ? "已关联" : "未分类")
+  const professionTag = professionTagMap.default
+  const viewCount = scenario.viewCount ?? 0
 
   return (
     <Link href={`/scene/landing/${scenario.id}`}>
@@ -61,24 +67,19 @@ export function SceneCard({ scenario, index = 0, hideHot, taskCount = 0 }: Scene
           style={coverStyle}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,23,42,0.88)] via-[rgba(15,23,42,0.35)] to-transparent" />
-          {!hideHot && (
-            <div className="absolute top-3 right-3 z-10 bg-gradient-to-br from-amber-400 to-orange-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-lg shadow-orange-500/25">
-              <Star className="w-3 h-3 fill-current" /> 推荐
-            </div>
-          )}
           <div className="absolute top-3 left-3 right-3 z-10 flex justify-between">
             <div className="flex gap-1.5">
               <span className="bg-white/25 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-white font-medium border border-white/10">
                 {scenario.version || "v1.0"}
               </span>
               <span className="bg-white/25 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-white font-medium border border-white/10">
-                {formatDate(scenario.createdAt)} 收录
+                {formatDate(scenario.updatedAt)} 收录
               </span>
             </div>
           </div>
           <div className="relative z-10">
             <div className="text-base font-bold leading-snug mb-1 line-clamp-2 group-hover:text-blue-100 transition-colors">{displayTitle}</div>
-            <div className="text-xs text-white/80">场景编码：{scenario.code || scenario.id.slice(0, 8)} · {formatDate(scenario.updatedAt)}</div>
+            <div className="text-xs text-white/80">场景编码：{scenario.code || scenario.id.slice(0, 8)}</div>
           </div>
         </div>
         <div className="p-5 flex-1 flex flex-col">
@@ -88,12 +89,12 @@ export function SceneCard({ scenario, index = 0, hideHot, taskCount = 0 }: Scene
               <div className="text-[11px] text-slate-400 mt-0.5">任务数量</div>
             </div>
             <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
-              <div className="text-lg font-bold text-slate-800">{scenario.difficulty || "-"}</div>
+              <div className="text-lg font-bold text-slate-800">{diff.label}</div>
               <div className="text-[11px] text-slate-400 mt-0.5">难度等级</div>
             </div>
             <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
-              <div className="text-lg font-bold text-slate-800">{scenario.version || "v1.0"}</div>
-              <div className="text-[11px] text-slate-400 mt-0.5">版本号</div>
+              <div className="text-lg font-bold text-slate-800">{viewCount}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">浏览次数</div>
             </div>
           </div>
           <div className="flex flex-wrap gap-2 mb-4">
@@ -105,19 +106,13 @@ export function SceneCard({ scenario, index = 0, hideHot, taskCount = 0 }: Scene
             </span>
             <span
               className="text-[11px] px-2.5 py-1 rounded-full flex items-center gap-1 font-medium border"
-              style={{ backgroundColor: diff.bg, color: diff.color, borderColor: diff.border }}
+              style={{ backgroundColor: professionTag.bg, color: professionTag.text, borderColor: professionTag.border }}
             >
-              <BarChart3 className="w-3 h-3" /> {diff.label}
+              <MapPin className="w-3 h-3" /> 适用专业：{professionName}
             </span>
           </div>
-          <div className="mt-auto grid grid-cols-[1fr_auto] gap-x-6 gap-y-2.5">
-            <span className="text-xs text-slate-500 flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-slate-400" /> 版本：{scenario.version || "v1.0"}
-            </span>
+          <div className="mt-auto grid grid-cols-2 gap-x-6 gap-y-2.5">
             <span className="text-xs text-slate-500">收录：{formatDate(scenario.createdAt)}</span>
-            <span className="text-xs text-slate-500 flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-slate-400" /> 任务：{taskCount || 0} 项
-            </span>
             <span className="text-xs text-slate-500">更新：{formatDate(scenario.updatedAt)}</span>
           </div>
         </div>
