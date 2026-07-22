@@ -218,9 +218,15 @@ func (h *QuestionBankHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
+
 	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
-		return
+		req.Name = existing.Name
+	}
+	if req.Description == "" {
+		req.Description = existing.Description
+	}
+	if req.CoverImage == nil {
+		req.CoverImage = existing.CoverImage
 	}
 
 	collaboratorIDs := req.CollaboratorIDs

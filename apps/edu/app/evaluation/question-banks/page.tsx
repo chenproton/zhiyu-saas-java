@@ -383,7 +383,7 @@ export default function QuestionBanksPage() {
     const batch = batches.find((b) => b.id === submitSelectedBatchId)
     if (!batch) return
     try {
-      await questionBankApi.update(submitBatchTarget.id, { batchId: submitSelectedBatchId })
+      await questionBankApi.update(submitBatchTarget.id, { name: submitBatchTarget.name, batchId: submitSelectedBatchId })
       await questionBankApi.submit(submitBatchTarget.id)
       await approvalApi.create({ targetType: "question_bank", targetId: submitBatchTarget.id, workflowId: batch.workflowId })
       setIsSubmitBatchDialogOpen(false)
