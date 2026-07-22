@@ -14,8 +14,12 @@ function isZipBuffer(buffer: ArrayBuffer): boolean {
 
 async function fetchServerPreview(fileUrl: string): Promise<string> {
   const filename = fileUrl.split("/").pop() || ""
+  const token = typeof window !== "undefined" ? localStorage.getItem("zhiyu-token") : null
+  const headers: Record<string, string> = {}
+  if (token) headers["Authorization"] = `Bearer ${token}`
   const res = await fetch(`/api/v1/files/preview?name=${encodeURIComponent(filename)}`, {
     credentials: "include",
+    headers,
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))

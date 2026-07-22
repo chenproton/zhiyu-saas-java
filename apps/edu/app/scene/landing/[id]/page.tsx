@@ -24,6 +24,7 @@ import type {
   TaskResource,
   KnowledgePoint,
   AbilityPoint,
+  AbilityDomain,
 } from "@/lib/types"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
 import { SceneKnowledgeGraph } from "@/components/scene/student/knowledge-graph"
@@ -94,38 +95,63 @@ interface AbilitiesTabProps {
   tasks: ScenarioTask[]
   abilityMap: Map<string, AbilityPoint>
   uniqueAbilityIds: Set<string>
+  abilityDomains?: AbilityDomain[]
 }
 
-function AbilitiesTab({ tasks, abilityMap, uniqueAbilityIds }: AbilitiesTabProps) {
+const ATTRIBUTE_COLORS: Record<string, [string, string]> = {
+  "知识": ["#3b82f6", "#60a5fa"],
+  "素养": ["#f59e0b", "#fbbf24"],
+  "技能": ["#10b981", "#34d399"],
+}
+
+function AbilitiesTab({ tasks, abilityMap, uniqueAbilityIds, abilityDomains }: AbilitiesTabProps) {
   const [selectedAbility, setSelectedAbility] = useState<{ ap: AbilityPoint; taskNames: string[] } | null>(null)
 
-  const groupedByAttribute = useMemo(() => {
+  const groupedByDomain = useMemo(() => {
     const groups = new Map<string, { ap: AbilityPoint; taskNames: string[] }[]>()
-    const seen = new Map<string, string[]>()
 
-    tasks.forEach((t) => {
-      t.abilityPointIds?.forEach((aid) => {
-        const ap = abilityMap.get(aid)
-        if (!ap) return
-        const entry = seen.get(aid)
-        if (entry) {
-          entry.push(t.name)
-        } else {
-          seen.set(aid, [t.name])
+    if (abilityDomains && abilityDomains.length > 0) {
+      abilityDomains.forEach((d) => groups.set(d.name, []))
+      tasks.forEach((t) => {
+        t.abilityPointIds?.forEach((aid) => {
+          const ap = abilityMap.get(aid)
+          if (!ap) return
+          const domain = abilityDomains.find((d) => d.bindingIds?.includes(aid))?.name
+            || "其他"
+          const list = groups.get(domain) || []
+          const existing = list.find((item) => item.ap.id === ap.id)
+          if (existing) {
+            if (!existing.taskNames.includes(t.name)) existing.taskNames.push(t.name)
+          } else {
+            list.push({ ap, taskNames: [t.name] })
+          }
+          groups.set(domain, list)
+        })
+      })
+    } else {
+      tasks.forEach((t) => {
+        t.abilityPointIds?.forEach((aid) => {
+          const ap = abilityMap.get(aid)
+          if (!ap) return
           const attrs = ap.attributes?.length ? ap.attributes : ["未分类"]
           attrs.forEach((attr) => {
             const list = groups.get(attr) || []
-            list.push({ ap, taskNames: [t.name] })
+            const existing = list.find((item) => item.ap.id === ap.id)
+            if (existing) {
+              if (!existing.taskNames.includes(t.name)) existing.taskNames.push(t.name)
+            } else {
+              list.push({ ap, taskNames: [t.name] })
+            }
             groups.set(attr, list)
           })
-        }
+        })
       })
-    })
+    }
 
     return Array.from(groups.entries())
-      .map(([attr, items]) => ({ attr, items }))
+      .map(([name, items]) => ({ name, items }))
       .filter((g) => g.items.length > 0)
-  }, [tasks, abilityMap])
+  }, [tasks, abilityMap, abilityDomains])
 
   if (uniqueAbilityIds.size === 0) {
     return (
@@ -139,6 +165,8 @@ function AbilitiesTab({ tasks, abilityMap, uniqueAbilityIds }: AbilitiesTabProps
     )
   }
 
+  const groupLabel = abilityDomains && abilityDomains.length > 0 ? "能力领域" : "能力属性"
+
   return (
     <div className="space-y-5">
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-100">
@@ -147,21 +175,21 @@ function AbilitiesTab({ tasks, abilityMap, uniqueAbilityIds }: AbilitiesTabProps
           能力模型说明
         </div>
         <p className="text-sm text-[#475569]">
-          本场景将能力体系按属性拆解，每个属性下关联对应的能力点，帮助学生明确学习目标。
+          本场景基于真实企业场景标准，拆解为若干{groupLabel}，每个{groupLabel}下关联对应的能力点，帮助学生明确学习目标。
         </p>
       </div>
 
       <div className="text-sm text-[#64748b] mb-2">
-        共 <strong className="text-blue-500">{groupedByAttribute.length}</strong> 个能力属性，
+        共 <strong className="text-blue-500">{groupedByDomain.length}</strong> 个{groupLabel}，
         <strong className="text-blue-500"> {uniqueAbilityIds.size}</strong> 个能力点
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {groupedByAttribute.map(({ attr, items }) => (
-          <div key={attr} className="border border-[#f5f5f4] rounded-xl overflow-hidden bg-white">
+        {groupedByDomain.map(({ name, items }) => (
+          <div key={name} className="border border-[#f5f5f4] rounded-xl overflow-hidden bg-white">
             <div className="bg-[#eff6ff] px-4 py-3 font-medium text-blue-600 flex items-center gap-2 text-sm">
               <Target className="w-4 h-4" />
-              {attr}
+              {name}
             </div>
             <div className="p-3 max-h-[300px] overflow-y-auto">
               {items.map(({ ap, taskNames }, i) => (
@@ -173,12 +201,24 @@ function AbilitiesTab({ tasks, abilityMap, uniqueAbilityIds }: AbilitiesTabProps
                   <div className="flex flex-col min-w-0 gap-1">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-sm text-[#1f2937] truncate">{ap.name}</span>
+                      {ap.attributes?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 shrink-0">
+                          {ap.attributes.map((attr) => {
+                            const colors = ATTRIBUTE_COLORS[attr] || ["#64748b", "#94a3b8"]
+                            return (
+                              <span
+                                key={attr}
+                                className="text-[10px] px-1.5 py-0.5 rounded border text-white"
+                                style={{ background: `linear-gradient(135deg, ${colors[0]}, ${colors[1]})`, borderColor: colors[0] }}
+                              >
+                                {attr}
+                              </span>
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex flex-wrap gap-1">
-                      {taskNames.map((tn) => (
-                        <span key={tn} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">{tn}</span>
-                      ))}
-                    </div>
+                    <span className="text-[10px] text-[#94a3b8] truncate font-mono">ID：{ap.code || ap.id}</span>
                   </div>
                 </div>
               ))}
@@ -199,8 +239,8 @@ function AbilitiesTab({ tasks, abilityMap, uniqueAbilityIds }: AbilitiesTabProps
             <div className="bg-white border border-[#e2e8f0] rounded-xl p-4 relative overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-blue-500 to-emerald-500" />
               <div className="text-sm font-semibold text-[#1f2937] mb-3">{selectedAbility.ap.name}</div>
-              {selectedAbility.ap.code && (
-                <div className="text-xs text-[#94a3b8] mb-2 font-mono">ID：{selectedAbility.ap.code}</div>
+              {(selectedAbility.ap.code || selectedAbility.ap.id) && (
+                <div className="text-xs text-[#94a3b8] mb-2 font-mono">ID：{selectedAbility.ap.code || selectedAbility.ap.id}</div>
               )}
               <div className="space-y-2 text-xs">
                 <div>
@@ -322,6 +362,7 @@ export default function SceneDetailPage() {
   const [allResourceMap, setAllResourceMap] = useState<Map<string, TaskResource>>(new Map())
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
   const [abilityMap, setAbilityMap] = useState<Map<string, AbilityPoint>>(new Map())
+  const [abilityDomains, setAbilityDomains] = useState<AbilityDomain[]>([])
   const [previewResource, setPreviewResource] = useState<TaskResource | null>(null)
 
   useEffect(() => {
@@ -366,6 +407,14 @@ export default function SceneDetailPage() {
       setAbilityMap(aMap)
     }).catch(() => {})
   }, [id, scenario])
+
+  useEffect(() => {
+    if (!scenario?.careerPositionId) return
+    abilityApi
+      .listDomains(scenario.careerPositionId)
+      .then((res) => setAbilityDomains(res.items || []))
+      .catch(() => setAbilityDomains([]))
+  }, [scenario?.careerPositionId])
 
   const assessmentHours = useMemo(() => tasks.filter((t) => t.taskType === "assessment").reduce((s, t) => s + (t.estimatedHours || 0), 0), [tasks])
   const trainingHours = useMemo(() => tasks.filter((t) => t.taskType === "training").reduce((s, t) => s + (t.estimatedHours || 0), 0), [tasks])
@@ -584,6 +633,7 @@ export default function SceneDetailPage() {
             tasks={tasks}
             abilityMap={abilityMap}
             uniqueAbilityIds={uniqueAbilityIds}
+            abilityDomains={abilityDomains}
           />
         )
 
