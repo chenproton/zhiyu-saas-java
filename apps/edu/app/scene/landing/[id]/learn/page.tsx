@@ -191,8 +191,8 @@ export default function SceneLearnPage() {
           <div className="absolute top-[-120px] right-[5%] w-[480px] h-[480px] rounded-full bg-blue-400/10 blur-[120px]" />
           <div className="absolute bottom-[-80px] left-[5%] w-[360px] h-[360px] rounded-full bg-indigo-400/10 blur-[100px]" />
         </div>
-        <header className="relative z-10 bg-gradient-to-br from-[rgba(30,64,175,0.92)] via-[rgba(59,130,246,0.85)] to-[rgba(124,58,237,0.85)] border-b border-white/10 shrink-0 h-16 flex items-center px-6">
-          <Skeleton className="h-5 w-48 bg-white/20" />
+        <header className="relative z-10 bg-white border-b border-gray-200/60 shrink-0 h-16 flex items-center px-6">
+          <Skeleton className="h-5 w-48" />
         </header>
         <div className="relative z-10 flex-1 flex p-4">
           <div className="w-[300px] shrink-0 rounded-2xl border border-[#e7e5e4] bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.06)]">
@@ -246,34 +246,25 @@ export default function SceneLearnPage() {
       </div>
 
       {/* ---------- header ---------- */}
-      <header className="relative z-30 shrink-0 sticky top-0 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[rgba(30,64,175,0.92)] via-[rgba(59,130,246,0.85)] to-[rgba(124,58,237,0.85)]" />
-        <div
-          className="absolute inset-0 opacity-[0.12]"
-          style={{
-            backgroundImage: `linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px)`,
-            backgroundSize: "40px 40px",
-          }}
-        />
-        <div className="absolute top-[-40px] right-[8%] w-[260px] h-[260px] rounded-full bg-white/10 blur-[80px] pointer-events-none" />
-        <div className="relative z-10 max-w-[1400px] mx-auto px-6 h-16 flex items-center justify-between">
+      <header className="bg-white border-b border-gray-200/60 shrink-0 sticky top-0 z-30">
+        <div className="max-w-[1400px] mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link
               href={`/scene/landing/${id}`}
-              className="group flex items-center gap-2.5 text-sm text-white/80 hover:text-white transition-all duration-200"
+              className="group flex items-center gap-2.5 text-sm text-gray-500 hover:text-blue-600 transition-all duration-200"
             >
-              <span className="w-8 h-8 rounded-xl bg-white/15 border border-white/25 backdrop-blur-md flex items-center justify-center group-hover:bg-white/25 group-hover:border-white/40 transition-all duration-200">
+              <span className="w-8 h-8 rounded-xl bg-gray-100 border border-gray-200/60 flex items-center justify-center group-hover:bg-blue-50 group-hover:border-blue-200 group-hover:text-blue-600 transition-all duration-200">
                 <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform duration-200" />
               </span>
-              <span className="font-semibold truncate max-w-[360px] lg:max-w-[520px] text-white/90 group-hover:text-white transition-colors drop-shadow-sm">{scenario.name}</span>
+              <span className="font-semibold truncate max-w-[360px] lg:max-w-[520px] text-gray-800 group-hover:text-blue-600 transition-colors">{scenario.name}</span>
             </Link>
           </div>
           <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5 text-xs font-medium text-white/90 bg-white/15 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/25 shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
-              <ListChecks className="w-3.5 h-3.5 text-yellow-300" /> {tasks.length} 个任务
+            <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200/80">
+              <ListChecks className="w-3.5 h-3.5 text-blue-500" /> {tasks.length} 个任务
             </span>
-            <span className="flex items-center gap-1.5 text-xs font-medium text-white/90 bg-white/15 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/25 shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
-              <Clock className="w-3.5 h-3.5 text-yellow-300" /> {totalHours} 课时
+            <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200/80">
+              <Clock className="w-3.5 h-3.5 text-blue-500" /> {totalHours} 课时
             </span>
           </div>
         </div>
@@ -415,7 +406,7 @@ export default function SceneLearnPage() {
                 {/* left column: 3 cards */}
                 <div className="flex-1 space-y-4">
                   {/* 任务背景 */}
-                  <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300">
+                  <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300 py-0 gap-0">
                     <CardHeader className="relative bg-gradient-to-br from-blue-500 to-blue-400 text-white border-b-0 px-6 py-5">
                       <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none" />
                       <CardTitle className="text-base flex items-center gap-3 relative z-10">
@@ -459,7 +450,7 @@ export default function SceneLearnPage() {
                   </Card>
 
                   {/* 任务说明书 */}
-                  <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300">
+                  <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300 py-0 gap-0">
                     <CardHeader className="relative bg-gradient-to-br from-violet-500 to-purple-500 text-white border-b-0 px-6 py-5">
                       <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none" />
                       <CardTitle className="text-base flex items-center gap-3 relative z-10">
@@ -489,7 +480,7 @@ export default function SceneLearnPage() {
                   </Card>
 
                   {/* 任务测评形式 */}
-                  <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300">
+                  <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300 py-0 gap-0">
                     <CardHeader className="relative bg-gradient-to-br from-emerald-500 to-teal-400 text-white border-b-0 px-6 py-5">
                       <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none" />
                       <CardTitle className="text-base flex items-center gap-3 relative z-10">
