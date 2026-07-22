@@ -26,14 +26,14 @@ import { usePortalAuth } from "@/contexts/portal-auth-context"
 
 const menuItems = [
   { id: "system", label: "系统管理", icon: Settings },
-  { id: "alliance", label: "产教协同与人才品牌运营平台", icon: Users },
   { id: "career", label: "职业岗位学习平台", icon: Briefcase },
-  { id: "course", label: "数字课程服务平台", icon: BookOpen },
   { id: "scene", label: "实践场景学习平台", icon: Layers },
+  { id: "course", label: "数字课程服务平台", icon: BookOpen },
   { id: "ability", label: "能力评价与测评资源管理平台", icon: CheckCircle },
+  { id: "resource", label: "教学资源共享服务平台", icon: Share2 },
+  { id: "alliance", label: "产教协同与人才品牌运营平台", icon: Users },
   { id: "affairs", label: "教务服务平台", icon: Calendar },
   { id: "ai", label: "AI 智能服务平台", icon: Sparkles },
-  { id: "resource", label: "教学资源共享服务平台", icon: Share2 },
   { id: "opc", label: "OPC专区", icon: Rocket },
   { id: "decision", label: "敏捷决策中心", icon: BarChart3 },
   { id: "research", label: "教科研服务中心", icon: GraduationCap },

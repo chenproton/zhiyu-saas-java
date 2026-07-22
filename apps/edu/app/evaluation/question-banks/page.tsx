@@ -670,15 +670,14 @@ export default function QuestionBanksPage() {
                 aria-label="全选"
               />
             </TableHead>
-            <TableHead className="w-[200px]">题库名称</TableHead>
-            <TableHead className="w-[200px]">题库简介</TableHead>
-            <TableHead className="w-[100px]">题目数量</TableHead>
-            <TableHead className="w-[140px]">所属批次</TableHead>
-            <TableHead className="w-[100px]">创建人</TableHead>
-            <TableHead className="w-[120px]">共建人</TableHead>
-            <TableHead className="w-[100px]">状态</TableHead>
-            <TableHead className="w-[120px]">创建时间</TableHead>
-            <TableHead className="w-[120px]">更新时间</TableHead>
+            <TableHead className="w-[160px]">题库名称</TableHead>
+            <TableHead className="w-[120px]">题库简介</TableHead>
+            <TableHead className="w-[80px]">题目数量</TableHead>
+            <TableHead className="w-[100px]">所属批次</TableHead>
+            <TableHead className="w-[80px]">创建人</TableHead>
+            <TableHead className="w-[100px]">共建人</TableHead>
+            <TableHead className="w-[70px]">状态</TableHead>
+            <TableHead className="w-[100px]">更新时间</TableHead>
             <TableHead className="sticky right-0 w-[80px] bg-white text-right">操作</TableHead>
           </TableRow>
         </TableHeader>
@@ -710,14 +709,13 @@ export default function QuestionBanksPage() {
                 </TableCell>
                 <TableCell>{bank.questionCount} 题</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{batchName}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{bank.creatorId || "-"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{bank.creatorName || bank.creatorId || "-"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">
-                  {(bank.collaboratorIds?.length || 0) > 0 ? `${bank.collaboratorIds!.length} 人` : "-"}
+                  {(bank.collaboratorNames?.length || 0) > 0 ? bank.collaboratorNames.join(", ") : "-"}
                 </TableCell>
                 <TableCell>
                   <EvalStatusBadge status={bank.status} />
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground">{formatDate(bank.createdAt)}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{formatDate(bank.updatedAt)}</TableCell>
                 <TableCell className="sticky right-0 bg-white text-right relative">
                   <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">

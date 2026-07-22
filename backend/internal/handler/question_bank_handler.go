@@ -86,7 +86,14 @@ func (h *QuestionBankHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	query := `
 		SELECT qb.id, qb.name, qb.description, qb.cover_image, qb.status, qb.question_count, qb.creator_id,
-			qb.collaborator_ids, qb.collaborator_dept_ids, qb.batch_id, qb.version, qb.owner_type, qb.is_draft_pool,
+			COALESCE((SELECT u.name FROM users u WHERE u.id = qb.creator_id), qb.creator_id::text) AS creator_name,
+			qb.collaborator_ids,
+			COALESCE((
+				SELECT array_agg(u.name ORDER BY ord)
+				FROM unnest(qb.collaborator_ids) WITH ORDINALITY AS c(id, ord)
+				JOIN users u ON u.id = c.id
+			), '{}') AS collaborator_names,
+			qb.collaborator_dept_ids, qb.batch_id, qb.version, qb.owner_type, qb.is_draft_pool,
 			(SELECT COALESCE(array_agg(kp.knowledge_point_id), '{}') FROM question_bank_knowledge_points kp WHERE kp.question_bank_id = qb.id) AS knowledge_point_ids,
 			qb.created_at, qb.updated_at
 		FROM question_banks qb
@@ -345,13 +352,21 @@ func (h *QuestionBankHandler) fetchQuestionBank(ctx context.Context, id string) 
 	var coverImage, creatorID, batchID *string
 	err := h.DB.QueryRow(ctx, `
 		SELECT qb.id, qb.name, qb.description, qb.cover_image, qb.status, qb.question_count, qb.creator_id,
-			qb.collaborator_ids, qb.collaborator_dept_ids, qb.batch_id, qb.version, qb.owner_type, qb.is_draft_pool,
+			COALESCE((SELECT u.name FROM users u WHERE u.id = qb.creator_id), qb.creator_id::text) AS creator_name,
+			qb.collaborator_ids,
+			COALESCE((
+				SELECT array_agg(u.name ORDER BY ord)
+				FROM unnest(qb.collaborator_ids) WITH ORDINALITY AS c(id, ord)
+				JOIN users u ON u.id = c.id
+			), '{}') AS collaborator_names,
+			qb.collaborator_dept_ids, qb.batch_id, qb.version, qb.owner_type, qb.is_draft_pool,
 			(SELECT COALESCE(array_agg(kp.knowledge_point_id), '{}') FROM question_bank_knowledge_points kp WHERE kp.question_bank_id = qb.id) AS knowledge_point_ids,
 			qb.created_at, qb.updated_at
 		FROM question_banks qb WHERE qb.id = $1
 	`, id).Scan(
 		&b.ID, &b.Name, &b.Description, &coverImage, &b.Status, &b.QuestionCount, &creatorID,
-		&b.CollaboratorIDs, &b.CollaboratorDeptIDs, &batchID, &b.Version, &b.OwnerType, &b.IsDraftPool,
+		&b.CreatorName, &b.CollaboratorIDs, &b.CollaboratorNames,
+		&b.CollaboratorDeptIDs, &batchID, &b.Version, &b.OwnerType, &b.IsDraftPool,
 		&b.KnowledgePointIDs, &b.CreatedAt, &b.UpdatedAt,
 	)
 	if err != nil {
@@ -370,7 +385,8 @@ func (h *QuestionBankHandler) scanQuestionBankRows(rows pgx.Rows) ([]domain.Ques
 		var coverImage, creatorID, batchID *string
 		if err := rows.Scan(
 			&b.ID, &b.Name, &b.Description, &coverImage, &b.Status, &b.QuestionCount, &creatorID,
-			&b.CollaboratorIDs, &b.CollaboratorDeptIDs, &batchID, &b.Version, &b.OwnerType, &b.IsDraftPool,
+			&b.CreatorName, &b.CollaboratorIDs, &b.CollaboratorNames,
+			&b.CollaboratorDeptIDs, &batchID, &b.Version, &b.OwnerType, &b.IsDraftPool,
 			&b.KnowledgePointIDs, &b.CreatedAt, &b.UpdatedAt,
 		); err != nil {
 			return nil, err
