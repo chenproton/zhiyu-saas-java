@@ -188,7 +188,7 @@ export function KnowledgeGraphD3View({ nodes, edges, title, description, compact
     nodeG.on("click", (_event, d) => setSelectedId(d.id))
       .on("mouseover", (ev, d) => {
         tooltip.style("display", "block")
-          .html(`<strong>${d.label}</strong><br><span style="font-size:10px;opacity:0.8">${TYPE_META_D3[d.type].label}</span>`)
+          .html(`<strong>${d.label}</strong><br><span style="font-size:10px;opacity:0.8">${nodeLabels?.[d.type] ?? TYPE_META_D3[d.type].label}</span>`)
       })
       .on("mousemove", (ev) => {
         const rect = containerRef.current!.getBoundingClientRect()
@@ -380,7 +380,10 @@ export function KnowledgeGraphD3View({ nodes, edges, title, description, compact
 
           <div className="absolute top-3 right-3 bg-white/95 border border-slate-100 rounded-md px-2.5 py-1.5 text-[11px] z-10">
             <div className="font-semibold text-slate-400 mb-1">图例</div>
-            {(["position", "domain", "unit", "knowledge", "course"] as const).map((t) => (
+            {(nodeLabels
+              ? (Object.keys(nodeLabels) as GraphNode["type"][])
+              : (["position", "domain", "unit", "knowledge", "course"] as const)
+            ).map((t) => (
               <div key={t} className="flex items-center gap-1.5 mb-0.5 last:mb-0">
                 <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: TYPE_META_D3[t].color }} />
                 <span className="text-slate-500">{nodeLabels?.[t] ?? TYPE_META_D3[t].label}</span>
@@ -410,7 +413,7 @@ export function KnowledgeGraphD3View({ nodes, edges, title, description, compact
                     </div>
                     <div>
                       <div className="font-medium">{selectedNode.label}</div>
-                      <Badge variant="outline" className="text-[10px]">{TYPE_META_D3[selectedNode.type].label}</Badge>
+                      <Badge variant="outline" className="text-[10px]">{nodeLabels?.[selectedNode.type] ?? TYPE_META_D3[selectedNode.type].label}</Badge>
                     </div>
                   </div>
                   <Separator />

@@ -20,8 +20,8 @@ const KnowledgeGraphD3View = dynamic(
 const NODE_LABELS = {
   position: "场景",
   domain: "任务",
-  unit: "能力点",
   knowledge: "知识点",
+  course: "教材课件",
 } as const
 
 function ViewToggle({ mode, onChange }: { mode: "static" | "force"; onChange: (m: "static" | "force") => void }) {

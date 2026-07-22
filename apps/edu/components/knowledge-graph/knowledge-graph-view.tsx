@@ -297,7 +297,10 @@ export function KnowledgeGraphView({ nodes, edges, title, description, compact, 
 
           <div className="absolute top-3 right-3 bg-white/95 border border-slate-100 rounded-md px-2.5 py-1.5 text-[11px] z-10">
             <div className="font-semibold text-slate-400 mb-1">图例</div>
-            {(["position", "domain", "unit", "knowledge", "course"] as const).map((t) => {
+            {(nodeLabels
+              ? (Object.keys(nodeLabels) as GraphNode["type"][])
+              : (["position", "domain", "unit", "knowledge", "course"] as const)
+            ).map((t) => {
               const meta = TYPE_META[t]
               const label = nodeLabels?.[t] ?? meta.label
               return (
@@ -333,7 +336,7 @@ export function KnowledgeGraphView({ nodes, edges, title, description, compact, 
                     <div>
                       <div className="font-medium">{selectedNode.label}</div>
                       <Badge variant="outline" className="text-[10px]">
-                        {TYPE_META[selectedNode.type].label}
+                        {nodeLabels?.[selectedNode.type] ?? TYPE_META[selectedNode.type].label}
                       </Badge>
                     </div>
                   </div>
