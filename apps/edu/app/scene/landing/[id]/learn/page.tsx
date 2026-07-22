@@ -250,46 +250,38 @@ export default function SceneLearnPage() {
       <div className="flex-1 flex max-w-[1400px] mx-auto w-full overflow-hidden">
         {/* ---------- left sidebar: task list ---------- */}
         <aside className={cn(
-          "flex-shrink-0 flex-col border-r border-gray-200/60 bg-white/80 backdrop-blur-sm transition-all duration-300",
+          "flex flex-shrink-0 flex-col border-r border-gray-200/60 bg-white/80 backdrop-blur-sm transition-all duration-300",
           sidebarCollapsed ? "w-[60px]" : "w-[300px]"
         )}>
-          {/* scenario header */}
+          {/* sidebar header */}
           <div className="relative border-b border-gray-100 overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
-            <div className={cn("px-3 py-3", sidebarCollapsed ? "flex justify-center" : "")}>
+            <div className={cn("flex items-center", sidebarCollapsed ? "flex-col gap-2 px-2 py-3" : "px-5 py-3")}>
               {sidebarCollapsed ? (
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-bold text-white shadow-md shadow-blue-500/20">
-                  场
-                </div>
+                <>
+                  <span className="text-[10px] text-gray-400"><Layers className="w-3 h-3 inline" />{tasks.length}</span>
+                  <span className="text-[10px] text-gray-400"><Clock className="w-3 h-3 inline" />{totalHours}</span>
+                </>
               ) : (
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-bold text-white shadow-lg shadow-blue-500/25">
-                    场
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h2 className="truncate text-sm font-bold text-gray-800">{scenario.name}</h2>
-                    <Badge variant="secondary" className="mt-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 hover:from-blue-100 hover:to-indigo-100 border-0 text-[11px]">
-                      场景学习
-                    </Badge>
-                  </div>
+                <div className="flex-1 flex items-center gap-3">
+                  <span className="flex items-center gap-1 text-xs text-gray-400"><Layers className="w-3 h-3" />{tasks.length} 个任务</span>
+                  <span className="flex items-center gap-1 text-xs text-gray-400"><Clock className="w-3 h-3" />{totalHours} 课时</span>
                 </div>
               )}
+              <button
+                onClick={() => setSidebarCollapsed((v) => !v)}
+                className={cn(
+                  "flex items-center justify-center rounded-lg hover:bg-gray-100 transition-all duration-200",
+                  sidebarCollapsed ? "w-9 h-9 text-gray-500 hover:text-blue-600" : "w-8 h-8 ml-auto"
+                )}
+                title={sidebarCollapsed ? "展开任务列表" : "折叠任务列表"}
+              >
+                {sidebarCollapsed
+                  ? <PanelLeftOpen className="h-5 w-5" />
+                  : <PanelLeftClose className="h-4 w-4" />
+                }
+              </button>
             </div>
-            {!sidebarCollapsed && (
-              <div className="px-5 pb-3 flex items-center justify-between gap-3 text-[11px]">
-                <span className="flex items-center gap-1 text-gray-400"><Layers className="w-3 h-3" />{tasks.length} 任务</span>
-                <span className="flex items-center gap-1 text-gray-400"><Clock className="w-3 h-3" />{totalHours} 课时</span>
-              </div>
-            )}
-            <button
-              onClick={() => setSidebarCollapsed((v) => !v)}
-              className={cn(
-                "absolute right-1 flex items-center justify-center rounded-md hover:bg-gray-100 transition-colors",
-                sidebarCollapsed ? "top-[calc(3.5rem)] -right-5 w-5 h-10 bg-white border border-gray-200 rounded-r-md shadow-sm" : "top-3 w-6 h-6"
-              )}
-            >
-              {sidebarCollapsed ? <PanelLeftOpen className="h-3.5 w-3.5 text-gray-400" /> : <PanelLeftClose className="h-3.5 w-3.5 text-gray-400" />}
-            </button>
           </div>
 
           {/* task list */}
@@ -387,6 +379,175 @@ export default function SceneLearnPage() {
               <p className="text-sm font-medium text-gray-400">选择一个任务开始学习</p>
               <p className="text-xs text-gray-300 mt-1">从左侧任务列表中点击任务</p>
             </div>
+          ) : sidebarCollapsed ? (
+            <>
+              {/* collapsed layout: left 3 cards + right sticky tab card */}
+              <div className="flex flex-1 gap-4 p-4 overflow-hidden">
+                {/* left column: 3 cards */}
+                <div className="flex-1 overflow-y-auto space-y-4">
+                  {/* 任务背景 */}
+                  <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
+                    <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+                          <BookOpen className="h-4 w-4 text-blue-600" />
+                        </div>
+                        任务背景
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                        <StatCard icon={<ListChecks className="h-4 w-4" />} label="任务类型" value={activeTask.taskType === "assessment" ? "考核" : "训练"} color={activeTask.taskType === "assessment" ? "#ef4444" : "#3b82f6"} />
+                        <StatCard icon={<Clock className="h-4 w-4" />} label="预计课时" value={`${activeTask.estimatedHours || 0} 课时`} color="#3b82f6" />
+                        <StatCard icon={<BarChart3 className="h-4 w-4" />} label="难度等级" value={difficultyMap[activeTask.difficulty]?.label || `Lv.${activeTask.difficulty}`} color={difficultyMap[activeTask.difficulty]?.color || "#3b82f6"} />
+                        <StatCard icon={<Layers className="h-4 w-4" />} label="排序序号" value={`第 ${activeTask.sortOrder} 位`} color="#8b5cf6" />
+                      </div>
+                      {activeTask.background && (
+                        <div className="prose prose-sm max-w-none text-gray-600 whitespace-pre-line leading-relaxed">
+                          {activeTask.background}
+                        </div>
+                      )}
+                      {!activeTask.background && <p className="text-xs text-gray-400">暂无背景说明</p>}
+                    </CardContent>
+                  </Card>
+
+                  {/* 任务说明书 */}
+                  <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
+                    <CardHeader className="bg-gradient-to-r from-violet-50/80 to-white border-b border-violet-100/60">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-sm">
+                          <FileText className="h-4 w-4 text-white" />
+                        </div>
+                        任务说明书
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      {(activeTask.detailedDescription || activeTask.description || activeTask.descriptionPdf) ? (
+                        <div className="space-y-3">
+                          {(activeTask.detailedDescription || activeTask.description) && (
+                            <div className="prose prose-sm max-w-none text-gray-600 whitespace-pre-line leading-relaxed">
+                              {activeTask.detailedDescription || activeTask.description}
+                            </div>
+                          )}
+                          {activeTask.descriptionPdf && (
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="outline" asChild>
+                                <a href={activeTask.descriptionPdf} target="_blank" rel="noopener noreferrer">
+                                  <Eye className="h-4 w-4 mr-1" />预览 PDF
+                                </a>
+                              </Button>
+                              <Button size="sm" asChild>
+                                <a href={activeTask.descriptionPdf} download target="_blank" rel="noreferrer">
+                                  <Download className="h-4 w-4 mr-1" />下载 PDF
+                                </a>
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-400">暂无任务说明书</p>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* 任务测评形式 */}
+                  <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
+                    <CardHeader className="bg-gradient-to-r from-blue-50/80 to-white border-b border-blue-100/60">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+                          <ClipboardList className="h-4 w-4 text-blue-600" />
+                        </div>
+                        任务测评形式
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      {taskEvalMethods.methods.length > 0 ? (
+                        <div className="space-y-3">
+                          {taskEvalMethods.methods.map((m) => {
+                            const w = taskEvalMethods.weights[m] || 0
+                            const color = methodColorMap[m] || "#94a3b8"
+                            return (
+                              <div key={m} className="flex items-center gap-3">
+                                <span className="text-xs font-medium px-2 py-1 rounded-lg shrink-0 min-w-[64px] text-center" style={{ backgroundColor: color + "15", color, border: `1px solid ${color}30` }}>
+                                  {evalMethodLabels[m] || m}
+                                </span>
+                                <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                  <div className="h-full rounded-full" style={{ width: `${Math.max(Math.round(w), 2)}%`, background: `linear-gradient(90deg, ${color}dd, ${color})` }} />
+                                </div>
+                                <span className="text-xs font-bold w-10 text-right" style={{ color }}>{Math.round(w)}%</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-400">该任务暂未设置评价方式</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* right column: sticky knowledge/ability/resource card */}
+                <div className="w-[360px] shrink-0">
+                  <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden sticky top-4">
+                    <Tabs defaultValue="collapsed-knowledge" className="w-full">
+                      <CardHeader className="border-b border-gray-100 p-2">
+                        <TabsList className="bg-transparent p-0 h-auto gap-1 w-full">
+                          <TabsTrigger value="collapsed-knowledge" className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600">
+                            <BrainCircuit className="mr-1 h-3.5 w-3.5" />知识点
+                          </TabsTrigger>
+                          <TabsTrigger value="collapsed-ability" className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600">
+                            <Target className="mr-1 h-3.5 w-3.5" />能力点
+                          </TabsTrigger>
+                          <TabsTrigger value="collapsed-resource" className="flex-1 rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600">
+                            <FolderOpen className="mr-1 h-3.5 w-3.5" />资源
+                          </TabsTrigger>
+                        </TabsList>
+                      </CardHeader>
+                      <CardContent className="max-h-[calc(100vh-16rem)] overflow-y-auto p-3">
+                        <TabsContent value="collapsed-knowledge" className="mt-0 space-y-2">
+                          {taskKnowledgePoints.length > 0 ? taskKnowledgePoints.map((kp, i) => (
+                            <div key={kp.id} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer">
+                              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0">{i + 1}</div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-700">{kp.name}</p>
+                                {kp.description && <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">{kp.description}</p>}
+                              </div>
+                            </div>
+                          )) : <p className="text-xs text-gray-400 text-center py-8">暂无知识点</p>}
+                        </TabsContent>
+                        <TabsContent value="collapsed-ability" className="mt-0 space-y-2">
+                          {taskAbilityPoints.length > 0 ? taskAbilityPoints.map((ap, i) => {
+                            const cat = ({ knowledge: { label: "知识", color: "#2563eb" }, skill: { label: "技能", color: "#16a34a" }, quality: { label: "素养", color: "#7c3aed" } } as any)[ap.category] || { label: ap.category, color: "#94a3b8" }
+                            return (
+                              <div key={ap.id} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer">
+                                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0">{i + 1}</div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-700">{ap.name}</p>
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full mt-0.5" style={{ backgroundColor: cat.color + "15", color: cat.color }}>{cat.label}</span>
+                                </div>
+                              </div>
+                            )
+                          }) : <p className="text-xs text-gray-400 text-center py-8">暂无能力点</p>}
+                        </TabsContent>
+                        <TabsContent value="collapsed-resource" className="mt-0 space-y-2">
+                          {taskResources.length > 0 ? taskResources.map((r) => (
+                            <div key={r.id} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer" onClick={() => setPreviewResource(r)}>
+                              <div className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center ${resourceTypeIcons[r.type] || "text-gray-400 bg-gray-50"}`}>
+                                <FileText className="h-3.5 w-3.5" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-700 truncate">{r.name}</p>
+                                <p className="text-[11px] text-gray-400">{resourceTypeLabels[r.type] || r.type}{r.size ? ` · ${r.size}` : ""}</p>
+                              </div>
+                            </div>
+                          )) : <p className="text-xs text-gray-400 text-center py-8">暂无资源</p>}
+                        </TabsContent>
+                      </CardContent>
+                    </Tabs>
+                  </Card>
+                </div>
+              </div>
+            </>
           ) : (
             <>
               {/* content area: resource preview */}
