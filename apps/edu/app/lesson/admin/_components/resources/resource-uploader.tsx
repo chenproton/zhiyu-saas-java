@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import type { Resource } from "@/lib/types/lesson"
+import { formatFileSize } from "@/lib/resource-constants"
 
 interface ResourceUploaderProps {
   resources: Resource[]
@@ -79,7 +80,7 @@ export function ResourceUploader({ resources, onResourceAdd, onResourceDelete }:
                   <p className="text-xs text-gray-400 truncate">{resource.url}</p>
                 </div>
                 {resource.size && (
-                  <span className="text-xs text-gray-400">{resource.size}</span>
+                  <span className="text-xs text-gray-400">{formatFileSize(resource.size)}</span>
                 )}
                 <Button
                   variant="ghost"
