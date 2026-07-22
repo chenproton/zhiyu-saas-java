@@ -117,6 +117,11 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "invalid file name")
 		return
 	}
+	format := r.URL.Query().Get("format")
+	if format == "" {
+		format = "html"
+	}
+
 	path := filepath.Join(h.UploadDir, filepath.Clean(name))
 	if !strings.HasPrefix(path, filepath.Clean(h.UploadDir)) {
 		respondError(w, http.StatusForbidden, "invalid file path")
@@ -141,22 +146,34 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	cmd := exec.Command("libreoffice", "--headless", "--convert-to", "html", "--outdir", tmpDir, path)
+	outExt := "html"
+	contentType := "text/html; charset=utf-8"
+	if format == "pdf" {
+		outExt = "pdf"
+		contentType = "application/pdf"
+	}
+
+	cmd := exec.Command("libreoffice", "--headless", "--convert-to", outExt, "--outdir", tmpDir, path)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		respondError(w, http.StatusInternalServerError, "file conversion failed: "+string(out))
 		return
 	}
 
 	base := strings.TrimSuffix(name, ext)
-	htmlPath := filepath.Join(tmpDir, base+".html")
-	htmlBytes, err := os.ReadFile(htmlPath)
+	outPath := filepath.Join(tmpDir, base+"."+outExt)
+	outBytes, err := os.ReadFile(outPath)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to read converted file")
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write(htmlBytes)
+	w.Header().Set("Content-Type", contentType)
+
+	if format == "pdf" {
+		w.Header().Set("Content-Disposition", "inline; filename=\""+base+".pdf\"")
+	}
+
+	w.Write(outBytes)
 }
 
 func (h *FileHandler) absUploadDir(projectRoot string) string {

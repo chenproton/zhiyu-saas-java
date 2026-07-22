@@ -19,21 +19,26 @@ function isZipBuffer(buffer: ArrayBuffer): boolean {
   return view[0] === 0x50 && view[1] === 0x4b
 }
 
-async function convertViaServer(fileUrl: string): Promise<string> {
+async function convertViaServer(fileUrl: string, format = "html"): Promise<string> {
   const filename = fileUrl.split("/").pop() || ""
   const token = getToken()
   const headers: Record<string, string> = {}
   if (token) headers["Authorization"] = `Bearer ${token}`
-  const res = await fetch(`/api/v1/files/preview?name=${encodeURIComponent(filename)}`, { headers })
+  const res = await fetch(`/api/v1/files/preview?name=${encodeURIComponent(filename)}&format=${format}`, { headers })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw new Error((body as any).error || `转换失败 (${res.status})`)
+  }
+  if (format === "pdf") {
+    const blob = await res.blob()
+    return URL.createObjectURL(blob)
   }
   return res.text()
 }
 
 function OfficePreview({ resource }: { resource: TaskResource }) {
   const [html, setHtml] = useState<string | null>(null)
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -43,13 +48,20 @@ function OfficePreview({ resource }: { resource: TaskResource }) {
     setLoading(true)
     setError(null)
     setHtml(null)
+    setPdfUrl(null)
 
     const ext = getFileExt(url)
+    const isSlide = [".ppt", ".pptx"].includes(ext)
     const needsServerConvert = [".doc", ".ppt", ".pptx", ".xls"].includes(ext)
-    const loadingText = needsServerConvert ? "正在转换中，可能需要数秒..." : "正在加载预览..."
 
     const load = async () => {
       try {
+        if (isSlide) {
+          const objUrl = await convertViaServer(url, "pdf")
+          setPdfUrl(objUrl)
+          return
+        }
+
         const fileRes = await fetch(url, { credentials: "include" })
         if (!fileRes.ok) throw new Error(`服务端错误 (${fileRes.status})`)
 
@@ -66,8 +78,8 @@ function OfficePreview({ resource }: { resource: TaskResource }) {
           const sheetName = workbook.SheetNames[0]
           if (!sheetName) throw new Error("表格中没有找到工作表")
           setHtml(XLSX.utils.sheet_to_html(workbook.Sheets[sheetName], { id: "", editable: false }))
-        } else if ([".doc", ".ppt", ".pptx", ".xls"].includes(ext)) {
-          const result = await convertViaServer(url)
+        } else if ([".doc", ".xls"].includes(ext)) {
+          const result = await convertViaServer(url, "html")
           setHtml(result)
         } else {
           throw new Error("不支持的文件格式")
@@ -84,11 +96,12 @@ function OfficePreview({ resource }: { resource: TaskResource }) {
 
   if (loading) {
     const ext = getFileExt(resource?.url || "")
+    const isSlide = [".ppt", ".pptx"].includes(ext)
     const needsServerConvert = [".doc", ".ppt", ".pptx", ".xls"].includes(ext)
     return (
       <div className="flex flex-col items-center gap-3 text-gray-400">
         <Loader2 className="h-10 w-10 animate-spin" />
-        <span className="text-sm">{needsServerConvert ? "正在转换中，可能需要数秒..." : "正在加载预览..."}</span>
+        <span className="text-sm">{isSlide ? "正在转换幻灯片为PDF..." : needsServerConvert ? "正在转换中..." : "正在加载预览..."}</span>
       </div>
     )
   }
@@ -113,6 +126,10 @@ function OfficePreview({ resource }: { resource: TaskResource }) {
         </div>
       </div>
     )
+  }
+
+  if (pdfUrl) {
+    return <iframe src={pdfUrl} title={resource.name} className="w-full h-full border-0 rounded" />
   }
 
   if (!html) return null
