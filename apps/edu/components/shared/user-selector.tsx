@@ -123,11 +123,8 @@ export function UserSelector({
   // `excludeUserIds={bank?.creatorId ? [bank.creatorId] : undefined}`). Without
   // stabilizing the value, the loadUsers callback is recreated continuously,
   // which triggers the user list effect in a loop.
-  const stableExcludeUserIds = useMemo(
-    () => excludeUserIds,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(excludeUserIds)]
-  )
+  const excludeIdsKey = useMemo(() => JSON.stringify(excludeUserIds), [excludeUserIds])
+  const stableExcludeUserIds = useMemo(() => excludeUserIds, [excludeIdsKey])
 
   const orgTypeMap = useMemo(() => {
     const map = new Map<string, OrgType>()

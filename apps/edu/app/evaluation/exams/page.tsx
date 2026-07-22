@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
+  Archive,
   ArrowDownFromLine,
   ArrowUpFromLine,
   Check,
@@ -17,6 +18,7 @@ import {
   GitBranch,
   LayoutGrid,
   List,
+  MessageSquare,
   Plus,
   Rocket,
   RotateCcw,
@@ -71,6 +73,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { PageHeaderCard } from "@/components/shared/page-header-card"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth-provider"
+import { UserSelector } from "@/components/shared/user-selector"
 
 
 type TabType = "my" | "collab" | "public"
@@ -81,6 +84,7 @@ interface BackendExam extends Omit<Exam, "status" | "createdAt" | "updatedAt"> {
   status: BackendStatus
   createdAt: string
   updatedAt: string
+  rejectReason?: string
 }
 
 const STATUS_LABELS: Record<BackendStatus, string> = {
@@ -166,6 +170,13 @@ export default function ExamsPage() {
   const [isImporting, setIsImporting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
+  const [inviteTarget, setInviteTarget] = useState<BackendExam | null>(null)
+  const [inviteSelectedIds, setInviteSelectedIds] = useState<string[]>([])
+
+  const [isRejectReasonDialogOpen, setIsRejectReasonDialogOpen] = useState(false)
+  const [rejectReasonTarget, setRejectReasonTarget] = useState<BackendExam | null>(null)
+
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
@@ -178,6 +189,40 @@ export default function ExamsPage() {
       ])
       setExams(examsRes.items)
       setBatches(batchesRes.items)
+
+      const loadedExams = examsRes.items
+      const rejectedExams = loadedExams.filter((e) => e.status === "rejected")
+      if (rejectedExams.length > 0) {
+        try {
+          const approvalsResp = await approvalApi.list({
+            targetType: "exam",
+            status: "rejected",
+            limit: 1000,
+          }) as unknown as { items: { targetId: string; history?: { action?: string; remark?: string }[] }[] }
+          const reasonMap = new Map<string, string>()
+          for (const record of approvalsResp.items) {
+            if (reasonMap.has(record.targetId)) continue
+            const history = record.history || []
+            for (let i = history.length - 1; i >= 0; i--) {
+              const h = history[i]
+              const action = h.action
+              const remark = h.remark
+              if (action === "rejected" && remark) {
+                reasonMap.set(record.targetId, remark)
+                break
+              }
+            }
+          }
+          setExams(loadedExams.map((e) => {
+            if (e.status === "rejected" && reasonMap.has(e.id)) {
+              return { ...e, rejectReason: reasonMap.get(e.id) }
+            }
+            return e
+          }))
+        } catch (_) {
+          // 审批记录读取失败不影响列表展示
+        }
+      }
 
       if (tenantId) {
         try {
@@ -400,16 +445,37 @@ export default function ExamsPage() {
     }
   }
 
-  const handleInviteCoBuild = async (exam: BackendExam) => {
-    const userId = window.prompt(`请输入要邀请共建「${exam.name}」的用户 ID`)
-    if (!userId) return
+  const handleInviteCoBuild = (exam: BackendExam) => {
+    setInviteTarget(exam)
+    setInviteSelectedIds((exam.collaboratorIds || []).filter((id) => id !== exam.creatorId))
+    setIsInviteDialogOpen(true)
+  }
+
+  const handleInviteConfirm = async () => {
+    if (!inviteTarget) return
     try {
-      await examApi.invite(exam.id, userId)
+      await examApi.update(inviteTarget.id, { collaboratorIds: inviteSelectedIds })
+      setIsInviteDialogOpen(false)
+      setInviteTarget(null)
+      await loadData()
+    } catch (_) {
+      alert("调整共建人失败，请稍后重试")
+    }
+  }
+
+  const handleArchive = async (id: string) => {
+    try {
+      await examApi.archive(id)
       await loadData()
     } catch (err) {
-      console.error("邀请共建失败", err)
-      alert("邀请共建失败")
+      console.error("归档失败", err)
+      alert("归档失败")
     }
+  }
+
+  const handleViewRejectReason = (exam: BackendExam) => {
+    setRejectReasonTarget(exam)
+    setIsRejectReasonDialogOpen(true)
   }
 
   const handleReview = async (id: string, status: "approved" | "rejected") => {
@@ -719,6 +785,17 @@ export default function ExamsPage() {
                         提交审批
                       </Button>
                     )}
+                    {exam.status === "rejected" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-orange-600 hover:text-orange-700"
+                        onClick={() => handleViewRejectReason(exam)}
+                      >
+                        <MessageSquare className="mr-1 h-3 w-3" />
+                        查看驳回原因
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
@@ -727,7 +804,18 @@ export default function ExamsPage() {
                     >
                       <UserPlus className="mr-1 h-3 w-3" />
                       邀请共建
-                    </Button>
+                     </Button>
+                    {exam.status !== "pending" && exam.status !== "archived" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-purple-600 hover:text-purple-700"
+                        onClick={() => handleArchive(exam.id)}
+                      >
+                        <Archive className="mr-1 h-3 w-3" />
+                        归档
+                      </Button>
+                    )}
                     {exam.status === "pending" && (
                       <>
                         {hasPermission("evaluation", "exams", "review") && (
@@ -787,7 +875,7 @@ export default function ExamsPage() {
                         取消发布
                       </Button>
                     )}
-                    {(exam.status === "draft" || exam.status === "rejected" || exam.status === "archived") && hasPermission("evaluation", "exams", "delete") && (
+                    {hasPermission("evaluation", "exams", "delete") && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -1323,6 +1411,52 @@ export default function ExamsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCloneRenameDialogOpen(false)}>取消</Button>
             <Button onClick={handleConfirmClone} disabled={!cloneRenameValue.trim()}>确认克隆</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invite Co-builders Dialog */}
+      <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>调整共建人</DialogTitle>
+            <DialogDescription>
+              选择参与共建「{inviteTarget?.name}」的用户
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <UserSelector
+              value={inviteSelectedIds}
+              onChange={setInviteSelectedIds}
+              multiple
+              placeholder="点击选择共建人"
+              tenantId={tenantId || undefined}
+              excludeUserIds={inviteTarget?.creatorId ? [inviteTarget.creatorId] : undefined}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsInviteDialogOpen(false)}>取消</Button>
+            <Button onClick={handleInviteConfirm}>保存</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Reason Dialog */}
+      <Dialog open={isRejectReasonDialogOpen} onOpenChange={setIsRejectReasonDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>驳回原因</DialogTitle>
+            <DialogDescription>
+              试卷「{rejectReasonTarget?.name}」的审批被驳回，驳回原因如下：
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700 whitespace-pre-wrap">
+              {rejectReasonTarget?.rejectReason || "审批人已驳回此试卷的提交申请，请根据审批意见修改后重新提交。"}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRejectReasonDialogOpen(false)}>关闭</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
