@@ -39,6 +39,7 @@ import { scenarioApi, taskApi, taskResourceApi, knowledgeApi, abilityApi } from 
 import type { Scenario, ScenarioTask, TaskResource, KnowledgePoint, AbilityPoint } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
+import { ResourcePreviewModal } from "@/components/shared/resource-preview-modal"
 
 /* ---------- constants ---------- */
 
@@ -90,6 +91,7 @@ export default function SceneLearnPage() {
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
   const [abilityMap, setAbilityMap] = useState<Map<string, AbilityPoint>>(new Map())
   const [showResources, setShowResources] = useState(false)
+  const [previewResource, setPreviewResource] = useState<TaskResource | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -345,11 +347,12 @@ export default function SceneLearnPage() {
             <>
               {/* content area: resource preview */}
               <div className="relative mx-4 mt-4 rounded-2xl overflow-hidden flex-shrink-0 shadow-xl shadow-slate-900/10 group">
-                <div
-                  className="flex w-full max-h-[65vh] aspect-video items-center justify-center relative"
+                <button
+                  className="flex w-full max-h-[65vh] aspect-video items-center justify-center relative cursor-pointer group/btn"
+                  onClick={() => { if (taskResources.length > 0) setPreviewResource(taskResources[0]) }}
                   style={{ background: "linear-gradient(135deg, #1e293b 0%, #0f172a 40%, #1e1b4b 100%)" }}
                 >
-                  <div className="absolute inset-0 opacity-[0.03]"
+                  <div className="absolute inset-0 opacity-[0.03] group-hover/btn:opacity-[0.06] transition-opacity duration-300"
                     style={{
                       backgroundImage: "radial-gradient(circle at 20% 50%, rgba(59,130,246,0.3) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(99,102,241,0.2) 0%, transparent 50%), radial-gradient(circle at 50% 80%, rgba(139,92,246,0.15) 0%, transparent 50%)",
                     }}
@@ -357,13 +360,14 @@ export default function SceneLearnPage() {
                   <div className="text-center relative z-10">
                     {taskResources.length > 0 ? (
                       <>
-                        <div className="mx-auto h-20 w-20 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center shadow-2xl shadow-black/20 mb-1">
+                        <div className="mx-auto h-20 w-20 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center shadow-2xl shadow-black/20 mb-1 group-hover/btn:bg-white/15 group-hover/btn:scale-105 transition-all duration-300">
                           <FileText className="h-10 w-10 text-blue-400/80" />
                         </div>
-                        <p className="mt-4 text-base font-semibold text-white/90">{taskResources[0].name}</p>
+                        <p className="mt-4 text-base font-semibold text-white/90 group-hover/btn:text-white transition-colors">{taskResources[0].name}</p>
                         <p className="mt-1.5 text-xs text-slate-400">{resourceTypeLabels[taskResources[0].type] || taskResources[0].type}{taskResources[0].size ? ` · ${taskResources[0].size}` : ""}</p>
+                        <p className="mt-3 text-[11px] text-blue-400/60 group-hover/btn:text-blue-400/90 transition-colors">点击预览</p>
                         {taskResources.length > 1 && (
-                          <p className="mt-2 text-[11px] text-slate-500">+{taskResources.length - 1} 个更多资源</p>
+                          <p className="mt-1 text-[11px] text-slate-500">+{taskResources.length - 1} 个更多资源</p>
                         )}
                       </>
                     ) : (
@@ -376,7 +380,7 @@ export default function SceneLearnPage() {
                       </>
                     )}
                   </div>
-                </div>
+                </button>
 
                 {/* bottom info bar */}
                 <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
@@ -440,12 +444,10 @@ export default function SceneLearnPage() {
                           </div>
                           <div className="p-3 space-y-2">
                             {taskResources.map((r) => (
-                              <a
+                              <button
                                 key={r.id}
-                                href={r.url || "#"}
-                                target={r.url ? "_blank" : undefined}
-                                rel={r.url ? "noopener noreferrer" : undefined}
-                                className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-white/10 transition-all duration-200 cursor-pointer group/item"
+                                onClick={() => { setPreviewResource(r); setShowResources(false) }}
+                                className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-white/10 transition-all duration-200 cursor-pointer group/item w-full text-left"
                               >
                                 <div className={cn(
                                   "flex h-10 w-10 items-center justify-center rounded-xl shrink-0 transition-all duration-200 group-hover/item:scale-105",
@@ -464,7 +466,7 @@ export default function SceneLearnPage() {
                                 <span className="shrink-0 w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-slate-500 group-hover/item:text-blue-400 group-hover/item:bg-blue-400/10 transition-all duration-200">
                                   <Eye className="h-3 w-3" />
                                 </span>
-                              </a>
+                              </button>
                             ))}
                           </div>
                         </div>
@@ -725,15 +727,13 @@ export default function SceneLearnPage() {
                                   </div>
                                 </div>
                                 {r.url ? (
-                                  <a
-                                    href={r.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                  <button
+                                    onClick={() => setPreviewResource(r)}
                                     className="shrink-0 w-8 h-8 rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-500 hover:text-white flex items-center justify-center transition-all duration-200 shadow-sm hover:shadow-md"
-                                    title="查看资源"
+                                    title="预览资源"
                                   >
-                                    <ExternalLink className="w-3.5 h-3.5" />
-                                  </a>
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </button>
                                 ) : (
                                   <span className="shrink-0 w-8 h-8 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center">
                                     <Download className="w-3.5 h-3.5" />
@@ -815,6 +815,12 @@ export default function SceneLearnPage() {
           )}
         </main>
       </div>
+
+      <ResourcePreviewModal
+        resource={previewResource}
+        open={!!previewResource}
+        onOpenChange={(open) => { if (!open) setPreviewResource(null) }}
+      />
 
       <PlatformFooter />
     </div>

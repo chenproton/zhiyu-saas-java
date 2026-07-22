@@ -27,6 +27,7 @@ import type {
 } from "@/lib/types"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
 import { SceneKnowledgeGraph } from "@/components/scene/student/knowledge-graph"
+import { ResourcePreviewModal } from "@/components/shared/resource-preview-modal"
 
 const TABS = [
   { value: "tasks", label: "任务概览", icon: ListChecks },
@@ -321,6 +322,7 @@ export default function SceneDetailPage() {
   const [allResourceMap, setAllResourceMap] = useState<Map<string, TaskResource>>(new Map())
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
   const [abilityMap, setAbilityMap] = useState<Map<string, AbilityPoint>>(new Map())
+  const [previewResource, setPreviewResource] = useState<TaskResource | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -555,15 +557,13 @@ export default function SceneDetailPage() {
                                   </div>
                                 </div>
                                 {r.url && (
-                                  <a
-                                    href={r.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                  <button
+                                    onClick={() => setPreviewResource(r)}
                                     className="shrink-0 mt-0.5 w-7 h-7 rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100 flex items-center justify-center transition-colors"
-                                    title="查看资源"
+                                    title="预览资源"
                                   >
-                                    <ExternalLink className="w-3.5 h-3.5" />
-                                  </a>
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </button>
                                 )}
                               </div>
                             </div>
@@ -789,6 +789,12 @@ export default function SceneDetailPage() {
           </div>
         </div>
       </main>
+
+      <ResourcePreviewModal
+        resource={previewResource}
+        open={!!previewResource}
+        onOpenChange={(open) => { if (!open) setPreviewResource(null) }}
+      />
 
       <PlatformFooter />
     </div>
