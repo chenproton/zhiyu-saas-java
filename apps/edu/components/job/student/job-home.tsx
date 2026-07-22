@@ -66,30 +66,42 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
 
   useEffect(() => {
     setLoading(true)
+    const fetches: Promise<void>[] = []
+
     if (isScene) {
-      scenarioApi
-        .list({ status: "published", limit: 1000 })
-        .then(async (res) => {
-          const scens = res.items || []
-          setScenarios(scens)
-          const results = await Promise.all(
-            scens.map((s) => taskApi.list({ scenarioId: s.id, limit: 1000 }).catch(() => ({ items: [], total: 0 })))
-          )
-          const map = new Map<string, number>()
-          scens.forEach((s, idx) => {
-            map.set(s.id, results[idx]?.items?.length ?? 0)
+      fetches.push(
+        scenarioApi
+          .list({ status: "published", limit: 1000 })
+          .then(async (res) => {
+            const scens = res.items || []
+            setScenarios(scens)
+            const results = await Promise.all(
+              scens.map((s) => taskApi.list({ scenarioId: s.id, limit: 1000 }).catch(() => ({ items: [], total: 0 })))
+            )
+            const map = new Map<string, number>()
+            scens.forEach((s, idx) => {
+              map.set(s.id, results[idx]?.items?.length ?? 0)
+            })
+            setTaskCountMap(map)
           })
-          setTaskCountMap(map)
-        })
-        .catch(() => { setScenarios([]); setTaskCountMap(new Map()) })
-        .finally(() => setLoading(false))
+          .catch(() => { setScenarios([]); setTaskCountMap(new Map()) })
+      )
+      fetches.push(
+        publicPositionApi
+          .list({ status: "published", limit: 1000 })
+          .then((res) => setPositions(res.items || []))
+          .catch(() => setPositions([]))
+      )
     } else {
-      publicPositionApi
-        .list({ status: "published", limit: 1000 })
-        .then((res) => setPositions(res.items || []))
-        .catch(() => setPositions([]))
-        .finally(() => setLoading(false))
+      fetches.push(
+        publicPositionApi
+          .list({ status: "published", limit: 1000 })
+          .then((res) => setPositions(res.items || []))
+          .catch(() => setPositions([]))
+      )
     }
+
+    Promise.all(fetches).finally(() => setLoading(false))
   }, [isScene])
 
   useEffect(() => {
@@ -147,12 +159,6 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
     })
     return map
   }, [scenarios, isScene])
-
-  const favoritePositionScenarios = useMemo(() => {
-    if (!isScene || favoritePositions.length === 0) return []
-    const fpIds = new Set(favoritePositions.map((p) => p.id))
-    return scenarios.filter((s) => s.careerPositionId && fpIds.has(s.careerPositionId))
-  }, [isScene, scenarios, favoritePositions])
 
   const industries = useMemo(() => {
     if (isScene) {
@@ -219,6 +225,14 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
 
   const hotPositionIds = useMemo(() => new Set(hotPositions.map((h) => h.positionId)), [hotPositions])
   const hotOrderMap = useMemo(() => new Map(hotPositions.map((h) => [h.positionId, h.order])), [hotPositions])
+
+  const recommendedPositions = useMemo(() => {
+    if (!isScene) return []
+    const orderMap = new Map(hotPositions.map((h) => [h.positionId, h.order]))
+    return positions
+      .filter((p) => hotPositionIds.has(p.id))
+      .sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999))
+  }, [isScene, positions, hotPositions, hotPositionIds])
 
   const jobFiltered = useMemo(() => {
     let list = [...positions]
@@ -383,11 +397,24 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                   </div>
                   <span className="text-[15px] font-bold">目标岗位配套场景</span>
                 </div>
-                <div className="flex flex-col items-center justify-center text-white/50 text-center py-6">
-                  <Flag className="w-9 h-9 mb-3 opacity-40" />
-                  <div className="text-sm font-semibold text-white/80">暂无目标岗位配套场景</div>
-                  <div className="text-[12px] mt-1.5 text-white/50 leading-relaxed max-w-[320px]">完成能力测评后，系统将为你推荐匹配岗位，关联场景将在此展示</div>
-                </div>
+                {recommendedPositions.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center text-white/50 text-center py-6">
+                    <Flag className="w-9 h-9 mb-3 opacity-40" />
+                    <div className="text-sm font-semibold text-white/80">暂无目标推荐岗位</div>
+                    <div className="text-[12px] mt-1.5 text-white/50 leading-relaxed max-w-[320px]">完成能力测评后，系统将为你推荐匹配岗位，关联场景将在此展示</div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1 max-h-[120px] overflow-y-auto custom-scrollbar-thin">
+                    {recommendedPositions.map((pos) => (
+                      <Link key={pos.id} href={`/job/student/${pos.id}/learn`}>
+                        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/15 cursor-pointer transition-all group">
+                          <span className="flex-1 text-[13px] truncate group-hover:text-yellow-200 transition-colors">{pos.shortName || pos.name}</span>
+                          <span className="text-[11px] text-white/40 shrink-0">v{pos.version || "1.0"}</span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
               {/* 心仪岗位配套场景 */}
               <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.18)]">
@@ -397,19 +424,19 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                   </div>
                   <span className="text-[15px] font-bold">心仪岗位配套场景</span>
                 </div>
-                {favoritePositionScenarios.length === 0 ? (
+                {favoritePositions.length === 0 ? (
                   <div className="flex flex-col items-center justify-center text-white/50 text-center py-6">
                     <Heart className="w-9 h-9 mb-3 opacity-40" />
                     <div className="text-sm font-semibold text-white/80">快去收藏岗位吧！</div>
                     <div className="text-[12px] mt-1.5 text-white/50 leading-relaxed max-w-[320px]">在岗位列表收藏你感兴趣的岗位，关联场景将在此展示</div>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-1">
-                    {favoritePositionScenarios.slice(0, 4).map((sc) => (
-                      <Link key={sc.id} href={`/scene/landing/${sc.id}`}>
+                  <div className="flex flex-col gap-1 max-h-[120px] overflow-y-auto custom-scrollbar-thin">
+                    {favoritePositions.map((pos) => (
+                      <Link key={pos.id} href={`/job/student/${pos.id}/learn`}>
                         <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/15 cursor-pointer transition-all group">
-                          <span className="flex-1 text-[13px] truncate group-hover:text-yellow-200 transition-colors">{sc.name}</span>
-                          <span className="text-[11px] text-white/40 shrink-0">v{sc.version || "1.0"}</span>
+                          <span className="flex-1 text-[13px] truncate group-hover:text-rose-200 transition-colors">{pos.shortName || pos.name}</span>
+                          <span className="text-[11px] text-white/40 shrink-0">v{pos.version || "1.0"}</span>
                         </div>
                       </Link>
                     ))}
@@ -872,6 +899,19 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
       </main>
 
       <PlatformFooter />
+
+      <style jsx>{`
+        .custom-scrollbar-thin::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar-thin::-webkit-scrollbar-thumb {
+          background: rgba(255,255,255,0.3);
+          border-radius: 2px;
+        }
+        .custom-scrollbar-thin::-webkit-scrollbar-track {
+          background: transparent;
+        }
+      `}</style>
     </div>
   )
 }
