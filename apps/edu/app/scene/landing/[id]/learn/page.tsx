@@ -348,7 +348,7 @@ export default function SceneLearnPage() {
               {/* content area: resource preview */}
               <div className="mx-4 mt-4 flex-shrink-0">
                 {taskResources.length > 0 ? (
-                  <div className="rounded-xl overflow-hidden border border-gray-200 bg-white shadow-sm">
+                  <div className="relative rounded-lg overflow-hidden group/preview">
                     <iframe
                       src={(() => {
                         const url = taskResources[0]?.url
@@ -357,16 +357,25 @@ export default function SceneLearnPage() {
                         return `/kkfileview/onlinePreview?url=${btoa(`${origin}${url}`)}`
                       })()}
                       title={taskResources[0].name}
-                      className="w-full border-0 bg-white"
-                      style={{ height: "max(400px, 58vh)" }}
+                      className="w-full border-0"
+                      style={{ height: "calc(60vh)" }}
                       allowFullScreen
                     />
+                    <button
+                      onClick={() => setPreviewResource(taskResources[0])}
+                      className="absolute top-3 right-3 w-8 h-8 rounded-lg bg-white/80 backdrop-blur-sm border border-gray-200 text-gray-500 hover:text-blue-600 hover:bg-white hover:border-blue-200 flex items-center justify-center transition-all duration-200 opacity-0 group-hover/preview:opacity-100 shadow-sm"
+                      title="全屏预览"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                      </svg>
+                    </button>
                   </div>
                 ) : (
-                  <div className="rounded-xl overflow-hidden border border-gray-200 bg-white">
+                  <div className="rounded-lg overflow-hidden">
                     <div
                       className="flex w-full items-center justify-center"
-                      style={{ height: "max(400px, 58vh)", background: "linear-gradient(135deg, #f8fafc, #f1f5f9)" }}
+                      style={{ height: "calc(60vh)", background: "linear-gradient(135deg, #f8fafc, #f1f5f9)" }}
                     >
                       <div className="text-center">
                         <div className="w-16 h-16 mx-auto rounded-2xl bg-gray-100 flex items-center justify-center">
@@ -380,11 +389,11 @@ export default function SceneLearnPage() {
                 )}
 
                 {/* task info bar */}
-                <div className="flex items-center justify-between mt-3 px-1">
+                <div className="flex items-center justify-between mt-2 px-0.5">
                   <div className="flex items-center gap-2">
                     <Badge
                       variant="outline"
-                      className="text-[11px] px-2.5 py-1 font-semibold"
+                      className="text-[11px] px-2 py-0.5 font-medium"
                       style={{
                         backgroundColor: activeTask.taskType === "assessment" ? "#fef2f2" : "#eff6ff",
                         color: activeTask.taskType === "assessment" ? "#dc2626" : "#2563eb",
