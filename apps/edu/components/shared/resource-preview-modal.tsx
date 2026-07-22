@@ -12,57 +12,81 @@ function isZipBuffer(buffer: ArrayBuffer): boolean {
   return view[0] === 0x50 && view[1] === 0x4b // PK
 }
 
+async function fetchServerPreview(fileUrl: string): Promise<string> {
+  const filename = fileUrl.split("/").pop() || ""
+  const res = await fetch(`/api/v1/files/preview?name=${encodeURIComponent(filename)}`, {
+    credentials: "include",
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error((body as any).error || `转换失败 (${res.status})`)
+  }
+  return res.text()
+}
+
 function OfficePreview({ resource }: { resource: TaskResource }) {
   const [html, setHtml] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!resource?.url) return
+    const url = resource?.url
+    const type = resource?.type
+    if (!url) return
     setLoading(true)
     setError(null)
     setHtml(null)
 
-    fetch(resource.url, { credentials: "include" })
-      .then((res) => {
-        const ct = res.headers.get("content-type") || ""
-        if (!res.ok) throw new Error(`服务端错误 (${res.status})`)
+    const loadPreview = async () => {
+      try {
+        const fileRes = await fetch(url, { credentials: "include" })
+        const ct = fileRes.headers.get("content-type") || ""
+        if (!fileRes.ok) throw new Error(`服务端错误 (${fileRes.status})`)
         if (ct.includes("text/html") || ct.includes("application/json")) {
           throw new Error("服务端返回了非文件内容，请检查文件是否存在")
         }
-        return res.arrayBuffer()
-      })
-      .then(async (buffer) => {
+
+        const buffer = await fileRes.arrayBuffer()
         if (buffer.byteLength === 0) throw new Error("文件为空")
 
-        if (resource.type === "document") {
-          if (!isZipBuffer(buffer)) {
-            throw new Error("此文件为旧版 .doc 格式，暂不支持在线预览，请下载后查看")
+        if (type === "document") {
+          if (isZipBuffer(buffer)) {
+            const mammoth = (await import("mammoth")).default
+            const result = await mammoth.convertToHtml({ arrayBuffer: buffer })
+            setHtml(result.value)
+            return
           }
-          const mammoth = (await import("mammoth")).default
-          const result = await mammoth.convertToHtml({ arrayBuffer: buffer })
-          setHtml(result.value)
-        } else if (resource.type === "spreadsheet") {
-          const XLSX = await import("xlsx")
-          const workbook = XLSX.read(buffer, { type: "array" })
-          const sheetName = workbook.SheetNames[0]
-          if (!sheetName) throw new Error("表格中没有找到工作表")
-          setHtml(XLSX.utils.sheet_to_html(workbook.Sheets[sheetName], { id: "", editable: false }))
+          const html = await fetchServerPreview(url)
+          setHtml(html)
+        } else if (type === "spreadsheet") {
+          try {
+            const XLSX = await import("xlsx")
+            const workbook = XLSX.read(buffer, { type: "array" })
+            const sheetName = workbook.SheetNames[0]
+            if (!sheetName) throw new Error("表格中没有找到工作表")
+            setHtml(XLSX.utils.sheet_to_html(workbook.Sheets[sheetName], { id: "", editable: false }))
+          } catch {
+            const html = await fetchServerPreview(url)
+            setHtml(html)
+          }
         } else {
           throw new Error("不支持的文件类型")
         }
-      })
-      .catch((err) => {
+      } catch (err: any) {
         setError(err.message || "加载失败")
-      })
-      .finally(() => setLoading(false))
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadPreview()
   }, [resource?.url, resource?.type])
 
   if (loading) {
     return (
       <div className="flex flex-col items-center gap-3 text-gray-400">
         <Loader2 className="h-10 w-10 animate-spin" />
-        <span className="text-sm">正在加载预览...</span>
+        <span className="text-sm">正在加载预览{resource.type === "document" ? "（可能需要数秒）" : "..."}</span>
       </div>
     )
   }

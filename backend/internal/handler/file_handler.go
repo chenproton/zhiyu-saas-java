@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -108,6 +109,54 @@ func (h *FileHandler) Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.ServeFile(w, r, path)
+}
+
+func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("name")
+	if name == "" || strings.Contains(name, "..") {
+		respondError(w, http.StatusBadRequest, "invalid file name")
+		return
+	}
+	path := filepath.Join(h.UploadDir, filepath.Clean(name))
+	if !strings.HasPrefix(path, filepath.Clean(h.UploadDir)) {
+		respondError(w, http.StatusForbidden, "invalid file path")
+		return
+	}
+	info, err := os.Stat(path)
+	if err != nil || info.IsDir() {
+		respondError(w, http.StatusNotFound, "file not found")
+		return
+	}
+
+	ext := strings.ToLower(filepath.Ext(name))
+	if ext != ".doc" && ext != ".docx" && ext != ".xls" && ext != ".xlsx" && ext != ".ppt" && ext != ".pptx" {
+		respondError(w, http.StatusBadRequest, "unsupported file type for preview")
+		return
+	}
+
+	tmpDir, err := os.MkdirTemp("", "lo-preview-")
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to create temp dir")
+		return
+	}
+	defer os.RemoveAll(tmpDir)
+
+	cmd := exec.Command("libreoffice", "--headless", "--convert-to", "html", "--outdir", tmpDir, path)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		respondError(w, http.StatusInternalServerError, "file conversion failed: "+string(out))
+		return
+	}
+
+	base := strings.TrimSuffix(name, ext)
+	htmlPath := filepath.Join(tmpDir, base+".html")
+	htmlBytes, err := os.ReadFile(htmlPath)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to read converted file")
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write(htmlBytes)
 }
 
 func (h *FileHandler) absUploadDir(projectRoot string) string {

@@ -93,6 +93,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 		r.Use(authmw.JWT(jwtSecret))
 		r.Use(authmw.OperationLog(db))
 		r.Post("/api/v1/files/upload", fileHandler.Upload)
+		r.Get("/api/v1/files/preview", fileHandler.Preview)
 	})
 
 	authHandler := &handler.AuthHandler{DB: db, JWTSecret: jwtSecret}
