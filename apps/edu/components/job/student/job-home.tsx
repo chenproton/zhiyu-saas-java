@@ -398,10 +398,9 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                   <span className="text-[15px] font-bold">目标岗位配套场景</span>
                 </div>
                 {true ? (
-                  <div className="flex flex-col items-center justify-center text-white/50 text-center py-6">
+                  <div className="flex flex-col items-center justify-center text-white/50 text-center py-4">
                     <Flag className="w-9 h-9 mb-3 opacity-40" />
                     <div className="text-sm font-semibold text-white/80">暂无目标推荐岗位</div>
-                    <div className="text-[12px] mt-1.5 text-white/50 leading-relaxed max-w-[320px]">完成能力测评后，系统将为你推荐匹配岗位，关联场景将在此展示</div>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-1 max-h-[120px] overflow-y-auto custom-scrollbar-thin">
@@ -425,10 +424,9 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                   <span className="text-[15px] font-bold">心仪岗位配套场景</span>
                 </div>
                 {favoritePositions.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center text-white/50 text-center py-6">
+                  <div className="flex flex-col items-center justify-center text-white/50 text-center py-4">
                     <Heart className="w-9 h-9 mb-3 opacity-40" />
                     <div className="text-sm font-semibold text-white/80">快去收藏岗位吧！</div>
-                    <div className="text-[12px] mt-1.5 text-white/50 leading-relaxed max-w-[320px]">在岗位列表收藏你感兴趣的岗位，关联场景将在此展示</div>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-1 max-h-[120px] overflow-y-auto custom-scrollbar-thin">
