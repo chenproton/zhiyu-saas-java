@@ -7,7 +7,6 @@ import {
   ArrowDownFromLine,
   ArrowUpFromLine,
   Check,
-  CheckCircle,
   ChevronDown,
   ChevronRight,
   Copy,
@@ -29,7 +28,6 @@ import {
   Upload,
   UserPlus,
   X,
-  XCircle,
 } from "lucide-react"
 import { questionBankApi, questionApi, evaluationBatchApi, importExportApi, approvalApi, majorApi, workflowApi } from "@/lib/api"
 import type { QuestionBank, Question, EvaluationBatch } from "@/lib/types"
@@ -485,21 +483,6 @@ export default function QuestionBanksPage() {
     setIsRejectReasonDialogOpen(true)
   }
 
-  const handleReview = async (id: string, status: "approved" | "rejected") => {
-    try {
-      const records = await approvalApi.list({ targetType: "question_bank", targetId: id, status: "pending", limit: 1 })
-      if (records.items.length === 0) {
-        alert("未找到审批记录")
-        return
-      }
-      await approvalApi.review(records.items[0].id, { status })
-      await loadData()
-    } catch (err) {
-      console.error("审批操作失败", err)
-      alert("审批操作失败")
-    }
-  }
-
   const handlePublish = async (id: string) => {
     try {
       await questionBankApi.publish(id)
@@ -855,35 +838,15 @@ export default function QuestionBanksPage() {
                       </Button>
                     )}
                     {bank.status === "pending" && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
-                          onClick={() => handleReview(bank.id, "approved")}
-                        >
-                          <CheckCircle className="mr-1 h-3 w-3" />
-                          通过
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                          onClick={() => handleReview(bank.id, "rejected")}
-                        >
-                          <XCircle className="mr-1 h-3 w-3" />
-                          驳回
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs text-amber-600 hover:text-amber-700"
-                          onClick={() => handleWithdrawApproval(bank.id)}
-                        >
-                          <Undo2 className="mr-1 h-3 w-3" />
-                          撤回
-                        </Button>
-                      </>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-amber-600 hover:text-amber-700"
+                        onClick={() => handleWithdrawApproval(bank.id)}
+                      >
+                        <Undo2 className="mr-1 h-3 w-3" />
+                        撤回
+                      </Button>
                     )}
                     {bank.status === "approved" && (
                       <Button
