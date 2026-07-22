@@ -7,8 +7,7 @@ import type { TaskResource } from "@/lib/types"
 
 function buildKkFileViewUrl(fileUrl: string): string {
   const origin = typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}` : ""
-  const encoded = btoa(unescape(encodeURIComponent(`${origin}${fileUrl}`)))
-  return `/kkfileview/onlinePreview?url=${encoded}`
+  return `/kkfileview/onlinePreview?url=${btoa(`${origin}${fileUrl}`)}`
 }
 
 interface ResourcePreviewModalProps {

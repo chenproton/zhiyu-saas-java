@@ -346,41 +346,31 @@ export default function SceneLearnPage() {
           ) : (
             <>
               {/* content area: resource preview */}
-              <div className="relative mx-4 mt-4 rounded-2xl overflow-hidden flex-shrink-0 shadow-xl shadow-slate-900/10 group">
-                <button
-                  className="flex w-full max-h-[65vh] aspect-video items-center justify-center relative cursor-pointer group/btn"
-                  onClick={() => { if (taskResources.length > 0) setPreviewResource(taskResources[0]) }}
-                  style={{ background: "linear-gradient(135deg, #1e293b 0%, #0f172a 40%, #1e1b4b 100%)" }}
-                >
-                  <div className="absolute inset-0 opacity-[0.03] group-hover/btn:opacity-[0.06] transition-opacity duration-300"
-                    style={{
-                      backgroundImage: "radial-gradient(circle at 20% 50%, rgba(59,130,246,0.3) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(99,102,241,0.2) 0%, transparent 50%), radial-gradient(circle at 50% 80%, rgba(139,92,246,0.15) 0%, transparent 50%)",
-                    }}
+              <div className="relative mx-4 mt-4 rounded-2xl overflow-hidden flex-shrink-0 shadow-xl shadow-slate-900/10">
+                {taskResources.length > 0 ? (
+                  <iframe
+                    src={(() => {
+                      const url = taskResources[0]?.url
+                      if (!url) return undefined
+                      const origin = typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}` : ""
+                      return `/kkfileview/onlinePreview?url=${btoa(`${origin}${url}`)}`
+                    })()}
+                    title={taskResources[0].name}
+                    className="w-full max-h-[65vh] aspect-video border-0 bg-slate-900"
+                    allowFullScreen
                   />
-                  <div className="text-center relative z-10">
-                    {taskResources.length > 0 ? (
-                      <>
-                        <div className="mx-auto h-20 w-20 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center shadow-2xl shadow-black/20 mb-1 group-hover/btn:bg-white/15 group-hover/btn:scale-105 transition-all duration-300">
-                          <FileText className="h-10 w-10 text-blue-400/80" />
-                        </div>
-                        <p className="mt-4 text-base font-semibold text-white/90 group-hover/btn:text-white transition-colors">{taskResources[0].name}</p>
-                        <p className="mt-1.5 text-xs text-slate-400">{resourceTypeLabels[taskResources[0].type] || taskResources[0].type}{taskResources[0].size ? ` · ${taskResources[0].size}` : ""}</p>
-                        <p className="mt-3 text-[11px] text-blue-400/60 group-hover/btn:text-blue-400/90 transition-colors">点击预览</p>
-                        {taskResources.length > 1 && (
-                          <p className="mt-1 text-[11px] text-slate-500">+{taskResources.length - 1} 个更多资源</p>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <div className="mx-auto h-20 w-20 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center">
-                          <MonitorPlay className="h-10 w-10 text-slate-600" />
-                        </div>
-                        <p className="mt-4 text-base font-medium text-slate-400">{activeTask.name}</p>
-                        <p className="mt-1 text-xs text-slate-600">暂无关联资源</p>
-                      </>
-                    )}
+                ) : (
+                  <div
+                    className="flex w-full max-h-[65vh] aspect-video items-center justify-center"
+                    style={{ background: "linear-gradient(135deg, #1e293b 0%, #0f172a 40%, #1e1b4b 100%)" }}
+                  >
+                    <div className="text-center">
+                      <MonitorPlay className="mx-auto h-16 w-16 text-slate-600" />
+                      <p className="mt-4 text-base font-medium text-slate-400">{activeTask.name}</p>
+                      <p className="mt-1 text-xs text-slate-600">暂无关联资源</p>
+                    </div>
                   </div>
-                </button>
+                )}
 
                 {/* bottom info bar */}
                 <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
