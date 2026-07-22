@@ -672,27 +672,94 @@ if [[ "$FRONTEND_ONLY" != "true" ]]; then
   echo "  后端二进制: $BACKEND_BIN_NEW"
 fi
 
-# ==================== 构建前端 ====================
+# ==================== 构建前端（支持按需构建和增量编译） ====================
 if [[ "$BACKEND_ONLY" != "true" ]]; then
-  echo "==> 构建商城前端..."
-  rm -rf "$MARKETPLACE_DIR/.next/standalone"
-  NODE_ENV=production pnpm --filter @zhiyu/marketplace build || {
-    echo "错误：商城前端构建失败" >&2
-    restore_rollback "$SNAPSHOT_DIR"
-    exit 1
-  }
-  assemble_standalone "$MARKETPLACE_DIR" "marketplace"
-  echo "  商城产物: $MARKETPLACE_STANDALONE"
+  BUILD_MARKETPLACE=true
+  BUILD_EDU=true
 
-  echo "==> 构建教育管理前端..."
-  rm -rf "$EDU_DIR/.next/standalone"
-  NODE_ENV=production pnpm --filter @zhiyu/edu build || {
-    echo "错误：教育管理前端构建失败" >&2
-    restore_rollback "$SNAPSHOT_DIR"
-    exit 1
-  }
-  assemble_standalone "$EDU_DIR" "edu"
-  echo "  教育管理产物: $EDU_STANDALONE"
+  if [[ -n "$BRANCH_NAME" ]]; then
+    CHANGED_FILES=$(git -C "$PROJECT_ROOT" diff --name-only HEAD origin/master 2>/dev/null || git -C "$PROJECT_ROOT" diff --name-only HEAD master 2>/dev/null || echo "")
+
+    if [[ -n "$CHANGED_FILES" ]]; then
+      BUILD_MARKETPLACE=false
+      BUILD_EDU=false
+
+      if echo "$CHANGED_FILES" | grep -q "^apps/marketplace/"; then
+        BUILD_MARKETPLACE=true
+        echo "  检测到商城改动，将构建 marketplace"
+      fi
+      if echo "$CHANGED_FILES" | grep -q "^apps/edu/"; then
+        BUILD_EDU=true
+        echo "  检测到教育管理改动，将构建 edu"
+      fi
+      if echo "$CHANGED_FILES" | grep -qE "^(packages/|package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|tsconfig\.json|turbo\.json)"; then
+        BUILD_MARKETPLACE=true
+        BUILD_EDU=true
+        echo "  检测到共享依赖/根配置改动，全量构建"
+      fi
+
+      if [[ "$BUILD_MARKETPLACE" == "false" && "$BUILD_EDU" == "false" && "$FRONTEND_ONLY" == "true" ]]; then
+        BUILD_MARKETPLACE=true
+        BUILD_EDU=true
+        echo "  未检测到明确前端改动，frontend-only 模式下全量构建"
+      fi
+    fi
+
+    if [[ "$BUILD_MARKETPLACE" == "false" && ! -d "$SNAPSHOT_DIR/marketplace" ]]; then
+      BUILD_MARKETPLACE=true
+      echo "  无商城快照可用，将构建 marketplace"
+    fi
+    if [[ "$BUILD_EDU" == "false" && ! -d "$SNAPSHOT_DIR/edu" ]]; then
+      BUILD_EDU=true
+      echo "  无教育管理快照可用，将构建 edu"
+    fi
+  fi
+
+  BUILD_ARGS=""
+  if [[ "$USE_TURBOPACK" == "true" ]]; then
+    BUILD_ARGS="--turbopack"
+    echo "  使用 Turbopack 构建"
+  fi
+
+  if [[ "$BUILD_MARKETPLACE" == "true" ]]; then
+    echo "==> 构建商城前端..."
+    rm -rf "$MARKETPLACE_DIR/.next/standalone"
+    NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
+      pnpm --filter @zhiyu/marketplace build $BUILD_ARGS || {
+      echo "错误：商城前端构建失败" >&2
+      restore_rollback "$SNAPSHOT_DIR"
+      exit 1
+    }
+    assemble_standalone "$MARKETPLACE_DIR" "marketplace"
+    echo "  商城产物: $MARKETPLACE_STANDALONE"
+  else
+    echo "==> 跳过商城构建（无改动）"
+    if [[ -d "$SNAPSHOT_DIR/marketplace" ]]; then
+      mkdir -p "$(dirname "$DEPLOY_MARKETPLACE_STANDALONE_ROOT")"
+      cp -a "$SNAPSHOT_DIR/marketplace" "$DEPLOY_MARKETPLACE_STANDALONE_ROOT"
+      echo "  从快照恢复商城产物"
+    fi
+  fi
+
+  if [[ "$BUILD_EDU" == "true" ]]; then
+    echo "==> 构建教育管理前端..."
+    rm -rf "$EDU_DIR/.next/standalone"
+    NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
+      pnpm --filter @zhiyu/edu build $BUILD_ARGS || {
+      echo "错误：教育管理前端构建失败" >&2
+      restore_rollback "$SNAPSHOT_DIR"
+      exit 1
+    }
+    assemble_standalone "$EDU_DIR" "edu"
+    echo "  教育管理产物: $EDU_STANDALONE"
+  else
+    echo "==> 跳过教育管理构建（无改动）"
+    if [[ -d "$SNAPSHOT_DIR/edu" ]]; then
+      mkdir -p "$(dirname "$DEPLOY_EDU_STANDALONE_ROOT")"
+      cp -a "$SNAPSHOT_DIR/edu" "$DEPLOY_EDU_STANDALONE_ROOT"
+      echo "  从快照恢复教育管理产物"
+    fi
+  fi
 fi
 
 # ==================== 数据库备份 ====================
@@ -770,7 +837,7 @@ if [[ "$FRONTEND_ONLY" != "true" && -f "$BACKEND_BIN_NEW" ]]; then
   fi
 fi
 
-if [[ "$BACKEND_ONLY" != "true" && -d "$MARKETPLACE_STANDALONE_ROOT" ]]; then
+if [[ "$BACKEND_ONLY" != "true" && "$BUILD_MARKETPLACE" == "true" && -d "$MARKETPLACE_STANDALONE_ROOT" ]]; then
   echo "  复制商城 standalone 到部署目录..."
   rm -rf "$DEPLOY_MARKETPLACE_STANDALONE_ROOT"
   mkdir -p "$(dirname "$DEPLOY_MARKETPLACE_STANDALONE_ROOT")"
@@ -780,7 +847,7 @@ if [[ "$BACKEND_ONLY" != "true" && -d "$MARKETPLACE_STANDALONE_ROOT" ]]; then
   echo "  商城前端已切换"
 fi
 
-if [[ "$BACKEND_ONLY" != "true" && -d "$EDU_STANDALONE_ROOT" ]]; then
+if [[ "$BACKEND_ONLY" != "true" && "$BUILD_EDU" == "true" && -d "$EDU_STANDALONE_ROOT" ]]; then
   echo "  复制教育管理 standalone 到部署目录..."
   rm -rf "$DEPLOY_EDU_STANDALONE_ROOT"
   mkdir -p "$(dirname "$DEPLOY_EDU_STANDALONE_ROOT")"
