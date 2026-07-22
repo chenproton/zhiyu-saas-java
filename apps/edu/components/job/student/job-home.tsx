@@ -505,13 +505,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                       : (pos.positionType === "enterprise" ? "企业" : "教学")
                     const majors = pos.majorNames?.filter(Boolean) || []
                     const majorText = majors.length === 0 ? "未分类" : majors.length === 1 ? majors[0] : `${majors[0]} +${majors.length - 1}`
-                    const palette = [
-                      { bg: "bg-blue-50/70", hover: "hover:bg-blue-100/60", border: "border-blue-100" },
-                      { bg: "bg-emerald-50/70", hover: "hover:bg-emerald-100/60", border: "border-emerald-100" },
-                      { bg: "bg-violet-50/70", hover: "hover:bg-violet-100/60", border: "border-violet-100" },
-                      { bg: "bg-amber-50/70", hover: "hover:bg-amber-100/60", border: "border-amber-100" },
-                      { bg: "bg-rose-50/70", hover: "hover:bg-rose-100/60", border: "border-rose-100" },
-                    ][i % 5]
+                    const palette = { bg: "bg-blue-50/70", hover: "hover:bg-blue-100/60", border: "border-blue-100" }
                     return (
                       <Link key={pos.id} href={`/job/student/${pos.id}`}>
                         <div className={`flex items-start gap-2.5 px-2.5 py-2 rounded-xl border ${palette.bg} ${palette.hover} cursor-pointer transition-all group`}>
