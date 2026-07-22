@@ -56,13 +56,6 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
     return pos.positionType === "enterprise" ? "企业" : "教学"
   }
 
-  const majorLabel = (pos: CareerPosition) => {
-    const majors = pos.majorNames?.filter(Boolean) || []
-    if (majors.length === 0) return "未分类"
-    if (majors.length === 1) return majors[0]
-    return `${majors[0]} +${majors.length - 1}`
-  }
-
   const renderItem = (pos: CareerPosition, idx: number) => {
     const globalRank = page * ROWS_PER_PAGE * 2 + idx + 1
     const display = pos.shortName || pos.name
@@ -85,16 +78,21 @@ export function RankingList({ positions = [], industryMap }: RankingListProps) {
                 <Heart className={`w-3 h-3 ${count > 0 ? "fill-current" : ""}`} /> {formatCount(count)}
               </span>
             </div>
-            <div className="flex items-center gap-1.5 text-[11px]">
-              <span className="px-1.5 py-0.5 rounded-md bg-white/70 text-blue-600 truncate max-w-[80px] font-medium border border-blue-100">
+            <div className="flex items-center gap-1.5 text-[11px] overflow-hidden">
+              <span className="px-1.5 py-0.5 rounded-md bg-white/70 text-blue-600 whitespace-nowrap font-medium border border-blue-100 shrink-0">
                 {categoryFor(pos)}
               </span>
-              <span
-                className="px-1.5 py-0.5 rounded-md bg-white/70 text-emerald-600 truncate max-w-[120px] font-medium border border-emerald-100"
-                title={pos.majorNames?.filter(Boolean).join("、") || "未分类"}
-              >
-                {majorLabel(pos)}
-              </span>
+              {(pos.majorNames?.filter(Boolean) || []).length === 0 ? (
+                <span className="px-1.5 py-0.5 rounded-md bg-white/70 text-emerald-600 whitespace-nowrap font-medium border border-emerald-100 shrink-0">
+                  未分类
+                </span>
+              ) : (
+                pos.majorNames?.filter(Boolean).map((m: string) => (
+                  <span key={m} className="px-1.5 py-0.5 rounded-md bg-white/70 text-emerald-600 whitespace-nowrap font-medium border border-emerald-100 shrink-0">
+                    {m}
+                  </span>
+                ))
+              )}
             </div>
           </div>
         </div>
