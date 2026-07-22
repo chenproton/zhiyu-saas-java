@@ -1,9 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Download, ExternalLink, X, FileText, Loader2, AlertTriangle } from "lucide-react"
+import { getToken } from "@/lib/api"
 import type { TaskResource } from "@/lib/types"
 
 function isZipBuffer(buffer: ArrayBuffer): boolean {
@@ -14,11 +15,10 @@ function isZipBuffer(buffer: ArrayBuffer): boolean {
 
 async function fetchServerPreview(fileUrl: string): Promise<string> {
   const filename = fileUrl.split("/").pop() || ""
-  const token = typeof window !== "undefined" ? localStorage.getItem("zhiyu-token") : null
+  const token = getToken()
   const headers: Record<string, string> = {}
   if (token) headers["Authorization"] = `Bearer ${token}`
   const res = await fetch(`/api/v1/files/preview?name=${encodeURIComponent(filename)}`, {
-    credentials: "include",
     headers,
   })
   if (!res.ok) {
@@ -159,7 +159,10 @@ export function ResourcePreviewModal({ resource, open, onOpenChange }: ResourceP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`flex flex-col ${isInline ? "sm:max-w-2xl" : needsWide ? "sm:max-w-4xl h-[85vh]" : "sm:max-w-4xl h-[85vh]"}`}>
+      <DialogContent aria-describedby="resource-preview-description" className={`flex flex-col ${isInline ? "sm:max-w-2xl" : needsWide ? "sm:max-w-4xl h-[85vh]" : "sm:max-w-4xl h-[85vh]"}`}>
+        <DialogDescription id="resource-preview-description" className="sr-only">
+          {resource?.name || "资源"} 的在线预览，支持新窗口打开和下载
+        </DialogDescription>
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base truncate">
             {resource?.name || "资源预览"}
