@@ -49,3 +49,10 @@ export type EducationLevel = (typeof EDUCATION_LEVELS)[number]
 
 export const DIFFICULTY_LEVELS = ["初级", "中级", "高级"] as const
 export type DifficultyLevel = (typeof DIFFICULTY_LEVELS)[number]
+
+export function formatFileSize(size: string | undefined | null): string {
+  if (!size) return ""
+  const bytes = Number(size)
+  if (Number.isNaN(bytes)) return ""
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`
+}

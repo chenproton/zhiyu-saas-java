@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Upload, FileText, Video, Image, X, Music } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { formatFileSize } from "@/lib/resource-constants"
 
 interface ResourceItem {
   id: string
@@ -59,7 +60,7 @@ export default function ResourceUploader() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-gray-700 truncate">{r.name}</p>
-                <p className="text-[10px] text-gray-400">{r.size}</p>
+                <p className="text-[10px] text-gray-400">{formatFileSize(r.size)}</p>
               </div>
               <button
                 onClick={() => removeResource(r.id)}

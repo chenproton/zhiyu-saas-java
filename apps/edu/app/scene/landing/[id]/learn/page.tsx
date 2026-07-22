@@ -40,6 +40,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { scenarioApi, taskApi, taskResourceApi, knowledgeApi, abilityApi } from "@/lib/api"
 import type { Scenario, ScenarioTask, TaskResource, KnowledgePoint, AbilityPoint } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { formatFileSize } from "@/lib/resource-constants"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
 import { ResourcePreviewModal } from "@/components/shared/resource-preview-modal"
 
@@ -524,7 +525,7 @@ export default function SceneLearnPage() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-gray-700 truncate">{r.name}</p>
-                                <p className="text-[11px] text-gray-400">{resourceTypeLabels[r.type] || r.type}{r.size ? ` · ${r.size}` : ""}</p>
+                                <p className="text-[11px] text-gray-400">{resourceTypeLabels[r.type] || r.type}{r.size ? ` · ${formatFileSize(r.size)}` : ""}</p>
                               </div>
                             </div>
                           )) : <p className="text-xs text-gray-400 text-center py-8">暂无资源</p>}

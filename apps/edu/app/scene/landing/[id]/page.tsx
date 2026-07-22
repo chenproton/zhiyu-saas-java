@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { formatFileSize } from "@/lib/resource-constants"
 import {
   scenarioApi,
   taskApi,
@@ -602,7 +603,7 @@ export default function SceneDetailPage() {
                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${typeColors[r.type] || "bg-slate-100 text-slate-500 border-slate-200"}`}>
                                       {resourceTypeLabels[r.type] || r.type}
                                     </span>
-                                    {r.size && <span>{r.size}</span>}
+                                    {r.size && <span>{formatFileSize(r.size)}</span>}
                                   </div>
                                 </div>
                                 {r.url && (
