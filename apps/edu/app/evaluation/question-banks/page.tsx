@@ -654,7 +654,7 @@ export default function QuestionBanksPage() {
     const tableAllSelected = items.length > 0 && items.every((b) => selectedIds.includes(b.id))
     const tableSomeSelected = items.some((b) => selectedIds.includes(b.id)) && !tableAllSelected
     return (
-      <Table>
+      <Table className="table-fixed">
         <TableHeader>
           <TableRow>
             <TableHead className="w-[40px] text-center">
@@ -694,23 +694,23 @@ export default function QuestionBanksPage() {
                     aria-label={`选择 ${bank.name}`}
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell className="truncate">
                   <button
-                    className="text-left text-sm font-medium hover:text-primary"
+                    className="text-left text-sm font-medium hover:text-primary truncate w-full"
                     onClick={() => router.push(`/evaluation/question-banks/${bank.id}`)}
                   >
                     {bank.name}
                   </button>
                 </TableCell>
-                <TableCell>
-                  <span className="text-sm text-muted-foreground line-clamp-2">
+                <TableCell className="truncate max-w-[120px]">
+                  <span className="text-sm text-muted-foreground truncate block">
                     {bank.description || "-"}
                   </span>
                 </TableCell>
                 <TableCell>{bank.questionCount} 题</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{batchName}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{bank.creatorName || bank.creatorId || "-"}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">
+                <TableCell className="text-sm text-muted-foreground truncate">{bank.creatorName || bank.creatorId || "-"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground truncate">
                   {bank.collaboratorNames && bank.collaboratorNames.length > 0 ? bank.collaboratorNames.join(", ") : "-"}
                 </TableCell>
                 <TableCell>
