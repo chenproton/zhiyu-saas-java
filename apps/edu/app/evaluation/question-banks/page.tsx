@@ -515,6 +515,7 @@ export default function QuestionBanksPage() {
       const cloned = (await questionBankApi.create({
         name: cloneRenameValue.trim(),
         description: cloneTargetBank.description,
+        coverImage: cloneTargetBank.coverImage,
         status: "draft",
         ownerType: "mine",
         version: "v1.0",
@@ -606,6 +607,7 @@ export default function QuestionBanksPage() {
       const cloned = (await questionBankApi.create({
         name: `${bank.name} (克隆)`,
         description: bank.description,
+        coverImage: bank.coverImage,
         status: "draft",
         ownerType: "mine",
         version: "v1.0",
