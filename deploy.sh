@@ -11,6 +11,8 @@
 #   ./deploy.sh --branch <分支名> --skip-checks      # 跳过代码检查
 #   ./deploy.sh --branch <分支名> --skip-merge       # 跳过自动合并到 master
 #   ./deploy.sh --branch <分支名> --force-install    # 强制重装依赖
+#   ./deploy.sh --branch <分支名> --skip-typecheck   # 跳过前端类型检查（构建时）
+#   ./deploy.sh --branch <分支名> --turbopack        # 使用 Turbopack 构建（实验性）
 #
 set -euo pipefail
 
@@ -21,6 +23,8 @@ SKIP_BACKUP=false
 SKIP_CHECKS=false
 SKIP_MERGE=false
 FORCE_INSTALL=0
+SKIP_TYPECHECK=false
+USE_TURBOPACK=false
 BRANCH_NAME=""
 BUILD_TREE=""
 ORIGINAL_PROJECT_ROOT=""
@@ -51,17 +55,25 @@ while [[ $# -gt 0 ]]; do
       FORCE_INSTALL=1
       shift
       ;;
+    --skip-typecheck)
+      SKIP_TYPECHECK=true
+      shift
+      ;;
+    --turbopack)
+      USE_TURBOPACK=true
+      shift
+      ;;
     --branch)
       BRANCH_NAME="$2"
       shift 2
       ;;
     --help|-h)
-      echo "用法：$0 --branch <分支名> [--backend-only|-b] [--frontend-only|-f] [--skip-backup] [--skip-checks] [--skip-merge] [--force-install]"
+      echo "用法：$0 --branch <分支名> [--backend-only|-b] [--frontend-only|-f] [--skip-backup] [--skip-checks] [--skip-merge] [--force-install] [--skip-typecheck] [--turbopack]"
       exit 0
       ;;
     *)
       echo "错误：未知参数 $1" >&2
-      echo "用法：$0 --branch <分支名> [--backend-only|-b] [--frontend-only|-f] [--skip-backup] [--skip-checks] [--skip-merge] [--force-install]" >&2
+      echo "用法：$0 --branch <分支名> [--backend-only|-b] [--frontend-only|-f] [--skip-backup] [--skip-checks] [--skip-merge] [--force-install] [--skip-typecheck] [--turbopack]" >&2
       exit 1
       ;;
   esac
@@ -136,7 +148,12 @@ if [[ -n "$BRANCH_NAME" ]]; then
       exit 1
     }
     echo "  清理上次构建产物..."
-    rm -rf "$BUILD_TREE/apps/marketplace/.next" "$BUILD_TREE/apps/edu/.next" "$BUILD_TREE/backend/bin" "$BUILD_TREE/backend/tmp"
+    rm -rf "$BUILD_TREE/apps/marketplace/.next/standalone" \
+           "$BUILD_TREE/apps/marketplace/.next/server" \
+           "$BUILD_TREE/apps/edu/.next/standalone" \
+           "$BUILD_TREE/apps/edu/.next/server" \
+           "$BUILD_TREE/backend/bin" \
+           "$BUILD_TREE/backend/tmp"
   else
     # 目录存在但非有效 git 仓库 → 清理掉重建
     if [[ -d "$BUILD_TREE" ]]; then
@@ -616,11 +633,15 @@ if [[ "$SKIP_CHECKS" != "true" ]]; then
   fi
 
   if [[ "$BACKEND_ONLY" != "true" ]]; then
-    echo "  前端类型检查..."
-    (cd "$PROJECT_ROOT" && pnpm --filter @zhiyu/marketplace typecheck && pnpm --filter @zhiyu/edu typecheck) || {
-      echo "错误：前端 TypeScript 类型检查未通过，拒绝部署" >&2
-      exit 1
-    }
+    if [[ "$SKIP_TYPECHECK" == "true" ]]; then
+      echo "  跳过前端类型检查（--skip-typecheck）"
+    else
+      echo "  前端类型检查..."
+      (cd "$PROJECT_ROOT" && pnpm --filter @zhiyu/marketplace typecheck && pnpm --filter @zhiyu/edu typecheck) || {
+        echo "错误：前端 TypeScript 类型检查未通过，拒绝部署" >&2
+        exit 1
+      }
+    fi
   fi
 else
   echo "==> 跳过代码检查（--skip-checks）"

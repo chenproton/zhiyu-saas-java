@@ -475,8 +475,8 @@ export default function SceneLearnPage() {
 
                 {/* right column: sticky knowledge/ability/resource card */}
                 {sidebarCollapsed && (
-                <div className="w-[360px] shrink-0">
-                  <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden sticky top-4">
+                <div className="w-[360px] shrink-0 sticky top-4 self-start">
+                  <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
                     <Tabs defaultValue="collapsed-knowledge" className="w-full">
                       <CardHeader className="border-b border-gray-100 p-2">
                         <TabsList className="bg-transparent p-0 h-auto gap-1 w-full">
