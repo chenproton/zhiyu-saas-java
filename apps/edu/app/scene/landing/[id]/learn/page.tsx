@@ -477,9 +477,8 @@ export default function SceneLearnPage() {
               {/* tabs content */}
               <div className="p-6">
                 <Tabs defaultValue="basic" className="w-full">
-                  <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
-                    <CardHeader className="border-b border-gray-100 p-1.5">
-                      <TabsList className="bg-transparent p-0 h-auto gap-1">
+                  <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm p-1.5 mb-6 overflow-x-auto">
+                    <TabsList className="bg-transparent p-0 h-auto gap-1">
                       <TabsTrigger value="basic" className="rounded-xl px-4 py-2 text-[13px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all duration-200">
                         <Info className="mr-1.5 h-4 w-4" />
                         任务基础信息
@@ -505,11 +504,11 @@ export default function SceneLearnPage() {
                         任务测评形式
                       </TabsTrigger>
                     </TabsList>
-                    </CardHeader>
+                  </div>
 
                   {/* 任务基础信息 */}
                   <TabsContent value="basic" className="mt-0">
-                    <Card className="shadow-none border-0 rounded-none overflow-hidden">
+                    <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
                       <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
                         <CardTitle className="text-base flex items-center gap-2">
                           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
@@ -586,7 +585,7 @@ export default function SceneLearnPage() {
                     {(activeTask.background || activeTask.description || activeTask.detailedDescription) ? (
                       <div className="space-y-4">
                         {activeTask.background && (
-                          <Card className="shadow-none border-0 rounded-none overflow-hidden">
+                          <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
                             <CardHeader className="bg-gradient-to-r from-blue-50/80 to-white border-b border-blue-100/60">
                               <CardTitle className="text-base flex items-center gap-2">
                                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-400 flex items-center justify-center shadow-sm">
@@ -603,7 +602,7 @@ export default function SceneLearnPage() {
                           </Card>
                         )}
                         {(activeTask.detailedDescription || activeTask.description) && (
-                          <Card className="shadow-none border-0 rounded-none overflow-hidden">
+                          <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
                             <CardHeader className="bg-gradient-to-r from-violet-50/80 to-white border-b border-violet-100/60">
                               <CardTitle className="text-base flex items-center gap-2">
                                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-sm">
@@ -621,7 +620,7 @@ export default function SceneLearnPage() {
                         )}
                       </div>
                     ) : (
-                      <Card className="shadow-none border-0 rounded-none">
+                      <Card className="shadow-sm border-gray-200/60 rounded-2xl">
                         <CardContent className="py-16">
                           <EmptyState icon={<FileText className="w-10 h-10" />} text="暂无任务说明" />
                         </CardContent>
@@ -632,7 +631,7 @@ export default function SceneLearnPage() {
                   {/* 考查知识点 */}
                   <TabsContent value="knowledge" className="mt-0">
                     {taskKnowledgePoints.length > 0 ? (
-                      <Card className="shadow-none border-0 rounded-none overflow-hidden">
+                      <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
                         <CardHeader className="bg-gradient-to-r from-blue-50/80 to-white border-b border-blue-100/60">
                           <CardTitle className="text-base flex items-center gap-2">
                             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
@@ -669,7 +668,7 @@ export default function SceneLearnPage() {
                         </CardContent>
                       </Card>
                     ) : (
-                      <Card className="shadow-none border-0 rounded-none">
+                      <Card className="shadow-sm border-gray-200/60 rounded-2xl">
                         <CardContent className="py-16">
                           <EmptyState icon={<BrainCircuit className="w-10 h-10" />} text="该任务暂未关联知识点" />
                         </CardContent>
@@ -682,7 +681,7 @@ export default function SceneLearnPage() {
                     {taskAbilityPoints.length > 0 ? (
                       <AbilityTab abilityPoints={taskAbilityPoints} />
                     ) : (
-                      <Card className="shadow-none border-0 rounded-none">
+                      <Card className="shadow-sm border-gray-200/60 rounded-2xl">
                         <CardContent className="py-16">
                           <EmptyState icon={<Target className="w-10 h-10" />} text="该任务暂未关联能力点" />
                         </CardContent>
@@ -693,7 +692,7 @@ export default function SceneLearnPage() {
                   {/* 任务资源 */}
                   <TabsContent value="resource" className="mt-0">
                     {taskResources.length > 0 ? (
-                      <Card className="shadow-none border-0 rounded-none overflow-hidden">
+                      <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
                         <CardHeader className="bg-gradient-to-r from-blue-50/80 to-white border-b border-blue-100/60">
                           <CardTitle className="text-base flex items-center gap-2">
                             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
@@ -746,7 +745,7 @@ export default function SceneLearnPage() {
                         </CardContent>
                       </Card>
                     ) : (
-                      <Card className="shadow-none border-0 rounded-none">
+                      <Card className="shadow-sm border-gray-200/60 rounded-2xl">
                         <CardContent className="py-16">
                           <EmptyState icon={<FolderOpen className="w-10 h-10" />} text="该任务暂未关联学习资源" />
                         </CardContent>
@@ -757,7 +756,7 @@ export default function SceneLearnPage() {
                   {/* 任务测评形式 */}
                   <TabsContent value="evaluation" className="mt-0">
                     {taskEvalMethods.methods.length > 0 ? (
-                      <Card className="shadow-none border-0 rounded-none overflow-hidden">
+                      <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
                         <CardHeader className="bg-gradient-to-r from-blue-50/80 to-white border-b border-blue-100/60">
                           <CardTitle className="text-base flex items-center gap-2">
                             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
@@ -803,14 +802,13 @@ export default function SceneLearnPage() {
                         </CardContent>
                       </Card>
                     ) : (
-                      <Card className="shadow-none border-0 rounded-none">
+                      <Card className="shadow-sm border-gray-200/60 rounded-2xl">
                         <CardContent className="py-16">
                           <EmptyState icon={<ClipboardList className="w-10 h-10" />} text="该任务暂未设置评价方式" />
                         </CardContent>
                       </Card>
                     )}
                   </TabsContent>
-                  </Card>
                 </Tabs>
               </div>
             </>
@@ -887,7 +885,7 @@ function AbilityTab({ abilityPoints }: { abilityPoints: AbilityPoint[] }) {
 
   return (
     <div className="space-y-5">
-      <Card className="shadow-none border-0 rounded-none overflow-hidden">
+      <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
         <CardContent className="p-5">
           <div
             className="rounded-xl p-5 relative overflow-hidden"
@@ -913,7 +911,7 @@ function AbilityTab({ abilityPoints }: { abilityPoints: AbilityPoint[] }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {groupedByAttribute.map(({ attr, items }) => (
-          <Card key={attr} className="shadow-none border-0 rounded-none overflow-hidden hover:shadow-md transition-all duration-200">
+          <Card key={attr} className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden hover:shadow-md transition-all duration-200">
             <div
               className="px-4 py-3.5 font-semibold text-sm flex items-center gap-2 border-b"
               style={{
