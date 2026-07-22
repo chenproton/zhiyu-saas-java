@@ -381,7 +381,7 @@ export default function SceneLearnPage() {
               {/* collapsed layout: left 3 cards + right sticky tab card */}
               <div className="flex flex-1 gap-4 p-4">
                 {/* left column: 3 cards */}
-                <div className="flex-1 overflow-y-auto space-y-4">
+                <div className="flex-1 space-y-4">
                   {/* 任务背景 */}
                   <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
                     <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
