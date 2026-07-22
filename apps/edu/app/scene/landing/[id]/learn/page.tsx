@@ -89,7 +89,7 @@ export default function SceneLearnPage() {
   const [tasks, setTasks] = useState<ScenarioTask[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTaskId, setActiveTaskId] = useState<string | null>(targetTaskId || null)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [previewTab, setPreviewTab] = useState<"preview" | "manual" | "resources">("preview")
 
   const [resourceMap, setResourceMap] = useState<Map<string, TaskResource>>(new Map())
