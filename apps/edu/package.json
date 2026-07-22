@@ -13,9 +13,7 @@
     "@zhiyu/api-client": "workspace:*",
     "@zhiyu/shared-types": "workspace:*",
     "@zhiyu/ui": "workspace:*",
-    "mammoth": "^1.12.0",
     "next": "^16.2.0",
-    "pptx-preview": "^1.0.7",
     "react": "^19",
     "react-dom": "^19"
   },

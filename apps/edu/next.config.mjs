@@ -27,6 +27,10 @@ const nextConfig = {
         destination: `${apiProxy}/uploads/:path*`,
       },
       {
+        source: '/kkfileview/:path*',
+        destination: `http://127.0.0.1:8012/:path*`,
+      },
+      {
         source: '/portal/career',
         destination: '/job/positions',
       },
