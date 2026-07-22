@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { ChevronDown, Play, Expand, Shrink, Layers, Clock, Target, BookOpen } from "lucide-react"
 import type { Scenario, ScenarioTask } from "@/lib/types"
 
@@ -20,6 +21,7 @@ const SCENE_COLORS = [
 ]
 
 export function SceneList({ scenarios = [], tasks = [] }: SceneListProps) {
+  const router = useRouter()
   const [expanded, setExpanded] = useState<Record<number, boolean>>({ 0: true })
 
   const taskMap = useMemo(() => {
@@ -102,7 +104,10 @@ export function SceneList({ scenarios = [], tasks = [] }: SceneListProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button className="text-xs px-3 py-1.5 rounded-md bg-blue-500 text-white hover:bg-blue-600 flex items-center gap-1">
+                  <button
+                    className="text-xs px-3 py-1.5 rounded-md bg-blue-500 text-white hover:bg-blue-600 flex items-center gap-1"
+                    onClick={() => router.push(`/scene/landing/${scene.id}`)}
+                  >
                     <Play className="w-3 h-3" /> 去学习
                   </button>
                   <ChevronDown className={`w-5 h-5 text-[#94a3b8] transition-transform ${expanded[idx] ? "rotate-180" : ""}`} />

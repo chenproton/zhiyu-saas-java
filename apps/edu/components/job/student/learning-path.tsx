@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useRef, useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Route, ChevronLeft, ChevronRight, Flag, ShoppingCart, Smartphone, LineChart, GitBranch, Users, Trophy, Layers, Play } from "lucide-react"
 import type { LearnRoad } from "@/lib/types"
 import type { Scenario, ScenarioTask } from "@/lib/types/scene"
@@ -31,6 +32,7 @@ const COLORS = [
 ]
 
 export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPathProps) {
+  const router = useRouter()
   const [activeIndex, setActiveIndex] = useState(0)
   const trackRef = useRef<HTMLDivElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -260,7 +262,10 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-[#94a3b8]">{task.estimatedHours}课时</span>
-                  <button className="text-xs px-3 py-1.5 rounded-md bg-blue-500 text-white hover:bg-blue-600 flex items-center gap-1">
+                  <button
+                    className="text-xs px-3 py-1.5 rounded-md bg-blue-500 text-white hover:bg-blue-600 flex items-center gap-1"
+                    onClick={() => activeScenarioId && router.push(`/scene/landing/${activeScenarioId}/learn?task=${task.id}`)}
+                  >
                     <Play className="w-3 h-3" /> 去学习
                   </button>
                 </div>
