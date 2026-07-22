@@ -457,7 +457,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
         {/* Dashboard (job mode only) */}
         {!isScene && (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_340px] gap-5 mb-6">
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-4 flex flex-col min-h-[178px]">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-4 flex flex-col min-h-[178px] overflow-hidden min-w-0">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2 text-[15px] font-bold text-slate-800">
                   <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
@@ -476,7 +476,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-4 flex flex-col min-h-[178px]">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-4 flex flex-col min-h-[178px] overflow-hidden min-w-0">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2 text-[15px] font-bold text-slate-800">
                   <div className="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center">
@@ -517,7 +517,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                                 v{pos.version || "1.0"}
                               </span>
                             </div>
-                            <div className="flex items-center gap-1.5 text-[11px] overflow-hidden">
+                            <div className="flex items-center gap-1.5 text-[11px] overflow-hidden min-w-0">
                               <span className="px-1.5 py-0.5 rounded-md bg-white/70 text-blue-600 whitespace-nowrap font-medium border border-blue-100 shrink-0">
                                 {category}
                               </span>
