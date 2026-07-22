@@ -107,9 +107,11 @@ function OfficePreview({ resource }: { resource: TaskResource }) {
           setLoadingMsg("正在解析幻灯片...")
           const { init } = await import("pptx-preview")
           const container = document.createElement("div")
-          container.style.cssText = "width:100%;height:100%;overflow:auto"
+          container.style.cssText = "width:100%;height:100%;overflow:auto;background:#fff"
           const previewer = init(container, { mode: "slide" })
           await (previewer as any).preview(buffer)
+          const slides = container.querySelectorAll(".slide")
+          slides.forEach((s: any) => { s.style.width = "100%"; s.style.maxWidth = "100%" })
           setHtml(container.innerHTML)
           return
         }
@@ -237,11 +239,10 @@ export function ResourcePreviewModal({ resource, open, onOpenChange }: ResourceP
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        aria-describedby="resource-preview-description"
         className={`flex flex-col ${isInline ? "sm:max-w-2xl" : isOffice ? "sm:max-w-4xl h-[85vh]" : "sm:max-w-4xl h-[85vh]"}`}
       >
-        <DialogDescription id="resource-preview-description" className="sr-only">
-          {resource?.name || "资源"} 的在线预览，支持新窗口打开和下载
+        <DialogDescription className="sr-only">
+          {resource?.name || "资源"} 的在线预览
         </DialogDescription>
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base truncate">
