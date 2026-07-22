@@ -24,6 +24,8 @@ import {
   Download,
   Eye,
   Layers,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -86,6 +88,7 @@ export default function SceneLearnPage() {
   const [tasks, setTasks] = useState<ScenarioTask[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTaskId, setActiveTaskId] = useState<string | null>(targetTaskId || null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   const [resourceMap, setResourceMap] = useState<Map<string, TaskResource>>(new Map())
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
@@ -246,33 +249,74 @@ export default function SceneLearnPage() {
       {/* ---------- body ---------- */}
       <div className="flex-1 flex max-w-[1400px] mx-auto w-full overflow-hidden">
         {/* ---------- left sidebar: task list ---------- */}
-        <aside className="flex w-[300px] flex-shrink-0 flex-col border-r border-gray-200/60 bg-white/80 backdrop-blur-sm">
+        <aside className={cn(
+          "flex-shrink-0 flex-col border-r border-gray-200/60 bg-white/80 backdrop-blur-sm transition-all duration-300",
+          sidebarCollapsed ? "w-[60px]" : "w-[300px]"
+        )}>
           {/* scenario header */}
-          <div className="relative border-b border-gray-100 px-5 py-5 overflow-hidden">
+          <div className="relative border-b border-gray-100 overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-bold text-white shadow-lg shadow-blue-500/25">
-                场
-              </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="truncate text-sm font-bold text-gray-800">{scenario.name}</h2>
-                <Badge variant="secondary" className="mt-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 hover:from-blue-100 hover:to-indigo-100 border-0 text-[11px]">
-                  场景学习
-                </Badge>
-              </div>
+            <div className={cn("px-3 py-3", sidebarCollapsed ? "flex justify-center" : "")}>
+              {sidebarCollapsed ? (
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-bold text-white shadow-md shadow-blue-500/20">
+                  场
+                </div>
+              ) : (
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-bold text-white shadow-lg shadow-blue-500/25">
+                    场
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="truncate text-sm font-bold text-gray-800">{scenario.name}</h2>
+                    <Badge variant="secondary" className="mt-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 hover:from-blue-100 hover:to-indigo-100 border-0 text-[11px]">
+                      场景学习
+                    </Badge>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="mt-3 flex items-center gap-3 text-[11px]">
-              <span className="flex items-center gap-1 text-gray-400"><Layers className="w-3 h-3" />{tasks.length} 任务</span>
-              <span className="flex items-center gap-1 text-gray-400"><Clock className="w-3 h-3" />{totalHours} 课时</span>
-            </div>
+            {!sidebarCollapsed && (
+              <div className="px-5 pb-3 flex items-center justify-between gap-3 text-[11px]">
+                <span className="flex items-center gap-1 text-gray-400"><Layers className="w-3 h-3" />{tasks.length} 任务</span>
+                <span className="flex items-center gap-1 text-gray-400"><Clock className="w-3 h-3" />{totalHours} 课时</span>
+              </div>
+            )}
+            <button
+              onClick={() => setSidebarCollapsed((v) => !v)}
+              className={cn(
+                "absolute right-1 flex items-center justify-center rounded-md hover:bg-gray-100 transition-colors",
+                sidebarCollapsed ? "top-[calc(3.5rem)] -right-5 w-5 h-10 bg-white border border-gray-200 rounded-r-md shadow-sm" : "top-3 w-6 h-6"
+              )}
+            >
+              {sidebarCollapsed ? <PanelLeftOpen className="h-3.5 w-3.5 text-gray-400" /> : <PanelLeftClose className="h-3.5 w-3.5 text-gray-400" />}
+            </button>
           </div>
 
           {/* task list */}
           <ScrollArea className="flex-1">
-            <div className="py-2">
+            <div className="py-1">
               {tasks.map((task, idx) => {
                 const isActive = activeTaskId === task.id
                 const diff = difficultyMap[task.difficulty] || difficultyMap[3]
+
+                if (sidebarCollapsed) {
+                  return (
+                    <div key={task.id} className="flex justify-center py-1.5">
+                      <button
+                        onClick={() => selectTask(task.id)}
+                        className={cn(
+                          "flex h-9 w-9 items-center justify-center rounded-lg text-[11px] font-bold transition-all duration-200",
+                          isActive
+                            ? "bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-md shadow-blue-500/20"
+                            : "bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-600"
+                        )}
+                        title={`${idx + 1}. ${task.name} (${diff.label}, ${task.estimatedHours || 0}h)`}
+                      >
+                        {idx + 1}
+                      </button>
+                    </div>
+                  )
+                }
 
                 return (
                   <button
@@ -473,16 +517,16 @@ export default function SceneLearnPage() {
 
               {/* tabs content */}
               <div className="p-6">
-                <Tabs defaultValue="basic" className="w-full">
+                <Tabs defaultValue="background" className="w-full">
                   <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm p-1.5 mb-6 overflow-x-auto">
                     <TabsList className="bg-transparent p-0 h-auto gap-1">
-                      <TabsTrigger value="basic" className="rounded-xl px-4 py-2 text-[13px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all duration-200">
-                        <Info className="mr-1.5 h-4 w-4" />
-                        任务基础信息
+                      <TabsTrigger value="background" className="rounded-xl px-4 py-2 text-[13px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all duration-200">
+                        <BookOpen className="mr-1.5 h-4 w-4" />
+                        任务背景
                       </TabsTrigger>
-                      <TabsTrigger value="description" className="rounded-xl px-4 py-2 text-[13px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all duration-200">
+                      <TabsTrigger value="manual" className="rounded-xl px-4 py-2 text-[13px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all duration-200">
                         <FileText className="mr-1.5 h-4 w-4" />
-                        任务说明
+                        任务说明书
                       </TabsTrigger>
                       <TabsTrigger value="knowledge" className="rounded-xl px-4 py-2 text-[13px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:to-indigo-50 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all duration-200">
                         <BrainCircuit className="mr-1.5 h-4 w-4" />
@@ -504,14 +548,14 @@ export default function SceneLearnPage() {
                   </div>
 
                   {/* 任务基础信息 */}
-                  <TabsContent value="basic" className="mt-0">
+                  <TabsContent value="background" className="mt-0">
                     <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
                       <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
                         <CardTitle className="text-base flex items-center gap-2">
                           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
-                            <Info className="h-4 w-4 text-blue-600" />
+                            <BookOpen className="h-4 w-4 text-blue-600" />
                           </div>
-                          任务基础信息
+                          任务背景
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="pt-5">
@@ -541,6 +585,12 @@ export default function SceneLearnPage() {
                             color="#8b5cf6"
                           />
                         </div>
+
+                        {activeTask.background && (
+                          <div className="mt-5 prose prose-sm max-w-none text-gray-600 whitespace-pre-line leading-relaxed">
+                            {activeTask.background}
+                          </div>
+                        )}
 
                         {dependencyTasks.length > 0 && (
                           <>
@@ -577,27 +627,10 @@ export default function SceneLearnPage() {
                     </Card>
                   </TabsContent>
 
-                  {/* 任务说明 */}
-                  <TabsContent value="description" className="mt-0">
-                    {(activeTask.background || activeTask.description || activeTask.detailedDescription) ? (
+                  {/* 任务说明书 */}
+                  <TabsContent value="manual" className="mt-0">
+                    {(activeTask.detailedDescription || activeTask.description || activeTask.descriptionPdf) ? (
                       <div className="space-y-4">
-                        {activeTask.background && (
-                          <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
-                            <CardHeader className="bg-gradient-to-r from-blue-50/80 to-white border-b border-blue-100/60">
-                              <CardTitle className="text-base flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-400 flex items-center justify-center shadow-sm">
-                                  <FileText className="h-4 w-4 text-white" />
-                                </div>
-                                任务背景
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent className="pt-5">
-                              <div className="prose prose-sm max-w-none text-gray-600 whitespace-pre-line leading-relaxed">
-                                {activeTask.background}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )}
                         {(activeTask.detailedDescription || activeTask.description) && (
                           <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
                             <CardHeader className="bg-gradient-to-r from-violet-50/80 to-white border-b border-violet-100/60">
@@ -605,7 +638,7 @@ export default function SceneLearnPage() {
                                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-sm">
                                   <FileText className="h-4 w-4 text-white" />
                                 </div>
-                                任务描述
+                                任务说明
                               </CardTitle>
                             </CardHeader>
                             <CardContent className="pt-5">
@@ -615,11 +648,35 @@ export default function SceneLearnPage() {
                             </CardContent>
                           </Card>
                         )}
+                        {activeTask.descriptionPdf && (
+                          <Card className="shadow-sm border-gray-200/60 rounded-2xl overflow-hidden">
+                            <CardHeader className="bg-gradient-to-r from-red-50/80 to-white border-b border-red-100/60">
+                              <CardTitle className="text-base flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-500 to-red-400 flex items-center justify-center shadow-sm">
+                                  <FileText className="h-4 w-4 text-white" />
+                                </div>
+                                PDF 附件
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-5 flex gap-3">
+                              <Button size="sm" variant="outline" asChild>
+                                <a href={activeTask.descriptionPdf} target="_blank" rel="noopener noreferrer">
+                                  <Eye className="h-4 w-4 mr-1" />预览 PDF
+                                </a>
+                              </Button>
+                              <Button size="sm" asChild>
+                                <a href={activeTask.descriptionPdf} download target="_blank" rel="noreferrer">
+                                  <Download className="h-4 w-4 mr-1" />下载 PDF
+                                </a>
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        )}
                       </div>
                     ) : (
                       <Card className="shadow-sm border-gray-200/60 rounded-2xl">
                         <CardContent className="py-16">
-                          <EmptyState icon={<FileText className="w-10 h-10" />} text="暂无任务说明" />
+                          <EmptyState icon={<FileText className="w-10 h-10" />} text="暂无任务说明书" />
                         </CardContent>
                       </Card>
                     )}
