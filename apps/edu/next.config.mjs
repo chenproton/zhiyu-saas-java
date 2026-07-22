@@ -28,9 +28,8 @@ const nextConfig = {
       },
       {
         source: '/kkfileview/:path*',
-        destination: `http://127.0.0.1:8012/:path*`,
+        destination: `http://127.0.0.1:8012/kkfileview/:path*`,
       },
-      {
         source: '/portal/career',
         destination: '/job/positions',
       },
