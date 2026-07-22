@@ -346,125 +346,121 @@ export default function SceneLearnPage() {
           ) : (
             <>
               {/* content area: resource preview */}
-              <div className="relative mx-4 mt-4 rounded-2xl overflow-hidden flex-shrink-0 shadow-xl shadow-slate-900/10">
+              <div className="mx-4 mt-4 flex-shrink-0">
                 {taskResources.length > 0 ? (
-                  <iframe
-                    src={(() => {
-                      const url = taskResources[0]?.url
-                      if (!url) return undefined
-                      const origin = typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}` : ""
-                      return `/kkfileview/onlinePreview?url=${btoa(`${origin}${url}`)}`
-                    })()}
-                    title={taskResources[0].name}
-                    className="w-full max-h-[65vh] aspect-video border-0 bg-slate-900"
-                    allowFullScreen
-                  />
+                  <div className="rounded-xl overflow-hidden border border-gray-200 bg-white shadow-sm">
+                    <iframe
+                      src={(() => {
+                        const url = taskResources[0]?.url
+                        if (!url) return undefined
+                        const origin = typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}` : ""
+                        return `/kkfileview/onlinePreview?url=${btoa(`${origin}${url}`)}`
+                      })()}
+                      title={taskResources[0].name}
+                      className="w-full border-0 bg-white"
+                      style={{ height: "max(400px, 58vh)" }}
+                      allowFullScreen
+                    />
+                  </div>
                 ) : (
-                  <div
-                    className="flex w-full max-h-[65vh] aspect-video items-center justify-center"
-                    style={{ background: "linear-gradient(135deg, #1e293b 0%, #0f172a 40%, #1e1b4b 100%)" }}
-                  >
-                    <div className="text-center">
-                      <MonitorPlay className="mx-auto h-16 w-16 text-slate-600" />
-                      <p className="mt-4 text-base font-medium text-slate-400">{activeTask.name}</p>
-                      <p className="mt-1 text-xs text-slate-600">暂无关联资源</p>
+                  <div className="rounded-xl overflow-hidden border border-gray-200 bg-white">
+                    <div
+                      className="flex w-full items-center justify-center"
+                      style={{ height: "max(400px, 58vh)", background: "linear-gradient(135deg, #f8fafc, #f1f5f9)" }}
+                    >
+                      <div className="text-center">
+                        <div className="w-16 h-16 mx-auto rounded-2xl bg-gray-100 flex items-center justify-center">
+                          <MonitorPlay className="h-8 w-8 text-gray-300" />
+                        </div>
+                        <p className="mt-4 text-sm font-medium text-gray-400">{activeTask.name}</p>
+                        <p className="mt-1 text-xs text-gray-400">暂无关联资源</p>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* bottom info bar */}
-                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
+                {/* task info bar */}
+                <div className="flex items-center justify-between mt-3 px-1">
                   <div className="flex items-center gap-2">
                     <Badge
-                      className="border-0 text-[11px] px-2.5 py-1 font-semibold backdrop-blur-sm"
+                      variant="outline"
+                      className="text-[11px] px-2.5 py-1 font-semibold"
                       style={{
-                        background: activeTask.taskType === "assessment"
-                          ? "linear-gradient(135deg, rgba(239,68,68,0.2), rgba(220,38,38,0.15))"
-                          : "linear-gradient(135deg, rgba(59,130,246,0.2), rgba(37,99,235,0.15))",
-                        color: activeTask.taskType === "assessment" ? "#fca5a5" : "#93c5fd",
+                        backgroundColor: activeTask.taskType === "assessment" ? "#fef2f2" : "#eff6ff",
+                        color: activeTask.taskType === "assessment" ? "#dc2626" : "#2563eb",
+                        borderColor: activeTask.taskType === "assessment" ? "#fecaca" : "#bfdbfe",
                       }}
                     >
                       {activeTask.taskType === "assessment" ? "考核任务" : "训练任务"}
                     </Badge>
-                    <span className="text-xs text-slate-500 flex items-center gap-1">
+                    <span className="text-xs text-gray-400 flex items-center gap-1">
                       <Clock className="h-3 w-3" />{activeTask.estimatedHours || 0} 课时
                     </span>
-                    <span className="text-xs text-slate-500" style={{ color: difficultyMap[activeTask.difficulty]?.color }}>
+                    <span className="text-xs" style={{ color: difficultyMap[activeTask.difficulty]?.color }}>
                       {difficultyMap[activeTask.difficulty]?.label}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3 text-xs text-gray-400">
                     {activeTask.knowledgePointIds?.length > 0 && (
-                      <span className="text-[10px] text-slate-500 bg-white/5 rounded-full px-2 py-0.5 border border-white/5">
-                        {activeTask.knowledgePointIds.length} 知识点
-                      </span>
+                      <span className="flex items-center gap-1"><BrainCircuit className="h-3 w-3" />{activeTask.knowledgePointIds.length} 知识点</span>
                     )}
                     {activeTask.abilityPointIds?.length > 0 && (
-                      <span className="text-[10px] text-slate-500 bg-white/5 rounded-full px-2 py-0.5 border border-white/5">
-                        {activeTask.abilityPointIds.length} 能力点
-                      </span>
+                      <span className="flex items-center gap-1"><Target className="h-3 w-3" />{activeTask.abilityPointIds.length} 能力点</span>
+                    )}
+                    {taskResources.length > 0 && (
+                      <button
+                        onClick={() => setShowResources((v) => !v)}
+                        className="flex items-center gap-1 text-gray-400 hover:text-blue-500 transition-colors"
+                      >
+                        <FolderOpen className="h-3 w-3" />
+                        {taskResources.length} 个资源
+                      </button>
                     )}
                   </div>
                 </div>
-
-                {/* 任务资源浮动入口 */}
-                {taskResources.length > 0 && (
-                  <>
-                    <button
-                      onClick={() => setShowResources((v) => !v)}
-                      className="absolute top-4 left-4 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 text-slate-300 text-xs font-medium hover:bg-white/20 hover:text-white hover:border-white/20 transition-all duration-200 z-10 shadow-lg shadow-black/10"
-                    >
-                      <FolderOpen className="h-3.5 w-3.5" />
-                      任务资源
-                      <span className="text-[10px] text-slate-500 bg-white/10 rounded-full px-1.5 py-0.5">{taskResources.length}</span>
-                    </button>
-
-                    {showResources && (
-                      <>
-                        <div className="fixed inset-0 z-20" onClick={() => setShowResources(false)} />
-                        <div className="absolute top-16 left-4 w-[340px] max-h-[400px] overflow-y-auto rounded-2xl bg-slate-900/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/30 z-30">
-                          <div className="sticky top-0 z-10 px-4 py-3 border-b border-white/10 bg-slate-900/95 backdrop-blur-xl flex items-center justify-between rounded-t-2xl">
-                            <span className="text-sm font-semibold text-white flex items-center gap-2">
-                              <FolderOpen className="h-4 w-4 text-blue-400" />
-                              任务资源 ({taskResources.length})
-                            </span>
-                            <button onClick={() => setShowResources(false)} className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/20 transition-colors">
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                          <div className="p-3 space-y-2">
-                            {taskResources.map((r) => (
-                              <button
-                                key={r.id}
-                                onClick={() => { setPreviewResource(r); setShowResources(false) }}
-                                className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-white/10 transition-all duration-200 cursor-pointer group/item w-full text-left"
-                              >
-                                <div className={cn(
-                                  "flex h-10 w-10 items-center justify-center rounded-xl shrink-0 transition-all duration-200 group-hover/item:scale-105",
-                                  resourceTypeIcons[r.type] || "text-gray-400 bg-white/5"
-                                )}>
-                                  <FileText className="h-5 w-5" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-sm text-slate-200 truncate font-medium group-hover/item:text-white transition-colors">
-                                    {r.name}
-                                  </p>
-                                  <p className="text-[11px] text-slate-500 mt-0.5">
-                                    {resourceTypeLabels[r.type] || r.type}{r.size ? ` · ${r.size}` : ""}
-                                  </p>
-                                </div>
-                                <span className="shrink-0 w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-slate-500 group-hover/item:text-blue-400 group-hover/item:bg-blue-400/10 transition-all duration-200">
-                                  <Eye className="h-3 w-3" />
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </>
-                )}
               </div>
+
+              {/* floating resource panel */}
+              {taskResources.length > 0 && showResources && (
+                <>
+                  <div className="fixed inset-0 z-20" onClick={() => setShowResources(false)} />
+                  <div className="absolute top-[calc(58vh+4rem)] left-8 w-[320px] max-h-[360px] overflow-y-auto rounded-2xl bg-white border border-gray-200 shadow-2xl z-30">
+                    <div className="sticky top-0 z-10 px-4 py-3 bg-white border-b border-gray-100 flex items-center justify-between rounded-t-2xl">
+                      <span className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                        <FolderOpen className="h-4 w-4 text-blue-500" />
+                        任务资源 ({taskResources.length})
+                      </span>
+                      <button onClick={() => setShowResources(false)} className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="p-2 space-y-1">
+                      {taskResources.map((r) => (
+                        <button
+                          key={r.id}
+                          onClick={() => { setPreviewResource(r); setShowResources(false) }}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-blue-50 transition-all duration-200 cursor-pointer group/item w-full text-left"
+                        >
+                          <div className={`flex h-9 w-9 items-center justify-center rounded-lg shrink-0 ${resourceTypeIcons[r.type] || "text-gray-400 bg-gray-50"}`}>
+                            <FileText className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-gray-700 truncate font-medium group-hover/item:text-blue-600 transition-colors">
+                              {r.name}
+                            </p>
+                            <p className="text-[11px] text-gray-400 mt-0.5">
+                              {resourceTypeLabels[r.type] || r.type}{r.size ? ` · ${r.size}` : ""}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-gray-300 group-hover/item:text-blue-400 transition-colors">
+                            <Eye className="h-3.5 w-3.5" />
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* tabs content */}
               <div className="p-6">
