@@ -89,6 +89,7 @@ export default function SceneLearnPage() {
   const [loading, setLoading] = useState(true)
   const [activeTaskId, setActiveTaskId] = useState<string | null>(targetTaskId || null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [previewTab, setPreviewTab] = useState<"preview" | "manual" | "resources">("preview")
 
   const [resourceMap, setResourceMap] = useState<Map<string, TaskResource>>(new Map())
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
@@ -550,48 +551,152 @@ export default function SceneLearnPage() {
             </>
           ) : (
             <>
-              {/* content area: resource preview */}
-              <div className="mx-4 mt-4 flex-shrink-0">
-                {taskResources.length > 0 ? (
-                  <div className="relative rounded-lg overflow-hidden group/preview">
-                    <iframe
-                      src={(() => {
-                        const url = taskResources[0]?.url
-                        if (!url) return undefined
-                        const origin = typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}` : ""
-                        return `/kkfileview/onlinePreview?url=${btoa(`${origin}${url}`)}`
-                      })()}
-                      title={taskResources[0].name}
-                      className="w-full border-0"
-                      style={{ height: "calc(60vh)" }}
-                      allowFullScreen
-                    />
-                    <button
-                      onClick={() => setPreviewResource(taskResources[0])}
-                      className="absolute top-3 right-3 w-8 h-8 rounded-lg bg-white/80 backdrop-blur-sm border border-gray-200 text-gray-500 hover:text-blue-600 hover:bg-white hover:border-blue-200 flex items-center justify-center transition-all duration-200 opacity-0 group-hover/preview:opacity-100 shadow-sm"
-                      title="全屏预览"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                      </svg>
-                    </button>
-                  </div>
-                ) : (
-                  <div className="rounded-lg overflow-hidden">
-                    <div
-                      className="flex w-full items-center justify-center"
-                      style={{ height: "calc(60vh)", background: "linear-gradient(135deg, #f8fafc, #f1f5f9)" }}
-                    >
-                      <div className="text-center">
-                        <div className="w-16 h-16 mx-auto rounded-2xl bg-gray-100 flex items-center justify-center">
-                          <MonitorPlay className="h-8 w-8 text-gray-300" />
+              {/* preview tab switcher */}
+              <div className="mx-4 mt-4 flex items-center gap-1 bg-white rounded-xl border border-gray-200/60 shadow-sm p-1">
+                <button
+                  onClick={() => setPreviewTab("preview")}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200",
+                    previewTab === "preview"
+                      ? "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                  )}
+                >
+                  <Eye className="h-4 w-4" />资源预览
+                </button>
+                <button
+                  onClick={() => setPreviewTab("manual")}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200",
+                    previewTab === "manual"
+                      ? "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                  )}
+                >
+                  <FileText className="h-4 w-4" />任务说明书
+                </button>
+                <button
+                  onClick={() => setPreviewTab("resources")}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200",
+                    previewTab === "resources"
+                      ? "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                  )}
+                >
+                  <FolderOpen className="h-4 w-4" />所有资源{taskResources.length > 0 && <span className="text-[10px] text-blue-500 bg-blue-50 rounded-full px-1.5 py-0.5">{taskResources.length}</span>}
+                </button>
+              </div>
+
+              {/* content area */}
+              <div className="mx-4 mt-3 flex-shrink-0">
+                {previewTab === "preview" && (
+                  taskResources.length > 0 ? (
+                    <div className="relative rounded-lg overflow-hidden group/preview">
+                      <iframe
+                        src={(() => {
+                          const url = taskResources[0]?.url
+                          if (!url) return undefined
+                          const origin = typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}` : ""
+                          return `/kkfileview/onlinePreview?url=${btoa(`${origin}${url}`)}`
+                        })()}
+                        title={taskResources[0].name}
+                        className="w-full border-0"
+                        style={{ height: "calc(55vh)" }}
+                        allowFullScreen
+                      />
+                      <button
+                        onClick={() => setPreviewResource(taskResources[0])}
+                        className="absolute top-3 right-3 w-8 h-8 rounded-lg bg-white/80 backdrop-blur-sm border border-gray-200 text-gray-500 hover:text-blue-600 hover:bg-white hover:border-blue-200 flex items-center justify-center transition-all duration-200 opacity-0 group-hover/preview:opacity-100 shadow-sm"
+                        title="全屏预览"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                        </svg>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg overflow-hidden">
+                      <div className="flex w-full items-center justify-center" style={{ height: "calc(55vh)", background: "linear-gradient(135deg, #f8fafc, #f1f5f9)" }}>
+                        <div className="text-center">
+                          <MonitorPlay className="mx-auto h-12 w-12 text-gray-300" />
+                          <p className="mt-3 text-sm text-gray-400">暂无关联资源</p>
                         </div>
-                        <p className="mt-4 text-sm font-medium text-gray-400">{activeTask.name}</p>
-                        <p className="mt-1 text-xs text-gray-400">暂无关联资源</p>
                       </div>
+                    </div>
+                  )
+                )}
+
+                {previewTab === "manual" && (
+                  <div className="rounded-lg overflow-hidden border border-gray-200 bg-white" style={{ height: "calc(55vh)" }}>
+                    <div className="h-full overflow-y-auto p-5 space-y-4">
+                      {(activeTask.detailedDescription || activeTask.description) ? (
+                        <div>
+                          <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-violet-500" />任务说明
+                          </h3>
+                          <div className="prose prose-sm max-w-none text-gray-600 whitespace-pre-line leading-relaxed">
+                            {activeTask.detailedDescription || activeTask.description}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                          <FileText className="h-10 w-10 opacity-40 mb-3" />
+                          <span className="text-sm">暂无任务说明</span>
+                        </div>
+                      )}
+                      {activeTask.descriptionPdf && (
+                        <div>
+                          <h3 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-red-500" />PDF 附件
+                          </h3>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" asChild>
+                              <a href={activeTask.descriptionPdf} target="_blank" rel="noopener noreferrer">
+                                <Eye className="h-4 w-4 mr-1" />预览 PDF
+                              </a>
+                            </Button>
+                            <Button size="sm" asChild>
+                              <a href={activeTask.descriptionPdf} download target="_blank" rel="noreferrer">
+                                <Download className="h-4 w-4 mr-1" />下载 PDF
+                              </a>
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
+
+                {previewTab === "resources" && (
+                  <div className="rounded-lg overflow-hidden border border-gray-200 bg-white" style={{ height: "calc(55vh)" }}>
+                    <ScrollArea className="h-full">
+                      <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {taskResources.length > 0 ? taskResources.map((r) => (
+                          <button
+                            key={r.id}
+                            onClick={() => setPreviewResource(r)}
+                            className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-white hover:border-blue-200 hover:bg-gradient-to-r hover:from-blue-50/30 hover:to-white hover:shadow-sm transition-all duration-200 text-left group"
+                          >
+                            <div className={`flex h-9 w-9 items-center justify-center rounded-lg shrink-0 ${resourceTypeIcons[r.type] || "text-gray-400 bg-gray-50"}`}>
+                              <FileText className="h-4 w-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-700 truncate group-hover:text-blue-600 transition-colors">{r.name}</p>
+                              <p className="text-[11px] text-gray-400 mt-0.5">{resourceTypeLabels[r.type] || r.type}{r.size ? ` · ${r.size}` : ""}</p>
+                            </div>
+                          </button>
+                        )) : (
+                          <div className="col-span-2 flex flex-col items-center justify-center py-16 text-gray-400">
+                            <FolderOpen className="h-10 w-10 opacity-40 mb-3" />
+                            <span className="text-sm">暂无资源</span>
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                )}
+              </div>
 
                 {/* task info bar */}
                 <div className="flex items-center justify-between mt-2 px-0.5">
@@ -623,7 +728,7 @@ export default function SceneLearnPage() {
                     )}
                     {taskResources.length > 0 && (
                       <button
-                        onClick={() => setShowResources((v) => !v)}
+                        onClick={() => setPreviewTab("resources")}
                         className="flex items-center gap-1 text-gray-400 hover:text-blue-500 transition-colors"
                       >
                         <FolderOpen className="h-3 w-3" />
@@ -632,49 +737,6 @@ export default function SceneLearnPage() {
                     )}
                   </div>
                 </div>
-              </div>
-
-              {/* floating resource panel */}
-              {taskResources.length > 0 && showResources && (
-                <>
-                  <div className="fixed inset-0 z-20" onClick={() => setShowResources(false)} />
-                  <div className="absolute top-[calc(58vh+4rem)] left-8 w-[320px] max-h-[360px] overflow-y-auto rounded-2xl bg-white border border-gray-200 shadow-2xl z-30">
-                    <div className="sticky top-0 z-10 px-4 py-3 bg-white border-b border-gray-100 flex items-center justify-between rounded-t-2xl">
-                      <span className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                        <FolderOpen className="h-4 w-4 text-blue-500" />
-                        任务资源 ({taskResources.length})
-                      </span>
-                      <button onClick={() => setShowResources(false)} className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    <div className="p-2 space-y-1">
-                      {taskResources.map((r) => (
-                        <button
-                          key={r.id}
-                          onClick={() => { setPreviewResource(r); setShowResources(false) }}
-                          className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-blue-50 transition-all duration-200 cursor-pointer group/item w-full text-left"
-                        >
-                          <div className={`flex h-9 w-9 items-center justify-center rounded-lg shrink-0 ${resourceTypeIcons[r.type] || "text-gray-400 bg-gray-50"}`}>
-                            <FileText className="h-4 w-4" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm text-gray-700 truncate font-medium group-hover/item:text-blue-600 transition-colors">
-                              {r.name}
-                            </p>
-                            <p className="text-[11px] text-gray-400 mt-0.5">
-                              {resourceTypeLabels[r.type] || r.type}{r.size ? ` · ${r.size}` : ""}
-                            </p>
-                          </div>
-                          <span className="shrink-0 text-gray-300 group-hover/item:text-blue-400 transition-colors">
-                            <Eye className="h-3.5 w-3.5" />
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
 
               {/* tabs content */}
               <div className="p-6">
