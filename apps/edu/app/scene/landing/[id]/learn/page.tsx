@@ -248,22 +248,17 @@ export default function SceneLearnPage() {
       </header>
 
       {/* ---------- body ---------- */}
-      <div className="flex-1 flex max-w-[1400px] mx-auto w-full overflow-hidden">
+      <div className="flex-1 flex max-w-[1400px] mx-auto w-full">
         {/* ---------- left sidebar: task list ---------- */}
         <aside className={cn(
-          "flex flex-shrink-0 flex-col border-r border-gray-200/60 bg-white/80 backdrop-blur-sm transition-all duration-300",
+          "flex flex-shrink-0 flex-col border-r border-gray-200/60 bg-white/80 backdrop-blur-sm transition-all duration-300 sticky top-14 self-start",
           sidebarCollapsed ? "w-[60px]" : "w-[300px]"
-        )}>
+        )} style={{ height: "calc(100vh - 3.5rem)" }}>
           {/* sidebar header */}
           <div className="relative border-b border-gray-100 overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
-            <div className={cn("flex items-center", sidebarCollapsed ? "flex-col gap-2 px-2 py-3" : "px-5 py-3")}>
-              {sidebarCollapsed ? (
-                <>
-                  <span className="text-[10px] text-gray-400"><Layers className="w-3 h-3 inline" />{tasks.length}</span>
-                  <span className="text-[10px] text-gray-400"><Clock className="w-3 h-3 inline" />{totalHours}</span>
-                </>
-              ) : (
+            <div className={cn("flex items-center", sidebarCollapsed ? "px-2 py-3 justify-center" : "px-5 py-3")}>
+              {!sidebarCollapsed && (
                 <div className="flex-1 flex items-center gap-3">
                   <span className="flex items-center gap-1 text-xs text-gray-400"><Layers className="w-3 h-3" />{tasks.length} 个任务</span>
                   <span className="flex items-center gap-1 text-xs text-gray-400"><Clock className="w-3 h-3" />{totalHours} 课时</span>
@@ -420,30 +415,22 @@ export default function SceneLearnPage() {
                           <FileText className="h-4 w-4 text-white" />
                         </div>
                         任务说明书
+                        {activeTask.descriptionPdf && (
+                          <a
+                            href={activeTask.descriptionPdf}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ml-auto text-xs font-normal text-violet-600 hover:text-violet-700 hover:underline flex items-center gap-1"
+                          >
+                            <Eye className="h-3.5 w-3.5" />查看 PDF
+                          </a>
+                        )}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-4">
-                      {(activeTask.detailedDescription || activeTask.description || activeTask.descriptionPdf) ? (
-                        <div className="space-y-3">
-                          {(activeTask.detailedDescription || activeTask.description) && (
-                            <div className="prose prose-sm max-w-none text-gray-600 whitespace-pre-line leading-relaxed">
-                              {activeTask.detailedDescription || activeTask.description}
-                            </div>
-                          )}
-                          {activeTask.descriptionPdf && (
-                            <div className="flex gap-2">
-                              <Button size="sm" variant="outline" asChild>
-                                <a href={activeTask.descriptionPdf} target="_blank" rel="noopener noreferrer">
-                                  <Eye className="h-4 w-4 mr-1" />预览 PDF
-                                </a>
-                              </Button>
-                              <Button size="sm" asChild>
-                                <a href={activeTask.descriptionPdf} download target="_blank" rel="noreferrer">
-                                  <Download className="h-4 w-4 mr-1" />下载 PDF
-                                </a>
-                              </Button>
-                            </div>
-                          )}
+                      {(activeTask.detailedDescription || activeTask.description) ? (
+                        <div className="prose prose-sm max-w-none text-gray-600 whitespace-pre-line leading-relaxed">
+                          {activeTask.detailedDescription || activeTask.description}
                         </div>
                       ) : (
                         <p className="text-xs text-gray-400">暂无任务说明书</p>
@@ -505,7 +492,7 @@ export default function SceneLearnPage() {
                           </TabsTrigger>
                         </TabsList>
                       </CardHeader>
-                      <CardContent className="max-h-[calc(100vh-16rem)] overflow-y-auto p-3">
+                      <CardContent className="max-h-[80vh] overflow-y-auto p-3">
                         <TabsContent value="collapsed-knowledge" className="mt-0 space-y-2">
                           {taskKnowledgePoints.length > 0 ? taskKnowledgePoints.map((kp, i) => (
                             <div key={kp.id} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer">
