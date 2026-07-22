@@ -197,6 +197,7 @@ func (h *ScenarioHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
+	_ = h.incrementScenarioView(r)
 	scenario, err := h.fetchScenario(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "scenario not found")
@@ -441,4 +442,21 @@ func (h *ScenarioHandler) scanScenarioRows(rows pgx.Rows) ([]domain.Scenario, er
 		items = append(items, s)
 	}
 	return items, nil
+}
+
+func (h *ScenarioHandler) incrementScenarioView(r *http.Request) error {
+	claims := middleware.CurrentUser(r)
+	id := chi.URLParam(r, "id")
+
+	var userID, tenantID any
+	if claims != nil {
+		userID = claims.UserID
+		tenantID = claims.TenantID
+	} else {
+		userID = nil
+		tenantID = nil
+	}
+
+	_, err := h.DB.Exec(r.Context(), `INSERT INTO view_logs (target_type, target_id, user_id, tenant_id) VALUES ('scenario', $1, $2, $3)`, id, userID, tenantID)
+	return err
 }
