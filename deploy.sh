@@ -9,6 +9,7 @@
 #   ./deploy.sh --branch <分支名> --frontend-only    # 仅部署前端（商城 + 教育管理）
 #   ./deploy.sh --branch <分支名> --skip-backup      # 跳过数据库备份
 #   ./deploy.sh --branch <分支名> --skip-checks      # 跳过代码检查
+#   ./deploy.sh --branch <分支名> --skip-merge       # 跳过自动合并到 master
 #   ./deploy.sh --branch <分支名> --force-install    # 强制重装依赖
 #
 set -euo pipefail
@@ -18,6 +19,7 @@ BACKEND_ONLY=false
 FRONTEND_ONLY=false
 SKIP_BACKUP=false
 SKIP_CHECKS=false
+SKIP_MERGE=false
 FORCE_INSTALL=0
 BRANCH_NAME=""
 BUILD_TREE=""
@@ -41,6 +43,10 @@ while [[ $# -gt 0 ]]; do
       SKIP_CHECKS=true
       shift
       ;;
+    --skip-merge)
+      SKIP_MERGE=true
+      shift
+      ;;
     --force-install)
       FORCE_INSTALL=1
       shift
@@ -50,12 +56,12 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --help|-h)
-      echo "用法：$0 --branch <分支名> [--backend-only|-b] [--frontend-only|-f] [--skip-backup] [--skip-checks] [--force-install]"
+      echo "用法：$0 --branch <分支名> [--backend-only|-b] [--frontend-only|-f] [--skip-backup] [--skip-checks] [--skip-merge] [--force-install]"
       exit 0
       ;;
     *)
       echo "错误：未知参数 $1" >&2
-      echo "用法：$0 --branch <分支名> [--backend-only|-b] [--frontend-only|-f] [--skip-backup] [--skip-checks] [--force-install]" >&2
+      echo "用法：$0 --branch <分支名> [--backend-only|-b] [--frontend-only|-f] [--skip-backup] [--skip-checks] [--skip-merge] [--force-install]" >&2
       exit 1
       ;;
   esac
@@ -90,6 +96,24 @@ EDU_STANDALONE_ROOT="$EDU_DIR/.next/standalone"
 # 前端 standalone 产物内应用目录（PM2 工作目录）
 MARKETPLACE_STANDALONE="$MARKETPLACE_STANDALONE_ROOT/apps/marketplace"
 EDU_STANDALONE="$EDU_STANDALONE_ROOT/apps/edu"
+
+# ==================== 部署锁（防止并行构建/部署冲突） ====================
+LOCK_FILE="/tmp/zhiyu-deploy.lock"
+exec {LOCK_FD}>"$LOCK_FILE"
+echo "==> 检查部署锁..."
+if ! flock --nonblock "$LOCK_FD" 2>/dev/null; then
+  echo "  另一部署正在进行中，等待其完成..."
+  flock "$LOCK_FD"
+fi
+echo "  已获取部署锁"
+
+# ==================== 清理函数 ====================
+cleanup() {
+  exec {LOCK_FD}>&- 2>/dev/null || true
+  rm -rf "$DEPLOY_TMP_DIR"
+}
+
+trap 'cleanup' EXIT
 
 # ==================== 分支隔离部署（基于 master 构建工作树） ====================
 if [[ -n "$BRANCH_NAME" ]]; then
@@ -210,25 +234,6 @@ DEPLOY_ECOSYSTEM_CONFIG="$DEPLOY_DIR/ecosystem.config.js"
 
 ROLLBACK_KEEP="${ROLLBACK_KEEP:-10}"
 BACKUP_DIR="$DEPLOY_BACKUP_DIR"
-
-# ==================== 部署锁（防止并行冲突） ====================
-LOCK_FILE="/tmp/zhiyu-deploy.lock"
-exec {LOCK_FD}>"$LOCK_FILE"
-echo "==> 检查部署锁..."
-if ! flock --nonblock "$LOCK_FD" 2>/dev/null; then
-  echo "  另一部署正在进行中，等待其完成..."
-  flock "$LOCK_FD"
-fi
-echo "  已获取部署锁"
-
-# ==================== 清理函数 ====================
-cleanup() {
-  exec {LOCK_FD}>&- 2>/dev/null || true
-  rm -rf "$DEPLOY_TMP_DIR"
-  # 分支模式构建树保留为缓存，不在此清理
-}
-
-trap 'cleanup' EXIT
 
 # ==================== --branch 强制校验 ====================
 if [[ -z "$BRANCH_NAME" ]]; then
@@ -838,6 +843,43 @@ if [[ "$HEALTH_OK" != "true" ]]; then
   exit 1
 fi
 
+# ==================== 自动合并分支到 master ====================
+if [[ -n "$BRANCH_NAME" && "$SKIP_MERGE" != "true" ]]; then
+  echo ""
+  echo "==> 自动合并 $BRANCH_NAME 到 master..."
+  git -C "$ORIGINAL_PROJECT_ROOT" fetch origin master "$BRANCH_NAME" 2>/dev/null || true
+
+  if git -C "$ORIGINAL_PROJECT_ROOT" checkout master 2>/dev/null; then
+    git -C "$ORIGINAL_PROJECT_ROOT" pull origin master --ff-only 2>/dev/null || {
+      echo "  ⚠️  无法快进合并，尝试普通 pull..."
+      git -C "$ORIGINAL_PROJECT_ROOT" pull origin master 2>/dev/null || true
+    }
+
+    local_merge_ok=false
+
+    if git -C "$ORIGINAL_PROJECT_ROOT" merge "origin/$BRANCH_NAME" --no-edit 2>/dev/null; then
+      local_merge_ok=true
+    elif git -C "$ORIGINAL_PROJECT_ROOT" merge "$BRANCH_NAME" --no-edit 2>/dev/null; then
+      echo "  （使用本地分支合并）"
+      local_merge_ok=true
+    fi
+
+    if $local_merge_ok; then
+      if git -C "$ORIGINAL_PROJECT_ROOT" push origin master 2>/dev/null; then
+        echo "  ✅ 已合并 $BRANCH_NAME 到 origin/master"
+      else
+        echo "  ⚠️  本地已合并但推送失败，请手动 git push origin master" >&2
+      fi
+    else
+      echo "  ⚠️  自动合并失败，请手动处理:"
+      echo "     cd $ORIGINAL_PROJECT_ROOT && git merge $BRANCH_NAME && git push" >&2
+    fi
+  else
+    echo "  ⚠️  无法切换到 master，跳过自动合并" >&2
+    echo "     请手动: cd $ORIGINAL_PROJECT_ROOT && git checkout master && git merge $BRANCH_NAME && git push" >&2
+  fi
+fi
+
 # ==================== 同步反向代理配置 ====================
 NGINX_CONF_SRC="$PROJECT_ROOT/deploy/nginx/conf.d/zhiyu-saas.conf"
 NGINX_CONF_DST="/opt/1panel/www/conf.d/zhiyu-saas.conf"
@@ -880,9 +922,9 @@ echo "   后端 API: http://localhost:$BACKEND_PORT"
 echo "   上传目录: $DEPLOY_UPLOAD_DIR"
 echo "   日志目录: $DEPLOY_LOG_DIR"
 echo "   回滚快照: $SNAPSHOT_DIR"
-if [[ -n "$BRANCH_NAME" ]]; then
+if [[ -n "$BRANCH_NAME" && "$SKIP_MERGE" == "true" ]]; then
   echo ""
-  echo "📌 部署已验证通过，请合并分支到 master："
-  echo "   git checkout master && git merge $BRANCH_NAME && git push"
+  echo "📌 部署已验证通过（已跳过自动合并），请手动合并:"
+  echo "   cd $ORIGINAL_PROJECT_ROOT && git checkout master && git merge $BRANCH_NAME && git push"
 fi
 echo ""

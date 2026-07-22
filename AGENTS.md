@@ -4,7 +4,7 @@
 
 ## 二、分支隔离工作流（多 Agent 协作）
 
-> **核心原则：每个 Agent 基于 master 创建特性分支，在分支上开发提交，通过 `--branch` 进行隔离部署（仅构建 master + 当前分支变更），验证通过后再合并回 master，确保 master 始终可编译可部署。**
+> **核心原则：每个 Agent 基于 master 创建特性分支，在分支上开发提交。通过 `deploy.sh --branch` 进行隔离构建并部署，健康检查通过后自动将分支合并回 origin/master。分支只在开发期间存在，部署即合并，确保 master 始终是最新稳定版。**
 
 ### 工作流程
 
@@ -20,24 +20,17 @@
    git push -u origin feat/<agent>-<任务简述>
    ```
 
-3. **隔离部署验证**（只会编译 master + 当前分支内容，不引入其他 Agent 中间修改）
+3. **隔离部署验证**（编译 master + 当前分支内容，健康检查通过后 **自动合并到 origin/master**）
    ```bash
    ./deploy.sh --branch feat/<agent>-<任务简述>
    # 也可组合其他参数：
    ./deploy.sh --branch feat/<agent>-<任务简述> --frontend-only
    ./deploy.sh --branch feat/<agent>-<任务简述> --backend-only --skip-checks
+   # 仅验证不合并（特殊用途）：
+   ./deploy.sh --branch feat/<agent>-<任务简述> --skip-merge
    ```
 
-4. **验证通过后合并回 master**
-   ```bash
-   git fetch origin master && git merge origin/master --no-edit
-   # 如有冲突先解决，然后：
-   git push  # 先推送合并后的分支
-   # 从任意工作目录合并到 master：
-   cd /root/projects/zhiyu-saas && git checkout master && git pull && git merge feat/<agent>-<任务简述> && git push
-   ```
-
-5. **清理工作树**
+4. **清理工作树**
    ```bash
    # 先切到其他目录再删除
    cd / && git worktree remove /tmp/<agent>
@@ -47,6 +40,7 @@
 
 - 分支名建议格式：`feat/<agent>-<简短描述>`，如 `feat/agent-A-student-profile`
 - 部署前确保分支已推送至远程仓库
+- 健康检查通过后自动合并分支到 origin/master，使用 `--skip-merge` 可跳过自动合并
 - 若分支与 master 存在冲突，先 `git checkout feat/xxx && git rebase master` 解决后再部署
 - 禁止直接在 master 分支上修改代码，master 仅用于拉取最新代码和合并已验证分支
 - 多个 Agent 并行开发时，各自在不同分支上互不干扰；部署时 `--branch` 参数保证只编译「master + 当前分支」的代码
