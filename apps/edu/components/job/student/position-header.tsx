@@ -140,12 +140,14 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
               </div>
 
               <div className="flex flex-wrap gap-3 mt-auto">
-                <Button
-                  className="rounded-md px-6 h-10 bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white font-medium"
-                  onClick={onStartLearning}
-                >
-                  <PlayCircle className="w-4 h-4 mr-1.5" /> 开始学习
-                </Button>
+                {onStartLearning && (
+                  <Button
+                    className="rounded-md px-6 h-10 bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white font-medium"
+                    onClick={onStartLearning}
+                  >
+                    <PlayCircle className="w-4 h-4 mr-1.5" /> 开始学习
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   disabled={loading}
