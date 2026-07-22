@@ -13,10 +13,9 @@ function getFileExt(url: string): string {
 }
 
 function buildKkFileViewUrl(fileUrl: string): string {
-  const origin = typeof window !== "undefined" ? `${window.location.protocol}//${window.location.hostname}` : ""
-  const fullUrl = `${origin}${fileUrl}`
-  const encoded = btoa(unescape(encodeURIComponent(fullUrl)))
-  return `${origin}/kkfileview/onlinePreview?url=${encoded}`
+  const origin = typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}` : ""
+  const encoded = btoa(unescape(encodeURIComponent(`${origin}${fileUrl}`)))
+  return `/kkfileview/onlinePreview?url=${encoded}`
 }
 
 function renderPreviewContent(resource: TaskResource) {
