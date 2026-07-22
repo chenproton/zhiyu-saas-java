@@ -154,12 +154,6 @@ export function PositionList({
                   <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
                     <Link href={`/job/student/${position.id}`} className="flex items-center">
                       <Eye className="mr-1 h-3 w-3" />
-                      查看
-                    </Link>
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
-                    <Link href={`${basePath}/${position.id}/edit`} className="flex items-center">
-                      <Eye className="mr-1 h-3 w-3" />
                       查看详情
                     </Link>
                   </Button>
