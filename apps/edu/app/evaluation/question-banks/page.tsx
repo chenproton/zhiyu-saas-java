@@ -711,7 +711,7 @@ export default function QuestionBanksPage() {
                 <TableCell className="text-sm text-muted-foreground">{batchName}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{bank.creatorName || bank.creatorId || "-"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">
-                  {(bank.collaboratorNames?.length || 0) > 0 ? bank.collaboratorNames.join(", ") : "-"}
+                  {bank.collaboratorNames && bank.collaboratorNames.length > 0 ? bank.collaboratorNames.join(", ") : "-"}
                 </TableCell>
                 <TableCell>
                   <EvalStatusBadge status={bank.status} />
