@@ -504,7 +504,6 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                       ? industryMap.get(pos.industryId)
                       : (pos.positionType === "enterprise" ? "企业" : "教学")
                     const majors = pos.majorNames?.filter(Boolean) || []
-                    const majorText = majors.length === 0 ? "未分类" : majors.length === 1 ? majors[0] : `${majors[0]} +${majors.length - 1}`
                     const palette = { bg: "bg-blue-50/70", hover: "hover:bg-blue-100/60", border: "border-blue-100" }
                     return (
                       <Link key={pos.id} href={`/job/student/${pos.id}`}>
@@ -518,13 +517,21 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                                 v{pos.version || "1.0"}
                               </span>
                             </div>
-                            <div className="flex items-center gap-1.5 text-[11px]">
-                              <span className="px-1.5 py-0.5 rounded-md bg-white/70 text-blue-600 truncate max-w-[80px] font-medium border border-blue-100">
+                            <div className="flex items-center gap-1.5 text-[11px] overflow-hidden">
+                              <span className="px-1.5 py-0.5 rounded-md bg-white/70 text-blue-600 whitespace-nowrap font-medium border border-blue-100 shrink-0">
                                 {category}
                               </span>
-                              <span className="px-1.5 py-0.5 rounded-md bg-white/70 text-emerald-600 truncate max-w-[120px] font-medium border border-emerald-100" title={majors.join("、") || "未分类"}>
-                                {majorText}
-                              </span>
+                              {majors.length === 0 ? (
+                                <span className="px-1.5 py-0.5 rounded-md bg-white/70 text-emerald-600 whitespace-nowrap font-medium border border-emerald-100 shrink-0">
+                                  未分类
+                                </span>
+                              ) : (
+                                majors.map((m) => (
+                                  <span key={m} className="px-1.5 py-0.5 rounded-md bg-white/70 text-emerald-600 whitespace-nowrap font-medium border border-emerald-100 shrink-0">
+                                    {m}
+                                  </span>
+                                ))
+                              )}
                             </div>
                           </div>
                         </div>
