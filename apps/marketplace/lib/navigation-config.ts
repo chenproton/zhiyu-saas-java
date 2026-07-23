@@ -302,12 +302,7 @@ export const evaluationNavigationConfig: PlatformNavigationConfig = {
     { id: "exams", label: "试卷", href: "/evaluation/exams", icon: "fileText" },
     { id: "exam-usage", label: "考试", href: "/evaluation/exam-usage", icon: "checkCircle" },
     { id: "approvals", label: "审批中心", href: "/evaluation/approvals", icon: "checkCircle" },
-    { id: "methods", label: "测评方式", href: "/evaluation/methods", icon: "settings" },
-    { id: "scene-results", label: "场景结果", href: "/evaluation/scene-results", icon: "barChart" },
     { id: "job-ability", label: "岗位能力", href: "/evaluation/job-ability", icon: "briefcase" },
-    { id: "certificates", label: "微证书", href: "/evaluation/certificates/templates", icon: "award" },
-    { id: "graduation", label: "毕业设计", href: "/evaluation/graduation/topics", icon: "graduationCap" },
-    { id: "portraits", label: "学生画像", href: "/evaluation/portraits", icon: "users" },
   ],
   sideNavItems: [
     {
@@ -318,7 +313,6 @@ export const evaluationNavigationConfig: PlatformNavigationConfig = {
         { id: "question-banks", label: "题库管理", href: "/evaluation/question-banks", matchers: ["/evaluation/question-banks"] },
         { id: "exams", label: "试卷管理", href: "/evaluation/exams", matchers: ["/evaluation/exams"] },
         { id: "exam-usage", label: "考试管理", href: "/evaluation/exam-usage", matchers: ["/evaluation/exam-usage"] },
-        { id: "methods", label: "测评方式", href: "/evaluation/methods", matchers: ["/evaluation/methods"] },
       ],
     },
     {
@@ -326,22 +320,11 @@ export const evaluationNavigationConfig: PlatformNavigationConfig = {
       label: "结果与认证",
       icon: "barChart",
       children: [
-        { id: "scene-results", label: "场景结果", href: "/evaluation/scene-results", matchers: ["/evaluation/scene-results"] },
         { id: "job-ability", label: "岗位能力", href: "/evaluation/job-ability", matchers: ["/evaluation/job-ability"] },
-        { id: "certificates", label: "微证书", href: "/evaluation/certificates/templates", matchers: ["/evaluation/certificates"] },
-      ],
-    },
-    {
-      id: "graduate-portrait",
-      label: "毕业与画像",
-      icon: "graduationCap",
-      children: [
-        { id: "graduation", label: "毕业设计", href: "/evaluation/graduation/topics", matchers: ["/evaluation/graduation"] },
-        { id: "portraits", label: "学生画像", href: "/evaluation/portraits", matchers: ["/evaluation/portraits"] },
       ],
     },
   ],
-  defaultExpandedSideNavIds: ["exam-center", "result-center", "graduate-portrait"],
+  defaultExpandedSideNavIds: ["exam-center", "result-center"],
   platformSwitchItems: [],
   shellClassName: "bg-background",
   mainClassName: "min-w-0 flex-1",
