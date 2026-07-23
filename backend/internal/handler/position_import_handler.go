@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -47,6 +48,10 @@ func (h *PositionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	defer xlsx.Close()
+
+	// Log available sheets for debugging
+	sheets := xlsx.GetSheetList()
+	log.Printf("[import/positions] sheets found: %v", sheets)
 
 	result := &importResult{}
 
@@ -140,8 +145,10 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx *excelize.File, tenantID, userID string, positionMap map[string]string, result *importResult) {
 	rows, err := xlsx.GetRows("工作职责与能力点")
 	if err != nil {
+		log.Printf("[import/positions] sheet '工作职责与能力点' not found: %v", err)
 		return
 	}
+	log.Printf("[import/positions] found %d rows in '工作职责与能力点' sheet", len(rows))
 	sortCounter := make(map[string]int)
 
 	seenResp := make(map[string]string)
