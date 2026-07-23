@@ -281,8 +281,7 @@ export default function ExamComposerPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled
-                  title="手动抽题功能开发中"
+                  onClick={() => setManualDialogOpen(true)}
                 >
                   <Hand className="mr-1 size-4" />
                   手动抽题
@@ -292,8 +291,7 @@ export default function ExamComposerPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled
-                  title="新增题目功能开发中"
+                  onClick={() => setAddQuestionDialogOpen(true)}
                 >
                   <Plus className="mr-1 size-4" />
                   新增题目
