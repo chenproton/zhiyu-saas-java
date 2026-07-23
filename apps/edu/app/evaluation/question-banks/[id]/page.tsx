@@ -40,6 +40,15 @@ import { useData } from "@/components/providers/data-provider"
 import type { Question, QuestionType, QuestionFormData, QuestionBankFormData } from "@/lib/types"
 import { QUESTION_TYPE_LABELS, DIFFICULTY_LABELS } from "@/lib/types"
 
+const TYPE_COLORS: Record<QuestionType, string> = {
+  single: "bg-blue-500",
+  multiple: "bg-indigo-500",
+  judge: "bg-amber-500",
+  fill: "bg-purple-500",
+  essay: "bg-rose-500",
+  short_answer: "bg-teal-500",
+}
+
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 import { useToast } from "@/hooks/use-toast"
@@ -510,7 +519,7 @@ export default function QuestionBankDetailPage() {
                     <p className="line-clamp-2">{question.content}</p>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">
+                    <Badge className={`text-xs text-white hover:opacity-90 ${TYPE_COLORS[question.type]}`}>
                       {QUESTION_TYPE_LABELS[question.type]}
                     </Badge>
                   </TableCell>

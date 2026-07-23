@@ -17,8 +17,17 @@ import { ManualQuestionDialog } from "@/components/evaluation/manual-question-di
 import { AddQuestionToExamDialog } from "@/components/evaluation/add-question-to-exam-dialog"
 import { QuestionPreview } from "@/components/evaluation/question-preview"
 import { useData } from "@/components/providers/data-provider"
-import type { Question, ExamQuestion, ExamFormData } from "@/lib/types"
+import type { Question, ExamQuestion, ExamFormData, QuestionType } from "@/lib/types"
 import { QUESTION_TYPE_LABELS, canPerformAction } from "@/lib/types"
+
+const TYPE_COLORS: Record<QuestionType, string> = {
+  single: "bg-blue-500",
+  multiple: "bg-indigo-500",
+  judge: "bg-amber-500",
+  fill: "bg-purple-500",
+  essay: "bg-rose-500",
+  short_answer: "bg-teal-500",
+}
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { PrdAnnotation } from "@/components/prd-annotation"
@@ -363,7 +372,7 @@ export default function ExamComposerPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm line-clamp-2">{question.content}</p>
                     <div className="mt-2 flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge className={`text-xs text-white hover:opacity-90 ${TYPE_COLORS[question.type]}`}>
                         {QUESTION_TYPE_LABELS[question.type]}
                       </Badge>
                       {canEdit ? (
