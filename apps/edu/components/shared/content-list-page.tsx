@@ -944,7 +944,25 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
               <FolderKanban className="mr-1 h-3 w-3" />
               调整批次分组
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected} onClick={handleBatchExport}>
+            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected} onClick={async () => {
+              const exportFn = importExportApi.exportScenariosExcel || importExportApi.exportPositionsExcel
+              if (exportFn) {
+                try {
+                  const res = await exportFn(selectedIds)
+                  const blob = await res.blob()
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement("a")
+                  a.href = url
+                  a.download = `${entityLabel}导出.xlsx`
+                  a.click()
+                  URL.revokeObjectURL(url)
+                } catch (err: any) {
+                  alert(err.message || "导出失败")
+                }
+              } else {
+                handleBatchExport()
+              }
+            }}>
               <Download className="mr-1 h-3 w-3" />
               导出
             </Button>
@@ -1117,52 +1135,6 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
                 上一步
               </Button>
             )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Export Dialog */}
-      <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
-        <DialogContent className="sm:max-w-[450px]">
-          <DialogHeader>
-            <DialogTitle>导出{entityLabel}</DialogTitle>
-            <DialogDescription>将选中的{entityLabel}数据导出为文件</DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            <p className="text-sm text-slate-500">已选择 {selectedIds.length} 个{entityLabel}</p>
-            <div className="grid gap-2">
-              <Label>导出格式</Label>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={async () => {
-                    const exportFn = importExportApi.exportScenariosExcel || importExportApi.exportPositionsExcel
-                    if (!exportFn) return
-                    try {
-                      const res = await exportFn(selectedIds)
-                      const blob = await res.blob()
-                      const url = URL.createObjectURL(blob)
-                      const a = document.createElement("a")
-                      a.href = url
-                      a.download = `${entityLabel}导出.xlsx`
-                      a.click()
-                      URL.revokeObjectURL(url)
-                      setIsExportDialogOpen(false)
-                    } catch (err: any) {
-                      alert(err.message || "导出失败")
-                    }
-                  }}
-                >
-                  Excel (.xlsx)
-                </Button>
-                <Button variant="outline" size="sm" className="flex-1" onClick={handleBatchExport}>CSV (.csv)</Button>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsExportDialogOpen(false)}>取消</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
