@@ -342,7 +342,7 @@ export default function SceneDetailPage() {
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
   const [abilityMap, setAbilityMap] = useState<Map<string, AbilityPoint>>(new Map())
   const [abilityDomainMap, setAbilityDomainMap] = useState<Map<string, string>>(new Map())
-  const [previewResource, setPreviewResource] = useState<TaskResource | null>(null)
+  const [previewResources, setPreviewResources] = useState<TaskResource[]>([])
 
   useEffect(() => {
     if (!id) return
@@ -592,7 +592,7 @@ export default function SceneDetailPage() {
                                 </div>
                                 {r.url && (
                                   <button
-                                    onClick={() => setPreviewResource(r)}
+                                    onClick={() => setPreviewResources((prev) => [...prev, r])}
                                     className="shrink-0 mt-0.5 w-7 h-7 rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100 flex items-center justify-center transition-colors"
                                     title="预览资源"
                                   >
@@ -825,11 +825,14 @@ export default function SceneDetailPage() {
         </div>
       </main>
 
-      <ResourcePreviewModal
-        resource={previewResource}
-        open={!!previewResource}
-        onOpenChange={(open) => { if (!open) setPreviewResource(null) }}
-      />
+      {previewResources.map((r) => (
+        <ResourcePreviewModal
+          key={r.id}
+          resource={r}
+          open
+          onOpenChange={() => setPreviewResources((prev) => prev.filter((x) => x.id !== r.id))}
+        />
+      ))}
 
       <PlatformFooter />
     </div>

@@ -100,7 +100,7 @@ export function ResourcePreviewModal({ resource, open, onOpenChange }: ResourceP
   }, [])
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange} modal={false}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-transparent" />
         <DialogPrimitive.Content
