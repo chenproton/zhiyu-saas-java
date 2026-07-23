@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, GripVertical, Trash2, Eye, FileText, Wand2, Hand, Plus, Edit, FileUp, Rocket, ImageIcon, Users, Building2 } from "lucide-react"
@@ -78,6 +78,42 @@ export default function ExamComposerPage() {
   const canEdit = !isPreview && ['draft', 'rejected', 'approved', 'published'].includes(exam.status)
   const canPublish = !isPreview && canPerformAction(exam.status, 'publish')
 
+  const [editScores, setEditScores] = useState<Record<string, string>>({})
+  const [savingScoreId, setSavingScoreId] = useState<string | null>(null)
+
+  const commitScore = useCallback((questionId: string) => {
+    const raw = editScores[questionId]
+    if (raw === undefined) return
+    const score = Number(raw)
+    if (isNaN(score) || score <= 0) return
+    setSavingScoreId(questionId)
+    updateExamQuestionScore(examId, questionId, score).finally(() => {
+      setSavingScoreId(null)
+      setEditScores((prev) => {
+        const next = { ...prev }
+        delete next[questionId]
+        return next
+      })
+    })
+  }, [examId, editScores, updateExamQuestionScore])
+
+  const handleScoreKeyDown = useCallback((e: React.KeyboardEvent, questionId: string) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      commitScore(questionId)
+    } else if (e.key === 'Escape') {
+      setEditScores((prev) => {
+        const next = { ...prev }
+        delete next[questionId]
+        return next
+      })
+    }
+  }, [commitScore])
+
+  const totalScore = useMemo(() => {
+    return exam.questions.reduce((sum, q) => sum + (q.score || 0), 0)
+  }, [exam.questions])
+
   const handleExamUpdate = (data: ExamFormData) => {
     updateExam(examId, data)
   }
@@ -99,11 +135,19 @@ export default function ExamComposerPage() {
     }
   }
 
-  const handleScoreChange = (questionId: string, score: number) => {
-    updateExamQuestionScore(examId, questionId, score)
-  }
+  const toPreviewQuestion = (eq: ExamQuestion): Question => ({
+    id: eq.id,
+    bankId: '',
+    type: eq.type,
+    content: eq.content,
+    options: eq.options,
+    answer: eq.answer,
+    analysis: eq.analysis,
+    score: eq.score,
+    status: 'published',
+    createdAt: new Date(),
+  })
 
-  // 拖拽排序
   const handleDragStart = (index: number) => {
     setDraggedIndex(index)
   }
@@ -143,18 +187,7 @@ export default function ExamComposerPage() {
   const getCollaboratorDeptNames = () => (exam.collaboratorDeptIds || []).filter(Boolean)
 
   // 转换 ExamQuestion 为 Question 格式以供预览
-  const toPreviewQuestion = (eq: ExamQuestion): Question => ({
-    id: eq.id,
-    bankId: '',
-    type: eq.type,
-    content: eq.content,
-    options: eq.options,
-    answer: eq.answer,
-    analysis: eq.analysis,
-    score: eq.score,
-    status: 'published',
-    createdAt: new Date(),
-  })
+  // (defined above)
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
@@ -233,7 +266,7 @@ export default function ExamComposerPage() {
               </div>
               <div>
                 <span className="text-muted-foreground">总分:</span>{" "}
-                <strong>{exam.totalScore} 分</strong>
+                <strong>{totalScore} 分</strong>
               </div>
               <div>
                 <span className="text-muted-foreground">创建时间:</span>{" "}
@@ -380,11 +413,14 @@ export default function ExamComposerPage() {
                         <div className="flex items-center gap-1">
                           <Input
                             type="number"
-                            min={1}
-                            max={100}
-                            value={question.score}
-                            onChange={(e) => handleScoreChange(question.id, Number(e.target.value))}
+                            min={0.5}
+                            step={0.5}
+                            value={editScores[question.id] ?? String(question.score)}
+                            onChange={(e) => setEditScores((prev) => ({ ...prev, [question.id]: e.target.value }))}
+                            onBlur={() => commitScore(question.id)}
+                            onKeyDown={(e) => handleScoreKeyDown(e, question.id)}
                             className="h-6 w-16 text-xs"
+                            disabled={savingScoreId === question.id}
                             onClick={(e) => e.stopPropagation()}
                           />
                           <span className="text-xs text-muted-foreground">分</span>

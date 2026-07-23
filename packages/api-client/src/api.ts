@@ -989,6 +989,8 @@ export const examApi = {
     request<Exam>(`/evaluation/exams/${id}/questions`, { method: "POST", body: JSON.stringify({ questionId, score }) }),
   removeQuestion: (id: string, questionId: string) =>
     request<Exam>(`/evaluation/exams/${id}/questions/${questionId}`, { method: "DELETE" }),
+  updateQuestionScore: (examId: string, questionId: string, score: number) =>
+    request<Exam>(`/evaluation/exams/${examId}/questions/${questionId}`, { method: "PUT", body: JSON.stringify({ score }) }),
 }
 
 export const examUsageApi = {

@@ -396,6 +396,47 @@ func (h *ExamHandler) RemoveQuestion(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, exam)
 }
 
+type UpdateExamQuestionScoreRequest struct {
+	Score float64 `json:"score"`
+}
+
+func (h *ExamHandler) UpdateQuestionScore(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+
+	examID := chi.URLParam(r, "id")
+	questionID := chi.URLParam(r, "questionId")
+
+	var req UpdateExamQuestionScoreRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.Score <= 0 {
+		respondError(w, http.StatusBadRequest, "score must be positive")
+		return
+	}
+
+	tag, err := h.DB.Exec(r.Context(), `
+		UPDATE exam_questions SET score = $1 WHERE exam_id = $2 AND question_id = $3
+	`, req.Score, examID, questionID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to update question score")
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		respondError(w, http.StatusNotFound, "question not found in exam")
+		return
+	}
+
+	_ = h.recalcExamTotal(r.Context(), examID)
+	exam, _ := h.fetchExam(r.Context(), examID)
+	respondJSON(w, http.StatusOK, exam)
+}
+
 func (h *ExamHandler) recalcExamTotal(ctx context.Context, examID string) error {
 	_, err := h.DB.Exec(ctx, `
 		UPDATE exams SET total_score = COALESCE((SELECT SUM(score) FROM exam_questions WHERE exam_id = $1), 0), updated_at = NOW()

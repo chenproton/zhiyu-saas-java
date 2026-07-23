@@ -628,16 +628,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const updateExamQuestionScore = useCallback(async (examId: string, examQuestionId: string, score: number) => {
     const exam = exams.find((e) => e.id === examId)
     if (!exam) return
-    const newQuestions = exam.questions.map((q) =>
-      q.id === examQuestionId ? { ...q, score } : q
-    )
-    await examApi.update(examId, {
-      name: exam.name,
-      description: exam.description,
-      duration: exam.duration,
-      coverImage: exam.coverImage,
-      questions: newQuestions,
-    })
+    const eq = exam.questions.find((q) => q.id === examQuestionId)
+    if (!eq) return
+    await examApi.updateQuestionScore(examId, eq.questionId, score)
     await loadExams()
   }, [exams, loadExams])
 
