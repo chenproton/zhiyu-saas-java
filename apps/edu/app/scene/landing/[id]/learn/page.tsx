@@ -251,6 +251,7 @@ export default function SceneLearnPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link
+                replace
                 href={`/scene/landing/${id}`}
                 className="group flex items-center gap-2.5 text-sm text-gray-500 hover:text-blue-600 transition-all duration-200"
               >
