@@ -42,7 +42,7 @@ import type { Scenario, ScenarioTask, TaskResource, KnowledgePoint, AbilityPoint
 import { cn } from "@/lib/utils"
 import { formatFileSize } from "@/lib/resource-constants"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
-import { ResourcePreviewModal } from "@/components/shared/resource-preview-modal"
+import { ResourcePreviewModal, usePreviewResources } from "@/components/shared/resource-preview-modal"
 
 /* ---------- constants ---------- */
 
@@ -96,7 +96,7 @@ export default function SceneLearnPage() {
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
   const [abilityMap, setAbilityMap] = useState<Map<string, AbilityPoint>>(new Map())
   const [showResources, setShowResources] = useState(false)
-  const [previewResources, setPreviewResources] = useState<TaskResource[]>([])
+  const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
 
   useEffect(() => {
     if (!id) return
@@ -437,7 +437,7 @@ export default function SceneLearnPage() {
                         任务说明书
                         {activeTask.descriptionPdf && (
                           <button
-                            onClick={() => setPreviewResources((prev) => [...prev, { id: `pdf-${Date.now()}`, url: activeTask.descriptionPdf, name: "任务说明书 PDF", type: "pdf" } as any])}
+                            onClick={() => addPreviewResource({ id: `pdf-${Date.now()}`, url: activeTask.descriptionPdf, name: "任务说明书 PDF", type: "pdf" } as TaskResource)}
                             className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-white px-3.5 py-2 rounded-xl bg-gradient-to-r from-white/25 to-white/10 backdrop-blur-sm border border-white/30 hover:from-white/35 hover:to-white/20 shadow-md shadow-black/10 hover:shadow-lg hover:shadow-black/15 hover:-translate-y-0.5 transition-all"
                           >
                             <Eye className="h-3.5 w-3.5" />查看 PDF
@@ -545,7 +545,7 @@ export default function SceneLearnPage() {
                   </TabsContent>
                   <TabsContent value="collapsed-resource" className="mt-0 space-y-2">
                     {taskResources.length > 0 ? taskResources.map((r) => (
-                      <div key={r.id} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer" onClick={() => setPreviewResources((prev) => [...prev, r])}>
+                      <div key={r.id} className="flex items-start gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer" onClick={() => addPreviewResource(r)}>
                         <div className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center ${resourceTypeIcons[r.type] || "text-gray-400 bg-gray-50"}`}>
                           <FileText className="h-3.5 w-3.5" />
                         </div>
@@ -569,7 +569,7 @@ export default function SceneLearnPage() {
           resource={r}
           open
           index={i}
-          onOpenChange={() => setPreviewResources((prev) => prev.filter((x) => x.id !== r.id))}
+          onOpenChange={() => removePreviewResource(r.id)}
         />
       ))}
 

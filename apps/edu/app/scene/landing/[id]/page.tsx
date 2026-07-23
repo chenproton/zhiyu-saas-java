@@ -28,7 +28,7 @@ import type {
 } from "@/lib/types"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
 import { SceneKnowledgeGraph } from "@/components/scene/student/knowledge-graph"
-import { ResourcePreviewModal } from "@/components/shared/resource-preview-modal"
+import { ResourcePreviewModal, usePreviewResources } from "@/components/shared/resource-preview-modal"
 
 const TABS = [
   { value: "tasks", label: "任务概览", icon: ListChecks },
@@ -342,7 +342,7 @@ export default function SceneDetailPage() {
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
   const [abilityMap, setAbilityMap] = useState<Map<string, AbilityPoint>>(new Map())
   const [abilityDomainMap, setAbilityDomainMap] = useState<Map<string, string>>(new Map())
-  const [previewResources, setPreviewResources] = useState<TaskResource[]>([])
+  const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
 
   useEffect(() => {
     if (!id) return
@@ -592,7 +592,7 @@ export default function SceneDetailPage() {
                                 </div>
                                 {r.url && (
                                   <button
-                                    onClick={() => setPreviewResources((prev) => [...prev, r])}
+                                    onClick={() => addPreviewResource(r)}
                                     className="shrink-0 mt-0.5 w-7 h-7 rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100 flex items-center justify-center transition-colors"
                                     title="预览资源"
                                   >
@@ -831,7 +831,7 @@ export default function SceneDetailPage() {
           resource={r}
           open
           index={i}
-          onOpenChange={() => setPreviewResources((prev) => prev.filter((x) => x.id !== r.id))}
+          onOpenChange={() => removePreviewResource(r.id)}
         />
       ))}
 
