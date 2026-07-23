@@ -136,6 +136,8 @@ export interface Exam {
   version: string
   ownerType: 'mine' | 'collaborate' | 'public'
   creatorId?: string
+  creatorName?: string
+  collaboratorNames?: string[]
   createdAt: Date
   updatedAt: Date
 }

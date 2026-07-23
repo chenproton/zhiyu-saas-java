@@ -90,11 +90,18 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT id, name, description, status, total_score, duration, cover_image,
-			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, creator_id, created_at, updated_at
-		FROM exams
+		SELECT e.id, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image,
+			e.collaborator_ids,
+			COALESCE((SELECT u.name FROM users u WHERE u.id = e.creator_id), e.creator_id::text) AS creator_name,
+			COALESCE((
+				SELECT array_agg(u.name ORDER BY ord)
+				FROM unnest(e.collaborator_ids) WITH ORDINALITY AS c(id, ord)
+				JOIN users u ON u.id = c.id
+			), '{}') AS collaborator_names,
+			e.collaborator_dept_ids, e.batch_id, e.version, e.owner_type, e.creator_id, e.created_at, e.updated_at
+		FROM exams e
 		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
+		ORDER BY e.created_at DESC
 		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
 	args = append(args, limit, offset)
 
@@ -389,12 +396,19 @@ func (h *ExamHandler) fetchExam(ctx context.Context, id string) (domain.Exam, er
 	var e domain.Exam
 	var coverImage, creatorID, batchID *string
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, description, status, total_score, duration, cover_image,
-			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, creator_id, created_at, updated_at
-		FROM exams WHERE id = $1
+		SELECT e.id, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image,
+			e.collaborator_ids,
+			COALESCE((SELECT u.name FROM users u WHERE u.id = e.creator_id), e.creator_id::text) AS creator_name,
+			COALESCE((
+				SELECT array_agg(u.name ORDER BY ord)
+				FROM unnest(e.collaborator_ids) WITH ORDINALITY AS c(id, ord)
+				JOIN users u ON u.id = c.id
+			), '{}') AS collaborator_names,
+			e.collaborator_dept_ids, e.batch_id, e.version, e.owner_type, e.creator_id, e.created_at, e.updated_at
+		FROM exams e WHERE e.id = $1
 	`, id).Scan(
 		&e.ID, &e.Name, &e.Description, &e.Status, &e.TotalScore, &e.Duration, &coverImage,
-		&e.CollaboratorIDs, &e.CollaboratorDeptIDs, &batchID, &e.Version, &e.OwnerType, &creatorID, &e.CreatedAt, &e.UpdatedAt,
+		&e.CollaboratorIDs, &e.CreatorName, &e.CollaboratorNames, &e.CollaboratorDeptIDs, &batchID, &e.Version, &e.OwnerType, &creatorID, &e.CreatedAt, &e.UpdatedAt,
 	)
 	if err != nil {
 		return e, err
@@ -445,7 +459,7 @@ func (h *ExamHandler) scanExamRows(ctx context.Context, rows pgx.Rows) ([]domain
 		var coverImage, creatorID, batchID *string
 		if err := rows.Scan(
 			&e.ID, &e.Name, &e.Description, &e.Status, &e.TotalScore, &e.Duration, &coverImage,
-			&e.CollaboratorIDs, &e.CollaboratorDeptIDs, &batchID, &e.Version, &e.OwnerType, &creatorID, &e.CreatedAt, &e.UpdatedAt,
+			&e.CollaboratorIDs, &e.CreatorName, &e.CollaboratorNames, &e.CollaboratorDeptIDs, &batchID, &e.Version, &e.OwnerType, &creatorID, &e.CreatedAt, &e.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

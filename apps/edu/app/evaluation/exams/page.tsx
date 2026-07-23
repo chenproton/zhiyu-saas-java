@@ -19,6 +19,7 @@ import {
   LayoutGrid,
   List,
   MessageSquare,
+  Pencil,
   Plus,
   Rocket,
   RotateCcw,
@@ -71,9 +72,11 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { PageHeaderCard } from "@/components/shared/page-header-card"
+import { ExamFormDialog } from "@/components/evaluation/exam-form-dialog"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth-provider"
 import { UserSelector } from "@/components/shared/user-selector"
+import type { ExamFormData } from "@/lib/types"
 
 
 type TabType = "my" | "collab" | "public"
@@ -165,6 +168,9 @@ export default function ExamsPage() {
   const [isCloneRenameDialogOpen, setIsCloneRenameDialogOpen] = useState(false)
   const [cloneRenameValue, setCloneRenameValue] = useState("")
   const [cloneTargetExam, setCloneTargetExam] = useState<BackendExam | null>(null)
+
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editingExam, setEditingExam] = useState<BackendExam | null>(null)
 
   const [importFile, setImportFile] = useState<File | null>(null)
   const [isImporting, setIsImporting] = useState(false)
@@ -396,6 +402,31 @@ export default function ExamsPage() {
     }
   }
 
+  const handleEdit = (exam: BackendExam) => {
+    setEditingExam(exam)
+    setIsEditDialogOpen(true)
+  }
+
+  const handleEditSubmit = async (data: ExamFormData) => {
+    if (!editingExam) return
+    try {
+      await examApi.update(editingExam.id, {
+        name: data.name,
+        description: data.description,
+        duration: data.duration,
+        coverImage: data.coverImage,
+        collaboratorIds: data.collaboratorIds,
+        batchId: data.batchId,
+      })
+      setIsEditDialogOpen(false)
+      setEditingExam(null)
+      await loadData()
+    } catch (err) {
+      console.error("编辑试卷失败", err)
+      alert("编辑试卷失败")
+    }
+  }
+
   const handleSubmitApproval = async (id: string) => {
     const exam = exams.find((e) => e.id === id)
     if (!exam?.batchId) {
@@ -421,7 +452,7 @@ export default function ExamsPage() {
     const batch = batches.find((b) => b.id === submitSelectedBatchId)
     if (!batch) return
     try {
-      await examApi.update(submitBatchTarget.id, { batchId: submitSelectedBatchId })
+      await examApi.update(submitBatchTarget.id, { name: submitBatchTarget.name, batchId: submitSelectedBatchId })
       await examApi.submit(submitBatchTarget.id)
       await approvalApi.create({ targetType: "exam", targetId: submitBatchTarget.id, workflowId: batch.workflowId })
       setIsSubmitBatchDialogOpen(false)
@@ -745,9 +776,9 @@ export default function ExamsPage() {
                 <TableCell>{(exam.questions || []).length} 题</TableCell>
                 <TableCell>{exam.totalScore} 分</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{batchName}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{exam.creatorId || "-"}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {(exam.collaboratorIds?.length || 0) > 0 ? `${exam.collaboratorIds!.length} 人` : "-"}
+                <TableCell className="text-sm text-muted-foreground">{exam.creatorName || exam.creatorId || "-"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground truncate">
+                  {exam.collaboratorNames && exam.collaboratorNames.length > 0 ? exam.collaboratorNames.join(", ") : "-"}
                 </TableCell>
                 <TableCell>
                   <EvalStatusBadge status={exam.status} />
@@ -774,6 +805,28 @@ export default function ExamsPage() {
                       <Copy className="mr-1 h-3 w-3" />
                       克隆
                     </Button>
+                    {exam.status !== "archived" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => handleEdit(exam)}
+                      >
+                        <Pencil className="mr-1 h-3 w-3" />
+                        编辑
+                      </Button>
+                    )}
+                    {exam.status === "archived" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
+                        onClick={() => handleUnpublish(exam.id)}
+                      >
+                        <RotateCcw className="mr-1 h-3 w-3" />
+                        恢复
+                      </Button>
+                    )}
                     {(exam.status === "draft" || exam.status === "rejected") && (
                       <Button
                         variant="ghost"
@@ -1460,6 +1513,14 @@ export default function ExamsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Dialog */}
+      <ExamFormDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        exam={editingExam as unknown as import("@/lib/types").Exam}
+        onSubmit={handleEditSubmit}
+      />
     </div>
   )
 }

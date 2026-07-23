@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, GripVertical, Trash2, Eye, FileText, Wand2, Hand, Plus, Edit, Send, Save, FileUp, MonitorPlay, Rocket, ArrowDownFromLine } from "lucide-react"
+import { ArrowLeft, GripVertical, Trash2, Eye, FileText, Wand2, Hand, Plus, Edit, FileUp, Rocket, ArrowDownFromLine, ImageIcon, Users, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,7 +20,6 @@ import { useData } from "@/components/providers/data-provider"
 import type { Question, ExamQuestion, ExamFormData } from "@/lib/types"
 import { QUESTION_TYPE_LABELS, canPerformAction } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { useToast } from "@/hooks/use-toast"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 
@@ -53,7 +52,6 @@ export default function ExamComposerPage() {
   const [randomDialogOpen, setRandomDialogOpen] = useState(false)
   const [manualDialogOpen, setManualDialogOpen] = useState(false)
   const [addQuestionDialogOpen, setAddQuestionDialogOpen] = useState(false)
-  const { toast } = useToast()
 
   const selectedQuestionIds = useMemo(() => {
     return exam?.questions?.map(q => q.questionId) || []
@@ -74,19 +72,12 @@ export default function ExamComposerPage() {
   }
 
   const canEdit = !isPreview && ['draft', 'rejected', 'approved', 'published'].includes(exam.status)
-  const canDelete = !isPreview && ['draft', 'rejected', 'archived'].includes(exam.status)
-  const canSubmit = !isPreview && canPerformAction(exam.status, 'submit')
   const canPublish = !isPreview && canPerformAction(exam.status, 'publish')
   const canUnpublish = !isPreview && canPerformAction(exam.status, 'unpublish')
 
   const handleExamUpdate = (data: ExamFormData) => {
     updateExam(examId, data)
     hasSavedRef.current = true
-  }
-
-  const handleExamDelete = () => {
-    deleteExam(examId)
-    router.push("/evaluation/exams")
   }
 
   const handleAddQuestions = (questions: Question[]) => {
@@ -140,6 +131,17 @@ export default function ExamComposerPage() {
     return mins > 0 ? `${hours} 小时 ${mins} 分钟` : `${hours} 小时`
   }
 
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(date)
+  }
+
+  const getCollaboratorNames = () => (exam.collaboratorNames || exam.collaboratorIds || []).filter(Boolean)
+  const getCollaboratorDeptNames = () => (exam.collaboratorDeptIds || []).filter(Boolean)
+
   // 转换 ExamQuestion 为 Question 格式以供预览
   const toPreviewQuestion = (eq: ExamQuestion): Question => ({
     id: eq.id,
@@ -179,13 +181,24 @@ export default function ExamComposerPage() {
           <CardHeader>
             <div className="flex items-start justify-between">
               <div className="flex gap-4">
-                <div className="flex size-24 shrink-0 items-center justify-center rounded-lg bg-muted">
-                  <FileText className="size-8 text-muted-foreground" />
-                </div>
+                {exam.coverImage ? (
+                  <div className="shrink-0 overflow-hidden rounded-lg">
+                    <img
+                      src={exam.coverImage}
+                      alt={exam.name}
+                      className="size-24 object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex size-24 shrink-0 items-center justify-center rounded-lg bg-muted">
+                    <ImageIcon className="size-8 text-muted-foreground" />
+                  </div>
+                )}
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
                     <CardTitle className="text-xl">{exam.name}</CardTitle>
                     {!isPreview && <StatusBadge status={exam.status} />}
+                    <Badge variant="outline">{exam.version}</Badge>
                   </div>
                   <CardDescription className="mt-2">
                     {exam.description || "暂无描述"}
@@ -202,22 +215,6 @@ export default function ExamComposerPage() {
                       </Button>
                     </PrdAnnotation>
                   )}
-                  {canSubmit && (
-                    <PrdAnnotation {...getAnnotation("ec-btn-submit")}>
-                      <Button variant="outline" size="sm" onClick={() => updateExamStatus(examId, 'submit')}>
-                        <Send className="mr-1 size-4" />
-                        提交审批
-                      </Button>
-                    </PrdAnnotation>
-                  )}
-                  {canDelete && (
-                    <PrdAnnotation {...getAnnotation("ec-btn-delete")}>
-                      <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={handleExamDelete}>
-                        <Trash2 className="mr-1 size-4" />
-                        删除
-                      </Button>
-                    </PrdAnnotation>
-                  )}
                   {canPublish && (
                     <Button variant="outline" size="sm" className="text-indigo-600 hover:text-indigo-700" onClick={() => updateExamStatus(examId, 'publish')}>
                       <Rocket className="mr-1 size-4" />
@@ -230,31 +227,16 @@ export default function ExamComposerPage() {
                       取消发布
                     </Button>
                   )}
-                  <PrdAnnotation {...getAnnotation("ec-btn-preview")}>
-                    <Button variant="outline" size="sm" onClick={() => router.push('/evaluation/landing/resources/exams/exam-1?returnUrl=' + encodeURIComponent('/exams/' + examId))}>
-                      <MonitorPlay className="mr-1 size-4" />
-                      预览试卷
-                    </Button>
-                  </PrdAnnotation>
-                  <PrdAnnotation {...getAnnotation("ec-btn-save")}>
-                    <Button size="sm" onClick={async () => {
-                      if (exam.status !== 'draft') {
-                        await updateExamStatus(examId, 'save_draft')
-                        toast({ title: "保存成功", description: "试卷已保存为草稿" })
-                      } else {
-                        toast({ title: "保存成功", description: "试卷已保存" })
-                      }
-                    }}>
-                      <Save className="mr-1 size-4" />
-                      保存试卷
-                    </Button>
-                  </PrdAnnotation>
                 </div>
               )}
             </div>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-6 text-sm">
+              <div>
+                <span className="text-muted-foreground">创建人:</span>{" "}
+                <strong>{exam.creatorName || exam.creatorId || "-"}</strong>
+              </div>
               <div>
                 <span className="text-muted-foreground">题目数量:</span>{" "}
                 <strong>{exam.questions.length}</strong>
@@ -263,7 +245,45 @@ export default function ExamComposerPage() {
                 <span className="text-muted-foreground">总分:</span>{" "}
                 <strong>{exam.totalScore} 分</strong>
               </div>
+              <div>
+                <span className="text-muted-foreground">创建时间:</span>{" "}
+                {formatDate(exam.createdAt)}
+              </div>
+              <div>
+                <span className="text-muted-foreground">更新时间:</span>{" "}
+                {formatDate(exam.updatedAt)}
+              </div>
             </div>
+            {(getCollaboratorNames().length > 0 || getCollaboratorDeptNames().length > 0) && (
+              <div className="mt-4 flex flex-wrap gap-4 border-t pt-4">
+                {getCollaboratorNames().length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Users className="size-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">共建人:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {getCollaboratorNames().map((name, i) => (
+                        <Badge key={i} variant="secondary" className="text-xs">
+                          {name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {getCollaboratorDeptNames().length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Building2 className="size-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">共建部门:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {getCollaboratorDeptNames().map((name, i) => (
+                        <Badge key={i} variant="outline" className="text-xs">
+                          {name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
