@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import {
@@ -10,12 +10,14 @@ import {
   taskApi,
 } from "@/lib/api"
 import { useAuth } from "@/components/auth-provider"
+import { useIndustryMap } from "@/lib/use-resource-maps"
 import type {
   CareerPosition,
   LearnRoad,
   Scenario,
   ScenarioTask,
 } from "@/lib/types"
+import { PositionHeader } from "@/components/job/student/position-header"
 import { LearningPath } from "@/components/job/student/learning-path"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -25,6 +27,7 @@ export default function JobStudentLearnPage() {
   const params = useParams()
   const id = params.id as string
   const { user } = useAuth()
+  const industryMap = useIndustryMap()
 
   const [position, setPosition] = useState<CareerPosition | null>(null)
   const [loading, setLoading] = useState(true)
@@ -72,6 +75,11 @@ export default function JobStudentLearnPage() {
       .catch(() => {})
   }, [id, position, user])
 
+  const industryName = useMemo(() => {
+    if (!position?.industryId) return undefined
+    return industryMap.get(position.industryId)
+  }, [position, industryMap])
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-[#F9FAFC]">
@@ -99,6 +107,8 @@ export default function JobStudentLearnPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F9FAFC]">
+      <PositionHeader position={position} industryName={industryName} />
+
       <main className="flex-1 max-w-[1400px] mx-auto px-8 py-6 w-full">
         <Link href={`/job/student/${id}`} className="inline-flex items-center gap-1 text-sm text-[#64748b] hover:text-blue-600 mb-4">
           <ArrowLeft className="w-4 h-4" /> 返回岗位详情
