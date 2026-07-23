@@ -2217,6 +2217,8 @@ function EditCardDialog({
   const [selectedPaperForDetail, setSelectedPaperForDetail] = useState<string | null>(null)
   const [paperDetailOpen, setPaperDetailOpen] = useState(false)
   const [showCreatePaper, setShowCreatePaper] = useState(false)
+  const [configPaperId, setConfigPaperId] = useState<string | null>(null)
+  const [configSelectedIds, setConfigSelectedIds] = useState<string[]>([])
   const [newPaperName, setNewPaperName] = useState("")
   const [newPaperQuestionCount, setNewPaperQuestionCount] = useState(10)
   const [newPaperTotalScore, setNewPaperTotalScore] = useState(100)
@@ -4760,10 +4762,10 @@ function EditCardDialog({
                       })}
                     </div>
                   )}
+                  </div>
                 </div>
               </div>
-            </div>
-          )
+            )
         }
 
         // Resource-only panel (no eval points)
@@ -5263,6 +5265,7 @@ function EditCardDialog({
             }
 
             return (
+              <>
               <div className="space-y-4">
                 <div className="border rounded-xl p-4">
                   <p className="text-sm font-medium mb-3">选择已有试卷</p>
@@ -5402,6 +5405,54 @@ function EditCardDialog({
                   </div>
                 </div>
               </div>
+              {/* Exam Question Config Dialog */}
+              <Dialog open={!!configPaperId} onOpenChange={(v) => { if (!v) { setConfigPaperId(null); setConfigSelectedIds([]) } }}>
+                <DialogContent className="sm:max-w-[85vw] max-w-[85vw] h-[92vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>配置试卷题目</DialogTitle>
+                    <DialogDescription>
+                      从题库中选择题目添加到试卷「{loadedExams.find(e => e.id === configPaperId)?.name || ""}」
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="flex-1 min-h-0">
+                    <BankQuestionSelectorPanel
+                      field="quizQuestions"
+                      selectedIds={configSelectedIds}
+                      onToggleQuestion={(qid) => {
+                        setConfigSelectedIds(prev =>
+                          prev.includes(qid) ? prev.filter(id => id !== qid) : [...prev, qid]
+                        )
+                      }}
+                    />
+                  </div>
+                  <DialogFooter className="mt-4">
+                    <Button variant="outline" onClick={() => { setConfigPaperId(null); setConfigSelectedIds([]) }}>
+                      跳过
+                    </Button>
+                    <Button
+                      disabled={configSelectedIds.length === 0}
+                      onClick={async () => {
+                        if (!configPaperId) return
+                        try {
+                          for (const qid of configSelectedIds) {
+                            await examApi.addQuestion(configPaperId, qid, 0)
+                          }
+                          const updated = await examApi.get(configPaperId) as any
+                          const idx = loadedExams.findIndex(e => e.id === configPaperId)
+                          if (idx >= 0) loadedExams[idx] = updated
+                        } catch (_) {
+                          alert("添加题目失败")
+                        }
+                        setConfigPaperId(null)
+                        setConfigSelectedIds([])
+                      }}
+                    >
+                      确认添加 ({configSelectedIds.length} 题)
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              </>
             )
           }
           if (methodKey === "question_bank") {
@@ -7343,6 +7394,8 @@ function EditCardDialog({
                   loadedExams.push(created)
                   updateState({ paperIds: [created.id], paperWeights: { [created.id]: 100 } })
                   setShowCreatePaper(false)
+                  setConfigPaperId(created.id)
+                  setConfigSelectedIds([])
                 } catch (_) {
                   alert("创建试卷失败")
                 }
