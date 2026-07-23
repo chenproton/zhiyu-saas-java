@@ -142,7 +142,7 @@ func (h *TemplateHandler) generatePositionTemplate(ctx context.Context, tenantID
 		f.SetCellValue(sheet, start, text)
 		f.SetCellStyle(sheet, start, end, noteStyle)
 		f.SetCellStyle(sheet, start, end, wrapAlign)
-		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+3)*20)
+		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+2)*16)
 	}
 
 	// Sheet 1: 岗位基本信息
@@ -254,7 +254,7 @@ func (h *TemplateHandler) generateScenarioTemplate(ctx context.Context, tenantID
 		f.SetCellValue(sheet, start, text)
 		f.SetCellStyle(sheet, start, end, noteStyle)
 		f.SetCellStyle(sheet, start, end, wrapAlign)
-		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+3)*20)
+		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+2)*16)
 	}
 
 	// Sheet 1: 场景基本信息
@@ -363,7 +363,7 @@ func (h *TemplateHandler) addRefSheet(f *excelize.File, name string, headers []s
 	f.SetCellValue(name, start, note)
 	f.SetCellStyle(name, start, end, noteStyle)
 	f.SetCellStyle(name, start, end, wrapAlign)
-	f.SetRowHeight(name, 1, float64(strings.Count(note, "\n")+3)*20)
+	f.SetRowHeight(name, 1, float64(strings.Count(note, "\n")+2)*16)
 
 	for ci, h := range headers {
 		cell, _ := excelize.CoordinatesToCellName(ci+1, 2)
