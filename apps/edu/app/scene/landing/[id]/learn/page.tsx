@@ -284,9 +284,8 @@ export default function SceneLearnPage() {
             </div>
           </div>
           {activeTask?.background && (
-            <div className="flex items-start gap-2 text-sm text-gray-600 leading-relaxed">
-              <span className="shrink-0 font-semibold text-gray-800">{activeTask.name}</span>
-              <span className="line-clamp-2 whitespace-pre-line">{activeTask.background}</span>
+            <div className="text-sm text-gray-600 leading-relaxed line-clamp-2 whitespace-pre-line">
+              {activeTask.background}
             </div>
           )}
         </div>
