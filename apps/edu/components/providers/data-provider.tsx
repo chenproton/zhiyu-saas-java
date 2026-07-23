@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import type {
@@ -391,16 +391,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const shouldLoadGraduation = pathname.startsWith('/graduation')
   const shouldLoadPortrait = pathname.startsWith('/portrait') || pathname.startsWith('/student-ability')
 
+  const hasLoadedGlobal = useRef(false)
+
   useEffect(() => {
     if (pathname.startsWith("/portal")) return
 
     const tasks: Promise<void>[] = []
     if (shouldLoadEvaluation || shouldLoadScene) {
+      if (!hasLoadedGlobal.current) {
+        hasLoadedGlobal.current = true
+        tasks.push(
+          loadQuestionBanks(),
+          loadQuestions(),
+          loadExams(),
+          loadEvaluationMethods(),
+        )
+      } else {
+        tasks.push(loadQuestionBanks())
+      }
       tasks.push(
-        loadQuestionBanks(),
-        loadQuestions(),
-        loadExams(),
-        loadEvaluationMethods(),
         loadSceneTasks(),
         loadSceneResults(),
         loadJobAbilityResults(),
