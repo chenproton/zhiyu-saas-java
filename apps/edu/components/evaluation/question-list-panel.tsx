@@ -40,6 +40,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -616,11 +617,11 @@ export function QuestionListPanel({ bankId }: QuestionListPanelProps) {
         <DialogContent size="sm" annotationContext="batch-move">
           <DialogHeader>
             <DialogTitle>批量移动到题库</DialogTitle>
+            <DialogDescription>
+              将选中的 {selectedQuestions.size} 道题目移动到以下题库：
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <p className="text-sm text-muted-foreground">
-              将选中的 {selectedQuestions.size} 道题目移动到以下题库：
-            </p>
             <Select value={moveTargetBankId} onValueChange={setMoveTargetBankId}>
               <SelectTrigger>
                 <SelectValue placeholder="选择目标题库" />

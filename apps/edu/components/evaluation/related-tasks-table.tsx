@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -210,11 +211,11 @@ export function RelatedTasksTable({
             <DialogTitle>
               编辑「{editingTask?.name}」等级映射
             </DialogTitle>
+            <DialogDescription>
+              自定义该任务的等级映射规则，仅影响此任务的掌握程度计算
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-sm text-muted-foreground mb-4">
-              自定义该任务的等级映射规则，仅影响此任务的掌握程度计算
-            </p>
             <div className="space-y-2">
               {editingMapping.map((item, index) => (
                 <div key={index} className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">

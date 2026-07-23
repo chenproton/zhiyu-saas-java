@@ -439,10 +439,7 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
     <div className="min-h-screen flex flex-col bg-[#F1FAFF]">
       {/* Hero Banner */}
       <div className="relative w-full pt-16 overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: isScene ? "url('/scene-hero-bg.png')" : "url('/student-hero-bg.png')" }}
-        />
+
         <div className="absolute inset-0 bg-gradient-to-br from-[rgba(30,64,175,0.88)] via-[rgba(59,130,246,0.78)] to-[rgba(124,58,237,0.78)]" />
         <div
           className="absolute inset-0 opacity-[0.12]"
