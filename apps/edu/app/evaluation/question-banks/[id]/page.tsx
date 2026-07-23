@@ -63,6 +63,7 @@ export default function QuestionBankDetailPage() {
     updateQuestionBank,
     updateQuestionBankStatus,
     deleteQuestionBank,
+    questions: allQuestions,
     getQuestionsByBank,
     createQuestion,
     updateQuestion,
@@ -95,6 +96,15 @@ export default function QuestionBankDetailPage() {
     const creatorIds = new Set(questions.map(q => q.creatorId).filter(Boolean))
     return Array.from(creatorIds).map((id) => ({ id: id as string, name: id as string }))
   }, [questions])
+
+  // 题库题目数量从已加载的题目实时计算（后端 question_count 未维护）
+  const questionCountByBank = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const q of allQuestions) {
+      counts.set(q.bankId, (counts.get(q.bankId) || 0) + 1)
+    }
+    return counts
+  }, [allQuestions])
 
   const filteredQuestions = useMemo(() => {
     return questions
@@ -643,7 +653,7 @@ export default function QuestionBankDetailPage() {
                     </div>
                     <div>
                       <div className="font-medium">{bank.name}</div>
-                      <div className="text-xs text-muted-foreground">{bank.questionCount} 题</div>
+                      <div className="text-xs text-muted-foreground">{questionCountByBank.get(bank.id) || 0} 题</div>
                     </div>
                   </button>
                 ))}
