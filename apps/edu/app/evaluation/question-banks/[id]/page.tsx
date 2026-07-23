@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload, Copy, Users, Building2, ImageIcon, List, LayoutGrid, FolderInput, ChevronDown } from "lucide-react"
@@ -68,9 +68,17 @@ export default function QuestionBankDetailPage() {
     deleteQuestion,
     moveQuestions,
     questionBanks,
+    loadBankQuestions,
   } = useData()
 
   const bank = getQuestionBank(bankId)
+
+  useEffect(() => {
+    if (bankId) {
+      loadBankQuestions(bankId)
+    }
+  }, [bankId, loadBankQuestions])
+
   const questions = getQuestionsByBank(bankId)
 
   const [search, setSearch] = useState("")

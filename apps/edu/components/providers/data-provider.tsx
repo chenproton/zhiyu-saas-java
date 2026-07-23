@@ -68,6 +68,7 @@ interface DataContextValue {
   deleteQuestion: (id: string) => Promise<void>
   updateQuestionStatus: (id: string, action: StatusAction) => Promise<void>
   moveQuestions: (questionIds: string[], targetBankId: string) => Promise<void>
+  loadBankQuestions: (bankId: string) => Promise<void>
 
   // 试卷相关
   exams: Exam[]
@@ -269,8 +270,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const loadQuestions = useCallback(async () => {
-    const res = await questionApi.list({ limit: 10000 })
+    const res = await questionApi.list()
     setQuestions(res.items.map(parseQuestion))
+  }, [])
+
+  const loadBankQuestions = useCallback(async (bankId: string) => {
+    const res = await questionApi.list({ bankId, limit: 10000 })
+    const bankQs = res.items.map(parseQuestion)
+    setQuestions((prev) => {
+      const other = prev.filter((q) => q.bankId !== bankId)
+      return [...other, ...bankQs]
+    })
   }, [])
 
   const loadExams = useCallback(async () => {
@@ -711,6 +721,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     deleteQuestion,
     updateQuestionStatus,
     moveQuestions,
+    loadBankQuestions,
     exams,
     getExam,
     createExam,
