@@ -180,7 +180,7 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 		abilityName := strings.TrimSpace(col(row, 2))
 		abilityCategory := mapAbilityCategory(col(row, 3))
 		domainName := col(row, 4)
-		requiredLevel := col(row, 5)
+		requiredLevel := mapRequiredLevel(col(row, 5))
 		rubricDescription := nullableStr(col(row, 6))
 
 		positionID, ok := positionMap[positionName]
@@ -440,6 +440,23 @@ func nullableStr(s string) *string {
 		return nil
 	}
 	return &s
+}
+
+func mapRequiredLevel(l string) string {
+	switch strings.TrimSpace(l) {
+	case "了解":
+		return "understand"
+	case "理解":
+		return "comprehend"
+	case "掌握":
+		return "master"
+	case "熟练":
+		return "proficient"
+	case "精通":
+		return "expert"
+	default:
+		return l
+	}
 }
 
 func itoaPtr(v int) *string {
