@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useRef } from "react"
+import { useState, useMemo } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, GripVertical, Trash2, Eye, FileText, Wand2, Hand, Plus, Edit, FileUp, Rocket, ImageIcon, Users, Building2 } from "lucide-react"
@@ -37,13 +37,9 @@ export default function ExamComposerPage() {
   const searchParams = useSearchParams()
   const examId = params.id as string
   const isPreview = searchParams.get('mode') === 'preview'
-  const hasSavedRef = useRef(false)
-  const isNewExam = searchParams.get('new') === 'true'
-
   const {
     getExam,
     updateExam,
-    deleteExam,
     updateExamStatus,
     addQuestionToExam,
     removeQuestionFromExam,
@@ -84,19 +80,16 @@ export default function ExamComposerPage() {
 
   const handleExamUpdate = (data: ExamFormData) => {
     updateExam(examId, data)
-    hasSavedRef.current = true
   }
 
   const handleAddQuestions = (questions: Question[]) => {
     questions.forEach(question => {
       addQuestionToExam(examId, question)
     })
-    hasSavedRef.current = true
   }
 
   const handleAddSingleQuestion = (question: Question) => {
     addQuestionToExam(examId, question)
-    hasSavedRef.current = true
   }
 
   const handleRemoveQuestion = () => {
@@ -167,10 +160,7 @@ export default function ExamComposerPage() {
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
       {/* 返回按钮 */}
       <div className="px-6 pt-4">
-        <Button variant="ghost" size="sm" onClick={async () => {
-          if (isNewExam && !hasSavedRef.current) {
-            try { deleteExam(examId) } catch {}
-          }
+        <Button variant="ghost" size="sm" onClick={() => {
           if (isPreview) {
             router.back()
           } else {
