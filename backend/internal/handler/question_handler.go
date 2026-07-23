@@ -211,11 +211,30 @@ func (h *QuestionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	answerJSON, _ := json.Marshal(req.Answer)
 	optionsJSON, _ := json.Marshal(coalesceStringSlice(req.Options))
 
+	setClauses := []string{
+		"type = $1",
+		"content = $2",
+		"options = $3",
+		"answer = $4",
+		"analysis = $5",
+		"score = $6",
+		"difficulty = $7",
+		"knowledge_point_ids = $8",
+		"source = $9",
+	}
+	args := []interface{}{req.Type, req.Content, string(optionsJSON), string(answerJSON), req.Analysis, req.Score, req.Difficulty, coalesceStringSlice(req.KnowledgePoints), req.Source}
+	argIdx := 10
+	if req.BankID != "" {
+		setClauses = append(setClauses, "bank_id = $"+itoa(argIdx))
+		args = append(args, req.BankID)
+		argIdx++
+	}
+	args = append(args, id)
+
 	_, err := h.DB.Exec(r.Context(), `
-		UPDATE questions SET type = $1, content = $2, options = $3, answer = $4, analysis = $5,
-			score = $6, difficulty = $7, knowledge_point_ids = $8, source = $9
-		WHERE id = $10
-	`, req.Type, req.Content, string(optionsJSON), string(answerJSON), req.Analysis, req.Score, req.Difficulty, coalesceStringSlice(req.KnowledgePoints), req.Source, id)
+		UPDATE questions SET `+strings.Join(setClauses, ", ")+`
+		WHERE id = $`+itoa(argIdx)+`
+	`, args...)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to update question")
 		return
