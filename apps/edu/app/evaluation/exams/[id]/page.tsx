@@ -79,20 +79,6 @@ export default function ExamComposerPage() {
     return exam?.questions?.map(q => q.questionId) || []
   }, [exam])
 
-  if (!exam) {
-    return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-lg font-semibold">试卷不存在</h2>
-          <p className="mb-4 text-muted-foreground">该试卷可能已被删除</p>
-          <Button asChild>
-            <Link href="/evaluation/exams">返回组卷列表</Link>
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
   const commitScore = useCallback((questionId: string) => {
     const raw = editScores[questionId]
     if (raw === undefined) return
