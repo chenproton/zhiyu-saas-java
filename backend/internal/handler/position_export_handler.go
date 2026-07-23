@@ -70,7 +70,7 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 			SELECT name, COALESCE(short_name,''), position_type, COALESCE(description,''),
 				COALESCE(career_path,''), salary_min, salary_max, industry_id, requirements, batch_id
 			FROM career_positions WHERE id=$1
-		`, pid).Scan(&name, &shortName, &positionType, &desc, &careerPath, &salaryMin, &salaryMax, &industryID, &requirements)
+		`, pid).Scan(&name, &shortName, &positionType, &desc, &careerPath, &salaryMin, &salaryMax, &industryID, &requirements, &batchID)
 		if err != nil {
 			log.Printf("[export/positions] scan position %s: %v", pid, err)
 			continue
