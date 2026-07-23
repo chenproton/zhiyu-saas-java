@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -73,6 +74,7 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 			FROM career_positions WHERE id=$1 AND tenant_id=$2
 		`, pid, tenantID).Scan(&name, &shortName, &positionType, &desc, &careerPath, &salaryMin, &salaryMax, &industryID, &requirements)
 		if err != nil {
+			log.Printf("[export/positions] scan position %s: %v", pid, err)
 			continue
 		}
 
