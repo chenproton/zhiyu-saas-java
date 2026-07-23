@@ -242,7 +242,7 @@ export default function ExamComposerPage() {
   // (defined above)
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col">
+    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col">
       {/* 返回按钮 */}
       <div className="px-6 pt-4">
         <Button variant="ghost" size="sm" onClick={() => {
@@ -364,7 +364,7 @@ export default function ExamComposerPage() {
       </div>
 
       {/* 主体 */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col">
         {/* 工具栏 */}
         <div className="flex items-center justify-between border-b px-6 py-3">
           <div>
