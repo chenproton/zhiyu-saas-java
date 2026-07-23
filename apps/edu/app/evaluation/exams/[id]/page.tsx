@@ -72,6 +72,8 @@ export default function ExamComposerPage() {
   const [questionFormOpen, setQuestionFormOpen] = useState(false)
   const [defaultQuestionType, setDefaultQuestionType] = useState<QuestionType>("single")
   const [scoreTypeDialogOpen, setScoreTypeDialogOpen] = useState(false)
+  const [editScores, setEditScores] = useState<Record<string, string>>({})
+  const [savingScoreId, setSavingScoreId] = useState<string | null>(null)
 
   const selectedQuestionIds = useMemo(() => {
     return exam?.questions?.map(q => q.questionId) || []
@@ -90,12 +92,6 @@ export default function ExamComposerPage() {
       </div>
     )
   }
-
-  const canEdit = !isPreview && ['draft', 'rejected', 'approved', 'published'].includes(exam.status)
-  const canPublish = !isPreview && canPerformAction(exam.status, 'publish')
-
-  const [editScores, setEditScores] = useState<Record<string, string>>({})
-  const [savingScoreId, setSavingScoreId] = useState<string | null>(null)
 
   const commitScore = useCallback((questionId: string) => {
     const raw = editScores[questionId]
@@ -127,8 +123,25 @@ export default function ExamComposerPage() {
   }, [commitScore])
 
   const totalScore = useMemo(() => {
-    return exam.questions.reduce((sum, q) => sum + (q.score || 0), 0)
-  }, [exam.questions])
+    return exam?.questions?.reduce((sum, q) => sum + (q.score || 0), 0) ?? 0
+  }, [exam?.questions])
+
+  if (!exam) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-lg font-semibold">试卷不存在</h2>
+          <p className="mb-4 text-muted-foreground">该试卷可能已被删除</p>
+          <Button asChild>
+            <Link href="/evaluation/exams">返回组卷列表</Link>
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const canEdit = !isPreview && ['draft', 'rejected', 'approved', 'published'].includes(exam.status)
+  const canPublish = !isPreview && canPerformAction(exam.status, 'publish')
 
   const handleExamUpdate = (data: ExamFormData) => {
     updateExam(examId, data)
