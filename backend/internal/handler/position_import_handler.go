@@ -119,7 +119,7 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 		`, positionID, tenantID, name, shortName, industryID, positionType,
 			salaryMin, salaryMax, description, requirements, careerPath, userID)
 		if isUniqueViolation(err) {
-			name = name + "_" + time.Now().Format("01021504")
+			name = name + "_" + time.Now().Format("0102150405")
 			positionID = uuid.NewString()
 			_, err = h.DB.Exec(ctx, `
 				INSERT INTO career_positions (id, tenant_id, name, short_name, industry_id, position_type,
@@ -133,6 +133,7 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 			result.Errors = append(result.Errors, fmt.Sprintf("岗位[%s]创建失败: %v", name, err))
 			continue
 		}
+		log.Printf("[import/positions] created position %s (id=%s)", name, positionID)
 		if batchID != nil {
 			h.DB.Exec(ctx, `UPDATE career_positions SET batch_id=$1 WHERE id=$2`, *batchID, positionID)
 		}
@@ -224,6 +225,7 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 		_, err := h.DB.Exec(ctx, `
 			INSERT INTO position_ability_bindings (id, tenant_id, career_position_id, responsibility_id, ability_point_id, source, domain, required_level, rubric_description, weight)
 			VALUES ($1,$2,$3,$4,$5,'custom',$6,$7,$8,0)
+			ON CONFLICT (career_position_id, responsibility_id, ability_point_id) DO UPDATE SET required_level=$7, rubric_description=$8, domain=$6
 		`, bindingID, tenantID, positionID, respID, abilityID, nullableStr(domainName), requiredLevel, rubricDescription)
 		if err != nil {
 			result.Failed++
