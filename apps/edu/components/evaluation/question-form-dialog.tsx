@@ -834,12 +834,12 @@ export function QuestionFormDialog({
                 className="gap-1.5 rounded-lg border-primary/30 text-primary hover:bg-primary/5"
               >
                 <Save className="size-3.5" />
-                保存并新建
+                保存并继续添加
               </Button>
             )}
             <Button type="button" size="sm" disabled={!content.trim()} onClick={handleSubmit} className="gap-1.5 rounded-lg shadow-sm">
               <Save className="size-3.5" />
-              {question ? "保存" : "创建"}
+              {question ? "保存" : "保存并关闭"}
             </Button>
           </div>
         </div>

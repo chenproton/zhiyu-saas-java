@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload, Copy, Users, Building2, ImageIcon, List, LayoutGrid, FolderInput, MoreHorizontal, Save, ChevronDown } from "lucide-react"
+import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload, Copy, Users, Building2, ImageIcon, List, LayoutGrid, FolderInput, MoreHorizontal, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -51,7 +51,6 @@ const TYPE_COLORS: Record<QuestionType, string> = {
 
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
-import { useToast } from "@/hooks/use-toast"
 
 export default function QuestionBankDetailPage() {
   const params = useParams()
@@ -61,7 +60,6 @@ export default function QuestionBankDetailPage() {
   const {
     getQuestionBank,
     updateQuestionBank,
-    updateQuestionBankStatus,
     deleteQuestionBank,
     questions: allQuestions,
     getQuestionsByBank,
@@ -74,10 +72,8 @@ export default function QuestionBankDetailPage() {
 
   const bank = getQuestionBank(bankId)
   const questions = getQuestionsByBank(bankId)
-  const { toast } = useToast()
 
   const [search, setSearch] = useState("")
-  const [savingBank, setSavingBank] = useState(false)
   const [typeFilter, setTypeFilter] = useState<QuestionType | "all">("all")
   const [creatorFilter, setCreatorFilter] = useState<string>("all")
   
@@ -141,22 +137,6 @@ export default function QuestionBankDetailPage() {
   const handleBankDelete = () => {
     deleteQuestionBank(bankId)
     router.push("/evaluation/question-banks")
-  }
-
-  const handleSaveBank = async () => {
-    if (bank.status !== "draft") {
-      setSavingBank(true)
-      try {
-        await updateQuestionBankStatus(bankId, "save_draft")
-        toast({ title: "保存成功", description: "题库已退回草稿状态" })
-      } catch (err: any) {
-        toast({ variant: "destructive", title: "保存失败", description: err.message || "请稍后重试" })
-      } finally {
-        setSavingBank(false)
-      }
-    } else {
-      toast({ title: "保存成功", description: "题库状态无需变更" })
-    }
   }
 
   const handleQuestionSubmit = (data: QuestionFormData) => {
@@ -382,10 +362,6 @@ export default function QuestionBankDetailPage() {
           </Tabs>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleSaveBank} disabled={savingBank}>
-            <Save className="mr-1 size-3.5" />
-            {savingBank ? "保存中..." : "保存题库"}
-          </Button>
           <PrdAnnotation data={getAnnotation("qbd-btn-import")}>
             <Button variant="outline" size="sm" disabled title="题目导入功能开发中">
               <Upload className="mr-1 size-3.5" />
@@ -420,17 +396,42 @@ export default function QuestionBankDetailPage() {
         </div>
       </div>
 
-      {/* 批量操作栏 */}
-      {selectedQuestions.size > 0 && canEdit && (
-        <div className="mb-4 flex items-center gap-4 rounded-lg border bg-muted/50 px-4 py-2">
-          <span className="text-sm text-muted-foreground">
-            已选择 {selectedQuestions.size} 道题目
-          </span>
-          <Button variant="outline" size="sm" onClick={handleBatchCopy}>
+      {/* 搜索 + 创建人筛选 + 批量操作 */}
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="搜索题目内容..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          {creators.length > 0 && (
+            <Select value={creatorFilter} onValueChange={setCreatorFilter}>
+              <SelectTrigger className="h-9 w-[140px]">
+                <SelectValue placeholder="全部创建人" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="all">全部创建人</SelectItem>
+                  {creators.map((creator) => (
+                    <SelectItem key={creator.id} value={creator.id}>
+                      {creator.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleBatchCopy} disabled={selectedQuestions.size === 0}>
             <Copy className="mr-1 size-3" />
             批量复制
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setBatchMoveOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => setBatchMoveOpen(true)} disabled={selectedQuestions.size === 0}>
             <FolderInput className="mr-1 size-3" />
             批量移动
           </Button>
@@ -439,41 +440,12 @@ export default function QuestionBankDetailPage() {
             size="sm"
             className="text-destructive hover:text-destructive"
             onClick={() => setBatchDeleteConfirm(true)}
+            disabled={selectedQuestions.size === 0}
           >
             <Trash2 className="mr-1 size-3" />
             批量删除
           </Button>
         </div>
-      )}
-
-      {/* 搜索 + 创建人筛选 */}
-      <div className="mb-4 flex items-center gap-2">
-        <div className="relative flex-1 sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="搜索题目内容..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        {creators.length > 0 && (
-          <Select value={creatorFilter} onValueChange={setCreatorFilter}>
-            <SelectTrigger className="h-9 w-[140px]">
-              <SelectValue placeholder="全部创建人" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="all">全部创建人</SelectItem>
-                {creators.map((creator) => (
-                  <SelectItem key={creator.id} value={creator.id}>
-                    {creator.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        )}
       </div>
 
       {/* 题目列表 */}
