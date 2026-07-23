@@ -171,7 +171,7 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 			setCell("工作职责与能力点", fmt.Sprintf("C%d", bindRow), abilityName)
 			setCell("工作职责与能力点", fmt.Sprintf("D%d", bindRow), mapAbilityCategoryToChinese(category))
 			setCell("工作职责与能力点", fmt.Sprintf("E%d", bindRow), domain)
-			setCell("工作职责与能力点", fmt.Sprintf("F%d", bindRow), level)
+			setCell("工作职责与能力点", fmt.Sprintf("F%d", bindRow), mapRequiredLevelToChinese(level))
 			setCell("工作职责与能力点", fmt.Sprintf("G%d", bindRow), rubricDesc)
 			f.SetRowHeight("工作职责与能力点", bindRow, 24)
 			bindRow++
@@ -203,5 +203,24 @@ func mapAbilityCategoryToChinese(c string) string {
 		return "素质"
 	default:
 		return c
+	}
+}
+
+func mapRequiredLevelToChinese(l string) string {
+	switch strings.ToLower(strings.TrimSpace(l)) {
+	case "comprehend", "理解", "l2":
+		return "理解"
+	case "master", "精通":
+		return "精通"
+	case "proficient", "熟练":
+		return "熟练"
+	case "expert", "专家":
+		return "专家"
+	case "l3", "掌握":
+		return "掌握"
+	case "l1", "了解":
+		return "了解"
+	default:
+		return l
 	}
 }
