@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import {
   Search, Flag, Heart, Crosshair, Sparkles, Filter, X,
   TrendingUp, GraduationCap, ChevronRight,
-  Layers, ListChecks, Factory, Building2, BarChart3,
+  Layers, ListChecks, Factory, Building2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -682,108 +682,6 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
         {!isScene && (
           <div className="mb-6">
             <RankingList positions={positions} industryMap={industryMap} />
-          </div>
-        )}
-
-        {/* Scene mode: industry cloud + difficulty distribution */}
-        {isScene && (
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-5 mb-6">
-            {/* 行业覆盖热力标签 */}
-            <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-5">
-              <div className="flex items-center gap-2.5 text-[15px] font-bold text-[#0f172a] mb-3">
-                <div className="w-1 h-5 rounded-full bg-gradient-to-b from-amber-400 to-orange-500" />
-                <Factory className="w-4 h-4 text-amber-500" />
-                行业覆盖
-                <span className="text-xs text-[#94a3b8] font-normal ml-auto">{(() => { const s = new Set<string>(); scenarios.forEach((sc) => sc.industryNames?.forEach((n) => n && s.add(n))); return s.size })()} 个行业</span>
-              </div>
-              {(() => {
-                const counts = new Map<string, number>()
-                scenarios.forEach((s) => s.industryNames?.forEach((n) => n && counts.set(n, (counts.get(n) || 0) + 1)))
-                const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1])
-                const max = sorted[0]?.[1] || 1
-                if (sorted.length === 0) return <div className="text-sm text-[#94a3b8] text-center py-6">暂无行业数据</div>
-                const palettes = [
-                  { bg: "rgba(249,115,22,{a})", text: "rgb(194,65,12)", border: "rgba(249,115,22,{b})" },
-                  { bg: "rgba(59,130,246,{a})", text: "rgb(29,78,216)", border: "rgba(59,130,246,{b})" },
-                  { bg: "rgba(139,92,246,{a})", text: "rgb(109,40,217)", border: "rgba(139,92,246,{b})" },
-                  { bg: "rgba(16,185,129,{a})", text: "rgb(4,120,87)", border: "rgba(16,185,129,{b})" },
-                  { bg: "rgba(236,72,153,{a})", text: "rgb(190,24,93)", border: "rgba(236,72,153,{b})" },
-                ]
-                return (
-                  <div className="flex flex-wrap gap-2">
-                    {sorted.slice(0, 15).map(([name, count], i) => {
-                      const ratio = count / max
-                      const p = palettes[i % palettes.length]
-                      return (
-                        <span
-                          key={name}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all hover:scale-105 hover:shadow-sm cursor-default"
-                          style={{
-                            backgroundColor: p.bg.replace("{a}", String(0.08 + ratio * 0.18)),
-                            color: p.text,
-                            border: `1px solid ${p.border.replace("{b}", String(0.2 + ratio * 0.25))}`,
-                            fontSize: `${12 + ratio * 4}px`,
-                          }}
-                        >
-                          {name}
-                          <span className="text-[10px] opacity-70 rounded-full bg-black/[0.06] px-1.5 py-0.5 leading-none font-medium">{count}</span>
-                        </span>
-                      )
-                    })}
-                    {sorted.length > 15 && (
-                      <span className="text-[13px] text-[#94a3b8] self-end pb-1">+{sorted.length - 15} 更多</span>
-                    )}
-                  </div>
-                )
-              })()}
-            </div>
-
-            {/* 场景难度分布 */}
-            <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-5">
-              <div className="flex items-center gap-2.5 text-[15px] font-bold text-[#0f172a] mb-3">
-                <div className="w-1 h-5 rounded-full bg-gradient-to-b from-violet-400 to-purple-500" />
-                <BarChart3 className="w-4 h-4 text-purple-500" />
-                难度分布
-              </div>
-              {(() => {
-                const diffCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
-                scenarios.forEach((s) => { if (s.difficulty) diffCounts[s.difficulty] = (diffCounts[s.difficulty] || 0) + 1 })
-                const entries = [
-                  { key: 1, label: "入门", color: "#22c55e", from: "#22c55e", to: "#16a34a", bg: "#f0fdf4" },
-                  { key: 2, label: "初级", color: "#eab308", from: "#facc15", to: "#ca8a04", bg: "#fefce8" },
-                  { key: 3, label: "中级", color: "#f97316", from: "#fb923c", to: "#ea580c", bg: "#fff7ed" },
-                  { key: 4, label: "高级", color: "#ef4444", from: "#f87171", to: "#dc2626", bg: "#fef2f2" },
-                  { key: 5, label: "专家", color: "#8b5cf6", from: "#a78bfa", to: "#7c3aed", bg: "#f5f3ff" },
-                ]
-                const maxCount = Math.max(...Object.values(diffCounts), 1)
-                return (
-                  <div className="space-y-3">
-                    {entries.map((e) => {
-                      const count = diffCounts[e.key] || 0
-                      const pct = Math.max(count / maxCount * 100, count > 0 ? 5 : 0)
-                      return (
-                        <div key={e.key} className="group">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-[13px] font-semibold text-[#374151]">{e.label}</span>
-                            <span className="text-[13px] font-bold text-[#475569]">{count} 个</span>
-                          </div>
-                          <div className="h-2 bg-[#f1f5f9] rounded-full overflow-hidden shadow-inner">
-                            <div
-                              className="h-full rounded-full transition-all duration-700 ease-out group-hover:brightness-110 shadow-[0_0_8px_rgba(0,0,0,0.08)]"
-                              style={{
-                                width: `${pct}%`,
-                                background: `linear-gradient(90deg, ${e.from}, ${e.to})`,
-                                minWidth: count > 0 ? "20px" : "0px",
-                              }}
-                            />
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )
-              })()}
-            </div>
           </div>
         )}
 
