@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -54,15 +55,18 @@ func (h *QuestionBankHandler) List(w http.ResponseWriter, r *http.Request) {
 		offset = v
 	}
 
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
 	tenantClaims := middleware.CurrentUser(r)
 	effectiveTenantID, ok := tenantFilter(tenantClaims)
 	if !ok {
 		respondError(w, http.StatusForbidden, "missing tenant")
 		return
 	}
+
+	h.ensureDraftPool(r.Context(), effectiveTenantID, claims.UserID)
+
+	where := []string{"1=1"}
+	args := []interface{}{}
+	argIdx := 1
 	if effectiveTenantID != "" {
 		where = append(where, "tenant_id = $"+itoa(argIdx))
 		args = append(args, effectiveTenantID)
@@ -83,7 +87,6 @@ func (h *QuestionBankHandler) List(w http.ResponseWriter, r *http.Request) {
 	countQuery := "SELECT COUNT(*) FROM question_banks WHERE " + strings.Join(where, " AND ")
 	var total int
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
 	query := `
 		SELECT qb.id, qb.name, qb.description, qb.cover_image, qb.status,
                 (SELECT COUNT(*) FROM questions q WHERE q.bank_id = qb.id) AS question_count,
@@ -100,8 +103,9 @@ func (h *QuestionBankHandler) List(w http.ResponseWriter, r *http.Request) {
 			qb.created_at, qb.updated_at
 		FROM question_banks qb
 		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY qb.created_at DESC
+		ORDER BY qb.is_draft_pool DESC, qb.created_at DESC
 		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
+
 	args = append(args, limit, offset)
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
@@ -214,6 +218,10 @@ func (h *QuestionBankHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "question bank not found")
 		return
 	}
+	if existing.IsDraftPool {
+		respondError(w, http.StatusForbidden, "草稿库不允许编辑")
+		return
+	}
 
 	var req CreateQuestionBankRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -297,12 +305,17 @@ func (h *QuestionBankHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchQuestionBank(r.Context(), id); err != nil {
+	bank, err := h.fetchQuestionBank(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "question bank not found")
 		return
 	}
+	if bank.IsDraftPool {
+		respondError(w, http.StatusForbidden, "草稿库不允许删除")
+		return
+	}
 
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM question_banks WHERE id = $1`, id)
+	_, err = h.DB.Exec(r.Context(), `DELETE FROM question_banks WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete question bank")
 		return
@@ -324,35 +337,80 @@ func (h *QuestionBankHandler) actions() contentActions {
 }
 
 func (h *QuestionBankHandler) Submit(w http.ResponseWriter, r *http.Request) {
+	if err := h.rejectDraftPool(r); err != nil {
+		respondError(w, http.StatusForbidden, "草稿库不允许提交审批")
+		return
+	}
 	h.actions().transition(w, r, domain.StatusPending)
 }
 
 func (h *QuestionBankHandler) Review(w http.ResponseWriter, r *http.Request) {
+	if err := h.rejectDraftPool(r); err != nil {
+		respondError(w, http.StatusForbidden, "草稿库不允许审核")
+		return
+	}
 	h.actions().review(w, r)
 }
 
 func (h *QuestionBankHandler) Publish(w http.ResponseWriter, r *http.Request) {
+	if err := h.rejectDraftPool(r); err != nil {
+		respondError(w, http.StatusForbidden, "草稿库不允许发布")
+		return
+	}
 	h.actions().transition(w, r, domain.StatusPublished)
 }
 
 func (h *QuestionBankHandler) Archive(w http.ResponseWriter, r *http.Request) {
+	if err := h.rejectDraftPool(r); err != nil {
+		respondError(w, http.StatusForbidden, "草稿库不允许归档")
+		return
+	}
 	h.actions().transition(w, r, domain.StatusArchived)
 }
 
 func (h *QuestionBankHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
+	if err := h.rejectDraftPool(r); err != nil {
+		respondError(w, http.StatusForbidden, "草稿库不允许取消发布")
+		return
+	}
 	h.actions().transition(w, r, domain.StatusDraft)
 }
 
 func (h *QuestionBankHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
+	if err := h.rejectDraftPool(r); err != nil {
+		respondError(w, http.StatusForbidden, "草稿库不允许撤回")
+		return
+	}
 	h.actions().transition(w, r, domain.StatusDraft)
 }
 
 func (h *QuestionBankHandler) SaveDraft(w http.ResponseWriter, r *http.Request) {
+	if err := h.rejectDraftPool(r); err != nil {
+		respondError(w, http.StatusForbidden, "草稿库不允许保存草稿")
+		return
+	}
 	h.actions().saveDraft(w, r)
 }
 
 func (h *QuestionBankHandler) Invite(w http.ResponseWriter, r *http.Request) {
+	if err := h.rejectDraftPool(r); err != nil {
+		respondError(w, http.StatusForbidden, "草稿库不允许邀请共建")
+		return
+	}
 	h.actions().invite(w, r)
+}
+
+func (h *QuestionBankHandler) rejectDraftPool(r *http.Request) error {
+	id := chi.URLParam(r, "id")
+	var isDraftPool bool
+	err := h.DB.QueryRow(r.Context(), `SELECT is_draft_pool FROM question_banks WHERE id = $1`, id).Scan(&isDraftPool)
+	if err != nil {
+		return err
+	}
+	if isDraftPool {
+		return fmt.Errorf("draft pool")
+	}
+	return nil
 }
 
 func (h *QuestionBankHandler) fetchQuestionBank(ctx context.Context, id string) (domain.QuestionBank, error) {
@@ -407,4 +465,21 @@ func (h *QuestionBankHandler) scanQuestionBankRows(rows pgx.Rows) ([]domain.Ques
 		items = append(items, b)
 	}
 	return items, nil
+}
+
+func (h *QuestionBankHandler) ensureDraftPool(ctx context.Context, tenantID, userID string) {
+	var count int
+	err := h.DB.QueryRow(ctx,
+		`SELECT COUNT(*) FROM question_banks WHERE tenant_id = $1 AND creator_id = $2 AND is_draft_pool = true`,
+		tenantID, userID,
+	).Scan(&count)
+	if err != nil || count > 0 {
+		return
+	}
+
+	_, _ = h.DB.Exec(ctx, `
+		INSERT INTO question_banks (id, tenant_id, name, description, status, question_count, creator_id,
+			collaborator_ids, collaborator_dept_ids, version, owner_type, is_draft_pool)
+		VALUES (gen_random_uuid(), $1, '我的草稿库', '', 'draft', 0, $2, '{}', '{}', 'v1.0', 'mine', true)
+	`, tenantID, userID)
 }

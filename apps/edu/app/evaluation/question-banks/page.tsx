@@ -372,6 +372,7 @@ export default function QuestionBanksPage() {
   }
 
   const handleDelete = async (bank: BackendQuestionBank) => {
+    if (bank.isDraftPool) return
     if (confirm(`确定要删除题库「${bank.name}」吗？`)) {
       try {
         await questionBankApi.delete(bank.id)
@@ -384,12 +385,14 @@ export default function QuestionBanksPage() {
   }
 
   const handleEdit = (bank: BackendQuestionBank) => {
+    if (bank.isDraftPool) return
     setEditingBank(bank)
     setIsEditDialogOpen(true)
   }
 
   const handleEditSubmit = async (data: QuestionBankFormData) => {
     if (!editingBank) return
+    if (editingBank.isDraftPool) return
     try {
       await questionBankApi.update(editingBank.id, data)
       setIsEditDialogOpen(false)
@@ -403,6 +406,7 @@ export default function QuestionBanksPage() {
 
   const handleSubmitApproval = async (id: string) => {
     const bank = banks.find((b) => b.id === id)
+    if (bank?.isDraftPool) return
     if (!bank?.batchId) {
       setSubmitBatchTarget(bank || null)
       setSubmitSelectedMajorId("all")
@@ -441,6 +445,8 @@ export default function QuestionBanksPage() {
   }
 
   const handleWithdrawApproval = async (id: string) => {
+    const bank = banks.find((b) => b.id === id)
+    if (bank?.isDraftPool) return
     try {
       await questionBankApi.withdraw(id)
       await loadData()
@@ -451,6 +457,7 @@ export default function QuestionBanksPage() {
   }
 
   const handleInviteCoBuild = (bank: BackendQuestionBank) => {
+    if (bank.isDraftPool) return
     setInviteTarget(bank)
     setInviteSelectedIds((bank.collaboratorIds || []).filter((id) => id !== bank.creatorId))
     setIsInviteDialogOpen(true)
@@ -469,6 +476,8 @@ export default function QuestionBanksPage() {
   }
 
   const handleArchive = async (id: string) => {
+    const bank = banks.find((b) => b.id === id)
+    if (bank?.isDraftPool) return
     try {
       await questionBankApi.archive(id)
       await loadData()
@@ -484,6 +493,8 @@ export default function QuestionBanksPage() {
   }
 
   const handlePublish = async (id: string) => {
+    const bank = banks.find((b) => b.id === id)
+    if (bank?.isDraftPool) return
     try {
       await questionBankApi.publish(id)
       await loadData()
@@ -494,6 +505,8 @@ export default function QuestionBanksPage() {
   }
 
   const handleUnpublish = async (id: string) => {
+    const bank = banks.find((b) => b.id === id)
+    if (bank?.isDraftPool) return
     try {
       await questionBankApi.unpublish(id)
       await loadData()
@@ -736,6 +749,7 @@ export default function QuestionBanksPage() {
           {items.map((bank) => {
             const isSelected = selectedIds.includes(bank.id)
             const batchName = batches.find((b) => b.id === bank.batchId)?.name || "-"
+            const isDraftPool = bank.isDraftPool === true
             return (
               <TableRow key={bank.id} className={cn("group", isSelected && "bg-primary/5")}>
                 <TableCell className="text-center">
@@ -743,6 +757,7 @@ export default function QuestionBanksPage() {
                     checked={isSelected}
                     onCheckedChange={(checked) => handleSelectId(bank.id, checked === true)}
                     aria-label={`选择 ${bank.name}`}
+                    disabled={isDraftPool}
                   />
                 </TableCell>
                 <TableCell className="truncate">
@@ -751,6 +766,11 @@ export default function QuestionBanksPage() {
                     onClick={() => router.push(`/evaluation/question-banks/${bank.id}`)}
                   >
                     {bank.name}
+                    {isDraftPool && (
+                      <span className="ml-2 shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700 align-middle">
+                        草稿库
+                      </span>
+                    )}
                   </button>
                 </TableCell>
                 <TableCell className="truncate max-w-[120px]">
@@ -779,7 +799,7 @@ export default function QuestionBanksPage() {
                       <Eye className="mr-1 h-3 w-3" />
                       查看
                     </Button>
-                    {bank.status !== "archived" && (
+                    {!isDraftPool && bank.status !== "archived" && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -790,7 +810,7 @@ export default function QuestionBanksPage() {
                         编辑
                       </Button>
                     )}
-                    {bank.status === "archived" && (
+                    {!isDraftPool && bank.status === "archived" && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -810,7 +830,7 @@ export default function QuestionBanksPage() {
                       <Copy className="mr-1 h-3 w-3" />
                       克隆
                     </Button>
-                    {(bank.status === "draft" || bank.status === "rejected") && (
+                    {!isDraftPool && (bank.status === "draft" || bank.status === "rejected") && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -821,7 +841,7 @@ export default function QuestionBanksPage() {
                         提交审批
                       </Button>
                     )}
-                    {bank.status === "rejected" && (
+                    {!isDraftPool && bank.status === "rejected" && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -832,16 +852,18 @@ export default function QuestionBanksPage() {
                         查看驳回原因
                       </Button>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700"
-                      onClick={() => handleInviteCoBuild(bank)}
-                    >
-                      <UserPlus className="mr-1 h-3 w-3" />
-                      邀请共建
-                     </Button>
-                    {bank.status !== "pending" && bank.status !== "archived" && (
+                    {!isDraftPool && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700"
+                        onClick={() => handleInviteCoBuild(bank)}
+                      >
+                        <UserPlus className="mr-1 h-3 w-3" />
+                        邀请共建
+                      </Button>
+                    )}
+                    {!isDraftPool && bank.status !== "pending" && bank.status !== "archived" && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -852,7 +874,7 @@ export default function QuestionBanksPage() {
                         归档
                       </Button>
                     )}
-                    {bank.status === "pending" && (
+                    {!isDraftPool && bank.status === "pending" && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -863,7 +885,7 @@ export default function QuestionBanksPage() {
                         撤回
                       </Button>
                     )}
-                    {bank.status === "approved" && (
+                    {!isDraftPool && bank.status === "approved" && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -874,7 +896,7 @@ export default function QuestionBanksPage() {
                         发布
                       </Button>
                     )}
-                    {bank.status === "published" && (
+                    {!isDraftPool && bank.status === "published" && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -885,15 +907,17 @@ export default function QuestionBanksPage() {
                         取消发布
                       </Button>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                      onClick={() => handleDelete(bank)}
-                    >
+                    {!isDraftPool && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                        onClick={() => handleDelete(bank)}
+                      >
                         <Trash2 className="mr-1 h-3 w-3" />
                         删除
                       </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

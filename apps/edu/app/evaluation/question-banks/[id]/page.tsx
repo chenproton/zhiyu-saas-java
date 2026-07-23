@@ -290,14 +290,16 @@ export default function QuestionBankDetailPage() {
               </div>
             </div>
             <div className="flex items-start gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setBankFormOpen(true)}
-              >
-                <Edit className="mr-1 size-3.5" />
-                编辑信息
-              </Button>
+              {!isDraftPool && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBankFormOpen(true)}
+                >
+                  <Edit className="mr-1 size-3.5" />
+                  编辑信息
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
