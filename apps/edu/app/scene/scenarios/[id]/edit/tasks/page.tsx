@@ -79,6 +79,7 @@ import {
   Layers,
   BookOpen,
   Pencil,
+  SlidersHorizontal,
 } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
 import { useState, useMemo, useRef, useCallback, useLayoutEffect, useEffect } from "react"
@@ -107,9 +108,16 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
+import { ScoreConfigDialog } from "@/components/evaluation/score-config-dialog"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
 import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryApi, majorApi, userManagementApi, fileApi, taskResourceApi, questionBankApi, questionApi } from "@/lib/api"
 import type { ScenarioTask as ApiScenarioTask } from "@/lib/types/scene"
@@ -1570,6 +1578,17 @@ const customKnowledgePointIds = new Set<string>()
 const customAbilityPointIds = new Set<string>()
 const customResourceIds = new Set<string>()
 
+const typeColorMap: Record<string, string> = {
+  single: "bg-blue-500",
+  multiple: "bg-indigo-500",
+  judgment: "bg-amber-500",
+  judge: "bg-amber-500",
+  fill_blank: "bg-purple-500",
+  fill: "bg-purple-500",
+  essay: "bg-rose-500",
+  short_answer: "bg-teal-500",
+}
+
 // Module-level question cache — persists across bank switches so selected questions
 // remain visible in the right panel regardless of which bank is currently open.
 const questionCache = new Map<string, any>()
@@ -1598,6 +1617,7 @@ function BankQuestionSelectorPanel({
   const [bankTab, setBankTab] = useState<"my" | "collab" | "public">("my")
   const [bankSearch, setBankSearch] = useState("")
   const [questionSearch, setQuestionSearch] = useState("")
+  const [scoreDialogOpen, setScoreDialogOpen] = useState(false)
 
   useEffect(() => { loadBanks() }, [])
 
@@ -1651,6 +1671,23 @@ function BankQuestionSelectorPanel({
     return bankQuestions.filter((qu: any) => (qu.content || "").toLowerCase().includes(q) || (qu.name || "").toLowerCase().includes(q))
   }, [bankQuestions, questionSearch])
 
+  const handleEvenDistribution = () => {
+    if (!onUpdateQuestionScore || selectedIds.length === 0) return
+    const n = selectedIds.length
+    const base = Math.floor(100 / n)
+    const remainder = 100 - base * n
+    selectedIds.forEach((qid, idx) => {
+      onUpdateQuestionScore(qid, base + (idx < remainder ? 1 : 0))
+    })
+  }
+
+  const handleTypeDistribution = (scores: Record<string, number>) => {
+    if (!onUpdateQuestionScore) return
+    Object.entries(scores).forEach(([qid, score]) => {
+      onUpdateQuestionScore(qid, score)
+    })
+  }
+
   // Resolve a question by id — first from current bank, then cache, then allQuestions
   const resolveQuestion = (qid: string) => {
     return bankQuestions.find((bq: any) => bq.id === qid)
@@ -1658,7 +1695,24 @@ function BankQuestionSelectorPanel({
       || allQuestions.find((aq: any) => aq.id === qid)
   }
 
+  // Build minimal ExamQuestion-like objects for ScoreConfigDialog
+  const selectedQuestionItems = useMemo(() => {
+    return selectedIds.map(qid => {
+      const q = resolveQuestion(qid)
+      return {
+        id: qid,
+        questionId: qid,
+        type: q?.type ?? "single",
+        content: q?.content ?? "",
+        answer: "",
+        score: questionScores?.[qid] ?? q?.score ?? 0,
+        order: 0,
+      }
+    })
+  }, [selectedIds, questionScores])
+
   return (
+    <>
     <div className="flex gap-4 h-[60vh] min-h-[480px]">
       <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
         {selectedBankId ? (
@@ -1708,7 +1762,7 @@ function BankQuestionSelectorPanel({
                             </div>
                           </td>
                           <td className="px-3 py-2">
-                            <Badge variant="secondary" className="text-xs">{questionTypeLabels[q.type] || q.type}</Badge>
+                            <Badge className={`text-xs text-white hover:opacity-90 ${typeColorMap[q.type] || ""}`}>{questionTypeLabels[q.type] || q.type}</Badge>
                           </td>
                           <td className="px-3 py-2">
                             <span className="text-xs text-gray-500">{difficultyLabels[q.difficulty] || q.difficulty}</span>
@@ -1786,7 +1840,27 @@ function BankQuestionSelectorPanel({
         )}
       </div>
       <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
-        <p className="text-sm font-medium text-gray-700 mb-3">已选择题目 ({selectedIds.length}{maxCount ? `/${maxCount}` : ""})</p>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-medium text-gray-700">已选择题目 ({selectedIds.length}{maxCount ? `/${maxCount}` : ""})</p>
+          {field === "questionBankQuestions" && selectedIds.length > 0 && onUpdateQuestionScore && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2">
+                  <SlidersHorizontal className="h-3 w-3 mr-1" />
+                  分数配置
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuItem onClick={handleEvenDistribution}>
+                  均匀分配 — 将 100 分均匀分给每道题，余数从第一题起加 1 分
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setScoreDialogOpen(true)}>
+                  题型分配 — 为每种题型分配总分（合计 100），各题型内均匀分配
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
         <div className="flex-1 overflow-y-auto">
           {selectedIds.length === 0 ? (
             <div className="text-center text-gray-400 py-8">
@@ -1807,7 +1881,7 @@ function BankQuestionSelectorPanel({
                       </Button>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <Badge variant="secondary" className="text-[10px]">{questionTypeLabels[q.type] || q.type}</Badge>
+                      <Badge className={`text-[10px] text-white hover:opacity-90 ${typeColorMap[q.type] || ""}`}>{questionTypeLabels[q.type] || q.type}</Badge>
                       <span className="text-[10px] text-gray-400">{difficultyLabels[q.difficulty] || q.difficulty}</span>
                       {field === "questionBankQuestions" && onUpdateQuestionScore ? (
                         <div className="flex items-center gap-1 ml-auto">
@@ -1836,6 +1910,15 @@ function BankQuestionSelectorPanel({
         </div>
       </div>
     </div>
+    {field === "questionBankQuestions" && onUpdateQuestionScore && (
+      <ScoreConfigDialog
+        open={scoreDialogOpen}
+        onOpenChange={setScoreDialogOpen}
+        questions={selectedQuestionItems}
+        onApply={handleTypeDistribution}
+      />
+    )}
+    </>
   )
 }
 
@@ -4410,7 +4493,7 @@ function EditCardDialog({
           multiple: "多选",
           judgment: "判断",
           short_answer: "简答",
-          essay: "论述",
+          essay: "问答题",
           fill_blank: "填空",
         }
 
@@ -4478,7 +4561,7 @@ function EditCardDialog({
                                 </div>
                               </td>
                               <td className="px-3 py-2">
-                                <Badge variant="secondary" className="text-xs">{questionTypeLabels[q.type] || q.type}</Badge>
+                                <Badge className={`text-xs text-white hover:opacity-90 ${typeColorMap[q.type] || ""}`}>{questionTypeLabels[q.type] || q.type}</Badge>
                               </td>
                               <td className="px-3 py-2">
                                 <span className="text-xs text-gray-500">{difficultyLabels[q.difficulty] || q.difficulty}</span>
@@ -4547,7 +4630,7 @@ function EditCardDialog({
                               </Button>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <Badge variant="secondary" className="text-[10px]">{questionTypeLabels[q.type] || q.type}</Badge>
+                      <Badge className={`text-[10px] text-white hover:opacity-90 ${typeColorMap[q.type] || ""}`}>{questionTypeLabels[q.type] || q.type}</Badge>
                               <span className="text-[10px] text-gray-400">{difficultyLabels[q.difficulty] || q.difficulty}</span>
                               {field === "questionBankQuestions" ? (
                                 <div className="flex items-center gap-1 ml-auto">
