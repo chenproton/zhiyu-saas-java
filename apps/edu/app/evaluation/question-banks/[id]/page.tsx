@@ -636,7 +636,7 @@ export default function QuestionBankDetailPage() {
             </div>
             <div className="mt-3 max-h-60 overflow-auto">
               {questionBanks
-                .filter(b => b.id !== bankId && !b.isDraftPool && b.name.toLowerCase().includes(moveSearch.toLowerCase()))
+                .filter(b => b.id !== bankId && b.name.toLowerCase().includes(moveSearch.toLowerCase()))
                 .map(bank => (
                   <button
                     key={bank.id}
