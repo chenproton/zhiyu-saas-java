@@ -718,15 +718,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const newQuestions = exam.questions.map((q) =>
       q.id === examQuestionId ? { ...q, score } : q
     )
-    await examApi.update(examId, { questions: newQuestions })
+    await examApi.update(examId, { name: exam.name, questions: newQuestions })
     await loadExams()
   }, [exams, loadExams])
 
   const reorderExamQuestions = useCallback(async (examId: string, questions: ExamQuestion[]) => {
+    const exam = exams.find((e) => e.id === examId)
+    if (!exam) return
     const ordered = questions.map((q, index) => ({ ...q, order: index + 1 }))
-    await examApi.update(examId, { questions: ordered })
+    await examApi.update(examId, { name: exam.name, questions: ordered })
     await loadExams()
-  }, [loadExams])
+  }, [exams, loadExams])
 
   // ==================== Evaluation method actions ====================
   const updateEvaluationMethod = useCallback(async (id: string, data: Partial<EvaluationMethod>) => {
