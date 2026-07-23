@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, GripVertical, Trash2, Eye, FileText, Wand2, Hand, Plus, Edit, FileUp, Rocket, ImageIcon, Users, Building2, SlidersHorizontal } from "lucide-react"
+import { ArrowLeft, GripVertical, Trash2, Eye, FileText, Wand2, Hand, Plus, Edit, FileUp, Rocket, ImageIcon, Users, Building2, SlidersHorizontal, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,7 +13,7 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ExamFormDialog } from "@/components/evaluation/exam-form-dialog"
 import { RandomQuestionDialog } from "@/components/evaluation/random-question-dialog"
 import { ManualQuestionDialog } from "@/components/evaluation/manual-question-dialog"
-import { AddQuestionToExamDialog } from "@/components/evaluation/add-question-to-exam-dialog"
+import { QuestionFormDialog } from "@/components/evaluation/question-form-dialog"
 import { QuestionPreview } from "@/components/evaluation/question-preview"
 import { ScoreConfigDialog } from "@/components/evaluation/score-config-dialog"
 import {
@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useData } from "@/components/providers/data-provider"
-import type { Question, ExamQuestion, ExamFormData, QuestionType } from "@/lib/types"
+import type { Question, ExamQuestion, ExamFormData, QuestionType, QuestionFormData } from "@/lib/types"
 import { QUESTION_TYPE_LABELS, canPerformAction } from "@/lib/types"
 
 const TYPE_COLORS: Record<QuestionType, string> = {
@@ -53,9 +53,15 @@ export default function ExamComposerPage() {
     updateExamQuestionScore,
     updateExamQuestionScores,
     reorderExamQuestions,
+    questionBanks,
+    createQuestion,
   } = useData()
 
   const exam = getExam(examId)
+
+  const draftPoolBank = useMemo(() => {
+    return questionBanks.find(b => b.isDraftPool === true)
+  }, [questionBanks])
 
   const [formOpen, setFormOpen] = useState(false)
   const [previewQuestion, setPreviewQuestion] = useState<ExamQuestion | null>(null)
@@ -63,7 +69,8 @@ export default function ExamComposerPage() {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [randomDialogOpen, setRandomDialogOpen] = useState(false)
   const [manualDialogOpen, setManualDialogOpen] = useState(false)
-  const [addQuestionDialogOpen, setAddQuestionDialogOpen] = useState(false)
+  const [questionFormOpen, setQuestionFormOpen] = useState(false)
+  const [defaultQuestionType, setDefaultQuestionType] = useState<QuestionType>("single")
   const [scoreTypeDialogOpen, setScoreTypeDialogOpen] = useState(false)
 
   const selectedQuestionIds = useMemo(() => {
@@ -135,6 +142,12 @@ export default function ExamComposerPage() {
 
   const handleAddSingleQuestion = (question: Question) => {
     addQuestionToExam(examId, question)
+  }
+
+  const handleCreateQuestion = async (data: QuestionFormData) => {
+    if (!draftPoolBank) return
+    const newQuestion = await createQuestion(draftPoolBank.id, data)
+    addQuestionToExam(examId, newQuestion)
   }
 
   const handleRemoveQuestion = () => {
@@ -430,14 +443,28 @@ export default function ExamComposerPage() {
                 </Button>
               </PrdAnnotation>
               <PrdAnnotation {...getAnnotation("ec-btn-add-question")}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setAddQuestionDialogOpen(true)}
-                >
-                  <Plus className="mr-1 size-4" />
-                  新增题目
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Plus className="mr-1 size-4" />
+                      新增题目
+                      <ChevronDown className="ml-1 size-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map((type) => (
+                      <DropdownMenuItem
+                        key={type}
+                        onClick={() => {
+                          setDefaultQuestionType(type)
+                          setQuestionFormOpen(true)
+                        }}
+                      >
+                        {QUESTION_TYPE_LABELS[type]}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </PrdAnnotation>
               <PrdAnnotation {...getAnnotation("ec-btn-batch-import")}>
                 <Button
@@ -478,44 +505,40 @@ export default function ExamComposerPage() {
                   onDragOver={(e) => handleDragOver(e, index)}
                   onDragEnd={handleDragEnd}
                   className={cn(
-                    "group flex items-start gap-3 rounded-lg border bg-card p-4 transition-colors",
+                    "group flex items-center gap-3 rounded-lg border bg-card py-2.5 px-3 transition-colors",
                     canEdit && "cursor-move hover:border-primary/50",
                     draggedIndex === index && "opacity-50"
                   )}
                 >
                   {canEdit && (
-                    <GripVertical className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    <GripVertical className="size-4 shrink-0 text-muted-foreground" />
                   )}
-                  <span className="mt-0.5 shrink-0 text-sm font-medium text-muted-foreground">
+                  <span className="shrink-0 text-xs font-medium text-muted-foreground w-5">
                     {index + 1}.
                   </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm line-clamp-2">{question.content}</p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <Badge className={`text-xs text-white hover:opacity-90 ${TYPE_COLORS[question.type]}`}>
-                        {QUESTION_TYPE_LABELS[question.type]}
-                      </Badge>
-                      {canEdit ? (
-                        <div className="flex items-center gap-1">
-                          <Input
-                            type="number"
-                            min={0.5}
-                            step={0.5}
-                            value={editScores[question.id] ?? String(question.score)}
-                            onChange={(e) => setEditScores((prev) => ({ ...prev, [question.id]: e.target.value }))}
-                            onBlur={() => commitScore(question.id)}
-                            onKeyDown={(e) => handleScoreKeyDown(e, question.id)}
-                            className="h-6 w-16 text-xs"
-                            disabled={savingScoreId === question.id}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <span className="text-xs text-muted-foreground">分</span>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">{question.score} 分</span>
-                      )}
+                  <p className="flex-1 text-sm line-clamp-1 min-w-0">{question.content}</p>
+                  <Badge className={`text-xs text-white shrink-0 hover:opacity-90 ${TYPE_COLORS[question.type]}`}>
+                    {QUESTION_TYPE_LABELS[question.type]}
+                  </Badge>
+                  {canEdit ? (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Input
+                        type="number"
+                        min={0.5}
+                        step={0.5}
+                        value={editScores[question.id] ?? String(question.score)}
+                        onChange={(e) => setEditScores((prev) => ({ ...prev, [question.id]: e.target.value }))}
+                        onBlur={() => commitScore(question.id)}
+                        onKeyDown={(e) => handleScoreKeyDown(e, question.id)}
+                        className="h-6 w-14 text-xs"
+                        disabled={savingScoreId === question.id}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <span className="text-xs text-muted-foreground">分</span>
                     </div>
-                  </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground shrink-0">{question.score} 分</span>
+                  )}
                   <div className="flex shrink-0 items-center gap-1">
                     <Button
                       variant="ghost"
@@ -523,7 +546,7 @@ export default function ExamComposerPage() {
                       className="size-7"
                       onClick={() => setPreviewQuestion(question)}
                     >
-                      <Eye />
+                      <Eye className="size-3.5" />
                     </Button>
                     {canEdit && (
                       <Button
@@ -532,7 +555,7 @@ export default function ExamComposerPage() {
                         className="size-7 text-destructive hover:text-destructive"
                         onClick={() => setDeleteConfirm(question)}
                       >
-                        <Trash2 />
+                        <Trash2 className="size-3.5" />
                       </Button>
                     )}
                   </div>
@@ -582,10 +605,11 @@ export default function ExamComposerPage() {
         onAddQuestions={handleAddQuestions}
       />
 
-      <AddQuestionToExamDialog
-        open={addQuestionDialogOpen}
-        onOpenChange={setAddQuestionDialogOpen}
-        onAddQuestion={handleAddSingleQuestion}
+      <QuestionFormDialog
+        open={questionFormOpen}
+        onOpenChange={setQuestionFormOpen}
+        defaultType={defaultQuestionType}
+        onSubmit={handleCreateQuestion}
       />
 
       <ScoreConfigDialog
