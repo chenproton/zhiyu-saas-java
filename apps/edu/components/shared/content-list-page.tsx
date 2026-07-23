@@ -673,7 +673,26 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
         result = await importExportApi.import(importEntityName, importFile)
       }
       const skippedMsg = result.skipped != null ? `，跳过 ${result.skipped} 条` : ""
-      alert(`导入完成：成功 ${result.created} 条，失败 ${result.failed} 条${skippedMsg}`)
+      let detail = ""
+      if (result.positionCreated != null) {
+        detail = `\n1. 岗位：成功 ${result.positionCreated} 条，失败 ${result.failed} 条，跳过 ${result.skipped || 0} 条`
+      }
+      if (result.responsibilities != null) {
+        detail += `\n2. 工作职责：成功 ${result.responsibilities} 条`
+      }
+      if (result.abilityBindings != null) {
+        detail += `\n3. 能力点绑定：成功 ${result.abilityBindings} 条`
+      }
+      if (result.scenarioCreated != null) {
+        detail = `\n1. 场景：成功 ${result.scenarioCreated} 条，失败 ${result.failed} 条，跳过 ${result.skipped || 0} 条`
+      }
+      if (result.taskCreated != null) {
+        detail += `\n2. 任务：成功 ${result.taskCreated} 条`
+      }
+      if (detail === "") {
+        detail = `成功 ${result.created} 条，失败 ${result.failed} 条${skippedMsg}`
+      }
+      alert(`导入完成：${detail}`)
       setImportFile(null)
       setImportStep("download")
       setIsImportDialogOpen(false)
