@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, GripVertical, Trash2, Eye, Clock, FileText, Award, Wand2, Hand, Plus, Edit, Send, Save, FileUp, MonitorPlay, Rocket, ArrowDownFromLine } from "lucide-react"
+import { ArrowLeft, GripVertical, Trash2, Eye, FileText, Wand2, Hand, Plus, Edit, Send, Save, FileUp, MonitorPlay, Rocket, ArrowDownFromLine } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -156,103 +156,116 @@ export default function ExamComposerPage() {
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
-      {/* 头部 */}
-      <div className="border-b px-6 py-4">
-        <div className="mb-4">
-          <Button variant="ghost" size="sm" onClick={async () => {
-            if (isNewExam && !hasSavedRef.current) {
-              try { deleteExam(examId) } catch {}
-            }
-            if (isPreview) {
-              router.back()
-            } else {
-              router.push("/evaluation/exams")
-            }
-          }}>
-            <ArrowLeft />
-            {isPreview ? "返回" : "返回组卷列表"}
-          </Button>
-        </div>
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold">{exam.name}</h1>
-              {!isPreview && <StatusBadge status={exam.status} />}
+      {/* 返回按钮 */}
+      <div className="px-6 pt-4">
+        <Button variant="ghost" size="sm" onClick={async () => {
+          if (isNewExam && !hasSavedRef.current) {
+            try { deleteExam(examId) } catch {}
+          }
+          if (isPreview) {
+            router.back()
+          } else {
+            router.push("/evaluation/exams")
+          }
+        }}>
+          <ArrowLeft />
+          {isPreview ? "返回" : "返回组卷列表"}
+        </Button>
+      </div>
+
+      {/* 试卷信息卡片 */}
+      <div className="px-6 pt-4">
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between">
+              <div className="flex gap-4">
+                <div className="flex size-24 shrink-0 items-center justify-center rounded-lg bg-muted">
+                  <FileText className="size-8 text-muted-foreground" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    <CardTitle className="text-xl">{exam.name}</CardTitle>
+                    {!isPreview && <StatusBadge status={exam.status} />}
+                  </div>
+                  <CardDescription className="mt-2">
+                    {exam.description || "暂无描述"}
+                  </CardDescription>
+                </div>
+              </div>
+              {!isPreview && (
+                <div className="flex items-start gap-2">
+                  {canEdit && (
+                    <PrdAnnotation {...getAnnotation("ec-btn-edit-info")}>
+                      <Button variant="outline" size="sm" onClick={() => setFormOpen(true)}>
+                        <Edit className="mr-1 size-4" />
+                        修改试卷基本信息
+                      </Button>
+                    </PrdAnnotation>
+                  )}
+                  {canSubmit && (
+                    <PrdAnnotation {...getAnnotation("ec-btn-submit")}>
+                      <Button variant="outline" size="sm" onClick={() => updateExamStatus(examId, 'submit')}>
+                        <Send className="mr-1 size-4" />
+                        提交审批
+                      </Button>
+                    </PrdAnnotation>
+                  )}
+                  {canDelete && (
+                    <PrdAnnotation {...getAnnotation("ec-btn-delete")}>
+                      <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={handleExamDelete}>
+                        <Trash2 className="mr-1 size-4" />
+                        删除
+                      </Button>
+                    </PrdAnnotation>
+                  )}
+                  {canPublish && (
+                    <Button variant="outline" size="sm" className="text-indigo-600 hover:text-indigo-700" onClick={() => updateExamStatus(examId, 'publish')}>
+                      <Rocket className="mr-1 size-4" />
+                      发布
+                    </Button>
+                  )}
+                  {canUnpublish && (
+                    <Button variant="outline" size="sm" className="text-red-500 hover:text-red-600" onClick={() => updateExamStatus(examId, 'unpublish')}>
+                      <ArrowDownFromLine className="mr-1 size-4" />
+                      取消发布
+                    </Button>
+                  )}
+                  <PrdAnnotation {...getAnnotation("ec-btn-preview")}>
+                    <Button variant="outline" size="sm" onClick={() => router.push('/evaluation/landing/resources/exams/exam-1?returnUrl=' + encodeURIComponent('/exams/' + examId))}>
+                      <MonitorPlay className="mr-1 size-4" />
+                      预览试卷
+                    </Button>
+                  </PrdAnnotation>
+                  <PrdAnnotation {...getAnnotation("ec-btn-save")}>
+                    <Button size="sm" onClick={async () => {
+                      if (exam.status !== 'draft') {
+                        await updateExamStatus(examId, 'save_draft')
+                        toast({ title: "保存成功", description: "试卷已保存为草稿" })
+                      } else {
+                        toast({ title: "保存成功", description: "试卷已保存" })
+                      }
+                    }}>
+                      <Save className="mr-1 size-4" />
+                      保存试卷
+                    </Button>
+                  </PrdAnnotation>
+                </div>
+              )}
             </div>
-            {exam.description && (
-              <p className="mt-1 text-sm text-muted-foreground">{exam.description}</p>
-            )}
-            <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <FileText className="size-4" />
-                {exam.questions.length} 道题
-              </span>
-              <span className="flex items-center gap-1">
-                <Award className="size-4" />
-                总分 {exam.totalScore} 分
-              </span>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-6 text-sm">
+              <div>
+                <span className="text-muted-foreground">题目数量:</span>{" "}
+                <strong>{exam.questions.length}</strong>
+              </div>
+              <div>
+                <span className="text-muted-foreground">总分:</span>{" "}
+                <strong>{exam.totalScore} 分</strong>
+              </div>
             </div>
-          </div>
-          {!isPreview && (
-            <div className="flex items-center gap-2">
-              {canEdit && (
-                <PrdAnnotation {...getAnnotation("ec-btn-edit-info")}>
-                  <Button variant="outline" size="sm" onClick={() => setFormOpen(true)}>
-                    <Edit className="mr-1 size-4" />
-                    修改试卷基本信息
-                  </Button>
-                </PrdAnnotation>
-              )}
-              {canSubmit && (
-                <PrdAnnotation {...getAnnotation("ec-btn-submit")}>
-                  <Button variant="outline" size="sm" onClick={() => updateExamStatus(examId, 'submit')}>
-                    <Send className="mr-1 size-4" />
-                    提交审批
-                  </Button>
-                </PrdAnnotation>
-              )}
-              {canDelete && (
-                <PrdAnnotation {...getAnnotation("ec-btn-delete")}>
-                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={handleExamDelete}>
-                    <Trash2 className="mr-1 size-4" />
-                    删除
-                  </Button>
-                </PrdAnnotation>
-              )}
-              {canPublish && (
-                <Button variant="outline" size="sm" className="text-indigo-600 hover:text-indigo-700" onClick={() => updateExamStatus(examId, 'publish')}>
-                  <Rocket className="mr-1 size-4" />
-                  发布
-                </Button>
-              )}
-              {canUnpublish && (
-                <Button variant="outline" size="sm" className="text-red-500 hover:text-red-600" onClick={() => updateExamStatus(examId, 'unpublish')}>
-                  <ArrowDownFromLine className="mr-1 size-4" />
-                  取消发布
-                </Button>
-              )}
-              <PrdAnnotation {...getAnnotation("ec-btn-preview")}>
-                <Button variant="outline" size="sm" onClick={() => router.push('/evaluation/landing/resources/exams/exam-1?returnUrl=' + encodeURIComponent('/exams/' + examId))}>
-                  <MonitorPlay className="mr-1 size-4" />
-                  预览试卷
-                </Button>
-              </PrdAnnotation>
-              <PrdAnnotation {...getAnnotation("ec-btn-save")}>
-                <Button size="sm" onClick={async () => {
-                  if (exam.status !== 'draft') {
-                    await updateExamStatus(examId, 'save_draft')
-                    toast({ title: "保存成功", description: "试卷已保存为草稿" })
-                  } else {
-                    toast({ title: "保存成功", description: "试卷已保存" })
-                  }
-                }}>
-                  <Save className="mr-1 size-4" />
-                  保存试卷
-                </Button>
-              </PrdAnnotation>
-            </div>
-          )}
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* 主体 */}
