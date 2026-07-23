@@ -74,6 +74,8 @@ func (h *PositionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 		"positionCreated":  result.PositionCreated,
 		"responsibilities": result.RespCreated,
 		"abilityBindings":  result.BindingCreated,
+		"errors":           result.Errors,
+		"sheets":           sheets,
 	})
 }
 
