@@ -56,7 +56,7 @@ export default function ExamComposerPage() {
   const { toast } = useToast()
 
   const selectedQuestionIds = useMemo(() => {
-    return exam?.questions.map(q => q.questionId) || []
+    return exam?.questions?.map(q => q.questionId) || []
   }, [exam])
 
   if (!exam) {

@@ -186,6 +186,7 @@ const parseQuestion = (q: Question): Question => ({
 
 const parseExam = (exam: Exam): Exam => ({
   ...exam,
+  questions: exam.questions || [],
   createdAt: parseDate(exam.createdAt as unknown as string | Date),
   updatedAt: parseDate(exam.updatedAt as unknown as string | Date),
 })
