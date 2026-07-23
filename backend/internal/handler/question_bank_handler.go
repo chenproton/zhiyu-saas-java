@@ -85,7 +85,9 @@ func (h *QuestionBankHandler) List(w http.ResponseWriter, r *http.Request) {
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT qb.id, qb.name, qb.description, qb.cover_image, qb.status, qb.question_count, qb.creator_id,
+		SELECT qb.id, qb.name, qb.description, qb.cover_image, qb.status,
+                (SELECT COUNT(*) FROM questions q WHERE q.bank_id = qb.id) AS question_count,
+                qb.creator_id,
 			COALESCE((SELECT u.name FROM users u WHERE u.id = qb.creator_id), qb.creator_id::text) AS creator_name,
 			qb.collaborator_ids,
 			COALESCE((
@@ -357,7 +359,9 @@ func (h *QuestionBankHandler) fetchQuestionBank(ctx context.Context, id string) 
 	var b domain.QuestionBank
 	var coverImage, creatorID, batchID *string
 	err := h.DB.QueryRow(ctx, `
-		SELECT qb.id, qb.name, qb.description, qb.cover_image, qb.status, qb.question_count, qb.creator_id,
+		SELECT qb.id, qb.name, qb.description, qb.cover_image, qb.status,
+                (SELECT COUNT(*) FROM questions q WHERE q.bank_id = qb.id) AS question_count,
+                qb.creator_id,
 			COALESCE((SELECT u.name FROM users u WHERE u.id = qb.creator_id), qb.creator_id::text) AS creator_name,
 			qb.collaborator_ids,
 			COALESCE((
