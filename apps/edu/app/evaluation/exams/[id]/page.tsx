@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, GripVertical, Trash2, Eye, FileText, Wand2, Hand, Plus, Edit, FileUp, Rocket, ImageIcon, Users, Building2 } from "lucide-react"
+import { ArrowLeft, GripVertical, Trash2, Eye, FileText, Wand2, Hand, Plus, Edit, FileUp, Rocket, ImageIcon, Users, Building2, SlidersHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,6 +15,13 @@ import { RandomQuestionDialog } from "@/components/evaluation/random-question-di
 import { ManualQuestionDialog } from "@/components/evaluation/manual-question-dialog"
 import { AddQuestionToExamDialog } from "@/components/evaluation/add-question-to-exam-dialog"
 import { QuestionPreview } from "@/components/evaluation/question-preview"
+import { ScoreConfigDialog } from "@/components/evaluation/score-config-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useData } from "@/components/providers/data-provider"
 import type { Question, ExamQuestion, ExamFormData, QuestionType } from "@/lib/types"
 import { QUESTION_TYPE_LABELS, canPerformAction } from "@/lib/types"
@@ -44,6 +51,7 @@ export default function ExamComposerPage() {
     addQuestionToExam,
     removeQuestionFromExam,
     updateExamQuestionScore,
+    updateExamQuestionScores,
     reorderExamQuestions,
   } = useData()
 
@@ -56,6 +64,7 @@ export default function ExamComposerPage() {
   const [randomDialogOpen, setRandomDialogOpen] = useState(false)
   const [manualDialogOpen, setManualDialogOpen] = useState(false)
   const [addQuestionDialogOpen, setAddQuestionDialogOpen] = useState(false)
+  const [scoreTypeDialogOpen, setScoreTypeDialogOpen] = useState(false)
 
   const selectedQuestionIds = useMemo(() => {
     return exam?.questions?.map(q => q.questionId) || []
@@ -166,6 +175,49 @@ export default function ExamComposerPage() {
 
   const handleDragEnd = () => {
     setDraggedIndex(null)
+  }
+
+  const handleEvenDistribution = () => {
+    const qs = exam.questions
+    if (qs.length === 0) return
+    const n = qs.length
+    const base = Math.floor(100 / n)
+    const remainder = 100 - base * n
+    const scores: Record<string, number> = {}
+    qs.forEach((q, i) => {
+      scores[q.questionId] = base + (i < remainder ? 1 : 0)
+    })
+    updateExamQuestionScores(examId, scores)
+  }
+
+  const handleTypeDistribution = (scores: Record<string, number>) => {
+    updateExamQuestionScores(examId, scores)
+  }
+
+  const handleProportionalDistribution = () => {
+    const qs = exam.questions
+    if (qs.length === 0) return
+    const total = qs.reduce((sum, q) => sum + (q.score || 0), 0)
+    if (total <= 0) {
+      handleEvenDistribution()
+      return
+    }
+    const raw = qs.map((q) => ((q.score || 0) / total) * 100)
+    const floored = raw.map((r) => Math.floor(r))
+    let sumFloored = floored.reduce((s, v) => s + v, 0)
+    const remainders = raw.map((r, i) => ({ idx: i, rem: r - Math.floor(r) }))
+    remainders.sort((a, b) => b.rem - a.rem)
+    let ri = 0
+    while (sumFloored < 100 && ri < remainders.length) {
+      floored[remainders[ri].idx]++
+      sumFloored++
+      ri++
+    }
+    const scores: Record<string, number> = {}
+    qs.forEach((q, i) => {
+      scores[q.questionId] = floored[i]
+    })
+    updateExamQuestionScores(examId, scores)
   }
 
   const formatDuration = (minutes: number) => {
@@ -323,6 +375,40 @@ export default function ExamComposerPage() {
           </div>
           {canEdit && (
             <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm">
+                    <SlidersHorizontal className="mr-1 size-4" />
+                    分数配置
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-72">
+                  <DropdownMenuItem onClick={handleEvenDistribution}>
+                    <div>
+                      <div className="font-medium">均匀分配</div>
+                      <div className="text-xs text-muted-foreground">
+                        将 100 分均匀分给每道题，余数从第一题起依次加 1 分
+                      </div>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setScoreTypeDialogOpen(true)}>
+                    <div>
+                      <div className="font-medium">题型分配</div>
+                      <div className="text-xs text-muted-foreground">
+                        为每种题型分配总分（合计 100），各题型内均匀分配
+                      </div>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleProportionalDistribution}>
+                    <div>
+                      <div className="font-medium">等比分配</div>
+                      <div className="text-xs text-muted-foreground">
+                        按当前每题分数的比例缩放至总分 100 分
+                      </div>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <PrdAnnotation {...getAnnotation("ec-btn-random")}>
                 <Button
                   variant="outline"
@@ -500,6 +586,13 @@ export default function ExamComposerPage() {
         open={addQuestionDialogOpen}
         onOpenChange={setAddQuestionDialogOpen}
         onAddQuestion={handleAddSingleQuestion}
+      />
+
+      <ScoreConfigDialog
+        open={scoreTypeDialogOpen}
+        onOpenChange={setScoreTypeDialogOpen}
+        questions={exam.questions}
+        onApply={handleTypeDistribution}
       />
     </div>
   )

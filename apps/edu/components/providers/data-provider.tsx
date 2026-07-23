@@ -79,6 +79,7 @@ interface DataContextValue {
   addQuestionToExam: (examId: string, question: Question, score?: number) => Promise<void>
   removeQuestionFromExam: (examId: string, examQuestionId: string) => Promise<void>
   updateExamQuestionScore: (examId: string, examQuestionId: string, score: number) => Promise<void>
+  updateExamQuestionScores: (examId: string, scores: Record<string, number>) => Promise<void>
   reorderExamQuestions: (examId: string, questions: ExamQuestion[]) => Promise<void>
 
   // 场景任务测评相关
@@ -676,6 +677,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     await loadExams()
   }, [exams, loadExams])
 
+  const updateExamQuestionScores = useCallback(async (examId: string, scores: Record<string, number>) => {
+    await examApi.updateQuestionScores(examId, scores)
+    await loadExams()
+  }, [loadExams])
+
   const reorderExamQuestions = useCallback(async (examId: string, questions: ExamQuestion[]) => {
     const exam = exams.find((e) => e.id === examId)
     if (!exam) return
@@ -714,6 +720,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     addQuestionToExam,
     removeQuestionFromExam,
     updateExamQuestionScore,
+    updateExamQuestionScores,
     reorderExamQuestions,
     evaluationCategories,
     evaluationMethods,

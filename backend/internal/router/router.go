@@ -552,9 +552,10 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 				r.Post("/evaluation/questions/batch", questionHandler.BatchCreate)
 
 				registerContentRoutes(r, "/evaluation/exams", examHandler)
-				r.Post("/evaluation/exams/{id}/questions", examHandler.AddQuestion)
-				r.Put("/evaluation/exams/{id}/questions/{questionId}", examHandler.UpdateQuestionScore)
-				r.Delete("/evaluation/exams/{id}/questions/{questionId}", examHandler.RemoveQuestion)
+			r.Post("/evaluation/exams/{id}/questions", examHandler.AddQuestion)
+			r.Put("/evaluation/exams/{id}/questions/scores", examHandler.BulkUpdateScores)
+			r.Put("/evaluation/exams/{id}/questions/{questionId}", examHandler.UpdateQuestionScore)
+			r.Delete("/evaluation/exams/{id}/questions/{questionId}", examHandler.RemoveQuestion)
 
 				r.Get("/evaluation/exam-usages", examUsageHandler.List)
 				r.Get("/evaluation/exam-usages/{id}", examUsageHandler.Get)
