@@ -945,7 +945,11 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
               调整批次分组
             </Button>
             <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected} onClick={async () => {
-              const exportFn = importExportApi.exportScenariosExcel || importExportApi.exportPositionsExcel
+              const exportFn = importExcelEntity === "scenarios"
+                ? importExportApi.exportScenariosExcel
+                : importExcelEntity === "positions"
+                ? importExportApi.exportPositionsExcel
+                : null
               if (exportFn) {
                 try {
                   const res = await exportFn(selectedIds)
