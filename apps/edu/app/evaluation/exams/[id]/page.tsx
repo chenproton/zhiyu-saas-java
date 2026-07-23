@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { StatusBadge } from "@/components/shared/status-badge"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ExamFormDialog } from "@/components/evaluation/exam-form-dialog"
 import { RandomQuestionDialog } from "@/components/evaluation/random-question-dialog"
@@ -206,7 +205,6 @@ export default function ExamComposerPage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
                     <CardTitle className="text-xl">{exam.name}</CardTitle>
-                    {!isPreview && <StatusBadge status={exam.status} />}
                     <Badge variant="outline">{exam.version}</Badge>
                   </div>
                   <CardDescription className="mt-2">
@@ -220,7 +218,7 @@ export default function ExamComposerPage() {
                     <PrdAnnotation {...getAnnotation("ec-btn-edit-info")}>
                       <Button variant="outline" size="sm" onClick={() => setFormOpen(true)}>
                         <Edit className="mr-1 size-4" />
-                        修改试卷基本信息
+                        编辑信息
                       </Button>
                     </PrdAnnotation>
                   )}
@@ -413,7 +411,7 @@ export default function ExamComposerPage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="flex shrink-0 items-center gap-1">
                     <Button
                       variant="ghost"
                       size="icon"
