@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import type {
@@ -269,11 +269,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setQuestionBanks(res.items.map(parseQuestionBank))
   }, [])
 
-  const loadQuestions = useCallback(async () => {
-    const res = await questionApi.list()
-    setQuestions(res.items.map(parseQuestion))
-  }, [])
-
   const loadBankQuestions = useCallback(async (bankId: string) => {
     const res = await questionApi.list({ bankId, limit: 10000 })
     const bankQs = res.items.map(parseQuestion)
@@ -391,25 +386,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const shouldLoadGraduation = pathname.startsWith('/graduation')
   const shouldLoadPortrait = pathname.startsWith('/portrait') || pathname.startsWith('/student-ability')
 
-  const hasLoadedGlobal = useRef(false)
-
   useEffect(() => {
     if (pathname.startsWith("/portal")) return
 
     const tasks: Promise<void>[] = []
     if (shouldLoadEvaluation || shouldLoadScene) {
-      if (!hasLoadedGlobal.current) {
-        hasLoadedGlobal.current = true
-        tasks.push(
-          loadQuestionBanks(),
-          loadQuestions(),
-          loadExams(),
-          loadEvaluationMethods(),
-        )
-      } else {
-        tasks.push(loadQuestionBanks())
-      }
       tasks.push(
+        loadQuestionBanks(),
+        loadExams(),
+        loadEvaluationMethods(),
         loadSceneTasks(),
         loadSceneResults(),
         loadJobAbilityResults(),
@@ -453,7 +438,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     shouldLoadGraduation,
     shouldLoadPortrait,
     loadQuestionBanks,
-    loadQuestions,
     loadExams,
     loadEvaluationMethods,
     loadSceneTasks,
@@ -506,8 +490,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const bank = questionBanks.find((b) => b.id === id)
     if (bank?.isDraftPool) return
     await questionBankApi.delete(id)
-    await Promise.all([loadQuestionBanks(), loadQuestions()])
-  }, [questionBanks, loadQuestionBanks, loadQuestions])
+    await loadQuestionBanks()
+  }, [questionBanks, loadQuestionBanks])
 
   const updateQuestionBankStatus = useCallback(async (id: string, action: StatusAction) => {
     const bank = questionBanks.find((b) => b.id === id)
@@ -563,33 +547,39 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       bankId,
       status: 'draft',
     } as Omit<Question, 'id' | 'createdAt'>)
-    await Promise.all([loadQuestions(), loadQuestionBanks()])
+    await Promise.all([loadBankQuestions(bankId), loadQuestionBanks()])
     return parseQuestion(created)
-  }, [loadQuestions, loadQuestionBanks])
+  }, [loadBankQuestions, loadQuestionBanks])
 
   const updateQuestion = useCallback(async (id: string, data: QuestionFormData) => {
     await questionApi.update(id, data)
-    await loadQuestions()
-  }, [loadQuestions])
+    const q = getQuestion(id)
+    if (q) await loadBankQuestions(q.bankId)
+  }, [getQuestion, loadBankQuestions])
 
   const updateQuestionStatus = useCallback(async (id: string, action: StatusAction) => {
     if (!canPerformAction(getQuestion(id)?.status || 'draft', action)) return
     await questionApi.update(id, { status: getNextStatus(action) })
-    await loadQuestions()
-  }, [getQuestion, loadQuestions])
+    const q = getQuestion(id)
+    if (q) await loadBankQuestions(q.bankId)
+  }, [getQuestion, loadBankQuestions])
 
   const deleteQuestion = useCallback(async (id: string) => {
+    const q = getQuestion(id)
+    if (!q) return
     await questionApi.delete(id)
-    await Promise.all([loadQuestions(), loadQuestionBanks()])
-  }, [loadQuestions, loadQuestionBanks])
+    await Promise.all([loadBankQuestions(q.bankId), loadQuestionBanks()])
+  }, [getQuestion, loadBankQuestions, loadQuestionBanks])
 
   const moveQuestions = useCallback(async (questionIds: string[], targetBankId: string) => {
     const targetBank = questionBanks.find((b) => b.id === targetBankId)
     if (!targetBank) return
+    const sourceBankIds = new Set<string>()
     await Promise.all(
       questionIds.map((qid) => {
         const q = getQuestion(qid)
         if (!q) return Promise.resolve()
+        sourceBankIds.add(q.bankId)
         return questionApi.update(qid, {
           type: q.type,
           content: q.content,
@@ -603,8 +593,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         })
       })
     )
-    await Promise.all([loadQuestions(), loadQuestionBanks()])
-  }, [questionBanks, getQuestion, loadQuestions, loadQuestionBanks])
+    const reloads = [loadBankQuestions(targetBankId)]
+    for (const bankId of sourceBankIds) {
+      if (bankId !== targetBankId) reloads.push(loadBankQuestions(bankId))
+    }
+    await Promise.all([...reloads, loadQuestionBanks()])
+  }, [questionBanks, getQuestion, loadBankQuestions, loadQuestionBanks])
 
   // ==================== Exam actions ====================
   const getExam = useCallback(

@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { MultiSelectSearch } from "@/components/ui/multi-select-search"
 import { useData } from "@/components/providers/data-provider"
-import { knowledgeApi } from "@/lib/api"
+import { knowledgeApi, questionApi } from "@/lib/api"
 import type { Question, QuestionType, Difficulty, EvalKnowledgePoint } from "@/lib/types"
 import { QUESTION_TYPE_LABELS, DIFFICULTY_LABELS } from "@/lib/types"
 
@@ -65,12 +65,36 @@ export function RandomQuestionDialog({
   selectedQuestionIds,
   onAddQuestions,
 }: RandomQuestionDialogProps) {
-  const { questionBanks, questions } = useData()
+  const { questionBanks } = useData()
 
   const publishedBanks = useMemo(() =>
     questionBanks.filter(bank => bank.status === 'published'),
     [questionBanks]
   )
+
+  const [questions, setQuestions] = useState<Question[]>([])
+  const [loadingQuestions, setLoadingQuestions] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    setLoadingQuestions(true)
+    questionApi.list({ limit: 10000 })
+      .then((res) => {
+        if (cancelled) return
+        setQuestions(res.items.map((q) => ({
+          ...q,
+          createdAt: new Date((q.createdAt as unknown as string) || Date.now()),
+        })))
+      })
+      .catch((err) => {
+        if (!cancelled) console.error('Failed to load questions', err)
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingQuestions(false)
+      })
+    return () => { cancelled = true }
+  }, [open])
 
   // ---- filters ----
   const [selectedBankIds, setSelectedBankIds] = useState<string[]>([])
