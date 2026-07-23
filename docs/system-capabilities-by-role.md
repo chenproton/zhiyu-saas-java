@@ -338,12 +338,7 @@
 | `/evaluation/question-banks` | 题库管理 |
 | `/evaluation/exams` | 试卷管理 |
 | `/evaluation/exam-usage` | 考试管理 |
-| `/evaluation/methods` | 测评方式 |
-| `/evaluation/scene-results` | 场景结果 |
 | `/evaluation/job-ability` | 岗位能力 |
-| `/evaluation/certificates/templates` | 微证书模板 |
-| `/evaluation/graduation/topics` | 毕业设计 |
-| `/evaluation/portraits` | 学生画像 |
 | `/evaluation/landing/*` | 公开 landing 页 |
 
 ---

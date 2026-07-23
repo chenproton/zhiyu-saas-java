@@ -31,13 +31,8 @@ import type {
   AppealRecord,
   CreditConversionRule,
   EvaluationStandard,
-  PortraitUpdateConfig,
-  TopicApplication,
   EvalAbilityItem,
-  CertType,
-  MicroCertTemplate,
   CertIssuanceRecord,
-  MicroCertTemplateFormData,
 } from '@/lib/types'
 import { getNextStatus, canPerformAction } from '@/lib/types'
 import {
@@ -55,15 +50,6 @@ import {
   scenarioApi,
 } from '@/lib/api'
 import type { ApprovalRecord } from '@/lib/types/backend'
-// Inline defaults for data that does not yet have a dedicated backend API.
-const DEFAULT_CERT_TYPES: CertType[] = [
-  { id: 'ct-1', name: '职业技能' },
-  { id: 'ct-2', name: '课程结业' },
-  { id: 'ct-3', name: '竞赛获奖' },
-  { id: 'ct-4', name: '实习实践' },
-  { id: 'ct-5', name: '创新创业' },
-]
-
 interface DataContextValue {
   // 题库相关
   questionBanks: QuestionBank[]
@@ -100,9 +86,6 @@ interface DataContextValue {
   evaluationMethods: EvaluationMethod[]
   sceneTasks: SceneTask[]
   sceneEvaluationResults: SceneEvaluationResult[]
-  updateEvaluationMethod: (id: string, data: Partial<EvaluationMethod>) => Promise<void>
-  getSceneTasksByMethod: (methodId: string) => SceneTask[]
-  getResultsByMethod: (methodId: string) => SceneEvaluationResult[]
 
   // 岗位能力测评结果
   jobAbilityResults: JobAbilityResult[]
@@ -123,9 +106,6 @@ interface DataContextValue {
   rectificationDetails: RectificationDetail[]
   appealRecords: AppealRecord[]
   evaluationStandards: EvaluationStandard[]
-  topicApplications: TopicApplication[]
-  createTopicApplication: (data: any) => TopicApplication
-  updateTopicApplication: (id: string, data: Partial<TopicApplication>) => void
   createProcessEvaluation: (data: any) => ProcessEvaluation
   createRectificationDetail: (data: any) => RectificationDetail
   updateRectificationDetail: (id: string, data: Partial<RectificationDetail>) => void
@@ -138,12 +118,8 @@ interface DataContextValue {
   studentAbilityPortraits: StudentAbilityPortrait[]
   creditConversionRules: CreditConversionRule[]
   archiveVersions: StudentAbilityArchive[]
-  portraitUpdateConfig: PortraitUpdateConfig
 
   // 毕业设计管理操作
-  createGraduationProjectTopic: (data: any) => Promise<GraduationProjectTopic>
-  updateGraduationProjectTopic: (id: string, data: any) => Promise<void>
-  deleteGraduationProjectTopic: (id: string) => Promise<void>
   updateGraduationProjectArchive: (id: string, data: Partial<GraduationProjectArchive>) => Promise<void>
   updateGraduationProjectEvaluation: (id: string, data: Partial<GraduationProjectEvaluation>) => Promise<void>
 
@@ -151,17 +127,9 @@ interface DataContextValue {
   createStudentAbilityArchive: (data: any) => Promise<StudentAbilityArchive>
   updateStudentAbilityArchive: (id: string, data: Partial<StudentAbilityArchive>) => Promise<void>
   deleteStudentAbilityArchive: (id: string) => Promise<void>
-  updateStudentAbilityPortrait: (id: string, data: Partial<StudentAbilityPortrait>) => Promise<void>
   updateCreditConversionRules: (rules: CreditConversionRule[]) => void
-  updatePortraitUpdateConfig: (config: Partial<PortraitUpdateConfig>) => void
 
   // 微证书管理
-  certTypes: CertType[]
-  updateCertTypes: (types: CertType[]) => void
-  microCertTemplates: MicroCertTemplate[]
-  createMicroCertTemplate: (data: MicroCertTemplateFormData) => Promise<MicroCertTemplate>
-  updateMicroCertTemplate: (id: string, data: MicroCertTemplateFormData) => Promise<void>
-  deleteMicroCertTemplate: (id: string) => Promise<void>
   certIssuanceRecords: CertIssuanceRecord[]
   issueCert: (data: Omit<CertIssuanceRecord, 'id' | 'certNumber' | 'status'>) => Promise<CertIssuanceRecord>
   issueBatchCerts: (records: Omit<CertIssuanceRecord, 'id' | 'certNumber' | 'status'>[]) => Promise<CertIssuanceRecord[]>
@@ -227,12 +195,6 @@ const parsePortrait = (p: StudentAbilityPortrait): StudentAbilityPortrait => ({
   updatedAt: parseDate(p.updatedAt as unknown as string | Date),
 })
 
-const parseMicroCertTemplate = (t: MicroCertTemplate): MicroCertTemplate => ({
-  ...t,
-  createdAt: parseDate(t.createdAt as unknown as string | Date),
-  updatedAt: parseDate(t.updatedAt as unknown as string | Date),
-})
-
 const parseCertRecord = (r: CertIssuanceRecord): CertIssuanceRecord => ({
   ...r,
   issueDate: parseDate(r.issueDate as unknown as string | Date),
@@ -289,23 +251,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [rectificationDetails, setRectificationDetails] = useState<RectificationDetail[]>([])
   const [appealRecords, setAppealRecords] = useState<AppealRecord[]>([])
   const [evaluationStandards, setEvaluationStandards] = useState<EvaluationStandard[]>([])
-  const [topicApplications, setTopicApplications] = useState<TopicApplication[]>([])
 
   // 学生能力画像管理状态
   const [studentAbilityArchives, setStudentAbilityArchives] = useState<StudentAbilityArchive[]>([])
   const [studentAbilityPortraits, setStudentAbilityPortraits] = useState<StudentAbilityPortrait[]>([])
   const [creditConversionRules, setCreditConversionRules] = useState<CreditConversionRule[]>([])
   const [archiveVersions, setArchiveVersions] = useState<StudentAbilityArchive[]>([])
-  const [portraitUpdateConfig, setPortraitUpdateConfig] = useState<PortraitUpdateConfig>({
-    updateCycle: 'daily',
-    queryLimit: 10,
-    queryTimeStart: '08:00',
-    queryTimeEnd: '22:00',
-  })
 
   // 微证书管理状态
-  const [certTypes, setCertTypes] = useState<CertType[]>(DEFAULT_CERT_TYPES)
-  const [microCertTemplates, setMicroCertTemplates] = useState<MicroCertTemplate[]>([])
   const [certIssuanceRecords, setCertIssuanceRecords] = useState<CertIssuanceRecord[]>([])
 
   // ==================== Data loading ====================
@@ -417,11 +370,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setStudentAbilityPortraits(res.items.map(parsePortrait))
   }, [])
 
-  const loadMicroCertTemplates = useCallback(async () => {
-    const res = await microCertApi.listTemplates()
-    setMicroCertTemplates(res.items.map(parseMicroCertTemplate))
-  }, [])
-
   const loadCertIssuanceRecords = useCallback(async () => {
     const res = await microCertApi.listHistory()
     setCertIssuanceRecords(res.items.map(parseCertRecord))
@@ -431,7 +379,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const shouldLoadScene = pathname.startsWith('/scene')
   const shouldLoadGraduation = pathname.startsWith('/graduation')
   const shouldLoadPortrait = pathname.startsWith('/portrait') || pathname.startsWith('/student-ability')
-  const shouldLoadMicroCert = pathname.startsWith('/micro-cert')
 
   useEffect(() => {
     if (pathname.startsWith("/portal")) return
@@ -463,12 +410,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         loadStudentAbilityPortraits()
       )
     }
-    if (shouldLoadMicroCert || shouldLoadPortrait) {
-      tasks.push(
-        loadMicroCertTemplates(),
-        loadCertIssuanceRecords()
-      )
-    }
     if (tasks.length === 0) return
 
     let cancelled = false
@@ -489,7 +430,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     shouldLoadScene,
     shouldLoadGraduation,
     shouldLoadPortrait,
-    shouldLoadMicroCert,
     loadQuestionBanks,
     loadQuestions,
     loadExams,
@@ -504,7 +444,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     loadGraduationQueryResults,
     loadStudentAbilityArchives,
     loadStudentAbilityPortraits,
-    loadMicroCertTemplates,
     loadCertIssuanceRecords,
   ])
 
@@ -744,24 +683,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     await loadExams()
   }, [exams, loadExams])
 
-  // ==================== Evaluation method actions ====================
-  const updateEvaluationMethod = useCallback(async (id: string, data: Partial<EvaluationMethod>) => {
-    if (typeof data.enabled === 'boolean') {
-      await evaluationMethodApi.toggle(id, data.enabled)
-    }
-    await loadEvaluationMethods()
-  }, [loadEvaluationMethods])
-
-  const getSceneTasksByMethod = useCallback(
-    (methodId: string) => sceneTasks.filter((task) => task.methodIds.includes(methodId)),
-    [sceneTasks]
-  )
-
-  const getResultsByMethod = useCallback(
-    (methodId: string) => sceneEvaluationResults.filter((res) => res.methodKey === methodId),
-    [sceneEvaluationResults]
-  )
-
   const value: DataContextValue = {
     questionBanks,
     getQuestionBank,
@@ -791,9 +712,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     evaluationMethods,
     sceneTasks,
     sceneEvaluationResults,
-    updateEvaluationMethod,
-    getSceneTasksByMethod,
-    getResultsByMethod,
     jobAbilityResults,
     positionsList: positionsListState,
     getPositionAbilityItems: () => [],
@@ -808,29 +726,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     rectificationDetails,
     appealRecords,
     evaluationStandards,
-    topicApplications,
-    createTopicApplication: (data: any) => {
-      const newApp: TopicApplication = {
-        id: `app-${Date.now()}`,
-        topicId: data.topicId,
-        topicName: data.topicName,
-        studentId: data.studentId,
-        studentName: data.studentName,
-        className: data.className,
-        status: data.status || 'pending',
-        applyReason: data.applyReason,
-        appliedAt: new Date(),
-        allocatedAdvisorId: data.allocatedAdvisorId,
-        allocatedAdvisorName: data.allocatedAdvisorName,
-      }
-      setTopicApplications((prev) => [...prev, newApp])
-      return newApp
-    },
-    updateTopicApplication: (id: string, data: Partial<TopicApplication>) => {
-      setTopicApplications((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, ...data } : a))
-      )
-    },
     createProcessEvaluation: (data: any) => {
       const newEval: ProcessEvaluation = {
         id: `pe-${Date.now()}`,
@@ -891,37 +786,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     },
     creditConversionRules,
     archiveVersions,
-    portraitUpdateConfig,
     studentAbilityArchives,
     studentAbilityPortraits,
 
-    createGraduationProjectTopic: async (data: any): Promise<GraduationProjectTopic> => {
-      const created = await graduationApi.createTopic({
-        name: data.name,
-        positionId: data.positionId || 'pos-1',
-        positionName: data.positionName || '全栈开发工程师',
-        college: data.college || '计算机学院',
-        source: data.source || 'enterprise',
-        status: 'published',
-        capacity: Number(data.capacity) || 1,
-        appliedCount: 0,
-        advisorName: data.advisorName,
-        enterpriseMentorName: data.enterpriseMentorName,
-        startDate: data.startDate ? new Date(data.startDate) : new Date(),
-        endDate: data.endDate ? new Date(data.endDate) : new Date(),
-        description: data.description,
-      } as Omit<GraduationProjectTopic, 'id' | 'appliedCount' | 'createdAt'>)
-      await loadGraduationTopics()
-      return parseTopic(created)
-    },
-    updateGraduationProjectTopic: async (id: string, data: any) => {
-      await graduationApi.updateTopic(id, data)
-      await loadGraduationTopics()
-    },
-    deleteGraduationProjectTopic: async (id: string) => {
-      await graduationApi.deleteTopic(id)
-      await loadGraduationTopics()
-    },
     updateGraduationProjectArchive: async (id: string, data: Partial<GraduationProjectArchive>) => {
       await graduationApi.upsertArchive(data)
       await loadGraduationArchives()
@@ -955,41 +822,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     deleteStudentAbilityArchive: async (id: string) => {
       setStudentAbilityArchives((prev) => prev.filter((a) => a.id !== id))
     },
-    updateStudentAbilityPortrait: async (id: string, data: Partial<StudentAbilityPortrait>) => {
-      setStudentAbilityPortraits((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, ...data, updatedAt: new Date() } : p))
-      )
-    },
     updateCreditConversionRules: (rules: CreditConversionRule[]) => {
       setCreditConversionRules(rules)
     },
-    updatePortraitUpdateConfig: (config: Partial<PortraitUpdateConfig>) => {
-      setPortraitUpdateConfig((prev) => ({ ...prev, ...config }))
-    },
 
-    certTypes,
-    updateCertTypes: (types: CertType[]) => {
-      setCertTypes(types)
-    },
-    microCertTemplates,
-    createMicroCertTemplate: async (data: MicroCertTemplateFormData): Promise<MicroCertTemplate> => {
-      const certTypeName = certTypes.find((t) => t.id === data.certTypeId)?.name || '未知'
-      const created = await microCertApi.createTemplate({
-        ...data,
-        certTypeName,
-      } as Omit<MicroCertTemplate, 'id' | 'createdAt' | 'updatedAt'>)
-      await loadMicroCertTemplates()
-      return parseMicroCertTemplate(created)
-    },
-    updateMicroCertTemplate: async (id: string, data: MicroCertTemplateFormData) => {
-      const certTypeName = certTypes.find((t) => t.id === data.certTypeId)?.name || '未知'
-      await microCertApi.updateTemplate(id, { ...data, certTypeName })
-      await loadMicroCertTemplates()
-    },
-    deleteMicroCertTemplate: async (id: string) => {
-      await microCertApi.deleteTemplate(id)
-      await loadMicroCertTemplates()
-    },
     certIssuanceRecords,
     issueCert: async (data): Promise<CertIssuanceRecord> => {
       await microCertApi.issue(data.templateId, [data.studentId])
