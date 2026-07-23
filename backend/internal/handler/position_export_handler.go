@@ -50,12 +50,10 @@ func (h *PositionExportHandler) ExportExcel(w http.ResponseWriter, r *http.Reque
 
 func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *excelize.File, tenantID string, positionIDs []string) error {
 	dataStyle := makeDataStyle(f)
-	wrapAlign := makeWrapAlign(f)
 
 	setCell := func(sheet, cell, val string) {
 		f.SetCellValue(sheet, cell, val)
 		f.SetCellStyle(sheet, cell, cell, dataStyle)
-		f.SetCellStyle(sheet, cell, cell, wrapAlign)
 	}
 
 	type posRow struct {
@@ -71,8 +69,8 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 		err := h.DB.QueryRow(ctx, `
 			SELECT name, COALESCE(short_name,''), position_type, COALESCE(description,''),
 				COALESCE(career_path,''), salary_min, salary_max, industry_id, requirements, batch_id
-			FROM career_positions WHERE id=$1 AND tenant_id=$2
-		`, pid, tenantID).Scan(&name, &shortName, &positionType, &desc, &careerPath, &salaryMin, &salaryMax, &industryID, &requirements)
+			FROM career_positions WHERE id=$1
+		`, pid).Scan(&name, &shortName, &positionType, &desc, &careerPath, &salaryMin, &salaryMax, &industryID, &requirements)
 		if err != nil {
 			log.Printf("[export/positions] scan position %s: %v", pid, err)
 			continue
@@ -123,6 +121,8 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 			batchName,
 		})
 	}
+
+	log.Printf("[export/positions] collected %d basic info rows for %d position IDs", len(posRows), len(positionIDs))
 
 	for ri, row := range posRows {
 		r := 3 + ri
