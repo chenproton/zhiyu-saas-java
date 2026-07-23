@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload, Copy, Users, Building2, ImageIcon, List, LayoutGrid, FolderInput, MoreHorizontal, ChevronDown } from "lucide-react"
+import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload, Copy, Users, Building2, ImageIcon, List, LayoutGrid, FolderInput, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -488,7 +488,7 @@ export default function QuestionBankDetailPage() {
               </TableRow>
             ) : (
               filteredQuestions.map((question) => (
-                <TableRow key={question.id}>
+                <TableRow key={question.id} className="group">
                   {canEdit && (
                     <TableCell>
                       <Checkbox
@@ -518,36 +518,49 @@ export default function QuestionBankDetailPage() {
                   <TableCell className="text-muted-foreground">
                     {formatDate(question.createdAt)}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="size-8">
-                          <MoreHorizontal className="size-4" />
-                          <span className="sr-only">操作菜单</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setPreviewQuestion(question)}>
-                          预览
-                        </DropdownMenuItem>
-                        {canEdit && (
-                          <>
-                            <DropdownMenuItem onClick={() => handleCopyQuestion(question)}>
-                              复制
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleQuestionEdit(question)}>
-                              编辑
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => setDeleteConfirm(question)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              删除
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  <TableCell className="text-right relative">
+                    <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setPreviewQuestion(question)}
+                      >
+                        <Eye className="mr-1 h-3 w-3" />
+                        预览
+                      </Button>
+                      {canEdit && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => handleCopyQuestion(question)}
+                          >
+                            <Copy className="mr-1 h-3 w-3" />
+                            复制
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => handleQuestionEdit(question)}
+                          >
+                            <Edit className="mr-1 h-3 w-3" />
+                            编辑
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                            onClick={() => setDeleteConfirm(question)}
+                          >
+                            <Trash2 className="mr-1 h-3 w-3" />
+                            删除
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
