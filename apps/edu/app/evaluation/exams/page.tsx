@@ -148,10 +148,6 @@ export default function ExamsPage() {
 
   // Dialogs
   const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [newName, setNewName] = useState("")
-  const [newDescription, setNewDescription] = useState("")
-  const [newDuration, setNewDuration] = useState("60")
-  const [newBatchId, setNewBatchId] = useState("")
 
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
@@ -356,31 +352,22 @@ export default function ExamsPage() {
   const canBatchUnpublish = selectedExams.some((e) => e.status === "published")
   const canBatchDelete = selectedExams.some((e) => e.status === "draft" || e.status === "rejected" || e.status === "archived")
 
-  const resetCreateForm = () => {
-    setNewName("")
-    setNewDescription("")
-    setNewDuration("60")
-    setNewBatchId("")
-  }
-
-  const handleCreate = async () => {
-    if (!newName.trim()) return
-    const duration = parseInt(newDuration, 10) || 60
+  const handleCreateSubmit = async (data: ExamFormData) => {
     try {
       const created = (await examApi.create({
-        name: newName.trim(),
-        description: newDescription.trim(),
-        duration,
+        name: data.name,
+        description: data.description,
+        duration: data.duration,
+        coverImage: data.coverImage,
+        collaboratorIds: data.collaboratorIds,
+        collaboratorDeptIds: [],
+        batchId: data.batchId,
         status: "draft",
         ownerType: "mine",
         version: "v1.0",
         questions: [],
-        collaboratorIds: [],
-        collaboratorDeptIds: [],
-        batchId: newBatchId || undefined,
       })) as unknown as BackendExam
       setIsCreateOpen(false)
-      resetCreateForm()
       router.push(`/evaluation/exams/${created.id}?new=true`)
     } catch (err) {
       console.error("创建试卷失败", err)
@@ -957,7 +944,7 @@ export default function ExamsPage() {
               导入试卷
             </Button>
 
-            <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={() => { resetCreateForm(); setIsCreateOpen(true) }}>
+            <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={() => setIsCreateOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               新建试卷
             </Button>
@@ -1191,7 +1178,7 @@ export default function ExamsPage() {
           </div>
           <h3 className="mb-2 text-lg font-medium text-slate-700">暂无试卷</h3>
           <p className="mb-4 text-sm text-slate-500">当前筛选条件下没有试卷数据</p>
-          <Button size="sm" onClick={() => { resetCreateForm(); setIsCreateOpen(true) }}>
+          <Button size="sm" onClick={() => setIsCreateOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             新建试卷
           </Button>
@@ -1205,64 +1192,11 @@ export default function ExamsPage() {
       )}
 
       {/* Create Dialog */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent size="sm">
-          <DialogHeader>
-            <DialogTitle>新建试卷</DialogTitle>
-            <DialogDescription>创建一个新的试卷</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="examName">试卷名称 <span className="text-red-500">*</span></Label>
-              <Input
-                id="examName"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="请输入试卷名称"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="examDesc">试卷简介</Label>
-              <Input
-                id="examDesc"
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                placeholder="请输入试卷简介（可选）"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="examDuration">考试时长（分钟）</Label>
-              <Input
-                id="examDuration"
-                type="number"
-                value={newDuration}
-                onChange={(e) => setNewDuration(e.target.value)}
-                placeholder="60"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="examBatch">所属批次</Label>
-              <Select value={newBatchId || "none"} onValueChange={(v) => setNewBatchId(v === "none" ? "" : v)}>
-                <SelectTrigger id="examBatch">
-                  <SelectValue placeholder="选择所属批次" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">不设置批次</SelectItem>
-                  {batches.map((batch) => (
-                    <SelectItem key={batch.id} value={batch.id}>
-                      {batch.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>取消</Button>
-            <Button onClick={handleCreate} disabled={!newName.trim()}>创建</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ExamFormDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        onSubmit={handleCreateSubmit}
+      />
 
       {/* Import Dialog */}
       <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>

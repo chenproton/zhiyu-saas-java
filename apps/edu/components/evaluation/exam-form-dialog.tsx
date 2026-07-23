@@ -22,11 +22,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { X, Upload, ImageIcon, UserPlus } from "lucide-react"
-import type { Exam, ExamFormData, User } from "@/lib/types"
-import { evaluationBatchApi, userManagementApi, fileApi } from "@/lib/api"
-import { CoBuilderDialog } from "@/components/shared/co-builder-dialog"
+import { X, Upload, ImageIcon } from "lucide-react"
+import type { Exam, ExamFormData } from "@/lib/types"
+import { evaluationBatchApi, fileApi } from "@/lib/api"
+import { UserSelector } from "@/components/shared/user-selector"
+import { useAuth } from "@/components/auth-provider"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 
@@ -43,35 +43,22 @@ export function ExamFormDialog({
   exam,
   onSubmit,
 }: ExamFormDialogProps) {
+  const { tenantId } = useAuth()
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
+  const [coverUrl, setCoverUrl] = useState<string>("")
   const [collaboratorIds, setCollaboratorIds] = useState<string[]>([])
   const [batchId, setBatchId] = useState<string>("")
-  const [coverUrl, setCoverUrl] = useState<string>("")
-  const [collaboratorDialogOpen, setCollaboratorDialogOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const fieldGroupRef = useRef<HTMLDivElement>(null)
 
-  const [users, setUsers] = useState<User[]>([])
   const [batches, setBatches] = useState<{ id: string; name: string }[]>([])
-  const [loadingUsers, setLoadingUsers] = useState(false)
   const [loadingBatches, setLoadingBatches] = useState(false)
 
   useEffect(() => {
     if (!open) return
     let cancelled = false
-    setLoadingUsers(true)
     setLoadingBatches(true)
-    userManagementApi.list({ limit: 1000 })
-      .then((res) => {
-        if (!cancelled) setUsers(res.items)
-      })
-      .catch((err) => {
-        if (!cancelled) console.error('Failed to load users', err)
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingUsers(false)
-      })
     evaluationBatchApi.list({ limit: 1000 })
       .then((res) => {
         if (!cancelled) setBatches(res.items.map((b) => ({ id: b.id, name: b.name })))
@@ -144,12 +131,6 @@ export function ExamFormDialog({
     }
   }
 
-  const removeCollaborator = (userId: string) => {
-    setCollaboratorIds(collaboratorIds.filter(id => id !== userId))
-  }
-
-  const getUserName = (id: string) => users.find(u => u.id === id)?.name || id
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent annotationContext="exam-form" annotationContainerRef={fieldGroupRef}>
@@ -162,9 +143,9 @@ export function ExamFormDialog({
         <form onSubmit={handleSubmit}>
           <FieldGroup ref={fieldGroupRef} className="max-h-[60vh] overflow-y-auto py-4">
             <Field>
-              <PrdAnnotation {...getAnnotation("ef-name")}>
-                <FieldLabel htmlFor="name">试卷名称</FieldLabel>
-              </PrdAnnotation>
+              <FieldLabel htmlFor="name">
+                <PrdAnnotation data={getAnnotation("ef-name")}>试卷名称</PrdAnnotation>
+              </FieldLabel>
               <Input
                 id="name"
                 value={name}
@@ -174,21 +155,21 @@ export function ExamFormDialog({
               />
             </Field>
             <Field>
-              <PrdAnnotation {...getAnnotation("ef-description")}>
-                <FieldLabel htmlFor="description">试卷简介</FieldLabel>
-              </PrdAnnotation>
+              <FieldLabel htmlFor="description">
+                <PrdAnnotation data={getAnnotation("ef-description")}>试卷简介</PrdAnnotation>
+              </FieldLabel>
               <Textarea
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="请输入试卷简介"
+                placeholder="请输入试卷简介（可选）"
                 rows={3}
               />
             </Field>
             <Field>
-              <PrdAnnotation {...getAnnotation("ef-cover")}>
-                <FieldLabel>封面</FieldLabel>
-              </PrdAnnotation>
+              <FieldLabel>
+                <PrdAnnotation data={getAnnotation("ef-cover")}>封面</PrdAnnotation>
+              </FieldLabel>
               <FieldDescription>支持上传 5MB 以内的图片文件</FieldDescription>
               <input
                 ref={fileInputRef}
@@ -225,41 +206,25 @@ export function ExamFormDialog({
               )}
             </Field>
             <Field>
-              <PrdAnnotation {...getAnnotation("ef-collaborators")}>
-                <FieldLabel>共建人</FieldLabel>
-              </PrdAnnotation>
+              <FieldLabel>
+                <PrdAnnotation data={getAnnotation("ef-collaborators")}>共建人</PrdAnnotation>
+              </FieldLabel>
               <FieldDescription>选择可以共同维护此试卷的用户</FieldDescription>
-              {collaboratorIds.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {collaboratorIds.map(id => (
-                    <Badge key={id} variant="secondary" className="gap-1">
-                      {getUserName(id)}
-                      <button
-                        type="button"
-                        onClick={() => removeCollaborator(id)}
-                        className="ml-1 rounded-full hover:bg-muted"
-                      >
-                        <X className="size-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-2"
-                onClick={() => setCollaboratorDialogOpen(true)}
-              >
-                <UserPlus className="mr-1 size-3.5" />
-                选择共建人
-              </Button>
+              <div className="mt-2">
+                <UserSelector
+                  value={collaboratorIds}
+                  onChange={setCollaboratorIds}
+                  multiple
+                  tenantId={tenantId}
+                  excludeUserIds={exam?.creatorId ? [exam.creatorId] : undefined}
+                  placeholder="点击选择共建人"
+                />
+              </div>
             </Field>
             <Field>
-              <PrdAnnotation {...getAnnotation("ef-batch")}>
-                <FieldLabel>所属批次</FieldLabel>
-              </PrdAnnotation>
+              <FieldLabel>
+                <PrdAnnotation data={getAnnotation("ef-batch")}>所属批次</PrdAnnotation>
+              </FieldLabel>
               <Select value={batchId || "none"} onValueChange={(v) => setBatchId(v === "none" ? "" : v)} disabled={loadingBatches}>
                 <SelectTrigger>
                   <SelectValue placeholder={loadingBatches ? "加载批次中..." : "选择所属批次"} />
@@ -278,9 +243,9 @@ export function ExamFormDialog({
             </Field>
             {exam && (
               <Field>
-                <PrdAnnotation {...getAnnotation("ef-version")}>
-                  <FieldLabel>当前版本号</FieldLabel>
-                </PrdAnnotation>
+                <FieldLabel>
+                  <PrdAnnotation data={getAnnotation("ef-version")}>当前版本号</PrdAnnotation>
+                </FieldLabel>
                 <div className="flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm">
                   {exam.version}
                 </div>
@@ -297,16 +262,6 @@ export function ExamFormDialog({
           </DialogFooter>
         </form>
       </DialogContent>
-
-      <CoBuilderDialog
-        open={collaboratorDialogOpen}
-        onOpenChange={setCollaboratorDialogOpen}
-        annotationContext="exam-co-builder"
-        title="选择共建人"
-        description="选择可以共同维护此试卷的用户"
-        selectedIds={collaboratorIds}
-        onChange={setCollaboratorIds}
-      />
     </Dialog>
   )
 }
