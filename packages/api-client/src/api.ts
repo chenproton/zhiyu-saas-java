@@ -938,6 +938,23 @@ export const importExportApi = {
     }
     return res.json()
   },
+  downloadTemplate: (entity: "positions" | "scenarios") => {
+    const token = getToken()
+    return fetch(`${API_BASE}/templates/${entity}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+  },
+  exportScenariosExcel: (ids: string[]) => {
+    const token = getToken()
+    return fetch(`${API_BASE}/export/scenarios/excel`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ ids }),
+    })
+  },
 }
 
 export const portalApi = {

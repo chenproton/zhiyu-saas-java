@@ -107,6 +107,8 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 	importExportHandler := &handler.ImportExportHandler{DB: db}
 	positionImportHandler := &handler.PositionImportHandler{DB: db}
 	scenarioImportHandler := &handler.ScenarioImportHandler{DB: db}
+	templateHandler := &handler.TemplateHandler{DB: db}
+	scenarioExportHandler := &handler.ScenarioExportHandler{DB: db}
 
 	// Phase 3.1: portal management handlers
 	tenantHandler := &handler.TenantHandler{DB: db}
@@ -249,6 +251,9 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 			r.Post("/import/{entity}", importExportHandler.Import)
 			r.Post("/import/positions/excel", positionImportHandler.ImportExcel)
 			r.Post("/import/scenarios/excel", scenarioImportHandler.ImportExcel)
+			r.Get("/templates/positions", templateHandler.ServePositionTemplate)
+			r.Get("/templates/scenarios", templateHandler.ServeScenarioTemplate)
+			r.Post("/export/scenarios/excel", scenarioExportHandler.ExportExcel)
 
 			r.Get("/orders", orderHandler.List)
 			r.Get("/orders/{id}", orderHandler.Get)

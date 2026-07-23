@@ -54,7 +54,6 @@ export default function PositionsPage() {
       importEntityName="career_positions"
       exportEntityName="career_positions"
       importExcelEntity="positions"
-      importTemplateUrl="/template-positions.xlsx"
       createRedirectUrl={(id) => `/job/positions/${id}/edit?new=true`}
       coBuilderField="collaborators"
       statusFilterOptions={[
