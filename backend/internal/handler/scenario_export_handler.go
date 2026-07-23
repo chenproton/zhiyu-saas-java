@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
@@ -115,26 +114,24 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 		taskRows, err := h.DB.Query(ctx, `
 			SELECT name, task_type, difficulty, estimated_hours,
 				COALESCE(background,''), COALESCE(detailed_description,''),
-				knowledge_point_ids, ability_point_ids, resource_ids
+				knowledge_point_ids, ability_point_ids, resource_ids, COALESCE(eval_data::text, '{}')
 			FROM scenario_tasks WHERE scenario_id=$1 AND tenant_id=$2 ORDER BY sort_order
 		`, sid, tenantID)
 		if err != nil {
 			continue
 		}
 		for taskRows.Next() {
-			var tname, ttype, tdesc, tdetail string
+			var tname, ttype, tdesc, tdetail, evalDataStr string
 			var tdiff int
 			var thours float64
 			var kpIDs, apIDs, resIDs []string
-			taskRows.Scan(&tname, &ttype, &tdiff, &thours, &tdesc, &tdetail, &kpIDs, &apIDs, &resIDs)
+			taskRows.Scan(&tname, &ttype, &tdiff, &thours, &tdesc, &tdetail, &kpIDs, &apIDs, &resIDs, &evalDataStr)
 
 			kpNames := h.lookupKnowledgePointNames(ctx, kpIDs)
 			apNames := h.lookupAbilityPointNames(ctx, apIDs)
 			resNames := h.lookupResourceNames(ctx, resIDs)
 
-			// Get eval methods
-			evalMethods := h.lookupEvalMethods(ctx, sid) // placeholder - need task-level query
-			_ = evalMethods
+			evalMethods := parseEvalMethods(evalDataStr)
 
 			setCell("任务配置", fmt.Sprintf("A%d", taskRow), scenarioName)
 			setCell("任务配置", fmt.Sprintf("B%d", taskRow), tname)
@@ -146,17 +143,7 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 			setCell("任务配置", fmt.Sprintf("H%d", taskRow), strings.Join(kpNames, ","))
 			setCell("任务配置", fmt.Sprintf("I%d", taskRow), strings.Join(apNames, ","))
 			setCell("任务配置", fmt.Sprintf("J%d", taskRow), strings.Join(resNames, ","))
-
-			// Query eval methods per task
-			evalRows, _ := h.DB.Query(ctx, `SELECT method_key FROM task_evaluation_configs WHERE task_id IN (SELECT id FROM scenario_tasks WHERE scenario_id=$1 AND name=$2)`, sid, tname)
-			var methods []string
-			for evalRows.Next() {
-				var mk string
-				evalRows.Scan(&mk)
-				methods = append(methods, mapEvalMethodToChinese(mk))
-			}
-			evalRows.Close()
-			setCell("任务配置", fmt.Sprintf("K%d", taskRow), strings.Join(methods, ","))
+			setCell("任务配置", fmt.Sprintf("K%d", taskRow), strings.Join(evalMethods, ","))
 
 			f.SetRowHeight("任务配置", taskRow, 24)
 			taskRow++
@@ -227,10 +214,6 @@ func (h *ScenarioExportHandler) lookupResourceNames(ctx context.Context, ids []s
 	return names
 }
 
-func (h *ScenarioExportHandler) lookupEvalMethods(ctx context.Context, _ string) []string {
-	return nil
-}
-
 func mapTaskTypeToChinese(t string) string {
 	switch t {
 	case "assessment":
@@ -246,23 +229,39 @@ func mapEvalMethodToChinese(mk string) string {
 	switch mk {
 	case "question_bank":
 		return "题库"
-	case "exam":
+	case "exam", "paper":
 		return "试卷"
 	case "quiz":
 		return "随堂测"
-	case "live_qa":
-		return "现场问答"
-	case "live_review":
+	case "review":
 		return "现场评审"
-	case "outcome_eval":
+	case "outcome":
 		return "成果评价"
 	case "homework":
 		return "作业"
+	case "random_draw":
+		return "随堂测"
 	default:
 		return mk
 	}
 }
 
-func generateExportID() string {
-	return uuid.NewString()[:8]
+func parseEvalMethods(evalDataStr string) []string {
+	if evalDataStr == "" || evalDataStr == "{}" {
+		return nil
+	}
+	var data struct {
+		EvaluationMethods []string `json:"evaluationMethods"`
+	}
+	if err := json.Unmarshal([]byte(evalDataStr), &data); err != nil {
+		return nil
+	}
+	var result []string
+	for _, m := range data.EvaluationMethods {
+		ch := mapEvalMethodToChinese(m)
+		if ch != "" {
+			result = append(result, ch)
+		}
+	}
+	return result
 }
