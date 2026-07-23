@@ -64,7 +64,7 @@ export function ResourcePreviewModal({ resource, open, onOpenChange }: ResourceP
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-transparent" />
         <DialogPrimitive.Content
           className={cn(
-            "fixed top-[50%] left-[50%] z-50 flex flex-col w-full max-w-[calc(100%-2rem)] sm:max-w-4xl h-[85vh] bg-background rounded-lg border p-6 shadow-none duration-200",
+            "fixed top-[50%] left-[50%] z-50 flex flex-col w-full max-w-[calc(100%-2rem)] sm:max-w-4xl h-[85vh] bg-background rounded-lg border p-3 shadow-none duration-200 group",
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
           )}
           style={{
@@ -82,7 +82,7 @@ export function ResourcePreviewModal({ resource, open, onOpenChange }: ResourceP
             <DialogPrimitive.Title className="flex items-center gap-2 text-base truncate font-semibold">
               {resource?.name || "资源预览"}
             </DialogPrimitive.Title>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
               <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} onMouseDown={(e) => e.stopPropagation()}>
                 <X className="h-4 w-4 mr-1" />关闭
               </Button>
@@ -103,7 +103,7 @@ export function ResourcePreviewModal({ resource, open, onOpenChange }: ResourceP
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 mt-4 border rounded-lg overflow-hidden bg-gray-100">
+          <div className="flex-1 min-h-0 mt-2 border rounded overflow-hidden bg-gray-100">
             {resource?.url ? (
               <iframe
                 src={buildKkFileViewUrl(resource.url)}
