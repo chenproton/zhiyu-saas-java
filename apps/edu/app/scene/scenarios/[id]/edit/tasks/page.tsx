@@ -6987,7 +6987,24 @@ function EditCardDialog({
                     配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的测评资源
                   </DialogDescription>
                 </DialogHeader>
-                {erDialogMethod && <EvalResourceOnlyPanel methodKey={erDialogMethod} />}
+                {erDialogMethod === "question_bank" ? (
+                  <BankQuestionSelectorPanel
+                    field="questionBankQuestions"
+                    selectedIds={state.questionBankQuestions}
+                    onToggleQuestion={(qid) => toggleQuestion(qid, "questionBankQuestions")}
+                    questionScores={mockResQuestionBank.questionScores}
+                    onUpdateQuestionScore={(qid, score) => setMockResQuestionBank(prev => ({ ...prev, questionScores: { ...prev.questionScores, [qid]: score } }))}
+                  />
+                ) : erDialogMethod === "quiz" ? (
+                  <BankQuestionSelectorPanel
+                    field="quizQuestions"
+                    selectedIds={state.quizQuestions}
+                    maxCount={30}
+                    onToggleQuestion={(qid) => toggleQuestion(qid, "quizQuestions")}
+                  />
+                ) : erDialogMethod ? (
+                  <EvalResourceOnlyPanel methodKey={erDialogMethod} />
+                ) : null}
               </DialogContent>
             </Dialog>
 
