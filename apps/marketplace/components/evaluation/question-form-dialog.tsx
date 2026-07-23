@@ -410,10 +410,10 @@ export function QuestionFormDialog({
   const renderLeftPane = () => {
     return (
       <div className="flex flex-1 flex-col gap-4">
-        {/* 题干 */}
+        {/* 题目 */}
         <div className="rounded-xl border border-border/60 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
           <div className="mb-3 flex items-center justify-between">
-            <CardTitle icon={PenLine}>题干</CardTitle>
+            <CardTitle icon={PenLine}>题目</CardTitle>
             <Button type="button" variant="ghost" size="sm" onClick={() => setContent("")} className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground">
               <RotateCcw className="size-3" />
               清空
@@ -479,7 +479,7 @@ export function QuestionFormDialog({
               {blankCount === 0 ? (
                 <div className="flex items-center gap-2 rounded-xl border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
                   <Lightbulb className="size-4 text-amber-500" />
-                  在题干中点击「插入填空标记」来创建空位
+                  在题目中点击「插入填空标记」来创建空位
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-2">
@@ -517,11 +517,7 @@ export function QuestionFormDialog({
   const renderRightAnswer = () => {
     if (type === "single") {
       return (
-        <div className="flex flex-col gap-2.5">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Check className="size-3.5" />
-            点击选择正确答案
-          </div>
+        <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-2">
             {options.map((option, index) => {
               const checked = answer === option && option.trim() !== ""
@@ -768,7 +764,7 @@ export function QuestionFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         size="xl"
-        className="flex !max-h-[94vh] !w-[98vw] !max-w-[98vw] flex-col overflow-hidden border border-border/50 p-0 shadow-2xl"
+        className="flex !h-[94vh] !max-h-[94vh] !w-[98vw] !max-w-[98vw] flex-col overflow-hidden border border-border/50 p-0 shadow-2xl"
         annotationContext="question-form"
       >
         {/* Header */}
@@ -812,7 +808,10 @@ export function QuestionFormDialog({
 
         {/* 题型条 */}
         <div className="flex items-center gap-2 border-b bg-muted/20 px-6 py-2.5">
-          <span className="mr-1 text-xs font-medium text-muted-foreground">题型</span>
+          <div className="mr-2 flex flex-col justify-center leading-tight">
+            <span className="text-xs font-medium text-muted-foreground">切换题型</span>
+            <span className="text-[10px] text-muted-foreground/60">不影响已输入题目与基础设置</span>
+          </div>
           {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map((t) => (
             <button
               key={t}
@@ -841,23 +840,6 @@ export function QuestionFormDialog({
           </div>
         </div>
 
-        {/* 底部状态栏 */}
-        <div className="flex h-9 items-center justify-between border-t bg-muted/20 px-6 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <span>就绪</span>
-            <span className="text-border">|</span>
-            <Badge variant="secondary" className={`gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-white ${TYPE_COLORS[type]}`}>
-              {TYPE_ICONS[type]}
-              {QUESTION_TYPE_LABELS[type]}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-1">
-            <kbd className="rounded border border-border/70 bg-background px-1.5 py-0.5 font-mono text-[10px] shadow-sm">Ctrl</kbd>
-            <span>+</span>
-            <kbd className="rounded border border-border/70 bg-background px-1.5 py-0.5 font-mono text-[10px] shadow-sm">Enter</kbd>
-            <span className="ml-1">保存并新建</span>
-          </div>
-        </div>
       </DialogContent>
     </Dialog>
   )
