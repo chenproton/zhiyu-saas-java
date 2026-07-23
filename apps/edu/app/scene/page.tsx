@@ -60,6 +60,8 @@ export default function SceneHallPage() {
       approvalTargetType="scenario"
       importEntityName="scenarios"
       exportEntityName="scenarios"
+      importExcelEntity="scenarios"
+      importTemplateUrl="/template-scenarios.xlsx"
       statusFilterOptions={[
         { value: "draft", label: "草稿" },
         { value: "pending", label: "审批中" },

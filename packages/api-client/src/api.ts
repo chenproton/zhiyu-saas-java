@@ -921,6 +921,23 @@ export const importExportApi = {
     }
     return res.json()
   },
+  importExcel: async (entity: string, file: File): Promise<{
+    created: number; failed: number; skipped: number; entity: string;
+    positionCreated?: number; responsibilities?: number; abilityBindings?: number;
+    scenarioCreated?: number; taskCreated?: number;
+  }> => {
+    const form = new FormData()
+    form.append("file", file)
+    const token = getToken()
+    const headers: HeadersInit = {}
+    if (token) headers.Authorization = `Bearer ${token}`
+    const res = await fetch(`${API_BASE}/import/${entity}/excel`, { method: "POST", body: form, headers })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      throw new Error(data.error || `HTTP ${res.status}`)
+    }
+    return res.json()
+  },
 }
 
 export const portalApi = {

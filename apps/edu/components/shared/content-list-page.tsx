@@ -103,6 +103,7 @@ export interface ContentApprovalApi {
 export interface ContentImportExportApi {
   import: (entity: string, file: File) => Promise<{ created: number; failed: number }>
   export: (entity: string) => Promise<Response>
+  importExcel?: (entity: string, file: File) => Promise<{ created: number; failed: number; skipped?: number; entity: string }>
 }
 
 export interface ContentListPageConfig<T extends ContentListItem> {
@@ -122,6 +123,8 @@ export interface ContentListPageConfig<T extends ContentListItem> {
   approvalTargetType: string
   importEntityName: string
   exportEntityName: string
+  importExcelEntity?: string
+  importTemplateUrl?: string
 
   statusFilterOptions: { value: string; label: string }[]
 
@@ -173,7 +176,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     approvalTargetType, importEntityName, exportEntityName,
     statusFilterOptions, mapItem, mapBatch, createPayload, createRedirectUrl, listParams,
     renderList, extraHeaderActions, listExtraProps, children, afterLoad,
-    coBuilderField = "coCreatorIds",
+    coBuilderField = "coCreatorIds", importExcelEntity, importTemplateUrl,
   } = config
 
   const router = useRouter()
@@ -638,8 +641,15 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     if (!importFile) return
     setIsImporting(true)
     try {
-      const result = await importExportApi.import(importEntityName, importFile)
-      alert(`导入完成：成功 ${result.created} 条，失败 ${result.failed} 条`)
+      const isExcel = importFile.name.endsWith(".xlsx")
+      let result: any
+      if (isExcel && importExportApi.importExcel && importExcelEntity) {
+        result = await importExportApi.importExcel(importExcelEntity, importFile)
+      } else {
+        result = await importExportApi.import(importEntityName, importFile)
+      }
+      const skippedMsg = result.skipped != null ? `，跳过 ${result.skipped} 条` : ""
+      alert(`导入完成：成功 ${result.created} 条，失败 ${result.failed} 条${skippedMsg}`)
       setImportFile(null)
       setIsImportDialogOpen(false)
       await refresh()
@@ -1000,21 +1010,37 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
         <DialogContent>
           <DialogHeader>
             <DialogTitle>导入{entityLabel}</DialogTitle>
-            <DialogDescription>上传 CSV 文件批量导入{entityLabel}数据</DialogDescription>
+            <DialogDescription>
+              {importExcelEntity
+                ? "上传 Excel (.xlsx) 文件批量导入" + entityLabel + "数据"
+                : "上传 CSV 文件批量导入" + entityLabel + "数据"}
+            </DialogDescription>
           </DialogHeader>
-          <div className="py-8">
+          <div className="py-4 space-y-4">
+            {importTemplateUrl && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">下载模板：</span>
+                <a
+                  href={importTemplateUrl}
+                  download
+                  className="text-primary underline hover:no-underline"
+                >
+                  {entityLabel}批量导入模板.xlsx
+                </a>
+              </div>
+            )}
             <div
               className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer"
               onClick={() => fileInputRef.current?.click()}
             >
               <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
               <p className="text-sm text-muted-foreground mb-2">
-                {importFile ? importFile.name : "点击选择 CSV 文件"}
+                {importFile ? importFile.name : importExcelEntity ? "点击选择 Excel (.xlsx) 文件" : "点击选择 CSV 文件"}
               </p>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".csv"
+                accept={importExcelEntity ? ".xlsx" : ".csv"}
                 className="hidden"
                 onChange={(e) => handleImportFileSelect(e.target.files)}
               />
