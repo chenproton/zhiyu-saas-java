@@ -118,8 +118,9 @@ import { cn } from "@/lib/utils"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 import { ScoreConfigDialog } from "@/components/evaluation/score-config-dialog"
+import { ExamFormDialog } from "@/components/evaluation/exam-form-dialog"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
-import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryApi, majorApi, userManagementApi, fileApi, taskResourceApi, questionBankApi, questionApi } from "@/lib/api"
+import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryApi, majorApi, userManagementApi, fileApi, taskResourceApi, questionBankApi, questionApi, examApi } from "@/lib/api"
 import type { ScenarioTask as ApiScenarioTask } from "@/lib/types/scene"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
@@ -305,11 +306,7 @@ const questionBankLabels: Record<string, string> = {
 
 const allQuestions: any[] = []
 
-const paperMocks: any[] = [
-  { id: "paper-1", name: "前端基础综合试卷", questionCount: 20, totalScore: 100 },
-  { id: "paper-2", name: "React 进阶测试", questionCount: 15, totalScore: 100 },
-  { id: "paper-3", name: "API 设计规范测验", questionCount: 10, totalScore: 100 },
-]
+const loadedExams: any[] = []
 
 type EvalObjectType = "individual" | "group"
 
@@ -503,8 +500,8 @@ function makeDefaultTaskState(count: number, index: number): TaskState {
     reviewEvalPoints: [mockDefaultEvalPoints[2], mockDefaultEvalPoints[3], mockDefaultEvalPoints[4], mockDefaultEvalPoints[5], mockDefaultEvalPoints[6], mockDefaultEvalPoints[9]],
     reviewScoreType: "eval_points",
     reviewRubricId: null,
-    paperIds: [paperMocks[0].id],
-    paperWeights: { [paperMocks[0].id]: 100 },
+    paperIds: [loadedExams[0]?.id].filter(Boolean),
+    paperWeights: loadedExams[0]?.id ? { [loadedExams[0].id]: 100 } : {},
     paperEvalPoints: [mockDefaultEvalPoints[3], mockDefaultEvalPoints[4]],
     questionBankQuestions: allQuestions.slice(0, 2).map(q => q.id),
     questionBankEvalPoints: [mockDefaultEvalPoints[5], mockDefaultEvalPoints[6]],
@@ -618,7 +615,7 @@ export default function TasksEditPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [scenarioData, tasksRes, kpRes, apRes, resRes, posRes, indRes, majRes, userRes] = await Promise.all([
+        const [scenarioData, tasksRes, kpRes, apRes, resRes, posRes, indRes, majRes, userRes, examRes] = await Promise.all([
           scenarioApi.get(scenarioId),
           taskApi.list({ scenarioId, limit: 1000 }),
           knowledgeApi.list({ limit: 1000 }),
@@ -628,6 +625,7 @@ export default function TasksEditPage() {
           industryApi.list({ limit: 1000 }),
           majorApi.list({ limit: 1000 }),
           userManagementApi.list({ limit: 1000 }),
+          examApi.list({ limit: 1000 }),
         ])
 
         // Populate module-level arrays with API data
@@ -688,6 +686,9 @@ export default function TasksEditPage() {
         })
 
         // Question bank data stays from mock for now (evaluation module not yet migrated)
+
+        loadedExams.length = 0
+        ;(examRes.items || []).forEach((e: any) => loadedExams.push(e))
 
         // Convert API tasks to mock Task format
         const apiTasks = tasksRes.items
@@ -1577,6 +1578,109 @@ const difficultyLabels: Record<string, string> = {
 const customKnowledgePointIds = new Set<string>()
 const customAbilityPointIds = new Set<string>()
 const customResourceIds = new Set<string>()
+
+function PaperDetailWrapper({ paperId, open, onOpenChange }: { paperId: string | null, open: boolean, onOpenChange: (v: boolean) => void }) {
+  const [paper, setPaper] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (open && paperId) {
+      const cached = loadedExams.find(e => e.id === paperId)
+      if (cached?.questions?.length) {
+        setPaper(cached)
+      } else {
+        setLoading(true)
+        examApi.get(paperId).then((data: any) => {
+          const idx = loadedExams.findIndex(e => e.id === paperId)
+          if (idx >= 0) loadedExams[idx] = { ...loadedExams[idx], ...data }
+          else loadedExams.push(data)
+          setPaper(data)
+        }).catch(() => {
+          setPaper(cached || null)
+        }).finally(() => setLoading(false))
+      }
+    }
+  }, [open, paperId])
+
+  const questions = paper?.questions || []
+  const typeCounts: Record<string, number> = {}
+  questions.forEach((q: any) => { typeCounts[q.type] = (typeCounts[q.type] || 0) + 1 })
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <PrdAnnotation data={getAnnotation("dialog-paper-detail")}><DialogTitle>试卷详情</DialogTitle></PrdAnnotation>
+        </DialogHeader>
+        {loading ? (
+          <div className="text-center py-8 text-gray-400">
+            <Loader2 className="h-6 w-6 mx-auto animate-spin" />
+            <p className="text-sm mt-2">加载中...</p>
+          </div>
+        ) : !paper ? (
+          <div className="text-center py-8 text-gray-400">
+            <p className="text-sm">未找到试卷</p>
+          </div>
+        ) : (
+          <div className="space-y-3 py-2">
+            <div>
+              <Label className="text-xs text-gray-500">试卷名称</Label>
+              <p className="text-sm font-medium mt-1">{paper.name}</p>
+            </div>
+            {paper.description && (
+              <div>
+                <Label className="text-xs text-gray-500">试卷描述</Label>
+                <p className="text-sm mt-1 text-gray-600">{paper.description}</p>
+              </div>
+            )}
+            <div className="flex items-center gap-4">
+              <div>
+                <Label className="text-xs text-gray-500">题目数量</Label>
+                <p className="text-sm mt-1">{questions.length} 题</p>
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500">总分</Label>
+                <p className="text-sm mt-1">{paper.totalScore ?? questions.reduce((s: number, q: any) => s + (q.score || 0), 0)} 分</p>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">包含题型</Label>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {Object.keys(typeCounts).length > 0 ? (
+                  Object.entries(typeCounts).map(([type, count]) => (
+                    <Badge key={type} className={`text-[10px] text-white hover:opacity-90 ${typeColorMap[type] || ""}`}>
+                      {questionTypeLabels[type] || type} ×{count}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-xs text-gray-400">暂无题目</span>
+                )}
+              </div>
+            </div>
+            {questions.length > 0 && (
+              <div>
+                <Label className="text-xs text-gray-500">题目列表</Label>
+                <div className="space-y-1.5 mt-1 max-h-48 overflow-y-auto">
+                  {questions.map((q: any, i: number) => (
+                    <div key={q.id || i} className="flex items-center gap-2 text-xs p-1.5 rounded bg-gray-50">
+                      <span className="text-gray-400 w-5 text-right">{i + 1}.</span>
+                      <span className="flex-1 truncate">{q.content || "未命名题目"}</span>
+                      <Badge className={`text-[10px] text-white hover:opacity-90 ${typeColorMap[q.type] || ""}`}>{questionTypeLabels[q.type] || q.type}</Badge>
+                      <span className="text-gray-400">{q.score || 0}分</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>关闭</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 const typeColorMap: Record<string, string> = {
   single: "bg-blue-500",
@@ -5168,14 +5272,16 @@ function EditCardDialog({
                       <Input value={pSearch} onChange={e => setPSearch(e.target.value)} placeholder="搜索试卷..." className="pl-9" />
                     </div>
                     <PrdAnnotation data={getAnnotation("paper-action-create")}>
-                      <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => { setShowCreatePaper(true); setNewPaperName(""); setNewPaperQuestionCount(10); setNewPaperTotalScore(100); }}>
+                      <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => { setShowCreatePaper(true); }}>
                         <Plus className="h-3.5 w-3.5 mr-1" />新建试卷
                       </Button>
                     </PrdAnnotation>
                   </div>
                   <div className="space-y-2">
-                    {paperMocks.filter(p => !pSearch || p.name.includes(pSearch)).map(paper => {
+                    {loadedExams.filter(p => !pSearch || p.name.includes(pSearch)).map(paper => {
                       const selected = state.paperIds.includes(paper.id)
+                      const questionCount = paper.questions?.length ?? paper.questionCount ?? 0
+                      const totalScore = paper.totalScore ?? 100
                       return (
                         <div key={paper.id} onClick={() => selectPaper(paper.id)} className={cn("p-4 rounded-lg border cursor-pointer", selected ? "border-primary bg-primary/5" : "hover:border-gray-300")}>
                           <div className="flex items-center justify-between">
@@ -5184,8 +5290,8 @@ function EditCardDialog({
                               <div>
                                 <p className="text-sm font-medium">{paper.name}</p>
                                 <div className="flex items-center gap-1.5 mt-1">
-                                  <Badge className="text-[10px] bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-50">{paper.questionCount} 题</Badge>
-                                  <Badge className="text-[10px] bg-green-50 text-green-600 border-green-200 hover:bg-green-50">总分 {paper.totalScore}</Badge>
+                                  <Badge className="text-[10px] bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-50">{questionCount} 题</Badge>
+                                  <Badge className="text-[10px] bg-green-50 text-green-600 border-green-200 hover:bg-green-50">总分 {totalScore}</Badge>
                                 </div>
                               </div>
                             </div>
@@ -5196,6 +5302,19 @@ function EditCardDialog({
                         </div>
                       )
                     })}
+                    {loadedExams.length === 0 && !pSearch && (
+                      <div className="text-center py-8 text-gray-400">
+                        <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">暂无可选试卷</p>
+                        <p className="text-xs mt-1">请点击「新建试卷」创建试卷，或在测评中心准备试卷后刷新</p>
+                      </div>
+                    )}
+                    {loadedExams.length > 0 && loadedExams.filter(p => !pSearch || p.name.includes(pSearch)).length === 0 && (
+                      <div className="text-center py-8 text-gray-400">
+                        <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">未找到匹配的试卷</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -7199,85 +7318,36 @@ function EditCardDialog({
             </Dialog>
 
             {/* Paper Detail Dialog */}
-            <Dialog open={paperDetailOpen} onOpenChange={setPaperDetailOpen}>
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                  <PrdAnnotation data={getAnnotation("dialog-paper-detail")}><DialogTitle>试卷详情</DialogTitle></PrdAnnotation>
-                </DialogHeader>
-                {(() => {
-                  const paper = paperMocks.find(p => p.id === selectedPaperForDetail)
-                  if (!paper) return null
-                  return (
-                    <div className="space-y-3 py-2">
-                      <div>
-                        <Label className="text-xs text-gray-500">试卷名称</Label>
-                        <p className="text-sm font-medium mt-1">{paper.name}</p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div>
-                          <Label className="text-xs text-gray-500">题目数量</Label>
-                          <p className="text-sm mt-1">{paper.questionCount} 题</p>
-                        </div>
-                        <div>
-                          <Label className="text-xs text-gray-500">总分</Label>
-                          <p className="text-sm mt-1">{paper.totalScore} 分</p>
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-gray-500">包含题型</Label>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          <Badge variant="secondary" className="text-[10px]">单选题</Badge>
-                          <Badge variant="secondary" className="text-[10px]">多选题</Badge>
-                          <Badge variant="secondary" className="text-[10px]">判断题</Badge>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })()}
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setPaperDetailOpen(false)}>关闭</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <PaperDetailWrapper
+              paperId={selectedPaperForDetail}
+              open={paperDetailOpen}
+              onOpenChange={setPaperDetailOpen}
+            />
 
             {/* Create Paper Dialog */}
-            <Dialog open={showCreatePaper} onOpenChange={setShowCreatePaper}>
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                  <PrdAnnotation data={getAnnotation("dialog-create-paper")}><DialogTitle>新建试卷</DialogTitle></PrdAnnotation>
-                  <DialogDescription>创建新的试卷</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-2">
-                  <div>
-                    <Label className="text-xs text-gray-500">试卷名称</Label>
-                    <Input value={newPaperName} onChange={e => setNewPaperName(e.target.value)} placeholder="输入试卷名称" className="mt-1 text-sm" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs text-gray-500">题目数量</Label>
-                      <Input type="number" value={newPaperQuestionCount} onChange={e => setNewPaperQuestionCount(Math.max(1, parseInt(e.target.value) || 1))} className="mt-1 text-sm" min={1} />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-gray-500">总分</Label>
-                      <Input type="number" value={newPaperTotalScore} onChange={e => setNewPaperTotalScore(Math.max(1, parseInt(e.target.value) || 1))} className="mt-1 text-sm" min={1} />
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowCreatePaper(false)}>取消</Button>
-                  <Button onClick={() => {
-                    if (!newPaperName.trim()) return
-                    const newId = `paper-${Date.now()}`
-                    ;(paperMocks as any).push({ id: newId, name: newPaperName.trim(), questionCount: newPaperQuestionCount, totalScore: newPaperTotalScore })
-                    updateState({ paperIds: [...state.paperIds, newId], paperWeights: { ...state.paperWeights, [newId]: state.paperIds.length === 0 ? 100 : 0 } })
-                    setShowCreatePaper(false)
-                    setNewPaperName("")
-                    setNewPaperQuestionCount(10)
-                    setNewPaperTotalScore(100)
-                  }}>创建</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <ExamFormDialog
+              open={showCreatePaper}
+              onOpenChange={setShowCreatePaper}
+              onSubmit={async (data) => {
+                try {
+                  const created = await examApi.create({
+                    name: data.name,
+                    description: data.description,
+                    duration: data.duration ?? 60,
+                    status: "draft",
+                    questions: [],
+                    version: "v1.0",
+                    ownerType: "mine",
+                    creatorName: "",
+                  } as any)
+                  loadedExams.push(created)
+                  updateState({ paperIds: [created.id], paperWeights: { [created.id]: 100 } })
+                  setShowCreatePaper(false)
+                } catch (_) {
+                  alert("创建试卷失败")
+                }
+              }}
+            />
 
             {/* Rubric Knowledge Points Multi-Select Dialog */}
             <Dialog open={rubricKpDialogOpen} onOpenChange={v => { if (!v) setRubricKpDialogOpen(false) }}>
