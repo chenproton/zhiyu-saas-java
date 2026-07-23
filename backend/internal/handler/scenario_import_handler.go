@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -143,7 +144,7 @@ func (h *ScenarioImportHandler) importTasks(ctx context.Context, xlsx *excelize.
 		taskType := mapTaskType(col(row, 2))
 		difficulty := parseDifficulty(col(row, 3))
 		estimatedHours := parseFloatDefault(col(row, 4), 0)
-		description := nullableStr(col(row, 5))
+		bgDescription := nullableStr(col(row, 5))
 		detailedDescription := nullableStr(col(row, 6))
 		knowledgePointNames := splitTrim(col(row, 7), ",")
 		abilityPointNames := splitTrim(col(row, 8), ",")
@@ -166,11 +167,11 @@ func (h *ScenarioImportHandler) importTasks(ctx context.Context, xlsx *excelize.
 
 		_, err := h.DB.Exec(ctx, `
 			INSERT INTO scenario_tasks (id, tenant_id, scenario_id, name, code, sort_order,
-				description, detailed_description, estimated_hours, task_type, difficulty,
+				background, detailed_description, estimated_hours, task_type, difficulty,
 				knowledge_point_ids, ability_point_ids, resource_ids, eval_data, dependency_ids, is_referenced)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'{}','{}',false)
 		`, taskID, tenantID, scenarioID, taskName, taskCode, seenTaskCode[scenarioID],
-			description, detailedDescription, estimatedHours, taskType, difficulty,
+			bgDescription, detailedDescription, estimatedHours, taskType, difficulty,
 			knowledgePointIDs, abilityPointIDs, resourceIDs)
 		if err != nil {
 			result.Failed++
@@ -180,14 +181,19 @@ func (h *ScenarioImportHandler) importTasks(ctx context.Context, xlsx *excelize.
 		result.TaskCreated++
 		result.Created++
 
-		for _, evalName := range evalMethodNames {
-			evalMethodKey := mapEvalMethod(evalName)
-			if evalMethodKey == "" {
-				continue
+		if len(evalMethodNames) > 0 {
+			var evalMethodKeys []string
+			for _, evalName := range evalMethodNames {
+				mk := mapEvalMethod(evalName)
+				if mk != "" {
+					evalMethodKeys = append(evalMethodKeys, mk)
+				}
 			}
-			evalID := uuid.NewString()
-			h.DB.Exec(ctx, `INSERT INTO task_evaluation_configs (id, tenant_id, task_id, method_key, weight, eval_objects, eval_subjects, eval_resources) VALUES ($1,$2,$3,$4,100,'{}','[]','{}')`,
-				evalID, tenantID, taskID, evalMethodKey)
+			if len(evalMethodKeys) > 0 {
+				evalJSON, _ := json.Marshal(evalMethodKeys)
+				h.DB.Exec(ctx, `UPDATE scenario_tasks SET eval_data = jsonb_set(COALESCE(eval_data, '{}'), '{evaluationMethods}', $1::jsonb) WHERE id=$2`,
+					string(evalJSON), taskID)
+			}
 		}
 	}
 }
@@ -370,16 +376,14 @@ func mapEvalMethod(t string) string {
 		return "exam"
 	case "随堂测":
 		return "quiz"
-	case "现场问答":
-		return "live_qa"
 	case "现场评审":
-		return "live_review"
+		return "review"
 	case "成果评价":
-		return "outcome_eval"
+		return "outcome"
 	case "作业":
 		return "homework"
 	default:
-		return "" // skip unknown
+		return ""
 	}
 }
 

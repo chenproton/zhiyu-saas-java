@@ -208,18 +208,16 @@ func mapAbilityCategoryToChinese(c string) string {
 
 func mapRequiredLevelToChinese(l string) string {
 	switch strings.ToLower(strings.TrimSpace(l)) {
+	case "understand", "了解", "l1":
+		return "了解"
 	case "comprehend", "理解", "l2":
 		return "理解"
-	case "master", "精通":
-		return "精通"
+	case "master", "掌握", "l3":
+		return "掌握"
 	case "proficient", "熟练":
 		return "熟练"
-	case "expert", "专家":
-		return "专家"
-	case "l3", "掌握":
-		return "掌握"
-	case "l1", "了解":
-		return "了解"
+	case "expert", "精通":
+		return "精通"
 	default:
 		return l
 	}

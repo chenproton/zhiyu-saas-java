@@ -142,7 +142,7 @@ func (h *TemplateHandler) generatePositionTemplate(ctx context.Context, tenantID
 		f.SetCellValue(sheet, start, text)
 		f.SetCellStyle(sheet, start, end, noteStyle)
 		f.SetCellStyle(sheet, start, end, wrapAlign)
-		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+3)*20)
+		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+2)*16)
 	}
 
 	// Sheet 1: 岗位基本信息
@@ -201,10 +201,7 @@ func (h *TemplateHandler) generatePositionTemplate(ctx context.Context, tenantID
 		func() [][]string {
 			var data [][]string
 			for _, v := range abilityPoints {
-				cat := v[1]
-				if cat == "" {
-					cat = "技能"
-				}
+				cat := catToChinese(v[1])
 				data = append(data, []string{v[0], cat})
 			}
 			return data
@@ -254,7 +251,7 @@ func (h *TemplateHandler) generateScenarioTemplate(ctx context.Context, tenantID
 		f.SetCellValue(sheet, start, text)
 		f.SetCellStyle(sheet, start, end, noteStyle)
 		f.SetCellStyle(sheet, start, end, wrapAlign)
-		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+3)*20)
+		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+2)*16)
 	}
 
 	// Sheet 1: 场景基本信息
@@ -323,10 +320,7 @@ func (h *TemplateHandler) generateScenarioTemplate(ctx context.Context, tenantID
 		func() [][]string {
 			var data [][]string
 			for _, v := range abilityPoints {
-				cat := v[1]
-				if cat == "" {
-					cat = "技能"
-				}
+				cat := catToChinese(v[1])
 				data = append(data, []string{v[0], cat})
 			}
 			return data
@@ -363,7 +357,7 @@ func (h *TemplateHandler) addRefSheet(f *excelize.File, name string, headers []s
 	f.SetCellValue(name, start, note)
 	f.SetCellStyle(name, start, end, noteStyle)
 	f.SetCellStyle(name, start, end, wrapAlign)
-	f.SetRowHeight(name, 1, float64(strings.Count(note, "\n")+3)*20)
+	f.SetRowHeight(name, 1, float64(strings.Count(note, "\n")+2)*16)
 
 	for ci, h := range headers {
 		cell, _ := excelize.CoordinatesToCellName(ci+1, 2)
@@ -432,4 +426,20 @@ func makeWrapAlign(f *excelize.File) int {
 		Alignment: &excelize.Alignment{Vertical: "top", WrapText: true},
 	})
 	return style
+}
+
+func catToChinese(c string) string {
+	switch c {
+	case "knowledge", "technical":
+		return "知识"
+	case "skill":
+		return "技能"
+	case "quality":
+		return "素质"
+	default:
+		if c == "" {
+			return "技能"
+		}
+		return c
+	}
 }

@@ -3,9 +3,11 @@ package handler
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -48,6 +50,10 @@ func (h *PositionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 	}
 	defer xlsx.Close()
 
+	// Log available sheets for debugging
+	sheets := xlsx.GetSheetList()
+	log.Printf("[import/positions] sheets found: %v", sheets)
+
 	result := &importResult{}
 
 	ctx := r.Context()
@@ -69,6 +75,8 @@ func (h *PositionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 		"positionCreated":  result.PositionCreated,
 		"responsibilities": result.RespCreated,
 		"abilityBindings":  result.BindingCreated,
+		"errors":           result.Errors,
+		"sheets":           sheets,
 	})
 }
 
@@ -101,6 +109,8 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 		batchID := h.lookupBatch(ctx, tenantID, batchName, "batches")
 		majorIDs := h.lookupMajors(ctx, tenantID, majorNames)
 
+		originalName := name
+
 		positionID := uuid.NewString()
 		_, err := h.DB.Exec(ctx, `
 			INSERT INTO career_positions (id, tenant_id, name, short_name, industry_id, position_type,
@@ -108,12 +118,22 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'v1.0','draft',$12,'{}')
 		`, positionID, tenantID, name, shortName, industryID, positionType,
 			salaryMin, salaryMax, description, requirements, careerPath, userID)
+		if isUniqueViolation(err) {
+			name = name + "_" + time.Now().Format("0102150405")
+			positionID = uuid.NewString()
+			_, err = h.DB.Exec(ctx, `
+				INSERT INTO career_positions (id, tenant_id, name, short_name, industry_id, position_type,
+					salary_min, salary_max, description, requirements, career_path, version, status, created_by, collaborators)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'v1.0','draft',$12,'{}')
+			`, positionID, tenantID, name, shortName, industryID, positionType,
+				salaryMin, salaryMax, description, requirements, careerPath, userID)
+		}
 		if err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("岗位[%s]创建失败: %v", name, err))
 			continue
 		}
-
+		log.Printf("[import/positions] created position %s (id=%s)", name, positionID)
 		if batchID != nil {
 			h.DB.Exec(ctx, `UPDATE career_positions SET batch_id=$1 WHERE id=$2`, *batchID, positionID)
 		}
@@ -131,7 +151,7 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 				uuid.NewString(), tenantID, positionID, certID)
 		}
 
-		positionMap[name] = positionID
+		positionMap[originalName] = positionID
 		result.PositionCreated++
 		result.Created++
 	}
@@ -140,8 +160,10 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx *excelize.File, tenantID, userID string, positionMap map[string]string, result *importResult) {
 	rows, err := xlsx.GetRows("工作职责与能力点")
 	if err != nil {
+		log.Printf("[import/positions] sheet '工作职责与能力点' not found: %v", err)
 		return
 	}
+	log.Printf("[import/positions] found %d rows in '工作职责与能力点' sheet", len(rows))
 	sortCounter := make(map[string]int)
 
 	seenResp := make(map[string]string)
@@ -159,7 +181,7 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 		abilityName := strings.TrimSpace(col(row, 2))
 		abilityCategory := mapAbilityCategory(col(row, 3))
 		domainName := col(row, 4)
-		requiredLevel := col(row, 5)
+		requiredLevel := mapRequiredLevel(col(row, 5))
 		rubricDescription := nullableStr(col(row, 6))
 
 		positionID, ok := positionMap[positionName]
@@ -419,6 +441,23 @@ func nullableStr(s string) *string {
 		return nil
 	}
 	return &s
+}
+
+func mapRequiredLevel(l string) string {
+	switch strings.TrimSpace(l) {
+	case "了解":
+		return "understand"
+	case "理解":
+		return "comprehend"
+	case "掌握":
+		return "master"
+	case "熟练":
+		return "proficient"
+	case "精通":
+		return "expert"
+	default:
+		return l
+	}
 }
 
 func itoaPtr(v int) *string {
