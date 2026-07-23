@@ -114,7 +114,7 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 
 		taskRows, err := h.DB.Query(ctx, `
 			SELECT name, task_type, difficulty, estimated_hours,
-				COALESCE(description,''), COALESCE(detailed_description,''),
+				COALESCE(background,''), COALESCE(detailed_description,''),
 				knowledge_point_ids, ability_point_ids, resource_ids
 			FROM scenario_tasks WHERE scenario_id=$1 AND tenant_id=$2 ORDER BY sort_order
 		`, sid, tenantID)

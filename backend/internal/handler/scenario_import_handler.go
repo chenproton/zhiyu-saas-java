@@ -143,7 +143,7 @@ func (h *ScenarioImportHandler) importTasks(ctx context.Context, xlsx *excelize.
 		taskType := mapTaskType(col(row, 2))
 		difficulty := parseDifficulty(col(row, 3))
 		estimatedHours := parseFloatDefault(col(row, 4), 0)
-		description := nullableStr(col(row, 5))
+		bgDescription := nullableStr(col(row, 5))
 		detailedDescription := nullableStr(col(row, 6))
 		knowledgePointNames := splitTrim(col(row, 7), ",")
 		abilityPointNames := splitTrim(col(row, 8), ",")
@@ -166,11 +166,11 @@ func (h *ScenarioImportHandler) importTasks(ctx context.Context, xlsx *excelize.
 
 		_, err := h.DB.Exec(ctx, `
 			INSERT INTO scenario_tasks (id, tenant_id, scenario_id, name, code, sort_order,
-				description, detailed_description, estimated_hours, task_type, difficulty,
+				background, detailed_description, estimated_hours, task_type, difficulty,
 				knowledge_point_ids, ability_point_ids, resource_ids, eval_data, dependency_ids, is_referenced)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'{}','{}',false)
 		`, taskID, tenantID, scenarioID, taskName, taskCode, seenTaskCode[scenarioID],
-			description, detailedDescription, estimatedHours, taskType, difficulty,
+			bgDescription, detailedDescription, estimatedHours, taskType, difficulty,
 			knowledgePointIDs, abilityPointIDs, resourceIDs)
 		if err != nil {
 			result.Failed++
