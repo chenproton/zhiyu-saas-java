@@ -764,6 +764,7 @@ export function QuestionFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         size="xl"
+        showCloseButton={false}
         className="flex !h-[94vh] !max-h-[94vh] !w-[98vw] !max-w-[98vw] flex-col overflow-hidden border border-border/50 p-0 shadow-2xl"
         annotationContext="question-form"
       >
