@@ -5407,47 +5407,28 @@ function EditCardDialog({
               </div>
               {/* Exam Question Config Dialog */}
               <Dialog open={!!configPaperId} onOpenChange={(v) => { if (!v) { setConfigPaperId(null); setConfigSelectedIds([]) } }}>
-                <DialogContent className="sm:max-w-[85vw] max-w-[85vw] h-[92vh] overflow-y-auto">
+                <DialogContent className="sm:max-w-md">
                   <DialogHeader>
-                    <DialogTitle>配置试卷题目</DialogTitle>
+                    <DialogTitle>试卷创建成功</DialogTitle>
                     <DialogDescription>
-                      从题库中选择题目添加到试卷「{loadedExams.find(e => e.id === configPaperId)?.name || ""}」
+                      试卷「{loadedExams.find(e => e.id === configPaperId)?.name || ""}」已创建并选中。
+                      你可以在试卷管理页面中配置题目、分数等。
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="flex-1 min-h-0">
-                    <BankQuestionSelectorPanel
-                      field="quizQuestions"
-                      selectedIds={configSelectedIds}
-                      onToggleQuestion={(qid) => {
-                        setConfigSelectedIds(prev =>
-                          prev.includes(qid) ? prev.filter(id => id !== qid) : [...prev, qid]
-                        )
-                      }}
-                    />
+                  <div className="py-4 text-center text-gray-500 text-sm">
+                    前往试卷管理页面配置题目（自动抽题、手动抽题、新增题目、分数配置）
                   </div>
-                  <DialogFooter className="mt-4">
+                  <DialogFooter className="gap-2">
                     <Button variant="outline" onClick={() => { setConfigPaperId(null); setConfigSelectedIds([]) }}>
-                      跳过
+                      稍后配置
                     </Button>
-                    <Button
-                      disabled={configSelectedIds.length === 0}
-                      onClick={async () => {
-                        if (!configPaperId) return
-                        try {
-                          for (const qid of configSelectedIds) {
-                            await examApi.addQuestion(configPaperId, qid, 0)
-                          }
-                          const updated = await examApi.get(configPaperId) as any
-                          const idx = loadedExams.findIndex(e => e.id === configPaperId)
-                          if (idx >= 0) loadedExams[idx] = updated
-                        } catch (_) {
-                          alert("添加题目失败")
-                        }
-                        setConfigPaperId(null)
-                        setConfigSelectedIds([])
-                      }}
-                    >
-                      确认添加 ({configSelectedIds.length} 题)
+                    <Button onClick={() => {
+                      const id = configPaperId
+                      setConfigPaperId(null)
+                      setConfigSelectedIds([])
+                      if (id) window.open(`/evaluation/exams/${id}`, "_blank")
+                    }}>
+                      前往配置题目
                     </Button>
                   </DialogFooter>
                 </DialogContent>
