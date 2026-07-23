@@ -225,7 +225,6 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 		_, err := h.DB.Exec(ctx, `
 			INSERT INTO position_ability_bindings (id, tenant_id, career_position_id, responsibility_id, ability_point_id, source, domain, required_level, rubric_description, weight)
 			VALUES ($1,$2,$3,$4,$5,'custom',$6,$7,$8,0)
-			ON CONFLICT (career_position_id, responsibility_id, ability_point_id) DO UPDATE SET required_level=$7, rubric_description=$8, domain=$6
 		`, bindingID, tenantID, positionID, respID, abilityID, nullableStr(domainName), requiredLevel, rubricDescription)
 		if err != nil {
 			result.Failed++
