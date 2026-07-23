@@ -32,6 +32,15 @@ interface RandomQuestionDialogProps {
 const questionTypes: QuestionType[] = ['single', 'multiple', 'judge', 'fill', 'short_answer', 'essay']
 const difficulties: Difficulty[] = ['easy', 'medium', 'hard']
 
+const TYPE_COLORS: Record<QuestionType, string> = {
+  single: "bg-blue-500",
+  multiple: "bg-indigo-500",
+  judge: "bg-amber-500",
+  fill: "bg-purple-500",
+  essay: "bg-rose-500",
+  short_answer: "bg-teal-500",
+}
+
 // ---- weight dimension helpers ----
 
 type WeightDimension = 'bank' | 'type' | 'difficulty' | 'knowledge'
@@ -327,22 +336,28 @@ export function RandomQuestionDialog({
                 未抽到符合条件的题目，请调整筛选条件后重试
               </div>
             ) : (
-              previewQuestions.map((q, i) => (
+              previewQuestions.map((q, i) => {
+                const bankName = questionBanks.find(b => b.id === q.bankId)?.name
+                const kpNames = (q.knowledgePoints || [])
+                  .map(id => knowledgePoints.find(k => k.id === id)?.name)
+                  .filter(Boolean) as string[]
+                return (
                 <div key={q.id} className="flex items-center gap-3 rounded-lg border p-3">
                   <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}.</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm line-clamp-1">{q.content}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="secondary" className="text-xs">{QUESTION_TYPE_LABELS[q.type]}</Badge>
+                      <Badge className={`text-xs text-white ${TYPE_COLORS[q.type]}`}>{QUESTION_TYPE_LABELS[q.type]}</Badge>
                       {q.difficulty && <Badge variant="outline" className="text-xs">{DIFFICULTY_LABELS[q.difficulty]}</Badge>}
-                      <span className="text-xs text-muted-foreground">{q.score}分</span>
+                      {bankName && <span className="text-xs text-muted-foreground">{bankName}</span>}
+                      {kpNames.length > 0 && <span className="text-xs text-muted-foreground truncate max-w-[200px]">{kpNames.join('、')}</span>}
                     </div>
                   </div>
                   <Button variant="ghost" size="icon" className="size-7 shrink-0" onClick={() => removeFromPreview(q.id)}>
                     <X className="size-4" />
                   </Button>
                 </div>
-              ))
+              )})
             )}
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-row">
