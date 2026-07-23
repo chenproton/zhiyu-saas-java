@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
@@ -16,7 +15,7 @@ import { portalUserManagementApi } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { ResetPasswordDialog } from "@/components/shared/reset-password-dialog"
-import { Search, MoreHorizontal, Trash2, Loader2, AlertCircle, RotateCcw, Check, ChevronDown, X, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, Trash2, Loader2, AlertCircle, RotateCcw, Check, ChevronDown, X, ChevronLeft, ChevronRight, Users, KeyRound, Power } from "lucide-react"
 
 function mapAccountStatus(status: string): { label: string; className: string } {
   if (status === "active") {
@@ -218,7 +217,7 @@ export default function AccountsPage() {
               </TableRow>
             ) : (
               accounts.map((account) => (
-                <TableRow key={account.id}>
+                <TableRow key={account.id} className="group">
                   <TableCell>
                     <Checkbox
                       checked={selectedAccounts.includes(account.id)}
@@ -250,34 +249,57 @@ export default function AccountsPage() {
                     <span className={`px-2 py-1 rounded text-xs ${account.statusClassName}`}>{account.statusLabel}</span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{account.lastLogin}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
+                  <TableCell className="text-right relative">
+                    <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => openBindDialog(account)}
+                      >
+                        <Users className="mr-1 h-3 w-3" />
+                        绑定角色
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => handleResetPassword(account.id, account.name)}
+                      >
+                        <KeyRound className="mr-1 h-3 w-3" />
+                        重置密码
+                      </Button>
+                      {account.status === "active" ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                          onClick={() => handleToggleStatus(account.id, account.status)}
+                        >
+                          <Power className="mr-1 h-3 w-3" />
+                          禁用账户
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openBindDialog(account)}>
-                          绑定角色
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleResetPassword(account.id, account.name)}>
-                          重置密码
-                        </DropdownMenuItem>
-                        {account.status === "active" ? (
-                          <DropdownMenuItem className="text-destructive" onClick={() => handleToggleStatus(account.id, account.status)}>
-                            禁用账户
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem onClick={() => handleToggleStatus(account.id, account.status)}>
-                            启用账户
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(account.id, account.name)}>
-                          删除
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
+                          onClick={() => handleToggleStatus(account.id, account.status)}
+                        >
+                          <Power className="mr-1 h-3 w-3" />
+                          启用账户
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                        onClick={() => handleDelete(account.id, account.name)}
+                      >
+                        <Trash2 className="mr-1 h-3 w-3" />
+                        删除
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

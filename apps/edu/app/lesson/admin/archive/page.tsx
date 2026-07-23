@@ -12,18 +12,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import {
   Search,
   GraduationCap,
-  MoreHorizontal,
+  Eye,
+  Power,
 } from "lucide-react"
 import { courseApi, lessonBatchApi } from "@/lib/api"
 import type { Course, LessonBatch } from "@/lib/types/lesson"
@@ -186,7 +181,7 @@ export default function LessonArchivePage() {
                   </TableRow>
                 ) : (
                   filtered.map((course) => (
-                    <TableRow key={course.id}>
+                    <TableRow key={course.id} className="group">
                       <TableCell>
                         <div>
                           <span className="font-medium">{course.name}</span>
@@ -208,24 +203,29 @@ export default function LessonArchivePage() {
                           {COURSE_STATUS_LABELS[course.status]}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href={editHref(course.type, course.id)}>
-                                查看
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleRestore(course)} className="text-blue-600">
-                              恢复
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                      <TableCell className="text-right relative">
+                        <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            asChild
+                          >
+                            <Link href={editHref(course.type, course.id)}>
+                              <Eye className="mr-1 h-3 w-3" />
+                              查看
+                            </Link>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
+                            onClick={() => handleRestore(course)}
+                          >
+                            <Power className="mr-1 h-3 w-3" />
+                            恢复
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

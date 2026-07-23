@@ -9,16 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalUserExtensionFieldApi, roleApi } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
-import { Pencil, AlertCircle, Loader2, RotateCcw, MoreHorizontal } from "lucide-react"
+import { Pencil, AlertCircle, Loader2, RotateCcw } from "lucide-react"
 import type { Role, UserExtensionField } from "@/lib/types/backend"
 
 interface ExtendField {
@@ -176,7 +170,7 @@ export default function UserFieldsPage() {
               </TableRow>
             ) : (
               fields.map((field) => (
-                <TableRow key={field.id}>
+                <TableRow key={field.id} className="group">
                   <TableCell className="text-muted-foreground">{field.slotNumber}</TableCell>
                   <TableCell className="font-medium">{field.name}</TableCell>
                   <TableCell>
@@ -195,19 +189,18 @@ export default function UserFieldsPage() {
                   <TableCell className="text-center">
                     <Switch checked={field.enabled} onCheckedChange={() => handleToggle(field)} />
                   </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(field)}>
-                          编辑
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  <TableCell className="text-right relative">
+                    <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => handleEdit(field)}
+                      >
+                        <Pencil className="mr-1 h-3 w-3" />
+                        编辑
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -16,7 +16,7 @@ import { useOrgTree, findOrgAncestor } from "@/hooks/use-org-tree"
 import { OrgNodePicker } from "@/components/shared/org-node-picker"
 import { portalUserManagementApi } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
-import { Search, Download, MoreHorizontal, RotateCcw, Loader2, Pencil } from "lucide-react"
+import { Search, Download, RotateCcw, Loader2, Pencil } from "lucide-react"
 import type { Organization } from "@/lib/types/backend"
 
 const DEPT_TYPE = "二级学院"
@@ -226,7 +226,7 @@ export default function GraduatesPage() {
             ) : (
               <>
                 {filteredGraduates.map((graduate) => (
-                  <TableRow key={graduate.id}>
+                  <TableRow key={graduate.id} className="group">
                     <TableCell className="font-mono text-sm">{graduate.loginAccount}</TableCell>
                     <TableCell className="font-medium">{graduate.name}</TableCell>
                     <TableCell>{graduate.department}</TableCell>
@@ -237,22 +237,27 @@ export default function GraduatesPage() {
                     <TableCell>
                       <Badge>毕业</Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEditDialog(graduate)}>
-                            编辑
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleReEnroll(graduate)}>
-                            重新入学
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                    <TableCell className="text-right relative">
+                      <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => openEditDialog(graduate)}
+                        >
+                          <Pencil className="mr-1 h-3 w-3" />
+                          编辑
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
+                          onClick={() => handleReEnroll(graduate)}
+                        >
+                          <RotateCcw className="mr-1 h-3 w-3" />
+                          重新入学
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Search, Clock, PlayCircle, CheckCircle2, Trash2, Eye, MoreHorizontal } from "lucide-react"
+import { Plus, Search, Clock, PlayCircle, CheckCircle2, Trash2, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -28,12 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
@@ -325,7 +320,7 @@ export default function ExamUsagePage() {
                 filteredUsages.map((usage) => {
                   const exam = examMap.get(usage.examId)
                   return (
-                    <TableRow key={usage.id}>
+                    <TableRow key={usage.id} className="group">
                       <TableCell className="font-medium">{usage.name}</TableCell>
                       <TableCell>{exam?.name || "-"}</TableCell>
                       <TableCell>
@@ -352,43 +347,53 @@ export default function ExamUsagePage() {
                           {usage.targetType ? TARGET_TYPE_LABELS[usage.targetType] : "-"}
                         </span>
                       </TableCell>
-                      <TableCell className="sticky right-0 bg-white text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="size-8">
-                              <MoreHorizontal className="size-4" />
+                      <TableCell className="sticky right-0 bg-white text-right relative">
+                        <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                          {canStart(usage.status) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-green-600 hover:text-green-700"
+                              onClick={() => handleStart(usage.id)}
+                            >
+                              <PlayCircle className="mr-1 h-3 w-3" />
+                              开始考试
                             </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {canStart(usage.status) && (
-                              <DropdownMenuItem onClick={() => handleStart(usage.id)}>
-                                开始考试
-                              </DropdownMenuItem>
-                            )}
-                            {canFinish(usage.status) && (
-                              <DropdownMenuItem onClick={() => handleFinish(usage.id)}>
-                                结束考试
-                              </DropdownMenuItem>
-                            )}
-                            {usage.status === "finished" && (
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  router.push(`/evaluation/exam-usage/results?usageId=${usage.id}`)
-                                }
-                              >
-                                查看考试结果
-                              </DropdownMenuItem>
-                            )}
-                            {canDelete(usage.status) && (
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => openDeleteDialog(usage.id)}
-                              >
-                                删除
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                          )}
+                          {canFinish(usage.status) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-amber-600 hover:text-amber-700"
+                              onClick={() => handleFinish(usage.id)}
+                            >
+                              <CheckCircle2 className="mr-1 h-3 w-3" />
+                              结束考试
+                            </Button>
+                          )}
+                          {usage.status === "finished" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => router.push(`/evaluation/exam-usage/results?usageId=${usage.id}`)}
+                            >
+                              <Eye className="mr-1 h-3 w-3" />
+                              查看考试结果
+                            </Button>
+                          )}
+                          {canDelete(usage.status) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                              onClick={() => openDeleteDialog(usage.id)}
+                            >
+                              <Trash2 className="mr-1 h-3 w-3" />
+                              删除
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   )

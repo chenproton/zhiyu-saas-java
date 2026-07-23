@@ -116,7 +116,10 @@ export function QuestionFormDialog({
       setType(question.type)
       setContent(question.content)
       setOptions(question.options || ["", "", "", ""])
-      if (question.type === "single" || question.type === "multiple") {
+      if (question.type === "single") {
+        const indexes = answerToIndexes(question.answer, question.options || [])
+        setAnswer(Array.isArray(indexes) ? indexes[0] ?? "" : indexes)
+      } else if (question.type === "multiple") {
         setAnswer(answerToIndexes(question.answer, question.options || []))
       } else {
         setAnswer(question.answer)

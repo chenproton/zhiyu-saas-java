@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Spinner } from "@/components/ui/spinner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Plus, MoreHorizontal, Pencil, Trash2, Search, Upload, Download, Eye, Settings, AlertCircle, LayoutDashboard } from "lucide-react"
+import { Plus, Pencil, Trash2, Search, Upload, Download, Eye, Settings, Users, AlertCircle, LayoutDashboard } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { roleApi, portalUserManagementApi, type User } from "@/lib/api"
 import type { Role } from "@/lib/types/backend"
@@ -387,7 +387,7 @@ export default function RolesPage() {
                   filteredRoles.map((role) => {
                     const status = roleStatus(role)
                     return (
-                      <TableRow key={role.id} className="border-border">
+                      <TableRow key={role.id} className="border-border group">
                         <TableCell className="font-mono text-sm text-muted-foreground">{role.code}</TableCell>
                         <TableCell className="font-medium">{role.name}</TableCell>
                         <TableCell>
@@ -399,28 +399,45 @@ export default function RolesPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground">{role.createdAt}</TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => { setSelectedRole(role); setEditName(role.name); setIsDialogOpen(true) }}>
-                                编辑
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openPermDialog(role)}>
-                                权限配置
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openUsersDialog(role)}>
-                                查看用户
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive" onClick={() => deleteRole(role)}>
-                                删除
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                        <TableCell className="text-right relative">
+                          <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => { setSelectedRole(role); setEditName(role.name); setIsDialogOpen(true) }}
+                            >
+                              <Pencil className="mr-1 h-3 w-3" />
+                              编辑
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => openPermDialog(role)}
+                            >
+                              <Settings className="mr-1 h-3 w-3" />
+                              权限配置
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => openUsersDialog(role)}
+                            >
+                              <Users className="mr-1 h-3 w-3" />
+                              查看用户
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                              onClick={() => deleteRole(role)}
+                            >
+                              <Trash2 className="mr-1 h-3 w-3" />
+                              删除
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     )

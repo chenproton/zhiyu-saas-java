@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -24,8 +23,9 @@ import type { StaffTitle } from "@/lib/types/backend"
 import { MultiSelectSearch } from "@/components/ui/multi-select-search"
 import { useToast } from "@/hooks/use-toast"
 import {
-  Plus, MoreHorizontal, Power, Trash2, Search, Filter, Upload, Download,
-  FolderTree, Key, Loader2, AlertCircle, RotateCcw, Pencil, ChevronLeft, ChevronRight
+  Plus, Trash2, Search, Filter, Upload, Download,
+  FolderTree, Key, Loader2, AlertCircle, RotateCcw, Pencil, ChevronLeft, ChevronRight,
+  UserCheck, UserX, UserPlus, Ban
 } from "lucide-react"
 
 interface Teacher {
@@ -408,7 +408,7 @@ export default function TeachersPage() {
                 ) : (
                   <>
                     {filteredTeachers.map((teacher) => (
-                      <TableRow key={teacher.id} className="border-border">
+                      <TableRow key={teacher.id} className={cn("border-border", "group")}>
                         <TableCell>
                           <Checkbox
                             checked={selectedTeachers.includes(teacher.id)}
@@ -439,37 +439,37 @@ export default function TeachersPage() {
                         <TableCell>
                           <Badge variant={teacher.status === "在职" ? "default" : teacher.status === "禁用" ? "destructive" : "secondary"}>{teacher.status}</Badge>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => openEditDialog(teacher)}>
-                                  编辑
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => changeStatus(teacher, "在职")}>
-                                  {teacher.status !== "在职" ? "设为在职" : "✓ 在职"}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => changeStatus(teacher, "离职")}>
-                                  {teacher.status !== "离职" ? "设为离职" : "✓ 离职"}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => changeStatus(teacher, "外聘")}>
-                                  {teacher.status !== "外聘" ? "设为外聘" : "✓ 外聘"}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => changeStatus(teacher, "禁用")}>
-                                  {teacher.status !== "禁用" ? "设为禁用" : "✓ 禁用"}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => resetPassword(teacher)}>
-                                  重置密码
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDeleteClick(teacher.id)} className="text-destructive">
-                                  删除
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                        <TableCell className="text-right relative">
+                          <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => openEditDialog(teacher)}>
+                              <Pencil className="mr-1 h-3 w-3" />
+                              编辑
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => changeStatus(teacher, "在职")}>
+                              <UserCheck className="mr-1 h-3 w-3" />
+                              {teacher.status !== "在职" ? "设为在职" : "✓ 在职"}
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => changeStatus(teacher, "离职")}>
+                              <UserX className="mr-1 h-3 w-3" />
+                              {teacher.status !== "离职" ? "设为离职" : "✓ 离职"}
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => changeStatus(teacher, "外聘")}>
+                              <UserPlus className="mr-1 h-3 w-3" />
+                              {teacher.status !== "外聘" ? "设为外聘" : "✓ 外聘"}
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={() => changeStatus(teacher, "禁用")}>
+                              <Ban className="mr-1 h-3 w-3" />
+                              {teacher.status !== "禁用" ? "设为禁用" : "✓ 禁用"}
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => resetPassword(teacher)}>
+                              <Key className="mr-1 h-3 w-3" />
+                              重置密码
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={() => handleDeleteClick(teacher.id)}>
+                              <Trash2 className="mr-1 h-3 w-3" />
+                              删除
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

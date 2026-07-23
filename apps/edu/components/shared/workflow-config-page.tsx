@@ -1,6 +1,6 @@
 "use client"
 
-import { GitBranch, MoreHorizontal, Plus } from "lucide-react"
+import { GitBranch, Pencil, Plus, Trash2 } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,9 +10,6 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
@@ -171,7 +168,7 @@ export function WorkflowConfigPage({ scene, subtitle }: WorkflowConfigPageProps)
                   <TableRow><TableCell colSpan={6} className="text-center py-8">暂无审批流程</TableCell></TableRow>
                 ) : (
                   filteredWorkflows.map((wf) => (
-                    <TableRow key={wf.id}>
+                    <TableRow key={wf.id} className="group">
                       <TableCell className="font-medium">{wf.name}</TableCell>
                       <TableCell className="text-sm text-gray-600">{wf.description || "-"}</TableCell>
                       <TableCell>
@@ -187,17 +184,17 @@ export function WorkflowConfigPage({ scene, subtitle }: WorkflowConfigPageProps)
                         {wf.majorIds?.length ? majors.filter((m) => wf.majorIds.includes(m.id)).map((m) => m.name).join("、") || wf.majorIds.join(",") : "-"}
                       </TableCell>
                       <TableCell className="text-sm text-gray-500">{new Date(wf.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEdit(wf)}>编辑</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(wf.id)}>删除</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                      <TableCell className="text-right relative">
+                        <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => openEdit(wf)}>
+                            <Pencil className="mr-1 h-3 w-3" />
+                            编辑
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={() => handleDelete(wf.id)}>
+                            <Trash2 className="mr-1 h-3 w-3" />
+                            删除
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

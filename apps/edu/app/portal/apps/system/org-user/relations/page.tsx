@@ -25,13 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Plus, Pencil, Trash2, Search, Loader2, MoreHorizontal } from "lucide-react"
+import { Plus, Trash2, Search, Loader2 } from "lucide-react"
 import { portalUserRelationApi } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
@@ -160,7 +154,7 @@ export default function RelationsPage() {
               </TableRow>
             ) : (
               relations.map((relation, index) => (
-                <TableRow key={relation.id}>
+                <TableRow key={relation.id} className="group">
                   <TableCell>{index + 1}</TableCell>
                   <TableCell className="font-medium">{relation.initiatorName}</TableCell>
                   <TableCell className="text-muted-foreground">{relation.initiatorDept || "—"}</TableCell>
@@ -172,19 +166,18 @@ export default function RelationsPage() {
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{relation.createdAt}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(relation.id)}>
-                          删除
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  <TableCell className="text-right relative">
+                    <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                        onClick={() => handleDelete(relation.id)}
+                      >
+                        <Trash2 className="mr-1 h-3 w-3" />
+                        删除
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

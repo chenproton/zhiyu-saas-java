@@ -11,13 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Spinner } from "@/components/ui/spinner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Plus, Pencil, Trash2, Search, Upload, Download, AlertCircle, MoreHorizontal } from "lucide-react"
+import { Plus, Pencil, Trash2, Search, Upload, Download, AlertCircle } from "lucide-react"
 import { orgTypeApi } from "@/lib/api"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import type { OrgType } from "@/lib/types/backend"
@@ -148,7 +142,7 @@ export default function OrgTypesPage() {
                   </TableRow>
                 ) : (
                   filteredTypes.map((type) => (
-                    <TableRow key={type.id} className="border-border">
+                    <TableRow key={type.id} className="border-border group">
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           {type.name}
@@ -161,28 +155,39 @@ export default function OrgTypesPage() {
                         <Badge className={categoryColors[type.category]}>{categoryLabels[type.category]}</Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{type.createdAt}</TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
+                      <TableCell className="text-right relative">
+                        <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => { setSelectedType(type); setFormName(type.name); setFormCategory(type.category); setIsDialogOpen(true) }}
+                          >
+                            <Pencil className="mr-1 h-3 w-3" />
+                            编辑
+                          </Button>
+                          {!type.isDefault ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                              onClick={() => setDeleteTarget(type)}
+                            >
+                              <Trash2 className="mr-1 h-3 w-3" />
+                              删除
                             </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => { setSelectedType(type); setFormName(type.name); setFormCategory(type.category); setIsDialogOpen(true) }}>
-                              编辑
-                            </DropdownMenuItem>
-                            {!type.isDefault ? (
-                              <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTarget(type)}>
-                                删除
-                              </DropdownMenuItem>
-                            ) : (
-                              <DropdownMenuItem disabled>
-                                系统默认类型不可删除
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              disabled
+                            >
+                              <Trash2 className="mr-1 h-3 w-3" />
+                              系统默认类型不可删除
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

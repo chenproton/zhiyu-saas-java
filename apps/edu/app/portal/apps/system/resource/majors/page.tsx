@@ -8,13 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Search, Pencil, Trash2, Plus, Loader2, MoreHorizontal } from "lucide-react"
+import { Search, Pencil, Trash2, Plus, Loader2 } from "lucide-react"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest, buildQuery, type ListResponse } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
@@ -201,7 +195,7 @@ export default function MajorsPage() {
               </TableHeader>
               <TableBody>
                 {filteredMajors.map((major) => (
-                  <TableRow key={major.id} className="border-border">
+                  <TableRow key={major.id} className="border-border group">
                     <TableCell className="font-mono text-sm">{major.code}</TableCell>
                     <TableCell className="font-medium">{major.name}</TableCell>
                     <TableCell className="text-muted-foreground">
@@ -215,22 +209,27 @@ export default function MajorsPage() {
                     <TableCell className="text-center">
                       <Switch checked={major.enabled} onCheckedChange={() => toggleEnabled(major)} />
                     </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEditDialog(major)}>
-                            编辑
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTarget(major)}>
-                            删除
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                    <TableCell className="text-right relative">
+                      <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => openEditDialog(major)}
+                        >
+                          <Pencil className="mr-1 h-3 w-3" />
+                          编辑
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                          onClick={() => setDeleteTarget(major)}
+                        >
+                          <Trash2 className="mr-1 h-3 w-3" />
+                          删除
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

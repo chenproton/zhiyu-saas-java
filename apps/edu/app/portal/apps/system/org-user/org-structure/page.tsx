@@ -4,13 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -26,7 +19,6 @@ import { Spinner } from "@/components/ui/spinner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   Plus,
-  MoreHorizontal,
   ChevronRight,
   ChevronDown,
   Pencil,
@@ -119,7 +111,7 @@ function TreeNode({
     <div ref={(el) => registerRef?.(node.id, el)}>
       <div
         className={cn(
-          "flex items-center gap-2 py-2 px-3 hover:bg-muted rounded-lg group transition-colors",
+          "flex items-center gap-2 py-2 px-3 hover:bg-muted rounded-lg group transition-colors relative",
           isHighlighted && "bg-yellow-100 ring-1 ring-yellow-300"
         )}
         style={{ marginLeft: level * 24 }}
@@ -147,37 +139,46 @@ function TreeNode({
           <Users className="w-3 h-3" />
           {node.memberCount}
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={() => onAction("addChild", node)}
+          >
+            <Plus className="mr-1 h-3 w-3" />
+            添加子节点
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={() => onAction("edit", node)}
+          >
+            <Pencil className="mr-1 h-3 w-3" />
+            编辑
+          </Button>
+          {node.type === "班级" && (
             <Button
               variant="ghost"
-              size="icon"
-              className="h-7 w-7"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => onAction("graduate", node)}
             >
-              <MoreHorizontal className="h-4 w-4" />
+              <GraduationCap className="mr-1 h-3 w-3" />
+              批量毕业
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onAction("addChild", node)}>
-              添加子节点
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onAction("edit", node)}>
-              编辑
-            </DropdownMenuItem>
-            {node.type === "班级" && (
-              <DropdownMenuItem onClick={() => onAction("graduate", node)}>
-                批量毕业
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => onAction("delete", node)}
-              className="text-destructive"
-            >
-              删除
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+            onClick={() => onAction("delete", node)}
+          >
+            <Trash2 className="mr-1 h-3 w-3" />
+            删除
+          </Button>
+        </div>
       </div>
 
       {hasChildren && node.expanded && (
