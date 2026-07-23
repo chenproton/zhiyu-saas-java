@@ -118,12 +118,10 @@ function EvalStatusBadge({ status }: { status: BackendStatus }) {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleString("zh-CN", {
+  return new Date(iso).toLocaleDateString("zh-CN", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
   })
 }
 
@@ -734,16 +732,15 @@ export default function ExamsPage() {
                 aria-label="全选"
               />
             </TableHead>
-            <TableHead className="w-[180px]">试卷名称</TableHead>
-            <TableHead className="w-[200px]">试卷简介</TableHead>
+            <TableHead className="w-[160px]">试卷名称</TableHead>
+            <TableHead className="w-[120px]">试卷简介</TableHead>
             <TableHead className="w-[80px]">题目数量</TableHead>
             <TableHead className="w-[80px]">总分</TableHead>
             <TableHead className="w-[120px]">所属批次</TableHead>
             <TableHead className="w-[100px]">创建人</TableHead>
-            <TableHead className="w-[120px]">共建人</TableHead>
-            <TableHead className="w-[100px]">状态</TableHead>
-            <TableHead className="w-[130px]">创建时间</TableHead>
-            <TableHead className="w-[130px]">更新时间</TableHead>
+            <TableHead className="w-[100px]">共建人</TableHead>
+            <TableHead className="w-[70px]">状态</TableHead>
+            <TableHead className="w-[100px]">更新时间</TableHead>
             <TableHead className="sticky right-0 w-[80px] bg-white text-right">操作</TableHead>
           </TableRow>
         </TableHeader>
@@ -760,30 +757,29 @@ export default function ExamsPage() {
                     aria-label={`选择 ${exam.name}`}
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell className="truncate">
                   <button
-                    className="text-left text-sm font-medium hover:text-primary"
+                    className="text-left text-sm font-medium hover:text-primary truncate w-full"
                     onClick={() => router.push(`/evaluation/exams/${exam.id}`)}
                   >
                     {exam.name}
                   </button>
                 </TableCell>
-                <TableCell>
-                  <span className="text-sm text-muted-foreground line-clamp-2">
+                <TableCell className="truncate max-w-[120px]">
+                  <span className="text-sm text-muted-foreground truncate block">
                     {exam.description || "-"}
                   </span>
                 </TableCell>
                 <TableCell>{(exam.questions || []).length} 题</TableCell>
                 <TableCell>{exam.totalScore} 分</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{batchName}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{exam.creatorName || exam.creatorId || "-"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground truncate">{exam.creatorName || exam.creatorId || "-"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground truncate">
                   {exam.collaboratorNames && exam.collaboratorNames.length > 0 ? exam.collaboratorNames.join(", ") : "-"}
                 </TableCell>
                 <TableCell>
                   <EvalStatusBadge status={exam.status} />
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground">{formatDate(exam.createdAt)}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{formatDate(exam.updatedAt)}</TableCell>
                 <TableCell className="sticky right-0 bg-white text-right relative">
                   <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
