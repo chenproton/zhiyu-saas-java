@@ -211,7 +211,7 @@
 
 ### 5.4 测评平台 `/evaluation/*`
 
-**顶部导航**：题库、试卷、考试、测评方式、场景结果、岗位能力、微证书、毕业设计、学生画像
+**顶部导航**：题库、试卷、考试、岗位能力
 
 **左侧菜单**：
 
@@ -220,12 +220,7 @@
 | 测评资源 | 题库管理 | `/evaluation/question-banks` |
 | 测评资源 | 试卷管理 | `/evaluation/exams` |
 | 测评资源 | 考试管理 | `/evaluation/exam-usage` |
-| 测评资源 | 测评方式 | `/evaluation/methods` |
-| 结果与认证 | 场景结果 | `/evaluation/scene-results` |
 | 结果与认证 | 岗位能力 | `/evaluation/job-ability` |
-| 结果与认证 | 微证书 | `/evaluation/certificates/templates` |
-| 毕业与画像 | 毕业设计 | `/evaluation/graduation/topics` |
-| 毕业与画像 | 学生画像 | `/evaluation/portraits` |
 
 ---
 
