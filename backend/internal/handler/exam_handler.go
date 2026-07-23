@@ -194,9 +194,21 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
+
 	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
-		return
+		req.Name = existing.Name
+	}
+	if req.Description == "" {
+		req.Description = existing.Description
+	}
+	if req.Duration == 0 {
+		req.Duration = existing.Duration
+	}
+	if req.CoverImage == nil {
+		req.CoverImage = existing.CoverImage
+	}
+	if req.BatchID == nil {
+		req.BatchID = existing.BatchID
 	}
 
 	collaboratorIDs := req.CollaboratorIDs
