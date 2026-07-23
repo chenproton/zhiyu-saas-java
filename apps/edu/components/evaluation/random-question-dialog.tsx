@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useMemo, useCallback, useEffect } from "react"
-import { Shuffle, AlertCircle, ChevronDown, ChevronRight, X, RefreshCw } from "lucide-react"
+import { Shuffle, AlertCircle, X, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -16,7 +16,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MultiSelectSearch } from "@/components/ui/multi-select-search"
 import { useData } from "@/components/providers/data-provider"
 import { knowledgeApi } from "@/lib/api"
@@ -33,13 +32,22 @@ interface RandomQuestionDialogProps {
 const questionTypes: QuestionType[] = ['single', 'multiple', 'judge', 'fill', 'short_answer', 'essay']
 const difficulties: Difficulty[] = ['easy', 'medium', 'hard']
 
+// ---- weight dimension helpers ----
+
 type WeightDimension = 'bank' | 'type' | 'difficulty' | 'knowledge'
 
-const DIMENSION_LABELS: Record<WeightDimension, string> = {
+const DIM_LABEL: Record<WeightDimension, string> = {
   bank: '按题库比例',
   type: '按题型比例',
   difficulty: '按难度比例',
   knowledge: '按知识点比例',
+}
+
+interface DimOption {
+  key: WeightDimension
+  label: string
+  keys: string[]
+  getKeyLabel: (key: string) => string
 }
 
 export function RandomQuestionDialog({
@@ -61,10 +69,6 @@ export function RandomQuestionDialog({
   const [selectedDifficulties, setSelectedDifficulties] = useState<Difficulty[]>([])
   const [selectedKnowledgePoints, setSelectedKnowledgePoints] = useState<string[]>([])
   const [count, setCount] = useState(5)
-
-  // ---- collapse panels ----
-  const [knowledgeOpen, setKnowledgeOpen] = useState(false)
-  const [weightOpen, setWeightOpen] = useState(false)
 
   // ---- weight ----
   const [weightDimension, setWeightDimension] = useState<WeightDimension | ''>('')
@@ -114,7 +118,7 @@ export function RandomQuestionDialog({
     return pool
   }, [basePool, selectedBankIds, selectedTypes, selectedDifficulties, selectedKnowledgePoints])
 
-  // ---- weight keys ----
+  // ---- weight dimension keys ----
   const weightKeys = useMemo(() => {
     if (!weightDimension) return []
     switch (weightDimension) {
@@ -125,69 +129,104 @@ export function RandomQuestionDialog({
     }
   }, [weightDimension, selectedBankIds, selectedTypes, selectedDifficulties, selectedKnowledgePoints, publishedBanks, knowledgePoints])
 
+  // 可用的权重维度（排除仅 1 个选项的维度）
+  const availableDimensions = useMemo((): WeightDimension[] => {
+    const dims: WeightDimension[] = []
+    const bankKeys = selectedBankIds.length > 0 ? selectedBankIds : publishedBanks.map(b => b.id)
+    if (bankKeys.length >= 2) dims.push('bank')
+    const typeKeys = selectedTypes.length > 0 ? selectedTypes : questionTypes
+    if (typeKeys.length >= 2) dims.push('type')
+    const diffKeys = selectedDifficulties.length > 0 ? selectedDifficulties : difficulties
+    if (diffKeys.length >= 2) dims.push('difficulty')
+    const kpKeys = selectedKnowledgePoints.length > 0 ? selectedKnowledgePoints : knowledgePoints.map(k => k.id)
+    if (kpKeys.length >= 2) dims.push('knowledge')
+    return dims
+  }, [publishedBanks, selectedBankIds, selectedTypes, selectedDifficulties, selectedKnowledgePoints, knowledgePoints])
+
+  // ---- largest-remainder proportional allocation ----
+  const allocateProportions = useCallback((
+    total: number,
+    entries: string[],
+    weights: Record<string, number>
+  ): Record<string, number> => {
+    const active = entries.filter(k => (weights[k] ?? 0) > 0)
+    const items = active.length > 0 ? active : entries
+    const rawSum = items.reduce((s, k) => s + (weights[k] || 0), 0)
+    const fracs = items.map(k => ({
+      key: k,
+      frac: rawSum > 0 ? total * (weights[k] || 0) / rawSum : total / items.length,
+    }))
+    // floor first, track remainders
+    const result: Record<string, number> = {}
+    let allocated = 0
+    const remainders: { key: string; rem: number }[] = []
+    fracs.forEach(({ key, frac }) => {
+      const floor = Math.floor(frac)
+      result[key] = floor
+      allocated += floor
+      remainders.push({ key, rem: frac - floor })
+    })
+    // distribute leftover by largest remainder
+    remainders.sort((a, b) => b.rem - a.rem)
+    for (let i = 0; i < total - allocated; i++) {
+      if (i < remainders.length) result[remainders[i].key]++
+    }
+    return result
+  }, [])
+
   // ---- random selection ----
   const doRandomSelect = useCallback(() => {
-    let pool = [...filteredPool]
+    let allSelected: Question[] = []
 
     if (weightDimension && weightKeys.length > 0) {
-      const active = weightKeys.filter(k => (weightValues[k] ?? 0) > 0)
-      const entries = active.length > 0 ? active : weightKeys
-      const rawSum = entries.reduce((s, k) => s + (weightValues[k] || 0), 0)
-      const normWeights: Record<string, number> = {}
-      if (rawSum > 0) {
-        entries.forEach(k => { normWeights[k] = (weightValues[k] || 0) / rawSum })
-      } else {
-        const eq = 1 / entries.length
-        entries.forEach(k => { normWeights[k] = eq })
-      }
-
+      const allocation = allocateProportions(count, weightKeys, weightValues)
       const used = new Set<string>()
-      const selected: Question[] = []
 
-      entries.forEach(key => {
-        const target = Math.round(count * normWeights[key])
-        const candidates = pool.filter(q => {
+      Object.entries(allocation).forEach(([key, target]) => {
+        if (target <= 0) return
+        const candidates = filteredPool.filter(q => {
           if (used.has(q.id)) return false
           if (weightDimension === 'bank') return q.bankId === key
           if (weightDimension === 'type') return q.type === key
           if (weightDimension === 'difficulty') return q.difficulty === key
-          if (weightDimension === 'knowledge') return q.knowledgePoints?.includes(key)
-          return false
+          return q.knowledgePoints?.includes(key)
         })
         const take = Math.min(target, candidates.length)
         for (let i = 0; i < take; i++) {
           const idx = Math.floor(Math.random() * candidates.length)
           const q = candidates.splice(idx, 1)[0]
-          selected.push(q)
+          allSelected.push(q)
           used.add(q.id)
         }
       })
 
-      if (selected.length < count) {
-        const remaining = pool.filter(q => !used.has(q.id))
-        const need = count - selected.length
+      // fill remaining
+      if (allSelected.length < count) {
+        const remaining = filteredPool.filter(q => !used.has(q.id))
+        const need = count - allSelected.length
         for (let i = 0; i < Math.min(need, remaining.length); i++) {
           const idx = Math.floor(Math.random() * remaining.length)
           const q = remaining.splice(idx, 1)[0]
-          selected.push(q)
+          allSelected.push(q)
           used.add(q.id)
         }
       }
-
-      for (let i = selected.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [selected[i], selected[j]] = [selected[j], selected[i]]
-      }
-      setPreviewQuestions(selected)
     } else {
-      const shuffled = [...pool]
+      const shuffled = [...filteredPool]
       for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
       }
-      setPreviewQuestions(shuffled.slice(0, Math.min(count, shuffled.length)))
+      allSelected = shuffled.slice(0, Math.min(count, shuffled.length))
     }
-  }, [filteredPool, weightDimension, weightKeys, weightValues, count])
+
+    // Fisher-Yates shuffle
+    for (let i = allSelected.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allSelected[i], allSelected[j]] = [allSelected[j], allSelected[i]]
+    }
+    setPreviewQuestions(allSelected)
+  }, [filteredPool, weightDimension, weightKeys, weightValues, count, allocateProportions])
 
   // ---- actions ----
   const handleClose = () => {
@@ -198,8 +237,6 @@ export function RandomQuestionDialog({
     setCount(5)
     setWeightDimension('')
     setWeightValues({})
-    setWeightOpen(false)
-    setKnowledgeOpen(false)
     setPreviewQuestions(null)
     onOpenChange(false)
   }
@@ -219,8 +256,54 @@ export function RandomQuestionDialog({
     setSelectedDifficulties(prev => prev.includes(difficulty) ? prev.filter(d => d !== difficulty) : [...prev, difficulty])
   }
 
+  const toggleWeightDim = (dim: WeightDimension) => {
+    if (weightDimension === dim) {
+      setWeightDimension('')
+      setWeightValues({})
+    } else {
+      setWeightDimension(dim)
+      setWeightValues({})
+    }
+  }
+
   const removeFromPreview = (qid: string) => {
     setPreviewQuestions(prev => prev ? prev.filter(q => q.id !== qid) : null)
+  }
+
+  const countSliderMax = Math.max(1, Math.min(50, filteredPool.length))
+
+  // ---- render helpers ----
+  const renderWeightSliderRow = (key: string, label: string) => {
+    const raw = weightValues[key] ?? 0
+    return (
+      <div key={key} className="flex items-center gap-3">
+        <span className="text-xs w-20 truncate shrink-0">{label}</span>
+        <Slider
+          value={[raw]}
+          min={0}
+          max={100}
+          step={1}
+          onValueChange={([v]) => setWeightValues(prev => ({ ...prev, [key]: v }))}
+          className="flex-1"
+        />
+        <Input
+          type="number"
+          min={0}
+          max={100}
+          value={raw || ''}
+          placeholder="0"
+          onChange={(e) => setWeightValues(prev => ({ ...prev, [key]: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) }))}
+          className="h-7 w-14 text-xs"
+        />
+      </div>
+    )
+  }
+
+  const weightKeyLabel = (key: string): string => {
+    if (weightDimension === 'bank') return publishedBanks.find(b => b.id === key)?.name || key
+    if (weightDimension === 'type') return QUESTION_TYPE_LABELS[key as QuestionType]
+    if (weightDimension === 'difficulty') return DIFFICULTY_LABELS[key as Difficulty]
+    return knowledgePoints.find(k => k.id === key)?.name || key
   }
 
   // ---- render ----
@@ -295,7 +378,7 @@ export function RandomQuestionDialog({
             随机抽题
           </DialogTitle>
           <DialogDescription>
-            从已发布题库中随机抽取题目，可选配置筛选条件与比例分配
+            从已发布题库中随机抽取题目，可配置筛选条件与比例分配
           </DialogDescription>
         </DialogHeader>
 
@@ -309,7 +392,7 @@ export function RandomQuestionDialog({
               <MultiSelectSearch
                 options={publishedBanks.map(b => ({ label: b.name, value: b.id, subtitle: `${b.questionCount}题` }))}
                 selected={selectedBankIds}
-                onChange={setSelectedBankIds}
+                onChange={(ids) => { setSelectedBankIds(ids); setWeightDimension(''); setWeightValues({}) }}
                 placeholder="不选则从全部题库抽取"
                 searchPlaceholder="搜索题库名称..."
               />
@@ -325,7 +408,7 @@ export function RandomQuestionDialog({
                   key={type}
                   variant={selectedTypes.includes(type) ? "default" : "outline"}
                   className="cursor-pointer select-none"
-                  onClick={() => toggleType(type)}
+                  onClick={() => { toggleType(type); setWeightDimension(''); setWeightValues({}) }}
                 >
                   {QUESTION_TYPE_LABELS[type]}
                 </Badge>
@@ -342,7 +425,7 @@ export function RandomQuestionDialog({
                   key={d}
                   variant={selectedDifficulties.includes(d) ? "default" : "outline"}
                   className="cursor-pointer select-none"
-                  onClick={() => toggleDifficulty(d)}
+                  onClick={() => { toggleDifficulty(d); setWeightDimension(''); setWeightValues({}) }}
                 >
                   {DIFFICULTY_LABELS[d]}
                 </Badge>
@@ -350,93 +433,46 @@ export function RandomQuestionDialog({
             </div>
           </div>
 
-          {/* 知识点 (collapsible) */}
-          <div className="border rounded-lg">
-            <button
-              type="button"
-              className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium hover:bg-muted/50 rounded-lg transition-colors"
-              onClick={() => setKnowledgeOpen(!knowledgeOpen)}
-            >
-              <span>知识点筛选 {selectedKnowledgePoints.length > 0 && <span className="text-primary">({selectedKnowledgePoints.length})</span>}</span>
-              {knowledgeOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
-            </button>
-            {knowledgeOpen && (
-              <div className="px-3 pb-3">
-                {loadingKnowledgePoints ? (
-                  <p className="text-sm text-muted-foreground py-2">加载中...</p>
-                ) : (
-                  <MultiSelectSearch
-                    options={knowledgePoints.map(kp => ({ label: kp.name, value: kp.id }))}
-                    selected={selectedKnowledgePoints}
-                    onChange={setSelectedKnowledgePoints}
-                    placeholder="不选则包含全部知识点"
-                    searchPlaceholder="搜索知识点..."
-                  />
-                )}
-              </div>
+          {/* 知识点 (always expanded) */}
+          <div>
+            <Label className="text-sm font-medium mb-2 block">知识点</Label>
+            {loadingKnowledgePoints ? (
+              <p className="text-sm text-muted-foreground py-1">加载中...</p>
+            ) : (
+              <MultiSelectSearch
+                options={knowledgePoints.map(kp => ({ label: kp.name, value: kp.id }))}
+                selected={selectedKnowledgePoints}
+                onChange={(ids) => { setSelectedKnowledgePoints(ids); setWeightDimension(''); setWeightValues({}) }}
+                placeholder="不选则包含全部知识点"
+                searchPlaceholder="搜索知识点..."
+              />
             )}
           </div>
 
-          {/* 按比例分配 (collapsible) */}
-          <div className="border rounded-lg">
-            <button
-              type="button"
-              className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium hover:bg-muted/50 rounded-lg transition-colors"
-              onClick={() => setWeightOpen(!weightOpen)}
-            >
-              <span>按比例分配 {weightDimension ? <span className="text-primary">({DIMENSION_LABELS[weightDimension]})</span> : null}</span>
-              {weightOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
-            </button>
-            {weightOpen && (
-              <div className="px-3 pb-3 space-y-3">
-                <Select value={weightDimension || ''} onValueChange={(v) => { setWeightDimension(v as WeightDimension || ''); setWeightValues({}) }}>
-                  <SelectTrigger className="h-8">
-                    <SelectValue placeholder="选择分配维度" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(['bank', 'type', 'difficulty', 'knowledge'] as WeightDimension[]).map(d => (
-                      <SelectItem key={d} value={d}>{DIMENSION_LABELS[d]}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {weightDimension && weightKeys.length > 0 && (
-                  <div className="space-y-2">
-                    {weightKeys.map(key => {
-                      const raw = weightValues[key] ?? 0
-                      const label = weightDimension === 'bank'
-                        ? publishedBanks.find(b => b.id === key)?.name || key
-                        : weightDimension === 'type' ? QUESTION_TYPE_LABELS[key as QuestionType]
-                        : weightDimension === 'difficulty' ? DIFFICULTY_LABELS[key as Difficulty]
-                        : knowledgePoints.find(k => k.id === key)?.name || key
-                      return (
-                        <div key={key} className="flex items-center gap-3">
-                          <span className="text-xs w-20 truncate shrink-0">{label}</span>
-                          <Slider
-                            value={[raw]}
-                            min={0}
-                            max={100}
-                            step={1}
-                            onValueChange={([v]) => setWeightValues(prev => ({ ...prev, [key]: v }))}
-                            className="flex-1"
-                          />
-                          <Input
-                            type="number"
-                            min={0}
-                            max={100}
-                            value={raw || ''}
-                            placeholder="0"
-                            onChange={(e) => setWeightValues(prev => ({ ...prev, [key]: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) }))}
-                            className="h-7 w-14 text-xs"
-                          />
-                        </div>
-                      )
-                    })}
-                    <p className="text-xs text-muted-foreground">输入的数字按比例折算，无需凑满 100</p>
-                  </div>
-                )}
+          {/* 按比例分配 */}
+          {availableDimensions.length > 0 && (
+            <div>
+              <Label className="text-sm font-medium mb-2 block">按比例分配</Label>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {availableDimensions.map(dim => (
+                  <Badge
+                    key={dim}
+                    variant={weightDimension === dim ? "default" : "outline"}
+                    className="cursor-pointer select-none"
+                    onClick={() => toggleWeightDim(dim)}
+                  >
+                    {DIM_LABEL[dim]}
+                  </Badge>
+                ))}
               </div>
-            )}
-          </div>
+              {weightDimension && weightKeys.length > 0 && (
+                <div className="rounded-lg border bg-muted/30 p-3 space-y-2 max-h-48 overflow-y-auto">
+                  {weightKeys.map(key => renderWeightSliderRow(key, weightKeyLabel(key)))}
+                  <p className="text-xs text-muted-foreground pt-1">输入的数字按比例折算，无需凑满 100</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 抽取数量 */}
           <div className="rounded-lg border p-4">
@@ -445,16 +481,16 @@ export function RandomQuestionDialog({
               <Input
                 type="number"
                 min={1}
-                max={Math.min(50, filteredPool.length || 50)}
+                max={countSliderMax}
                 value={count}
-                onChange={(e) => setCount(Math.max(1, Math.min(Math.min(50, filteredPool.length || 50), parseInt(e.target.value) || 1)))}
+                onChange={(e) => setCount(Math.max(1, Math.min(countSliderMax, parseInt(e.target.value) || 1)))}
                 className="h-7 w-16 text-xs text-center"
               />
             </div>
             <Slider
               value={[count]}
               min={1}
-              max={Math.max(1, Math.min(50, filteredPool.length))}
+              max={countSliderMax}
               step={1}
               onValueChange={([v]) => setCount(v)}
             />
