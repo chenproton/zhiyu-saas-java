@@ -35,6 +35,7 @@ interface QuestionFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   question?: Question | null
+  defaultType?: QuestionType
   onSubmit: (data: QuestionFormData) => void
 }
 
@@ -42,6 +43,7 @@ export function QuestionFormDialog({
   open,
   onOpenChange,
   question,
+  defaultType,
   onSubmit,
 }: QuestionFormDialogProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -85,20 +87,17 @@ export function QuestionFormDialog({
       setDifficulty(question.difficulty || "medium")
       setKnowledgePointIds(question.knowledgePoints || [])
     } else {
-      setType("single")
+      setType(defaultType || "single")
       setContent("")
       setOptions(["", "", "", ""])
-      setAnswer("")
+      setAnswer(defaultType === "multiple" ? [] : "")
       setAnalysis("")
       setDifficulty("medium")
       setKnowledgePointIds([])
     }
-  }, [question, open])
+  }, [question, open, defaultType])
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!content.trim()) return
-
+  const buildFormData = (): QuestionFormData => {
     const data: QuestionFormData = {
       type,
       content: content.trim(),
@@ -113,8 +112,30 @@ export function QuestionFormDialog({
       data.options = options.filter(o => o.trim())
     }
 
-    onSubmit(data)
+    return data
+  }
+
+  const resetForNext = () => {
+    setContent("")
+    setOptions(["", "", "", ""])
+    setAnswer(type === "multiple" ? [] : "")
+    setAnalysis("")
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!content.trim()) return
+
+    onSubmit(buildFormData())
     onOpenChange(false)
+  }
+
+  const handleSubmitAndContinue = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!content.trim()) return
+
+    onSubmit(buildFormData())
+    resetForNext()
   }
 
   const handleOptionChange = (index: number, value: string) => {
@@ -157,6 +178,12 @@ export function QuestionFormDialog({
     const filtered = options.filter(o => o.trim())
     const idx = parseInt(idxStr)
     setAnswer(filtered[idx] || "")
+  }
+
+  const handleTypeChange = (newType: QuestionType) => {
+    setType(newType)
+    setOptions(["", "", "", ""])
+    setAnswer(newType === "multiple" ? [] : "")
   }
 
   const getMultipleCheckedIndex = (idx: number): boolean => {
@@ -287,30 +314,27 @@ export function QuestionFormDialog({
           </DialogHeader>
           <form onSubmit={handleSubmit}>
           <FieldGroup className="py-4">
+            <Field>
+              <FieldLabel>题目类型</FieldLabel>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => handleTypeChange(t)}
+                    className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
+                      type === t
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "bg-background hover:bg-muted"
+                    }`}
+                  >
+                    {QUESTION_TYPE_LABELS[t]}
+                  </button>
+                ))}
+              </div>
+            </Field>
+
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="type">题目类型</FieldLabel>
-                <Select
-                  value={type}
-                  onValueChange={(v) => {
-                    setType(v as QuestionType)
-                    setAnswer(v === "multiple" ? [] : "")
-                  }}
-                >
-                  <SelectTrigger id="type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {QUESTION_TYPE_LABELS[t]}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
               <Field>
                 <FieldLabel htmlFor="difficulty">难度</FieldLabel>
                 <Select value={difficulty} onValueChange={(v) => setDifficulty(v as Difficulty)}>
@@ -442,10 +466,20 @@ export function QuestionFormDialog({
               />
             </Field>
           </FieldGroup>
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               取消
             </Button>
+            {!question && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!content.trim()}
+                onClick={handleSubmitAndContinue}
+              >
+                保存并继续添加
+              </Button>
+            )}
             <Button type="submit" disabled={!content.trim()}>
               {question ? "保存" : "创建"}
             </Button>

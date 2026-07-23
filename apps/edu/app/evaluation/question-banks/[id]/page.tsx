@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload, Copy, Users, Building2, ImageIcon, List, LayoutGrid, FolderInput, MoreHorizontal, Save } from "lucide-react"
+import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload, Copy, Users, Building2, ImageIcon, List, LayoutGrid, FolderInput, MoreHorizontal, Save, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -74,6 +74,7 @@ export default function QuestionBankDetailPage() {
   const [bankFormOpen, setBankFormOpen] = useState(false)
   const [questionFormOpen, setQuestionFormOpen] = useState(false)
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null)
+  const [defaultQuestionType, setDefaultQuestionType] = useState<QuestionType>("single")
   const [previewQuestion, setPreviewQuestion] = useState<Question | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<Question | null>(null)
   const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set())
@@ -150,6 +151,7 @@ export default function QuestionBankDetailPage() {
 
   const handleQuestionEdit = (question: Question) => {
     setEditingQuestion(question)
+    setDefaultQuestionType(question.type)
     setQuestionFormOpen(true)
   }
 
@@ -372,10 +374,29 @@ export default function QuestionBankDetailPage() {
             </Button>
           </PrdAnnotation>
           <PrdAnnotation data={getAnnotation("qbd-btn-add-question")}>
-            <Button size="sm" onClick={() => { setEditingQuestion(null); setQuestionFormOpen(true) }}>
-              <Plus className="mr-1 size-3.5" />
-              添加题目
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm">
+                  <Plus className="mr-1 size-3.5" />
+                  添加题目
+                  <ChevronDown className="ml-1 size-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map((type) => (
+                  <DropdownMenuItem
+                    key={type}
+                    onClick={() => {
+                      setEditingQuestion(null)
+                      setDefaultQuestionType(type)
+                      setQuestionFormOpen(true)
+                    }}
+                  >
+                    {QUESTION_TYPE_LABELS[type]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </PrdAnnotation>
         </div>
       </div>
@@ -556,6 +577,7 @@ export default function QuestionBankDetailPage() {
         open={questionFormOpen}
         onOpenChange={setQuestionFormOpen}
         question={editingQuestion}
+        defaultType={defaultQuestionType}
         onSubmit={handleQuestionSubmit}
       />
 
