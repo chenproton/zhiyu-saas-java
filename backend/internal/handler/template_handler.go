@@ -201,10 +201,7 @@ func (h *TemplateHandler) generatePositionTemplate(ctx context.Context, tenantID
 		func() [][]string {
 			var data [][]string
 			for _, v := range abilityPoints {
-				cat := v[1]
-				if cat == "" {
-					cat = "技能"
-				}
+				cat := catToChinese(v[1])
 				data = append(data, []string{v[0], cat})
 			}
 			return data
@@ -323,10 +320,7 @@ func (h *TemplateHandler) generateScenarioTemplate(ctx context.Context, tenantID
 		func() [][]string {
 			var data [][]string
 			for _, v := range abilityPoints {
-				cat := v[1]
-				if cat == "" {
-					cat = "技能"
-				}
+				cat := catToChinese(v[1])
 				data = append(data, []string{v[0], cat})
 			}
 			return data
@@ -432,4 +426,20 @@ func makeWrapAlign(f *excelize.File) int {
 		Alignment: &excelize.Alignment{Vertical: "top", WrapText: true},
 	})
 	return style
+}
+
+func catToChinese(c string) string {
+	switch c {
+	case "knowledge", "technical":
+		return "知识"
+	case "skill":
+		return "技能"
+	case "quality":
+		return "素质"
+	default:
+		if c == "" {
+			return "技能"
+		}
+		return c
+	}
 }
