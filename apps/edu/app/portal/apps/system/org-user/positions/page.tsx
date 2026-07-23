@@ -5,14 +5,13 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalStaffTitleApi, portalUserManagementApi, type User } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
-import { Plus, MoreHorizontal, Pencil, Power, Trash2, Search, Upload, Download, Eye, AlertCircle, Loader2, RotateCcw } from "lucide-react"
+import { Plus, Pencil, Power, Trash2, Search, Upload, Download, Eye, AlertCircle, Loader2, RotateCcw, Users } from "lucide-react"
 import type { StaffTitle } from "@/lib/types/backend"
 
 export default function PositionsPage() {
@@ -193,7 +192,7 @@ export default function PositionsPage() {
               </TableRow>
             ) : (
               filteredPositions.map((position) => (
-                <TableRow key={position.id} className="border-border">
+                <TableRow key={position.id} className="border-border group">
                   <TableCell className="font-medium">{position.name}</TableCell>
                   <TableCell>
                     <Badge variant="secondary">{position.userCount} 人</Badge>
@@ -204,28 +203,45 @@ export default function PositionsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{new Date(position.createdAt).toLocaleString("zh-CN")}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openDialog(position)}>
-                          编辑
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openUsersDialog(position)}>
-                          查看用户
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => toggleStatus(position)}>
-                          {position.status === "active" ? "停用" : "启用"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => deletePosition(position.id)} className="text-destructive">
-                          删除
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  <TableCell className="text-right relative">
+                    <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => openDialog(position)}
+                      >
+                        <Pencil className="mr-1 h-3 w-3" />
+                        编辑
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => openUsersDialog(position)}
+                      >
+                        <Users className="mr-1 h-3 w-3" />
+                        查看用户
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => toggleStatus(position)}
+                      >
+                        <Power className="mr-1 h-3 w-3" />
+                        {position.status === "active" ? "停用" : "启用"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                        onClick={() => deletePosition(position.id)}
+                      >
+                        <Trash2 className="mr-1 h-3 w-3" />
+                        删除
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

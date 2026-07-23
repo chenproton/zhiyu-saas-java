@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -23,7 +22,7 @@ import { portalUserManagementApi } from "@/lib/api"
 import type { Organization } from "@/lib/types/backend"
 import { useToast } from "@/hooks/use-toast"
 import {
-  Plus, MoreHorizontal, Power, Trash2, Search, Filter, Upload, Download,
+  Plus, Power, Pencil, Trash2, Search, Filter, Upload, Download,
   FolderTree, Key, Loader2, AlertCircle, RotateCcw, Award, ChevronLeft, ChevronRight
 } from "lucide-react"
 
@@ -444,7 +443,7 @@ export default function StudentsPage() {
                 ) : (
                   <>
                     {filteredStudents.map((student) => (
-                      <TableRow key={student.id} className="border-border">
+                      <TableRow key={student.id} className={cn("group", "border-border")}>
                         <TableCell>
                           <Checkbox checked={selectedStudents.includes(student.id)} onCheckedChange={() => toggleSelectStudent(student.id)} />
                         </TableCell>
@@ -455,37 +454,37 @@ export default function StudentsPage() {
                         <TableCell>
                           <Badge variant={classBadge(statusColor[student.status])}>{student.status}</Badge>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => openEditDialog(student)}>
-                                编辑
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => resetPassword(student)}>
-                                重置密码
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => changeStatus(student, "在籍")}>
-                                {student.status !== "在籍" ? "设为在籍" : "✓ 在籍"}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => changeStatus(student, "休学")}>
-                                {student.status !== "休学" ? "设为休学" : "✓ 休学"}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => changeStatus(student, "退学")}>
-                                {student.status !== "退学" ? "设为退学" : "✓ 退学"}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => changeStatus(student, "毕业")}>
-                                {student.status !== "毕业" ? "设为毕业" : "✓ 毕业"}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDeleteClick(student.id)} className="text-destructive">
-                                删除
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                        <TableCell className="text-right relative">
+                          <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => openEditDialog(student)}>
+                              <Pencil className="mr-1 h-3 w-3" />
+                              编辑
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => resetPassword(student)}>
+                              <Key className="mr-1 h-3 w-3" />
+                              重置密码
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => changeStatus(student, "在籍")}>
+                              <Power className="mr-1 h-3 w-3" />
+                              {student.status !== "在籍" ? "设为在籍" : "✓ 在籍"}
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => changeStatus(student, "休学")}>
+                              <Power className="mr-1 h-3 w-3" />
+                              {student.status !== "休学" ? "设为休学" : "✓ 休学"}
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => changeStatus(student, "退学")}>
+                              <Power className="mr-1 h-3 w-3" />
+                              {student.status !== "退学" ? "设为退学" : "✓ 退学"}
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => changeStatus(student, "毕业")}>
+                              <Award className="mr-1 h-3 w-3" />
+                              {student.status !== "毕业" ? "设为毕业" : "✓ 毕业"}
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={() => handleDeleteClick(student.id)}>
+                              <Trash2 className="mr-1 h-3 w-3" />
+                              删除
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

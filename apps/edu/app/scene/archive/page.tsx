@@ -13,18 +13,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import {
   Search,
   GraduationCap,
-  MoreHorizontal,
+  Eye,
+  RotateCcw,
 } from "lucide-react"
 import { scenarioApi, sceneBatchApi } from "@/lib/api"
 import type { Scenario, SceneBatch } from "@/lib/types/scene"
@@ -194,7 +189,7 @@ export default function SceneArchivePage() {
                   filtered.map((entry) => {
                     const st = statusConfig[entry.status] || statusConfig.draft
                     return (
-                      <TableRow key={entry.id}>
+                      <TableRow key={entry.id} className="group">
                         <TableCell>
                           <div>
                             <span className="font-medium">{entry.name}</span>
@@ -216,24 +211,24 @@ export default function SceneArchivePage() {
                             {st.label}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem asChild>
-                                <Link href={`/scene/scenarios/${entry.id}/edit`}>
-                                  查看
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleRestore(entry)} className="text-blue-600">
-                                恢复
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                        <TableCell className="text-right relative">
+                          <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
+                              <Link href={`/scene/scenarios/${entry.id}/edit`}>
+                                <Eye className="mr-1 h-3 w-3" />
+                                查看
+                              </Link>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
+                              onClick={() => handleRestore(entry)}
+                            >
+                              <RotateCcw className="mr-1 h-3 w-3" />
+                              恢复
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     )

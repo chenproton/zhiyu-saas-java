@@ -11,12 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+
 import {
   Dialog,
   DialogContent,
@@ -37,7 +32,6 @@ import {
 } from "@/components/ui/select"
 import {
   Plus,
-  MoreHorizontal,
   Pencil,
   Power,
   Trash2,
@@ -299,7 +293,7 @@ export default function SuperAdminPage() {
               </TableHeader>
               <TableBody>
                 {tenants.map((t) => (
-                  <TableRow key={t.id} className="border-border">
+                  <TableRow key={t.id} className="border-border group">
                     <TableCell className="font-mono text-sm text-muted-foreground">{t.code}</TableCell>
                     <TableCell className="font-medium">{t.name}</TableCell>
                     <TableCell>{t.contact || "-"}</TableCell>
@@ -310,25 +304,36 @@ export default function SuperAdminPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground whitespace-nowrap">{new Date(t.createdAt).toLocaleDateString("zh-CN")}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEdit(t)}>
-                            编辑
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleToggleClick(t)}>
-                            {t.status === "active" ? "停用" : "启用"}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDeleteClick(t)} className="text-destructive">
-                            删除
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                    <TableCell className="text-right relative">
+                      <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => openEdit(t)}
+                        >
+                          <Pencil className="mr-1 h-3 w-3" />
+                          编辑
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => handleToggleClick(t)}
+                        >
+                          <Power className="mr-1 h-3 w-3" />
+                          {t.status === "active" ? "停用" : "启用"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                          onClick={() => handleDeleteClick(t)}
+                        >
+                          <Trash2 className="mr-1 h-3 w-3" />
+                          删除
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

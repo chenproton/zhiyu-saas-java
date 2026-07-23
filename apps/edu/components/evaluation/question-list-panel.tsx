@@ -7,7 +7,6 @@ import {
   Edit,
   Trash2,
   Eye,
-  MoreHorizontal,
   Send,
   Undo2,
   XCircle,
@@ -30,13 +29,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+
 import {
   Dialog,
   DialogContent,
@@ -457,7 +450,7 @@ export function QuestionListPanel({ bankId }: QuestionListPanelProps) {
                 </TableRow>
               ) : (
                 filteredQuestions.map((question) => (
-                  <TableRow key={question.id}>
+                  <TableRow key={question.id} className="group">
                     <TableCell>
                       <Checkbox
                         checked={selectedQuestions.has(question.id)}
@@ -486,24 +479,33 @@ export function QuestionListPanel({ bankId }: QuestionListPanelProps) {
                     <TableCell>
                       <StatusBadge status={isDraftPool ? question.status : bank.status} />
                     </TableCell>
-                    <TableCell className="sticky right-0 bg-white text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="size-7">
-                          <MoreHorizontal className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setPreviewQuestion(question)}>
+                    <TableCell className="sticky right-0 bg-white text-right relative">
+                      <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => setPreviewQuestion(question)}
+                        >
+                          <Eye className="mr-1 h-3 w-3" />
                           查看详情
-                        </DropdownMenuItem>
+                        </Button>
                         {canEditQuestion(question) && (
-                          <DropdownMenuItem onClick={() => handleQuestionEdit(question)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => handleQuestionEdit(question)}
+                          >
+                            <Edit className="mr-1 h-3 w-3" />
                             编辑
-                          </DropdownMenuItem>
+                          </Button>
                         )}
                         {canSubmitQuestion(question) && (
-                          <DropdownMenuItem
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
                             onClick={() =>
                               setQuestionActionConfirm({
                                 question,
@@ -513,11 +515,15 @@ export function QuestionListPanel({ bankId }: QuestionListPanelProps) {
                               })
                             }
                           >
+                            <Send className="mr-1 h-3 w-3" />
                             提交审核
-                          </DropdownMenuItem>
+                          </Button>
                         )}
                         {canWithdrawQuestion(question) && (
-                          <DropdownMenuItem
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-amber-600 hover:text-amber-700"
                             onClick={() =>
                               setQuestionActionConfirm({
                                 question,
@@ -527,11 +533,15 @@ export function QuestionListPanel({ bankId }: QuestionListPanelProps) {
                               })
                             }
                           >
+                            <Undo2 className="mr-1 h-3 w-3" />
                             撤回审批
-                          </DropdownMenuItem>
+                          </Button>
                         )}
                         {canPublishQuestion(question) && (
-                          <DropdownMenuItem
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700"
                             onClick={() =>
                               setQuestionActionConfirm({
                                 question,
@@ -541,24 +551,24 @@ export function QuestionListPanel({ bankId }: QuestionListPanelProps) {
                               })
                             }
                           >
+                            <Rocket className="mr-1 h-3 w-3" />
                             发布
-                          </DropdownMenuItem>
+                          </Button>
                         )}
                         {canDeleteQuestion(question) && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => setDeleteConfirm(question)}
-                              className="text-destructive"
-                            >
-                              删除
-                            </DropdownMenuItem>
-                          </>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                            onClick={() => setDeleteConfirm(question)}
+                          >
+                            <Trash2 className="mr-1 h-3 w-3" />
+                            删除
+                          </Button>
                         )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
+                      </div>
+                    </TableCell>
+                  </TableRow>
               ))
             )}
           </TableBody>
