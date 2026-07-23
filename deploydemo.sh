@@ -170,12 +170,10 @@ fi
 # ==================== 安装依赖 ====================
 if [[ "$BACKEND_ONLY" != "true" ]]; then
   echo "==> 安装前端依赖..."
-  pnpm install --prefer-offline --no-frozen-lockfile || {
+  pnpm install --prefer-offline --frozen-lockfile || {
     echo "错误：pnpm install 失败" >&2
     exit 1
   }
-  # 恢复 pnpm-lock.yaml 到仓库版本，防止意外提交依赖变更
-  git checkout pnpm-lock.yaml 2>/dev/null || true
 fi
 
 # ==================== 构建后端 ====================
@@ -444,9 +442,6 @@ if [[ "$HEALTH_OK" != "true" ]]; then
   echo "   pm2 logs --lines 50" >&2
   exit 1
 fi
-
-# 最终保障：确保 pnpm-lock.yaml 未被意外修改
-git checkout pnpm-lock.yaml 2>/dev/null || true
 
 echo ""
 echo "✨ 部署完成！"
