@@ -269,7 +269,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const loadQuestions = useCallback(async () => {
-    const res = await questionApi.list()
+    const res = await questionApi.list({ limit: 10000 })
     setQuestions(res.items.map(parseQuestion))
   }, [])
 
