@@ -326,26 +326,26 @@ export function QuestionFormDialog({
   const renderOptionEditor = (isMultiple: boolean) => {
     const isSingle = !isMultiple
     return (
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         <CardTitle icon={isMultiple ? SquareCheck : CircleDot} color={isMultiple ? "bg-indigo-500" : "bg-blue-500"}>选项设置</CardTitle>
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-1.5">
           {options.map((option, index) => {
             const checked = isMultiple ? isMultipleAnswerChecked(index) : (answer === option && option.trim() !== "")
             return (
               <div
                 key={index}
-                className={`group flex items-center gap-3 rounded-xl border bg-white p-2.5 shadow-sm transition-all hover:border-primary/30 hover:shadow-md ${
+                className={`group flex items-center gap-2 rounded-lg border bg-white px-2 py-1.5 shadow-sm transition-all hover:border-primary/30 hover:shadow-md ${
                   checked ? "border-l-4 border-l-primary bg-primary/[0.03]" : "border-border/60"
                 }`}
               >
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/60 font-mono text-xs font-bold text-muted-foreground">
+                <div className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted/60 font-mono text-[11px] font-bold text-muted-foreground">
                   {String.fromCharCode(65 + index)}
                 </div>
                 {isMultiple ? (
                   <Checkbox
                     checked={checked}
                     onCheckedChange={(c) => toggleMultipleAnswer(index, !!c)}
-                    className="size-5 shrink-0"
+                    className="size-4 shrink-0"
                   />
                 ) : (
                   <input
@@ -353,24 +353,24 @@ export function QuestionFormDialog({
                     name="correct-single"
                     checked={checked}
                     onChange={() => toggleSingleAnswer(index)}
-                    className="size-5 shrink-0 accent-primary"
+                    className="size-4 shrink-0 accent-primary"
                   />
                 )}
                 <Input
                   value={option}
                   onChange={(e) => handleOptionChange(index, e.target.value)}
                   placeholder={`选项 ${String.fromCharCode(65 + index)}`}
-                  className="h-9 flex-1 border-transparent bg-transparent px-2 shadow-none focus-visible:bg-background focus-visible:ring-1"
+                  className="h-7 flex-1 border-transparent bg-transparent px-2 text-[13px] shadow-none focus-visible:bg-background focus-visible:ring-1"
                 />
                 <div className="flex shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
-                  <Button type="button" variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" onClick={() => moveOption(index, -1)} disabled={index === 0}>
-                    <ArrowUp className="size-3.5" />
+                  <Button type="button" variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-foreground" onClick={() => moveOption(index, -1)} disabled={index === 0}>
+                    <ArrowUp className="size-3" />
                   </Button>
-                  <Button type="button" variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" onClick={() => moveOption(index, 1)} disabled={index === options.length - 1}>
-                    <ArrowDown className="size-3.5" />
+                  <Button type="button" variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-foreground" onClick={() => moveOption(index, 1)} disabled={index === options.length - 1}>
+                    <ArrowDown className="size-3" />
                   </Button>
-                  <Button type="button" variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => removeOption(index)} disabled={options.length <= MIN_OPTIONS}>
-                    <X className="size-3.5" />
+                  <Button type="button" variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => removeOption(index)} disabled={options.length <= MIN_OPTIONS}>
+                    <X className="size-3" />
                   </Button>
                 </div>
               </div>
@@ -378,8 +378,8 @@ export function QuestionFormDialog({
           })}
         </div>
         {options.length < MAX_OPTIONS && (
-          <Button type="button" variant="outline" size="sm" onClick={addOption} className="w-fit gap-1 rounded-lg border-dashed">
-            <Plus className="size-3.5" />
+          <Button type="button" variant="outline" size="sm" onClick={addOption} className="h-7 w-fit gap-1 rounded-lg border-dashed px-2.5 text-xs">
+            <Plus className="size-3" />
             添加选项
           </Button>
         )}
@@ -409,86 +409,88 @@ export function QuestionFormDialog({
 
   const renderLeftPane = () => {
     return (
-      <div className="flex flex-1 flex-col gap-5">
+      <div className="flex flex-1 flex-col gap-4">
         {/* 题干 */}
-        <div className="rounded-xl border border-border/60 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
-          <CardTitle icon={PenLine}>题干</CardTitle>
+        <div className="rounded-xl border border-border/60 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+          <div className="mb-3 flex items-center justify-between">
+            <CardTitle icon={PenLine}>题干</CardTitle>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setContent("")} className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground">
+              <RotateCcw className="size-3" />
+              清空
+            </Button>
+          </div>
           <Textarea
             ref={contentRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="请输入题目内容..."
-            className="min-h-[100px] resize-none rounded-lg border-border/60 bg-muted/20 text-[15px] leading-relaxed transition-all placeholder:text-muted-foreground/60 focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/15"
+            className="min-h-[80px] resize-none rounded-lg border-border/60 bg-muted/20 text-[15px] leading-relaxed transition-all placeholder:text-muted-foreground/60 focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/15"
             required
           />
           {renderContentPreview()}
-          <div className="mt-3 flex gap-2">
-            {type === "fill" && (
-              <Button type="button" variant="outline" size="sm" onClick={insertBlankMarker} className="gap-1 rounded-lg border-primary/30 text-primary hover:bg-primary/5">
-                <Plus className="size-3.5" />
+          {type === "fill" && (
+            <div className="mt-2">
+              <Button type="button" variant="outline" size="sm" onClick={insertBlankMarker} className="h-7 gap-1 rounded-lg border-primary/30 px-2.5 text-xs text-primary hover:bg-primary/5">
+                <Plus className="size-3" />
                 插入填空标记
               </Button>
-            )}
-            <Button type="button" variant="ghost" size="sm" onClick={() => setContent("")} className="gap-1 text-muted-foreground hover:text-foreground">
-              <RotateCcw className="size-3.5" />
-              清空
-            </Button>
-          </div>
+            </div>
+          )}
         </div>
 
         {/* 题型专属编辑区 */}
-        <div className="flex flex-1 flex-col rounded-xl border border-border/60 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+        <div className="flex flex-1 flex-col rounded-xl border border-border/60 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
           {type === "single" && renderOptionEditor(false)}
           {type === "multiple" && renderOptionEditor(true)}
           {type === "judge" && (
-            <div className="flex flex-1 flex-col gap-4">
+            <div className="flex flex-col gap-3">
               <CardTitle icon={Scale} color="bg-amber-500">正确答案</CardTitle>
-              <div className="flex flex-1 gap-4">
+              <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => setAnswer("true")}
-                  className={`flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl border-2 text-lg font-bold transition-all ${
+                  className={`flex flex-1 flex-col items-center justify-center gap-1.5 rounded-xl border-2 py-5 text-base font-bold transition-all ${
                     answer === "true"
                       ? "border-green-500 bg-gradient-to-br from-green-50 to-green-100 text-green-700 shadow-md"
                       : "border-border bg-muted/30 text-muted-foreground hover:border-green-300 hover:bg-green-50/50"
                   }`}
                 >
-                  <Check className="size-8" />
+                  <Check className="size-6" />
                   正确
                 </button>
                 <button
                   type="button"
                   onClick={() => setAnswer("false")}
-                  className={`flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl border-2 text-lg font-bold transition-all ${
+                  className={`flex flex-1 flex-col items-center justify-center gap-1.5 rounded-xl border-2 py-5 text-base font-bold transition-all ${
                     answer === "false"
                       ? "border-red-500 bg-gradient-to-br from-red-50 to-red-100 text-red-700 shadow-md"
                       : "border-border bg-muted/30 text-muted-foreground hover:border-red-300 hover:bg-red-50/50"
                   }`}
                 >
-                  <X className="size-8" />
+                  <X className="size-6" />
                   错误
                 </button>
               </div>
             </div>
           )}
           {type === "fill" && (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
               <CardTitle icon={Braces} color="bg-purple-500">空位答案</CardTitle>
               {blankCount === 0 ? (
-                <div className="flex items-center gap-2 rounded-xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 rounded-xl border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
                   <Lightbulb className="size-4 text-amber-500" />
                   在题干中点击「插入填空标记」来创建空位
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-2">
                   {Array.from({ length: blankCount }).map((_, idx) => (
-                    <div key={idx} className="flex items-center gap-3 rounded-xl border border-border/60 bg-muted/20 p-2 transition-colors focus-within:border-primary/40 focus-within:bg-background focus-within:ring-1 focus-within:ring-primary/10">
-                      <Badge variant="default" className="shrink-0 bg-purple-500 text-white hover:bg-purple-500">空位 {idx + 1}</Badge>
+                    <div key={idx} className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-2 py-1.5 transition-colors focus-within:border-primary/40 focus-within:bg-background focus-within:ring-1 focus-within:ring-primary/10">
+                      <Badge variant="default" className="shrink-0 bg-purple-500 px-1.5 py-0 text-[11px] text-white hover:bg-purple-500">空位 {idx + 1}</Badge>
                       <Input
                         value={normalizedFillAnswer[idx] || ""}
                         onChange={(e) => updateBlankAnswer(idx, e.target.value)}
                         placeholder="标准答案"
-                        className="h-9 flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0"
+                        className="h-7 flex-1 border-0 bg-transparent px-1 text-[13px] shadow-none focus-visible:ring-0"
                       />
                     </div>
                   ))}
@@ -527,16 +529,16 @@ export function QuestionFormDialog({
                 <label
                   key={index}
                   onClick={() => toggleSingleAnswer(index)}
-                  className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition-all ${
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition-all ${
                     checked
                       ? "border-l-4 border-l-primary border-primary/30 bg-primary/[0.06] font-medium text-primary"
                       : "border-border/60 bg-white hover:border-primary/20 hover:bg-muted/30"
                   }`}
                 >
-                  <div className={`flex size-6 shrink-0 items-center justify-center rounded-full border-2 ${
+                  <div className={`flex size-5 shrink-0 items-center justify-center rounded-full border-2 ${
                     checked ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/30"
                   }`}>
-                    {checked && <Check className="size-3.5" />}
+                    {checked && <Check className="size-3" />}
                   </div>
                   <span className="truncate">{String.fromCharCode(65 + index)}. {option || "（空选项）"}</span>
                 </label>
@@ -560,7 +562,7 @@ export function QuestionFormDialog({
               return (
                 <label
                   key={index}
-                  className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition-all ${
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition-all ${
                     checked
                       ? "border-l-4 border-l-indigo-500 border-indigo-200 bg-indigo-50 font-medium text-indigo-700"
                       : "border-border/60 bg-white hover:border-indigo-200 hover:bg-indigo-50/30"
@@ -569,7 +571,7 @@ export function QuestionFormDialog({
                   <Checkbox
                     checked={checked}
                     onCheckedChange={(c) => toggleMultipleAnswer(index, !!c)}
-                    className="size-5 shrink-0 border-2 data-[state=checked]:border-indigo-500 data-[state=checked]:bg-indigo-500"
+                    className="size-4 shrink-0 border-2 data-[state=checked]:border-indigo-500 data-[state=checked]:bg-indigo-500"
                   />
                   <span className="truncate">{String.fromCharCode(65 + index)}. {option || "（空选项）"}</span>
                 </label>
@@ -587,12 +589,12 @@ export function QuestionFormDialog({
             <Scale className="size-3.5" />
             当前判断结果
           </div>
-          <div className={`inline-flex w-fit items-center gap-2 rounded-xl px-5 py-3 text-base font-bold shadow-sm ${
+          <div className={`inline-flex w-fit items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold shadow-sm ${
             answer === "false"
               ? "bg-gradient-to-r from-red-50 to-red-100 text-red-700 border border-red-200"
               : "bg-gradient-to-r from-green-50 to-green-100 text-green-700 border border-green-200"
           }`}>
-            {answer === "false" ? <X className="size-5" /> : <Check className="size-5" />}
+            {answer === "false" ? <X className="size-4" /> : <Check className="size-4" />}
             {answer === "false" ? "错误" : "正确"}
           </div>
         </div>
@@ -611,7 +613,7 @@ export function QuestionFormDialog({
           ) : (
             <div className="flex flex-wrap gap-2">
               {Array.from({ length: blankCount }).map((_, idx) => (
-                <Badge key={idx} className="gap-1 rounded-lg bg-purple-100 px-2.5 py-1 text-xs font-medium text-purple-700 hover:bg-purple-100">
+                <Badge key={idx} className="gap-0.5 rounded-md bg-purple-100 px-2 py-0.5 text-[11px] font-medium text-purple-700 hover:bg-purple-100">
                   空位{idx + 1}: {normalizedFillAnswer[idx] || "未填写"}
                 </Badge>
               ))}
@@ -635,15 +637,17 @@ export function QuestionFormDialog({
 
   const renderRightPane = () => {
     return (
-      <div className="flex flex-col gap-5">
-        {/* 基础设置 */}
-        <div className="rounded-xl border border-border/60 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
-          <CardTitle icon={Settings2} color="bg-slate-500">基础设置</CardTitle>
-          <div className="grid grid-cols-2 gap-4">
+      <div className="flex flex-col gap-4">
+        {/* 合并为一张设置卡片 */}
+        <div className="flex flex-col rounded-xl border border-border/60 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+          <CardTitle icon={Settings2} color="bg-slate-500">题目设置</CardTitle>
+
+          {/* 基础设置 */}
+          <div className="mb-4 grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">难度</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">难度</label>
               <Select value={difficulty} onValueChange={(v) => setDifficulty(v as Difficulty)}>
-                <SelectTrigger className="h-10 w-full rounded-lg">
+                <SelectTrigger className="h-8 w-full rounded-lg text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -656,21 +660,21 @@ export function QuestionFormDialog({
               </Select>
             </div>
             <div ref={knowledgeRef} className="relative">
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">关联知识点</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">关联知识点</label>
               <button
                 type="button"
                 onClick={() => setKnowledgeOpen(!knowledgeOpen)}
-                className={`flex h-10 w-full items-center justify-between rounded-lg border bg-background px-3 text-sm transition-all ${
+                className={`flex h-8 w-full items-center justify-between rounded-lg border bg-background px-2.5 text-xs transition-all ${
                   knowledgeOpen ? "border-primary ring-2 ring-primary/15" : "border-input hover:border-primary/40"
                 }`}
               >
                 <span className={knowledgePointIds.length ? "font-medium text-foreground" : "text-muted-foreground"}>
                   {knowledgePointIds.length ? `已选择 ${knowledgePointIds.length} 项` : "选择知识点..."}
                 </span>
-                <ChevronDown className={`size-4 text-muted-foreground transition-transform ${knowledgeOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`size-3.5 text-muted-foreground transition-transform ${knowledgeOpen ? "rotate-180" : ""}`} />
               </button>
               {knowledgeOpen && (
-                <div className="absolute top-full z-50 mt-1.5 max-h-52 w-full overflow-auto rounded-xl border bg-white p-1.5 shadow-lg">
+                <div className="absolute top-full z-50 mt-1 max-h-44 w-full overflow-auto rounded-xl border bg-white p-1.5 shadow-lg">
                   {loadingKnowledgePoints ? (
                     <div className="p-3 text-sm text-muted-foreground">加载中...</div>
                   ) : knowledgePoints.length === 0 ? (
@@ -679,7 +683,7 @@ export function QuestionFormDialog({
                     knowledgePoints.map((kp) => (
                       <label
                         key={kp.id}
-                        className="flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-primary/5"
+                        className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors hover:bg-primary/5"
                       >
                         <Checkbox
                           checked={knowledgePointIds.includes(kp.id)}
@@ -687,7 +691,7 @@ export function QuestionFormDialog({
                             if (checked) addKnowledgePoint(kp.id)
                             else removeKnowledgePoint(kp.id)
                           }}
-                          className="size-4"
+                          className="size-3.5"
                         />
                         <span>{kp.name}</span>
                       </label>
@@ -696,12 +700,12 @@ export function QuestionFormDialog({
                 </div>
               )}
               {knowledgePointIds.length > 0 && (
-                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                <div className="mt-2 flex flex-wrap gap-1">
                   {knowledgePointIds.map(id => (
-                    <Badge key={id} variant="secondary" className="gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/15">
+                    <Badge key={id} variant="secondary" className="gap-0.5 rounded-md bg-primary/10 px-1.5 py-0 text-[11px] font-medium text-primary hover:bg-primary/15">
                       {getKnowledgePointName(id)}
                       <button type="button" onClick={() => removeKnowledgePoint(id)} className="ml-0.5 rounded-full p-0.5 hover:bg-primary/20">
-                        <X className="size-3" />
+                        <X className="size-2.5" />
                       </button>
                     </Badge>
                   ))}
@@ -709,47 +713,53 @@ export function QuestionFormDialog({
               )}
             </div>
           </div>
-        </div>
 
-        {/* 答案设置 */}
-        <div className="rounded-xl border border-border/60 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
-          <CardTitle icon={Check} color={type === "judge" ? "bg-amber-500" : type === "multiple" ? "bg-indigo-500" : "bg-primary"}>答案设置</CardTitle>
-          {renderRightAnswer()}
-        </div>
-
-        {/* 答案解析 */}
-        <div className="rounded-xl border border-border/60 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
-          <CardTitle icon={Lightbulb} color="bg-amber-500">答案解析</CardTitle>
-          <Textarea
-            value={analysis}
-            onChange={(e) => setAnalysis(e.target.value)}
-            placeholder="输入解析内容，帮助学生理解..."
-            className="h-24 min-h-0 resize-none rounded-lg border-border/60 bg-muted/20 text-[15px] leading-relaxed transition-all placeholder:text-muted-foreground/60 focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/15"
-          />
-          <p className="mt-1.5 text-xs text-muted-foreground/60">选填，用于展示给学生查看</p>
-        </div>
-
-        {/* 高级设置 */}
-        {(type === "single" || type === "multiple") && (
-          <div className="overflow-hidden rounded-xl border border-border/60 bg-white shadow-sm transition-shadow hover:shadow-md">
-            <button
-              type="button"
-              onClick={() => setAdvancedOpen(!advancedOpen)}
-              className="flex w-full items-center justify-between px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:bg-muted/30"
-            >
-              <span className="flex items-center gap-2"><Sparkles className="size-3.5" /> 高级设置</span>
-              <ChevronDown className={`size-4 text-muted-foreground transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
-            </button>
-            {advancedOpen && (
-              <div className="border-t px-5 py-3">
-                <label className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">选项随机排序</span>
-                  <Checkbox disabled />
-                </label>
-              </div>
-            )}
+          {/* 答案设置 */}
+          <div className="border-t border-border/60 pt-3">
+            <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <Check className="size-3.5" />
+              答案
+            </div>
+            {renderRightAnswer()}
           </div>
-        )}
+
+          {/* 答案解析 */}
+          <div className="mt-4 border-t border-border/60 pt-3">
+            <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <Lightbulb className="size-3.5" />
+              解析
+              <span className="text-[10px] font-normal normal-case tracking-normal text-muted-foreground/60">(选填)</span>
+            </div>
+            <Textarea
+              value={analysis}
+              onChange={(e) => setAnalysis(e.target.value)}
+              placeholder="输入解析内容，帮助学生理解..."
+              className="h-20 min-h-0 resize-none rounded-lg border-border/60 bg-muted/20 text-[14px] leading-relaxed transition-all placeholder:text-muted-foreground/60 focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/15"
+            />
+          </div>
+
+          {/* 高级设置 */}
+          {(type === "single" || type === "multiple") && (
+            <div className="mt-3 border-t border-border/60 pt-2">
+              <button
+                type="button"
+                onClick={() => setAdvancedOpen(!advancedOpen)}
+                className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:bg-muted/30"
+              >
+                <span className="flex items-center gap-1.5"><Sparkles className="size-3.5" /> 高级设置</span>
+                <ChevronDown className={`size-3.5 text-muted-foreground transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
+              </button>
+              {advancedOpen && (
+                <div className="px-2 pb-1 pt-1">
+                  <label className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">选项随机排序</span>
+                    <Checkbox disabled className="size-4" />
+                  </label>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     )
   }
@@ -758,7 +768,7 @@ export function QuestionFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         size="xl"
-        className="flex max-h-[94vh] max-w-[1200px] flex-col overflow-hidden border border-border/50 p-0 shadow-2xl"
+        className="flex !max-h-[94vh] !w-[98vw] !max-w-[98vw] flex-col overflow-hidden border border-border/50 p-0 shadow-2xl"
         annotationContext="question-form"
       >
         {/* Header */}
@@ -822,11 +832,11 @@ export function QuestionFormDialog({
 
         {/* 双栏主体 */}
         <div className="flex flex-1 overflow-hidden bg-gradient-to-br from-muted/20 via-background to-muted/10">
-          <div className="flex w-[55%] flex-col gap-5 overflow-y-auto p-6">
+          <div className="flex w-[55%] flex-col gap-4 overflow-y-auto p-5">
             {renderLeftPane()}
           </div>
-          <div className="my-6 w-px bg-gradient-to-b from-transparent via-border to-transparent" />
-          <div className="flex w-[45%] flex-col gap-5 overflow-y-auto p-6">
+          <div className="my-5 w-px bg-gradient-to-b from-transparent via-border to-transparent" />
+          <div className="flex w-[45%] flex-col gap-4 overflow-y-auto p-5">
             {renderRightPane()}
           </div>
         </div>
