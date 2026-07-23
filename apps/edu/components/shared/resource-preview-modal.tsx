@@ -108,6 +108,7 @@ function ResourcePreviewModalInner({ resource, open, onOpenChange, index = 0 }: 
     if (!resizing) return
     const iframe = iframeRef.current
     if (iframe) iframe.style.pointerEvents = "none"
+    document.body.classList.add("select-none")
     const maxWidth = typeof window !== "undefined" ? window.innerWidth - 32 : Infinity
     const maxHeight = typeof window !== "undefined" ? window.innerHeight - 32 : Infinity
 
@@ -130,10 +131,12 @@ function ResourcePreviewModalInner({ resource, open, onOpenChange, index = 0 }: 
       window.removeEventListener("mousemove", handleMouseMove)
       window.removeEventListener("mouseup", handleMouseUp)
       if (iframe) iframe.style.pointerEvents = ""
+      document.body.classList.remove("select-none")
     }
   }, [resizing])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
     bringToFrontRef.current()
     setDragging(true)
     dragStartRef.current = {
@@ -145,6 +148,7 @@ function ResourcePreviewModalInner({ resource, open, onOpenChange, index = 0 }: 
   }, [])
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
     e.stopPropagation()
     bringToFrontRef.current()
     setResizing(true)
