@@ -247,26 +247,47 @@ export default function SceneLearnPage() {
 
       {/* ---------- header ---------- */}
       <header className="bg-white border-b border-gray-200/60 shrink-0 sticky top-0 z-30">
-        <div className="max-w-[1400px] mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link
-              href={`/scene/landing/${id}`}
-              className="group flex items-center gap-2.5 text-sm text-gray-500 hover:text-blue-600 transition-all duration-200"
-            >
-              <span className="w-8 h-8 rounded-xl bg-gray-100 border border-gray-200/60 flex items-center justify-center group-hover:bg-blue-50 group-hover:border-blue-200 group-hover:text-blue-600 transition-all duration-200">
-                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform duration-200" />
+        <div className="max-w-[1400px] mx-auto px-6 py-3 flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link
+                href={`/scene/landing/${id}`}
+                className="group flex items-center gap-2.5 text-sm text-gray-500 hover:text-blue-600 transition-all duration-200"
+              >
+                <span className="w-8 h-8 rounded-xl bg-gray-100 border border-gray-200/60 flex items-center justify-center group-hover:bg-blue-50 group-hover:border-blue-200 group-hover:text-blue-600 transition-all duration-200">
+                  <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform duration-200" />
+                </span>
+                <span className="font-semibold truncate max-w-[360px] lg:max-w-[520px] text-gray-800 group-hover:text-blue-600 transition-colors">{scenario.name}</span>
+              </Link>
+            </div>
+            <div className="flex items-center gap-2">
+              {activeTask && (
+                <>
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
+                    <Target className="w-3.5 h-3.5 text-blue-500" /> {activeTask.taskType === "assessment" ? "考核" : "训练"}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
+                    <BarChart3 className="w-3.5 h-3.5 text-blue-500" /> {difficultyMap[activeTask.difficulty]?.label || `Lv.${activeTask.difficulty}`}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
+                    <Clock className="w-3.5 h-3.5 text-blue-500" /> {activeTask.estimatedHours || 0} 课时
+                  </span>
+                </>
+              )}
+              <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200/80">
+                <ListChecks className="w-3.5 h-3.5 text-blue-500" /> {tasks.length} 个任务
               </span>
-              <span className="font-semibold truncate max-w-[360px] lg:max-w-[520px] text-gray-800 group-hover:text-blue-600 transition-colors">{scenario.name}</span>
-            </Link>
+              <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200/80">
+                <Clock className="w-3.5 h-3.5 text-blue-500" /> {totalHours} 课时
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200/80">
-              <ListChecks className="w-3.5 h-3.5 text-blue-500" /> {tasks.length} 个任务
-            </span>
-            <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200/80">
-              <Clock className="w-3.5 h-3.5 text-blue-500" /> {totalHours} 课时
-            </span>
-          </div>
+          {activeTask?.background && (
+            <div className="flex items-start gap-2 text-sm text-gray-600 leading-relaxed">
+              <span className="shrink-0 font-semibold text-gray-800">{activeTask.name}</span>
+              <span className="line-clamp-2 whitespace-pre-line">{activeTask.background}</span>
+            </div>
+          )}
         </div>
       </header>
 
@@ -276,7 +297,7 @@ export default function SceneLearnPage() {
         <aside className={cn(
           "flex flex-shrink-0 flex-col rounded-2xl border border-[#e7e5e4] bg-white shadow-[0_8px_32px_rgba(0,0,0,0.06)] transition-all duration-300 sticky self-start mx-4 mt-4 overflow-hidden",
           sidebarCollapsed ? "w-[68px]" : "w-[300px]"
-        )} style={{ top: "4.5rem", height: "calc(100vh - 5.5rem)" }}>
+        )} style={{ top: "7rem", height: "calc(100vh - 8rem)" }}>
           {/* sidebar header */}
           <div className="relative border-b border-gray-100 overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 shadow-sm" />
@@ -401,57 +422,13 @@ export default function SceneLearnPage() {
             </div>
           ) : (
             <>
-              {/* collapsed layout: left 3 cards + right sticky tab card */}
+              {/* collapsed layout: left 2 cards + right sticky tab card */}
               <div className="flex flex-1 gap-4 p-4">
-                {/* left column: 3 cards */}
+                {/* left column: 2 cards */}
                 <div className="flex-1 space-y-4">
-                  {/* 任务背景 */}
-                  <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300 py-0 gap-0">
-                    <CardHeader className="relative bg-gradient-to-br from-blue-500 to-blue-400 text-white border-b-0 px-6 py-5">
-                      <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none" />
-                      <CardTitle className="text-base flex items-center gap-3 relative z-10">
-                        <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white shadow-sm">
-                          <BookOpen className="h-4 w-4" />
-                        </div>
-                        任务背景
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-5">
-                      <div className="flex flex-wrap items-center gap-2 mb-5">
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-blue-50 border border-blue-100">
-                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-blue-400 flex items-center justify-center text-white shadow-sm">
-                            <ListChecks className="h-3 w-3" />
-                          </div>
-                          <span className="text-xs text-gray-500">任务类型</span>
-                          <span className="text-xs font-bold text-gray-800">{activeTask.taskType === "assessment" ? "考核" : "训练"}</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-blue-50 border border-blue-100">
-                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-blue-400 flex items-center justify-center text-white shadow-sm">
-                            <Clock className="h-3 w-3" />
-                          </div>
-                          <span className="text-xs text-gray-500">预计课时</span>
-                          <span className="text-xs font-bold text-gray-800">{activeTask.estimatedHours || 0} 课时</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-blue-50 border border-blue-100">
-                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-blue-400 flex items-center justify-center text-white shadow-sm">
-                            <BarChart3 className="h-3 w-3" />
-                          </div>
-                          <span className="text-xs text-gray-500">难度等级</span>
-                          <span className="text-xs font-bold text-gray-800">{difficultyMap[activeTask.difficulty]?.label || `Lv.${activeTask.difficulty}`}</span>
-                        </div>
-                      </div>
-                      {activeTask.background && (
-                        <div className="prose prose-sm max-w-none text-gray-600 whitespace-pre-line leading-relaxed">
-                          {activeTask.background}
-                        </div>
-                      )}
-                      {!activeTask.background && <p className="text-xs text-gray-400">暂无背景说明</p>}
-                    </CardContent>
-                  </Card>
-
                   {/* 任务说明书 */}
-                  <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300 py-0 gap-0">
-                    <CardHeader className="relative bg-gradient-to-br from-violet-500 to-purple-500 text-white border-b-0 px-6 py-5">
+                  <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300 py-0 gap-0 h-[calc(100vh-12rem)] flex flex-col">
+                    <CardHeader className="relative bg-gradient-to-br from-violet-500 to-purple-500 text-white border-b-0 px-6 py-5 shrink-0">
                       <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none" />
                       <CardTitle className="text-base flex items-center gap-3 relative z-10">
                         <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white shadow-sm">
@@ -468,14 +445,16 @@ export default function SceneLearnPage() {
                         )}
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="pt-5">
-                      {(activeTask.detailedDescription || activeTask.description) ? (
-                        <div className="prose prose-sm max-w-none text-gray-600 whitespace-pre-line leading-relaxed">
-                          {activeTask.detailedDescription || activeTask.description}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-gray-400">暂无任务说明书</p>
-                      )}
+                    <CardContent className="pt-5 flex-1 overflow-hidden">
+                      <ScrollArea className="h-full">
+                        {(activeTask.detailedDescription || activeTask.description) ? (
+                          <div className="prose prose-sm max-w-none text-gray-600 whitespace-pre-line leading-relaxed">
+                            {activeTask.detailedDescription || activeTask.description}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-400">暂无任务说明书</p>
+                        )}
+                      </ScrollArea>
                     </CardContent>
                   </Card>
 
@@ -522,7 +501,7 @@ export default function SceneLearnPage() {
 
         {/* right panel: sticky tabs - outside main, same level as sidebar */}
         {sidebarCollapsed && activeTask && (
-          <div className="flex w-[360px] flex-shrink-0 sticky self-start mx-4 mt-4" style={{ top: "4.5rem", maxHeight: "calc(100vh - 5.5rem)" }}>
+          <div className="flex w-[360px] flex-shrink-0 sticky self-start mx-4 mt-4" style={{ top: "7rem", maxHeight: "calc(100vh - 8rem)" }}>
             <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_8px_32px_rgba(0,0,0,0.06)] overflow-hidden flex flex-col w-full">
               <Tabs defaultValue="collapsed-knowledge" className="w-full flex flex-col h-full">
                 <CardHeader className="border-b border-gray-100 p-2 shrink-0">
