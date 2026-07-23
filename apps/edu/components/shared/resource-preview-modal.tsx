@@ -18,14 +18,22 @@ interface ResourcePreviewModalProps {
   onOpenChange: (open: boolean) => void
 }
 
+const MIN_WIDTH = 320
+const MIN_HEIGHT = 200
+
 export function ResourcePreviewModal({ resource, open, onOpenChange }: ResourcePreviewModalProps) {
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [dragging, setDragging] = useState(false)
+  const [size, setSize] = useState<{ width?: number; height?: number }>({})
+  const [resizing, setResizing] = useState(false)
   const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 })
+  const resizeStartRef = useRef({ x: 0, y: 0, width: 0, height: 0 })
+  const contentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (open) {
       setPosition({ x: 0, y: 0 })
+      setSize({})
     }
   }, [open])
 
@@ -48,6 +56,27 @@ export function ResourcePreviewModal({ resource, open, onOpenChange }: ResourceP
     }
   }, [dragging])
 
+  useEffect(() => {
+    if (!resizing) return
+    const handleMouseMove = (e: MouseEvent) => {
+      const dx = e.clientX - resizeStartRef.current.x
+      const dy = e.clientY - resizeStartRef.current.y
+      const maxWidth = typeof window !== "undefined" ? window.innerWidth - 32 : Infinity
+      const maxHeight = typeof window !== "undefined" ? window.innerHeight - 32 : Infinity
+      setSize({
+        width: Math.max(MIN_WIDTH, Math.min(maxWidth, resizeStartRef.current.width + dx)),
+        height: Math.max(MIN_HEIGHT, Math.min(maxHeight, resizeStartRef.current.height + dy)),
+      })
+    }
+    const handleMouseUp = () => setResizing(false)
+    window.addEventListener("mousemove", handleMouseMove)
+    window.addEventListener("mouseup", handleMouseUp)
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove)
+      window.removeEventListener("mouseup", handleMouseUp)
+    }
+  }, [resizing])
+
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     setDragging(true)
     dragStartRef.current = {
@@ -58,17 +87,32 @@ export function ResourcePreviewModal({ resource, open, onOpenChange }: ResourceP
     }
   }, [position])
 
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    setResizing(true)
+    const rect = contentRef.current?.getBoundingClientRect()
+    resizeStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      width: rect?.width || MIN_WIDTH,
+      height: rect?.height || MIN_HEIGHT,
+    }
+  }, [])
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-transparent" />
         <DialogPrimitive.Content
+          ref={contentRef}
           className={cn(
-            "fixed top-[50%] left-[50%] z-50 flex flex-col w-full max-w-[calc(100%-2rem)] sm:max-w-4xl h-[85vh] bg-background rounded-lg border p-3 shadow-none duration-200 group",
+            "fixed top-[50%] left-[50%] z-50 flex flex-col w-full max-w-[calc(100%-2rem)] sm:max-w-4xl h-[85vh] bg-background rounded-lg border p-3 shadow-none duration-200 group relative",
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
           )}
           style={{
             transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px))`,
+            width: size.width,
+            height: size.height,
           }}
           onPointerDownOutside={(e) => e.preventDefault()}
         >
@@ -110,7 +154,7 @@ export function ResourcePreviewModal({ resource, open, onOpenChange }: ResourceP
                 title={resource.name}
                 className="w-full h-full border-0"
                 allowFullScreen
-                style={{ pointerEvents: dragging ? "none" : "auto" }}
+                style={{ pointerEvents: dragging || resizing ? "none" : "auto" }}
               />
             ) : (
               <div className="flex flex-col items-center justify-center gap-3 h-full text-gray-400">
@@ -118,6 +162,13 @@ export function ResourcePreviewModal({ resource, open, onOpenChange }: ResourceP
                 <span className="text-sm">暂无预览内容</span>
               </div>
             )}
+          </div>
+
+          <div
+            className="absolute bottom-1 right-1 z-10 w-4 h-4 cursor-se-resize opacity-0 group-hover:opacity-100 transition-opacity"
+            onMouseDown={handleResizeMouseDown}
+          >
+            <div className="absolute bottom-0 right-0 w-2 h-2 border-r-2 border-b-2 border-muted-foreground" />
           </div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
