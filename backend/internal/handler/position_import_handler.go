@@ -115,13 +115,21 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'v1.0','draft',$12,'{}')
 		`, positionID, tenantID, name, shortName, industryID, positionType,
 			salaryMin, salaryMax, description, requirements, careerPath, userID)
+		isNew := true
 		if err != nil {
-			result.Failed++
-			result.Errors = append(result.Errors, fmt.Sprintf("岗位[%s]创建失败: %v", name, err))
-			continue
+			var existingID string
+			h.DB.QueryRow(ctx, `SELECT id FROM career_positions WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
+			if existingID != "" {
+				positionID = existingID
+				isNew = false
+			} else {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("岗位[%s]创建失败: %v", name, err))
+				continue
+			}
 		}
 
-		if batchID != nil {
+		if isNew && batchID != nil {
 			h.DB.Exec(ctx, `UPDATE career_positions SET batch_id=$1 WHERE id=$2`, *batchID, positionID)
 		}
 		for _, mid := range majorIDs {
