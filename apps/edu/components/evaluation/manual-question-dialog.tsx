@@ -52,7 +52,7 @@ export function ManualQuestionDialog({
   selectedQuestionIds,
   onAddQuestions,
 }: ManualQuestionDialogProps) {
-  const { questionBanks, getQuestionsByBank } = useData()
+  const { questionBanks, getQuestionsByBank, loadBankQuestions } = useData()
   
   const scrollRef = useRef<HTMLDivElement>(null)
   const [selectedBankId, setSelectedBankId] = useState<string>("")
@@ -60,6 +60,7 @@ export function ManualQuestionDialog({
   const [typeFilter, setTypeFilter] = useState<QuestionType | "all">("all")
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [knowledgePoints, setKnowledgePoints] = useState<EvalKnowledgePoint[]>([])
+  const [loadingQuestions, setLoadingQuestions] = useState(false)
 
   const publishedBanks = useMemo(() => {
     return questionBanks.filter(bank => bank.status === 'published')
@@ -67,9 +68,17 @@ export function ManualQuestionDialog({
 
   useEffect(() => {
     if (open && publishedBanks.length > 0 && !selectedBankId) {
-      setSelectedBankId(publishedBanks[0].id)
+      const firstBankId = publishedBanks[0].id
+      setSelectedBankId(firstBankId)
     }
   }, [open, publishedBanks, selectedBankId])
+
+  useEffect(() => {
+    if (selectedBankId) {
+      setLoadingQuestions(true)
+      loadBankQuestions(selectedBankId).finally(() => setLoadingQuestions(false))
+    }
+  }, [selectedBankId, loadBankQuestions])
 
   useEffect(() => {
     if (!open) return
@@ -221,10 +230,19 @@ export function ManualQuestionDialog({
               <div ref={scrollRef} className="p-4 space-y-2">
                 {filteredQuestions.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <Search className="size-10 text-muted-foreground/30 mb-3" />
-                    <p className="text-sm text-muted-foreground">
-                      {questions.length === 0 ? "该题库暂无题目" : "没有找到匹配的题目"}
-                    </p>
+                    {loadingQuestions ? (
+                      <>
+                        <div className="size-8 mb-3 animate-spin rounded-full border-2 border-slate-300 border-t-primary" />
+                        <p className="text-sm text-muted-foreground">加载题目中...</p>
+                      </>
+                    ) : (
+                      <>
+                        <Search className="size-10 text-muted-foreground/30 mb-3" />
+                        <p className="text-sm text-muted-foreground">
+                          {questions.length === 0 ? "该题库暂无题目" : "没有找到匹配的题目"}
+                        </p>
+                      </>
+                    )}
                   </div>
                 ) : (
                   filteredQuestions.map((question) => {
