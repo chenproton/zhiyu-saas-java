@@ -7362,16 +7362,7 @@ function EditCardDialog({
               onOpenChange={setShowCreatePaper}
               onSubmit={async (data) => {
                 try {
-                  const created = await examApi.create({
-                    name: data.name,
-                    description: data.description,
-                    duration: data.duration ?? 60,
-                    status: "draft",
-                    questions: [],
-                    version: "v1.0",
-                    ownerType: "mine",
-                    creatorName: "",
-                  } as any)
+                  const created = await examApi.create(data as any)
                   loadedExams.push(created)
                   updateState({ paperIds: [created.id], paperWeights: { [created.id]: 100 } })
                   setShowCreatePaper(false)
