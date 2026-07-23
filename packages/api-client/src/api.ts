@@ -955,6 +955,17 @@ export const importExportApi = {
       body: JSON.stringify({ ids }),
     })
   },
+  exportPositionsExcel: (ids: string[]) => {
+    const token = getToken()
+    return fetch(`${API_BASE}/export/positions/excel`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ ids }),
+    })
+  },
 }
 
 export const portalApi = {

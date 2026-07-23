@@ -107,6 +107,7 @@ export interface ContentImportExportApi {
   importExcel?: (entity: string, file: File) => Promise<{ created: number; failed: number; skipped?: number; entity: string }>
   downloadTemplate?: (entity: "positions" | "scenarios") => Promise<Response>
   exportScenariosExcel?: (ids: string[]) => Promise<Response>
+  exportPositionsExcel?: (ids: string[]) => Promise<Response>
 }
 
 export interface ContentListPageConfig<T extends ContentListItem> {
@@ -1137,9 +1138,10 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
                   size="sm"
                   className="flex-1"
                   onClick={async () => {
-                    if (!importExportApi.exportScenariosExcel) return
+                    const exportFn = importExportApi.exportScenariosExcel || importExportApi.exportPositionsExcel
+                    if (!exportFn) return
                     try {
-                      const res = await importExportApi.exportScenariosExcel(selectedIds)
+                      const res = await exportFn(selectedIds)
                       const blob = await res.blob()
                       const url = URL.createObjectURL(blob)
                       const a = document.createElement("a")
