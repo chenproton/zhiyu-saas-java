@@ -79,6 +79,7 @@ export function QuestionFormDialog({
   const [loadingKnowledgePoints, setLoadingKnowledgePoints] = useState(false)
   const [knowledgeOpen, setKnowledgeOpen] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [shuffleOptions, setShuffleOptions] = useState(false)
   const knowledgeRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -101,12 +102,25 @@ export function QuestionFormDialog({
     return () => { cancelled = true }
   }, [open])
 
+  // 将后端存储的选项文本答案转换为索引（用于弹窗内以 A/B/C/D 为标准判断）
+  const answerToIndexes = useCallback((ans: string | string[], opts: string[]): string | string[] => {
+    if (Array.isArray(ans)) {
+      return ans.map(a => String(opts.indexOf(a))).filter(i => i !== "-1")
+    }
+    const idx = opts.indexOf(ans as string)
+    return idx >= 0 ? String(idx) : ""
+  }, [])
+
   useEffect(() => {
     if (question) {
       setType(question.type)
       setContent(question.content)
       setOptions(question.options || ["", "", "", ""])
-      setAnswer(question.answer)
+      if (question.type === "single" || question.type === "multiple") {
+        setAnswer(answerToIndexes(question.answer, question.options || []))
+      } else {
+        setAnswer(question.answer)
+      }
       setAnalysis(question.analysis || "")
       setDifficulty(question.difficulty || "medium")
       setKnowledgePointIds(question.knowledgePoints || [])
@@ -121,7 +135,7 @@ export function QuestionFormDialog({
     }
     setKnowledgeOpen(false)
     setAdvancedOpen(false)
-  }, [question, open, defaultType])
+  }, [question, open, defaultType, answerToIndexes])
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -157,12 +171,23 @@ export function QuestionFormDialog({
   }, [blankCount, type, answer])
 
   const buildFormData = useCallback((): QuestionFormData => {
+    let finalAnswer: string[]
+    if (type === "single") {
+      finalAnswer = [options[parseInt(answer as string, 10)] || ""]
+    } else if (type === "multiple") {
+      finalAnswer = (answer as string[]).map(a => options[parseInt(a, 10)] || "")
+    } else if (Array.isArray(answer)) {
+      finalAnswer = [...answer]
+    } else {
+      finalAnswer = [answer as string]
+    }
+
     const data: QuestionFormData = {
       type,
       content: content.trim(),
       analysis: analysis.trim() || undefined,
       score: 0,
-      answer: Array.isArray(answer) ? answer : [answer],
+      answer: finalAnswer,
       difficulty,
       knowledgePoints: knowledgePointIds.length > 0 ? knowledgePointIds : undefined,
     }
@@ -226,21 +251,24 @@ export function QuestionFormDialog({
   const removeOption = useCallback((index: number) => {
     setOptions(prev => {
       if (prev.length <= MIN_OPTIONS) return prev
-      const removedText = prev[index]
       const next = prev.filter((_, i) => i !== index)
 
-      if (type === "single" && answer === removedText) {
-        setAnswer("")
-      } else if (type === "multiple" && Array.isArray(answer)) {
-        const currentAnswers = answer as string[]
-        const removeIdx = currentAnswers.indexOf(removedText)
-        if (removeIdx >= 0) {
-          setAnswer([...currentAnswers.slice(0, removeIdx), ...currentAnswers.slice(removeIdx + 1)])
+      setAnswer(prevAnswer => {
+        const adjust = (a: string): string | null => {
+          const idx = parseInt(a, 10)
+          if (idx === index) return null
+          if (idx > index) return String(idx - 1)
+          return String(idx)
         }
-      }
+        if (Array.isArray(prevAnswer)) {
+          return prevAnswer.map(adjust).filter((a): a is string => a !== null)
+        }
+        const adjusted = adjust(prevAnswer as string)
+        return adjusted === null ? "" : adjusted
+      })
       return next
     })
-  }, [type, answer])
+  }, [])
 
   const moveOption = useCallback((index: number, dir: number) => {
     const newIndex = index + dir
@@ -250,31 +278,40 @@ export function QuestionFormDialog({
     newOptions[index] = newOptions[newIndex]
     newOptions[newIndex] = temp
     setOptions(newOptions)
-  }, [options])
 
-  const toggleSingleAnswer = useCallback((index: number) => {
-    setAnswer(options[index])
-  }, [options])
-
-  const toggleMultipleAnswer = useCallback((index: number, checked: boolean) => {
-    const optionText = options[index]
-    setAnswer(prev => {
-      const currentAnswers = Array.isArray(prev) ? prev : []
-      if (checked) {
-        return [...currentAnswers, optionText]
-      } else {
-        const removeIdx = currentAnswers.indexOf(optionText)
-        if (removeIdx >= 0) {
-          return [...currentAnswers.slice(0, removeIdx), ...currentAnswers.slice(removeIdx + 1)]
-        }
-        return currentAnswers
+    setAnswer(prevAnswer => {
+      const swap = (a: string): string => {
+        const idx = parseInt(a, 10)
+        if (idx === index) return String(newIndex)
+        if (idx === newIndex) return String(index)
+        return String(idx)
       }
+      if (Array.isArray(prevAnswer)) {
+        return prevAnswer.map(swap)
+      }
+      return swap(prevAnswer as string)
     })
   }, [options])
 
+  const toggleSingleAnswer = useCallback((index: number) => {
+    setAnswer(String(index))
+  }, [])
+
+  const toggleMultipleAnswer = useCallback((index: number, checked: boolean) => {
+    const indexKey = String(index)
+    setAnswer(prev => {
+      const currentAnswers = Array.isArray(prev) ? prev : []
+      if (checked) {
+        return [...currentAnswers, indexKey]
+      } else {
+        return currentAnswers.filter(a => a !== indexKey)
+      }
+    })
+  }, [])
+
   const isMultipleAnswerChecked = useCallback((index: number) => {
-    return Array.isArray(answer) && answer.includes(options[index])
-  }, [answer, options])
+    return Array.isArray(answer) && answer.includes(String(index))
+  }, [answer])
 
   const insertBlankMarker = useCallback(() => {
     const textarea = contentRef.current
@@ -330,7 +367,7 @@ export function QuestionFormDialog({
         <CardTitle icon={isMultiple ? SquareCheck : CircleDot} color={isMultiple ? "bg-indigo-500" : "bg-blue-500"}>选项设置</CardTitle>
         <div className="flex flex-col gap-1.5">
           {options.map((option, index) => {
-            const checked = isMultiple ? isMultipleAnswerChecked(index) : (answer === option && option.trim() !== "")
+            const checked = isMultiple ? isMultipleAnswerChecked(index) : (answer === String(index))
             return (
               <div
                 key={index}
@@ -520,7 +557,7 @@ export function QuestionFormDialog({
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-2">
             {options.map((option, index) => {
-              const checked = answer === option && option.trim() !== ""
+              const checked = answer === String(index)
               return (
                 <label
                   key={index}
@@ -749,7 +786,7 @@ export function QuestionFormDialog({
                 <div className="px-2 pb-1 pt-1">
                   <label className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">选项随机排序</span>
-                    <Checkbox disabled className="size-4" />
+                    <Checkbox checked={shuffleOptions} onCheckedChange={(c) => setShuffleOptions(!!c)} className="size-4" />
                   </label>
                 </div>
               )}
