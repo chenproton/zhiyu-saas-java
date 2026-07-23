@@ -107,7 +107,7 @@ export default function JobStudentLearnPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#F9FAFC]">
       <main className="flex-1 max-w-[1400px] mx-auto px-8 py-6 w-full">
-        <Link href={`/job/student/${id}`} className="inline-flex items-center gap-1 text-sm text-[#64748b] hover:text-blue-600 mb-4">
+        <Link replace href={`/job/student/${id}`} className="inline-flex items-center gap-1 text-sm text-[#64748b] hover:text-blue-600 mb-4">
           <ArrowLeft className="w-4 h-4" /> 返回岗位详情
         </Link>
 
