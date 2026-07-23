@@ -4,6 +4,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -46,6 +47,7 @@ export function QuestionPreview({ open, onOpenChange, question }: QuestionPrevie
             <Badge variant="secondary">{QUESTION_TYPE_LABELS[question.type]}</Badge>
             <Badge variant="outline">{question.score} 分</Badge>
           </DialogTitle>
+          <DialogDescription>预览题目的详细内容和答案</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4">
           <div>

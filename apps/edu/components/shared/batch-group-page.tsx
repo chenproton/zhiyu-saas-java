@@ -406,7 +406,7 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
                     <TableRow key={batch.id}>
                       <TableCell className="font-medium">
                         {detailHref ? (
-                          <Link href={detailHref(batch.id)} className="hover:text-primary">
+                          <Link href={detailHref(batch.id)} prefetch={false} className="hover:text-primary">
                             {batch.name}
                           </Link>
                         ) : (

@@ -234,6 +234,7 @@ export function KnowledgeGraphD3View({ nodes, edges, title, description, compact
     zoomRef.current = zoom
 
     setTimeout(() => {
+      if (!gRef.current) return
       const bounds = (gRef.current as SVGGElement).getBBox()
       const w = Math.max(bounds.width, 200), h = Math.max(bounds.height, 200)
       const scale = Math.min((0.85 * W) / w, (0.85 * H) / h, 1)
@@ -292,6 +293,7 @@ export function KnowledgeGraphD3View({ nodes, edges, title, description, compact
   const handleReset = () => {
     if (!svgRef.current || !zoomRef.current || !gRef.current) return
     const svg = d3.select(svgRef.current)
+    if (!gRef.current) return
     const bounds = (gRef.current as SVGGElement).getBBox()
     const w = Math.max(bounds.width, 200), h = Math.max(bounds.height, 200)
     const scale = Math.min((0.85 * dims.width) / w, (0.85 * dims.height) / h, 1)

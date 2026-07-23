@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -209,6 +210,7 @@ export function AbilityPointCard({
         <DialogContent size="sm" annotationContext="ability-point">
           <DialogHeader>
             <DialogTitle>全局等级映射规则</DialogTitle>
+            <DialogDescription>查看该能力点的全局等级映射规则</DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <LevelMappingDisplay mapping={globalMapping} />
