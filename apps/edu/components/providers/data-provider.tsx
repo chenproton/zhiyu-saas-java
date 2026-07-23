@@ -415,7 +415,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false
     const loadAll = async () => {
       try {
-        await Promise.all(tasks)
+        await Promise.all(tasks.slice(0, 4))
+        if (cancelled) return
+        await Promise.all(tasks.slice(4))
       } catch (err) {
         if (!cancelled) {
           console.error('Failed to load evaluation data', err)
@@ -671,7 +673,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const newQuestions = exam.questions.map((q) =>
       q.id === examQuestionId ? { ...q, score } : q
     )
-    await examApi.update(examId, { name: exam.name, questions: newQuestions })
+    await examApi.update(examId, {
+      name: exam.name,
+      description: exam.description,
+      duration: exam.duration,
+      coverImage: exam.coverImage,
+      questions: newQuestions,
+    })
     await loadExams()
   }, [exams, loadExams])
 
@@ -679,7 +687,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const exam = exams.find((e) => e.id === examId)
     if (!exam) return
     const ordered = questions.map((q, index) => ({ ...q, order: index + 1 }))
-    await examApi.update(examId, { name: exam.name, questions: ordered })
+    await examApi.update(examId, {
+      name: exam.name,
+      description: exam.description,
+      duration: exam.duration,
+      coverImage: exam.coverImage,
+      questions: ordered,
+    })
     await loadExams()
   }, [exams, loadExams])
 

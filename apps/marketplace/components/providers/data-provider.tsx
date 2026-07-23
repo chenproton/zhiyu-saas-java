@@ -381,11 +381,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           loadQuestionBanks(),
           loadQuestions(),
           loadExams(),
+          loadApprovalItems(),
+        ])
+        if (cancelled) return
+        await Promise.all([
           loadEvaluationMethods(),
           loadSceneTasks(),
           loadSceneResults(),
           loadJobAbilityResults(),
-          loadApprovalItems(),
           loadGraduationTopics(),
           loadGraduationArchives(),
           loadGraduationEvaluations(),
@@ -628,15 +631,29 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const newQuestions = exam.questions.map((q) =>
       q.id === examQuestionId ? { ...q, score } : q
     )
-    await examApi.update(examId, { questions: newQuestions })
+    await examApi.update(examId, {
+      name: exam.name,
+      description: exam.description,
+      duration: exam.duration,
+      coverImage: exam.coverImage,
+      questions: newQuestions,
+    })
     await loadExams()
   }, [exams, loadExams])
 
   const reorderExamQuestions = useCallback(async (examId: string, questions: ExamQuestion[]) => {
+    const exam = exams.find((e) => e.id === examId)
+    if (!exam) return
     const ordered = questions.map((q, index) => ({ ...q, order: index + 1 }))
-    await examApi.update(examId, { questions: ordered })
+    await examApi.update(examId, {
+      name: exam.name,
+      description: exam.description,
+      duration: exam.duration,
+      coverImage: exam.coverImage,
+      questions: ordered,
+    })
     await loadExams()
-  }, [loadExams])
+  }, [exams, loadExams])
 
   const value: DataContextValue = {
     questionBanks,
