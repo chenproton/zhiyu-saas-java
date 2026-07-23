@@ -825,11 +825,12 @@ export default function SceneDetailPage() {
         </div>
       </main>
 
-      {previewResources.map((r) => (
+      {previewResources.map((r, i) => (
         <ResourcePreviewModal
           key={r.id}
           resource={r}
           open
+          index={i}
           onOpenChange={() => setPreviewResources((prev) => prev.filter((x) => x.id !== r.id))}
         />
       ))}

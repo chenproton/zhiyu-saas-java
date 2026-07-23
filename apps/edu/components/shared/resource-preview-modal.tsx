@@ -16,12 +16,13 @@ interface ResourcePreviewModalProps {
   resource: TaskResource | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  index?: number
 }
 
 const MIN_WIDTH = 320
 const MIN_HEIGHT = 200
 
-export function ResourcePreviewModal({ resource, open, onOpenChange }: ResourcePreviewModalProps) {
+export function ResourcePreviewModal({ resource, open, onOpenChange, index = 0 }: ResourcePreviewModalProps) {
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [dragging, setDragging] = useState(false)
   const [size, setSize] = useState<{ width?: number; height?: number }>({})
@@ -102,7 +103,6 @@ export function ResourcePreviewModal({ resource, open, onOpenChange }: ResourceP
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange} modal={false}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-transparent" />
         <DialogPrimitive.Content
           ref={contentRef}
           className={cn(
@@ -113,6 +113,7 @@ export function ResourcePreviewModal({ resource, open, onOpenChange }: ResourceP
             transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px))`,
             width: size.width,
             height: size.height,
+            zIndex: 50 + index,
           }}
           onPointerDownOutside={(e) => e.preventDefault()}
         >
