@@ -81,11 +81,13 @@ type Exam struct {
 	Questions           []ExamQuestion `json:"questions,omitempty"`
 	CoverImage          *string        `json:"coverImage,omitempty"`
 	CollaboratorIDs     []string       `json:"collaboratorIds,omitempty"`
+	CollaboratorNames   []string       `json:"collaboratorNames,omitempty"`
 	CollaboratorDeptIDs []string       `json:"collaboratorDeptIds,omitempty"`
 	BatchID             *string        `json:"batchId,omitempty"`
 	Version             string         `json:"version"`
 	OwnerType           string         `json:"ownerType"`
 	CreatorID           *string        `json:"creatorId,omitempty"`
+	CreatorName         string         `json:"creatorName,omitempty"`
 	CreatedAt           time.Time      `json:"createdAt"`
 	UpdatedAt           time.Time      `json:"updatedAt"`
 }
