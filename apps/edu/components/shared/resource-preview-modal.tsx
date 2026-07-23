@@ -3,7 +3,7 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Button } from "@/components/ui/button"
 import { Download, ExternalLink, X, FileText } from "lucide-react"
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { cn } from "@/lib/utils"
 import type { TaskResource } from "@/lib/types"
 
@@ -22,8 +22,11 @@ interface ResourcePreviewModalProps {
 const MIN_WIDTH = 320
 const MIN_HEIGHT = 200
 
+const OFFSET = 24
+
 export function ResourcePreviewModal({ resource, open, onOpenChange, index = 0 }: ResourcePreviewModalProps) {
-  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const initialPosition = useMemo(() => ({ x: index * OFFSET, y: index * OFFSET }), [index])
+  const [position, setPosition] = useState(initialPosition)
   const [dragging, setDragging] = useState(false)
   const [size, setSize] = useState<{ width?: number; height?: number }>({})
   const [resizing, setResizing] = useState(false)
@@ -33,10 +36,10 @@ export function ResourcePreviewModal({ resource, open, onOpenChange, index = 0 }
 
   useEffect(() => {
     if (open) {
-      setPosition({ x: 0, y: 0 })
+      setPosition(initialPosition)
       setSize({})
     }
-  }, [open])
+  }, [open, initialPosition])
 
   useEffect(() => {
     if (!dragging) return
