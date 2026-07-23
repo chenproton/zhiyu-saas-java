@@ -626,10 +626,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const targetBank = questionBanks.find((b) => b.id === targetBankId)
     if (!targetBank) return
     await Promise.all(
-      questionIds.map((qid) => questionApi.update(qid, { bankId: targetBankId }))
+      questionIds.map((qid) => {
+        const q = getQuestion(qid)
+        if (!q) return Promise.resolve()
+        return questionApi.update(qid, {
+          type: q.type,
+          content: q.content,
+          options: q.options,
+          answer: q.answer,
+          analysis: q.analysis,
+          score: q.score,
+          difficulty: q.difficulty,
+          knowledgePoints: q.knowledgePoints,
+          bankId: targetBankId,
+        })
+      })
     )
     await Promise.all([loadQuestions(), loadQuestionBanks()])
-  }, [questionBanks, loadQuestions, loadQuestionBanks])
+  }, [questionBanks, getQuestion, loadQuestions, loadQuestionBanks])
 
   // ==================== Exam actions ====================
   const getExam = useCallback(
