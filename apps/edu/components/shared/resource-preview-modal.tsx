@@ -1,8 +1,8 @@
 "use client"
 
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Download, ExternalLink, X, FileText } from "lucide-react"
+import { Download, ExternalLink, FileText } from "lucide-react"
 import type { TaskResource } from "@/lib/types"
 
 function buildKkFileViewUrl(fileUrl: string): string {
@@ -23,10 +23,24 @@ export function ResourcePreviewModal({ resource, open, onOpenChange }: ResourceP
         <DialogDescription className="sr-only">
           {resource?.name || "资源"} 的在线预览
         </DialogDescription>
-        <DialogHeader className="shrink-0">
+        <DialogHeader className="shrink-0 flex-row items-center justify-between gap-4">
           <DialogTitle className="flex items-center gap-2 text-base truncate">
             {resource?.name || "资源预览"}
           </DialogTitle>
+          {resource?.url && (
+            <div className="flex items-center gap-2 shrink-0">
+              <Button variant="outline" size="sm" asChild>
+                <a href={resource.url} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-1" />新窗口打开
+                </a>
+              </Button>
+              <Button size="sm" asChild>
+                <a href={resource.url} download={resource.name} target="_blank" rel="noreferrer">
+                  <Download className="h-4 w-4 mr-1" />下载
+                </a>
+              </Button>
+            </div>
+          )}
         </DialogHeader>
 
         <div className="flex-1 min-h-0 border rounded-lg overflow-hidden bg-gray-100">
@@ -44,26 +58,6 @@ export function ResourcePreviewModal({ resource, open, onOpenChange }: ResourceP
             </div>
           )}
         </div>
-
-        <DialogFooter className="shrink-0 gap-2">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            <X className="h-4 w-4 mr-1" />关闭
-          </Button>
-          {resource?.url && (
-            <>
-              <Button variant="outline" size="sm" asChild>
-                <a href={resource.url} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4 mr-1" />新窗口打开
-                </a>
-              </Button>
-              <Button size="sm" asChild>
-                <a href={resource.url} download={resource.name} target="_blank" rel="noreferrer">
-                  <Download className="h-4 w-4 mr-1" />下载
-                </a>
-              </Button>
-            </>
-          )}
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
