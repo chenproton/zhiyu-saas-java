@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, GripVertical, Trash2, Eye, FileText, Wand2, Hand, Plus, Edit, FileUp, Rocket, ArrowDownFromLine, ImageIcon, Users, Building2 } from "lucide-react"
+import { ArrowLeft, GripVertical, Trash2, Eye, FileText, Wand2, Hand, Plus, Edit, FileUp, Rocket, ImageIcon, Users, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -81,7 +81,6 @@ export default function ExamComposerPage() {
 
   const canEdit = !isPreview && ['draft', 'rejected', 'approved', 'published'].includes(exam.status)
   const canPublish = !isPreview && canPerformAction(exam.status, 'publish')
-  const canUnpublish = !isPreview && canPerformAction(exam.status, 'unpublish')
 
   const handleExamUpdate = (data: ExamFormData) => {
     updateExam(examId, data)
@@ -226,12 +225,6 @@ export default function ExamComposerPage() {
                     <Button variant="outline" size="sm" className="text-indigo-600 hover:text-indigo-700" onClick={() => updateExamStatus(examId, 'publish')}>
                       <Rocket className="mr-1 size-4" />
                       发布
-                    </Button>
-                  )}
-                  {canUnpublish && (
-                    <Button variant="outline" size="sm" className="text-red-500 hover:text-red-600" onClick={() => updateExamStatus(examId, 'unpublish')}>
-                      <ArrowDownFromLine className="mr-1 size-4" />
-                      取消发布
                     </Button>
                   )}
                 </div>
