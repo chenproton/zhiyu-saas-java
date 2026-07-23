@@ -106,7 +106,7 @@ export function ResourcePreviewModal({ resource, open, onOpenChange }: ResourceP
         <DialogPrimitive.Content
           ref={contentRef}
           className={cn(
-            "fixed top-[50%] left-[50%] z-50 flex flex-col w-full max-w-[calc(100%-2rem)] sm:max-w-4xl h-[85vh] bg-background rounded-lg border p-3 shadow-none duration-200 group relative",
+            "fixed top-[50%] left-[50%] z-50 flex flex-col w-full max-w-[calc(100%-2rem)] sm:max-w-4xl h-[85vh] bg-background rounded-lg border p-3 shadow-none duration-200 group",
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
           )}
           style={{
