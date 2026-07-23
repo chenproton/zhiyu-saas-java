@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -108,6 +109,8 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 		batchID := h.lookupBatch(ctx, tenantID, batchName, "batches")
 		majorIDs := h.lookupMajors(ctx, tenantID, majorNames)
 
+		originalName := name
+
 		positionID := uuid.NewString()
 		_, err := h.DB.Exec(ctx, `
 			INSERT INTO career_positions (id, tenant_id, name, short_name, industry_id, position_type,
@@ -115,21 +118,22 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'v1.0','draft',$12,'{}')
 		`, positionID, tenantID, name, shortName, industryID, positionType,
 			salaryMin, salaryMax, description, requirements, careerPath, userID)
-		isNew := true
-		if err != nil {
-			var existingID string
-			h.DB.QueryRow(ctx, `SELECT id FROM career_positions WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
-			if existingID != "" {
-				positionID = existingID
-				isNew = false
-			} else {
-				result.Failed++
-				result.Errors = append(result.Errors, fmt.Sprintf("岗位[%s]创建失败: %v", name, err))
-				continue
-			}
+		if isUniqueViolation(err) {
+			name = name + "_" + time.Now().Format("01021504")
+			positionID = uuid.NewString()
+			_, err = h.DB.Exec(ctx, `
+				INSERT INTO career_positions (id, tenant_id, name, short_name, industry_id, position_type,
+					salary_min, salary_max, description, requirements, career_path, version, status, created_by, collaborators)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'v1.0','draft',$12,'{}')
+			`, positionID, tenantID, name, shortName, industryID, positionType,
+				salaryMin, salaryMax, description, requirements, careerPath, userID)
 		}
-
-		if isNew && batchID != nil {
+		if err != nil {
+			result.Failed++
+			result.Errors = append(result.Errors, fmt.Sprintf("岗位[%s]创建失败: %v", name, err))
+			continue
+		}
+		if batchID != nil {
 			h.DB.Exec(ctx, `UPDATE career_positions SET batch_id=$1 WHERE id=$2`, *batchID, positionID)
 		}
 		for _, mid := range majorIDs {
@@ -146,7 +150,7 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 				uuid.NewString(), tenantID, positionID, certID)
 		}
 
-		positionMap[name] = positionID
+		positionMap[originalName] = positionID
 		result.PositionCreated++
 		result.Created++
 	}
