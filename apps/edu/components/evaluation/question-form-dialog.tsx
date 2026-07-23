@@ -104,7 +104,7 @@ export function QuestionFormDialog({
       content: content.trim(),
       analysis: analysis.trim() || undefined,
       score: 0, // 默认为0，在组卷时设置
-      answer,
+      answer: Array.isArray(answer) ? answer : [answer],
       difficulty,
       knowledgePoints: knowledgePointIds.length > 0 ? knowledgePointIds : undefined,
     }
@@ -135,20 +135,51 @@ export function QuestionFormDialog({
     if (type === "single" && answer === options[index]) {
       setAnswer("")
     } else if (type === "multiple" && Array.isArray(answer)) {
-      setAnswer(answer.filter(a => a !== options[index]))
+      const currentAnswers = answer as string[]
+      const removeIdx = currentAnswers.indexOf(options[index])
+      if (removeIdx >= 0) {
+        setAnswer([...currentAnswers.slice(0, removeIdx), ...currentAnswers.slice(removeIdx + 1)])
+      }
     }
+  }
+
+  const getSingleAnswerIndex = (): string => {
+    const filtered = options.filter(o => o.trim())
+    const idx = filtered.indexOf(answer as string)
+    return idx >= 0 ? String(idx) : ""
   }
 
   const handleSingleAnswerChange = (value: string) => {
     setAnswer(value)
   }
 
-  const handleMultipleAnswerChange = (option: string, checked: boolean) => {
+  const handleSingleAnswerIndexChange = (idxStr: string) => {
+    const filtered = options.filter(o => o.trim())
+    const idx = parseInt(idxStr)
+    setAnswer(filtered[idx] || "")
+  }
+
+  const getMultipleCheckedIndex = (idx: number): boolean => {
+    if (!Array.isArray(answer)) return false
+    const filtered = options.filter(o => o.trim())
+    const optionText = filtered[idx] || ""
+    const answerTexts = answer as string[]
+    const inAnswerCount = answerTexts.filter(a => a === optionText).length
+    const beforeCount = filtered.slice(0, idx).filter(o => o === optionText).length
+    return beforeCount < inAnswerCount
+  }
+
+  const handleMultipleAnswerChange = (idx: number, checked: boolean) => {
+    const filtered = options.filter(o => o.trim())
+    const optionText = filtered[idx] || ""
     const currentAnswers = Array.isArray(answer) ? answer : []
     if (checked) {
-      setAnswer([...currentAnswers, option])
+      setAnswer([...currentAnswers, optionText])
     } else {
-      setAnswer(currentAnswers.filter(a => a !== option))
+      const removeIdx = currentAnswers.indexOf(optionText)
+      if (removeIdx >= 0) {
+        setAnswer([...currentAnswers.slice(0, removeIdx), ...currentAnswers.slice(removeIdx + 1)])
+      }
     }
   }
 
@@ -170,10 +201,10 @@ export function QuestionFormDialog({
         return (
           <Field>
             <FieldLabel>正确答案</FieldLabel>
-            <RadioGroup value={answer as string} onValueChange={handleSingleAnswerChange}>
+            <RadioGroup value={getSingleAnswerIndex()} onValueChange={handleSingleAnswerIndexChange}>
               {options.filter(o => o.trim()).map((option, index) => (
                 <div key={index} className="flex items-center gap-2">
-                  <RadioGroupItem value={option} id={`answer-${index}`} />
+                  <RadioGroupItem value={String(index)} id={`answer-${index}`} />
                   <Label htmlFor={`answer-${index}`}>{option}</Label>
                 </div>
               ))}
@@ -189,8 +220,8 @@ export function QuestionFormDialog({
                 <div key={index} className="flex items-center gap-2">
                   <Checkbox
                     id={`answer-${index}`}
-                    checked={Array.isArray(answer) && answer.includes(option)}
-                    onCheckedChange={(checked) => handleMultipleAnswerChange(option, !!checked)}
+                    checked={getMultipleCheckedIndex(index)}
+                    onCheckedChange={(checked) => handleMultipleAnswerChange(index, !!checked)}
                   />
                   <Label htmlFor={`answer-${index}`}>{option}</Label>
                 </div>
