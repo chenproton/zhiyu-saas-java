@@ -2748,7 +2748,15 @@ function EditCardDialog({
       } catch { /* ignore */ }
     }
     const label = mk === "question_bank" ? "题库" : "随堂测"
-    const exam = await examApi.create({ name: `${task.name}-${label}临时试卷`, duration: currentCfg?.timeLimit || 90 } as any)
+    const examName = `${task.name}-${label}临时试卷`
+    // If name already taken, lookup existing exam; else create new with unique name
+    let exam: any
+    try {
+      exam = await examApi.create({ name: examName, duration: currentCfg?.timeLimit || 90 } as any)
+    } catch {
+      // Name conflict — append timestamp to make unique
+      exam = await examApi.create({ name: `${examName}-${Date.now()}`, duration: currentCfg?.timeLimit || 90 } as any)
+    }
     for (const qid of questionIds) {
       await examApi.addQuestion(exam.id, qid, questionScores[qid] || 10)
     }
