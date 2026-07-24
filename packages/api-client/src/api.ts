@@ -676,6 +676,8 @@ export const publicPositionApi = createCrudApi<CareerPosition, never, never>("/j
 
 export const positionApi = {
   ...createContentApi<CareerPosition, Omit<CareerPosition, "id" | "createdAt" | "updatedAt">, Partial<Omit<CareerPosition, "id" | "createdAt" | "updatedAt">>>("/job/positions"),
+  clone: (id: string, body?: { name?: string }) =>
+    request<CareerPosition>(`/job/positions/${id}/clone`, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
   saveFull: (id: string, req: {
     batchId: string
     name: string
@@ -785,7 +787,11 @@ export const jobBannerApi = createCrudApi<BannerConfig, Omit<BannerConfig, "id" 
 
 // ==================== Phase 3.3: Scene APIs ====================
 
-export const scenarioApi = createContentApi<Scenario, Omit<Scenario, "id" | "createdAt" | "updatedAt">, Partial<Omit<Scenario, "id" | "createdAt" | "updatedAt">>>("/scene/scenarios")
+export const scenarioApi = {
+  ...createContentApi<Scenario, Omit<Scenario, "id" | "createdAt" | "updatedAt">, Partial<Omit<Scenario, "id" | "createdAt" | "updatedAt">>>("/scene/scenarios"),
+  clone: (id: string, body?: { name?: string; code?: string }) =>
+    request<Scenario>(`/scene/scenarios/${id}/clone`, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
+}
 
 export const taskApi = {
   list: (params?: { scenarioId?: string; search?: string; limit?: number; offset?: number }) =>

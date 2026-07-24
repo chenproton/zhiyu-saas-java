@@ -89,6 +89,7 @@ export interface ContentApi {
   delete: (id: string) => Promise<any>
   invite: (id: string, userId: string) => Promise<any>
   update: (id: string, req: any) => Promise<any>
+  clone?: (id: string, body?: { name?: string; code?: string }) => Promise<any>
 }
 
 export interface ContentBatchApi {
@@ -481,11 +482,15 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       const item = frontItems.find((i) => i.id === id)
       if (!item) continue
       try {
-        await itemApi.create({
-          ...createPayload(currentUserId, entityLabel),
-          name: `${item.name} (克隆)`,
-          batchId: item.batchId,
-        })
+        if (itemApi.clone) {
+          await itemApi.clone(item.id, { name: `${item.name} (克隆)` })
+        } else {
+          await itemApi.create({
+            ...createPayload(currentUserId, entityLabel),
+            name: `${item.name} (克隆)`,
+            batchId: item.batchId,
+          })
+        }
       } catch (_) {}
     }
     setSelectedIds([])
@@ -538,11 +543,15 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const handleConfirmClone = async () => {
     if (!cloneTarget) return
     try {
-      await itemApi.create({
-        ...createPayload(currentUserId, entityLabel),
-        name: cloneRenameValue,
-        batchId: cloneTarget.batchId,
-      })
+      if (itemApi.clone) {
+        await itemApi.clone(cloneTarget.id, { name: cloneRenameValue })
+      } else {
+        await itemApi.create({
+          ...createPayload(currentUserId, entityLabel),
+          name: cloneRenameValue,
+          batchId: cloneTarget.batchId,
+        })
+      }
     } catch (_) {}
     setIsCloneRenameDialogOpen(false)
     setCloneTarget(null)

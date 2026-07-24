@@ -134,6 +134,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 
 	// Phase 3.2: job handlers
 	positionHandler := &handler.PositionHandler{DB: db}
+	positionCloneHandler := &handler.PositionCloneHandler{DB: db}
 	abilityHandler := &handler.AbilityHandler{DB: db}
 	positionAbilityHandler := &handler.PositionAbilityHandler{DB: db}
 	positionResponsibilityHandler := &handler.PositionResponsibilityHandler{DB: db}
@@ -147,6 +148,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 
 	// Phase 3.3: scene handlers
 	scenarioHandler := &handler.ScenarioHandler{DB: db}
+	scenarioCloneHandler := &handler.ScenarioCloneHandler{DB: db}
 	scenarioTaskHandler := &handler.ScenarioTaskHandler{DB: db}
 	taskEvaluationHandler := &handler.TaskEvaluationHandler{DB: db}
 	taskResourceHandler := &handler.TaskResourceHandler{DB: db}
@@ -401,8 +403,9 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 				r.Use(businessUser)
 
 				// Phase 3.2: job routes
-				registerContentRoutes(r, "/job/positions", positionHandler)
-				r.Put("/job/positions/{id}/save-full", positionHandler.SaveFull)
+			registerContentRoutes(r, "/job/positions", positionHandler)
+			r.Post("/job/positions/{id}/clone", positionCloneHandler.Clone)
+			r.Put("/job/positions/{id}/save-full", positionHandler.SaveFull)
 				r.Get("/job/positions/{id}/favorite", positionHandler.GetFavorite)
 				r.Post("/job/positions/{id}/favorite", positionHandler.ToggleFavorite)
 				r.Get("/job/positions/favorites", positionHandler.ListFavorites)
@@ -462,6 +465,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 
 				// Phase 3.3: scene routes
 				registerContentRoutes(r, "/scene/scenarios", scenarioHandler)
+			r.Post("/scene/scenarios/{id}/clone", scenarioCloneHandler.Clone)
 
 				r.Get("/scene/tasks", scenarioTaskHandler.List)
 				r.Get("/scene/tasks/{id}", scenarioTaskHandler.Get)
