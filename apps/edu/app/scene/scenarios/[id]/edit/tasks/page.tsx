@@ -1174,12 +1174,20 @@ export default function TasksEditPage() {
       }
       if (t.id.startsWith("task-")) {
         const created = await taskApi.create(payload)
+        const oldId = t.id
         t.id = created.id
-        await taskEvaluationApi.saveMethods(created.id, { version: ts.evalMethodVersion, methods: taskStateToMethodsInput(ts) })
+        // 临时 ID 创建的 task 需要把 state key 迁移到真实 ID，否则后续状态丢失
+        updatedTaskStates[t.id] = { ...ts, evalMethodVersion: ts.evalMethodVersion }
+        delete updatedTaskStates[oldId]
+        const savedRes = await taskEvaluationApi.saveMethods(t.id, { version: ts.evalMethodVersion, methods: taskStateToMethodsInput(ts) })
+        const newVersion = (savedRes.methods || []).reduce((max, m) => Math.max(max, m.version || 0), 0)
+        updatedTaskStates[t.id].evalMethodVersion = newVersion
       } else {
         await taskApi.update(t.id, payload)
         const methodsInput = taskStateToMethodsInput(ts)
-        await taskEvaluationApi.saveMethods(t.id, { version: ts.evalMethodVersion, methods: methodsInput })
+        const savedRes = await taskEvaluationApi.saveMethods(t.id, { version: ts.evalMethodVersion, methods: methodsInput })
+        const newVersion = (savedRes.methods || []).reduce((max, m) => Math.max(max, m.version || 0), 0)
+        updatedTaskStates[t.id].evalMethodVersion = newVersion
       }
     }
   }
