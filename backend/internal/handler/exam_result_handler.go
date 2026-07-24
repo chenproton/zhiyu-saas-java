@@ -127,8 +127,13 @@ func (h *ExamResultHandler) submit(ctx context.Context, tenantID, userID, usageI
 	}
 
 	score := 0.0
+	hasSubjective := false
 	passScore := totalScore * 0.6
 	for _, qq := range questions {
+		if qq.qType == string(domain.QuestionTypeFill) || qq.qType == string(domain.QuestionTypeEssay) || qq.qType == string(domain.QuestionTypeShortAnswer) {
+			hasSubjective = true
+			continue
+		}
 		raw, ok := answers[qq.id]
 		if !ok {
 			continue
@@ -172,7 +177,7 @@ func (h *ExamResultHandler) submit(ctx context.Context, tenantID, userID, usageI
 	}
 
 	// Bridge: auto-create scene_evaluation_result if exam targets a task
-	h.syncSceneEvaluationResult(ctx, tenantID, usageID, userID, score, totalScore, answersJSON)
+	h.syncSceneEvaluationResult(ctx, tenantID, usageID, userID, score, totalScore, answersJSON, hasSubjective)
 
 	return &domain.ExamResult{
 		ID:          resultID,
@@ -267,7 +272,7 @@ func roundScore(s float64) float64 {
 	return float64(int64(s*100+0.5)) / 100
 }
 
-func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenantID, usageID, userID string, score, maxScore float64, objectiveAnswers domain.JSONMap) {
+func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenantID, usageID, userID string, score, maxScore float64, objectiveAnswers domain.JSONMap, hasSubjective bool) {
 	rows, err := h.DB.Query(ctx, `
 		SELECT tem.method_key, tem.task_id
 		FROM exam_usages eu
@@ -279,6 +284,11 @@ func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenan
 	}
 	defer rows.Close()
 
+	status := "evaluated"
+	if hasSubjective {
+		status = "pending"
+	}
+
 	for rows.Next() {
 		var methodKey, taskID string
 		if err := rows.Scan(&methodKey, &taskID); err != nil {
@@ -286,9 +296,9 @@ func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenan
 		}
 		_, _ = h.DB.Exec(ctx, `
 			INSERT INTO scene_evaluation_results (tenant_id, task_id, method_key, evaluatee_id, status, total_score, max_score, objective_answers)
-			VALUES ($1, $2, $3, $4, 'evaluated', $5, $6, $7)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 			ON CONFLICT (task_id, evaluatee_id, method_key)
-			DO UPDATE SET total_score = EXCLUDED.total_score, max_score = EXCLUDED.max_score, status = 'evaluated', objective_answers = EXCLUDED.objective_answers, graded_at = NOW()
-		`, tenantID, taskID, methodKey, userID, score, maxScore, objectiveAnswers)
+			DO UPDATE SET total_score = EXCLUDED.total_score, max_score = EXCLUDED.max_score, status = EXCLUDED.status, objective_answers = EXCLUDED.objective_answers, graded_at = CASE WHEN EXCLUDED.status = 'evaluated' THEN NOW() ELSE NULL END
+		`, tenantID, taskID, methodKey, userID, status, score, maxScore, objectiveAnswers)
 	}
 }
