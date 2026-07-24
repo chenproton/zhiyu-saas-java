@@ -363,26 +363,19 @@ export const libraryNavigationConfig: PlatformNavigationConfig = {
   ],
   sideNavItems: [
     {
-      id: "knowledge-center",
-      label: "教学资源",
-      icon: "bookOpen",
+      id: "resource-center",
+      label: "公共资源库",
+      icon: "folderKanban",
       children: [
         { id: "knowledge", label: "知识点库", href: "/library/knowledge", matchers: ["/library/knowledge"] },
         { id: "ability", label: "能力点库", href: "/library/ability", matchers: ["/library/ability"] },
         { id: "certificates", label: "证书库", href: "/library/certificates", matchers: ["/library/certificates"] },
-      ],
-    },
-    {
-      id: "task-resource-center",
-      label: "场景任务资源",
-      icon: "folderKanban",
-      children: [
-        { id: "resources", label: "资源库管理", href: "/library/resources", matchers: ["/library/resources"] },
+        { id: "resources", label: "教学资源库", href: "/library/resources", matchers: ["/library/resources"] },
         { id: "questions", label: "现场问答题库", href: "/library/questions", matchers: ["/library/questions"] },
       ],
     },
   ],
-  defaultExpandedSideNavIds: ["knowledge-center", "task-resource-center"],
+  defaultExpandedSideNavIds: ["resource-center"],
   platformSwitchItems: [],
   shellClassName: "bg-background",
   mainClassName: "min-w-0 flex-1",

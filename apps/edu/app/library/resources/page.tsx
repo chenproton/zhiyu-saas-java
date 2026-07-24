@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import {
   FileText, Table, Image, Link, Music, Video, Archive,
-  Building, Wrench, AppWindow, HelpCircle, Pencil, Plus, Search, Trash2, ExternalLink,
+  Building, Wrench, AppWindow, HelpCircle, Pencil, Plus, Search, Trash2, ExternalLink, X,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -22,16 +22,11 @@ import { RESOURCE_TYPE_LABELS, type ResourceLibraryItem, type ResourceKind } fro
 import { useToast } from "@/hooks/use-toast"
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
-  document: <FileText className="size-4" />,
-  spreadsheet: <Table className="size-4" />,
-  image: <Image className="size-4" />,
-  link: <Link className="size-4" />,
-  audio: <Music className="size-4" />,
-  video: <Video className="size-4" />,
-  archive: <Archive className="size-4" />,
-  venue: <Building className="size-4" />,
-  facility: <Wrench className="size-4" />,
-  software: <AppWindow className="size-4" />,
+  document: <FileText className="size-4" />, spreadsheet: <Table className="size-4" />,
+  image: <Image className="size-4" />, link: <Link className="size-4" />,
+  audio: <Music className="size-4" />, video: <Video className="size-4" />,
+  archive: <Archive className="size-4" />, venue: <Building className="size-4" />,
+  facility: <Wrench className="size-4" />, software: <AppWindow className="size-4" />,
   other: <HelpCircle className="size-4" />,
 }
 
@@ -51,6 +46,8 @@ const TYPE_BG: Record<string, string> = {
   software: "bg-teal-50", other: "bg-stone-50",
 }
 
+const ALL_TYPES = ["document", "spreadsheet", "image", "link", "audio", "video", "archive", "venue", "facility", "software", "other"]
+
 function formatSize(bytes?: number) {
   if (!bytes) return "-"
   if (bytes < 1024) return `${bytes} B`
@@ -60,10 +57,10 @@ function formatSize(bytes?: number) {
 
 export default function ResourcesPage() {
   const { toast } = useToast()
-  const [items, setItems] = useState<ResourceLibraryItem[]>([])
+  const [allItems, setAllItems] = useState<ResourceLibraryItem[]>([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [typeFilter, setTypeFilter] = useState("")
+  const [typeFilters, setTypeFilters] = useState<string[]>([])
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<ResourceLibraryItem | null>(null)
@@ -77,23 +74,35 @@ export default function ResourcesPage() {
   const loadItems = async () => {
     setLoading(true)
     try {
-      const params: any = { limit: 500 }
-      if (searchQuery) params.search = searchQuery
-      if (typeFilter) params.resourceType = typeFilter
-      const res = await resourceLibraryApi.list(params)
-      setItems(res.items)
+      const res = await resourceLibraryApi.list({ limit: 500 })
+      setAllItems(res.items)
     } catch (err: any) {
       toast({ variant: "destructive", title: "加载失败", description: err.message || "无法获取资源列表" })
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
   }
 
-  useEffect(() => { loadItems() }, [searchQuery, typeFilter])
+  useEffect(() => { loadItems() }, [])
 
-  const typeCounts: Record<string, number> = {}
-  for (const item of items) {
-    typeCounts[item.resourceType] = (typeCounts[item.resourceType] || 0) + 1
+  const items = useMemo(() => {
+    let list = allItems
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      list = list.filter(r => r.name.toLowerCase().includes(q) || (r.description || "").toLowerCase().includes(q))
+    }
+    if (typeFilters.length > 0) {
+      list = list.filter(r => typeFilters.includes(r.resourceType))
+    }
+    return list
+  }, [allItems, searchQuery, typeFilters])
+
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const item of items) { counts[item.resourceType] = (counts[item.resourceType] || 0) + 1 }
+    return counts
+  }, [items])
+
+  const toggleTypeFilter = (t: string) => {
+    setTypeFilters(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])
   }
 
   const handleOpenAdd = () => {
@@ -113,20 +122,12 @@ export default function ResourcesPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("确定要删除该资源吗？")) return
-    try {
-      await resourceLibraryApi.delete(id)
-      toast({ title: "删除成功" })
-      loadItems()
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "删除失败", description: err.message })
-    }
+    try { await resourceLibraryApi.delete(id); toast({ title: "删除成功" }); loadItems() }
+    catch (err: any) { toast({ variant: "destructive", title: "删除失败", description: err.message }) }
   }
 
   const handleSubmit = async () => {
-    if (!name.trim()) {
-      toast({ variant: "destructive", title: "名称不能为空" })
-      return
-    }
+    if (!name.trim()) { toast({ variant: "destructive", title: "名称不能为空" }); return }
     const sizeNum = fileSize ? parseInt(fileSize, 10) : undefined
     try {
       if (editingItem) {
@@ -144,11 +145,8 @@ export default function ResourcesPage() {
         } as any)
         toast({ title: "创建成功" })
       }
-      setIsDialogOpen(false)
-      loadItems()
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "保存失败", description: err.message })
-    }
+      setIsDialogOpen(false); loadItems()
+    } catch (err: any) { toast({ variant: "destructive", title: "保存失败", description: err.message }) }
   }
 
   return (
@@ -160,10 +158,7 @@ export default function ResourcesPage() {
             <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
               <HelpCircle className="size-5 text-blue-600" />
             </div>
-            <div>
-              <div className="text-2xl font-bold text-blue-700">{items.length}</div>
-              <div className="text-xs text-blue-500">资源总数</div>
-            </div>
+            <div><div className="text-2xl font-bold text-blue-700">{items.length}</div><div className="text-xs text-blue-500">资源总数</div></div>
           </CardContent>
         </Card>
         {Object.entries(typeCounts).slice(0, 5).map(([type, count]) => (
@@ -172,39 +167,55 @@ export default function ResourcesPage() {
               <div className={`w-10 h-10 rounded-lg ${TYPE_BG[type] || "bg-slate-50"} flex items-center justify-center`}>
                 <span style={{ color: TYPE_COLORS[type] || "#78716c" }}>{TYPE_ICONS[type] || TYPE_ICONS.other}</span>
               </div>
-              <div>
-                <div className="text-xl font-bold text-slate-700">{count}</div>
-                <div className="text-xs text-slate-400">{TYPE_LABEL_MAP[type] || type}</div>
-              </div>
+              <div><div className="text-xl font-bold text-slate-700">{count}</div><div className="text-xs text-slate-400">{TYPE_LABEL_MAP[type] || type}</div></div>
             </CardContent>
           </Card>
         ))}
       </div>
 
+      {/* Type filter pills */}
+      <div className="bg-white rounded-xl p-3 flex gap-2 flex-wrap items-center border border-slate-100 shadow-sm">
+        <span className="text-sm text-slate-400 mr-1 shrink-0">类型筛选：</span>
+        {ALL_TYPES.map(type => {
+          const active = typeFilters.includes(type)
+          return (
+            <button key={type} onClick={() => toggleTypeFilter(type)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer border-none"
+              style={{
+                background: active ? TYPE_COLORS[type] : "#f8fafc",
+                color: active ? "#fff" : "#64748b",
+                border: `1px solid ${active ? TYPE_COLORS[type] : "#e2e8f0"}`,
+                boxShadow: active ? `0 2px 8px ${TYPE_COLORS[type]}30` : "none",
+              }}
+            >
+              <span style={{ color: active ? "#fff" : TYPE_COLORS[type] }}>{TYPE_ICONS[type] || TYPE_ICONS.other}</span>
+              {TYPE_LABEL_MAP[type] || "其他"}
+              <span className="tabular-nums opacity-60">{typeCounts[type] || 0}</span>
+              {active && <X className="size-3 ml-0.5" />}
+            </button>
+          )
+        })}
+        {(typeFilters.length > 0 || searchQuery) && (
+          <button onClick={() => { setTypeFilters([]); setSearchQuery("") }}
+            className="ml-auto px-3 py-1.5 text-xs text-red-400 hover:text-red-600 font-medium border border-red-200 rounded-xl bg-red-50 hover:bg-red-100 transition-colors"
+          >
+            清除筛选
+          </button>
+        )}
+      </div>
+
       {/* Main table card */}
       <Card className="border-0 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-base font-semibold">场景任务资源库</CardTitle>
+          <CardTitle className="text-base font-semibold">教学资源库</CardTitle>
           <Button onClick={handleOpenAdd} size="sm"><Plus className="size-4 mr-1" />新增资源</Button>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-3 mb-4">
-            <div className="relative flex-1 max-w-sm">
+          <div className="mb-4">
+            <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input placeholder="搜索资源..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+              <Input placeholder="搜索资源名称..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
             </div>
-            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v === "all" ? "" : v)}>
-              <SelectTrigger className="w-36"><SelectValue placeholder="资源类型" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全部类型</SelectItem>
-                {Object.entries(RESOURCE_TYPE_LABELS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {(searchQuery || typeFilter) && (
-              <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(""); setTypeFilter("") }}>清除筛选</Button>
-            )}
           </div>
 
           <div className="rounded-lg border">
@@ -242,9 +253,7 @@ export default function ResourcesPage() {
                       <td className="p-3">
                         <Badge variant="outline" className="text-xs" style={{ color, borderColor: color }}>{TYPE_LABEL_MAP[item.resourceType] || item.resourceType}</Badge>
                       </td>
-                      <td className="p-3 hidden md:table-cell">
-                        {item.url ? <a href={item.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"><ExternalLink className="size-3" />访问</a> : "-"}
-                      </td>
+                      <td className="p-3 hidden md:table-cell">{item.url ? <a href={item.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"><ExternalLink className="size-3" />访问</a> : "-"}</td>
                       <td className="p-3 text-xs text-slate-400 hidden md:table-cell">{formatSize(item.fileSize)}</td>
                       <td className="p-3 text-xs text-slate-400 hidden lg:table-cell max-w-[200px] truncate">{item.description || "-"}</td>
                       <td className="p-3 text-right whitespace-nowrap">
@@ -260,7 +269,6 @@ export default function ResourcesPage() {
         </CardContent>
       </Card>
 
-      {/* Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>{editingItem ? "编辑资源" : "新增资源"}</DialogTitle></DialogHeader>
@@ -279,10 +287,7 @@ export default function ResourcesPage() {
             <div><Label>文件大小（字节）</Label><Input value={fileSize} onChange={e => setFileSize(e.target.value)} placeholder="文件大小" /></div>
             <div><Label>描述</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="资源描述" rows={3} /></div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>取消</Button>
-            <Button onClick={handleSubmit}>保存</Button>
-          </DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setIsDialogOpen(false)}>取消</Button><Button onClick={handleSubmit}>保存</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
