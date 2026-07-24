@@ -1471,7 +1471,7 @@ export default function TasksEditPage() {
         </div>
 
       {/* Add Task Dialog */}
-      <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen}>
+      <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen} modal={false}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <PrdAnnotation data={getAnnotation("editor-add-task")}>
@@ -2768,7 +2768,6 @@ function EditCardDialog({
     for (const qid of questionIds) {
       await examApi.addQuestion(exam.id, qid, questionScores[qid] || 10)
     }
-    await examApi.publish(exam.id).catch(() => {})
     await examUsageApi.create({ examId: exam.id, name: `${exam.name} 默认安排`, targetType: "public", targetIds: [taskId] } as any)
     return exam.id
   }
@@ -8363,7 +8362,7 @@ function EditCardDialog({
             : "sm:max-w-[550px] max-h-[85vh]"
 
   return (
-    <Dialog open onOpenChange={onClose}>
+    <Dialog open onOpenChange={onClose} modal={false}>
       <DialogContent className={cn(
         "flex flex-col overflow-hidden",
         dialogSizeClass
