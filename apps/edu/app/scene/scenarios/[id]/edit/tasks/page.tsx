@@ -1734,6 +1734,7 @@ function BankQuestionSelectorPanel({
   onToggleQuestion,
   questionScores,
   onUpdateQuestionScore,
+  onUpdateQuestionScores,
 }: {
   field: "questionBankQuestions" | "quizQuestions"
   selectedIds: string[]
@@ -1741,6 +1742,7 @@ function BankQuestionSelectorPanel({
   onToggleQuestion: (qid: string) => void
   questionScores?: Record<string, number>
   onUpdateQuestionScore?: (qid: string, score: number) => void
+  onUpdateQuestionScores?: (scores: Record<string, number>) => void
 }) {
   const [banks, setBanks] = useState<any[]>([])
   const [bankQuestions, setBankQuestions] = useState<any[]>([])
@@ -1823,20 +1825,25 @@ function BankQuestionSelectorPanel({
   }, [bankQuestions, questionSearch])
 
   const handleEvenDistribution = () => {
-    if (!onUpdateQuestionScore || selectedIds.length === 0) return
+    if (selectedIds.length === 0) return
     const n = selectedIds.length
     const base = Math.floor(100 / n)
     const remainder = 100 - base * n
-    selectedIds.forEach((qid, idx) => {
-      onUpdateQuestionScore(qid, base + (idx < remainder ? 1 : 0))
-    })
+    const scores: Record<string, number> = {}
+    selectedIds.forEach((qid, idx) => { scores[qid] = base + (idx < remainder ? 1 : 0) })
+    if (onUpdateQuestionScores) {
+      onUpdateQuestionScores(scores)
+    } else if (onUpdateQuestionScore) {
+      selectedIds.forEach((qid, idx) => { onUpdateQuestionScore(qid, scores[qid]) })
+    }
   }
 
   const handleTypeDistribution = (scores: Record<string, number>) => {
-    if (!onUpdateQuestionScore) return
-    Object.entries(scores).forEach(([qid, score]) => {
-      onUpdateQuestionScore(qid, score)
-    })
+    if (onUpdateQuestionScores) {
+      onUpdateQuestionScores(scores)
+    } else if (onUpdateQuestionScore) {
+      Object.entries(scores).forEach(([qid, score]) => { onUpdateQuestionScore(qid, score) })
+    }
   }
 
   // Resolve a question by id — first from current bank, then preloaded/cache, then allQuestions
@@ -5842,6 +5849,7 @@ function EditCardDialog({
                   onToggleQuestion={(qid) => toggleQuestion(qid, "questionBankQuestions")}
                   questionScores={state.methodResourceConfigs?.question_bank?.questionScores || {}}
                   onUpdateQuestionScore={(qid, score) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, question_bank: { ...(state.methodResourceConfigs.question_bank || {}), questionScores: { ...(state.methodResourceConfigs.question_bank?.questionScores || {}), [qid]: score } } } })}
+                  onUpdateQuestionScores={(scores) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, question_bank: { ...(state.methodResourceConfigs.question_bank || {}), questionScores: { ...(state.methodResourceConfigs.question_bank?.questionScores || {}), ...scores } } } })}
                 />
                 <div className="border rounded-xl p-4">
                   <p className="text-sm font-medium mb-3">答题规则</p>
@@ -6016,6 +6024,7 @@ function EditCardDialog({
                   onToggleQuestion={(qid) => toggleQuestion(qid, "quizQuestions")}
                   questionScores={state.methodResourceConfigs?.quiz?.questionScores || {}}
                   onUpdateQuestionScore={(qid, score) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, quiz: { ...(state.methodResourceConfigs.quiz || {}), questionScores: { ...(state.methodResourceConfigs.quiz?.questionScores || {}), [qid]: score } } } })}
+                  onUpdateQuestionScores={(scores) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, quiz: { ...(state.methodResourceConfigs.quiz || {}), questionScores: { ...(state.methodResourceConfigs.quiz?.questionScores || {}), ...scores } } } })}
                 />
                 <div className="border rounded-xl p-4">
                   <p className="text-sm font-medium mb-3">答题规则</p>
@@ -7684,6 +7693,7 @@ function EditCardDialog({
                     onToggleQuestion={(qid) => toggleQuestion(qid, "questionBankQuestions")}
                     questionScores={state.methodResourceConfigs?.question_bank?.questionScores || {}}
                     onUpdateQuestionScore={(qid, score) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, question_bank: { ...(state.methodResourceConfigs.question_bank || {}), questionScores: { ...(state.methodResourceConfigs.question_bank?.questionScores || {}), [qid]: score } } } })}
+                    onUpdateQuestionScores={(scores) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, question_bank: { ...(state.methodResourceConfigs.question_bank || {}), questionScores: { ...(state.methodResourceConfigs.question_bank?.questionScores || {}), ...scores } } } })}
                   />
                 ) : erDialogMethod === "quiz" ? (
                   <BankQuestionSelectorPanel
@@ -7693,6 +7703,7 @@ function EditCardDialog({
                     onToggleQuestion={(qid) => toggleQuestion(qid, "quizQuestions")}
                     questionScores={state.methodResourceConfigs?.quiz?.questionScores || {}}
                     onUpdateQuestionScore={(qid, score) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, quiz: { ...(state.methodResourceConfigs.quiz || {}), questionScores: { ...(state.methodResourceConfigs.quiz?.questionScores || {}), [qid]: score } } } })}
+                    onUpdateQuestionScores={(scores) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, quiz: { ...(state.methodResourceConfigs.quiz || {}), questionScores: { ...(state.methodResourceConfigs.quiz?.questionScores || {}), ...scores } } } })}
                   />
                 ) : erDialogMethod === "random_draw" ? (
                   <RandomDrawResourcePanel
