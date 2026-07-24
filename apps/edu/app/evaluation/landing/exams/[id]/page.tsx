@@ -30,7 +30,7 @@ import {
 import { useData } from "@/components/providers/data-provider"
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts"
 import type { Exam, ExamUsage } from "@/lib/types"
-import { examUsageApi, examResultApi, evaluationResultApi } from "@/lib/api"
+import { examApi, examUsageApi, examResultApi, evaluationResultApi } from "@/lib/api"
 import { useAuth } from "@/components/auth-provider"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
@@ -81,7 +81,9 @@ export default function ExamDetailPage() {
   const { user } = useAuth()
   const { exams, getExam } = useData()
 
-  const exam = getExam ? getExam(examId) : exams.find((e) => e.id === examId)
+  const cachedExam = getExam ? getExam(examId) : exams.find((e) => e.id === examId)
+  const [exam, setExam] = useState<Exam | null>(cachedExam || null)
+  const [examLoading, setExamLoading] = useState(!cachedExam)
 
   const [started, setStarted] = useState(false)
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
@@ -92,6 +94,21 @@ export default function ExamDetailPage() {
   const [usages, setUsages] = useState<ExamUsage[]>([])
   const [currentUsage, setCurrentUsage] = useState<ExamUsage | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!examId) return
+    if (cachedExam) {
+      setExam(cachedExam)
+      setExamLoading(false)
+      return
+    }
+    setExamLoading(true)
+    examApi
+      .get(examId)
+      .then((data) => setExam(data))
+      .catch(() => setExam(null))
+      .finally(() => setExamLoading(false))
+  }, [examId, cachedExam])
 
   useEffect(() => {
     if (!examId) return
@@ -144,6 +161,17 @@ export default function ExamDetailPage() {
     }
   }, [started, exam, submitted, handleSubmit])
 
+  if (examLoading) {
+    return (
+      <div style={{ maxWidth: 1400, margin: "0 auto", padding: 24 }}>
+        <div style={{ textAlign: "center", padding: "80px 0", color: "#8f959e" }}>
+          <Clock style={{ width: 48, height: 48, margin: "0 auto 12px", opacity: 0.3 }} />
+          <p>加载中...</p>
+        </div>
+      </div>
+    )
+  }
+
   if (!exam) {
     return (
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: 24 }}>
@@ -163,6 +191,8 @@ export default function ExamDetailPage() {
   const answeredCount = Object.keys(answers).length
   const timeStatus = getExamTimeStatus(exam.status)
   const targetAudience = getTargetAudience()
+  const isSceneTask = !!taskId && !!methodKey
+  const canStart = examAccessState === 'started' && (isSceneTask || exam.status === "published") && currentUsage
 
   const questionTypeStats = useMemo(() => {
     const stats: Record<string, { count: number; score: number }> = {}
@@ -463,14 +493,14 @@ export default function ExamDetailPage() {
           </div>
           <div style={{ marginTop: 24, display: "flex", justifyContent: "center" }}>
             <PrdAnnotation data={getAnnotation("le-start-btn")}>
-              {examAccessState === 'started' && exam.status === "published" && currentUsage ? (
+              {canStart ? (
                 <Button size="lg" style={{ gap: 8, background: "#3370ff" }} onClick={() => setStarted(true)}>
                   <PlayCircle style={{ width: 20, height: 20 }} /> 开始考试
                 </Button>
               ) : (
                 <Button size="lg" variant="outline" disabled style={{ gap: 8 }}>
                   <PlayCircle style={{ width: 20, height: 20 }} />
-                  {!currentUsage ? '暂无考试安排' : examAccessState === 'not-in-range' ? '您不在本次考试范围内' : examAccessState === 'not-started' ? '考试尚未开始' : exam.status === "draft" || exam.status === "pending" || exam.status === "rejected" || exam.status === "approved" ? "考试未发布" : "考试已结束"}
+                  {!currentUsage ? '暂无考试安排' : examAccessState === 'not-in-range' ? '您不在本次考试范围内' : examAccessState === 'not-started' ? '考试尚未开始' : !isSceneTask && (exam.status === "draft" || exam.status === "pending" || exam.status === "rejected" || exam.status === "approved") ? "考试未发布" : "考试已结束"}
                 </Button>
               )}
             </PrdAnnotation>

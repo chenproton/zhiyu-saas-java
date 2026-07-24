@@ -2874,6 +2874,23 @@ function EditCardDialog({
           updateState({ evalMethodVersion: currentVersion })
         } catch { /* ignore */ }
       }
+      // Ensure exam usage exists for paper so students can access it from the landing page
+      if (state.evaluationMethods.includes("paper") && state.paperIds.length > 0) {
+        const paperId = state.paperIds[0]
+        try {
+          const usages = await examUsageApi.list({ examId: paperId })
+          if ((usages.items || []).length === 0) {
+            const paperCfg = updatedRC.paper || {}
+            await examUsageApi.create({
+              examId: paperId,
+              name: `${task.name}-试卷默认安排`,
+              targetType: "public",
+              targetIds: [taskId],
+              duration: paperCfg.duration || 90,
+            } as any)
+          }
+        } catch { /* ignore */ }
+      }
     }
     onClose()
   }
