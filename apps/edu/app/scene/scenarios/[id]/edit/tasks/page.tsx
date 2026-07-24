@@ -423,8 +423,6 @@ interface TaskState {
   methodResourceConfigs: Record<string, any>
 }
 
-
-
 function makeDefaultTaskState(count: number, index: number): TaskState {
   return {
     description: "",
@@ -643,8 +641,6 @@ function normalizeEvalSubjects(subjects: unknown): EvalSubjectConfig[] {
   return subjects.filter((s): s is EvalSubjectConfig => s && typeof s === "object" && typeof s.type === "string" && typeof s.enabled === "boolean")
 }
 
-
-
 // ============ Main Page ============
 
 export default function TasksEditPage() {
@@ -825,8 +821,6 @@ export default function TasksEditPage() {
     }
     load()
   }, [scenarioId])
-
-
 
   const [editingCard, setEditingCard] = useState<{ taskId: string; type: CardType } | null>(null)
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false)
@@ -1414,7 +1408,6 @@ export default function TasksEditPage() {
           </div>
         </div>
 
-
       {/* Add Task Dialog */}
       <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen}>
         <DialogContent className="sm:max-w-md">
@@ -1592,7 +1585,6 @@ export default function TasksEditPage() {
     </EditorShell>
   )
 }
-
 
 const questionTypeLabels: Record<string, string> = {
   single: "单选",
@@ -2087,7 +2079,6 @@ function BankQuestionSelectorPanel({
     </>
   )
 }
-
 
 // ============ RandomDrawResourcePanel (extracted to module level for stable component identity) ============
 
@@ -4283,7 +4274,6 @@ function EditCardDialog({
         )
       }
 
-
       case "evaluation": {
         const [primaryTab, setPrimaryTab] = useState<"platform" | "industry">("platform")
         const [secondaryTab, setSecondaryTab] = useState("全部")
@@ -5173,6 +5163,21 @@ function EditCardDialog({
             )
         }
 
+        // Local-textarea: prevents parent re-render on keystroke, syncs on blur
+        const LocalTextarea = ({ id, defaultValue, onBlurSync, ...rest }: any) => {
+          const ref = useRef<HTMLTextAreaElement>(null)
+          useEffect(() => { if (ref.current && defaultValue != null) ref.current.value = defaultValue }, [id])
+          return (
+            <textarea
+              ref={ref}
+              defaultValue={defaultValue}
+              className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              onBlur={() => { if (ref.current && onBlurSync) onBlurSync(ref.current.value) }}
+              {...rest}
+            />
+          )
+        }
+
         // Resource-only panel (no eval points)
         const EvalResourceOnlyPanel = ({ methodKey }: { methodKey: string }) => {
           if (methodKey === "random_draw") {
@@ -5492,21 +5497,21 @@ function EditCardDialog({
                       </div>
                       <div className="mt-3">
                         <Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label>
-                        <Textarea
-                          value={mockResReview.submitFormatDesc}
-                          onChange={e => setMockResReview({ ...mockResReview, submitFormatDesc: e.target.value })}
-                          placeholder="请用一句话说明学生需要提交的材料要求..."
-                          rows={2}
-                          className="text-sm"
+                        <LocalTextarea
+                            id="review-desc-' + '{methodKey}' + '"
+                            defaultValue={mockResReview.submitFormatDesc}
+                            placeholder="请用一句话说明学生需要提交的材料要求..."
+                            rows={2}
+                            onBlurSync={(v: string) => setMockResReview({ ...mockResReview, submitFormatDesc: v })}
                         />
                       </div>
                     </>
                   )}
                   <div className="mt-3">
                     <Label className="text-xs text-gray-500 mb-1.5">评审场地/环境资源准备</Label>
-                    <Textarea
-                      value={mockResReview.venueResources}
-                      onChange={e => setMockResReview({ ...mockResReview, venueResources: e.target.value })}
+                    <LocalTextarea
+                      defaultValue={mockResReview.venueResources}
+                      onBlurSync={(v: string) => setMockResReview({ ...mockResReview, venueResources: v })}
                       placeholder="请描述评审所需的场地、设备及环境资源准备要求..."
                       rows={2}
                       className="text-sm"
@@ -5938,9 +5943,9 @@ function EditCardDialog({
                       </div>
                       <div className="mt-3">
                         <Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label>
-                        <Textarea
-                          value={mockResReview.submitFormatDesc}
-                          onChange={e => setMockResReview({ ...mockResReview, submitFormatDesc: e.target.value })}
+                        <LocalTextarea
+                          defaultValue={mockResReview.submitFormatDesc}
+                          onBlurSync={(v: string) => setMockResReview({ ...mockResReview, submitFormatDesc: v })}
                           placeholder="请用一句话说明学生需要提交的成果材料要求..."
                           rows={2}
                           className="text-sm"
@@ -5950,9 +5955,9 @@ function EditCardDialog({
                   )}
                   <div className="mt-3">
                     <Label className="text-xs text-gray-500 mb-1.5">评价场地/环境资源准备</Label>
-                    <Textarea
-                      value={mockResReview.venueResources}
-                      onChange={e => setMockResReview({ ...mockResReview, venueResources: e.target.value })}
+                    <LocalTextarea
+                      defaultValue={mockResReview.venueResources}
+                      onBlurSync={(v: string) => setMockResReview({ ...mockResReview, venueResources: v })}
                       placeholder="请描述评价所需的场地、设备及环境资源准备要求..."
                       rows={2}
                       className="text-sm"
@@ -5996,9 +6001,9 @@ function EditCardDialog({
                       </div>
                       <div className="mt-3">
                         <Label className="text-xs text-gray-500 mb-1.5">作业格式要求</Label>
-                        <Textarea
-                          value={mockResReview.submitFormatDesc}
-                          onChange={e => setMockResReview({ ...mockResReview, submitFormatDesc: e.target.value })}
+                        <LocalTextarea
+                          defaultValue={mockResReview.submitFormatDesc}
+                          onBlurSync={(v: string) => setMockResReview({ ...mockResReview, submitFormatDesc: v })}
                           placeholder="请用一句话说明学生需要提交的作业格式要求..."
                           rows={2}
                           className="text-sm"
@@ -6609,8 +6614,6 @@ function EditCardDialog({
             </div>
           )
         }
-
-
 
         const MethodDialogContent = ({ methodKey }: { methodKey: string }) => {
           const info = getMethodEvalInfo(methodKey)
@@ -8126,7 +8129,6 @@ function EditCardDialog({
     </Dialog>
   )
 }
-
 
 // ============ Weight Config Dialog ============
 
