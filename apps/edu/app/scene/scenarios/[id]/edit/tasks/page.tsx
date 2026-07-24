@@ -2804,10 +2804,13 @@ function EditCardDialog({
       })
       updateState({ methodResourceConfigs: updatedRC })
       // Persist evaluation methods (including resource config) to backend immediately
+      let currentVersion = state.evalMethodVersion
       let methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC }, { reviewSteps })
       if (methodsInput.length > 0) {
         try {
-          await taskEvaluationApi.saveMethods(taskId, { version: state.evalMethodVersion, methods: methodsInput })
+          const savedRes = await taskEvaluationApi.saveMethods(taskId, { version: currentVersion, methods: methodsInput })
+          currentVersion = savedRes.methods.reduce((max, m) => Math.max(max, m.version || 0), 0)
+          updateState({ evalMethodVersion: currentVersion })
         } catch (err: any) {
           toast({ variant: "destructive", title: "评价规则保存失败", description: err.message })
           return
@@ -2826,8 +2829,12 @@ function EditCardDialog({
           } catch { /* temp exam creation failed, skip */ }
         }
         updateState({ methodResourceConfigs: updatedRC })
-        methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC })
-        taskEvaluationApi.saveMethods(taskId, { version: state.evalMethodVersion, methods: methodsInput }).catch(() => {})
+        methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC }, { reviewSteps })
+        try {
+          const savedRes = await taskEvaluationApi.saveMethods(taskId, { version: currentVersion, methods: methodsInput })
+          currentVersion = savedRes.methods.reduce((max, m) => Math.max(max, m.version || 0), 0)
+          updateState({ evalMethodVersion: currentVersion })
+        } catch { /* ignore */ }
       }
     }
     onClose()
@@ -5780,22 +5787,14 @@ function EditCardDialog({
                       const questionCount = paper.questions?.length ?? paper.questionCount ?? 0
                       const totalScore = paper.totalScore ?? 100
                       return (
-                        <div key={paper.id} onClick={() => selectPaper(paper.id)} className={cn("p-4 rounded-lg border cursor-pointer", selected ? "border-primary bg-primary/5" : "hover:border-gray-300")}>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center shrink-0", selected ? "bg-primary border-primary" : "border-gray-300")}>{selected && <div className="w-2 h-2 rounded-full bg-white" />}</div>
-                              <div>
-                                <p className="text-sm font-medium">{paper.name}</p>
-                                <div className="flex items-center gap-1.5 mt-1">
-                                  <Badge className="text-[10px] bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-50">{questionCount} 题</Badge>
-                                  <Badge className="text-[10px] bg-green-50 text-green-600 border-green-200 hover:bg-green-50">总分 {totalScore}</Badge>
-                                </div>
-                              </div>
-                            </div>
-                            <Button variant="ghost" size="sm" className="h-7 text-[11px] px-2 text-gray-400 hover:text-primary" onClick={e => { e.stopPropagation(); setSelectedPaperForDetail(paper.id); setPaperDetailOpen(true); }}>
-                              查看详情
-                            </Button>
-                          </div>
+                        <div key={paper.id} onClick={() => selectPaper(paper.id)} className={cn("px-3 py-2 rounded-lg border cursor-pointer flex items-center gap-3", selected ? "border-primary bg-primary/5" : "hover:border-gray-300")}>
+                          <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center shrink-0", selected ? "bg-primary border-primary" : "border-gray-300")}>{selected && <div className="w-2 h-2 rounded-full bg-white" />}</div>
+                          <p className="text-sm font-medium flex-1 min-w-0 truncate">{paper.name}</p>
+                          <Badge className="text-[10px] bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-50 shrink-0">{questionCount} 题</Badge>
+                          <Badge className="text-[10px] bg-green-50 text-green-600 border-green-200 hover:bg-green-50 shrink-0">总分 {totalScore}</Badge>
+                          <Button variant="ghost" size="sm" className="h-7 text-[11px] px-2 text-gray-400 hover:text-primary shrink-0" onClick={e => { e.stopPropagation(); setSelectedPaperForDetail(paper.id); setPaperDetailOpen(true); }}>
+                            查看详情
+                          </Button>
                         </div>
                       )
                     })}
@@ -5882,6 +5881,7 @@ function EditCardDialog({
                             type="datetime-local"
                             value={paperCfg.scheduledTime ?? ""}
                             onChange={e => setPaperCfg({ scheduledTime: e.target.value })}
+                            onFocus={e => e.currentTarget.showPicker?.()}
                             className="mt-1 text-sm"
                           />
                         </div>
@@ -5891,6 +5891,7 @@ function EditCardDialog({
                             type="datetime-local"
                             value={paperCfg.scheduledEndTime ?? ""}
                             onChange={e => setPaperCfg({ scheduledEndTime: e.target.value })}
+                            onFocus={e => e.currentTarget.showPicker?.()}
                             className="mt-1 text-sm"
                           />
                         </div>
@@ -6025,11 +6026,11 @@ function EditCardDialog({
                       <div className="mt-3 grid grid-cols-2 gap-3">
                         <div>
                           <Label className="text-xs text-gray-500">启用时间</Label>
-                          <Input type="datetime-local" value={qbCfg.scheduledTime ?? ""} onChange={e => setQbCfg({ scheduledTime: e.target.value })} className="mt-1 text-sm" />
+                          <Input type="datetime-local" value={qbCfg.scheduledTime ?? ""} onChange={e => setQbCfg({ scheduledTime: e.target.value })} onFocus={e => e.currentTarget.showPicker?.()} className="mt-1 text-sm" />
                         </div>
                         <div>
                           <Label className="text-xs text-gray-500">停用时间</Label>
-                          <Input type="datetime-local" value={qbCfg.scheduledEndTime ?? ""} onChange={e => setQbCfg({ scheduledEndTime: e.target.value })} className="mt-1 text-sm" />
+                          <Input type="datetime-local" value={qbCfg.scheduledEndTime ?? ""} onChange={e => setQbCfg({ scheduledEndTime: e.target.value })} onFocus={e => e.currentTarget.showPicker?.()} className="mt-1 text-sm" />
                         </div>
                       </div>
                     )}
@@ -6275,11 +6276,11 @@ function EditCardDialog({
                       <div className="mt-3 grid grid-cols-2 gap-3">
                         <div>
                           <Label className="text-xs text-gray-500">启用时间</Label>
-                          <Input type="datetime-local" value={quizCfg.scheduledTime ?? ""} onChange={e => setQuizCfg({ scheduledTime: e.target.value })} className="mt-1 text-sm" />
+                          <Input type="datetime-local" value={quizCfg.scheduledTime ?? ""} onChange={e => setQuizCfg({ scheduledTime: e.target.value })} onFocus={e => e.currentTarget.showPicker?.()} className="mt-1 text-sm" />
                         </div>
                         <div>
                           <Label className="text-xs text-gray-500">停用时间</Label>
-                          <Input type="datetime-local" value={quizCfg.scheduledEndTime ?? ""} onChange={e => setQuizCfg({ scheduledEndTime: e.target.value })} className="mt-1 text-sm" />
+                          <Input type="datetime-local" value={quizCfg.scheduledEndTime ?? ""} onChange={e => setQuizCfg({ scheduledEndTime: e.target.value })} onFocus={e => e.currentTarget.showPicker?.()} className="mt-1 text-sm" />
                         </div>
                       </div>
                     )}
