@@ -1327,26 +1327,22 @@ export function evalRuleConfigToMethods(config: EvalRuleConfig): EvalRuleMethodI
     const scoreType = scoreTypeFieldMap[mk] ? ((config as any)[scoreTypeFieldMap[mk]] as EvalScoreType | null) : null
     const rubricId = rubricFieldMap[mk] ? ((config as any)[rubricFieldMap[mk]] as string | null) : null
 
-    let resourceConfig: Record<string, any> = config.methodResourceConfigs?.[mk] || {}
-    // 保持与现有调用兼容：资源字段从顶层读取
+    const resourceConfig: Record<string, any> = { ...(config.methodResourceConfigs?.[mk] || {}) }
+    // 保持与现有调用兼容：关键资源字段从顶层读取并合并到 resourceConfig
     if (mk === "paper") {
       const paperId = config.paperIds?.[0]
-      resourceConfig = {
-        paperId: paperId || null,
-        paperWeight: paperId ? config.paperWeights[paperId] : null,
-      }
+      if (paperId && !resourceConfig.paperId) resourceConfig.paperId = paperId
+      if (paperId && resourceConfig.paperWeight === undefined) resourceConfig.paperWeight = config.paperWeights[paperId] ?? 100
     }
-    if (mk === "question_bank") {
-      resourceConfig = { questionIds: config.questionBankQuestions }
+    if (mk === "question_bank" && !resourceConfig.questionIds) {
+      resourceConfig.questionIds = config.questionBankQuestions
     }
-    if (mk === "quiz") {
-      resourceConfig = { questionIds: config.quizQuestions }
+    if (mk === "quiz" && !resourceConfig.questionIds) {
+      resourceConfig.questionIds = config.quizQuestions
     }
     if (mk === "random_draw") {
-      resourceConfig = {
-        customQuestions: config.randomDrawCustomQuestions,
-        selectedQuestionIds: config.randomDrawSelectedIds,
-      }
+      if (!resourceConfig.customQuestions) resourceConfig.customQuestions = config.randomDrawCustomQuestions
+      if (!resourceConfig.selectedQuestionIds) resourceConfig.selectedQuestionIds = config.randomDrawSelectedIds
     }
 
     return {

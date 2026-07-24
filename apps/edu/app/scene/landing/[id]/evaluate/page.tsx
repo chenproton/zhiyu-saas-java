@@ -138,8 +138,33 @@ export default function EvaluatePage() {
           </CardContent>
         </Card>
 
-        {/* 材料/场地要求 —— 现场问答/现场评审/成果评价/作业都展示 */}
-        {(["random_draw", "review", "outcome", "homework"].includes(methodKey)) && (
+        {/* 现场类测评要求：只展示提交材料要求与场地/环境资源 */}
+        {isTeacherLed && (
+          <Card className="mb-4">
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" />测评要求</CardTitle></CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {resourceConfig.submitFormatDesc ? (
+                <div>
+                  <p className="font-medium mb-1">提交材料要求</p>
+                  <p className="text-gray-600 whitespace-pre-wrap">{resourceConfig.submitFormatDesc}</p>
+                </div>
+              ) : (
+                <p className="text-gray-500">请按照教师要求准备材料</p>
+              )}
+              {resourceConfig.venueResources ? (
+                <div>
+                  <p className="font-medium mb-1">评审场地/环境资源</p>
+                  <p className="text-gray-600 whitespace-pre-wrap">{resourceConfig.venueResources}</p>
+                </div>
+              ) : (
+                <p className="text-gray-500">请关注教师通知的场地安排</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 材料类测评要求 */}
+        {isManualSubmit && (
           <Card className="mb-4">
             <CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" />测评要求</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
@@ -149,18 +174,16 @@ export default function EvaluatePage() {
               ) : (
                 <p className="text-gray-500">请按照教师要求准备材料</p>
               )}
-              {resourceConfig.venueResources ? (
+              {resourceConfig.venueResources && (
                 <div><p className="font-medium mb-1">评审场地/环境资源：</p><p className="text-gray-600">{resourceConfig.venueResources}</p></div>
-              ) : (
-                isTeacherLed && <p className="text-gray-500">请关注教师通知的场地安排</p>
               )}
               {resourceConfig.allowResubmit !== undefined && <p>允许重新提交：{resourceConfig.allowResubmit ? "是" : "否"}</p>}
             </CardContent>
           </Card>
         )}
 
-        {/* 评价标准预览 */}
-        {evalPoints.length > 0 && (
+        {/* 评价标准预览（材料类/考试类展示） */}
+        {evalPoints.length > 0 && !isTeacherLed && (
           <Card className="mb-4">
             <CardHeader><CardTitle className="text-base flex items-center gap-2"><ClipboardList className="h-4 w-4" />评价标准</CardTitle></CardHeader>
             <CardContent>
@@ -172,24 +195,6 @@ export default function EvaluatePage() {
                       <Badge variant="outline" className="text-[10px]">{ep.weight || 0}分</Badge>
                     </div>
                     {ep.description && <p className="text-xs text-gray-500 mt-1">{ep.description}</p>}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* 评审步骤 */}
-        {reviewSteps.length > 0 && (
-          <Card className="mb-4">
-            <CardHeader><CardTitle className="text-base">评审步骤</CardTitle></CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {(reviewSteps as any[]).map((rs: any, idx: number) => (
-                  <div key={rs.id || idx} className="p-3 bg-gray-50 rounded-lg flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-medium">{idx + 1}</div>
-                    <div><span className="text-sm font-medium">{rs.label}</span>{rs.description && <p className="text-xs text-gray-500">{rs.description}</p>}</div>
-                    <Badge variant="outline" className="text-[10px] ml-auto">{rs.weight}%</Badge>
                   </div>
                 ))}
               </div>
@@ -247,7 +252,7 @@ export default function EvaluatePage() {
             <CardContent className="py-8 text-center">
               <p className="text-gray-600 mb-4">请前往考试页面完成作答。</p>
               <Button asChild>
-                <Link href={`/evaluation/landing/exams/${examId}`}>前往考试</Link>
+                <Link href={`/evaluation/landing/exams/${examId}?task=${taskId}&scene=${id}&method=${methodKey}`}>前往考试</Link>
               </Button>
             </CardContent>
           </Card>

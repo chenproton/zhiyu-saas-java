@@ -2157,13 +2157,18 @@ function RandomDrawResourcePanel({
     majors.forEach((m: any) => { map[m.id] = m.name })
     return map
   }, [majors])
+  const rdCfg = state.methodResourceConfigs.random_draw || {}
   const [rdqMajorTab, setRdqMajorTab] = useState("全部")
-  const [rdqDrawMode, setRdqDrawMode] = useState<"random" | "manual">("random")
-  const [rdqDrawCount, setRdqDrawCount] = useState(5)
+  const [rdqDrawMode, setRdqDrawMode] = useState<"random" | "manual">((rdCfg.drawMode as "random" | "manual") ?? "random")
+  const [rdqDrawCount, setRdqDrawCount] = useState(rdCfg.drawCount ?? 5)
+
+  useEffect(() => {
+    setRdqDrawMode((rdCfg.drawMode as "random" | "manual") ?? "random")
+    setRdqDrawCount(rdCfg.drawCount ?? 5)
+  }, [rdCfg.drawMode, rdCfg.drawCount])
   const [allQuestions, setAllQuestions] = useState<RandomDrawQuestion[]>([])
   const [loading, setLoading] = useState(true)
 
-  const rdCfg = state.methodResourceConfigs.random_draw || {}
   const [submitFormatDesc, setSubmitFormatDesc] = useState<string>(rdCfg.submitFormatDesc || "")
   const [venueResources, setVenueResources] = useState<string>(rdCfg.venueResources || "")
 
@@ -2375,7 +2380,7 @@ function RandomDrawResourcePanel({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label className="text-xs text-gray-500">抽题方式</Label>
-            <Select value={rdqDrawMode} onValueChange={v => setRdqDrawMode(v as "random" | "manual")}>
+            <Select value={rdqDrawMode} onValueChange={v => { const mode = v as "random" | "manual"; setRdqDrawMode(mode); updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, random_draw: { ...rdCfg, drawMode: mode } } }) }}>
               <SelectTrigger className="mt-1 text-sm h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="random">系统随机分配</SelectItem>
@@ -2385,7 +2390,7 @@ function RandomDrawResourcePanel({
           </div>
           <div>
             <Label className="text-xs text-gray-500">抽题数量</Label>
-            <Input type="number" value={rdqDrawCount} onChange={e => setRdqDrawCount(Math.max(1, parseInt(e.target.value) || 1))} className="mt-1 text-sm" min={1} />
+            <Input type="number" value={rdqDrawCount} onChange={e => { const count = Math.max(1, parseInt(e.target.value) || 1); setRdqDrawCount(count); updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, random_draw: { ...rdCfg, drawCount: count } } }) }} className="mt-1 text-sm" min={1} />
           </div>
         </div>
       </div>
@@ -2687,6 +2692,20 @@ function EditCardDialog({
     { id: "rs-2", label: "复评", desc: "由专家组进行第二轮复核", enabled: false, subjectType: null as string | null, weight: 30 },
     { id: "rs-3", label: "终评", desc: "答辩委员会最终评定", enabled: false, subjectType: null as string | null, weight: 30 },
   ])
+
+  useEffect(() => {
+    if (state.reviewSteps && state.reviewSteps.length > 0) {
+      setReviewSteps(state.reviewSteps.map((rs: any) => ({
+        id: rs.id || `rs-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+        label: rs.label,
+        desc: rs.desc || "",
+        enabled: rs.enabled,
+        subjectType: rs.subjectType,
+        weight: rs.weight,
+      })))
+    }
+  }, [state.reviewSteps])
+
   const [editingReviewStepId, setEditingReviewStepId] = useState<string | null>(null)
   const [editingStepLabel, setEditingStepLabel] = useState("")
   const [editingStepDesc, setEditingStepDesc] = useState("")
@@ -2785,7 +2804,7 @@ function EditCardDialog({
       })
       updateState({ methodResourceConfigs: updatedRC })
       // Persist evaluation methods (including resource config) to backend immediately
-      let methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC })
+      let methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC }, { reviewSteps })
       if (methodsInput.length > 0) {
         try {
           await taskEvaluationApi.saveMethods(taskId, { version: state.evalMethodVersion, methods: methodsInput })

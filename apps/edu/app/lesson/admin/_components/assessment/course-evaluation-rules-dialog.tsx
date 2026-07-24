@@ -276,6 +276,15 @@ export function CourseEvaluationRulesDialog({
   const mockResQuestionBank = getResourceConfig("question_bank", { timeLimit: 30, allowRetake: true, retakeCount: 3, shuffleQuestions: true, showResult: true, questionScores: {} as Record<string, number> })
   const setMockResQuestionBank = useCallback((updates: Partial<typeof mockResQuestionBank>) => updateResourceConfig("question_bank", updates), [updateResourceConfig])
 
+  const mockResOutcome = getResourceConfig("outcome", { requiresMaterial: true, deadlineDays: 3, submitFormatDesc: "", venueResources: "", allowResubmit: false })
+  const setMockResOutcome = useCallback((updates: Partial<typeof mockResOutcome>) => updateResourceConfig("outcome", updates), [updateResourceConfig])
+
+  const mockResHomework = getResourceConfig("homework", { requiresMaterial: true, deadlineDays: 3, submitFormatDesc: "", venueResources: "", allowResubmit: false })
+  const setMockResHomework = useCallback((updates: Partial<typeof mockResHomework>) => updateResourceConfig("homework", updates), [updateResourceConfig])
+
+  const mockResQuiz = getResourceConfig("quiz", { timeLimit: 30, allowRetake: true, retakeCount: 3, shuffleQuestions: true, showResult: true, questionScores: {} as Record<string, number> })
+  const setMockResQuiz = useCallback((updates: Partial<typeof mockResQuiz>) => updateResourceConfig("quiz", updates), [updateResourceConfig])
+
   // ============ Helpers ============
   const getMethodInstances = () => {
     const instances: { methodKey: string; instanceIndex: number }[] = []
@@ -1222,10 +1231,10 @@ export function CourseEvaluationRulesDialog({
         <div className="space-y-4">
           <div className="p-4 bg-cyan-50 rounded-lg border border-cyan-100 text-sm text-cyan-700"><div className="flex items-center gap-2 mb-2"><Info className="h-4 w-4" /><span className="font-medium">成果评价说明</span></div><p>成果评价时教师根据学生提交的成果材料进行打分。评价点配置请在「评价标准配置」卡片中设置。</p></div>
           <div className="border rounded-xl p-4">
-            <div className="flex items-center justify-between mb-3"><p className="text-sm font-medium">成果材料要求</p><div className="flex items-center gap-2"><Switch checked={mockResReview.requiresMaterial} onCheckedChange={v => setMockResReview({ ...mockResReview, requiresMaterial: v })} /><span className="text-xs text-gray-600">是否需要提交成果材料</span></div></div>
-            {mockResReview.requiresMaterial && (<><div className="grid grid-cols-2 gap-3"><div><Label className="text-xs text-gray-500">预估提交天数</Label><Input type="number" value={mockResReview.deadlineDays} onChange={e => setMockResReview({ ...mockResReview, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} /></div></div><div className="mt-3"><Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label><Textarea value={mockResReview.submitFormatDesc} onChange={e => setMockResReview({ ...mockResReview, submitFormatDesc: e.target.value })} placeholder="请用一句话说明学生需要提交的成果材料要求..." rows={2} className="text-sm" /></div></>)}
-            <div className="mt-3"><Label className="text-xs text-gray-500 mb-1.5">评价场地/环境资源准备</Label><Textarea value={mockResReview.venueResources} onChange={e => setMockResReview({ ...mockResReview, venueResources: e.target.value })} placeholder="请描述评价所需的场地、设备及环境资源准备要求..." rows={2} className="text-sm" /></div>
-            <div className="mt-3"><div className="flex items-center gap-2"><Switch checked={mockResReview.allowResubmit} onCheckedChange={v => setMockResReview({ ...mockResReview, allowResubmit: v })} /><span className="text-xs text-gray-600">允许重新提交</span></div></div>
+            <div className="flex items-center justify-between mb-3"><p className="text-sm font-medium">成果材料要求</p><div className="flex items-center gap-2"><Switch checked={mockResOutcome.requiresMaterial} onCheckedChange={v => setMockResOutcome({ ...mockResOutcome, requiresMaterial: v })} /><span className="text-xs text-gray-600">是否需要提交成果材料</span></div></div>
+            {mockResOutcome.requiresMaterial && (<><div className="grid grid-cols-2 gap-3"><div><Label className="text-xs text-gray-500">预估提交天数</Label><Input type="number" value={mockResOutcome.deadlineDays} onChange={e => setMockResOutcome({ ...mockResOutcome, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} /></div></div><div className="mt-3"><Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label><Textarea value={mockResOutcome.submitFormatDesc} onChange={e => setMockResOutcome({ ...mockResOutcome, submitFormatDesc: e.target.value })} placeholder="请用一句话说明学生需要提交的成果材料要求..." rows={2} className="text-sm" /></div></>)}
+            <div className="mt-3"><Label className="text-xs text-gray-500 mb-1.5">评价场地/环境资源准备</Label><Textarea value={mockResOutcome.venueResources} onChange={e => setMockResOutcome({ ...mockResOutcome, venueResources: e.target.value })} placeholder="请描述评价所需的场地、设备及环境资源准备要求..." rows={2} className="text-sm" /></div>
+            <div className="mt-3"><div className="flex items-center gap-2"><Switch checked={mockResOutcome.allowResubmit} onCheckedChange={v => setMockResOutcome({ ...mockResOutcome, allowResubmit: v })} /><span className="text-xs text-gray-600">允许重新提交</span></div></div>
           </div>
         </div>
       )
@@ -1235,16 +1244,16 @@ export function CourseEvaluationRulesDialog({
         <div className="space-y-4">
           <div className="p-4 bg-pink-50 rounded-lg border border-pink-100 text-sm text-pink-700"><div className="flex items-center gap-2 mb-2"><Info className="h-4 w-4" /><span className="font-medium">作业说明</span></div><p>学生提交作业后，教师按评分规则进行打分。评价点配置请在「评价标准配置」卡片中设置。</p></div>
           <div className="border rounded-xl p-4">
-            <div className="flex items-center justify-between mb-3"><p className="text-sm font-medium">作业提交要求</p><div className="flex items-center gap-2"><Switch checked={mockResReview.requiresMaterial} onCheckedChange={v => setMockResReview({ ...mockResReview, requiresMaterial: v })} /><span className="text-xs text-gray-600">是否需要提交作业材料</span></div></div>
-            {mockResReview.requiresMaterial && (<><div className="grid grid-cols-2 gap-3"><div><Label className="text-xs text-gray-500">预估提交天数</Label><Input type="number" value={mockResReview.deadlineDays} onChange={e => setMockResReview({ ...mockResReview, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} /></div></div><div className="mt-3"><Label className="text-xs text-gray-500 mb-1.5">作业格式要求</Label><Textarea value={mockResReview.submitFormatDesc} onChange={e => setMockResReview({ ...mockResReview, submitFormatDesc: e.target.value })} placeholder="请用一句话说明学生需要提交的作业格式要求..." rows={2} className="text-sm" /></div></>)}
-            <div className="mt-3"><div className="flex items-center gap-2"><Switch checked={mockResReview.allowResubmit} onCheckedChange={v => setMockResReview({ ...mockResReview, allowResubmit: v })} /><span className="text-xs text-gray-600">允许重新提交</span></div></div>
+            <div className="flex items-center justify-between mb-3"><p className="text-sm font-medium">作业提交要求</p><div className="flex items-center gap-2"><Switch checked={mockResHomework.requiresMaterial} onCheckedChange={v => setMockResHomework({ ...mockResHomework, requiresMaterial: v })} /><span className="text-xs text-gray-600">是否需要提交作业材料</span></div></div>
+            {mockResHomework.requiresMaterial && (<><div className="grid grid-cols-2 gap-3"><div><Label className="text-xs text-gray-500">预估提交天数</Label><Input type="number" value={mockResHomework.deadlineDays} onChange={e => setMockResHomework({ ...mockResHomework, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} /></div></div><div className="mt-3"><Label className="text-xs text-gray-500 mb-1.5">作业格式要求</Label><Textarea value={mockResHomework.submitFormatDesc} onChange={e => setMockResHomework({ ...mockResHomework, submitFormatDesc: e.target.value })} placeholder="请用一句话说明学生需要提交的作业格式要求..." rows={2} className="text-sm" /></div></>)}
+            <div className="mt-3"><div className="flex items-center gap-2"><Switch checked={mockResHomework.allowResubmit} onCheckedChange={v => setMockResHomework({ ...mockResHomework, allowResubmit: v })} /><span className="text-xs text-gray-600">允许重新提交</span></div></div>
           </div>
         </div>
       )
     }
     if (methodKey === "quiz") {
       const quizPresetTimes = [5, 10, 15, 20, 30]
-      const quizIsPreset = quizPresetTimes.includes(mockResQuestionBank.timeLimit)
+      const quizIsPreset = quizPresetTimes.includes(mockResQuiz.timeLimit)
       return (
         <div className="space-y-4">
           <QuestionSelectorPanel field="quizQuestions" selectedIds={config.quizQuestions} showAutoSelect={true} maxCount={30} />
@@ -1254,16 +1263,16 @@ export function CourseEvaluationRulesDialog({
               <div>
                 <Label className="text-xs text-gray-500">时间限制</Label>
                 <div className="flex flex-wrap gap-2 mt-1">
-                  {quizPresetTimes.map(min => <button key={min} onClick={() => setMockResQuestionBank({ ...mockResQuestionBank, timeLimit: min })} className={cn("px-3 py-1.5 rounded-lg text-xs border transition-all", mockResQuestionBank.timeLimit === min && quizIsPreset ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-600 hover:border-gray-300")}>{min} 分钟</button>)}
-                  <button onClick={() => setMockResQuestionBank({ ...mockResQuestionBank, timeLimit: quizIsPreset ? 1 : mockResQuestionBank.timeLimit })} className={cn("px-3 py-1.5 rounded-lg text-xs border transition-all", !quizIsPreset && mockResQuestionBank.timeLimit > 0 ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-600 hover:border-gray-300")}>自定义</button>
+                  {quizPresetTimes.map(min => <button key={min} onClick={() => setMockResQuiz({ ...mockResQuiz, timeLimit: min })} className={cn("px-3 py-1.5 rounded-lg text-xs border transition-all", mockResQuiz.timeLimit === min && quizIsPreset ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-600 hover:border-gray-300")}>{min} 分钟</button>)}
+                  <button onClick={() => setMockResQuiz({ ...mockResQuiz, timeLimit: quizIsPreset ? 1 : mockResQuiz.timeLimit })} className={cn("px-3 py-1.5 rounded-lg text-xs border transition-all", !quizIsPreset && mockResQuiz.timeLimit > 0 ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-600 hover:border-gray-300")}>自定义</button>
                 </div>
-                {!quizIsPreset && <div className="mt-2"><Input type="number" value={mockResQuestionBank.timeLimit} onChange={e => setMockResQuestionBank({ ...mockResQuestionBank, timeLimit: Math.max(1, parseInt(e.target.value) || 1) })} className="w-32 text-sm" min={1} placeholder="输入分钟数" /></div>}
+                {!quizIsPreset && <div className="mt-2"><Input type="number" value={mockResQuiz.timeLimit} onChange={e => setMockResQuiz({ ...mockResQuiz, timeLimit: Math.max(1, parseInt(e.target.value) || 1) })} className="w-32 text-sm" min={1} placeholder="输入分钟数" /></div>}
               </div>
             </div>
             <div className="mt-3 flex items-center gap-4">
-              <div className="flex items-center gap-2"><Switch checked={mockResQuestionBank.allowRetake} onCheckedChange={v => setMockResQuestionBank({ ...mockResQuestionBank, allowRetake: v })} /><span className="text-xs text-gray-600">允许重复测评</span></div>
-              <div className="flex items-center gap-2"><Switch checked={mockResQuestionBank.shuffleQuestions} onCheckedChange={v => setMockResQuestionBank({ ...mockResQuestionBank, shuffleQuestions: v })} /><span className="text-xs text-gray-600">题目乱序</span></div>
-              <div className="flex items-center gap-2"><Switch checked={mockResQuestionBank.showResult} onCheckedChange={v => setMockResQuestionBank({ ...mockResQuestionBank, showResult: v })} /><span className="text-xs text-gray-600">提交后展示成绩</span></div>
+              <div className="flex items-center gap-2"><Switch checked={mockResQuiz.allowRetake} onCheckedChange={v => setMockResQuiz({ ...mockResQuiz, allowRetake: v })} /><span className="text-xs text-gray-600">允许重复测评</span></div>
+              <div className="flex items-center gap-2"><Switch checked={mockResQuiz.shuffleQuestions} onCheckedChange={v => setMockResQuiz({ ...mockResQuiz, shuffleQuestions: v })} /><span className="text-xs text-gray-600">题目乱序</span></div>
+              <div className="flex items-center gap-2"><Switch checked={mockResQuiz.showResult} onCheckedChange={v => setMockResQuiz({ ...mockResQuiz, showResult: v })} /><span className="text-xs text-gray-600">提交后展示成绩</span></div>
             </div>
           </div>
         </div>

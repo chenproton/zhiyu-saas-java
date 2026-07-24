@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import {
   ArrowLeft, Clock, FileText, CheckCircle2, AlertCircle, Send,
   ListOrdered, Signal, Trophy, Calendar, PlayCircle, BarChart3,
@@ -30,7 +30,8 @@ import {
 import { useData } from "@/components/providers/data-provider"
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts"
 import type { Exam, ExamUsage } from "@/lib/types"
-import { examUsageApi, examResultApi } from "@/lib/api"
+import { examUsageApi, examResultApi, evaluationResultApi } from "@/lib/api"
+import { useAuth } from "@/components/auth-provider"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 
@@ -72,7 +73,12 @@ function getTargetAudience(): { type: string; detail: string } {
 
 export default function ExamDetailPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const examId = params.id as string
+  const taskId = searchParams.get("task") || ""
+  const sceneId = searchParams.get("scene") || ""
+  const methodKey = searchParams.get("method") || ""
+  const { user } = useAuth()
   const { exams, getExam } = useData()
 
   const exam = getExam ? getExam(examId) : exams.find((e) => e.id === examId)
@@ -97,20 +103,33 @@ export default function ExamDetailPage() {
         if (items.length > 0 && !currentUsage) setCurrentUsage(items[0])
       })
       .catch(() => {})
-  }, [examId])
+  }, [examId, currentUsage])
 
   const handleSubmit = useCallback(async () => {
     if (!currentUsage) return
     setSubmitting(true)
     try {
       await examResultApi.submit({ examUsageId: currentUsage.id, answers })
+      // 若从场景任务跳转而来，同步创建/更新场景测评结果，供教师评分
+      if (taskId && methodKey && user?.id) {
+        try {
+          await evaluationResultApi.submit({
+            taskId,
+            sceneId: sceneId || undefined,
+            methodKey,
+            evaluateeId: user.id,
+            maxScore: exam?.totalScore || 100,
+            objectiveAnswers: answers,
+          })
+        } catch { /* ignore */ }
+      }
       setSubmitted(true)
     } catch {
       alert("提交失败，请重试")
     } finally {
       setSubmitting(false)
     }
-  }, [currentUsage, answers])
+  }, [currentUsage, answers, taskId, sceneId, methodKey, user, exam])
 
   useEffect(() => {
     if (started && exam && !submitted) {
