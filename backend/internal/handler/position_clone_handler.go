@@ -134,7 +134,7 @@ type sourcePositionFields struct {
 
 func (h *PositionCloneHandler) fetchSourcePosition(ctx context.Context, id string) (*sourcePositionFields, error) {
 	var s sourcePositionFields
-	var posType domain.CareerPositionType
+	var posType domain.PositionType
 	err := h.DB.QueryRow(ctx, `
 		SELECT name, short_name, industry_id, position_type, salary_min, salary_max,
 			cover_image, description, requirements, career_path, version, collaborators, batch_id, tenant_id
