@@ -6372,6 +6372,8 @@ function EditCardDialog({
             quiz: ["teacher", "enterprise_mentor"],
             random_draw: ["teacher", "enterprise_mentor", "self", "peer"],
             review: ["teacher", "enterprise_mentor", "self", "peer"],
+            outcome: ["teacher", "enterprise_mentor"],
+            homework: ["teacher", "enterprise_mentor"],
           }
 
           return (
