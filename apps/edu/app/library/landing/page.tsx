@@ -279,6 +279,22 @@ export default function LibraryLandingPage() {
           <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", padding: 20 }}>
             <div style={{ display: "flex", alignItems: "center", padding: "8px 0", borderBottom: "1px dashed #f1f5f9", fontSize: 13 }}>
               <span style={{ color: "#94a3b8", width: 80, flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                <Tag style={{ width: 14, height: 14 }} />分类：
+              </span>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {[{ value: "全部" as const, label: "全部" }, ...ALL_TYPES.map(t => ({ value: t, label: `${TYPE_EMOJI[t] || "📦"} ${RESOURCE_TYPE_LABELS[t] || "其他"}` }))].map(item => (
+                  <button key={item.value} onClick={() => setTypeFilter(item.value)}
+                    style={{ padding: "5px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer", border: "none", fontWeight: 500, transition: "all 0.2s", background: typeFilter === item.value ? "#2563eb" : "#f1f5f9", color: typeFilter === item.value ? "#fff" : "#64748b", whiteSpace: "nowrap" }}
+                    onMouseEnter={(e) => { if (typeFilter !== item.value) e.currentTarget.style.background = "#e2e8f0" }}
+                    onMouseLeave={(e) => { if (typeFilter !== item.value) e.currentTarget.style.background = "#f1f5f9" }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", padding: "8px 0", borderBottom: "1px dashed #f1f5f9", fontSize: 13 }}>
+              <span style={{ color: "#94a3b8", width: 80, flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
                 <Calendar style={{ width: 14, height: 14 }} />上传时间：
               </span>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -303,7 +319,7 @@ export default function LibraryLandingPage() {
                 ))}
               </div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", padding: "8px 0", borderBottom: "1px dashed #f1f5f9", fontSize: 13 }}>
+            <div style={{ display: "flex", alignItems: "center", padding: "8px 0", fontSize: 13 }}>
               <span style={{ color: "#94a3b8", width: 80, flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
                 <GraduationCap style={{ width: 14, height: 14 }} />专业筛选：
               </span>
@@ -315,21 +331,6 @@ export default function LibraryLandingPage() {
                   </span>
                 ))}
                 {orgFilter === "全部" && majorNames.length === 0 && <span style={{ color: "#94a3b8", fontSize: 12, fontStyle: "italic" }}>请先选择院系</span>}
-              </div>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", padding: "8px 0", fontSize: 13 }}>
-              <span style={{ color: "#94a3b8", width: 80, flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
-                <Tag style={{ width: 14, height: 14 }} />排序：
-              </span>
-              <div style={{ display: "flex", gap: 8 }}>
-                <span onClick={() => setSortBy("newest")}
-                  style={{ padding: "4px 14px", borderRadius: 4, cursor: "pointer", color: sortBy === "newest" ? "#2563eb" : "#64748b", background: sortBy === "newest" ? "#eff6ff" : "transparent", fontWeight: sortBy === "newest" ? 500 : 400, transition: "all 0.3s" }}>
-                  <Sparkles style={{ width: 12, height: 12, display: "inline", marginRight: 4 }} />最新
-                </span>
-                <span onClick={() => setSortBy("popular")}
-                  style={{ padding: "4px 14px", borderRadius: 4, cursor: "pointer", color: sortBy === "popular" ? "#2563eb" : "#64748b", background: sortBy === "popular" ? "#eff6ff" : "transparent", fontWeight: sortBy === "popular" ? 500 : 400, transition: "all 0.3s" }}>
-                  <Flame style={{ width: 12, height: 12, display: "inline", marginRight: 4 }} />热门
-                </span>
               </div>
             </div>
             {hasFilters && (
@@ -354,19 +355,19 @@ export default function LibraryLandingPage() {
               <span style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", width: 4, height: 20, background: "linear-gradient(180deg, #2563eb, #3b82f6)", borderRadius: 2 }} />
               公共资源库
             </h2>
-            <span style={{ color: "#94a3b8", fontSize: 13 }}>共 {filteredResources.length} 个资源</span>
-          </div>
-          <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", padding: "12px 16px", marginBottom: 20, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <span style={{ fontSize: 13, color: "#94a3b8", marginRight: 4 }}>分类：</span>
-            {[{ value: "全部" as const, label: "全部" }, ...ALL_TYPES.map(t => ({ value: t, label: `${TYPE_EMOJI[t] || "📦"} ${RESOURCE_TYPE_LABELS[t] || "其他"}` }))].map(item => (
-              <button key={item.value} onClick={() => setTypeFilter(item.value)}
-                style={{ padding: "5px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer", border: "none", fontWeight: 500, transition: "all 0.2s", background: typeFilter === item.value ? "#2563eb" : "#f1f5f9", color: typeFilter === item.value ? "#fff" : "#64748b", whiteSpace: "nowrap" }}
-                onMouseEnter={(e) => { if (typeFilter !== item.value) e.currentTarget.style.background = "#e2e8f0" }}
-                onMouseLeave={(e) => { if (typeFilter !== item.value) e.currentTarget.style.background = "#f1f5f9" }}
-              >
-                {item.label}
-              </button>
-            ))}
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <div style={{ display: "flex", gap: 4 }}>
+                <button onClick={() => setSortBy("newest")}
+                  style={{ padding: "6px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer", border: "none", fontWeight: 500, background: sortBy === "newest" ? "#2563eb" : "#f1f5f9", color: sortBy === "newest" ? "#fff" : "#64748b", transition: "all 0.2s", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <Sparkles style={{ width: 13, height: 13 }} />最新
+                </button>
+                <button onClick={() => setSortBy("popular")}
+                  style={{ padding: "6px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer", border: "none", fontWeight: 500, background: sortBy === "popular" ? "#2563eb" : "#f1f5f9", color: sortBy === "popular" ? "#fff" : "#64748b", transition: "all 0.2s", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <Flame style={{ width: 13, height: 13 }} />热门
+                </button>
+              </div>
+              <span style={{ color: "#94a3b8", fontSize: 13 }}>共 {filteredResources.length} 个资源</span>
+            </div>
           </div>
           {filteredResources.length === 0 ? (
             <div style={{ textAlign: "center", padding: 60, color: "#94a3b8", background: "#fff", borderRadius: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
