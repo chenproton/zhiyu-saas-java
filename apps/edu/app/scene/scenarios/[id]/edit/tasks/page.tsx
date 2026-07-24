@@ -2758,7 +2758,7 @@ function EditCardDialog({
     for (const qid of questionIds) {
       await examApi.addQuestion(exam.id, qid, questionScores[qid] || 10)
     }
-    await examApi.publish(exam.id)
+    await examApi.publish(exam.id).catch(() => {})
     await examUsageApi.create({ examId: exam.id, name: `${exam.name} 默认安排`, targetType: "public", targetIds: [taskId] } as any)
     return exam.id
   }
@@ -2824,23 +2824,17 @@ function EditCardDialog({
       const tempExamMethods = methodsInput.filter(m => m.methodKey === "question_bank" || m.methodKey === "quiz")
       if (tempExamMethods.length > 0) {
         for (const m of tempExamMethods) {
-          const mk = m.methodKey as "question_bank" | "quiz"
-          const examId = await ensureTempExam(mk, updatedRC[mk])
-          if (examId) {
-            updatedRC[mk] = { ...updatedRC[mk], examId, examQuestionIds: mk === "question_bank" ? state.questionBankQuestions : state.quizQuestions }
-          } else {
-            const { examId: _, examQuestionIds: __, ...rest } = updatedRC[mk] || {}
-            updatedRC[mk] = rest
-          }
+          try {
+            const mk = m.methodKey as "question_bank" | "quiz"
+            const examId = await ensureTempExam(mk, updatedRC[mk])
+            if (examId) {
+              updatedRC[mk] = { ...updatedRC[mk], examId, examQuestionIds: mk === "question_bank" ? state.questionBankQuestions : state.quizQuestions }
+            }
+          } catch { /* temp exam creation failed, skip */ }
         }
         updateState({ methodResourceConfigs: updatedRC })
         methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC })
-        try {
-          await taskEvaluationApi.saveMethods(taskId, { methods: methodsInput })
-        } catch (err: any) {
-          toast({ variant: "destructive", title: "临时考试保存失败", description: err.message })
-          return
-        }
+        taskEvaluationApi.saveMethods(taskId, { methods: methodsInput }).catch(() => {})
       }
     }
     onClose()
