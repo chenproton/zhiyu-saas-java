@@ -5360,7 +5360,7 @@ function EditCardDialog({
             })
 
             const handleAddRdq = () => {
-              setNewRdqForm({ name: "", description: "", answer: "", major: "" })
+              setNewRdqForm({ name: "", description: "", answer: "", majorId: "" })
               setRdqActionMode("add")
               setRdqActionTarget(null)
               setRdqActionOpen(true)
@@ -5390,7 +5390,7 @@ function EditCardDialog({
                 name: newRdqForm.name.trim(),
                 description: newRdqForm.description.trim(),
                 answer: newRdqForm.answer.trim(),
-                major: newRdqForm.majorId.trim(),
+                majorId: newRdqForm.majorId.trim(),
               }
               updateState({ randomDrawCustomQuestions: [...state.randomDrawCustomQuestions, newQ] })
               setRdqActionOpen(false)
