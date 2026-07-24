@@ -5354,8 +5354,8 @@ function EditCardDialog({
             const [rdqDrawMode, setRdqDrawMode] = useState<"random" | "manual">("random")
             const [rdqDrawCount, setRdqDrawCount] = useState(5)
             const filteredRdq = state.randomDrawCustomQuestions.filter(q => {
-              const matchMajor = rdqMajorTab === "全部" || q.major === rdqMajorTab
-              const matchSearch = !rdqSearch || q.name.includes(rdqSearch) || q.description.includes(rdqSearch) || q.major.includes(rdqSearch)
+              const matchMajor = rdqMajorTab === "全部" || q.majorId === rdqMajorTab
+              const matchSearch = !rdqSearch || q.name.includes(rdqSearch) || q.description.includes(rdqSearch) || q.majorId.includes(rdqSearch)
               return matchMajor && matchSearch
             })
 
@@ -5367,7 +5367,7 @@ function EditCardDialog({
             }
 
             const handleEditRdq = (q: typeof state.randomDrawCustomQuestions[0]) => {
-              setNewRdqForm({ name: q.name, description: q.description, answer: q.answer, major: q.major })
+              setNewRdqForm({ name: q.name, description: q.description, answer: q.answer, majorId: q.majorId })
               setRdqActionMode("edit")
               setRdqActionTarget(q)
               setRdqActionOpen(true)
@@ -5378,7 +5378,7 @@ function EditCardDialog({
               if (rdqActionMode === "edit" && rdqActionTarget) {
                 updateState({
                   randomDrawCustomQuestions: state.randomDrawCustomQuestions.map(q =>
-                    q.id === rdqActionTarget.id ? { ...q, name: newRdqForm.name.trim(), description: newRdqForm.description.trim(), answer: newRdqForm.answer.trim(), major: newRdqForm.major.trim() } : q
+                    q.id === rdqActionTarget.id ? { ...q, name: newRdqForm.name.trim(), description: newRdqForm.description.trim(), answer: newRdqForm.answer.trim(), major: newRdqForm.majorId.trim() } : q
                   )
                 })
                 setRdqActionOpen(false)
@@ -5390,7 +5390,7 @@ function EditCardDialog({
                 name: newRdqForm.name.trim(),
                 description: newRdqForm.description.trim(),
                 answer: newRdqForm.answer.trim(),
-                major: newRdqForm.major.trim(),
+                major: newRdqForm.majorId.trim(),
               }
               updateState({ randomDrawCustomQuestions: [...state.randomDrawCustomQuestions, newQ] })
               setRdqActionOpen(false)
@@ -5477,7 +5477,7 @@ function EditCardDialog({
                                     <p className="text-xs text-gray-500 line-clamp-1" title={q.description}>{q.description || "-"}</p>
                                   </td>
                                   <td className="px-3 py-2">
-                                    <Badge variant="secondary" className="text-[10px]">{q.major || "-"}</Badge>
+                                    <Badge variant="secondary" className="text-[10px]">{q.majorId || "-"}</Badge>
                                   </td>
                                   <td className="px-3 py-2">
                                     <div className="flex items-center justify-end gap-1">
@@ -5530,7 +5530,7 @@ function EditCardDialog({
                                 </Button>
                               </div>
                               <p className="text-[11px] text-gray-500 line-clamp-1">{q.description || "暂无描述"}</p>
-                              <Badge variant="outline" className="text-[9px] mt-1 font-normal px-1 py-0 h-4">{q.major || "通用"}</Badge>
+                              <Badge variant="outline" className="text-[9px] mt-1 font-normal px-1 py-0 h-4">{q.majorId || "通用"}</Badge>
                             </div>
                           ))}
                         </div>
@@ -5574,7 +5574,7 @@ function EditCardDialog({
                       </div>
                       <div>
                         <Label>适用专业</Label>
-                        <Select value={newRdqForm.major} onValueChange={v => setNewRdqForm({ ...newRdqForm, major: v })}>
+                        <Select value={newRdqForm.majorId} onValueChange={v => setNewRdqForm({ ...newRdqForm, majorId: v })}>
                           <SelectTrigger className="mt-1.5"><SelectValue placeholder="选择适用专业" /></SelectTrigger>
                           <SelectContent>
                             {rdqMajorOptions.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
@@ -5616,7 +5616,7 @@ function EditCardDialog({
                           </div>
                           <div>
                             <Label className="text-xs text-gray-500">适用专业</Label>
-                            <Badge variant="secondary" className="text-[10px] mt-1">{q.major || "通用"}</Badge>
+                            <Badge variant="secondary" className="text-[10px] mt-1">{q.majorId || "通用"}</Badge>
                           </div>
                           <div>
                             <Label className="text-xs text-gray-500">题目描述</Label>
