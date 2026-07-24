@@ -135,14 +135,22 @@ export default function EvaluatePage() {
           </CardContent>
         </Card>
 
-        {/* 材料要求 */}
-        {(resourceConfig.submitFormatDesc || resourceConfig.deadlineDays || resourceConfig.venueResources) && (
+        {/* 材料/场地要求 —— 现场问答/现场评审/成果评价/作业都展示 */}
+        {(["random_draw", "review", "outcome", "homework"].includes(methodKey)) && (
           <Card className="mb-4">
-            <CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" />提交要求</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" />测评要求</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
-              {resourceConfig.deadlineDays && <p>预计提交天数：<span className="font-medium">{resourceConfig.deadlineDays} 天</span></p>}
-              {resourceConfig.submitFormatDesc && <p className="text-gray-600">{resourceConfig.submitFormatDesc}</p>}
-              {resourceConfig.venueResources && <p className="text-gray-600">场地资源：{resourceConfig.venueResources}</p>}
+              {resourceConfig.deadlineDays != null && <p>预计提交天数：<span className="font-medium">{resourceConfig.deadlineDays} 天</span></p>}
+              {resourceConfig.submitFormatDesc ? (
+                <div><p className="font-medium mb-1">提交材料格式要求：</p><p className="text-gray-600">{resourceConfig.submitFormatDesc}</p></div>
+              ) : (
+                <p className="text-gray-500">请按照教师要求准备材料</p>
+              )}
+              {resourceConfig.venueResources ? (
+                <div><p className="font-medium mb-1">评审场地/环境资源：</p><p className="text-gray-600">{resourceConfig.venueResources}</p></div>
+              ) : (
+                isTeacherLed && <p className="text-gray-500">请关注教师通知的场地安排</p>
+              )}
               {resourceConfig.allowResubmit !== undefined && <p>允许重新提交：{resourceConfig.allowResubmit ? "是" : "否"}</p>}
             </CardContent>
           </Card>
