@@ -825,7 +825,6 @@ export default function TasksEditPage() {
           }
           const tasksByScenarioId = new Map<string, any[]>()
           for (const t of allTasksRes.items) {
-            if (t.scenarioId === scenarioId) continue
             const sName = scenarioNameMap.get(t.scenarioId) || "未知场景"
             const sMeta = scenarioMetaMap.get(t.scenarioId) || { creatorId: "", coBuilderIds: [], status: "" }
             const enhanced = { ...t, scenarioName: sName, scenarioCreatorId: sMeta.creatorId, scenarioCoBuilderIds: sMeta.coBuilderIds, scenarioStatus: sMeta.status }
@@ -835,7 +834,6 @@ export default function TasksEditPage() {
           scenarios.length = 0
           scenarios.push(scenarioData as any)
           for (const s of allScenariosRes.items) {
-            if (s.id === scenarioId) continue
             const tasksForScenario = tasksByScenarioId.get(s.id) || []
             if (tasksForScenario.length > 0) {
               scenarios.push({ ...s, tasks: tasksForScenario })
@@ -844,6 +842,7 @@ export default function TasksEditPage() {
         } catch (cloneLoadErr) {
           console.error("Failed to load clone candidate tasks", cloneLoadErr)
         }
+        setCloneDataVersion(v => v + 1)
 
         setDataLoaded(true)
       } catch (err) {
@@ -881,17 +880,16 @@ export default function TasksEditPage() {
   )
 
   const allTasks = useMemo(() =>
-    (scenarios as any[]).flatMap((s: any) => {
-      if (s.id === scenarioId) return []
-      return (s.tasks || []).map((t: any) => ({
+    (scenarios as any[]).flatMap((s: any) =>
+      (s.tasks || []).map((t: any) => ({
         ...t,
         scenarioName: s.name,
         scenarioCreatorId: t.scenarioCreatorId || s.creatorId || "",
         scenarioCoBuilderIds: t.scenarioCoBuilderIds || s.coBuilderIds || [],
         scenarioStatus: t.scenarioStatus || s.status || "",
       }))
-    }),
-    [scenarioId]
+    ),
+    [scenarioId, cloneDataVersion]
   )
 
   const totalWeight = Object.values(taskStates).reduce((sum, s) => sum + s.weight, 0)
