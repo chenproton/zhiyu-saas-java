@@ -83,6 +83,7 @@ type TaskEvaluationMethod struct {
 	EvalSubjects     JSONSlice        `json:"evalSubjects"`
 	RubricTemplateID *string          `json:"rubricTemplateId,omitempty"`
 	ResourceConfig   JSONMap          `json:"resourceConfig"`
+	Version          int              `json:"version"`
 	EvalPoints       []TaskEvalPoint  `json:"evalPoints,omitempty"`
 	ReviewSteps      []TaskReviewStep `json:"reviewSteps,omitempty"`
 }

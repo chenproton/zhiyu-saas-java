@@ -108,6 +108,7 @@ export interface TaskEvaluationMethod {
   evalSubjects: Record<string, any>[]
   rubricTemplateId?: string
   resourceConfig: Record<string, any>
+  version: number
   evalPoints: TaskEvalPoint[]
   reviewSteps: TaskReviewStep[]
 }
