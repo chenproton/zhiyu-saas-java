@@ -2194,6 +2194,15 @@ function RandomDrawResourcePanel({
   const [allQuestions, setAllQuestions] = useState<RandomDrawQuestion[]>([])
   const [loading, setLoading] = useState(true)
 
+  const rdCfg = state.methodResourceConfigs.random_draw || {}
+  const [submitFormatDesc, setSubmitFormatDesc] = useState<string>(rdCfg.submitFormatDesc || "")
+  const [venueResources, setVenueResources] = useState<string>(rdCfg.venueResources || "")
+
+  useEffect(() => {
+    setSubmitFormatDesc(rdCfg.submitFormatDesc || "")
+    setVenueResources(rdCfg.venueResources || "")
+  }, [rdCfg.submitFormatDesc, rdCfg.venueResources])
+
   const loadQuestions = useCallback(async () => {
     try {
       const res = await randomDrawQuestionApi.list({ limit: 9999 })
@@ -2408,6 +2417,35 @@ function RandomDrawResourcePanel({
           <div>
             <Label className="text-xs text-gray-500">抽题数量</Label>
             <Input type="number" value={rdqDrawCount} onChange={e => setRdqDrawCount(Math.max(1, parseInt(e.target.value) || 1))} className="mt-1 text-sm" min={1} />
+          </div>
+        </div>
+      </div>
+
+      {/* 现场要求 */}
+      <div className="border rounded-xl p-4 mt-4">
+        <p className="text-sm font-medium mb-3">现场要求</p>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label>
+            <Textarea
+              value={submitFormatDesc}
+              onChange={e => setSubmitFormatDesc(e.target.value)}
+              onBlur={() => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, random_draw: { ...rdCfg, submitFormatDesc } } })}
+              placeholder="请用一句话说明学生需要准备的材料要求..."
+              rows={2}
+              className="text-sm"
+            />
+          </div>
+          <div>
+            <Label className="text-xs text-gray-500 mb-1.5">评审场地/环境资源准备</Label>
+            <Textarea
+              value={venueResources}
+              onChange={e => setVenueResources(e.target.value)}
+              onBlur={() => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, random_draw: { ...rdCfg, venueResources } } })}
+              placeholder="请描述现场问答所需的场地、设备及环境资源准备要求..."
+              rows={2}
+              className="text-sm"
+            />
           </div>
         </div>
       </div>
@@ -6059,23 +6097,23 @@ function EditCardDialog({
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-medium">作业提交要求</p>
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResReview.requiresMaterial} onCheckedChange={v => setMockResReview({ ...mockResReview, requiresMaterial: v })} />
+                      <Switch checked={mockResHomework.requiresMaterial} onCheckedChange={v => setMockResHomework({ ...mockResHomework, requiresMaterial: v })} />
                       <span className="text-xs text-gray-600">是否需要提交作业材料</span>
                     </div>
                   </div>
-                  {mockResReview.requiresMaterial && (
+                  {mockResHomework.requiresMaterial && (
                     <>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <Label className="text-xs text-gray-500">预估提交天数</Label>
-                          <Input type="number" value={mockResReview.deadlineDays} onChange={e => setMockResReview({ ...mockResReview, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} />
+                          <Input type="number" value={mockResHomework.deadlineDays} onChange={e => setMockResHomework({ ...mockResHomework, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} />
                         </div>
                       </div>
                       <div className="mt-3">
                         <Label className="text-xs text-gray-500 mb-1.5">作业格式要求</Label>
                         <LocalTextarea
-                          defaultValue={mockResReview.submitFormatDesc}
-                          onBlurSync={(v: string) => setMockResReview({ ...mockResReview, submitFormatDesc: v })}
+                          defaultValue={mockResHomework.submitFormatDesc}
+                          onBlurSync={(v: string) => setMockResHomework({ ...mockResHomework, submitFormatDesc: v })}
                           placeholder="请用一句话说明学生需要提交的作业格式要求..."
                           rows={2}
                           className="text-sm"
@@ -6084,8 +6122,18 @@ function EditCardDialog({
                     </>
                   )}
                   <div className="mt-3">
+                    <Label className="text-xs text-gray-500 mb-1.5">作业场地/环境资源准备</Label>
+                    <LocalTextarea
+                      defaultValue={mockResHomework.venueResources}
+                      onBlurSync={(v: string) => setMockResHomework({ ...mockResHomework, venueResources: v })}
+                      placeholder="请描述作业所需的场地、设备及环境资源准备要求..."
+                      rows={2}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="mt-3">
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResReview.allowResubmit} onCheckedChange={v => setMockResReview({ ...mockResReview, allowResubmit: v })} />
+                      <Switch checked={mockResHomework.allowResubmit} onCheckedChange={v => setMockResHomework({ ...mockResHomework, allowResubmit: v })} />
                       <span className="text-xs text-gray-600">允许重新提交</span>
                     </div>
                   </div>

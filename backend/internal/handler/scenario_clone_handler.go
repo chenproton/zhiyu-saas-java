@@ -86,6 +86,24 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 
 	taskIDMap := make(map[string]string)
 
+	type taskRow struct {
+		oldID, name, code           string
+		sortOrder                   int
+		description                 *string
+		detailedDescription         *string
+		descriptionPdf              *string
+		estimatedHours              float64
+		taskType                    string
+		difficulty                  int
+		background                  *string
+		dependencyIDs               []string
+		knowledgePointIDs           []string
+		abilityPointIDs             []string
+		resourceIDs                 []string
+		evalData                    []byte
+	}
+
+	var taskData []taskRow
 	taskRows, err := tx.Query(ctx, `
 		SELECT id, name, code, sort_order, description, detailed_description, description_pdf,
 			estimated_hours, task_type, difficulty, background, dependency_ids,
@@ -94,59 +112,54 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	`, id)
 	if err == nil {
 		for taskRows.Next() {
-			var oldID, name, code string
-			var sortOrder int
-			var description, detailedDescription, descriptionPdf *string
-			var estimatedHours float64
-			var taskType string
-			var difficulty int
-			var background *string
-			var dependencyIDs, knowledgePointIDs, abilityPointIDs, resourceIDs []string
-			var evalData []byte
-			if err := taskRows.Scan(&oldID, &name, &code, &sortOrder,
-				&description, &detailedDescription, &descriptionPdf,
-				&estimatedHours, &taskType, &difficulty, &background,
-				&dependencyIDs, &knowledgePointIDs, &abilityPointIDs, &resourceIDs, &evalData); err != nil {
+			var tr taskRow
+			if err := taskRows.Scan(&tr.oldID, &tr.name, &tr.code, &tr.sortOrder,
+				&tr.description, &tr.detailedDescription, &tr.descriptionPdf,
+				&tr.estimatedHours, &tr.taskType, &tr.difficulty, &tr.background,
+				&tr.dependencyIDs, &tr.knowledgePointIDs, &tr.abilityPointIDs, &tr.resourceIDs, &tr.evalData); err != nil {
 				continue
 			}
-
-			newTaskID := uuid.NewString()
-			taskIDMap[oldID] = newTaskID
-
-			_, err := tx.Exec(ctx, `INSERT INTO scenario_tasks (id, `+taskInsertColumns+`)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
-			`, newTaskID, newID, name, code, sortOrder, description, detailedDescription, descriptionPdf,
-				estimatedHours, taskType, difficulty, background,
-				dependencyIDs, false, nil,
-				knowledgePointIDs, abilityPointIDs, resourceIDs, evalData, tenantID)
-			if err != nil {
-				log.Printf("[CloneScenario] failed to insert task: %v", err)
-				respondError(w, http.StatusInternalServerError, "failed to clone task")
-				return
-			}
-
-			if err := h.cloneTaskDeliverables(ctx, tx, oldID, newTaskID, tenantID); err != nil {
-				respondError(w, http.StatusInternalServerError, "failed to clone deliverables")
-				return
-			}
-			if err := h.cloneTaskEvaluationMethods(ctx, tx, oldID, newTaskID, tenantID); err != nil {
-				respondError(w, http.StatusInternalServerError, "failed to clone evaluation methods")
-				return
-			}
-			if err := h.cloneTaskResourceBindings(ctx, tx, oldID, newTaskID, tenantID); err != nil {
-				respondError(w, http.StatusInternalServerError, "failed to clone resource bindings")
-				return
-			}
-			if err := h.cloneTaskKnowledgeBindings(ctx, tx, oldID, newTaskID, tenantID); err != nil {
-				respondError(w, http.StatusInternalServerError, "failed to clone knowledge bindings")
-				return
-			}
-			if err := h.cloneTaskAbilityBindings(ctx, tx, oldID, newTaskID, tenantID); err != nil {
-				respondError(w, http.StatusInternalServerError, "failed to clone ability bindings")
-				return
-			}
+			taskData = append(taskData, tr)
 		}
 		taskRows.Close()
+	}
+
+	for _, tr := range taskData {
+		newTaskID := uuid.NewString()
+		taskIDMap[tr.oldID] = newTaskID
+
+		_, err := tx.Exec(ctx, `INSERT INTO scenario_tasks (id, `+taskInsertColumns+`)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+		`, newTaskID, newID, tr.name, tr.code, tr.sortOrder, tr.description, tr.detailedDescription, tr.descriptionPdf,
+			tr.estimatedHours, tr.taskType, tr.difficulty, tr.background,
+			tr.dependencyIDs, false, nil,
+			tr.knowledgePointIDs, tr.abilityPointIDs, tr.resourceIDs, tr.evalData, tenantID)
+		if err != nil {
+			log.Printf("[CloneScenario] failed to insert task: %v", err)
+			respondError(w, http.StatusInternalServerError, "failed to clone task")
+			return
+		}
+
+		if err := h.cloneTaskDeliverables(ctx, tx, tr.oldID, newTaskID, tenantID); err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to clone deliverables")
+			return
+		}
+		if err := h.cloneTaskEvaluationMethods(ctx, tx, tr.oldID, newTaskID, tenantID); err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to clone evaluation methods")
+			return
+		}
+		if err := h.cloneTaskResourceBindings(ctx, tx, tr.oldID, newTaskID, tenantID); err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to clone resource bindings")
+			return
+		}
+		if err := h.cloneTaskKnowledgeBindings(ctx, tx, tr.oldID, newTaskID, tenantID); err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to clone knowledge bindings")
+			return
+		}
+		if err := h.cloneTaskAbilityBindings(ctx, tx, tr.oldID, newTaskID, tenantID); err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to clone ability bindings")
+			return
+		}
 	}
 
 	for _, newTaskID := range taskIDMap {
@@ -246,31 +259,38 @@ func (h *ScenarioCloneHandler) cloneTaskEvaluationMethods(ctx context.Context, t
 	}
 	defer rows.Close()
 
+	type methodRow struct {
+		oldConfigID, methodKey string
+		weight                 float64
+		evalObject             string
+		scoreType              *string
+		evalSubjects           []byte
+		rubricTemplateID       *string
+		resourceConfig         []byte
+	}
+	var methodData []methodRow
 	for rows.Next() {
-		var oldConfigID, methodKey string
-		var weight float64
-		var evalObject string
-		var scoreType *string
-		var evalSubjects []byte
-		var rubricTemplateID *string
-		var resourceConfig []byte
-		if err := rows.Scan(&oldConfigID, &methodKey, &weight, &evalObject, &scoreType, &evalSubjects, &rubricTemplateID, &resourceConfig); err != nil {
+		var mr methodRow
+		if err := rows.Scan(&mr.oldConfigID, &mr.methodKey, &mr.weight, &mr.evalObject, &mr.scoreType, &mr.evalSubjects, &mr.rubricTemplateID, &mr.resourceConfig); err != nil {
 			continue
 		}
+		methodData = append(methodData, mr)
+	}
 
+	for _, mr := range methodData {
 		newConfigID := uuid.NewString()
 		_, err := tx.Exec(ctx, `
 			INSERT INTO task_evaluation_methods (id, tenant_id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-		`, newConfigID, tenantID, newTaskID, methodKey, weight, evalObject, scoreType, evalSubjects, rubricTemplateID, resourceConfig)
+		`, newConfigID, tenantID, newTaskID, mr.methodKey, mr.weight, mr.evalObject, mr.scoreType, mr.evalSubjects, mr.rubricTemplateID, mr.resourceConfig)
 		if err != nil {
 			return err
 		}
 
-		if err := h.cloneTaskEvalPoints(ctx, tx, oldConfigID, newConfigID, tenantID); err != nil {
+		if err := h.cloneTaskEvalPoints(ctx, tx, mr.oldConfigID, newConfigID, tenantID); err != nil {
 			return err
 		}
-		if err := h.cloneTaskReviewSteps(ctx, tx, oldConfigID, newConfigID, tenantID); err != nil {
+		if err := h.cloneTaskReviewSteps(ctx, tx, mr.oldConfigID, newConfigID, tenantID); err != nil {
 			return err
 		}
 	}
