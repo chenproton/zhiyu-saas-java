@@ -5347,15 +5347,20 @@ function EditCardDialog({
         }
 
         // Resource-only panel (no eval points)
-        const EvalResourceOnlyPanel = ({ methodKey }: { methodKey: string }) => {
+        const EvalResourceOnlyPanel = ({ methodKey, majors }: { methodKey: string; majors: any[] }) => {
           if (methodKey === "random_draw") {
-            const rdqMajorOptions = ["全部", "经济学", "物流管理", "机械工程", "计算机科学", "电子信息", "工商管理", "会计学", "市场营销", "土木工程", "英语", "法学"]
+            const majorOptions = useMemo(() => [{ id: "全部", name: "全部" }, ...majors.map((m: any) => ({ id: m.id, name: m.name }))], [majors])
+            const majorNameMap = useMemo(() => {
+              const map: Record<string, string> = {}
+              majors.forEach((m: any) => { map[m.id] = m.name })
+              return map
+            }, [majors])
             const [rdqMajorTab, setRdqMajorTab] = useState("全部")
             const [rdqDrawMode, setRdqDrawMode] = useState<"random" | "manual">("random")
             const [rdqDrawCount, setRdqDrawCount] = useState(5)
             const filteredRdq = state.randomDrawCustomQuestions.filter(q => {
               const matchMajor = rdqMajorTab === "全部" || q.majorId === rdqMajorTab
-              const matchSearch = !rdqSearch || q.name.includes(rdqSearch) || q.description.includes(rdqSearch) || q.majorId.includes(rdqSearch)
+              const matchSearch = !rdqSearch || q.name.includes(rdqSearch) || q.description.includes(rdqSearch) || (majorNameMap[q.majorId] || "").includes(rdqSearch)
               return matchMajor && matchSearch
             })
 
@@ -5378,7 +5383,7 @@ function EditCardDialog({
               if (rdqActionMode === "edit" && rdqActionTarget) {
                 updateState({
                   randomDrawCustomQuestions: state.randomDrawCustomQuestions.map(q =>
-                    q.id === rdqActionTarget.id ? { ...q, name: newRdqForm.name.trim(), description: newRdqForm.description.trim(), answer: newRdqForm.answer.trim(), major: newRdqForm.majorId.trim() } : q
+                    q.id === rdqActionTarget.id ? { ...q, name: newRdqForm.name.trim(), description: newRdqForm.description.trim(), answer: newRdqForm.answer.trim(), majorId: newRdqForm.majorId.trim() } : q
                   )
                 })
                 setRdqActionOpen(false)
@@ -5430,24 +5435,24 @@ function EditCardDialog({
                 <div className="flex gap-4 flex-1 min-h-0">
                   {/* Left: All questions */}
                   <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
-                    <div className="flex items-center gap-1 mb-2">
-                      {rdqMajorOptions.map(opt => (
+                    <div className="flex items-center gap-1 mb-2 flex-wrap">
+                      {majorOptions.map(opt => (
                         <button
-                          key={opt}
-                          onClick={() => setRdqMajorTab(opt)}
+                          key={opt.id}
+                          onClick={() => setRdqMajorTab(opt.id)}
                           className={cn(
                             "px-2.5 py-1 rounded-md text-[11px] transition-all",
-                            rdqMajorTab === opt
+                            rdqMajorTab === opt.id
                               ? "bg-primary/10 text-primary font-medium"
                               : "text-gray-500 hover:bg-gray-100"
                           )}
                         >
-                          {opt}
+                          {opt.name}
                         </button>
                       ))}
                     </div>
                     <p className="text-sm font-medium mb-2 text-gray-700">
-                      {rdqSearch ? `搜索结果 (${filteredRdq.length})` : (rdqMajorTab === "全部" ? "全部现场问答题" : `${rdqMajorTab}相关现场问答题`)}
+                      {rdqSearch ? `搜索结果 (${filteredRdq.length})` : (rdqMajorTab === "全部" ? "全部现场问答题" : `${majorNameMap[rdqMajorTab] || rdqMajorTab}相关现场问答题`)}
                     </p>
                     <div className="flex-1 overflow-y-auto pr-1">
                       {filteredRdq.length === 0 ? (
@@ -5477,7 +5482,7 @@ function EditCardDialog({
                                     <p className="text-xs text-gray-500 line-clamp-1" title={q.description}>{q.description || "-"}</p>
                                   </td>
                                   <td className="px-3 py-2">
-                                    <Badge variant="secondary" className="text-[10px]">{q.majorId || "-"}</Badge>
+                                    <Badge variant="secondary" className="text-[10px]">{majorNameMap[q.majorId] || "-"}</Badge>
                                   </td>
                                   <td className="px-3 py-2">
                                     <div className="flex items-center justify-end gap-1">
@@ -5530,7 +5535,7 @@ function EditCardDialog({
                                 </Button>
                               </div>
                               <p className="text-[11px] text-gray-500 line-clamp-1">{q.description || "暂无描述"}</p>
-                              <Badge variant="outline" className="text-[9px] mt-1 font-normal px-1 py-0 h-4">{q.majorId || "通用"}</Badge>
+                              <Badge variant="outline" className="text-[9px] mt-1 font-normal px-1 py-0 h-4">{majorNameMap[q.majorId] || "通用"}</Badge>
                             </div>
                           ))}
                         </div>
@@ -5577,7 +5582,7 @@ function EditCardDialog({
                         <Select value={newRdqForm.majorId} onValueChange={v => setNewRdqForm({ ...newRdqForm, majorId: v })}>
                           <SelectTrigger className="mt-1.5"><SelectValue placeholder="选择适用专业" /></SelectTrigger>
                           <SelectContent>
-                            {rdqMajorOptions.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                            {majors.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
@@ -5616,7 +5621,7 @@ function EditCardDialog({
                           </div>
                           <div>
                             <Label className="text-xs text-gray-500">适用专业</Label>
-                            <Badge variant="secondary" className="text-[10px] mt-1">{q.majorId || "通用"}</Badge>
+                            <Badge variant="secondary" className="text-[10px] mt-1">{majorNameMap[(q as any).majorId] || "通用"}</Badge>
                           </div>
                           <div>
                             <Label className="text-xs text-gray-500">题目描述</Label>
@@ -8006,7 +8011,7 @@ function EditCardDialog({
                     setSelectedRdqForDetail={setSelectedRdqForDetail}
                   />
                 ) : erDialogMethod ? (
-                  <EvalResourceOnlyPanel methodKey={erDialogMethod} />
+                  <EvalResourceOnlyPanel methodKey={erDialogMethod} majors={majors} />
                 ) : null}
               </DialogContent>
             </Dialog>
