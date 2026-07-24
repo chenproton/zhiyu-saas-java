@@ -759,14 +759,15 @@ function MethodDialogContent({
         }
         const created = await taskEvaluationApi.createTemplate(data).catch(() => null)
         if (created) {
+          const isScoreRule = created.mode === "score_rule"
           const newScheme: RubricScheme = {
             id: created.id,
             name: created.name,
             types: (created.types || []) as EvalSubType[],
             desc: created.description || "",
-            points: info.points.map(p => ({ ...p })),
+            points: isScoreRule ? [] : info.points.map(p => ({ ...p })),
             mode: created.mode as "rubric" | "score_rule",
-            scoreRuleItems: updates.scoreRuleItems || [],
+            scoreRuleItems: isScoreRule ? (updates.scoreRuleItems || []) : undefined,
           }
           setRubricLibrary(prev => [...prev, newScheme])
           updateState({ [rubricIdField]: created.id } as any)
@@ -1683,7 +1684,7 @@ export default function TasksEditPage() {
   const [majors, setMajors] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
   const [positionAbilityBindings, setPositionAbilityBindings] = useState<any[]>([])
-  const [rubricLibrary, setRubricLibrary] = useState<any[]>([])
+  const [rubricLibrary, setRubricLibrary] = useState<RubricScheme[]>([])
 
   const userNameMap = useMemo(() => {
     const map: Record<string, string> = {}
@@ -2647,6 +2648,8 @@ export default function TasksEditPage() {
           tenantId={tenantId}
           orgNodeId={orgNodeId}
           majors={majors}
+          rubricLibrary={rubricLibrary}
+          setRubricLibrary={setRubricLibrary}
         />
       )}
 
@@ -3595,6 +3598,8 @@ function EditCardDialog({
   tenantId,
   orgNodeId,
   majors,
+  rubricLibrary,
+  setRubricLibrary,
 }: {
   allTasks: Task[]
   taskId: string
@@ -3613,6 +3618,8 @@ function EditCardDialog({
   tenantId?: string
   orgNodeId?: string
   majors: any[]
+  rubricLibrary: RubricScheme[]
+  setRubricLibrary: React.Dispatch<React.SetStateAction<RubricScheme[]>>
 }) {
   const config = cardConfigs.find(c => c.type === cardType)!
   const [localTask, setLocalTask] = useState({ name: task.name, type: task.taskType, difficulty: task.difficulty, hours: task.estimatedHours, background: task.background })
@@ -3712,7 +3719,6 @@ function EditCardDialog({
   const [methodDialogViews, setMethodDialogViews] = useState<Record<string, "list" | "edit" | "template">>({})
   const [newPointName, setNewPointName] = useState("")
 
-  const [rubricLibrary, setRubricLibrary] = useState<RubricScheme[]>([])
   const [editingRubricId, setEditingRubricId] = useState<string | null>(null)
 
   // For evaluation rules
@@ -7374,6 +7380,16 @@ function EditCardDialog({
           }
         }
 
+        const getMethodRubricIdField = (methodKey: string): "randomDrawRubricId" | "reviewRubricId" | "outcomeRubricId" | "homeworkRubricId" | null => {
+          switch (methodKey) {
+            case "random_draw": return "randomDrawRubricId"
+            case "review": return "reviewRubricId"
+            case "outcome": return "outcomeRubricId"
+            case "homework": return "homeworkRubricId"
+            default: return null
+          }
+        }
+
         const methodDialogCtx: MethodDialogCtx = {
           state,
           updateState,
@@ -7723,6 +7739,17 @@ function EditCardDialog({
 
         const MethodCard = ({ methodKey, onClick }: { methodKey: string; onClick: () => void }) => {
           const info = getMethodEvalInfo(methodKey)
+          const rubricIdField = getMethodRubricIdField(methodKey)
+          const currentRubricId = rubricIdField ? (state as any)[rubricIdField] as string | null : null
+          const currentScheme = currentRubricId ? rubricLibrary.find(s => s.id === currentRubricId) : null
+
+          const isScoreRule = currentScheme?.mode === "score_rule"
+          const evalCount = isScoreRule
+            ? (currentScheme.scoreRuleItems?.length || 0)
+            : info.points.length
+          const evalLabel = isScoreRule ? "评价项" : "评价点"
+          const badgeUnit = isScoreRule ? "项" : "点"
+
           const subTypeCount = Object.entries(
             info.points.reduce((acc, p) => {
               if (p.subType) acc[p.subType] = (acc[p.subType] || 0) + 1
@@ -7736,10 +7763,10 @@ function EditCardDialog({
                   <Target className="h-4 w-4 text-gray-400 group-hover:text-primary" />
                   <span className="text-xs font-medium text-gray-500">评价标准配置</span>
                 </div>
-                {info.points.length > 0 && <Badge variant="outline" className="text-[10px]">{info.points.length} 点</Badge>}
+                {evalCount > 0 && <Badge variant="outline" className="text-[10px]">{evalCount} {badgeUnit}</Badge>}
               </div>
               <p className="text-sm font-semibold truncate">
-                {info.points.length === 0 ? "未配置评价点" : `${info.points.length} 个评价点`}
+                {evalCount === 0 ? `未配置${evalLabel}` : `${evalCount} 个${evalLabel}`}
               </p>
               <p className="text-xs text-gray-400 truncate mt-0.5">
                 {subTypeCount.length === 0 ? "点击配置" : subTypeCount.join(" · ")}
