@@ -6000,23 +6000,23 @@ function EditCardDialog({
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-medium">成果材料要求</p>
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResReview.requiresMaterial} onCheckedChange={v => setMockResReview({ ...mockResReview, requiresMaterial: v })} />
+                      <Switch checked={mockResOutcome.requiresMaterial} onCheckedChange={v => setMockResOutcome({ ...mockResOutcome, requiresMaterial: v })} />
                       <span className="text-xs text-gray-600">是否需要提交成果材料</span>
                     </div>
                   </div>
-                  {mockResReview.requiresMaterial && (
+                  {mockResOutcome.requiresMaterial && (
                     <>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <Label className="text-xs text-gray-500">预估提交天数</Label>
-                          <Input type="number" value={mockResReview.deadlineDays} onChange={e => setMockResReview({ ...mockResReview, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} />
+                          <Input type="number" value={mockResOutcome.deadlineDays} onChange={e => setMockResOutcome({ ...mockResOutcome, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} />
                         </div>
                       </div>
                       <div className="mt-3">
                         <Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label>
                         <LocalTextarea
-                          defaultValue={mockResReview.submitFormatDesc}
-                          onBlurSync={(v: string) => setMockResReview({ ...mockResReview, submitFormatDesc: v })}
+                          defaultValue={mockResOutcome.submitFormatDesc}
+                          onBlurSync={(v: string) => setMockResOutcome({ ...mockResOutcome, submitFormatDesc: v })}
                           placeholder="请用一句话说明学生需要提交的成果材料要求..."
                           rows={2}
                           className="text-sm"
@@ -6027,8 +6027,8 @@ function EditCardDialog({
                   <div className="mt-3">
                     <Label className="text-xs text-gray-500 mb-1.5">评价场地/环境资源准备</Label>
                     <LocalTextarea
-                      defaultValue={mockResReview.venueResources}
-                      onBlurSync={(v: string) => setMockResReview({ ...mockResReview, venueResources: v })}
+                      defaultValue={mockResOutcome.venueResources}
+                      onBlurSync={(v: string) => setMockResOutcome({ ...mockResOutcome, venueResources: v })}
                       placeholder="请描述评价所需的场地、设备及环境资源准备要求..."
                       rows={2}
                       className="text-sm"
@@ -6036,7 +6036,7 @@ function EditCardDialog({
                   </div>
                   <div className="mt-3">
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResReview.allowResubmit} onCheckedChange={v => setMockResReview({ ...mockResReview, allowResubmit: v })} />
+                      <Switch checked={mockResOutcome.allowResubmit} onCheckedChange={v => setMockResOutcome({ ...mockResOutcome, allowResubmit: v })} />
                       <span className="text-xs text-gray-600">允许重新提交</span>
                     </div>
                   </div>
