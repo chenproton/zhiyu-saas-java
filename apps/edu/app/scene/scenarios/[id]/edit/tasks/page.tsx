@@ -648,7 +648,7 @@ export default function TasksEditPage() {
   const router = useRouter()
   const scenarioId = params.id as string
   const { toast } = useToast()
-  const { tenantId, orgNodeId } = useAuth()
+  const { tenantId, orgNodeId, user } = useAuth()
 
   const [existingScenario, setExistingScenario] = useState<any>(null)
   const [dataLoaded, setDataLoaded] = useState(false)
@@ -686,9 +686,7 @@ export default function TasksEditPage() {
           examApi.list({ limit: 1000 }),
         ])
 
-        // Populate module-level arrays with API data
-        scenarios.length = 0
-        scenarios.push(scenarioData as any)
+        // Populate module-level arrays with API data (scenarios array populated below with clone candidates)
         setPositions(posRes.items)
         setIndustries(indRes.items)
         setMajors(majRes.items)
@@ -814,6 +812,38 @@ export default function TasksEditPage() {
           states[t.id] = ts
         })
         setTaskStates(states)
+        // Fetch all scenarios and their tasks for the clone dialog
+        try {
+          const allScenariosRes = await scenarioApi.list({ limit: 1000 })
+          const allTasksRes = await taskApi.list({ limit: 1000 })
+          const scenarioNameMap = new Map<string, string>()
+          const scenarioMetaMap = new Map<string, { creatorId: string; coBuilderIds: string[]; status: string }>()
+          for (const s of allScenariosRes.items) {
+            scenarioNameMap.set(s.id, s.name)
+            scenarioMetaMap.set(s.id, { creatorId: s.creatorId, coBuilderIds: s.coBuilderIds || [], status: s.status })
+          }
+          const tasksByScenarioId = new Map<string, any[]>()
+          for (const t of allTasksRes.items) {
+            if (t.scenarioId === scenarioId) continue
+            const sName = scenarioNameMap.get(t.scenarioId) || "未知场景"
+            const sMeta = scenarioMetaMap.get(t.scenarioId) || { creatorId: "", coBuilderIds: [], status: "" }
+            const enhanced = { ...t, scenarioName: sName, scenarioCreatorId: sMeta.creatorId, scenarioCoBuilderIds: sMeta.coBuilderIds, scenarioStatus: sMeta.status }
+            if (!tasksByScenarioId.has(t.scenarioId)) tasksByScenarioId.set(t.scenarioId, [])
+            tasksByScenarioId.get(t.scenarioId)!.push(enhanced)
+          }
+          scenarios.length = 0
+          scenarios.push(scenarioData as any)
+          for (const s of allScenariosRes.items) {
+            if (s.id === scenarioId) continue
+            const tasksForScenario = tasksByScenarioId.get(s.id) || []
+            if (tasksForScenario.length > 0) {
+              scenarios.push({ ...s, tasks: tasksForScenario })
+            }
+          }
+        } catch (cloneLoadErr) {
+          console.error("Failed to load clone candidate tasks", cloneLoadErr)
+        }
+
         setDataLoaded(true)
       } catch (err) {
         console.error("Failed to load task data", err)
@@ -848,8 +878,17 @@ export default function TasksEditPage() {
   )
 
   const allTasks = useMemo(() =>
-    (scenarios as any[]).flatMap((s: any) => (s.tasks || []).map((t: any) => ({ ...t, scenarioName: s.name }))),
-    []
+    (scenarios as any[]).flatMap((s: any) => {
+      if (s.id === scenarioId) return []
+      return (s.tasks || []).map((t: any) => ({
+        ...t,
+        scenarioName: s.name,
+        scenarioCreatorId: t.scenarioCreatorId || s.creatorId || "",
+        scenarioCoBuilderIds: t.scenarioCoBuilderIds || s.coBuilderIds || [],
+        scenarioStatus: t.scenarioStatus || s.status || "",
+      }))
+    }),
+    [scenarioId]
   )
 
   const totalWeight = Object.values(taskStates).reduce((sum, s) => sum + s.weight, 0)
@@ -976,6 +1015,7 @@ export default function TasksEditPage() {
       id: `task-${cloneMode}-${Date.now()}-${i}`,
       order: tasks.length + i + 1,
       isReferenced: cloneMode === "reference",
+      sourceScenarioId: t.scenarioId,
       sourceScenarioName: cloneMode === "reference" ? t.scenarioName : undefined,
     }))
     setTasks([...tasks, ...newTasks])
@@ -1469,7 +1509,7 @@ export default function TasksEditPage() {
             <PrdAnnotation data={getAnnotation("editor-clone-task")}>
               <DialogTitle>克隆/引用任务</DialogTitle>
             </PrdAnnotation>
-            <DialogDescription>从其他场景选择任务进行克隆或引用</DialogDescription>
+            <DialogDescription className="text-sm text-muted-foreground">从其他场景选择任务进行克隆或引用</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 flex-1 overflow-hidden flex flex-col">
             <div className="flex items-center justify-between">
@@ -1500,9 +1540,9 @@ export default function TasksEditPage() {
               </div>
               {allTasks
                 .filter(t => {
-                  if (cloneTab === "my") return t.scenarioName?.includes("场景") || true
-                  if (cloneTab === "collab") return t.scenarioName?.includes("协作") || false
-                  if (cloneTab === "public") return t.scenarioName?.includes("公共") || false
+                  if (cloneTab === "my") return t.scenarioCreatorId === (user?.id || "")
+                  if (cloneTab === "collab") return Array.isArray(t.scenarioCoBuilderIds) && t.scenarioCoBuilderIds.includes(user?.id || "")
+                  if (cloneTab === "public") return t.scenarioStatus === "published" && t.scenarioCreatorId !== (user?.id || "")
                   return true
                 })
                 .filter(t => !cloneSearch || t.name.includes(cloneSearch) || t.code?.includes(cloneSearch) || t.scenarioName?.includes(cloneSearch))
@@ -1569,7 +1609,7 @@ export default function TasksEditPage() {
             <PrdAnnotation data={getAnnotation("row-action-delete")}>
               <DialogTitle>确认删除</DialogTitle>
             </PrdAnnotation>
-            <DialogDescription>
+            <DialogDescription className="text-sm text-muted-foreground">
               确定要删除任务「{deleteConfirmTask?.name}」吗？删除后不可恢复。
             </DialogDescription>
           </DialogHeader>
@@ -1876,7 +1916,7 @@ function BankQuestionSelectorPanel({
         {selectedBankId ? (
           <>
             <div className="flex items-center gap-2 mb-3">
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleBackToBanks}>
+              <Button variant="ghost" size="sm" className="h-8 text-xs rounded-lg" onClick={handleBackToBanks}>
                 <ChevronLeft className="h-3.5 w-3.5 mr-0.5" />返回题库列表
               </Button>
               <span className="text-sm font-medium text-gray-700">{selectedBankName}</span>
@@ -2349,7 +2389,7 @@ function RandomDrawResourcePanel({
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{rdqActionMode === "add" ? "新增现场问答题" : "编辑现场问答题"}</DialogTitle>
-            <DialogDescription>{rdqActionMode === "add" ? "创建一个新的现场问答题" : "修改现场问答题信息"}</DialogDescription>
+            <DialogDescription className="text-sm text-muted-foreground">{rdqActionMode === "add" ? "创建一个新的现场问答题" : "修改现场问答题信息"}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
@@ -3293,7 +3333,7 @@ function EditCardDialog({
                   <PrdAnnotation data={getAnnotation("dialog-knowledge-form")}>
                     <DialogTitle>{kpActionMode === "add" ? "新增知识点" : kpActionMode === "clone" ? "克隆知识点" : "编辑知识点"}</DialogTitle>
                   </PrdAnnotation>
-                  <DialogDescription>
+                  <DialogDescription className="text-sm text-muted-foreground">
                     {kpActionMode === "add" ? "创建一个新的知识点" : kpActionMode === "clone" ? `基于「${kpActionTarget?.name}」创建副本` : "修改知识点信息"}
                   </DialogDescription>
                 </DialogHeader>
@@ -4036,7 +4076,7 @@ function EditCardDialog({
                   <PrdAnnotation data={getAnnotation("dialog-resource-type-select")}>
                     <DialogTitle>选择资源类型</DialogTitle>
                   </PrdAnnotation>
-                  <DialogDescription>请选择要上传的资源类型</DialogDescription>
+                  <DialogDescription className="text-sm text-muted-foreground">请选择要上传的资源类型</DialogDescription>
                 </DialogHeader>
                 <div className="grid grid-cols-3 gap-3 py-4">
                   {types.filter(t => t !== "all").map(t => (
@@ -4066,7 +4106,7 @@ function EditCardDialog({
                   <PrdAnnotation data={getAnnotation("dialog-resource-upload")}>
                     <DialogTitle>上传资源到公共库</DialogTitle>
                   </PrdAnnotation>
-                  <DialogDescription>补充本地资源，上传后将加入资源公共库并自动选中</DialogDescription>
+                  <DialogDescription className="text-sm text-muted-foreground">补充本地资源，上传后将加入资源公共库并自动选中</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-1">
                   <div>
@@ -4373,7 +4413,7 @@ function EditCardDialog({
                         <div className={cn("p-2 rounded-lg", method.available ? method.color : "bg-gray-100 text-gray-400")}>{method.icon}</div>
                         <div>
                           <p className={cn("text-sm font-semibold", !method.available && "text-gray-400")}>{method.label}</p>
-                          <p className="text-[11px] text-gray-400 mt-0.5">{method.desc}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{method.desc}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5">
@@ -4863,7 +4903,7 @@ function EditCardDialog({
           const toggleType = (st: string) => setExpandedTypes(prev => ({ ...prev, [st]: !prev[st] }))
 
           return (
-            <div className="border rounded-xl p-4">
+            <div className="border border-border shadow-sm rounded-xl p-5">
               <p className="text-sm font-medium mb-3">评价点配置</p>
 
               {/* Sub-type selector */}
@@ -5397,7 +5437,7 @@ function EditCardDialog({
                   <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
                       <DialogTitle>{rdqActionMode === "add" ? "新增现场问答题" : "编辑现场问答题"}</DialogTitle>
-                      <DialogDescription>{rdqActionMode === "add" ? "创建一个新的现场问答题" : "修改现场问答题信息"}</DialogDescription>
+                      <DialogDescription className="text-sm text-muted-foreground">{rdqActionMode === "add" ? "创建一个新的现场问答题" : "修改现场问答题信息"}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                       <div>
@@ -5479,7 +5519,7 @@ function EditCardDialog({
                   </div>
                   <p>评审时教师根据学生现场表现或提交的材料进行打分。评价点配置请在「评价标准配置」卡片中设置。</p>
                 </div>
-                <div className="border rounded-xl p-4">
+                <div className="border border-border shadow-sm rounded-xl p-5">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-medium">评审材料要求</p>
                     <div className="flex items-center gap-2">
@@ -5524,7 +5564,7 @@ function EditCardDialog({
                     </div>
                   </div>
                 </div>
-                <div className="border rounded-xl p-4">
+                <div className="border border-border shadow-sm rounded-xl p-5">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <p className="text-sm font-medium">评审流程设置</p>
@@ -5582,11 +5622,11 @@ function EditCardDialog({
                             </div>
                             <Input value={editingStepDesc} onChange={e => setEditingStepDesc(e.target.value)} placeholder="步骤描述" className="text-sm h-8" />
                             <div className="flex items-center gap-2">
-                              <Button size="sm" className="h-7 text-xs" onClick={() => {
+                              <Button size="sm" className="h-8 text-xs rounded-lg" onClick={() => {
                                 setReviewSteps(reviewSteps.map(s => s.id === step.id ? { ...s, label: editingStepLabel || s.label, desc: editingStepDesc || s.desc } : s))
                                 setEditingReviewStepId(null)
                               }}>保存</Button>
-                              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingReviewStepId(null)}>取消</Button>
+                              <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg" onClick={() => setEditingReviewStepId(null)}>取消</Button>
                             </div>
                           </div>
                         ) : (
@@ -5651,7 +5691,7 @@ function EditCardDialog({
                       </div>
                       <Input value={newStepDesc} onChange={e => setNewStepDesc(e.target.value)} placeholder="步骤描述" className="text-sm h-8" />
                       <div className="flex items-center gap-2">
-                        <Button size="sm" className="h-7 text-xs" onClick={() => {
+                        <Button size="sm" className="h-8 text-xs rounded-lg" onClick={() => {
                           if (!newStepLabel.trim() || !newStepSubjectType) return
                           setReviewSteps([...reviewSteps, { id: `rs-${Date.now()}`, label: newStepLabel, desc: newStepDesc, enabled: true, subjectType: newStepSubjectType, weight: 0 }])
                           setShowAddStep(false)
@@ -5659,7 +5699,7 @@ function EditCardDialog({
                           setNewStepDesc("")
                           setNewStepSubjectType("")
                         }}>添加</Button>
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setShowAddStep(false); setNewStepLabel(""); setNewStepDesc(""); setNewStepSubjectType(""); }}>取消</Button>
+                        <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg" onClick={() => { setShowAddStep(false); setNewStepLabel(""); setNewStepDesc(""); setNewStepSubjectType(""); }}>取消</Button>
                       </div>
                     </div>
                   )}
@@ -5678,7 +5718,7 @@ function EditCardDialog({
             return (
               <>
               <div className="space-y-4">
-                <div className="border rounded-xl p-4">
+                <div className="border border-border shadow-sm rounded-xl p-5">
                   <p className="text-sm font-medium mb-3">选择已有试卷</p>
                   <div className="flex items-center gap-3 mb-3">
                     <div className="relative flex-1">
@@ -5732,7 +5772,7 @@ function EditCardDialog({
                   </div>
                 </div>
 
-                <div className="border rounded-xl p-4">
+                <div className="border border-border shadow-sm rounded-xl p-5">
                   <p className="text-sm font-medium mb-3">考卷设置</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -5821,7 +5861,7 @@ function EditCardDialog({
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
                     <DialogTitle>试卷创建成功</DialogTitle>
-                    <DialogDescription>
+                    <DialogDescription className="text-sm text-muted-foreground">
                       试卷「{loadedExams.find(e => e.id === configPaperId)?.name || ""}」已创建并选中。
                       你可以在试卷管理页面中配置题目、分数等。
                     </DialogDescription>
@@ -5863,7 +5903,7 @@ function EditCardDialog({
                   onUpdateQuestionScore={(qid, score) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, question_bank: { ...(state.methodResourceConfigs.question_bank || {}), questionScores: { ...(state.methodResourceConfigs.question_bank?.questionScores || {}), [qid]: score } } } })}
                   onUpdateQuestionScores={(scores) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, question_bank: { ...(state.methodResourceConfigs.question_bank || {}), questionScores: { ...(state.methodResourceConfigs.question_bank?.questionScores || {}), ...scores } } } })}
                 />
-                <div className="border rounded-xl p-4">
+                <div className="border border-border shadow-sm rounded-xl p-5">
                   <p className="text-sm font-medium mb-3">答题规则</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -5925,7 +5965,7 @@ function EditCardDialog({
                   </div>
                   <p>成果评价时教师根据学生提交的成果材料进行打分。评价点配置请在「评价标准配置」卡片中设置。</p>
                 </div>
-                <div className="border rounded-xl p-4">
+                <div className="border border-border shadow-sm rounded-xl p-5">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-medium">成果材料要求</p>
                     <div className="flex items-center gap-2">
@@ -5983,7 +6023,7 @@ function EditCardDialog({
                   </div>
                   <p>学生提交作业后，教师按评分规则进行打分。评价点配置请在「评价标准配置」卡片中设置。</p>
                 </div>
-                <div className="border rounded-xl p-4">
+                <div className="border border-border shadow-sm rounded-xl p-5">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-medium">作业提交要求</p>
                     <div className="flex items-center gap-2">
@@ -6038,7 +6078,7 @@ function EditCardDialog({
                   onUpdateQuestionScore={(qid, score) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, quiz: { ...(state.methodResourceConfigs.quiz || {}), questionScores: { ...(state.methodResourceConfigs.quiz?.questionScores || {}), [qid]: score } } } })}
                   onUpdateQuestionScores={(scores) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, quiz: { ...(state.methodResourceConfigs.quiz || {}), questionScores: { ...(state.methodResourceConfigs.quiz?.questionScores || {}), ...scores } } } })}
                 />
-                <div className="border rounded-xl p-4">
+                <div className="border border-border shadow-sm rounded-xl p-5">
                   <p className="text-sm font-medium mb-3">答题规则</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -6752,7 +6792,7 @@ function EditCardDialog({
                     <BookOpen className="h-3.5 w-3.5 mr-1" />选择评价标准模板覆盖
                   </Button>
                 </div>
-                <div className="border rounded-xl p-4 bg-gray-50/50">
+                <div className="border border-border rounded-xl p-5 bg-card">
                   <p className="text-sm font-medium mb-3">评价标准信息</p>
                   <div className="space-y-3">
                     <div>
@@ -7169,7 +7209,7 @@ function EditCardDialog({
                                 <Input value={g.remark || ""} onChange={e => {
                                   const newGm = gm.map(x => x.id === g.id ? { ...x, remark: e.target.value } : x)
                                   updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
-                                }} className="h-7 text-xs" placeholder="等级描述" />
+                                }} className="h-8 text-xs rounded-lg" placeholder="等级描述" />
                               </div>
                               <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-400 hover:text-red-500" onClick={() => {
                                 const newGm = gm.filter(x => x.id !== g.id)
@@ -7496,7 +7536,7 @@ function EditCardDialog({
                   <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
                       <PrdAnnotation data={getAnnotation("dialog-eval-order")}><DialogTitle>评价方式顺序配置</DialogTitle></PrdAnnotation>
-                      <DialogDescription>点击箭头调整评价方式的执行顺序</DialogDescription>
+                      <DialogDescription className="text-sm text-muted-foreground">点击箭头调整评价方式的执行顺序</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-1.5 py-4">
                       {getMethodInstances().map(({ methodKey, instanceIndex }, index) => {
@@ -7546,7 +7586,7 @@ function EditCardDialog({
                   <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
                       <PrdAnnotation data={getAnnotation("dialog-eval-weight")}><DialogTitle>评价方式权重配置</DialogTitle></PrdAnnotation>
-                      <DialogDescription>
+                      <DialogDescription className="text-sm text-muted-foreground">
                         配置各评价方式的权重占比，合计需等于 100%
                       </DialogDescription>
                     </DialogHeader>
@@ -7609,7 +7649,7 @@ function EditCardDialog({
                   const displayLabel = instanceCount > 1 ? `${method.label} ${instanceIndex + 1}` : method.label
                   const instanceKey = `${methodKey}-${instanceIndex}`
                   return (
-                    <div key={instanceKey} className="border rounded-xl p-4 bg-gray-50/50">
+                    <div key={instanceKey} className="border border-border rounded-xl p-5 bg-card">
                       <div className="flex items-center gap-3 mb-4">
                         <div className={cn("p-2 rounded-lg", method.color)}>{method.icon}</div>
                         <div className="flex-1 min-w-0">
@@ -7668,7 +7708,7 @@ function EditCardDialog({
               <DialogContent className="sm:max-w-[63vw] max-w-[63vw] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <PrdAnnotation data={getAnnotation("dialog-test-object")}><DialogTitle>测评对象配置</DialogTitle></PrdAnnotation>
-                  <DialogDescription>
+                  <DialogDescription className="text-sm text-muted-foreground">
                     配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的测评对象
                   </DialogDescription>
                 </DialogHeader>
@@ -7680,7 +7720,7 @@ function EditCardDialog({
               <DialogContent className="sm:max-w-[72vw] max-w-[72vw] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <PrdAnnotation data={getAnnotation("dialog-eval-subject")}><DialogTitle>评价主体配置</DialogTitle></PrdAnnotation>
-                  <DialogDescription>
+                  <DialogDescription className="text-sm text-muted-foreground">
                     配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的评价主体
                   </DialogDescription>
                 </DialogHeader>
@@ -7688,11 +7728,11 @@ function EditCardDialog({
               </DialogContent>
             </Dialog>
 
-            <Dialog open={erDialogOpen === "resource"} onOpenChange={v => !v && setErDialogOpen(null)}>
+            <Dialog open={erDialogOpen === "resource"}  onOpenChange={v => !v && setErDialogOpen(null)}>
               <DialogContent className="sm:max-w-[72vw] max-w-[72vw] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <PrdAnnotation data={getAnnotation("dialog-test-resource")}><DialogTitle>测评资源配置</DialogTitle></PrdAnnotation>
-                  <DialogDescription>
+                  <DialogDescription className="text-sm text-muted-foreground">
                     配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的测评资源
                   </DialogDescription>
                 </DialogHeader>
@@ -7744,7 +7784,7 @@ function EditCardDialog({
               <DialogContent className="sm:max-w-[72vw] max-w-[72vw] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <PrdAnnotation data={getAnnotation("dialog-eval-standard")}><DialogTitle>评价标准配置</DialogTitle></PrdAnnotation>
-                  <DialogDescription>
+                  <DialogDescription className="text-sm text-muted-foreground">
                     配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的评价点与评分规则
                   </DialogDescription>
                 </DialogHeader>
@@ -7881,7 +7921,7 @@ function EditCardDialog({
       >
                 <DialogHeader>
                   <PrdAnnotation data={getAnnotation("dialog-link-knowledge-eval")}><DialogTitle>关联考查知识点</DialogTitle></PrdAnnotation>
-                  <DialogDescription>此处仅可选择任务关联的知识点/能力点，请先在任务中配置后选择。</DialogDescription>
+                  <DialogDescription className="text-sm text-muted-foreground">此处仅可选择任务关联的知识点/能力点，请先在任务中配置后选择。</DialogDescription>
                 </DialogHeader>
                 {(() => {
                   const field = rubricKpTargetField
@@ -7982,7 +8022,7 @@ function EditCardDialog({
               <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
                   <PrdAnnotation data={getAnnotation("dialog-link-ability-eval")}><DialogTitle>关联考查能力点</DialogTitle></PrdAnnotation>
-                  <DialogDescription>此处仅可选择任务关联的知识点/能力点，请先在任务中配置后选择。</DialogDescription>
+                  <DialogDescription className="text-sm text-muted-foreground">此处仅可选择任务关联的知识点/能力点，请先在任务中配置后选择。</DialogDescription>
                 </DialogHeader>
                 {(() => {
                   const field = rubricAbTargetField
@@ -8118,7 +8158,7 @@ function EditCardDialog({
               {config.title}
             </DialogTitle>
           </PrdAnnotation>
-          <DialogDescription>任务：{task.name}</DialogDescription>
+          <DialogDescription className="text-sm text-muted-foreground">任务：{task.name}</DialogDescription>
         </DialogHeader>
         <div className={cn("flex-1 py-4", isFullScreen ? "overflow-hidden" : "overflow-y-auto")}>{renderContent()}</div>
         <DialogFooter>
@@ -8189,7 +8229,7 @@ function WeightConfigDialog({
               配置任务权重
             </DialogTitle>
           </PrdAnnotation>
-          <DialogDescription>调整所有任务的权重分配，总权重应为 100%</DialogDescription>
+          <DialogDescription className="text-sm text-muted-foreground">调整所有任务的权重分配，总权重应为 100%</DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto py-4 space-y-6">
           <div className="flex items-center justify-between">
