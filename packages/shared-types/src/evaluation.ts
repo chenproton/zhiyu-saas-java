@@ -1060,6 +1060,7 @@ export interface EvalRuleConfig {
   reviewEvalPoints: EvalRulePoint[]
   reviewScoreType: EvalScoreType
   reviewRubricId: string | null
+  reviewSteps: EvalRuleReviewStepInput[]
   paperIds: string[]
   paperWeights: Record<string, number>
   paperEvalPoints: EvalRulePoint[]
@@ -1168,6 +1169,7 @@ export function makeDefaultEvalRuleConfig(methods: EvalRuleMethodKey[]): EvalRul
     reviewEvalPoints: [],
     reviewScoreType: "eval_points",
     reviewRubricId: null,
+    reviewSteps: [],
     paperIds: [],
     paperWeights: {},
     paperEvalPoints: [],
@@ -1249,9 +1251,14 @@ export function methodsToEvalRuleConfig(methods: Array<{
         state.reviewEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
         state.reviewScoreType = m.scoreType === "ability_levels" ? "ability_levels" : "eval_points"
         state.reviewRubricId = m.rubricTemplateId || null
-        state.reviewEvalPoints.forEach(p => {
-          // reviewSteps 保留在 review 方式下
-        })
+        state.reviewSteps = (m.reviewSteps || []).map((rs: any, i: number) => ({
+          label: rs.label,
+          description: rs.description || null,
+          enabled: rs.enabled,
+          subjectType: rs.subjectType || null,
+          weight: rs.weight,
+          sortOrder: rs.sortOrder ?? i,
+        }))
         break
       case "paper":
         state.paperEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
@@ -1353,7 +1360,7 @@ export function evalRuleConfigToMethods(config: EvalRuleConfig): EvalRuleMethodI
       evalSubjects: config.methodEvalSubjects[mk] || config.evalSubjects || [],
       rubricTemplateId: rubricId || null,
       evalPoints,
-      reviewSteps: [],
+      reviewSteps: mk === "review" ? (config.reviewSteps || []) : [],
       resourceConfig,
     }
   })
