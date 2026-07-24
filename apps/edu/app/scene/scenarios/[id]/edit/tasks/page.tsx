@@ -120,7 +120,8 @@ import { getAnnotation } from "@/lib/prd-annotations"
 import { ScoreConfigDialog } from "@/components/evaluation/score-config-dialog"
 import { ExamFormDialog } from "@/components/evaluation/exam-form-dialog"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
-import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryApi, majorApi, userManagementApi, fileApi, taskResourceApi, questionBankApi, questionApi, examApi, taskEvaluationApi } from "@/lib/api"
+import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryApi, majorApi, userManagementApi, fileApi, taskResourceApi, questionBankApi, questionApi, examApi, taskEvaluationApi, randomDrawQuestionApi } from "@/lib/api"
+import type { RandomDrawQuestion } from "@/lib/types"
 import type { ScenarioTask as ApiScenarioTask } from "@/lib/types/scene"
 import type { TaskEvaluationMethod } from "@/lib/types/scene"
 import { useToast } from "@/hooks/use-toast"
@@ -493,7 +494,6 @@ function taskStateFromMethods(task: any, methods: TaskEvaluationMethod[]): TaskS
         state.randomDrawEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
         state.randomDrawScoreType = m.scoreType === "ability_levels" ? "ability_levels" : "eval_points"
         state.randomDrawRubricId = m.rubricTemplateId || null
-        if (m.resourceConfig?.customQuestions) state.randomDrawCustomQuestions = m.resourceConfig.customQuestions
         if (m.resourceConfig?.selectedQuestionIds) state.randomDrawSelectedIds = m.resourceConfig.selectedQuestionIds
         break
       case "review":
@@ -577,7 +577,7 @@ function taskStateToMethodsInput(ts: TaskState, extra?: { reviewSteps?: any[] })
     let resourceConfig: any = {}
     switch (mk) {
       case "random_draw":
-        resourceConfig = { customQuestions: ts.randomDrawCustomQuestions, selectedQuestionIds: ts.randomDrawSelectedIds }
+        resourceConfig = { selectedQuestionIds: ts.randomDrawSelectedIds }
         break
       case "paper":
         resourceConfig = { paperId: ts.paperIds?.[0] || null, paperWeight: ts.paperIds?.[0] ? ts.paperWeights[ts.paperIds[0]] : null }
@@ -2093,9 +2093,22 @@ function RandomDrawResourcePanel({
   const [rdqMajorTab, setRdqMajorTab] = useState("全部")
   const [rdqDrawMode, setRdqDrawMode] = useState<"random" | "manual">("random")
   const [rdqDrawCount, setRdqDrawCount] = useState(5)
-  const filteredRdq = state.randomDrawCustomQuestions.filter(q => {
-    const matchMajor = rdqMajorTab === "全部" || q.major === rdqMajorTab
-    const matchSearch = !rdqSearch || q.name.includes(rdqSearch) || q.description.includes(rdqSearch) || q.major.includes(rdqSearch)
+  const [allQuestions, setAllQuestions] = useState<RandomDrawQuestion[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const loadQuestions = useCallback(async () => {
+    try {
+      const res = await randomDrawQuestionApi.list({ limit: 9999 })
+      setAllQuestions(res.items)
+    } catch { /* ignore */ }
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { loadQuestions() }, [loadQuestions])
+
+  const filteredRdq = allQuestions.filter(q => {
+    const matchMajor = rdqMajorTab === "全部" || (q.major || "") === rdqMajorTab
+    const matchSearch = !rdqSearch || q.name.includes(rdqSearch) || (q.description || "").includes(rdqSearch) || (q.major || "").includes(rdqSearch)
     return matchMajor && matchSearch
   })
 
@@ -2106,42 +2119,43 @@ function RandomDrawResourcePanel({
     setRdqActionOpen(true)
   }
 
-  const handleEditRdq = (q: typeof state.randomDrawCustomQuestions[0]) => {
-    setNewRdqForm({ name: q.name, description: q.description, answer: q.answer, major: q.major })
+  const handleEditRdq = (q: typeof allQuestions[0]) => {
+    setNewRdqForm({ name: q.name, description: q.description || "", answer: q.answer || "", major: q.major || "" })
     setRdqActionMode("edit")
-    setRdqActionTarget(q)
+    setRdqActionTarget({ id: q.id, name: q.name, description: q.description || "", answer: q.answer || "" })
     setRdqActionOpen(true)
   }
 
-  const handleSaveRdq = () => {
+  const handleSaveRdq = async () => {
     if (!newRdqForm.name.trim()) return
-    if (rdqActionMode === "edit" && rdqActionTarget) {
-      updateState({
-        randomDrawCustomQuestions: state.randomDrawCustomQuestions.map(q =>
-          q.id === rdqActionTarget.id ? { ...q, name: newRdqForm.name.trim(), description: newRdqForm.description.trim(), answer: newRdqForm.answer.trim(), major: newRdqForm.major.trim() } : q
-        )
-      })
-      setRdqActionOpen(false)
-      return
-    }
-    const newId = `rdq-${Date.now()}`
-    const newQ = {
-      id: newId,
-      name: newRdqForm.name.trim(),
-      description: newRdqForm.description.trim(),
-      answer: newRdqForm.answer.trim(),
-      major: newRdqForm.major.trim(),
-    }
-    updateState({ randomDrawCustomQuestions: [...state.randomDrawCustomQuestions, newQ] })
+    try {
+      if (rdqActionMode === "edit" && rdqActionTarget) {
+        await randomDrawQuestionApi.update(rdqActionTarget.id, {
+          name: newRdqForm.name.trim(),
+          description: newRdqForm.description.trim() || undefined,
+          answer: newRdqForm.answer.trim() || undefined,
+          major: newRdqForm.major.trim() || undefined,
+        } as any)
+      } else {
+        await randomDrawQuestionApi.create({
+          name: newRdqForm.name.trim(),
+          description: newRdqForm.description.trim() || undefined,
+          answer: newRdqForm.answer.trim() || undefined,
+          major: newRdqForm.major.trim() || undefined,
+        } as any)
+      }
+      await loadQuestions()
+    } catch { /* ignore */ }
     setRdqActionOpen(false)
     setRdqSearch("")
   }
 
-  const handleDeleteRdq = (id: string) => {
-    updateState({
-      randomDrawCustomQuestions: state.randomDrawCustomQuestions.filter(q => q.id !== id),
-      randomDrawSelectedIds: state.randomDrawSelectedIds.filter(sid => sid !== id)
-    })
+  const handleDeleteRdq = async (id: string) => {
+    try {
+      await randomDrawQuestionApi.delete(id)
+      updateState({ randomDrawSelectedIds: state.randomDrawSelectedIds.filter(sid => sid !== id) })
+      await loadQuestions()
+    } catch { /* ignore */ }
   }
 
   const handleToggleSelect = (id: string) => {
@@ -2153,7 +2167,7 @@ function RandomDrawResourcePanel({
     }
   }
 
-  const selectedRdqList = state.randomDrawSelectedIds.map(id => state.randomDrawCustomQuestions.find(q => q.id === id)).filter(Boolean) as typeof state.randomDrawCustomQuestions
+  const selectedRdqList = state.randomDrawSelectedIds.map(id => allQuestions.find(q => q.id === id)).filter(Boolean) as typeof allQuestions
 
   return (
     <div className="h-[calc(92vh-180px)] flex flex-col">
@@ -5364,7 +5378,7 @@ function EditCardDialog({
                       <DialogTitle>现场问答题详情</DialogTitle>
                     </DialogHeader>
                     {(() => {
-                      const q = state.randomDrawCustomQuestions.find(x => x.id === selectedRdqForDetail)
+            const q = allQuestions.find(x => x.id === selectedRdqForDetail)
                       if (!q) return null
                       return (
                         <div className="space-y-4 py-2">

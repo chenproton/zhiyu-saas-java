@@ -978,3 +978,13 @@ export interface EvaluationBatch {
   createdAt: string
   updatedAt: string
 }
+
+export interface RandomDrawQuestion {
+  id: string
+  name: string
+  description?: string
+  answer?: string
+  major?: string
+  createdAt: string
+  updatedAt: string
+}

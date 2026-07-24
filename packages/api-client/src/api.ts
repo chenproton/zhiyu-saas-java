@@ -87,6 +87,7 @@ import type {
   CreditConversionRule,
   AppealRecord,
   EvaluationBatch,
+  RandomDrawQuestion,
 } from "./types/evaluation"
 import type { WorkspaceDashboard } from "./types/portal"
 
@@ -982,6 +983,12 @@ export const questionApi = {
   batchCreate: (bankId: string, items: Omit<Question, "id" | "bankId" | "createdAt">[]) =>
     request<{ count: number }>("/evaluation/questions/batch", { method: "POST", body: JSON.stringify({ bankId, items }) }),
 }
+
+export const randomDrawQuestionApi = createCrudApi<
+  RandomDrawQuestion,
+  Omit<RandomDrawQuestion, "id" | "createdAt" | "updatedAt">,
+  Partial<Omit<RandomDrawQuestion, "id" | "createdAt" | "updatedAt">>
+>("/evaluation/random-draw-questions")
 
 export const examApi = {
   ...createContentApi<Exam, Omit<Exam, "id" | "totalScore" | "createdAt" | "updatedAt">, Partial<Omit<Exam, "id" | "totalScore" | "createdAt" | "updatedAt">>>("/evaluation/exams"),

@@ -179,6 +179,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 	appealHandler := &handler.AppealHandler{DB: db}
 	evaluationMethodHandler := &handler.EvaluationMethodHandler{DB: db}
 	evaluationBatchHandler := handler.NewEvaluationBatchHandler(db)
+	randomDrawQuestionHandler := &handler.RandomDrawQuestionHandler{DB: db}
 	landingHandler := &handler.LandingHandler{DB: db}
 	certGradeHandler := &handler.CertGradeHandler{DB: db}
 
@@ -547,9 +548,15 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 				r.Post("/evaluation/questions", questionHandler.Create)
 				r.Put("/evaluation/questions/{id}", questionHandler.Update)
 				r.Delete("/evaluation/questions/{id}", questionHandler.Delete)
-				r.Post("/evaluation/questions/batch", questionHandler.BatchCreate)
+			r.Post("/evaluation/questions/batch", questionHandler.BatchCreate)
 
-				registerContentRoutes(r, "/evaluation/exams", examHandler)
+				r.Get("/evaluation/random-draw-questions", randomDrawQuestionHandler.List)
+				r.Get("/evaluation/random-draw-questions/{id}", randomDrawQuestionHandler.Get)
+				r.Post("/evaluation/random-draw-questions", randomDrawQuestionHandler.Create)
+				r.Put("/evaluation/random-draw-questions/{id}", randomDrawQuestionHandler.Update)
+				r.Delete("/evaluation/random-draw-questions/{id}", randomDrawQuestionHandler.Delete)
+
+			registerContentRoutes(r, "/evaluation/exams", examHandler)
 			r.Post("/evaluation/exams/{id}/questions", examHandler.AddQuestion)
 			r.Put("/evaluation/exams/{id}/questions/scores", examHandler.BulkUpdateScores)
 			r.Put("/evaluation/exams/{id}/questions/{questionId}", examHandler.UpdateQuestionScore)

@@ -369,3 +369,14 @@ type EvaluationBatch struct {
 	CreatedAt  time.Time `json:"createdAt"`
 	UpdatedAt  time.Time `json:"updatedAt"`
 }
+
+// RandomDrawQuestion represents a 现场问答 question stored in the system-wide pool.
+type RandomDrawQuestion struct {
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	Description *string   `json:"description,omitempty"`
+	Answer      *string   `json:"answer,omitempty"`
+	Major       *string   `json:"major,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
