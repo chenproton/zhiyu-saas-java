@@ -553,7 +553,15 @@ export default function SceneLearnPage() {
                         })}
                       </div>
                     ) : (
-                      <p className="text-xs text-gray-400 px-1">该任务暂未设置评价方式</p>
+                      <Card className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 p-8 flex flex-col items-center justify-center text-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-gray-400">
+                          <ClipboardList className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">该任务暂未设置评价方式</p>
+                          <p className="text-xs text-gray-500 mt-1">教师配置后，测评入口将显示在此处</p>
+                        </div>
+                      </Card>
                     )}
                   </div>
                 </div>
