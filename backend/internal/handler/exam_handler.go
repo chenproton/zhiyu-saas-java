@@ -86,14 +86,13 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 		argIdx++
 	}
 
-	countQuery := "SELECT COUNT(*) FROM exams WHERE " + strings.Join(where, " AND ")
+	countQuery := "SELECT COUNT(*) FROM exams e WHERE " + strings.Join(where, " AND ")
 	var total int
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
 		SELECT e.id, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image,
 		e.is_temp,
-			e.is_temp,
 			e.collaborator_ids,
 			COALESCE((SELECT u.name FROM users u WHERE u.id = e.creator_id), e.creator_id::text) AS creator_name,
 			COALESCE((
@@ -162,8 +161,8 @@ func (h *ExamHandler) Create(w http.ResponseWriter, r *http.Request) {
 	id := uuid.NewString()
 	_, err := h.DB.Exec(r.Context(), `
 		INSERT INTO exams (id, tenant_id, name, description, status, total_score, duration, cover_image,
-			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, creator_id)
-		VALUES ($1, $2, $3, $4, 'draft', 0, $5, $6, $7, $8, $9, 'v1.0', 'mine', $10)
+			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, creator_id, is_temp)
+		VALUES ($1, $2, $3, $4, 'draft', 0, $5, $6, $7, $8, $9, 'v1.0', 'mine', $10, $11)
 	`, id, tenantID, req.Name, req.Description, req.Duration, req.CoverImage, coalesceStringSlice(req.CollaboratorIDs), coalesceStringSlice(req.CollaboratorDeptIDs), req.BatchID, claims.UserID, req.IsTemp)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -517,7 +516,6 @@ func (h *ExamHandler) fetchExam(ctx context.Context, id string) (domain.Exam, er
 	err := h.DB.QueryRow(ctx, `
 		SELECT e.id, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image,
 		e.is_temp,
-			e.is_temp,
 			e.collaborator_ids,
 			COALESCE((SELECT u.name FROM users u WHERE u.id = e.creator_id), e.creator_id::text) AS creator_name,
 			COALESCE((
@@ -529,7 +527,7 @@ func (h *ExamHandler) fetchExam(ctx context.Context, id string) (domain.Exam, er
 		FROM exams e WHERE e.id = $1
 	`, id).Scan(
 		&e.ID, &e.Name, &e.Description, &e.Status, &e.TotalScore, &e.Duration, &coverImage,
-		&e.CollaboratorIDs, &e.CreatorName, &e.CollaboratorNames, &e.CollaboratorDeptIDs, &batchID, &e.Version, &e.OwnerType, &creatorID, &e.CreatedAt, &e.UpdatedAt,
+		&e.IsTemp, &e.CollaboratorIDs, &e.CreatorName, &e.CollaboratorNames, &e.CollaboratorDeptIDs, &batchID, &e.Version, &e.OwnerType, &creatorID, &e.CreatedAt, &e.UpdatedAt,
 	)
 	if err != nil {
 		return e, err
@@ -580,7 +578,7 @@ func (h *ExamHandler) scanExamRows(ctx context.Context, rows pgx.Rows) ([]domain
 		var coverImage, creatorID, batchID *string
 		if err := rows.Scan(
 			&e.ID, &e.Name, &e.Description, &e.Status, &e.TotalScore, &e.Duration, &coverImage,
-			&e.CollaboratorIDs, &e.CreatorName, &e.CollaboratorNames, &e.CollaboratorDeptIDs, &batchID, &e.Version, &e.OwnerType, &creatorID, &e.CreatedAt, &e.UpdatedAt,
+			&e.IsTemp, &e.CollaboratorIDs, &e.CreatorName, &e.CollaboratorNames, &e.CollaboratorDeptIDs, &batchID, &e.Version, &e.OwnerType, &creatorID, &e.CreatedAt, &e.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
