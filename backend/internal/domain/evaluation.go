@@ -90,6 +90,7 @@ type Exam struct {
 	CreatorName         string         `json:"creatorName,omitempty"`
 	CreatedAt           time.Time      `json:"createdAt"`
 	UpdatedAt           time.Time      `json:"updatedAt"`
+	IsTemp              bool           `json:"isTemp"`
 }
 
 // ExamUsage represents a usage record of an exam.
@@ -376,7 +377,8 @@ type RandomDrawQuestion struct {
 	Name        string    `json:"name"`
 	Description *string   `json:"description,omitempty"`
 	Answer      *string   `json:"answer,omitempty"`
-	Major       *string   `json:"major,omitempty"`
+	MajorID     *string   `json:"majorId,omitempty"`
+	MajorName   *string   `json:"majorName,omitempty"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 }

@@ -48,7 +48,7 @@ func (h *LandingHandler) ListExams(w http.ResponseWriter, r *http.Request) {
 			LIMIT 1
 		) org ON TRUE
 		LEFT JOIN organizations parent_org ON parent_org.id = org.parent_id
-		WHERE e.status = 'published'
+		WHERE e.status = 'published' AND e.is_temp = FALSE
 		ORDER BY eu.start_time ASC NULLS LAST
 		LIMIT 100`
 

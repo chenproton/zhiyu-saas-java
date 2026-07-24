@@ -140,6 +140,7 @@ export interface Exam {
   collaboratorNames?: string[]
   createdAt: Date
   updatedAt: Date
+  isTemp?: boolean
 }
 
 // 创建题库表单数据
@@ -984,7 +985,8 @@ export interface RandomDrawQuestion {
   name: string
   description?: string
   answer?: string
-  major?: string
+  majorId?: string
+  majorName?: string
   createdAt: string
   updatedAt: string
 }

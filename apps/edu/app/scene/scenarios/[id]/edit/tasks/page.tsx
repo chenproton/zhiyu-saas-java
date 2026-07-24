@@ -390,7 +390,7 @@ interface TaskState {
   resources: string[]
   evaluationMethods: string[]
   randomDrawQuestions: string[]
-  randomDrawCustomQuestions: { id: string; name: string; description: string; answer: string; major: string }[]
+  randomDrawCustomQuestions: { id: string; name: string; description: string; answer: string; majorId: string }[]
   randomDrawSelectedIds: string[]
   randomDrawEvalPoints: EvalPoint[]
   randomDrawScoreType: "eval_points" | "ability_levels"
@@ -1614,6 +1614,7 @@ export default function TasksEditPage() {
           userNameMap={userNameMap}
           tenantId={tenantId}
           orgNodeId={orgNodeId}
+          majors={majors}
         />
       )}
 
@@ -2149,6 +2150,7 @@ function BankQuestionSelectorPanel({
 interface RandomDrawResourcePanelProps {
   state: TaskState
   updateState: (u: Partial<TaskState>) => void
+  majors: any[]
   rdqSearch: string
   setRdqSearch: (v: string) => void
   rdqActionOpen: boolean
@@ -2157,8 +2159,8 @@ interface RandomDrawResourcePanelProps {
   setRdqActionMode: (v: "add" | "edit" | null) => void
   rdqActionTarget: { id: string; name: string; description: string; answer: string } | null
   setRdqActionTarget: (v: { id: string; name: string; description: string; answer: string } | null) => void
-  newRdqForm: { name: string; description: string; answer: string; major: string }
-  setNewRdqForm: (v: { name: string; description: string; answer: string; major: string }) => void
+  newRdqForm: { name: string; description: string; answer: string; majorId: string }
+  setNewRdqForm: (v: { name: string; description: string; answer: string; majorId: string }) => void
   rdqDetailOpen: boolean
   setRdqDetailOpen: (v: boolean) => void
   selectedRdqForDetail: string | null
@@ -2168,6 +2170,7 @@ interface RandomDrawResourcePanelProps {
 function RandomDrawResourcePanel({
   state,
   updateState,
+  majors,
   rdqSearch,
   setRdqSearch,
   rdqActionOpen,
@@ -2183,7 +2186,12 @@ function RandomDrawResourcePanel({
   selectedRdqForDetail,
   setSelectedRdqForDetail,
 }: RandomDrawResourcePanelProps) {
-  const rdqMajorOptions = ["全部", "经济学", "物流管理", "机械工程", "计算机科学", "电子信息", "工商管理", "会计学", "市场营销", "土木工程", "英语", "法学"]
+  const majorOptions = useMemo(() => [{ id: "全部", name: "全部" }, ...majors.map((m: any) => ({ id: m.id, name: m.name }))], [majors])
+  const majorNameMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    majors.forEach((m: any) => { map[m.id] = m.name })
+    return map
+  }, [majors])
   const [rdqMajorTab, setRdqMajorTab] = useState("全部")
   const [rdqDrawMode, setRdqDrawMode] = useState<"random" | "manual">("random")
   const [rdqDrawCount, setRdqDrawCount] = useState(5)
@@ -2210,20 +2218,20 @@ function RandomDrawResourcePanel({
   useEffect(() => { loadQuestions() }, [loadQuestions])
 
   const filteredRdq = allQuestions.filter(q => {
-    const matchMajor = rdqMajorTab === "全部" || (q.major || "") === rdqMajorTab
-    const matchSearch = !rdqSearch || q.name.includes(rdqSearch) || (q.description || "").includes(rdqSearch) || (q.major || "").includes(rdqSearch)
+    const matchMajor = rdqMajorTab === "全部" || q.majorId === rdqMajorTab
+    const matchSearch = !rdqSearch || q.name.includes(rdqSearch) || (q.description || "").includes(rdqSearch) || (q.majorName || "").includes(rdqSearch)
     return matchMajor && matchSearch
   })
 
   const handleAddRdq = () => {
-    setNewRdqForm({ name: "", description: "", answer: "", major: "" })
+    setNewRdqForm({ name: "", description: "", answer: "", majorId: "" })
     setRdqActionMode("add")
     setRdqActionTarget(null)
     setRdqActionOpen(true)
   }
 
   const handleEditRdq = (q: typeof allQuestions[0]) => {
-    setNewRdqForm({ name: q.name, description: q.description || "", answer: q.answer || "", major: q.major || "" })
+    setNewRdqForm({ name: q.name, description: q.description || "", answer: q.answer || "", majorId: q.majorId || "" })
     setRdqActionMode("edit")
     setRdqActionTarget({ id: q.id, name: q.name, description: q.description || "", answer: q.answer || "" })
     setRdqActionOpen(true)
@@ -2237,14 +2245,14 @@ function RandomDrawResourcePanel({
           name: newRdqForm.name.trim(),
           description: newRdqForm.description.trim() || undefined,
           answer: newRdqForm.answer.trim() || undefined,
-          major: newRdqForm.major.trim() || undefined,
+          majorId: newRdqForm.majorId || undefined,
         } as any)
       } else {
         await randomDrawQuestionApi.create({
           name: newRdqForm.name.trim(),
           description: newRdqForm.description.trim() || undefined,
           answer: newRdqForm.answer.trim() || undefined,
-          major: newRdqForm.major.trim() || undefined,
+          majorId: newRdqForm.majorId || undefined,
         } as any)
       }
       await loadQuestions()
@@ -2287,24 +2295,24 @@ function RandomDrawResourcePanel({
       <div className="flex gap-4 flex-1 min-h-0">
         {/* Left: All questions */}
         <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
-          <div className="flex items-center gap-1 mb-2">
-            {rdqMajorOptions.map(opt => (
+          <div className="flex items-center gap-1 mb-2 flex-wrap">
+            {majorOptions.map(opt => (
               <button
-                key={opt}
-                onClick={() => setRdqMajorTab(opt)}
+                key={opt.id}
+                onClick={() => setRdqMajorTab(opt.id)}
                 className={cn(
                   "px-2.5 py-1 rounded-md text-[11px] transition-all",
-                  rdqMajorTab === opt
+                  rdqMajorTab === opt.id
                     ? "bg-primary/10 text-primary font-medium"
                     : "text-gray-500 hover:bg-gray-100"
                 )}
               >
-                {opt}
+                {opt.name}
               </button>
             ))}
           </div>
           <p className="text-sm font-medium mb-2 text-gray-700">
-            {rdqSearch ? `搜索结果 (${filteredRdq.length})` : (rdqMajorTab === "全部" ? "全部现场问答题" : `${rdqMajorTab}相关现场问答题`)}
+            {rdqSearch ? `搜索结果 (${filteredRdq.length})` : (rdqMajorTab === "全部" ? "全部现场问答题" : `${majorNameMap[rdqMajorTab] || rdqMajorTab}相关现场问答题`)}
           </p>
           <div className="flex-1 overflow-y-auto pr-1">
             {filteredRdq.length === 0 ? (
@@ -2334,7 +2342,7 @@ function RandomDrawResourcePanel({
                           <p className="text-xs text-gray-500 line-clamp-1" title={q.description}>{q.description || "-"}</p>
                         </td>
                         <td className="px-3 py-2">
-                          <Badge variant="secondary" className="text-[10px]">{q.major || "-"}</Badge>
+                          <Badge variant="secondary" className="text-[10px]">{q.majorName || "-"}</Badge>
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex items-center justify-end gap-1">
@@ -2387,7 +2395,7 @@ function RandomDrawResourcePanel({
                       </Button>
                     </div>
                     <p className="text-[11px] text-gray-500 line-clamp-1">{q.description || "暂无描述"}</p>
-                    <Badge variant="outline" className="text-[9px] mt-1 font-normal px-1 py-0 h-4">{q.major || "通用"}</Badge>
+                    <Badge variant="outline" className="text-[9px] mt-1 font-normal px-1 py-0 h-4">{q.majorName || "通用"}</Badge>
                   </div>
                 ))}
               </div>
@@ -2460,10 +2468,10 @@ function RandomDrawResourcePanel({
             </div>
             <div>
               <Label>适用专业</Label>
-              <Select value={newRdqForm.major} onValueChange={v => setNewRdqForm({ ...newRdqForm, major: v })}>
+              <Select value={newRdqForm.majorId} onValueChange={v => setNewRdqForm({ ...newRdqForm, majorId: v })}>
                 <SelectTrigger className="mt-1.5"><SelectValue placeholder="选择适用专业" /></SelectTrigger>
                 <SelectContent>
-                  {rdqMajorOptions.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                  {majors.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -2492,7 +2500,7 @@ function RandomDrawResourcePanel({
             <DialogTitle>现场问答题详情</DialogTitle>
           </DialogHeader>
           {(() => {
-            const q = state.randomDrawCustomQuestions.find(x => x.id === selectedRdqForDetail)
+            const q = allQuestions.find(x => x.id === selectedRdqForDetail)
             if (!q) return null
             return (
               <div className="space-y-4 py-2">
@@ -2502,7 +2510,7 @@ function RandomDrawResourcePanel({
                 </div>
                 <div>
                   <Label className="text-xs text-gray-500">适用专业</Label>
-                  <Badge variant="secondary" className="text-[10px] mt-1">{q.major || "通用"}</Badge>
+                  <Badge variant="secondary" className="text-[10px] mt-1">{q.majorName || "通用"}</Badge>
                 </div>
                 <div>
                   <Label className="text-xs text-gray-500">题目描述</Label>
@@ -2543,6 +2551,7 @@ function EditCardDialog({
   userNameMap,
   tenantId,
   orgNodeId,
+  majors,
 }: {
   allTasks: Task[]
   taskId: string
@@ -2560,6 +2569,7 @@ function EditCardDialog({
   userNameMap: Record<string, string>
   tenantId?: string
   orgNodeId?: string
+  majors: any[]
 }) {
   const config = cardConfigs.find(c => c.type === cardType)!
   const [localTask, setLocalTask] = useState({ name: task.name, type: task.taskType, difficulty: task.difficulty, hours: task.estimatedHours, background: task.background })
@@ -2610,7 +2620,7 @@ function EditCardDialog({
   const [rdqActionOpen, setRdqActionOpen] = useState(false)
   const [rdqActionMode, setRdqActionMode] = useState<"add" | "edit" | null>(null)
   const [rdqActionTarget, setRdqActionTarget] = useState<{ id: string; name: string; description: string; answer: string } | null>(null)
-  const [newRdqForm, setNewRdqForm] = useState({ name: "", description: "", answer: "", major: "" })
+  const [newRdqForm, setNewRdqForm] = useState({ name: "", description: "", answer: "", majorId: "" })
   const [rdqDetailOpen, setRdqDetailOpen] = useState(false)
   const [selectedRdqForDetail, setSelectedRdqForDetail] = useState<string | null>(null)
 
@@ -2750,10 +2760,10 @@ function EditCardDialog({
     // If name already taken, lookup existing exam; else create new with unique name
     let exam: any
     try {
-      exam = await examApi.create({ name: examName, duration: currentCfg?.timeLimit || 90 } as any)
+      exam = await examApi.create({ name: examName, duration: currentCfg?.timeLimit || 90, isTemp: true } as any)
     } catch {
       // Name conflict — append timestamp to make unique
-      exam = await examApi.create({ name: `${examName}-${Date.now()}`, duration: currentCfg?.timeLimit || 90 } as any)
+      exam = await examApi.create({ name: `${examName}-${Date.now()}`, duration: currentCfg?.timeLimit || 90, isTemp: true } as any)
     }
     for (const qid of questionIds) {
       await examApi.addQuestion(exam.id, qid, questionScores[qid] || 10)
@@ -7979,6 +7989,7 @@ function EditCardDialog({
                   <RandomDrawResourcePanel
                     state={state}
                     updateState={updateState}
+                    majors={majors}
                     rdqSearch={rdqSearch}
                     setRdqSearch={setRdqSearch}
                     rdqActionOpen={rdqActionOpen}

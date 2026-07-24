@@ -31,6 +31,7 @@ type CreateExamRequest struct {
 	CollaboratorIDs     []string `json:"collaboratorIds"`
 	CollaboratorDeptIDs []string `json:"collaboratorDeptIds"`
 	BatchID             *string  `json:"batchId"`
+	IsTemp              bool     `json:"isTemp"`
 }
 
 type AddExamQuestionRequest struct {
@@ -59,7 +60,7 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 		offset = v
 	}
 
-	where := []string{"1=1"}
+	where := []string{"1=1", "e.is_temp = FALSE"}
 	args := []interface{}{}
 	argIdx := 1
 	tenantClaims := middleware.CurrentUser(r)
@@ -91,6 +92,8 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	query := `
 		SELECT e.id, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image,
+		e.is_temp,
+			e.is_temp,
 			e.collaborator_ids,
 			COALESCE((SELECT u.name FROM users u WHERE u.id = e.creator_id), e.creator_id::text) AS creator_name,
 			COALESCE((
@@ -161,7 +164,7 @@ func (h *ExamHandler) Create(w http.ResponseWriter, r *http.Request) {
 		INSERT INTO exams (id, tenant_id, name, description, status, total_score, duration, cover_image,
 			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, creator_id)
 		VALUES ($1, $2, $3, $4, 'draft', 0, $5, $6, $7, $8, $9, 'v1.0', 'mine', $10)
-	`, id, tenantID, req.Name, req.Description, req.Duration, req.CoverImage, coalesceStringSlice(req.CollaboratorIDs), coalesceStringSlice(req.CollaboratorDeptIDs), req.BatchID, claims.UserID)
+	`, id, tenantID, req.Name, req.Description, req.Duration, req.CoverImage, coalesceStringSlice(req.CollaboratorIDs), coalesceStringSlice(req.CollaboratorDeptIDs), req.BatchID, claims.UserID, req.IsTemp)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "考试名称已存在，请使用其他名称")
@@ -513,6 +516,8 @@ func (h *ExamHandler) fetchExam(ctx context.Context, id string) (domain.Exam, er
 	var coverImage, creatorID, batchID *string
 	err := h.DB.QueryRow(ctx, `
 		SELECT e.id, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image,
+		e.is_temp,
+			e.is_temp,
 			e.collaborator_ids,
 			COALESCE((SELECT u.name FROM users u WHERE u.id = e.creator_id), e.creator_id::text) AS creator_name,
 			COALESCE((
