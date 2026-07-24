@@ -51,6 +51,13 @@ export default function EvaluatePage() {
   const examId = methodKey === "paper" ? paperId : tempExamId
   const isExamMethod = ["paper", "question_bank", "quiz"].includes(methodKey)
   const questionIds = resourceConfig?.questionIds
+  // 是否需要提交材料：默认 true，保持与现有未配置数据兼容
+  const requiresMaterial = resourceConfig.requiresMaterial !== false
+  const formatDateTime = (v: string | undefined) => {
+    if (!v) return "-"
+    const d = new Date(v)
+    return isNaN(d.getTime()) ? v : d.toLocaleString("zh-CN", { hour12: false })
+  }
 
   useEffect(() => {
     if (!id || !taskId || !methodKey) { setLoading(false); return }
@@ -138,19 +145,22 @@ export default function EvaluatePage() {
           </CardContent>
         </Card>
 
-        {/* 现场类测评要求：只展示提交材料要求与场地/环境资源 */}
+        {/* 现场类测评要求：展示提交材料要求、场地/环境资源、截止时间、是否允许重新提交 */}
         {isTeacherLed && (
           <Card className="mb-4">
             <CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" />测评要求</CardTitle></CardHeader>
             <CardContent className="space-y-3 text-sm">
-              {resourceConfig.submitFormatDesc ? (
+              {!requiresMaterial && (
+                <p className="text-gray-600">本测评无需在线提交材料。</p>
+              )}
+              {requiresMaterial && resourceConfig.submitFormatDesc ? (
                 <div>
                   <p className="font-medium mb-1">提交材料要求</p>
                   <p className="text-gray-600 whitespace-pre-wrap">{resourceConfig.submitFormatDesc}</p>
                 </div>
-              ) : (
+              ) : requiresMaterial ? (
                 <p className="text-gray-500">请按照教师要求准备材料</p>
-              )}
+              ) : null}
               {resourceConfig.venueResources ? (
                 <div>
                   <p className="font-medium mb-1">评审场地/环境资源</p>
@@ -158,6 +168,12 @@ export default function EvaluatePage() {
                 </div>
               ) : (
                 <p className="text-gray-500">请关注教师通知的场地安排</p>
+              )}
+              {resourceConfig.deadlineDays != null && (
+                <p>预计提交天数：<span className="font-medium">{resourceConfig.deadlineDays} 天</span></p>
+              )}
+              {resourceConfig.allowResubmit !== undefined && (
+                <p>允许重新提交：{resourceConfig.allowResubmit ? "是" : "否"}</p>
               )}
             </CardContent>
           </Card>
@@ -168,16 +184,42 @@ export default function EvaluatePage() {
           <Card className="mb-4">
             <CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" />测评要求</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
-              {resourceConfig.deadlineDays != null && <p>预计提交天数：<span className="font-medium">{resourceConfig.deadlineDays} 天</span></p>}
-              {resourceConfig.submitFormatDesc ? (
-                <div><p className="font-medium mb-1">提交材料格式要求：</p><p className="text-gray-600">{resourceConfig.submitFormatDesc}</p></div>
+              {!requiresMaterial ? (
+                <p className="text-gray-600">本测评无需提交材料。</p>
               ) : (
-                <p className="text-gray-500">请按照教师要求准备材料</p>
+                <>
+                  {resourceConfig.deadlineDays != null && <p>预计提交天数：<span className="font-medium">{resourceConfig.deadlineDays} 天</span></p>}
+                  {resourceConfig.submitFormatDesc ? (
+                    <div><p className="font-medium mb-1">提交材料格式要求：</p><p className="text-gray-600">{resourceConfig.submitFormatDesc}</p></div>
+                  ) : (
+                    <p className="text-gray-500">请按照教师要求准备材料</p>
+                  )}
+                  {resourceConfig.venueResources && (
+                    <div><p className="font-medium mb-1">评审场地/环境资源：</p><p className="text-gray-600">{resourceConfig.venueResources}</p></div>
+                  )}
+                  {resourceConfig.allowResubmit !== undefined && <p>允许重新提交：{resourceConfig.allowResubmit ? "是" : "否"}</p>}
+                </>
               )}
-              {resourceConfig.venueResources && (
-                <div><p className="font-medium mb-1">评审场地/环境资源：</p><p className="text-gray-600">{resourceConfig.venueResources}</p></div>
-              )}
-              {resourceConfig.allowResubmit !== undefined && <p>允许重新提交：{resourceConfig.allowResubmit ? "是" : "否"}</p>}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 评审流程（仅现场评审） */}
+        {methodKey === "review" && reviewSteps.length > 0 && (
+          <Card className="mb-4">
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><ClipboardList className="h-4 w-4" />评审流程</CardTitle></CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {reviewSteps.filter((s: any) => s.enabled).map((s: any, idx: number) => (
+                  <div key={s.id || idx} className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{idx + 1}. {s.label}</span>
+                      <Badge variant="outline" className="text-[10px]">{s.weight || 0}%</Badge>
+                    </div>
+                    {s.description && <p className="text-xs text-gray-500 mt-1">{s.description}</p>}
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}
@@ -203,7 +245,7 @@ export default function EvaluatePage() {
         )}
 
         {/* 提交区域 - 按方法分类 */}
-        {!submitted && isManualSubmit && (
+        {!submitted && isManualSubmit && requiresMaterial && (
           <Card className="mb-4">
             <CardHeader><CardTitle className="text-base flex items-center gap-2"><Send className="h-4 w-4" />提交内容</CardTitle></CardHeader>
             <CardContent className="space-y-4">
@@ -249,11 +291,26 @@ export default function EvaluatePage() {
 
         {!submitted && isExamMethod && examId && (
           <Card className="mb-4">
-            <CardContent className="py-8 text-center">
-              <p className="text-gray-600 mb-4">请前往考试页面完成作答。</p>
-              <Button asChild>
-                <Link href={`/evaluation/landing/exams/${examId}?task=${taskId}&scene=${id}&method=${methodKey}`}>前往考试</Link>
-              </Button>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><Clock className="h-4 w-4" />考试规则</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="grid grid-cols-2 gap-3">
+                <p>时长：<span className="font-medium">{resourceConfig.timeLimit ?? resourceConfig.duration ?? 90} 分钟</span></p>
+                <p>允许重考：<span className="font-medium">{resourceConfig.allowRetake ? `是（最多 ${resourceConfig.retakeCount ?? 1} 次）` : "否"}</span></p>
+                <p>题目乱序：<span className="font-medium">{resourceConfig.shuffleQuestions !== false ? "是" : "否"}</span></p>
+                <p>交卷后显示成绩：<span className="font-medium">{resourceConfig.showResult !== false ? "是" : "否"}</span></p>
+                <p>启用方式：<span className="font-medium">{resourceConfig.activationMode === "scheduled" ? "定时启用" : resourceConfig.activationMode === "always" ? "随时可考" : "后台手动启用"}</span></p>
+                {resourceConfig.activationMode === "scheduled" && (
+                  <p>起止时间：<span className="font-medium">{formatDateTime(resourceConfig.scheduledTime)} ~ {formatDateTime(resourceConfig.scheduledEndTime)}</span></p>
+                )}
+                {methodKey === "question_bank" && resourceConfig.passRate != null && (
+                  <p>正确率要求：<span className="font-medium">{resourceConfig.passRate}%</span></p>
+                )}
+              </div>
+              <div className="pt-4 text-center">
+                <Button asChild>
+                  <Link href={`/evaluation/landing/exams/${examId}?task=${taskId}&scene=${id}&method=${methodKey}`}>前往考试</Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
