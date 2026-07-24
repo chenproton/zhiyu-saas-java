@@ -1116,16 +1116,12 @@ export default function TasksEditPage() {
       if (t.id.startsWith("task-")) {
         const created = await taskApi.create(payload)
         t.id = created.id
-        await taskEvaluationApi.saveMethods(created.id, { methods: taskStateToMethodsInput(ts) }).catch(err => {
-          console.error("Failed to save evaluation methods for new task", t.id, err)
-        })
+        await taskEvaluationApi.saveMethods(created.id, { methods: taskStateToMethodsInput(ts) })
       } else {
         await taskApi.update(t.id, payload)
         const methodsInput = taskStateToMethodsInput(ts)
         if (methodsInput.length > 0) {
-          await taskEvaluationApi.saveMethods(t.id, { methods: methodsInput }).catch(err => {
-            console.error("Failed to save evaluation methods for task", t.id, err)
-          })
+          await taskEvaluationApi.saveMethods(t.id, { methods: methodsInput })
         }
       }
     }
@@ -2606,7 +2602,7 @@ function EditCardDialog({
   const [newStepDesc, setNewStepDesc] = useState("")
   const [newStepSubjectType, setNewStepSubjectType] = useState("")
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (cardType === "info") {
       updateTask({ name: localTask.name, taskType: localTask.type as "assessment"|"training", difficulty: localTask.difficulty as 1|2|3|4|5, estimatedHours: localTask.hours, background: localTask.background })
     } else if (cardType === "evaluationRules") {
@@ -2644,6 +2640,16 @@ function EditCardDialog({
           weight: s.weight,
         })),
       })
+      // Persist evaluation methods (including resource config) to backend immediately
+      const methodsInput = taskStateToMethodsInput(state)
+      if (methodsInput.length > 0) {
+        try {
+          await taskEvaluationApi.saveMethods(taskId, { methods: methodsInput })
+        } catch (err: any) {
+          toast({ variant: "destructive", title: "评价规则保存失败", description: err.message })
+          return
+        }
+      }
     }
     onClose()
   }
