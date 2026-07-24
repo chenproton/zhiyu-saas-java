@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
@@ -301,7 +302,7 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 
 func (h *EvaluationResultHandler) fetchResult(ctx context.Context, id string) (domain.SceneEvaluationResult, error) {
 	var res domain.SceneEvaluationResult
-	var sceneID, comment, gradedBy *string
+	var sceneID, comment, gradedBy, evaluatorID, evaluatorType pgtype.Text
 	var totalScore *float64
 	var gradedAt *time.Time
 	var evalPointScores, objectiveAnswers, subjectiveContent, drawnQuestions domain.JSONMap
@@ -311,18 +312,20 @@ func (h *EvaluationResultHandler) fetchResult(ctx context.Context, id string) (d
 			drawn_questions, comment, graded_at, graded_by
 		FROM scene_evaluation_results WHERE id = $1
 	`, id).Scan(
-		&res.ID, &res.TaskID, &sceneID, &res.MethodKey, &res.EvaluateeID, &res.EvaluatorID, &res.EvaluatorType, &res.Status,
+		&res.ID, &res.TaskID, &sceneID, &res.MethodKey, &res.EvaluateeID, &evaluatorID, &evaluatorType, &res.Status,
 		&totalScore, &res.MaxScore, &evalPointScores, &objectiveAnswers, &subjectiveContent,
 		&drawnQuestions, &comment, &gradedAt, &gradedBy,
 	)
 	if err != nil {
 		return res, err
 	}
-	res.SceneID = sceneID
+	if sceneID.Valid { res.SceneID = &sceneID.String }
+	res.EvaluatorID = evaluatorID.String
+	res.EvaluatorType = evaluatorType.String
+	if comment.Valid { res.Comment = &comment.String }
+	if gradedBy.Valid { res.GradedBy = &gradedBy.String }
 	res.TotalScore = totalScore
-	res.Comment = comment
 	res.GradedAt = gradedAt
-	res.GradedBy = gradedBy
 	res.EvalPointScores = evalPointScores
 	res.ObjectiveAnswers = objectiveAnswers
 	res.SubjectiveContent = subjectiveContent
@@ -334,22 +337,24 @@ func (h *EvaluationResultHandler) scanResultRows(rows pgx.Rows) ([]domain.SceneE
 	items := make([]domain.SceneEvaluationResult, 0)
 	for rows.Next() {
 		var res domain.SceneEvaluationResult
-		var sceneID, comment, gradedBy *string
+		var sceneID, comment, gradedBy, evaluatorID, evaluatorType pgtype.Text
 		var totalScore *float64
 		var gradedAt *time.Time
 		var evalPointScores, objectiveAnswers, subjectiveContent, drawnQuestions domain.JSONMap
 		if err := rows.Scan(
-			&res.ID, &res.TaskID, &sceneID, &res.MethodKey, &res.EvaluateeID, &res.EvaluatorID, &res.EvaluatorType, &res.Status,
+			&res.ID, &res.TaskID, &sceneID, &res.MethodKey, &res.EvaluateeID, &evaluatorID, &evaluatorType, &res.Status,
 			&totalScore, &res.MaxScore, &evalPointScores, &objectiveAnswers, &subjectiveContent,
 			&drawnQuestions, &comment, &gradedAt, &gradedBy,
 		); err != nil {
 			return nil, err
 		}
-		res.SceneID = sceneID
+		if sceneID.Valid { res.SceneID = &sceneID.String }
+		res.EvaluatorID = evaluatorID.String
+		res.EvaluatorType = evaluatorType.String
+		if comment.Valid { res.Comment = &comment.String }
+		if gradedBy.Valid { res.GradedBy = &gradedBy.String }
 		res.TotalScore = totalScore
-		res.Comment = comment
 		res.GradedAt = gradedAt
-		res.GradedBy = gradedBy
 		res.EvalPointScores = evalPointScores
 		res.ObjectiveAnswers = objectiveAnswers
 		res.SubjectiveContent = subjectiveContent
