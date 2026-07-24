@@ -23,14 +23,31 @@ type EvaluationResultListResponse struct {
 	Total int                            `json:"total"`
 }
 
+type SubmitResultRequest struct {
+	TaskID             string          `json:"taskId"`
+	SceneID            *string         `json:"sceneId,omitempty"`
+	MethodKey          string          `json:"methodKey"`
+	EvaluateeID        string          `json:"evaluateeId"`
+	EvaluatorID        *string         `json:"evaluatorId,omitempty"`
+	EvaluatorType      *string         `json:"evaluatorType,omitempty"`
+	MaxScore           float64         `json:"maxScore"`
+	ObjectiveAnswers   json.RawMessage `json:"objectiveAnswers,omitempty"`
+	SubjectiveContent  json.RawMessage `json:"subjectiveContent,omitempty"`
+	DrawnQuestions     json.RawMessage `json:"drawnQuestions,omitempty"`
+	EvalPointScores    json.RawMessage `json:"evalPointScores,omitempty"`
+}
+
 type GradeResultRequest struct {
-	Score   float64 `json:"score"`
-	Comment *string `json:"comment"`
+	Score           float64         `json:"score"`
+	Comment         *string         `json:"comment"`
+	EvalPointScores json.RawMessage `json:"evalPointScores,omitempty"`
 }
 
 type BatchGradeItem struct {
-	ID    string  `json:"id"`
-	Score float64 `json:"score"`
+	ID              string          `json:"id"`
+	Score           float64         `json:"score"`
+	Comment         *string         `json:"comment"`
+	EvalPointScores json.RawMessage `json:"evalPointScores,omitempty"`
 }
 
 type BatchGradeRequest struct {
@@ -45,6 +62,9 @@ func (h *EvaluationResultHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	taskID := r.URL.Query().Get("taskId")
+	sceneID := r.URL.Query().Get("sceneId")
+	methodKey := r.URL.Query().Get("methodKey")
+	evaluateeID := r.URL.Query().Get("evaluateeId")
 	status := r.URL.Query().Get("status")
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
@@ -76,6 +96,21 @@ func (h *EvaluationResultHandler) List(w http.ResponseWriter, r *http.Request) {
 	if taskID != "" {
 		where = append(where, "task_id = $"+itoa(argIdx))
 		args = append(args, taskID)
+		argIdx++
+	}
+	if sceneID != "" {
+		where = append(where, "scene_id = $"+itoa(argIdx))
+		args = append(args, sceneID)
+		argIdx++
+	}
+	if methodKey != "" {
+		where = append(where, "method_key = $"+itoa(argIdx))
+		args = append(args, methodKey)
+		argIdx++
+	}
+	if evaluateeID != "" {
+		where = append(where, "evaluatee_id = $"+itoa(argIdx))
+		args = append(args, evaluateeID)
 		argIdx++
 	}
 	if status != "" {
@@ -130,6 +165,62 @@ func (h *EvaluationResultHandler) Get(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, res)
 }
 
+func (h *EvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+
+	var req SubmitResultRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.TaskID == "" || req.MethodKey == "" || req.EvaluateeID == "" {
+		respondError(w, http.StatusBadRequest, "missing required fields (taskId, methodKey, evaluateeId)")
+		return
+	}
+
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
+	if req.MaxScore == 0 {
+		req.MaxScore = 100
+	}
+
+	evalPointScores := jsonRawMessageToJSONMap(req.EvalPointScores)
+	objectiveAnswers := jsonRawMessageToJSONMap(req.ObjectiveAnswers)
+	subjectiveContent := jsonRawMessageToJSONMap(req.SubjectiveContent)
+	drawnQuestions := jsonRawMessageToJSONMap(req.DrawnQuestions)
+
+	var id string
+	now := time.Now()
+	err := h.DB.QueryRow(r.Context(), `
+		INSERT INTO scene_evaluation_results (tenant_id, task_id, scene_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, $10, $11, $12, $13, $14)
+		ON CONFLICT (task_id, evaluatee_id, method_key) DO UPDATE SET
+			scene_id = EXCLUDED.scene_id,
+			objective_answers = EXCLUDED.objective_answers,
+			subjective_content = EXCLUDED.subjective_content,
+			drawn_questions = EXCLUDED.drawn_questions,
+			eval_point_scores = EXCLUDED.eval_point_scores,
+			updated_at = EXCLUDED.updated_at
+		RETURNING id
+	`, tenantID, req.TaskID, req.SceneID, req.MethodKey, req.EvaluateeID,
+		req.EvaluatorID, req.EvaluatorType, req.MaxScore,
+		evalPointScores, objectiveAnswers, subjectiveContent, drawnQuestions, now).Scan(&id)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to submit evaluation result")
+		return
+	}
+
+	res, _ := h.fetchResult(r.Context(), id)
+	respondJSON(w, http.StatusCreated, res)
+}
+
 func (h *EvaluationResultHandler) Grade(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
@@ -149,10 +240,11 @@ func (h *EvaluationResultHandler) Grade(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	evalPointScores := jsonRawMessageToJSONMap(req.EvalPointScores)
 	_, err := h.DB.Exec(r.Context(), `
-		UPDATE scene_evaluation_results SET total_score = $1, comment = $2, status = 'evaluated', graded_at = NOW()
-		WHERE id = $3
-	`, req.Score, req.Comment, id)
+		UPDATE scene_evaluation_results SET total_score = $1, comment = $2, eval_point_scores = $3, status = 'evaluated', graded_at = NOW(), graded_by = $4
+		WHERE id = $5
+	`, req.Score, req.Comment, evalPointScores, claims.UserID, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to grade result")
 		return
@@ -184,9 +276,11 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 
 	count := 0
 	for _, item := range req.Items {
+		evalPointScores := jsonRawMessageToJSONMap(item.EvalPointScores)
 		_, err := tx.Exec(r.Context(), `
-			UPDATE scene_evaluation_results SET total_score = $1, status = 'evaluated', graded_at = NOW() WHERE id = $2
-		`, item.Score, item.ID)
+			UPDATE scene_evaluation_results SET total_score = $1, comment = $2, eval_point_scores = $3, status = 'evaluated', graded_at = NOW(), graded_by = $4
+			WHERE id = $5
+		`, item.Score, item.Comment, evalPointScores, claims.UserID, item.ID)
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, "failed to batch grade")
 			return

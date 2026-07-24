@@ -290,16 +290,13 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/scene/tasks/reorder", scenarioTaskHandler.Reorder)
 
 			taskEvaluationHandler := &handler.TaskEvaluationHandler{DB: pool}
-			r.Get("/scene/evaluation", taskEvaluationHandler.ListConfigs)
-			r.Post("/scene/evaluation", taskEvaluationHandler.UpsertConfig)
-			r.Delete("/scene/evaluation/{id}", taskEvaluationHandler.DeleteConfig)
-			r.Get("/scene/evaluation/{id}/points", taskEvaluationHandler.ListEvalPoints)
-			r.Post("/scene/evaluation/{id}/points", taskEvaluationHandler.UpsertEvalPoint)
-			r.Put("/scene/evaluation/points/{id}", taskEvaluationHandler.UpsertEvalPoint)
-			r.Delete("/scene/evaluation/points/{id}", taskEvaluationHandler.DeleteEvalPoint)
-			r.Get("/scene/evaluation/{id}/steps", taskEvaluationHandler.ListReviewSteps)
-			r.Post("/scene/evaluation/{id}/steps", taskEvaluationHandler.UpsertReviewStep)
-			r.Put("/scene/evaluation/steps/{id}", taskEvaluationHandler.UpsertReviewStep)
+			r.Get("/scene/tasks/{taskId}/evaluation-methods", taskEvaluationHandler.ListMethods)
+			r.Put("/scene/tasks/{taskId}/evaluation-methods", taskEvaluationHandler.SaveMethods)
+			r.Get("/scene/rubric-templates", taskEvaluationHandler.ListTemplates)
+			r.Post("/scene/rubric-templates", taskEvaluationHandler.CreateTemplate)
+			r.Get("/scene/rubric-templates/{id}", taskEvaluationHandler.GetTemplate)
+			r.Put("/scene/rubric-templates/{id}", taskEvaluationHandler.UpdateTemplate)
+			r.Delete("/scene/rubric-templates/{id}", taskEvaluationHandler.DeleteTemplate)
 
 			taskResourceHandler := &handler.TaskResourceHandler{DB: pool}
 			r.Get("/scene/task-resources", taskResourceHandler.ListResources)

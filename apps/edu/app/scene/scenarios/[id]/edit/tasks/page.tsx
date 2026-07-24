@@ -120,8 +120,9 @@ import { getAnnotation } from "@/lib/prd-annotations"
 import { ScoreConfigDialog } from "@/components/evaluation/score-config-dialog"
 import { ExamFormDialog } from "@/components/evaluation/exam-form-dialog"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
-import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryApi, majorApi, userManagementApi, fileApi, taskResourceApi, questionBankApi, questionApi, examApi } from "@/lib/api"
+import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryApi, majorApi, userManagementApi, fileApi, taskResourceApi, questionBankApi, questionApi, examApi, taskEvaluationApi } from "@/lib/api"
 import type { ScenarioTask as ApiScenarioTask } from "@/lib/types/scene"
+import type { TaskEvaluationMethod } from "@/lib/types/scene"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import { EditorShell } from "@/components/shared/editor-shell"
@@ -290,10 +291,10 @@ const defaultDescriptionTemplate = `任务描述
 一票否决项:若出现[如抄袭/泄密/核心事实错误],视为未通过。`
 
 const defaultGradeMapping: GradeMapping[] = [
-  { id: "grade-1", grade: "A", minScore: 90, maxScore: 100, color: "bg-green-500", remark: "表现卓越，完全超出预期要求，可作为标杆示范" },
-  { id: "grade-2", grade: "B", minScore: 75, maxScore: 89, color: "bg-blue-500", remark: "表现良好，达到预期要求，仅有少量可改进之处" },
-  { id: "grade-3", grade: "C", minScore: 60, maxScore: 74, color: "bg-yellow-500", remark: "基本达标，核心要求已满足，但存在明显不足" },
-  { id: "grade-4", grade: "D", minScore: 0, maxScore: 59, color: "bg-red-500", remark: "未达标准，核心要求未完成，需要重新学习或训练" },
+  { id: "grade-1", grade: "A", minScore: 90, maxScore: 100, color: "bg-green-500", remark: "表现卓越" },
+  { id: "grade-2", grade: "B", minScore: 75, maxScore: 89, color: "bg-blue-500", remark: "表现良好" },
+  { id: "grade-3", grade: "C", minScore: 60, maxScore: 74, color: "bg-yellow-500", remark: "基本达标" },
+  { id: "grade-4", grade: "D", minScore: 0, maxScore: 59, color: "bg-red-500", remark: "未达标" },
 ]
 
 const questionBankLabels: Record<string, string> = {
@@ -417,68 +418,10 @@ interface TaskState {
   methodEvalObjects: Record<string, EvalObjectType>
   methodEvalSubjects: Record<string, EvalSubjectConfig[]>
   methodWeights: Record<string, number>
+  reviewSteps: any[]
 }
 
-const defaultEvalSubjects: EvalSubjectConfig[] = [
-  {
-    type: "teacher",
-    enabled: true,
-    params: {
-      teacherBackground: "计算机/软件工程相关专业",
-      scorerCount: 2,
-      weightPercent: 50,
-      scoringDimensions: ["knowledge_mastery", "operation_standard", "task_completion", "result_quality"],
-      minTeachingYears: 3,
-    },
-  },
-  {
-    type: "enterprise_mentor",
-    enabled: true,
-    params: {
-      expertise: "前端开发 / React 生态",
-      minYears: 5,
-      scorerCount: 1,
-      weightPercent: 20,
-      companyType: "互联网/科技公司",
-    },
-  },
-  {
-    type: "self",
-    enabled: true,
-    params: {
-      requiresReflection: true,
-      weightPercent: 10,
-      reflectionMinLength: 500,
-    },
-  },
-  {
-    type: "peer",
-    enabled: false,
-    params: {
-      peerCount: 4,
-      peerRule: "随机分配",
-      anonymous: true,
-      weightPercent: 15,
-    },
-  },
-]
 
-const mockDefaultEvalPoints: EvalPoint[] = [
-  { id: "ep-mock-1", name: "组件封装与复用能力符合预期", desc: "", subType: "knowledge_mastery", knowledgePointIds: ["kp-1"], abilityPointIds: ["ab-1"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
-  { id: "ep-mock-2", name: "状态管理方案选择合理且运用熟练", desc: "", subType: "knowledge_mastery", knowledgePointIds: ["kp-2"], abilityPointIds: ["ab-2"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
-  { id: "ep-mock-3", name: "API接口设计清晰规范、易于维护", desc: "", subType: "operation_standard", knowledgePointIds: ["kp-4"], abilityPointIds: ["ab-3"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
-  { id: "ep-mock-4", name: "数据库模型设计高效且符合范式要求", desc: "", subType: "operation_standard", knowledgePointIds: ["kp-5"], abilityPointIds: ["ab-4"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
-  { id: "ep-mock-5", name: "功能需求实现完整，无明显遗漏", desc: "", subType: "task_completion", knowledgePointIds: ["kp-3"], abilityPointIds: ["ab-5"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
-  { id: "ep-mock-6", name: "代码规范性强，结构清晰易于维护", desc: "", subType: "result_quality", knowledgePointIds: ["kp-6"], abilityPointIds: ["ab-6"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
-  { id: "ep-mock-7", name: "团队沟通顺畅，协作配合积极主动", desc: "", subType: "communication", knowledgePointIds: ["kp-7"], abilityPointIds: ["ab-7"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
-  { id: "ep-mock-8", name: "问题分析思路清晰，解决方案有效", desc: "", subType: "knowledge_mastery", knowledgePointIds: ["kp-1"], abilityPointIds: ["ab-1"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
-  { id: "ep-mock-9", name: "响应式布局适配多种终端且表现一致", desc: "", subType: "operation_standard", knowledgePointIds: ["kp-2"], abilityPointIds: ["ab-2"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
-  { id: "ep-mock-10", name: "项目文档编写完整、准确、可读性强", desc: "", subType: "result_quality", knowledgePointIds: ["kp-3"], abilityPointIds: ["ab-3"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
-  { id: "ep-mock-11", name: "技术方案具有创新性，能突破常规思路", desc: "", subType: "innovation", knowledgePointIds: ["kp-4"], abilityPointIds: ["ab-4"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
-  { id: "ep-mock-12", name: "面对突发问题能冷静分析并快速解决", desc: "", subType: "adaptability", knowledgePointIds: ["kp-5"], abilityPointIds: ["ab-5"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
-  { id: "ep-mock-13", name: "职业素养良好，按时交付并遵守规范", desc: "", subType: "professionalism", knowledgePointIds: ["kp-6"], abilityPointIds: ["ab-6"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
-  { id: "ep-mock-14", name: "协作能力强，能有效推动团队目标达成", desc: "", subType: "collaboration", knowledgePointIds: ["kp-7"], abilityPointIds: ["ab-7"], scoringMethod: "level", gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)), weight: 10 },
-]
 
 function makeDefaultTaskState(count: number, index: number): TaskState {
   return {
@@ -489,39 +432,182 @@ function makeDefaultTaskState(count: number, index: number): TaskState {
     abilityPoints: [],
     abilityLevelMappings: [],
     resources: [],
-    evaluationMethods: ["random_draw", "review", "paper", "question_bank"],
-    methodWeights: { random_draw: 25, review: 25, paper: 25, question_bank: 25 },
-    randomDrawQuestions: allQuestions.slice(0, 2).map(q => q.id),
+    evaluationMethods: [],
+    methodWeights: {},
+    randomDrawQuestions: [],
     randomDrawCustomQuestions: [],
     randomDrawSelectedIds: [],
-    randomDrawEvalPoints: [mockDefaultEvalPoints[0], mockDefaultEvalPoints[1], mockDefaultEvalPoints[7], mockDefaultEvalPoints[8]],
+    randomDrawEvalPoints: [],
     randomDrawScoreType: "eval_points",
     randomDrawRubricId: null,
-    reviewEvalPoints: [mockDefaultEvalPoints[2], mockDefaultEvalPoints[3], mockDefaultEvalPoints[4], mockDefaultEvalPoints[5], mockDefaultEvalPoints[6], mockDefaultEvalPoints[9]],
+    reviewEvalPoints: [],
     reviewScoreType: "eval_points",
     reviewRubricId: null,
-    paperIds: [loadedExams[0]?.id].filter(Boolean),
-    paperWeights: loadedExams[0]?.id ? { [loadedExams[0].id]: 100 } : {},
-    paperEvalPoints: [mockDefaultEvalPoints[3], mockDefaultEvalPoints[4]],
-    questionBankQuestions: allQuestions.slice(0, 2).map(q => q.id),
-    questionBankEvalPoints: [mockDefaultEvalPoints[5], mockDefaultEvalPoints[6]],
-    outcomeEvalPoints: [mockDefaultEvalPoints[2], mockDefaultEvalPoints[3]],
+    paperIds: [],
+    paperWeights: {},
+    paperEvalPoints: [],
+    questionBankQuestions: [],
+    questionBankEvalPoints: [],
+    outcomeEvalPoints: [],
     outcomeScoreType: "eval_points",
     outcomeRubricId: null,
-    homeworkEvalPoints: [mockDefaultEvalPoints[3], mockDefaultEvalPoints[4]],
+    homeworkEvalPoints: [],
     homeworkScoreType: "eval_points",
     homeworkRubricId: null,
-    quizQuestions: allQuestions.slice(0, 2).map(q => q.id),
-    quizEvalPoints: [mockDefaultEvalPoints[5], mockDefaultEvalPoints[6]],
+    quizQuestions: [],
+    quizEvalPoints: [],
     weight: count > 0 ? Math.floor(100 / count) + (index < 100 % count ? 1 : 0) : 0,
     locked: false,
     gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)),
     scoringConfig: { teacherBackground: "", scorerCount: 1, requiresEnterpriseMentor: false },
     evalObject: "individual",
-    evalSubjects: JSON.parse(JSON.stringify(defaultEvalSubjects)),
+    evalSubjects: [],
     methodEvalObjects: {},
     methodEvalSubjects: {},
+    reviewSteps: [],
   }
+}
+
+function taskStateFromMethods(task: any, methods: TaskEvaluationMethod[]): TaskState {
+  const state = makeDefaultTaskState(0, 0)
+  if (!methods || methods.length === 0) return state
+  state.evaluationMethods = methods.map(m => m.methodKey)
+  methods.forEach(m => {
+    state.methodWeights[m.methodKey] = m.weight
+    state.methodEvalObjects[m.methodKey] = m.evalObject as EvalObjectType
+    state.methodEvalSubjects[m.methodKey] = (m.evalSubjects || []) as EvalSubjectConfig[]
+    const toLocalEvalPoint = (ep: any): EvalPoint => ({
+      id: ep.id,
+      name: ep.name,
+      desc: ep.description || "",
+      subType: ep.subType,
+      types: ep.types,
+      knowledgePointIds: ep.knowledgePointIds,
+      abilityPointIds: ep.abilityPointIds,
+      scoringMethod: ep.scoringMethod,
+      gradeMapping: ep.gradeMapping,
+      weight: ep.weight,
+    })
+    switch (m.methodKey) {
+      case "random_draw":
+        state.randomDrawEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
+        state.randomDrawScoreType = m.scoreType === "ability_levels" ? "ability_levels" : "eval_points"
+        state.randomDrawRubricId = m.rubricTemplateId || null
+        if (m.resourceConfig?.customQuestions) state.randomDrawCustomQuestions = m.resourceConfig.customQuestions
+        if (m.resourceConfig?.selectedQuestionIds) state.randomDrawSelectedIds = m.resourceConfig.selectedQuestionIds
+        break
+      case "review":
+        state.reviewEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
+        state.reviewScoreType = m.scoreType === "ability_levels" ? "ability_levels" : "eval_points"
+        state.reviewRubricId = m.rubricTemplateId || null
+        state.reviewSteps = (m.reviewSteps || []).map((rs: any) => ({
+          id: rs.id, label: rs.label, desc: rs.description || "",
+          enabled: rs.enabled, subjectType: rs.subjectType, weight: rs.weight,
+        }))
+        break
+      case "paper":
+        state.paperEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
+        if (m.resourceConfig?.paperId) state.paperIds = [m.resourceConfig.paperId]
+        if (m.resourceConfig?.paperWeight) state.paperWeights = { [m.resourceConfig.paperId]: m.resourceConfig.paperWeight }
+        break
+      case "question_bank":
+        state.questionBankEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
+        if (m.resourceConfig?.questionIds) state.questionBankQuestions = m.resourceConfig.questionIds
+        break
+      case "outcome":
+        state.outcomeEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
+        state.outcomeScoreType = m.scoreType === "ability_levels" ? "ability_levels" : "eval_points"
+        state.outcomeRubricId = m.rubricTemplateId || null
+        break
+      case "homework":
+        state.homeworkEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
+        state.homeworkScoreType = m.scoreType === "ability_levels" ? "ability_levels" : "eval_points"
+        state.homeworkRubricId = m.rubricTemplateId || null
+        break
+      case "quiz":
+        state.quizEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
+        if (m.resourceConfig?.questionIds) state.quizQuestions = m.resourceConfig.questionIds
+        break
+    }
+  })
+  return state
+}
+
+function taskStateToMethodsInput(ts: TaskState, extra?: { reviewSteps?: any[] }): any[] {
+  const methods: any[] = []
+  const evalPointFieldMap: Record<string, string> = {
+    random_draw: "randomDrawEvalPoints",
+    review: "reviewEvalPoints",
+    paper: "paperEvalPoints",
+    question_bank: "questionBankEvalPoints",
+    outcome: "outcomeEvalPoints",
+    homework: "homeworkEvalPoints",
+    quiz: "quizEvalPoints",
+  }
+  const scoreTypeFieldMap: Record<string, string> = {
+    random_draw: "randomDrawScoreType",
+    review: "reviewScoreType",
+    outcome: "outcomeScoreType",
+    homework: "homeworkScoreType",
+  }
+  const rubricFieldMap: Record<string, string> = {
+    random_draw: "randomDrawRubricId",
+    review: "reviewRubricId",
+    outcome: "outcomeRubricId",
+    homework: "homeworkRubricId",
+  }
+  ts.evaluationMethods.forEach((mk: string) => {
+    const fromLocalEvalPoint = (p: EvalPoint): any => ({
+      name: p.name,
+      description: p.desc || null,
+      subType: p.subType || null,
+      types: p.types || [],
+      weight: p.weight || 0,
+      scoringMethod: p.scoringMethod || "level",
+      gradeMapping: p.gradeMapping || [],
+      knowledgePointIds: p.knowledgePointIds || [],
+      abilityPointIds: p.abilityPointIds || [],
+      sortOrder: 0,
+    })
+    const evalField = evalPointFieldMap[mk]
+    const evalPoints = evalField ? ((ts as any)[evalField] as EvalPoint[] || []).map((p, i) => ({ ...fromLocalEvalPoint(p), sortOrder: i })) : []
+    const scoreType = (scoreTypeFieldMap[mk] ? (ts as any)[scoreTypeFieldMap[mk]] : null) || null
+    const rubricId = rubricFieldMap[mk] ? (ts as any)[rubricFieldMap[mk]] as string | null : null
+
+    let resourceConfig: any = {}
+    switch (mk) {
+      case "random_draw":
+        resourceConfig = { customQuestions: ts.randomDrawCustomQuestions, selectedQuestionIds: ts.randomDrawSelectedIds }
+        break
+      case "paper":
+        resourceConfig = { paperId: ts.paperIds?.[0] || null, paperWeight: ts.paperIds?.[0] ? ts.paperWeights[ts.paperIds[0]] : null }
+        break
+      case "question_bank":
+        resourceConfig = { questionIds: ts.questionBankQuestions }
+        break
+      case "quiz":
+        resourceConfig = { questionIds: ts.quizQuestions }
+        break
+      default:
+        resourceConfig = {}
+    }
+
+    methods.push({
+      methodKey: mk,
+      weight: ts.methodWeights[mk] || 0,
+      evalObject: ts.methodEvalObjects[mk] || "individual",
+      scoreType,
+      evalSubjects: ts.methodEvalSubjects[mk] || [],
+      rubricTemplateId: rubricId || null,
+      evalPoints,
+      reviewSteps: mk === "review" ? (ts.reviewSteps || []).map((rs: any) => ({
+        label: rs.label, description: rs.desc || null,
+        enabled: rs.enabled, subjectType: rs.subjectType, weight: rs.weight, sortOrder: 0,
+      })) : [],
+      resourceConfig,
+    })
+  })
+  return methods
 }
 
 function normalizeEvalPoints(points: unknown): EvalPoint[] {
@@ -539,49 +625,6 @@ function normalizeEvalSubjects(subjects: unknown): EvalSubjectConfig[] {
   return subjects.filter((s): s is EvalSubjectConfig => s && typeof s === "object" && typeof s.type === "string" && typeof s.enabled === "boolean")
 }
 
-function restoreTaskStateFromEvalData(defaultState: TaskState, evalData: Record<string, any> | undefined): TaskState {
-  if (!evalData || typeof evalData !== "object") return defaultState
-  const methods = normalizeStringArray(evalData.evaluationMethods)
-  const state: TaskState = {
-    ...defaultState,
-    evaluationMethods: methods.length > 0 ? methods : defaultState.evaluationMethods,
-    methodWeights: evalData.methodWeights && typeof evalData.methodWeights === "object" ? evalData.methodWeights : defaultState.methodWeights,
-    randomDrawQuestions: normalizeStringArray(evalData.randomDrawQuestions),
-    randomDrawCustomQuestions: Array.isArray(evalData.randomDrawCustomQuestions) ? evalData.randomDrawCustomQuestions.filter((c: any) => c && typeof c.id === "string") : defaultState.randomDrawCustomQuestions,
-    randomDrawSelectedIds: normalizeStringArray(evalData.randomDrawSelectedIds),
-    randomDrawEvalPoints: normalizeEvalPoints(evalData.randomDrawEvalPoints),
-    randomDrawScoreType: evalData.randomDrawScoreType === "ability_levels" ? "ability_levels" : "eval_points",
-    randomDrawRubricId: typeof evalData.randomDrawRubricId === "string" ? evalData.randomDrawRubricId : null,
-    reviewEvalPoints: normalizeEvalPoints(evalData.reviewEvalPoints),
-    reviewScoreType: evalData.reviewScoreType === "ability_levels" ? "ability_levels" : "eval_points",
-    reviewRubricId: typeof evalData.reviewRubricId === "string" ? evalData.reviewRubricId : null,
-    paperIds: normalizeStringArray(evalData.paperIds),
-    paperWeights: evalData.paperWeights && typeof evalData.paperWeights === "object" ? evalData.paperWeights : defaultState.paperWeights,
-    paperEvalPoints: normalizeEvalPoints(evalData.paperEvalPoints),
-    questionBankQuestions: normalizeStringArray(evalData.questionBankQuestions),
-    questionBankEvalPoints: normalizeEvalPoints(evalData.questionBankEvalPoints),
-    outcomeEvalPoints: normalizeEvalPoints(evalData.outcomeEvalPoints),
-    outcomeScoreType: evalData.outcomeScoreType === "ability_levels" ? "ability_levels" : "eval_points",
-    outcomeRubricId: typeof evalData.outcomeRubricId === "string" ? evalData.outcomeRubricId : null,
-    homeworkEvalPoints: normalizeEvalPoints(evalData.homeworkEvalPoints),
-    homeworkScoreType: evalData.homeworkScoreType === "ability_levels" ? "ability_levels" : "eval_points",
-    homeworkRubricId: typeof evalData.homeworkRubricId === "string" ? evalData.homeworkRubricId : null,
-    quizQuestions: normalizeStringArray(evalData.quizQuestions),
-    quizEvalPoints: normalizeEvalPoints(evalData.quizEvalPoints),
-    locked: typeof evalData.locked === "boolean" ? evalData.locked : defaultState.locked,
-    gradeMapping: Array.isArray(evalData.gradeMapping) ? evalData.gradeMapping : defaultState.gradeMapping,
-    scoringConfig: evalData.scoringConfig && typeof evalData.scoringConfig === "object" ? { ...defaultState.scoringConfig, ...evalData.scoringConfig } : defaultState.scoringConfig,
-    evalObject: evalData.evalObject === "group" ? "group" : "individual",
-    evalSubjects: normalizeEvalSubjects(evalData.evalSubjects),
-    methodEvalObjects: evalData.methodEvalObjects && typeof evalData.methodEvalObjects === "object" ? evalData.methodEvalObjects : defaultState.methodEvalObjects,
-    methodEvalSubjects: evalData.methodEvalSubjects && typeof evalData.methodEvalSubjects === "object" ? evalData.methodEvalSubjects : defaultState.methodEvalSubjects,
-  }
-  // Ensure methodWeights only contains current methods
-  const cleanedWeights: Record<string, number> = {}
-  state.evaluationMethods.forEach(m => { cleanedWeights[m] = typeof state.methodWeights[m] === "number" ? state.methodWeights[m] : 0 })
-  state.methodWeights = cleanedWeights
-  return state
-}
 
 
 // ============ Main Page ============
@@ -604,6 +647,7 @@ export default function TasksEditPage() {
   const [majors, setMajors] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
   const [positionAbilityBindings, setPositionAbilityBindings] = useState<any[]>([])
+  const [rubricLibrary, setRubricLibrary] = useState<any[]>([])
 
   const userNameMap = useMemo(() => {
     const map: Record<string, string> = {}
@@ -713,22 +757,47 @@ export default function TasksEditPage() {
           isReferenced: at.isReferenced || false,
           sourceScenarioId: at.sourceScenarioId || undefined,
           sourceScenarioName: undefined,
-          evalData: at.evalData,
+
         }))
 
         setTasks(mockTasks)
 
-        // Initialize taskStates from API task data
+        // Fetch evaluation methods for all tasks + rubric templates
+        const methodsPromises = mockTasks.map(t => taskEvaluationApi.listMethods(t.id).catch(() => ({ methods: [] })))
+        const [allMethods, rubricRes] = await Promise.all([
+          Promise.all(methodsPromises),
+          taskEvaluationApi.listTemplates({ limit: 200 }).catch(() => ({ items: [], total: 0 })),
+        ])
+
+        // Populate rubric library from API
+        setRubricLibrary((rubricRes.items || []).map((rt: any) => ({
+          id: rt.id,
+          name: rt.name,
+          types: (rt.types || []) as EvalSubType[],
+          desc: rt.description || "",
+          points: rt.mode === "rubric" ? (rt.data?.points || []).map((p: any) => ({
+            ...p,
+            id: p.id || `ep-${Math.random().toString(36).slice(2, 9)}`,
+            desc: p.description || "",
+          })) : [],
+          mode: (rt.mode || "rubric") as "rubric" | "score_rule",
+          scoreRuleItems: rt.mode === "score_rule" ? (rt.data?.scoreRuleItems || []) : undefined,
+        })))
+
+        // Initialize taskStates from API method data
         const count = mockTasks.length
         const states: Record<string, TaskState> = {}
         mockTasks.forEach((t, i) => {
-          const defaultState = makeDefaultTaskState(count, i)
-          states[t.id] = restoreTaskStateFromEvalData(defaultState, t.evalData)
-          if (t.knowledgePoints) states[t.id].knowledgePoints = t.knowledgePoints
-          if (t.abilityPoints) states[t.id].abilityPoints = t.abilityPoints
-          if (t.resources) states[t.id].resources = t.resources
-          if (t.detailedDescription) states[t.id].description = t.detailedDescription
-          if (t.descriptionPdf) states[t.id].descriptionPdf = t.descriptionPdf
+          const methods = allMethods[i]?.methods || []
+          let ts = taskStateFromMethods(t, methods)
+          if (t.knowledgePoints) ts.knowledgePoints = t.knowledgePoints
+          if (t.abilityPoints) ts.abilityPoints = t.abilityPoints
+          if (t.resources) ts.resources = t.resources
+          if (t.detailedDescription) ts.description = t.detailedDescription
+          if (t.descriptionPdf) ts.descriptionPdf = t.descriptionPdf
+          ts.weight = count > 0 ? Math.floor(100 / count) + (i < 100 % count ? 1 : 0) : 0
+          ts.gradeMapping = JSON.parse(JSON.stringify(defaultGradeMapping))
+          states[t.id] = ts
         })
         setTaskStates(states)
         setDataLoaded(true)
@@ -739,28 +808,7 @@ export default function TasksEditPage() {
     load()
   }, [scenarioId])
 
-  const generateMockEvalPoints = (t: Task): { randomDraw: EvalPoint[]; review: EvalPoint[] } => {
-    const subTypePool: EvalSubType[] = ["knowledge_mastery", "operation_standard", "task_completion", "result_quality", "communication", "collaboration", "professionalism", "innovation", "adaptability"]
-    const eps = t.deliverables?.flatMap(d => d.evaluationPoints || []) || []
-    const randomDraw: EvalPoint[] = []
-    const review: EvalPoint[] = []
-    eps.forEach((ep, idx) => {
-      const point: EvalPoint = {
-        id: ep.id,
-        name: ep.name,
-        desc: ep.description || "",
-        subType: subTypePool[idx % subTypePool.length],
-        knowledgePointIds: t.knowledgePoints?.slice(0, 2),
-        abilityPointIds: t.abilityPoints?.slice(0, 2),
-        scoringMethod: "level",
-        gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)),
-        weight: 10,
-      }
-      if (idx % 2 === 0) randomDraw.push(point)
-      else review.push(point)
-    })
-    return { randomDraw, review }
-  }
+
 
   const [editingCard, setEditingCard] = useState<{ taskId: string; type: CardType } | null>(null)
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false)
@@ -1064,46 +1112,21 @@ export default function TasksEditPage() {
         knowledgePointIds: ts.knowledgePoints || [],
         abilityPointIds: ts.abilityPoints || [],
         resourceIds: ts.resources || [],
-        evalData: {
-          evaluationMethods: ts.evaluationMethods,
-          methodWeights: ts.methodWeights,
-          weight: ts.weight,
-          locked: ts.locked,
-          gradeMapping: ts.gradeMapping,
-          randomDrawQuestions: ts.randomDrawQuestions,
-          randomDrawCustomQuestions: ts.randomDrawCustomQuestions,
-          randomDrawSelectedIds: ts.randomDrawSelectedIds,
-          randomDrawEvalPoints: ts.randomDrawEvalPoints,
-          randomDrawScoreType: ts.randomDrawScoreType,
-          randomDrawRubricId: ts.randomDrawRubricId,
-          reviewEvalPoints: ts.reviewEvalPoints,
-          reviewScoreType: ts.reviewScoreType,
-          reviewRubricId: ts.reviewRubricId,
-          paperIds: ts.paperIds,
-          paperWeights: ts.paperWeights,
-          paperEvalPoints: ts.paperEvalPoints,
-          questionBankQuestions: ts.questionBankQuestions,
-          questionBankEvalPoints: ts.questionBankEvalPoints,
-          outcomeEvalPoints: ts.outcomeEvalPoints,
-          outcomeScoreType: ts.outcomeScoreType,
-          outcomeRubricId: ts.outcomeRubricId,
-          homeworkEvalPoints: ts.homeworkEvalPoints,
-          homeworkScoreType: ts.homeworkScoreType,
-          homeworkRubricId: ts.homeworkRubricId,
-          quizQuestions: ts.quizQuestions,
-          quizEvalPoints: ts.quizEvalPoints,
-          scoringConfig: ts.scoringConfig,
-          evalObject: ts.evalObject,
-          evalSubjects: ts.evalSubjects,
-          methodEvalObjects: ts.methodEvalObjects,
-          methodEvalSubjects: ts.methodEvalSubjects,
-        },
       }
       if (t.id.startsWith("task-")) {
         const created = await taskApi.create(payload)
         t.id = created.id
+        await taskEvaluationApi.saveMethods(created.id, { methods: taskStateToMethodsInput(ts) }).catch(err => {
+          console.error("Failed to save evaluation methods for new task", t.id, err)
+        })
       } else {
         await taskApi.update(t.id, payload)
+        const methodsInput = taskStateToMethodsInput(ts)
+        if (methodsInput.length > 0) {
+          await taskEvaluationApi.saveMethods(t.id, { methods: methodsInput }).catch(err => {
+            console.error("Failed to save evaluation methods for task", t.id, err)
+          })
+        }
       }
     }
   }
@@ -2173,22 +2196,7 @@ function EditCardDialog({
 
   // Rubric library — shared across all methods
   type RubricScheme = { id: string; name: string; types: EvalSubType[]; desc: string; points: EvalPoint[]; mode: "rubric" | "score_rule"; scoreRuleItems?: ScoreRuleItem[] }
-  const [rubricLibrary, setRubricLibrary] = useState<RubricScheme[]>([
-    { id: "scheme-fe", name: "前端开发能力评价量规", types: ["knowledge_mastery", "operation_standard", "task_completion", "result_quality"], desc: "涵盖前端核心技术能力、操作规范、任务完成度和成果质量", points: [mockDefaultEvalPoints[0], mockDefaultEvalPoints[1], mockDefaultEvalPoints[8], mockDefaultEvalPoints[5]].map((p, i) => ({ ...p, id: `ep-scheme-fe-${i}` })), mode: "rubric" },
-    { id: "scheme-review", name: "通用评审量规", types: ["knowledge_mastery", "communication", "collaboration", "professionalism", "result_quality"], desc: "适用于项目评审，关注知识掌握、沟通协作与职业素养", points: [mockDefaultEvalPoints[2], mockDefaultEvalPoints[3], mockDefaultEvalPoints[6], mockDefaultEvalPoints[9], mockDefaultEvalPoints[12], mockDefaultEvalPoints[13]].map((p, i) => ({ ...p, id: `ep-scheme-review-${i}` })), mode: "rubric" },
-    { id: "scheme-innovation", name: "创新实践评价量规", types: ["innovation", "adaptability", "result_quality", "task_completion"], desc: "侧重创新能力、应变能力和成果质量", points: [mockDefaultEvalPoints[10], mockDefaultEvalPoints[11], mockDefaultEvalPoints[5], mockDefaultEvalPoints[4]].map((p, i) => ({ ...p, id: `ep-scheme-innovation-${i}` })), mode: "rubric" },
-    { id: "scheme-score-rule-code", name: "代码规范评分规则", types: ["operation_standard", "result_quality"], desc: "基于代码规范和成果质量进行加减分评价", points: [], mode: "score_rule", scoreRuleItems: [
-      { id: "sr-1", name: "代码注释规范", desc: "代码注释完整、清晰，符合团队规范", rule: "注释完整 +2分，缺失关键注释 -1分", weight: 20 },
-      { id: "sr-2", name: "命名规范", desc: "变量、函数命名具有语义化，符合驼峰/下划线规范", rule: "命名规范 +2分，命名混乱 -1分", weight: 20 },
-      { id: "sr-3", name: "代码复用性", desc: "避免重复代码，合理使用函数和组件封装", rule: "复用性好 +3分，大量重复代码 -2分", weight: 30 },
-      { id: "sr-4", name: "功能完整性", desc: "实现需求文档中全部功能点", rule: "功能完整 +3分，每缺一项 -2分", weight: 30 },
-    ]},
-    { id: "scheme-score-rule-attendance", name: "出勤表现评分规则", types: ["professionalism", "collaboration"], desc: "基于出勤和团队协作表现进行加减分评价", points: [], mode: "score_rule", scoreRuleItems: [
-      { id: "sr-5", name: "出勤率", desc: "按时参加课程/项目活动，无迟到早退", rule: "全勤 +5分，迟到/早退每次 -1分，缺勤每次 -3分", weight: 40 },
-      { id: "sr-6", name: "团队协作", desc: "积极参与团队讨论，主动承担任务", rule: "积极协作 +3分，消极配合 -2分", weight: 30 },
-      { id: "sr-7", name: "任务交付", desc: "按时高质量完成分配的任务", rule: "按时交付 +2分，延期交付 -1分，质量不达标 -2分", weight: 30 },
-    ]},
-  ])
+  const [rubricLibrary, setRubricLibrary] = useState<RubricScheme[]>([])
   const [editingRubricId, setEditingRubricId] = useState<string | null>(null)
 
   // For evaluation rules
@@ -6189,11 +6197,7 @@ function EditCardDialog({
           )
         }
 
-        const rubricSchemes = [
-          { id: "scheme-fe", name: "前端开发能力评价量规", types: ["knowledge_mastery", "operation_standard", "task_completion", "result_quality"] as EvalSubType[], desc: "涵盖前端核心技术能力、操作规范、任务完成度和成果质量", pointIndices: [0, 1, 8, 5] },
-          { id: "scheme-review", name: "通用评审量规", types: ["knowledge_mastery", "communication", "collaboration", "professionalism", "result_quality"] as EvalSubType[], desc: "适用于项目评审，关注知识掌握、沟通协作与职业素养", pointIndices: [2, 3, 6, 9, 12, 13] },
-          { id: "scheme-innovation", name: "创新实践评价量规", types: ["innovation", "adaptability", "result_quality", "task_completion"] as EvalSubType[], desc: "侧重创新能力、应变能力和成果质量", pointIndices: [10, 11, 5, 4] },
-        ]
+
 
         const MethodDialogContent = ({ methodKey }: { methodKey: string }) => {
           const info = getMethodEvalInfo(methodKey)
@@ -6243,24 +6247,79 @@ function EditCardDialog({
             setView("edit")
           }
 
-          const saveRubricToLibrary = (schemeId: string | null, updates: Partial<RubricScheme>) => {
-            if (schemeId) {
-              // Update existing
-              setRubricLibrary(prev => prev.map(s => s.id === schemeId ? { ...s, ...updates } as RubricScheme : s))
-            } else {
-              // Create new
-              const newId = `scheme-${Date.now()}`
-              const newScheme: RubricScheme = {
-                id: newId,
-                name: updates.name || "新建评价标准",
-                types: updates.types || [],
-                desc: updates.desc || "",
-                points: info.points.map(p => ({ ...p, id: `ep-${Date.now()}-${Math.random().toString(36).slice(2, 5)}` })),
-                mode: updates.mode || "rubric",
-                scoreRuleItems: updates.scoreRuleItems || [],
+          const saveRubricToLibrary = async (schemeId: string | null, updates: Partial<RubricScheme>) => {
+            try {
+              if (schemeId) {
+                const data = {
+                  name: updates.name || "",
+                  mode: updates.mode || "rubric",
+                  types: updates.types || [],
+                  description: updates.desc || "",
+                  data: updates.mode === "score_rule"
+                    ? { scoreRuleItems: updates.scoreRuleItems || [] }
+                    : { points: info.points.map((p: EvalPoint) => ({
+                        id: p.id, name: p.name, description: p.desc || "",
+                        types: p.types || (p.subType ? [p.subType] : []),
+                        weight: p.weight || 0, scoringMethod: p.scoringMethod || "level",
+                        gradeMapping: p.gradeMapping || [],
+                        knowledgePointIds: p.knowledgePointIds || [],
+                        abilityPointIds: p.abilityPointIds || [],
+                      })) },
+                }
+                await taskEvaluationApi.updateTemplate(schemeId, data).catch(() => {})
+                setRubricLibrary(prev => prev.map(s => s.id === schemeId ? { ...s, ...updates } as RubricScheme : s))
+              } else {
+                const data = {
+                  name: updates.name || "新建评价标准",
+                  mode: updates.mode || "rubric",
+                  types: updates.types || [],
+                  description: updates.desc || "",
+                  data: updates.mode === "score_rule"
+                    ? { scoreRuleItems: updates.scoreRuleItems || [] }
+                    : { points: info.points.map((p: EvalPoint) => ({
+                        id: p.id, name: p.name, description: p.desc || "",
+                        types: p.types || (p.subType ? [p.subType] : []),
+                        weight: p.weight || 0, scoringMethod: p.scoringMethod || "level",
+                        gradeMapping: p.gradeMapping || [],
+                        knowledgePointIds: p.knowledgePointIds || [],
+                        abilityPointIds: p.abilityPointIds || [],
+                      })) },
+                }
+                const created = await taskEvaluationApi.createTemplate(data).catch(() => null)
+                if (created) {
+                  const newScheme: RubricScheme = {
+                    id: created.id,
+                    name: created.name,
+                    types: (created.types || []) as EvalSubType[],
+                    desc: created.description || "",
+                    points: info.points.map(p => ({ ...p })),
+                    mode: created.mode as "rubric" | "score_rule",
+                    scoreRuleItems: updates.scoreRuleItems || [],
+                  }
+                  setRubricLibrary(prev => [...prev, newScheme])
+                  updateState({ [rubricIdField]: created.id } as any)
+                } else {
+                  const newId = `scheme-${Date.now()}`
+                  setRubricLibrary(prev => [...prev, {
+                    id: newId, name: updates.name || "新建评价标准", types: updates.types || [],
+                    desc: updates.desc || "", points: info.points.map(p => ({ ...p, id: `ep-${Date.now()}-${Math.random().toString(36).slice(2, 5)}` })),
+                    mode: updates.mode || "rubric", scoreRuleItems: updates.scoreRuleItems || [],
+                  } as RubricScheme])
+                  updateState({ [rubricIdField]: newId } as any)
+                }
               }
-              setRubricLibrary(prev => [...prev, newScheme])
-              updateState({ [rubricIdField]: newId } as any)
+            } catch {
+              if (schemeId) {
+                setRubricLibrary(prev => prev.map(s => s.id === schemeId ? { ...s, ...updates } as RubricScheme : s))
+              } else {
+                const newId = `scheme-${Date.now()}`
+                setRubricLibrary(prev => [...prev, {
+                  id: newId, name: updates.name || "新建评价标准", types: updates.types || [],
+                  desc: updates.desc || "", points: info.points.map(p => ({ ...p, id: `ep-${Date.now()}-${Math.random().toString(36).slice(2, 5)}` })),
+                  mode: updates.mode || "rubric", scoreRuleItems: updates.scoreRuleItems || [],
+                } as RubricScheme])
+                updateState({ [rubricIdField]: newId } as any)
+              }
             }
           }
 

@@ -86,26 +86,30 @@ export interface TaskAbilityBinding {
   abilityPointId: string
 }
 
-export interface EvalSubject {
-  type: string
-  weight: number
-  params?: Record<string, any>
+export interface RubricTemplate {
+  id: string
+  tenantId: string
+  name: string
+  mode: "rubric" | "score_rule"
+  types?: string[]
+  description?: string
+  data: Record<string, any>
+  createdAt: string
+  updatedAt: string
 }
 
-export interface EvalResource {
-  paperIds?: string[]
-  questionBankIds?: string[]
-  randomDrawConfig?: Record<string, any>
-}
-
-export interface TaskEvaluationConfig {
+export interface TaskEvaluationMethod {
   id: string
   taskId: string
   methodKey: string
   weight: number
-  evalObjects?: Record<string, any>
-  evalSubjects: EvalSubject[]
-  evalResources?: EvalResource
+  evalObject: string
+  scoreType?: string
+  evalSubjects: Record<string, any>[]
+  rubricTemplateId?: string
+  resourceConfig: Record<string, any>
+  evalPoints: TaskEvalPoint[]
+  reviewSteps: TaskReviewStep[]
 }
 
 export interface TaskEvalPoint {
@@ -113,13 +117,13 @@ export interface TaskEvalPoint {
   configId: string
   name: string
   description?: string
-  weight: number
-  maxScore: number
-  scoringMethod: string
-  gradeMapping?: Record<string, any>
   subType?: string
-  knowledgePointIds: string[]
-  abilityPointIds: string[]
+  types?: string[]
+  weight: number
+  scoringMethod: string
+  gradeMapping?: Record<string, any>[]
+  knowledgePointIds?: string[]
+  abilityPointIds?: string[]
   sortOrder: number
 }
 

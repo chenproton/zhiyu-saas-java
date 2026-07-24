@@ -171,6 +171,9 @@ func (h *ExamResultHandler) submit(ctx context.Context, tenantID, userID, usageI
 		return nil, err
 	}
 
+	// Bridge: auto-create scene_evaluation_result if exam targets a task
+	h.syncSceneEvaluationResult(ctx, tenantID, usageID, userID, totalScore)
+
 	return &domain.ExamResult{
 		ID:          resultID,
 		ExamUsageID: usageID,
@@ -262,4 +265,30 @@ func toStringSlice(v []interface{}) []string {
 
 func roundScore(s float64) float64 {
 	return float64(int64(s*100+0.5)) / 100
+}
+
+func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenantID, usageID, userID string, totalScore float64) {
+	rows, err := h.DB.Query(ctx, `
+		SELECT tem.method_key, tem.task_id
+		FROM exam_usages eu
+		JOIN task_evaluation_methods tem ON tem.task_id = ANY(eu.target_ids)
+		WHERE eu.id = $1 AND tem.method_key IN ('paper', 'question_bank', 'quiz') AND tem.tenant_id = $2
+	`, usageID, tenantID)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var methodKey, taskID string
+		if err := rows.Scan(&methodKey, &taskID); err != nil {
+			continue
+		}
+		_, _ = h.DB.Exec(ctx, `
+			INSERT INTO scene_evaluation_results (tenant_id, task_id, method_key, evaluatee_id, status, total_score, max_score)
+			VALUES ($1, $2, $3, $4, 'evaluated', $5, $6)
+			ON CONFLICT (task_id, evaluatee_id, method_key)
+			DO UPDATE SET total_score = EXCLUDED.total_score, status = 'evaluated', graded_at = NOW()
+		`, tenantID, taskID, methodKey, userID, totalScore, totalScore)
+	}
 }

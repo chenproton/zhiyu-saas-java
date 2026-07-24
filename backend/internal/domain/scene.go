@@ -61,29 +61,45 @@ type ScenarioTask struct {
 	TenantID            *string             `json:"tenantId,omitempty"`
 }
 
-type TaskEvaluationConfig struct {
-	ID            string    `json:"id"`
-	TaskID        string    `json:"taskId"`
-	MethodKey     string    `json:"methodKey"`
-	Weight        float64   `json:"weight"`
-	EvalObjects   JSONMap   `json:"evalObjects,omitempty"`
-	EvalSubjects  JSONSlice `json:"evalSubjects,omitempty"`
-	EvalResources JSONMap   `json:"evalResources,omitempty"`
+type RubricTemplate struct {
+	ID          string    `json:"id"`
+	TenantID    string    `json:"tenantId"`
+	Name        string    `json:"name"`
+	Mode        string    `json:"mode"`
+	Types       []string  `json:"types,omitempty"`
+	Description *string   `json:"description,omitempty"`
+	Data        JSONMap   `json:"data"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
+
+type TaskEvaluationMethod struct {
+	ID               string           `json:"id"`
+	TaskID           string           `json:"taskId"`
+	MethodKey        string           `json:"methodKey"`
+	Weight           float64          `json:"weight"`
+	EvalObject       string           `json:"evalObject"`
+	ScoreType        *string          `json:"scoreType,omitempty"`
+	EvalSubjects     JSONSlice        `json:"evalSubjects"`
+	RubricTemplateID *string          `json:"rubricTemplateId,omitempty"`
+	ResourceConfig   JSONMap          `json:"resourceConfig"`
+	EvalPoints       []TaskEvalPoint  `json:"evalPoints,omitempty"`
+	ReviewSteps      []TaskReviewStep `json:"reviewSteps,omitempty"`
 }
 
 type TaskEvalPoint struct {
-	ID                string   `json:"id"`
-	ConfigID          string   `json:"configId"`
-	Name              string   `json:"name"`
-	Description       *string  `json:"description,omitempty"`
-	Weight            float64  `json:"weight"`
-	MaxScore          float64  `json:"maxScore"`
-	ScoringMethod     string   `json:"scoringMethod"`
-	GradeMapping      JSONMap  `json:"gradeMapping,omitempty"`
-	SubType           *string  `json:"subType,omitempty"`
-	KnowledgePointIDs []string `json:"knowledgePointIds,omitempty"`
-	AbilityPointIDs   []string `json:"abilityPointIds,omitempty"`
-	SortOrder         int      `json:"sortOrder"`
+	ID                string    `json:"id"`
+	ConfigID          string    `json:"configId"`
+	Name              string    `json:"name"`
+	Description       *string   `json:"description,omitempty"`
+	SubType           *string   `json:"subType,omitempty"`
+	Types             []string  `json:"types,omitempty"`
+	Weight            float64   `json:"weight"`
+	ScoringMethod     string    `json:"scoringMethod"`
+	GradeMapping      JSONSlice `json:"gradeMapping,omitempty"`
+	KnowledgePointIDs []string  `json:"knowledgePointIds,omitempty"`
+	AbilityPointIDs   []string  `json:"abilityPointIds,omitempty"`
+	SortOrder         int       `json:"sortOrder"`
 }
 
 type TaskReviewStep struct {

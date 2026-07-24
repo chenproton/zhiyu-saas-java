@@ -34,9 +34,10 @@ import type {
   Scenario,
   ScenarioTask,
   TaskDeliverable,
-  TaskEvaluationConfig,
+  TaskEvaluationMethod,
   TaskEvalPoint,
   TaskReviewStep,
+  RubricTemplate,
   TaskResource,
   TaskResourceBinding,
   TaskKnowledgeBinding,
@@ -827,22 +828,21 @@ export const taskKnowledgeAbilityApi = {
 }
 
 export const taskEvaluationApi = {
-  listConfigs: (params?: { taskId?: string; limit?: number; offset?: number }) =>
-    request<{ items: TaskEvaluationConfig[]; total: number }>(`/scene/evaluation${buildQuery(params || {})}`),
-  upsertConfig: (data: Partial<TaskEvaluationConfig>) =>
-    request<TaskEvaluationConfig>(`/scene/evaluation`, { method: "POST", body: JSON.stringify(data) }),
-  deleteConfig: (id: string) =>
-    request<{ id: string }>(`/scene/evaluation/${id}`, { method: "DELETE" }),
-  listEvalPoints: (configId: string, params?: { limit?: number; offset?: number }) =>
-    request<{ items: TaskEvalPoint[]; total: number }>(`/scene/evaluation/${configId}/points${buildQuery(params || {})}`),
-  upsertEvalPoint: (configId: string, data: Partial<TaskEvalPoint>) =>
-    request<TaskEvalPoint>(`/scene/evaluation/${configId}/points`, { method: "POST", body: JSON.stringify(data) }),
-  deleteEvalPoint: (id: string) =>
-    request<{ id: string }>(`/scene/evaluation/points/${id}`, { method: "DELETE" }),
-  listReviewSteps: (configId: string, params?: { limit?: number; offset?: number }) =>
-    request<{ items: TaskReviewStep[]; total: number }>(`/scene/evaluation/${configId}/steps${buildQuery(params || {})}`),
-  upsertReviewStep: (configId: string, data: Partial<TaskReviewStep>) =>
-    request<TaskReviewStep>(`/scene/evaluation/${configId}/steps`, { method: "POST", body: JSON.stringify(data) }),
+  listMethods: (taskId: string) =>
+    request<{ methods: TaskEvaluationMethod[] }>(`/scene/tasks/${taskId}/evaluation-methods`),
+  saveMethods: (taskId: string, data: { methods: any[] }) =>
+    request<{ methods: TaskEvaluationMethod[] }>(`/scene/tasks/${taskId}/evaluation-methods`, { method: "PUT", body: JSON.stringify(data) }),
+
+  listTemplates: (params?: { limit?: number; offset?: number; keyword?: string }) =>
+    request<{ items: RubricTemplate[]; total: number }>(`/scene/rubric-templates${buildQuery(params || {})}`),
+  getTemplate: (id: string) =>
+    request<RubricTemplate>(`/scene/rubric-templates/${id}`),
+  createTemplate: (data: { name: string; mode: string; types?: string[]; description?: string; data: Record<string, any> }) =>
+    request<RubricTemplate>(`/scene/rubric-templates`, { method: "POST", body: JSON.stringify(data) }),
+  updateTemplate: (id: string, data: { name: string; mode: string; types?: string[]; description?: string; data: Record<string, any> }) =>
+    request<RubricTemplate>(`/scene/rubric-templates/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteTemplate: (id: string) =>
+    request<{ id: string }>(`/scene/rubric-templates/${id}`, { method: "DELETE" }),
 }
 
 export const scenarioWeightApi = {
@@ -1016,12 +1016,14 @@ export const examResultApi = {
 }
 
 export const evaluationResultApi = {
-  list: (params?: { taskId?: string; evaluateeId?: string; methodKey?: string; status?: string; limit?: number; offset?: number }) =>
+  list: (params?: { taskId?: string; sceneId?: string; evaluateeId?: string; methodKey?: string; status?: string; limit?: number; offset?: number }) =>
     request<ListResponse<SceneEvaluationResult>>(`/evaluation/results${buildQuery(params || {})}`),
   get: (id: string) => request<SceneEvaluationResult>(`/evaluation/results/${id}`),
-  grade: (id: string, req: { totalScore: number; evalPointScores?: Record<string, any>; comment?: string }) =>
+  submit: (req: { taskId: string; sceneId?: string; methodKey: string; evaluateeId: string; maxScore?: number; objectiveAnswers?: Record<string, any>; subjectiveContent?: Record<string, any>; drawnQuestions?: Record<string, any>; evalPointScores?: Record<string, any> }) =>
+    request<SceneEvaluationResult>("/evaluation/results", { method: "POST", body: JSON.stringify(req) }),
+  grade: (id: string, req: { score: number; evalPointScores?: Record<string, any>; comment?: string }) =>
     request<SceneEvaluationResult>(`/evaluation/results/${id}/grade`, { method: "POST", body: JSON.stringify(req) }),
-  batchGrade: (items: { id: string; totalScore: number; evalPointScores?: Record<string, any>; comment?: string }[]) =>
+  batchGrade: (items: { id: string; score: number; evalPointScores?: Record<string, any>; comment?: string }[]) =>
     request<{ count: number }>("/evaluation/results/batch-grade", { method: "POST", body: JSON.stringify({ items }) }),
 }
 

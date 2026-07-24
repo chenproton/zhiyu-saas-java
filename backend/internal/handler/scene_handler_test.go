@@ -417,17 +417,17 @@ func TestScenarioTask_Reorder(t *testing.T) {
 	}
 }
 
-func TestTaskEvaluationConfig(t *testing.T) {
+func TestTaskEvaluationMethod(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
 	ctx := context.Background()
 
 	suffix := t.Name()
-	scCode := fmt.Sprintf("test-evc-sc-%s", suffix)
+	scCode := fmt.Sprintf("test-evm-sc-%s", suffix)
 
 	// Create parent scenario
 	w := env.Do("POST", "/api/v1/scene/scenarios", map[string]interface{}{
-		"name": "Eval Config Scenario", "code": scCode, "difficulty": 1, "version": "v1.0",
+		"name": "Eval Method Scenario", "code": scCode, "difficulty": 1, "version": "v1.0",
 	})
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create scenario: expected 201, got %d", w.Code)
@@ -437,7 +437,7 @@ func TestTaskEvaluationConfig(t *testing.T) {
 	defer env.DB.Exec(ctx, "DELETE FROM scenarios WHERE id = $1", scID)
 
 	// Create task
-	taskCode := fmt.Sprintf("tsk-evc-%s", suffix)
+	taskCode := fmt.Sprintf("tsk-evm-%s", suffix)
 	w = env.Do("POST", "/api/v1/scene/tasks", map[string]interface{}{
 		"scenarioId": scID, "name": "Eval Task", "code": taskCode, "taskType": "assessment", "difficulty": 2,
 	})
@@ -447,123 +447,88 @@ func TestTaskEvaluationConfig(t *testing.T) {
 	task, _ := testhelper.Unmarshal[domain.ScenarioTask](w)
 	taskID := task.ID
 	defer env.DB.Exec(ctx, "DELETE FROM scenario_tasks WHERE id = $1", taskID)
+	defer env.DB.Exec(ctx, "DELETE FROM task_evaluation_methods WHERE task_id = $1", taskID)
 
-	// Upsert evaluation config
-	w = env.Do("POST", "/api/v1/scene/evaluation", map[string]interface{}{
-		"taskId":    taskID,
-		"methodKey": "random_draw",
-		"weight":    50,
+	// Save evaluation methods
+	methods := []map[string]interface{}{
+		{
+			"methodKey":    "random_draw",
+			"weight":       50,
+			"evalObject":   "individual",
+			"evalSubjects": []interface{}{},
+			"evalPoints": []map[string]interface{}{
+				{
+					"name":          "Point 1",
+					"weight":        100,
+					"scoringMethod": "level",
+					"gradeMapping":  []interface{}{},
+					"sortOrder":     0,
+				},
+			},
+			"resourceConfig": map[string]interface{}{},
+		},
+	}
+	w = env.Do("PUT", "/api/v1/scene/tasks/"+taskID+"/evaluation-methods", map[string]interface{}{
+		"methods": methods,
 	})
 	if w.Code != http.StatusOK {
-		t.Fatalf("upsert config: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
-	}
-	config, err := testhelper.Unmarshal[domain.TaskEvaluationConfig](w)
-	if err != nil {
-		t.Fatalf("unmarshal config: %v", err)
-	}
-	configID := config.ID
-	defer env.DB.Exec(ctx, "DELETE FROM task_evaluation_configs WHERE id = $1", configID)
-
-	if config.TaskID != taskID || config.MethodKey != "random_draw" {
-		t.Fatalf("config mismatch: taskId=%s, methodKey=%s", config.TaskID, config.MethodKey)
+		t.Fatalf("save methods: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 
-	// List configs
-	w = env.Do("GET", "/api/v1/scene/evaluation?taskId="+taskID, nil)
+	// List evaluation methods
+	w = env.Do("GET", "/api/v1/scene/tasks/"+taskID+"/evaluation-methods", nil)
 	if w.Code != http.StatusOK {
-		t.Fatalf("list configs: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		t.Fatalf("list methods: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
-	configs, configTotal, _ := testhelper.UnmarshalList[domain.TaskEvaluationConfig](w)
-	if configTotal == 0 {
-		t.Fatal("expected at least 1 config in list")
+}
+
+func TestRubricTemplateCRUD(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+
+	// Create rubric template
+	w := env.Do("POST", "/api/v1/scene/rubric-templates", map[string]interface{}{
+		"name":    "Test Rubric",
+		"mode":    "rubric",
+		"types":   []string{"knowledge_mastery"},
+		"data":    map[string]interface{}{"points": []interface{}{}},
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create template: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
-	foundCfg := false
-	for _, c := range configs {
-		if c.ID == configID {
-			foundCfg = true
-			break
-		}
+	tmpl, err := testhelper.Unmarshal[domain.RubricTemplate](w)
+	if err != nil {
+		t.Fatalf("unmarshal template: %v", err)
 	}
-	if !foundCfg {
-		t.Fatal("config not found in list")
+	id := tmpl.ID
+
+	// Get template
+	w = env.Do("GET", "/api/v1/scene/rubric-templates/"+id, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("get template: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 
-	// Create eval point
-	w = env.Do("POST", "/api/v1/scene/evaluation/"+configID+"/points", map[string]interface{}{
-		"configId": configID,
-		"name":     "Point 1",
-		"weight":   100,
-		"maxScore": 100,
+	// Update template
+	w = env.Do("PUT", "/api/v1/scene/rubric-templates/"+id, map[string]interface{}{
+		"name":  "Test Rubric Updated",
+		"mode":  "rubric",
+		"types": []string{},
+		"data":  map[string]interface{}{"points": []interface{}{}},
 	})
 	if w.Code != http.StatusOK {
-		t.Fatalf("create eval point: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
-	}
-	point, err := testhelper.Unmarshal[domain.TaskEvalPoint](w)
-	if err != nil {
-		t.Fatalf("unmarshal point: %v", err)
-	}
-	pointID := point.ID
-	defer env.DB.Exec(ctx, "DELETE FROM task_eval_points WHERE id = $1", pointID)
-
-	// List eval points
-	w = env.Do("GET", "/api/v1/scene/evaluation/"+configID+"/points?configId="+configID, nil)
-	if w.Code != http.StatusOK {
-		t.Fatalf("list eval points: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
-	}
-	points, pointTotal, _ := testhelper.UnmarshalList[domain.TaskEvalPoint](w)
-	if pointTotal == 0 {
-		t.Fatal("expected at least 1 eval point")
-	}
-	foundPt := false
-	for _, p := range points {
-		if p.ID == pointID {
-			foundPt = true
-			break
-		}
-	}
-	if !foundPt {
-		t.Fatal("eval point not found in list")
+		t.Fatalf("update template: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 
-	// Create review step
-	w = env.Do("POST", "/api/v1/scene/evaluation/"+configID+"/steps", map[string]interface{}{
-		"configId": configID,
-		"label":    "Step 1",
-	})
+	// List templates
+	w = env.Do("GET", "/api/v1/scene/rubric-templates", nil)
 	if w.Code != http.StatusOK {
-		t.Fatalf("create review step: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
-	}
-	step, err := testhelper.Unmarshal[domain.TaskReviewStep](w)
-	if err != nil {
-		t.Fatalf("unmarshal step: %v", err)
-	}
-	stepID := step.ID
-	defer env.DB.Exec(ctx, "DELETE FROM task_review_steps WHERE id = $1", stepID)
-
-	// List review steps
-	w = env.Do("GET", "/api/v1/scene/evaluation/"+configID+"/steps?configId="+configID, nil)
-	if w.Code != http.StatusOK {
-		t.Fatalf("list review steps: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
-	}
-	steps, stepTotal, _ := testhelper.UnmarshalList[domain.TaskReviewStep](w)
-	if stepTotal == 0 {
-		t.Fatal("expected at least 1 review step")
-	}
-	foundSt := false
-	for _, s := range steps {
-		if s.ID == stepID {
-			foundSt = true
-			break
-		}
-	}
-	if !foundSt {
-		t.Fatal("review step not found in list")
+		t.Fatalf("list templates: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 
-	// Delete config
-	w = env.Do("DELETE", "/api/v1/scene/evaluation/"+configID, nil)
+	// Delete template
+	w = env.Do("DELETE", "/api/v1/scene/rubric-templates/"+id, nil)
 	if w.Code != http.StatusOK {
-		t.Fatalf("delete config: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+		t.Fatalf("delete template: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
 	}
 }
 

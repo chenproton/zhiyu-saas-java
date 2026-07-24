@@ -37,9 +37,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 
-import { scenarioApi, taskApi, taskResourceApi, knowledgeApi, abilityApi } from "@/lib/api"
-import type { Scenario, ScenarioTask, TaskResource, KnowledgePoint, AbilityPoint } from "@/lib/types"
+import { scenarioApi, taskApi, taskResourceApi, knowledgeApi, abilityApi, taskEvaluationApi, evaluationResultApi } from "@/lib/api"
+import type { Scenario, ScenarioTask, TaskResource, KnowledgePoint, AbilityPoint, TaskEvaluationMethod, SceneEvaluationResult } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/components/auth-provider"
 import { formatFileSize } from "@/lib/resource-constants"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
 import { ResourcePreviewModal, usePreviewResources } from "@/components/shared/resource-preview-modal"
@@ -84,6 +85,7 @@ export default function SceneLearnPage() {
   const searchParams = useSearchParams()
   const id = params.id as string
   const targetTaskId = searchParams.get("task")
+  const { user } = useAuth()
 
   const [scenario, setScenario] = useState<Scenario | null>(null)
   const [tasks, setTasks] = useState<ScenarioTask[]>([])
@@ -97,6 +99,9 @@ export default function SceneLearnPage() {
   const [abilityMap, setAbilityMap] = useState<Map<string, AbilityPoint>>(new Map())
   const [showResources, setShowResources] = useState(false)
   const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
+  const [evalMethods, setEvalMethods] = useState<TaskEvaluationMethod[]>([])
+  const [myResults, setMyResults] = useState<SceneEvaluationResult[]>([])
+  const [submittingMethod, setSubmittingMethod] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -149,6 +154,35 @@ export default function SceneLearnPage() {
     }).catch(() => {})
   }, [id, scenario])
 
+  useEffect(() => {
+    if (!activeTaskId) return
+    setEvalMethods([])
+    taskEvaluationApi.listMethods(activeTaskId)
+      .then((res) => setEvalMethods(res.methods || []))
+      .catch(() => setEvalMethods([]))
+  }, [activeTaskId])
+
+  useEffect(() => {
+    if (!activeTaskId) return
+    evaluationResultApi.list({ taskId: activeTaskId, evaluateeId: user?.id, limit: 50 })
+      .then((res) => setMyResults(res.items || []))
+      .catch(() => {})
+  }, [activeTaskId])
+
+  const handleStartEvaluation = async (methodKey: string) => {
+    if (!activeTaskId || !scenario) return
+    setSubmittingMethod(methodKey)
+    try {
+      await evaluationResultApi.submit({
+        taskId: activeTaskId, sceneId: scenario.id, methodKey,
+        evaluateeId: user?.id || "", maxScore: 100,
+      })
+      const res = await evaluationResultApi.list({ taskId: activeTaskId, limit: 50 })
+      setMyResults(res.items || [])
+    } catch (e) {}
+    setSubmittingMethod(null)
+  }
+
   const activeTask = useMemo(() => tasks.find((t) => t.id === activeTaskId), [tasks, activeTaskId])
   const totalHours = useMemo(() => tasks.reduce((s, t) => s + (t.estimatedHours || 0), 0), [tasks])
 
@@ -168,12 +202,11 @@ export default function SceneLearnPage() {
   }, [activeTask, resourceMap])
 
   const taskEvalMethods = useMemo(() => {
-    if (!activeTask?.evalData) return { methods: [] as string[], weights: {} as Record<string, number> }
     return {
-      methods: (activeTask.evalData.evaluationMethods || []) as string[],
-      weights: (activeTask.evalData.methodWeights || {}) as Record<string, number>,
+      methods: evalMethods.map((m) => m.methodKey),
+      weights: Object.fromEntries(evalMethods.map((m) => [m.methodKey, m.weight])),
     }
-  }, [activeTask])
+  }, [evalMethods])
 
   const dependencyTasks = useMemo(() => {
     if (!activeTask?.dependencyIds?.length) return []
@@ -493,6 +526,28 @@ export default function SceneLearnPage() {
                       )}
                     </CardContent>
                   </Card>
+
+                  {/* Actions */}
+                  {activeTask && taskEvalMethods.methods.length > 0 && (
+                    <div className="space-y-2">
+                      {taskEvalMethods.methods.map((mk) => {
+                        const r = myResults.find((x) => x.methodKey === mk)
+                        return (
+                          <div key={mk} className="flex items-center justify-between px-4 py-2 bg-white rounded-xl border">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">{evalMethodLabels[mk] || mk}</Badge>
+                              {r && (r.status === "evaluated" ? <span className="text-sm text-green-600">得分 {r.totalScore}/{r.maxScore}</span> : <span className="text-sm text-amber-600">待评分</span>)}
+                            </div>
+                            {!r && (
+                              <Button size="sm" className="h-7 text-xs" onClick={() => handleStartEvaluation(mk)} disabled={submittingMethod === mk}>
+                                {submittingMethod === mk ? "..." : "开始测评"}
+                              </Button>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </>
