@@ -2,7 +2,7 @@
 
 import { createPortal } from "react-dom"
 import { Button } from "@/components/ui/button"
-import { Download, ExternalLink, X, FileText } from "lucide-react"
+import { ExternalLink, X, FileText } from "lucide-react"
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react"
 import { cn } from "@/lib/utils"
 import type { TaskResource } from "@/lib/types"
@@ -191,18 +191,11 @@ function ResourcePreviewModalInner({ resource, open, onOpenChange, index = 0 }: 
             <X className="h-4 w-4 mr-1" />关闭
           </Button>
           {resource?.url && (
-            <>
-              <Button variant="outline" size="sm" asChild onMouseDown={(e) => e.stopPropagation()}>
-                <a href={resource.url} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4 mr-1" />新窗口打开
-                </a>
-              </Button>
-              <Button size="sm" asChild onMouseDown={(e) => e.stopPropagation()}>
-                <a href={resource.url} download={resource.name} target="_blank" rel="noreferrer">
-                  <Download className="h-4 w-4 mr-1" />下载
-                </a>
-              </Button>
-            </>
+            <Button variant="outline" size="sm" asChild onMouseDown={(e) => e.stopPropagation()}>
+              <a href={resource.url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4 mr-1" />新窗口打开
+              </a>
+            </Button>
           )}
         </div>
       </div>

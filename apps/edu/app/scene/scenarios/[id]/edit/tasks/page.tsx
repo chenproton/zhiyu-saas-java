@@ -71,7 +71,6 @@ import {
   PieChart as PieChartIcon,
   Headphones,
   Loader2,
-  Download,
   Archive,
   Building2,
   RotateCcw,
@@ -120,6 +119,7 @@ import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 import { ScoreConfigDialog } from "@/components/evaluation/score-config-dialog"
 import { ExamFormDialog } from "@/components/evaluation/exam-form-dialog"
+import { ResourcePreviewModal, usePreviewResources } from "@/components/shared/resource-preview-modal"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
 import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryApi, majorApi, userManagementApi, fileApi, taskResourceApi, questionBankApi, questionApi, examApi, examUsageApi, taskEvaluationApi, randomDrawQuestionApi } from "@/lib/api"
 import type { RandomDrawQuestion } from "@/lib/types"
@@ -2543,6 +2543,7 @@ function EditCardDialog({
 }) {
   const config = cardConfigs.find(c => c.type === cardType)!
   const [localTask, setLocalTask] = useState({ name: task.name, type: task.taskType, difficulty: task.difficulty, hours: task.estimatedHours, background: task.background })
+  const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
 
   // For knowledge / ability "create new"
   const [showAddKnowledge, setShowAddKnowledge] = useState(false)
@@ -2613,7 +2614,6 @@ function EditCardDialog({
   const [newResFile, setNewResFile] = useState<File | null>(null)
   const [newResUploading, setNewResUploading] = useState(false)
   const [showUploadTypePicker, setShowUploadTypePicker] = useState(false)
-  const [previewRes, setPreviewRes] = useState<any | null>(null)
 
   // For question bank config
   const [questionTab, setQuestionTab] = useState<"my" | "collab" | "public">("my")
@@ -3144,11 +3144,6 @@ function EditCardDialog({
                     <Button variant="outline" size="sm" onClick={() => setPdfPreviewOpen(true)}>
                       <Eye className="h-4 w-4 mr-1" />预览
                     </Button>
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={state.descriptionPdf} download={pdfFileName} target="_blank" rel="noreferrer">
-                        <Download className="h-4 w-4 mr-1" />下载
-                      </a>
-                    </Button>
                     <Button variant="outline" size="sm" disabled={pdfUploading} onClick={() => pdfInputRef.current?.click()}>
                       <Upload className="h-4 w-4 mr-1" />重新上传
                     </Button>
@@ -3182,11 +3177,6 @@ function EditCardDialog({
                 </div>
                 <DialogFooter className="shrink-0 gap-2">
                   <Button variant="outline" onClick={() => setPdfPreviewOpen(false)}>关闭</Button>
-                  <Button asChild>
-                    <a href={state.descriptionPdf || undefined} download={pdfFileName} target="_blank" rel="noreferrer">
-                      <Download className="h-4 w-4 mr-1" />下载
-                    </a>
-                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -3970,24 +3960,6 @@ function EditCardDialog({
         }
 
         const fileTypesWithUpload = ["document", "spreadsheet", "image", "audio", "video", "archive", "other", "software"]
-        const canPreview = (r: any) => r?.url && r.url !== "#"
-        const canDownload = (r: any) => r?.url && r.url !== "#"
-
-        const getPreviewContent = (r: any) => {
-          if (!r?.url) return null
-          if (r.type === "image") {
-            return <img src={r.url} alt={r.name} className="max-w-full max-h-full object-contain" />
-          }
-          if (r.type === "audio") {
-            return <audio controls src={r.url} className="w-full" />
-          }
-          if (r.type === "video") {
-            return <video controls src={r.url} className="max-w-full max-h-full" />
-          }
-          return <iframe src={r.url} title={r.name} className="w-full h-full" />
-        }
-
-        const isPreviewableInline = (r: any) => ["image", "audio", "video"].includes(r?.type)
 
         return (
           <div className="h-full flex flex-col">
@@ -4072,6 +4044,7 @@ function EditCardDialog({
                                 ? "border-primary shadow-sm ring-1 ring-primary/10"
                                 : "border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white"
                             )}
+                            onClick={() => toggleResource(r.id)}
                           >
                             {/* Thumbnail area */}
                             <div className="relative h-20 bg-gray-50 border-b border-gray-100 overflow-hidden">
@@ -4097,7 +4070,7 @@ function EditCardDialog({
                               </div>
                             </div>
                             {/* Info */}
-                            <div className="p-2" onClick={() => toggleResource(r.id)}>
+                            <div className="p-2">
                               <p className="text-xs font-medium text-gray-800 truncate mb-1">{r.name}</p>
                               <div className="flex items-center justify-between text-[11px] text-gray-500">
                                 <span className="flex items-center gap-1 truncate max-w-[80px]">
@@ -4113,31 +4086,9 @@ function EditCardDialog({
                                   variant="ghost"
                                   size="sm"
                                   className="h-6 text-[10px] px-1 flex-1 text-gray-500 hover:text-primary"
-                                  onClick={(e) => { e.stopPropagation(); canPreview(r) ? setPreviewRes(r) : window.open(r.url || "#", "_blank") }}
+                                  onClick={(e) => { e.stopPropagation(); r.url ? addPreviewResource(r) : window.open(r.url || "#", "_blank") }}
                                 >
                                   <Eye className="h-3 w-3 mr-0.5" />预览
-                                </Button>
-                              </PrdAnnotation>
-                              {canDownload(r) && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 text-[10px] px-1 flex-1 text-gray-500 hover:text-primary"
-                                  asChild
-                                >
-                                  <a href={r.url} download={r.name} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
-                                    <Download className="h-3 w-3 mr-0.5" />下载
-                                  </a>
-                                </Button>
-                              )}
-                              <PrdAnnotation data={selected ? getAnnotation("resource-action-cancel") : getAnnotation("resource-action-select")}>
-                                <Button
-                                  variant={selected ? "outline" : "default"}
-                                  size="sm"
-                                  className="h-6 text-[10px] px-1.5 flex-1"
-                                  onClick={(e) => { e.stopPropagation(); toggleResource(r.id) }}
-                                >
-                                  {selected ? "取消" : "选择"}
                                 </Button>
                               </PrdAnnotation>
                             </div>
@@ -4401,33 +4352,16 @@ function EditCardDialog({
               </DialogContent>
             </Dialog>
 
-            {/* Resource Preview Dialog */}
-            <Dialog open={!!previewRes} onOpenChange={open => !open && setPreviewRes(null)}>
-              <DialogContent className={cn("flex flex-col", isPreviewableInline(previewRes) ? "sm:max-w-2xl" : "sm:max-w-4xl h-[80vh]")}>
-                <DialogHeader className="shrink-0">
-                  <DialogTitle className="flex items-center gap-2">
-                    {previewRes && resourceTypeIcons[previewRes.type]}
-                    <span className="truncate">{previewRes?.name || "资源预览"}</span>
-                  </DialogTitle>
-                </DialogHeader>
-                <div className={cn(
-                  "flex-1 min-h-0 border rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center",
-                  isPreviewableInline(previewRes) ? "p-4" : ""
-                )}>
-                  {previewRes ? getPreviewContent(previewRes) : <div className="text-gray-400">暂无预览</div>}
-                </div>
-                <DialogFooter className="shrink-0 gap-2">
-                  <Button variant="outline" onClick={() => setPreviewRes(null)}>关闭</Button>
-                  {canDownload(previewRes) && (
-                    <Button asChild>
-                      <a href={previewRes.url} download={previewRes.name} target="_blank" rel="noreferrer">
-                        <Download className="h-4 w-4 mr-1" />下载
-                      </a>
-                    </Button>
-                  )}
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            {/* Resource Preview Modals */}
+            {previewResources.map((r, i) => (
+              <ResourcePreviewModal
+                key={r.id}
+                resource={r}
+                open
+                index={i}
+                onOpenChange={() => removePreviewResource(r.id)}
+              />
+            ))}
           </div>
         )
       }
@@ -6435,6 +6369,7 @@ function EditCardDialog({
           const allowedSubjectsForMethod: Record<string, string[]> = {
             paper: ["teacher", "enterprise_mentor"],
             question_bank: ["teacher", "enterprise_mentor"],
+            quiz: ["teacher", "enterprise_mentor"],
             random_draw: ["teacher", "enterprise_mentor", "self", "peer"],
             review: ["teacher", "enterprise_mentor", "self", "peer"],
           }
