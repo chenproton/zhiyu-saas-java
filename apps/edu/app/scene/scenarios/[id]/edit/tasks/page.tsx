@@ -463,13 +463,20 @@ function makeDefaultTaskState(count: number, index: number): TaskState {
     gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)),
     scoringConfig: { teacherBackground: "", scorerCount: 1, requiresEnterpriseMentor: false },
     evalObject: "individual",
-    evalSubjects: [],
+    evalSubjects: JSON.parse(JSON.stringify(defaultEvalSubjects)),
     methodEvalObjects: {},
     methodEvalSubjects: {},
     reviewSteps: [],
     methodResourceConfigs: {},
   }
 }
+
+const defaultEvalSubjects: EvalSubjectConfig[] = [
+  { type: "teacher", enabled: true, params: { weightPercent: 50, scorerCount: 1 } },
+  { type: "enterprise_mentor", enabled: false, params: { weightPercent: 20 } },
+  { type: "self", enabled: false, params: { weightPercent: 10 } },
+  { type: "peer", enabled: false, params: { weightPercent: 20, peerCount: 3 } },
+]
 
 function taskStateFromMethods(task: any, methods: TaskEvaluationMethod[]): TaskState {
   const state = makeDefaultTaskState(0, 0)
