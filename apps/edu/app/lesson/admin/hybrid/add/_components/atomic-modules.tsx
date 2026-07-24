@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/select"
 import { EvaluationMethodSelector } from "../../../_components/assessment/evaluation-method-selector"
 import { CourseEvaluationRulesDialog } from "../../../_components/assessment/course-evaluation-rules-dialog"
+import type { EvalRuleConfig } from "@/lib/types/evaluation"
 import { TeachingResourceSelector } from "./teaching-resource-selector"
 
 // ==================== Types ====================
@@ -156,16 +157,19 @@ export interface NodeModuleData {
   preClassTasks: TaskItem[]
   preClassQuizzes: QuizItem[]
   preQuizEvalMethods: string[]
+  preQuizEvalRules?: EvalRuleConfig
   lectureContent: string
   lectureResources: ResourceItem[]
   lectureSections: LectureSectionItem[]
   inClassTasks: TaskItem[]
   inClassQuizzes: QuizItem[]
   inClassQuizEvalMethods: string[]
+  inClassQuizEvalRules?: EvalRuleConfig
   classQuestions: ClassroomQuestion[]
   practiceTasks: TaskItem[]
   homeworks: HomeworkItem[]
   homeworkEvalMethods: string[]
+  homeworkEvalRules?: EvalRuleConfig
   extensionMaterials: ResourceItem[]
   trainingReports: ReportItem[]
 }
@@ -1155,6 +1159,8 @@ function PreQuizzesModule({ data, onChange }: AtomicModuleProps) {
           <CourseEvaluationRulesDialog
             inline
             evaluationMethods={methods}
+            initialConfig={data.preQuizEvalRules}
+            onChange={(config) => onChange({ preQuizEvalRules: config })}
             title="配置课前测验评价规则"
           />
         )}
@@ -1270,6 +1276,8 @@ function InClassQuizzesModule({ data, onChange }: AtomicModuleProps) {
           <CourseEvaluationRulesDialog
             inline
             evaluationMethods={methods}
+            initialConfig={data.inClassQuizEvalRules}
+            onChange={(config) => onChange({ inClassQuizEvalRules: config })}
             title="配置课中测验评价规则"
           />
         )}
@@ -1789,6 +1797,8 @@ function HomeworksModule({ data, onChange }: AtomicModuleProps) {
           <CourseEvaluationRulesDialog
             inline
             evaluationMethods={methods}
+            initialConfig={data.homeworkEvalRules}
+            onChange={(config) => onChange({ homeworkEvalRules: config })}
             title="配置课后作业评价规则"
           />
         )}

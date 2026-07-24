@@ -125,6 +125,7 @@ import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryAp
 import type { RandomDrawQuestion } from "@/lib/types"
 import type { ScenarioTask as ApiScenarioTask } from "@/lib/types/scene"
 import type { TaskEvaluationMethod } from "@/lib/types/scene"
+import { methodsToEvalRuleConfig, evalRuleConfigToMethods } from "@/lib/types/evaluation"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import { EditorShell } from "@/components/shared/editor-shell"
@@ -422,6 +423,7 @@ interface TaskState {
   methodWeights: Record<string, number>
   reviewSteps: any[]
   methodResourceConfigs: Record<string, any>
+  evalMethodVersion: number
 }
 
 const defaultEvalSubjects: EvalSubjectConfig[] = [
@@ -474,156 +476,119 @@ function makeDefaultTaskState(count: number, index: number): TaskState {
     methodEvalSubjects: {},
     reviewSteps: [],
     methodResourceConfigs: {},
+    evalMethodVersion: 0,
   }
 }
 
 function taskStateFromMethods(task: any, methods: TaskEvaluationMethod[]): TaskState {
   const state = makeDefaultTaskState(0, 0)
   if (!methods || methods.length === 0) return state
-  state.evaluationMethods = methods.map(m => m.methodKey)
-  methods.forEach(m => {
-    state.methodWeights[m.methodKey] = m.weight
-    state.methodEvalObjects[m.methodKey] = m.evalObject as EvalObjectType
-    state.methodEvalSubjects[m.methodKey] = (m.evalSubjects || []) as EvalSubjectConfig[]
-    state.methodResourceConfigs[m.methodKey] = m.resourceConfig || {}
-    const toLocalEvalPoint = (ep: any): EvalPoint => ({
-      id: ep.id,
-      name: ep.name,
-      desc: ep.description || "",
-      subType: ep.subType,
-      types: ep.types,
-      knowledgePointIds: ep.knowledgePointIds,
-      abilityPointIds: ep.abilityPointIds,
-      scoringMethod: ep.scoringMethod,
-      gradeMapping: ep.gradeMapping,
-      weight: ep.weight,
-    })
-    switch (m.methodKey) {
-      case "random_draw":
-        state.randomDrawEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
-        state.randomDrawScoreType = m.scoreType === "ability_levels" ? "ability_levels" : "eval_points"
-        state.randomDrawRubricId = m.rubricTemplateId || null
-        if (m.resourceConfig?.selectedQuestionIds) state.randomDrawSelectedIds = m.resourceConfig.selectedQuestionIds
-        break
-      case "review":
-        state.reviewEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
-        state.reviewScoreType = m.scoreType === "ability_levels" ? "ability_levels" : "eval_points"
-        state.reviewRubricId = m.rubricTemplateId || null
-        state.reviewSteps = (m.reviewSteps || []).map((rs: any) => ({
-          id: rs.id, label: rs.label, desc: rs.description || "",
-          enabled: rs.enabled, subjectType: rs.subjectType, weight: rs.weight,
-        }))
-        break
-      case "paper":
-        state.paperEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
-        if (m.resourceConfig?.paperId) state.paperIds = [m.resourceConfig.paperId]
-        if (m.resourceConfig?.paperWeight) state.paperWeights = { [m.resourceConfig.paperId]: m.resourceConfig.paperWeight }
-        state.methodResourceConfigs.paper = m.resourceConfig || {}
-        break
-      case "question_bank":
-        state.questionBankEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
-        if (m.resourceConfig?.questionIds) state.questionBankQuestions = m.resourceConfig.questionIds
-        state.methodResourceConfigs.question_bank = m.resourceConfig || {}
-        break
-      case "outcome":
-        state.outcomeEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
-        state.outcomeScoreType = m.scoreType === "ability_levels" ? "ability_levels" : "eval_points"
-        state.outcomeRubricId = m.rubricTemplateId || null
-        break
-      case "homework":
-        state.homeworkEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
-        state.homeworkScoreType = m.scoreType === "ability_levels" ? "ability_levels" : "eval_points"
-        state.homeworkRubricId = m.rubricTemplateId || null
-        break
-      case "quiz":
-        state.quizEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
-        if (m.resourceConfig?.questionIds) state.quizQuestions = m.resourceConfig.questionIds
-        state.methodResourceConfigs.quiz = m.resourceConfig || {}
-        break
-    }
+
+  const evalConfig = methodsToEvalRuleConfig(methods as any)
+  // 将统一评价规则配置合并到 TaskState
+  Object.assign(state, {
+    evaluationMethods: evalConfig.evaluationMethods,
+    methodWeights: evalConfig.methodWeights,
+    evalObject: evalConfig.evalObject,
+    methodEvalObjects: evalConfig.methodEvalObjects,
+    evalSubjects: evalConfig.evalSubjects,
+    methodEvalSubjects: evalConfig.methodEvalSubjects,
+    randomDrawQuestions: evalConfig.randomDrawQuestions,
+    randomDrawCustomQuestions: evalConfig.randomDrawCustomQuestions,
+    randomDrawSelectedIds: evalConfig.randomDrawSelectedIds,
+    randomDrawEvalPoints: evalConfig.randomDrawEvalPoints,
+    randomDrawScoreType: evalConfig.randomDrawScoreType,
+    randomDrawRubricId: evalConfig.randomDrawRubricId,
+    reviewEvalPoints: evalConfig.reviewEvalPoints,
+    reviewScoreType: evalConfig.reviewScoreType,
+    reviewRubricId: evalConfig.reviewRubricId,
+    paperIds: evalConfig.paperIds,
+    paperWeights: evalConfig.paperWeights,
+    paperEvalPoints: evalConfig.paperEvalPoints,
+    questionBankQuestions: evalConfig.questionBankQuestions,
+    questionBankEvalPoints: evalConfig.questionBankEvalPoints,
+    outcomeEvalPoints: evalConfig.outcomeEvalPoints,
+    outcomeScoreType: evalConfig.outcomeScoreType,
+    outcomeRubricId: evalConfig.outcomeRubricId,
+    homeworkEvalPoints: evalConfig.homeworkEvalPoints,
+    homeworkScoreType: evalConfig.homeworkScoreType,
+    homeworkRubricId: evalConfig.homeworkRubricId,
+    quizQuestions: evalConfig.quizQuestions,
+    quizEvalPoints: evalConfig.quizEvalPoints,
+    gradeMapping: evalConfig.gradeMapping,
+    methodResourceConfigs: evalConfig.methodResourceConfigs,
   })
+
+  // 评审步骤在统一模型中按方法存储，恢复为 TaskState 顶层字段
+  const reviewMethod = methods.find(m => m.methodKey === "review")
+  if (reviewMethod?.reviewSteps) {
+    state.reviewSteps = reviewMethod.reviewSteps.map((rs: any) => ({
+      id: rs.id,
+      label: rs.label,
+      desc: rs.description || "",
+      enabled: rs.enabled,
+      subjectType: rs.subjectType,
+      weight: rs.weight,
+    }))
+  }
+
+  state.evalMethodVersion = methods.reduce((max, m) => Math.max(max, m.version || 0), 0)
+
   return state
 }
 
 function taskStateToMethodsInput(ts: TaskState, extra?: { reviewSteps?: any[] }): any[] {
-  const methods: any[] = []
-  const evalPointFieldMap: Record<string, string> = {
-    random_draw: "randomDrawEvalPoints",
-    review: "reviewEvalPoints",
-    paper: "paperEvalPoints",
-    question_bank: "questionBankEvalPoints",
-    outcome: "outcomeEvalPoints",
-    homework: "homeworkEvalPoints",
-    quiz: "quizEvalPoints",
-  }
-  const scoreTypeFieldMap: Record<string, string> = {
-    random_draw: "randomDrawScoreType",
-    review: "reviewScoreType",
-    outcome: "outcomeScoreType",
-    homework: "homeworkScoreType",
-  }
-  const rubricFieldMap: Record<string, string> = {
-    random_draw: "randomDrawRubricId",
-    review: "reviewRubricId",
-    outcome: "outcomeRubricId",
-    homework: "homeworkRubricId",
-  }
-  ts.evaluationMethods.forEach((mk: string) => {
-    const fromLocalEvalPoint = (p: EvalPoint): any => ({
-      name: p.name,
-      description: p.desc || null,
-      subType: p.subType || null,
-      types: p.types || [],
-      weight: p.weight || 0,
-      scoringMethod: p.scoringMethod || "level",
-      gradeMapping: p.gradeMapping || [],
-      knowledgePointIds: p.knowledgePointIds || [],
-      abilityPointIds: p.abilityPointIds || [],
-      sortOrder: 0,
-    })
-    const evalField = evalPointFieldMap[mk]
-    const evalPoints = evalField ? ((ts as any)[evalField] as EvalPoint[] || []).map((p, i) => ({ ...fromLocalEvalPoint(p), sortOrder: i })) : []
-    const scoreType = (scoreTypeFieldMap[mk] ? (ts as any)[scoreTypeFieldMap[mk]] : null) || null
-    const rubricId = rubricFieldMap[mk] ? (ts as any)[rubricFieldMap[mk]] as string | null : null
-
-    let resourceConfig: any = ts.methodResourceConfigs[mk] || {}
-    // Merge legacy fields into resourceConfig
-    if (mk === "paper") {
-      resourceConfig = {
-        ...(ts.methodResourceConfigs?.paper || {}),
-        paperId: ts.paperIds?.[0] || null,
-        paperWeight: ts.paperIds?.[0] ? ts.paperWeights[ts.paperIds[0]] : null,
-      }
-    }
-    if (mk === "question_bank") {
-      resourceConfig = {
-        ...(ts.methodResourceConfigs?.question_bank || {}),
-        questionIds: ts.questionBankQuestions,
-      }
-    }
-    if (mk === "quiz") {
-      resourceConfig = {
-        ...(ts.methodResourceConfigs?.quiz || {}),
-        questionIds: ts.quizQuestions,
-      }
-    }
-    if (mk === "random_draw") resourceConfig = { ...resourceConfig, customQuestions: ts.randomDrawCustomQuestions, selectedQuestionIds: ts.randomDrawSelectedIds }
-
-    methods.push({
-      methodKey: mk,
-      weight: ts.methodWeights[mk] || 0,
-      evalObject: ts.methodEvalObjects[mk] || "individual",
-      scoreType,
-      evalSubjects: ts.methodEvalSubjects[mk] || [],
-      rubricTemplateId: rubricId || null,
-      evalPoints,
-      reviewSteps: mk === "review" ? (ts.reviewSteps || []).map((rs: any) => ({
-        label: rs.label, description: rs.desc || null,
-        enabled: rs.enabled, subjectType: rs.subjectType, weight: rs.weight, sortOrder: 0,
-      })) : [],
-      resourceConfig,
-    })
+  const evalConfig = methodsToEvalRuleConfig([])
+  Object.assign(evalConfig, {
+    evaluationMethods: ts.evaluationMethods,
+    methodWeights: ts.methodWeights,
+    evalObject: ts.evalObject,
+    methodEvalObjects: ts.methodEvalObjects,
+    evalSubjects: ts.evalSubjects,
+    methodEvalSubjects: ts.methodEvalSubjects,
+    randomDrawQuestions: ts.randomDrawQuestions,
+    randomDrawCustomQuestions: ts.randomDrawCustomQuestions,
+    randomDrawSelectedIds: ts.randomDrawSelectedIds,
+    randomDrawEvalPoints: ts.randomDrawEvalPoints,
+    randomDrawScoreType: ts.randomDrawScoreType,
+    randomDrawRubricId: ts.randomDrawRubricId,
+    reviewEvalPoints: ts.reviewEvalPoints,
+    reviewScoreType: ts.reviewScoreType,
+    reviewRubricId: ts.reviewRubricId,
+    paperIds: ts.paperIds,
+    paperWeights: ts.paperWeights,
+    paperEvalPoints: ts.paperEvalPoints,
+    questionBankQuestions: ts.questionBankQuestions,
+    questionBankEvalPoints: ts.questionBankEvalPoints,
+    outcomeEvalPoints: ts.outcomeEvalPoints,
+    outcomeScoreType: ts.outcomeScoreType,
+    outcomeRubricId: ts.outcomeRubricId,
+    homeworkEvalPoints: ts.homeworkEvalPoints,
+    homeworkScoreType: ts.homeworkScoreType,
+    homeworkRubricId: ts.homeworkRubricId,
+    quizQuestions: ts.quizQuestions,
+    quizEvalPoints: ts.quizEvalPoints,
+    gradeMapping: ts.gradeMapping,
+    methodResourceConfigs: ts.methodResourceConfigs,
   })
+
+  const methods = evalRuleConfigToMethods(evalConfig)
+
+  // 恢复评审步骤到 review 方法
+  if (ts.evaluationMethods.includes("review")) {
+    const reviewIdx = methods.findIndex(m => m.methodKey === "review")
+    if (reviewIdx >= 0) {
+      methods[reviewIdx].reviewSteps = (ts.reviewSteps || []).map((rs: any, i: number) => ({
+        label: rs.label,
+        description: rs.desc || null,
+        enabled: rs.enabled,
+        subjectType: rs.subjectType,
+        weight: rs.weight,
+        sortOrder: i,
+      }))
+    }
+  }
+
   return methods
 }
 
@@ -1192,11 +1157,11 @@ export default function TasksEditPage() {
       if (t.id.startsWith("task-")) {
         const created = await taskApi.create(payload)
         t.id = created.id
-        await taskEvaluationApi.saveMethods(created.id, { methods: taskStateToMethodsInput(ts) })
+        await taskEvaluationApi.saveMethods(created.id, { version: ts.evalMethodVersion, methods: taskStateToMethodsInput(ts) })
       } else {
         await taskApi.update(t.id, payload)
         const methodsInput = taskStateToMethodsInput(ts)
-        await taskEvaluationApi.saveMethods(t.id, { methods: methodsInput })
+        await taskEvaluationApi.saveMethods(t.id, { version: ts.evalMethodVersion, methods: methodsInput })
       }
     }
   }
@@ -2824,7 +2789,7 @@ function EditCardDialog({
       let methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC })
       if (methodsInput.length > 0) {
         try {
-          await taskEvaluationApi.saveMethods(taskId, { methods: methodsInput })
+          await taskEvaluationApi.saveMethods(taskId, { version: state.evalMethodVersion, methods: methodsInput })
         } catch (err: any) {
           toast({ variant: "destructive", title: "评价规则保存失败", description: err.message })
           return
@@ -2844,7 +2809,7 @@ function EditCardDialog({
         }
         updateState({ methodResourceConfigs: updatedRC })
         methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC })
-        taskEvaluationApi.saveMethods(taskId, { methods: methodsInput }).catch(() => {})
+        taskEvaluationApi.saveMethods(taskId, { version: state.evalMethodVersion, methods: methodsInput }).catch(() => {})
       }
     }
     onClose()

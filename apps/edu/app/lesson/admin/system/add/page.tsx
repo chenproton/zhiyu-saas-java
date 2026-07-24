@@ -65,6 +65,7 @@ import CourseNodeTree from "./_components/CourseNodeTree"
 import PublishCheckPanel from "./_components/PublishCheckPanel"
 
 import type { KnowledgePointItem } from "@/lib/types/lesson"
+import type { EvalRuleConfig } from "@/lib/types/evaluation"
 import { courseApi, courseNodeApi, knowledgeApi, majorApi, approvalApi, lessonBatchApi } from "@/lib/api"
 
 /* ---------- node editing mode ---------- */
@@ -77,6 +78,7 @@ interface NodeDraft {
   knowledgePoints: KnowledgePointItem[]
   selectedResourceIds: string[]
   selectedEvalMethods: string[]
+  evalRules?: EvalRuleConfig
   difficulty: number
 }
 
@@ -934,6 +936,24 @@ function AddSystemPageInner() {
                         <CourseEvaluationRulesDialog
                           inline
                           evaluationMethods={selectedEvalMethods}
+                          initialConfig={selectedNodeId ? nodeDrafts[selectedNodeId]?.evalRules : undefined}
+                          onChange={(config) => {
+                            if (!selectedNodeId) return
+                            setNodeDrafts((prev) => ({
+                              ...prev,
+                              [selectedNodeId]: {
+                                ...(prev[selectedNodeId] || {
+                                  hours: "",
+                                  learningGoal: "",
+                                  knowledgePoints: [],
+                                  selectedResourceIds: [],
+                                  selectedEvalMethods: [],
+                                  difficulty: 3,
+                                }),
+                                evalRules: config,
+                              },
+                            }))
+                          }}
                           title="配置节点评价规则"
                           knowledgePoints={knowledgePoints}
                         />

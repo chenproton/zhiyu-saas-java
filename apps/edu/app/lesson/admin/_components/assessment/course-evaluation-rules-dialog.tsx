@@ -25,7 +25,7 @@ import {
   BookOpen,
   ClipboardList,
 } from "lucide-react"
-import { useMemo, useState, useRef, useLayoutEffect } from "react"
+import { useMemo, useState, useRef, useLayoutEffect, useCallback } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -50,70 +50,25 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
-import type { EvalPoint, GradeMapping, KnowledgePointItem } from "@/lib/types/lesson"
+import type { GradeMapping, KnowledgePointItem } from "@/lib/types/lesson"
+import type {
+  EvalRuleConfig,
+  EvalRuleMethodKey,
+  EvalRulePoint as EvalPoint,
+  EvalRuleSubjectConfig,
+} from "@/lib/types/evaluation"
+import {
+  useEvalRuleStore,
+  type EvalPointField,
+  type ScoreTypeField,
+  type RubricIdField,
+} from "@/lib/evaluation-rule-store"
 
 // ============ Types & Configs ============
 
 type EvalObjectType = "individual" | "group"
 
-interface EvalSubjectConfig {
-  type: "teacher" | "enterprise_mentor" | "peer" | "self" | "ai" | "service_target"
-  enabled: boolean
-  params?: {
-    teacherBackground?: string
-    scorerCount?: number
-    weightPercent?: number
-    scoringDimensions?: string[]
-    minTeachingYears?: number
-    aggregationRule?: "average" | "median" | "max" | "min"
-    expertise?: string
-    minYears?: number
-    companyType?: string
-    jobExperience?: string
-    peerCount?: number
-    peerRule?: string
-    anonymous?: boolean
-    requiresReflection?: boolean
-    reflectionMinLength?: number
-    aiModel?: string
-    confidenceThreshold?: number
-    autoReview?: boolean
-    serviceMethod?: string
-    sampleSize?: number
-  }
-}
-
-export interface CourseEvalRulesConfig {
-  evaluationMethods: string[]
-  methodWeights: Record<string, number>
-  evalObject: EvalObjectType
-  methodEvalObjects: Record<string, EvalObjectType>
-  evalSubjects: EvalSubjectConfig[]
-  methodEvalSubjects: Record<string, EvalSubjectConfig[]>
-  randomDrawQuestions: string[]
-  randomDrawCustomQuestions: { id: string; name: string; description: string; answer: string; major: string }[]
-  randomDrawSelectedIds: string[]
-  randomDrawEvalPoints: EvalPoint[]
-  randomDrawScoreType: "eval_points" | "ability_levels"
-  randomDrawRubricId: string | null
-  reviewEvalPoints: EvalPoint[]
-  reviewScoreType: "eval_points" | "ability_levels"
-  reviewRubricId: string | null
-  paperIds: string[]
-  paperWeights: Record<string, number>
-  paperEvalPoints: EvalPoint[]
-  questionBankQuestions: string[]
-  questionBankEvalPoints: EvalPoint[]
-  outcomeEvalPoints: EvalPoint[]
-  outcomeScoreType: "eval_points" | "ability_levels"
-  outcomeRubricId: string | null
-  homeworkEvalPoints: EvalPoint[]
-  homeworkScoreType: "eval_points" | "ability_levels"
-  homeworkRubricId: string | null
-  quizQuestions: string[]
-  quizEvalPoints: EvalPoint[]
-  gradeMapping: GradeMapping[]
-}
+export type { EvalRuleConfig as CourseEvalRulesConfig, EvalRuleMethodKey, EvalPoint }
 
 export interface AbilityPointItem {
   id: string
@@ -127,8 +82,8 @@ interface CourseEvaluationRulesDialogProps {
   onOpenChange?: (open: boolean) => void
   inline?: boolean
   evaluationMethods: string[]
-  initialConfig?: Partial<CourseEvalRulesConfig>
-  onChange?: (config: CourseEvalRulesConfig) => void
+  initialConfig?: Partial<EvalRuleConfig>
+  onChange?: (config: EvalRuleConfig) => void
   title?: string
   knowledgePoints?: KnowledgePointItem[]
   abilityPoints?: AbilityPointItem[]
@@ -144,14 +99,12 @@ const evaluationMethodOptions = [
   { key: "quiz", label: "随堂测", icon: <FileQuestion className="h-5 w-5" />, color: "bg-red-50 text-red-600 border-red-200", available: true, desc: "课堂即时测验" },
 ]
 
+import { DEFAULT_EVAL_RULE_GRADE_MAPPING, DEFAULT_EVAL_RULE_SUBJECTS } from "@/lib/types/evaluation"
+
 const abilityLevels = ["了解", "理解", "掌握", "熟练", "精通"]
 
-const defaultGradeMapping: GradeMapping[] = [
-  { id: "grade-1", grade: "A", minScore: 90, maxScore: 100, color: "bg-green-500", remark: "表现卓越，完全超出预期要求，可作为标杆示范" },
-  { id: "grade-2", grade: "B", minScore: 75, maxScore: 89, color: "bg-blue-500", remark: "表现良好，达到预期要求，仅有少量可改进之处" },
-  { id: "grade-3", grade: "C", minScore: 60, maxScore: 74, color: "bg-yellow-500", remark: "基本达标，核心要求已满足，但存在明显不足" },
-  { id: "grade-4", grade: "D", minScore: 0, maxScore: 59, color: "bg-red-500", remark: "未达标准，核心要求未完成，需要重新学习或训练" },
-]
+const defaultGradeMapping = DEFAULT_EVAL_RULE_GRADE_MAPPING
+const defaultEvalSubjects = DEFAULT_EVAL_RULE_SUBJECTS
 
 // 能力点数据应由父组件通过 abilityPoints 属性传入，默认空状态
 const DEFAULT_ABILITY_POINTS: AbilityPointItem[] = []
@@ -181,15 +134,6 @@ const evalSubTypeColors: Record<EvalSubType, string> = {
   innovation: "bg-indigo-50 text-indigo-600 border-indigo-200",
   adaptability: "bg-rose-50 text-rose-600 border-rose-200",
 }
-
-const defaultEvalSubjects: EvalSubjectConfig[] = [
-  { type: "teacher", enabled: true, params: { teacherBackground: "计算机/软件工程相关专业", scorerCount: 2, weightPercent: 50, scoringDimensions: ["knowledge_mastery", "operation_standard", "task_completion", "result_quality"], minTeachingYears: 3 } },
-  { type: "enterprise_mentor", enabled: true, params: { expertise: "网络安全 / 渗透测试", minYears: 5, scorerCount: 1, weightPercent: 20, companyType: "互联网/科技公司" } },
-  { type: "self", enabled: true, params: { requiresReflection: true, weightPercent: 10, reflectionMinLength: 500 } },
-  { type: "peer", enabled: false, params: { peerCount: 4, peerRule: "随机分配", anonymous: true, weightPercent: 15 } },
-  { type: "ai", enabled: false, params: { aiModel: "GPT-4", weightPercent: 5, confidenceThreshold: 85, autoReview: true } },
-  { type: "service_target", enabled: false, params: { serviceMethod: "满意度问卷", sampleSize: 20, weightPercent: 5 } },
-]
 
 // 默认评价点与试卷数据应由真实题库/试卷 API 提供，默认空状态
 const defaultEvalPoints: EvalPoint[] = []
@@ -227,45 +171,6 @@ function uid(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`
 }
 
-function makeDefaultConfig(methods: string[]): CourseEvalRulesConfig {
-  return {
-    evaluationMethods: methods,
-    methodWeights: methods.reduce((acc, m, i, arr) => {
-      const base = Math.floor(100 / arr.length)
-      acc[m] = base + (i < 100 % arr.length ? 1 : 0)
-      return acc
-    }, {} as Record<string, number>),
-    evalObject: "individual",
-    methodEvalObjects: {},
-    evalSubjects: JSON.parse(JSON.stringify(defaultEvalSubjects)),
-    methodEvalSubjects: {},
-    randomDrawQuestions: allQuestions.slice(0, 2).map(q => q.id),
-    randomDrawCustomQuestions: [],
-    randomDrawSelectedIds: [],
-    randomDrawEvalPoints: [],
-    randomDrawScoreType: "eval_points",
-    randomDrawRubricId: null,
-    reviewEvalPoints: [],
-    reviewScoreType: "eval_points",
-    reviewRubricId: null,
-    paperIds: [],
-    paperWeights: {},
-    paperEvalPoints: [],
-    questionBankQuestions: [],
-    questionBankEvalPoints: [],
-    outcomeEvalPoints: [],
-    outcomeScoreType: "eval_points",
-    outcomeRubricId: null,
-    homeworkEvalPoints: [],
-    homeworkScoreType: "eval_points",
-    homeworkRubricId: null,
-    quizQuestions: [],
-    quizEvalPoints: [],
-    gradeMapping: JSON.parse(JSON.stringify(defaultGradeMapping)),
-  }
-}
-
-
 export function CourseEvaluationRulesDialog({
   open,
   onOpenChange,
@@ -280,30 +185,18 @@ export function CourseEvaluationRulesDialog({
   const knowledgePoints = useMemo(() => kpProp || [], [kpProp])
   const abilityPoints = useMemo(() => abProp || DEFAULT_ABILITY_POINTS, [abProp])
 
-  // Map "exam" (used by EvaluationMethodSelector in this project) to internal "homework" representation
-  const normalizedEvalMethods = useMemo(() => evaluationMethods.map(m => m === "exam" ? "homework" : m), [evaluationMethods])
-
-  const [config, setConfig] = useState<CourseEvalRulesConfig>(() => {
-    const base = makeDefaultConfig(normalizedEvalMethods)
-    return initialConfig ? { ...base, ...initialConfig, evaluationMethods: normalizedEvalMethods } : base
+  const store = useEvalRuleStore({
+    initialConfig,
+    evaluationMethods,
+    onChange,
   })
 
-  const updateConfig = (updates: Partial<CourseEvalRulesConfig>) => {
-    setConfig(prev => {
-      const next = { ...prev, ...updates }
-      if (onChange) {
-        const exportNext = { ...next, evaluationMethods: next.evaluationMethods.map(m => m === "homework" ? "exam" : m) }
-        onChange(exportNext)
-      }
-      return next
-    })
-  }
+  const { state: config, dispatch } = store
 
-  // Sync evaluationMethods from props
-  if (JSON.stringify(config.evaluationMethods) !== JSON.stringify(normalizedEvalMethods)) {
-    const next = makeDefaultConfig(normalizedEvalMethods)
-    updateConfig(next)
-  }
+  // 兼容层：逐步迁移到 store 专用方法
+  const updateConfig = useCallback((updates: Partial<EvalRuleConfig>) => {
+    dispatch({ type: "SET_CONFIG", payload: updates })
+  }, [dispatch])
 
   // ============ Local UI states ============
   const [erDialogOpen, setErDialogOpen] = useState<"object" | "subject" | "resource" | "method" | null>(null)
@@ -321,8 +214,8 @@ export function CourseEvaluationRulesDialog({
   const [rdqSearch, setRdqSearch] = useState("")
   const [rdqActionOpen, setRdqActionOpen] = useState(false)
   const [rdqActionMode, setRdqActionMode] = useState<"add" | "edit">("add")
-  const [rdqActionTarget, setRdqActionTarget] = useState<{ id: string; name: string; description: string; answer: string; major: string } | null>(null)
-  const [newRdqForm, setNewRdqForm] = useState({ name: "", description: "", answer: "", major: "" })
+  const [rdqActionTarget, setRdqActionTarget] = useState<{ id: string; name: string; description: string; answer: string; majorId: string } | null>(null)
+  const [newRdqForm, setNewRdqForm] = useState({ name: "", description: "", answer: "", majorId: "" })
   const [rdqDetailOpen, setRdqDetailOpen] = useState(false)
   const [selectedRdqForDetail, setSelectedRdqForDetail] = useState<string | null>(null)
 
@@ -391,13 +284,13 @@ export function CourseEvaluationRulesDialog({
     }
   }
 
-  const updateEvalSubject = (idx: number, updates: Partial<EvalSubjectConfig>) => {
+  const updateEvalSubject = (idx: number, updates: Partial<EvalRuleSubjectConfig>) => {
     const newSubjects = [...config.evalSubjects]
     newSubjects[idx] = { ...newSubjects[idx], ...updates }
     updateConfig({ evalSubjects: newSubjects })
   }
 
-  const updateMethodEvalSubject = (methodKey: string, idx: number, updates: Partial<EvalSubjectConfig>) => {
+  const updateMethodEvalSubject = (methodKey: string, idx: number, updates: Partial<EvalRuleSubjectConfig>) => {
     const baseSubjects = config.methodEvalSubjects[methodKey] || config.evalSubjects
     const newSubjects = [...baseSubjects]
     newSubjects[idx] = { ...newSubjects[idx], ...updates }
@@ -571,9 +464,9 @@ export function CourseEvaluationRulesDialog({
         <Select value={ep.scoringMethod || "level"} onValueChange={v => updateEvalPoint(field, ep.id, { scoringMethod: v as "score" | "level" | "rubric" })}>
           <SelectTrigger className="h-7 text-[10px] w-28"><SelectValue placeholder="评分方式" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="score" disabled>分值制</SelectItem>
+            <SelectItem value="score">分值制</SelectItem>
             <SelectItem value="level">等级制</SelectItem>
-            <SelectItem value="rubric" disabled>rubric量表</SelectItem>
+            <SelectItem value="rubric">rubric量表</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -950,21 +843,21 @@ export function CourseEvaluationRulesDialog({
       const [rdqDrawMode, setRdqDrawMode] = useState<"random" | "manual">("random")
       const [rdqDrawCount, setRdqDrawCount] = useState(5)
       const filteredRdq = config.randomDrawCustomQuestions.filter(q => {
-        const matchMajor = rdqMajorTab === "全部" || q.major === rdqMajorTab
-        const matchSearch = !rdqSearch || q.name.includes(rdqSearch) || q.description.includes(rdqSearch) || q.major.includes(rdqSearch)
+        const matchMajor = rdqMajorTab === "全部" || q.majorId === rdqMajorTab
+        const matchSearch = !rdqSearch || q.name.includes(rdqSearch) || q.description.includes(rdqSearch) || q.majorId.includes(rdqSearch)
         return matchMajor && matchSearch
       })
 
-      const handleAddRdq = () => { setNewRdqForm({ name: "", description: "", answer: "", major: "" }); setRdqActionMode("add"); setRdqActionTarget(null); setRdqActionOpen(true); }
-      const handleEditRdq = (q: typeof config.randomDrawCustomQuestions[0]) => { setNewRdqForm({ name: q.name, description: q.description, answer: q.answer, major: q.major }); setRdqActionMode("edit"); setRdqActionTarget(q); setRdqActionOpen(true); }
+      const handleAddRdq = () => { setNewRdqForm({ name: "", description: "", answer: "", majorId: "" }); setRdqActionMode("add"); setRdqActionTarget(null); setRdqActionOpen(true); }
+      const handleEditRdq = (q: typeof config.randomDrawCustomQuestions[0]) => { setNewRdqForm({ name: q.name, description: q.description, answer: q.answer, majorId: q.majorId }); setRdqActionMode("edit"); setRdqActionTarget(q); setRdqActionOpen(true); }
       const handleSaveRdq = () => {
         if (!newRdqForm.name.trim()) return
         if (rdqActionMode === "edit" && rdqActionTarget) {
-          updateConfig({ randomDrawCustomQuestions: config.randomDrawCustomQuestions.map(q => q.id === rdqActionTarget.id ? { ...q, name: newRdqForm.name.trim(), description: newRdqForm.description.trim(), answer: newRdqForm.answer.trim(), major: newRdqForm.major.trim() } : q) })
+          updateConfig({ randomDrawCustomQuestions: config.randomDrawCustomQuestions.map(q => q.id === rdqActionTarget.id ? { ...q, name: newRdqForm.name.trim(), description: newRdqForm.description.trim(), answer: newRdqForm.answer.trim(), majorId: newRdqForm.majorId.trim() } : q) })
           setRdqActionOpen(false)
           return
         }
-        const newQ = { id: uid("rdq"), name: newRdqForm.name.trim(), description: newRdqForm.description.trim(), answer: newRdqForm.answer.trim(), major: newRdqForm.major.trim() }
+        const newQ = { id: uid("rdq"), name: newRdqForm.name.trim(), description: newRdqForm.description.trim(), answer: newRdqForm.answer.trim(), majorId: newRdqForm.majorId.trim() }
         updateConfig({ randomDrawCustomQuestions: [...config.randomDrawCustomQuestions, newQ] })
         setRdqActionOpen(false)
         setRdqSearch("")
@@ -1006,7 +899,7 @@ export function CourseEvaluationRulesDialog({
                           <tr key={q.id} className={cn("hover:bg-gray-50 transition-colors", isSelected ? "bg-primary/[0.03]" : "")}>
                             <td className="px-3 py-2"><span className="text-sm font-medium text-gray-800">{q.name}</span></td>
                             <td className="px-3 py-2"><p className="text-xs text-gray-500 line-clamp-1" title={q.description}>{q.description || "-"}</p></td>
-                            <td className="px-3 py-2"><Badge variant="secondary" className="text-[10px]">{q.major || "-"}</Badge></td>
+                            <td className="px-3 py-2"><Badge variant="secondary" className="text-[10px]">{q.majorId || "-"}</Badge></td>
                             <td className="px-3 py-2">
                               <div className="flex items-center justify-end gap-1">
                                 <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary" onClick={() => { setSelectedRdqForDetail(q.id); setRdqDetailOpen(true); }}>详情</Button>
@@ -1034,7 +927,7 @@ export function CourseEvaluationRulesDialog({
                       <div key={q.id} className="p-2.5 rounded-lg border border-primary/20 bg-primary/5 relative">
                         <div className="flex items-center gap-2 mb-1"><span className="text-xs font-medium flex-1 truncate">{q.name}</span><Button variant="ghost" size="icon" className="h-5 w-5 text-gray-400 -mr-1 -mt-1" onClick={() => handleToggleSelect(q.id)}><X className="h-3 w-3" /></Button></div>
                         <p className="text-[11px] text-gray-500 line-clamp-1">{q.description || "暂无描述"}</p>
-                        <Badge variant="outline" className="text-[9px] mt-1 font-normal px-1 py-0 h-4">{q.major || "通用"}</Badge>
+                        <Badge variant="outline" className="text-[9px] mt-1 font-normal px-1 py-0 h-4">{q.majorId || "通用"}</Badge>
                       </div>
                     ))}
                   </div>
@@ -1063,7 +956,7 @@ export function CourseEvaluationRulesDialog({
               <DialogHeader><DialogTitle>{rdqActionMode === "add" ? "新增现场问答题" : "编辑现场问答题"}</DialogTitle><DialogDescription>{rdqActionMode === "add" ? "创建一个新的现场问答题" : "修改现场问答题信息"}</DialogDescription></DialogHeader>
               <div className="space-y-4 py-4">
                 <div><Label>题目名称</Label><Input value={newRdqForm.name} onChange={e => setNewRdqForm({ ...newRdqForm, name: e.target.value })} placeholder="输入题目名称" className="mt-1.5" /></div>
-                <div><Label>适用专业</Label><Select value={newRdqForm.major} onValueChange={v => setNewRdqForm({ ...newRdqForm, major: v })}><SelectTrigger className="mt-1.5"><SelectValue placeholder="选择适用专业" /></SelectTrigger><SelectContent>{rdqMajorOptions.map(m => m !== "全部" && <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent></Select></div>
+                <div><Label>适用专业</Label><Select value={newRdqForm.majorId} onValueChange={v => setNewRdqForm({ ...newRdqForm, majorId: v })}><SelectTrigger className="mt-1.5"><SelectValue placeholder="选择适用专业" /></SelectTrigger><SelectContent>{rdqMajorOptions.map(m => m !== "全部" && <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent></Select></div>
                 <div><Label>题目描述</Label><Textarea value={newRdqForm.description} onChange={e => setNewRdqForm({ ...newRdqForm, description: e.target.value })} placeholder="输入题目描述" className="mt-1.5" rows={3} /></div>
                 <div><Label>题目答案</Label><Textarea value={newRdqForm.answer} onChange={e => setNewRdqForm({ ...newRdqForm, answer: e.target.value })} placeholder="输入题目答案" className="mt-1.5" rows={3} /></div>
               </div>
@@ -1082,7 +975,7 @@ export function CourseEvaluationRulesDialog({
                 return (
                   <div className="space-y-4 py-2">
                     <div><Label className="text-xs text-gray-500">题目名称</Label><p className="text-sm font-medium mt-1">{q.name}</p></div>
-                    <div><Label className="text-xs text-gray-500">适用专业</Label><Badge variant="secondary" className="text-[10px] mt-1">{q.major || "通用"}</Badge></div>
+                    <div><Label className="text-xs text-gray-500">适用专业</Label><Badge variant="secondary" className="text-[10px] mt-1">{q.majorId || "通用"}</Badge></div>
                     <div><Label className="text-xs text-gray-500">题目描述</Label><p className="text-sm mt-1 text-gray-700 whitespace-pre-wrap">{q.description || "-"}</p></div>
                     <div><Label className="text-xs text-gray-500">题目答案</Label><p className="text-sm mt-1 text-gray-700 whitespace-pre-wrap">{q.answer || "-"}</p></div>
                   </div>
@@ -2030,7 +1923,16 @@ export function CourseEvaluationRulesDialog({
         <div className="flex-1 overflow-hidden py-4">
           <BodyContent />
         </div>
-        <DialogFooter><Button variant="outline" onClick={() => onOpenChange?.(false)}>取消</Button><Button onClick={() => onOpenChange?.(false)}>保存</Button></DialogFooter>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange?.(false)}>取消</Button>
+          <Button onClick={() => {
+            if (methodWeightTotal !== 100) {
+              window.alert(`评价方式权重合计需等于 100%，当前为 ${methodWeightTotal}%`)
+              return
+            }
+            onOpenChange?.(false)
+          }}>保存</Button>
+        </DialogFooter>
       </DialogContent>
       <SubDialogs />
     </Dialog>

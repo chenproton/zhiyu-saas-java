@@ -25,6 +25,7 @@ type TaskEvaluationMethodListResponse struct {
 }
 
 type SaveTaskEvaluationMethodsRequest struct {
+	Version int                         `json:"version"`
 	Methods []TaskEvaluationMethodInput `json:"methods"`
 }
 
@@ -36,6 +37,7 @@ type TaskEvaluationMethodInput struct {
 	EvalSubjects     json.RawMessage `json:"evalSubjects"`
 	RubricTemplateID *string         `json:"rubricTemplateId,omitempty"`
 	ResourceConfig   json.RawMessage `json:"resourceConfig,omitempty"`
+	Version          int             `json:"version"`
 	EvalPoints       []EvalPointInput `json:"evalPoints,omitempty"`
 	ReviewSteps      []ReviewStepInput `json:"reviewSteps,omitempty"`
 }
@@ -111,6 +113,22 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Optimistic locking: when client provides a version, ensure no newer version exists.
+	if req.Version > 0 {
+		var currentVersion int
+		err := h.DB.QueryRow(r.Context(), `
+			SELECT COALESCE(MAX(version), 0) FROM task_evaluation_methods WHERE task_id = $1 AND tenant_id = $2
+		`, taskID, tenantID).Scan(&currentVersion)
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to check evaluation method version")
+			return
+		}
+		if currentVersion > req.Version {
+			respondError(w, http.StatusConflict, "evaluation rules have been modified by another session")
+			return
+		}
+	}
+
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
@@ -130,10 +148,10 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 
 		var configID string
 		err := tx.QueryRow(r.Context(), `
-			INSERT INTO task_evaluation_methods (tenant_id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			INSERT INTO task_evaluation_methods (tenant_id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config, version)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 			RETURNING id
-		`, tenantID, taskID, m.MethodKey, m.Weight, m.EvalObject, m.ScoreType, evalSubjects, m.RubricTemplateID, resourceConfig).Scan(&configID)
+		`, tenantID, taskID, m.MethodKey, m.Weight, m.EvalObject, m.ScoreType, evalSubjects, m.RubricTemplateID, resourceConfig, req.Version+1).Scan(&configID)
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, "failed to insert evaluation method")
 			return
@@ -397,7 +415,7 @@ func (h *TaskEvaluationHandler) DeleteTemplate(w http.ResponseWriter, r *http.Re
 
 func (h *TaskEvaluationHandler) fetchTaskMethods(ctx context.Context, taskID, tenantID string) ([]domain.TaskEvaluationMethod, error) {
 	rows, err := h.DB.Query(ctx, `
-		SELECT id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config
+		SELECT id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config, version
 		FROM task_evaluation_methods
 		WHERE task_id = $1 AND tenant_id = $2
 		ORDER BY method_key
@@ -411,7 +429,7 @@ func (h *TaskEvaluationHandler) fetchTaskMethods(ctx context.Context, taskID, te
 	configIDs := make([]string, 0)
 	for rows.Next() {
 		var m domain.TaskEvaluationMethod
-		if err := rows.Scan(&m.ID, &m.TaskID, &m.MethodKey, &m.Weight, &m.EvalObject, &m.ScoreType, &m.EvalSubjects, &m.RubricTemplateID, &m.ResourceConfig); err != nil {
+		if err := rows.Scan(&m.ID, &m.TaskID, &m.MethodKey, &m.Weight, &m.EvalObject, &m.ScoreType, &m.EvalSubjects, &m.RubricTemplateID, &m.ResourceConfig, &m.Version); err != nil {
 			return nil, err
 		}
 		methods = append(methods, m)

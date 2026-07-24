@@ -841,7 +841,7 @@ export const taskKnowledgeAbilityApi = {
 export const taskEvaluationApi = {
   listMethods: (taskId: string) =>
     request<{ methods: TaskEvaluationMethod[] }>(`/scene/tasks/${taskId}/evaluation-methods`),
-  saveMethods: (taskId: string, data: { methods: any[] }) =>
+  saveMethods: (taskId: string, data: { version?: number; methods: any[] }) =>
     request<{ methods: TaskEvaluationMethod[] }>(`/scene/tasks/${taskId}/evaluation-methods`, { method: "PUT", body: JSON.stringify(data) }),
 
   listTemplates: (params?: { limit?: number; offset?: number; keyword?: string }) =>
