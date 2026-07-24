@@ -22,7 +22,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { scenarioApi, evaluationResultApi, userManagementApi } from "@/lib/api"
+import { scenarioApi, evaluationResultApi, userManagementApi, positionApi, taskApi } from "@/lib/api"
 import type { SceneEvaluationResult } from "@/lib/types"
 
 interface TaskStudent {
@@ -76,20 +76,36 @@ export default function GradingPage() {
   const [scenarios, setScenarios] = useState<any[]>([])
   const [results, setResults] = useState<SceneEvaluationResult[]>([])
   const [userMap, setUserMap] = useState<Map<string, any>>(new Map())
+  const [positionMap, setPositionMap] = useState<Map<string, string>>(new Map())
+  const [taskNameMap, setTaskNameMap] = useState<Map<string, any>>(new Map())
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [scRes, userRes] = await Promise.all([
+        const [scRes, userRes, posRes, taskRes] = await Promise.all([
           scenarioApi.list({ limit: 200 }).catch(() => ({ items: [] as any[] })),
           userManagementApi.list({ limit: 1000 }).catch(() => ({ items: [] as any[] })),
+          positionApi.list({ limit: 500 }).catch(() => ({ items: [] as any[] })),
+          taskApi.list({ limit: 10000 }).catch(() => ({ items: [] as any[] })),
         ])
-        setScenarios((scRes.items || []).map((s: any) => ({ ...s, positionName: s.careerPositionId || "未分类" })))
+
+        const pMap = new Map<string, string>()
+        ;(posRes.items || []).forEach((p: any) => pMap.set(p.id, p.name))
+        setPositionMap(pMap)
+
+        setScenarios((scRes.items || []).map((s: any) => ({
+          ...s,
+          positionName: pMap.get(s.careerPositionId) || "未分类",
+        })))
 
         const uMap = new Map<string, any>()
         ;(userRes.items || []).forEach((u: any) => uMap.set(u.id, u))
         setUserMap(uMap)
+
+        const tMap = new Map<string, any>()
+        ;(taskRes.items || []).forEach((t: any) => tMap.set(t.id, t))
+        setTaskNameMap(tMap)
       } catch { /* ignore */ }
       setLoading(false)
     }
@@ -106,7 +122,7 @@ export default function GradingPage() {
   const scenarioGroups = useMemo<ScenarioGroup[]>(() => {
     const map = new Map<string, ScenarioGroup>()
     for (const scenario of scenarios) {
-      const subs = results.filter((s) => s.taskId && scenario.tasks?.some((t: any) => t.id === s.taskId))
+      const subs = results.filter((s) => s.taskId)
       const pending = subs.filter((s) => s.status === "pending").length
       const graded = subs.filter((s) => s.status === "evaluated").length
 
@@ -179,7 +195,7 @@ export default function GradingPage() {
           })
         }
       } else {
-        const taskInfo = selectedScenario?.tasks?.find((t: any) => t.id === sub.taskId)
+        const taskInfo = taskNameMap.get(sub.taskId)
         taskMap.set(sub.taskId, {
           taskId: sub.taskId,
           taskName: taskInfo?.name || sub.taskId,
@@ -194,7 +210,7 @@ export default function GradingPage() {
     }
 
     return Array.from(taskMap.values())
-  }, [selectedScenarioId, results, userMap, selectedScenario])
+  }, [selectedScenarioId, results, userMap, taskNameMap])
 
   const toggleTask = (taskId: string) => {
     setExpandedTasks((prev) => {
