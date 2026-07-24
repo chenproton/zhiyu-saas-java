@@ -1010,25 +1010,48 @@ export default function TasksEditPage() {
     }
   }
 
-  const handleClone = () => {
-    const selected = allTasks.filter(t => selectedClone.includes(t.id))
-    const newTasks = selected.map((t, i) => ({
-      ...t,
-      id: `task-${cloneMode}-${Date.now()}-${i}`,
-      order: tasks.length + i + 1,
-      isReferenced: cloneMode === "reference",
-      sourceScenarioId: t.scenarioId,
-      sourceScenarioName: cloneMode === "reference" ? t.scenarioName : undefined,
-    }))
-    setTasks([...tasks, ...newTasks])
-    newTasks.forEach((t, i) => {
-      setTaskStates(prev => ({
-        ...prev,
-        [t.id]: makeDefaultTaskState(tasks.length + newTasks.length, tasks.length + i),
+  const handleClone = async () => {
+    setIsCloning(true)
+    try {
+      const selected = allTasks.filter(t => selectedClone.includes(t.id))
+      const count = tasks.length + selected.length
+
+      const newTasks = selected.map((t, i) => ({
+        ...t,
+        id: `task-${cloneMode}-${Date.now()}-${i}`,
+        order: tasks.length + i + 1,
+        isReferenced: cloneMode === "reference",
+        sourceScenarioId: t.scenarioId,
+        sourceScenarioName: cloneMode === "reference" ? t.scenarioName : undefined,
       }))
-    })
-    setIsCloneOpen(false)
-    setSelectedClone([])
+
+      const methodsResults = await Promise.all(
+        selected.map(t => taskEvaluationApi.listMethods(t.id).catch(() => ({ methods: [] })))
+      )
+
+      const newStates: Record<string, TaskState> = {}
+      selected.forEach((t, i) => {
+        const methods = methodsResults[i]?.methods || []
+        let ts = taskStateFromMethods(t, methods)
+        if (t.knowledgePointIds) ts.knowledgePoints = [...t.knowledgePointIds]
+        if (t.abilityPointIds) ts.abilityPoints = [...t.abilityPointIds]
+        if (t.resourceIds) ts.resources = [...t.resourceIds]
+        if (t.detailedDescription) ts.description = t.detailedDescription
+        if (t.descriptionPdf) ts.descriptionPdf = t.descriptionPdf
+        ts.weight = count > 0 ? Math.floor(100 / count) + ((tasks.length + i) < 100 % count ? 1 : 0) : 0
+        newStates[newTasks[i].id] = ts
+      })
+
+      setTasks([...tasks, ...newTasks])
+      setTaskStates(prev => ({ ...prev, ...newStates }))
+      setIsCloneOpen(false)
+      setSelectedClone([])
+    } catch (err: any) {
+      console.error("Clone failed", err)
+      toast({ variant: "destructive", title: "克隆失败", description: err.message })
+    } finally {
+      setIsCloning(false)
+    }
   }
 
   const handleDeleteTask = async (id: string) => {
@@ -1568,7 +1591,9 @@ export default function TasksEditPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCloneOpen(false)}>取消</Button>
-            <Button onClick={handleClone} disabled={selectedClone.length === 0}>确定 ({selectedClone.length})</Button>
+            <Button onClick={handleClone} disabled={selectedClone.length === 0 || isCloning}>
+              {isCloning ? "克隆中..." : `确定 (${selectedClone.length})`}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -5514,7 +5539,7 @@ function EditCardDialog({
           if (methodKey === "review") {
             return (
               <div className="space-y-4">
-                <div className="p-4 bg-amber-50 rounded-lg border border-amber-100 text-sm text-amber-700">
+                <div className="p-4 bg-amber-50/80 rounded-xl border border-amber-200 text-sm text-amber-800">
                   <div className="flex items-center gap-2 mb-2">
                     <Info className="h-4 w-4" />
                     <span className="font-medium">评审说明</span>
@@ -5960,7 +5985,7 @@ function EditCardDialog({
           if (methodKey === "outcome") {
             return (
               <div className="space-y-4">
-                <div className="p-4 bg-cyan-50 rounded-lg border border-cyan-100 text-sm text-cyan-700">
+                <div className="p-4 bg-cyan-50/80 rounded-xl border border-cyan-200 text-sm text-cyan-800">
                   <div className="flex items-center gap-2 mb-2">
                     <Info className="h-4 w-4" />
                     <span className="font-medium">成果评价说明</span>
@@ -6794,7 +6819,7 @@ function EditCardDialog({
                     <BookOpen className="h-3.5 w-3.5 mr-1" />选择评价标准模板覆盖
                   </Button>
                 </div>
-                <div className="border rounded-xl p-4 bg-gray-50/50">
+                <div className="border border-border rounded-xl p-5 bg-white shadow-sm">
                   <p className="text-sm font-medium mb-3">评价标准信息</p>
                   <div className="space-y-3">
                     <div>
@@ -7651,7 +7676,7 @@ function EditCardDialog({
                   const displayLabel = instanceCount > 1 ? `${method.label} ${instanceIndex + 1}` : method.label
                   const instanceKey = `${methodKey}-${instanceIndex}`
                   return (
-                    <div key={instanceKey} className="border rounded-xl p-4 bg-gray-50/50">
+                    <div key={instanceKey} className="border border-border rounded-xl p-5 bg-white shadow-sm">
                       <div className="flex items-center gap-3 mb-4">
                         <div className={cn("p-2 rounded-lg", method.color)}>{method.icon}</div>
                         <div className="flex-1 min-w-0">
