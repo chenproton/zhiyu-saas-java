@@ -108,6 +108,11 @@ const fallbackModules: Record<string, ModuleItem[]> = {
     { id: "ai-entry", title: "AI 服务", desc: "暂未开放", note: "AI 辅助教学功能即将上线", href: "#" },
   ],
   resource: [
+    { id: "resource-knowledge", title: "知识点库", desc: "知识体系管理", note: "管理各专业领域的核心知识点", href: "/library/knowledge" },
+    { id: "resource-ability", title: "能力点库", desc: "能力指标管理", note: "管理知识、技能、素质等能力模型", href: "/library/ability" },
+    { id: "resource-certificates", title: "证书库", desc: "职业技能证书管理", note: "收录和管理各类职业技能证书", href: "/library/certificates" },
+    { id: "resource-resources", title: "场景资源库", desc: "教学资源管理", note: "管理11种场景任务教学资源", href: "/library/resources" },
+    { id: "resource-questions", title: "现场问答题库", desc: "测评题目管理", note: "管理场景任务现场问答题", href: "/library/questions" },
     { id: "resource-mall", title: "资源商城", desc: "教学资源交易", note: "浏览和采购优质教学资源", href: "http://111.170.170.202:3010/login" },
   ],
   opc: [

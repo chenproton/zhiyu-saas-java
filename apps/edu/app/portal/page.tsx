@@ -256,6 +256,7 @@ const INTERNAL_ROUTES: Record<string, string> = {
   scene: "/scene/landing",
   ability: "/evaluation/landing",
   course: "/lesson/landing",
+  resource: "/library/landing",
 }
 
 function resolveTileUrl(id: string, configuredUrl: string): string {
@@ -288,7 +289,7 @@ function GradientTile({
   const style = CARD_STYLES[item.id]
   const isBig = variant === "big"
   const isTall = variant === "tall"
-  const landingIds = ["career", "scene", "ability", "course"]
+  const landingIds = ["career", "scene", "ability", "course", "resource"]
   const isLocked = !landingIds.includes(item.id)
   const effectiveUrl = resolveTileUrl(item.id, url)
   const isRelative = effectiveUrl.startsWith("/")
