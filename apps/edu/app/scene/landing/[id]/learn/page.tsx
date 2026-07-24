@@ -101,7 +101,6 @@ export default function SceneLearnPage() {
   const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
   const [evalMethods, setEvalMethods] = useState<TaskEvaluationMethod[]>([])
   const [myResults, setMyResults] = useState<SceneEvaluationResult[]>([])
-  const [submittingMethod, setSubmittingMethod] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -168,20 +167,6 @@ export default function SceneLearnPage() {
       .then((res) => setMyResults(res.items || []))
       .catch(() => {})
   }, [activeTaskId])
-
-  const handleStartEvaluation = async (methodKey: string) => {
-    if (!activeTaskId || !scenario) return
-    setSubmittingMethod(methodKey)
-    try {
-      await evaluationResultApi.submit({
-        taskId: activeTaskId, sceneId: scenario.id, methodKey,
-        evaluateeId: user?.id || "", maxScore: 100,
-      })
-      const res = await evaluationResultApi.list({ taskId: activeTaskId, limit: 50 })
-      setMyResults(res.items || [])
-    } catch (e) {}
-    setSubmittingMethod(null)
-  }
 
   const activeTask = useMemo(() => tasks.find((t) => t.id === activeTaskId), [tasks, activeTaskId])
   const totalHours = useMemo(() => tasks.reduce((s, t) => s + (t.estimatedHours || 0), 0), [tasks])
@@ -539,8 +524,10 @@ export default function SceneLearnPage() {
                               {r && (r.status === "evaluated" ? <span className="text-sm text-green-600">得分 {r.totalScore}/{r.maxScore}</span> : <span className="text-sm text-amber-600">待评分</span>)}
                             </div>
                             {!r && (
-                              <Button size="sm" className="h-7 text-xs" onClick={() => handleStartEvaluation(mk)} disabled={submittingMethod === mk}>
-                                {submittingMethod === mk ? "..." : "开始测评"}
+                              <Button size="sm" className="h-7 text-xs" asChild>
+                                <Link href={`/scene/landing/${id}/evaluate?task=${activeTaskId}&method=${mk}`}>
+                                  开始测评
+                                </Link>
                               </Button>
                             )}
                           </div>
