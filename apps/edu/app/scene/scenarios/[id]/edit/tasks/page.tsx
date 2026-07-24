@@ -596,7 +596,8 @@ function taskStateToMethodsInput(ts: TaskState, extra?: { reviewSteps?: any[] })
   if (ts.evaluationMethods.includes("review")) {
     const reviewIdx = methods.findIndex(m => m.methodKey === "review")
     if (reviewIdx >= 0) {
-      methods[reviewIdx].reviewSteps = (ts.reviewSteps || []).map((rs: any, i: number) => ({
+      const reviewSteps = extra?.reviewSteps ?? ts.reviewSteps
+      methods[reviewIdx].reviewSteps = (reviewSteps || []).map((rs: any, i: number) => ({
         label: rs.label,
         description: rs.desc || null,
         enabled: rs.enabled,
@@ -880,7 +881,10 @@ export default function TasksEditPage() {
   const getState = (id: string): TaskState => taskStates[id] || makeDefaultTaskState(0, 0)
 
   const updateState = (id: string, updates: Partial<TaskState>) => {
-    setTaskStates(prev => ({ ...prev, [id]: { ...getState(id), ...updates } }))
+    setTaskStates(prev => {
+      const base = prev[id] || makeDefaultTaskState(0, 0)
+      return { ...prev, [id]: { ...base, ...updates } }
+    })
   }
 
   const getSummary = (taskId: string, type: CardType): string => {
