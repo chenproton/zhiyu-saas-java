@@ -43,6 +43,19 @@ type UpdateResourceLibraryRequest struct {
 	Metadata     domain.JSONMap       `json:"metadata"`
 }
 
+const resourceSelectColumns = `
+	rl.id, rl.tenant_id, rl.name, rl.resource_type, rl.url, rl.description,
+	rl.thumbnail, rl.file_size, rl.metadata, rl.uploaded_by,
+	u.name AS uploader_name, o.name AS uploader_org_name, m.name AS uploader_major_name,
+	rl.created_at, rl.updated_at
+`
+
+const resourceJoinClause = `
+	LEFT JOIN users u ON u.id = rl.uploaded_by
+	LEFT JOIN organizations o ON o.id = u.org_node_id
+	LEFT JOIN majors m ON m.id = u.major_id
+`
+
 func (h *ResourceLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
@@ -53,6 +66,8 @@ func (h *ResourceLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
 	offsetStr := r.URL.Query().Get("offset")
 	search := r.URL.Query().Get("search")
 	resourceType := r.URL.Query().Get("resourceType")
+	orgName := r.URL.Query().Get("orgName")
+	majorName := r.URL.Query().Get("majorName")
 
 	limit := 50
 	offset := 0
@@ -63,30 +78,41 @@ func (h *ResourceLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
 		offset = v
 	}
 
-	where := []string{"tenant_id = $1"}
+	where := []string{"rl.tenant_id = $1"}
 	args := []interface{}{tenantID}
 	argIdx := 2
 
 	if search != "" {
-		where = append(where, "(name ILIKE $"+itoa(argIdx)+" OR description ILIKE $"+itoa(argIdx)+")")
+		where = append(where, "(rl.name ILIKE $"+itoa(argIdx)+" OR rl.description ILIKE $"+itoa(argIdx)+")")
 		args = append(args, "%"+search+"%")
 		argIdx++
 	}
 	if resourceType != "" {
-		where = append(where, "resource_type = $"+itoa(argIdx))
+		where = append(where, "rl.resource_type = $"+itoa(argIdx))
 		args = append(args, resourceType)
 		argIdx++
 	}
+	if orgName != "" {
+		where = append(where, "o.name = $"+itoa(argIdx))
+		args = append(args, orgName)
+		argIdx++
+	}
+	if majorName != "" {
+		where = append(where, "m.name = $"+itoa(argIdx))
+		args = append(args, majorName)
+		argIdx++
+	}
 
-	countQuery := "SELECT COUNT(*) FROM resource_library WHERE " + strings.Join(where, " AND ")
+	countQuery := "SELECT COUNT(*) FROM resource_library rl " + resourceJoinClause + " WHERE " + strings.Join(where, " AND ")
 	var total int
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT id, tenant_id, name, resource_type, url, description, thumbnail, file_size, metadata, uploaded_by, created_at, updated_at
-		FROM resource_library
+		SELECT ` + resourceSelectColumns + `
+		FROM resource_library rl
+		` + resourceJoinClause + `
 		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
+		ORDER BY rl.created_at DESC
 		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
 	args = append(args, limit, offset)
 
@@ -97,28 +123,10 @@ func (h *ResourceLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	items := make([]domain.ResourceLibraryItem, 0)
-	for rows.Next() {
-		var item domain.ResourceLibraryItem
-		var url, description, thumbnail *string
-		var fileSize *int64
-		var uploadedBy *string
-		var metadata domain.JSONMap
-		if err := rows.Scan(
-			&item.ID, &item.TenantID, &item.Name, &item.ResourceType,
-			&url, &description, &thumbnail, &fileSize, &metadata,
-			&uploadedBy, &item.CreatedAt, &item.UpdatedAt,
-		); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to scan resource")
-			return
-		}
-		item.URL = url
-		item.Description = description
-		item.Thumbnail = thumbnail
-		item.FileSize = fileSize
-		item.Metadata = metadata
-		item.UploadedBy = uploadedBy
-		items = append(items, item)
+	items, err := h.scanResourceRows(rows)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to scan resources")
+		return
 	}
 
 	respondJSON(w, http.StatusOK, ResourceLibraryListResponse{Items: items, Total: total})
@@ -274,15 +282,19 @@ func (h *ResourceLibraryHandler) fetchItem(ctx context.Context, id string) (doma
 	var url, description, thumbnail *string
 	var fileSize *int64
 	var uploadedBy *string
+	var uploaderName, uploaderOrgName, uploaderMajorName *string
 	var metadata domain.JSONMap
 
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, tenant_id, name, resource_type, url, description, thumbnail, file_size, metadata, uploaded_by, created_at, updated_at
-		FROM resource_library WHERE id = $1
+		SELECT `+resourceSelectColumns+`
+		FROM resource_library rl
+		`+resourceJoinClause+`
+		WHERE rl.id = $1
 	`, id).Scan(
 		&item.ID, &item.TenantID, &item.Name, &item.ResourceType,
 		&url, &description, &thumbnail, &fileSize, &metadata,
-		&uploadedBy, &item.CreatedAt, &item.UpdatedAt,
+		&uploadedBy, &uploaderName, &uploaderOrgName, &uploaderMajorName,
+		&item.CreatedAt, &item.UpdatedAt,
 	)
 	if err != nil {
 		return item, err
@@ -293,6 +305,9 @@ func (h *ResourceLibraryHandler) fetchItem(ctx context.Context, id string) (doma
 	item.FileSize = fileSize
 	item.Metadata = metadata
 	item.UploadedBy = uploadedBy
+	item.UploaderName = uploaderName
+	item.UploaderOrgName = uploaderOrgName
+	item.UploaderMajorName = uploaderMajorName
 	return item, nil
 }
 
@@ -303,11 +318,13 @@ func (h *ResourceLibraryHandler) scanResourceRows(rows pgx.Rows) ([]domain.Resou
 		var url, description, thumbnail *string
 		var fileSize *int64
 		var uploadedBy *string
+		var uploaderName, uploaderOrgName, uploaderMajorName *string
 		var metadata domain.JSONMap
 		if err := rows.Scan(
 			&item.ID, &item.TenantID, &item.Name, &item.ResourceType,
 			&url, &description, &thumbnail, &fileSize, &metadata,
-			&uploadedBy, &item.CreatedAt, &item.UpdatedAt,
+			&uploadedBy, &uploaderName, &uploaderOrgName, &uploaderMajorName,
+			&item.CreatedAt, &item.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -317,6 +334,9 @@ func (h *ResourceLibraryHandler) scanResourceRows(rows pgx.Rows) ([]domain.Resou
 		item.FileSize = fileSize
 		item.Metadata = metadata
 		item.UploadedBy = uploadedBy
+		item.UploaderName = uploaderName
+		item.UploaderOrgName = uploaderOrgName
+		item.UploaderMajorName = uploaderMajorName
 		items = append(items, item)
 	}
 	return items, nil

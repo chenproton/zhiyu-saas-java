@@ -36,6 +36,9 @@ export interface ResourceLibraryItem {
   fileSize?: number
   metadata?: Record<string, any>
   uploadedBy?: string
+  uploaderName?: string
+  uploaderOrgName?: string
+  uploaderMajorName?: string
   createdAt: string
   updatedAt: string
 }

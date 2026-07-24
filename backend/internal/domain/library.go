@@ -19,18 +19,21 @@ const (
 )
 
 type ResourceLibraryItem struct {
-	ID           string       `json:"id"`
-	TenantID     string       `json:"tenantId"`
-	Name         string       `json:"name"`
-	ResourceType ResourceType `json:"resourceType"`
-	URL          *string      `json:"url,omitempty"`
-	Description  *string      `json:"description,omitempty"`
-	Thumbnail    *string      `json:"thumbnail,omitempty"`
-	FileSize     *int64       `json:"fileSize,omitempty"`
-	Metadata     JSONMap      `json:"metadata,omitempty"`
-	UploadedBy   *string      `json:"uploadedBy,omitempty"`
-	CreatedAt    time.Time    `json:"createdAt"`
-	UpdatedAt    time.Time    `json:"updatedAt"`
+	ID               string       `json:"id"`
+	TenantID         string       `json:"tenantId"`
+	Name             string       `json:"name"`
+	ResourceType     ResourceType `json:"resourceType"`
+	URL              *string      `json:"url,omitempty"`
+	Description      *string      `json:"description,omitempty"`
+	Thumbnail        *string      `json:"thumbnail,omitempty"`
+	FileSize         *int64       `json:"fileSize,omitempty"`
+	Metadata         JSONMap      `json:"metadata,omitempty"`
+	UploadedBy       *string      `json:"uploadedBy,omitempty"`
+	UploaderName     *string      `json:"uploaderName,omitempty"`
+	UploaderOrgName  *string      `json:"uploaderOrgName,omitempty"`
+	UploaderMajorName *string     `json:"uploaderMajorName,omitempty"`
+	CreatedAt        time.Time    `json:"createdAt"`
+	UpdatedAt        time.Time    `json:"updatedAt"`
 }
 
 type OnSiteQuestionLibraryItem struct {
