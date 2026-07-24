@@ -44,6 +44,10 @@ export default function EvaluatePage() {
   const resourceConfig = methodConfig?.resourceConfig || {}
   const methodName = evalMethodLabels[methodKey] || methodKey
   const isAutoScored = ["paper", "question_bank", "quiz"].includes(methodKey)
+  const isTeacherLed = ["random_draw", "review"].includes(methodKey)
+  const isManualSubmit = ["outcome", "homework"].includes(methodKey)
+  const paperId = resourceConfig?.paperId
+  const questionIds = resourceConfig?.questionIds
 
   useEffect(() => {
     if (!id || !taskId || !methodKey) { setLoading(false); return }
@@ -182,19 +186,14 @@ export default function EvaluatePage() {
           </Card>
         )}
 
-        {/* 提交区域 */}
-        {!submitted && !isAutoScored && (
+        {/* 提交区域 - 按方法分类 */}
+        {!submitted && isManualSubmit && (
           <Card className="mb-4">
             <CardHeader><CardTitle className="text-base flex items-center gap-2"><Send className="h-4 w-4" />提交内容</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <label className="text-sm font-medium mb-1 block">文字说明</label>
-                <Textarea
-                  placeholder="描述你的成果/作业内容..."
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  rows={6}
-                />
+                <Textarea placeholder="描述你的成果/作业内容..." value={text} onChange={(e) => setText(e.target.value)} rows={6} />
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">上传文件</label>
@@ -219,14 +218,23 @@ export default function EvaluatePage() {
           </Card>
         )}
 
-        {isAutoScored && !submitted && (
+        {!submitted && isTeacherLed && (
           <Card className="mb-4">
             <CardContent className="py-8 text-center">
-              <p className="text-gray-600 mb-4">此测评方式由系统自动判分。请在考试/题库系统中完成作答。</p>
-              <Button onClick={handleSubmit} disabled={submitting}>
+              <p className="text-gray-600 mb-2">此为现场测评方式，无需在线提交。</p>
+              <p className="text-sm text-gray-400">请按照上述要求准备好材料，按教师安排参加现场测评。</p>
+              <Button onClick={handleSubmit} disabled={submitting} variant="outline" className="mt-4">
                 <CheckCircle2 className="mr-2 h-4 w-4" />
-                确认开始测评
+                {submitting ? "..." : "确认参加"}
               </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {!submitted && methodKey === "paper" && !paperId && (
+          <Card className="mb-4">
+            <CardContent className="py-8 text-center">
+              <p className="text-gray-600">教师尚未配置试卷，请联系教师。</p>
             </CardContent>
           </Card>
         )}
