@@ -1196,9 +1196,7 @@ export default function TasksEditPage() {
       } else {
         await taskApi.update(t.id, payload)
         const methodsInput = taskStateToMethodsInput(ts)
-        if (methodsInput.length > 0) {
-          await taskEvaluationApi.saveMethods(t.id, { methods: methodsInput })
-        }
+        await taskEvaluationApi.saveMethods(t.id, { methods: methodsInput })
       }
     }
   }
