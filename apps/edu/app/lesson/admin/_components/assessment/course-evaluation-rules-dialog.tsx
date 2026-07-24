@@ -253,9 +253,28 @@ export function CourseEvaluationRulesDialog({
   const [editingStepLabel, setEditingStepLabel] = useState("")
   const [editingStepDesc, setEditingStepDesc] = useState("")
 
-  const [mockResReview, setMockResReview] = useState({ requiresMaterial: true, deadlineDays: 3, submitFormatDesc: "", venueResources: "", allowResubmit: false })
-  const [mockResPaper, setMockResPaper] = useState({ duration: 60, allowRetake: false, retakeCount: 1, shuffleQuestions: true, showResult: true, activationMode: "manual" as "manual" | "scheduled" | "always", scheduledTime: "" })
-  const [mockResQuestionBank, setMockResQuestionBank] = useState({ timeLimit: 30, allowRetake: true, retakeCount: 3, shuffleQuestions: true, showResult: true, questionScores: {} as Record<string, number> })
+  // 资源配置统一收敛到 config.methodResourceConfigs，确保可随 onChange 回传保存
+  const getResourceConfig = useCallback(<T = Record<string, any>>(methodKey: string, defaults: T): T => {
+    return (config.methodResourceConfigs?.[methodKey] as T) || defaults
+  }, [config.methodResourceConfigs])
+
+  const updateResourceConfig = useCallback(<T = Record<string, any>>(methodKey: string, updates: Partial<T>) => {
+    updateConfig({
+      methodResourceConfigs: {
+        ...config.methodResourceConfigs,
+        [methodKey]: { ...(config.methodResourceConfigs?.[methodKey] || {}), ...updates },
+      },
+    })
+  }, [config.methodResourceConfigs, updateConfig])
+
+  const mockResReview = getResourceConfig("review", { requiresMaterial: true, deadlineDays: 3, submitFormatDesc: "", venueResources: "", allowResubmit: false })
+  const setMockResReview = useCallback((updates: Partial<typeof mockResReview>) => updateResourceConfig("review", updates), [updateResourceConfig])
+
+  const mockResPaper = getResourceConfig("paper", { duration: 60, allowRetake: false, retakeCount: 1, shuffleQuestions: true, showResult: true, activationMode: "manual" as "manual" | "scheduled" | "always", scheduledTime: "" })
+  const setMockResPaper = useCallback((updates: Partial<typeof mockResPaper>) => updateResourceConfig("paper", updates), [updateResourceConfig])
+
+  const mockResQuestionBank = getResourceConfig("question_bank", { timeLimit: 30, allowRetake: true, retakeCount: 3, shuffleQuestions: true, showResult: true, questionScores: {} as Record<string, number> })
+  const setMockResQuestionBank = useCallback((updates: Partial<typeof mockResQuestionBank>) => updateResourceConfig("question_bank", updates), [updateResourceConfig])
 
   // ============ Helpers ============
   const getMethodInstances = () => {
@@ -821,7 +840,7 @@ export function CourseEvaluationRulesDialog({
                         {field === "questionBankQuestions" ? (
                           <div className="flex items-center gap-1 ml-auto">
                             <span className="text-[10px] text-gray-400">分值</span>
-                            <Input type="number" value={mockResQuestionBank.questionScores[qid] ?? q.score} onChange={e => { const val = Math.max(0, Math.min(100, parseInt(e.target.value) || 0)); setMockResQuestionBank(prev => ({ ...prev, questionScores: { ...prev.questionScores, [qid]: val } })); }} className="w-14 h-5 text-[10px] px-1 py-0" min={0} max={100} />
+                            <Input type="number" value={mockResQuestionBank.questionScores[qid] ?? q.score} onChange={e => { const val = Math.max(0, Math.min(100, parseInt(e.target.value) || 0)); setMockResQuestionBank({ questionScores: { ...mockResQuestionBank.questionScores, [qid]: val } }); }} className="w-14 h-5 text-[10px] px-1 py-0" min={0} max={100} />
                           </div>
                         ) : <span className="text-[10px] text-gray-400">{q.score}分</span>}
                       </div>
