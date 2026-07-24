@@ -393,6 +393,1043 @@ interface EvalPoint {
   weight?: number
 }
 
+interface ScoreRuleItem {
+  id: string
+  name: string
+  desc: string
+  rule: string
+  weight: number
+}
+
+type RubricScheme = {
+  id: string
+  name: string
+  types: EvalSubType[]
+  desc: string
+  points: EvalPoint[]
+  mode: "rubric" | "score_rule"
+  scoreRuleItems?: ScoreRuleItem[]
+}
+
+type EvalPointField =
+  | "randomDrawEvalPoints"
+  | "reviewEvalPoints"
+  | "paperEvalPoints"
+  | "questionBankEvalPoints"
+  | "outcomeEvalPoints"
+  | "homeworkEvalPoints"
+  | "quizEvalPoints"
+
+function MixedTagEditor({
+  text,
+  knowledgePointIds,
+  abilityPointIds,
+  knowledgePoints,
+  abilityPoints,
+  onChange,
+  onOpenKpDialog,
+  onOpenAbDialog,
+}: {
+  text: string
+  knowledgePointIds: string[]
+  abilityPointIds: string[]
+  knowledgePoints: any[]
+  abilityPoints: any[]
+  onChange: (updates: { name?: string; knowledgePointIds?: string[]; abilityPointIds?: string[] }) => void
+  onOpenKpDialog: () => void
+  onOpenAbDialog: () => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const isComposing = useRef(false)
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
+  const kpIdsRef = useRef(knowledgePointIds)
+  kpIdsRef.current = knowledgePointIds
+  const abIdsRef = useRef(abilityPointIds)
+  abIdsRef.current = abilityPointIds
+  const prevTags = useRef({ kp: [] as string[], ab: [] as string[] })
+  const cursorOffsetRef = useRef<number | null>(null)
+
+  const updateCursorOffset = () => {
+    const el = ref.current
+    if (!el) return
+    const selection = document.getSelection()
+    if (!selection || !selection.rangeCount) return
+    const range = selection.getRangeAt(0)
+    if (!el.contains(range.startContainer) && range.startContainer !== el) return
+
+    let offset = 0
+    if (range.startContainer.nodeType === Node.TEXT_NODE) {
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+      let node
+      while ((node = walker.nextNode())) {
+        if (node === range.startContainer) {
+          offset += range.startOffset
+          break
+        }
+        offset += node.textContent?.length || 0
+      }
+    } else if (range.startContainer === el) {
+      for (let i = 0; i < range.startOffset && i < el.childNodes.length; i++) {
+        const child = el.childNodes[i]
+        if (child.nodeType === Node.TEXT_NODE) {
+          offset += child.textContent?.length || 0
+        }
+      }
+    }
+    cursorOffsetRef.current = offset
+  }
+
+  const createTagSpan = (type: 'kp' | 'ab', id: string): HTMLSpanElement | null => {
+    const span = document.createElement('span')
+    span.contentEditable = 'false'
+    span.dataset.tag = 'true'
+    span.dataset.type = type
+    span.dataset.id = id
+    if (type === 'kp') {
+      const kp = knowledgePoints.find(k => k.id === id)
+      if (!kp) return null
+      span.className = 'inline-flex items-center px-1 py-0.5 rounded text-[10px] font-normal bg-blue-50 text-blue-600 border border-blue-200 mx-0.5 align-middle cursor-default'
+      span.innerHTML = `${kp.name}<button class="ml-0.5 text-blue-400 hover:text-red-500 leading-none">×</button>`
+      span.querySelector('button')!.onclick = (e) => {
+        e.stopPropagation()
+        span.remove()
+        onChangeRef.current({ knowledgePointIds: kpIdsRef.current.filter(i => i !== id) })
+      }
+    } else {
+      const ab = abilityPoints.find(a => a.id === id)
+      if (!ab) return null
+      span.className = 'inline-flex items-center px-1 py-0.5 rounded text-[10px] font-normal bg-amber-50 text-amber-600 border border-amber-200 mx-0.5 align-middle cursor-default'
+      span.innerHTML = `${ab.name}<button class="ml-0.5 text-amber-400 hover:text-red-500 leading-none">×</button>`
+      span.querySelector('button')!.onclick = (e) => {
+        e.stopPropagation()
+        span.remove()
+        onChangeRef.current({ abilityPointIds: abIdsRef.current.filter(i => i !== id) })
+      }
+    }
+    return span
+  }
+
+  // Initial mount only
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (text) el.textContent = text
+    else el.innerHTML = ''
+    knowledgePointIds.forEach(kpid => {
+      const span = createTagSpan('kp', kpid)
+      if (span) el.appendChild(span)
+    })
+    abilityPointIds.forEach(abId => {
+      const span = createTagSpan('ab', abId)
+      if (span) el.appendChild(span)
+    })
+    prevTags.current = { kp: [...knowledgePointIds], ab: [...abilityPointIds] }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Tag / text changes from parent
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const kpChanged = JSON.stringify(prevTags.current.kp) !== JSON.stringify(knowledgePointIds)
+    const abChanged = JSON.stringify(prevTags.current.ab) !== JSON.stringify(abilityPointIds)
+    const domText = Array.from(el.childNodes)
+      .filter(n => n.nodeType === Node.TEXT_NODE)
+      .map(n => n.textContent)
+      .join('')
+    const textChanged = domText !== (text || '')
+    if (!kpChanged && !abChanged && !textChanged) return
+
+    if (el !== document.activeElement) {
+      const newKpIds = knowledgePointIds.filter(id => !prevTags.current.kp.includes(id))
+      const newAbIds = abilityPointIds.filter(id => !prevTags.current.ab.includes(id))
+      const existingKpIds = knowledgePointIds.filter(id => prevTags.current.kp.includes(id))
+      const existingAbIds = abilityPointIds.filter(id => prevTags.current.ab.includes(id))
+
+      if ((newKpIds.length > 0 || newAbIds.length > 0) && cursorOffsetRef.current != null) {
+        const offset = cursorOffsetRef.current
+        const before = text?.slice(0, offset) || ''
+        const after = text?.slice(offset) || ''
+        el.textContent = ''
+        if (before) el.appendChild(document.createTextNode(before))
+        newKpIds.forEach(kpid => {
+          const span = createTagSpan('kp', kpid)
+          if (span) el.appendChild(span)
+        })
+        newAbIds.forEach(abId => {
+          const span = createTagSpan('ab', abId)
+          if (span) el.appendChild(span)
+        })
+        if (after) el.appendChild(document.createTextNode(after))
+        existingKpIds.forEach(kpid => {
+          const span = createTagSpan('kp', kpid)
+          if (span) el.appendChild(span)
+        })
+        existingAbIds.forEach(abId => {
+          const span = createTagSpan('ab', abId)
+          if (span) el.appendChild(span)
+        })
+        cursorOffsetRef.current = null
+      } else {
+        if (text) el.textContent = text
+        else el.innerHTML = ''
+        knowledgePointIds.forEach(kpid => {
+          const span = createTagSpan('kp', kpid)
+          if (span) el.appendChild(span)
+        })
+        abilityPointIds.forEach(abId => {
+          const span = createTagSpan('ab', abId)
+          if (span) el.appendChild(span)
+        })
+      }
+    } else if (kpChanged || abChanged) {
+      const existingKp = new Set(Array.from(el.querySelectorAll('[data-type="kp"]')).map(el => (el as HTMLElement).dataset.id))
+      const existingAb = new Set(Array.from(el.querySelectorAll('[data-type="ab"]')).map(el => (el as HTMLElement).dataset.id))
+      knowledgePointIds.forEach(kpid => {
+        if (!existingKp.has(kpid)) {
+          const span = createTagSpan('kp', kpid)
+          if (span) el.appendChild(span)
+        }
+      })
+      abilityPointIds.forEach(abId => {
+        if (!existingAb.has(abId)) {
+          const span = createTagSpan('ab', abId)
+          if (span) el.appendChild(span)
+        }
+      })
+    }
+    prevTags.current = { kp: [...knowledgePointIds], ab: [...abilityPointIds] }
+  }, [knowledgePointIds, abilityPointIds, text])
+
+  const handleBlur = () => {
+    if (isComposing.current) return
+    const el = ref.current
+    if (!el) return
+    let newText = ''
+    const newKpIds: string[] = []
+    const newAbIds: string[] = []
+    el.childNodes.forEach(node => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        newText += node.textContent || ''
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const dataset = (node as HTMLElement).dataset
+        if (dataset.tag) {
+          if (dataset.type === 'kp' && dataset.id) newKpIds.push(dataset.id)
+          if (dataset.type === 'ab' && dataset.id) newAbIds.push(dataset.id)
+        }
+      }
+    })
+    onChangeRef.current({ name: newText, knowledgePointIds: newKpIds, abilityPointIds: newAbIds })
+  }
+
+  return (
+    <div className="min-h-[32px] rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-sm flex flex-wrap gap-1 items-center">
+      <div
+        ref={ref}
+        contentEditable
+        suppressContentEditableWarning
+        className="flex-1 outline-none min-w-[80px] text-sm leading-6 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
+        data-placeholder="输入评价维度"
+        onBlur={handleBlur}
+        onKeyUp={updateCursorOffset}
+        onClick={updateCursorOffset}
+        onCompositionStart={() => { isComposing.current = true }}
+        onCompositionEnd={() => { isComposing.current = false }}
+        onPaste={(e) => {
+          e.preventDefault()
+          const pasted = e.clipboardData.getData('text/plain')
+          document.execCommand('insertText', false, pasted)
+        }}
+      />
+      <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 text-gray-400 hover:text-primary shrink-0" onMouseDown={updateCursorOffset} onClick={onOpenKpDialog}>关联考查知识点</Button>
+      <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 text-gray-400 hover:text-primary shrink-0" onMouseDown={updateCursorOffset} onClick={onOpenAbDialog}>关联考查能力点</Button>
+    </div>
+  )
+}
+
+function MethodDialogContent({
+  methodKey,
+  info,
+  ctx,
+}: {
+  methodKey: string
+  info: { points: EvalPoint[]; field: EvalPointField }
+  ctx: MethodDialogCtx
+}) {
+  const {
+    state,
+    updateState,
+    rubricLibrary,
+    setRubricLibrary,
+    editingRubricId,
+    setEditingRubricId,
+    methodDialogViews,
+    setMethodDialogViews,
+    openRubricKpDialog,
+    openRubricAbDialog,
+    setEvalPoints,
+    updateEvalPoint,
+    addEvalPoint,
+    removeEvalPoint,
+  } = ctx
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [gradeMappingDialogOpen, setGradeMappingDialogOpen] = useState(false)
+  const [editingGradeMappingPointId, setEditingGradeMappingPointId] = useState<string | null>(null)
+  const [localDraft, setLocalDraft] = useState<{ name: string; mode: "rubric" | "score_rule"; types: EvalSubType[]; scoreRuleItems: ScoreRuleItem[] }>({ name: "", mode: "rubric", types: [], scoreRuleItems: [] })
+  const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false)
+  const [saveTemplateMode, setSaveTemplateMode] = useState<"new" | "replace">("new")
+  const [selectedReplaceTemplateId, setSelectedReplaceTemplateId] = useState<string | null>(null)
+  const rubricIdField =
+    methodKey === "random_draw" ? "randomDrawRubricId" :
+    methodKey === "review" ? "reviewRubricId" :
+    methodKey === "outcome" ? "outcomeRubricId" :
+    methodKey === "homework" ? "homeworkRubricId" :
+    "reviewRubricId"
+  const currentRubricId = (state as any)[rubricIdField] as string | null
+  const view = methodDialogViews[methodKey] || "edit"
+  const setView = (v: "list" | "edit" | "template") => setMethodDialogViews(prev => ({ ...prev, [methodKey]: v }))
+
+  const currentScheme = rubricLibrary.find(s => s.id === currentRubricId)
+
+  const applyScheme = (schemeId: string) => {
+    const scheme = rubricLibrary.find(s => s.id === schemeId)
+    if (!scheme) return
+    updateState({ [rubricIdField]: schemeId } as any)
+    if (scheme.mode === "rubric") {
+      setEvalPoints(info.field, scheme.points.map(p => ({ ...p, id: `ep-${Date.now()}-${Math.random().toString(36).slice(2, 5)}` })))
+    } else {
+      setEvalPoints(info.field, [])
+    }
+    setEditingRubricId(schemeId)
+  }
+
+  const enterEdit = (schemeId: string | null) => {
+    if (schemeId) {
+      const scheme = rubricLibrary.find(s => s.id === schemeId)
+      if (scheme) {
+        setEvalPoints(info.field, JSON.parse(JSON.stringify(scheme.points)))
+        setLocalDraft({ name: scheme.name, mode: scheme.mode, types: scheme.types, scoreRuleItems: scheme.scoreRuleItems || [] })
+      }
+    } else {
+      setEvalPoints(info.field, [])
+      setLocalDraft({ name: "", mode: "rubric", types: [], scoreRuleItems: [] })
+    }
+    setEditingRubricId(schemeId)
+    setView("edit")
+  }
+
+  const saveRubricToLibrary = async (schemeId: string | null, updates: Partial<RubricScheme>) => {
+    try {
+      if (schemeId) {
+        const data = {
+          name: updates.name || "",
+          mode: updates.mode || "rubric",
+          types: updates.types || [],
+          description: updates.desc || "",
+          data: updates.mode === "score_rule"
+            ? { scoreRuleItems: updates.scoreRuleItems || [] }
+            : { points: info.points.map((p: EvalPoint) => ({
+                id: p.id, name: p.name, description: p.desc || "",
+                types: p.types || (p.subType ? [p.subType] : []),
+                weight: p.weight || 0, scoringMethod: p.scoringMethod || "level",
+                gradeMapping: p.gradeMapping || [],
+                knowledgePointIds: p.knowledgePointIds || [],
+                abilityPointIds: p.abilityPointIds || [],
+              })) },
+        }
+        await taskEvaluationApi.updateTemplate(schemeId, data).catch(() => {})
+        setRubricLibrary(prev => prev.map(s => s.id === schemeId ? { ...s, ...updates } as RubricScheme : s))
+      } else {
+        const data = {
+          name: updates.name || "新建评价标准",
+          mode: updates.mode || "rubric",
+          types: updates.types || [],
+          description: updates.desc || "",
+          data: updates.mode === "score_rule"
+            ? { scoreRuleItems: updates.scoreRuleItems || [] }
+            : { points: info.points.map((p: EvalPoint) => ({
+                id: p.id, name: p.name, description: p.desc || "",
+                types: p.types || (p.subType ? [p.subType] : []),
+                weight: p.weight || 0, scoringMethod: p.scoringMethod || "level",
+                gradeMapping: p.gradeMapping || [],
+                knowledgePointIds: p.knowledgePointIds || [],
+                abilityPointIds: p.abilityPointIds || [],
+              })) },
+        }
+        const created = await taskEvaluationApi.createTemplate(data).catch(() => null)
+        if (created) {
+          const newScheme: RubricScheme = {
+            id: created.id,
+            name: created.name,
+            types: (created.types || []) as EvalSubType[],
+            desc: created.description || "",
+            points: info.points.map(p => ({ ...p })),
+            mode: created.mode as "rubric" | "score_rule",
+            scoreRuleItems: updates.scoreRuleItems || [],
+          }
+          setRubricLibrary(prev => [...prev, newScheme])
+          updateState({ [rubricIdField]: created.id } as any)
+        } else {
+          const newId = `scheme-${Date.now()}`
+          setRubricLibrary(prev => [...prev, {
+            id: newId, name: updates.name || "新建评价标准", types: updates.types || [],
+            desc: updates.desc || "", points: info.points.map(p => ({ ...p, id: `ep-${Date.now()}-${Math.random().toString(36).slice(2, 5)}` })),
+            mode: updates.mode || "rubric", scoreRuleItems: updates.scoreRuleItems || [],
+          } as RubricScheme])
+          updateState({ [rubricIdField]: newId } as any)
+        }
+      }
+    } catch {
+      if (schemeId) {
+        setRubricLibrary(prev => prev.map(s => s.id === schemeId ? { ...s, ...updates } as RubricScheme : s))
+      } else {
+        const newId = `scheme-${Date.now()}`
+        setRubricLibrary(prev => [...prev, {
+          id: newId, name: updates.name || "新建评价标准", types: updates.types || [],
+          desc: updates.desc || "", points: info.points.map(p => ({ ...p, id: `ep-${Date.now()}-${Math.random().toString(36).slice(2, 5)}` })),
+          mode: updates.mode || "rubric", scoreRuleItems: updates.scoreRuleItems || [],
+        } as RubricScheme])
+        updateState({ [rubricIdField]: newId } as any)
+      }
+    }
+  }
+
+  const editingScheme = editingRubricId ? rubricLibrary.find(s => s.id === editingRubricId) : null
+  const draftScheme = editingScheme
+    ? { name: editingScheme.name, types: editingScheme.types, mode: editingScheme.mode, scoreRuleItems: editingScheme.scoreRuleItems || [] }
+    : localDraft
+
+  if (view === "edit") {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-end mb-2">
+          <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { setView("template"); setEditingRubricId(null); }}>
+            <BookOpen className="h-3.5 w-3.5 mr-1" />选择评价标准模板覆盖
+          </Button>
+        </div>
+        <div className="border border-border rounded-xl p-5 bg-white shadow-sm">
+          <p className="text-sm font-medium mb-3">评价标准信息</p>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-gray-500">评价标准名称</Label>
+              <Input value={draftScheme.name} onChange={e => {
+                if (editingRubricId) {
+                  setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, name: e.target.value } : s))
+                } else {
+                  setLocalDraft(prev => ({ ...prev, name: e.target.value }))
+                }
+              }} className="mt-1 text-sm" placeholder="输入评价标准名称" />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">评价标准类型</Label>
+              <div className="flex gap-3 mt-1">
+                {methodKey !== "homework" && (
+                  <button
+                    onClick={() => {
+                      if (editingRubricId) {
+                        setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, mode: "rubric" } : s))
+                      } else {
+                        setLocalDraft(prev => ({ ...prev, mode: "rubric" }))
+                      }
+                    }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs border transition-all flex items-center gap-1.5",
+                      draftScheme.mode === "rubric" ? "bg-primary/10 text-primary border-primary" : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+                    )}
+                  >
+                    <div className={cn("w-3.5 h-3.5 rounded-full border flex items-center justify-center", draftScheme.mode === "rubric" ? "border-primary" : "border-gray-300")}>
+                      {draftScheme.mode === "rubric" && <div className="w-2 h-2 rounded-full bg-primary" />}
+                    </div>
+                    评价量规
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    if (editingRubricId) {
+                      setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, mode: "score_rule", scoreRuleItems: s.scoreRuleItems?.length ? s.scoreRuleItems : [{ id: `sr-${Date.now()}`, name: "", desc: "", rule: "", weight: 0 }] } : s))
+                    } else {
+                      setLocalDraft(prev => ({ ...prev, mode: "score_rule", scoreRuleItems: prev.scoreRuleItems?.length ? prev.scoreRuleItems : [{ id: `sr-${Date.now()}`, name: "", desc: "", rule: "", weight: 0 }] }))
+                    }
+                  }}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs border transition-all flex items-center gap-1.5",
+                    draftScheme.mode === "score_rule" ? "bg-primary/10 text-primary border-primary" : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+                  )}
+                >
+                  <div className={cn("w-3.5 h-3.5 rounded-full border flex items-center justify-center", draftScheme.mode === "score_rule" ? "border-primary" : "border-gray-300")}>
+                    {draftScheme.mode === "score_rule" && <div className="w-2 h-2 rounded-full bg-primary" />}
+                  </div>
+                  评分规则
+                </button>
+              </div>
+              {methodKey === "homework" && (
+                <p className="text-[10px] text-gray-400 mt-1">作业测评仅需使用评分规则即可</p>
+              )}
+            </div>
+          </div>
+        </div>
+        {draftScheme.mode === "rubric" ? (
+          <div className="border rounded-xl p-4 overflow-hidden">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-medium">评价量规配置表</p>
+              <div className="flex items-center gap-2">
+                <PrdAnnotation data={getAnnotation("eval-rule-onekey-split")}>
+                  <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
+                    const count = info.points.length
+                    if (count === 0) return
+                    const base = Math.floor(100 / count)
+                    const remainder = 100 % count
+                    const newPoints = info.points.map((p, i) => ({ ...p, weight: base + (i < remainder ? 1 : 0) }))
+                    setEvalPoints(info.field, newPoints)
+                  }}>
+                    <RotateCcw className="h-3.5 w-3.5 mr-1" />一键均分
+                  </Button>
+                </PrdAnnotation>
+                <PrdAnnotation data={getAnnotation("eval-rule-add-dimension")}>
+                  <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => addEvalPoint(info.field, { name: "", types: draftScheme.types.length ? draftScheme.types : undefined })}>
+                    <Plus className="h-3.5 w-3.5 mr-1" />添加评价维度
+                  </Button>
+                </PrdAnnotation>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse min-w-[900px]">
+                <thead>
+                  <tr className="border-b bg-gray-50 text-gray-500 text-xs">
+                    <th className="py-2.5 px-2 text-left w-12">序号</th>
+                    <th className="py-2.5 px-2 text-left min-w-[360px]">评价维度名称/关联知识点/能力点</th>
+                    <th className="py-2.5 px-2 text-left min-w-[440px]">评价等级</th>
+                    <th className="py-2.5 px-2 text-center w-16">权重(%)</th>
+                    <th className="py-2.5 px-2 text-center w-14">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {info.points.map((ep, idx) => (
+                    <tr key={ep.id} className="border-b hover:bg-gray-50/50 transition-colors">
+                      <td className="py-3 px-2">
+                        <span className="text-gray-600 align-middle">{idx + 1}</span>
+                      </td>
+                      <td className="py-3 px-2">
+                        <MixedTagEditor
+                          text={ep.name}
+                          knowledgePointIds={ep.knowledgePointIds || []}
+                          abilityPointIds={ep.abilityPointIds || []}
+                          knowledgePoints={knowledgePoints}
+                          abilityPoints={abilityPoints}
+                          onChange={updates => updateEvalPoint(info.field, ep.id, updates)}
+                          onOpenKpDialog={() => openRubricKpDialog(ep.id, info.field)}
+                          onOpenAbDialog={() => openRubricAbDialog(ep.id, info.field)}
+                        />
+                      </td>
+                      <td className="py-3 px-2">
+                        <button
+                          onClick={() => {
+                            setEditingGradeMappingPointId(ep.id)
+                            setGradeMappingDialogOpen(true)
+                          }}
+                          className="text-xs text-left text-primary hover:underline w-full block"
+                        >
+                          {ep.gradeMapping?.map(gm => (
+                            <div key={gm.id} className="truncate leading-relaxed" title={`${gm.grade} (${gm.minScore}-${gm.maxScore}分) ${gm.remark}`}>
+                              {gm.grade} ({gm.minScore}-{gm.maxScore}分) {gm.remark}
+                            </div>
+                          ))}
+                          {!ep.gradeMapping?.length && "点击配置评价等级"}
+                        </button>
+                      </td>
+                      <td className="py-3 px-2">
+                        <Input type="number" value={ep.weight || 0} onChange={e => updateEvalPoint(info.field, ep.id, { weight: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })} className="h-8 text-sm text-center w-20" />
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <button className="text-red-500 hover:text-red-600 text-xs" onClick={() => removeEvalPoint(info.field, ep.id)}>删除</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-3 space-y-2">
+              <button onClick={() => addEvalPoint(info.field, { name: "", types: draftScheme.types.length ? draftScheme.types : undefined })} className="w-full py-3 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-primary/40 hover:text-primary transition-colors flex items-center justify-center gap-1">
+                <Plus className="h-4 w-4" />添加评价维度
+              </button>
+              {info.points.length > 0 && (
+                <div className="flex justify-end text-xs items-center gap-1">
+                  <span className="text-gray-500">维度权重合计：</span>
+                  <span className={cn("font-semibold", (info.points.reduce((sum, p) => sum + (p.weight || 0), 0)) === 100 ? "text-green-600" : "text-red-500")}>
+                    {info.points.reduce((sum, p) => sum + (p.weight || 0), 0)}%
+                  </span>
+                  {(info.points.reduce((sum, p) => sum + (p.weight || 0), 0)) !== 100 && (
+                    <span className="text-red-500">⚠️（需等于100%）</span>
+                  )}
+                </div>
+              )}
+            </div>
+            {info.points.length === 0 && (
+              <div className="text-center text-gray-400 py-8">
+                <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">尚未添加评价点</p>
+                <p className="text-xs mt-1">点击上方按钮添加第一个评价点</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="border rounded-xl p-4 overflow-hidden">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-medium">评分规则配置表</p>
+              <div className="flex items-center gap-2">
+                <PrdAnnotation data={getAnnotation("eval-rule-onekey-split")}>
+                  <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
+                    const items = draftScheme.scoreRuleItems || []
+                    const count = items.length
+                    if (count === 0) return
+                    const base = Math.floor(100 / count)
+                    const remainder = 100 % count
+                    const newItems = items.map((it, i) => ({ ...it, weight: base + (i < remainder ? 1 : 0) }))
+                    if (editingRubricId) {
+                      setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: newItems } : s))
+                    } else {
+                      setLocalDraft(prev => ({ ...prev, scoreRuleItems: newItems }))
+                    }
+                  }}>
+                    <RotateCcw className="h-3.5 w-3.5 mr-1" />一键均分
+                  </Button>
+                </PrdAnnotation>
+                <PrdAnnotation data={getAnnotation("eval-rule-add-item")}>
+                  <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
+                    const newItem: ScoreRuleItem = { id: `sr-${Date.now()}`, name: "", desc: "", rule: "", weight: 0 }
+                    if (editingRubricId) {
+                      setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: [...(s.scoreRuleItems || []), newItem] } : s))
+                    } else {
+                      setLocalDraft(prev => ({ ...prev, scoreRuleItems: [...(prev.scoreRuleItems || []), newItem] }))
+                    }
+                  }}>
+                    <Plus className="h-3.5 w-3.5 mr-1" />添加评价项
+                  </Button>
+                </PrdAnnotation>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse min-w-[700px]">
+                <thead>
+                  <tr className="border-b bg-gray-50 text-gray-500 text-xs">
+                    <th className="py-2.5 px-2 text-left w-16">序号</th>
+                    <th className="py-2.5 px-2 text-left min-w-[300px]">评价项/评分标准描述</th>
+                    <th className="py-2.5 px-2 text-left min-w-[200px]">加减分规则</th>
+                    <th className="py-2.5 px-2 text-center w-20">分值</th>
+                    <th className="py-2.5 px-2 text-center w-16">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(draftScheme.scoreRuleItems || []).map((item, idx) => (
+                    <tr key={item.id} className="border-b hover:bg-gray-50/50 transition-colors">
+                      <td className="py-3 px-2">
+                        <span className="text-gray-600 align-middle">{idx + 1}</span>
+                      </td>
+                      <td className="py-3 px-2">
+                        <Textarea value={item.name + (item.desc ? `\n${item.desc}` : "")} onChange={e => {
+                          const lines = e.target.value.split('\n')
+                          const newName = lines[0] || ""
+                          const newDesc = lines.slice(1).join('\n')
+                          if (editingRubricId) {
+                            setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: (s.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, name: newName, desc: newDesc } : it) } : s))
+                          } else {
+                            setLocalDraft(prev => ({ ...prev, scoreRuleItems: (prev.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, name: newName, desc: newDesc } : it) }))
+                          }
+                        }} className="text-sm min-h-[60px]" placeholder="请输入评分描述" rows={2} />
+                      </td>
+                      <td className="py-3 px-2">
+                        <Textarea value={item.rule} onChange={e => {
+                          if (editingRubricId) {
+                            setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: (s.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, rule: e.target.value } : it) } : s))
+                          } else {
+                            setLocalDraft(prev => ({ ...prev, scoreRuleItems: (prev.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, rule: e.target.value } : it) }))
+                          }
+                        }} className="text-sm min-h-[60px]" placeholder="输入加减分规则" rows={2} />
+                      </td>
+                      <td className="py-3 px-2">
+                        <Input type="number" value={item.weight || 0} onChange={e => {
+                          const val = Math.max(0, Math.min(100, parseInt(e.target.value) || 0))
+                          if (editingRubricId) {
+                            setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: (s.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, weight: val } : it) } : s))
+                          } else {
+                            setLocalDraft(prev => ({ ...prev, scoreRuleItems: (prev.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, weight: val } : it) }))
+                          }
+                        }} className="h-8 text-sm text-center w-20" />
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <button className="text-red-500 hover:text-red-600 text-xs" onClick={() => {
+                          if (editingRubricId) {
+                            setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: (s.scoreRuleItems || []).filter(it => it.id !== item.id) } : s))
+                          } else {
+                            setLocalDraft(prev => ({ ...prev, scoreRuleItems: (prev.scoreRuleItems || []).filter(it => it.id !== item.id) }))
+                          }
+                        }}>删除</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-3 space-y-2">
+              <button onClick={() => {
+                const newItem: ScoreRuleItem = { id: `sr-${Date.now()}`, name: "", desc: "", rule: "", weight: 0 }
+                if (editingRubricId) {
+                  setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: [...(s.scoreRuleItems || []), newItem] } : s))
+                } else {
+                  setLocalDraft(prev => ({ ...prev, scoreRuleItems: [...(prev.scoreRuleItems || []), newItem] }))
+                }
+              }} className="w-full py-3 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-primary/40 hover:text-primary transition-colors flex items-center justify-center gap-1">
+                <Plus className="h-4 w-4" />添加评价项
+              </button>
+              {(draftScheme.scoreRuleItems || []).length > 0 && (
+                <div className="flex justify-end text-xs items-center gap-1">
+                  <span className="text-gray-500">分值合计：</span>
+                  <span className={cn("font-semibold", ((draftScheme.scoreRuleItems || []).reduce((sum, it) => sum + (it.weight || 0), 0)) === 100 ? "text-green-600" : "text-red-500")}>
+                    {(draftScheme.scoreRuleItems || []).reduce((sum, it) => sum + (it.weight || 0), 0)}%
+                  </span>
+                  {((draftScheme.scoreRuleItems || []).reduce((sum, it) => sum + (it.weight || 0), 0)) !== 100 && (
+                    <span className="text-red-500">⚠️（需等于100%）</span>
+                  )}
+                </div>
+              )}
+            </div>
+            {(draftScheme.scoreRuleItems || []).length === 0 && (
+              <div className="text-center text-gray-400 py-8">
+                <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">尚未添加评价项</p>
+                <p className="text-xs mt-1">点击上方按钮添加第一个评价项</p>
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <Button size="sm" className="text-xs h-8" onClick={async () => {
+            if (editingRubricId) {
+              await saveRubricToLibrary(editingRubricId, {
+                name: draftScheme.name,
+                types: draftScheme.types,
+                desc: "",
+                mode: draftScheme.mode,
+                scoreRuleItems: draftScheme.mode === "score_rule" ? draftScheme.scoreRuleItems : undefined,
+              })
+              if (draftScheme.mode === "rubric") {
+                setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, points: info.points.map(p => ({ ...p })) } : s))
+              }
+            } else {
+              await saveRubricToLibrary(null, { name: draftScheme.name || "新建评价标准", types: draftScheme.types, desc: "", mode: draftScheme.mode, scoreRuleItems: draftScheme.scoreRuleItems })
+            }
+            setView("list")
+            setEditingRubricId(null)
+          }}>
+            保存
+          </Button>
+          <Button size="sm" variant="outline" className="text-xs h-8" onClick={() => { setSaveTemplateDialogOpen(true); setSaveTemplateMode("new"); setSelectedReplaceTemplateId(null); }}>
+            保存到模板
+          </Button>
+        </div>
+        <Dialog open={saveTemplateDialogOpen} onOpenChange={setSaveTemplateDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <PrdAnnotation data={getAnnotation("dialog-save-template")}><DialogTitle>保存到模板</DialogTitle></PrdAnnotation>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSaveTemplateMode("new")}
+                  className={cn(
+                    "flex-1 px-3 py-2 rounded-lg text-xs border transition-all",
+                    saveTemplateMode === "new" ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-500 hover:border-gray-300"
+                  )}
+                >
+                  新增模板
+                </button>
+                <button
+                  onClick={() => setSaveTemplateMode("replace")}
+                  className={cn(
+                    "flex-1 px-3 py-2 rounded-lg text-xs border transition-all",
+                    saveTemplateMode === "replace" ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-500 hover:border-gray-300"
+                  )}
+                >
+                  替换现有模板
+                </button>
+              </div>
+              {saveTemplateMode === "new" ? (
+                <div>
+                  <Label className="text-xs text-gray-500">模板名称</Label>
+                  <Input value={draftScheme.name} onChange={e => {
+                    if (editingRubricId) {
+                      setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, name: e.target.value } : s))
+                    } else {
+                      setLocalDraft(prev => ({ ...prev, name: e.target.value }))
+                    }
+                  }} className="mt-1 text-sm" placeholder="输入模板名称" />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500">选择要替换的模板</Label>
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                    {rubricLibrary.map(scheme => (
+                      <div
+                        key={scheme.id}
+                        onClick={() => setSelectedReplaceTemplateId(scheme.id)}
+                        className={cn(
+                          "p-3 rounded-lg border cursor-pointer transition-all",
+                          selectedReplaceTemplateId === scheme.id ? "border-primary bg-primary/5" : "border-gray-200 hover:border-gray-300"
+                        )}
+                      >
+                        <p className="text-sm font-medium">{scheme.name}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{scheme.mode === "rubric" ? "评价量规" : "评分规则"}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" size="sm" className="text-xs" onClick={() => setSaveTemplateDialogOpen(false)}>取消</Button>
+              <Button size="sm" className="text-xs" onClick={() => {
+                if (saveTemplateMode === "new") {
+                  saveRubricToLibrary(null, { name: draftScheme.name || "新建评价标准", types: draftScheme.types, desc: "", mode: draftScheme.mode, scoreRuleItems: draftScheme.scoreRuleItems })
+                } else if (selectedReplaceTemplateId) {
+                  saveRubricToLibrary(selectedReplaceTemplateId, {
+                    name: draftScheme.name,
+                    types: draftScheme.types,
+                    desc: "",
+                    mode: draftScheme.mode,
+                    scoreRuleItems: draftScheme.mode === "score_rule" ? draftScheme.scoreRuleItems : undefined,
+                  })
+                  setRubricLibrary(prev => prev.map(s => s.id === selectedReplaceTemplateId ? { ...s, points: draftScheme.mode === "rubric" ? info.points.map(p => ({ ...p })) : s.points, mode: draftScheme.mode, scoreRuleItems: draftScheme.scoreRuleItems || [] } : s))
+                }
+                setSaveTemplateDialogOpen(false)
+                setView("list")
+                setEditingRubricId(null)
+              }} disabled={saveTemplateMode === "replace" && !selectedReplaceTemplateId}>
+                确认保存
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={gradeMappingDialogOpen} onOpenChange={v => !v && setGradeMappingDialogOpen(false)}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <PrdAnnotation data={getAnnotation("dialog-edit-grade-level")}><DialogTitle>编辑评分等级</DialogTitle></PrdAnnotation>
+            </DialogHeader>
+            {(() => {
+              const ep = info.points.find(p => p.id === editingGradeMappingPointId)
+              if (!ep || !ep.gradeMapping) return null
+              const gm = ep.gradeMapping
+              return (
+                <div className="space-y-3 py-2">
+                  {gm.map((g, i) => (
+                    <div key={g.id} className="flex items-start gap-2 p-3 rounded-lg border bg-gray-50/50">
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Input value={g.grade} onChange={e => {
+                            const newGm = gm.map(x => x.id === g.id ? { ...x, grade: e.target.value } : x)
+                            updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
+                          }} className="w-14 h-7 text-center text-xs font-semibold" placeholder="等级" />
+                          <Input type="number" value={g.minScore} onChange={e => {
+                            const newGm = gm.map(x => x.id === g.id ? { ...x, minScore: parseInt(e.target.value) || 0 } : x)
+                            updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
+                          }} className="w-16 h-7 text-center text-xs" min={0} max={100} />
+                          <span className="text-gray-500 text-xs">-</span>
+                          <Input type="number" value={g.maxScore} onChange={e => {
+                            const newGm = gm.map(x => x.id === g.id ? { ...x, maxScore: parseInt(e.target.value) || 0 } : x)
+                            updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
+                          }} className="w-16 h-7 text-center text-xs" min={0} max={100} />
+                          <span className="text-xs text-gray-500">分</span>
+                        </div>
+                        <Input value={g.remark || ""} onChange={e => {
+                          const newGm = gm.map(x => x.id === g.id ? { ...x, remark: e.target.value } : x)
+                          updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
+                        }} className="h-7 text-xs" placeholder="等级描述" />
+                      </div>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-400 hover:text-red-500" onClick={() => {
+                        const newGm = gm.filter(x => x.id !== g.id)
+                        updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
+                      }}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => {
+                    const colors = ["bg-green-500", "bg-blue-500", "bg-yellow-500", "bg-red-500", "bg-purple-500", "bg-orange-500"]
+                    const newId = `grade-${Date.now()}`
+                    const newGm = [...gm, { id: newId, grade: "新等级", minScore: 0, maxScore: 100, color: colors[gm.length % colors.length], remark: "" }]
+                    updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
+                  }}>
+                    <Plus className="h-3.5 w-3.5 mr-1" />新增等级
+                  </Button>
+                </div>
+              )
+            })()}
+            <DialogFooter>
+              <Button variant="outline" size="sm" onClick={() => setGradeMappingDialogOpen(false)}>关闭</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    )
+  }
+
+  if (view === "template") {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setView("edit")}>
+            <ChevronLeft className="h-3.5 w-3.5 mr-1" />返回评价标准编辑
+          </Button>
+        </div>
+        <p className="text-sm font-medium">选择评价标准模板进行覆盖</p>
+        <div className="grid grid-cols-1 gap-3">
+          {rubricLibrary.map(scheme => (
+            <div
+              key={scheme.id}
+              className="p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer"
+              onClick={() => {
+                applyScheme(scheme.id)
+                setView("edit")
+              }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <p className="text-sm font-semibold">{scheme.name}</p>
+                    <Badge variant="outline" className={cn("text-[10px]", scheme.mode === "rubric" ? "bg-purple-50 text-purple-600 border-purple-200" : "bg-blue-50 text-blue-600 border-blue-200")}>
+                      {scheme.mode === "rubric" ? "评价量规" : "评分规则"}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-gray-400 mb-2">{scheme.desc}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {scheme.types.map(type => (
+                      <Badge key={type} variant="outline" className={cn("text-[10px]", evalSubTypeColors[type])}>{evalSubTypeLabels[type]}</Badge>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1.5">{scheme.mode === "rubric" ? `${scheme.points.length} 个评价点` : `${scheme.scoreRuleItems?.length || 0} 个评价项`}</p>
+                </div>
+                <Button size="sm" className="h-7 text-[11px] px-2.5 shrink-0 mt-0.5" onClick={(e) => { e.stopPropagation(); applyScheme(scheme.id); setView("edit"); }}>
+                  使用此模板
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium">选择评价标准方案</p>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { setView("template"); setEditingRubricId(null); }}>
+            <BookOpen className="h-3.5 w-3.5 mr-1" />选择评价标准模板覆盖
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => enterEdit(null)}>
+            <Plus className="h-3.5 w-3.5 mr-1" />添加评价标准
+          </Button>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-3">
+        {rubricLibrary.map(scheme => {
+          const isSelected = currentRubricId === scheme.id
+          return (
+            <div
+              key={scheme.id}
+              className={cn(
+                "p-4 rounded-xl border transition-all cursor-pointer",
+                isSelected
+                  ? "border-primary bg-white ring-1 ring-primary/20 shadow-sm"
+                  : "border-gray-200 bg-white hover:border-primary/40 hover:shadow-sm"
+              )}
+              onClick={() => {
+                if (isSelected) {
+                  updateState({ [rubricIdField]: null } as any)
+                  setEvalPoints(info.field, [])
+                } else {
+                  applyScheme(scheme.id)
+                }
+              }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <p className="text-sm font-semibold">{scheme.name}</p>
+                    <Badge variant="outline" className={cn("text-[10px]", scheme.mode === "rubric" ? "bg-purple-50 text-purple-600 border-purple-200" : "bg-blue-50 text-blue-600 border-blue-200")}>
+                      {scheme.mode === "rubric" ? "评价量规" : "评分规则"}
+                    </Badge>
+                    {isSelected && (
+                      <div className="flex items-center gap-1 text-primary text-xs font-medium bg-primary/5 px-2 py-0.5 rounded-full">
+                        <CheckCircle2 className="h-3 w-3" />
+                        已选用
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 mb-2">{scheme.desc}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {scheme.types.map(type => (
+                      <Badge key={type} variant="outline" className={cn("text-[10px]", evalSubTypeColors[type])}>{evalSubTypeLabels[type]}</Badge>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1.5">{scheme.mode === "rubric" ? `${scheme.points.length} 个评价点` : `${scheme.scoreRuleItems?.length || 0} 个评价项`}</p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                  <Button
+                    size="sm"
+                    variant={isSelected ? "outline" : "default"}
+                    className="h-7 text-[11px] px-2.5"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (isSelected) {
+                        updateState({ [rubricIdField]: null } as any)
+                        setEvalPoints(info.field, [])
+                      } else {
+                        applyScheme(scheme.id)
+                      }
+                    }}
+                  >
+                    {isSelected ? "取消选用" : "选用"}
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2.5" onClick={(e) => { e.stopPropagation(); enterEdit(scheme.id); }}>
+                    编辑
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {!currentRubricId && (
+        <div className="text-center text-gray-400 py-6">
+          <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">尚未选用评价标准</p>
+          <p className="text-xs mt-1">请从上方列表中选用一个评价标准方案</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+
+interface MethodDialogCtx {
+  state: TaskState
+  updateState: (patch: Partial<TaskState>) => void
+  rubricLibrary: RubricScheme[]
+  setRubricLibrary: React.Dispatch<React.SetStateAction<RubricScheme[]>>
+  editingRubricId: string | null
+  setEditingRubricId: (id: string | null) => void
+  methodDialogViews: Record<string, "list" | "edit" | "template">
+  setMethodDialogViews: React.Dispatch<React.SetStateAction<Record<string, "list" | "edit" | "template">>>
+  openRubricKpDialog: (pointId: string, field: EvalPointField) => void
+  openRubricAbDialog: (pointId: string, field: EvalPointField) => void
+  setEvalPoints: (field: EvalPointField, points: EvalPoint[]) => void
+  updateEvalPoint: (field: EvalPointField, id: string, updates: Partial<EvalPoint>) => void
+  addEvalPoint: (field: EvalPointField, init?: Partial<EvalPoint>) => void
+  removeEvalPoint: (field: EvalPointField, id: string) => void
+}
+
 interface ScoringConfig {
   teacherBackground: string
   scorerCount: number
@@ -2675,17 +3712,6 @@ function EditCardDialog({
   const [methodDialogViews, setMethodDialogViews] = useState<Record<string, "list" | "edit" | "template">>({})
   const [newPointName, setNewPointName] = useState("")
 
-  // Score rule item type
-  interface ScoreRuleItem {
-    id: string
-    name: string
-    desc: string
-    rule: string
-    weight: number
-  }
-
-  // Rubric library — shared across all methods
-  type RubricScheme = { id: string; name: string; types: EvalSubType[]; desc: string; points: EvalPoint[]; mode: "rubric" | "score_rule"; scoreRuleItems?: ScoreRuleItem[] }
   const [rubricLibrary, setRubricLibrary] = useState<RubricScheme[]>([])
   const [editingRubricId, setEditingRubricId] = useState<string | null>(null)
 
@@ -4618,8 +5644,6 @@ function EditCardDialog({
           updateState({ methodEvalSubjects: { ...state.methodEvalSubjects, [methodKey]: newSubjects } })
         }
 
-        type EvalPointField = "randomDrawEvalPoints" | "reviewEvalPoints" | "paperEvalPoints" | "questionBankEvalPoints" | "outcomeEvalPoints" | "homeworkEvalPoints" | "quizEvalPoints"
-
         const getEvalPoints = (field: EvalPointField) => {
           switch (field) {
             case "randomDrawEvalPoints": return state.randomDrawEvalPoints
@@ -4780,7 +5804,7 @@ function EditCardDialog({
                   <DialogTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary">+ 添加能力点</Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
+                  <DialogContent className="sm:max-w-2xl">
                     <DialogHeader><PrdAnnotation data={getAnnotation("dialog-link-ability")}><DialogTitle>关联能力点</DialogTitle></PrdAnnotation></DialogHeader>
                     <div className="relative mb-3">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -4822,7 +5846,7 @@ function EditCardDialog({
                   <DialogTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary">+ 添加知识点</Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
+                  <DialogContent className="sm:max-w-2xl">
                     <DialogHeader><PrdAnnotation data={getAnnotation("dialog-link-knowledge")}><DialogTitle>关联知识点</DialogTitle></PrdAnnotation></DialogHeader>
                     <div className="relative mb-3">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -6350,6 +7374,23 @@ function EditCardDialog({
           }
         }
 
+        const methodDialogCtx: MethodDialogCtx = {
+          state,
+          updateState,
+          rubricLibrary,
+          setRubricLibrary,
+          editingRubricId,
+          setEditingRubricId,
+          methodDialogViews,
+          setMethodDialogViews,
+          openRubricKpDialog,
+          openRubricAbDialog,
+          setEvalPoints,
+          updateEvalPoint,
+          addEvalPoint,
+          removeEvalPoint,
+        }
+
         const openDialog = (type: "object" | "subject" | "resource" | "method", methodKey: string) => {
           setErDialogMethod(methodKey)
           setErDialogOpen(type)
@@ -6617,952 +7658,7 @@ function EditCardDialog({
           )
         }
 
-        function MixedTagEditor({
-          text,
-          knowledgePointIds,
-          abilityPointIds,
-          onChange,
-          onOpenKpDialog,
-          onOpenAbDialog,
-        }: {
-          text: string
-          knowledgePointIds: string[]
-          abilityPointIds: string[]
-          onChange: (updates: { name?: string; knowledgePointIds?: string[]; abilityPointIds?: string[] }) => void
-          onOpenKpDialog: () => void
-          onOpenAbDialog: () => void
-        }) {
-          const ref = useRef<HTMLDivElement>(null)
-          const isComposing = useRef(false)
-          const onChangeRef = useRef(onChange)
-          onChangeRef.current = onChange
-          const kpIdsRef = useRef(knowledgePointIds)
-          kpIdsRef.current = knowledgePointIds
-          const abIdsRef = useRef(abilityPointIds)
-          abIdsRef.current = abilityPointIds
-          const prevTags = useRef({ kp: [] as string[], ab: [] as string[] })
-          const cursorOffsetRef = useRef<number | null>(null)
 
-          const updateCursorOffset = () => {
-            const el = ref.current
-            if (!el) return
-            const selection = document.getSelection()
-            if (!selection || !selection.rangeCount) return
-            const range = selection.getRangeAt(0)
-            if (!el.contains(range.startContainer) && range.startContainer !== el) return
-
-            let offset = 0
-            if (range.startContainer.nodeType === Node.TEXT_NODE) {
-              const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
-              let node
-              while ((node = walker.nextNode())) {
-                if (node === range.startContainer) {
-                  offset += range.startOffset
-                  break
-                }
-                offset += node.textContent?.length || 0
-              }
-            } else if (range.startContainer === el) {
-              for (let i = 0; i < range.startOffset && i < el.childNodes.length; i++) {
-                const child = el.childNodes[i]
-                if (child.nodeType === Node.TEXT_NODE) {
-                  offset += child.textContent?.length || 0
-                }
-              }
-            }
-            cursorOffsetRef.current = offset
-          }
-
-          const createTagSpan = (type: 'kp' | 'ab', id: string): HTMLSpanElement | null => {
-            const span = document.createElement('span')
-            span.contentEditable = 'false'
-            span.dataset.tag = 'true'
-            span.dataset.type = type
-            span.dataset.id = id
-            if (type === 'kp') {
-              const kp = knowledgePoints.find(k => k.id === id)
-              if (!kp) return null
-              span.className = 'inline-flex items-center px-1 py-0.5 rounded text-[10px] font-normal bg-blue-50 text-blue-600 border border-blue-200 mx-0.5 align-middle cursor-default'
-              span.innerHTML = `${kp.name}<button class="ml-0.5 text-blue-400 hover:text-red-500 leading-none">×</button>`
-              span.querySelector('button')!.onclick = (e) => {
-                e.stopPropagation()
-                span.remove()
-                onChangeRef.current({ knowledgePointIds: kpIdsRef.current.filter(i => i !== id) })
-              }
-            } else {
-              const ab = abilityPoints.find(a => a.id === id)
-              if (!ab) return null
-              span.className = 'inline-flex items-center px-1 py-0.5 rounded text-[10px] font-normal bg-amber-50 text-amber-600 border border-amber-200 mx-0.5 align-middle cursor-default'
-              span.innerHTML = `${ab.name}<button class="ml-0.5 text-amber-400 hover:text-red-500 leading-none">×</button>`
-              span.querySelector('button')!.onclick = (e) => {
-                e.stopPropagation()
-                span.remove()
-                onChangeRef.current({ abilityPointIds: abIdsRef.current.filter(i => i !== id) })
-              }
-            }
-            return span
-          }
-
-          // Initial mount only
-          useLayoutEffect(() => {
-            const el = ref.current
-            if (!el) return
-            if (text) el.textContent = text
-            else el.innerHTML = ''
-            knowledgePointIds.forEach(kpid => {
-              const span = createTagSpan('kp', kpid)
-              if (span) el.appendChild(span)
-            })
-            abilityPointIds.forEach(abId => {
-              const span = createTagSpan('ab', abId)
-              if (span) el.appendChild(span)
-            })
-            prevTags.current = { kp: [...knowledgePointIds], ab: [...abilityPointIds] }
-            // eslint-disable-next-line react-hooks/exhaustive-deps
-          }, [])
-
-          // Tag / text changes from parent
-          useLayoutEffect(() => {
-            const el = ref.current
-            if (!el) return
-            const kpChanged = JSON.stringify(prevTags.current.kp) !== JSON.stringify(knowledgePointIds)
-            const abChanged = JSON.stringify(prevTags.current.ab) !== JSON.stringify(abilityPointIds)
-            const domText = Array.from(el.childNodes)
-              .filter(n => n.nodeType === Node.TEXT_NODE)
-              .map(n => n.textContent)
-              .join('')
-            const textChanged = domText !== (text || '')
-            if (!kpChanged && !abChanged && !textChanged) return
-
-            if (el !== document.activeElement) {
-              const newKpIds = knowledgePointIds.filter(id => !prevTags.current.kp.includes(id))
-              const newAbIds = abilityPointIds.filter(id => !prevTags.current.ab.includes(id))
-              const existingKpIds = knowledgePointIds.filter(id => prevTags.current.kp.includes(id))
-              const existingAbIds = abilityPointIds.filter(id => prevTags.current.ab.includes(id))
-
-              if ((newKpIds.length > 0 || newAbIds.length > 0) && cursorOffsetRef.current != null) {
-                const offset = cursorOffsetRef.current
-                const before = text?.slice(0, offset) || ''
-                const after = text?.slice(offset) || ''
-                el.textContent = ''
-                if (before) el.appendChild(document.createTextNode(before))
-                newKpIds.forEach(kpid => {
-                  const span = createTagSpan('kp', kpid)
-                  if (span) el.appendChild(span)
-                })
-                newAbIds.forEach(abId => {
-                  const span = createTagSpan('ab', abId)
-                  if (span) el.appendChild(span)
-                })
-                if (after) el.appendChild(document.createTextNode(after))
-                existingKpIds.forEach(kpid => {
-                  const span = createTagSpan('kp', kpid)
-                  if (span) el.appendChild(span)
-                })
-                existingAbIds.forEach(abId => {
-                  const span = createTagSpan('ab', abId)
-                  if (span) el.appendChild(span)
-                })
-                cursorOffsetRef.current = null
-              } else {
-                if (text) el.textContent = text
-                else el.innerHTML = ''
-                knowledgePointIds.forEach(kpid => {
-                  const span = createTagSpan('kp', kpid)
-                  if (span) el.appendChild(span)
-                })
-                abilityPointIds.forEach(abId => {
-                  const span = createTagSpan('ab', abId)
-                  if (span) el.appendChild(span)
-                })
-              }
-            } else if (kpChanged || abChanged) {
-              const existingKp = new Set(Array.from(el.querySelectorAll('[data-type="kp"]')).map(el => (el as HTMLElement).dataset.id))
-              const existingAb = new Set(Array.from(el.querySelectorAll('[data-type="ab"]')).map(el => (el as HTMLElement).dataset.id))
-              knowledgePointIds.forEach(kpid => {
-                if (!existingKp.has(kpid)) {
-                  const span = createTagSpan('kp', kpid)
-                  if (span) el.appendChild(span)
-                }
-              })
-              abilityPointIds.forEach(abId => {
-                if (!existingAb.has(abId)) {
-                  const span = createTagSpan('ab', abId)
-                  if (span) el.appendChild(span)
-                }
-              })
-            }
-            prevTags.current = { kp: [...knowledgePointIds], ab: [...abilityPointIds] }
-          }, [knowledgePointIds, abilityPointIds, text])
-
-          const handleBlur = () => {
-            if (isComposing.current) return
-            const el = ref.current
-            if (!el) return
-            let newText = ''
-            const newKpIds: string[] = []
-            const newAbIds: string[] = []
-            el.childNodes.forEach(node => {
-              if (node.nodeType === Node.TEXT_NODE) {
-                newText += node.textContent || ''
-              } else if (node.nodeType === Node.ELEMENT_NODE) {
-                const dataset = (node as HTMLElement).dataset
-                if (dataset.tag) {
-                  if (dataset.type === 'kp' && dataset.id) newKpIds.push(dataset.id)
-                  if (dataset.type === 'ab' && dataset.id) newAbIds.push(dataset.id)
-                }
-              }
-            })
-            onChangeRef.current({ name: newText, knowledgePointIds: newKpIds, abilityPointIds: newAbIds })
-          }
-
-          return (
-            <div className="min-h-[32px] rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-sm flex flex-wrap gap-1 items-center">
-              <div
-                ref={ref}
-                contentEditable
-                suppressContentEditableWarning
-                className="flex-1 outline-none min-w-[80px] text-sm leading-6 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
-                data-placeholder="输入评价维度"
-                onBlur={handleBlur}
-                onKeyUp={updateCursorOffset}
-                onClick={updateCursorOffset}
-                onCompositionStart={() => { isComposing.current = true }}
-                onCompositionEnd={() => { isComposing.current = false }}
-                onPaste={(e) => {
-                  e.preventDefault()
-                  const pasted = e.clipboardData.getData('text/plain')
-                  document.execCommand('insertText', false, pasted)
-                }}
-              />
-              <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 text-gray-400 hover:text-primary shrink-0" onMouseDown={updateCursorOffset} onClick={onOpenKpDialog}>关联考查知识点</Button>
-              <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 text-gray-400 hover:text-primary shrink-0" onMouseDown={updateCursorOffset} onClick={onOpenAbDialog}>关联考查能力点</Button>
-            </div>
-          )
-        }
-
-        const MethodDialogContent = ({ methodKey }: { methodKey: string }) => {
-          const info = getMethodEvalInfo(methodKey)
-          const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
-          const [gradeMappingDialogOpen, setGradeMappingDialogOpen] = useState(false)
-          const [editingGradeMappingPointId, setEditingGradeMappingPointId] = useState<string | null>(null)
-          const [localDraft, setLocalDraft] = useState<{ name: string; mode: "rubric" | "score_rule"; types: EvalSubType[]; scoreRuleItems: ScoreRuleItem[] }>({ name: "", mode: "rubric", types: [], scoreRuleItems: [] })
-          const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false)
-          const [saveTemplateMode, setSaveTemplateMode] = useState<"new" | "replace">("new")
-          const [selectedReplaceTemplateId, setSelectedReplaceTemplateId] = useState<string | null>(null)
-          const rubricIdField =
-            methodKey === "random_draw" ? "randomDrawRubricId" :
-            methodKey === "review" ? "reviewRubricId" :
-            methodKey === "outcome" ? "outcomeRubricId" :
-            methodKey === "homework" ? "homeworkRubricId" :
-            "reviewRubricId"
-          const currentRubricId = (state as any)[rubricIdField] as string | null
-          const view = methodDialogViews[methodKey] || "edit"
-          const setView = (v: "list" | "edit" | "template") => setMethodDialogViews(prev => ({ ...prev, [methodKey]: v }))
-
-          const currentScheme = rubricLibrary.find(s => s.id === currentRubricId)
-
-          const applyScheme = (schemeId: string) => {
-            const scheme = rubricLibrary.find(s => s.id === schemeId)
-            if (!scheme) return
-            updateState({ [rubricIdField]: schemeId } as any)
-            if (scheme.mode === "rubric") {
-              setEvalPoints(info.field, scheme.points.map(p => ({ ...p, id: `ep-${Date.now()}-${Math.random().toString(36).slice(2, 5)}` })))
-            } else {
-              setEvalPoints(info.field, [])
-            }
-            setEditingRubricId(schemeId)
-          }
-
-          const enterEdit = (schemeId: string | null) => {
-            if (schemeId) {
-              const scheme = rubricLibrary.find(s => s.id === schemeId)
-              if (scheme) {
-                setEvalPoints(info.field, JSON.parse(JSON.stringify(scheme.points)))
-                setLocalDraft({ name: scheme.name, mode: scheme.mode, types: scheme.types, scoreRuleItems: scheme.scoreRuleItems || [] })
-              }
-            } else {
-              setEvalPoints(info.field, [])
-              setLocalDraft({ name: "", mode: "rubric", types: [], scoreRuleItems: [] })
-            }
-            setEditingRubricId(schemeId)
-            setView("edit")
-          }
-
-          const saveRubricToLibrary = async (schemeId: string | null, updates: Partial<RubricScheme>) => {
-            try {
-              if (schemeId) {
-                const data = {
-                  name: updates.name || "",
-                  mode: updates.mode || "rubric",
-                  types: updates.types || [],
-                  description: updates.desc || "",
-                  data: updates.mode === "score_rule"
-                    ? { scoreRuleItems: updates.scoreRuleItems || [] }
-                    : { points: info.points.map((p: EvalPoint) => ({
-                        id: p.id, name: p.name, description: p.desc || "",
-                        types: p.types || (p.subType ? [p.subType] : []),
-                        weight: p.weight || 0, scoringMethod: p.scoringMethod || "level",
-                        gradeMapping: p.gradeMapping || [],
-                        knowledgePointIds: p.knowledgePointIds || [],
-                        abilityPointIds: p.abilityPointIds || [],
-                      })) },
-                }
-                await taskEvaluationApi.updateTemplate(schemeId, data).catch(() => {})
-                setRubricLibrary(prev => prev.map(s => s.id === schemeId ? { ...s, ...updates } as RubricScheme : s))
-              } else {
-                const data = {
-                  name: updates.name || "新建评价标准",
-                  mode: updates.mode || "rubric",
-                  types: updates.types || [],
-                  description: updates.desc || "",
-                  data: updates.mode === "score_rule"
-                    ? { scoreRuleItems: updates.scoreRuleItems || [] }
-                    : { points: info.points.map((p: EvalPoint) => ({
-                        id: p.id, name: p.name, description: p.desc || "",
-                        types: p.types || (p.subType ? [p.subType] : []),
-                        weight: p.weight || 0, scoringMethod: p.scoringMethod || "level",
-                        gradeMapping: p.gradeMapping || [],
-                        knowledgePointIds: p.knowledgePointIds || [],
-                        abilityPointIds: p.abilityPointIds || [],
-                      })) },
-                }
-                const created = await taskEvaluationApi.createTemplate(data).catch(() => null)
-                if (created) {
-                  const newScheme: RubricScheme = {
-                    id: created.id,
-                    name: created.name,
-                    types: (created.types || []) as EvalSubType[],
-                    desc: created.description || "",
-                    points: info.points.map(p => ({ ...p })),
-                    mode: created.mode as "rubric" | "score_rule",
-                    scoreRuleItems: updates.scoreRuleItems || [],
-                  }
-                  setRubricLibrary(prev => [...prev, newScheme])
-                  updateState({ [rubricIdField]: created.id } as any)
-                } else {
-                  const newId = `scheme-${Date.now()}`
-                  setRubricLibrary(prev => [...prev, {
-                    id: newId, name: updates.name || "新建评价标准", types: updates.types || [],
-                    desc: updates.desc || "", points: info.points.map(p => ({ ...p, id: `ep-${Date.now()}-${Math.random().toString(36).slice(2, 5)}` })),
-                    mode: updates.mode || "rubric", scoreRuleItems: updates.scoreRuleItems || [],
-                  } as RubricScheme])
-                  updateState({ [rubricIdField]: newId } as any)
-                }
-              }
-            } catch {
-              if (schemeId) {
-                setRubricLibrary(prev => prev.map(s => s.id === schemeId ? { ...s, ...updates } as RubricScheme : s))
-              } else {
-                const newId = `scheme-${Date.now()}`
-                setRubricLibrary(prev => [...prev, {
-                  id: newId, name: updates.name || "新建评价标准", types: updates.types || [],
-                  desc: updates.desc || "", points: info.points.map(p => ({ ...p, id: `ep-${Date.now()}-${Math.random().toString(36).slice(2, 5)}` })),
-                  mode: updates.mode || "rubric", scoreRuleItems: updates.scoreRuleItems || [],
-                } as RubricScheme])
-                updateState({ [rubricIdField]: newId } as any)
-              }
-            }
-          }
-
-          const editingScheme = editingRubricId ? rubricLibrary.find(s => s.id === editingRubricId) : null
-          const draftScheme = editingScheme
-            ? { name: editingScheme.name, types: editingScheme.types, mode: editingScheme.mode, scoreRuleItems: editingScheme.scoreRuleItems || [] }
-            : localDraft
-
-          if (view === "edit") {
-            return (
-              <div className="space-y-4">
-                <div className="flex items-center justify-end mb-2">
-                  <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { setView("template"); setEditingRubricId(null); }}>
-                    <BookOpen className="h-3.5 w-3.5 mr-1" />选择评价标准模板覆盖
-                  </Button>
-                </div>
-                <div className="border border-border rounded-xl p-5 bg-white shadow-sm">
-                  <p className="text-sm font-medium mb-3">评价标准信息</p>
-                  <div className="space-y-3">
-                    <div>
-                      <Label className="text-xs text-gray-500">评价标准名称</Label>
-                      <Input value={draftScheme.name} onChange={e => {
-                        if (editingRubricId) {
-                          setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, name: e.target.value } : s))
-                        } else {
-                          setLocalDraft(prev => ({ ...prev, name: e.target.value }))
-                        }
-                      }} className="mt-1 text-sm" placeholder="输入评价标准名称" />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-gray-500">评价标准类型</Label>
-                      <div className="flex gap-3 mt-1">
-                        {methodKey !== "homework" && (
-                          <button
-                            onClick={() => {
-                              if (editingRubricId) {
-                                setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, mode: "rubric" } : s))
-                              } else {
-                                setLocalDraft(prev => ({ ...prev, mode: "rubric" }))
-                              }
-                            }}
-                            className={cn(
-                              "px-3 py-1.5 rounded-lg text-xs border transition-all flex items-center gap-1.5",
-                              draftScheme.mode === "rubric" ? "bg-primary/10 text-primary border-primary" : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
-                            )}
-                          >
-                            <div className={cn("w-3.5 h-3.5 rounded-full border flex items-center justify-center", draftScheme.mode === "rubric" ? "border-primary" : "border-gray-300")}>
-                              {draftScheme.mode === "rubric" && <div className="w-2 h-2 rounded-full bg-primary" />}
-                            </div>
-                            评价量规
-                          </button>
-                        )}
-                        <button
-                          onClick={() => {
-                            if (editingRubricId) {
-                              setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, mode: "score_rule", scoreRuleItems: s.scoreRuleItems?.length ? s.scoreRuleItems : [{ id: `sr-${Date.now()}`, name: "", desc: "", rule: "", weight: 0 }] } : s))
-                            } else {
-                              setLocalDraft(prev => ({ ...prev, mode: "score_rule", scoreRuleItems: prev.scoreRuleItems?.length ? prev.scoreRuleItems : [{ id: `sr-${Date.now()}`, name: "", desc: "", rule: "", weight: 0 }] }))
-                            }
-                          }}
-                          className={cn(
-                            "px-3 py-1.5 rounded-lg text-xs border transition-all flex items-center gap-1.5",
-                            draftScheme.mode === "score_rule" ? "bg-primary/10 text-primary border-primary" : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
-                          )}
-                        >
-                          <div className={cn("w-3.5 h-3.5 rounded-full border flex items-center justify-center", draftScheme.mode === "score_rule" ? "border-primary" : "border-gray-300")}>
-                            {draftScheme.mode === "score_rule" && <div className="w-2 h-2 rounded-full bg-primary" />}
-                          </div>
-                          评分规则
-                        </button>
-                      </div>
-                      {methodKey === "homework" && (
-                        <p className="text-[10px] text-gray-400 mt-1">作业测评仅需使用评分规则即可</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                {draftScheme.mode === "rubric" ? (
-                  <div className="border rounded-xl p-4 overflow-hidden">
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-sm font-medium">评价量规配置表</p>
-                      <div className="flex items-center gap-2">
-                        <PrdAnnotation data={getAnnotation("eval-rule-onekey-split")}>
-                          <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
-                            const count = info.points.length
-                            if (count === 0) return
-                            const base = Math.floor(100 / count)
-                            const remainder = 100 % count
-                            const newPoints = info.points.map((p, i) => ({ ...p, weight: base + (i < remainder ? 1 : 0) }))
-                            setEvalPoints(info.field, newPoints)
-                          }}>
-                            <RotateCcw className="h-3.5 w-3.5 mr-1" />一键均分
-                          </Button>
-                        </PrdAnnotation>
-                        <PrdAnnotation data={getAnnotation("eval-rule-add-dimension")}>
-                          <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => addEvalPoint(info.field, { name: "", types: draftScheme.types.length ? draftScheme.types : undefined })}>
-                            <Plus className="h-3.5 w-3.5 mr-1" />添加评价维度
-                          </Button>
-                        </PrdAnnotation>
-                      </div>
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm border-collapse min-w-[900px]">
-                        <thead>
-                          <tr className="border-b bg-gray-50 text-gray-500 text-xs">
-                            <th className="py-2.5 px-2 text-left w-12">序号</th>
-                            <th className="py-2.5 px-2 text-left min-w-[360px]">评价维度名称/关联知识点/能力点</th>
-                            <th className="py-2.5 px-2 text-left min-w-[440px]">评价等级</th>
-                            <th className="py-2.5 px-2 text-center w-16">权重(%)</th>
-                            <th className="py-2.5 px-2 text-center w-14">操作</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {info.points.map((ep, idx) => (
-                            <tr key={ep.id} className="border-b hover:bg-gray-50/50 transition-colors">
-                              <td className="py-3 px-2">
-                                <span className="text-gray-600 align-middle">{idx + 1}</span>
-                              </td>
-                              <td className="py-3 px-2">
-                                <MixedTagEditor
-                                  text={ep.name}
-                                  knowledgePointIds={ep.knowledgePointIds || []}
-                                  abilityPointIds={ep.abilityPointIds || []}
-                                  onChange={updates => updateEvalPoint(info.field, ep.id, updates)}
-                                  onOpenKpDialog={() => openRubricKpDialog(ep.id, info.field)}
-                                  onOpenAbDialog={() => openRubricAbDialog(ep.id, info.field)}
-                                />
-                              </td>
-                              <td className="py-3 px-2">
-                                <button
-                                  onClick={() => {
-                                    setEditingGradeMappingPointId(ep.id)
-                                    setGradeMappingDialogOpen(true)
-                                  }}
-                                  className="text-xs text-left text-primary hover:underline w-full block"
-                                >
-                                  {ep.gradeMapping?.map(gm => (
-                                    <div key={gm.id} className="truncate leading-relaxed" title={`${gm.grade} (${gm.minScore}-${gm.maxScore}分) ${gm.remark}`}>
-                                      {gm.grade} ({gm.minScore}-{gm.maxScore}分) {gm.remark}
-                                    </div>
-                                  ))}
-                                  {!ep.gradeMapping?.length && "点击配置评价等级"}
-                                </button>
-                              </td>
-                              <td className="py-3 px-2">
-                                <Input type="number" value={ep.weight || 0} onChange={e => updateEvalPoint(info.field, ep.id, { weight: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })} className="h-8 text-sm text-center" />
-                              </td>
-                              <td className="py-3 px-2 text-center">
-                                <button className="text-red-500 hover:text-red-600 text-xs" onClick={() => removeEvalPoint(info.field, ep.id)}>删除</button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="mt-3 space-y-2">
-                      <button onClick={() => addEvalPoint(info.field, { name: "", types: draftScheme.types.length ? draftScheme.types : undefined })} className="w-full py-3 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-primary/40 hover:text-primary transition-colors flex items-center justify-center gap-1">
-                        <Plus className="h-4 w-4" />添加评价维度
-                      </button>
-                      {info.points.length > 0 && (
-                        <div className="flex justify-end text-xs items-center gap-1">
-                          <span className="text-gray-500">维度权重合计：</span>
-                          <span className={cn("font-semibold", (info.points.reduce((sum, p) => sum + (p.weight || 0), 0)) === 100 ? "text-green-600" : "text-red-500")}>
-                            {info.points.reduce((sum, p) => sum + (p.weight || 0), 0)}%
-                          </span>
-                          {(info.points.reduce((sum, p) => sum + (p.weight || 0), 0)) !== 100 && (
-                            <span className="text-red-500">⚠️（需等于100%）</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    {info.points.length === 0 && (
-                      <div className="text-center text-gray-400 py-8">
-                        <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">尚未添加评价点</p>
-                        <p className="text-xs mt-1">点击上方按钮添加第一个评价点</p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="border rounded-xl p-4 overflow-hidden">
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-sm font-medium">评分规则配置表</p>
-                      <div className="flex items-center gap-2">
-                        <PrdAnnotation data={getAnnotation("eval-rule-onekey-split")}>
-                          <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
-                            const items = draftScheme.scoreRuleItems || []
-                            const count = items.length
-                            if (count === 0) return
-                            const base = Math.floor(100 / count)
-                            const remainder = 100 % count
-                            const newItems = items.map((it, i) => ({ ...it, weight: base + (i < remainder ? 1 : 0) }))
-                            if (editingRubricId) {
-                              setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: newItems } : s))
-                            } else {
-                              setLocalDraft(prev => ({ ...prev, scoreRuleItems: newItems }))
-                            }
-                          }}>
-                            <RotateCcw className="h-3.5 w-3.5 mr-1" />一键均分
-                          </Button>
-                        </PrdAnnotation>
-                        <PrdAnnotation data={getAnnotation("eval-rule-add-item")}>
-                          <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
-                            const newItem: ScoreRuleItem = { id: `sr-${Date.now()}`, name: "", desc: "", rule: "", weight: 0 }
-                            if (editingRubricId) {
-                              setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: [...(s.scoreRuleItems || []), newItem] } : s))
-                            } else {
-                              setLocalDraft(prev => ({ ...prev, scoreRuleItems: [...(prev.scoreRuleItems || []), newItem] }))
-                            }
-                          }}>
-                            <Plus className="h-3.5 w-3.5 mr-1" />添加评价项
-                          </Button>
-                        </PrdAnnotation>
-                      </div>
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm border-collapse min-w-[700px]">
-                        <thead>
-                          <tr className="border-b bg-gray-50 text-gray-500 text-xs">
-                            <th className="py-2.5 px-2 text-left w-16">序号</th>
-                            <th className="py-2.5 px-2 text-left min-w-[300px]">评价项/评分标准描述</th>
-                            <th className="py-2.5 px-2 text-left min-w-[200px]">加减分规则</th>
-                            <th className="py-2.5 px-2 text-center w-20">分值</th>
-                            <th className="py-2.5 px-2 text-center w-16">操作</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(draftScheme.scoreRuleItems || []).map((item, idx) => (
-                            <tr key={item.id} className="border-b hover:bg-gray-50/50 transition-colors">
-                              <td className="py-3 px-2">
-                                <span className="text-gray-600 align-middle">{idx + 1}</span>
-                              </td>
-                              <td className="py-3 px-2">
-                                <Textarea value={item.name + (item.desc ? `\n${item.desc}` : "")} onChange={e => {
-                                  const lines = e.target.value.split('\n')
-                                  const newName = lines[0] || ""
-                                  const newDesc = lines.slice(1).join('\n')
-                                  if (editingRubricId) {
-                                    setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: (s.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, name: newName, desc: newDesc } : it) } : s))
-                                  } else {
-                                    setLocalDraft(prev => ({ ...prev, scoreRuleItems: (prev.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, name: newName, desc: newDesc } : it) }))
-                                  }
-                                }} className="text-sm min-h-[60px]" placeholder="请输入评分描述" rows={2} />
-                              </td>
-                              <td className="py-3 px-2">
-                                <Textarea value={item.rule} onChange={e => {
-                                  if (editingRubricId) {
-                                    setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: (s.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, rule: e.target.value } : it) } : s))
-                                  } else {
-                                    setLocalDraft(prev => ({ ...prev, scoreRuleItems: (prev.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, rule: e.target.value } : it) }))
-                                  }
-                                }} className="text-sm min-h-[60px]" placeholder="输入加减分规则" rows={2} />
-                              </td>
-                              <td className="py-3 px-2">
-                                <Input type="number" value={item.weight || 0} onChange={e => {
-                                  const val = Math.max(0, Math.min(100, parseInt(e.target.value) || 0))
-                                  if (editingRubricId) {
-                                    setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: (s.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, weight: val } : it) } : s))
-                                  } else {
-                                    setLocalDraft(prev => ({ ...prev, scoreRuleItems: (prev.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, weight: val } : it) }))
-                                  }
-                                }} className="h-8 text-sm text-center" />
-                              </td>
-                              <td className="py-3 px-2 text-center">
-                                <button className="text-red-500 hover:text-red-600 text-xs" onClick={() => {
-                                  if (editingRubricId) {
-                                    setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: (s.scoreRuleItems || []).filter(it => it.id !== item.id) } : s))
-                                  } else {
-                                    setLocalDraft(prev => ({ ...prev, scoreRuleItems: (prev.scoreRuleItems || []).filter(it => it.id !== item.id) }))
-                                  }
-                                }}>删除</button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="mt-3 space-y-2">
-                      <button onClick={() => {
-                        const newItem: ScoreRuleItem = { id: `sr-${Date.now()}`, name: "", desc: "", rule: "", weight: 0 }
-                        if (editingRubricId) {
-                          setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: [...(s.scoreRuleItems || []), newItem] } : s))
-                        } else {
-                          setLocalDraft(prev => ({ ...prev, scoreRuleItems: [...(prev.scoreRuleItems || []), newItem] }))
-                        }
-                      }} className="w-full py-3 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-primary/40 hover:text-primary transition-colors flex items-center justify-center gap-1">
-                        <Plus className="h-4 w-4" />添加评价项
-                      </button>
-                      {(draftScheme.scoreRuleItems || []).length > 0 && (
-                        <div className="flex justify-end text-xs items-center gap-1">
-                          <span className="text-gray-500">分值合计：</span>
-                          <span className={cn("font-semibold", ((draftScheme.scoreRuleItems || []).reduce((sum, it) => sum + (it.weight || 0), 0)) === 100 ? "text-green-600" : "text-red-500")}>
-                            {(draftScheme.scoreRuleItems || []).reduce((sum, it) => sum + (it.weight || 0), 0)}%
-                          </span>
-                          {((draftScheme.scoreRuleItems || []).reduce((sum, it) => sum + (it.weight || 0), 0)) !== 100 && (
-                            <span className="text-red-500">⚠️（需等于100%）</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    {(draftScheme.scoreRuleItems || []).length === 0 && (
-                      <div className="text-center text-gray-400 py-8">
-                        <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">尚未添加评价项</p>
-                        <p className="text-xs mt-1">点击上方按钮添加第一个评价项</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <Button size="sm" className="text-xs h-8" onClick={() => {
-                    if (editingRubricId) {
-                      setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, points: info.points.map(p => ({ ...p })) } : s))
-                    } else {
-                      saveRubricToLibrary(null, { name: draftScheme.name || "新建评价标准", types: draftScheme.types, desc: "", mode: draftScheme.mode, scoreRuleItems: draftScheme.scoreRuleItems })
-                    }
-                    setView("list")
-                    setEditingRubricId(null)
-                  }}>
-                    保存
-                  </Button>
-                  <Button size="sm" variant="outline" className="text-xs h-8" onClick={() => { setSaveTemplateDialogOpen(true); setSaveTemplateMode("new"); setSelectedReplaceTemplateId(null); }}>
-                    保存到模板
-                  </Button>
-                </div>
-                <Dialog open={saveTemplateDialogOpen} onOpenChange={setSaveTemplateDialogOpen}>
-                  <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                      <PrdAnnotation data={getAnnotation("dialog-save-template")}><DialogTitle>保存到模板</DialogTitle></PrdAnnotation>
-                    </DialogHeader>
-                    <div className="space-y-4 py-2">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setSaveTemplateMode("new")}
-                          className={cn(
-                            "flex-1 px-3 py-2 rounded-lg text-xs border transition-all",
-                            saveTemplateMode === "new" ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-500 hover:border-gray-300"
-                          )}
-                        >
-                          新增模板
-                        </button>
-                        <button
-                          onClick={() => setSaveTemplateMode("replace")}
-                          className={cn(
-                            "flex-1 px-3 py-2 rounded-lg text-xs border transition-all",
-                            saveTemplateMode === "replace" ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-500 hover:border-gray-300"
-                          )}
-                        >
-                          替换现有模板
-                        </button>
-                      </div>
-                      {saveTemplateMode === "new" ? (
-                        <div>
-                          <Label className="text-xs text-gray-500">模板名称</Label>
-                          <Input value={draftScheme.name} onChange={e => {
-                            if (editingRubricId) {
-                              setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, name: e.target.value } : s))
-                            } else {
-                              setLocalDraft(prev => ({ ...prev, name: e.target.value }))
-                            }
-                          }} className="mt-1 text-sm" placeholder="输入模板名称" />
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <Label className="text-xs text-gray-500">选择要替换的模板</Label>
-                          <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                            {rubricLibrary.map(scheme => (
-                              <div
-                                key={scheme.id}
-                                onClick={() => setSelectedReplaceTemplateId(scheme.id)}
-                                className={cn(
-                                  "p-3 rounded-lg border cursor-pointer transition-all",
-                                  selectedReplaceTemplateId === scheme.id ? "border-primary bg-primary/5" : "border-gray-200 hover:border-gray-300"
-                                )}
-                              >
-                                <p className="text-sm font-medium">{scheme.name}</p>
-                                <p className="text-xs text-gray-400 mt-0.5">{scheme.mode === "rubric" ? "评价量规" : "评分规则"}</p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <DialogFooter>
-                      <Button variant="outline" size="sm" className="text-xs" onClick={() => setSaveTemplateDialogOpen(false)}>取消</Button>
-                      <Button size="sm" className="text-xs" onClick={() => {
-                        if (saveTemplateMode === "new") {
-                          saveRubricToLibrary(null, { name: draftScheme.name || "新建评价标准", types: draftScheme.types, desc: "", mode: draftScheme.mode, scoreRuleItems: draftScheme.scoreRuleItems })
-                        } else if (selectedReplaceTemplateId) {
-                          setRubricLibrary(prev => prev.map(s => s.id === selectedReplaceTemplateId ? { ...s, points: info.points.map(p => ({ ...p })), mode: draftScheme.mode, scoreRuleItems: draftScheme.scoreRuleItems || [] } : s))
-                        }
-                        setSaveTemplateDialogOpen(false)
-                        setView("list")
-                        setEditingRubricId(null)
-                      }} disabled={saveTemplateMode === "replace" && !selectedReplaceTemplateId}>
-                        确认保存
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-                <Dialog open={gradeMappingDialogOpen} onOpenChange={v => !v && setGradeMappingDialogOpen(false)}>
-                  <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <PrdAnnotation data={getAnnotation("dialog-edit-grade-level")}><DialogTitle>编辑评分等级</DialogTitle></PrdAnnotation>
-                    </DialogHeader>
-                    {(() => {
-                      const ep = info.points.find(p => p.id === editingGradeMappingPointId)
-                      if (!ep || !ep.gradeMapping) return null
-                      const gm = ep.gradeMapping
-                      return (
-                        <div className="space-y-3 py-2">
-                          {gm.map((g, i) => (
-                            <div key={g.id} className="flex items-start gap-2 p-3 rounded-lg border bg-gray-50/50">
-                              <div className="flex-1 space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <Input value={g.grade} onChange={e => {
-                                    const newGm = gm.map(x => x.id === g.id ? { ...x, grade: e.target.value } : x)
-                                    updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
-                                  }} className="w-14 h-7 text-center text-xs font-semibold" placeholder="等级" />
-                                  <Input type="number" value={g.minScore} onChange={e => {
-                                    const newGm = gm.map(x => x.id === g.id ? { ...x, minScore: parseInt(e.target.value) || 0 } : x)
-                                    updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
-                                  }} className="w-16 h-7 text-center text-xs" min={0} max={100} />
-                                  <span className="text-gray-500 text-xs">-</span>
-                                  <Input type="number" value={g.maxScore} onChange={e => {
-                                    const newGm = gm.map(x => x.id === g.id ? { ...x, maxScore: parseInt(e.target.value) || 0 } : x)
-                                    updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
-                                  }} className="w-16 h-7 text-center text-xs" min={0} max={100} />
-                                  <span className="text-xs text-gray-500">分</span>
-                                </div>
-                                <Input value={g.remark || ""} onChange={e => {
-                                  const newGm = gm.map(x => x.id === g.id ? { ...x, remark: e.target.value } : x)
-                                  updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
-                                }} className="h-7 text-xs" placeholder="等级描述" />
-                              </div>
-                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-400 hover:text-red-500" onClick={() => {
-                                const newGm = gm.filter(x => x.id !== g.id)
-                                updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
-                              }}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
-                          <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => {
-                            const colors = ["bg-green-500", "bg-blue-500", "bg-yellow-500", "bg-red-500", "bg-purple-500", "bg-orange-500"]
-                            const newId = `grade-${Date.now()}`
-                            const newGm = [...gm, { id: newId, grade: "新等级", minScore: 0, maxScore: 100, color: colors[gm.length % colors.length], remark: "" }]
-                            updateEvalPoint(info.field, ep.id, { gradeMapping: newGm })
-                          }}>
-                            <Plus className="h-3.5 w-3.5 mr-1" />新增等级
-                          </Button>
-                        </div>
-                      )
-                    })()}
-                    <DialogFooter>
-                      <Button variant="outline" size="sm" onClick={() => setGradeMappingDialogOpen(false)}>关闭</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            )
-          }
-
-          if (view === "template") {
-            return (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setView("edit")}>
-                    <ChevronLeft className="h-3.5 w-3.5 mr-1" />返回评价标准编辑
-                  </Button>
-                </div>
-                <p className="text-sm font-medium">选择评价标准模板进行覆盖</p>
-                <div className="grid grid-cols-1 gap-3">
-                  {rubricLibrary.map(scheme => (
-                    <div
-                      key={scheme.id}
-                      className="p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer"
-                      onClick={() => {
-                        applyScheme(scheme.id)
-                        setView("edit")
-                      }}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <p className="text-sm font-semibold">{scheme.name}</p>
-                            <Badge variant="outline" className={cn("text-[10px]", scheme.mode === "rubric" ? "bg-purple-50 text-purple-600 border-purple-200" : "bg-blue-50 text-blue-600 border-blue-200")}>
-                              {scheme.mode === "rubric" ? "评价量规" : "评分规则"}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-gray-400 mb-2">{scheme.desc}</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {scheme.types.map(type => (
-                              <Badge key={type} variant="outline" className={cn("text-[10px]", evalSubTypeColors[type])}>{evalSubTypeLabels[type]}</Badge>
-                            ))}
-                          </div>
-                          <p className="text-xs text-gray-400 mt-1.5">{scheme.mode === "rubric" ? `${scheme.points.length} 个评价点` : `${scheme.scoreRuleItems?.length || 0} 个评价项`}</p>
-                        </div>
-                        <Button size="sm" className="h-7 text-[11px] px-2.5 shrink-0 mt-0.5" onClick={(e) => { e.stopPropagation(); applyScheme(scheme.id); setView("edit"); }}>
-                          使用此模板
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
-          }
-
-          return (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">选择评价标准方案</p>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { setView("template"); setEditingRubricId(null); }}>
-                    <BookOpen className="h-3.5 w-3.5 mr-1" />选择评价标准模板覆盖
-                  </Button>
-                  <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => enterEdit(null)}>
-                    <Plus className="h-3.5 w-3.5 mr-1" />添加评价标准
-                  </Button>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-3">
-                {rubricLibrary.map(scheme => {
-                  const isSelected = currentRubricId === scheme.id
-                  return (
-                    <div
-                      key={scheme.id}
-                      className={cn(
-                        "p-4 rounded-xl border transition-all cursor-pointer",
-                        isSelected
-                          ? "border-primary bg-white ring-1 ring-primary/20 shadow-sm"
-                          : "border-gray-200 bg-white hover:border-primary/40 hover:shadow-sm"
-                      )}
-                      onClick={() => {
-                        if (isSelected) {
-                          updateState({ [rubricIdField]: null } as any)
-                          setEvalPoints(info.field, [])
-                        } else {
-                          applyScheme(scheme.id)
-                        }
-                      }}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <p className="text-sm font-semibold">{scheme.name}</p>
-                            <Badge variant="outline" className={cn("text-[10px]", scheme.mode === "rubric" ? "bg-purple-50 text-purple-600 border-purple-200" : "bg-blue-50 text-blue-600 border-blue-200")}>
-                              {scheme.mode === "rubric" ? "评价量规" : "评分规则"}
-                            </Badge>
-                            {isSelected && (
-                              <div className="flex items-center gap-1 text-primary text-xs font-medium bg-primary/5 px-2 py-0.5 rounded-full">
-                                <CheckCircle2 className="h-3 w-3" />
-                                已选用
-                              </div>
-                            )}
-                          </div>
-                          <p className="text-xs text-gray-400 mb-2">{scheme.desc}</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {scheme.types.map(type => (
-                              <Badge key={type} variant="outline" className={cn("text-[10px]", evalSubTypeColors[type])}>{evalSubTypeLabels[type]}</Badge>
-                            ))}
-                          </div>
-                          <p className="text-xs text-gray-400 mt-1.5">{scheme.mode === "rubric" ? `${scheme.points.length} 个评价点` : `${scheme.scoreRuleItems?.length || 0} 个评价项`}</p>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
-                          <Button
-                            size="sm"
-                            variant={isSelected ? "outline" : "default"}
-                            className="h-7 text-[11px] px-2.5"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              if (isSelected) {
-                                updateState({ [rubricIdField]: null } as any)
-                                setEvalPoints(info.field, [])
-                              } else {
-                                applyScheme(scheme.id)
-                              }
-                            }}
-                          >
-                            {isSelected ? "取消选用" : "选用"}
-                          </Button>
-                          <Button variant="outline" size="sm" className="h-7 text-[11px] px-2.5" onClick={(e) => { e.stopPropagation(); enterEdit(scheme.id); }}>
-                            编辑
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-              {!currentRubricId && (
-                <div className="text-center text-gray-400 py-6">
-                  <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">尚未选用评价标准</p>
-                  <p className="text-xs mt-1">请从上方列表中选用一个评价标准方案</p>
-                </div>
-              )}
-            </div>
-          )
-        }
 
         const objectOptions = [
           { key: "individual", label: "个人", desc: "以个人为单位" },
@@ -7956,14 +8052,14 @@ function EditCardDialog({
             </Dialog>
 
             <Dialog open={erDialogOpen === "method"} onOpenChange={v => !v && setErDialogOpen(null)}>
-              <DialogContent className="sm:max-w-[72vw] max-w-[72vw] max-h-[90vh] overflow-y-auto">
+              <DialogContent className="sm:max-w-[85vw] max-w-[85vw] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <PrdAnnotation data={getAnnotation("dialog-eval-standard")}><DialogTitle>评价标准配置</DialogTitle></PrdAnnotation>
                   <DialogDescription>
                     配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的评价点与评分规则
                   </DialogDescription>
                 </DialogHeader>
-                {erDialogMethod && <MethodDialogContent methodKey={erDialogMethod} />}
+                {erDialogMethod && <MethodDialogContent methodKey={erDialogMethod} info={getMethodEvalInfo(erDialogMethod)} ctx={methodDialogCtx} />}
               </DialogContent>
             </Dialog>
 
@@ -8090,7 +8186,7 @@ function EditCardDialog({
             {/* Rubric Knowledge Points Multi-Select Dialog */}
             <Dialog open={rubricKpDialogOpen} onOpenChange={v => { if (!v) setRubricKpDialogOpen(false) }}>
               <DialogContent
-        className="sm:max-w-3xl max-h-[90vh] flex flex-col"
+        className="sm:max-w-[85vw] max-h-[90vh] flex flex-col"
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
@@ -8194,7 +8290,7 @@ function EditCardDialog({
 
             {/* Rubric Ability Points Multi-Select Dialog */}
             <Dialog open={rubricAbDialogOpen} onOpenChange={v => { if (!v) setRubricAbDialogOpen(false) }}>
-              <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
+              <DialogContent className="sm:max-w-[85vw] max-h-[90vh] flex flex-col">
                 <DialogHeader>
                   <PrdAnnotation data={getAnnotation("dialog-link-ability-eval")}><DialogTitle>关联考查能力点</DialogTitle></PrdAnnotation>
                   <DialogDescription>此处仅可选择任务关联的知识点/能力点，请先在任务中配置后选择。</DialogDescription>
