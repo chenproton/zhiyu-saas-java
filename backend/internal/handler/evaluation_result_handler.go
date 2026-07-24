@@ -211,7 +211,7 @@ func (h *EvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Request)
 		RETURNING id
 	`, tenantID, req.TaskID, req.SceneID, req.MethodKey, req.EvaluateeID,
 		req.EvaluatorID, req.EvaluatorType, req.MaxScore,
-		evalPointScores, objectiveAnswers, subjectiveContent, drawnQuestions, now).Scan(&id)
+		evalPointScores, objectiveAnswers, subjectiveContent, drawnQuestions, now, now).Scan(&id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to submit evaluation result")
 		return
