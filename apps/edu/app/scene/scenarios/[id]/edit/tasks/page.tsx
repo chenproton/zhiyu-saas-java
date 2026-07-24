@@ -1436,7 +1436,7 @@ export default function TasksEditPage() {
         </div>
 
       {/* Add Task Dialog */}
-      <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen} modal={false}>
+      <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <PrdAnnotation data={getAnnotation("editor-add-task")}>
@@ -8327,7 +8327,7 @@ function EditCardDialog({
             : "sm:max-w-[550px] max-h-[85vh]"
 
   return (
-    <Dialog open onOpenChange={onClose} modal={false}>
+    <Dialog open onOpenChange={onClose}>
       <DialogContent className={cn(
         "flex flex-col overflow-hidden",
         dialogSizeClass
