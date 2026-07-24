@@ -109,6 +109,26 @@ const methodDescMap: Record<string, string> = {
   homework: "上传作业材料",
 }
 
+const methodBgMap: Record<string, string> = {
+  paper: "#f0f9ff",
+  question_bank: "#faf5ff",
+  quiz: "#f0fdfa",
+  random_draw: "#eef2ff",
+  review: "#fff1f2",
+  outcome: "#f0fdf4",
+  homework: "#fffbeb",
+}
+
+const methodBorderMap: Record<string, string> = {
+  paper: "#bae6fd",
+  question_bank: "#ddd6fe",
+  quiz: "#99f6e4",
+  random_draw: "#c7d2fe",
+  review: "#fecdd3",
+  outcome: "#bbf7d0",
+  homework: "#fde68a",
+}
+
 /* ---------- page ---------- */
 
 export default function SceneLearnPage() {
@@ -124,6 +144,7 @@ export default function SceneLearnPage() {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(targetTaskId || null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [previewTab, setPreviewTab] = useState<"preview" | "manual" | "resources">("preview")
+  const [cardStyle, setCardStyle] = useState<"soft" | "tile">("soft")
 
   const [resourceMap, setResourceMap] = useState<Map<string, TaskResource>>(new Map())
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
@@ -476,13 +497,13 @@ export default function SceneLearnPage() {
                 {/* left column: 2 cards */}
                 <div className="flex-1 space-y-4">
                   {/* 任务说明书 */}
-                  <Card className="rounded-2xl border border-gray-300 shadow-[0_8px_32px_rgba(0,0,0,0.06)] overflow-hidden hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300 py-0 gap-0 h-[calc(100vh-12rem)] flex flex-col bg-white relative">
-                    <CardHeader className="relative border-b border-gray-200 px-6 py-5 shrink-0 bg-gray-50/60">
+                  <Card className="rounded-2xl border border-gray-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] transition-all duration-300 py-0 gap-0 flex flex-col bg-white">
+                    <CardHeader className="border-b border-gray-100 px-6 py-5 shrink-0 bg-white">
                       <CardTitle className="text-base flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-600 shadow-sm">
+                        <div className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500">
                           <FileText className="h-4 w-4" />
                         </div>
-                        <span className="text-gray-800 font-semibold">任务说明书</span>
+                        <span className="text-gray-800 font-semibold text-lg">任务说明书</span>
                         {activeTask.descriptionPdf && (
                           <button
                             onClick={() => addPreviewResource({ id: `pdf-${Date.now()}`, url: activeTask.descriptionPdf, name: "任务说明书 PDF", type: "pdf" } as TaskResource)}
@@ -493,13 +514,10 @@ export default function SceneLearnPage() {
                         )}
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="pt-5 flex-1 overflow-hidden bg-[#fafafa] relative">
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.035]">
-                        <FileText className="w-64 h-64 text-gray-400" />
-                      </div>
-                      <ScrollArea className="h-full relative z-10">
+                    <CardContent className="p-8 flex-1 bg-white">
+                      <ScrollArea className="h-full">
                         {(activeTask.detailedDescription || activeTask.description) ? (
-                          <div className="prose prose-sm max-w-none text-gray-600 whitespace-pre-line leading-relaxed">
+                          <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-line leading-loose">
                             {activeTask.detailedDescription || activeTask.description}
                           </div>
                         ) : (
@@ -511,11 +529,37 @@ export default function SceneLearnPage() {
 
                   {/* 任务测评 */}
                   <div className="space-y-4">
-                    <div className="flex items-center gap-3 px-1">
-                      <div className="w-9 h-9 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600">
-                        <ClipboardList className="h-4 w-4" />
+                    <div className="flex items-center justify-between px-1">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600">
+                          <ClipboardList className="h-4 w-4" />
+                        </div>
+                        <h3 className="text-base font-semibold text-gray-800">任务测评</h3>
                       </div>
-                      <h3 className="text-base font-semibold text-gray-800">任务测评</h3>
+                      <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                        <button
+                          onClick={() => setCardStyle("soft")}
+                          className={cn(
+                            "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                            cardStyle === "soft"
+                              ? "bg-white text-gray-800 shadow-sm"
+                              : "text-gray-500 hover:text-gray-700"
+                          )}
+                        >
+                          柔和色块
+                        </button>
+                        <button
+                          onClick={() => setCardStyle("tile")}
+                          className={cn(
+                            "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                            cardStyle === "tile"
+                              ? "bg-white text-gray-800 shadow-sm"
+                              : "text-gray-500 hover:text-gray-700"
+                          )}
+                        >
+                          磁贴入口
+                        </button>
+                      </div>
                     </div>
 
                     {taskEvalMethods.methods.length > 0 ? (
@@ -524,8 +568,9 @@ export default function SceneLearnPage() {
                           const method = evalMethods.find((m) => m.methodKey === mk)
                           if (!method) return null
                           const r = myResults.find((x) => x.methodKey === mk)
+                          const CardComponent = cardStyle === "soft" ? EvalMethodCardSoft : EvalMethodCardTile
                           return (
-                            <EvalMethodCard
+                            <CardComponent
                               key={mk}
                               method={method}
                               result={r}
@@ -626,17 +671,79 @@ export default function SceneLearnPage() {
 
 /* ---------- sub components ---------- */
 
-function EvalMethodCard({
-  method,
-  result,
-  sceneId,
-  taskId,
-}: {
+interface EvalMethodCardProps {
   method: TaskEvaluationMethod
   result?: SceneEvaluationResult
   sceneId: string
   taskId: string | null
-}) {
+}
+
+function EvalMethodCardSoft({ method, result, sceneId, taskId }: EvalMethodCardProps) {
+  const color = methodColorMap[method.methodKey] || "#94a3b8"
+  const bg = methodBgMap[method.methodKey] || "#f8fafc"
+  const border = methodBorderMap[method.methodKey] || "#e2e8f0"
+  const label = evalMethodLabels[method.methodKey] || method.methodKey
+  const Icon = methodIconMap[method.methodKey] || ClipboardList
+  const weight = method.weight || 0
+  const actionText = methodActionText[method.methodKey] || "开始测评"
+  const description = methodDescMap[method.methodKey] || "进入测评"
+  const showUpload = ["review", "outcome", "homework"].includes(method.methodKey)
+
+  return (
+    <Card
+      className="rounded-2xl overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 transition-all duration-300 py-0 gap-0 flex flex-col relative"
+      style={{ backgroundColor: bg, border: `1px solid ${border}` }}
+    >
+      <CardContent className="p-5 flex-1 flex flex-col relative z-10">
+        <div className="flex items-start gap-3">
+          <div
+            className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-sm"
+            style={{ color, border: `1px solid ${border}` }}
+          >
+            <Icon className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="text-sm font-semibold text-gray-800">{label}</h4>
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/80 border text-gray-600" style={{ borderColor: border }}>
+                权重 {Math.round(weight)}%
+              </span>
+            </div>
+            <p className="text-xs text-gray-600 mt-1">{description}</p>
+          </div>
+        </div>
+        <div className="mt-auto pt-5 flex items-center justify-end">
+          {result ? (
+            <span
+              className={cn(
+                "text-xs font-medium",
+                result.status === "evaluated" ? "text-green-600" : "text-amber-600"
+              )}
+            >
+              {result.status === "evaluated"
+                ? `得分 ${result.totalScore}/${result.maxScore}`
+                : "待评分"}
+            </span>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs gap-1 bg-white/80 hover:bg-white border-gray-300 text-gray-700 hover:text-gray-900"
+              asChild
+            >
+              <Link href={`/scene/landing/${sceneId}/evaluate?task=${taskId}&method=${method.methodKey}`}>
+                {showUpload ? <Upload className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                {actionText}
+              </Link>
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function EvalMethodCardTile({ method, result, sceneId, taskId }: EvalMethodCardProps) {
   const color = methodColorMap[method.methodKey] || "#94a3b8"
   const label = evalMethodLabels[method.methodKey] || method.methodKey
   const Icon = methodIconMap[method.methodKey] || ClipboardList
@@ -646,26 +753,20 @@ function EvalMethodCard({
   const showUpload = ["review", "outcome", "homework"].includes(method.methodKey)
 
   return (
-    <Card className="rounded-2xl border border-gray-200 shadow-[0_2px_12px_rgba(0,0,0,0.03)] overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 transition-all duration-300 py-0 gap-0 flex flex-col bg-[#fafafa] relative">
-      <div className="absolute top-3 right-3 opacity-[0.06] pointer-events-none">
-        <Icon className="w-16 h-16" style={{ color }} />
-      </div>
-      <CardContent className="p-5 flex-1 flex flex-col relative z-10">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center shrink-0" style={{ color }}>
-            <Icon className="h-5 w-5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <h4 className="text-sm font-semibold text-gray-800">{label}</h4>
-              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-500">
-                权重 {Math.round(weight)}%
-              </span>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">{description}</p>
-          </div>
+    <Card className="rounded-2xl border border-gray-200 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.03)] overflow-hidden hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 py-0 gap-0 flex flex-col">
+      <CardContent className="p-6 flex-1 flex flex-col items-center text-center">
+        <div
+          className="w-14 h-14 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-center mb-4"
+          style={{ color }}
+        >
+          <Icon className="h-7 w-7" />
         </div>
-        <div className="mt-auto pt-5 flex items-center justify-end">
+        <h4 className="text-sm font-semibold text-gray-800">{label}</h4>
+        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 mt-2">
+          权重 {Math.round(weight)}%
+        </span>
+        <p className="text-xs text-gray-500 mt-3">{description}</p>
+        <div className="mt-auto pt-5">
           {result ? (
             <span
               className={cn(
