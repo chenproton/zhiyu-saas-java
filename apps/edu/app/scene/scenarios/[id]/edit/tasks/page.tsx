@@ -648,7 +648,7 @@ export default function TasksEditPage() {
   const router = useRouter()
   const scenarioId = params.id as string
   const { toast } = useToast()
-  const { tenantId, orgNodeId } = useAuth()
+  const { tenantId, orgNodeId, user } = useAuth()
 
   const [existingScenario, setExistingScenario] = useState<any>(null)
   const [dataLoaded, setDataLoaded] = useState(false)
@@ -686,9 +686,7 @@ export default function TasksEditPage() {
           examApi.list({ limit: 1000 }),
         ])
 
-        // Populate module-level arrays with API data
-        scenarios.length = 0
-        scenarios.push(scenarioData as any)
+        // Populate module-level arrays with API data (scenarios array populated below with clone candidates)
         setPositions(posRes.items)
         setIndustries(indRes.items)
         setMajors(majRes.items)
@@ -814,6 +812,38 @@ export default function TasksEditPage() {
           states[t.id] = ts
         })
         setTaskStates(states)
+        // Fetch all scenarios and their tasks for the clone dialog
+        try {
+          const allScenariosRes = await scenarioApi.list({ limit: 1000 })
+          const allTasksRes = await taskApi.list({ limit: 1000 })
+          const scenarioNameMap = new Map<string, string>()
+          const scenarioMetaMap = new Map<string, { creatorId: string; coBuilderIds: string[]; status: string }>()
+          for (const s of allScenariosRes.items) {
+            scenarioNameMap.set(s.id, s.name)
+            scenarioMetaMap.set(s.id, { creatorId: s.creatorId, coBuilderIds: s.coBuilderIds || [], status: s.status })
+          }
+          const tasksByScenarioId = new Map<string, any[]>()
+          for (const t of allTasksRes.items) {
+            if (t.scenarioId === scenarioId) continue
+            const sName = scenarioNameMap.get(t.scenarioId) || "未知场景"
+            const sMeta = scenarioMetaMap.get(t.scenarioId) || { creatorId: "", coBuilderIds: [], status: "" }
+            const enhanced = { ...t, scenarioName: sName, scenarioCreatorId: sMeta.creatorId, scenarioCoBuilderIds: sMeta.coBuilderIds, scenarioStatus: sMeta.status }
+            if (!tasksByScenarioId.has(t.scenarioId)) tasksByScenarioId.set(t.scenarioId, [])
+            tasksByScenarioId.get(t.scenarioId)!.push(enhanced)
+          }
+          scenarios.length = 0
+          scenarios.push(scenarioData as any)
+          for (const s of allScenariosRes.items) {
+            if (s.id === scenarioId) continue
+            const tasksForScenario = tasksByScenarioId.get(s.id) || []
+            if (tasksForScenario.length > 0) {
+              scenarios.push({ ...s, tasks: tasksForScenario })
+            }
+          }
+        } catch (cloneLoadErr) {
+          console.error("Failed to load clone candidate tasks", cloneLoadErr)
+        }
+
         setDataLoaded(true)
       } catch (err) {
         console.error("Failed to load task data", err)
@@ -848,8 +878,17 @@ export default function TasksEditPage() {
   )
 
   const allTasks = useMemo(() =>
-    (scenarios as any[]).flatMap((s: any) => (s.tasks || []).map((t: any) => ({ ...t, scenarioName: s.name }))),
-    []
+    (scenarios as any[]).flatMap((s: any) => {
+      if (s.id === scenarioId) return []
+      return (s.tasks || []).map((t: any) => ({
+        ...t,
+        scenarioName: s.name,
+        scenarioCreatorId: t.scenarioCreatorId || s.creatorId || "",
+        scenarioCoBuilderIds: t.scenarioCoBuilderIds || s.coBuilderIds || [],
+        scenarioStatus: t.scenarioStatus || s.status || "",
+      }))
+    }),
+    [scenarioId]
   )
 
   const totalWeight = Object.values(taskStates).reduce((sum, s) => sum + s.weight, 0)
@@ -976,6 +1015,7 @@ export default function TasksEditPage() {
       id: `task-${cloneMode}-${Date.now()}-${i}`,
       order: tasks.length + i + 1,
       isReferenced: cloneMode === "reference",
+      sourceScenarioId: t.scenarioId,
       sourceScenarioName: cloneMode === "reference" ? t.scenarioName : undefined,
     }))
     setTasks([...tasks, ...newTasks])
@@ -1500,9 +1540,9 @@ export default function TasksEditPage() {
               </div>
               {allTasks
                 .filter(t => {
-                  if (cloneTab === "my") return t.scenarioName?.includes("场景") || true
-                  if (cloneTab === "collab") return t.scenarioName?.includes("协作") || false
-                  if (cloneTab === "public") return t.scenarioName?.includes("公共") || false
+                  if (cloneTab === "my") return t.scenarioCreatorId === (user?.id || "")
+                  if (cloneTab === "collab") return Array.isArray(t.scenarioCoBuilderIds) && t.scenarioCoBuilderIds.includes(user?.id || "")
+                  if (cloneTab === "public") return t.scenarioStatus === "published" && t.scenarioCreatorId !== (user?.id || "")
                   return true
                 })
                 .filter(t => !cloneSearch || t.name.includes(cloneSearch) || t.code?.includes(cloneSearch) || t.scenarioName?.includes(cloneSearch))
