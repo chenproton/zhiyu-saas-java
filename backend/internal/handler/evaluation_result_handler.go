@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -135,6 +136,7 @@ func (h *EvaluationResultHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
+		log.Printf("List evaluation results query error: %v", err)
 		respondError(w, http.StatusInternalServerError, "failed to list evaluation results")
 		return
 	}
@@ -142,6 +144,7 @@ func (h *EvaluationResultHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, err := h.scanResultRows(rows)
 	if err != nil {
+		log.Printf("List evaluation results scan error: %v", err)
 		respondError(w, http.StatusInternalServerError, "failed to scan evaluation results")
 		return
 	}

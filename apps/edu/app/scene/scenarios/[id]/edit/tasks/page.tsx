@@ -1745,8 +1745,25 @@ function BankQuestionSelectorPanel({
   const [bankSearch, setBankSearch] = useState("")
   const [questionSearch, setQuestionSearch] = useState("")
   const [scoreDialogOpen, setScoreDialogOpen] = useState(false)
+  const [preloadedQuestions, setPreloadedQuestions] = useState<any[]>([])
 
   useEffect(() => { loadBanks() }, [])
+
+  useEffect(() => {
+    const missingIds = selectedIds.filter(qid => !questionCache.has(qid) && !preloadedQuestions.some(q => q.id === qid))
+    if (missingIds.length === 0) return
+    Promise.all(
+      missingIds.map(async (qid) => {
+        try {
+          return await questionApi.get(qid) as unknown as any
+        } catch (_) { return null }
+      })
+    ).then(results => {
+      const loaded = results.filter(Boolean)
+      loaded.forEach(q => questionCache.set(q.id, q))
+      setPreloadedQuestions(prev => [...prev, ...loaded])
+    })
+  }, [selectedIds, preloadedQuestions])
 
   const loadBanks = async () => {
     setLoadingBanks(true)
@@ -1815,12 +1832,13 @@ function BankQuestionSelectorPanel({
     })
   }
 
-  // Resolve a question by id — first from current bank, then cache, then allQuestions
-  const resolveQuestion = (qid: string) => {
+  // Resolve a question by id — first from current bank, then preloaded/cache, then allQuestions
+  const resolveQuestion = useCallback((qid: string) => {
     return bankQuestions.find((bq: any) => bq.id === qid)
+      || preloadedQuestions.find((q: any) => q.id === qid)
       || questionCache.get(qid)
       || allQuestions.find((aq: any) => aq.id === qid)
-  }
+  }, [bankQuestions, preloadedQuestions])
 
   // Build minimal ExamQuestion-like objects for ScoreConfigDialog
   const selectedQuestionItems = useMemo(() => {
@@ -1836,7 +1854,7 @@ function BankQuestionSelectorPanel({
         order: 0,
       }
     })
-  }, [selectedIds, questionScores])
+  }, [selectedIds, questionScores, resolveQuestion])
 
   return (
     <>
