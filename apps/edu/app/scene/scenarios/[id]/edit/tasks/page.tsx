@@ -2811,6 +2811,14 @@ function EditCardDialog({
           abilityPointIds: ep.abilityPointIds,
         }
       }
+      const enabledReviewSteps = reviewSteps.filter(s => s.enabled).map(s => ({
+        id: s.id,
+        label: s.label,
+        desc: s.desc,
+        enabled: s.enabled,
+        subjectType: s.subjectType,
+        weight: s.weight,
+      }))
       updateTask({
         evalPoints: {
           randomDraw: state.randomDrawEvalPoints.map(toTaskEvalPoint),
@@ -2818,16 +2826,9 @@ function EditCardDialog({
           paper: state.paperEvalPoints.map(toTaskEvalPoint),
           questionBank: state.questionBankEvalPoints.map(toTaskEvalPoint),
         },
-        reviewSteps: reviewSteps.filter(s => s.enabled).map(s => ({
-          id: s.id,
-          label: s.label,
-          desc: s.desc,
-          enabled: s.enabled,
-          subjectType: s.subjectType,
-          weight: s.weight,
-        })),
+        reviewSteps: enabledReviewSteps,
       })
-      // Ensure newly-enabled methods have default resource configs
+      // Ensure newly-enabled methods have default resource configs and sync review steps to task state
       const updatedRC = { ...state.methodResourceConfigs }
       state.evaluationMethods.forEach(mk => {
         if (mk === "random_draw") updatedRC[mk] = { ...DEFAULT_RANDOM_DRAW_RESOURCE_CONFIG, ...updatedRC[mk] }
@@ -2835,7 +2836,7 @@ function EditCardDialog({
         if (mk === "outcome") updatedRC[mk] = { ...DEFAULT_OUTCOME_RESOURCE_CONFIG, ...updatedRC[mk] }
         if (mk === "homework") updatedRC[mk] = { ...DEFAULT_HOMEWORK_RESOURCE_CONFIG, ...updatedRC[mk] }
       })
-      updateState({ methodResourceConfigs: updatedRC })
+      updateState({ methodResourceConfigs: updatedRC, reviewSteps: enabledReviewSteps })
       // Persist evaluation methods (including resource config) to backend immediately
       let currentVersion = state.evalMethodVersion
       let methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC }, { reviewSteps })
