@@ -2670,6 +2670,8 @@ function EditCardDialog({
   const [newPaperTotalScore, setNewPaperTotalScore] = useState(100)
 
   const [mockResReview, setMockResReview] = useState({ materialType: "project_report", submitFormatDesc: "请提交 PDF 格式的项目报告，包含完整的项目背景、实现方案、测试结果和总结反思。", deadlineDays: 7, allowResubmit: false, venueResources: "多媒体教室（容纳30人）、投影仪、白板、评委席桌椅、计时器、签到表、评分表及文具。", requiresMaterial: true })
+  const [mockResOutcome, setMockResOutcome] = useState({ materialType: "project_report", submitFormatDesc: "请提交 PDF 格式的成果材料，包含完整的项目背景、实现方案、测试结果和总结反思。", deadlineDays: 7, allowResubmit: false, venueResources: "多媒体教室（容纳30人）、投影仪、白板、评委席桌椅、计时器、签到表、评分表及文具。", requiresMaterial: true })
+  const [mockResHomework, setMockResHomework] = useState({ materialType: "homework_file", submitFormatDesc: "请提交 PDF 或 DOCX 格式的作业文件。", deadlineDays: 7, allowResubmit: false, venueResources: "", requiresMaterial: true })
   const [reviewSteps, setReviewSteps] = useState([
     { id: "rs-1", label: "初评", desc: "由指导教师进行第一轮评审", enabled: true, subjectType: "teacher" as string | null, weight: 40 },
     { id: "rs-2", label: "复评", desc: "由专家组进行第二轮复核", enabled: false, subjectType: null as string | null, weight: 30 },
@@ -2725,7 +2727,9 @@ function EditCardDialog({
       const updatedRC = { ...state.methodResourceConfigs }
       state.evaluationMethods.forEach(mk => {
         if (mk === "random_draw") updatedRC[mk] = { ...updatedRC[mk], ...mockResRandomDraw }
-        if (mk === "review" || mk === "outcome" || mk === "homework") updatedRC[mk] = { ...updatedRC[mk], ...mockResReview }
+        if (mk === "review") updatedRC[mk] = { ...updatedRC[mk], ...mockResReview }
+        if (mk === "outcome") updatedRC[mk] = { ...updatedRC[mk], ...mockResOutcome }
+        if (mk === "homework") updatedRC[mk] = { ...updatedRC[mk], ...mockResHomework }
       })
       updateState({ methodResourceConfigs: updatedRC })
       // Persist evaluation methods (including resource config) to backend immediately
@@ -6193,7 +6197,9 @@ function EditCardDialog({
           if (type === "resource") {
             const rc = state.methodResourceConfigs[methodKey] || {}
             if (methodKey === "random_draw" && Object.keys(rc).length > 0) setMockResRandomDraw(prev => ({ ...prev, ...rc }))
-            if ((methodKey === "review" || methodKey === "outcome" || methodKey === "homework") && Object.keys(rc).length > 0) setMockResReview(prev => ({ ...prev, ...rc }))
+            if (methodKey === "review" && Object.keys(rc).length > 0) setMockResReview(prev => ({ ...prev, ...rc }))
+            if (methodKey === "outcome" && Object.keys(rc).length > 0) setMockResOutcome(prev => ({ ...prev, ...rc }))
+            if (methodKey === "homework" && Object.keys(rc).length > 0) setMockResHomework(prev => ({ ...prev, ...rc }))
           }
           setErDialogMethod(methodKey)
           setErDialogOpen(type)

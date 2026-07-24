@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -74,6 +75,7 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 		src.ProfessionIDs, src.BatchID, src.Difficulty, src.Version, src.Background,
 		src.DeliveryGoal, claims.UserID, coalesceStringSlice(src.CoBuilderIDs), tenantID)
 	if err != nil {
+		log.Printf("[CloneScenario] failed to insert scenario: %v", err)
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "场景方案代码已存在，请使用其他代码")
 			return
@@ -118,6 +120,7 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 				dependencyIDs, false, nil,
 				knowledgePointIDs, abilityPointIDs, resourceIDs, evalData, tenantID)
 			if err != nil {
+				log.Printf("[CloneScenario] failed to insert task: %v", err)
 				respondError(w, http.StatusInternalServerError, "failed to clone task")
 				return
 			}
