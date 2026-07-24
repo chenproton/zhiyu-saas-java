@@ -27,14 +27,14 @@ type CreateRandomDrawQuestionRequest struct {
 	Name        string  `json:"name"`
 	Description *string `json:"description"`
 	Answer      *string `json:"answer"`
-	Major       *string `json:"major"`
+	MajorID     *string `json:"majorId"`
 }
 
 type UpdateRandomDrawQuestionRequest struct {
 	Name        string  `json:"name"`
 	Description *string `json:"description"`
 	Answer      *string `json:"answer"`
-	Major       *string `json:"major"`
+	MajorID     *string `json:"majorId"`
 }
 
 func (h *RandomDrawQuestionHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +44,7 @@ func (h *RandomDrawQuestionHandler) List(w http.ResponseWriter, r *http.Request)
 	}
 
 	search := r.URL.Query().Get("search")
-	major := r.URL.Query().Get("major")
+	majorID := r.URL.Query().Get("majorId")
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
 
@@ -61,26 +61,27 @@ func (h *RandomDrawQuestionHandler) List(w http.ResponseWriter, r *http.Request)
 	args := []interface{}{}
 	argIdx := 1
 
-	if major != "" {
-		where = append(where, "major = $"+itoa(argIdx))
-		args = append(args, major)
+	if majorID != "" {
+		where = append(where, "rdq.major_id = $"+itoa(argIdx))
+		args = append(args, majorID)
 		argIdx++
 	}
 	if search != "" {
-		where = append(where, "(name ILIKE $"+itoa(argIdx)+" OR description ILIKE $"+itoa(argIdx)+" OR major ILIKE $"+itoa(argIdx)+")")
+		where = append(where, "(rdq.name ILIKE $"+itoa(argIdx)+" OR rdq.description ILIKE $"+itoa(argIdx)+" OR m.name ILIKE $"+itoa(argIdx)+")")
 		args = append(args, "%"+search+"%")
 		argIdx++
 	}
 
-	countQuery := "SELECT COUNT(*) FROM random_draw_questions WHERE " + strings.Join(where, " AND ")
+	countQuery := "SELECT COUNT(*) FROM random_draw_questions rdq LEFT JOIN majors m ON m.id = rdq.major_id WHERE " + strings.Join(where, " AND ")
 	var total int
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT id, name, description, answer, major, created_at, updated_at
-		FROM random_draw_questions
+		SELECT rdq.id, rdq.name, rdq.description, rdq.answer, rdq.major_id, m.name AS major_name, rdq.created_at, rdq.updated_at
+		FROM random_draw_questions rdq
+		LEFT JOIN majors m ON m.id = rdq.major_id
 		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
+		ORDER BY rdq.created_at DESC
 		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
 	args = append(args, limit, offset)
 
@@ -139,9 +140,9 @@ func (h *RandomDrawQuestionHandler) Create(w http.ResponseWriter, r *http.Reques
 
 	id := uuid.NewString()
 	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO random_draw_questions (id, tenant_id, name, description, answer, major)
+		INSERT INTO random_draw_questions (id, tenant_id, name, description, answer, major_id)
 		VALUES ($1, $2, $3, $4, $5, $6)
-	`, id, tenantID, req.Name, req.Description, req.Answer, req.Major)
+	`, id, tenantID, req.Name, req.Description, req.Answer, req.MajorID)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "现场问答题名称已存在")
@@ -179,9 +180,9 @@ func (h *RandomDrawQuestionHandler) Update(w http.ResponseWriter, r *http.Reques
 	}
 
 	_, err := h.DB.Exec(r.Context(), `
-		UPDATE random_draw_questions SET name = $1, description = $2, answer = $3, major = $4, updated_at = NOW()
+		UPDATE random_draw_questions SET name = $1, description = $2, answer = $3, major_id = $4, updated_at = NOW()
 		WHERE id = $5
-	`, req.Name, req.Description, req.Answer, req.Major, id)
+	`, req.Name, req.Description, req.Answer, req.MajorID, id)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "现场问答题名称已存在")
@@ -217,20 +218,23 @@ func (h *RandomDrawQuestionHandler) Delete(w http.ResponseWriter, r *http.Reques
 
 func (h *RandomDrawQuestionHandler) fetchQuestion(ctx context.Context, id string) (domain.RandomDrawQuestion, error) {
 	var q domain.RandomDrawQuestion
-	var description, answer, major *string
+	var description, answer, majorID, majorName *string
 
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, description, answer, major, created_at, updated_at
-		FROM random_draw_questions WHERE id = $1
+		SELECT rdq.id, rdq.name, rdq.description, rdq.answer, rdq.major_id, m.name AS major_name, rdq.created_at, rdq.updated_at
+		FROM random_draw_questions rdq
+		LEFT JOIN majors m ON m.id = rdq.major_id
+		WHERE rdq.id = $1
 	`, id).Scan(
-		&q.ID, &q.Name, &description, &answer, &major, &q.CreatedAt, &q.UpdatedAt,
+		&q.ID, &q.Name, &description, &answer, &majorID, &majorName, &q.CreatedAt, &q.UpdatedAt,
 	)
 	if err != nil {
 		return q, err
 	}
 	q.Description = description
 	q.Answer = answer
-	q.Major = major
+	q.MajorID = majorID
+	q.MajorName = majorName
 	return q, nil
 }
 
@@ -238,15 +242,16 @@ func (h *RandomDrawQuestionHandler) scanRows(rows pgx.Rows) ([]domain.RandomDraw
 	items := make([]domain.RandomDrawQuestion, 0)
 	for rows.Next() {
 		var q domain.RandomDrawQuestion
-		var description, answer, major *string
+		var description, answer, majorID, majorName *string
 		if err := rows.Scan(
-			&q.ID, &q.Name, &description, &answer, &major, &q.CreatedAt, &q.UpdatedAt,
+			&q.ID, &q.Name, &description, &answer, &majorID, &majorName, &q.CreatedAt, &q.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
 		q.Description = description
 		q.Answer = answer
-		q.Major = major
+		q.MajorID = majorID
+		q.MajorName = majorName
 		items = append(items, q)
 	}
 	return items, nil
