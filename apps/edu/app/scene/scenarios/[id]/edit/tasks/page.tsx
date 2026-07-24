@@ -1987,7 +1987,7 @@ function BankQuestionSelectorPanel({
       <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-medium text-gray-700">已选择题目 ({selectedIds.length}{maxCount ? `/${maxCount}` : ""})</p>
-          {field === "questionBankQuestions" && selectedIds.length > 0 && onUpdateQuestionScore && (
+          {(field === "questionBankQuestions" || field === "quizQuestions") && selectedIds.length > 0 && onUpdateQuestionScore && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2">
@@ -2028,7 +2028,7 @@ function BankQuestionSelectorPanel({
                     <div className="flex items-center gap-1.5">
                       <Badge className={`text-[10px] text-white hover:opacity-90 ${typeColorMap[q.type] || ""}`}>{questionTypeLabels[q.type] || q.type}</Badge>
                       <span className="text-[10px] text-gray-400">{difficultyLabels[q.difficulty] || q.difficulty}</span>
-                      {field === "questionBankQuestions" && onUpdateQuestionScore ? (
+                      {(field === "questionBankQuestions" || field === "quizQuestions") && onUpdateQuestionScore ? (
                         <div className="flex items-center gap-1 ml-auto">
                           <span className="text-[10px] text-gray-400">分值</span>
                           <Input
@@ -2055,7 +2055,7 @@ function BankQuestionSelectorPanel({
         </div>
       </div>
     </div>
-    {field === "questionBankQuestions" && onUpdateQuestionScore && (
+    {(field === "questionBankQuestions" || field === "quizQuestions") && onUpdateQuestionScore && (
       <ScoreConfigDialog
         open={scoreDialogOpen}
         onOpenChange={setScoreDialogOpen}
@@ -2591,6 +2591,7 @@ function EditCardDialog({
   const [newPaperQuestionCount, setNewPaperQuestionCount] = useState(10)
   const [newPaperTotalScore, setNewPaperTotalScore] = useState(100)
   const [mockResQuestionBank, setMockResQuestionBank] = useState({ questionCount: 10, difficulty: "mixed", totalScore: 100, autoGenerate: false, timeLimit: 90, typeWeights: {} as Record<string, number>, allowRetake: false, retakeCount: 1, shuffleQuestions: true, showResult: true, questionScores: {} as Record<string, number> })
+  const [quizQuestionScores, setQuizQuestionScores] = useState<Record<string, number>>({})
   const [mockResReview, setMockResReview] = useState({ materialType: "project_report", submitFormatDesc: "请提交 PDF 格式的项目报告，包含完整的项目背景、实现方案、测试结果和总结反思。", deadlineDays: 7, allowResubmit: false, venueResources: "多媒体教室（容纳30人）、投影仪、白板、评委席桌椅、计时器、签到表、评分表及文具。", requiresMaterial: true })
   const [reviewSteps, setReviewSteps] = useState([
     { id: "rs-1", label: "初评", desc: "由指导教师进行第一轮评审", enabled: true, subjectType: "teacher" as string | null, weight: 40 },
@@ -7654,6 +7655,8 @@ function EditCardDialog({
                     selectedIds={state.quizQuestions}
                     maxCount={30}
                     onToggleQuestion={(qid) => toggleQuestion(qid, "quizQuestions")}
+                    questionScores={quizQuestionScores}
+                    onUpdateQuestionScore={(qid, score) => setQuizQuestionScores(prev => ({ ...prev, [qid]: score }))}
                   />
                 ) : erDialogMethod === "random_draw" ? (
                   <RandomDrawResourcePanel
