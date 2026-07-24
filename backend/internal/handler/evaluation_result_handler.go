@@ -240,15 +240,16 @@ func (h *EvaluationResultHandler) Grade(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if _, err := h.fetchResult(r.Context(), id); err != nil {
+	res, err := h.fetchResult(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "evaluation result not found")
 		return
 	}
 
 	evalPointScores := jsonRawMessageToJSONMap(req.EvalPointScores)
 	drawnQuestions := jsonRawMessageToJSONMap(req.DrawnQuestions)
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE scene_evaluation_results SET total_score = $1, comment = $2, eval_point_scores = $3, drawn_questions = $4, status = 'evaluated', graded_at = NOW(), graded_by = $5
+	_, err = h.DB.Exec(r.Context(), `
+		UPDATE scene_evaluation_results SET total_score = $1, comment = $2, eval_point_scores = $3, drawn_questions = $4, status = 'evaluated', graded_at = NOW(), graded_by = $5, updated_at = NOW()
 		WHERE id = $6
 	`, req.Score, req.Comment, evalPointScores, drawnQuestions, claims.UserID, id)
 	if err != nil {
@@ -256,7 +257,9 @@ func (h *EvaluationResultHandler) Grade(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	res, _ := h.fetchResult(r.Context(), id)
+	h.syncExamResultScore(r.Context(), res.TaskID, res.MethodKey, res.EvaluateeID, req.Score)
+
+	res, _ = h.fetchResult(r.Context(), id)
 	respondJSON(w, http.StatusOK, res)
 }
 
@@ -280,17 +283,33 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 	}
 	defer tx.Rollback(r.Context())
 
+	type gradeTarget struct {
+		taskID      string
+		methodKey   string
+		evaluateeID string
+		score       float64
+	}
+	var targets []gradeTarget
+
 	count := 0
 	for _, item := range req.Items {
+		res, err := h.fetchResult(r.Context(), item.ID)
+		if err != nil {
+			respondError(w, http.StatusNotFound, "evaluation result not found")
+			return
+		}
+
 		evalPointScores := jsonRawMessageToJSONMap(item.EvalPointScores)
-		_, err := tx.Exec(r.Context(), `
-			UPDATE scene_evaluation_results SET total_score = $1, comment = $2, eval_point_scores = $3, status = 'evaluated', graded_at = NOW(), graded_by = $4
+		_, err = tx.Exec(r.Context(), `
+			UPDATE scene_evaluation_results SET total_score = $1, comment = $2, eval_point_scores = $3, status = 'evaluated', graded_at = NOW(), graded_by = $4, updated_at = NOW()
 			WHERE id = $5
 		`, item.Score, item.Comment, evalPointScores, claims.UserID, item.ID)
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, "failed to batch grade")
 			return
 		}
+
+		targets = append(targets, gradeTarget{res.TaskID, res.MethodKey, res.EvaluateeID, item.Score})
 		count++
 	}
 
@@ -299,7 +318,33 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	for _, t := range targets {
+		h.syncExamResultScore(r.Context(), t.taskID, t.methodKey, t.evaluateeID, t.score)
+	}
+
 	respondJSON(w, http.StatusOK, map[string]int{"count": count})
+}
+
+func (h *EvaluationResultHandler) syncExamResultScore(ctx context.Context, taskID, methodKey, evaluateeID string, score float64) {
+	if methodKey != "paper" && methodKey != "question_bank" && methodKey != "quiz" {
+		return
+	}
+
+	var examResultID string
+	err := h.DB.QueryRow(ctx, `
+		SELECT er.id
+		FROM exam_results er
+		JOIN exam_usages eu ON er.exam_usage_id = eu.id
+		JOIN task_evaluation_methods tem ON tem.task_id = ANY(eu.target_ids)
+		WHERE tem.task_id = $1 AND tem.method_key = $2 AND er.user_id = $3
+		ORDER BY er.submit_time DESC NULLS LAST, er.created_at DESC
+		LIMIT 1
+	`, taskID, methodKey, evaluateeID).Scan(&examResultID)
+	if err != nil || examResultID == "" {
+		return
+	}
+
+	_, _ = h.DB.Exec(ctx, `UPDATE exam_results SET score = $1, updated_at = NOW() WHERE id = $2`, score, examResultID)
 }
 
 func (h *EvaluationResultHandler) fetchResult(ctx context.Context, id string) (domain.SceneEvaluationResult, error) {

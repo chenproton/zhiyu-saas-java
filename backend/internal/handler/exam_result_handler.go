@@ -3,9 +3,11 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -150,12 +152,12 @@ func (h *ExamResultHandler) submit(ctx context.Context, tenantID, userID, usageI
 	var majorID *string
 	_ = h.DB.QueryRow(ctx, `SELECT name FROM users WHERE id = $1`, userID).Scan(&studentName)
 	_ = h.DB.QueryRow(ctx, `
-		SELECT COALESCE(o.name, '') AS class_name, COALESCE(m.name, '') AS major_name, u.major_id
+		SELECT COALESCE(o.name, '') AS class_name, COALESCE(m.name, '') AS major_name, u.major_id, COALESCE(u.grade, '') AS grade
 		FROM users u
 		LEFT JOIN organizations o ON o.id = u.org_node_id
 		LEFT JOIN majors m ON m.id = u.major_id
 		WHERE u.id = $1
-	`, userID).Scan(&className, &majorName, &majorID)
+	`, userID).Scan(&className, &majorName, &majorID, &grade)
 
 	var majorNamePtr *string
 	if majorName != "" {
@@ -164,7 +166,7 @@ func (h *ExamResultHandler) submit(ctx context.Context, tenantID, userID, usageI
 
 	answersJSON := domain.JSONMap(answers)
 	var resultID string
-	var submitTime, createdAt interface{}
+	var submitTime, createdAt time.Time
 	err = h.DB.QueryRow(ctx, `
 		INSERT INTO exam_results (tenant_id, exam_usage_id, user_id, student_name, class_name, grade, major_id, score, total_score, is_pass, answers)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -192,6 +194,8 @@ func (h *ExamResultHandler) submit(ctx context.Context, tenantID, userID, usageI
 		TotalScore:  roundScore(totalScore),
 		IsPass:      isPass,
 		Answers:     answersJSON,
+		SubmitTime:  submitTime,
+		CreatedAt:   createdAt,
 	}, nil
 }
 
@@ -280,6 +284,7 @@ func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenan
 		WHERE eu.id = $1 AND tem.method_key IN ('paper', 'question_bank', 'quiz') AND tem.tenant_id = $2
 	`, usageID, tenantID)
 	if err != nil {
+		log.Printf("syncSceneEvaluationResult query failed: usage=%s err=%v", usageID, err)
 		return
 	}
 	defer rows.Close()
@@ -292,13 +297,32 @@ func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenan
 	for rows.Next() {
 		var methodKey, taskID string
 		if err := rows.Scan(&methodKey, &taskID); err != nil {
+			log.Printf("syncSceneEvaluationResult scan failed: usage=%s err=%v", usageID, err)
 			continue
 		}
-		_, _ = h.DB.Exec(ctx, `
-			INSERT INTO scene_evaluation_results (tenant_id, task_id, method_key, evaluatee_id, status, total_score, max_score, objective_answers)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+
+		var sceneID *string
+		_ = h.DB.QueryRow(ctx, `SELECT scene_id FROM scenario_tasks WHERE id = $1`, taskID).Scan(&sceneID)
+
+		_, err := h.DB.Exec(ctx, `
+			INSERT INTO scene_evaluation_results (tenant_id, task_id, scene_id, method_key, evaluatee_id, status, total_score, max_score, objective_answers)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 			ON CONFLICT (task_id, evaluatee_id, method_key)
-			DO UPDATE SET total_score = EXCLUDED.total_score, max_score = EXCLUDED.max_score, status = EXCLUDED.status, objective_answers = EXCLUDED.objective_answers, graded_at = CASE WHEN EXCLUDED.status = 'evaluated' THEN NOW() ELSE NULL END
-		`, tenantID, taskID, methodKey, userID, status, score, maxScore, objectiveAnswers)
+			DO UPDATE SET
+				scene_id = EXCLUDED.scene_id,
+				total_score = EXCLUDED.total_score,
+				max_score = EXCLUDED.max_score,
+				status = CASE WHEN scene_evaluation_results.status = 'evaluated' THEN 'evaluated' ELSE EXCLUDED.status END,
+				objective_answers = EXCLUDED.objective_answers,
+				graded_at = CASE
+					WHEN scene_evaluation_results.status = 'evaluated' THEN scene_evaluation_results.graded_at
+					WHEN EXCLUDED.status = 'evaluated' THEN NOW()
+					ELSE NULL
+				END,
+				updated_at = NOW()
+		`, tenantID, taskID, sceneID, methodKey, userID, status, score, maxScore, objectiveAnswers)
+		if err != nil {
+			log.Printf("syncSceneEvaluationResult upsert failed: usage=%s task=%s method=%s user=%s err=%v", usageID, taskID, methodKey, userID, err)
+		}
 	}
 }
