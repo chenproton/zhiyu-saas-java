@@ -26,6 +26,8 @@ import {
   Layers,
   PanelLeftClose,
   PanelLeftOpen,
+  Play,
+  Upload,
 } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -76,6 +78,26 @@ const evalMethodLabels: Record<string, string> = {
 const methodColorMap: Record<string, string> = {
   random_draw: "#6366f1", review: "#f43f5e", paper: "#0ea5e9",
   question_bank: "#8b5cf6", outcome: "#10b981", homework: "#f59e0b", quiz: "#06b6d4",
+}
+
+const methodIconMap: Record<string, React.ElementType> = {
+  paper: FileText,
+  question_bank: Layers,
+  quiz: ListChecks,
+  random_draw: Sparkles,
+  review: Eye,
+  outcome: FolderOpen,
+  homework: Lightbulb,
+}
+
+const methodActionText: Record<string, string> = {
+  paper: "开始答题",
+  question_bank: "开始答题",
+  quiz: "开始答题",
+  random_draw: "开始答题",
+  review: "上传材料",
+  outcome: "上传成果",
+  homework: "上传作业",
 }
 
 /* ---------- page ---------- */
@@ -476,65 +498,36 @@ export default function SceneLearnPage() {
                     </CardContent>
                   </Card>
 
-                  {/* 任务测评形式 */}
-                  <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300 py-0 gap-0">
-                    <CardHeader className="relative bg-gradient-to-br from-emerald-500 to-teal-400 text-white border-b-0 px-6 py-5">
-                      <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none" />
-                      <CardTitle className="text-base flex items-center gap-3 relative z-10">
-                        <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white shadow-sm">
-                          <ClipboardList className="h-4 w-4" />
-                        </div>
-                        任务测评形式
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-5">
-                      {taskEvalMethods.methods.length > 0 ? (
-                        <div className="space-y-3">
-                          {taskEvalMethods.methods.map((m) => {
-                            const w = taskEvalMethods.weights[m] || 0
-                            const color = methodColorMap[m] || "#94a3b8"
-                            return (
-                              <div key={m} className="flex items-center gap-3">
-                                <span className="text-xs font-medium px-2 py-1 rounded-lg shrink-0 min-w-[64px] text-center" style={{ backgroundColor: color + "15", color, border: `1px solid ${color}30` }}>
-                                  {evalMethodLabels[m] || m}
-                                </span>
-                                <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                                  <div className="h-full rounded-full" style={{ width: `${Math.max(Math.round(w), 2)}%`, background: `linear-gradient(90deg, ${color}dd, ${color})` }} />
-                                </div>
-                                <span className="text-xs font-bold w-10 text-right" style={{ color }}>{Math.round(w)}%</span>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-gray-400">该任务暂未设置评价方式</p>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* Actions */}
-                  {activeTask && taskEvalMethods.methods.length > 0 && (
-                    <div className="space-y-2">
-                      {taskEvalMethods.methods.map((mk) => {
-                        const r = myResults.find((x) => x.methodKey === mk)
-                        return (
-                          <div key={mk} className="flex items-center justify-between px-4 py-2 bg-white rounded-xl border">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">{evalMethodLabels[mk] || mk}</Badge>
-                              {r && (r.status === "evaluated" ? <span className="text-sm text-green-600">得分 {r.totalScore}/{r.maxScore}</span> : <span className="text-sm text-amber-600">待评分</span>)}
-                            </div>
-                            {!r && (
-                              <Button size="sm" className="h-7 text-xs" asChild>
-                                <Link href={`/scene/landing/${id}/evaluate?task=${activeTaskId}&method=${mk}`}>
-                                  开始测评
-                                </Link>
-                              </Button>
-                            )}
-                          </div>
-                        )
-                      })}
+                  {/* 任务测评 */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 px-1">
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-400 flex items-center justify-center text-white shadow-sm">
+                        <ClipboardList className="h-4 w-4" />
+                      </div>
+                      <h3 className="text-base font-semibold text-gray-800">任务测评</h3>
                     </div>
-                  )}
+
+                    {taskEvalMethods.methods.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {taskEvalMethods.methods.map((mk) => {
+                          const method = evalMethods.find((m) => m.methodKey === mk)
+                          if (!method) return null
+                          const r = myResults.find((x) => x.methodKey === mk)
+                          return (
+                            <EvalMethodCard
+                              key={mk}
+                              method={method}
+                              result={r}
+                              sceneId={id}
+                              taskId={activeTaskId}
+                            />
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400 px-1">该任务暂未设置评价方式</p>
+                    )}
+                  </div>
                 </div>
               </div>
             </>
@@ -621,6 +614,136 @@ export default function SceneLearnPage() {
 }
 
 /* ---------- sub components ---------- */
+
+function EvalMethodCard({
+  method,
+  result,
+  sceneId,
+  taskId,
+}: {
+  method: TaskEvaluationMethod
+  result?: SceneEvaluationResult
+  sceneId: string
+  taskId: string | null
+}) {
+  const color = methodColorMap[method.methodKey] || "#94a3b8"
+  const label = evalMethodLabels[method.methodKey] || method.methodKey
+  const Icon = methodIconMap[method.methodKey] || ClipboardList
+  const weight = method.weight || 0
+  const actionText = methodActionText[method.methodKey] || "开始测评"
+  const showUpload = ["review", "outcome", "homework"].includes(method.methodKey)
+
+  let info: React.ReactNode = null
+  if (["paper", "question_bank", "quiz", "random_draw"].includes(method.methodKey)) {
+    const points = method.evalPoints || []
+    const count = points.length
+    const totalScore = points.reduce((s, p) => s + (p.weight || 0), 0)
+    info = (
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-xs text-gray-500 flex items-center gap-1">
+          <ListChecks className="w-3.5 h-3.5" /> 共 {count} 道题目
+        </span>
+        <span className="text-xs text-gray-500 flex items-center gap-1">
+          <Target className="w-3.5 h-3.5" /> 总分 {totalScore} 分
+        </span>
+        <span
+          className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+          style={{ backgroundColor: color + "15", color, border: `1px solid ${color}30` }}
+        >
+          {label}
+        </span>
+      </div>
+    )
+  } else if (method.methodKey === "review") {
+    const steps = (method.reviewSteps || []).filter((s) => s.enabled)
+    info = (
+      <div className="space-y-3">
+        {steps.length > 0 && (
+          <div className="flex items-center gap-2">
+            {steps.slice(0, 3).map((s, i) => (
+              <div key={s.id} className="flex items-center gap-2">
+                <div
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] text-white font-bold shrink-0"
+                  style={{ backgroundColor: color }}
+                >
+                  {i + 1}
+                </div>
+                <span className="text-xs text-gray-600">{s.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="text-xs text-gray-500 flex items-start gap-1.5">
+          <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          完成学习后，请上传成果材料等待评审
+        </p>
+      </div>
+    )
+  } else if (method.methodKey === "outcome" || method.methodKey === "homework") {
+    info = (
+      <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 p-5 flex flex-col items-center justify-center text-center gap-2">
+        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
+          <Upload className="w-5 h-5" />
+        </div>
+        <p className="text-sm text-gray-600">点击上传{method.methodKey === "outcome" ? "成果材料" : "作业"}（模拟）</p>
+        <p className="text-[10px] text-gray-400">支持 PDF、DOCX 等格式</p>
+      </div>
+    )
+  } else {
+    info = <p className="text-xs text-gray-400">暂无基本信息</p>
+  }
+
+  return (
+    <Card className="rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300 py-0 gap-0 flex flex-col">
+      <CardHeader
+        className="relative text-white border-b-0 px-5 py-4"
+        style={{ background: `linear-gradient(135deg, ${color}, ${color}dd)` }}
+      >
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none" />
+        <CardTitle className="text-sm flex items-center justify-between relative z-10">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white shadow-sm">
+              <Icon className="h-4 w-4" />
+            </div>
+            <span className="font-semibold">{label}</span>
+          </div>
+          <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30">
+            权重 {Math.round(weight)}%
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-4 pb-4 flex-1 flex flex-col">
+        <div className="flex-1 min-h-[80px]">{info}</div>
+        <div className="mt-4 flex items-center justify-end">
+          {result ? (
+            <span
+              className={cn(
+                "text-xs font-medium",
+                result.status === "evaluated" ? "text-green-600" : "text-amber-600"
+              )}
+            >
+              {result.status === "evaluated"
+                ? `得分 ${result.totalScore}/${result.maxScore}`
+                : "待评分"}
+            </span>
+          ) : (
+            <Button
+              size="sm"
+              className="h-8 text-xs gap-1 text-white border-0 hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: color }}
+              asChild
+            >
+              <Link href={`/scene/landing/${sceneId}/evaluate?task=${taskId}&method=${method.methodKey}`}>
+                {showUpload ? <Upload className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                {actionText}
+              </Link>
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 function EmptyState({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
