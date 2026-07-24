@@ -868,6 +868,8 @@ export default function TasksEditPage() {
   const [cloneMode, setCloneMode] = useState<"clone" | "reference">("clone")
   const [cloneTab, setCloneTab] = useState<"my" | "collab" | "public">("my")
   const [selectedClone, setSelectedClone] = useState<string[]>([])
+  const [isCloning, setIsCloning] = useState(false)
+  const [cloneDataVersion, setCloneDataVersion] = useState(0)
   const [isWeightConfigOpen, setIsWeightConfigOpen] = useState(false)
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null)
   const [deleteConfirmTask, setDeleteConfirmTask] = useState<{ id: string; name: string } | null>(null)

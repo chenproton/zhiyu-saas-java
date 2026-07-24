@@ -111,8 +111,8 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 			newTaskID := uuid.NewString()
 			taskIDMap[oldID] = newTaskID
 
-			_, err := tx.Exec(ctx, `INSERT INTO scenario_tasks (`+taskInsertColumns+`)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+			_, err := tx.Exec(ctx, `INSERT INTO scenario_tasks (id, `+taskInsertColumns+`)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
 			`, newTaskID, newID, name, code, sortOrder, description, detailedDescription, descriptionPdf,
 				estimatedHours, taskType, difficulty, background,
 				dependencyIDs, false, nil,
@@ -142,13 +142,15 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 				respondError(w, http.StatusInternalServerError, "failed to clone ability bindings")
 				return
 			}
-
-			if err := h.remapTaskDependencyIDs(ctx, tx, newTaskID, taskIDMap); err != nil {
-				respondError(w, http.StatusInternalServerError, "failed to remap task dependencies")
-				return
-			}
 		}
 		taskRows.Close()
+	}
+
+	for _, newTaskID := range taskIDMap {
+		if err := h.remapTaskDependencyIDs(ctx, tx, newTaskID, taskIDMap); err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to remap task dependencies")
+			return
+		}
 	}
 
 	if err := h.cloneScenarioWeights(ctx, tx, id, newID, taskIDMap, tenantID); err != nil {
