@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -74,6 +75,7 @@ func (h *PositionCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "岗位名称已存在，请使用其他名称")
 			return
 		}
+		log.Printf("[ClonePosition] failed to insert: %v", err)
 		respondError(w, http.StatusInternalServerError, "failed to clone position")
 		return
 	}
@@ -158,11 +160,16 @@ func (h *PositionCloneHandler) clonePositionMajors(ctx context.Context, tx pgx.T
 	}
 	defer rows.Close()
 
+	var majors []string
 	for rows.Next() {
 		var majorID string
 		if err := rows.Scan(&majorID); err != nil {
 			continue
 		}
+		majors = append(majors, majorID)
+	}
+
+	for _, majorID := range majors {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO career_position_majors (career_position_id, major_id) VALUES ($1, $2)
 		`, newPositionID, majorID)
@@ -222,32 +229,39 @@ func (h *PositionCloneHandler) clonePositionAbilityBindings(ctx context.Context,
 	}
 	defer rows.Close()
 
+	type bindingRow struct {
+		oldBindingID, oldRespID, abilityPointID, source string
+		domain, requiredLevel                           *string
+		rubricDescription                               *string
+		attributes                                      []string
+		weight                                          float64
+	}
+	var bindings []bindingRow
 	for rows.Next() {
-		var oldBindingID, oldRespID, abilityPointID, source string
-		var domain, requiredLevel *string
-		var rubricDescription *string
-		var attributes []string
-		var weight float64
-		if err := rows.Scan(&oldBindingID, &oldRespID, &abilityPointID, &source,
-			&domain, &requiredLevel, &rubricDescription, &attributes, &weight); err != nil {
+		var br bindingRow
+		if err := rows.Scan(&br.oldBindingID, &br.oldRespID, &br.abilityPointID, &br.source,
+			&br.domain, &br.requiredLevel, &br.rubricDescription, &br.attributes, &br.weight); err != nil {
 			continue
 		}
+		bindings = append(bindings, br)
+	}
 
-		newRespID, ok := respIDMap[oldRespID]
+	for _, br := range bindings {
+		newRespID, ok := respIDMap[br.oldRespID]
 		if !ok {
 			continue
 		}
 
 		newBindingID := uuid.NewString()
-		bindingIDMap[oldBindingID] = newBindingID
+		bindingIDMap[br.oldBindingID] = newBindingID
 
 		_, err := tx.Exec(ctx, `
 			INSERT INTO position_ability_bindings (
 				id, tenant_id, career_position_id, responsibility_id, ability_point_id, source,
 				domain, required_level, rubric_description, attributes, weight
 			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-		`, newBindingID, tenantID, newPositionID, newRespID, abilityPointID, source,
-			domain, requiredLevel, rubricDescription, attributes, weight)
+		`, newBindingID, tenantID, newPositionID, newRespID, br.abilityPointID, br.source,
+			br.domain, br.requiredLevel, br.rubricDescription, br.attributes, br.weight)
 		if err != nil {
 			return err
 		}
@@ -265,17 +279,24 @@ func (h *PositionCloneHandler) cloneAbilityDomains(ctx context.Context, tx pgx.T
 	}
 	defer rows.Close()
 
+	type domainRow struct {
+		name          string
+		description   *string
+		oldBindingIDs []string
+		sortOrder     int
+	}
+	var domains []domainRow
 	for rows.Next() {
-		var name string
-		var description *string
-		var oldBindingIDs []string
-		var sortOrder int
-		if err := rows.Scan(&name, &description, &oldBindingIDs, &sortOrder); err != nil {
+		var dr domainRow
+		if err := rows.Scan(&dr.name, &dr.description, &dr.oldBindingIDs, &dr.sortOrder); err != nil {
 			continue
 		}
+		domains = append(domains, dr)
+	}
 
-		newBindingIDs := make([]string, 0, len(oldBindingIDs))
-		for _, oldID := range oldBindingIDs {
+	for _, dr := range domains {
+		newBindingIDs := make([]string, 0, len(dr.oldBindingIDs))
+		for _, oldID := range dr.oldBindingIDs {
 			if newID, ok := bindingIDMap[oldID]; ok {
 				newBindingIDs = append(newBindingIDs, newID)
 			}
@@ -284,7 +305,7 @@ func (h *PositionCloneHandler) cloneAbilityDomains(ctx context.Context, tx pgx.T
 		_, err := tx.Exec(ctx, `
 			INSERT INTO ability_domains (id, tenant_id, career_position_id, name, description, binding_ids, sort_order)
 			VALUES ($1, $2, $3, $4, $5, $6, $7)
-		`, uuid.NewString(), tenantID, newPositionID, name, description, coalesceStringSlice(newBindingIDs), sortOrder)
+		`, uuid.NewString(), tenantID, newPositionID, dr.name, dr.description, coalesceStringSlice(newBindingIDs), dr.sortOrder)
 		if err != nil {
 			return err
 		}
@@ -301,11 +322,16 @@ func (h *PositionCloneHandler) clonePositionCertificates(ctx context.Context, tx
 	}
 	defer rows.Close()
 
+	var libIDs []string
 	for rows.Next() {
 		var libID string
 		if err := rows.Scan(&libID); err != nil {
 			continue
 		}
+		libIDs = append(libIDs, libID)
+	}
+
+	for _, libID := range libIDs {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id)
 			VALUES ($1, $2, $3, $4)
