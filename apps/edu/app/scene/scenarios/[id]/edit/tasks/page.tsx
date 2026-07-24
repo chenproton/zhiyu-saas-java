@@ -424,6 +424,13 @@ interface TaskState {
   methodResourceConfigs: Record<string, any>
 }
 
+const defaultEvalSubjects: EvalSubjectConfig[] = [
+  { type: "teacher", enabled: true, params: { weightPercent: 50, scorerCount: 1 } },
+  { type: "enterprise_mentor", enabled: false, params: { weightPercent: 20 } },
+  { type: "self", enabled: false, params: { weightPercent: 10 } },
+  { type: "peer", enabled: false, params: { weightPercent: 20, peerCount: 3 } },
+]
+
 function makeDefaultTaskState(count: number, index: number): TaskState {
   return {
     description: "",
@@ -469,13 +476,6 @@ function makeDefaultTaskState(count: number, index: number): TaskState {
     methodResourceConfigs: {},
   }
 }
-
-const defaultEvalSubjects: EvalSubjectConfig[] = [
-  { type: "teacher", enabled: true, params: { weightPercent: 50, scorerCount: 1 } },
-  { type: "enterprise_mentor", enabled: false, params: { weightPercent: 20 } },
-  { type: "self", enabled: false, params: { weightPercent: 10 } },
-  { type: "peer", enabled: false, params: { weightPercent: 20, peerCount: 3 } },
-]
 
 function taskStateFromMethods(task: any, methods: TaskEvaluationMethod[]): TaskState {
   const state = makeDefaultTaskState(0, 0)
