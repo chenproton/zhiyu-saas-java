@@ -1871,7 +1871,7 @@ function BankQuestionSelectorPanel({
 
   return (
     <>
-    <div className="flex gap-4 h-[60vh] min-h-[480px]">
+    <div className="flex gap-4 flex-1 min-h-0">
       <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
         {selectedBankId ? (
           <>
@@ -2200,7 +2200,7 @@ function RandomDrawResourcePanel({
   const selectedRdqList = state.randomDrawSelectedIds.map(id => allQuestions.find(q => q.id === id)).filter(Boolean) as typeof allQuestions
 
   return (
-    <div className="h-[calc(92vh-180px)] flex flex-col">
+    <div className="flex-1 flex flex-col min-h-0">
       <div className="flex items-center gap-3 mb-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -5012,7 +5012,7 @@ function EditCardDialog({
           })
 
           return (
-            <div className="flex gap-4 h-[60vh] min-h-[480px]">
+            <div className="flex gap-4 flex-1 min-h-0">
               {/* Left column */}
               <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
                 <Tabs value={questionTab} onValueChange={v => setQuestionTab(v as "my" | "collab" | "public")} className="mb-3">
@@ -5248,7 +5248,7 @@ function EditCardDialog({
             const selectedRdqList = state.randomDrawSelectedIds.map(id => state.randomDrawCustomQuestions.find(q => q.id === id)).filter(Boolean) as typeof state.randomDrawCustomQuestions
 
             return (
-              <div className="h-[calc(92vh-180px)] flex flex-col">
+              <div className="flex-1 flex flex-col min-h-0">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -7689,7 +7689,7 @@ function EditCardDialog({
             </Dialog>
 
             <Dialog open={erDialogOpen === "resource"} onOpenChange={v => !v && setErDialogOpen(null)}>
-              <DialogContent className="sm:max-w-[85vw] max-w-[85vw] h-[92vh] overflow-y-auto">
+              <DialogContent className="sm:max-w-[72vw] max-w-[72vw] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <PrdAnnotation data={getAnnotation("dialog-test-resource")}><DialogTitle>测评资源配置</DialogTitle></PrdAnnotation>
                   <DialogDescription>
@@ -7741,7 +7741,7 @@ function EditCardDialog({
             </Dialog>
 
             <Dialog open={erDialogOpen === "method"} onOpenChange={v => !v && setErDialogOpen(null)}>
-              <DialogContent className="sm:max-w-[90vw] max-w-[90vw] h-[92vh] overflow-y-auto">
+              <DialogContent className="sm:max-w-[72vw] max-w-[72vw] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <PrdAnnotation data={getAnnotation("dialog-eval-standard")}><DialogTitle>评价标准配置</DialogTitle></PrdAnnotation>
                   <DialogDescription>
