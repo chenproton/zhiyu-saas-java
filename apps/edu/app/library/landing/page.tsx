@@ -2,78 +2,78 @@
 
 import { useEffect, useMemo, useState } from "react"
 import {
-  BookOpen, Lightbulb, Award, FolderKanban, MessageSquare,
-  Search, Eye, ExternalLink, Filter, Heart,
-  FileText, Table, Image, Link, Music, Video, Archive,
-  Building, Wrench, AppWindow, HelpCircle, Sparkles,
+  Video, FileText, Table, Image, LinkIcon, Music, MapPin, Cpu,
+  Monitor, Wrench, Ellipsis, Eye, Search, Sparkles,
+  RotateCcw, Flame, ArrowRight, Filter, BookOpen, Lightbulb,
+  Award, FolderKanban, MessageSquare, GraduationCap, Archive,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { resourceLibraryApi, knowledgeApi, abilityApi, certificateLibraryApi, onSiteQuestionLibraryApi } from "@/lib/api"
 import type { ResourceLibraryItem } from "@/lib/types/library"
-import type { KnowledgePoint } from "@/lib/types/lesson"
-import type { AbilityPoint } from "@/lib/types/job"
-import type { CertificateLibraryItem } from "@/lib/types/job"
-import type { OnSiteQuestionLibraryItem } from "@/lib/types/library"
 import { useToast } from "@/hooks/use-toast"
 
-const RESOURCE_TYPE_LABELS: Record<string, string> = {
-  document: "文档", spreadsheet: "表格", image: "图片", link: "链接",
-  audio: "音频", video: "视频", archive: "压缩包", venue: "场地",
-  facility: "设施设备", software: "软件", other: "其他",
+function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 20 }}>
+      <h2 style={{ fontSize: 20, fontWeight: "bold", color: "#1e293b", position: "relative", paddingLeft: 12 }}>
+        <span style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", width: 4, height: 20, background: "linear-gradient(180deg, #2563eb, #3b82f6)", borderRadius: 2 }} />
+        {title}
+      </h2>
+      {subtitle && <span style={{ color: "#94a3b8", fontSize: 13 }}>{subtitle}</span>}
+    </div>
+  )
 }
 
-const TYPE_ICONS: Record<string, React.ReactNode> = {
-  document: <FileText className="size-5" />, spreadsheet: <Table className="size-5" />,
-  image: <Image className="size-5" />, link: <Link className="size-5" />,
-  audio: <Music className="size-5" />, video: <Video className="size-5" />,
-  archive: <Archive className="size-5" />, venue: <Building className="size-5" />,
-  facility: <Wrench className="size-5" />, software: <AppWindow className="size-5" />,
-  other: <HelpCircle className="size-5" />,
+const RESOURCE_TYPE_LABELS: Record<string, string> = {
+  document: "文档资源", spreadsheet: "表格资源", image: "图片资源", link: "链接资源",
+  audio: "音频资源", video: "视频资源", archive: "压缩包资源", venue: "场地资源",
+  facility: "设施设备资源", software: "软件资源", other: "其他资源",
+}
+
+const TYPE_EMOJI: Record<string, string> = {
+  video: "🎬", document: "📄", spreadsheet: "📊", image: "🖼️",
+  link: "🔗", audio: "🎵", archive: "📦", venue: "📍",
+  facility: "🔧", software: "💻", other: "📦",
 }
 
 const TYPE_GRADIENTS: Record<string, string> = {
+  video: "linear-gradient(135deg, #dbeafe, #bfdbfe)",
   document: "linear-gradient(135deg, #ffedd5, #fed7aa)",
   spreadsheet: "linear-gradient(135deg, #dcfce7, #bbf7d0)",
   image: "linear-gradient(135deg, #f3e8ff, #e9d5ff)",
   link: "linear-gradient(135deg, #ecfeff, #cffafe)",
   audio: "linear-gradient(135deg, #fce7f3, #fbcfe8)",
-  video: "linear-gradient(135deg, #dbeafe, #bfdbfe)",
-  archive: "linear-gradient(135deg, #e2e8f0, #cbd5e1)",
   venue: "linear-gradient(135deg, #fee2e2, #fecaca)",
-  facility: "linear-gradient(135deg, #e0e7ff, #c7d2fe)",
-  software: "linear-gradient(135deg, #ccfbf1, #99f6e4)",
+  facility: "linear-gradient(135deg, #e2e8f0, #cbd5e1)",
+  software: "linear-gradient(135deg, #e0e7ff, #c7d2fe)",
+  archive: "linear-gradient(135deg, #ccfbf1, #99f6e4)",
   other: "linear-gradient(135deg, #e7e5e4, #d6d3d1)",
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  document: "#f97316", spreadsheet: "#22c55e", image: "#a855f7",
-  link: "#06b6d4", audio: "#ec4899", video: "#3b82f6",
-  archive: "#64748b", venue: "#ef4444", facility: "#6366f1",
-  software: "#14b8a6", other: "#78716c",
+  video: "#3b82f6", document: "#f97316", spreadsheet: "#22c55e",
+  image: "#a855f7", link: "#06b6d4", audio: "#ec4899",
+  venue: "#ef4444", facility: "#64748b", software: "#6366f1",
+  archive: "#14b8a6", other: "#78716c",
 }
 
-const CATEGORIES = [
-  { id: "all", icon: FolderKanban, label: "全部", gradient: "linear-gradient(135deg, #e0e7ff, #c7d2fe)", color: "#6366f1" },
-  { id: "knowledge", icon: BookOpen, label: "知识点", gradient: "linear-gradient(135deg, #e0f2fe, #bae6fd)", color: "#0284c7" },
-  { id: "ability", icon: Lightbulb, label: "能力点", gradient: "linear-gradient(135deg, #ede9fe, #ddd6fe)", color: "#7c3aed" },
-  { id: "certificates", icon: Award, label: "证书库", gradient: "linear-gradient(135deg, #ffe4e6, #fecdd3)", color: "#e11d48" },
-  { id: "resources", icon: FolderKanban, label: "资源库", gradient: "linear-gradient(135deg, #dcfce7, #bbf7d0)", color: "#16a34a" },
-  { id: "questions", icon: MessageSquare, label: "问答题库", gradient: "linear-gradient(135deg, #fef3c7, #fde68a)", color: "#d97706" },
-]
+const TYPE_ICONS: Record<string, React.ReactNode> = {
+  video: <Video className="size-5" />, document: <FileText className="size-5" />,
+  spreadsheet: <Table className="size-5" />, image: <Image className="size-5" />,
+  link: <LinkIcon className="size-5" />, audio: <Music className="size-5" />,
+  venue: <MapPin className="size-5" />, facility: <Cpu className="size-5" />,
+  software: <Monitor className="size-5" />, archive: <Archive className="size-5" />,
+  other: <Ellipsis className="size-5" />,
+}
 
-function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <div className="flex items-baseline gap-3 mb-5">
-      <h2 className="text-xl font-bold text-slate-800 relative pl-3">
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-sm bg-gradient-to-b from-blue-600 to-blue-500" />
-        {title}
-      </h2>
-      {subtitle && <span className="text-slate-400 text-sm">{subtitle}</span>}
-    </div>
-  )
+const ALL_TYPES = ["video", "document", "spreadsheet", "image", "link", "audio", "venue", "facility", "software", "archive", "other"]
+
+function formatSize(bytes?: number) {
+  if (!bytes) return ""
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 export default function LibraryLandingPage() {
@@ -86,9 +86,9 @@ export default function LibraryLandingPage() {
   const [loading, setLoading] = useState(true)
 
   const [search, setSearch] = useState("")
-  const [typeFilter, setTypeFilter] = useState<string>("all")
-  const [categoryFilter, setCategoryFilter] = useState<string>("all")
-
+  const [typeFilter, setTypeFilter] = useState<string>("全部")
+  const [sortBy, setSortBy] = useState<"newest" | "popular">("newest")
+  const [titleSearch, setTitleSearch] = useState("")
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailResource, setDetailResource] = useState<ResourceLibraryItem | null>(null)
 
@@ -108,275 +108,338 @@ export default function LibraryLandingPage() {
         if (aRes.status === "fulfilled") setAbilityCount(aRes.value.total)
         if (cRes.status === "fulfilled") setCertCount(cRes.value.total)
         if (qRes.status === "fulfilled") setQuestionCount(qRes.value.total)
-      } catch {
-      } finally {
-        setLoading(false)
-      }
+      } catch {} finally { setLoading(false) }
     }
     load()
   }, [])
 
-  const stats = useMemo(() => ({
-    total: resources.length + knowledgeCount + abilityCount + certCount + questionCount,
-    knowledge: knowledgeCount,
-    ability: abilityCount,
-    certificates: certCount,
-    resources: resources.length,
-    questions: questionCount,
-  }), [resources, knowledgeCount, abilityCount, certCount, questionCount])
+  const typeStats = useMemo(() => {
+    const stats: Record<string, number> = {}
+    for (const r of resources) { stats[r.resourceType] = (stats[r.resourceType] || 0) + 1 }
+    stats["total"] = resources.length
+    return stats
+  }, [resources])
 
   const filteredResources = useMemo(() => {
     let list = resources
-    if (typeFilter !== "all") list = list.filter(r => r.resourceType === typeFilter)
+    if (typeFilter !== "全部") list = list.filter(r => r.resourceType === typeFilter)
     if (search.trim()) {
       const q = search.toLowerCase()
-      list = list.filter(r =>
-        r.name.toLowerCase().includes(q) ||
-        (r.description || "").toLowerCase().includes(q)
-      )
+      list = list.filter(r => r.name.toLowerCase().includes(q) || (r.description || "").toLowerCase().includes(q))
+    }
+    if (titleSearch.trim()) {
+      list = list.filter(r => r.name.toLowerCase().includes(titleSearch.toLowerCase()))
+    }
+    if (sortBy === "popular") {
+      list = [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    } else {
+      list = [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     }
     return list
-  }, [resources, typeFilter, search])
+  }, [resources, typeFilter, search, titleSearch, sortBy])
 
-  const typeCounts = useMemo(() => {
-    const counts: Record<string, number> = {}
-    for (const r of resources) {
-      const t = r.resourceType
-      counts[t] = (counts[t] || 0) + 1
-    }
-    return counts
-  }, [resources])
-
-  const categoryStats = useMemo(() => [
-    { ...CATEGORIES[0], count: stats.total },
-    { ...CATEGORIES[1], count: stats.knowledge },
-    { ...CATEGORIES[2], count: stats.ability },
-    { ...CATEGORIES[3], count: stats.certificates },
-    { ...CATEGORIES[4], count: stats.resources },
-    { ...CATEGORIES[5], count: stats.questions },
-  ], [stats])
-
-  function formatSize(bytes?: number) {
-    if (!bytes) return ""
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  }
+  const totalCount = resources.length + knowledgeCount + abilityCount + certCount + questionCount
 
   return (
     <div>
-      {/* ═══ Hero ═══ */}
-      <div className="relative text-white text-center overflow-hidden" style={{ padding: "60px 20px 50px", minHeight: 360, background: "linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #1e3a5f 70%, #0c4a6e 100%)" }}>
-        <div className="absolute inset-0" style={{ background: "radial-gradient(circle at 20% 50%, rgba(59,130,246,0.15), transparent 50%), radial-gradient(circle at 80% 20%, rgba(139,92,246,0.12), transparent 50%)" }} />
-        <div className="absolute inset-0" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)", backgroundSize: "48px 48px" }} />
-        <div className="relative z-10 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur rounded-full px-4 py-1.5 mb-6 text-sm">
-            <Sparkles className="size-4 text-amber-400" />
-            <span className="text-white/90">共建共享 · 持续进化</span>
-          </div>
-          <h1 className="text-4xl font-extrabold mb-3 tracking-wide">教学资产共享中心</h1>
-          <p className="text-base text-white/70 mb-8 max-w-xl mx-auto">
-            沉淀校本智力资产，构建共建共享、持续进化的场景化数智教学资源生态
+      {/* ═══ Hero Banner ═══ */}
+      <div style={{
+        color: "#fff", padding: "60px 20px 50px", textAlign: "center",
+        position: "relative", overflow: "hidden", minHeight: 360,
+        background: "linear-gradient(160deg, #0c1929 0%, #152238 35%, #1a3a5c 65%, #0f2847 100%)",
+      }}>
+        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(circle at 20% 30%, rgba(59,130,246,0.12), transparent 45%), radial-gradient(circle at 80% 70%, rgba(139,92,246,0.1), transparent 45%)" }} />
+        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
+        <div style={{ maxWidth: 720, margin: "0 auto", position: "relative", zIndex: 1 }}>
+          <h1 style={{ fontSize: 40, fontWeight: "bold", marginBottom: 12, letterSpacing: 1 }}>教学资产共享中心</h1>
+          <p style={{ fontSize: 15, opacity: 0.9, marginBottom: 28 }}>
+            汇聚视频、文档、软件、场地等教学资源，为教师提供一站式资源共享服务
           </p>
-          <div className="bg-white rounded-full p-1.5 pl-6 flex items-center max-w-lg mx-auto shadow-2xl mb-8">
-            <Search className="size-4 text-slate-400 mr-3 shrink-0" />
-            <input
-              type="text" placeholder="搜索教学资源..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="flex-1 border-none outline-none text-sm py-2.5 text-slate-700 bg-transparent"
-            />
-            <button
-              onClick={() => document.getElementById("resource-grid")?.scrollIntoView({ behavior: "smooth" })}
-              className="bg-gradient-to-r from-blue-600 to-blue-500 text-white border-none py-2.5 px-8 rounded-full cursor-pointer text-sm font-medium whitespace-nowrap hover:from-blue-700 hover:to-blue-600 transition"
-            >
+          <div style={{
+            background: "#fff", borderRadius: 50, padding: "5px 5px 5px 24px",
+            display: "flex", alignItems: "center", boxShadow: "0 10px 30px rgba(0,0,0,0.15)", marginBottom: 28,
+          }}>
+            <Search style={{ width: 18, height: 18, color: "#94a3b8", marginRight: 10, flexShrink: 0 }} />
+            <input type="text" placeholder="搜索视频、文档、软件、场地等教学资源..." value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ flex: 1, border: "none", outline: "none", fontSize: 14, padding: "12px 0", color: "#333", background: "transparent" }} />
+            <button onClick={() => document.getElementById("resource-list")?.scrollIntoView({ behavior: "smooth" })}
+              style={{ background: "linear-gradient(135deg, #2563eb, #3b82f6)", color: "#fff", border: "none", padding: "11px 32px", borderRadius: 50, cursor: "pointer", fontSize: 14, fontWeight: 500, whiteSpace: "nowrap" }}>
               搜索
             </button>
           </div>
-          <div className="flex justify-center gap-10">
+          <div style={{ display: "flex", justifyContent: "center", gap: 48 }}>
             {[
-              { num: stats.total, label: "资源总量" },
-              { num: stats.resources, label: "教学资源" },
-              { num: stats.knowledge + stats.ability, label: "知识点/能力点" },
-              { num: stats.questions, label: "问答题" },
+              { num: totalCount, label: "资源总量" },
+              { num: resources.length, label: "教学资源" },
+              { num: knowledgeCount + abilityCount, label: "知识/能力点" },
+              { num: certCount + questionCount, label: "证书/题库" },
             ].map((s, i) => (
-              <div key={i} className="text-center">
-                <div className="text-2xl font-bold leading-tight">{s.num}</div>
-                <div className="text-xs text-white/70 mt-1">{s.label}</div>
+              <div key={i} style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 28, fontWeight: "bold", lineHeight: 1.2 }}>{s.num}</div>
+                <div style={{ fontSize: 12, opacity: 0.85, marginTop: 4 }}>{s.label}</div>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="max-w-[1280px] mx-auto px-5 py-10">
-        {/* ═══ 分类看板 ═══ */}
-        <section className="mb-12">
-          <div className="flex items-center justify-between mb-5">
-            <SectionHeader title="数据看板" />
-            <span className="text-sm text-slate-500">共计 <strong className="text-blue-600">{stats.total}</strong> 个资源</span>
+      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "40px 20px 0", background: "#f7f8fc" }}>
+
+        {/* ── 数据看板 ── */}
+        <section style={{ marginBottom: 50 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+              <h2 style={{ fontSize: 20, fontWeight: "bold", color: "#1e293b", position: "relative", paddingLeft: 12 }}>
+                <span style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", width: 4, height: 20, background: "linear-gradient(180deg, #2563eb, #3b82f6)", borderRadius: 2 }} />
+                数据看板
+              </h2>
+              <span style={{ color: "#94a3b8", fontSize: 13 }}>点击分类可快速筛选</span>
+            </div>
+            <span style={{ fontSize: 13, color: "#64748b" }}>
+              共计 <strong style={{ color: "#2563eb" }}>{typeStats.total}</strong> 个资源
+            </span>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {categoryStats.map(cat => {
-              const active = categoryFilter === cat.id
-              const CatIcon = cat.icon
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
+            {ALL_TYPES.map((type) => {
+              const count = typeStats[type] || 0
+              const active = typeFilter === type
               return (
-                <button
-                  key={cat.id}
-                  onClick={() => setCategoryFilter(active ? "all" : cat.id)}
-                  className="rounded-xl p-4 cursor-pointer transition-all duration-200 relative overflow-hidden text-left"
-                  style={{
-                    background: cat.gradient,
-                    border: active ? `2px solid ${cat.color}` : "2px solid transparent",
+                <button key={type}
+                  onClick={() => {
+                    setTypeFilter(active ? "全部" : type)
+                    document.getElementById("resource-list")?.scrollIntoView({ behavior: "smooth" })
                   }}
-                  onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
-                  onMouseLeave={e => e.currentTarget.style.transform = "none"}
+                  style={{
+                    background: TYPE_GRADIENTS[type] || TYPE_GRADIENTS.other,
+                    border: active ? `2px solid ${TYPE_COLORS[type] || TYPE_COLORS.other}` : "2px solid transparent",
+                    borderRadius: 14, padding: "14px 16px", cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    position: "relative", overflow: "hidden",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-2px)"
+                    e.currentTarget.style.boxShadow = `0 6px 18px ${TYPE_COLORS[type]}1a`
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "none"
+                    e.currentTarget.style.boxShadow = "none"
+                  }}
                 >
-                  <div className="flex items-center gap-2 mb-2">
-                    <CatIcon className="size-4" style={{ color: cat.color }} />
-                    <span className="text-xs font-semibold" style={{ color: cat.color }}>{cat.label}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, justifyContent: "center" }}>
+                    <span style={{ color: TYPE_COLORS[type] || TYPE_COLORS.other, display: "flex" }}>{TYPE_ICONS[type] || TYPE_ICONS.other}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#475569" }}>{RESOURCE_TYPE_LABELS[type] || "其他"}</span>
                   </div>
-                  <div className="text-2xl font-extrabold" style={{ color: cat.color }}>{cat.count}</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: TYPE_COLORS[type] || TYPE_COLORS.other, lineHeight: 1, textAlign: "center" as const }}>
+                    {count}
+                  </div>
                 </button>
               )
             })}
           </div>
         </section>
 
-        {/* ═══ 资源列表 ═══ */}
-        <section id="resource-grid" className="mb-12">
-          <div className="flex items-center justify-between mb-5">
-            <SectionHeader title="资源列表" subtitle={`共 ${filteredResources.length} 个`} />
+        {/* ── 资源列表 ── */}
+        <section id="resource-list" style={{ marginBottom: 50 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <h2 style={{ fontSize: 20, fontWeight: "bold", color: "#1e293b", position: "relative", paddingLeft: 12 }}>
+              <span style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", width: 4, height: 20, background: "linear-gradient(180deg, #2563eb, #3b82f6)", borderRadius: 2 }} />
+              公共资源库
+            </h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ position: "relative" }}>
+                <Search style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "#94a3b8" }} />
+                <input type="text" placeholder="搜索资源名称..." value={titleSearch}
+                  onChange={(e) => setTitleSearch(e.target.value)}
+                  style={{ width: 180, padding: "6px 12px 6px 32px", borderRadius: 20, fontSize: 12, border: "1px solid #e2e8f0", outline: "none", color: "#334155", background: "#f8fafc", transition: "all 0.2s" }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = "#2563eb"; e.currentTarget.style.background = "#fff" }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.background = "#f8fafc" }} />
+              </div>
+              <span style={{ color: "#94a3b8", fontSize: 13 }}>共 {filteredResources.length} 个资源</span>
+            </div>
           </div>
-
-          {/* Type filter pills */}
-          <div className="bg-white rounded-xl shadow-sm p-3 mb-5 flex gap-2 flex-wrap items-center border border-slate-100">
-            <span className="text-sm text-slate-400 mr-1">分类：</span>
-            <button
-              onClick={() => setTypeFilter("all")}
-              className="px-3 py-1.5 rounded-full text-xs font-medium transition cursor-pointer border-none"
-              style={{ background: typeFilter === "all" ? "#2563eb" : "#f1f5f9", color: typeFilter === "all" ? "#fff" : "#64748b" }}
-            >
-              全部
-            </button>
-            {Object.entries(RESOURCE_TYPE_LABELS).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setTypeFilter(typeFilter === key ? "all" : key)}
-                className="px-3 py-1.5 rounded-full text-xs font-medium transition cursor-pointer border-none"
-                style={{ background: typeFilter === key ? TYPE_COLORS[key] : "#f1f5f9", color: typeFilter === key ? "#fff" : "#64748b" }}
+          <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", padding: "12px 16px", marginBottom: 20, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ fontSize: 13, color: "#94a3b8", marginRight: 4 }}>分类：</span>
+            {[{ value: "全部" as const, label: "全部" }, ...ALL_TYPES.map(t => ({ value: t, label: `${TYPE_EMOJI[t] || "📦"} ${RESOURCE_TYPE_LABELS[t] || "其他"}` }))].map((item) => (
+              <button key={item.value} onClick={() => setTypeFilter(item.value)}
+                style={{ padding: "5px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer", border: "none", fontWeight: 500, transition: "all 0.2s", background: typeFilter === item.value ? "#2563eb" : "#f1f5f9", color: typeFilter === item.value ? "#fff" : "#64748b", whiteSpace: "nowrap" }}
+                onMouseEnter={(e) => { if (typeFilter !== item.value) e.currentTarget.style.background = "#e2e8f0" }}
+                onMouseLeave={(e) => { if (typeFilter !== item.value) e.currentTarget.style.background = "#f1f5f9" }}
               >
-                {TYPE_ICONS[key as keyof typeof TYPE_ICONS]} {label} {typeCounts[key] || 0}
+                {item.label}
               </button>
             ))}
           </div>
-
           {filteredResources.length === 0 ? (
-            <div className="text-center py-16 text-slate-400 bg-white rounded-xl shadow-sm border border-slate-100">
-              <Filter className="size-8 mx-auto mb-3 opacity-30" />
-              <div>{loading ? "加载中..." : "暂无资源"}</div>
+            <div style={{ textAlign: "center", padding: 60, color: "#94a3b8", background: "#fff", borderRadius: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+              <Filter style={{ width: 32, height: 32, margin: "0 auto 12", opacity: 0.4 }} />
+              <div>{loading ? "加载中..." : "暂无符合条件的资源"}</div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredResources.map(resource => {
-                const color = TYPE_COLORS[resource.resourceType] || "#78716c"
-                return (
-                  <button
-                    key={resource.id}
-                    onClick={() => { setDetailResource(resource); setDetailOpen(true) }}
-                    className="bg-white rounded-xl overflow-hidden shadow-sm transition-all duration-200 cursor-pointer border border-slate-100 hover:-translate-y-1 hover:shadow-md text-left w-full"
-                    style={{ borderTop: `3px solid ${color}` }}
-                  >
-                    <div className="p-4">
-                      <div className="flex gap-3 items-start">
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: TYPE_GRADIENTS[resource.resourceType] || "#f1f5f9" }}>
-                          <span style={{ color: color }}>{TYPE_ICONS[resource.resourceType] || TYPE_ICONS.other}</span>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+              {filteredResources.map((resource) => (
+                <button key={resource.id} onClick={() => { setDetailResource(resource); setDetailOpen(true) }}
+                  style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", transition: "all 0.25s", cursor: "pointer", border: "1px solid #f1f5f9", textAlign: "left" as const, width: "100%", display: "block", borderTop: `3px solid ${TYPE_COLORS[resource.resourceType] || "#78716c"}` }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 10px 20px rgba(0,0,0,0.08)" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.06)" }}
+                >
+                  <div style={{ padding: 16 }}>
+                    <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                      <div style={{ width: 44, height: 44, borderRadius: "50%", background: TYPE_GRADIENTS[resource.resourceType] || "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
+                        {TYPE_EMOJI[resource.resourceType] || "📦"}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                          <h3 style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{resource.name}</h3>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-semibold text-slate-800 leading-tight mb-1.5 truncate">{resource.name}</h3>
-                          <div className="flex items-center gap-2 flex-wrap mb-2">
-                            <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ color, background: `${color}15` }}>
-                              {RESOURCE_TYPE_LABELS[resource.resourceType] || resource.resourceType}
-                            </span>
-                            {resource.fileSize && (
-                              <span className="text-xs text-slate-400">{formatSize(resource.fileSize)}</span>
-                            )}
-                          </div>
-                          {resource.description && (
-                            <p className="text-xs text-slate-500 leading-relaxed line-clamp-2 mb-3">{resource.description}</p>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 12, color: TYPE_COLORS[resource.resourceType] || "#78716c", background: `${TYPE_COLORS[resource.resourceType]}15`, padding: "2px 8px", borderRadius: 4, fontWeight: 500 }}>
+                            {RESOURCE_TYPE_LABELS[resource.resourceType] || resource.resourceType}
+                          </span>
+                          {resource.fileSize != null && (
+                            <span style={{ fontSize: 12, color: "#94a3b8" }}>{formatSize(resource.fileSize)}</span>
                           )}
-                          <div className="flex items-center justify-between pt-3 border-t border-dashed border-slate-100">
-                            <div className="flex items-center gap-3 text-xs text-slate-400">
-                              <span className="flex items-center gap-1"><Eye className="size-3" />查看</span>
-                            </div>
-                            {resource.url && (
-                              <a href={resource.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="text-xs text-blue-500 hover:text-blue-700 flex items-center gap-1">
-                                <ExternalLink className="size-3" />访问
-                              </a>
-                            )}
+                        </div>
+                        {resource.description && (
+                          <p style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6, marginBottom: 12, height: 38, overflow: "hidden" }}>{resource.description}</p>
+                        )}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 12, borderTop: "1px dashed #f1f5f9" }}>
+                          <div style={{ display: "flex", gap: 14, fontSize: 12, color: "#94a3b8" }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                              <Eye style={{ width: 12, height: 12 }} />
+                              查看详情
+                            </span>
                           </div>
+                          {resource.url && (
+                            <a href={resource.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                              style={{ fontSize: 12, color: "#2563eb", textDecoration: "none", fontWeight: 500 }}>
+                              访问资源 →
+                            </a>
+                          )}
                         </div>
                       </div>
                     </div>
-                  </button>
-                )
-              })}
+                  </div>
+                </button>
+              ))}
             </div>
           )}
         </section>
       </div>
 
-      {/* ═══ Detail dialog ═══ */}
+      {/* ═══ Detail Dialog ═══ */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-xl max-h-[85vh] overflow-auto">
+        <DialogContent style={{ maxWidth: 640, maxHeight: "85vh", overflow: "auto" }}>
           {detailResource && (
             <>
               <DialogHeader>
                 <DialogTitle>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: TYPE_GRADIENTS[detailResource.resourceType] || "#f1f5f9" }}>
-                      <span style={{ color: TYPE_COLORS[detailResource.resourceType] || "#78716c" }}>
-                        {TYPE_ICONS[detailResource.resourceType] || TYPE_ICONS.other}
-                      </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 10, background: TYPE_GRADIENTS[detailResource.resourceType] || "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>
+                      {TYPE_EMOJI[detailResource.resourceType] || "📦"}
                     </div>
                     <div>
-                      <div className="text-base font-semibold">{detailResource.name}</div>
-                      <div className="text-sm font-normal text-slate-400 mt-0.5">
+                      <div style={{ fontSize: 16, fontWeight: 600 }}>{detailResource.name}</div>
+                      <div style={{ fontSize: 13, fontWeight: 400, color: "#94a3b8", marginTop: 2 }}>
                         {RESOURCE_TYPE_LABELS[detailResource.resourceType] || detailResource.resourceType}
+                        {detailResource.fileSize != null && ` · ${formatSize(detailResource.fileSize)}`}
                       </div>
                     </div>
                   </div>
                 </DialogTitle>
               </DialogHeader>
 
-              <div className="space-y-4 mt-2">
+              {/* Preview area */}
+              {(detailResource.resourceType === "video" || detailResource.resourceType === "image" || detailResource.resourceType === "document" || detailResource.resourceType === "audio" || detailResource.resourceType === "spreadsheet" || detailResource.resourceType === "link") && (
+                <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", marginTop: 8 }}>
+                  {detailResource.resourceType === "video" && (
+                    <div style={{ background: "#0f172a", aspectRatio: "16/9", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                      <Video style={{ width: 48, height: 48, color: "rgba(255,255,255,0.2)" }} />
+                      <div style={{ position: "absolute", width: 56, height: 56, borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(4px)", transition: "background 0.2s" }}>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="8,5 19,12 8,19" /></svg>
+                      </div>
+                      <div style={{ position: "absolute", bottom: 10, left: 14, right: 14, display: "flex", justifyContent: "space-between", color: "rgba(255,255,255,0.5)", fontSize: 11 }}>
+                        <span>视频资源预览</span>
+                        <span style={{ background: "rgba(255,255,255,0.1)", padding: "2px 8px", borderRadius: 4 }}>系统内预览</span>
+                      </div>
+                    </div>
+                  )}
+                  {detailResource.resourceType === "image" && (
+                    <div style={{ aspectRatio: "16/10", display: "flex", alignItems: "center", justifyContent: "center", background: "#f1f5f9", position: "relative", flexDirection: "column", gap: 12 }}>
+                      <Image style={{ width: 48, height: 48, color: "#cbd5e1" }} />
+                      <span style={{ fontSize: 12, color: "#94a3b8" }}>图片预览 · 仅限系统内查看</span>
+                    </div>
+                  )}
+                  {detailResource.resourceType === "document" && (
+                    <div style={{ padding: 20, background: "#fff", minHeight: 200, display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid #e2e8f0", paddingBottom: 12 }}>
+                        <FileText style={{ width: 22, height: 22, color: "#f97316" }} />
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>{detailResource.name}</div>
+                      </div>
+                      <div style={{ flex: 1, background: "#fafaf9", borderRadius: 8, padding: 24, display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: 13, flexDirection: "column", gap: 8 }}>
+                        <FileText style={{ width: 28, height: 28, opacity: 0.25 }} />
+                        <span>文档内容仅限系统内在线预览</span>
+                      </div>
+                    </div>
+                  )}
+                  {detailResource.resourceType === "audio" && (
+                    <div style={{ padding: 16, background: "linear-gradient(135deg, #fce7f3, #fbcfe8)", display: "flex", alignItems: "center", gap: 14 }}>
+                      <Music style={{ width: 28, height: 28, color: "#ec4899" }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>{detailResource.name}</div>
+                        <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>音频资源</div>
+                      </div>
+                      <div style={{ width: 120, height: 4, background: "rgba(236,72,153,0.15)", borderRadius: 2, position: "relative" }}>
+                        <div style={{ width: "35%", height: "100%", background: "#ec4899", borderRadius: 2 }} />
+                      </div>
+                    </div>
+                  )}
+                  {detailResource.resourceType === "spreadsheet" && (
+                    <div style={{ padding: 14, background: "#fff" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1, background: "#e2e8f0", borderRadius: 6, overflow: "hidden", fontSize: 11 }}>
+                        {["名称", "数量", "单价", "总价"].map(h => (
+                          <div key={h} style={{ background: "#f8fafc", padding: "7px 10px", fontWeight: 600, color: "#475569", textAlign: "center" }}>{h}</div>
+                        ))}
+                        {Array.from({ length: 3 }).map((_, i) => [
+                          `项目 ${i + 1}`, String(Math.floor(Math.random() * 100) + 1),
+                          `¥${(Math.random() * 1000).toFixed(2)}`, `¥${(Math.random() * 10000).toFixed(2)}`,
+                        ].map((c, j) => (
+                          <div key={j} style={{ background: "#fff", padding: "7px 10px", color: "#64748b", textAlign: "center" }}>{c}</div>
+                        )))}
+                      </div>
+                      <div style={{ textAlign: "center", marginTop: 10, fontSize: 11, color: "#94a3b8" }}>表格预览 · 仅限系统内查看</div>
+                    </div>
+                  )}
+                  {detailResource.resourceType === "link" && (
+                    <div style={{ padding: 14, background: "#ecfeff", display: "flex", alignItems: "center", gap: 10 }}>
+                      <LinkIcon style={{ width: 24, height: 24, color: "#06b6d4", flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#0e7490" }}>{detailResource.name}</div>
+                        {detailResource.url && (
+                          <div style={{ fontSize: 11, color: "#0891b2", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{detailResource.url}</div>
+                        )}
+                      </div>
+                      {detailResource.url && (
+                        <a href={detailResource.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#2563eb", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>
+                          前往查看 →
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 4 }}>
                 {detailResource.description && (
                   <div>
-                    <div className="text-sm font-semibold text-slate-600 mb-1">描述</div>
-                    <p className="text-sm text-slate-500 leading-relaxed">{detailResource.description}</p>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 6 }}>资源描述</div>
+                    <p style={{ fontSize: 14, color: "#64748b", lineHeight: 1.7 }}>{detailResource.description}</p>
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  {detailResource.fileSize != null && (
-                    <div className="flex gap-2"><span className="text-slate-400">文件大小</span><span className="text-slate-700">{formatSize(detailResource.fileSize)}</span></div>
-                  )}
-                  <div className="flex gap-2">
-                    <span className="text-slate-400">创建时间</span>
-                    <span className="text-slate-700">{new Date(detailResource.createdAt).toLocaleDateString("zh-CN")}</span>
-                  </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 12, borderTop: "1px solid #e2e8f0", fontSize: 13, color: "#94a3b8" }}>
+                  <span>创建时间 {new Date(detailResource.createdAt).toLocaleString("zh-CN")}</span>
+                  <span>最近更新 {new Date(detailResource.updatedAt).toLocaleString("zh-CN")}</span>
                 </div>
-                {detailResource.url && (
-                  <div className="pt-3 border-t border-slate-100">
-                    <a href={detailResource.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800">
-                      <ExternalLink className="size-4" />在浏览器中打开资源
-                    </a>
-                  </div>
-                )}
-                {detailResource.thumbnail && (
-                  <div className="rounded-lg overflow-hidden border border-slate-100">
-                    <img src={detailResource.thumbnail} alt={detailResource.name} className="w-full h-48 object-cover" />
-                  </div>
-                )}
               </div>
             </>
           )}
@@ -384,41 +447,45 @@ export default function LibraryLandingPage() {
       </Dialog>
 
       {/* ═══ Footer ═══ */}
-      <footer style={{ background: "#141a2e", marginTop: 60, width: "100%" }}>
-        <div style={{ height: 3, background: "linear-gradient(90deg, #8b5cf6, #818cf8, #22d3ee)" }} />
-        <div style={{ padding: "48px 5% 32px" }}>
-          <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              <div>
-                <h3 className="text-sm font-semibold text-white mb-3">场景化数智教学服务平台</h3>
-                <p className="text-xs text-slate-400 leading-relaxed mb-2">专注职业教育数字化</p>
-                <div className="text-xs text-slate-500">版本：V3.2.1</div>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-white mb-3">教学资源</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">岗位标准 · 实践场景 · 企业导师</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-white mb-3">技术支持</h3>
-                <ul className="list-none p-0 m-0 text-xs text-slate-400 space-y-1">
-                  <li>服务热线：400-888-8888</li>
-                  <li>邮箱：support@example.com</li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-white mb-3">校内支持</h3>
-                <ul className="list-none p-0 m-0 text-xs text-slate-400 space-y-1">
-                  <li>授权院校：XX职业技术学院</li>
-                  <li>校内管理员：张老师</li>
-                </ul>
-              </div>
+      <footer style={{background: '#141a2e', marginTop: 60, width: '100%'}}>
+        <div style={{height: 3, background: 'linear-gradient(90deg, #8b5cf6, #818cf8, #22d3ee)'}} />
+        <div style={{padding: '48px 5% 32px'}}>
+          <div style={{maxWidth: 1280, margin: '0 auto'}}>
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 32}}>
+            <div>
+              <h3 style={{fontSize: 15, fontWeight: 600, color: '#fff', margin: '0 0 12px 0'}}>场景化数智教学服务平台</h3>
+              <p style={{fontSize: 13, color: '#a8b3cf', lineHeight: 1.8, margin: 0}}>专注职业教育数字化</p>
+              <div style={{fontSize: 12, color: '#6b7a99', marginTop: 8}}>版本：V3.2.1</div>
             </div>
-            <hr className="border-slate-700 my-8" />
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-              <div>隐私政策 | 用户协议</div>
-              <div>版权所有 © 2020-2026 杭州知与未来科技有限公司 | 京ICP备2025105397号-1</div>
+            <div>
+              <h3 style={{fontSize: 15, fontWeight: 600, color: '#fff', margin: '0 0 12px 0'}}>教学资源</h3>
+              <p style={{fontSize: 13, color: '#a8b3cf', lineHeight: 1.8, margin: 0}}>岗位标准、实践场景、企业导师</p>
+            </div>
+            <div>
+              <h3 style={{fontSize: 15, fontWeight: 600, color: '#fff', margin: '0 0 12px 0'}}>技术支持</h3>
+              <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
+                <li style={{fontSize: 13, color: '#a8b3cf', lineHeight: 1.8}}>服务热线：400-888-8888</li>
+                <li style={{fontSize: 13, color: '#a8b3cf', lineHeight: 1.8}}>邮箱：support@example.com</li>
+              </ul>
+            </div>
+            <div>
+              <h3 style={{fontSize: 15, fontWeight: 600, color: '#fff', margin: '0 0 12px 0'}}>校内支持</h3>
+              <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
+                <li style={{fontSize: 13, color: '#a8b3cf', lineHeight: 1.8}}>授权院校：XX职业技术学院</li>
+                <li style={{fontSize: 13, color: '#a8b3cf', lineHeight: 1.8}}>校内管理员：张老师</li>
+              </ul>
             </div>
           </div>
+          <hr style={{border: 'none', borderTop: '1px solid #29324a', margin: '40px 0 24px'}} />
+          <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, fontSize: 12, color: '#6b7a99'}}>
+            <div>
+              <a href="#" style={{color: '#6b7a99', textDecoration: 'none'}}>隐私政策</a>
+              <span style={{color: '#29324a'}}>&nbsp;|&nbsp;</span>
+              <a href="#" style={{color: '#6b7a99', textDecoration: 'none'}}>用户协议</a>
+            </div>
+            <div style={{textAlign: 'right'}}>版权所有 © 2020-2026 杭州知与未来科技有限公司 ｜ 软件著作权登记号：2020SR0123456 ｜ 京ICP备2025105397号-1</div>
+          </div>
+        </div>
         </div>
       </footer>
     </div>
