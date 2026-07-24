@@ -4558,13 +4558,6 @@ function EditCardDialog({
                 )
               })}
             </div>
-
-            {state.evaluationMethods.length === 0 && (
-              <div className="p-12 text-center text-gray-400 border border-dashed rounded-xl">
-                <CheckCircle2 className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">请选择至少一种评价方式</p>
-              </div>
-            )}
           </div>
         )
       }
