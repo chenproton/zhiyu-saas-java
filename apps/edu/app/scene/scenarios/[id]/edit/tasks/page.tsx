@@ -5837,11 +5837,11 @@ function EditCardDialog({
                   </div>
                   <div className="mt-4 pt-4 border-t">
                     <Label className="text-xs text-gray-500 mb-2">试卷启用条件</Label>
-                    <div className="space-y-2 mt-1">
+                    <div className="grid grid-cols-3 gap-3 mt-2">
                       {[
-                        { key: "manual", label: "后台手动启用", desc: `老师手动开启试卷后，学生才能进入作答。每位学生从点击「开始答题」时起，计时 ${paperCfg.duration ?? 60} 分钟，时间结束系统将自动提交试卷。` },
-                        { key: "scheduled", label: "定时启用", desc: "提前预设考试的开始、结束时间。到开始时间后，学生方可进入作答；从开始时间起按考试时长计时，到预设结束时间自动关闭并提交试卷。" },
-                        { key: "always", label: "随时作答", desc: "试卷创建完成后立即开放，学生可随时进入作答。学生从点击「开始答题」时起按试卷设定时长计时，时间结束系统将自动提交试卷。" },
+                        { key: "manual", label: "手动启用", desc: "老师手动开启后学生可作答" },
+                        { key: "scheduled", label: "定时启用", desc: "预设开始结束时间，到时间自动开启关闭" },
+                        { key: "always", label: "随时作答", desc: "创建后立即开放，学生随时可进入作答" },
                       ].map(mode => (
                         <button
                           key={mode.key}
@@ -5999,7 +5999,7 @@ function EditCardDialog({
                 </div>
                 <div className="border rounded-xl p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-medium">成果材料要求</p>
+                    <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /><h3 className="text-sm font-semibold">成果材料要求</h3></div>
                     <div className="flex items-center gap-2">
                       <Switch checked={mockResOutcome.requiresMaterial} onCheckedChange={v => setMockResOutcome({ ...mockResOutcome, requiresMaterial: v })} />
                       <span className="text-xs text-gray-600">是否需要提交成果材料</span>
@@ -6057,7 +6057,7 @@ function EditCardDialog({
                 </div>
                 <div className="border rounded-xl p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-medium">作业提交要求</p>
+                    <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /><h3 className="text-sm font-semibold">作业提交要求</h3></div>
                     <div className="flex items-center gap-2">
                       <Switch checked={mockResReview.requiresMaterial} onCheckedChange={v => setMockResReview({ ...mockResReview, requiresMaterial: v })} />
                       <span className="text-xs text-gray-600">是否需要提交作业材料</span>
