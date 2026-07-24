@@ -162,6 +162,38 @@ export default function GradingDetailPage() {
           </Card>
         )}
 
+        {/* 客观题作答详情 */}
+        {objectiveAnswers && Object.keys(objectiveAnswers).length > 0 && (
+          <Card className="mb-4">
+            <CardHeader><CardTitle className="text-base">答题详情</CardTitle></CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {Object.entries(objectiveAnswers).map(([qid, ans]: [string, any]) => (
+                  <div key={qid} className="p-3 border rounded-lg">
+                    {typeof ans === "object" && ans.questionId ? (
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium">{ans.questionName || `题目 ${qid}`}</span>
+                          <Badge className={ans.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}>
+                            {ans.isCorrect ? `正确 +${ans.score || 0}` : `错误`}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-500">{ans.questionContent}</p>
+                        <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                          <div className="bg-gray-50 p-2 rounded"><span className="text-gray-400">正确答案：</span>{Array.isArray(ans.correctAnswer) ? ans.correctAnswer.join(", ") : String(ans.correctAnswer)}</div>
+                          <div className="bg-gray-50 p-2 rounded"><span className="text-gray-400">学生答案：</span>{Array.isArray(ans.studentAnswer) ? ans.studentAnswer.join(", ") : String(ans.studentAnswer ?? "未作答")}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm"><span className="font-medium">{qid}:</span> {typeof ans === "object" ? JSON.stringify(ans) : String(ans)}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* 评审步骤 (review) */}
         {reviewSteps.length > 0 && (
           <Card className="mb-4">

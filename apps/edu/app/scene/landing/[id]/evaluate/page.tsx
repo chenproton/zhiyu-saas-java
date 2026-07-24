@@ -239,6 +239,17 @@ export default function EvaluatePage() {
           </Card>
         )}
 
+        {!submitted && methodKey === "paper" && paperId && (
+          <Card className="mb-4">
+            <CardContent className="py-8 text-center">
+              <p className="text-gray-600 mb-4">请前往试卷页面完成作答。</p>
+              <Button asChild>
+                <Link href={`/evaluation/landing/exams/${paperId}`}>前往考试</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {!submitted && methodKey === "paper" && !paperId && (
           <Card className="mb-4">
             <CardContent className="py-8 text-center">

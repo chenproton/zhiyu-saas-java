@@ -420,6 +420,7 @@ interface TaskState {
   methodEvalSubjects: Record<string, EvalSubjectConfig[]>
   methodWeights: Record<string, number>
   reviewSteps: any[]
+  methodResourceConfigs: Record<string, any>
 }
 
 
@@ -466,6 +467,7 @@ function makeDefaultTaskState(count: number, index: number): TaskState {
     methodEvalObjects: {},
     methodEvalSubjects: {},
     reviewSteps: [],
+    methodResourceConfigs: {},
   }
 }
 
@@ -477,6 +479,7 @@ function taskStateFromMethods(task: any, methods: TaskEvaluationMethod[]): TaskS
     state.methodWeights[m.methodKey] = m.weight
     state.methodEvalObjects[m.methodKey] = m.evalObject as EvalObjectType
     state.methodEvalSubjects[m.methodKey] = (m.evalSubjects || []) as EvalSubjectConfig[]
+    state.methodResourceConfigs[m.methodKey] = m.resourceConfig || {}
     const toLocalEvalPoint = (ep: any): EvalPoint => ({
       id: ep.id,
       name: ep.name,
@@ -574,23 +577,12 @@ function taskStateToMethodsInput(ts: TaskState, extra?: { reviewSteps?: any[] })
     const scoreType = (scoreTypeFieldMap[mk] ? (ts as any)[scoreTypeFieldMap[mk]] : null) || null
     const rubricId = rubricFieldMap[mk] ? (ts as any)[rubricFieldMap[mk]] as string | null : null
 
-    let resourceConfig: any = {}
-    switch (mk) {
-      case "random_draw":
-        resourceConfig = { selectedQuestionIds: ts.randomDrawSelectedIds }
-        break
-      case "paper":
-        resourceConfig = { paperId: ts.paperIds?.[0] || null, paperWeight: ts.paperIds?.[0] ? ts.paperWeights[ts.paperIds[0]] : null }
-        break
-      case "question_bank":
-        resourceConfig = { questionIds: ts.questionBankQuestions }
-        break
-      case "quiz":
-        resourceConfig = { questionIds: ts.quizQuestions }
-        break
-      default:
-        resourceConfig = {}
-    }
+    let resourceConfig: any = ts.methodResourceConfigs[mk] || {}
+    // Merge legacy fields into resourceConfig
+    if (mk === "paper" && ts.paperIds?.[0]) resourceConfig = { ...resourceConfig, paperId: ts.paperIds[0] }
+    if (mk === "question_bank") resourceConfig = { ...resourceConfig, questionIds: ts.questionBankQuestions }
+    if (mk === "quiz") resourceConfig = { ...resourceConfig, questionIds: ts.quizQuestions }
+    if (mk === "random_draw") resourceConfig = { ...resourceConfig, customQuestions: ts.randomDrawCustomQuestions, selectedQuestionIds: ts.randomDrawSelectedIds }
 
     methods.push({
       methodKey: mk,
