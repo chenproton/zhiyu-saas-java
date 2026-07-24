@@ -1006,6 +1006,7 @@ export const examApi = {
     request<Exam>(`/evaluation/exams/${examId}/questions/${questionId}`, { method: "PUT", body: JSON.stringify({ score }) }),
   updateQuestionScores: (examId: string, scores: Record<string, number>) =>
     request<Exam>(`/evaluation/exams/${examId}/questions/scores`, { method: "PUT", body: JSON.stringify(scores) }),
+  publish: (id: string) => request<Exam>(`/evaluation/exams/${id}/publish`, { method: "POST" }),
 }
 
 export const examUsageApi = {

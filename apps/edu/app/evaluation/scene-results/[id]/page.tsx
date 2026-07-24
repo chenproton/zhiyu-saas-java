@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { evaluationResultApi, taskEvaluationApi, taskApi, userManagementApi } from "@/lib/api"
+import { evaluationResultApi, taskEvaluationApi, taskApi, userManagementApi, examApi } from "@/lib/api"
 import type { SceneEvaluationResult, TaskEvaluationMethod } from "@/lib/types"
 
 const evalMethodLabels: Record<string, string> = {
@@ -31,6 +31,8 @@ export default function GradingDetailPage() {
   const [pointScores, setPointScores] = useState<Record<string, number>>({})
   const [comment, setComment] = useState("")
   const [saved, setSaved] = useState(false)
+  const [exam, setExam] = useState<any>(null)
+  const [questionScores, setQuestionScores] = useState<Record<string, number>>({})
 
   useEffect(() => {
     if (!id) return
@@ -45,6 +47,7 @@ export default function GradingDetailPage() {
           const scores: Record<string, number> = {}
           Object.entries(existingScores).forEach(([k, v]) => { if (typeof v === "number") scores[k] = v })
           setPointScores(scores)
+          setQuestionScores(scores)
         }
         if (res.status === "evaluated") setSaved(true)
 
@@ -53,7 +56,18 @@ export default function GradingDetailPage() {
           taskEvaluationApi.listMethods(res.taskId).catch(() => ({ methods: [] })),
         ])
         setTask(taskData)
-        setMethodConfig(mRes.methods.find((m: TaskEvaluationMethod) => m.methodKey === res.methodKey) || null)
+        const cfg = mRes.methods.find((m: TaskEvaluationMethod) => m.methodKey === res.methodKey) || null
+        setMethodConfig(cfg)
+
+        if (cfg && ["paper", "question_bank", "quiz"].includes(res.methodKey)) {
+          const examId = cfg.resourceConfig?.paperId || cfg.resourceConfig?.examId
+          if (examId) {
+            try {
+              const examData = await examApi.get(examId)
+              setExam(examData)
+            } catch { /* ignore */ }
+          }
+        }
 
         const u = await userManagementApi.list({ limit: 1000 }).catch(() => ({ items: [] }))
         const found = (u.items || []).find((x: any) => x.id === res.evaluateeId)
@@ -68,6 +82,46 @@ export default function GradingDetailPage() {
   const reviewSteps = methodConfig?.reviewSteps || []
   const subjectiveContent = result?.subjectiveContent as Record<string, any> | undefined
   const objectiveAnswers = result?.objectiveAnswers as Record<string, any> | undefined
+  const isExamMethod = ["paper", "question_bank", "quiz"].includes(result?.methodKey || "")
+  const examQuestions = exam?.questions || []
+
+  const isAutoExamType = (type: string) => ["single", "multiple", "judge"].includes(type)
+  const toStringArray = (v: any): string[] => {
+    if (Array.isArray(v)) return v.map(x => String(x).toLowerCase())
+    if (typeof v === "string") return [v.toLowerCase()]
+    return []
+  }
+  const isAnswerCorrect = (q: any, ans: any): boolean => {
+    const correct = toStringArray(q.answer)
+    if (q.type === "single" || q.type === "judge") {
+      const s = typeof ans === "string" ? ans.toLowerCase() : ""
+      return correct.length > 0 && s === correct[0]
+    }
+    if (q.type === "multiple") {
+      const given = toStringArray(ans)
+      if (given.length !== correct.length) return false
+      const m = new Map<string, number>()
+      correct.forEach(c => m.set(c, (m.get(c) || 0) + 1))
+      for (const g of given) {
+        const next = (m.get(g) || 0) - 1
+        if (next < 0) return false
+        m.set(g, next)
+      }
+      return true
+    }
+    return false
+  }
+  const getQuestionAutoScore = (q: any, ans: any): number => {
+    if (!isAutoExamType(q.type)) return 0
+    return isAnswerCorrect(q, ans) ? q.score || 0 : 0
+  }
+  const examAutoTotal = examQuestions.reduce((sum: number, q: any) => sum + getQuestionAutoScore(q, objectiveAnswers?.[q.id]), 0)
+  const examSubjectiveTotal = examQuestions.reduce((sum: number, q: any) => {
+    if (isAutoExamType(q.type)) return sum
+    return sum + (questionScores[q.id] ?? 0)
+  }, 0)
+  const examTotal = examAutoTotal + examSubjectiveTotal
+  const examMaxScore = exam?.totalScore ?? examQuestions.reduce((sum: number, q: any) => sum + (q.score || 0), 0)
 
   const computedTotal = evalPoints.reduce((sum, ep) => sum + (pointScores[ep.id] ?? 0), 0)
   const methodName = evalMethodLabels[result?.methodKey || ""] || result?.methodKey || ""
@@ -78,9 +132,9 @@ export default function GradingDetailPage() {
     setSaving(true)
     try {
       await evaluationResultApi.grade(result.id, {
-        score: computedTotal,
+        score: isExamMethod ? examTotal : computedTotal,
         comment: comment || undefined,
-        evalPointScores: pointScores,
+        evalPointScores: isExamMethod ? questionScores : pointScores,
       })
       setSaved(true)
     } catch (e) { /* ignore */ }
@@ -119,7 +173,7 @@ export default function GradingDetailPage() {
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div><span className="text-gray-400">满分：</span>{result.maxScore}</div>
               <div><span className="text-gray-400">当前总分：</span>
-                <span className="font-bold text-lg ml-1">{saved && result.totalScore != null ? result.totalScore : computedTotal}</span>
+                <span className="font-bold text-lg ml-1">{saved && result.totalScore != null ? result.totalScore : isExamMethod ? examTotal : computedTotal}</span>
               </div>
               <div><span className="text-gray-400">场景：</span>{result.sceneId}</div>
             </div>
@@ -162,8 +216,8 @@ export default function GradingDetailPage() {
           </Card>
         )}
 
-        {/* 客观题作答详情 */}
-        {objectiveAnswers && Object.keys(objectiveAnswers).length > 0 && (
+        {/* 客观题作答详情（仅非考试类测评展示原始结构） */}
+        {objectiveAnswers && Object.keys(objectiveAnswers).length > 0 && !isExamMethod && (
           <Card className="mb-4">
             <CardHeader><CardTitle className="text-base">答题详情</CardTitle></CardHeader>
             <CardContent>
@@ -214,7 +268,7 @@ export default function GradingDetailPage() {
         )}
 
         {/* 评价标准评分 */}
-        {evalPoints.length > 0 && (
+        {evalPoints.length > 0 && !isExamMethod && (
           <Card className="mb-4">
             <CardHeader><CardTitle className="text-base flex items-center gap-2"><Star className="h-4 w-4" />评价标准评分</CardTitle></CardHeader>
             <CardContent>
@@ -263,14 +317,14 @@ export default function GradingDetailPage() {
         <Card className="mb-4">
           <CardHeader><CardTitle className="text-base">评语</CardTitle></CardHeader>
           <CardContent>
-            <Textarea placeholder="输入评语..." value={comment} onChange={(e) => setComment(e.target.value)} rows={4} disabled={saved} />
+            <Textarea placeholder="输入评语..." value={comment} onChange={(e) => setComment(e.target.value)} rows={4} disabled={saved && !isExamMethod} />
           </CardContent>
         </Card>
 
         {/* 操作按钮 */}
         <div className="flex justify-end gap-3">
           <Button variant="outline" asChild><Link href="/evaluation/scene-results">取消</Link></Button>
-          {!saved && (
+          {(!saved || isExamMethod) && (
             <Button onClick={handleSave} disabled={saving}>
               {saving ? <Star className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               提交评分

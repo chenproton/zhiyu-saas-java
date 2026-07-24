@@ -172,7 +172,7 @@ func (h *ExamResultHandler) submit(ctx context.Context, tenantID, userID, usageI
 	}
 
 	// Bridge: auto-create scene_evaluation_result if exam targets a task
-	h.syncSceneEvaluationResult(ctx, tenantID, usageID, userID, totalScore)
+	h.syncSceneEvaluationResult(ctx, tenantID, usageID, userID, score, totalScore, answersJSON)
 
 	return &domain.ExamResult{
 		ID:          resultID,
@@ -267,7 +267,7 @@ func roundScore(s float64) float64 {
 	return float64(int64(s*100+0.5)) / 100
 }
 
-func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenantID, usageID, userID string, totalScore float64) {
+func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenantID, usageID, userID string, score, maxScore float64, objectiveAnswers domain.JSONMap) {
 	rows, err := h.DB.Query(ctx, `
 		SELECT tem.method_key, tem.task_id
 		FROM exam_usages eu
@@ -285,10 +285,10 @@ func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenan
 			continue
 		}
 		_, _ = h.DB.Exec(ctx, `
-			INSERT INTO scene_evaluation_results (tenant_id, task_id, method_key, evaluatee_id, status, total_score, max_score)
-			VALUES ($1, $2, $3, $4, 'evaluated', $5, $6)
+			INSERT INTO scene_evaluation_results (tenant_id, task_id, method_key, evaluatee_id, status, total_score, max_score, objective_answers)
+			VALUES ($1, $2, $3, $4, 'evaluated', $5, $6, $7)
 			ON CONFLICT (task_id, evaluatee_id, method_key)
-			DO UPDATE SET total_score = EXCLUDED.total_score, status = 'evaluated', graded_at = NOW()
-		`, tenantID, taskID, methodKey, userID, totalScore, totalScore)
+			DO UPDATE SET total_score = EXCLUDED.total_score, max_score = EXCLUDED.max_score, status = 'evaluated', objective_answers = EXCLUDED.objective_answers, graded_at = NOW()
+		`, tenantID, taskID, methodKey, userID, score, maxScore, objectiveAnswers)
 	}
 }

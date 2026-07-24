@@ -47,6 +47,9 @@ export default function EvaluatePage() {
   const isTeacherLed = ["random_draw", "review"].includes(methodKey)
   const isManualSubmit = ["outcome", "homework"].includes(methodKey)
   const paperId = resourceConfig?.paperId
+  const tempExamId = resourceConfig?.examId
+  const examId = methodKey === "paper" ? paperId : tempExamId
+  const isExamMethod = ["paper", "question_bank", "quiz"].includes(methodKey)
   const questionIds = resourceConfig?.questionIds
 
   useEffect(() => {
@@ -239,21 +242,21 @@ export default function EvaluatePage() {
           </Card>
         )}
 
-        {!submitted && methodKey === "paper" && paperId && (
+        {!submitted && isExamMethod && examId && (
           <Card className="mb-4">
             <CardContent className="py-8 text-center">
-              <p className="text-gray-600 mb-4">请前往试卷页面完成作答。</p>
+              <p className="text-gray-600 mb-4">请前往考试页面完成作答。</p>
               <Button asChild>
-                <Link href={`/evaluation/landing/exams/${paperId}`}>前往考试</Link>
+                <Link href={`/evaluation/landing/exams/${examId}`}>前往考试</Link>
               </Button>
             </CardContent>
           </Card>
         )}
 
-        {!submitted && methodKey === "paper" && !paperId && (
+        {!submitted && isExamMethod && !examId && (
           <Card className="mb-4">
             <CardContent className="py-8 text-center">
-              <p className="text-gray-600">教师尚未配置试卷，请联系教师。</p>
+              <p className="text-gray-600">教师尚未配置考试，请联系教师。</p>
             </CardContent>
           </Card>
         )}

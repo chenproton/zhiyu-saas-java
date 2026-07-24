@@ -121,7 +121,7 @@ import { getAnnotation } from "@/lib/prd-annotations"
 import { ScoreConfigDialog } from "@/components/evaluation/score-config-dialog"
 import { ExamFormDialog } from "@/components/evaluation/exam-form-dialog"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
-import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryApi, majorApi, userManagementApi, fileApi, taskResourceApi, questionBankApi, questionApi, examApi, taskEvaluationApi, randomDrawQuestionApi } from "@/lib/api"
+import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryApi, majorApi, userManagementApi, fileApi, taskResourceApi, questionBankApi, questionApi, examApi, examUsageApi, taskEvaluationApi, randomDrawQuestionApi } from "@/lib/api"
 import type { RandomDrawQuestion } from "@/lib/types"
 import type { ScenarioTask as ApiScenarioTask } from "@/lib/types/scene"
 import type { TaskEvaluationMethod } from "@/lib/types/scene"
@@ -2724,6 +2724,41 @@ function EditCardDialog({
   const [newStepDesc, setNewStepDesc] = useState("")
   const [newStepSubjectType, setNewStepSubjectType] = useState("")
 
+  const ensureTempExam = async (mk: "question_bank" | "quiz", currentCfg: any): Promise<string | null> => {
+    const questionIds = mk === "question_bank" ? state.questionBankQuestions : state.quizQuestions
+    const existingExamId = currentCfg?.examId
+    const questionScores = currentCfg?.questionScores || {}
+    const existingQuestionIds = currentCfg?.examQuestionIds || []
+    if (!questionIds || questionIds.length === 0) {
+      if (existingExamId) {
+        try {
+          const usages = await examUsageApi.list({ examId: existingExamId })
+          for (const u of usages.items || []) await examUsageApi.delete(u.id)
+          await examApi.delete(existingExamId)
+        } catch { /* ignore */ }
+      }
+      return null
+    }
+    const sortedNew = [...questionIds].sort().join(",")
+    const sortedOld = [...existingQuestionIds].sort().join(",")
+    if (existingExamId && sortedNew === sortedOld) return existingExamId
+    if (existingExamId) {
+      try {
+        const usages = await examUsageApi.list({ examId: existingExamId })
+        for (const u of usages.items || []) await examUsageApi.delete(u.id)
+        await examApi.delete(existingExamId)
+      } catch { /* ignore */ }
+    }
+    const label = mk === "question_bank" ? "题库" : "随堂测"
+    const exam = await examApi.create({ name: `${task.name}-${label}临时试卷`, duration: currentCfg?.timeLimit || 90 } as any)
+    for (const qid of questionIds) {
+      await examApi.addQuestion(exam.id, qid, questionScores[qid] || 10)
+    }
+    await examApi.publish(exam.id)
+    await examUsageApi.create({ examId: exam.id, name: `${exam.name} 默认安排`, targetType: "public", targetIds: [taskId] } as any)
+    return exam.id
+  }
+
   const handleSave = async () => {
     if (cardType === "info") {
       updateTask({ name: localTask.name, taskType: localTask.type as "assessment"|"training", difficulty: localTask.difficulty as 1|2|3|4|5, estimatedHours: localTask.hours, background: localTask.background })
@@ -2772,12 +2807,34 @@ function EditCardDialog({
       })
       updateState({ methodResourceConfigs: updatedRC })
       // Persist evaluation methods (including resource config) to backend immediately
-      const methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC })
+      let methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC })
       if (methodsInput.length > 0) {
         try {
           await taskEvaluationApi.saveMethods(taskId, { methods: methodsInput })
         } catch (err: any) {
           toast({ variant: "destructive", title: "评价规则保存失败", description: err.message })
+          return
+        }
+      }
+      // Generate temp exams for question_bank / quiz and persist examId back
+      const tempExamMethods = methodsInput.filter(m => m.methodKey === "question_bank" || m.methodKey === "quiz")
+      if (tempExamMethods.length > 0) {
+        for (const m of tempExamMethods) {
+          const mk = m.methodKey as "question_bank" | "quiz"
+          const examId = await ensureTempExam(mk, updatedRC[mk])
+          if (examId) {
+            updatedRC[mk] = { ...updatedRC[mk], examId, examQuestionIds: mk === "question_bank" ? state.questionBankQuestions : state.quizQuestions }
+          } else {
+            const { examId: _, examQuestionIds: __, ...rest } = updatedRC[mk] || {}
+            updatedRC[mk] = rest
+          }
+        }
+        updateState({ methodResourceConfigs: updatedRC })
+        methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC })
+        try {
+          await taskEvaluationApi.saveMethods(taskId, { methods: methodsInput })
+        } catch (err: any) {
+          toast({ variant: "destructive", title: "临时考试保存失败", description: err.message })
           return
         }
       }
@@ -6261,6 +6318,55 @@ function EditCardDialog({
                       <Switch checked={quizCfg.showResult ?? true} onCheckedChange={v => setQuizCfg({ showResult: v })} />
                       <span className="text-xs text-gray-600">提交后展示成绩</span>
                     </div>
+                  </div>
+                  {(quizCfg.allowRetake ?? false) && (
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs text-gray-500">最多重考次数</Label>
+                        <Input type="number" value={quizCfg.retakeCount ?? 1} onChange={e => setQuizCfg({ retakeCount: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} />
+                      </div>
+                    </div>
+                  )}
+                  <div className="mt-4 pt-4 border-t">
+                    <Label className="text-xs text-gray-500 mb-2">测评启用条件</Label>
+                    <div className="space-y-2 mt-1">
+                      {[
+                        { key: "manual", label: "后台手动启用", desc: `老师手动开启后，学生才能进入作答。每位学生从点击「开始答题」时起，计时 ${quizCfg.timeLimit ?? 90} 分钟，时间结束系统将自动提交。` },
+                        { key: "scheduled", label: "定时启用", desc: "提前预设测评的开始、结束时间。到开始时间后，学生方可进入作答；从开始时间起按测评时长计时，到预设结束时间自动关闭并提交。" },
+                        { key: "always", label: "随时作答", desc: "测评创建完成后立即开放，学生可随时进入作答。学生从点击「开始答题」时起按设定时长计时，时间结束系统将自动提交。" },
+                      ].map(mode => (
+                        <button
+                          key={mode.key}
+                          onClick={() => setQuizCfg({ activationMode: mode.key })}
+                          className={cn(
+                            "w-full text-left p-3 rounded-lg border transition-all",
+                            (quizCfg.activationMode ?? "manual") === mode.key
+                              ? "border-primary bg-primary/5 text-primary"
+                              : "border-gray-200 text-gray-600 hover:border-gray-300"
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center shrink-0", (quizCfg.activationMode ?? "manual") === mode.key ? "bg-primary border-primary" : "border-gray-300")}>
+                              {(quizCfg.activationMode ?? "manual") === mode.key && <div className="w-2 h-2 rounded-full bg-white" />}
+                            </div>
+                            <span className="text-xs font-medium">{mode.label}</span>
+                          </div>
+                          <p className="text-[11px] text-gray-400 mt-1 ml-6">{mode.desc}</p>
+                        </button>
+                      ))}
+                    </div>
+                    {(quizCfg.activationMode ?? "manual") === "scheduled" && (
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs text-gray-500">启用时间</Label>
+                          <Input type="datetime-local" value={quizCfg.scheduledTime ?? ""} onChange={e => setQuizCfg({ scheduledTime: e.target.value })} className="mt-1 text-sm" />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-500">停用时间</Label>
+                          <Input type="datetime-local" value={quizCfg.scheduledEndTime ?? ""} onChange={e => setQuizCfg({ scheduledEndTime: e.target.value })} className="mt-1 text-sm" />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
