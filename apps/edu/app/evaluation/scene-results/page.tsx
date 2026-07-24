@@ -94,10 +94,12 @@ export default function GradingPage() {
         ;(posRes.items || []).forEach((p: any) => pMap.set(p.id, p.name))
         setPositionMap(pMap)
 
-        setScenarios((scRes.items || []).map((s: any) => ({
-          ...s,
-          positionName: pMap.get(s.careerPositionId) || "未分类",
-        })))
+        setScenarios((scRes.items || [])
+          .filter((s: any) => s.status === "published")
+          .map((s: any) => ({
+            ...s,
+            positionName: pMap.get(s.careerPositionId) || "未分类",
+          })))
 
         const uMap = new Map<string, any>()
         ;(userRes.items || []).forEach((u: any) => uMap.set(u.id, u))
