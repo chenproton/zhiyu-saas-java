@@ -2194,6 +2194,15 @@ function RandomDrawResourcePanel({
   const [allQuestions, setAllQuestions] = useState<RandomDrawQuestion[]>([])
   const [loading, setLoading] = useState(true)
 
+  const rdCfg = state.methodResourceConfigs.random_draw || {}
+  const [submitFormatDesc, setSubmitFormatDesc] = useState<string>(rdCfg.submitFormatDesc || "")
+  const [venueResources, setVenueResources] = useState<string>(rdCfg.venueResources || "")
+
+  useEffect(() => {
+    setSubmitFormatDesc(rdCfg.submitFormatDesc || "")
+    setVenueResources(rdCfg.venueResources || "")
+  }, [rdCfg.submitFormatDesc, rdCfg.venueResources])
+
   const loadQuestions = useCallback(async () => {
     try {
       const res = await randomDrawQuestionApi.list({ limit: 9999 })
@@ -2408,6 +2417,35 @@ function RandomDrawResourcePanel({
           <div>
             <Label className="text-xs text-gray-500">抽题数量</Label>
             <Input type="number" value={rdqDrawCount} onChange={e => setRdqDrawCount(Math.max(1, parseInt(e.target.value) || 1))} className="mt-1 text-sm" min={1} />
+          </div>
+        </div>
+      </div>
+
+      {/* 现场要求 */}
+      <div className="border rounded-xl p-4 mt-4">
+        <p className="text-sm font-medium mb-3">现场要求</p>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label>
+            <Textarea
+              value={submitFormatDesc}
+              onChange={e => setSubmitFormatDesc(e.target.value)}
+              onBlur={() => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, random_draw: { ...rdCfg, submitFormatDesc } } })}
+              placeholder="请用一句话说明学生需要准备的材料要求..."
+              rows={2}
+              className="text-sm"
+            />
+          </div>
+          <div>
+            <Label className="text-xs text-gray-500 mb-1.5">评审场地/环境资源准备</Label>
+            <Textarea
+              value={venueResources}
+              onChange={e => setVenueResources(e.target.value)}
+              onBlur={() => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, random_draw: { ...rdCfg, venueResources } } })}
+              placeholder="请描述现场问答所需的场地、设备及环境资源准备要求..."
+              rows={2}
+              className="text-sm"
+            />
           </div>
         </div>
       </div>
@@ -2660,7 +2698,7 @@ function EditCardDialog({
   const [rubricAbTargetField, setRubricAbTargetField] = useState<string | null>(null)
 
   // Mock resource config states
-  const [mockResRandomDraw, setMockResRandomDraw] = useState({ questionCount: 5, difficulty: "mixed", types: { single: true, multiple: true, judge: true }, autoDraw: true })
+  const [mockResRandomDraw, setMockResRandomDraw] = useState({ questionCount: 5, difficulty: "mixed", types: { single: true, multiple: true, judge: true }, autoDraw: true, submitFormatDesc: "", venueResources: "" })
   const [selectedPaperForDetail, setSelectedPaperForDetail] = useState<string | null>(null)
   const [paperDetailOpen, setPaperDetailOpen] = useState(false)
   const [showCreatePaper, setShowCreatePaper] = useState(false)
@@ -2727,7 +2765,7 @@ function EditCardDialog({
       // Sync mock resource configs to TaskState before saving
       const updatedRC = { ...state.methodResourceConfigs }
       state.evaluationMethods.forEach(mk => {
-        if (mk === "random_draw") updatedRC[mk] = { ...updatedRC[mk], ...mockResRandomDraw }
+        if (mk === "random_draw") updatedRC[mk] = { ...mockResRandomDraw, ...updatedRC[mk] }
         if (mk === "review") updatedRC[mk] = { ...updatedRC[mk], ...mockResReview }
         if (mk === "outcome") updatedRC[mk] = { ...updatedRC[mk], ...mockResOutcome }
         if (mk === "homework") updatedRC[mk] = { ...updatedRC[mk], ...mockResHomework }
@@ -5982,6 +6020,47 @@ function EditCardDialog({
                       </div>
                     </div>
                   )}
+                  <div className="mt-4 pt-4 border-t">
+                    <Label className="text-xs text-gray-500 mb-2">测评启用条件</Label>
+                    <div className="space-y-2 mt-1">
+                      {[
+                        { key: "manual", label: "后台手动启用", desc: `老师手动开启后，学生才能进入作答。每位学生从点击「开始答题」时起，计时 ${qbCfg.timeLimit ?? 90} 分钟，时间结束系统将自动提交。` },
+                        { key: "scheduled", label: "定时启用", desc: "提前预设测评的开始、结束时间。到开始时间后，学生方可进入作答；从开始时间起按测评时长计时，到预设结束时间自动关闭并提交。" },
+                        { key: "always", label: "随时作答", desc: "测评创建完成后立即开放，学生可随时进入作答。学生从点击「开始答题」时起按设定时长计时，时间结束系统将自动提交。" },
+                      ].map(mode => (
+                        <button
+                          key={mode.key}
+                          onClick={() => setQbCfg({ activationMode: mode.key })}
+                          className={cn(
+                            "w-full text-left p-3 rounded-lg border transition-all",
+                            (qbCfg.activationMode ?? "manual") === mode.key
+                              ? "border-primary bg-primary/5 text-primary"
+                              : "border-gray-200 text-gray-600 hover:border-gray-300"
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center shrink-0", (qbCfg.activationMode ?? "manual") === mode.key ? "bg-primary border-primary" : "border-gray-300")}>
+                              {(qbCfg.activationMode ?? "manual") === mode.key && <div className="w-2 h-2 rounded-full bg-white" />}
+                            </div>
+                            <span className="text-xs font-medium">{mode.label}</span>
+                          </div>
+                          <p className="text-[11px] text-gray-400 mt-1 ml-6">{mode.desc}</p>
+                        </button>
+                      ))}
+                    </div>
+                    {(qbCfg.activationMode ?? "manual") === "scheduled" && (
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs text-gray-500">启用时间</Label>
+                          <Input type="datetime-local" value={qbCfg.scheduledTime ?? ""} onChange={e => setQbCfg({ scheduledTime: e.target.value })} className="mt-1 text-sm" />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-500">停用时间</Label>
+                          <Input type="datetime-local" value={qbCfg.scheduledEndTime ?? ""} onChange={e => setQbCfg({ scheduledEndTime: e.target.value })} className="mt-1 text-sm" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
               </div>
@@ -6059,23 +6138,23 @@ function EditCardDialog({
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /><h3 className="text-sm font-semibold">作业提交要求</h3></div>
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResReview.requiresMaterial} onCheckedChange={v => setMockResReview({ ...mockResReview, requiresMaterial: v })} />
+                      <Switch checked={mockResHomework.requiresMaterial} onCheckedChange={v => setMockResHomework({ ...mockResHomework, requiresMaterial: v })} />
                       <span className="text-xs text-gray-600">是否需要提交作业材料</span>
                     </div>
                   </div>
-                  {mockResReview.requiresMaterial && (
+                  {mockResHomework.requiresMaterial && (
                     <>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <Label className="text-xs text-gray-500">预估提交天数</Label>
-                          <Input type="number" value={mockResReview.deadlineDays} onChange={e => setMockResReview({ ...mockResReview, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} />
+                          <Input type="number" value={mockResHomework.deadlineDays} onChange={e => setMockResHomework({ ...mockResHomework, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} />
                         </div>
                       </div>
                       <div className="mt-3">
                         <Label className="text-xs text-gray-500 mb-1.5">作业格式要求</Label>
                         <LocalTextarea
-                          defaultValue={mockResReview.submitFormatDesc}
-                          onBlurSync={(v: string) => setMockResReview({ ...mockResReview, submitFormatDesc: v })}
+                          defaultValue={mockResHomework.submitFormatDesc}
+                          onBlurSync={(v: string) => setMockResHomework({ ...mockResHomework, submitFormatDesc: v })}
                           placeholder="请用一句话说明学生需要提交的作业格式要求..."
                           rows={2}
                           className="text-sm"
@@ -6084,8 +6163,18 @@ function EditCardDialog({
                     </>
                   )}
                   <div className="mt-3">
+                    <Label className="text-xs text-gray-500 mb-1.5">作业场地/环境资源准备</Label>
+                    <LocalTextarea
+                      defaultValue={mockResHomework.venueResources}
+                      onBlurSync={(v: string) => setMockResHomework({ ...mockResHomework, venueResources: v })}
+                      placeholder="请描述作业所需的场地、设备及环境资源准备要求..."
+                      rows={2}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="mt-3">
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResReview.allowResubmit} onCheckedChange={v => setMockResReview({ ...mockResReview, allowResubmit: v })} />
+                      <Switch checked={mockResHomework.allowResubmit} onCheckedChange={v => setMockResHomework({ ...mockResHomework, allowResubmit: v })} />
                       <span className="text-xs text-gray-600">允许重新提交</span>
                     </div>
                   </div>
