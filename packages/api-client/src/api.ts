@@ -1039,7 +1039,7 @@ export const evaluationResultApi = {
   get: (id: string) => request<SceneEvaluationResult>(`/evaluation/results/${id}`),
   submit: (req: { taskId: string; sceneId?: string; methodKey: string; evaluateeId: string; maxScore?: number; objectiveAnswers?: Record<string, any>; subjectiveContent?: Record<string, any>; drawnQuestions?: Record<string, any>; evalPointScores?: Record<string, any> }) =>
     request<SceneEvaluationResult>("/evaluation/results", { method: "POST", body: JSON.stringify(req) }),
-  grade: (id: string, req: { score: number; evalPointScores?: Record<string, any>; comment?: string }) =>
+  grade: (id: string, req: { score: number; evalPointScores?: Record<string, any>; comment?: string; drawnQuestions?: Record<string, any>; objectiveAnswers?: Record<string, any> }) =>
     request<SceneEvaluationResult>(`/evaluation/results/${id}/grade`, { method: "POST", body: JSON.stringify(req) }),
   batchGrade: (items: { id: string; score: number; evalPointScores?: Record<string, any>; comment?: string }[]) =>
     request<{ count: number }>("/evaluation/results/batch-grade", { method: "POST", body: JSON.stringify({ items }) }),

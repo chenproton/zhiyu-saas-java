@@ -43,6 +43,7 @@ type GradeResultRequest struct {
 	Score           float64         `json:"score"`
 	Comment         *string         `json:"comment"`
 	EvalPointScores json.RawMessage `json:"evalPointScores,omitempty"`
+	DrawnQuestions  json.RawMessage `json:"drawnQuestions,omitempty"`
 }
 
 type BatchGradeItem struct {
@@ -245,10 +246,11 @@ func (h *EvaluationResultHandler) Grade(w http.ResponseWriter, r *http.Request) 
 	}
 
 	evalPointScores := jsonRawMessageToJSONMap(req.EvalPointScores)
+	drawnQuestions := jsonRawMessageToJSONMap(req.DrawnQuestions)
 	_, err := h.DB.Exec(r.Context(), `
-		UPDATE scene_evaluation_results SET total_score = $1, comment = $2, eval_point_scores = $3, status = 'evaluated', graded_at = NOW(), graded_by = $4
-		WHERE id = $5
-	`, req.Score, req.Comment, evalPointScores, claims.UserID, id)
+		UPDATE scene_evaluation_results SET total_score = $1, comment = $2, eval_point_scores = $3, drawn_questions = $4, status = 'evaluated', graded_at = NOW(), graded_by = $5
+		WHERE id = $6
+	`, req.Score, req.Comment, evalPointScores, drawnQuestions, claims.UserID, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to grade result")
 		return
