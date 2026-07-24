@@ -4599,13 +4599,6 @@ function EditCardDialog({
           return instances
         }
 
-        const duplicateMethod = (methodKey: string) => {
-          setMethodInstanceCounts(prev => ({
-            ...prev,
-            [methodKey]: (prev[methodKey] || 1) + 1
-          }))
-        }
-
         const subjectLabels: Record<string, string> = {
           teacher: "教师",
           enterprise_mentor: "企业导师",
@@ -7891,18 +7884,6 @@ function EditCardDialog({
                           <p className="text-sm font-semibold">{displayLabel}</p>
                           <p className="text-xs text-gray-400">{method.desc}</p>
                         </div>
-                        <button
-                          onClick={() => {
-                            if (confirm(`确定要复制「${method.label}」测评方式吗？`)) {
-                              duplicateMethod(methodKey)
-                            }
-                          }}
-                          className="flex items-center gap-1 px-2 py-1 rounded-md text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors text-xs"
-                          title="复制测评方式"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                          复制测评方式
-                        </button>
                       </div>
                       <div className="flex items-center gap-1">
                         <ObjectCard methodKey={methodKey} onClick={() => openDialog("object", methodKey)} />
