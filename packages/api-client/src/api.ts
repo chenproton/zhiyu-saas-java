@@ -89,6 +89,10 @@ import type {
   EvaluationBatch,
   RandomDrawQuestion,
 } from "./types/evaluation"
+import type {
+  ResourceLibraryItem,
+  OnSiteQuestionLibraryItem,
+} from "./types/library"
 import type { WorkspaceDashboard } from "./types/portal"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1"
@@ -1201,4 +1205,28 @@ export const evaluationBatchApi = {
   ...createCrudApi<EvaluationBatch, Omit<EvaluationBatch, "id" | "createdAt" | "updatedAt">, Partial<Omit<EvaluationBatch, "id" | "createdAt" | "updatedAt">>>("/evaluation/batches"),
   updateStatus: (id: string, status: string) =>
     request<EvaluationBatch>(`/evaluation/batches/${id}/status`, { method: "POST", body: JSON.stringify({ status }) }),
+}
+
+// ==================== Phase 3.6: Resource Sharing Platform APIs ====================
+
+export const resourceLibraryApi = {
+  list: (params?: { search?: string; resourceType?: string; limit?: number; offset?: number }) =>
+    request<ListResponse<ResourceLibraryItem>>(`/library/resources${buildQuery(params || {})}`),
+  get: (id: string) => request<ResourceLibraryItem>(`/library/resources/${id}`),
+  create: (req: Omit<ResourceLibraryItem, "id" | "tenantId" | "createdAt" | "updatedAt">) =>
+    request<ResourceLibraryItem>("/library/resources", { method: "POST", body: JSON.stringify(req) }),
+  update: (id: string, req: Partial<Omit<ResourceLibraryItem, "id" | "tenantId" | "createdAt" | "updatedAt">>) =>
+    request<ResourceLibraryItem>(`/library/resources/${id}`, { method: "PUT", body: JSON.stringify(req) }),
+  delete: (id: string) => request<{ id: string }>(`/library/resources/${id}`, { method: "DELETE" }),
+}
+
+export const onSiteQuestionLibraryApi = {
+  list: (params?: { search?: string; questionType?: string; difficulty?: string; limit?: number; offset?: number }) =>
+    request<ListResponse<OnSiteQuestionLibraryItem>>(`/library/on-site-questions${buildQuery(params || {})}`),
+  get: (id: string) => request<OnSiteQuestionLibraryItem>(`/library/on-site-questions/${id}`),
+  create: (req: Omit<OnSiteQuestionLibraryItem, "id" | "tenantId" | "createdAt" | "updatedAt">) =>
+    request<OnSiteQuestionLibraryItem>("/library/on-site-questions", { method: "POST", body: JSON.stringify(req) }),
+  update: (id: string, req: Partial<Omit<OnSiteQuestionLibraryItem, "id" | "tenantId" | "createdAt" | "updatedAt">>) =>
+    request<OnSiteQuestionLibraryItem>(`/library/on-site-questions/${id}`, { method: "PUT", body: JSON.stringify(req) }),
+  delete: (id: string) => request<{ id: string }>(`/library/on-site-questions/${id}`, { method: "DELETE" }),
 }

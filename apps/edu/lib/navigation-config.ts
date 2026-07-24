@@ -340,3 +340,50 @@ export const portalNavigationConfig: PlatformNavigationConfig = {
   shellClassName: "bg-background",
   mainClassName: "min-w-0 flex-1",
 }
+
+/* ============================================================
+   Library 模块导航（资源共享平台）
+   ============================================================ */
+export const libraryNavigationConfig: PlatformNavigationConfig = {
+  brandTitle: "资源共享平台",
+  currentPlatformId: "library",
+  currentPlatformLabel: "资源共享平台",
+  brandHref: "/library/knowledge",
+  brandIcon: "folderKanban",
+  platformIcon: "folderKanban",
+  sideBackHref: "/library/knowledge",
+  currentUserName: "教师",
+  currentUserRoleLabel: "教学用户",
+  showCurrentTime: true,
+  showUserMenu: true,
+  userMenuItems: [
+    { id: "profile", label: "个人中心", icon: "user" },
+    { id: "account", label: "账号设置", icon: "settings" },
+    { id: "logout", label: "退出登录", tone: "danger" },
+  ],
+  sideNavItems: [
+    {
+      id: "knowledge-center",
+      label: "教学资源",
+      icon: "bookOpen",
+      children: [
+        { id: "knowledge", label: "知识点库", href: "/library/knowledge", matchers: ["/library/knowledge"] },
+        { id: "ability", label: "能力点库", href: "/library/ability", matchers: ["/library/ability"] },
+        { id: "certificates", label: "证书库", href: "/library/certificates", matchers: ["/library/certificates"] },
+      ],
+    },
+    {
+      id: "task-resource-center",
+      label: "场景任务资源",
+      icon: "folderKanban",
+      children: [
+        { id: "resources", label: "资源库管理", href: "/library/resources", matchers: ["/library/resources"] },
+        { id: "questions", label: "现场问答题库", href: "/library/questions", matchers: ["/library/questions"] },
+      ],
+    },
+  ],
+  defaultExpandedSideNavIds: ["knowledge-center", "task-resource-center"],
+  platformSwitchItems: [],
+  shellClassName: "bg-background",
+  mainClassName: "min-w-0 flex-1",
+}

@@ -185,6 +185,10 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 	landingHandler := &handler.LandingHandler{DB: db}
 	certGradeHandler := &handler.CertGradeHandler{DB: db}
 
+	// Phase 3.6: resource sharing platform handlers
+	resourceLibraryHandler := &handler.ResourceLibraryHandler{DB: db}
+	onSiteQuestionLibraryHandler := &handler.OnSiteQuestionLibraryHandler{DB: db}
+
 	auth := authmw.JWT(jwtSecret)
 	platformAdmin := authmw.RequireRole("platform_admin")
 
@@ -630,6 +634,19 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 				r.Post("/evaluation/appeals/{id}/process", appealHandler.Process)
 
 				registerBatchRoutes(r, "/evaluation/batches", evaluationBatchHandler)
+
+				// Phase 3.6: resource sharing platform routes
+				r.Get("/library/resources", resourceLibraryHandler.List)
+				r.Get("/library/resources/{id}", resourceLibraryHandler.Get)
+				r.Post("/library/resources", resourceLibraryHandler.Create)
+				r.Put("/library/resources/{id}", resourceLibraryHandler.Update)
+				r.Delete("/library/resources/{id}", resourceLibraryHandler.Delete)
+
+				r.Get("/library/on-site-questions", onSiteQuestionLibraryHandler.List)
+				r.Get("/library/on-site-questions/{id}", onSiteQuestionLibraryHandler.Get)
+				r.Post("/library/on-site-questions", onSiteQuestionLibraryHandler.Create)
+				r.Put("/library/on-site-questions/{id}", onSiteQuestionLibraryHandler.Update)
+				r.Delete("/library/on-site-questions/{id}", onSiteQuestionLibraryHandler.Delete)
 			})
 		})
 	})

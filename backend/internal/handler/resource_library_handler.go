@@ -1,0 +1,323 @@
+package handler
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"strings"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/zhiyu-saas/backend/internal/domain"
+	"github.com/zhiyu-saas/backend/internal/middleware"
+)
+
+type ResourceLibraryHandler struct {
+	DB *pgxpool.Pool
+}
+
+type ResourceLibraryListResponse struct {
+	Items []domain.ResourceLibraryItem `json:"items"`
+	Total int                          `json:"total"`
+}
+
+type CreateResourceLibraryRequest struct {
+	Name         string              `json:"name"`
+	ResourceType domain.ResourceType `json:"resourceType"`
+	URL          *string             `json:"url"`
+	Description  *string             `json:"description"`
+	Thumbnail    *string             `json:"thumbnail"`
+	FileSize     *int64              `json:"fileSize"`
+	Metadata     domain.JSONMap      `json:"metadata"`
+}
+
+type UpdateResourceLibraryRequest struct {
+	Name         *string              `json:"name"`
+	ResourceType *domain.ResourceType `json:"resourceType"`
+	URL          *string              `json:"url"`
+	Description  *string              `json:"description"`
+	Thumbnail    *string              `json:"thumbnail"`
+	FileSize     *int64               `json:"fileSize"`
+	Metadata     domain.JSONMap       `json:"metadata"`
+}
+
+func (h *ResourceLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+	search := r.URL.Query().Get("search")
+	resourceType := r.URL.Query().Get("resourceType")
+
+	limit := 50
+	offset := 0
+	if v, err := parseInt(limitStr, 50); err == nil && v > 0 {
+		limit = v
+	}
+	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
+		offset = v
+	}
+
+	where := []string{"tenant_id = $1"}
+	args := []interface{}{tenantID}
+	argIdx := 2
+
+	if search != "" {
+		where = append(where, "(name ILIKE $"+itoa(argIdx)+" OR description ILIKE $"+itoa(argIdx)+")")
+		args = append(args, "%"+search+"%")
+		argIdx++
+	}
+	if resourceType != "" {
+		where = append(where, "resource_type = $"+itoa(argIdx))
+		args = append(args, resourceType)
+		argIdx++
+	}
+
+	countQuery := "SELECT COUNT(*) FROM resource_library WHERE " + strings.Join(where, " AND ")
+	var total int
+	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
+
+	query := `
+		SELECT id, tenant_id, name, resource_type, url, description, thumbnail, file_size, metadata, uploaded_by, created_at, updated_at
+		FROM resource_library
+		WHERE ` + strings.Join(where, " AND ") + `
+		ORDER BY created_at DESC
+		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
+	args = append(args, limit, offset)
+
+	rows, err := h.DB.Query(r.Context(), query, args...)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to list resources")
+		return
+	}
+	defer rows.Close()
+
+	items := make([]domain.ResourceLibraryItem, 0)
+	for rows.Next() {
+		var item domain.ResourceLibraryItem
+		var url, description, thumbnail *string
+		var fileSize *int64
+		var uploadedBy *string
+		var metadata domain.JSONMap
+		if err := rows.Scan(
+			&item.ID, &item.TenantID, &item.Name, &item.ResourceType,
+			&url, &description, &thumbnail, &fileSize, &metadata,
+			&uploadedBy, &item.CreatedAt, &item.UpdatedAt,
+		); err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to scan resource")
+			return
+		}
+		item.URL = url
+		item.Description = description
+		item.Thumbnail = thumbnail
+		item.FileSize = fileSize
+		item.Metadata = metadata
+		item.UploadedBy = uploadedBy
+		items = append(items, item)
+	}
+
+	respondJSON(w, http.StatusOK, ResourceLibraryListResponse{Items: items, Total: total})
+}
+
+func (h *ResourceLibraryHandler) Get(w http.ResponseWriter, r *http.Request) {
+	if middleware.CurrentUser(r) == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	item, err := h.fetchItem(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "resource not found")
+		return
+	}
+	respondJSON(w, http.StatusOK, item)
+}
+
+func (h *ResourceLibraryHandler) Create(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
+	var req CreateResourceLibraryRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if req.Name == "" || req.ResourceType == "" {
+		respondError(w, http.StatusBadRequest, "name and resourceType are required")
+		return
+	}
+
+	claims := middleware.CurrentUser(r)
+	uploadedBy := claims.UserID
+
+	id := uuid.NewString()
+	if req.Metadata == nil {
+		req.Metadata = domain.JSONMap{}
+	}
+	_, err := h.DB.Exec(r.Context(), `
+		INSERT INTO resource_library (id, tenant_id, name, resource_type, url, description, thumbnail, file_size, metadata, uploaded_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	`, id, tenantID, req.Name, req.ResourceType, req.URL, req.Description, req.Thumbnail, req.FileSize, req.Metadata, uploadedBy)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to create resource")
+		return
+	}
+
+	item, _ := h.fetchItem(r.Context(), id)
+	respondJSON(w, http.StatusCreated, item)
+}
+
+func (h *ResourceLibraryHandler) Update(w http.ResponseWriter, r *http.Request) {
+	if middleware.CurrentUser(r) == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	existing, err := h.fetchItem(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "resource not found")
+		return
+	}
+
+	if !verifyTenantOwnership(w, r, existing.TenantID) {
+		return
+	}
+
+	var req UpdateResourceLibraryRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	name := existing.Name
+	resourceType := existing.ResourceType
+	url := existing.URL
+	description := existing.Description
+	thumbnail := existing.Thumbnail
+	fileSize := existing.FileSize
+	metadata := existing.Metadata
+
+	if req.Name != nil {
+		name = *req.Name
+	}
+	if req.ResourceType != nil {
+		resourceType = *req.ResourceType
+	}
+	if req.URL != nil {
+		url = req.URL
+	}
+	if req.Description != nil {
+		description = req.Description
+	}
+	if req.Thumbnail != nil {
+		thumbnail = req.Thumbnail
+	}
+	if req.FileSize != nil {
+		fileSize = req.FileSize
+	}
+	if req.Metadata != nil {
+		metadata = req.Metadata
+	}
+
+	_, err = h.DB.Exec(r.Context(), `
+		UPDATE resource_library SET
+			name = $1, resource_type = $2, url = $3, description = $4,
+			thumbnail = $5, file_size = $6, metadata = $7, updated_at = NOW()
+		WHERE id = $8
+	`, name, resourceType, url, description, thumbnail, fileSize, metadata, id)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to update resource")
+		return
+	}
+
+	item, _ := h.fetchItem(r.Context(), id)
+	respondJSON(w, http.StatusOK, item)
+}
+
+func (h *ResourceLibraryHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	if middleware.CurrentUser(r) == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	existing, err := h.fetchItem(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "resource not found")
+		return
+	}
+
+	if !verifyTenantOwnership(w, r, existing.TenantID) {
+		return
+	}
+
+	_, err = h.DB.Exec(r.Context(), `DELETE FROM resource_library WHERE id = $1`, id)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to delete resource")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+}
+
+func (h *ResourceLibraryHandler) fetchItem(ctx context.Context, id string) (domain.ResourceLibraryItem, error) {
+	var item domain.ResourceLibraryItem
+	var url, description, thumbnail *string
+	var fileSize *int64
+	var uploadedBy *string
+	var metadata domain.JSONMap
+
+	err := h.DB.QueryRow(ctx, `
+		SELECT id, tenant_id, name, resource_type, url, description, thumbnail, file_size, metadata, uploaded_by, created_at, updated_at
+		FROM resource_library WHERE id = $1
+	`, id).Scan(
+		&item.ID, &item.TenantID, &item.Name, &item.ResourceType,
+		&url, &description, &thumbnail, &fileSize, &metadata,
+		&uploadedBy, &item.CreatedAt, &item.UpdatedAt,
+	)
+	if err != nil {
+		return item, err
+	}
+	item.URL = url
+	item.Description = description
+	item.Thumbnail = thumbnail
+	item.FileSize = fileSize
+	item.Metadata = metadata
+	item.UploadedBy = uploadedBy
+	return item, nil
+}
+
+func (h *ResourceLibraryHandler) scanResourceRows(rows pgx.Rows) ([]domain.ResourceLibraryItem, error) {
+	items := make([]domain.ResourceLibraryItem, 0)
+	for rows.Next() {
+		var item domain.ResourceLibraryItem
+		var url, description, thumbnail *string
+		var fileSize *int64
+		var uploadedBy *string
+		var metadata domain.JSONMap
+		if err := rows.Scan(
+			&item.ID, &item.TenantID, &item.Name, &item.ResourceType,
+			&url, &description, &thumbnail, &fileSize, &metadata,
+			&uploadedBy, &item.CreatedAt, &item.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		item.URL = url
+		item.Description = description
+		item.Thumbnail = thumbnail
+		item.FileSize = fileSize
+		item.Metadata = metadata
+		item.UploadedBy = uploadedBy
+		items = append(items, item)
+	}
+	return items, nil
+}
