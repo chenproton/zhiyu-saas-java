@@ -512,10 +512,12 @@ function taskStateFromMethods(task: any, methods: TaskEvaluationMethod[]): TaskS
         state.paperEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
         if (m.resourceConfig?.paperId) state.paperIds = [m.resourceConfig.paperId]
         if (m.resourceConfig?.paperWeight) state.paperWeights = { [m.resourceConfig.paperId]: m.resourceConfig.paperWeight }
+        state.methodResourceConfigs.paper = m.resourceConfig || {}
         break
       case "question_bank":
         state.questionBankEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
         if (m.resourceConfig?.questionIds) state.questionBankQuestions = m.resourceConfig.questionIds
+        state.methodResourceConfigs.question_bank = m.resourceConfig || {}
         break
       case "outcome":
         state.outcomeEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
@@ -530,6 +532,7 @@ function taskStateFromMethods(task: any, methods: TaskEvaluationMethod[]): TaskS
       case "quiz":
         state.quizEvalPoints = (m.evalPoints || []).map(toLocalEvalPoint)
         if (m.resourceConfig?.questionIds) state.quizQuestions = m.resourceConfig.questionIds
+        state.methodResourceConfigs.quiz = m.resourceConfig || {}
         break
     }
   })
@@ -579,9 +582,25 @@ function taskStateToMethodsInput(ts: TaskState, extra?: { reviewSteps?: any[] })
 
     let resourceConfig: any = ts.methodResourceConfigs[mk] || {}
     // Merge legacy fields into resourceConfig
-    if (mk === "paper" && ts.paperIds?.[0]) resourceConfig = { ...resourceConfig, paperId: ts.paperIds[0] }
-    if (mk === "question_bank") resourceConfig = { ...resourceConfig, questionIds: ts.questionBankQuestions }
-    if (mk === "quiz") resourceConfig = { ...resourceConfig, questionIds: ts.quizQuestions }
+    if (mk === "paper") {
+      resourceConfig = {
+        ...(ts.methodResourceConfigs?.paper || {}),
+        paperId: ts.paperIds?.[0] || null,
+        paperWeight: ts.paperIds?.[0] ? ts.paperWeights[ts.paperIds[0]] : null,
+      }
+    }
+    if (mk === "question_bank") {
+      resourceConfig = {
+        ...(ts.methodResourceConfigs?.question_bank || {}),
+        questionIds: ts.questionBankQuestions,
+      }
+    }
+    if (mk === "quiz") {
+      resourceConfig = {
+        ...(ts.methodResourceConfigs?.quiz || {}),
+        questionIds: ts.quizQuestions,
+      }
+    }
     if (mk === "random_draw") resourceConfig = { ...resourceConfig, customQuestions: ts.randomDrawCustomQuestions, selectedQuestionIds: ts.randomDrawSelectedIds }
 
     methods.push({
@@ -2569,7 +2588,6 @@ function EditCardDialog({
 
   // Mock resource config states
   const [mockResRandomDraw, setMockResRandomDraw] = useState({ questionCount: 5, difficulty: "mixed", types: { single: true, multiple: true, judge: true }, autoDraw: true })
-  const [mockResPaper, setMockResPaper] = useState({ duration: 60, passScore: 60, allowRetake: false, retakeCount: 1, shuffleQuestions: true, showResult: true, activationMode: "manual" as "manual" | "scheduled" | "always", scheduledTime: "" })
   const [selectedPaperForDetail, setSelectedPaperForDetail] = useState<string | null>(null)
   const [paperDetailOpen, setPaperDetailOpen] = useState(false)
   const [showCreatePaper, setShowCreatePaper] = useState(false)
@@ -2578,8 +2596,7 @@ function EditCardDialog({
   const [newPaperName, setNewPaperName] = useState("")
   const [newPaperQuestionCount, setNewPaperQuestionCount] = useState(10)
   const [newPaperTotalScore, setNewPaperTotalScore] = useState(100)
-  const [mockResQuestionBank, setMockResQuestionBank] = useState({ questionCount: 10, difficulty: "mixed", totalScore: 100, autoGenerate: false, timeLimit: 90, typeWeights: {} as Record<string, number>, allowRetake: false, retakeCount: 1, shuffleQuestions: true, showResult: true, questionScores: {} as Record<string, number> })
-  const [quizQuestionScores, setQuizQuestionScores] = useState<Record<string, number>>({})
+
   const [mockResReview, setMockResReview] = useState({ materialType: "project_report", submitFormatDesc: "请提交 PDF 格式的项目报告，包含完整的项目背景、实现方案、测试结果和总结反思。", deadlineDays: 7, allowResubmit: false, venueResources: "多媒体教室（容纳30人）、投影仪、白板、评委席桌椅、计时器、签到表、评分表及文具。", requiresMaterial: true })
   const [reviewSteps, setReviewSteps] = useState([
     { id: "rs-1", label: "初评", desc: "由指导教师进行第一轮评审", enabled: true, subjectType: "teacher" as string | null, weight: 40 },
@@ -2632,8 +2649,15 @@ function EditCardDialog({
           weight: s.weight,
         })),
       })
+      // Sync mock resource configs to TaskState before saving
+      const updatedRC = { ...state.methodResourceConfigs }
+      state.evaluationMethods.forEach(mk => {
+        if (mk === "random_draw") updatedRC[mk] = { ...updatedRC[mk], ...mockResRandomDraw }
+        if (mk === "review" || mk === "outcome" || mk === "homework") updatedRC[mk] = { ...updatedRC[mk], ...mockResReview }
+      })
+      updateState({ methodResourceConfigs: updatedRC })
       // Persist evaluation methods (including resource config) to backend immediately
-      const methodsInput = taskStateToMethodsInput(state)
+      const methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC })
       if (methodsInput.length > 0) {
         try {
           await taskEvaluationApi.saveMethods(taskId, { methods: methodsInput })
@@ -4976,7 +5000,7 @@ function EditCardDialog({
           hard: "困难",
         }
 
-        const QuestionSelectorPanel = ({ field, selectedIds, showAutoSelect = false, maxCount }: { field: "randomDrawQuestions" | "questionBankQuestions" | "quizQuestions", selectedIds: string[], showAutoSelect?: boolean, maxCount?: number }) => {
+        const QuestionSelectorPanel = ({ field, selectedIds, showAutoSelect = false, maxCount, questionScores, onUpdateQuestionScore }: { field: "randomDrawQuestions" | "questionBankQuestions" | "quizQuestions", selectedIds: string[], showAutoSelect?: boolean, maxCount?: number, questionScores?: Record<string, number>, onUpdateQuestionScore?: (qid: string, score: number) => void }) => {
           const filteredQuestions = allQuestions.filter(q => {
             const matchTab = questionTab === "my" ? q.source === "my" : questionTab === "collab" ? q.source === "collab" : q.source === "public"
             const matchSearch = !questionSearch || q.name.includes(questionSearch) || q.content.includes(questionSearch)
@@ -5105,15 +5129,15 @@ function EditCardDialog({
                             <div className="flex items-center gap-1.5">
                       <Badge className={`text-[10px] text-white hover:opacity-90 ${typeColorMap[q.type] || ""}`}>{questionTypeLabels[q.type] || q.type}</Badge>
                               <span className="text-[10px] text-gray-400">{difficultyLabels[q.difficulty] || q.difficulty}</span>
-                              {field === "questionBankQuestions" ? (
+                              {onUpdateQuestionScore ? (
                                 <div className="flex items-center gap-1 ml-auto">
                                   <span className="text-[10px] text-gray-400">分值</span>
                                   <Input
                                     type="number"
-                                    value={mockResQuestionBank.questionScores[qid] ?? q.score}
+                                    value={questionScores?.[qid] ?? q.score}
                                     onChange={e => {
                                       const val = Math.max(0, Math.min(100, parseInt(e.target.value) || 0))
-                                      setMockResQuestionBank(prev => ({ ...prev, questionScores: { ...prev.questionScores, [qid]: val } }))
+                                      onUpdateQuestionScore(qid, val)
                                     }}
                                     className="w-14 h-5 text-[10px] px-1 py-0"
                                     min={0}
@@ -5625,7 +5649,8 @@ function EditCardDialog({
             )
           }
           if (methodKey === "paper") {
-            const [paperEndTime, setPaperEndTime] = useState("")
+            const paperCfg = state.methodResourceConfigs.paper || {}
+            const setPaperCfg = (patch: any) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, paper: { ...paperCfg, ...patch } } })
 
             const selectPaper = (paperId: string) => {
               updateState({ paperIds: [paperId], paperWeights: { [paperId]: 100 } })
@@ -5693,29 +5718,29 @@ function EditCardDialog({
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs text-gray-500">考试时长（分钟）</Label>
-                      <Input type="number" value={mockResPaper.duration} onChange={e => setMockResPaper({ ...mockResPaper, duration: Math.max(5, parseInt(e.target.value) || 5) })} className="mt-1 text-sm" min={5} />
+                      <Input type="number" value={paperCfg.duration ?? 60} onChange={e => setPaperCfg({ duration: Math.max(5, parseInt(e.target.value) || 5) })} className="mt-1 text-sm" min={5} />
                     </div>
                     <div>
                       <Label className="text-xs text-gray-500">允许重考</Label>
                       <div className="mt-2 flex items-center gap-2">
-                        <Switch checked={mockResPaper.allowRetake} onCheckedChange={v => setMockResPaper({ ...mockResPaper, allowRetake: v })} />
-                        <span className="text-xs text-gray-600">{mockResPaper.allowRetake ? "是" : "否"}</span>
+                        <Switch checked={paperCfg.allowRetake ?? false} onCheckedChange={v => setPaperCfg({ allowRetake: v })} />
+                        <span className="text-xs text-gray-600">{(paperCfg.allowRetake ?? false) ? "是" : "否"}</span>
                       </div>
                     </div>
-                    {mockResPaper.allowRetake && (
+                    {(paperCfg.allowRetake ?? false) && (
                       <div>
                         <Label className="text-xs text-gray-500">最多重考次数</Label>
-                        <Input type="number" value={mockResPaper.retakeCount} onChange={e => setMockResPaper({ ...mockResPaper, retakeCount: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} />
+                        <Input type="number" value={paperCfg.retakeCount ?? 1} onChange={e => setPaperCfg({ retakeCount: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} />
                       </div>
                     )}
                   </div>
                   <div className="mt-3 flex items-center gap-4">
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResPaper.shuffleQuestions} onCheckedChange={v => setMockResPaper({ ...mockResPaper, shuffleQuestions: v })} />
+                      <Switch checked={paperCfg.shuffleQuestions ?? true} onCheckedChange={v => setPaperCfg({ shuffleQuestions: v })} />
                       <span className="text-xs text-gray-600">题目乱序</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResPaper.showResult} onCheckedChange={v => setMockResPaper({ ...mockResPaper, showResult: v })} />
+                      <Switch checked={paperCfg.showResult ?? true} onCheckedChange={v => setPaperCfg({ showResult: v })} />
                       <span className="text-xs text-gray-600">交卷后显示成绩</span>
                     </div>
                   </div>
@@ -5723,23 +5748,23 @@ function EditCardDialog({
                     <Label className="text-xs text-gray-500 mb-2">试卷启用条件</Label>
                     <div className="space-y-2 mt-1">
                       {[
-                        { key: "manual", label: "后台手动启用", desc: `老师手动开启试卷后，学生才能进入作答。每位学生从点击「开始答题」时起，计时 ${mockResPaper.duration} 分钟，时间结束系统将自动提交试卷。` },
+                        { key: "manual", label: "后台手动启用", desc: `老师手动开启试卷后，学生才能进入作答。每位学生从点击「开始答题」时起，计时 ${paperCfg.duration ?? 60} 分钟，时间结束系统将自动提交试卷。` },
                         { key: "scheduled", label: "定时启用", desc: "提前预设考试的开始、结束时间。到开始时间后，学生方可进入作答；从开始时间起按考试时长计时，到预设结束时间自动关闭并提交试卷。" },
                         { key: "always", label: "随时作答", desc: "试卷创建完成后立即开放，学生可随时进入作答。学生从点击「开始答题」时起按试卷设定时长计时，时间结束系统将自动提交试卷。" },
                       ].map(mode => (
                         <button
                           key={mode.key}
-                          onClick={() => setMockResPaper({ ...mockResPaper, activationMode: mode.key as "manual" | "scheduled" | "always" })}
+                          onClick={() => setPaperCfg({ activationMode: mode.key })}
                           className={cn(
                             "w-full text-left p-3 rounded-lg border transition-all",
-                            mockResPaper.activationMode === mode.key
+                            (paperCfg.activationMode ?? "manual") === mode.key
                               ? "border-primary bg-primary/5 text-primary"
                               : "border-gray-200 text-gray-600 hover:border-gray-300"
                           )}
                         >
                           <div className="flex items-center gap-2">
-                            <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center shrink-0", mockResPaper.activationMode === mode.key ? "bg-primary border-primary" : "border-gray-300")}>
-                              {mockResPaper.activationMode === mode.key && <div className="w-2 h-2 rounded-full bg-white" />}
+                            <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center shrink-0", (paperCfg.activationMode ?? "manual") === mode.key ? "bg-primary border-primary" : "border-gray-300")}>
+                              {(paperCfg.activationMode ?? "manual") === mode.key && <div className="w-2 h-2 rounded-full bg-white" />}
                             </div>
                             <span className="text-xs font-medium">{mode.label}</span>
                           </div>
@@ -5747,14 +5772,14 @@ function EditCardDialog({
                         </button>
                       ))}
                     </div>
-                    {mockResPaper.activationMode === "scheduled" && (
+                    {(paperCfg.activationMode ?? "manual") === "scheduled" && (
                       <div className="mt-3 grid grid-cols-2 gap-3">
                         <div>
                           <Label className="text-xs text-gray-500">启用时间</Label>
                           <Input
                             type="datetime-local"
-                            value={mockResPaper.scheduledTime}
-                            onChange={e => setMockResPaper({ ...mockResPaper, scheduledTime: e.target.value })}
+                            value={paperCfg.scheduledTime ?? ""}
+                            onChange={e => setPaperCfg({ scheduledTime: e.target.value })}
                             className="mt-1 text-sm"
                           />
                         </div>
@@ -5762,8 +5787,8 @@ function EditCardDialog({
                           <Label className="text-xs text-gray-500">停用时间</Label>
                           <Input
                             type="datetime-local"
-                            value={paperEndTime}
-                            onChange={e => setPaperEndTime(e.target.value)}
+                            value={paperCfg.scheduledEndTime ?? ""}
+                            onChange={e => setPaperCfg({ scheduledEndTime: e.target.value })}
                             className="mt-1 text-sm"
                           />
                         </div>
@@ -5804,8 +5829,10 @@ function EditCardDialog({
             )
           }
           if (methodKey === "question_bank") {
-            const [qbDrawMode, setQbDrawMode] = useState<"all" | "practice">("all")
-            const [qbPassRate, setQbPassRate] = useState(60)
+            const qbCfg = state.methodResourceConfigs.question_bank || {}
+            const setQbCfg = (patch: any) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, question_bank: { ...qbCfg, ...patch } } })
+            const [qbDrawMode, setQbDrawMode] = useState<"all" | "practice">((qbCfg.drawMode as "all" | "practice") ?? "all")
+            const [qbPassRate, setQbPassRate] = useState(qbCfg.passRate ?? 60)
 
             return (
               <div className="space-y-4">
@@ -5813,15 +5840,15 @@ function EditCardDialog({
                   field="questionBankQuestions"
                   selectedIds={state.questionBankQuestions}
                   onToggleQuestion={(qid) => toggleQuestion(qid, "questionBankQuestions")}
-                  questionScores={mockResQuestionBank.questionScores}
-                  onUpdateQuestionScore={(qid, score) => setMockResQuestionBank(prev => ({ ...prev, questionScores: { ...prev.questionScores, [qid]: score } }))}
+                  questionScores={state.methodResourceConfigs?.question_bank?.questionScores || {}}
+                  onUpdateQuestionScore={(qid, score) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, question_bank: { ...(state.methodResourceConfigs.question_bank || {}), questionScores: { ...(state.methodResourceConfigs.question_bank?.questionScores || {}), [qid]: score } } } })}
                 />
                 <div className="border rounded-xl p-4">
                   <p className="text-sm font-medium mb-3">答题规则</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs text-gray-500">答题方式</Label>
-                      <Select value={qbDrawMode} onValueChange={v => setQbDrawMode(v as "all" | "practice")}>
+                      <Select value={qbDrawMode} onValueChange={v => { setQbDrawMode(v as "all" | "practice"); setQbCfg({ drawMode: v }) }}>
                         <SelectTrigger className="mt-1 text-sm h-9"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">全部作答</SelectItem>
@@ -5832,34 +5859,34 @@ function EditCardDialog({
                     {qbDrawMode === "practice" && (
                       <div>
                         <Label className="text-xs text-gray-500">正确率（%）</Label>
-                        <Input type="number" value={qbPassRate} onChange={e => setQbPassRate(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))} className="mt-1 text-sm" min={0} max={100} />
+                        <Input type="number" value={qbPassRate} onChange={e => { const val = Math.max(0, Math.min(100, parseInt(e.target.value) || 0)); setQbPassRate(val); setQbCfg({ passRate: val }) }} className="mt-1 text-sm" min={0} max={100} />
                         <p className="text-[10px] text-gray-400 mt-1">超过正确率则得分 100，低于正确率得分 0</p>
                       </div>
                     )}
                     <div>
                       <Label className="text-xs text-gray-500">时间限制（分钟）</Label>
-                      <Input type="number" value={mockResQuestionBank.timeLimit} onChange={e => setMockResQuestionBank({ ...mockResQuestionBank, timeLimit: Math.max(5, parseInt(e.target.value) || 5) })} className="mt-1 text-sm" min={5} />
+                      <Input type="number" value={qbCfg.timeLimit ?? 90} onChange={e => setQbCfg({ timeLimit: Math.max(5, parseInt(e.target.value) || 5) })} className="mt-1 text-sm" min={5} />
                     </div>
                   </div>
                   <div className="mt-3 flex items-center gap-4">
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResQuestionBank.allowRetake} onCheckedChange={v => setMockResQuestionBank({ ...mockResQuestionBank, allowRetake: v })} />
+                      <Switch checked={qbCfg.allowRetake ?? false} onCheckedChange={v => setQbCfg({ allowRetake: v })} />
                       <span className="text-xs text-gray-600">允许重复测评</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResQuestionBank.shuffleQuestions} onCheckedChange={v => setMockResQuestionBank({ ...mockResQuestionBank, shuffleQuestions: v })} />
+                      <Switch checked={qbCfg.shuffleQuestions ?? true} onCheckedChange={v => setQbCfg({ shuffleQuestions: v })} />
                       <span className="text-xs text-gray-600">题目乱序</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResQuestionBank.showResult} onCheckedChange={v => setMockResQuestionBank({ ...mockResQuestionBank, showResult: v })} />
+                      <Switch checked={qbCfg.showResult ?? true} onCheckedChange={v => setQbCfg({ showResult: v })} />
                       <span className="text-xs text-gray-600">提交后展示成绩</span>
                     </div>
                   </div>
-                  {mockResQuestionBank.allowRetake && (
+                  {(qbCfg.allowRetake ?? false) && (
                     <div className="mt-3 grid grid-cols-2 gap-3">
                       <div>
                         <Label className="text-xs text-gray-500">最多重考次数</Label>
-                        <Input type="number" value={mockResQuestionBank.retakeCount} onChange={e => setMockResQuestionBank({ ...mockResQuestionBank, retakeCount: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} />
+                        <Input type="number" value={qbCfg.retakeCount ?? 1} onChange={e => setQbCfg({ retakeCount: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} />
                       </div>
                     </div>
                   )}
@@ -5975,8 +6002,11 @@ function EditCardDialog({
             )
           }
           if (methodKey === "quiz") {
+            const quizCfg = state.methodResourceConfigs.quiz || {}
+            const setQuizCfg = (patch: any) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, quiz: { ...quizCfg, ...patch } } })
             const quizPresetTimes = [5, 10, 15, 20, 30]
-            const quizIsPreset = quizPresetTimes.includes(mockResQuestionBank.timeLimit)
+            const quizTimeLimit = quizCfg.timeLimit ?? 90
+            const quizIsPreset = quizPresetTimes.includes(quizTimeLimit)
             return (
               <div className="space-y-4">
                 <BankQuestionSelectorPanel
@@ -5984,6 +6014,8 @@ function EditCardDialog({
                   selectedIds={state.quizQuestions}
                   maxCount={30}
                   onToggleQuestion={(qid) => toggleQuestion(qid, "quizQuestions")}
+                  questionScores={state.methodResourceConfigs?.quiz?.questionScores || {}}
+                  onUpdateQuestionScore={(qid, score) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, quiz: { ...(state.methodResourceConfigs.quiz || {}), questionScores: { ...(state.methodResourceConfigs.quiz?.questionScores || {}), [qid]: score } } } })}
                 />
                 <div className="border rounded-xl p-4">
                   <p className="text-sm font-medium mb-3">答题规则</p>
@@ -5994,10 +6026,10 @@ function EditCardDialog({
                         {quizPresetTimes.map(min => (
                           <button
                             key={min}
-                            onClick={() => setMockResQuestionBank({ ...mockResQuestionBank, timeLimit: min })}
+                            onClick={() => setQuizCfg({ timeLimit: min })}
                             className={cn(
                               "px-3 py-1.5 rounded-lg text-xs border transition-all",
-                              mockResQuestionBank.timeLimit === min && quizIsPreset
+                              quizTimeLimit === min && quizIsPreset
                                 ? "border-primary bg-primary/5 text-primary"
                                 : "border-gray-200 text-gray-600 hover:border-gray-300"
                             )}
@@ -6006,10 +6038,10 @@ function EditCardDialog({
                           </button>
                         ))}
                         <button
-                          onClick={() => setMockResQuestionBank({ ...mockResQuestionBank, timeLimit: quizIsPreset ? 1 : mockResQuestionBank.timeLimit })}
+                          onClick={() => setQuizCfg({ timeLimit: quizIsPreset ? 1 : quizTimeLimit })}
                           className={cn(
                             "px-3 py-1.5 rounded-lg text-xs border transition-all",
-                            !quizIsPreset && mockResQuestionBank.timeLimit > 0
+                            !quizIsPreset && quizTimeLimit > 0
                               ? "border-primary bg-primary/5 text-primary"
                               : "border-gray-200 text-gray-600 hover:border-gray-300"
                           )}
@@ -6021,10 +6053,10 @@ function EditCardDialog({
                         <div className="mt-2">
                           <Input
                             type="number"
-                            value={mockResQuestionBank.timeLimit}
+                            value={quizTimeLimit}
                             onChange={e => {
                               const val = Math.max(1, parseInt(e.target.value) || 1)
-                              setMockResQuestionBank({ ...mockResQuestionBank, timeLimit: val })
+                              setQuizCfg({ timeLimit: val })
                             }}
                             className="w-32 text-sm"
                             min={1}
@@ -6036,15 +6068,15 @@ function EditCardDialog({
                   </div>
                   <div className="mt-3 flex items-center gap-4">
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResQuestionBank.allowRetake} onCheckedChange={v => setMockResQuestionBank({ ...mockResQuestionBank, allowRetake: v })} />
+                      <Switch checked={quizCfg.allowRetake ?? false} onCheckedChange={v => setQuizCfg({ allowRetake: v })} />
                       <span className="text-xs text-gray-600">允许重复测评</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResQuestionBank.shuffleQuestions} onCheckedChange={v => setMockResQuestionBank({ ...mockResQuestionBank, shuffleQuestions: v })} />
+                      <Switch checked={quizCfg.shuffleQuestions ?? true} onCheckedChange={v => setQuizCfg({ shuffleQuestions: v })} />
                       <span className="text-xs text-gray-600">题目乱序</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResQuestionBank.showResult} onCheckedChange={v => setMockResQuestionBank({ ...mockResQuestionBank, showResult: v })} />
+                      <Switch checked={quizCfg.showResult ?? true} onCheckedChange={v => setQuizCfg({ showResult: v })} />
                       <span className="text-xs text-gray-600">提交后展示成绩</span>
                     </div>
                   </div>
@@ -6069,6 +6101,12 @@ function EditCardDialog({
         }
 
         const openDialog = (type: "object" | "subject" | "resource" | "method", methodKey: string) => {
+          // When opening resource config, sync persisted config to mock state
+          if (type === "resource") {
+            const rc = state.methodResourceConfigs[methodKey] || {}
+            if (methodKey === "random_draw" && Object.keys(rc).length > 0) setMockResRandomDraw(prev => ({ ...prev, ...rc }))
+            if ((methodKey === "review" || methodKey === "outcome" || methodKey === "homework") && Object.keys(rc).length > 0) setMockResReview(prev => ({ ...prev, ...rc }))
+          }
           setErDialogMethod(methodKey)
           setErDialogOpen(type)
         }
@@ -7644,8 +7682,8 @@ function EditCardDialog({
                     field="questionBankQuestions"
                     selectedIds={state.questionBankQuestions}
                     onToggleQuestion={(qid) => toggleQuestion(qid, "questionBankQuestions")}
-                    questionScores={mockResQuestionBank.questionScores}
-                    onUpdateQuestionScore={(qid, score) => setMockResQuestionBank(prev => ({ ...prev, questionScores: { ...prev.questionScores, [qid]: score } }))}
+                    questionScores={state.methodResourceConfigs?.question_bank?.questionScores || {}}
+                    onUpdateQuestionScore={(qid, score) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, question_bank: { ...(state.methodResourceConfigs.question_bank || {}), questionScores: { ...(state.methodResourceConfigs.question_bank?.questionScores || {}), [qid]: score } } } })}
                   />
                 ) : erDialogMethod === "quiz" ? (
                   <BankQuestionSelectorPanel
@@ -7653,8 +7691,8 @@ function EditCardDialog({
                     selectedIds={state.quizQuestions}
                     maxCount={30}
                     onToggleQuestion={(qid) => toggleQuestion(qid, "quizQuestions")}
-                    questionScores={quizQuestionScores}
-                    onUpdateQuestionScore={(qid, score) => setQuizQuestionScores(prev => ({ ...prev, [qid]: score }))}
+                    questionScores={state.methodResourceConfigs?.quiz?.questionScores || {}}
+                    onUpdateQuestionScore={(qid, score) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, quiz: { ...(state.methodResourceConfigs.quiz || {}), questionScores: { ...(state.methodResourceConfigs.quiz?.questionScores || {}), [qid]: score } } } })}
                   />
                 ) : erDialogMethod === "random_draw" ? (
                   <RandomDrawResourcePanel
