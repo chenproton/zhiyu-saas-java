@@ -13,6 +13,7 @@ import {
   Plus,
   Scale,
   Search,
+  Settings,
   Star,
   Target,
   Trash2,
