@@ -2429,8 +2429,11 @@ function RandomDrawResourcePanel({
             <Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label>
             <Textarea
               value={submitFormatDesc}
-              onChange={e => setSubmitFormatDesc(e.target.value)}
-              onBlur={() => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, random_draw: { ...rdCfg, submitFormatDesc } } })}
+              onChange={e => {
+                const v = e.target.value
+                setSubmitFormatDesc(v)
+                updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, random_draw: { ...rdCfg, submitFormatDesc: v } } })
+              }}
               placeholder="请用一句话说明学生需要准备的材料要求..."
               rows={4}
               className="text-sm"
@@ -2440,8 +2443,11 @@ function RandomDrawResourcePanel({
             <Label className="text-xs text-gray-500 mb-1.5">评审场地/环境资源准备</Label>
             <Textarea
               value={venueResources}
-              onChange={e => setVenueResources(e.target.value)}
-              onBlur={() => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, random_draw: { ...rdCfg, venueResources } } })}
+              onChange={e => {
+                const v = e.target.value
+                setVenueResources(v)
+                updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, random_draw: { ...rdCfg, venueResources: v } } })
+              }}
               placeholder="请描述现场问答所需的场地、设备及环境资源准备要求..."
               rows={4}
               className="text-sm"
@@ -2699,8 +2705,12 @@ function EditCardDialog({
   const [rubricAbTargetPointId, setRubricAbTargetPointId] = useState<string | null>(null)
   const [rubricAbTargetField, setRubricAbTargetField] = useState<string | null>(null)
 
-  // Mock resource config states
-  const [mockResRandomDraw, setMockResRandomDraw] = useState({ questionCount: 5, difficulty: "mixed", types: { single: true, multiple: true, judge: true }, autoDraw: true, submitFormatDesc: "", venueResources: "" })
+  // Default resource configs (used when a method is first enabled)
+  const DEFAULT_REVIEW_RESOURCE_CONFIG = { materialType: "project_report", submitFormatDesc: "请提交 PDF 格式的项目报告，包含完整的项目背景、实现方案、测试结果和总结反思。", deadlineDays: 7, allowResubmit: false, venueResources: "多媒体教室（容纳30人）、投影仪、白板、评委席桌椅、计时器、签到表、评分表及文具。", requiresMaterial: true }
+  const DEFAULT_OUTCOME_RESOURCE_CONFIG = { materialType: "project_report", submitFormatDesc: "请提交 PDF 格式的成果材料，包含完整的项目背景、实现方案、测试结果和总结反思。", deadlineDays: 7, allowResubmit: false, venueResources: "多媒体教室（容纳30人）、投影仪、白板、评委席桌椅、计时器、签到表、评分表及文具。", requiresMaterial: true }
+  const DEFAULT_HOMEWORK_RESOURCE_CONFIG = { materialType: "homework_file", submitFormatDesc: "请提交 PDF 或 DOCX 格式的作业文件。", deadlineDays: 7, allowResubmit: false, venueResources: "", requiresMaterial: true }
+  const DEFAULT_RANDOM_DRAW_RESOURCE_CONFIG = { questionCount: 5, difficulty: "mixed", types: { single: true, multiple: true, judge: true }, autoDraw: true, submitFormatDesc: "", venueResources: "" }
+
   const [selectedPaperForDetail, setSelectedPaperForDetail] = useState<string | null>(null)
   const [paperDetailOpen, setPaperDetailOpen] = useState(false)
   const [showCreatePaper, setShowCreatePaper] = useState(false)
@@ -2710,9 +2720,6 @@ function EditCardDialog({
   const [newPaperQuestionCount, setNewPaperQuestionCount] = useState(10)
   const [newPaperTotalScore, setNewPaperTotalScore] = useState(100)
 
-  const [mockResReview, setMockResReview] = useState({ materialType: "project_report", submitFormatDesc: "请提交 PDF 格式的项目报告，包含完整的项目背景、实现方案、测试结果和总结反思。", deadlineDays: 7, allowResubmit: false, venueResources: "多媒体教室（容纳30人）、投影仪、白板、评委席桌椅、计时器、签到表、评分表及文具。", requiresMaterial: true })
-  const [mockResOutcome, setMockResOutcome] = useState({ materialType: "project_report", submitFormatDesc: "请提交 PDF 格式的成果材料，包含完整的项目背景、实现方案、测试结果和总结反思。", deadlineDays: 7, allowResubmit: false, venueResources: "多媒体教室（容纳30人）、投影仪、白板、评委席桌椅、计时器、签到表、评分表及文具。", requiresMaterial: true })
-  const [mockResHomework, setMockResHomework] = useState({ materialType: "homework_file", submitFormatDesc: "请提交 PDF 或 DOCX 格式的作业文件。", deadlineDays: 7, allowResubmit: false, venueResources: "", requiresMaterial: true })
   const [reviewSteps, setReviewSteps] = useState([
     { id: "rs-1", label: "初评", desc: "由指导教师进行第一轮评审", enabled: true, subjectType: "teacher" as string | null, weight: 40 },
     { id: "rs-2", label: "复评", desc: "由专家组进行第二轮复核", enabled: false, subjectType: null as string | null, weight: 30 },
@@ -2820,13 +2827,13 @@ function EditCardDialog({
           weight: s.weight,
         })),
       })
-      // Sync mock resource configs to TaskState before saving
+      // Ensure newly-enabled methods have default resource configs
       const updatedRC = { ...state.methodResourceConfigs }
       state.evaluationMethods.forEach(mk => {
-        if (mk === "random_draw") updatedRC[mk] = { ...mockResRandomDraw, ...updatedRC[mk] }
-        if (mk === "review") updatedRC[mk] = { ...updatedRC[mk], ...mockResReview }
-        if (mk === "outcome") updatedRC[mk] = { ...updatedRC[mk], ...mockResOutcome }
-        if (mk === "homework") updatedRC[mk] = { ...updatedRC[mk], ...mockResHomework }
+        if (mk === "random_draw") updatedRC[mk] = { ...DEFAULT_RANDOM_DRAW_RESOURCE_CONFIG, ...updatedRC[mk] }
+        if (mk === "review") updatedRC[mk] = { ...DEFAULT_REVIEW_RESOURCE_CONFIG, ...updatedRC[mk] }
+        if (mk === "outcome") updatedRC[mk] = { ...DEFAULT_OUTCOME_RESOURCE_CONFIG, ...updatedRC[mk] }
+        if (mk === "homework") updatedRC[mk] = { ...DEFAULT_HOMEWORK_RESOURCE_CONFIG, ...updatedRC[mk] }
       })
       updateState({ methodResourceConfigs: updatedRC })
       // Persist evaluation methods (including resource config) to backend immediately
@@ -5573,6 +5580,9 @@ function EditCardDialog({
             )
           }
           if (methodKey === "review") {
+            const cfg = state.methodResourceConfigs.review || {}
+            const setCfg = (patch: any) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, review: { ...cfg, ...patch } } })
+            const requiresMaterial = cfg.requiresMaterial !== false
             return (
               <div className="space-y-4">
                 <div className="p-4 bg-amber-50/80 rounded-xl border border-amber-200 text-sm text-amber-800">
@@ -5586,33 +5596,33 @@ function EditCardDialog({
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-medium">评审材料要求</p>
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResReview.requiresMaterial} onCheckedChange={v => setMockResReview({ ...mockResReview, requiresMaterial: v })} />
+                      <Switch checked={requiresMaterial} onCheckedChange={v => setCfg({ requiresMaterial: v })} />
                       <span className="text-xs text-gray-600">是否需要提交评审材料</span>
                     </div>
                   </div>
-                  {mockResReview.requiresMaterial && (
+                  {requiresMaterial && (
                     <>
                       <div>
                         <Label className="text-xs text-gray-500">预估提交天数</Label>
-                        <Input type="number" value={mockResReview.deadlineDays} onChange={e => setMockResReview({ ...mockResReview, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm max-w-[50%]" min={1} />
+                        <Input type="number" value={cfg.deadlineDays ?? 7} onChange={e => setCfg({ deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm max-w-[50%]" min={1} />
                       </div>
                       <div className="mt-3">
                         <Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label>
-                        <LocalTextarea
-                            id="review-desc-' + '{methodKey}' + '"
-                            defaultValue={mockResReview.submitFormatDesc}
-                            placeholder="请用一句话说明学生需要提交的材料要求..."
-                            rows={4}
-                            onBlurSync={(v: string) => setMockResReview({ ...mockResReview, submitFormatDesc: v })}
+                        <Textarea
+                          value={cfg.submitFormatDesc || ""}
+                          onChange={e => setCfg({ submitFormatDesc: e.target.value })}
+                          placeholder="请用一句话说明学生需要提交的材料要求..."
+                          rows={4}
+                          className="text-sm"
                         />
                       </div>
                     </>
                   )}
                   <div className="mt-3">
                     <Label className="text-xs text-gray-500 mb-1.5">评审场地/环境资源准备</Label>
-                    <LocalTextarea
-                      defaultValue={mockResReview.venueResources}
-                      onBlurSync={(v: string) => setMockResReview({ ...mockResReview, venueResources: v })}
+                    <Textarea
+                      value={cfg.venueResources || ""}
+                      onChange={e => setCfg({ venueResources: e.target.value })}
                       placeholder="请描述评审所需的场地、设备及环境资源准备要求..."
                       rows={4}
                       className="text-sm"
@@ -5620,7 +5630,7 @@ function EditCardDialog({
                   </div>
                   <div className="mt-3">
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResReview.allowResubmit} onCheckedChange={v => setMockResReview({ ...mockResReview, allowResubmit: v })} />
+                      <Switch checked={cfg.allowResubmit ?? false} onCheckedChange={v => setCfg({ allowResubmit: v })} />
                       <span className="text-xs text-gray-600">允许重新提交</span>
                     </div>
                   </div>
@@ -6052,6 +6062,9 @@ function EditCardDialog({
             )
           }
           if (methodKey === "outcome") {
+            const cfg = state.methodResourceConfigs.outcome || {}
+            const setCfg = (patch: any) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, outcome: { ...cfg, ...patch } } })
+            const requiresMaterial = cfg.requiresMaterial !== false
             return (
               <div className="space-y-4">
                 <div className="p-4 bg-cyan-50/80 rounded-xl border border-cyan-200 text-sm text-cyan-800">
@@ -6065,21 +6078,21 @@ function EditCardDialog({
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /><h3 className="text-sm font-semibold">成果材料要求</h3></div>
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResOutcome.requiresMaterial} onCheckedChange={v => setMockResOutcome({ ...mockResOutcome, requiresMaterial: v })} />
+                      <Switch checked={requiresMaterial} onCheckedChange={v => setCfg({ requiresMaterial: v })} />
                       <span className="text-xs text-gray-600">是否需要提交成果材料</span>
                     </div>
                   </div>
-                  {mockResOutcome.requiresMaterial && (
+                  {requiresMaterial && (
                     <>
                       <div>
                         <Label className="text-xs text-gray-500">预估提交天数</Label>
-                        <Input type="number" value={mockResOutcome.deadlineDays} onChange={e => setMockResOutcome({ ...mockResOutcome, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm max-w-[50%]" min={1} />
+                        <Input type="number" value={cfg.deadlineDays ?? 7} onChange={e => setCfg({ deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm max-w-[50%]" min={1} />
                       </div>
                       <div className="mt-3">
                         <Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label>
-                        <LocalTextarea
-                          defaultValue={mockResOutcome.submitFormatDesc}
-                          onBlurSync={(v: string) => setMockResOutcome({ ...mockResOutcome, submitFormatDesc: v })}
+                        <Textarea
+                          value={cfg.submitFormatDesc || ""}
+                          onChange={e => setCfg({ submitFormatDesc: e.target.value })}
                           placeholder="请用一句话说明学生需要提交的成果材料要求..."
                           rows={4}
                           className="text-sm"
@@ -6089,9 +6102,9 @@ function EditCardDialog({
                   )}
                   <div className="mt-3">
                     <Label className="text-xs text-gray-500 mb-1.5">评价场地/环境资源准备</Label>
-                    <LocalTextarea
-                      defaultValue={mockResOutcome.venueResources}
-                      onBlurSync={(v: string) => setMockResOutcome({ ...mockResOutcome, venueResources: v })}
+                    <Textarea
+                      value={cfg.venueResources || ""}
+                      onChange={e => setCfg({ venueResources: e.target.value })}
                       placeholder="请描述评价所需的场地、设备及环境资源准备要求..."
                       rows={4}
                       className="text-sm"
@@ -6099,7 +6112,7 @@ function EditCardDialog({
                   </div>
                   <div className="mt-3">
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResOutcome.allowResubmit} onCheckedChange={v => setMockResOutcome({ ...mockResOutcome, allowResubmit: v })} />
+                      <Switch checked={cfg.allowResubmit ?? false} onCheckedChange={v => setCfg({ allowResubmit: v })} />
                       <span className="text-xs text-gray-600">允许重新提交</span>
                     </div>
                   </div>
@@ -6108,6 +6121,9 @@ function EditCardDialog({
             )
           }
           if (methodKey === "homework") {
+            const cfg = state.methodResourceConfigs.homework || {}
+            const setCfg = (patch: any) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, homework: { ...cfg, ...patch } } })
+            const requiresMaterial = cfg.requiresMaterial !== false
             return (
               <div className="space-y-4">
                 <div className="p-4 bg-pink-50 rounded-lg border border-pink-100 text-sm text-pink-700">
@@ -6121,21 +6137,21 @@ function EditCardDialog({
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /><h3 className="text-sm font-semibold">作业提交要求</h3></div>
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResHomework.requiresMaterial} onCheckedChange={v => setMockResHomework({ ...mockResHomework, requiresMaterial: v })} />
+                      <Switch checked={requiresMaterial} onCheckedChange={v => setCfg({ requiresMaterial: v })} />
                       <span className="text-xs text-gray-600">是否需要提交作业材料</span>
                     </div>
                   </div>
-                  {mockResHomework.requiresMaterial && (
+                  {requiresMaterial && (
                     <>
                       <div>
                         <Label className="text-xs text-gray-500">预估提交天数</Label>
-                        <Input type="number" value={mockResHomework.deadlineDays} onChange={e => setMockResHomework({ ...mockResHomework, deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm max-w-[50%]" min={1} />
+                        <Input type="number" value={cfg.deadlineDays ?? 7} onChange={e => setCfg({ deadlineDays: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm max-w-[50%]" min={1} />
                       </div>
                       <div className="mt-3">
                         <Label className="text-xs text-gray-500 mb-1.5">作业格式要求</Label>
-                        <LocalTextarea
-                          defaultValue={mockResHomework.submitFormatDesc}
-                          onBlurSync={(v: string) => setMockResHomework({ ...mockResHomework, submitFormatDesc: v })}
+                        <Textarea
+                          value={cfg.submitFormatDesc || ""}
+                          onChange={e => setCfg({ submitFormatDesc: e.target.value })}
                           placeholder="请用一句话说明学生需要提交的作业格式要求..."
                           rows={4}
                           className="text-sm"
@@ -6145,9 +6161,9 @@ function EditCardDialog({
                   )}
                   <div className="mt-3">
                     <Label className="text-xs text-gray-500 mb-1.5">作业场地/环境资源准备</Label>
-                    <LocalTextarea
-                      defaultValue={mockResHomework.venueResources}
-                      onBlurSync={(v: string) => setMockResHomework({ ...mockResHomework, venueResources: v })}
+                    <Textarea
+                      value={cfg.venueResources || ""}
+                      onChange={e => setCfg({ venueResources: e.target.value })}
                       placeholder="请描述作业所需的场地、设备及环境资源准备要求..."
                       rows={4}
                       className="text-sm"
@@ -6155,7 +6171,7 @@ function EditCardDialog({
                   </div>
                   <div className="mt-3">
                     <div className="flex items-center gap-2">
-                      <Switch checked={mockResHomework.allowResubmit} onCheckedChange={v => setMockResHomework({ ...mockResHomework, allowResubmit: v })} />
+                      <Switch checked={cfg.allowResubmit ?? false} onCheckedChange={v => setCfg({ allowResubmit: v })} />
                       <span className="text-xs text-gray-600">允许重新提交</span>
                     </div>
                   </div>
@@ -6313,14 +6329,6 @@ function EditCardDialog({
         }
 
         const openDialog = (type: "object" | "subject" | "resource" | "method", methodKey: string) => {
-          // When opening resource config, sync persisted config to mock state
-          if (type === "resource") {
-            const rc = state.methodResourceConfigs[methodKey] || {}
-            if (methodKey === "random_draw" && Object.keys(rc).length > 0) setMockResRandomDraw(prev => ({ ...prev, ...rc }))
-            if (methodKey === "review" && Object.keys(rc).length > 0) setMockResReview(prev => ({ ...prev, ...rc }))
-            if (methodKey === "outcome" && Object.keys(rc).length > 0) setMockResOutcome(prev => ({ ...prev, ...rc }))
-            if (methodKey === "homework" && Object.keys(rc).length > 0) setMockResHomework(prev => ({ ...prev, ...rc }))
-          }
           setErDialogMethod(methodKey)
           setErDialogOpen(type)
         }
