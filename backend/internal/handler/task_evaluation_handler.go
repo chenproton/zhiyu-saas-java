@@ -3,11 +3,14 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -147,10 +150,33 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Fetch task name for auto-generated temp exams.
+	var taskName string
+	_ = tx.QueryRow(r.Context(), `SELECT name FROM scenario_tasks WHERE id = $1`, taskID).Scan(&taskName)
+	if taskName == "" {
+		taskName = "未命名任务"
+	}
+	claims := middleware.CurrentUser(r)
+	creatorID := ""
+	if claims != nil {
+		creatorID = claims.UserID
+	}
+
 	newVersion := req.Version + 1
 	for _, m := range req.Methods {
 		evalSubjects := jsonRawMessageToJSONSlice(m.EvalSubjects)
 		resourceConfig := jsonRawMessageToJSONMap(m.ResourceConfig)
+
+		// Ensure exam usage for paper / question_bank / quiz methods.
+		if m.IsEnabled && (m.MethodKey == "paper" || m.MethodKey == "question_bank" || m.MethodKey == "quiz") {
+			updatedConfig, err := h.ensureExamUsageForMethod(r.Context(), tx, tenantID, taskID, taskName, creatorID, m.MethodKey, resourceConfig)
+			if err != nil {
+				// Log but don't fail the whole save; student side will show "not configured".
+				log.Printf("failed to ensure exam usage for task %s method %s: %v", taskID, m.MethodKey, err)
+			} else {
+				resourceConfig = updatedConfig
+			}
+		}
 
 		var configID string
 		err := tx.QueryRow(r.Context(), `
@@ -567,4 +593,193 @@ func jsonRawMessageToJSONMap(raw json.RawMessage) domain.JSONMap {
 		return domain.JSONMap{}
 	}
 	return m
+}
+
+// ensureExamUsageForMethod ensures an exam and usage exist for paper / question_bank / quiz methods.
+func (h *TaskEvaluationHandler) ensureExamUsageForMethod(
+	ctx context.Context,
+	tx pgx.Tx,
+	tenantID, taskID, taskName, creatorID, methodKey string,
+	resourceConfig domain.JSONMap,
+) (domain.JSONMap, error) {
+	methodLabels := map[string]string{
+		"paper":         "试卷",
+		"question_bank": "题库",
+		"quiz":          "随堂测",
+	}
+	label := methodLabels[methodKey]
+	if label == "" {
+		label = methodKey
+	}
+
+	examID, _ := resourceConfig["examId"].(string)
+	if methodKey == "paper" {
+		if pid, ok := resourceConfig["paperId"].(string); ok && pid != "" {
+			examID = pid
+		}
+	}
+	usageID, _ := resourceConfig["usageId"].(string)
+
+	// For question_bank / quiz, auto-create a temp exam from questionIds.
+	if methodKey == "question_bank" || methodKey == "quiz" {
+		questionIDs := getStringSliceFromJSONMap(resourceConfig, "questionIds")
+		if len(questionIDs) == 0 {
+			return resourceConfig, nil
+		}
+
+		if examID == "" {
+			duration := 90
+			if d, ok := resourceConfig["duration"].(float64); ok && d > 0 {
+				duration = int(d)
+			} else if d, ok := resourceConfig["timeLimit"].(float64); ok && d > 0 {
+				duration = int(d)
+			}
+			name := fmt.Sprintf("%s-%s", taskName, label)
+			id, err := h.createTempExam(ctx, tx, tenantID, name, duration, creatorID)
+			if err != nil {
+				return resourceConfig, err
+			}
+			examID = id
+			resourceConfig["examId"] = examID
+		}
+
+		if err := h.ensureExamQuestions(ctx, tx, tenantID, examID, questionIDs); err != nil {
+			return resourceConfig, err
+		}
+	}
+
+	if examID == "" {
+		return resourceConfig, nil
+	}
+
+	if usageID == "" {
+		id, err := h.createTempExamUsage(ctx, tx, tenantID, examID, taskID)
+		if err != nil {
+			return resourceConfig, err
+		}
+		usageID = id
+		resourceConfig["usageId"] = usageID
+	}
+
+	return resourceConfig, nil
+}
+
+func (h *TaskEvaluationHandler) createTempExam(ctx context.Context, tx pgx.Tx, tenantID, name string, duration int, creatorID string) (string, error) {
+	id := uuid.NewString()
+	_, err := tx.Exec(ctx, `
+		INSERT INTO exams (id, tenant_id, name, description, status, total_score, duration, cover_image,
+			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, creator_id, is_temp)
+		VALUES ($1, $2, $3, '', 'draft', 0, $4, NULL, '{}', '{}', NULL, 'v1.0', 'mine', $5, TRUE)
+	`, id, tenantID, name, duration, creatorID)
+	if err != nil {
+		return "", fmt.Errorf("create temp exam: %w", err)
+	}
+	return id, nil
+}
+
+func (h *TaskEvaluationHandler) ensureExamQuestions(ctx context.Context, tx pgx.Tx, tenantID, examID string, questionIDs []string) error {
+	// Fetch questions from the question pool.
+	rows, err := tx.Query(ctx, `
+		SELECT id, type, content, options, answer, analysis, score
+		FROM questions
+		WHERE id = ANY($1) AND tenant_id = $2
+		ORDER BY array_position($1, id)
+	`, questionIDs, tenantID)
+	if err != nil {
+		return fmt.Errorf("fetch questions: %w", err)
+	}
+	defer rows.Close()
+
+	type q struct {
+		id      string
+		qType   string
+		content string
+		options []byte
+		answer  []byte
+		analysis *string
+		score   float64
+	}
+	var questions []q
+	for rows.Next() {
+		var qq q
+		var optionsStr, answerStr *string
+		if err := rows.Scan(&qq.id, &qq.qType, &qq.content, &optionsStr, &answerStr, &qq.analysis, &qq.score); err != nil {
+			continue
+		}
+		if optionsStr != nil {
+			qq.options = []byte(*optionsStr)
+		} else {
+			qq.options = []byte("[]")
+		}
+		if answerStr != nil {
+			qq.answer = []byte(*answerStr)
+		} else {
+			qq.answer = []byte("[]")
+		}
+		questions = append(questions, qq)
+	}
+
+	for i, qq := range questions {
+		var existingID string
+		_ = tx.QueryRow(ctx, `SELECT id FROM exam_questions WHERE exam_id = $1 AND question_id = $2`, examID, qq.id).Scan(&existingID)
+		if existingID != "" {
+			_, err := tx.Exec(ctx, `
+				UPDATE exam_questions SET type = $1, content = $2, options = $3, answer = $4, analysis = $5, score = $6, sort_order = $7
+				WHERE id = $8
+			`, qq.qType, qq.content, string(qq.options), string(qq.answer), qq.analysis, qq.score, i+1, existingID)
+			if err != nil {
+				return fmt.Errorf("update exam question %s: %w", qq.id, err)
+			}
+		} else {
+			_, err := tx.Exec(ctx, `
+				INSERT INTO exam_questions (id, tenant_id, exam_id, question_id, type, content, options, answer, analysis, score, sort_order)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			`, uuid.NewString(), tenantID, examID, qq.id, qq.qType, qq.content, string(qq.options), string(qq.answer), qq.analysis, qq.score, i+1)
+			if err != nil {
+				return fmt.Errorf("insert exam question %s: %w", qq.id, err)
+			}
+		}
+	}
+
+	// Recalculate total score.
+	_, err = tx.Exec(ctx, `
+		UPDATE exams SET total_score = COALESCE((SELECT SUM(score) FROM exam_questions WHERE exam_id = $1), 0), updated_at = NOW()
+		WHERE id = $1
+	`, examID)
+	if err != nil {
+		return fmt.Errorf("recalc exam total: %w", err)
+	}
+	return nil
+}
+
+func (h *TaskEvaluationHandler) createTempExamUsage(ctx context.Context, tx pgx.Tx, tenantID, examID, taskID string) (string, error) {
+	id := uuid.NewString()
+	_, err := tx.Exec(ctx, `
+		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id)
+		VALUES ($1, $2, $3, $4, NULL, NULL, NULL, NULL, 'task', $5, 'draft', $6)
+	`, id, tenantID, examID, fmt.Sprintf("场景任务-%s", taskID), []string{taskID}, "")
+	if err != nil {
+		return "", fmt.Errorf("create temp exam usage: %w", err)
+	}
+	return id, nil
+}
+
+func getStringSliceFromJSONMap(m domain.JSONMap, key string) []string {
+	raw, ok := m[key]
+	if !ok || raw == nil {
+		return nil
+	}
+	switch v := raw.(type) {
+	case []string:
+		return v
+	case []interface{}:
+		out := make([]string, 0, len(v))
+		for _, x := range v {
+			if s, ok := x.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	return nil
 }

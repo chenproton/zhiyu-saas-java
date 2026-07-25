@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Upload, Send, FileText, CheckCircle2, Clock, ClipboardList } from "lucide-react"
@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { scenarioApi, taskApi, taskEvaluationApi, evaluationResultApi, fileApi } from "@/lib/api"
-import type { TaskEvaluationMethod, SceneEvaluationResult } from "@/lib/types"
+import { scenarioApi, taskApi, taskEvaluationApi, evaluationResultApi, fileApi, examApi, examUsageApi } from "@/lib/api"
+import type { TaskEvaluationMethod, SceneEvaluationResult, Exam, ExamUsage } from "@/lib/types"
 import { useAuth } from "@/components/auth-provider"
 
 const evalMethodLabels: Record<string, string> = {
@@ -38,6 +38,14 @@ export default function EvaluatePage() {
   const [files, setFiles] = useState<{ name: string; url: string; size: number }[]>([])
   const [uploading, setUploading] = useState(false)
 
+  const [drawnQuestionIds, setDrawnQuestionIds] = useState<string[]>([])
+  const [reviewStepDone, setReviewStepDone] = useState<Record<string, boolean>>({})
+  const [pointSelfEval, setPointSelfEval] = useState<Record<string, string>>({})
+
+  const [exam, setExam] = useState<Exam | null>(null)
+  const [usages, setUsages] = useState<ExamUsage[]>([])
+  const [examLoading, setExamLoading] = useState(false)
+
   const methodConfig = methods.find((m) => m.methodKey === methodKey)
   const evalPoints = methodConfig?.evalPoints || []
   const reviewSteps = methodConfig?.reviewSteps || []
@@ -59,6 +67,51 @@ export default function EvaluatePage() {
     return isNaN(d.getTime()) ? v : d.toLocaleString("zh-CN", { hour12: false })
   }
 
+  const currentUsage = useMemo(() => {
+    if (resourceConfig?.usageId) {
+      const found = usages.find((u) => u.id === resourceConfig.usageId)
+      if (found) return found
+    }
+    return usages[0] || null
+  }, [usages, resourceConfig])
+
+  const examEntryStatus = useMemo(() => {
+    if (!isExamMethod) return null
+    if (examLoading) return { label: "加载中...", disabled: true }
+    if (!examId) return { label: "教师尚未配置考试", disabled: true }
+    if (!currentUsage) return { label: "暂无考试安排", disabled: true }
+    const now = new Date()
+    const scheduledStart = resourceConfig.scheduledTime ? new Date(resourceConfig.scheduledTime) : null
+    const scheduledEnd = resourceConfig.scheduledEndTime ? new Date(resourceConfig.scheduledEndTime) : null
+    if (resourceConfig.activationMode === "scheduled" && scheduledStart && now < scheduledStart) {
+      return { label: `考试未开始（${formatDateTime(resourceConfig.scheduledTime)}）`, disabled: true }
+    }
+    if (resourceConfig.activationMode === "scheduled" && scheduledEnd && now > scheduledEnd) {
+      return { label: "考试已结束", disabled: true }
+    }
+    if (currentUsage.status === "finished") {
+      return { label: "考试已结束", disabled: true }
+    }
+    return { label: "前往考试", disabled: false }
+  }, [isExamMethod, examLoading, examId, currentUsage, resourceConfig])
+
+  const resubmitConfig = useMemo(() => {
+    const allow = isExamMethod ? resourceConfig.allowRetake : resourceConfig.allowResubmit
+    const maxCount = resourceConfig.retakeCount ?? (allow ? 999 : 0)
+    const attempts = result?.subjectiveContent?.attempts || 0
+    const can = !!allow && (result?.status !== "evaluated" || attempts < maxCount)
+    return { allow, maxCount, attempts, can }
+  }, [resourceConfig, result, isExamMethod])
+
+  const resetForResubmit = () => {
+    setSubmitted(false)
+    setText("")
+    setFiles([])
+    setDrawnQuestionIds([])
+    setReviewStepDone({})
+    setPointSelfEval({})
+  }
+
   useEffect(() => {
     if (!id || !taskId || !methodKey) { setLoading(false); return }
     const load = async () => {
@@ -72,7 +125,24 @@ export default function EvaluatePage() {
         ])
         setScenario(sc)
         setTask(t)
-        setMethods((mRes.methods || []).filter((m: TaskEvaluationMethod) => m.isEnabled !== false))
+        const enabledMethods = (mRes.methods || []).filter((m: TaskEvaluationMethod) => m.isEnabled !== false)
+        setMethods(enabledMethods)
+        const cfg = enabledMethods.find((m: TaskEvaluationMethod) => m.methodKey === methodKey)
+        if (cfg && isExamMethod) {
+          setExamLoading(true)
+          const cfgExamId = methodKey === "paper" ? cfg.resourceConfig?.paperId : cfg.resourceConfig?.examId
+          if (cfgExamId) {
+            try {
+              const [examData, usageRes] = await Promise.all([
+                examApi.get(cfgExamId),
+                examUsageApi.list({ examId: cfgExamId, limit: 50 }),
+              ])
+              setExam(examData)
+              setUsages(usageRes.items || [])
+            } catch { /* ignore */ }
+          }
+          setExamLoading(false)
+        }
         const existing = (rRes.items || []).find((r: SceneEvaluationResult) => r.methodKey === methodKey)
         if (existing) {
           setResult(existing)
@@ -101,11 +171,27 @@ export default function EvaluatePage() {
     if (!user?.id) return
     setSubmitting(true)
     try {
-      await evaluationResultApi.submit({
+      const payload: any = {
         taskId, sceneId: id, methodKey,
         evaluateeId: user.id, maxScore: 100,
-        subjectiveContent: { text, files },
-      })
+      }
+      if (isManualSubmit) {
+        payload.subjectiveContent = { text, files, pointSelfEval, attempts: (resubmitConfig.attempts || 0) + 1 }
+      } else if (methodKey === "random_draw") {
+        const drawnQuestions: Record<string, any> = {}
+        drawnQuestionIds.forEach((qid) => {
+          drawnQuestions[qid] = { drawnAt: new Date().toISOString(), oralAnswer: "" }
+        })
+        payload.drawnQuestions = drawnQuestions
+      } else if (methodKey === "review") {
+        const completedSteps = reviewSteps
+          .filter((s: any) => s.enabled && reviewStepDone[s.id])
+          .map((s: any) => ({ stepId: s.id, completedAt: new Date().toISOString() }))
+        payload.subjectiveContent = { reviewSteps: completedSteps, attempts: (resubmitConfig.attempts || 0) + 1 }
+      } else {
+        payload.subjectiveContent = {}
+      }
+      await evaluationResultApi.submit(payload)
       setSubmitted(true)
       const rRes = await evaluationResultApi.list({ taskId, evaluateeId: user.id, methodKey, limit: 1 })
       const updated = (rRes.items || []).find((r: SceneEvaluationResult) => r.methodKey === methodKey)
@@ -249,6 +335,27 @@ export default function EvaluatePage() {
           <Card className="mb-4">
             <CardHeader><CardTitle className="text-base flex items-center gap-2"><Send className="h-4 w-4" />提交内容</CardTitle></CardHeader>
             <CardContent className="space-y-4">
+              {evalPoints.length > 0 && (
+                <div className="space-y-3">
+                  <label className="text-sm font-medium block">按评价点自评说明</label>
+                  {evalPoints.map((ep: any) => (
+                    <div key={ep.id} className="bg-gray-50 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium">{ep.name}</span>
+                        <Badge variant="outline" className="text-[10px]">{ep.weight || 0} 分</Badge>
+                      </div>
+                      {ep.description && <p className="text-xs text-gray-500 mb-2">{ep.description}</p>}
+                      <Textarea
+                        placeholder={`请针对“${ep.name}”说明你的完成情况...`}
+                        value={pointSelfEval[ep.id] || ""}
+                        onChange={(e) => setPointSelfEval((prev) => ({ ...prev, [ep.id]: e.target.value }))}
+                        rows={2}
+                        className="text-sm bg-white"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
               <div>
                 <label className="text-sm font-medium mb-1 block">文字说明</label>
                 <Textarea placeholder="描述你的成果/作业内容..." value={text} onChange={(e) => setText(e.target.value)} rows={6} />
@@ -276,12 +383,65 @@ export default function EvaluatePage() {
           </Card>
         )}
 
-        {!submitted && isTeacherLed && (
+        {!submitted && isTeacherLed && methodKey === "random_draw" && (
           <Card className="mb-4">
-            <CardContent className="py-8 text-center">
-              <p className="text-gray-600 mb-2">此为现场测评方式，无需在线提交。</p>
-              <p className="text-sm text-gray-400">请按照上述要求准备好材料，按教师安排参加现场测评。</p>
-              <Button onClick={handleSubmit} disabled={submitting} variant="outline" className="mt-4">
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><ClipboardList className="h-4 w-4" />现场抽题</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-gray-600">点击“开始抽题”后，系统将从题库中随机抽取题目，作为您本次现场问答的题目。</p>
+              {drawnQuestionIds.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                  <p className="text-xs font-medium text-gray-500">已抽中 {drawnQuestionIds.length} 题</p>
+                  <div className="flex flex-wrap gap-2">
+                    {drawnQuestionIds.map((qid, idx) => (
+                      <Badge key={qid} variant="outline" className="text-xs">第 {idx + 1} 题</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const ids = resourceConfig.selectedQuestionIds || []
+                    const drawCount = Math.max(1, Math.min(ids.length, resourceConfig.drawCount || ids.length || 1))
+                    const shuffled = [...ids].sort(() => Math.random() - 0.5)
+                    setDrawnQuestionIds(shuffled.slice(0, drawCount))
+                  }}
+                  disabled={submitting || !(resourceConfig.selectedQuestionIds?.length > 0)}
+                >
+                  开始抽题
+                </Button>
+                <Button onClick={handleSubmit} disabled={submitting || drawnQuestionIds.length === 0}>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  {submitting ? "..." : "确认参加"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {!submitted && isTeacherLed && methodKey === "review" && (
+          <Card className="mb-4">
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><ClipboardList className="h-4 w-4" />评审流程确认</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-gray-600">请按顺序完成以下评审步骤，完成后点击“确认参加”。</p>
+              <div className="space-y-2">
+                {reviewSteps.filter((s: any) => s.enabled).map((s: any, idx: number) => (
+                  <label key={s.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={!!reviewStepDone[s.id]}
+                      onChange={(e) => setReviewStepDone((prev) => ({ ...prev, [s.id]: e.target.checked }))}
+                    />
+                    <div>
+                      <p className="text-sm font-medium">{idx + 1}. {s.label}</p>
+                      {s.description && <p className="text-xs text-gray-500">{s.description}</p>}
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <Button onClick={handleSubmit} disabled={submitting || !reviewSteps.filter((s: any) => s.enabled).every((s: any) => reviewStepDone[s.id])}>
                 <CheckCircle2 className="mr-2 h-4 w-4" />
                 {submitting ? "..." : "确认参加"}
               </Button>
@@ -289,7 +449,7 @@ export default function EvaluatePage() {
           </Card>
         )}
 
-        {!submitted && isExamMethod && examId && (
+        {!submitted && isExamMethod && (
           <Card className="mb-4">
             <CardHeader><CardTitle className="text-base flex items-center gap-2"><Clock className="h-4 w-4" />考试规则</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
@@ -307,18 +467,14 @@ export default function EvaluatePage() {
                 )}
               </div>
               <div className="pt-4 text-center">
-                <Button asChild>
-                  <Link href={`/evaluation/landing/exams/${examId}?task=${taskId}&scene=${id}&method=${methodKey}`}>前往考试</Link>
-                </Button>
+                {examEntryStatus?.disabled ? (
+                  <Button disabled>{examEntryStatus.label}</Button>
+                ) : (
+                  <Button asChild>
+                    <Link href={`/evaluation/landing/exams/${examId}?task=${taskId}&scene=${id}&method=${methodKey}&usage=${currentUsage?.id || ""}`}>{examEntryStatus?.label || "前往考试"}</Link>
+                  </Button>
+                )}
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {!submitted && isExamMethod && !examId && (
-          <Card className="mb-4">
-            <CardContent className="py-8 text-center">
-              <p className="text-gray-600">教师尚未配置考试，请联系教师。</p>
             </CardContent>
           </Card>
         )}
@@ -328,10 +484,21 @@ export default function EvaluatePage() {
             <CardContent className="py-6 text-center">
               <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
               <p className="text-green-700 font-medium">已成功提交！</p>
-              <p className="text-sm text-green-600 mt-1">等待老师评分后可在学习页查看成绩</p>
-              <Button variant="outline" size="sm" className="mt-3" asChild>
-                <Link href={`/scene/landing/${id}/learn?task=${taskId}`}>返回学习页</Link>
-              </Button>
+              <p className="text-sm text-green-600 mt-1">
+                {result?.status === "evaluated"
+                  ? `评分：${result.totalScore}/${result.maxScore}`
+                  : "等待老师评分后可在学习页查看成绩"}
+              </p>
+              <div className="flex items-center justify-center gap-2 mt-3">
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/scene/landing/${id}/learn?task=${taskId}`}>返回学习页</Link>
+                </Button>
+                {resubmitConfig.can && (
+                  <Button size="sm" onClick={resetForResubmit}>
+                    重新测评
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}

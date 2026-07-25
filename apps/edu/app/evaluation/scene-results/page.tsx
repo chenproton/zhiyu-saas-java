@@ -39,6 +39,7 @@ interface TaskMethodGroup {
   students: TaskStudent[]
   pendingCount: number
   gradedCount: number
+  weight: number
 }
 
 interface TaskGroup {
@@ -170,6 +171,12 @@ export default function GradingPage() {
     const scenarioSubs = results
     const taskMap = new Map<string, TaskGroup>()
 
+    const getMethodWeight = (taskInfo: any, methodKey: string, knownMethodCount: number): number => {
+      const configured = taskInfo?.evalData?.methodWeights?.[methodKey]
+      if (typeof configured === "number") return configured
+      return knownMethodCount > 0 ? 100 / knownMethodCount : 100
+    }
+
     for (const sub of scenarioSubs) {
       const user = userMap.get(sub.evaluateeId)
       const taskStudent: TaskStudent = {
@@ -182,6 +189,8 @@ export default function GradingPage() {
       }
 
       const existing = taskMap.get(sub.taskId)
+      const taskInfo = taskNameMap.get(sub.taskId)
+      const evalMethods: string[] = taskInfo?.evalData?.evaluationMethods || []
       if (existing) {
         const method = existing.methods.find((f) => f.methodKey === sub.methodKey)
         if (method) {
@@ -189,15 +198,17 @@ export default function GradingPage() {
           method.pendingCount += sub.status === "pending" ? 1 : 0
           method.gradedCount += sub.status === "evaluated" ? 1 : 0
         } else {
+          const knownCount = evalMethods.length || existing.methods.length + 1
           existing.methods.push({
             methodKey: sub.methodKey,
             students: [taskStudent],
             pendingCount: sub.status === "pending" ? 1 : 0,
             gradedCount: sub.status === "evaluated" ? 1 : 0,
+            weight: getMethodWeight(taskInfo, sub.methodKey, knownCount),
           })
         }
       } else {
-        const taskInfo = taskNameMap.get(sub.taskId)
+        const knownCount = evalMethods.length || 1
         taskMap.set(sub.taskId, {
           taskId: sub.taskId,
           taskName: taskInfo?.name || sub.taskId,
@@ -206,6 +217,7 @@ export default function GradingPage() {
             students: [taskStudent],
             pendingCount: sub.status === "pending" ? 1 : 0,
             gradedCount: sub.status === "evaluated" ? 1 : 0,
+            weight: getMethodWeight(taskInfo, sub.methodKey, knownCount),
           }],
         })
       }
@@ -265,7 +277,14 @@ export default function GradingPage() {
                 )}
               >
                 {evalMethodLabels[m.methodKey] || m.methodKey}
-                <span className="text-[10px] opacity-70">({m.students.length})</span>
+                <span className="ml-1 flex items-center gap-1">
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-auto font-normal bg-amber-50 text-amber-600 border-amber-100">
+                    {m.pendingCount}
+                  </Badge>
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-auto font-normal bg-green-50 text-green-600 border-green-100">
+                    {m.gradedCount}
+                  </Badge>
+                </span>
               </button>
             ))}
           </div>
@@ -426,9 +445,19 @@ export default function GradingPage() {
                 <div className="space-y-3">
                   {taskGroups.map((task) => {
                     const isExpanded = expandedTasks.has(task.taskId)
-                    const totalStudents = task.methods.reduce((s, f) => s + f.students.length, 0)
+                    const taskResults = results.filter((r) => r.taskId === task.taskId)
+                    const totalStudents = new Set(taskResults.map((r) => r.evaluateeId)).size
+                    const submittedCount = taskResults.length
+                    const evaluatedCount = taskResults.filter((r) => r.status === "evaluated").length
                     const totalPending = task.methods.reduce((s, f) => s + f.pendingCount, 0)
                     const totalGraded = task.methods.reduce((s, f) => s + f.gradedCount, 0)
+
+                    const taskScore = task.methods.reduce((sum, m) => {
+                      const graded = m.students.filter((s) => s.result.status === "evaluated")
+                      if (graded.length === 0) return sum
+                      const methodScore = graded.reduce((acc, s) => acc + ((s.result.totalScore ?? 0) / (s.result.maxScore || 1)) * 100, 0) / graded.length
+                      return sum + methodScore * (m.weight || 0) / 100
+                    }, 0)
 
                     return (
                       <Collapsible key={task.taskId} open={isExpanded} onOpenChange={() => toggleTask(task.taskId)}>
@@ -440,8 +469,13 @@ export default function GradingPage() {
                                   <FileText className="h-4 w-4 text-primary" />
                                 </div>
                                 <div>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
                                     <p className="text-sm font-semibold text-gray-800">{task.taskName}</p>
+                                    {totalGraded > 0 && (
+                                      <Badge variant="outline" className="text-[10px] font-normal bg-primary/5 text-primary border-primary/20">
+                                        任务均分 {taskScore.toFixed(1)}
+                                      </Badge>
+                                    )}
                                     {task.methods.map((m) => (
                                       <Badge key={m.methodKey} variant="outline" className="text-[10px] font-normal">{evalMethodLabels[m.methodKey] || m.methodKey}</Badge>
                                     ))}
@@ -451,6 +485,32 @@ export default function GradingPage() {
                                     {totalPending > 0 && <span className="text-xs text-amber-600 font-medium">待评分 {totalPending}</span>}
                                     {totalGraded > 0 && <span className="text-xs text-green-600 font-medium">已评分 {totalGraded}</span>}
                                   </div>
+                                  {totalStudents > 0 ? (
+                                    <div className="mt-2 space-y-1.5 max-w-md">
+                                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                                        <span className="w-10 shrink-0">已提交</span>
+                                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                          <div
+                                            className="h-full bg-blue-500 rounded-full"
+                                            style={{ width: `${Math.min((submittedCount / totalStudents) * 100, 100)}%` }}
+                                          />
+                                        </div>
+                                        <span className="text-[10px] tabular-nums">{submittedCount}/{totalStudents}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                                        <span className="w-10 shrink-0">已评分</span>
+                                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                          <div
+                                            className="h-full bg-green-500 rounded-full"
+                                            style={{ width: `${Math.min((evaluatedCount / totalStudents) * 100, 100)}%` }}
+                                          />
+                                        </div>
+                                        <span className="text-[10px] tabular-nums">{evaluatedCount}/{totalStudents}</span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="mt-2 text-xs text-gray-400">暂无提交</div>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">

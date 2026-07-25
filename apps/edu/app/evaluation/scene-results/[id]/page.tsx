@@ -35,6 +35,8 @@ import {
   taskApi,
   userManagementApi,
   examApi,
+  examUsageApi,
+  examResultApi,
   randomDrawQuestionApi,
 } from "@/lib/api"
 import type { SceneEvaluationResult, TaskEvaluationMethod, TaskEvalPoint } from "@/lib/types"
@@ -550,6 +552,7 @@ export default function GradingDetailPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [exam, setExam] = useState<any>(null)
+  const [examResult, setExamResult] = useState<any>(null)
   const [rdQuestions, setRdQuestions] = useState<any[]>([])
   const [questionFilter, setQuestionFilter] = useState<"all" | "pending">("all")
   const [previewAttachment, setPreviewAttachment] = useState<{ name: string; url: string; type?: string } | null>(null)
@@ -577,10 +580,20 @@ export default function GradingDetailPage() {
 
         if (cfg && ["paper", "question_bank", "quiz"].includes(res.methodKey)) {
           const examId = cfg.resourceConfig?.paperId || cfg.resourceConfig?.examId
+          const usageId = cfg.resourceConfig?.usageId
           if (examId) {
             try {
-              const examData = await examApi.get(examId)
+              const [examData, usageRes] = await Promise.all([
+                examApi.get(examId),
+                examUsageApi.list({ examId, limit: 50 }),
+              ])
               setExam(examData)
+              const usage = usageRes.items.find((u: any) => u.id === usageId) || usageRes.items[0]
+              if (usage) {
+                const erRes = await examResultApi.list({ usageId: usage.id, limit: 500 })
+                const found = (erRes.items || []).find((r: any) => r.userId === res.evaluateeId)
+                if (found) setExamResult(found)
+              }
             } catch { /* ignore */ }
           }
         }
@@ -588,13 +601,24 @@ export default function GradingDetailPage() {
         if (res.methodKey === "random_draw") {
           try {
             const rdRes = await randomDrawQuestionApi.list({ limit: 9999 })
-            const selectedIds = cfg?.resourceConfig?.selectedQuestionIds || []
             const all = rdRes.items || []
+            // Prefer the student's actually drawn questions; fall back to configured pool.
+            const drawnMap = (res.drawnQuestions || {}) as Record<string, any>
+            const drawnIds = Object.keys(drawnMap).filter((k) => drawnMap[k] && typeof drawnMap[k] === "object")
+            const selectedIds = drawnIds.length > 0
+              ? drawnIds
+              : cfg?.resourceConfig?.selectedQuestionIds || []
             const selected = (selectedIds.length > 0
               ? selectedIds.map((sid: string) => all.find((q: any) => q.id === sid))
               : all
             ).filter(Boolean) as any[]
             setRdQuestions(selected)
+            // Pre-fill oral answers saved in the result.
+            const oral: Record<string, string> = {}
+            Object.entries(drawnMap).forEach(([k, v]) => {
+              oral[k] = typeof v === "string" ? v : v?.oralAnswer || ""
+            })
+            setOralAnswers(oral)
           } catch { /* ignore */ }
         }
 
@@ -648,9 +672,13 @@ export default function GradingDetailPage() {
   const objectiveAnswers = useMemo(() => (result?.objectiveAnswers || {}) as Record<string, any>, [result])
   const examQuestions = useMemo(() => exam?.questions || [], [exam])
 
+  // Prefer the original ExamResult score for objective questions; fall back to recomputing.
   const examAutoTotal = useMemo(() => {
+    if (examResult && typeof examResult.score === "number") {
+      return examResult.score
+    }
     return examQuestions.reduce((sum: number, q: any) => sum + getAutoScore(q, objectiveAnswers[q.id]), 0)
-  }, [examQuestions, objectiveAnswers])
+  }, [examQuestions, objectiveAnswers, examResult])
 
   const examSubjectiveTotal = useMemo(() => {
     return examQuestions.reduce((sum: number, q: any) => {
@@ -660,7 +688,7 @@ export default function GradingDetailPage() {
   }, [examQuestions, pointScores])
 
   const examTotal = examAutoTotal + examSubjectiveTotal
-  const examMaxScore = exam?.totalScore ?? examQuestions.reduce((sum: number, q: any) => sum + (q.score || 0), 0)
+  const examMaxScore = examResult?.totalScore ?? exam?.totalScore ?? examQuestions.reduce((sum: number, q: any) => sum + (q.score || 0), 0)
 
   const evalPointTotal = useMemo(() => {
     return evalPoints.reduce((sum, ep) => sum + (pointScores[ep.id] ?? 0), 0)
@@ -770,18 +798,45 @@ export default function GradingDetailPage() {
                 <div className="flex items-center">
                   {reviewSteps
                     .filter((s) => s.enabled)
-                    .map((step, idx, arr) => (
-                      <div key={step.id} className="flex items-center flex-1">
-                        <div className="flex flex-col items-center flex-1">
-                          <div className="w-7 h-7 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center border-2 border-primary">
-                            {idx + 1}
+                    .map((step, idx, arr) => {
+                      const completed = (subjectiveContent.reviewSteps || []).some((s: any) => s.stepId === step.id)
+                      return (
+                        <div key={step.id} className="flex items-center flex-1">
+                          <div className="flex flex-col items-center flex-1">
+                            <div className={cn(
+                              "w-7 h-7 rounded-full text-xs flex items-center justify-center border-2",
+                              completed
+                                ? "bg-green-100 text-green-600 border-green-300"
+                                : "bg-primary/10 text-primary border-primary"
+                            )}>
+                              {completed ? <CheckCircle2 className="h-4 w-4" /> : idx + 1}
+                            </div>
+                            <span className="text-[10px] mt-1 text-gray-700 font-medium text-center">{step.label}</span>
                           </div>
-                          <span className="text-[10px] mt-1 text-gray-700 font-medium text-center">{step.label}</span>
+                          {idx < arr.length - 1 && <div className="h-0.5 flex-1 mx-1 bg-gray-200" />}
                         </div>
-                        {idx < arr.length - 1 && <div className="h-0.5 flex-1 mx-1 bg-gray-200" />}
-                      </div>
-                    ))}
+                      )
+                    })}
                 </div>
+              </div>
+            )}
+
+            {subjectiveContent.pointSelfEval && Object.keys(subjectiveContent.pointSelfEval).length > 0 && evalPoints.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-xs font-medium text-gray-500">学生按评价点自评</h3>
+                {evalPoints.map((ep) => {
+                  const selfEval = subjectiveContent.pointSelfEval?.[ep.id]
+                  if (!selfEval) return null
+                  return (
+                    <div key={ep.id} className="bg-gray-50 rounded-lg border p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium">{ep.name}</span>
+                        <Badge variant="outline" className="text-[10px]">{ep.weight || 0} 分</Badge>
+                      </div>
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{selfEval}</p>
+                    </div>
+                  )
+                })}
               </div>
             )}
 

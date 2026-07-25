@@ -30,8 +30,8 @@ import {
 import { useData } from "@/components/providers/data-provider"
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts"
 import type { Exam, ExamUsage } from "@/lib/types"
-import { examApi, examUsageApi, examResultApi, evaluationResultApi } from "@/lib/api"
-import { useAuth } from "@/components/auth-provider"
+import { examApi, examUsageApi, examResultApi } from "@/lib/api"
+
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 
@@ -78,7 +78,7 @@ export default function ExamDetailPage() {
   const taskId = searchParams.get("task") || ""
   const sceneId = searchParams.get("scene") || ""
   const methodKey = searchParams.get("method") || ""
-  const { user } = useAuth()
+  const usageIdFromQuery = searchParams.get("usage") || ""
   const { exams, getExam } = useData()
 
   const cachedExam = getExam ? getExam(examId) : exams.find((e) => e.id === examId)
@@ -94,6 +94,8 @@ export default function ExamDetailPage() {
   const [usages, setUsages] = useState<ExamUsage[]>([])
   const [currentUsage, setCurrentUsage] = useState<ExamUsage | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  const isSceneTask = !!taskId && !!methodKey
 
   useEffect(() => {
     if (!examId) return
@@ -114,39 +116,37 @@ export default function ExamDetailPage() {
     if (!examId) return
     examUsageApi
       .list({ examId })
-      .then((res) => {
+      .then(async (res) => {
         const items = res.items || []
         setUsages(items)
-        if (items.length > 0 && !currentUsage) setCurrentUsage(items[0])
+        let usage = items.find((u) => u.id === usageIdFromQuery) || items[0] || null
+        if (usage && !currentUsage) {
+          // Auto-start draft usages coming from scene tasks.
+          if (usage.status === "draft" && isSceneTask) {
+            try {
+              usage = await examUsageApi.start(usage.id)
+            } catch { /* fall through */ }
+          }
+          setCurrentUsage(usage)
+        }
       })
       .catch(() => {})
-  }, [examId, currentUsage])
+  }, [examId, currentUsage, isSceneTask, usageIdFromQuery])
 
   const handleSubmit = useCallback(async () => {
     if (!currentUsage) return
     setSubmitting(true)
     try {
       await examResultApi.submit({ examUsageId: currentUsage.id, answers })
-      // 若从场景任务跳转而来，同步创建/更新场景测评结果，供教师评分
-      if (taskId && methodKey && user?.id) {
-        try {
-          await evaluationResultApi.submit({
-            taskId,
-            sceneId: sceneId || undefined,
-            methodKey,
-            evaluateeId: user.id,
-            maxScore: exam?.totalScore || 100,
-            objectiveAnswers: answers,
-          })
-        } catch { /* ignore */ }
-      }
+      // 后端 ExamResultHandler.submit 会自动把结果同步到 scene_evaluation_results（当 usage.target_ids 包含 taskId 时）。
+      // 这里不再由前端重复同步，避免客观题全对时被覆盖为 pending 状态。
       setSubmitted(true)
     } catch {
       alert("提交失败，请重试")
     } finally {
       setSubmitting(false)
     }
-  }, [currentUsage, answers, taskId, sceneId, methodKey, user, exam])
+  }, [currentUsage, answers])
 
   useEffect(() => {
     if (started && exam && !submitted) {
@@ -191,7 +191,6 @@ export default function ExamDetailPage() {
   const answeredCount = Object.keys(answers).length
   const timeStatus = getExamTimeStatus(exam.status)
   const targetAudience = getTargetAudience()
-  const isSceneTask = !!taskId && !!methodKey
   const canStart = examAccessState === 'started' && (isSceneTask || exam.status === "published") && currentUsage
 
   const questionTypeStats = useMemo(() => {

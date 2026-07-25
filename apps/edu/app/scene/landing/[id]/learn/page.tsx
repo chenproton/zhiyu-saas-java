@@ -244,6 +244,31 @@ export default function SceneLearnPage() {
     }
   }, [evalMethods])
 
+  const taskAggregate = useMemo(() => {
+    let totalScore = 0
+    let totalWeight = 0
+    let evaluatedCount = 0
+    let pendingCount = 0
+    for (const m of evalMethods) {
+      const weight = m.weight || 0
+      totalWeight += weight
+      const r = myResults.find((x) => x.methodKey === m.methodKey)
+      if (r?.status === "evaluated" && r.maxScore > 0) {
+        totalScore += ((r.totalScore || 0) / r.maxScore) * weight
+        evaluatedCount++
+      } else if (r) {
+        pendingCount++
+      }
+    }
+    return {
+      score: totalWeight > 0 ? Math.round(totalScore * 100) / 100 : 0,
+      maxScore: totalWeight,
+      evaluatedCount,
+      pendingCount,
+      totalMethods: evalMethods.length,
+    }
+  }, [evalMethods, myResults])
+
   const dependencyTasks = useMemo(() => {
     if (!activeTask?.dependencyIds?.length) return []
     return activeTask.dependencyIds.map((did) => tasks.find((t) => t.id === did)).filter(Boolean) as ScenarioTask[]
@@ -533,6 +558,18 @@ export default function SceneLearnPage() {
                         <ClipboardList className="h-4 w-4" />
                       </div>
                       <h3 className="text-base font-semibold text-gray-800">任务测评</h3>
+                      {taskAggregate.totalMethods > 0 && (
+                        <div className="ml-auto flex items-center gap-3">
+                          <span className="text-xs text-gray-500">
+                            已评分 {taskAggregate.evaluatedCount}/{taskAggregate.totalMethods}
+                          </span>
+                          {taskAggregate.evaluatedCount > 0 && (
+                            <span className="text-sm font-semibold text-blue-600">
+                              综合 {taskAggregate.score}/{taskAggregate.maxScore}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {taskEvalMethods.methods.length > 0 ? (
@@ -696,8 +733,10 @@ function EvalMethodCard({ method, result, sceneId, taskId }: EvalMethodCardProps
           {result ? (
             <span
               className={cn(
-                "text-xs font-medium",
-                result.status === "evaluated" ? "text-green-600" : "text-amber-600"
+                "text-xs font-medium px-2 py-0.5 rounded-full border",
+                result.status === "evaluated"
+                  ? "text-green-600 bg-green-50 border-green-200"
+                  : "text-amber-600 bg-amber-50 border-amber-200"
               )}
             >
               {result.status === "evaluated"
