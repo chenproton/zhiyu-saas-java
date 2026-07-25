@@ -702,11 +702,14 @@ function MethodDialogContent({
       const hasManualRubric = info.points.length > 0
       const hasManualScoreRule = savedScoreRuleItems.length > 0
       if (hasManualRubric || hasManualScoreRule) {
-        const mode = methodKey === "homework"
-          ? "score_rule"
-          : (hasManualScoreRule ? "score_rule" : "rubric")
+        const savedConfig = state.methodResourceConfigs[methodKey] || {}
+        const mode = savedConfig.rubricMode
+          ? savedConfig.rubricMode
+          : methodKey === "homework"
+            ? "score_rule"
+            : (hasManualScoreRule ? "score_rule" : "rubric")
         setLocalDraft({
-          name: "",
+          name: savedConfig.rubricName || "",
           mode,
           types: [],
           scoreRuleItems: savedScoreRuleItems.map((it: ScoreRuleItem) => ({ ...it }))
@@ -767,7 +770,8 @@ function MethodDialogContent({
           }
         }
       })
-      setLocalDraft({ name: "", mode: methodKey === "homework" ? "score_rule" : "rubric", types: [], scoreRuleItems: [] })
+      const existingConfig = state.methodResourceConfigs[methodKey] || {}
+      setLocalDraft({ name: existingConfig.rubricName || "", mode: methodKey === "homework" ? "score_rule" : "rubric", types: [], scoreRuleItems: [] })
     }
     setEditingRubricId(schemeId)
     setView("edit")
@@ -782,6 +786,8 @@ function MethodDialogContent({
         ...state.methodResourceConfigs,
         [methodKey]: {
           ...state.methodResourceConfigs[methodKey],
+          rubricName: `${scheme.name}（副本）`,
+          rubricMode: scheme.mode,
           scoreRuleItems: (scheme.scoreRuleItems || []).map((it: ScoreRuleItem) => ({ ...it }))
         }
       }
@@ -1192,12 +1198,17 @@ function MethodDialogContent({
         <div className="flex items-center gap-2">
           <Button size="sm" className="text-xs h-8" onClick={() => {
             const updates: any = { [rubricIdField]: null }
+            const commonConfig = {
+              ...state.methodResourceConfigs[methodKey],
+              rubricName: draftScheme.name || "自定义评价标准",
+              rubricMode: draftScheme.mode
+            }
             if (draftScheme.mode === "score_rule") {
               const items = (draftScheme.scoreRuleItems || []).map((it: ScoreRuleItem) => ({ ...it }))
               updates.methodResourceConfigs = {
                 ...state.methodResourceConfigs,
                 [methodKey]: {
-                  ...state.methodResourceConfigs[methodKey],
+                  ...commonConfig,
                   scoreRuleItems: items
                 }
               }
@@ -1217,13 +1228,13 @@ function MethodDialogContent({
               updates.methodResourceConfigs = {
                 ...state.methodResourceConfigs,
                 [methodKey]: {
-                  ...state.methodResourceConfigs[methodKey],
+                  ...commonConfig,
                   scoreRuleItems: []
                 }
               }
             }
             updateState(updates)
-            toast({ title: "当前规则已保存" })
+            toast({ title: "当前规则已保存", description: draftScheme.name || "自定义评价标准" })
           }}>
             保存
           </Button>
@@ -7982,7 +7993,7 @@ function EditCardDialog({
             evalLabel = currentScheme.mode === "score_rule" ? "评价项" : "评价点"
             badgeUnit = currentScheme.mode === "score_rule" ? "项" : "点"
           } else if (hasManualRules) {
-            title = "自定义评价标准"
+            title = state.methodResourceConfigs[methodKey]?.rubricName || "自定义评价标准"
             const isScoreRule = hasManualScoreRule
             evalCount = isScoreRule ? manualScoreRuleItems.length : info.points.length
             evalLabel = isScoreRule ? "评价项" : "评价点"
