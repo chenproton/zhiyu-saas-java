@@ -183,6 +183,7 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 		domainName := col(row, 4)
 		requiredLevel := mapRequiredLevel(col(row, 5))
 		rubricDescription := nullableStr(col(row, 6))
+		attributes := splitTrim(col(row, 7), ",")
 
 		positionID, ok := positionMap[positionName]
 		if !ok {
@@ -217,15 +218,15 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 		abilityKey := tenantID + "|" + abilityName
 		abilityID, ok := seenAbility[abilityKey]
 		if !ok {
-			abilityID = h.findOrCreateAbilityPoint(ctx, tenantID, abilityName, abilityCategory)
+			abilityID = h.findOrCreateAbilityPoint(ctx, tenantID, abilityName, abilityCategory, attributes)
 			seenAbility[abilityKey] = abilityID
 		}
 
 		bindingID := uuid.NewString()
 		_, err := h.DB.Exec(ctx, `
-			INSERT INTO position_ability_bindings (id, tenant_id, career_position_id, responsibility_id, ability_point_id, source, domain, required_level, rubric_description, weight)
-			VALUES ($1,$2,$3,$4,$5,'custom',$6,$7,$8,0)
-		`, bindingID, tenantID, positionID, respID, abilityID, nullableStr(domainName), requiredLevel, rubricDescription)
+			INSERT INTO position_ability_bindings (id, tenant_id, career_position_id, responsibility_id, ability_point_id, source, domain, required_level, rubric_description, weight, attributes)
+			VALUES ($1,$2,$3,$4,$5,'custom',$6,$7,$8,0,$9)
+		`, bindingID, tenantID, positionID, respID, abilityID, nullableStr(domainName), requiredLevel, rubricDescription, attributes)
 		if err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("能力点绑定[%s/%s/%s]失败: %v", positionName, respName, abilityName, err))
@@ -299,14 +300,18 @@ func (h *PositionImportHandler) findOrCreateCert(ctx context.Context, tenantID, 
 	return id
 }
 
-func (h *PositionImportHandler) findOrCreateAbilityPoint(ctx context.Context, tenantID, name, category string) string {
+func (h *PositionImportHandler) findOrCreateAbilityPoint(ctx context.Context, tenantID, name, category string, attributes []string) string {
 	var id string
 	err := h.DB.QueryRow(ctx, `SELECT id FROM ability_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
 	if err == nil {
+		// 能力点已存在时，若导入提供了属性则尝试更新
+		if len(attributes) > 0 {
+			h.DB.Exec(ctx, `UPDATE ability_points SET attributes=$1 WHERE id=$2 AND (attributes IS NULL OR attributes = '{}')`, attributes, id)
+		}
 		return id
 	}
 	id = uuid.NewString()
-	h.DB.Exec(ctx, `INSERT INTO ability_points (id, tenant_id, name, category, is_public) VALUES ($1,$2,$3,$4,false) ON CONFLICT DO NOTHING`, id, tenantID, name, category)
+	h.DB.Exec(ctx, `INSERT INTO ability_points (id, tenant_id, name, category, is_public, attributes) VALUES ($1,$2,$3,$4,false,$5) ON CONFLICT DO NOTHING`, id, tenantID, name, category, attributes)
 	var existing string
 	h.DB.QueryRow(ctx, `SELECT id FROM ability_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
 	if existing != "" {

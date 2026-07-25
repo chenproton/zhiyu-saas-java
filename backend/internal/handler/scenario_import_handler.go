@@ -201,7 +201,8 @@ func (h *ScenarioImportHandler) importTasks(ctx context.Context, xlsx *excelize.
 func (h *ScenarioImportHandler) generateScenarioCode(ctx context.Context, tenantID string) string {
 	year := time.Now().Format("2006")
 	var maxNum int
-	err := h.DB.QueryRow(ctx, `SELECT COALESCE(MAX(NULLIF(regexp_replace(code, '^SC-\d{4}-', ''), '')::int), 0) FROM scenarios WHERE tenant_id=$1 AND code LIKE 'SC-'||$2||'-%'`, tenantID, year).Scan(&maxNum)
+	// 提取 SC-YYYY-NNNN 中的序号，忽略 -clone 等后缀
+	err := h.DB.QueryRow(ctx, `SELECT COALESCE(MAX(substring(code from '^SC-[0-9]{4}-([0-9]+)')::int), 0) FROM scenarios WHERE tenant_id=$1 AND code LIKE 'SC-'||$2||'-%'`, tenantID, year).Scan(&maxNum)
 	if err != nil {
 		maxNum = 0
 	}
