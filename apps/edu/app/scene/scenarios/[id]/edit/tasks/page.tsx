@@ -5693,6 +5693,14 @@ function EditCardDialog({
               </DialogContent>
             </Dialog>
 
+            {/* Resource Preview Mask */}
+            {previewResources.length > 0 && (
+              <div
+                className="fixed inset-0 bg-black/40 z-[90]"
+                onClick={() => previewResources.forEach((r) => removePreviewResource(r.id))}
+              />
+            )}
+
             {/* Resource Preview Modals */}
             {previewResources.map((r, i) => (
               <ResourcePreviewModal
