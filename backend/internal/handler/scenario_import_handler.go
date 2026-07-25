@@ -78,6 +78,7 @@ func (h *ScenarioImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 		"entity":          "场景",
 		"scenarioCreated": result.ScenarioCreated,
 		"taskCreated":     result.TaskCreated,
+		"errors":          result.Errors,
 	})
 }
 
@@ -229,9 +230,9 @@ func (h *ScenarioImportHandler) lookupCareerPosition(ctx context.Context, tenant
 
 func (h *ScenarioImportHandler) lookupIndustries(ctx context.Context, tenantID string, names []string) []string {
 	if len(names) == 0 {
-		return nil
+		return []string{}
 	}
-	var ids []string
+	ids := make([]string, 0, len(names))
 	for _, name := range names {
 		if name == "" {
 			continue
@@ -248,9 +249,9 @@ func (h *ScenarioImportHandler) lookupIndustries(ctx context.Context, tenantID s
 
 func (h *ScenarioImportHandler) lookupProfessions(ctx context.Context, tenantID string, names []string) []string {
 	if len(names) == 0 {
-		return nil
+		return []string{}
 	}
-	var ids []string
+	ids := make([]string, 0, len(names))
 	for _, name := range names {
 		if name == "" {
 			continue
