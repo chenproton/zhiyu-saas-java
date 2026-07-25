@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload, Copy, Users, Building2, ImageIcon, List, LayoutGrid, FolderInput, ChevronDown } from "lucide-react"
+import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload, Copy, Users, Building2, ImageIcon, List, LayoutGrid, FolderInput, ChevronDown, FileDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -108,6 +108,8 @@ export default function QuestionBankDetailPage() {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [isImporting, setIsImporting] = useState(false)
+  const [importStep, setImportStep] = useState<"download" | "upload">("download")
+  const [isDownloading, setIsDownloading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   // 获取题目创建人列表（后端暂无用户姓名查询，直接展示 ID）
   const creators = useMemo(() => {
@@ -175,6 +177,7 @@ export default function QuestionBankDetailPage() {
   }
 
   const handleDownloadTemplate = async () => {
+    setIsDownloading(true)
     try {
       const res = await importExportApi.downloadQuestionTemplate(bankId)
       const blob = await res.blob()
@@ -188,6 +191,8 @@ export default function QuestionBankDetailPage() {
       window.URL.revokeObjectURL(url)
     } catch (err: any) {
       alert(err.message || "下载模板失败")
+    } finally {
+      setIsDownloading(false)
     }
   }
 
@@ -655,36 +660,67 @@ export default function QuestionBankDetailPage() {
       />
 
       {/* Import Dialog */}
-      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+      <Dialog open={isImportDialogOpen} onOpenChange={(open) => { setIsImportDialogOpen(open); if (!open) { setImportStep("download"); setImportFile(null) } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>导入题目</DialogTitle>
-            <DialogDescription>下载模板并按说明填写后，上传 Excel 批量导入题目到「{bank?.name || ""}」</DialogDescription>
+            <DialogDescription>
+              第 {importStep === "download" ? "1" : "2"} 步：{importStep === "download" ? "下载模板并填写数据" : "上传已填写的 Excel 文件"}，批量导入题目到「{bank?.name || ""}」
+            </DialogDescription>
           </DialogHeader>
-          <div className="py-8">
-            <div
-              className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
-              <p className="text-sm text-muted-foreground mb-2">
-                {importFile ? importFile.name : "点击选择 Excel 文件"}
-              </p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={(e) => handleImportFileSelect(e.target.files)}
-              />
-            </div>
+          <div className="py-4 space-y-4">
+            {importStep === "download" ? (
+              <div className="space-y-4">
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <p className="text-sm font-medium mb-2">操作指引</p>
+                  <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                    <li>点击下方按钮下载最新的导入模板（含系统字典数据）</li>
+                    <li>参照模板中各 Sheet 的填写说明，填入题目数据</li>
+                    <li>完成后点击"下一步"上传文件</li>
+                  </ol>
+                </div>
+                <Button
+                  className="w-full"
+                  size="lg"
+                  onClick={handleDownloadTemplate}
+                  disabled={isDownloading}
+                >
+                  <FileDown className="mr-2 h-5 w-5" />
+                  {isDownloading ? "下载中..." : "下载题目批量导入模板"}
+                </Button>
+              </div>
+            ) : (
+              <div
+                className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
+                <p className="text-sm text-muted-foreground mb-2">
+                  {importFile ? importFile.name : "点击选择已填写的 Excel (.xlsx) 文件"}
+                </p>
+                <p className="text-xs text-muted-foreground">仅支持 .xlsx 格式</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx"
+                  className="hidden"
+                  onChange={(e) => handleImportFileSelect(e.target.files)}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsImportDialogOpen(false)}>取消</Button>
-            <Button variant="outline" onClick={handleDownloadTemplate}>下载模板</Button>
-            <Button onClick={handleImport} disabled={!importFile || isImporting}>
-              {isImporting ? "导入中..." : "开始导入"}
-            </Button>
+            <Button variant="outline" onClick={() => { setIsImportDialogOpen(false); setImportStep("download"); setImportFile(null) }}>取消</Button>
+            {importStep === "download" ? (
+              <Button onClick={() => setImportStep("upload")}>下一步</Button>
+            ) : (
+              <Button onClick={handleImport} disabled={!importFile || isImporting}>
+                {isImporting ? "导入中..." : "开始导入"}
+              </Button>
+            )}
+            {importStep === "upload" && (
+              <Button variant="ghost" size="sm" onClick={() => setImportStep("download")}>上一步</Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
