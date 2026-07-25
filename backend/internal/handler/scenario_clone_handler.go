@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
+	"runtime/debug"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -24,6 +25,13 @@ type CloneScenarioRequest struct {
 }
 
 func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			slog.Error("[CloneScenario] panic recovered", "panic", rec, "stack", string(debug.Stack()))
+			respondError(w, http.StatusInternalServerError, "internal server error")
+		}
+	}()
+
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
 		respondError(w, http.StatusForbidden, "permission denied")
@@ -31,8 +39,11 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
+	slog.Info("[CloneScenario] start", "scenario_id", id, "user_id", claims.UserID, "tenant_id", claims.TenantID)
+
 	src, err := h.fetchSourceScenario(r.Context(), id)
 	if err != nil {
+		slog.Error("[CloneScenario] fetch source scenario failed", "scenario_id", id, "error", err)
 		respondError(w, http.StatusNotFound, "scenario not found")
 		return
 	}
@@ -42,6 +53,7 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if src.TenantID != nil && *src.TenantID != tenantID {
+		slog.Error("[CloneScenario] tenant mismatch", "scenario_tenant", *src.TenantID, "user_tenant", tenantID)
 		respondError(w, http.StatusForbidden, "access denied")
 		return
 	}
@@ -57,6 +69,7 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	tx, err := h.DB.Begin(ctx)
 	if err != nil {
+		slog.Error("[CloneScenario] begin transaction failed", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to start transaction")
 		return
 	}
@@ -66,6 +79,7 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	if newCode == "" {
 		newCode = h.generateUniqueScenarioCode(ctx, tx, tenantID, src.Code)
 	}
+	slog.Info("[CloneScenario] generated new code", "new_code", newCode)
 
 	newID := uuid.NewString()
 	_, err = tx.Exec(ctx, `
@@ -77,7 +91,7 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 		src.ProfessionIDs, src.BatchID, src.Difficulty, src.Version, src.Background,
 		src.DeliveryGoal, claims.UserID, coalesceStringSlice(src.CoBuilderIDs), tenantID)
 	if err != nil {
-		log.Printf("[CloneScenario] failed to insert scenario: %v", err)
+		slog.Error("[CloneScenario] insert scenario failed", "scenario_id", newID, "code", newCode, "error", err)
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "场景方案代码已存在，请使用其他代码")
 			return
@@ -137,28 +151,33 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 			tr.dependencyIDs, false, nil,
 			tr.knowledgePointIDs, tr.abilityPointIDs, tr.resourceIDs, tr.evalData, tenantID)
 		if err != nil {
-			log.Printf("[CloneScenario] failed to insert task: %v", err)
+			slog.Error("[CloneScenario] insert task failed", "old_task_id", tr.oldID, "new_task_id", newTaskID, "error", err)
 			respondError(w, http.StatusInternalServerError, "failed to clone task")
 			return
 		}
 
 		if err := h.cloneTaskDeliverables(ctx, tx, tr.oldID, newTaskID, tenantID); err != nil {
+			slog.Error("[CloneScenario] clone deliverables failed", "old_task_id", tr.oldID, "new_task_id", newTaskID, "error", err)
 			respondError(w, http.StatusInternalServerError, "failed to clone deliverables")
 			return
 		}
 		if err := h.cloneTaskEvaluationMethods(ctx, tx, tr.oldID, newTaskID, tenantID); err != nil {
+			slog.Error("[CloneScenario] clone evaluation methods failed", "old_task_id", tr.oldID, "new_task_id", newTaskID, "error", err)
 			respondError(w, http.StatusInternalServerError, "failed to clone evaluation methods")
 			return
 		}
 		if err := h.cloneTaskResourceBindings(ctx, tx, tr.oldID, newTaskID, tenantID); err != nil {
+			slog.Error("[CloneScenario] clone resource bindings failed", "old_task_id", tr.oldID, "new_task_id", newTaskID, "error", err)
 			respondError(w, http.StatusInternalServerError, "failed to clone resource bindings")
 			return
 		}
 		if err := h.cloneTaskKnowledgeBindings(ctx, tx, tr.oldID, newTaskID, tenantID); err != nil {
+			slog.Error("[CloneScenario] clone knowledge bindings failed", "old_task_id", tr.oldID, "new_task_id", newTaskID, "error", err)
 			respondError(w, http.StatusInternalServerError, "failed to clone knowledge bindings")
 			return
 		}
 		if err := h.cloneTaskAbilityBindings(ctx, tx, tr.oldID, newTaskID, tenantID); err != nil {
+			slog.Error("[CloneScenario] clone ability bindings failed", "old_task_id", tr.oldID, "new_task_id", newTaskID, "error", err)
 			respondError(w, http.StatusInternalServerError, "failed to clone ability bindings")
 			return
 		}
@@ -166,27 +185,37 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 
 	for _, newTaskID := range taskIDMap {
 		if err := h.remapTaskDependencyIDs(ctx, tx, newTaskID, taskIDMap); err != nil {
+			slog.Error("[CloneScenario] remap dependencies failed", "new_task_id", newTaskID, "error", err)
 			respondError(w, http.StatusInternalServerError, "failed to remap task dependencies")
 			return
 		}
 	}
 
 	if err := h.cloneScenarioWeights(ctx, tx, id, newID, taskIDMap, tenantID); err != nil {
+		slog.Error("[CloneScenario] clone weights failed", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to clone weights")
 		return
 	}
 	if err := h.cloneScenarioGradeMappings(ctx, tx, id, newID, taskIDMap, tenantID); err != nil {
+		slog.Error("[CloneScenario] clone grade mappings failed", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to clone grade mappings")
 		return
 	}
 
 	if err := tx.Commit(ctx); err != nil {
+		slog.Error("[CloneScenario] commit failed", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to commit")
 		return
 	}
 
 	handler := &ScenarioHandler{DB: h.DB}
-	scenario, _ := handler.fetchScenario(ctx, newID)
+	scenario, err := handler.fetchScenario(ctx, newID)
+	if err != nil {
+		slog.Error("[CloneScenario] fetch cloned scenario failed", "new_id", newID, "error", err)
+		respondError(w, http.StatusInternalServerError, "failed to fetch cloned scenario")
+		return
+	}
+	slog.Info("[CloneScenario] success", "new_scenario_id", newID, "code", newCode)
 	respondJSON(w, http.StatusCreated, scenario)
 }
 
@@ -194,13 +223,21 @@ func (h *ScenarioCloneHandler) generateUniqueScenarioCode(ctx context.Context, t
 	base := srcCode + "-clone"
 	var exists bool
 	err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM scenarios WHERE tenant_id = $1 AND code = $2)`, tenantID, base).Scan(&exists)
-	if err != nil || !exists {
+	if err != nil {
+		slog.Error("[CloneScenario] check code existence failed", "base", base, "error", err)
+		return base
+	}
+	if !exists {
 		return base
 	}
 	for i := 2; i < 1000; i++ {
 		candidate := fmt.Sprintf("%s-%d", base, i)
 		err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM scenarios WHERE tenant_id = $1 AND code = $2)`, tenantID, candidate).Scan(&exists)
-		if err != nil || !exists {
+		if err != nil {
+			slog.Error("[CloneScenario] check code existence failed", "candidate", candidate, "error", err)
+			return candidate
+		}
+		if !exists {
 			return candidate
 		}
 	}
@@ -245,22 +282,33 @@ func (h *ScenarioCloneHandler) cloneTaskDeliverables(ctx context.Context, tx pgx
 		FROM task_deliverables WHERE task_id = $1 ORDER BY sort_order
 	`, oldTaskID)
 	if err != nil {
-		return nil
+		return err
 	}
-	defer rows.Close()
 
+	type deliverableRow struct {
+		typ, name       string
+		description     *string
+		evalPoints      []byte
+		sortOrder       int
+	}
+	var data []deliverableRow
 	for rows.Next() {
-		var typ, name string
-		var description *string
-		var evalPoints []byte
-		var sortOrder int
-		if err := rows.Scan(&typ, &name, &description, &evalPoints, &sortOrder); err != nil {
+		var dr deliverableRow
+		if err := rows.Scan(&dr.typ, &dr.name, &dr.description, &dr.evalPoints, &dr.sortOrder); err != nil {
 			continue
 		}
+		data = append(data, dr)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	for _, dr := range data {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO task_deliverables (id, task_id, type, name, description, evaluation_points, sort_order, tenant_id)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		`, uuid.NewString(), newTaskID, typ, name, description, evalPoints, sortOrder, tenantID)
+		`, uuid.NewString(), newTaskID, dr.typ, dr.name, dr.description, dr.evalPoints, dr.sortOrder, tenantID)
 		if err != nil {
 			return err
 		}
@@ -274,9 +322,9 @@ func (h *ScenarioCloneHandler) cloneTaskEvaluationMethods(ctx context.Context, t
 		FROM task_evaluation_methods WHERE task_id = $1 AND tenant_id = $2
 	`, oldTaskID, tenantID)
 	if err != nil {
-		return nil
+		slog.Error("[CloneScenario] query evaluation methods failed", "old_task_id", oldTaskID, "error", err)
+		return err
 	}
-	defer rows.Close()
 
 	type methodRow struct {
 		oldConfigID, methodKey string
@@ -297,6 +345,10 @@ func (h *ScenarioCloneHandler) cloneTaskEvaluationMethods(ctx context.Context, t
 		}
 		methodData = append(methodData, mr)
 	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
 
 	for _, mr := range methodData {
 		newConfigID := uuid.NewString()
@@ -305,13 +357,16 @@ func (h *ScenarioCloneHandler) cloneTaskEvaluationMethods(ctx context.Context, t
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		`, newConfigID, tenantID, newTaskID, mr.methodKey, mr.weight, mr.evalObject, mr.scoreType, mr.evalSubjects, mr.rubricTemplateID, mr.resourceConfig, mr.version, mr.isEnabled)
 		if err != nil {
+			slog.Error("[CloneScenario] insert evaluation method failed", "old_config_id", mr.oldConfigID, "new_config_id", newConfigID, "error", err)
 			return err
 		}
 
 		if err := h.cloneTaskEvalPoints(ctx, tx, mr.oldConfigID, newConfigID, tenantID); err != nil {
+			slog.Error("[CloneScenario] clone eval points failed", "old_config_id", mr.oldConfigID, "new_config_id", newConfigID, "error", err)
 			return err
 		}
 		if err := h.cloneTaskReviewSteps(ctx, tx, mr.oldConfigID, newConfigID, tenantID); err != nil {
+			slog.Error("[CloneScenario] clone review steps failed", "old_config_id", mr.oldConfigID, "new_config_id", newConfigID, "error", err)
 			return err
 		}
 	}
@@ -324,28 +379,39 @@ func (h *ScenarioCloneHandler) cloneTaskEvalPoints(ctx context.Context, tx pgx.T
 		FROM task_eval_points WHERE config_id = $1
 	`, oldConfigID)
 	if err != nil {
-		return nil
+		slog.Error("[CloneScenario] query eval points failed", "old_config_id", oldConfigID, "error", err)
+		return err
 	}
-	defer rows.Close()
 
+	type pointRow struct {
+		name, scoringMethod          string
+		description, subType         *string
+		types                        []string
+		weight                       float64
+		gradeMapping                 []byte
+		knowledgePointIDs, abilityPointIDs []string
+		sortOrder                    int
+	}
+	var data []pointRow
 	for rows.Next() {
-		var name string
-		var description *string
-		var subType *string
-		var types []string
-		var weight float64
-		var scoringMethod string
-		var gradeMapping []byte
-		var knowledgePointIDs, abilityPointIDs []string
-		var sortOrder int
-		if err := rows.Scan(&name, &description, &subType, &types, &weight, &scoringMethod, &gradeMapping, &knowledgePointIDs, &abilityPointIDs, &sortOrder); err != nil {
+		var pr pointRow
+		if err := rows.Scan(&pr.name, &pr.description, &pr.subType, &pr.types, &pr.weight, &pr.scoringMethod, &pr.gradeMapping, &pr.knowledgePointIDs, &pr.abilityPointIDs, &pr.sortOrder); err != nil {
 			continue
 		}
+		data = append(data, pr)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	for _, pr := range data {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO task_eval_points (id, tenant_id, config_id, name, description, sub_type, types, weight, scoring_method, grade_mapping, knowledge_point_ids, ability_point_ids, sort_order)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-		`, uuid.NewString(), tenantID, newConfigID, name, description, subType, types, weight, scoringMethod, gradeMapping, knowledgePointIDs, abilityPointIDs, sortOrder)
+		`, uuid.NewString(), tenantID, newConfigID, pr.name, pr.description, pr.subType, pr.types, pr.weight, pr.scoringMethod, pr.gradeMapping, pr.knowledgePointIDs, pr.abilityPointIDs, pr.sortOrder)
 		if err != nil {
+			slog.Error("[CloneScenario] insert eval point failed", "new_config_id", newConfigID, "error", err)
 			return err
 		}
 	}
@@ -358,25 +424,44 @@ func (h *ScenarioCloneHandler) cloneTaskReviewSteps(ctx context.Context, tx pgx.
 		FROM task_review_steps WHERE config_id = $1
 	`, oldConfigID)
 	if err != nil {
-		return nil
+		slog.Error("[CloneScenario] query review steps failed", "old_config_id", oldConfigID, "error", err)
+		return err
 	}
-	defer rows.Close()
 
+	var steps []struct {
+		label       string
+		description *string
+		enabled     bool
+		subjectType *string
+		weight      float64
+		sortOrder   int
+	}
 	for rows.Next() {
-		var label string
-		var description *string
-		var enabled bool
-		var subjectType *string
-		var weight float64
-		var sortOrder int
-		if err := rows.Scan(&label, &description, &enabled, &subjectType, &weight, &sortOrder); err != nil {
+		var sr struct {
+			label       string
+			description *string
+			enabled     bool
+			subjectType *string
+			weight      float64
+			sortOrder   int
+		}
+		if err := rows.Scan(&sr.label, &sr.description, &sr.enabled, &sr.subjectType, &sr.weight, &sr.sortOrder); err != nil {
 			continue
 		}
+		steps = append(steps, sr)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	for _, sr := range steps {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO task_review_steps (id, tenant_id, config_id, label, description, enabled, subject_type, weight, sort_order)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		`, uuid.NewString(), tenantID, newConfigID, label, description, enabled, subjectType, weight, sortOrder)
+		`, uuid.NewString(), tenantID, newConfigID, sr.label, sr.description, sr.enabled, sr.subjectType, sr.weight, sr.sortOrder)
 		if err != nil {
+			slog.Error("[CloneScenario] insert review step failed", "new_config_id", newConfigID, "error", err)
 			return err
 		}
 	}
@@ -388,20 +473,30 @@ func (h *ScenarioCloneHandler) cloneTaskResourceBindings(ctx context.Context, tx
 		SELECT resource_id FROM task_resource_bindings WHERE task_id = $1
 	`, oldTaskID)
 	if err != nil {
-		return nil
+		slog.Error("[CloneScenario] query resource bindings failed", "old_task_id", oldTaskID, "error", err)
+		return err
 	}
-	defer rows.Close()
 
+	var resourceIDs []string
 	for rows.Next() {
 		var resourceID string
 		if err := rows.Scan(&resourceID); err != nil {
 			continue
 		}
+		resourceIDs = append(resourceIDs, resourceID)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	for _, resourceID := range resourceIDs {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO task_resource_bindings (id, task_id, resource_id, tenant_id)
 			VALUES ($1, $2, $3, $4)
 		`, uuid.NewString(), newTaskID, resourceID, tenantID)
 		if err != nil {
+			slog.Error("[CloneScenario] insert resource binding failed", "new_task_id", newTaskID, "error", err)
 			return err
 		}
 	}
@@ -413,20 +508,30 @@ func (h *ScenarioCloneHandler) cloneTaskKnowledgeBindings(ctx context.Context, t
 		SELECT knowledge_point_id FROM task_knowledge_bindings WHERE task_id = $1
 	`, oldTaskID)
 	if err != nil {
-		return nil
+		slog.Error("[CloneScenario] query knowledge bindings failed", "old_task_id", oldTaskID, "error", err)
+		return err
 	}
-	defer rows.Close()
 
+	var kpIDs []string
 	for rows.Next() {
 		var kpID string
 		if err := rows.Scan(&kpID); err != nil {
 			continue
 		}
+		kpIDs = append(kpIDs, kpID)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	for _, kpID := range kpIDs {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO task_knowledge_bindings (id, task_id, knowledge_point_id, tenant_id)
 			VALUES ($1, $2, $3, $4)
 		`, uuid.NewString(), newTaskID, kpID, tenantID)
 		if err != nil {
+			slog.Error("[CloneScenario] insert knowledge binding failed", "new_task_id", newTaskID, "error", err)
 			return err
 		}
 	}
@@ -438,20 +543,30 @@ func (h *ScenarioCloneHandler) cloneTaskAbilityBindings(ctx context.Context, tx 
 		SELECT ability_point_id FROM task_ability_bindings WHERE task_id = $1
 	`, oldTaskID)
 	if err != nil {
-		return nil
+		slog.Error("[CloneScenario] query ability bindings failed", "old_task_id", oldTaskID, "error", err)
+		return err
 	}
-	defer rows.Close()
 
+	var apIDs []string
 	for rows.Next() {
 		var apID string
 		if err := rows.Scan(&apID); err != nil {
 			continue
 		}
+		apIDs = append(apIDs, apID)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	for _, apID := range apIDs {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO task_ability_bindings (id, task_id, ability_point_id, tenant_id)
 			VALUES ($1, $2, $3, $4)
 		`, uuid.NewString(), newTaskID, apID, tenantID)
 		if err != nil {
+			slog.Error("[CloneScenario] insert ability binding failed", "new_task_id", newTaskID, "error", err)
 			return err
 		}
 	}
@@ -482,25 +597,38 @@ func (h *ScenarioCloneHandler) cloneScenarioWeights(ctx context.Context, tx pgx.
 		SELECT task_id, weight FROM scenario_weight_configs WHERE scenario_id = $1
 	`, oldScenarioID)
 	if err != nil {
-		return nil
+		slog.Error("[CloneScenario] query weights failed", "scenario_id", oldScenarioID, "error", err)
+		return err
 	}
-	defer rows.Close()
 
+	type weightRow struct {
+		oldTaskID string
+		weight    float64
+	}
+	var data []weightRow
 	for rows.Next() {
-		var oldTaskID string
-		var weight float64
-		if err := rows.Scan(&oldTaskID, &weight); err != nil {
+		var wr weightRow
+		if err := rows.Scan(&wr.oldTaskID, &wr.weight); err != nil {
 			continue
 		}
-		newTaskID, ok := taskIDMap[oldTaskID]
-		if !ok {
+		if _, ok := taskIDMap[wr.oldTaskID]; !ok {
 			continue
 		}
+		data = append(data, wr)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	for _, wr := range data {
+		newTaskID := taskIDMap[wr.oldTaskID]
 		_, err := tx.Exec(ctx, `
 			INSERT INTO scenario_weight_configs (id, scenario_id, task_id, weight, tenant_id)
 			VALUES ($1, $2, $3, $4, $5)
-		`, uuid.NewString(), newScenarioID, newTaskID, weight, tenantID)
+		`, uuid.NewString(), newScenarioID, newTaskID, wr.weight, tenantID)
 		if err != nil {
+			slog.Error("[CloneScenario] insert weight failed", "new_task_id", newTaskID, "error", err)
 			return err
 		}
 	}
@@ -513,34 +641,46 @@ func (h *ScenarioCloneHandler) cloneScenarioGradeMappings(ctx context.Context, t
 		FROM scenario_grade_mappings WHERE scenario_id = $1
 	`, oldScenarioID)
 	if err != nil {
-		return nil
+		slog.Error("[CloneScenario] query grade mappings failed", "scenario_id", oldScenarioID, "error", err)
+		return err
 	}
-	defer rows.Close()
 
+	type gradeRow struct {
+		oldTaskID          *string
+		level              string
+		minScore, maxScore float64
+		description, color *string
+	}
+	var data []gradeRow
 	for rows.Next() {
-		var oldTaskID *string
-		var level string
-		var minScore, maxScore float64
-		var description *string
-		var color *string
-		if err := rows.Scan(&oldTaskID, &level, &minScore, &maxScore, &description, &color); err != nil {
+		var gr gradeRow
+		if err := rows.Scan(&gr.oldTaskID, &gr.level, &gr.minScore, &gr.maxScore, &gr.description, &gr.color); err != nil {
 			continue
 		}
-
-		var newTaskID *string
-		if oldTaskID != nil {
-			if mapped, ok := taskIDMap[*oldTaskID]; ok {
-				newTaskID = &mapped
-			} else {
+		if gr.oldTaskID != nil {
+			if _, ok := taskIDMap[*gr.oldTaskID]; !ok {
 				continue
 			}
 		}
+		data = append(data, gr)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
 
+	for _, gr := range data {
+		var newTaskID *string
+		if gr.oldTaskID != nil {
+			mapped := taskIDMap[*gr.oldTaskID]
+			newTaskID = &mapped
+		}
 		_, err := tx.Exec(ctx, `
 			INSERT INTO scenario_grade_mappings (id, scenario_id, task_id, level, min_score, max_score, description, color, tenant_id)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		`, uuid.NewString(), newScenarioID, newTaskID, level, minScore, maxScore, description, color, tenantID)
+		`, uuid.NewString(), newScenarioID, newTaskID, gr.level, gr.minScore, gr.maxScore, gr.description, gr.color, tenantID)
 		if err != nil {
+			slog.Error("[CloneScenario] insert grade mapping failed", "error", err)
 			return err
 		}
 	}

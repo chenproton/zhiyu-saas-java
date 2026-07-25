@@ -810,3 +810,158 @@ func TestTaskBindKnowledgeWithInvalidId(t *testing.T) {
 		t.Fatalf("expected 200 for bind with arbitrary knowledgePointId, got %d", w.Code)
 	}
 }
+
+
+func TestScenario_Clone(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	suffix := t.Name()
+	scCode := fmt.Sprintf("test-clone-sc-%s", suffix)
+
+	// Create parent scenario
+	w := env.Do("POST", "/api/v1/scene/scenarios", map[string]interface{}{
+		"name":       "Clone Source Scenario",
+		"code":       scCode,
+		"difficulty": 2,
+		"version":    "v1.0",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create scenario: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	scenario, _ := testhelper.Unmarshal[domain.Scenario](w)
+	scID := scenario.ID
+	defer env.DB.Exec(ctx, "DELETE FROM scenarios WHERE id = $1", scID)
+
+	// Create two tasks
+	taskCode1 := fmt.Sprintf("tsk-clone1-%s", suffix)
+	w = env.Do("POST", "/api/v1/scene/tasks", map[string]interface{}{
+		"scenarioId": scID,
+		"name":       "Clone Task 1",
+		"code":       taskCode1,
+		"taskType":   "assessment",
+		"difficulty": 2,
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create task 1: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	task1, _ := testhelper.Unmarshal[domain.ScenarioTask](w)
+	defer env.DB.Exec(ctx, "DELETE FROM scenario_tasks WHERE id = $1", task1.ID)
+
+	taskCode2 := fmt.Sprintf("tsk-clone2-%s", suffix)
+	w = env.Do("POST", "/api/v1/scene/tasks", map[string]interface{}{
+		"scenarioId": scID,
+		"name":       "Clone Task 2",
+		"code":       taskCode2,
+		"taskType":   "practice",
+		"difficulty": 1,
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create task 2: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	task2, _ := testhelper.Unmarshal[domain.ScenarioTask](w)
+	defer env.DB.Exec(ctx, "DELETE FROM scenario_tasks WHERE id = $1", task2.ID)
+
+	// Configure evaluation methods on task 1
+	methods := []map[string]interface{}{
+		{
+			"methodKey":    "random_draw",
+			"weight":       50,
+			"evalObject":   "individual",
+			"evalSubjects": []interface{}{},
+			"evalPoints": []map[string]interface{}{
+				{
+					"name":          "Point 1",
+					"weight":        100,
+					"scoringMethod": "level",
+					"gradeMapping": []map[string]interface{}{
+						{"grade": "A", "minScore": 90, "maxScore": 100},
+						{"grade": "B", "minScore": 0, "maxScore": 89},
+					},
+					"sortOrder": 0,
+				},
+			},
+			"reviewSteps": []map[string]interface{}{
+				{"label": "初审", "enabled": true, "subjectType": "teacher", "weight": 50, "sortOrder": 0},
+				{"label": "复审", "enabled": true, "subjectType": "enterprise_mentor", "weight": 50, "sortOrder": 1},
+			},
+			"resourceConfig": map[string]interface{}{"questionCount": 5},
+		},
+		{
+			"methodKey":      "homework",
+			"weight":         50,
+			"evalObject":     "individual",
+			"evalSubjects":   []interface{}{},
+			"evalPoints":     []map[string]interface{}{},
+			"resourceConfig": map[string]interface{}{"deadlineDays": 7},
+		},
+	}
+	w = env.Do("PUT", "/api/v1/scene/tasks/"+task1.ID+"/evaluation-methods", map[string]interface{}{
+		"methods": methods,
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("save methods: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	defer env.DB.Exec(ctx, "DELETE FROM task_evaluation_methods WHERE task_id = $1", task1.ID)
+
+	// Add weight config and grade mapping for the scenario
+	w = env.Do("POST", "/api/v1/scene/weights", map[string]interface{}{
+		"scenarioId": scID,
+		"taskId":     task1.ID,
+		"weight":     60,
+	})
+	if w.Code != http.StatusOK && w.Code != http.StatusCreated {
+		t.Fatalf("upsert weight: expected 200/201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	w = env.Do("POST", "/api/v1/scene/grade-mappings", map[string]interface{}{
+		"scenarioId": scID,
+		"taskId":     task1.ID,
+		"level":      "优秀",
+		"minScore":   90,
+		"maxScore":   100,
+	})
+	if w.Code != http.StatusOK && w.Code != http.StatusCreated {
+		t.Fatalf("upsert grade mapping: expected 200/201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+
+	// Clone the scenario
+	w = env.Do("POST", "/api/v1/scene/scenarios/"+scID+"/clone", nil)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("clone: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	cloned, err := testhelper.Unmarshal[domain.Scenario](w)
+	if err != nil {
+		t.Fatalf("unmarshal cloned scenario: %v", err)
+	}
+	defer env.DB.Exec(ctx, "DELETE FROM scenarios WHERE id = $1", cloned.ID)
+
+	if cloned.ID == scID {
+		t.Fatal("cloned scenario id should differ from source")
+	}
+	if cloned.Status != domain.ScenarioStatusDraft {
+		t.Fatalf("cloned scenario status should be draft, got %s", cloned.Status)
+	}
+
+	// Verify cloned tasks exist
+	w = env.Do("GET", "/api/v1/scene/tasks?scenarioId="+cloned.ID, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("list cloned tasks: expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	clonedTasks, total, _ := testhelper.UnmarshalList[domain.ScenarioTask](w)
+	if total != 2 || len(clonedTasks) != 2 {
+		t.Fatalf("expected 2 cloned tasks, got total=%d len=%d", total, len(clonedTasks))
+	}
+	for _, tk := range clonedTasks {
+		defer env.DB.Exec(ctx, "DELETE FROM scenario_tasks WHERE id = $1", tk.ID)
+		defer env.DB.Exec(ctx, "DELETE FROM task_evaluation_methods WHERE task_id = $1", tk.ID)
+	}
+
+	// Verify cloned evaluation methods exist
+	for _, tk := range clonedTasks {
+		w = env.Do("GET", "/api/v1/scene/tasks/"+tk.ID+"/evaluation-methods", nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("list cloned methods for task %s: expected 200, got %d: %s", tk.ID, w.Code, testhelper.ErrMsg(w))
+		}
+	}
+}
