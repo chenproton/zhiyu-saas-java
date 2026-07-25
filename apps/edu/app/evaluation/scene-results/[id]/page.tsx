@@ -188,6 +188,21 @@ function QuestionGradingCard({
                   className="w-16 text-right h-8 text-sm font-semibold border-amber-300 focus-visible:ring-amber-400"
                 />
                 <span className="text-xs text-gray-400">/ {question.score || 0}</span>
+                {!isGraded && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10"
+                    onClick={() => {
+                      const max = question.score || 0
+                      setLocalScore(max.toString())
+                      onScoreChange(question.id, max)
+                    }}
+                  >
+                    满分
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="flex items-center gap-1.5">
@@ -301,6 +316,21 @@ function QuestionGradingCard({
                     className="w-20 text-right h-8 text-sm"
                   />
                   <span className="text-xs text-gray-400">/ {question.score || 0}</span>
+                  {!isGraded && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10"
+                      onClick={() => {
+                        const max = question.score || 0
+                        setLocalScore(max.toString())
+                        onScoreChange(question.id, max)
+                      }}
+                    >
+                      满分
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
@@ -387,6 +417,21 @@ function EvalPointGradingCard({
                 className="w-16 text-right h-9 text-sm font-semibold bg-white"
               />
               <span className="text-xs text-gray-500">/ {evalPoint.weight || 0}</span>
+              {!isGraded && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10"
+                  onClick={() => {
+                    const max = evalPoint.weight || 0
+                    setLocalScore(max.toString())
+                    onChange(evalPoint.id, max, localComment)
+                  }}
+                >
+                  满分
+                </Button>
+              )}
             </div>
           </div>
           <div className="flex-1">

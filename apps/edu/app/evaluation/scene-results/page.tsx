@@ -95,12 +95,16 @@ export default function GradingPage() {
         ;(posRes.items || []).forEach((p: any) => pMap.set(p.id, p.name))
         setPositionMap(pMap)
 
-        setScenarios((scRes.items || [])
+        const loadedScenarios = (scRes.items || [])
           .filter((s: any) => s.status === "published")
           .map((s: any) => ({
             ...s,
             positionName: pMap.get(s.careerPositionId) || "未分类",
-          })))
+          }))
+        setScenarios(loadedScenarios)
+        if (!selectedScenarioId && loadedScenarios.length > 0) {
+          setSelectedScenarioId(loadedScenarios[0].id)
+        }
 
         const uMap = new Map<string, any>()
         ;(userRes.items || []).forEach((u: any) => uMap.set(u.id, u))
@@ -264,7 +268,7 @@ export default function GradingPage() {
     return (
       <div className="px-4 pb-4 border-t border-gray-100">
         {task.methods.length > 1 && (
-          <div className="flex items-center gap-2 pt-3 mb-3">
+          <div className="flex items-center gap-2 pt-3 mb-3 overflow-x-auto scrollbar-hide">
             {task.methods.map((m) => (
               <button
                 key={m.methodKey}
@@ -485,32 +489,6 @@ export default function GradingPage() {
                                     {totalPending > 0 && <span className="text-xs text-amber-600 font-medium">待评分 {totalPending}</span>}
                                     {totalGraded > 0 && <span className="text-xs text-green-600 font-medium">已评分 {totalGraded}</span>}
                                   </div>
-                                  {totalStudents > 0 ? (
-                                    <div className="mt-2 space-y-1.5 max-w-md">
-                                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                                        <span className="w-10 shrink-0">已提交</span>
-                                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                          <div
-                                            className="h-full bg-blue-500 rounded-full"
-                                            style={{ width: `${Math.min((submittedCount / totalStudents) * 100, 100)}%` }}
-                                          />
-                                        </div>
-                                        <span className="text-[10px] tabular-nums">{submittedCount}/{totalStudents}</span>
-                                      </div>
-                                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                                        <span className="w-10 shrink-0">已评分</span>
-                                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                          <div
-                                            className="h-full bg-green-500 rounded-full"
-                                            style={{ width: `${Math.min((evaluatedCount / totalStudents) * 100, 100)}%` }}
-                                          />
-                                        </div>
-                                        <span className="text-[10px] tabular-nums">{evaluatedCount}/{totalStudents}</span>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="mt-2 text-xs text-gray-400">暂无提交</div>
-                                  )}
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
