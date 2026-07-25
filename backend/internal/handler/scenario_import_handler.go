@@ -2,8 +2,8 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -183,17 +183,29 @@ func (h *ScenarioImportHandler) importTasks(ctx context.Context, xlsx *excelize.
 		result.Created++
 
 		if len(evalMethodNames) > 0 {
-			var evalMethodKeys []string
 			for _, evalName := range evalMethodNames {
 				mk := mapEvalMethod(evalName)
-				if mk != "" {
-					evalMethodKeys = append(evalMethodKeys, mk)
+				if mk == "" {
+					continue
 				}
-			}
-			if len(evalMethodKeys) > 0 {
-				evalJSON, _ := json.Marshal(evalMethodKeys)
-				h.DB.Exec(ctx, `UPDATE scenario_tasks SET eval_data = jsonb_set(COALESCE(eval_data, '{}'), '{evaluationMethods}', $1::jsonb) WHERE id=$2`,
-					string(evalJSON), taskID)
+				_, err := h.DB.Exec(ctx, `
+					INSERT INTO task_evaluation_methods (id, tenant_id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config, version, is_enabled)
+					VALUES ($1,$2,$3,$4,0,'individual',NULL,'[]'::jsonb,NULL,'{}'::jsonb,1,true)
+					ON CONFLICT (task_id, method_key) DO UPDATE SET
+						weight = EXCLUDED.weight,
+						eval_object = EXCLUDED.eval_object,
+						score_type = EXCLUDED.score_type,
+						eval_subjects = EXCLUDED.eval_subjects,
+						rubric_template_id = EXCLUDED.rubric_template_id,
+						resource_config = EXCLUDED.resource_config,
+						version = EXCLUDED.version,
+						is_enabled = EXCLUDED.is_enabled
+				`, uuid.NewString(), tenantID, taskID, mk)
+				if err != nil {
+					msg := fmt.Sprintf("任务[%s/%s]测评方式[%s]写入失败: %v", scenarioName, taskName, evalName, err)
+					result.Errors = append(result.Errors, msg)
+					log.Printf("[import/scenarios] %s", msg)
+				}
 			}
 		}
 	}
@@ -280,9 +292,9 @@ func (h *ScenarioImportHandler) lookupBatch(ctx context.Context, tenantID, name,
 
 func (h *ScenarioImportHandler) findOrCreateKnowledgePoints(ctx context.Context, tenantID string, names []string) []string {
 	if len(names) == 0 {
-		return nil
+		return []string{}
 	}
-	var ids []string
+	ids := []string{}
 	for _, name := range names {
 		if name == "" {
 			continue
@@ -308,9 +320,9 @@ func (h *ScenarioImportHandler) findOrCreateKnowledgePoints(ctx context.Context,
 
 func (h *ScenarioImportHandler) lookupAbilityPoints(ctx context.Context, tenantID string, names []string) []string {
 	if len(names) == 0 {
-		return nil
+		return []string{}
 	}
-	var ids []string
+	ids := []string{}
 	for _, name := range names {
 		if name == "" {
 			continue
@@ -327,9 +339,9 @@ func (h *ScenarioImportHandler) lookupAbilityPoints(ctx context.Context, tenantI
 
 func (h *ScenarioImportHandler) findOrCreateResources(ctx context.Context, tenantID string, names []string, userID string) []string {
 	if len(names) == 0 {
-		return nil
+		return []string{}
 	}
-	var ids []string
+	ids := []string{}
 	for _, name := range names {
 		if name == "" {
 			continue

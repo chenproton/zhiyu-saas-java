@@ -112,26 +112,26 @@ func (h *ScenarioExportHandler) fillScenariosData(ctx context.Context, f *exceli
 		h.DB.QueryRow(ctx, `SELECT name FROM scenarios WHERE id=$1`, sid).Scan(&scenarioName)
 
 		taskRows, err := h.DB.Query(ctx, `
-			SELECT name, task_type, difficulty, estimated_hours,
+			SELECT id, name, task_type, difficulty, estimated_hours,
 				COALESCE(background,''), COALESCE(detailed_description,''),
-				knowledge_point_ids, ability_point_ids, resource_ids, COALESCE(eval_data::text, '{}')
+				knowledge_point_ids, ability_point_ids, resource_ids
 			FROM scenario_tasks WHERE scenario_id=$1 AND tenant_id=$2 ORDER BY sort_order
 		`, sid, tenantID)
 		if err != nil {
 			continue
 		}
 		for taskRows.Next() {
-			var tname, ttype, tdesc, tdetail, evalDataStr string
+			var taskID, tname, ttype, tdesc, tdetail string
 			var tdiff int
 			var thours float64
 			var kpIDs, apIDs, resIDs []string
-			taskRows.Scan(&tname, &ttype, &tdiff, &thours, &tdesc, &tdetail, &kpIDs, &apIDs, &resIDs, &evalDataStr)
+			taskRows.Scan(&taskID, &tname, &ttype, &tdiff, &thours, &tdesc, &tdetail, &kpIDs, &apIDs, &resIDs)
 
 			kpNames := h.lookupKnowledgePointNames(ctx, kpIDs)
 			apNames := h.lookupAbilityPointNames(ctx, apIDs)
 			resNames := h.lookupResourceNames(ctx, resIDs)
 
-			evalMethods := parseEvalMethods(evalDataStr)
+			evalMethods := h.lookupTaskEvalMethods(ctx, tenantID, taskID)
 
 			setCell("任务配置", fmt.Sprintf("A%d", taskRow), scenarioName)
 			setCell("任务配置", fmt.Sprintf("B%d", taskRow), tname)
@@ -214,6 +214,27 @@ func (h *ScenarioExportHandler) lookupResourceNames(ctx context.Context, ids []s
 	return names
 }
 
+func (h *ScenarioExportHandler) lookupTaskEvalMethods(ctx context.Context, tenantID, taskID string) []string {
+	var methods []string
+	rows, err := h.DB.Query(ctx, `
+		SELECT method_key FROM task_evaluation_methods
+		WHERE task_id=$1 AND tenant_id=$2 AND is_enabled=true
+		ORDER BY created_at
+	`, taskID, tenantID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var mk string
+		rows.Scan(&mk)
+		if ch := mapEvalMethodToChinese(mk); ch != "" {
+			methods = append(methods, ch)
+		}
+	}
+	return methods
+}
+
 func mapTaskTypeToChinese(t string) string {
 	switch t {
 	case "assessment":
@@ -244,24 +265,4 @@ func mapEvalMethodToChinese(mk string) string {
 	default:
 		return mk
 	}
-}
-
-func parseEvalMethods(evalDataStr string) []string {
-	if evalDataStr == "" || evalDataStr == "{}" {
-		return nil
-	}
-	var data struct {
-		EvaluationMethods []string `json:"evaluationMethods"`
-	}
-	if err := json.Unmarshal([]byte(evalDataStr), &data); err != nil {
-		return nil
-	}
-	var result []string
-	for _, m := range data.EvaluationMethods {
-		ch := mapEvalMethodToChinese(m)
-		if ch != "" {
-			result = append(result, ch)
-		}
-	}
-	return result
 }
