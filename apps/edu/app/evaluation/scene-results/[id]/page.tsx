@@ -1202,7 +1202,7 @@ export default function GradingDetailPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-[calc(100vh-3.5rem)] flex flex-col bg-gray-50">
       {/* 顶部导航 */}
       <div className="bg-white border-b px-4 py-2 flex items-center gap-3 shrink-0">
         <Button variant="ghost" size="sm" asChild className="h-8">
