@@ -67,6 +67,12 @@ func (h *PositionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 
 	h.importResponsibilities(ctx, xlsx, tenantID, userID, positionMap, result)
 
+	log.Printf("[import/positions] result: created=%d failed=%d skipped=%d positions=%d responsibilities=%d bindings=%d errors=%d",
+		result.Created, result.Failed, result.Skipped, result.PositionCreated, result.RespCreated, result.BindingCreated, len(result.Errors))
+	for _, e := range result.Errors {
+		log.Printf("[import/positions] error: %s", e)
+	}
+
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"created":          result.Created,
 		"failed":           result.Failed,
@@ -184,6 +190,9 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 		requiredLevel := mapRequiredLevel(col(row, 5))
 		rubricDescription := nullableStr(col(row, 6))
 		attributes := splitTrim(col(row, 7), ",")
+		if len(attributes) == 0 {
+			attributes = []string{}
+		}
 
 		positionID, ok := positionMap[positionName]
 		if !ok {
@@ -200,11 +209,19 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 			_, err := h.DB.Exec(ctx, `INSERT INTO position_responsibilities (id, tenant_id, career_position_id, name, sort_order) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
 				respID, tenantID, positionID, respName, sortCounter[positionID])
 			if err != nil {
+				log.Printf("[import/positions] 职责[%s/%s]插入失败: %v", positionName, respName, err)
 				var existingID string
 				h.DB.QueryRow(ctx, `SELECT id FROM position_responsibilities WHERE career_position_id=$1 AND name=$2`, positionID, respName).Scan(&existingID)
 				if existingID != "" {
 					respID = existingID
 				}
+			}
+			if respID == "" {
+				result.Failed++
+				msg := fmt.Sprintf("职责[%s/%s]创建后仍未获取到ID,跳过能力绑定", positionName, respName)
+				result.Errors = append(result.Errors, msg)
+				log.Printf("[import/positions] %s", msg)
+				continue
 			}
 			seenResp[respKey] = respID
 			result.RespCreated++
@@ -229,7 +246,9 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 		`, bindingID, tenantID, positionID, respID, abilityID, nullableStr(domainName), requiredLevel, rubricDescription, attributes)
 		if err != nil {
 			result.Failed++
-			result.Errors = append(result.Errors, fmt.Sprintf("能力点绑定[%s/%s/%s]失败: %v", positionName, respName, abilityName, err))
+			msg := fmt.Sprintf("能力点绑定[%s/%s/%s]失败: %v", positionName, respName, abilityName, err)
+			result.Errors = append(result.Errors, msg)
+			log.Printf("[import/positions] row=%d %s (positionID=%s respID=%s abilityID=%s level=%v attrs=%v)", i+1, msg, positionID, respID, abilityID, requiredLevel, attributes)
 			continue
 		}
 		result.BindingCreated++
