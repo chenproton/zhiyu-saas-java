@@ -87,7 +87,6 @@ const fallbackModules: Record<string, ModuleItem[]> = {
     { id: "course-granular", title: "颗粒课管理", desc: "颗粒课资源管理", note: "创建和管理颗粒课资源", href: "/lesson/admin/granular" },
     { id: "course-hybrid-resources", title: "混合课模板", desc: "混合课模板管理", note: "管理混合课模板资源", href: "/lesson/admin/hybrid" },
     { id: "course-archive", title: "混合课历史", desc: "历史档案库", note: "查看混合课历史档案", href: "/lesson/admin/archive" },
-    { id: "course-teaching-space", title: "教学空间", desc: "开课计划与教学跟踪", note: "管理开课计划和跟踪学生学习", href: "/lesson/teacher/claim" },
     { id: "course-approval", title: "审批中心", desc: "课程审批流程", note: "处理课程相关的审批申请", href: "/lesson/admin/approvals" },
   ],
   scene: [

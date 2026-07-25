@@ -21,10 +21,10 @@ export const unifiedNavigationConfig: PlatformNavigationConfig = {
   brandTitle: "数字课程服务平台",
   currentPlatformId: "lesson-unified",
   currentPlatformLabel: "数字课程服务平台",
-  brandHref: "/lesson/teacher/claim",
+  brandHref: "/lesson/admin/system",
   brandIcon: "bookOpen",
   platformIcon: "bookOpen",
-  sideBackHref: "/lesson/teacher/claim",
+  sideBackHref: "/lesson/admin/system",
   currentUserName: "教师",
   currentUserRoleLabel: "教学用户",
   showCurrentTime: true,
@@ -59,19 +59,6 @@ export const unifiedNavigationConfig: PlatformNavigationConfig = {
       ],
     },
     {
-      id: "course-open",
-      label: "教学空间",
-      icon: "layoutGrid",
-      children: [
-        { id: "claim", label: "开课计划管理", href: "/lesson/teacher/claim", matchers: ["/lesson/teacher/claim"] },
-        { id: "behavior-collection", label: "课程学习跟踪", href: "/lesson/teacher/behavior-collection", matchers: ["/lesson/teacher/behavior-collection"] },
-        { id: "progress-tracking", label: "课程测评跟踪", href: "/lesson/teacher/progress-tracking", matchers: ["/lesson/teacher/progress-tracking"] },
-        { id: "final-assessment", label: "课程期末总评", href: "/lesson/teacher/final-assessment", matchers: ["/lesson/teacher/final-assessment"] },
-        { id: "grade-submit", label: "成绩确认与提交", href: "/lesson/teacher/grade-submit", matchers: ["/lesson/teacher/grade-submit"] },
-        { id: "learning-portrait", label: "我的学生画像", href: "/lesson/teacher/learning-portrait", matchers: ["/lesson/teacher/learning-portrait"] },
-      ],
-    },
-    {
       id: "approval-center",
       label: "资源审批与质量",
       icon: "badgeCheck",
@@ -85,7 +72,6 @@ export const unifiedNavigationConfig: PlatformNavigationConfig = {
   defaultExpandedSideNavIds: [
     "resource-center",
     "hybrid-center",
-    "course-open",
     "approval-center",
   ],
   platformSwitchItems: [],
@@ -98,7 +84,6 @@ export const unifiedNavigationConfig: PlatformNavigationConfig = {
    ============================================================ */
 const platformSwitchItems: PlatformNavigationConfig["platformSwitchItems"] = [
   { id: "admin", label: "课程资源中心", href: "/lesson/admin/system", icon: "folderKanban" },
-  { id: "teacher", label: "课程建设与教学运行", href: "/lesson/teacher/claim", icon: "bookOpen" },
 ]
 
 export const adminNavigationConfig: PlatformNavigationConfig = {
