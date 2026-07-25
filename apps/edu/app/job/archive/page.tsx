@@ -207,7 +207,7 @@ export default function PositionArchivePage() {
           </ScrollArea>
         </div>
 
-        <div className="flex-1 space-y-4">
+        <div className="flex-1 min-w-0 space-y-4">
           <div className="rounded-lg border border-gray-100 bg-white shadow-sm p-4">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -250,25 +250,25 @@ export default function PositionArchivePage() {
 
           <div className="rounded-lg border border-gray-100 bg-white shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <Table className="min-w-[1100px]">
+              <Table className="min-w-[900px] w-full">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12">
+                    <TableHead className="w-10 px-3">
                       <Checkbox
                         checked={someSelected ? "indeterminate" : allSelected}
                         onCheckedChange={(checked) => handleSelectAll(checked === true)}
                         aria-label="全选"
                       />
                     </TableHead>
-                    <TableHead>岗位名称</TableHead>
-                    <TableHead>简称</TableHead>
-                    <TableHead>版本</TableHead>
-                    <TableHead>所属行业</TableHead>
-                    <TableHead>适用专业</TableHead>
-                    <TableHead>所属批次分组</TableHead>
-                    <TableHead>归档时间</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead className="text-right">操作</TableHead>
+                    <TableHead className="w-44">岗位名称</TableHead>
+                    <TableHead className="w-24">简称</TableHead>
+                    <TableHead className="w-20">版本</TableHead>
+                    <TableHead className="w-24">所属行业</TableHead>
+                    <TableHead className="w-32">适用专业</TableHead>
+                    <TableHead className="w-28">所属批次分组</TableHead>
+                    <TableHead className="w-24">归档时间</TableHead>
+                    <TableHead className="w-20">状态</TableHead>
+                    <TableHead className="w-28 text-right px-3">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -290,36 +290,36 @@ export default function PositionArchivePage() {
                       const isSelected = selectedIds.includes(entry.id)
                       return (
                         <TableRow key={entry.id} className="group" data-state={isSelected ? "selected" : undefined}>
-                          <TableCell>
+                          <TableCell className="px-3">
                             <Checkbox
                               checked={isSelected}
                               onCheckedChange={(checked) => handleSelect(entry.id, checked === true)}
                               aria-label={`选择 ${entry.name}`}
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="max-w-44">
                             <div>
-                              <span className="font-medium">{entry.name}</span>
-                              <p className="text-xs text-muted-foreground">
+                              <span className="font-medium line-clamp-1">{entry.name}</span>
+                              <p className="text-xs text-muted-foreground line-clamp-1">
                                 {industryMap.get(entry.industry) || "-"} · {getMajorNames(entry.majors)}
                               </p>
                             </div>
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{entry.shortName || "-"}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground max-w-24 truncate">{entry.shortName || "-"}</TableCell>
                           <TableCell className="text-sm">{entry.version}</TableCell>
-                          <TableCell className="text-sm">{industryMap.get(entry.industry) || "-"}</TableCell>
-                          <TableCell className="text-sm">{getMajorNames(entry.majors)}</TableCell>
-                          <TableCell className="text-sm">{entry.batchId ? batchMap.get(entry.batchId)?.name || "-" : "-"}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
+                          <TableCell className="text-sm max-w-24 truncate">{industryMap.get(entry.industry) || "-"}</TableCell>
+                          <TableCell className="text-sm max-w-32 truncate">{getMajorNames(entry.majors)}</TableCell>
+                          <TableCell className="text-sm max-w-28 truncate">{entry.batchId ? batchMap.get(entry.batchId)?.name || "-" : "-"}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                             {new Date(entry.updatedAt).toLocaleDateString()}
                           </TableCell>
                           <TableCell>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ${st.className}`}>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs whitespace-nowrap ${st.className}`}>
                               {st.label}
                             </span>
                           </TableCell>
-                          <TableCell className="text-right relative">
-                            <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                          <TableCell className="text-right px-3">
+                            <div className="flex items-center justify-end gap-1">
                               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
                                 <Link href={`/job/positions/${entry.id}/edit`}>
                                   <Eye className="mr-1 h-3 w-3" />
