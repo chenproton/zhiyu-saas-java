@@ -430,12 +430,17 @@ function DrawnQuestionCard({
     setValue(oralAnswer)
   }, [oralAnswer])
 
+  // 现场问答题目库字段为 name/description/answer，与考试题 content/type/options 不同，做兼容显示。
+  const isSimpleQuestion = !question.content && !!question.name
+  const questionContent = question.content || question.name || ""
+  const questionType = question.type || "short_answer"
+
   const getAnswerLabel = () => {
     if (question.type === "judge" || question.type === "judgment") {
       return question.answer === "true" ? "正确" : "错误"
     }
     if (Array.isArray(question.answer)) return question.answer.join("、")
-    return question.answer
+    return question.answer || "-"
   }
 
   return (
@@ -445,11 +450,16 @@ function DrawnQuestionCard({
           <Badge variant="outline" className="text-xs bg-slate-50 text-slate-600 border-slate-200">
             第 {index + 1} 题
           </Badge>
-          <Badge variant="outline" className="text-xs">
-            {questionTypeLabels[question.type] || question.type}
-          </Badge>
+          {!isSimpleQuestion && (
+            <Badge variant="outline" className="text-xs">
+              {questionTypeLabels[questionType] || questionType}
+            </Badge>
+          )}
         </div>
-        <p className="text-sm text-gray-800 leading-relaxed">{question.content}</p>
+        <p className="text-sm text-gray-800 leading-relaxed">{questionContent}</p>
+        {question.description && (
+          <p className="text-xs text-gray-500 leading-relaxed">{question.description}</p>
+        )}
         {question.options && question.options.length > 0 && (
           <div className="space-y-1">
             {question.options.map((opt: string, idx: number) => {
