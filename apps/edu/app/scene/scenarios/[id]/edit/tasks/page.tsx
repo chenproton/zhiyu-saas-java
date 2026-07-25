@@ -490,8 +490,10 @@ function MixedTagEditor({
     if (type === 'kp') {
       const kp = knowledgePoints.find(k => k.id === id)
       if (!kp) return null
+      const kpShort = kp.name.length > 5 ? kp.name.slice(0, 5) : kp.name
       span.className = 'inline-flex items-center px-1 py-0.5 rounded text-[10px] font-normal bg-blue-50 text-blue-600 border border-blue-200 mx-0.5 align-middle cursor-default'
-      span.innerHTML = `${kp.name}<button class="ml-0.5 text-blue-400 hover:text-red-500 leading-none">×</button>`
+      span.title = kp.name
+      span.innerHTML = `${kpShort}<button class="ml-0.5 text-blue-400 hover:text-red-500 leading-none">×</button>`
       span.querySelector('button')!.onclick = (e) => {
         e.stopPropagation()
         span.remove()
@@ -500,8 +502,10 @@ function MixedTagEditor({
     } else {
       const ab = abilityPoints.find(a => a.id === id)
       if (!ab) return null
+      const abShort = ab.name.length > 5 ? ab.name.slice(0, 5) : ab.name
       span.className = 'inline-flex items-center px-1 py-0.5 rounded text-[10px] font-normal bg-amber-50 text-amber-600 border border-amber-200 mx-0.5 align-middle cursor-default'
-      span.innerHTML = `${ab.name}<button class="ml-0.5 text-amber-400 hover:text-red-500 leading-none">×</button>`
+      span.title = ab.name
+      span.innerHTML = `${abShort}<button class="ml-0.5 text-amber-400 hover:text-red-500 leading-none">×</button>`
       span.querySelector('button')!.onclick = (e) => {
         e.stopPropagation()
         span.remove()
@@ -625,26 +629,30 @@ function MixedTagEditor({
   }
 
   return (
-    <div className="min-h-[32px] rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-sm flex flex-wrap gap-1 items-center">
-      <div
-        ref={ref}
-        contentEditable
-        suppressContentEditableWarning
-        className="flex-1 outline-none min-w-[80px] text-sm leading-6 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
-        data-placeholder="输入评价维度"
-        onBlur={handleBlur}
-        onKeyUp={updateCursorOffset}
-        onClick={updateCursorOffset}
-        onCompositionStart={() => { isComposing.current = true }}
-        onCompositionEnd={() => { isComposing.current = false }}
-        onPaste={(e) => {
-          e.preventDefault()
-          const pasted = e.clipboardData.getData('text/plain')
-          document.execCommand('insertText', false, pasted)
-        }}
-      />
-      <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 text-gray-400 hover:text-primary shrink-0" onMouseDown={updateCursorOffset} onClick={onOpenKpDialog}>关联考查知识点</Button>
-      <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 text-gray-400 hover:text-primary shrink-0" onMouseDown={updateCursorOffset} onClick={onOpenAbDialog}>关联考查能力点</Button>
+    <div className="space-y-1.5">
+      <div className="min-h-[32px] rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-sm">
+        <div
+          ref={ref}
+          contentEditable
+          suppressContentEditableWarning
+          className="w-full outline-none text-sm leading-6 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
+          data-placeholder="输入评价维度"
+          onBlur={handleBlur}
+          onKeyUp={updateCursorOffset}
+          onClick={updateCursorOffset}
+          onCompositionStart={() => { isComposing.current = true }}
+          onCompositionEnd={() => { isComposing.current = false }}
+          onPaste={(e) => {
+            e.preventDefault()
+            const pasted = e.clipboardData.getData('text/plain')
+            document.execCommand('insertText', false, pasted)
+          }}
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 text-gray-400 hover:text-primary shrink-0" onMouseDown={updateCursorOffset} onClick={onOpenKpDialog}>关联考查知识点</Button>
+        <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 text-gray-400 hover:text-primary shrink-0" onMouseDown={updateCursorOffset} onClick={onOpenAbDialog}>关联考查能力点</Button>
+      </div>
     </div>
   )
 }
@@ -1000,8 +1008,8 @@ function MethodDialogContent({
                 <thead>
                   <tr className="border-b bg-gray-50 text-gray-500 text-xs">
                     <th className="py-2.5 px-2 text-left w-12">序号</th>
-                    <th className="py-2.5 px-2 text-left min-w-[360px]">评价维度名称/关联知识点/能力点</th>
-                    <th className="py-2.5 px-2 text-left min-w-[440px]">评价等级</th>
+                    <th className="py-2.5 px-2 text-left min-w-[520px]">评价维度名称/关联知识点/能力点</th>
+                    <th className="py-2.5 px-2 text-right min-w-[260px]">评价等级</th>
                     <th className="py-2.5 px-2 text-center w-16">权重(%)</th>
                     <th className="py-2.5 px-2 text-center w-14">操作</th>
                   </tr>
@@ -1030,7 +1038,7 @@ function MethodDialogContent({
                             setEditingGradeMappingPointId(ep.id)
                             setGradeMappingDialogOpen(true)
                           }}
-                          className="text-xs text-left text-primary hover:underline w-full block"
+                          className="text-xs text-right text-primary hover:underline w-full block"
                         >
                           {ep.gradeMapping?.map(gm => (
                             <div key={gm.id} className="truncate leading-relaxed" title={`${gm.grade} (${gm.minScore}-${gm.maxScore}分) ${gm.remark}`}>
@@ -1138,7 +1146,7 @@ function MethodDialogContent({
                           } else {
                             setLocalDraft(prev => ({ ...prev, scoreRuleItems: (prev.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, name: newName, desc: newDesc } : it) }))
                           }
-                        }} className="text-sm min-h-[60px]" placeholder="请输入评分描述" rows={2} />
+                        }} className="text-sm min-h-[36px]" placeholder="请输入评分描述" />
                       </td>
                       <td className="py-3 px-2">
                         <Textarea value={item.rule} onChange={e => {
@@ -1147,7 +1155,7 @@ function MethodDialogContent({
                           } else {
                             setLocalDraft(prev => ({ ...prev, scoreRuleItems: (prev.scoreRuleItems || []).map(it => it.id === item.id ? { ...it, rule: e.target.value } : it) }))
                           }
-                        }} className="text-sm min-h-[60px]" placeholder="输入加减分规则" rows={2} />
+                        }} className="text-sm min-h-[36px]" placeholder="输入加减分规则" />
                       </td>
                       <td className="py-3 px-2">
                         <Input type="number" value={item.weight || 0} onChange={e => {
