@@ -599,6 +599,13 @@ export default function GradingDetailPage() {
                 examApi.get(examId),
                 examUsageApi.list({ examId, limit: 50 }),
               ])
+              if (cfg.resourceConfig?.questionScores) {
+                const scores = cfg.resourceConfig.questionScores as Record<string, number>
+                examData.questions = (examData.questions || []).map((q: any) => ({
+                  ...q,
+                  score: scores[q.questionId] ?? scores[q.id] ?? q.score ?? 0,
+                }))
+              }
               setExam(examData)
               const usage = usageRes.items.find((u: any) => u.id === usageId) || usageRes.items[0]
               if (usage) {

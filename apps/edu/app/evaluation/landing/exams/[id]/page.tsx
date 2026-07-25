@@ -218,6 +218,14 @@ export default function ExamDetailPage() {
     })
   }
   const handleEssay = (qid: string, val: string) => setAnswers((p) => ({ ...p, [qid]: val }))
+  const handleFill = (qid: string, blankIndex: number, val: string) => {
+    setAnswers((p) => {
+      const cur = (p[qid] as string[]) || []
+      const next = [...cur]
+      next[blankIndex] = val
+      return { ...p, [qid]: next }
+    })
+  }
 
   const fmtTime = (sec: number) => {
     const m = Math.floor(sec / 60), s = sec % 60
@@ -306,7 +314,38 @@ export default function ExamDetailPage() {
                     ))}
                   </div>
                 )}
-                {(q.type === "essay" || q.type === "short_answer" || q.type === "fill" || q.type === "judge") && (
+                {q.type === "fill" ? (
+                  <div style={{ fontSize: 14, lineHeight: 2.2, display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 8px" }}>
+                    {(() => {
+                      let blankIndex = -1
+                      return q.content.split(/(_{2,})/).map((part, idx) => {
+                        if (/_{2,}/.test(part)) {
+                          blankIndex++
+                          const val = ((answers[q.id] as string[]) || [])[blankIndex] || ""
+                          return (
+                            <input
+                              key={idx}
+                              type="text"
+                              value={val}
+                              onChange={(e) => handleFill(q.id, blankIndex, e.target.value)}
+                              placeholder={`空${blankIndex + 1}`}
+                              style={{
+                                width: Math.max(60, val.length * 14 + 20),
+                                minWidth: 60,
+                                padding: "4px 8px",
+                                border: "1px solid #e5e6eb",
+                                borderRadius: 6,
+                                fontSize: 14,
+                                textAlign: "center",
+                              }}
+                            />
+                          )
+                        }
+                        return <span key={idx}>{part}</span>
+                      })
+                    })()}
+                  </div>
+                ) : (q.type === "essay" || q.type === "short_answer" || q.type === "judge") && (
                   <Textarea placeholder="请输入您的答案..." rows={4} value={(answers[q.id] as string) || ""} onChange={(e) => handleEssay(q.id, e.target.value)} />
                 )}
               </div>
