@@ -185,14 +185,14 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 		positionName := strings.TrimSpace(row[0])
 		respName := strings.TrimSpace(row[1])
 		abilityName := strings.TrimSpace(col(row, 2))
-		abilityCategory := mapAbilityCategory(col(row, 3))
-		domainName := col(row, 4)
-		requiredLevel := mapRequiredLevel(col(row, 5))
-		rubricDescription := nullableStr(col(row, 6))
-		attributes := splitTrim(col(row, 7), ",")
+		attributes := splitTrim(col(row, 3), ",")
 		if len(attributes) == 0 {
 			attributes = []string{}
 		}
+		abilityCategory := inferAbilityCategory(attributes)
+		domainName := col(row, 4)
+		requiredLevel := mapRequiredLevel(col(row, 5))
+		rubricDescription := nullableStr(col(row, 6))
 
 		positionID, ok := positionMap[positionName]
 		if !ok {
@@ -418,21 +418,18 @@ func mapPositionType(t string) string {
 	}
 }
 
-func mapAbilityCategory(t string) string {
-	t = strings.TrimSpace(t)
-	switch t {
-	case "知识":
-		return "knowledge"
-	case "技能":
-		return "skill"
-	case "素质":
-		return "quality"
-	default:
-		if t == "knowledge" || t == "skill" || t == "quality" {
-			return t
+func inferAbilityCategory(attrs []string) string {
+	for _, a := range attrs {
+		switch strings.TrimSpace(a) {
+		case "技能":
+			return "skill"
+		case "知识":
+			return "knowledge"
+		case "素质", "素养":
+			return "quality"
 		}
-		return "skill"
 	}
+	return "skill"
 }
 
 func parseNullableInt(s string) *int {

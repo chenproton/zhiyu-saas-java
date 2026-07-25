@@ -152,7 +152,7 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 		h.DB.QueryRow(ctx, `SELECT name FROM career_positions WHERE id=$1`, pid).Scan(&positionName)
 
 		bindRows, err := h.DB.Query(ctx, `
-			SELECT pr.name, ap.name, ap.category, pab.domain, pab.required_level, COALESCE(pab.rubric_description,'')
+			SELECT pr.name, ap.name, ap.category, pab.attributes, pab.domain, pab.required_level, COALESCE(pab.rubric_description,'')
 			FROM position_ability_bindings pab
 			JOIN position_responsibilities pr ON pr.id = pab.responsibility_id
 			JOIN ability_points ap ON ap.id = pab.ability_point_id
@@ -164,12 +164,18 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 		}
 		for bindRows.Next() {
 			var respName, abilityName, category, domain, level, rubricDesc string
-			bindRows.Scan(&respName, &abilityName, &category, &domain, &level, &rubricDesc)
+			var attributes []string
+			bindRows.Scan(&respName, &abilityName, &category, &attributes, &domain, &level, &rubricDesc)
+
+			attrStr := strings.Join(attributes, ",")
+			if attrStr == "" {
+				attrStr = mapAbilityCategoryToChinese(category)
+			}
 
 			setCell("工作职责与能力点", fmt.Sprintf("A%d", bindRow), positionName)
 			setCell("工作职责与能力点", fmt.Sprintf("B%d", bindRow), respName)
 			setCell("工作职责与能力点", fmt.Sprintf("C%d", bindRow), abilityName)
-			setCell("工作职责与能力点", fmt.Sprintf("D%d", bindRow), mapAbilityCategoryToChinese(category))
+			setCell("工作职责与能力点", fmt.Sprintf("D%d", bindRow), attrStr)
 			setCell("工作职责与能力点", fmt.Sprintf("E%d", bindRow), domain)
 			setCell("工作职责与能力点", fmt.Sprintf("F%d", bindRow), mapRequiredLevelToChinese(level))
 			setCell("工作职责与能力点", fmt.Sprintf("G%d", bindRow), rubricDesc)
