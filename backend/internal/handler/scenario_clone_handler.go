@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -52,10 +53,6 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	if newName == "" {
 		newName = src.Name + " (克隆)"
 	}
-	newCode := req.Code
-	if newCode == "" {
-		newCode = src.Code + "-clone"
-	}
 
 	ctx := r.Context()
 	tx, err := h.DB.Begin(ctx)
@@ -64,6 +61,11 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback(ctx)
+
+	newCode := req.Code
+	if newCode == "" {
+		newCode = h.generateUniqueScenarioCode(ctx, tx, tenantID, src.Code)
+	}
 
 	newID := uuid.NewString()
 	_, err = tx.Exec(ctx, `
@@ -186,6 +188,23 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	handler := &ScenarioHandler{DB: h.DB}
 	scenario, _ := handler.fetchScenario(ctx, newID)
 	respondJSON(w, http.StatusCreated, scenario)
+}
+
+func (h *ScenarioCloneHandler) generateUniqueScenarioCode(ctx context.Context, tx pgx.Tx, tenantID, srcCode string) string {
+	base := srcCode + "-clone"
+	var exists bool
+	err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM scenarios WHERE tenant_id = $1 AND code = $2)`, tenantID, base).Scan(&exists)
+	if err != nil || !exists {
+		return base
+	}
+	for i := 2; i < 1000; i++ {
+		candidate := fmt.Sprintf("%s-%d", base, i)
+		err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM scenarios WHERE tenant_id = $1 AND code = $2)`, tenantID, candidate).Scan(&exists)
+		if err != nil || !exists {
+			return candidate
+		}
+	}
+	return base + "-" + uuid.NewString()[:8]
 }
 
 type sourceScenarioFields struct {

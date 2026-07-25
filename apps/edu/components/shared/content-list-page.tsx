@@ -56,6 +56,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth-provider"
+import { useToast } from "@/hooks/use-toast"
 import { UserSelector } from "@/components/shared/user-selector"
 import { majorApi, workflowApi } from "@/lib/api"
 import type { Major, Workflow } from "@/lib/types/backend"
@@ -187,6 +188,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const router = useRouter()
   const { hasPermission, user, tenantId } = useAuth()
   const currentUserId = user?.id ?? ""
+  const { toast } = useToast()
 
   const [items, setItems] = useState<any[]>([])
   const [frontItems, setFrontItems] = useState<T[]>([])
@@ -478,6 +480,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   }
 
   const handleBatchClone = async () => {
+    let failed = 0
     for (const id of selectedIds) {
       const item = frontItems.find((i) => i.id === id)
       if (!item) continue
@@ -491,7 +494,12 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
             batchId: item.batchId,
           })
         }
-      } catch (_) {}
+      } catch (_) {
+        failed++
+      }
+    }
+    if (failed > 0) {
+      toast({ variant: "destructive", title: "批量克隆失败", description: `${failed} 项克隆失败，请稍后重试` })
     }
     setSelectedIds([])
     await refresh()
@@ -552,11 +560,13 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
           batchId: cloneTarget.batchId,
         })
       }
-    } catch (_) {}
-    setIsCloneRenameDialogOpen(false)
-    setCloneTarget(null)
-    setCloneRenameValue("")
-    await refresh()
+      setIsCloneRenameDialogOpen(false)
+      setCloneTarget(null)
+      setCloneRenameValue("")
+      await refresh()
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "克隆失败", description: err.message || "请稍后重试" })
+    }
   }
 
   const handleDelete = async (item: T) => {
