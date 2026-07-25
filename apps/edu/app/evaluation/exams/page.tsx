@@ -669,8 +669,9 @@ export default function ExamsPage() {
     if (!importFile) return
     setIsImporting(true)
     try {
-      const result = await importExportApi.import("exams", importFile)
-      alert(`导入完成：成功 ${result.created} 条，失败 ${result.failed} 条`)
+      const result = await importExportApi.importExcel("exams", importFile)
+      const errorHint = result.errors && result.errors.length > 0 ? `，错误：${result.errors.slice(0, 3).join(";")}` : ""
+      alert(`导入完成：成功 ${result.created} 条，失败 ${result.failed || 0} 条，跳过 ${result.skipped || 0} 条${errorHint}`)
       setImportFile(null)
       setIsImportDialogOpen(false)
       await loadData()
@@ -678,6 +679,23 @@ export default function ExamsPage() {
       alert(err.message || "导入失败")
     } finally {
       setIsImporting(false)
+    }
+  }
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await importExportApi.downloadTemplate("exams")
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "试卷批量导入模板.xlsx"
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err: any) {
+      alert(err.message || "下载模板失败")
     }
   }
 
@@ -1203,7 +1221,7 @@ export default function ExamsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>导入试卷</DialogTitle>
-            <DialogDescription>上传 CSV 文件批量导入试卷数据（需包含 name 列）</DialogDescription>
+            <DialogDescription>下载模板并按说明填写后，上传 Excel 批量导入试卷数据</DialogDescription>
           </DialogHeader>
           <div className="py-8">
             <div
@@ -1212,12 +1230,12 @@ export default function ExamsPage() {
             >
               <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
               <p className="text-sm text-muted-foreground mb-2">
-                {importFile ? importFile.name : "点击选择 CSV 文件"}
+                {importFile ? importFile.name : "点击选择 Excel 文件"}
               </p>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".csv"
+                accept=".xlsx,.xls"
                 className="hidden"
                 onChange={(e) => handleImportFileSelect(e.target.files)}
               />
@@ -1225,6 +1243,7 @@ export default function ExamsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsImportDialogOpen(false)}>取消</Button>
+            <Button variant="outline" onClick={handleDownloadTemplate}>下载模板</Button>
             <Button onClick={handleImport} disabled={!importFile || isImporting}>
               {isImporting ? "导入中..." : "开始导入"}
             </Button>

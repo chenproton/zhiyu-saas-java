@@ -107,6 +107,9 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 	importExportHandler := &handler.ImportExportHandler{DB: db}
 	positionImportHandler := &handler.PositionImportHandler{DB: db}
 	scenarioImportHandler := &handler.ScenarioImportHandler{DB: db}
+	questionBankImportHandler := &handler.QuestionBankImportHandler{DB: db}
+	questionImportHandler := &handler.QuestionImportHandler{DB: db}
+	examImportHandler := &handler.ExamImportHandler{DB: db}
 	templateHandler := &handler.TemplateHandler{DB: db}
 	scenarioExportHandler := &handler.ScenarioExportHandler{DB: db}
 	positionExportHandler := &handler.PositionExportHandler{DB: db}
@@ -259,8 +262,14 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 			r.Post("/import/{entity}", importExportHandler.Import)
 			r.Post("/import/positions/excel", positionImportHandler.ImportExcel)
 			r.Post("/import/scenarios/excel", scenarioImportHandler.ImportExcel)
+			r.Post("/import/question-banks/excel", questionBankImportHandler.ImportExcel)
+			r.Post("/import/question-banks/{bankId}/questions/excel", questionImportHandler.ImportExcel)
+			r.Post("/import/exams/excel", examImportHandler.ImportExcel)
 			r.Get("/templates/positions", templateHandler.ServePositionTemplate)
 			r.Get("/templates/scenarios", templateHandler.ServeScenarioTemplate)
+			r.Get("/templates/question-banks", templateHandler.ServeQuestionBankTemplate)
+			r.Get("/templates/question-banks/{bankId}/questions", templateHandler.ServeQuestionTemplate)
+			r.Get("/templates/exams", templateHandler.ServeExamTemplate)
 			r.Post("/export/scenarios/excel", scenarioExportHandler.ExportExcel)
 			r.Post("/export/positions/excel", positionExportHandler.ExportExcel)
 

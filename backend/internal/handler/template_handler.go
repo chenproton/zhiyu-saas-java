@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/middleware"
@@ -426,6 +427,226 @@ func makeWrapAlign(f *excelize.File) int {
 		Alignment: &excelize.Alignment{Vertical: "top", WrapText: true},
 	})
 	return style
+}
+
+func (h *TemplateHandler) ServeQuestionBankTemplate(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	ctx := r.Context()
+	f := h.generateQuestionBankTemplate(ctx, tenantID)
+	writeExcel(w, f, "题库批量导入模板.xlsx")
+}
+
+func (h *TemplateHandler) ServeQuestionTemplate(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	bankID := chi.URLParam(r, "bankId")
+	if bankID == "" {
+		respondError(w, http.StatusBadRequest, "missing bank id")
+		return
+	}
+	ctx := r.Context()
+	f := h.generateQuestionTemplate(ctx, tenantID, bankID)
+	writeExcel(w, f, "题目批量导入模板.xlsx")
+}
+
+func (h *TemplateHandler) ServeExamTemplate(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	ctx := r.Context()
+	f := h.generateExamTemplate(ctx, tenantID)
+	writeExcel(w, f, "试卷批量导入模板.xlsx")
+}
+
+func (h *TemplateHandler) generateQuestionBankTemplate(ctx context.Context, tenantID string) *excelize.File {
+	f := excelize.NewFile()
+	f.DeleteSheet("Sheet1")
+	hdrStyle := makeHeaderStyle(f)
+	noteStyle := makeNoteStyle(f)
+	wrapAlign := makeWrapAlign(f)
+
+	setHdr := func(sheet string, row int, headers []string, widths []float64) {
+		for ci, h := range headers {
+			cell, _ := excelize.CoordinatesToCellName(ci+1, row)
+			f.SetCellValue(sheet, cell, h)
+			f.SetCellStyle(sheet, cell, cell, hdrStyle)
+			f.SetColWidth(sheet, colName(ci+1), colName(ci+1), widths[ci])
+		}
+		f.SetRowHeight(sheet, row, 28)
+	}
+	setA1 := func(sheet string, cols int, text string) {
+		start, _ := excelize.CoordinatesToCellName(1, 1)
+		end, _ := excelize.CoordinatesToCellName(cols, 1)
+		f.MergeCell(sheet, start, end)
+		f.SetCellValue(sheet, start, text)
+		f.SetCellStyle(sheet, start, end, noteStyle)
+		f.SetCellStyle(sheet, start, end, wrapAlign)
+		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+2)*16)
+	}
+
+	// Sheet 1: 题库基本信息
+	s1, _ := f.NewSheet("题库基本信息")
+	f.SetActiveSheet(s1)
+	headers1 := []string{"题库名称 *", "题库简介", "封面URL", "共建人ID", "共建部门ID", "所属批次", "知识点"}
+	widths1 := []float64{28, 42, 36, 28, 28, 22, 32}
+	setA1("题库基本信息", 7, "填写说明：\n* 必填列。\n所属批次：从「批次参考」Sheet 选取，匹配则关联，不匹配则忽略。\n知识点：多个用逗号分隔，系统中不存在则自动新建并关联到本题库。\n共建人ID / 共建部门ID：多个用逗号分隔，仅接受有效 UUID，无效值会被忽略。\n导入后默认状态为 draft")
+	setHdr("题库基本信息", 2, headers1, widths1)
+	f.SetPanes("题库基本信息", &excelize.Panes{Freeze: true, YSplit: 2})
+	f.AutoFilter("题库基本信息", "A2:G2", []excelize.AutoFilterOptions{})
+
+	// Reference sheets
+	var batches [][]string
+	bRows, _ := h.DB.Query(ctx, `SELECT name FROM evaluation_batches WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	for bRows.Next() {
+		var n string
+		bRows.Scan(&n)
+		batches = append(batches, []string{n})
+	}
+	bRows.Close()
+	h.addRefSheet(f, "【参考】批次", []string{"批次名称"}, []float64{32}, "仅作参考，无需编辑修改。", batches)
+
+	var kps [][]string
+	kRows, _ := h.DB.Query(ctx, `SELECT name FROM knowledge_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	for kRows.Next() {
+		var n string
+		kRows.Scan(&n)
+		kps = append(kps, []string{n})
+	}
+	kRows.Close()
+	h.addRefSheet(f, "【参考】知识点", []string{"知识点名称"}, []float64{36}, "仅作参考，无需编辑修改。题目/题库中的知识点名称与本表一致则关联已有，不一致则自动新建。", kps)
+
+	return f
+}
+
+func (h *TemplateHandler) generateQuestionTemplate(ctx context.Context, tenantID, bankID string) *excelize.File {
+	f := excelize.NewFile()
+	f.DeleteSheet("Sheet1")
+	hdrStyle := makeHeaderStyle(f)
+	noteStyle := makeNoteStyle(f)
+	wrapAlign := makeWrapAlign(f)
+
+	setHdr := func(sheet string, row int, headers []string, widths []float64) {
+		for ci, h := range headers {
+			cell, _ := excelize.CoordinatesToCellName(ci+1, row)
+			f.SetCellValue(sheet, cell, h)
+			f.SetCellStyle(sheet, cell, cell, hdrStyle)
+			f.SetColWidth(sheet, colName(ci+1), colName(ci+1), widths[ci])
+		}
+		f.SetRowHeight(sheet, row, 28)
+	}
+	setA1 := func(sheet string, cols int, text string) {
+		start, _ := excelize.CoordinatesToCellName(1, 1)
+		end, _ := excelize.CoordinatesToCellName(cols, 1)
+		f.MergeCell(sheet, start, end)
+		f.SetCellValue(sheet, start, text)
+		f.SetCellStyle(sheet, start, end, noteStyle)
+		f.SetCellStyle(sheet, start, end, wrapAlign)
+		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+2)*16)
+	}
+
+	bankName := ""
+	_ = h.DB.QueryRow(ctx, `SELECT name FROM question_banks WHERE id=$1 AND tenant_id=$2`, bankID, tenantID).Scan(&bankName)
+
+	// Sheet 1: 题目明细
+	s1, _ := f.NewSheet("题目明细")
+	f.SetActiveSheet(s1)
+	headers1 := []string{"题型 *", "题目内容 *", "选项A", "选项B", "选项C", "选项D", "正确答案 *", "答案解析", "难度", "知识点", "分数", "来源"}
+	widths1 := []float64{12, 48, 24, 24, 24, 24, 28, 36, 10, 28, 10, 20}
+	setA1("题目明细", 12, fmt.Sprintf("填写说明：\n目标题库：%s\n* 必填列。\n题型：单选题 / 多选题 / 判断题 / 填空题 / 问答题 / 简答题\n单选题/多选题：填写选项A-D，正确答案可填选项文字或A/B/C/D\n判断题：正确答案填 正确/错误 或 true/false\n填空题：题目内容用 {1}、{2} 表示空位，正确答案用逗号分隔多个空位答案\n问答题/简答题：正确答案填写参考要点文本\n难度：简单 / 中等 / 困难\n知识点：多个用逗号分隔，不存在则自动新建\n导入后默认状态为 draft", bankName))
+	setHdr("题目明细", 2, headers1, widths1)
+	f.SetPanes("题目明细", &excelize.Panes{Freeze: true, YSplit: 2})
+	f.AutoFilter("题目明细", "A2:L2", []excelize.AutoFilterOptions{})
+
+	var kps [][]string
+	kRows, _ := h.DB.Query(ctx, `SELECT name FROM knowledge_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	for kRows.Next() {
+		var n string
+		kRows.Scan(&n)
+		kps = append(kps, []string{n})
+	}
+	kRows.Close()
+	h.addRefSheet(f, "【参考】知识点", []string{"知识点名称"}, []float64{36}, "仅作参考，无需编辑修改。", kps)
+
+	return f
+}
+
+func (h *TemplateHandler) generateExamTemplate(ctx context.Context, tenantID string) *excelize.File {
+	f := excelize.NewFile()
+	f.DeleteSheet("Sheet1")
+	hdrStyle := makeHeaderStyle(f)
+	noteStyle := makeNoteStyle(f)
+	wrapAlign := makeWrapAlign(f)
+
+	setHdr := func(sheet string, row int, headers []string, widths []float64) {
+		for ci, h := range headers {
+			cell, _ := excelize.CoordinatesToCellName(ci+1, row)
+			f.SetCellValue(sheet, cell, h)
+			f.SetCellStyle(sheet, cell, cell, hdrStyle)
+			f.SetColWidth(sheet, colName(ci+1), colName(ci+1), widths[ci])
+		}
+		f.SetRowHeight(sheet, row, 28)
+	}
+	setA1 := func(sheet string, cols int, text string) {
+		start, _ := excelize.CoordinatesToCellName(1, 1)
+		end, _ := excelize.CoordinatesToCellName(cols, 1)
+		f.MergeCell(sheet, start, end)
+		f.SetCellValue(sheet, start, text)
+		f.SetCellStyle(sheet, start, end, noteStyle)
+		f.SetCellStyle(sheet, start, end, wrapAlign)
+		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+2)*16)
+	}
+
+	// Sheet 1: 试卷基本信息
+	s1, _ := f.NewSheet("试卷基本信息")
+	f.SetActiveSheet(s1)
+	headers1 := []string{"试卷名称 *", "试卷简介", "时长(分钟) *", "封面URL", "共建人ID", "共建部门ID", "所属批次"}
+	widths1 := []float64{28, 42, 14, 36, 28, 28, 22}
+	setA1("试卷基本信息", 7, "填写说明：\n* 必填列。\n时长单位为分钟，默认60。\n所属批次：从「批次参考」Sheet 选取，匹配则关联，不匹配则忽略。\n共建人ID / 共建部门ID：多个用逗号分隔，仅接受有效 UUID。\n导入后默认状态为 draft")
+	setHdr("试卷基本信息", 2, headers1, widths1)
+	f.SetPanes("试卷基本信息", &excelize.Panes{Freeze: true, YSplit: 2})
+	f.AutoFilter("试卷基本信息", "A2:G2", []excelize.AutoFilterOptions{})
+
+	// Sheet 2: 试卷题目
+	_, _ = f.NewSheet("试卷题目")
+	headers2 := []string{"试卷名称 *", "题目内容 *", "分数 *"}
+	widths2 := []float64{28, 48, 12}
+	setA1("试卷题目", 3, "填写说明：\n本表可选。\n试卷名称须与「试卷基本信息」Sheet 中一致。\n题目内容须与当前租户下已存在的题目内容一致，系统会按内容匹配并加入试卷。")
+	setHdr("试卷题目", 2, headers2, widths2)
+	f.SetPanes("试卷题目", &excelize.Panes{Freeze: true, YSplit: 2})
+	f.AutoFilter("试卷题目", "A2:C2", []excelize.AutoFilterOptions{})
+
+	var batches [][]string
+	bRows, _ := h.DB.Query(ctx, `SELECT name FROM evaluation_batches WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	for bRows.Next() {
+		var n string
+		bRows.Scan(&n)
+		batches = append(batches, []string{n})
+	}
+	bRows.Close()
+	h.addRefSheet(f, "【参考】批次", []string{"批次名称"}, []float64{32}, "仅作参考，无需编辑修改。", batches)
+
+	return f
 }
 
 func catToChinese(c string) string {

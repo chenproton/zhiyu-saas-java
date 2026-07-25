@@ -936,6 +936,7 @@ export const importExportApi = {
     created: number; failed: number; skipped: number; entity: string;
     positionCreated?: number; responsibilities?: number; abilityBindings?: number;
     scenarioCreated?: number; taskCreated?: number;
+    errors?: string[];
   }> => {
     const form = new FormData()
     form.append("file", file)
@@ -949,9 +950,15 @@ export const importExportApi = {
     }
     return res.json()
   },
-  downloadTemplate: (entity: "positions" | "scenarios") => {
+  downloadTemplate: (entity: "positions" | "scenarios" | "question-banks" | "exams") => {
     const token = getToken()
     return fetch(`${API_BASE}/templates/${entity}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+  },
+  downloadQuestionTemplate: (bankId: string) => {
+    const token = getToken()
+    return fetch(`${API_BASE}/templates/question-banks/${bankId}/questions`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
   },

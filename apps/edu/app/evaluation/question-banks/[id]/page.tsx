@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload, Copy, Users, Building2, ImageIcon, List, LayoutGrid, FolderInput, ChevronDown } from "lucide-react"
@@ -27,6 +27,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -37,6 +45,7 @@ import { BankFormDialog } from "@/components/evaluation/bank-form-dialog"
 import { QuestionFormDialog } from "@/components/evaluation/question-form-dialog"
 import { QuestionPreview } from "@/components/evaluation/question-preview"
 import { useData } from "@/components/providers/data-provider"
+import { importExportApi } from "@/lib/api"
 import type { Question, QuestionType, QuestionFormData, QuestionBankFormData } from "@/lib/types"
 import { QUESTION_TYPE_LABELS, DIFFICULTY_LABELS } from "@/lib/types"
 
@@ -95,6 +104,11 @@ export default function QuestionBankDetailPage() {
   const [batchDeleteConfirm, setBatchDeleteConfirm] = useState(false)
   const [batchMoveOpen, setBatchMoveOpen] = useState(false)
   const [moveSearch, setMoveSearch] = useState("")
+
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [isImporting, setIsImporting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   // 获取题目创建人列表（后端暂无用户姓名查询，直接展示 ID）
   const creators = useMemo(() => {
     const creatorIds = new Set(questions.map(q => q.creatorId).filter(Boolean))
@@ -137,6 +151,45 @@ export default function QuestionBankDetailPage() {
 
   const isDraftPool = bank.isDraftPool === true
   const canEdit = true // 所有题库均可编辑题目
+
+  const handleImportFileSelect = (files: FileList | null) => {
+    const file = files?.[0]
+    if (file) setImportFile(file)
+  }
+
+  const handleImport = async () => {
+    if (!importFile) return
+    setIsImporting(true)
+    try {
+      const result = await importExportApi.importExcel(`question-banks/${bankId}/questions`, importFile)
+      const errorHint = result.errors && result.errors.length > 0 ? `，错误：${result.errors.slice(0, 3).join(";")}` : ""
+      alert(`导入完成：成功 ${result.created} 条，失败 ${result.failed || 0} 条，跳过 ${result.skipped || 0} 条${errorHint}`)
+      setImportFile(null)
+      setIsImportDialogOpen(false)
+      await loadBankQuestions(bankId)
+    } catch (err: any) {
+      alert(err.message || "导入失败")
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await importExportApi.downloadQuestionTemplate(bankId)
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "题目批量导入模板.xlsx"
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err: any) {
+      alert(err.message || "下载模板失败")
+    }
+  }
 
   const handleBankUpdate = (data: QuestionBankFormData) => {
     updateQuestionBank(bankId, data)
@@ -373,7 +426,7 @@ export default function QuestionBankDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           <PrdAnnotation data={getAnnotation("qbd-btn-import")}>
-            <Button variant="outline" size="sm" disabled title="题目导入功能开发中">
+            <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
               <Upload className="mr-1 size-3.5" />
               导入题目
             </Button>
@@ -600,6 +653,41 @@ export default function QuestionBankDetailPage() {
         onOpenChange={(open) => !open && setPreviewQuestion(null)}
         question={previewQuestion}
       />
+
+      {/* Import Dialog */}
+      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>导入题目</DialogTitle>
+            <DialogDescription>下载模板并按说明填写后，上传 Excel 批量导入题目到「{bank?.name || ""}」</DialogDescription>
+          </DialogHeader>
+          <div className="py-8">
+            <div
+              className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
+              <p className="text-sm text-muted-foreground mb-2">
+                {importFile ? importFile.name : "点击选择 Excel 文件"}
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={(e) => handleImportFileSelect(e.target.files)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsImportDialogOpen(false)}>取消</Button>
+            <Button variant="outline" onClick={handleDownloadTemplate}>下载模板</Button>
+            <Button onClick={handleImport} disabled={!importFile || isImporting}>
+              {isImporting ? "导入中..." : "开始导入"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={!!deleteConfirm}
