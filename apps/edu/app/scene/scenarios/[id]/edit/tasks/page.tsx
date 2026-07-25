@@ -673,6 +673,7 @@ function MethodDialogContent({
     updateEvalPoint,
     addEvalPoint,
     removeEvalPoint,
+    toast,
   } = ctx
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [gradeMappingDialogOpen, setGradeMappingDialogOpen] = useState(false)
@@ -681,6 +682,7 @@ function MethodDialogContent({
   const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false)
   const [saveTemplateMode, setSaveTemplateMode] = useState<"new" | "replace">("new")
   const [selectedReplaceTemplateId, setSelectedReplaceTemplateId] = useState<string | null>(null)
+  const [viewRuleScheme, setViewRuleScheme] = useState<RubricScheme | null>(null)
   const rubricIdField =
     methodKey === "random_draw" ? "randomDrawRubricId" :
     methodKey === "review" ? "reviewRubricId" :
@@ -768,6 +770,40 @@ function MethodDialogContent({
       setLocalDraft({ name: "", mode: methodKey === "homework" ? "score_rule" : "rubric", types: [], scoreRuleItems: [] })
     }
     setEditingRubricId(schemeId)
+    setView("edit")
+  }
+
+  const cloneScheme = (schemeId: string) => {
+    const scheme = rubricLibrary.find(s => s.id === schemeId)
+    if (!scheme) return
+    updateState({
+      [rubricIdField]: null,
+      methodResourceConfigs: {
+        ...state.methodResourceConfigs,
+        [methodKey]: {
+          ...state.methodResourceConfigs[methodKey],
+          scoreRuleItems: (scheme.scoreRuleItems || []).map((it: ScoreRuleItem) => ({ ...it }))
+        }
+      }
+    } as any)
+    if (scheme.mode === "rubric") {
+      setEvalPoints(info.field, scheme.points.map(p => ({ ...p, id: `ep-${Date.now()}-${Math.random().toString(36).slice(2, 5)}` })))
+    } else {
+      setEvalPoints(info.field, (scheme.scoreRuleItems || []).map(it => ({
+        id: it.id,
+        name: it.name,
+        desc: it.rule,
+        subType: undefined,
+        types: [],
+        knowledgePointIds: [],
+        abilityPointIds: [],
+        scoringMethod: "score" as const,
+        gradeMapping: [],
+        weight: it.weight,
+      })))
+    }
+    setLocalDraft({ name: `${scheme.name}（副本）`, mode: scheme.mode, types: scheme.types, scoreRuleItems: (scheme.scoreRuleItems || []).map((it: ScoreRuleItem) => ({ ...it })) })
+    setEditingRubricId(null)
     setView("edit")
   }
 
@@ -1190,6 +1226,7 @@ function MethodDialogContent({
               }
             }
             updateState(updates)
+            toast({ title: "当前规则已保存" })
           }}>
             保存
           </Button>
@@ -1453,6 +1490,22 @@ function MethodDialogContent({
                   >
                     {isSelected ? "取消选用" : "选用"}
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-[11px] px-2.5"
+                    onClick={(e) => { e.stopPropagation(); setViewRuleScheme(scheme) }}
+                  >
+                    查看规则
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-[11px] px-2.5"
+                    onClick={(e) => { e.stopPropagation(); cloneScheme(scheme.id) }}
+                  >
+                    克隆
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1466,6 +1519,59 @@ function MethodDialogContent({
           <p className="text-xs mt-1">请从上方列表中选用一个评价标准方案</p>
         </div>
       )}
+      <Dialog open={!!viewRuleScheme} onOpenChange={v => !v && setViewRuleScheme(null)}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>查看规则</DialogTitle>
+            <DialogDescription>
+              {viewRuleScheme?.name}
+              <Badge variant="outline" className={cn("text-[10px] ml-2", viewRuleScheme?.mode === "rubric" ? "bg-purple-50 text-purple-600 border-purple-200" : "bg-blue-50 text-blue-600 border-blue-200")}>
+                {viewRuleScheme?.mode === "rubric" ? "评价量规" : "评分规则"}
+              </Badge>
+            </DialogDescription>
+          </DialogHeader>
+          {viewRuleScheme?.mode === "rubric" ? (
+            <div className="space-y-2">
+              {viewRuleScheme.points.length === 0 && <p className="text-sm text-gray-400">暂无评价点</p>}
+              {viewRuleScheme.points.map((p, idx) => (
+                <div key={p.id} className="p-3 rounded-lg border bg-gray-50/50">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs text-gray-400">{idx + 1}.</span>
+                    <span className="text-sm font-medium">{p.name}</span>
+                    <span className="text-xs text-gray-500 ml-auto">权重 {p.weight || 0}%</span>
+                  </div>
+                  {p.desc && <p className="text-xs text-gray-500 mb-1">{p.desc}</p>}
+                  {p.gradeMapping && p.gradeMapping.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {p.gradeMapping.map(gm => (
+                        <Badge key={gm.id} variant="outline" className="text-[10px]">{gm.grade} ({gm.minScore}-{gm.maxScore}分)</Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {(viewRuleScheme?.scoreRuleItems || []).length === 0 && <p className="text-sm text-gray-400">暂无评价项</p>}
+              {(viewRuleScheme?.scoreRuleItems || []).map((it, idx) => (
+                <div key={it.id} className="p-3 rounded-lg border bg-gray-50/50">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs text-gray-400">{idx + 1}.</span>
+                    <span className="text-sm font-medium">{it.name}</span>
+                    <span className="text-xs text-gray-500 ml-auto">分值 {it.weight || 0}</span>
+                  </div>
+                  {it.desc && <p className="text-xs text-gray-500 mb-1">{it.desc}</p>}
+                  {it.rule && <p className="text-xs text-gray-500">规则：{it.rule}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <Button size="sm" onClick={() => setViewRuleScheme(null)}>关闭</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -1486,6 +1592,7 @@ interface MethodDialogCtx {
   updateEvalPoint: (field: EvalPointField, id: string, updates: Partial<EvalPoint>) => void
   addEvalPoint: (field: EvalPointField, init?: Partial<EvalPoint>) => void
   removeEvalPoint: (field: EvalPointField, id: string) => void
+  toast: (opts: { title?: string; description?: string; variant?: "default" | "destructive" }) => void
 }
 
 interface ScoringConfig {
@@ -7505,6 +7612,7 @@ function EditCardDialog({
           updateEvalPoint,
           addEvalPoint,
           removeEvalPoint,
+          toast,
         }
 
         const openDialog = (type: "object" | "subject" | "resource" | "method", methodKey: string) => {
