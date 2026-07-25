@@ -691,6 +691,7 @@ function MethodDialogContent({
   const [saveTemplateMode, setSaveTemplateMode] = useState<"new" | "replace">("new")
   const [selectedReplaceTemplateId, setSelectedReplaceTemplateId] = useState<string | null>(null)
   const [viewRuleScheme, setViewRuleScheme] = useState<RubricScheme | null>(null)
+  const [schemeSearch, setSchemeSearch] = useState("")
   const [saveHint, setSaveHint] = useState<string | null>(null)
   const saveHintTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
@@ -1003,15 +1004,15 @@ function MethodDialogContent({
                 </PrdAnnotation>
               </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse min-w-[900px]">
+            <div className="overflow-x-auto max-w-full">
+              <table className="w-full text-sm border-collapse table-fixed">
                 <thead>
                   <tr className="border-b bg-gray-50 text-gray-500 text-xs">
-                    <th className="py-2.5 px-2 text-left w-12">序号</th>
-                    <th className="py-2.5 px-2 text-left min-w-[520px]">评价维度名称/关联知识点/能力点</th>
-                    <th className="py-2.5 px-2 text-right min-w-[260px]">评价等级</th>
-                    <th className="py-2.5 px-2 text-center w-16">权重(%)</th>
-                    <th className="py-2.5 px-2 text-center w-14">操作</th>
+                    <th className="py-2.5 px-2 text-left w-[8%]">序号</th>
+                    <th className="py-2.5 px-2 text-left w-[45%]">评价维度名称/关联知识点/能力点</th>
+                    <th className="py-2.5 px-2 text-right w-[27%]">评价等级</th>
+                    <th className="py-2.5 px-2 text-center w-[12%]">权重(%)</th>
+                    <th className="py-2.5 px-2 text-center w-[8%]">操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1443,10 +1444,20 @@ function MethodDialogContent({
           </Button>
         </div>
       </div>
+      <div className="relative">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+        <Input
+          value={schemeSearch}
+          onChange={e => setSchemeSearch(e.target.value)}
+          placeholder="搜索方案名称"
+          className="pl-8 h-8 text-sm"
+        />
+      </div>
       <div className="grid grid-cols-1 gap-3">
         {rubricLibrary
           .filter(scheme => !scheme.isDeleted || currentRubricId === scheme.id)
           .filter(scheme => methodKey !== "homework" || scheme.mode === "score_rule")
+          .filter(scheme => !schemeSearch.trim() || scheme.name.toLowerCase().includes(schemeSearch.trim().toLowerCase()))
           .map(scheme => {
           const isSelected = currentRubricId === scheme.id
           return (
@@ -8357,7 +8368,7 @@ function EditCardDialog({
             </Dialog>
 
             <Dialog open={erDialogOpen === "method"} onOpenChange={v => !v && setErDialogOpen(null)}>
-              <DialogContent className="sm:max-w-[85vw] max-w-[85vw] max-h-[90vh] overflow-y-auto">
+              <DialogContent className="sm:max-w-[85vw] max-w-[85vw] max-h-[90vh] overflow-x-hidden overflow-y-auto">
                 <DialogHeader>
                   <PrdAnnotation data={getAnnotation("dialog-eval-standard")}><DialogTitle>评价标准配置</DialogTitle></PrdAnnotation>
                   <DialogDescription>
