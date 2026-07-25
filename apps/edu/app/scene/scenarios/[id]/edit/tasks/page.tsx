@@ -2178,8 +2178,11 @@ export default function TasksEditPage() {
     switch (type) {
       case "info":
         return `任务名称：${task.name}\n编码：${task.code || "-"}\n任务类型：${task.taskType === "assessment" ? "考核" : "训练"}\n难度：${task.difficulty}星\n预估学时：${task.estimatedHours}小时`
-      case "description":
-        return state.description ? `${state.description.replace(/<[^>]*>/g, "").slice(0, 50)}...` : "未填写"
+      case "description": {
+        if (state.description) return `${state.description.replace(/<[^>]*>/g, "").slice(0, 50)}...`
+        if (state.descriptionPdf) return "已上传附件"
+        return "未填写"
+      }
       case "knowledge":
         if (state.knowledgePoints.length === 0) return "未配置"
         const kpNames = state.knowledgePoints.map(id => knowledgePoints.find(k => k.id === id)?.name).filter(Boolean)
@@ -2223,7 +2226,7 @@ export default function TasksEditPage() {
     const state = getState(taskId)
     switch (type) {
       case "info": return true
-      case "description": return !!state.description
+      case "description": return !!state.description || !!state.descriptionPdf
       case "knowledge": return state.knowledgePoints.length > 0
       case "ability": return state.abilityPoints.length > 0
       case "resources": return state.resources.length > 0
