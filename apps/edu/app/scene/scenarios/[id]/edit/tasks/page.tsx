@@ -1174,12 +1174,9 @@ function MethodDialogContent({
               {(draftScheme.scoreRuleItems || []).length > 0 && (
                 <div className="flex justify-end text-xs items-center gap-1">
                   <span className="text-gray-500">分值合计：</span>
-                  <span className={cn("font-semibold", ((draftScheme.scoreRuleItems || []).reduce((sum, it) => sum + (it.weight || 0), 0)) === 100 ? "text-green-600" : "text-red-500")}>
-                    {(draftScheme.scoreRuleItems || []).reduce((sum, it) => sum + (it.weight || 0), 0)}%
+                  <span className="font-semibold text-gray-700">
+                    {(draftScheme.scoreRuleItems || []).reduce((sum, it) => sum + (it.weight || 0), 0)}
                   </span>
-                  {((draftScheme.scoreRuleItems || []).reduce((sum, it) => sum + (it.weight || 0), 0)) !== 100 && (
-                    <span className="text-red-500">⚠️（需等于100%）</span>
-                  )}
                 </div>
               )}
             </div>
@@ -1413,7 +1410,10 @@ function MethodDialogContent({
         </div>
       </div>
       <div className="grid grid-cols-1 gap-3">
-        {rubricLibrary.filter(scheme => !scheme.isDeleted || currentRubricId === scheme.id).map(scheme => {
+        {rubricLibrary
+          .filter(scheme => !scheme.isDeleted || currentRubricId === scheme.id)
+          .filter(scheme => methodKey !== "homework" || scheme.mode === "score_rule")
+          .map(scheme => {
           const isSelected = currentRubricId === scheme.id
           return (
             <div
