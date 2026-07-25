@@ -155,16 +155,15 @@ export default function ExamDetailPage() {
     if (!currentUsage) return
     setSubmitting(true)
     try {
-      await examResultApi.submit({ examUsageId: currentUsage.id, answers })
-      // 后端 ExamResultHandler.submit 会自动把结果同步到 scene_evaluation_results（当 usage.target_ids 包含 taskId 时）。
-      // 这里不再由前端重复同步，避免客观题全对时被覆盖为 pending 状态。
+      await examResultApi.submit({ examUsageId: currentUsage.id, answers, methodKey })
+      // 后端 ExamResultHandler.submit 会根据 methodKey 把结果同步到对应 method_key 的 scene_evaluation_results。
       setSubmitted(true)
     } catch {
       alert("提交失败，请重试")
     } finally {
       setSubmitting(false)
     }
-  }, [currentUsage, answers])
+  }, [currentUsage, answers, methodKey])
 
   useEffect(() => {
     if (started && exam && !submitted) {
@@ -241,7 +240,12 @@ export default function ExamDetailPage() {
           <CheckCircle2 style={{ width: 64, height: 64, color: "#34c759", margin: "0 auto 16px" }} />
           <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>试卷已提交</h2>
           <p style={{ color: "#8f959e" }}>感谢您的参与，考试结果将在阅卷完成后公布。</p>
-          <div style={{ marginTop: 24 }}>
+          <div style={{ marginTop: 24, display: "flex", gap: 12, justifyContent: "center" }}>
+            {isSceneTask && sceneId && (
+              <Link href={`/scene/landing/${sceneId}/learn?task=${taskId}`}>
+                <Button variant="outline">返回学习页</Button>
+              </Link>
+            )}
             <Link href="/evaluation/landing/exams">
               <Button variant="outline">返回考试列表</Button>
             </Link>

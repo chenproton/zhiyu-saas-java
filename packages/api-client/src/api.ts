@@ -1029,7 +1029,7 @@ export const examUsageApi = {
 export const examResultApi = {
   list: (params?: { usageId?: string; limit?: number; offset?: number }) =>
     request<ListResponse<ExamResult>>(`/evaluation/exam-results${buildQuery(params || {})}`),
-  submit: (req: { examUsageId: string; answers: Record<string, string | string[]> }) =>
+  submit: (req: { examUsageId: string; answers: Record<string, string | string[]>; methodKey?: string }) =>
     request<ExamResult>("/evaluation/exam-results", { method: "POST", body: JSON.stringify(req) }),
 }
 

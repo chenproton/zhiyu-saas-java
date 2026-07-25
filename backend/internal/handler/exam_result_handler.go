@@ -27,6 +27,7 @@ type ExamResultListResponse struct {
 type SubmitExamResultRequest struct {
 	ExamUsageID string                 `json:"examUsageId"`
 	Answers     map[string]interface{} `json:"answers"`
+	MethodKey   string                 `json:"methodKey"`
 }
 
 func (h *ExamResultHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +77,7 @@ func (h *ExamResultHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	tenantID, ok := requireTenant(w, r); if !ok { return }
 
-	result, err := h.submit(r.Context(), tenantID, claims.UserID, req.ExamUsageID, req.Answers)
+	result, err := h.submit(r.Context(), tenantID, claims.UserID, req.ExamUsageID, req.Answers, req.MethodKey)
 	if err != nil {
 		log.Printf("submit exam result failed: usage=%s user=%s tenant=%s err=%v", req.ExamUsageID, claims.UserID, tenantID, err)
 		if err == pgx.ErrNoRows {
@@ -90,7 +91,7 @@ func (h *ExamResultHandler) Create(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusCreated, result)
 }
 
-func (h *ExamResultHandler) submit(ctx context.Context, tenantID, userID, usageID string, answers map[string]interface{}) (*domain.ExamResult, error) {
+func (h *ExamResultHandler) submit(ctx context.Context, tenantID, userID, usageID string, answers map[string]interface{}, methodKey string) (*domain.ExamResult, error) {
 	// fetch usage -> exam_id and total_score
 	var examID string
 	var totalScore float64
@@ -184,7 +185,7 @@ func (h *ExamResultHandler) submit(ctx context.Context, tenantID, userID, usageI
 	}
 
 	// Bridge: auto-create scene_evaluation_result if exam targets a task
-	h.syncSceneEvaluationResult(ctx, tenantID, usageID, userID, score, totalScore, answersJSON, hasSubjective)
+	h.syncSceneEvaluationResult(ctx, tenantID, usageID, userID, score, totalScore, answersJSON, hasSubjective, methodKey)
 
 	return &domain.ExamResult{
 		ID:          resultID,
@@ -271,13 +272,17 @@ func roundScore(s float64) float64 {
 	return float64(int64(s*100+0.5)) / 100
 }
 
-func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenantID, usageID, userID string, score, maxScore float64, objectiveAnswers domain.JSONMap, hasSubjective bool) {
+func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenantID, usageID, userID string, score, maxScore float64, objectiveAnswers domain.JSONMap, hasSubjective bool, methodKey string) {
+	// 根据前端传入的测评方式精确同步，避免 paper 完成后题库/随堂测被连带标记。
+	if methodKey == "" {
+		methodKey = "paper"
+	}
 	rows, err := h.DB.Query(ctx, `
 		SELECT tem.method_key, tem.task_id
 		FROM exam_usages eu
 		JOIN task_evaluation_methods tem ON tem.task_id = ANY(eu.target_ids)
-		WHERE eu.id = $1 AND tem.method_key = 'paper' AND tem.tenant_id = $2
-	`, usageID, tenantID)
+		WHERE eu.id = $1 AND tem.method_key = $2 AND tem.tenant_id = $3
+	`, usageID, methodKey, tenantID)
 	if err != nil {
 		log.Printf("syncSceneEvaluationResult query failed: usage=%s err=%v", usageID, err)
 		return
