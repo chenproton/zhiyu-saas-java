@@ -276,7 +276,7 @@ func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenan
 		SELECT tem.method_key, tem.task_id
 		FROM exam_usages eu
 		JOIN task_evaluation_methods tem ON tem.task_id = ANY(eu.target_ids)
-		WHERE eu.id = $1 AND tem.method_key IN ('paper', 'question_bank', 'quiz') AND tem.tenant_id = $2
+		WHERE eu.id = $1 AND tem.method_key = 'paper' AND tem.tenant_id = $2
 	`, usageID, tenantID)
 	if err != nil {
 		log.Printf("syncSceneEvaluationResult query failed: usage=%s err=%v", usageID, err)
