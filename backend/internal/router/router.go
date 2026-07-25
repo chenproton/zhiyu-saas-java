@@ -110,6 +110,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 	questionBankImportHandler := &handler.QuestionBankImportHandler{DB: db}
 	questionImportHandler := &handler.QuestionImportHandler{DB: db}
 	examImportHandler := &handler.ExamImportHandler{DB: db}
+	resourceImportHandler := &handler.ResourceImportHandler{DB: db}
 	templateHandler := &handler.TemplateHandler{DB: db}
 	scenarioExportHandler := &handler.ScenarioExportHandler{DB: db}
 	positionExportHandler := &handler.PositionExportHandler{DB: db}
@@ -265,11 +266,21 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 			r.Post("/import/question-banks/excel", questionBankImportHandler.ImportExcel)
 			r.Post("/import/question-banks/{bankId}/questions/excel", questionImportHandler.ImportExcel)
 			r.Post("/import/exams/excel", examImportHandler.ImportExcel)
+			r.Post("/import/industries/excel", resourceImportHandler.ImportIndustries)
+			r.Post("/import/majors/excel", resourceImportHandler.ImportMajors)
+			r.Post("/import/organizations/excel", resourceImportHandler.ImportOrganizations)
+			r.Post("/import/students/excel", resourceImportHandler.ImportStudents)
+			r.Post("/import/teachers/excel", resourceImportHandler.ImportTeachers)
 			r.Get("/templates/positions", templateHandler.ServePositionTemplate)
 			r.Get("/templates/scenarios", templateHandler.ServeScenarioTemplate)
 			r.Get("/templates/question-banks", templateHandler.ServeQuestionBankTemplate)
 			r.Get("/templates/question-banks/{bankId}/questions", templateHandler.ServeQuestionTemplate)
 			r.Get("/templates/exams", templateHandler.ServeExamTemplate)
+			r.Get("/templates/industries", templateHandler.ServeIndustryTemplate)
+			r.Get("/templates/majors", templateHandler.ServeMajorTemplate)
+			r.Get("/templates/organizations", templateHandler.ServeOrganizationTemplate)
+			r.Get("/templates/students", templateHandler.ServeStudentTemplate)
+			r.Get("/templates/teachers", templateHandler.ServeTeacherTemplate)
 			r.Post("/export/scenarios/excel", scenarioExportHandler.ExportExcel)
 			r.Post("/export/positions/excel", positionExportHandler.ExportExcel)
 

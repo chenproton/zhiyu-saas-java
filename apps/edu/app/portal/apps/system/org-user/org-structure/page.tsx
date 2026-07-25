@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -26,6 +27,7 @@ import {
   Users,
   Upload,
   Download,
+  FileDown,
   GraduationCap,
   School,
   Building2,
@@ -37,7 +39,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { orgApi, orgTypeApi, portalUserManagementApi } from "@/lib/api"
+import { orgApi, orgTypeApi, portalUserManagementApi, importExportApi } from "@/lib/api"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import type { Organization, OrgType } from "@/lib/types/backend"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
@@ -223,6 +225,13 @@ export default function OrgStructurePage() {
   const [graduateTarget, setGraduateTarget] = useState<OrgNode | null>(null)
   const [graduateLoading, setGraduateLoading] = useState(false)
   const nodeRefs = useRef<Record<string, HTMLDivElement | null>>({})
+
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [isImporting, setIsImporting] = useState(false)
+  const [importStep, setImportStep] = useState<"download" | "upload">("download")
+  const [isDownloading, setIsDownloading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -491,6 +500,52 @@ export default function OrgStructurePage() {
     return Object.entries(typeNames).map(([, name]) => ({ name, count: stats[name] || 0 }))
   }, [typeNames, stats])
 
+  const handleImportFileSelect = (files: FileList | null) => {
+    const file = files?.[0]
+    if (file) setImportFile(file)
+  }
+
+  const handleImport = async () => {
+    if (!importFile || !tenantId) return
+    setIsImporting(true)
+    try {
+      const result = await importExportApi.importExcel("organizations", importFile)
+      const errorHint = result.errors && result.errors.length > 0 ? `，错误：${result.errors.slice(0, 3).join(";")}` : ""
+      toast({
+        title: "导入完成",
+        description: `成功 ${result.created} 条，失败 ${result.failed || 0} 条，跳过 ${result.skipped || 0} 条${errorHint}`,
+      })
+      setImportFile(null)
+      setIsImportDialogOpen(false)
+      setImportStep("download")
+      await fetchData()
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const handleDownloadTemplate = async () => {
+    setIsDownloading(true)
+    try {
+      const res = await importExportApi.downloadTemplate("organizations")
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "组织架构批量导入模板.xlsx"
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "下载模板失败", description: err.message || "下载模板失败" })
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   if (!mounted) {
     return (
       <div className="flex h-64 items-center justify-center gap-2 text-muted-foreground">
@@ -510,7 +565,7 @@ export default function OrgStructurePage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" disabled title="即将上线">
+          <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
             <Upload className="h-4 w-4 mr-1" />
             批量导入
           </Button>
@@ -691,6 +746,72 @@ export default function OrgStructurePage() {
           </div>
         </div>
       )}
+
+      {/* 导入组织架构 */}
+      <Dialog open={isImportDialogOpen} onOpenChange={(open) => { setIsImportDialogOpen(open); if (!open) { setImportStep("download"); setImportFile(null) } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>批量导入组织架构</DialogTitle>
+            <DialogDescription>
+              第 {importStep === "download" ? "1" : "2"} 步：{importStep === "download" ? "下载模板并填写数据" : "上传已填写的 Excel 文件"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            {importStep === "download" ? (
+              <div className="space-y-4">
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <p className="text-sm font-medium mb-2">操作指引</p>
+                  <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                    <li>点击下方按钮下载最新的导入模板（含系统字典数据）</li>
+                    <li>参照模板中各 Sheet 的填写说明，填入组织架构数据</li>
+                    <li>完成后点击"下一步"上传文件</li>
+                  </ol>
+                </div>
+                <Button
+                  className="w-full"
+                  size="lg"
+                  onClick={handleDownloadTemplate}
+                  disabled={isDownloading}
+                >
+                  <FileDown className="mr-2 h-5 w-5" />
+                  {isDownloading ? "下载中..." : "下载组织架构批量导入模板"}
+                </Button>
+              </div>
+            ) : (
+              <div
+                className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
+                <p className="text-sm text-muted-foreground mb-2">
+                  {importFile ? importFile.name : "点击选择已填写的 Excel (.xlsx) 文件"}
+                </p>
+                <p className="text-xs text-muted-foreground">仅支持 .xlsx 格式</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx"
+                  className="hidden"
+                  onChange={(e) => handleImportFileSelect(e.target.files)}
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setIsImportDialogOpen(false); setImportStep("download"); setImportFile(null) }}>取消</Button>
+            {importStep === "download" ? (
+              <Button onClick={() => setImportStep("upload")}>下一步</Button>
+            ) : (
+              <Button onClick={handleImport} disabled={!importFile || isImporting}>
+                {isImporting ? "导入中..." : "开始导入"}
+              </Button>
+            )}
+            {importStep === "upload" && (
+              <Button variant="ghost" size="sm" onClick={() => setImportStep("download")}>上一步</Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={!!deleteTarget}

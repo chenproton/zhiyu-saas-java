@@ -649,6 +649,331 @@ func (h *TemplateHandler) generateExamTemplate(ctx context.Context, tenantID str
 	return f
 }
 
+func (h *TemplateHandler) ServeIndustryTemplate(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	ctx := r.Context()
+	f := h.generateIndustryTemplate(ctx, tenantID)
+	writeExcel(w, f, "行业批量导入模板.xlsx")
+}
+
+func (h *TemplateHandler) ServeMajorTemplate(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	ctx := r.Context()
+	f := h.generateMajorTemplate(ctx, tenantID)
+	writeExcel(w, f, "专业批量导入模板.xlsx")
+}
+
+func (h *TemplateHandler) ServeOrganizationTemplate(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	ctx := r.Context()
+	f := h.generateOrganizationTemplate(ctx, tenantID)
+	writeExcel(w, f, "组织架构批量导入模板.xlsx")
+}
+
+func (h *TemplateHandler) ServeStudentTemplate(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	ctx := r.Context()
+	f := h.generateStudentTemplate(ctx, tenantID)
+	writeExcel(w, f, "学生批量导入模板.xlsx")
+}
+
+func (h *TemplateHandler) ServeTeacherTemplate(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	ctx := r.Context()
+	f := h.generateTeacherTemplate(ctx, tenantID)
+	writeExcel(w, f, "教师批量导入模板.xlsx")
+}
+
+func (h *TemplateHandler) generateIndustryTemplate(ctx context.Context, tenantID string) *excelize.File {
+	f := excelize.NewFile()
+	f.DeleteSheet("Sheet1")
+	hdrStyle := makeHeaderStyle(f)
+	noteStyle := makeNoteStyle(f)
+	wrapAlign := makeWrapAlign(f)
+
+	setHdr := func(sheet string, row int, headers []string, widths []float64) {
+		for ci, h := range headers {
+			cell, _ := excelize.CoordinatesToCellName(ci+1, row)
+			f.SetCellValue(sheet, cell, h)
+			f.SetCellStyle(sheet, cell, cell, hdrStyle)
+			f.SetColWidth(sheet, colName(ci+1), colName(ci+1), widths[ci])
+		}
+		f.SetRowHeight(sheet, row, 28)
+	}
+	setA1 := func(sheet string, cols int, text string) {
+		start, _ := excelize.CoordinatesToCellName(1, 1)
+		end, _ := excelize.CoordinatesToCellName(cols, 1)
+		f.MergeCell(sheet, start, end)
+		f.SetCellValue(sheet, start, text)
+		f.SetCellStyle(sheet, start, end, noteStyle)
+		f.SetCellStyle(sheet, start, end, wrapAlign)
+		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+2)*16)
+	}
+
+	s1, _ := f.NewSheet("行业列表")
+	f.SetActiveSheet(s1)
+	headers := []string{"行业代码 *", "行业名称 *", "上级行业代码", "排序", "是否启用"}
+	widths := []float64{18, 28, 18, 10, 12}
+	setA1("行业列表", 5, "填写说明：\n* 必填列。\n行业代码：租户内唯一，已存在则更新。\n上级行业代码：填写本 Sheet 中已有的行业代码，或系统中已存在的行业代码；为空表示顶级行业。\n排序：数字，越小越靠前，默认为 0。\n是否启用：true/是/启用 表示启用；false/否/禁用 表示禁用，默认启用。")
+	setHdr("行业列表", 2, headers, widths)
+	f.SetPanes("行业列表", &excelize.Panes{Freeze: true, YSplit: 2})
+	f.AutoFilter("行业列表", "A2:E2", []excelize.AutoFilterOptions{})
+
+	return f
+}
+
+func (h *TemplateHandler) generateMajorTemplate(ctx context.Context, tenantID string) *excelize.File {
+	f := excelize.NewFile()
+	f.DeleteSheet("Sheet1")
+	hdrStyle := makeHeaderStyle(f)
+	noteStyle := makeNoteStyle(f)
+	wrapAlign := makeWrapAlign(f)
+
+	setHdr := func(sheet string, row int, headers []string, widths []float64) {
+		for ci, h := range headers {
+			cell, _ := excelize.CoordinatesToCellName(ci+1, row)
+			f.SetCellValue(sheet, cell, h)
+			f.SetCellStyle(sheet, cell, cell, hdrStyle)
+			f.SetColWidth(sheet, colName(ci+1), colName(ci+1), widths[ci])
+		}
+		f.SetRowHeight(sheet, row, 28)
+	}
+	setA1 := func(sheet string, cols int, text string) {
+		start, _ := excelize.CoordinatesToCellName(1, 1)
+		end, _ := excelize.CoordinatesToCellName(cols, 1)
+		f.MergeCell(sheet, start, end)
+		f.SetCellValue(sheet, start, text)
+		f.SetCellStyle(sheet, start, end, noteStyle)
+		f.SetCellStyle(sheet, start, end, wrapAlign)
+		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+2)*16)
+	}
+
+	s1, _ := f.NewSheet("专业列表")
+	f.SetActiveSheet(s1)
+	headers := []string{"专业代码 *", "专业名称 *", "别名", "所属组织节点", "是否启用"}
+	widths := []float64{18, 30, 24, 28, 12}
+	setA1("专业列表", 5, "填写说明：\n* 必填列。\n专业代码：租户内唯一，已存在则更新。\n所属组织节点：填写系统中已存在的组织节点名称，匹配则关联，不匹配则忽略。\n是否启用：true/是/启用 表示启用；false/否/禁用 表示禁用，默认启用。")
+	setHdr("专业列表", 2, headers, widths)
+	f.SetPanes("专业列表", &excelize.Panes{Freeze: true, YSplit: 2})
+	f.AutoFilter("专业列表", "A2:E2", []excelize.AutoFilterOptions{})
+
+	var orgs [][]string
+	rows, _ := h.DB.Query(ctx, `SELECT name FROM organizations WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	for rows.Next() {
+		var n string
+		rows.Scan(&n)
+		orgs = append(orgs, []string{n})
+	}
+	rows.Close()
+	h.addRefSheet(f, "【参考】组织节点", []string{"组织节点名称"}, []float64{36}, "仅作参考，无需编辑修改。专业列表 Sheet「所属组织节点」与本表名称一致则关联。", orgs)
+
+	return f
+}
+
+func (h *TemplateHandler) generateOrganizationTemplate(ctx context.Context, tenantID string) *excelize.File {
+	f := excelize.NewFile()
+	f.DeleteSheet("Sheet1")
+	hdrStyle := makeHeaderStyle(f)
+	noteStyle := makeNoteStyle(f)
+	wrapAlign := makeWrapAlign(f)
+
+	setHdr := func(sheet string, row int, headers []string, widths []float64) {
+		for ci, h := range headers {
+			cell, _ := excelize.CoordinatesToCellName(ci+1, row)
+			f.SetCellValue(sheet, cell, h)
+			f.SetCellStyle(sheet, cell, cell, hdrStyle)
+			f.SetColWidth(sheet, colName(ci+1), colName(ci+1), widths[ci])
+		}
+		f.SetRowHeight(sheet, row, 28)
+	}
+	setA1 := func(sheet string, cols int, text string) {
+		start, _ := excelize.CoordinatesToCellName(1, 1)
+		end, _ := excelize.CoordinatesToCellName(cols, 1)
+		f.MergeCell(sheet, start, end)
+		f.SetCellValue(sheet, start, text)
+		f.SetCellStyle(sheet, start, end, noteStyle)
+		f.SetCellStyle(sheet, start, end, wrapAlign)
+		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+2)*16)
+	}
+
+	s1, _ := f.NewSheet("组织架构")
+	f.SetActiveSheet(s1)
+	headers := []string{"组织名称 *", "组织类型 *", "父组织名称", "排序"}
+	widths := []float64{30, 20, 30, 10}
+	setA1("组织架构", 4, "填写说明：\n* 必填列。\n组织类型：须与「组织类型参考」Sheet 中的类型名称完全一致。\n父组织名称：填写本 Sheet 中已有的组织名称，或系统中已存在的组织名称；为空表示一级节点。\n排序：数字，越小越靠前，默认为 0。\n相同「组织名称+组织类型」的组合视为同一组织，重复导入会更新父组织和排序。")
+	setHdr("组织架构", 2, headers, widths)
+	f.SetPanes("组织架构", &excelize.Panes{Freeze: true, YSplit: 2})
+	f.AutoFilter("组织架构", "A2:D2", []excelize.AutoFilterOptions{})
+
+	var types [][]string
+	rows, _ := h.DB.Query(ctx, `SELECT name FROM org_types WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	for rows.Next() {
+		var n string
+		rows.Scan(&n)
+		types = append(types, []string{n})
+	}
+	rows.Close()
+	h.addRefSheet(f, "【参考】组织类型", []string{"组织类型名称"}, []float64{36}, "仅作参考，无需编辑修改。组织架构 Sheet「组织类型」须与本表名称一致。", types)
+
+	return f
+}
+
+func (h *TemplateHandler) generateStudentTemplate(ctx context.Context, tenantID string) *excelize.File {
+	f := excelize.NewFile()
+	f.DeleteSheet("Sheet1")
+	hdrStyle := makeHeaderStyle(f)
+	noteStyle := makeNoteStyle(f)
+	wrapAlign := makeWrapAlign(f)
+
+	setHdr := func(sheet string, row int, headers []string, widths []float64) {
+		for ci, h := range headers {
+			cell, _ := excelize.CoordinatesToCellName(ci+1, row)
+			f.SetCellValue(sheet, cell, h)
+			f.SetCellStyle(sheet, cell, cell, hdrStyle)
+			f.SetColWidth(sheet, colName(ci+1), colName(ci+1), widths[ci])
+		}
+		f.SetRowHeight(sheet, row, 28)
+	}
+	setA1 := func(sheet string, cols int, text string) {
+		start, _ := excelize.CoordinatesToCellName(1, 1)
+		end, _ := excelize.CoordinatesToCellName(cols, 1)
+		f.MergeCell(sheet, start, end)
+		f.SetCellValue(sheet, start, text)
+		f.SetCellStyle(sheet, start, end, noteStyle)
+		f.SetCellStyle(sheet, start, end, wrapAlign)
+		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+2)*16)
+	}
+
+	s1, _ := f.NewSheet("学生列表")
+	f.SetActiveSheet(s1)
+	headers := []string{"登录账号(学号) *", "姓名 *", "密码 *", "班级(组织节点名称) *", "专业代码", "状态"}
+	widths := []float64{24, 16, 20, 28, 16, 12}
+	setA1("学生列表", 6, "填写说明：\n* 必填列。\n登录账号(学号)：租户内唯一，已存在则跳过。\n密码：长度至少 8 位，且需同时包含字母和数字。\n班级：须与系统中已存在的组织节点名称完全一致。\n专业代码：填写系统中已存在的专业代码，匹配则关联，不匹配则忽略。\n状态：在籍 / 休学 / 退学 / 毕业 / 结业，默认为在籍。")
+	setHdr("学生列表", 2, headers, widths)
+	f.SetPanes("学生列表", &excelize.Panes{Freeze: true, YSplit: 2})
+	f.AutoFilter("学生列表", "A2:F2", []excelize.AutoFilterOptions{})
+
+	var orgs [][]string
+	rows, _ := h.DB.Query(ctx, `SELECT name FROM organizations WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	for rows.Next() {
+		var n string
+		rows.Scan(&n)
+		orgs = append(orgs, []string{n})
+	}
+	rows.Close()
+	h.addRefSheet(f, "【参考】班级/组织节点", []string{"组织节点名称"}, []float64{36}, "仅作参考，无需编辑修改。学生列表 Sheet「班级」须与本表名称一致。", orgs)
+
+	var majors [][]string
+	mRows, _ := h.DB.Query(ctx, `SELECT code, name FROM majors WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	for mRows.Next() {
+		var c, n string
+		mRows.Scan(&c, &n)
+		majors = append(majors, []string{c, n})
+	}
+	mRows.Close()
+	h.addRefSheet(f, "【参考】专业", []string{"专业代码", "专业名称"}, []float64{18, 32}, "仅作参考，无需编辑修改。学生列表 Sheet「专业代码」须与本表代码一致。", majors)
+
+	return f
+}
+
+func (h *TemplateHandler) generateTeacherTemplate(ctx context.Context, tenantID string) *excelize.File {
+	f := excelize.NewFile()
+	f.DeleteSheet("Sheet1")
+	hdrStyle := makeHeaderStyle(f)
+	noteStyle := makeNoteStyle(f)
+	wrapAlign := makeWrapAlign(f)
+
+	setHdr := func(sheet string, row int, headers []string, widths []float64) {
+		for ci, h := range headers {
+			cell, _ := excelize.CoordinatesToCellName(ci+1, row)
+			f.SetCellValue(sheet, cell, h)
+			f.SetCellStyle(sheet, cell, cell, hdrStyle)
+			f.SetColWidth(sheet, colName(ci+1), colName(ci+1), widths[ci])
+		}
+		f.SetRowHeight(sheet, row, 28)
+	}
+	setA1 := func(sheet string, cols int, text string) {
+		start, _ := excelize.CoordinatesToCellName(1, 1)
+		end, _ := excelize.CoordinatesToCellName(cols, 1)
+		f.MergeCell(sheet, start, end)
+		f.SetCellValue(sheet, start, text)
+		f.SetCellStyle(sheet, start, end, noteStyle)
+		f.SetCellStyle(sheet, start, end, wrapAlign)
+		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+2)*16)
+	}
+
+	s1, _ := f.NewSheet("教师列表")
+	f.SetActiveSheet(s1)
+	headers := []string{"登录账号(工号) *", "姓名 *", "密码 *", "所属组织节点(名称)", "职位(逗号分隔)", "状态"}
+	widths := []float64{24, 16, 20, 28, 28, 12}
+	setA1("教师列表", 6, "填写说明：\n* 必填列。\n登录账号(工号)：租户内唯一，已存在则跳过。\n密码：长度至少 8 位，且需同时包含字母和数字。\n所属组织节点：填写系统中已存在的组织节点名称，匹配则关联，不匹配则忽略。\n职位：多个职位用逗号分隔，须与系统中已存在的职位名称一致，不匹配则忽略。\n状态：在职 / 离职 / 外聘 / 禁用，默认为在职。")
+	setHdr("教师列表", 2, headers, widths)
+	f.SetPanes("教师列表", &excelize.Panes{Freeze: true, YSplit: 2})
+	f.AutoFilter("教师列表", "A2:F2", []excelize.AutoFilterOptions{})
+
+	var orgs [][]string
+	rows, _ := h.DB.Query(ctx, `SELECT name FROM organizations WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	for rows.Next() {
+		var n string
+		rows.Scan(&n)
+		orgs = append(orgs, []string{n})
+	}
+	rows.Close()
+	h.addRefSheet(f, "【参考】组织节点", []string{"组织节点名称"}, []float64{36}, "仅作参考，无需编辑修改。教师列表 Sheet「所属组织节点」与本表名称一致则关联。", orgs)
+
+	var titles [][]string
+	tRows, _ := h.DB.Query(ctx, `SELECT name FROM staff_titles WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	for tRows.Next() {
+		var n string
+		tRows.Scan(&n)
+		titles = append(titles, []string{n})
+	}
+	tRows.Close()
+	h.addRefSheet(f, "【参考】职位", []string{"职位名称"}, []float64{36}, "仅作参考，无需编辑修改。教师列表 Sheet「职位」与本表名称一致则关联。", titles)
+
+	return f
+}
+
 func catToChinese(c string) string {
 	switch c {
 	case "knowledge", "technical":

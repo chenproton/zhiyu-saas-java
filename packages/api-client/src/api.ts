@@ -950,7 +950,7 @@ export const importExportApi = {
     }
     return res.json()
   },
-  downloadTemplate: (entity: "positions" | "scenarios" | "question-banks" | "exams") => {
+  downloadTemplate: (entity: "positions" | "scenarios" | "question-banks" | "exams" | "industries" | "majors" | "organizations" | "students" | "teachers") => {
     const token = getToken()
     return fetch(`${API_BASE}/templates/${entity}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
