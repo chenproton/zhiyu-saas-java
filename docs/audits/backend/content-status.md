@@ -15,7 +15,7 @@
 | 当前状态 \ 目标状态 | draft | pending | approved | rejected | published | archived |
 |---|---|---|---|---|---|---|
 | draft | - | ✓ | - | - | - | ✓ |
-| rejected | - | ✓ | - | - | - | ✓ |
+| rejected | ✓ | ✓ | - | - | - | ✓ |
 | pending | ✓ | - | ✓ | ✓ | - | - |
 | approved | ✓ | - | - | - | ✓ | ✓ |
 | published | ✓ | - | - | - | - | ✓ |
