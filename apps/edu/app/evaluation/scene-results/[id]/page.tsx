@@ -985,7 +985,7 @@ export default function GradingDetailPage() {
               )}
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-3">
             {rdQuestions.length === 0 && (
               <div className="text-center py-12 text-gray-400 text-sm bg-gray-50/50 rounded-lg border border-dashed">
                 <FileText className="h-8 w-8 mx-auto mb-2 opacity-40" />
@@ -1016,7 +1016,7 @@ export default function GradingDetailPage() {
               {isReview ? "现场评审材料" : isOutcome ? "成果材料" : "作业材料"}
             </h2>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
             {isReview && reviewSteps.length > 0 && (
               <Card className="border-slate-200">
                 <CardHeader className="py-3 px-4">
@@ -1178,7 +1178,7 @@ export default function GradingDetailPage() {
             </span>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-3">
           {evalPoints.length > 0 ? (
             evalPoints.map((ep) => (
               <EvalPointGradingCard
@@ -1202,7 +1202,8 @@ export default function GradingDetailPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-3.5rem)] flex flex-col bg-gray-50">
+    <>
+      <div className="h-[calc(100vh-3.5rem-3rem)] flex flex-col bg-gray-50">
       {/* 顶部导航 */}
       <div className="bg-white border-b px-4 py-2 flex items-center gap-3 shrink-0">
         <Button variant="ghost" size="sm" asChild className="h-8">
@@ -1279,7 +1280,7 @@ export default function GradingDetailPage() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-4 pb-24">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <button
@@ -1337,52 +1338,53 @@ export default function GradingDetailPage() {
         )}
       </div>
 
-      {/* 底部操作栏 */}
-      <div className="bg-white border-t shadow-[0_-2px_10px_rgba(0,0,0,0.05)] px-4 py-3 shrink-0 z-50">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 shrink-0 min-w-[140px]">
-            <span className="text-sm text-gray-500">最终得分</span>
-            <span className={cn("text-3xl font-bold", saved || computedTotal > 0 ? "text-green-600" : "text-gray-300")}>
-              {saved || computedTotal > 0 ? computedTotal : "-"}
-            </span>
-            <span className="text-sm text-gray-400">/ {maxScore}</span>
-          </div>
-          <Separator orientation="vertical" className="h-8" />
-          <div className="flex-1 min-w-0">
-            <Textarea
-              placeholder="教师评语..."
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              disabled={saved}
-              rows={1}
-              className="resize-none text-sm min-h-[40px] py-2.5 border-slate-300 focus-visible:ring-primary"
-            />
-          </div>
-          {saved && result.gradedAt && (
-            <div className="text-xs text-gray-400 shrink-0 text-right">
-              <div>评分时间</div>
-              <div>{new Date(result.gradedAt).toLocaleString("zh-CN")}</div>
-            </div>
-          )}
-          <Button variant="outline" size="sm" asChild className="shrink-0 h-9">
-            <Link href="/evaluation/scene-results">取消</Link>
-          </Button>
-          {!saved && (
-            <Button size="sm" onClick={handleSave} disabled={saving || !allScored} className="shrink-0 h-9 gap-1 px-4">
-              <Save className="h-3.5 w-3.5" />
-              {saving ? "保存中..." : "提交评分"}
-            </Button>
-          )}
-          {saved && (
-            <Button size="sm" disabled className="bg-green-600 hover:bg-green-600 shrink-0 h-9 gap-1 px-4">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              已提交
-            </Button>
-          )}
-        </div>
-      </div>
-
       {previewAttachment && <AttachmentPreview attachment={previewAttachment} onClose={() => setPreviewAttachment(null)} />}
     </div>
-  )
+
+    {/* 底部操作栏 - 始终固定在视口底部 */}
+    <div className="fixed bottom-0 left-56 right-0 bg-white border-t shadow-[0_-2px_10px_rgba(0,0,0,0.05)] px-4 py-3 z-50">
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 shrink-0 min-w-[140px]">
+          <span className="text-sm text-gray-500">最终得分</span>
+          <span className={cn("text-3xl font-bold", saved || computedTotal > 0 ? "text-green-600" : "text-gray-300")}>
+            {saved || computedTotal > 0 ? computedTotal : "-"}
+          </span>
+          <span className="text-sm text-gray-400">/ {maxScore}</span>
+        </div>
+        <Separator orientation="vertical" className="h-8" />
+        <div className="flex-1 min-w-0">
+          <Textarea
+            placeholder="教师评语..."
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            disabled={saved}
+            rows={1}
+            className="resize-none text-sm min-h-[40px] py-2.5 border-slate-300 focus-visible:ring-primary"
+          />
+        </div>
+        {saved && result.gradedAt && (
+          <div className="text-xs text-gray-400 shrink-0 text-right">
+            <div>评分时间</div>
+            <div>{new Date(result.gradedAt).toLocaleString("zh-CN")}</div>
+          </div>
+        )}
+        <Button variant="outline" size="sm" asChild className="shrink-0 h-9">
+          <Link href="/evaluation/scene-results">取消</Link>
+        </Button>
+        {!saved && (
+          <Button size="sm" onClick={handleSave} disabled={saving || !allScored} className="shrink-0 h-9 gap-1 px-4">
+            <Save className="h-3.5 w-3.5" />
+            {saving ? "保存中..." : "提交评分"}
+          </Button>
+        )}
+        {saved && (
+          <Button size="sm" disabled className="bg-green-600 hover:bg-green-600 shrink-0 h-9 gap-1 px-4">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            已提交
+          </Button>
+        )}
+      </div>
+    </div>
+  </>
+)
 }
