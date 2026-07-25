@@ -21,7 +21,9 @@ import {
   GraduationCap,
   Eye,
   RotateCcw,
+  Trash2,
 } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 import { positionApi, batchApi } from "@/lib/api"
 import type { Position, Batch } from "@/lib/types/job-source"
 import { convertCareerPositionToPosition, convertJobBatchToBatch } from "@/lib/stores/job-converters"
@@ -44,6 +46,7 @@ export default function PositionArchivePage() {
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState("")
   const [selectedMajor, setSelectedMajor] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const industryMap = useIndustryMap()
   const majorMap = useMajorMap()
 
@@ -113,6 +116,56 @@ export default function PositionArchivePage() {
     }
   }
 
+  const handleDelete = async (position: Position) => {
+    if (!window.confirm(`确定删除岗位「${position.name}」吗？删除后不可恢复。`)) return
+    try {
+      await positionApi.delete(position.id)
+      setSelectedIds((prev) => prev.filter((id) => id !== position.id))
+      await loadData()
+      toast({ title: "已删除" })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "删除失败", description: err.message || "请稍后重试" })
+    }
+  }
+
+  const handleSelect = (id: string, checked: boolean) => {
+    setSelectedIds((prev) =>
+      checked ? (prev.includes(id) ? prev : [...prev, id]) : prev.filter((item) => item !== id)
+    )
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    setSelectedIds(checked ? filtered.map((p) => p.id) : [])
+  }
+
+  const handleBatchRestore = async () => {
+    if (selectedIds.length === 0) return
+    try {
+      await Promise.all(selectedIds.map((id) => positionApi.saveDraft(id)))
+      setSelectedIds([])
+      await loadData()
+      toast({ title: `已批量恢复 ${selectedIds.length} 个岗位` })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "批量恢复失败", description: err.message || "请稍后重试" })
+    }
+  }
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.length === 0) return
+    if (!window.confirm(`确定删除选中的 ${selectedIds.length} 个岗位吗？删除后不可恢复。`)) return
+    try {
+      await Promise.all(selectedIds.map((id) => positionApi.delete(id)))
+      setSelectedIds([])
+      await loadData()
+      toast({ title: `已批量删除 ${selectedIds.length} 个岗位` })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "批量删除失败", description: err.message || "请稍后重试" })
+    }
+  }
+
+  const allSelected = filtered.length > 0 && filtered.every((p) => selectedIds.includes(p.id))
+  const someSelected = filtered.some((p) => selectedIds.includes(p.id)) && !allSelected
+
   return (
     <div className="space-y-6">
       <div>
@@ -167,85 +220,139 @@ export default function PositionArchivePage() {
             </div>
           </div>
 
-          <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>岗位名称</TableHead>
-                  <TableHead>简称</TableHead>
-                  <TableHead>版本</TableHead>
-                  <TableHead>所属行业</TableHead>
-                  <TableHead>适用专业</TableHead>
-                  <TableHead>所属批次分组</TableHead>
-                  <TableHead>归档时间</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
+          {selectedIds.length > 0 && (
+            <div className="flex items-center justify-between rounded-lg border border-gray-100 bg-white shadow-sm p-3">
+              <span className="text-sm text-muted-foreground">
+                已选择 <span className="font-medium text-foreground">{selectedIds.length}</span> 个岗位
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={handleBatchRestore}
+                >
+                  <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                  批量恢复
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                  onClick={handleBatchDelete}
+                >
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                  批量删除
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-lg border border-gray-100 bg-white shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table className="min-w-[1100px]">
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
-                      加载中...
-                    </TableCell>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={someSelected ? "indeterminate" : allSelected}
+                        onCheckedChange={(checked) => handleSelectAll(checked === true)}
+                        aria-label="全选"
+                      />
+                    </TableHead>
+                    <TableHead>岗位名称</TableHead>
+                    <TableHead>简称</TableHead>
+                    <TableHead>版本</TableHead>
+                    <TableHead>所属行业</TableHead>
+                    <TableHead>适用专业</TableHead>
+                    <TableHead>所属批次分组</TableHead>
+                    <TableHead>归档时间</TableHead>
+                    <TableHead>状态</TableHead>
+                    <TableHead className="text-right">操作</TableHead>
                   </TableRow>
-                ) : filtered.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
-                      暂无归档岗位
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filtered.map((entry) => {
-                    const st = statusConfig[entry.status] || statusConfig.draft
-                    return (
-                      <TableRow key={entry.id} className="group">
-                        <TableCell>
-                          <div>
-                            <span className="font-medium">{entry.name}</span>
-                            <p className="text-xs text-muted-foreground">
-                              {industryMap.get(entry.industry) || "-"} · {getMajorNames(entry.majors)}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{entry.shortName || "-"}</TableCell>
-                        <TableCell className="text-sm">{entry.version}</TableCell>
-                        <TableCell className="text-sm">{industryMap.get(entry.industry) || "-"}</TableCell>
-                        <TableCell className="text-sm">{getMajorNames(entry.majors)}</TableCell>
-                        <TableCell className="text-sm">{entry.batchId ? batchMap.get(entry.batchId)?.name || "-" : "-"}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {new Date(entry.updatedAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ${st.className}`}>
-                            {st.label}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right relative">
-                          <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
-                              <Link href={`/job/positions/${entry.id}/edit`}>
-                                <Eye className="mr-1 h-3 w-3" />
-                                查看
-                              </Link>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
-                              onClick={() => handleRestore(entry)}
-                            >
-                              <RotateCcw className="mr-1 h-3 w-3" />
-                              恢复
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={10} className="text-center py-10 text-muted-foreground">
+                        加载中...
+                      </TableCell>
+                    </TableRow>
+                  ) : filtered.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={10} className="text-center py-10 text-muted-foreground">
+                        暂无归档岗位
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filtered.map((entry) => {
+                      const st = statusConfig[entry.status] || statusConfig.draft
+                      const isSelected = selectedIds.includes(entry.id)
+                      return (
+                        <TableRow key={entry.id} className="group" data-state={isSelected ? "selected" : undefined}>
+                          <TableCell>
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={(checked) => handleSelect(entry.id, checked === true)}
+                              aria-label={`选择 ${entry.name}`}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <span className="font-medium">{entry.name}</span>
+                              <p className="text-xs text-muted-foreground">
+                                {industryMap.get(entry.industry) || "-"} · {getMajorNames(entry.majors)}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{entry.shortName || "-"}</TableCell>
+                          <TableCell className="text-sm">{entry.version}</TableCell>
+                          <TableCell className="text-sm">{industryMap.get(entry.industry) || "-"}</TableCell>
+                          <TableCell className="text-sm">{getMajorNames(entry.majors)}</TableCell>
+                          <TableCell className="text-sm">{entry.batchId ? batchMap.get(entry.batchId)?.name || "-" : "-"}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {new Date(entry.updatedAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ${st.className}`}>
+                              {st.label}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right relative">
+                            <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
+                                <Link href={`/job/positions/${entry.id}/edit`}>
+                                  <Eye className="mr-1 h-3 w-3" />
+                                  查看
+                                </Link>
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
+                                onClick={() => handleRestore(entry)}
+                              >
+                                <RotateCcw className="mr-1 h-3 w-3" />
+                                恢复
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                                onClick={() => handleDelete(entry)}
+                              >
+                                <Trash2 className="mr-1 h-3 w-3" />
+                                删除
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         </div>
       </div>
