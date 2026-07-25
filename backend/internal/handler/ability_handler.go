@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 
@@ -154,12 +155,13 @@ func (h *AbilityHandler) Create(w http.ResponseWriter, r *http.Request) {
 	_, err := h.DB.Exec(r.Context(), `
 		INSERT INTO ability_points (id, tenant_id, name, description, category, attributes, is_public)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`, id, tenantID, req.Name, req.Description, req.Category, req.Attributes, req.IsPublic)
+	`, id, tenantID, req.Name, req.Description, req.Category, coalesceStringSlice(req.Attributes), req.IsPublic)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "能力点名称已存在，请使用其他名称")
 			return
 		}
+		log.Printf("[AbilityHandler.Create] insert ability_points failed: %v", err)
 		respondError(w, http.StatusInternalServerError, "failed to create ability point")
 		return
 	}
@@ -194,7 +196,7 @@ func (h *AbilityHandler) Update(w http.ResponseWriter, r *http.Request) {
 	_, err := h.DB.Exec(r.Context(), `
 		UPDATE ability_points SET name = $1, description = $2, category = $3, attributes = $4, is_public = $5
 		WHERE id = $6
-	`, req.Name, req.Description, req.Category, req.Attributes, req.IsPublic, id)
+	`, req.Name, req.Description, req.Category, coalesceStringSlice(req.Attributes), req.IsPublic, id)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "能力点名称已存在，请使用其他名称")
