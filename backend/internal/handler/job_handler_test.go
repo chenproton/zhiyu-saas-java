@@ -933,3 +933,48 @@ func TestLearnRoad_CRUD(t *testing.T) {
 		roadID = ""
 	})
 }
+
+
+func TestPosition_Clone(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	suffix := t.Name()
+
+	// Create source position
+	w := env.Do("POST", "/api/v1/job/positions", map[string]interface{}{
+		"name":         fmt.Sprintf("Clone Source Position %s", suffix),
+		"positionType": "enterprise",
+		"version":      "v1.0",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create position: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	pos, _ := testhelper.Unmarshal[domain.CareerPosition](w)
+	posID := pos.ID
+	defer env.DB.Exec(ctx, "DELETE FROM career_positions WHERE id = $1", posID)
+
+	// Clone
+	w = env.Do("POST", fmt.Sprintf("/api/v1/job/positions/%s/clone", posID), map[string]interface{}{
+		"name": fmt.Sprintf("Cloned Position %s", suffix),
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("clone position: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
+	}
+	cloned, err := testhelper.Unmarshal[domain.CareerPosition](w)
+	if err != nil {
+		t.Fatalf("unmarshal cloned position: %v", err)
+	}
+	defer env.DB.Exec(ctx, "DELETE FROM career_positions WHERE id = $1", cloned.ID)
+
+	if cloned.ID == posID {
+		t.Fatal("cloned position id should differ from source")
+	}
+	if cloned.Status != domain.CareerPositionStatusDraft {
+		t.Fatalf("cloned position status should be draft, got %s", cloned.Status)
+	}
+	if cloned.Name != fmt.Sprintf("Cloned Position %s", suffix) {
+		t.Fatalf("cloned name mismatch: %s", cloned.Name)
+	}
+}

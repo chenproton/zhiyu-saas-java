@@ -205,6 +205,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Delete("/app-modules/{id}", appModuleHandler.Delete)
 
 			positionHandler := &handler.PositionHandler{DB: pool}
+			positionCloneHandler := &handler.PositionCloneHandler{DB: pool}
 			r.Get("/job/positions", positionHandler.List)
 			r.Get("/job/positions/{id}", positionHandler.Get)
 			r.Post("/job/positions", positionHandler.Create)
@@ -215,6 +216,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/job/positions/{id}/review", positionHandler.Review)
 			r.Post("/job/positions/{id}/publish", positionHandler.Publish)
 			r.Post("/job/positions/{id}/archive", positionHandler.Archive)
+			r.Post("/job/positions/{id}/clone", positionCloneHandler.Clone)
 
 			abilityHandler := &handler.AbilityHandler{DB: pool}
 			r.Get("/job/abilities", abilityHandler.List)

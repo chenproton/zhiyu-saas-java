@@ -3,8 +3,9 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
+	"runtime/debug"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -23,6 +24,13 @@ type ClonePositionRequest struct {
 }
 
 func (h *PositionCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			slog.Error("[ClonePosition] panic recovered", "panic", rec, "stack", string(debug.Stack()))
+			respondError(w, http.StatusInternalServerError, "internal server error")
+		}
+	}()
+
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
 		respondError(w, http.StatusForbidden, "permission denied")
@@ -30,8 +38,11 @@ func (h *PositionCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
+	slog.Info("[ClonePosition] start", "position_id", id, "user_id", claims.UserID)
+
 	src, err := h.fetchSourcePosition(r.Context(), id)
 	if err != nil {
+		slog.Error("[ClonePosition] fetch source failed", "position_id", id, "error", err)
 		respondError(w, http.StatusNotFound, "position not found")
 		return
 	}
@@ -75,45 +86,57 @@ func (h *PositionCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "岗位名称已存在，请使用其他名称")
 			return
 		}
-		log.Printf("[ClonePosition] failed to insert: %v", err)
+		slog.Error("[ClonePosition] insert position failed", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to clone position")
 		return
 	}
 
 	if err := h.clonePositionMajors(ctx, tx, id, newID); err != nil {
+		slog.Error("[ClonePosition] clone majors failed", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to clone position majors")
 		return
 	}
 
 	respIDMap := make(map[string]string)
 	if err := h.clonePositionResponsibilities(ctx, tx, id, newID, tenantID, respIDMap); err != nil {
+		slog.Error("[ClonePosition] clone responsibilities failed", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to clone responsibilities")
 		return
 	}
 
 	bindingIDMap := make(map[string]string)
 	if err := h.clonePositionAbilityBindings(ctx, tx, id, newID, tenantID, respIDMap, bindingIDMap); err != nil {
+		slog.Error("[ClonePosition] clone ability bindings failed", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to clone ability bindings")
 		return
 	}
 
 	if err := h.cloneAbilityDomains(ctx, tx, id, newID, tenantID, bindingIDMap); err != nil {
+		slog.Error("[ClonePosition] clone ability domains failed", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to clone ability domains")
 		return
 	}
 
 	if err := h.clonePositionCertificates(ctx, tx, id, newID, tenantID); err != nil {
+		slog.Error("[ClonePosition] clone certificates failed", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to clone certificates")
 		return
 	}
 
 	if err := tx.Commit(ctx); err != nil {
+		slog.Error("[ClonePosition] commit failed", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to commit")
 		return
 	}
 
 	handler := &PositionHandler{DB: h.DB}
-	pos, _ := handler.fetchPosition(ctx, newID)
+	pos, err := handler.fetchPosition(ctx, newID)
+	if err != nil {
+		slog.Error("[ClonePosition] fetch cloned position failed", "error", err)
+		respondError(w, http.StatusInternalServerError, "failed to fetch cloned position")
+		return
+	}
+	slog.Info("[ClonePosition] success", "new_position_id", newID)
 	respondJSON(w, http.StatusCreated, pos)
 }
 
@@ -156,9 +179,9 @@ func (h *PositionCloneHandler) clonePositionMajors(ctx context.Context, tx pgx.T
 		SELECT major_id FROM career_position_majors WHERE career_position_id = $1
 	`, oldPositionID)
 	if err != nil {
-		return nil
+		slog.Error("[ClonePosition] query majors failed", "error", err)
+		return err
 	}
-	defer rows.Close()
 
 	var majors []string
 	for rows.Next() {
@@ -167,6 +190,10 @@ func (h *PositionCloneHandler) clonePositionMajors(ctx context.Context, tx pgx.T
 			continue
 		}
 		majors = append(majors, majorID)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
 	}
 
 	for _, majorID := range majors {
@@ -194,15 +221,19 @@ func (h *PositionCloneHandler) clonePositionResponsibilities(ctx context.Context
 		WHERE career_position_id = $1 ORDER BY sort_order
 	`, oldPositionID)
 	if err != nil {
-		return nil
+		slog.Error("[ClonePosition] query responsibilities failed", "error", err)
+		return err
 	}
-	defer r.Close()
 	for r.Next() {
 		var rr respRow
 		if err := r.Scan(&rr.OldID, &rr.Name, &rr.Description, &rr.SortOrder); err != nil {
 			continue
 		}
 		rows2 = append(rows2, rr)
+	}
+	r.Close()
+	if err := r.Err(); err != nil {
+		return err
 	}
 
 	for _, rr := range rows2 {
@@ -225,9 +256,9 @@ func (h *PositionCloneHandler) clonePositionAbilityBindings(ctx context.Context,
 		FROM position_ability_bindings WHERE career_position_id = $1
 	`, oldPositionID)
 	if err != nil {
-		return nil
+		slog.Error("[ClonePosition] query ability bindings failed", "error", err)
+		return err
 	}
-	defer rows.Close()
 
 	type bindingRow struct {
 		oldBindingID, oldRespID, abilityPointID, source string
@@ -244,6 +275,10 @@ func (h *PositionCloneHandler) clonePositionAbilityBindings(ctx context.Context,
 			continue
 		}
 		bindings = append(bindings, br)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
 	}
 
 	for _, br := range bindings {
@@ -275,9 +310,9 @@ func (h *PositionCloneHandler) cloneAbilityDomains(ctx context.Context, tx pgx.T
 		FROM ability_domains WHERE career_position_id = $1 ORDER BY sort_order
 	`, oldPositionID)
 	if err != nil {
-		return nil
+		slog.Error("[ClonePosition] query ability domains failed", "error", err)
+		return err
 	}
-	defer rows.Close()
 
 	type domainRow struct {
 		name          string
@@ -292,6 +327,10 @@ func (h *PositionCloneHandler) cloneAbilityDomains(ctx context.Context, tx pgx.T
 			continue
 		}
 		domains = append(domains, dr)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
 	}
 
 	for _, dr := range domains {
@@ -318,9 +357,9 @@ func (h *PositionCloneHandler) clonePositionCertificates(ctx context.Context, tx
 		SELECT certificate_library_id FROM position_certificates WHERE career_position_id = $1
 	`, oldPositionID)
 	if err != nil {
-		return nil
+		slog.Error("[ClonePosition] query certificates failed", "error", err)
+		return err
 	}
-	defer rows.Close()
 
 	var libIDs []string
 	for rows.Next() {
@@ -329,6 +368,10 @@ func (h *PositionCloneHandler) clonePositionCertificates(ctx context.Context, tx
 			continue
 		}
 		libIDs = append(libIDs, libID)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
 	}
 
 	for _, libID := range libIDs {
