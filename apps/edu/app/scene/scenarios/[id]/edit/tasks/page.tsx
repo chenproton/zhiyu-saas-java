@@ -683,6 +683,13 @@ function MethodDialogContent({
   const [saveTemplateMode, setSaveTemplateMode] = useState<"new" | "replace">("new")
   const [selectedReplaceTemplateId, setSelectedReplaceTemplateId] = useState<string | null>(null)
   const [viewRuleScheme, setViewRuleScheme] = useState<RubricScheme | null>(null)
+  const [saveHint, setSaveHint] = useState<string | null>(null)
+  const saveHintTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    return () => {
+      if (saveHintTimeoutRef.current) clearTimeout(saveHintTimeoutRef.current)
+    }
+  }, [])
   const rubricIdField =
     methodKey === "random_draw" ? "randomDrawRubricId" :
     methodKey === "review" ? "reviewRubricId" :
@@ -1235,12 +1242,20 @@ function MethodDialogContent({
             }
             updateState(updates)
             toast({ title: "当前规则已保存", description: draftScheme.name || "自定义评价标准" })
+            setSaveHint("保存成功")
+            if (saveHintTimeoutRef.current) clearTimeout(saveHintTimeoutRef.current)
+            saveHintTimeoutRef.current = setTimeout(() => setSaveHint(null), 3000)
           }}>
             保存
           </Button>
           <Button size="sm" variant="outline" className="text-xs h-8" onClick={() => { setSaveTemplateDialogOpen(true); setSaveTemplateMode("new"); setSelectedReplaceTemplateId(null); }}>
             保存到模板
           </Button>
+          {saveHint && (
+            <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-md border border-green-200">
+              {saveHint}
+            </span>
+          )}
         </div>
         <Dialog open={saveTemplateDialogOpen} onOpenChange={setSaveTemplateDialogOpen}>
           <DialogContent className="sm:max-w-md">
