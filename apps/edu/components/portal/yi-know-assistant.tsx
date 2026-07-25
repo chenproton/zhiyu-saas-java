@@ -217,7 +217,6 @@ const APP_MODULES: Record<string, { id: string; title: string; desc: string; hre
   ],
   ability: [
     { id: "ability-1", title: "通用测评管理", desc: "测评题库与通用测评管理", href: "http://111.170.170.202:3005/question-banks" },
-    { id: "ability-2", title: "岗位认定管理", desc: "岗位能力模型与认定管理", href: "http://111.170.170.202:3005/job-ability" },
     { id: "ability-3", title: "测评方式库", desc: "能力测评方法与量规配置", href: "http://111.170.170.202:3005/evaluation-methods" },
     { id: "ability-4", title: "毕业设计管理", desc: "毕业设计选题与评审管理", href: "http://111.170.170.202:3005/graduation-project/topics" },
     { id: "ability-5", title: "学生画像管理", desc: "学生能力画像与成长档案", href: "http://111.170.170.202:3005/student-portrait/portraits" },
