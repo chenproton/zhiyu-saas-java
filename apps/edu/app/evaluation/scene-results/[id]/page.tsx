@@ -554,12 +554,14 @@ export default function GradingDetailPage() {
   const [exam, setExam] = useState<any>(null)
   const [examResult, setExamResult] = useState<any>(null)
   const [rdQuestions, setRdQuestions] = useState<any[]>([])
+  const [rdQuestionPool, setRdQuestionPool] = useState<any[]>([])
   const [questionFilter, setQuestionFilter] = useState<"all" | "pending">("all")
   const [previewAttachment, setPreviewAttachment] = useState<{ name: string; url: string; type?: string } | null>(null)
 
   const [pointScores, setPointScores] = useState<Record<string, number>>({})
   const [pointComments, setPointComments] = useState<Record<string, string>>({})
   const [oralAnswers, setOralAnswers] = useState<Record<string, string>>({})
+  const [selectedReviewSteps, setSelectedReviewSteps] = useState<Record<string, boolean>>({})
   const [comment, setComment] = useState("")
 
   useEffect(() => {
@@ -602,6 +604,7 @@ export default function GradingDetailPage() {
           try {
             const rdRes = await randomDrawQuestionApi.list({ limit: 9999 })
             const all = rdRes.items || []
+            setRdQuestionPool(all)
             // Prefer the student's actually drawn questions; fall back to configured pool.
             const drawnMap = (res.drawnQuestions || {}) as Record<string, any>
             const drawnIds = Object.keys(drawnMap).filter((k) => drawnMap[k] && typeof drawnMap[k] === "object")
@@ -654,6 +657,12 @@ export default function GradingDetailPage() {
       oral[k] = typeof v === "string" ? v : v?.oralAnswer || ""
     })
     setOralAnswers(oral)
+
+    const completedSteps = (result.subjectiveContent as Record<string, any>)?.reviewSteps || []
+    const stepSelected: Record<string, boolean> = {}
+    completedSteps.forEach((s: any) => { if (s.stepId) stepSelected[s.stepId] = true })
+    setSelectedReviewSteps(stepSelected)
+
     if (result.status === "evaluated") setSaved(true)
   }, [result])
 
@@ -703,7 +712,10 @@ export default function GradingDetailPage() {
 
   const allScored = isExamMethod
     ? examQuestions.filter((q: any) => !isAutoQuestion(q)).every((q: any) => (pointScores[q.id] ?? 0) > 0 || q.score === 0)
-    : evalPoints.length === 0 || evalPoints.every((ep) => (pointScores[ep.id] ?? 0) > 0 || ep.weight === 0)
+    : isReview
+      ? (evalPoints.length === 0 || evalPoints.every((ep) => (pointScores[ep.id] ?? 0) > 0 || ep.weight === 0)) &&
+        (reviewSteps.length === 0 || Object.values(selectedReviewSteps).some(Boolean))
+      : evalPoints.length === 0 || evalPoints.every((ep) => (pointScores[ep.id] ?? 0) > 0 || ep.weight === 0)
 
   const handleScoreChange = (id: string, score: number) => {
     setPointScores((prev) => ({ ...prev, [id]: score }))
@@ -734,10 +746,21 @@ export default function GradingDetailPage() {
       }
       if (isRandomDraw) {
         const drawnQuestions: Record<string, any> = {}
-        Object.entries(oralAnswers).forEach(([k, v]) => {
-          if (v.trim()) drawnQuestions[k] = { oralAnswer: v }
+        rdQuestions.forEach((q) => {
+          drawnQuestions[q.id] = { oralAnswer: oralAnswers[q.id] || "" }
         })
         payload.drawnQuestions = drawnQuestions
+      }
+
+      if (isReview) {
+        const existingSteps = ((result.subjectiveContent as Record<string, any>)?.reviewSteps || []) as any[]
+        const newSteps = reviewSteps
+          .filter((s) => s.enabled && selectedReviewSteps[s.id] && !existingSteps.some((es: any) => es.stepId === s.id))
+          .map((s) => ({ stepId: s.id, completedAt: new Date().toISOString() }))
+        payload.subjectiveContent = {
+          ...(result.subjectiveContent as Record<string, any> || {}),
+          reviewSteps: [...existingSteps, ...newSteps],
+        }
       }
 
       await evaluationResultApi.grade(result.id, payload)
@@ -760,13 +783,36 @@ export default function GradingDetailPage() {
           <div className="px-4 py-2 border-b flex items-center justify-between shrink-0">
             <h2 className="text-sm font-medium text-gray-700 flex items-center gap-2">
               <FileText className="h-4 w-4 text-amber-500" />
-              抽题记录
+              现场问答题
             </h2>
-            <span className="text-xs text-gray-400">{rdQuestions.length} 题</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400">{rdQuestions.length} 题</span>
+              {!saved && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const poolIds = methodConfig?.resourceConfig?.selectedQuestionIds || []
+                    const drawCount = Math.max(1, Math.min(poolIds.length, methodConfig?.resourceConfig?.drawCount || poolIds.length || 1))
+                    const shuffled = [...poolIds].sort(() => Math.random() - 0.5)
+                    const selectedIds = shuffled.slice(0, drawCount)
+                    const selected = selectedIds
+                      .map((sid: string) => rdQuestionPool.find((q: any) => q.id === sid))
+                      .filter(Boolean) as any[]
+                    setRdQuestions(selected)
+                  }}
+                  disabled={!methodConfig?.resourceConfig?.selectedQuestionIds?.length}
+                >
+                  现场抽题
+                </Button>
+              )}
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {rdQuestions.length === 0 && (
-              <div className="text-center py-8 text-gray-400 text-sm">未配置现场问答题</div>
+              <div className="text-center py-8 text-gray-400 text-sm">
+                点击右上角“现场抽题”按钮，从题库中抽取本次问答题目
+              </div>
             )}
             {rdQuestions.map((q, idx) => (
               <DrawnQuestionCard
@@ -794,27 +840,32 @@ export default function GradingDetailPage() {
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {isReview && reviewSteps.length > 0 && (
               <div className="px-4 py-3 border-b bg-gray-50/50 -mx-4 -mt-4 mb-4">
-                <h3 className="text-xs font-medium text-gray-500 mb-2">评审步骤</h3>
-                <div className="flex items-center">
+                <h3 className="text-xs font-medium text-gray-500 mb-2">评审步骤（选择本次评价的步骤）</h3>
+                <div className="space-y-2">
                   {reviewSteps
                     .filter((s) => s.enabled)
-                    .map((step, idx, arr) => {
+                    .map((step) => {
                       const completed = (subjectiveContent.reviewSteps || []).some((s: any) => s.stepId === step.id)
                       return (
-                        <div key={step.id} className="flex items-center flex-1">
-                          <div className="flex flex-col items-center flex-1">
-                            <div className={cn(
-                              "w-7 h-7 rounded-full text-xs flex items-center justify-center border-2",
-                              completed
-                                ? "bg-green-100 text-green-600 border-green-300"
-                                : "bg-primary/10 text-primary border-primary"
-                            )}>
-                              {completed ? <CheckCircle2 className="h-4 w-4" /> : idx + 1}
-                            </div>
-                            <span className="text-[10px] mt-1 text-gray-700 font-medium text-center">{step.label}</span>
+                        <label key={step.id} className={cn(
+                          "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                          selectedReviewSteps[step.id] || completed
+                            ? "bg-green-50 border-green-200"
+                            : "bg-white border-gray-200 hover:border-primary/30"
+                        )}>
+                          <input
+                            type="checkbox"
+                            className="mt-0.5"
+                            checked={!!selectedReviewSteps[step.id] || completed}
+                            disabled={saved || completed}
+                            onChange={(e) => setSelectedReviewSteps((prev) => ({ ...prev, [step.id]: e.target.checked }))}
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{step.label}</p>
+                            {step.description && <p className="text-xs text-gray-500 mt-0.5">{step.description}</p>}
                           </div>
-                          {idx < arr.length - 1 && <div className="h-0.5 flex-1 mx-1 bg-gray-200" />}
-                        </div>
+                          {completed && <Badge variant="outline" className="text-[10px] bg-green-50 text-green-600 border-green-200">已完成</Badge>}
+                        </label>
                       )
                     })}
                 </div>

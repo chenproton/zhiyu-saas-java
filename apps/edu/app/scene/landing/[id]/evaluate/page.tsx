@@ -175,16 +175,11 @@ export default function EvaluatePage() {
       if (isManualSubmit) {
         payload.subjectiveContent = { text, files, attempts: (resubmitConfig.attempts || 0) + 1 }
       } else if (methodKey === "random_draw") {
-        const drawnQuestions: Record<string, any> = {}
-        drawnQuestionIds.forEach((qid) => {
-          drawnQuestions[qid] = { drawnAt: new Date().toISOString(), oralAnswer: "" }
-        })
-        payload.drawnQuestions = drawnQuestions
+        // 学生端无需抽题，仅确认参加；由教师在 scene-results 中抽题并测评
+        payload.subjectiveContent = { attended: true, attempts: (resubmitConfig.attempts || 0) + 1 }
       } else if (methodKey === "review") {
-        const completedSteps = reviewSteps
-          .filter((s: any) => s.enabled && reviewStepDone[s.id])
-          .map((s: any) => ({ stepId: s.id, completedAt: new Date().toISOString() }))
-        payload.subjectiveContent = { reviewSteps: completedSteps, attempts: (resubmitConfig.attempts || 0) + 1 }
+        // 学生端无需选择步骤，仅确认参加；由教师在 scene-results 中选择步骤并评价
+        payload.subjectiveContent = { attended: true, attempts: (resubmitConfig.attempts || 0) + 1 }
       } else {
         payload.subjectiveContent = {}
       }
@@ -341,63 +336,33 @@ export default function EvaluatePage() {
 
         {!submitted && isTeacherLed && methodKey === "random_draw" && (
           <Card className="mb-4">
-            <CardHeader><CardTitle className="text-base flex items-center gap-2"><ClipboardList className="h-4 w-4" />现场抽题</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><ClipboardList className="h-4 w-4" />现场问答</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-gray-600">点击“开始抽题”后，系统将从题库中随机抽取题目，作为您本次现场问答的题目。</p>
-              {drawnQuestionIds.length > 0 && (
-                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                  <p className="text-xs font-medium text-gray-500">已抽中 {drawnQuestionIds.length} 题</p>
-                  <div className="flex flex-wrap gap-2">
-                    {drawnQuestionIds.map((qid, idx) => (
-                      <Badge key={qid} variant="outline" className="text-xs">第 {idx + 1} 题</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    const ids = resourceConfig.selectedQuestionIds || []
-                    const drawCount = Math.max(1, Math.min(ids.length, resourceConfig.drawCount || ids.length || 1))
-                    const shuffled = [...ids].sort(() => Math.random() - 0.5)
-                    setDrawnQuestionIds(shuffled.slice(0, drawCount))
-                  }}
-                  disabled={submitting || !(resourceConfig.selectedQuestionIds?.length > 0)}
-                >
-                  开始抽题
-                </Button>
-                <Button onClick={handleSubmit} disabled={submitting || drawnQuestionIds.length === 0}>
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  {submitting ? "..." : "确认参加"}
-                </Button>
-              </div>
+              <p className="text-sm text-gray-600">请确认参加本次现场问答，具体题目由教师在评分时抽取。</p>
+              <Button onClick={handleSubmit} disabled={submitting}>
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                {submitting ? "..." : "确认参加"}
+              </Button>
             </CardContent>
           </Card>
         )}
 
         {!submitted && isTeacherLed && methodKey === "review" && (
           <Card className="mb-4">
-            <CardHeader><CardTitle className="text-base flex items-center gap-2"><ClipboardList className="h-4 w-4" />评审流程确认</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><ClipboardList className="h-4 w-4" />评审流程</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-gray-600">请按顺序完成以下评审步骤，完成后点击“确认参加”。</p>
+              <p className="text-sm text-gray-600">请确认参加本次评审，具体评价步骤由教师选择执行。</p>
               <div className="space-y-2">
                 {reviewSteps.filter((s: any) => s.enabled).map((s: any, idx: number) => (
-                  <label key={s.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5"
-                      checked={!!reviewStepDone[s.id]}
-                      onChange={(e) => setReviewStepDone((prev) => ({ ...prev, [s.id]: e.target.checked }))}
-                    />
+                  <div key={s.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
                     <div>
                       <p className="text-sm font-medium">{idx + 1}. {s.label}</p>
                       {s.description && <p className="text-xs text-gray-500">{s.description}</p>}
                     </div>
-                  </label>
+                  </div>
                 ))}
               </div>
-              <Button onClick={handleSubmit} disabled={submitting || !reviewSteps.filter((s: any) => s.enabled).every((s: any) => reviewStepDone[s.id])}>
+              <Button onClick={handleSubmit} disabled={submitting}>
                 <CheckCircle2 className="mr-2 h-4 w-4" />
                 {submitting ? "..." : "确认参加"}
               </Button>
