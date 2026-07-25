@@ -95,6 +95,24 @@ export default function ExamDetailPage() {
   const [currentUsage, setCurrentUsage] = useState<ExamUsage | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
+  const questionTypeStats = useMemo(() => {
+    if (!exam) return []
+    const stats: Record<string, { count: number; score: number }> = {}
+    exam.questions.forEach((q) => {
+      const label = typeLabelMap[q.type] || q.type
+      if (!stats[label]) stats[label] = { count: 0, score: 0 }
+      stats[label].count += 1
+      stats[label].score += q.score
+    })
+    return Object.entries(stats).map(([name, { count, score }], index) => ({
+      name,
+      count,
+      score,
+      value: count,
+      color: pieColors[index % pieColors.length],
+    }))
+  }, [exam])
+
   const isSceneTask = !!taskId && !!methodKey
 
   useEffect(() => {
@@ -192,23 +210,6 @@ export default function ExamDetailPage() {
   const timeStatus = getExamTimeStatus(exam.status)
   const targetAudience = getTargetAudience()
   const canStart = examAccessState === 'started' && (isSceneTask || exam.status === "published") && currentUsage
-
-  const questionTypeStats = useMemo(() => {
-    const stats: Record<string, { count: number; score: number }> = {}
-    exam.questions.forEach((q) => {
-      const label = typeLabelMap[q.type] || q.type
-      if (!stats[label]) stats[label] = { count: 0, score: 0 }
-      stats[label].count += 1
-      stats[label].score += q.score
-    })
-    return Object.entries(stats).map(([name, { count, score }], index) => ({
-      name,
-      count,
-      score,
-      value: count,
-      color: pieColors[index % pieColors.length],
-    }))
-  }, [exam.questions])
 
   const handleSingle = (qid: string, val: string) => setAnswers((p) => ({ ...p, [qid]: val }))
   const handleMultiple = (qid: string, opt: string, checked: boolean) => {
