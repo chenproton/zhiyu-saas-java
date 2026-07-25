@@ -898,6 +898,11 @@ export default function GradingDetailPage() {
           <span className="text-gray-400">·</span>
           <span className="text-gray-600">{task?.name}</span>
           <Badge variant="outline" className="text-xs ml-1">{methodName}</Badge>
+          {methodConfig?.isEnabled === false && (
+            <Badge variant="outline" className="text-xs ml-1 bg-gray-50 text-gray-500 border-gray-200">
+              已禁用
+            </Badge>
+          )}
         </div>
         <div className="flex-1" />
         {saved && (

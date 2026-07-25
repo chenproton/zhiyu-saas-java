@@ -409,6 +409,7 @@ type RubricScheme = {
   points: EvalPoint[]
   mode: "rubric" | "score_rule"
   scoreRuleItems?: ScoreRuleItem[]
+  isDeleted?: boolean
 }
 
 type EvalPointField =
@@ -1170,7 +1171,7 @@ function MethodDialogContent({
                 <div className="space-y-2">
                   <Label className="text-xs text-gray-500">选择要替换的模板</Label>
                   <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                    {rubricLibrary.map(scheme => (
+                    {rubricLibrary.filter(s => !s.isDeleted).map(scheme => (
                       <div
                         key={scheme.id}
                         onClick={() => setSelectedReplaceTemplateId(scheme.id)}
@@ -1284,7 +1285,7 @@ function MethodDialogContent({
         </div>
         <p className="text-sm font-medium">选择评价标准模板进行覆盖</p>
         <div className="grid grid-cols-1 gap-3">
-          {rubricLibrary.map(scheme => (
+          {rubricLibrary.filter(s => !s.isDeleted).map(scheme => (
             <div
               key={scheme.id}
               className="p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer"
@@ -1334,7 +1335,7 @@ function MethodDialogContent({
         </div>
       </div>
       <div className="grid grid-cols-1 gap-3">
-        {rubricLibrary.map(scheme => {
+        {rubricLibrary.filter(scheme => !scheme.isDeleted || currentRubricId === scheme.id).map(scheme => {
           const isSelected = currentRubricId === scheme.id
           return (
             <div
@@ -1446,6 +1447,7 @@ interface TaskState {
   abilityLevelMappings: { abilityId: string; level: number }[]
   resources: string[]
   evaluationMethods: string[]
+  disabledEvaluationMethods: string[]
   randomDrawQuestions: string[]
   randomDrawCustomQuestions: { id: string; name: string; description: string; answer: string; majorId: string }[]
   randomDrawSelectedIds: string[]
@@ -1499,6 +1501,7 @@ function makeDefaultTaskState(count: number, index: number): TaskState {
     abilityLevelMappings: [],
     resources: [],
     evaluationMethods: [],
+    disabledEvaluationMethods: [],
     methodWeights: {},
     randomDrawQuestions: [],
     randomDrawCustomQuestions: [],
@@ -1597,6 +1600,7 @@ function taskStateToMethodsInput(ts: TaskState, extra?: { reviewSteps?: any[] })
   const evalConfig = methodsToEvalRuleConfig([])
   Object.assign(evalConfig, {
     evaluationMethods: ts.evaluationMethods,
+    disabledEvaluationMethods: ts.disabledEvaluationMethods || [],
     methodWeights: ts.methodWeights,
     evalObject: ts.evalObject,
     methodEvalObjects: ts.methodEvalObjects,
@@ -1817,6 +1821,7 @@ export default function TasksEditPage() {
           })) : [],
           mode: (rt.mode || "rubric") as "rubric" | "score_rule",
           scoreRuleItems: rt.mode === "score_rule" ? (rt.data?.scoreRuleItems || []) : undefined,
+          isDeleted: rt.isDeleted || false,
         })))
 
         // Initialize taskStates from API method data
@@ -1835,6 +1840,38 @@ export default function TasksEditPage() {
           states[t.id] = ts
         })
         setTaskStates(states)
+
+        // Fetch any rubric templates that are referenced by tasks but deleted from the library
+        const referencedTemplateIds = new Set<string>()
+        Object.values(states).forEach(ts => {
+          if (ts.randomDrawRubricId) referencedTemplateIds.add(ts.randomDrawRubricId)
+          if (ts.reviewRubricId) referencedTemplateIds.add(ts.reviewRubricId)
+          if (ts.outcomeRubricId) referencedTemplateIds.add(ts.outcomeRubricId)
+          if (ts.homeworkRubricId) referencedTemplateIds.add(ts.homeworkRubricId)
+        })
+        const existingIds = new Set((rubricRes.items || []).map((rt: any) => rt.id))
+        const missingIds = Array.from(referencedTemplateIds).filter(id => id && !existingIds.has(id))
+        if (missingIds.length > 0) {
+          const fetched = await Promise.all(missingIds.map(id => taskEvaluationApi.getTemplate(id).catch(() => null)))
+          const newTemplates = fetched.filter(Boolean).map((rt: any) => ({
+            id: rt.id,
+            name: rt.name,
+            types: (rt.types || []) as EvalSubType[],
+            desc: rt.description || "",
+            points: rt.mode === "rubric" ? (rt.data?.points || []).map((p: any) => ({
+              ...p,
+              id: p.id || `ep-${Math.random().toString(36).slice(2, 9)}`,
+              desc: p.description || "",
+            })) : [],
+            mode: (rt.mode || "rubric") as "rubric" | "score_rule",
+            scoreRuleItems: rt.mode === "score_rule" ? (rt.data?.scoreRuleItems || []) : undefined,
+            isDeleted: rt.isDeleted || false,
+          }))
+          if (newTemplates.length > 0) {
+            setRubricLibrary(prev => [...prev, ...newTemplates])
+          }
+        }
+
         // Fetch all scenarios and their tasks for the clone dialog
         try {
           const allScenariosRes = await scenarioApi.list({ limit: 1000 })
@@ -5481,7 +5518,14 @@ function EditCardDialog({
           if (!opts || !opts.available) return
           const enabled = state.evaluationMethods.includes(key)
           const newMethods = enabled ? state.evaluationMethods.filter(m => m !== key) : [...state.evaluationMethods, key]
-          updateState({ evaluationMethods: newMethods })
+          const newDisabled = enabled
+            ? Array.from(new Set([...(state.disabledEvaluationMethods || []), key]))
+            : (state.disabledEvaluationMethods || []).filter(m => m !== key)
+          const newWeights = { ...state.methodWeights }
+          if (enabled) {
+            newWeights[key] = 0
+          }
+          updateState({ evaluationMethods: newMethods, disabledEvaluationMethods: newDisabled, methodWeights: newWeights })
         }
 
         const filteredMethods = evaluationMethodOptions.filter(m => {

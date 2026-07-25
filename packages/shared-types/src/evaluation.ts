@@ -1046,6 +1046,7 @@ export interface EvalRuleReviewStep {
 
 export interface EvalRuleConfig {
   evaluationMethods: EvalRuleMethodKey[]
+  disabledEvaluationMethods: EvalRuleMethodKey[]
   methodWeights: Record<string, number>
   evalObject: EvalObjectType
   methodEvalObjects: Record<string, EvalObjectType>
@@ -1087,6 +1088,7 @@ export interface EvalRuleMethodInput {
   evalSubjects?: EvalRuleSubjectConfig[]
   rubricTemplateId?: string | null
   resourceConfig?: Record<string, any>
+  isEnabled: boolean
   evalPoints?: EvalRulePointInput[]
   reviewSteps?: EvalRuleReviewStepInput[]
 }
@@ -1155,6 +1157,7 @@ export function makeDefaultEvalRuleConfig(methods: EvalRuleMethodKey[]): EvalRul
   })
   return {
     evaluationMethods: methods,
+    disabledEvaluationMethods: [],
     methodWeights,
     evalObject: "individual",
     methodEvalObjects: {},
@@ -1196,6 +1199,7 @@ export function methodsToEvalRuleConfig(methods: Array<{
   evalSubjects?: EvalRuleSubjectConfig[]
   rubricTemplateId?: string | null
   resourceConfig?: Record<string, any>
+  isEnabled?: boolean
   evalPoints?: Array<{
     id: string
     name: string
@@ -1219,8 +1223,11 @@ export function methodsToEvalRuleConfig(methods: Array<{
     sortOrder: number
   }>
 }>): EvalRuleConfig {
-  const state = makeDefaultEvalRuleConfig(methods.map(m => m.methodKey as EvalRuleMethodKey))
+  const allKeys = methods.map(m => m.methodKey as EvalRuleMethodKey)
+  const state = makeDefaultEvalRuleConfig(allKeys)
   if (!methods || methods.length === 0) return state
+  state.evaluationMethods = methods.filter(m => m.isEnabled !== false).map(m => m.methodKey as EvalRuleMethodKey)
+  state.disabledEvaluationMethods = methods.filter(m => m.isEnabled === false).map(m => m.methodKey as EvalRuleMethodKey)
   methods.forEach(m => {
     state.methodWeights[m.methodKey] = m.weight
     state.methodEvalObjects[m.methodKey] = (m.evalObject as EvalObjectType) || "individual"
@@ -1313,7 +1320,12 @@ export function evalRuleConfigToMethods(config: EvalRuleConfig): EvalRuleMethodI
     homework: "homeworkRubricId",
   }
 
-  return config.evaluationMethods.map((mk) => {
+  const allMethodKeys = Array.from(new Set([
+    ...config.evaluationMethods,
+    ...(config.disabledEvaluationMethods || []),
+  ]))
+
+  return allMethodKeys.map((mk) => {
     const fromLocalEvalPoint = (p: EvalRulePoint): EvalRulePointInput => ({
       name: p.name,
       description: p.desc || null,
@@ -1359,6 +1371,7 @@ export function evalRuleConfigToMethods(config: EvalRuleConfig): EvalRuleMethodI
       scoreType,
       evalSubjects: config.methodEvalSubjects[mk] || config.evalSubjects || [],
       rubricTemplateId: rubricId || null,
+      isEnabled: config.evaluationMethods.includes(mk),
       evalPoints,
       reviewSteps: mk === "review" ? (config.reviewSteps || []) : [],
       resourceConfig,
@@ -1384,19 +1397,18 @@ export function mergeEvalRuleMethods(
   nextMethods: EvalRuleMethodKey[]
 ): EvalRuleConfig {
   const currentMethods = new Set(config.evaluationMethods)
+  const currentDisabled = new Set(config.disabledEvaluationMethods || [])
   const nextMethodsSet = new Set(nextMethods)
-  const added = nextMethods.filter(m => !currentMethods.has(m))
+  const added = nextMethods.filter(m => !currentMethods.has(m) && !currentDisabled.has(m))
   const removed = config.evaluationMethods.filter(m => !nextMethodsSet.has(m))
+  const reenabled = (config.disabledEvaluationMethods || []).filter(m => nextMethodsSet.has(m))
 
   const next = clone(config)
   next.evaluationMethods = nextMethods
+  next.disabledEvaluationMethods = (config.disabledEvaluationMethods || []).filter(m => !nextMethodsSet.has(m))
 
-  // 删除已移除的方式数据
-  removed.forEach(m => {
-    delete next.methodWeights[m]
-    delete next.methodEvalObjects[m]
-    delete next.methodEvalSubjects[m]
-  })
+  // 取消勾选的方式数据保留在 disabledEvaluationMethods 中，不删除
+  // 重新勾选时直接恢复已有数据，无需额外处理
 
   // 新增方式赋予默认权重（从剩余权重中分配）
   if (added.length > 0) {

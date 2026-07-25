@@ -208,7 +208,7 @@ export default function SceneLearnPage() {
     if (!activeTaskId) return
     setEvalMethods([])
     taskEvaluationApi.listMethods(activeTaskId)
-      .then((res) => setEvalMethods(res.methods || []))
+      .then((res) => setEvalMethods((res.methods || []).filter((m: TaskEvaluationMethod) => m.isEnabled !== false)))
       .catch(() => setEvalMethods([]))
   }, [activeTaskId])
 

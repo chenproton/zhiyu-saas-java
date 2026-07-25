@@ -38,6 +38,7 @@ type TaskEvaluationMethodInput struct {
 	RubricTemplateID *string         `json:"rubricTemplateId,omitempty"`
 	ResourceConfig   json.RawMessage `json:"resourceConfig,omitempty"`
 	Version          int             `json:"version"`
+	IsEnabled        bool            `json:"isEnabled"`
 	EvalPoints       []EvalPointInput `json:"evalPoints,omitempty"`
 	ReviewSteps      []ReviewStepInput `json:"reviewSteps,omitempty"`
 }
@@ -136,49 +137,77 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 	}
 	defer tx.Rollback(r.Context())
 
-	_, err = tx.Exec(r.Context(), `DELETE FROM task_evaluation_methods WHERE task_id = $1 AND tenant_id = $2`, taskID, tenantID)
+	// Soft-delete all methods for this task first. Incoming methods will be re-enabled.
+	_, err = tx.Exec(r.Context(), `
+		UPDATE task_evaluation_methods SET is_enabled = false
+		WHERE task_id = $1 AND tenant_id = $2
+	`, taskID, tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to clear existing methods")
+		respondError(w, http.StatusInternalServerError, "failed to disable existing methods")
 		return
 	}
 
+	newVersion := req.Version + 1
 	for _, m := range req.Methods {
 		evalSubjects := jsonRawMessageToJSONSlice(m.EvalSubjects)
 		resourceConfig := jsonRawMessageToJSONMap(m.ResourceConfig)
 
 		var configID string
 		err := tx.QueryRow(r.Context(), `
-			INSERT INTO task_evaluation_methods (tenant_id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config, version)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			INSERT INTO task_evaluation_methods (tenant_id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config, version, is_enabled)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			ON CONFLICT (task_id, method_key) DO UPDATE SET
+				weight = EXCLUDED.weight,
+				eval_object = EXCLUDED.eval_object,
+				score_type = EXCLUDED.score_type,
+				eval_subjects = EXCLUDED.eval_subjects,
+				rubric_template_id = EXCLUDED.rubric_template_id,
+				resource_config = EXCLUDED.resource_config,
+				version = EXCLUDED.version,
+				is_enabled = EXCLUDED.is_enabled
 			RETURNING id
-		`, tenantID, taskID, m.MethodKey, m.Weight, m.EvalObject, m.ScoreType, evalSubjects, m.RubricTemplateID, resourceConfig, req.Version+1).Scan(&configID)
+		`, tenantID, taskID, m.MethodKey, m.Weight, m.EvalObject, m.ScoreType, evalSubjects, m.RubricTemplateID, resourceConfig, newVersion, m.IsEnabled).Scan(&configID)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to insert evaluation method")
+			respondError(w, http.StatusInternalServerError, "failed to upsert evaluation method")
 			return
 		}
 
-		for _, ep := range m.EvalPoints {
-			gradeMapping := jsonRawMessageToJSONSlice(ep.GradeMapping)
-			_, err := tx.Exec(r.Context(), `
-				INSERT INTO task_eval_points (tenant_id, config_id, name, description, sub_type, types, weight, scoring_method, grade_mapping, knowledge_point_ids, ability_point_ids, sort_order)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-			`, tenantID, configID, ep.Name, ep.Description, ep.SubType, coalesceStringSlice(ep.Types),
-				ep.Weight, ep.ScoringMethod, gradeMapping,
-				coalesceStringSlice(ep.KnowledgePointIDs), coalesceStringSlice(ep.AbilityPointIDs), ep.SortOrder)
+		// Only rewrite eval points / review steps for enabled methods.
+		// Disabled methods keep their existing children so they can be restored later.
+		if m.IsEnabled {
+			_, err = tx.Exec(r.Context(), `DELETE FROM task_eval_points WHERE config_id = $1`, configID)
 			if err != nil {
-				respondError(w, http.StatusInternalServerError, "failed to insert eval point")
+				respondError(w, http.StatusInternalServerError, "failed to clear eval points")
 				return
 			}
-		}
+			for _, ep := range m.EvalPoints {
+				gradeMapping := jsonRawMessageToJSONSlice(ep.GradeMapping)
+				_, err := tx.Exec(r.Context(), `
+					INSERT INTO task_eval_points (tenant_id, config_id, name, description, sub_type, types, weight, scoring_method, grade_mapping, knowledge_point_ids, ability_point_ids, sort_order)
+					VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+				`, tenantID, configID, ep.Name, ep.Description, ep.SubType, coalesceStringSlice(ep.Types),
+					ep.Weight, ep.ScoringMethod, gradeMapping,
+					coalesceStringSlice(ep.KnowledgePointIDs), coalesceStringSlice(ep.AbilityPointIDs), ep.SortOrder)
+				if err != nil {
+					respondError(w, http.StatusInternalServerError, "failed to insert eval point")
+					return
+				}
+			}
 
-		for _, rs := range m.ReviewSteps {
-			_, err := tx.Exec(r.Context(), `
-				INSERT INTO task_review_steps (tenant_id, config_id, label, description, enabled, subject_type, weight, sort_order)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-			`, tenantID, configID, rs.Label, rs.Description, rs.Enabled, rs.SubjectType, rs.Weight, rs.SortOrder)
+			_, err = tx.Exec(r.Context(), `DELETE FROM task_review_steps WHERE config_id = $1`, configID)
 			if err != nil {
-				respondError(w, http.StatusInternalServerError, "failed to insert review step")
+				respondError(w, http.StatusInternalServerError, "failed to clear review steps")
 				return
+			}
+			for _, rs := range m.ReviewSteps {
+				_, err := tx.Exec(r.Context(), `
+					INSERT INTO task_review_steps (tenant_id, config_id, label, description, enabled, subject_type, weight, sort_order)
+					VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+				`, tenantID, configID, rs.Label, rs.Description, rs.Enabled, rs.SubjectType, rs.Weight, rs.SortOrder)
+				if err != nil {
+					respondError(w, http.StatusInternalServerError, "failed to insert review step")
+					return
+				}
 			}
 		}
 	}
@@ -243,12 +272,14 @@ func (h *TaskEvaluationHandler) ListTemplates(w http.ResponseWriter, r *http.Req
 		argIdx++
 	}
 
+	where = append(where, "is_deleted = false")
+
 	countQuery := "SELECT COUNT(*) FROM rubric_templates WHERE " + strings.Join(where, " AND ")
 	var total int
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT id, tenant_id, name, mode, types, description, data, created_at, updated_at
+		SELECT id, tenant_id, name, mode, types, description, data, is_deleted, created_at, updated_at
 		FROM rubric_templates
 		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY updated_at DESC
@@ -405,7 +436,10 @@ func (h *TaskEvaluationHandler) DeleteTemplate(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	_, err = h.DB.Exec(r.Context(), `DELETE FROM rubric_templates WHERE id = $1`, id)
+	_, err = h.DB.Exec(r.Context(), `
+		UPDATE rubric_templates SET is_deleted = true, updated_at = NOW()
+		WHERE id = $1
+	`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete rubric template")
 		return
@@ -415,7 +449,7 @@ func (h *TaskEvaluationHandler) DeleteTemplate(w http.ResponseWriter, r *http.Re
 
 func (h *TaskEvaluationHandler) fetchTaskMethods(ctx context.Context, taskID, tenantID string) ([]domain.TaskEvaluationMethod, error) {
 	rows, err := h.DB.Query(ctx, `
-		SELECT id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config, version
+		SELECT id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config, version, is_enabled
 		FROM task_evaluation_methods
 		WHERE task_id = $1 AND tenant_id = $2
 		ORDER BY method_key
@@ -429,7 +463,7 @@ func (h *TaskEvaluationHandler) fetchTaskMethods(ctx context.Context, taskID, te
 	configIDs := make([]string, 0)
 	for rows.Next() {
 		var m domain.TaskEvaluationMethod
-		if err := rows.Scan(&m.ID, &m.TaskID, &m.MethodKey, &m.Weight, &m.EvalObject, &m.ScoreType, &m.EvalSubjects, &m.RubricTemplateID, &m.ResourceConfig, &m.Version); err != nil {
+		if err := rows.Scan(&m.ID, &m.TaskID, &m.MethodKey, &m.Weight, &m.EvalObject, &m.ScoreType, &m.EvalSubjects, &m.RubricTemplateID, &m.ResourceConfig, &m.Version, &m.IsEnabled); err != nil {
 			return nil, err
 		}
 		methods = append(methods, m)
@@ -490,9 +524,9 @@ func (h *TaskEvaluationHandler) fetchTaskMethods(ctx context.Context, taskID, te
 func (h *TaskEvaluationHandler) fetchRubricTemplate(ctx context.Context, id string) (*domain.RubricTemplate, error) {
 	var t domain.RubricTemplate
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, tenant_id, name, mode, types, description, data, created_at, updated_at
+		SELECT id, tenant_id, name, mode, types, description, data, is_deleted, created_at, updated_at
 		FROM rubric_templates WHERE id = $1
-	`, id).Scan(&t.ID, &t.TenantID, &t.Name, &t.Mode, &t.Types, &t.Description, &t.Data, &t.CreatedAt, &t.UpdatedAt)
+	`, id).Scan(&t.ID, &t.TenantID, &t.Name, &t.Mode, &t.Types, &t.Description, &t.Data, &t.IsDeleted, &t.CreatedAt, &t.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -503,7 +537,7 @@ func scanRubricTemplates(rows pgx.Rows) ([]domain.RubricTemplate, error) {
 	items := make([]domain.RubricTemplate, 0)
 	for rows.Next() {
 		var t domain.RubricTemplate
-		if err := rows.Scan(&t.ID, &t.TenantID, &t.Name, &t.Mode, &t.Types, &t.Description, &t.Data, &t.CreatedAt, &t.UpdatedAt); err != nil {
+		if err := rows.Scan(&t.ID, &t.TenantID, &t.Name, &t.Mode, &t.Types, &t.Description, &t.Data, &t.IsDeleted, &t.CreatedAt, &t.UpdatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, t)

@@ -94,6 +94,7 @@ export interface RubricTemplate {
   types?: string[]
   description?: string
   data: Record<string, any>
+  isDeleted?: boolean
   createdAt: string
   updatedAt: string
 }
@@ -109,6 +110,7 @@ export interface TaskEvaluationMethod {
   rubricTemplateId?: string
   resourceConfig: Record<string, any>
   version: number
+  isEnabled: boolean
   evalPoints: TaskEvalPoint[]
   reviewSteps: TaskReviewStep[]
 }

@@ -69,6 +69,7 @@ type RubricTemplate struct {
 	Types       []string  `json:"types,omitempty"`
 	Description *string   `json:"description,omitempty"`
 	Data        JSONMap   `json:"data"`
+	IsDeleted   bool      `json:"isDeleted"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 }
@@ -84,6 +85,7 @@ type TaskEvaluationMethod struct {
 	RubricTemplateID *string          `json:"rubricTemplateId,omitempty"`
 	ResourceConfig   JSONMap          `json:"resourceConfig"`
 	Version          int              `json:"version"`
+	IsEnabled        bool             `json:"isEnabled"`
 	EvalPoints       []TaskEvalPoint  `json:"evalPoints,omitempty"`
 	ReviewSteps      []TaskReviewStep `json:"reviewSteps,omitempty"`
 }

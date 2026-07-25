@@ -72,7 +72,7 @@ export default function EvaluatePage() {
         ])
         setScenario(sc)
         setTask(t)
-        setMethods(mRes.methods || [])
+        setMethods((mRes.methods || []).filter((m: TaskEvaluationMethod) => m.isEnabled !== false))
         const existing = (rRes.items || []).find((r: SceneEvaluationResult) => r.methodKey === methodKey)
         if (existing) {
           setResult(existing)

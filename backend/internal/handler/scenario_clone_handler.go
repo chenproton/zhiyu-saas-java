@@ -251,7 +251,7 @@ func (h *ScenarioCloneHandler) cloneTaskDeliverables(ctx context.Context, tx pgx
 
 func (h *ScenarioCloneHandler) cloneTaskEvaluationMethods(ctx context.Context, tx pgx.Tx, oldTaskID, newTaskID, tenantID string) error {
 	rows, err := tx.Query(ctx, `
-		SELECT id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config
+		SELECT id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config, version, is_enabled
 		FROM task_evaluation_methods WHERE task_id = $1 AND tenant_id = $2
 	`, oldTaskID, tenantID)
 	if err != nil {
@@ -267,11 +267,13 @@ func (h *ScenarioCloneHandler) cloneTaskEvaluationMethods(ctx context.Context, t
 		evalSubjects           []byte
 		rubricTemplateID       *string
 		resourceConfig         []byte
+		version                int
+		isEnabled              bool
 	}
 	var methodData []methodRow
 	for rows.Next() {
 		var mr methodRow
-		if err := rows.Scan(&mr.oldConfigID, &mr.methodKey, &mr.weight, &mr.evalObject, &mr.scoreType, &mr.evalSubjects, &mr.rubricTemplateID, &mr.resourceConfig); err != nil {
+		if err := rows.Scan(&mr.oldConfigID, &mr.methodKey, &mr.weight, &mr.evalObject, &mr.scoreType, &mr.evalSubjects, &mr.rubricTemplateID, &mr.resourceConfig, &mr.version, &mr.isEnabled); err != nil {
 			continue
 		}
 		methodData = append(methodData, mr)
@@ -280,9 +282,9 @@ func (h *ScenarioCloneHandler) cloneTaskEvaluationMethods(ctx context.Context, t
 	for _, mr := range methodData {
 		newConfigID := uuid.NewString()
 		_, err := tx.Exec(ctx, `
-			INSERT INTO task_evaluation_methods (id, tenant_id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-		`, newConfigID, tenantID, newTaskID, mr.methodKey, mr.weight, mr.evalObject, mr.scoreType, mr.evalSubjects, mr.rubricTemplateID, mr.resourceConfig)
+			INSERT INTO task_evaluation_methods (id, tenant_id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config, version, is_enabled)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		`, newConfigID, tenantID, newTaskID, mr.methodKey, mr.weight, mr.evalObject, mr.scoreType, mr.evalSubjects, mr.rubricTemplateID, mr.resourceConfig, mr.version, mr.isEnabled)
 		if err != nil {
 			return err
 		}
