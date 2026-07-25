@@ -969,6 +969,12 @@ function EvalMethodSubmitDialog({
                     {resourceConfig.deadlineDays} 天
                   </p>
                 )}
+                {resourceConfig.allowResubmit !== undefined && (
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium text-gray-700">允许重新提交：</span>
+                    {resourceConfig.allowResubmit ? "是" : "否"}
+                  </p>
+                )}
               </div>
 
               {/* 评审流程 */}

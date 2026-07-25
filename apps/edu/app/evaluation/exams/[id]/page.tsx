@@ -126,7 +126,7 @@ export default function ExamComposerPage() {
     )
   }
 
-  const canEdit = !isPreview && ['draft', 'rejected', 'approved', 'published'].includes(exam.status)
+  const canEdit = !isPreview && ['draft', 'rejected', 'approved', 'published', 'archived'].includes(exam.status)
   const canPublish = !isPreview && canPerformAction(exam.status, 'publish')
 
   const handleExamUpdate = (data: ExamFormData) => {
