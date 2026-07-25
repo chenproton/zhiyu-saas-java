@@ -653,7 +653,7 @@ func (h *TaskEvaluationHandler) ensureExamUsageForMethod(
 	}
 
 	if usageID == "" {
-		id, err := h.createTempExamUsage(ctx, tx, tenantID, examID, taskID)
+		id, err := h.createTempExamUsage(ctx, tx, tenantID, examID, taskID, creatorID)
 		if err != nil {
 			return resourceConfig, err
 		}
@@ -752,12 +752,16 @@ func (h *TaskEvaluationHandler) ensureExamQuestions(ctx context.Context, tx pgx.
 	return nil
 }
 
-func (h *TaskEvaluationHandler) createTempExamUsage(ctx context.Context, tx pgx.Tx, tenantID, examID, taskID string) (string, error) {
+func (h *TaskEvaluationHandler) createTempExamUsage(ctx context.Context, tx pgx.Tx, tenantID, examID, taskID, creatorID string) (string, error) {
 	id := uuid.NewString()
+	var creator interface{}
+	if creatorID != "" {
+		creator = creatorID
+	}
 	_, err := tx.Exec(ctx, `
 		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id)
 		VALUES ($1, $2, $3, $4, NULL, NULL, NULL, NULL, 'task', $5, 'draft', $6)
-	`, id, tenantID, examID, fmt.Sprintf("场景任务-%s", taskID), []string{taskID}, "")
+	`, id, tenantID, examID, fmt.Sprintf("场景任务-%s", taskID), []string{taskID}, creator)
 	if err != nil {
 		return "", fmt.Errorf("create temp exam usage: %w", err)
 	}
