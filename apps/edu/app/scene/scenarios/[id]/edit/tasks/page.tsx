@@ -689,20 +689,61 @@ function MethodDialogContent({
     "reviewRubricId"
   const currentRubricId = (state as any)[rubricIdField] as string | null
   const view = methodDialogViews[methodKey] || "edit"
-  const setView = (v: "list" | "edit" | "template") => setMethodDialogViews(prev => ({ ...prev, [methodKey]: v }))
+  const setView = (v: "list" | "edit") => setMethodDialogViews(prev => ({ ...prev, [methodKey]: v }))
+
+  const manualDraftLoadedForRef = useRef<string | null>(null)
+  useEffect(() => {
+    const loadKey = `${methodKey}:${view}:${currentRubricId || ""}`
+    if (view === "edit" && !currentRubricId && manualDraftLoadedForRef.current !== loadKey) {
+      manualDraftLoadedForRef.current = loadKey
+      const savedScoreRuleItems = state.methodResourceConfigs[methodKey]?.scoreRuleItems || []
+      const hasManualRubric = info.points.length > 0
+      const hasManualScoreRule = savedScoreRuleItems.length > 0
+      if (hasManualRubric || hasManualScoreRule) {
+        const mode = methodKey === "homework"
+          ? "score_rule"
+          : (hasManualScoreRule ? "score_rule" : "rubric")
+        setLocalDraft({
+          name: "",
+          mode,
+          types: [],
+          scoreRuleItems: savedScoreRuleItems.map((it: ScoreRuleItem) => ({ ...it }))
+        })
+      }
+    }
+  }, [view, currentRubricId, methodKey, info.field, info.points.length, state.methodResourceConfigs])
 
   const currentScheme = rubricLibrary.find(s => s.id === currentRubricId)
 
   const applyScheme = (schemeId: string) => {
     const scheme = rubricLibrary.find(s => s.id === schemeId)
     if (!scheme) return
-    updateState({ [rubricIdField]: schemeId } as any)
+    updateState({
+      [rubricIdField]: schemeId,
+      methodResourceConfigs: {
+        ...state.methodResourceConfigs,
+        [methodKey]: {
+          ...state.methodResourceConfigs[methodKey],
+          scoreRuleItems: []
+        }
+      }
+    } as any)
     if (scheme.mode === "rubric") {
       setEvalPoints(info.field, scheme.points.map(p => ({ ...p, id: `ep-${Date.now()}-${Math.random().toString(36).slice(2, 5)}` })))
     } else {
-      setEvalPoints(info.field, [])
+      setEvalPoints(info.field, (scheme.scoreRuleItems || []).map(it => ({
+        id: it.id,
+        name: it.name,
+        desc: it.rule,
+        subType: undefined,
+        types: [],
+        knowledgePointIds: [],
+        abilityPointIds: [],
+        scoringMethod: "score" as const,
+        gradeMapping: [],
+        weight: it.weight,
+      })))
     }
-    setEditingRubricId(schemeId)
   }
 
   const enterEdit = (schemeId: string | null) => {
@@ -713,8 +754,18 @@ function MethodDialogContent({
         setLocalDraft({ name: scheme.name, mode: scheme.mode, types: scheme.types, scoreRuleItems: scheme.scoreRuleItems || [] })
       }
     } else {
+      updateState({ [rubricIdField]: null } as any)
       setEvalPoints(info.field, [])
-      setLocalDraft({ name: "", mode: "rubric", types: [], scoreRuleItems: [] })
+      updateState({
+        methodResourceConfigs: {
+          ...state.methodResourceConfigs,
+          [methodKey]: {
+            ...state.methodResourceConfigs[methodKey],
+            scoreRuleItems: []
+          }
+        }
+      })
+      setLocalDraft({ name: "", mode: methodKey === "homework" ? "score_rule" : "rubric", types: [], scoreRuleItems: [] })
     }
     setEditingRubricId(schemeId)
     setView("edit")
@@ -806,8 +857,8 @@ function MethodDialogContent({
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-end mb-2">
-          <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { setView("template"); setEditingRubricId(null); }}>
-            <BookOpen className="h-3.5 w-3.5 mr-1" />选择评价标准模板覆盖
+          <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { setView("list"); setEditingRubricId(null); }}>
+            <ChevronLeft className="h-3.5 w-3.5 mr-1" />返回模板列表
           </Button>
         </div>
         <div className="border border-border rounded-xl p-5 bg-white shadow-sm">
@@ -1106,23 +1157,39 @@ function MethodDialogContent({
           </div>
         )}
         <div className="flex items-center gap-2">
-          <Button size="sm" className="text-xs h-8" onClick={async () => {
-            if (editingRubricId) {
-              await saveRubricToLibrary(editingRubricId, {
-                name: draftScheme.name,
-                types: draftScheme.types,
-                desc: "",
-                mode: draftScheme.mode,
-                scoreRuleItems: draftScheme.mode === "score_rule" ? draftScheme.scoreRuleItems : undefined,
-              })
-              if (draftScheme.mode === "rubric") {
-                setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, points: info.points.map(p => ({ ...p })) } : s))
+          <Button size="sm" className="text-xs h-8" onClick={() => {
+            const updates: any = { [rubricIdField]: null }
+            if (draftScheme.mode === "score_rule") {
+              const items = (draftScheme.scoreRuleItems || []).map((it: ScoreRuleItem) => ({ ...it }))
+              updates.methodResourceConfigs = {
+                ...state.methodResourceConfigs,
+                [methodKey]: {
+                  ...state.methodResourceConfigs[methodKey],
+                  scoreRuleItems: items
+                }
               }
+              setEvalPoints(info.field, items.map((it: ScoreRuleItem) => ({
+                id: it.id,
+                name: it.name,
+                desc: it.rule,
+                subType: undefined,
+                types: [],
+                knowledgePointIds: [],
+                abilityPointIds: [],
+                scoringMethod: "score" as const,
+                gradeMapping: [],
+                weight: it.weight,
+              })))
             } else {
-              await saveRubricToLibrary(null, { name: draftScheme.name || "新建评价标准", types: draftScheme.types, desc: "", mode: draftScheme.mode, scoreRuleItems: draftScheme.scoreRuleItems })
+              updates.methodResourceConfigs = {
+                ...state.methodResourceConfigs,
+                [methodKey]: {
+                  ...state.methodResourceConfigs[methodKey],
+                  scoreRuleItems: []
+                }
+              }
             }
-            setView("list")
-            setEditingRubricId(null)
+            updateState(updates)
           }}>
             保存
           </Button>
@@ -1190,11 +1257,11 @@ function MethodDialogContent({
             </div>
             <DialogFooter>
               <Button variant="outline" size="sm" className="text-xs" onClick={() => setSaveTemplateDialogOpen(false)}>取消</Button>
-              <Button size="sm" className="text-xs" onClick={() => {
+              <Button size="sm" className="text-xs" onClick={async () => {
                 if (saveTemplateMode === "new") {
-                  saveRubricToLibrary(null, { name: draftScheme.name || "新建评价标准", types: draftScheme.types, desc: "", mode: draftScheme.mode, scoreRuleItems: draftScheme.scoreRuleItems })
+                  await saveRubricToLibrary(null, { name: draftScheme.name || "新建评价标准", types: draftScheme.types, desc: "", mode: draftScheme.mode, scoreRuleItems: draftScheme.scoreRuleItems })
                 } else if (selectedReplaceTemplateId) {
-                  saveRubricToLibrary(selectedReplaceTemplateId, {
+                  await saveRubricToLibrary(selectedReplaceTemplateId, {
                     name: draftScheme.name,
                     types: draftScheme.types,
                     desc: "",
@@ -1203,6 +1270,29 @@ function MethodDialogContent({
                   })
                   setRubricLibrary(prev => prev.map(s => s.id === selectedReplaceTemplateId ? { ...s, points: draftScheme.mode === "rubric" ? info.points.map(p => ({ ...p })) : s.points, mode: draftScheme.mode, scoreRuleItems: draftScheme.scoreRuleItems || [] } : s))
                 }
+                if (draftScheme.mode === "score_rule") {
+                  setEvalPoints(info.field, (draftScheme.scoreRuleItems || []).map((it: ScoreRuleItem) => ({
+                    id: it.id,
+                    name: it.name,
+                    desc: it.rule,
+                    subType: undefined,
+                    types: [],
+                    knowledgePointIds: [],
+                    abilityPointIds: [],
+                    scoringMethod: "score" as const,
+                    gradeMapping: [],
+                    weight: it.weight,
+                  })))
+                }
+                updateState({
+                  methodResourceConfigs: {
+                    ...state.methodResourceConfigs,
+                    [methodKey]: {
+                      ...state.methodResourceConfigs[methodKey],
+                      scoreRuleItems: []
+                    }
+                  }
+                } as any)
                 setSaveTemplateDialogOpen(false)
                 setView("list")
                 setEditingRubricId(null)
@@ -1275,60 +1365,11 @@ function MethodDialogContent({
     )
   }
 
-  if (view === "template") {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setView("edit")}>
-            <ChevronLeft className="h-3.5 w-3.5 mr-1" />返回评价标准编辑
-          </Button>
-        </div>
-        <p className="text-sm font-medium">选择评价标准模板进行覆盖</p>
-        <div className="grid grid-cols-1 gap-3">
-          {rubricLibrary.filter(s => !s.isDeleted).map(scheme => (
-            <div
-              key={scheme.id}
-              className="p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer"
-              onClick={() => {
-                applyScheme(scheme.id)
-                setView("edit")
-              }}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <p className="text-sm font-semibold">{scheme.name}</p>
-                    <Badge variant="outline" className={cn("text-[10px]", scheme.mode === "rubric" ? "bg-purple-50 text-purple-600 border-purple-200" : "bg-blue-50 text-blue-600 border-blue-200")}>
-                      {scheme.mode === "rubric" ? "评价量规" : "评分规则"}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-gray-400 mb-2">{scheme.desc}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {scheme.types.map(type => (
-                      <Badge key={type} variant="outline" className={cn("text-[10px]", evalSubTypeColors[type])}>{evalSubTypeLabels[type]}</Badge>
-                    ))}
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1.5">{scheme.mode === "rubric" ? `${scheme.points.length} 个评价点` : `${scheme.scoreRuleItems?.length || 0} 个评价项`}</p>
-                </div>
-                <Button size="sm" className="h-7 text-[11px] px-2.5 shrink-0 mt-0.5" onClick={(e) => { e.stopPropagation(); applyScheme(scheme.id); setView("edit"); }}>
-                  使用此模板
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium">选择评价标准方案</p>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { setView("template"); setEditingRubricId(null); }}>
-            <BookOpen className="h-3.5 w-3.5 mr-1" />选择评价标准模板覆盖
-          </Button>
           <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => enterEdit(null)}>
             <Plus className="h-3.5 w-3.5 mr-1" />添加评价标准
           </Button>
@@ -1348,7 +1389,16 @@ function MethodDialogContent({
               )}
               onClick={() => {
                 if (isSelected) {
-                  updateState({ [rubricIdField]: null } as any)
+                  updateState({
+                    [rubricIdField]: null,
+                    methodResourceConfigs: {
+                      ...state.methodResourceConfigs,
+                      [methodKey]: {
+                        ...state.methodResourceConfigs[methodKey],
+                        scoreRuleItems: []
+                      }
+                    }
+                  } as any)
                   setEvalPoints(info.field, [])
                 } else {
                   applyScheme(scheme.id)
@@ -1385,7 +1435,16 @@ function MethodDialogContent({
                     onClick={(e) => {
                       e.stopPropagation()
                       if (isSelected) {
-                        updateState({ [rubricIdField]: null } as any)
+                        updateState({
+                          [rubricIdField]: null,
+                          methodResourceConfigs: {
+                            ...state.methodResourceConfigs,
+                            [methodKey]: {
+                              ...state.methodResourceConfigs[methodKey],
+                              scoreRuleItems: []
+                            }
+                          }
+                        } as any)
                         setEvalPoints(info.field, [])
                       } else {
                         applyScheme(scheme.id)
@@ -1393,9 +1452,6 @@ function MethodDialogContent({
                     }}
                   >
                     {isSelected ? "取消选用" : "选用"}
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2.5" onClick={(e) => { e.stopPropagation(); enterEdit(scheme.id); }}>
-                    编辑
                   </Button>
                 </div>
               </div>
@@ -1422,8 +1478,8 @@ interface MethodDialogCtx {
   setRubricLibrary: React.Dispatch<React.SetStateAction<RubricScheme[]>>
   editingRubricId: string | null
   setEditingRubricId: (id: string | null) => void
-  methodDialogViews: Record<string, "list" | "edit" | "template">
-  setMethodDialogViews: React.Dispatch<React.SetStateAction<Record<string, "list" | "edit" | "template">>>
+  methodDialogViews: Record<string, "list" | "edit">
+  setMethodDialogViews: React.Dispatch<React.SetStateAction<Record<string, "list" | "edit">>>
   openRubricKpDialog: (pointId: string, field: EvalPointField) => void
   openRubricAbDialog: (pointId: string, field: EvalPointField) => void
   setEvalPoints: (field: EvalPointField, points: EvalPoint[]) => void
@@ -3753,7 +3809,7 @@ function EditCardDialog({
   const [assessActiveTab, setAssessActiveTab] = useState<string | null>(state.evaluationMethods[0] || null)
 
   // For method dialog view mode (scheme list / scheme edit) — persisted across remounts
-  const [methodDialogViews, setMethodDialogViews] = useState<Record<string, "list" | "edit" | "template">>({})
+  const [methodDialogViews, setMethodDialogViews] = useState<Record<string, "list" | "edit">>({})
   const [newPointName, setNewPointName] = useState("")
 
   const [editingRubricId, setEditingRubricId] = useState<string | null>(null)
@@ -7454,6 +7510,22 @@ function EditCardDialog({
         const openDialog = (type: "object" | "subject" | "resource" | "method", methodKey: string) => {
           setErDialogMethod(methodKey)
           setErDialogOpen(type)
+          if (type === "method") {
+            const rubricIdField = getMethodRubricIdField(methodKey)
+            const currentRubricId = rubricIdField ? (state as any)[rubricIdField] as string | null : null
+            const info = getMethodEvalInfo(methodKey)
+            const hasManualRubric = (state as any)[info.field]?.length > 0
+            const hasManualScoreRule = state.methodResourceConfigs[methodKey]?.scoreRuleItems?.length > 0
+            const hasManualRules = methodKey === "homework" ? hasManualScoreRule : (hasManualRubric || hasManualScoreRule)
+            if (currentRubricId) {
+              setMethodDialogViews(prev => ({ ...prev, [methodKey]: "list" }))
+            } else if (hasManualRules) {
+              setMethodDialogViews(prev => ({ ...prev, [methodKey]: "edit" }))
+            } else {
+              setMethodDialogViews(prev => ({ ...prev, [methodKey]: "list" }))
+            }
+            setEditingRubricId(null)
+          }
         }
 
         const ObjectDialogContent = ({ methodKey }: { methodKey: string }) => {
@@ -7786,13 +7858,33 @@ function EditCardDialog({
           const rubricIdField = getMethodRubricIdField(methodKey)
           const currentRubricId = rubricIdField ? (state as any)[rubricIdField] as string | null : null
           const currentScheme = currentRubricId ? rubricLibrary.find(s => s.id === currentRubricId) : null
+          const manualScoreRuleItems = state.methodResourceConfigs[methodKey]?.scoreRuleItems || []
+          const hasManualRubric = info.points.length > 0
+          const hasManualScoreRule = manualScoreRuleItems.length > 0
+          const hasManualRules = methodKey === "homework" ? hasManualScoreRule : (hasManualRubric || hasManualScoreRule)
 
-          const isScoreRule = currentScheme?.mode === "score_rule"
-          const evalCount = isScoreRule
-            ? (currentScheme.scoreRuleItems?.length || 0)
-            : info.points.length
-          const evalLabel = isScoreRule ? "评价项" : "评价点"
-          const badgeUnit = isScoreRule ? "项" : "点"
+          let title: string
+          let evalCount: number
+          let evalLabel: string
+          let badgeUnit: string
+
+          if (currentScheme) {
+            title = `使用模板：${currentScheme.name}`
+            evalCount = currentScheme.mode === "score_rule" ? (currentScheme.scoreRuleItems?.length || 0) : currentScheme.points.length
+            evalLabel = currentScheme.mode === "score_rule" ? "评价项" : "评价点"
+            badgeUnit = currentScheme.mode === "score_rule" ? "项" : "点"
+          } else if (hasManualRules) {
+            title = "自定义评价标准"
+            const isScoreRule = hasManualScoreRule
+            evalCount = isScoreRule ? manualScoreRuleItems.length : info.points.length
+            evalLabel = isScoreRule ? "评价项" : "评价点"
+            badgeUnit = isScoreRule ? "项" : "点"
+          } else {
+            title = "未配置评价点"
+            evalCount = 0
+            evalLabel = "评价点"
+            badgeUnit = "点"
+          }
 
           const subTypeCount = Object.entries(
             info.points.reduce((acc, p) => {
@@ -7810,10 +7902,10 @@ function EditCardDialog({
                 {evalCount > 0 && <Badge variant="outline" className="text-[10px]">{evalCount} {badgeUnit}</Badge>}
               </div>
               <p className="text-sm font-semibold truncate">
-                {evalCount === 0 ? `未配置${evalLabel}` : `${evalCount} 个${evalLabel}`}
+                {title}
               </p>
               <p className="text-xs text-gray-400 truncate mt-0.5">
-                {subTypeCount.length === 0 ? "点击配置" : subTypeCount.join(" · ")}
+                {currentScheme ? `${evalCount} 个${evalLabel}` : (subTypeCount.length === 0 ? "点击配置" : subTypeCount.join(" · "))}
               </p>
             </button>
           )
