@@ -886,32 +886,15 @@ func (h *TemplateHandler) generateStudentTemplate(ctx context.Context, tenantID 
 
 	s1, _ := f.NewSheet("学生列表")
 	f.SetActiveSheet(s1)
-	headers := []string{"登录账号(学号) *", "姓名 *", "密码 *", "班级(组织节点名称) *", "专业代码", "状态"}
-	widths := []float64{24, 16, 20, 28, 16, 12}
-	setA1("学生列表", 6, "填写说明：\n* 必填列。\n登录账号(学号)：租户内唯一，已存在则跳过。\n密码：长度至少 8 位，且需同时包含字母和数字。\n班级：须与系统中已存在的组织节点名称完全一致。\n专业代码：填写系统中已存在的专业代码，匹配则关联，不匹配则忽略。\n状态：在籍 / 休学 / 退学 / 毕业 / 结业，默认为在籍。")
+	headers := []string{"登录账号(学号) *", "姓名 *", "密码 *", "班级(组织节点路径) *", "状态"}
+	widths := []float64{24, 16, 20, 42, 12}
+	setA1("学生列表", 5, "填写说明：\n* 必填列。\n登录账号(学号)：租户内唯一，已存在则跳过。\n密码：长度至少 8 位，且需同时包含字母和数字。\n班级(组织节点路径)：支持多级路径，用于精确定位班级。\n  格式示例：学校-学院-班级 或 学校/学院/班级\n  若系统中该班级名称唯一，也可只写班级名称。\n状态：在籍 / 休学 / 退学 / 毕业 / 结业，默认为在籍。")
 	setHdr("学生列表", 2, headers, widths)
 	f.SetPanes("学生列表", &excelize.Panes{Freeze: true, YSplit: 2})
-	f.AutoFilter("学生列表", "A2:F2", []excelize.AutoFilterOptions{})
+	f.AutoFilter("学生列表", "A2:E2", []excelize.AutoFilterOptions{})
 
-	var orgs [][]string
-	rows, _ := h.DB.Query(ctx, `SELECT name FROM organizations WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	for rows.Next() {
-		var n string
-		rows.Scan(&n)
-		orgs = append(orgs, []string{n})
-	}
-	rows.Close()
-	h.addRefSheet(f, "【参考】班级/组织节点", []string{"组织节点名称"}, []float64{36}, "仅作参考，无需编辑修改。学生列表 Sheet「班级」须与本表名称一致。", orgs)
-
-	var majors [][]string
-	mRows, _ := h.DB.Query(ctx, `SELECT code, name FROM majors WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	for mRows.Next() {
-		var c, n string
-		mRows.Scan(&c, &n)
-		majors = append(majors, []string{c, n})
-	}
-	mRows.Close()
-	h.addRefSheet(f, "【参考】专业", []string{"专业代码", "专业名称"}, []float64{18, 32}, "仅作参考，无需编辑修改。学生列表 Sheet「专业代码」须与本表代码一致。", majors)
+	paths := h.queryOrgPaths(ctx, tenantID)
+	h.addRefSheet(f, "【参考】班级/组织节点路径", []string{"组织节点路径"}, []float64{48}, "仅作参考，无需编辑修改。学生列表 Sheet「班级(组织节点路径)」与本表路径一致则可精确定位。", paths)
 
 	return f
 }
@@ -944,22 +927,15 @@ func (h *TemplateHandler) generateTeacherTemplate(ctx context.Context, tenantID 
 
 	s1, _ := f.NewSheet("教师列表")
 	f.SetActiveSheet(s1)
-	headers := []string{"登录账号(工号) *", "姓名 *", "密码 *", "所属组织节点(名称)", "职位(逗号分隔)", "状态"}
-	widths := []float64{24, 16, 20, 28, 28, 12}
-	setA1("教师列表", 6, "填写说明：\n* 必填列。\n登录账号(工号)：租户内唯一，已存在则跳过。\n密码：长度至少 8 位，且需同时包含字母和数字。\n所属组织节点：填写系统中已存在的组织节点名称，匹配则关联，不匹配则忽略。\n职位：多个职位用逗号分隔，须与系统中已存在的职位名称一致，不匹配则忽略。\n状态：在职 / 离职 / 外聘 / 禁用，默认为在职。")
+	headers := []string{"登录账号(工号) *", "姓名 *", "密码 *", "所属组织节点(路径)", "职位(逗号分隔)", "状态"}
+	widths := []float64{24, 16, 20, 42, 28, 12}
+	setA1("教师列表", 6, "填写说明：\n* 必填列。\n登录账号(工号)：租户内唯一，已存在则跳过。\n密码：长度至少 8 位，且需同时包含字母和数字。\n所属组织节点(路径)：支持多级路径，用于精确定位组织节点。\n  格式示例：学校-学院 或 学校/学院\n  若系统中该组织节点名称唯一，也可只写组织节点名称。\n职位：多个职位用逗号分隔，须与系统中已存在的职位名称一致，不匹配则忽略。\n状态：在职 / 离职 / 外聘 / 禁用，默认为在职。")
 	setHdr("教师列表", 2, headers, widths)
 	f.SetPanes("教师列表", &excelize.Panes{Freeze: true, YSplit: 2})
 	f.AutoFilter("教师列表", "A2:F2", []excelize.AutoFilterOptions{})
 
-	var orgs [][]string
-	rows, _ := h.DB.Query(ctx, `SELECT name FROM organizations WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	for rows.Next() {
-		var n string
-		rows.Scan(&n)
-		orgs = append(orgs, []string{n})
-	}
-	rows.Close()
-	h.addRefSheet(f, "【参考】组织节点", []string{"组织节点名称"}, []float64{36}, "仅作参考，无需编辑修改。教师列表 Sheet「所属组织节点」与本表名称一致则关联。", orgs)
+	paths := h.queryOrgPaths(ctx, tenantID)
+	h.addRefSheet(f, "【参考】组织节点路径", []string{"组织节点路径"}, []float64{48}, "仅作参考，无需编辑修改。教师列表 Sheet「所属组织节点(路径)」与本表路径一致则可精确定位。", paths)
 
 	var titles [][]string
 	tRows, _ := h.DB.Query(ctx, `SELECT name FROM staff_titles WHERE tenant_id=$1 ORDER BY name`, tenantID)
@@ -972,6 +948,54 @@ func (h *TemplateHandler) generateTeacherTemplate(ctx context.Context, tenantID 
 	h.addRefSheet(f, "【参考】职位", []string{"职位名称"}, []float64{36}, "仅作参考，无需编辑修改。教师列表 Sheet「职位」与本表名称一致则关联。", titles)
 
 	return f
+}
+
+// queryOrgPaths returns full paths (root -> leaf) for all organization nodes.
+func (h *TemplateHandler) queryOrgPaths(ctx context.Context, tenantID string) [][]string {
+	type org struct {
+		id       string
+		name     string
+		parentID *string
+	}
+	rows, err := h.DB.Query(ctx, `SELECT id, name, parent_id FROM organizations WHERE tenant_id=$1 ORDER BY sort_order, name`, tenantID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	nodeMap := make(map[string]*org)
+	var nodes []*org
+	for rows.Next() {
+		var o org
+		if err := rows.Scan(&o.id, &o.name, &o.parentID); err != nil {
+			continue
+		}
+		cp := o
+		nodeMap[o.id] = &cp
+		nodes = append(nodes, &cp)
+	}
+
+	var buildPath func(id string) string
+	buildPath = func(id string) string {
+		node, ok := nodeMap[id]
+		if !ok {
+			return ""
+		}
+		if node.parentID == nil || *node.parentID == "" {
+			return node.name
+		}
+		parent := buildPath(*node.parentID)
+		if parent == "" {
+			return node.name
+		}
+		return parent + "-" + node.name
+	}
+
+	var paths [][]string
+	for _, n := range nodes {
+		paths = append(paths, []string{buildPath(n.id)})
+	}
+	return paths
 }
 
 func catToChinese(c string) string {

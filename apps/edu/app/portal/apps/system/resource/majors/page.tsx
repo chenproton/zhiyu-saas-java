@@ -208,14 +208,16 @@ export default function MajorsPage() {
           <h1 className="text-xl font-semibold text-foreground">专业管理</h1>
           <p className="mt-1 text-sm text-muted-foreground">管理教育专业，可为专业配置别名并启用/关闭</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
-          <Upload className="h-4 w-4 mr-1" />
-          导入
-        </Button>
-        <Button size="sm" onClick={openCreateDialog}>
-          <Plus className="h-4 w-4 mr-1" />
-          新增专业
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
+            <Upload className="h-4 w-4 mr-1" />
+            导入
+          </Button>
+          <Button size="sm" onClick={openCreateDialog}>
+            <Plus className="h-4 w-4 mr-1" />
+            新增专业
+          </Button>
+        </div>
       </div>
 
       <div className="mb-4">

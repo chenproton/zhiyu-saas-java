@@ -345,7 +345,8 @@ func (h *ResourceImportHandler) doImportOrganizations(ctx context.Context, xlsx 
 }
 
 // Sheet: 学生列表
-// Columns: 登录账号(学号)*, 姓名*, 密码*, 班级(组织节点名称)*, 专业代码, 状态
+// Columns: 登录账号(学号)*, 姓名*, 密码*, 班级(组织节点路径)*, 状态
+// 班级路径示例：学校-学院-班级 或 学校/学院/班级
 func (h *ResourceImportHandler) doImportStudents(ctx context.Context, xlsx *excelize.File, tenantID, _ string, result *resourceImportResult) {
 	rows, err := xlsx.GetRows("学生列表")
 	if err != nil {
@@ -370,9 +371,8 @@ func (h *ResourceImportHandler) doImportStudents(ctx context.Context, xlsx *exce
 		username := strings.TrimSpace(row[0])
 		name := strings.TrimSpace(row[1])
 		password := strings.TrimSpace(row[2])
-		className := strings.TrimSpace(row[3])
-		majorCode := col(row, 4)
-		status := mapUserStatus(col(row, 5), "active")
+		classPath := strings.TrimSpace(row[3])
+		status := mapUserStatus(col(row, 4), "active")
 
 		if !isStrongPassword(password) {
 			result.Failed++
@@ -380,23 +380,11 @@ func (h *ResourceImportHandler) doImportStudents(ctx context.Context, xlsx *exce
 			continue
 		}
 
-		var orgNodeID *string
-		var oid string
-		_ = h.DB.QueryRow(ctx, `SELECT id FROM organizations WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, className).Scan(&oid)
-		if oid == "" {
+		orgNodeID, err := h.findOrgNodeByPath(ctx, tenantID, classPath)
+		if err != nil {
 			result.Failed++
-			result.Errors = append(result.Errors, fmt.Sprintf("学生[%s]的班级[%s]不存在", username, className))
+			result.Errors = append(result.Errors, fmt.Sprintf("学生[%s]的班级[%s]解析失败: %v", username, classPath, err))
 			continue
-		}
-		orgNodeID = &oid
-
-		var majorID *string
-		if majorCode != "" {
-			var mid string
-			_ = h.DB.QueryRow(ctx, `SELECT id FROM majors WHERE tenant_id=$1 AND code=$2 LIMIT 1`, tenantID, majorCode).Scan(&mid)
-			if mid != "" {
-				majorID = &mid
-			}
 		}
 
 		if h.userExists(ctx, tenantID, username) {
@@ -405,7 +393,7 @@ func (h *ResourceImportHandler) doImportStudents(ctx context.Context, xlsx *exce
 			continue
 		}
 
-		err := h.createUser(ctx, tenantID, institutionID, roleID, orgNodeID, majorID, username, password, name, status, "student")
+		err = h.createUser(ctx, tenantID, institutionID, roleID, &orgNodeID, nil, username, password, name, status)
 		if err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("学生[%s]创建失败: %v", username, err))
@@ -417,7 +405,8 @@ func (h *ResourceImportHandler) doImportStudents(ctx context.Context, xlsx *exce
 }
 
 // Sheet: 教师列表
-// Columns: 登录账号(工号)*, 姓名*, 密码*, 所属组织节点(名称), 职位(逗号分隔), 状态
+// Columns: 登录账号(工号)*, 姓名*, 密码*, 所属组织节点(路径), 职位(逗号分隔), 状态
+// 组织节点路径示例：学校-学院 或 学校/学院
 func (h *ResourceImportHandler) doImportTeachers(ctx context.Context, xlsx *excelize.File, tenantID, _ string, result *resourceImportResult) {
 	rows, err := xlsx.GetRows("教师列表")
 	if err != nil {
@@ -442,7 +431,7 @@ func (h *ResourceImportHandler) doImportTeachers(ctx context.Context, xlsx *exce
 		username := strings.TrimSpace(row[0])
 		name := strings.TrimSpace(row[1])
 		password := strings.TrimSpace(row[2])
-		orgName := col(row, 3)
+		orgPath := col(row, 3)
 		titleNames := splitTrim(col(row, 4), ",")
 		status := mapUserStatus(col(row, 5), "active")
 
@@ -453,10 +442,12 @@ func (h *ResourceImportHandler) doImportTeachers(ctx context.Context, xlsx *exce
 		}
 
 		var orgNodeID *string
-		if orgName != "" {
-			var oid string
-			_ = h.DB.QueryRow(ctx, `SELECT id FROM organizations WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, orgName).Scan(&oid)
-			if oid != "" {
+		if orgPath != "" {
+			oid, err := h.findOrgNodeByPath(ctx, tenantID, orgPath)
+			if err != nil {
+				result.Errors = append(result.Errors, fmt.Sprintf("教师[%s]的组织节点[%s]解析失败: %v", username, orgPath, err))
+				// Continue without orgNodeID instead of failing the whole row
+			} else {
 				orgNodeID = &oid
 			}
 		}
@@ -479,7 +470,7 @@ func (h *ResourceImportHandler) doImportTeachers(ctx context.Context, xlsx *exce
 			continue
 		}
 
-		err := h.createUser(ctx, tenantID, institutionID, roleID, orgNodeID, nil, username, password, name, status, "teacher")
+		err = h.createUser(ctx, tenantID, institutionID, roleID, orgNodeID, nil, username, password, name, status)
 		if err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("教师[%s]创建失败: %v", username, err))
@@ -519,7 +510,7 @@ func (h *ResourceImportHandler) userExists(ctx context.Context, tenantID, userna
 	return id != ""
 }
 
-func (h *ResourceImportHandler) createUser(ctx context.Context, tenantID string, institutionID *string, roleID string, orgNodeID, majorID *string, username, password, name, status, role string) error {
+func (h *ResourceImportHandler) createUser(ctx context.Context, tenantID string, institutionID *string, roleID string, orgNodeID, majorID *string, username, password, name, status string) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
@@ -528,13 +519,15 @@ func (h *ResourceImportHandler) createUser(ctx context.Context, tenantID string,
 	id := uuid.NewString()
 	globalLoginName := tenantID + "_" + username
 
+	// users.role 是平台分区枚举（school/enterprise/operator），不是角色代码。
+	// portal 下的学生和教师统一使用 school。
 	_, err = h.DB.Exec(ctx, `
 		INSERT INTO users (id, tenant_id, institution_id, org_node_id, major_id,
 			role, platform, login_name, username, password_hash, name, email, phone, avatar_url,
 			student_no, work_id, id_card, title_ids, oauth, status)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
 	`, id, tenantID, institutionID, orgNodeID, majorID,
-		role, "portal", globalLoginName, username, string(hash), name, "", nil, nil,
+		domain.UserRoleSchool, "portal", globalLoginName, username, string(hash), name, "", nil, nil,
 		nil, nil, nil, []string{}, domain.JSONMap{}, status)
 	if err != nil {
 		return err
@@ -547,6 +540,127 @@ func (h *ResourceImportHandler) createUser(ctx context.Context, tenantID string,
 		_, _ = h.DB.Exec(ctx, `UPDATE roles SET user_count = user_count + 1 WHERE id=$1`, roleID)
 	}
 	return nil
+}
+
+// findOrgNodeByPath tries to find an organization node by its hierarchical path.
+// Path segments can be separated by '-' or '/'.
+// If the path has only one segment, it matches by name directly (when unique).
+// For multi-segment paths, it verifies the ancestor chain.
+func (h *ResourceImportHandler) findOrgNodeByPath(ctx context.Context, tenantID, path string) (string, error) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return "", fmt.Errorf("empty path")
+	}
+
+	var separators = []string{"-", "/", "\\", "->", "_"}
+	var segments []string
+	for _, sep := range separators {
+		if strings.Contains(path, sep) {
+			parts := strings.Split(path, sep)
+			for _, p := range parts {
+				p = strings.TrimSpace(p)
+				if p != "" {
+					segments = append(segments, p)
+				}
+			}
+			break
+		}
+	}
+	if len(segments) == 0 {
+		segments = []string{path}
+	}
+
+	className := segments[len(segments)-1]
+
+	// Query all candidate nodes with the target name
+	rows, err := h.DB.Query(ctx, `
+		SELECT id, parent_id FROM organizations WHERE tenant_id=$1 AND name=$2
+	`, tenantID, className)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+
+	type node struct {
+		id       string
+		parentID *string
+	}
+	var candidates []node
+	for rows.Next() {
+		var n node
+		if err := rows.Scan(&n.id, &n.parentID); err != nil {
+			continue
+		}
+		candidates = append(candidates, n)
+	}
+	if err := rows.Err(); err != nil {
+		return "", err
+	}
+
+	if len(candidates) == 0 {
+		return "", fmt.Errorf("未找到组织节点: %s", className)
+	}
+	if len(candidates) == 1 && len(segments) == 1 {
+		return candidates[0].id, nil
+	}
+
+	// Build ancestor chain for each candidate and match against segments
+	for _, c := range candidates {
+		chain, err := h.buildAncestorChain(ctx, tenantID, c.id)
+		if err != nil {
+			continue
+		}
+		if matchSegments(chain, segments) {
+			return c.id, nil
+		}
+	}
+
+	// If no path match, fall back to the unique name match if only one candidate
+	if len(candidates) == 1 {
+		return candidates[0].id, nil
+	}
+
+	return "", fmt.Errorf("找到多个名为[%s]的组织节点，请使用完整路径（如：学校-学院-班级）", className)
+}
+
+func (h *ResourceImportHandler) buildAncestorChain(ctx context.Context, tenantID, nodeID string) ([]string, error) {
+	var chain []string
+	currentID := nodeID
+	seen := make(map[string]bool)
+	for currentID != "" {
+		if seen[currentID] {
+			break
+		}
+		seen[currentID] = true
+		var name string
+		var parentID *string
+		err := h.DB.QueryRow(ctx, `
+			SELECT name, parent_id FROM organizations WHERE tenant_id=$1 AND id=$2
+		`, tenantID, currentID).Scan(&name, &parentID)
+		if err != nil {
+			return nil, err
+		}
+		chain = append([]string{name}, chain...)
+		currentID = ""
+		if parentID != nil {
+			currentID = *parentID
+		}
+	}
+	return chain, nil
+}
+
+func matchSegments(chain, segments []string) bool {
+	if len(chain) < len(segments) {
+		return false
+	}
+	// Match the last N segments of the chain against the provided segments
+	offset := len(chain) - len(segments)
+	for i, seg := range segments {
+		if chain[offset+i] != seg {
+			return false
+		}
+	}
+	return true
 }
 
 func mapUserStatus(s, defaultVal string) string {
