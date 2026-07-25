@@ -96,7 +96,11 @@ func (h *ExamResultHandler) submit(ctx context.Context, tenantID, userID, usageI
 	var examID string
 	var totalScore float64
 	err := h.DB.QueryRow(ctx, `
-		SELECT exam_id, COALESCE((SELECT total_score FROM exams WHERE id = exam_usages.exam_id), 0)
+		SELECT exam_id,
+			COALESCE(
+				NULLIF((SELECT total_score FROM exams WHERE id = exam_usages.exam_id), 0),
+				(SELECT COALESCE(SUM(score), 0) FROM exam_questions WHERE exam_id = exam_usages.exam_id)
+			)
 		FROM exam_usages WHERE id = $1
 	`, usageID).Scan(&examID, &totalScore)
 	if err != nil {

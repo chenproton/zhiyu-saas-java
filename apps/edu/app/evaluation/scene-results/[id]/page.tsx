@@ -877,7 +877,7 @@ export default function GradingDetailPage() {
   }, [evalPoints])
 
   const computedTotal = isExamMethod ? examTotal : evalPointTotal
-  const maxScore = isExamMethod ? examMaxScore : evalPointMaxTotal || result?.maxScore || 100
+  const maxScore = (isExamMethod ? examMaxScore : evalPointMaxTotal) || result?.maxScore || 100
 
   const allScored = isExamMethod
     ? examQuestions.filter((q: any) => !isAutoQuestion(q)).every((q: any) => (pointScores[q.id] ?? 0) > 0 || q.score === 0)
