@@ -40,14 +40,12 @@ export default function EvaluatePage() {
 
   const [drawnQuestionIds, setDrawnQuestionIds] = useState<string[]>([])
   const [reviewStepDone, setReviewStepDone] = useState<Record<string, boolean>>({})
-  const [pointSelfEval, setPointSelfEval] = useState<Record<string, string>>({})
 
   const [exam, setExam] = useState<Exam | null>(null)
   const [usages, setUsages] = useState<ExamUsage[]>([])
   const [examLoading, setExamLoading] = useState(false)
 
   const methodConfig = methods.find((m) => m.methodKey === methodKey)
-  const evalPoints = methodConfig?.evalPoints || []
   const reviewSteps = methodConfig?.reviewSteps || []
   const resourceConfig = methodConfig?.resourceConfig || {}
   const methodName = evalMethodLabels[methodKey] || methodKey
@@ -109,7 +107,6 @@ export default function EvaluatePage() {
     setFiles([])
     setDrawnQuestionIds([])
     setReviewStepDone({})
-    setPointSelfEval({})
   }
 
   useEffect(() => {
@@ -176,7 +173,7 @@ export default function EvaluatePage() {
         evaluateeId: user.id, maxScore: 100,
       }
       if (isManualSubmit) {
-        payload.subjectiveContent = { text, files, pointSelfEval, attempts: (resubmitConfig.attempts || 0) + 1 }
+        payload.subjectiveContent = { text, files, attempts: (resubmitConfig.attempts || 0) + 1 }
       } else if (methodKey === "random_draw") {
         const drawnQuestions: Record<string, any> = {}
         drawnQuestionIds.forEach((qid) => {
@@ -310,52 +307,11 @@ export default function EvaluatePage() {
           </Card>
         )}
 
-        {/* 评价标准预览（材料类/考试类展示） */}
-        {evalPoints.length > 0 && !isTeacherLed && (
-          <Card className="mb-4">
-            <CardHeader><CardTitle className="text-base flex items-center gap-2"><ClipboardList className="h-4 w-4" />评价标准</CardTitle></CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {evalPoints.map((ep: any, idx: number) => (
-                  <div key={ep.id} className="p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{idx + 1}. {ep.name}</span>
-                      <Badge variant="outline" className="text-[10px]">{ep.weight || 0}分</Badge>
-                    </div>
-                    {ep.description && <p className="text-xs text-gray-500 mt-1">{ep.description}</p>}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* 提交区域 - 按方法分类 */}
         {!submitted && isManualSubmit && requiresMaterial && (
           <Card className="mb-4">
             <CardHeader><CardTitle className="text-base flex items-center gap-2"><Send className="h-4 w-4" />提交内容</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              {evalPoints.length > 0 && (
-                <div className="space-y-3">
-                  <label className="text-sm font-medium block">按评价点自评说明</label>
-                  {evalPoints.map((ep: any) => (
-                    <div key={ep.id} className="bg-gray-50 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium">{ep.name}</span>
-                        <Badge variant="outline" className="text-[10px]">{ep.weight || 0} 分</Badge>
-                      </div>
-                      {ep.description && <p className="text-xs text-gray-500 mb-2">{ep.description}</p>}
-                      <Textarea
-                        placeholder={`请针对“${ep.name}”说明你的完成情况...`}
-                        value={pointSelfEval[ep.id] || ""}
-                        onChange={(e) => setPointSelfEval((prev) => ({ ...prev, [ep.id]: e.target.value }))}
-                        rows={2}
-                        className="text-sm bg-white"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
               <div>
                 <label className="text-sm font-medium mb-1 block">文字说明</label>
                 <Textarea placeholder="描述你的成果/作业内容..." value={text} onChange={(e) => setText(e.target.value)} rows={6} />

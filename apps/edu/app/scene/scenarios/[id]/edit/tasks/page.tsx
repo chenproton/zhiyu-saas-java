@@ -3217,7 +3217,7 @@ function BankQuestionSelectorPanel({
   return (
     <>
     <div className="flex gap-4 flex-1 min-h-0">
-      <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
+      <div className="w-3/5 flex flex-col min-h-0 min-w-0 border rounded-xl p-3 overflow-hidden">
         {selectedBankId ? (
           <>
             <div className="flex items-center gap-2 mb-3">
@@ -3242,52 +3242,54 @@ function BankQuestionSelectorPanel({
                   <p className="text-sm">{bankQuestions.length === 0 ? "该题库暂无题目" : "没有找到匹配的题目"}</p>
                 </div>
               ) : (
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 sticky top-0 z-10">
-                    <tr>
-                      <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[40%]">题目内容</th>
-                      <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[12%]">题型</th>
-                      <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[12%]">难度</th>
-                      <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[36%]">操作</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {filteredQuestions.map((q: any) => {
-                      const isSelected = selectedIds.includes(q.id)
-                      return (
-                        <tr key={q.id} className={cn("hover:bg-gray-50 transition-colors cursor-pointer", isSelected ? "bg-primary/[0.03]" : "")} onClick={() => onToggleQuestion(q.id)}>
-                          <td className="px-3 py-2">
-                            <div className="flex items-center gap-2">
-                              <div className={cn("w-4 h-4 rounded border flex items-center justify-center shrink-0", isSelected ? "bg-primary border-primary" : "border-gray-300")}>
-                                {isSelected && <Check className="h-3 w-3 text-white" />}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm table-fixed">
+                    <thead className="bg-gray-50 sticky top-0 z-10">
+                      <tr>
+                        <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[40%]">题目内容</th>
+                        <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[12%]">题型</th>
+                        <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[12%]">难度</th>
+                        <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[36%]">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {filteredQuestions.map((q: any) => {
+                        const isSelected = selectedIds.includes(q.id)
+                        return (
+                          <tr key={q.id} className={cn("hover:bg-gray-50 transition-colors cursor-pointer", isSelected ? "bg-primary/[0.03]" : "")} onClick={() => onToggleQuestion(q.id)}>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-2">
+                                <div className={cn("w-4 h-4 rounded border flex items-center justify-center shrink-0", isSelected ? "bg-primary border-primary" : "border-gray-300")}>
+                                  {isSelected && <Check className="h-3 w-3 text-white" />}
+                                </div>
+                                <span className="text-sm text-gray-800 line-clamp-1">{q.content || q.name || "未命名题目"}</span>
                               </div>
-                              <span className="text-sm text-gray-800 line-clamp-1">{q.content || q.name || "未命名题目"}</span>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2">
-                            <Badge className={`text-xs text-white hover:opacity-90 ${typeColorMap[q.type] || ""}`}>{questionTypeLabels[q.type] || q.type}</Badge>
-                          </td>
-                          <td className="px-3 py-2">
-                            <span className="text-xs text-gray-500">{difficultyLabels[q.difficulty] || q.difficulty}</span>
-                          </td>
-                          <td className="px-3 py-2">
-                            <div className="flex items-center justify-end gap-1">
-                              {isSelected ? (
-                                <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); onToggleQuestion(q.id) }}>
-                                  取消
-                                </Button>
-                              ) : (
-                                <Button size="sm" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); onToggleQuestion(q.id) }}>
-                                  使用
-                                </Button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                            </td>
+                            <td className="px-3 py-2">
+                              <Badge className={`text-xs text-white hover:opacity-90 ${typeColorMap[q.type] || ""}`}>{questionTypeLabels[q.type] || q.type}</Badge>
+                            </td>
+                            <td className="px-3 py-2">
+                              <span className="text-xs text-gray-500">{difficultyLabels[q.difficulty] || q.difficulty}</span>
+                            </td>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center justify-end gap-1">
+                                {isSelected ? (
+                                  <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); onToggleQuestion(q.id) }}>
+                                    取消
+                                  </Button>
+                                ) : (
+                                  <Button size="sm" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); onToggleQuestion(q.id) }}>
+                                    使用
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           </>
@@ -3342,7 +3344,7 @@ function BankQuestionSelectorPanel({
           </>
         )}
       </div>
-      <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
+      <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0 min-w-0 overflow-hidden">
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-medium text-gray-700">已选择题目 ({selectedIds.length}{maxCount ? `/${maxCount}` : ""})</p>
           {(field === "questionBankQuestions" || field === "quizQuestions") && selectedIds.length > 0 && onUpdateQuestionScore && (
