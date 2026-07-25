@@ -19,6 +19,23 @@
 
 ## 记录
 
+### 2026-07-25 学生端测评入口与评价结果页审计更新
+
+- 审计文档：
+  - 更新：`docs/audits/evaluation-method-field-alignment.md`
+  - 更新：`docs/audits/frontend/edu-app.md`
+  - 索引：`docs/audits/AUDIT_RECORDS.md`
+- 审查人：Agent
+- 结论：收敛
+- PASS 检查点数量：— / 总检查点数量：—
+- 备注：
+  - 删除已废弃的 `/scene/landing/[id]/evaluate` 中转页引用，学生端 7 种测评方式统一在 `/scene/landing/[id]/learn` 完成。
+  - 考试类（题库/试卷/随堂测）直接跳转 `/evaluation/landing/exams/{id}`。
+  - 非考试类（现场问答/现场评审/成果评价/作业）通过学习页内弹窗展示说明并提交材料。
+  - 补充 `/evaluation/scene-results` 列表页与详情页审查覆盖，包括默认场景选中、横向标签、学生卡片分组、一键满分、底部操作栏置底等优化。
+  - 本地验证通过：`pnpm typecheck`、`pnpm lint`。
+  - 部署验证通过：`./deploy.sh --branch master` 成功完成前后端构建、数据库迁移、PM2 启动与健康检查。
+
 ### 2026-07-25 审查文档覆盖补全与索引修正
 
 - 审计文档：
