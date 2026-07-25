@@ -302,7 +302,7 @@ func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenan
 		}
 
 		var sceneID *string
-		_ = h.DB.QueryRow(ctx, `SELECT scene_id FROM scenario_tasks WHERE id = $1`, taskID).Scan(&sceneID)
+		_ = h.DB.QueryRow(ctx, `SELECT scenario_id FROM scenario_tasks WHERE id = $1`, taskID).Scan(&sceneID)
 
 		_, err := h.DB.Exec(ctx, `
 			INSERT INTO scene_evaluation_results (tenant_id, task_id, scene_id, method_key, evaluatee_id, status, total_score, max_score, objective_answers)
