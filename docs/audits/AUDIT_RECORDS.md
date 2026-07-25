@@ -19,6 +19,38 @@
 
 ## 记录
 
+### 2026-07-25 审查文档覆盖补全与索引修正
+
+- 审计文档：
+  - 新增：`docs/audits/frontend/marketplace-app.md`
+  - 新增：`docs/audits/backend/resource-sharing-platform.md`
+  - 更新：`docs/audits/backend/job-platform.md`
+  - 更新：`docs/audits/backend/scene-platform.md`
+  - 更新：`docs/audits/backend/tenant-org.md`
+  - 索引：`docs/audits/AUDIT_RECORDS.md`
+- 审查人：Agent
+- 结论：收敛
+- PASS 检查点数量：— / 总检查点数量：—
+- 备注：
+  - 补充商城与运营前台（`apps/marketplace`）审计文档。
+  - 补充资源共享平台审计文档，覆盖 `ResourceHandler`、`ResourceLibraryHandler`、`OnSiteQuestionLibraryHandler`。
+  - 补充岗位/场景的 Excel 导入/导出、模板下载、克隆能力审计。
+  - 补充场景任务评价量规模板（`rubric_templates`）审计。
+  - 补充超管控制台 `/api/v1/admin/tenants` 审计，标注未鉴权风险。
+  - 修正 2026-07-16 记录中不存在的 `backend/user-org.md`、`frontend/admin.md` 引用，统一指向 `backend/tenant-org.md`。
+  - 补录此前缺失的各平台审计文档索引记录。
+
+### 2026-07-24 测评方式字段前后台对齐
+
+- 审计文档：`docs/audits/evaluation-method-field-alignment.md`
+- 审查人：Agent
+- 结论：收敛
+- PASS 检查点数量：— / 总检查点数量：—
+- 备注：
+  - 学生端 `apps/edu/app/scene/landing/[id]/learn` / `evaluate` 与后台任务评价规则字段对齐。
+  - 修复 `reviewSteps` 在通用转换函数中丢失、`requiresMaterial` 学生端未生效、现场评审字段缺失等问题。
+  - 本地验证通过：`pnpm typecheck`、`pnpm lint`、`go vet ./... && go test ./...`。
+
 ### 2026-07-19 内容对象状态机统一
 
 - 审计文档：`docs/audits/backend/content-status.md`
@@ -34,7 +66,7 @@
 
 ### 2026-07-16 组织用户体系打通
 
-- 审计文档：`docs/audits/backend/user-org.md`、`docs/audits/frontend/admin.md`
+- 审计文档：`docs/audits/backend/tenant-org.md`、`docs/audits/frontend/edu-app.md`
 - 审查人：Agent
 - 结论：待审查
 - PASS 检查点数量：— / 总检查点数量：—
@@ -71,3 +103,35 @@
 - 备注：
   - `ecosystem.config.js` 已更新为管理 `zhiyu-backend`、`zhiyu-marketplace`、`zhiyu-edu` 三个进程。
   - `deploy.sh` 已支持构建并部署两个前端，回滚逻辑已恢复两个 standalone 产物与后端二进制。
+
+### 2026-07-15 各平台后端审计基线
+
+- 审计文档：
+  - `docs/audits/backend/auth-security.md`
+  - `docs/audits/backend/data-infra.md`
+  - `docs/audits/backend/evaluation-platform.md`
+  - `docs/audits/backend/job-platform.md`
+  - `docs/audits/backend/lesson-platform.md`
+  - `docs/audits/backend/operations-platform.md`
+  - `docs/audits/backend/portal-workspace.md`
+  - `docs/audits/backend/scene-platform.md`
+  - `docs/audits/backend/workflow-approval.md`
+- 审查人：Agent
+- 结论：收敛
+- PASS 检查点数量：— / 总检查点数量：—
+- 备注：
+  - 完成认证授权、数据基础设施、评价/考核、岗位/职业、课程/教学、运营与商城、Portal 工作台、场景/实践、审批流引擎九大后端平台模块的审查基线。
+  - 各文档均列出核心决策、可验证检查点及已知风险与约束。
+
+### 2026-07-15 共享包与 API 客户端审计基线
+
+- 审计文档：
+  - `docs/audits/frontend/api-client.md`
+  - `docs/audits/frontend/edu-app.md`
+  - `docs/audits/frontend/shared-packages.md`
+- 审查人：Agent
+- 结论：收敛
+- PASS 检查点数量：— / 总检查点数量：—
+- 备注：
+  - 完成 API 客户端层、教育管理应用、共享包的审查基线。
+  - 确认双 token 管理、工厂模式、状态机共享类型、PlatformShell、菜单权限、AI 组件等已覆盖。

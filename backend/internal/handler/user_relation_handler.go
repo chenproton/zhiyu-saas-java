@@ -141,6 +141,10 @@ func (h *UserRelationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "missing required fields")
 		return
 	}
+	if req.InitiatorID == req.TargetID {
+		respondError(w, http.StatusBadRequest, "initiator and target cannot be the same user")
+		return
+	}
 
 	var validUsers int
 	_ = h.DB.QueryRow(r.Context(), `

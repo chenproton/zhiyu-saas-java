@@ -229,14 +229,25 @@ func (h *RoleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := h.DB.Exec(r.Context(), `DELETE FROM user_roles WHERE role_id = $1`, id); err != nil {
+	tx, err := h.DB.Begin(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	if _, err := tx.Exec(r.Context(), `DELETE FROM user_roles WHERE role_id = $1`, id); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete role bindings")
 		return
 	}
 
-	_, err = h.DB.Exec(r.Context(), `DELETE FROM roles WHERE id = $1`, id)
-	if err != nil {
+	if _, err := tx.Exec(r.Context(), `DELETE FROM roles WHERE id = $1`, id); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete role")
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

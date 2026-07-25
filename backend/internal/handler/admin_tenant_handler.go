@@ -84,8 +84,26 @@ func (h *TenantHandler) AdminDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := h.DB.Exec(r.Context(), `DELETE FROM tenants WHERE id = $1`, id); err != nil {
+	tx, err := h.DB.Begin(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	// 显式清理该租户下的用户，避免 tenant_id SET NULL 后留下孤儿账户
+	if _, err := tx.Exec(r.Context(), `DELETE FROM users WHERE tenant_id = $1`, id); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to delete tenant users")
+		return
+	}
+
+	if _, err := tx.Exec(r.Context(), `DELETE FROM tenants WHERE id = $1`, id); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete tenant")
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id, "deleted": "true"})

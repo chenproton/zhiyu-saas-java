@@ -11,7 +11,7 @@
   4. **通过**：`mode = "any"` 任一通过即完成步骤；`mode = "all"` 所有审批人通过才完成。最后一步通过则内容实体 `approved`；中间步骤则推进索引。
 - **内容状态同步**：`syncEntityStatus` 通过 `entityTableMap` 映射目标类型到表名，同步更新实体状态。支持 5 种内容类型。
 - **状态回退清理**：内容从 `pending` 回退时，`contentActions.transition` 自动删除对应的 `pending` 审批记录。
-- **权限**：`Create`/`Review` 接口要求 `school_admin` 或 `teacher` 角色。
+- **权限与租户隔离**：`Create`/`Review` 接口要求 `school_admin` 或 `teacher` 角色；`Workflow` 与 `ApprovalRecord` 的 Get/Update/Delete 已增加 `verifyTenantOwnership` 校验，防止跨租户访问。
 
 ## 检查点
 
@@ -24,6 +24,7 @@
 | 审批历史记录 | PASS | 每次审批操作追加到 `history` JSONB 数组 |
 | 状态回退清理 | PASS | 内容从 `pending` 回退时自动删除对应审批记录 |
 | 权限控制 | PASS | 审批接口要求 `school_admin` 或 `teacher` 角色 |
+| 租户隔离 | PASS | Workflow/ApprovalRecord 的 Get/Update/Delete 已校验租户归属 |
 
 ## 风险与约束
 

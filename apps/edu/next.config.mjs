@@ -3,7 +3,7 @@ const nextConfig = {
   output: 'standalone',
   distDir: '.next',
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   images: {
     unoptimized: true,

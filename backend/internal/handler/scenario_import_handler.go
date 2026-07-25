@@ -373,7 +373,7 @@ func mapEvalMethod(t string) string {
 	case "题库":
 		return "question_bank"
 	case "试卷":
-		return "exam"
+		return "paper"
 	case "随堂测":
 		return "quiz"
 	case "现场评审":

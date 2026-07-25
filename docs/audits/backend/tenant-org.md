@@ -3,7 +3,7 @@
 ## 核心决策
 
 - **多租户隔离**：所有业务数据通过 `tenant_id` 字段隔离。`common.go` 中 `tenantFilter()`/`requireTenant()`/`verifyTenantOwnership()` 三个层级强制所有查询和写入操作绑定当前用户的租户。平台管理员不自动获得跨租户读取权限。
-- **租户创建流程**（事务性）：创建租户时自动生成：1 个默认订阅包（5 个模块）、5 个默认组织类型（学校/二级学院/专业/班级/行政职能部门）、4 个默认角色（`school_admin`/`teacher`/`student`/`enterprise_mentor`）、1 个管理员用户（默认密码 `admin123`），并绑定 `school_admin` 角色。
+- **租户创建流程**（事务性）：创建租户时自动生成：1 个默认订阅包（5 个模块）、5 个默认组织类型（学校/二级学院/专业/班级/行政职能部门）、4 个默认角色（`school_admin`/`teacher`/`student`/`enterprise_mentor`）、1 个管理员用户（随机生成初始密码），并绑定 `school_admin` 角色。
 - **组织架构树**：`organizations` 表通过 `parent_id` 实现层级树。`Tree` 接口构建内存树并计算每个节点的累计成员数。更新时通过递归 CTE 防环引用；删除时检查子节点和用户引用。
 - **用户管理**：
   - `login_name` 全局唯一性通过 `tenantID + "_" + rawLoginName` 拼接实现。
@@ -12,8 +12,9 @@
 - **角色权限管理**：`RoleHandler` 提供 CRUD + `Assign`（追加绑定）。权限结构为 `{ menus: {}, moduleName: { pageName: { buttons: [] } } }`。
 - **用户扩展字段**：最多 20 个自定义扩展字段槽位，通过 `slot_index` 定位。
 - **组织类型管理**：`OrgTypeHandler` 实现 CRUD，组织类型分三类（`internal` 内部 / `business` 业务 / `external` 外部），默认类型受保护不可删除，删除时检查是否被 `organizations` 引用。
-- **用户关系管理**：`UserRelationHandler` 管理用户间的关联关系（发起人 → 目标，含关系类型），创建时校验双方均属于当前租户，支持按用户名搜索。
+- **用户关系管理**：`UserRelationHandler` 管理用户间的关联关系（发起人 → 目标，含关系类型），创建时校验双方均属于当前租户且不允许自关联，支持按用户名搜索。当前实现为 List/Create/Delete（未提供 Get/Update）。
 - **基础数据**：`majors`（专业）、`industries`（行业两层级树）、`resource_codes`（资源编码）、`staff_titles`（职工职称）均支持租户范围唯一约束。
+- **超管控制台**：`TenantHandler` 提供 `/api/v1/admin/tenants` 路由组，支持跨租户查询、创建、更新、状态变更、删除租户。按产品决策，该路由组不做 JWT 鉴权，仅作为内部隐藏控制台使用。
 
 ## 检查点
 
@@ -28,9 +29,11 @@
 | login_name 唯一性 | PASS | `tenantID + "_" + rawLoginName` 拼接保证跨租户唯一 |
 | 批量操作 | PASS | `BatchCreate`（事务内去重）、`BatchGraduate`、`BatchDelete` |
 | 基础数据 CRUD | PASS | 专业、行业、资源编码、职工职称、组织类型均支持完整 CRUD |
-| 用户关系管理 | PASS | CRUD + 租户内校验双方用户存在性；支持按用户名搜索 |
+| 用户关系管理 | PASS | List/Create/Delete + 租户内校验双方用户存在性；禁止自关联；支持按用户名搜索 |
+| 超管控制台 | PASS | `/admin/tenants` 支持跨租户租户列表/创建/更新/状态/删除 |
 
 ## 风险与约束
 
-- **租户创建时管理员默认密码暴露**：默认密码 `admin123` 在创建响应中以明文返回。—— **高危，需提示用户在获取密码后立即修改。**
-- **角色删除无事务包装**：`role_handler.go` 的 `Delete` 方法先删除 `user_roles` 绑定，再删除 `roles`，两次操作独立调用无事务包裹，中间失败可能导致数据不一致。—— **低风险，可接受。**
+- **租户创建时管理员初始密码一次性返回**：初始密码已改为随机生成，但仍在创建响应中以明文一次性返回。—— **中危，建议后续通过短信/邮件单独分发或首次登录强制修改。**
+- **角色删除已加事务包装**：`role_handler.go` 的 `Delete` 方法已将删除 `user_roles` 与删除 `roles` 纳入同一事务。
+- **超管控制台未鉴权**：`/api/v1/admin/tenants` 按产品决策未加 JWT 鉴权，仅依赖前端隐藏入口和 URL 不暴露。—— **高危，若 API 地址暴露则任何人可操作租户数据；建议至少增加网络层或密钥保护。**

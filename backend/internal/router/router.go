@@ -373,6 +373,9 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 
 				r.Get("/resource-codes", resourceCodeHandler.List)
 				r.Get("/resource-codes/{id}", resourceCodeHandler.Get)
+				r.Post("/resource-codes", resourceCodeHandler.Create)
+				r.Put("/resource-codes/{id}", resourceCodeHandler.Update)
+				r.Delete("/resource-codes/{id}", resourceCodeHandler.Delete)
 
 				r.Get("/logs/login", logHandler.LoginLogs)
 				r.Get("/logs/operation", logHandler.OperationLogs)

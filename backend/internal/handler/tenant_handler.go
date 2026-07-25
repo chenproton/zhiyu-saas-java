@@ -2,6 +2,8 @@ package handler
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -173,7 +175,11 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 
 	id := uuid.NewString()
 	adminUsername := "admin-" + req.Code
-	adminPassword := "admin123"
+	adminPassword, pwdErr := generateSecurePassword(12)
+	if pwdErr != nil {
+		respondError(w, http.StatusInternalServerError, "failed to generate admin password")
+		return
+	}
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
@@ -454,6 +460,14 @@ func (h *TenantHandler) updateTenantStatus(w http.ResponseWriter, r *http.Reques
 
 	tenant, _ := h.fetchTenant(r.Context(), id)
 	respondJSON(w, http.StatusOK, tenant)
+}
+
+func generateSecurePassword(length int) (string, error) {
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
 }
 
 func (h *TenantHandler) fetchTenant(ctx context.Context, id string) (domain.Tenant, error) {

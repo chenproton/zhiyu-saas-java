@@ -545,7 +545,7 @@ export const userManagementApi = {
   updateStatus: (id: string, status: string) =>
     request<User>(`/users/${id}/status`, { method: "POST", body: JSON.stringify({ status }) }),
   batchCreate: (reqs: CreateUserRequest[]) =>
-    request<{ count: number }>("/users/batch", { method: "POST", body: JSON.stringify({ items: reqs }) }),
+    request<{ count: number }>("/users/batch", { method: "POST", body: JSON.stringify({ users: reqs }) }),
 }
 
 // Portal-scoped variants: use the portal JWT so school-internal admin pages stay
@@ -564,7 +564,7 @@ export const portalUserManagementApi = {
   bindRoles: (id: string, roleIds: string[]) =>
     portalRequest<User>(`/users/${id}/roles`, { method: "POST", body: JSON.stringify({ roleIds }) }),
   batchCreate: (reqs: CreateUserRequest[]) =>
-    portalRequest<{ count: number }>("/users/batch", { method: "POST", body: JSON.stringify({ items: reqs }) }),
+    portalRequest<{ count: number }>("/users/batch", { method: "POST", body: JSON.stringify({ users: reqs }) }),
   batchGraduate: (req: { userIds: string[]; graduateYear?: number }) =>
     portalRequest<{ count: number }>("/users/batch-graduate", { method: "POST", body: JSON.stringify(req) }),
   batchDelete: (userIds: string[]) =>
@@ -613,8 +613,8 @@ export const portalUserRelationApi = {
 
 export const roleApi = {
   ...createCrudApi<Role, Omit<Role, "id" | "userCount" | "createdAt">, Partial<Omit<Role, "id" | "userCount" | "createdAt">>>("/roles"),
-  assign: (id: string, userIds: string[]) =>
-    request<Role>(`/roles/${id}/assign`, { method: "POST", body: JSON.stringify({ userIds }) }),
+  assign: (id: string, userId: string) =>
+    request<Role>(`/roles/${id}/assign`, { method: "POST", body: JSON.stringify({ userId }) }),
 }
 
 export const majorApi = createCrudApi<Major, Omit<Major, "id" | "createdAt" | "updatedAt">, Partial<Omit<Major, "id" | "createdAt" | "updatedAt">>>("/majors")

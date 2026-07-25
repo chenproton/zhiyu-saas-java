@@ -13,7 +13,7 @@
 - `LevelMapping` 6 级能力等级 + `calculateLevel()` 自动计算。
 
 ### `PlatformShell` — 统一平台外壳
-- 配置驱动的两栏布局（侧边栏 + 顶部导航 + 主内容区）。
+- 配置驱动的两栏布局（侧边栏 + 顶部导航 + 主内容区），实现位于 `apps/edu/components/platform-shell/` 与 `apps/marketplace/components/platform-shell/`。
 - 5+ 套导航配置（`navigation-config.ts`），权限过滤。
 - Lucide 图标系统。
 

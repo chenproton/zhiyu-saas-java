@@ -32,4 +32,4 @@
 
 ## 风险与约束
 
-- **工作台 Mock 数据残留**：`_data/mock-student-data.ts` 和 `_data/mock-teacher-data.ts` 仍在代码中。—— **需确认是否已全部切换为真实 API 数据。**
+- **工作台数据接入**：`portal/workspace/page.tsx` 已改为从 `portalApi.workspaceDashboard` 获取公告、待办、统计等数据，原 `_data/mock-student-data.ts`/`mock-teacher-data.ts` 仅保留空占位类型定义。—— **已切换为真实 API，低危。**

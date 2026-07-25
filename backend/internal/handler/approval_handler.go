@@ -135,6 +135,9 @@ func (h *ApprovalHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "approval record not found")
 		return
 	}
+	if record.TenantID != nil && !verifyTenantOwnership(w, r, *record.TenantID) {
+		return
+	}
 	respondJSON(w, http.StatusOK, record)
 }
 

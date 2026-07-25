@@ -132,6 +132,9 @@ func (h *WorkflowHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "workflow not found")
 		return
 	}
+	if workflow.TenantID != nil && !verifyTenantOwnership(w, r, *workflow.TenantID) {
+		return
+	}
 	respondJSON(w, http.StatusOK, workflow)
 }
 
@@ -192,6 +195,9 @@ func (h *WorkflowHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "workflow not found")
 		return
 	}
+	if existing.TenantID != nil && !verifyTenantOwnership(w, r, *existing.TenantID) {
+		return
+	}
 
 	var req UpdateWorkflowRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -244,12 +250,16 @@ func (h *WorkflowHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchWorkflow(r.Context(), id); err != nil {
+	workflow, err := h.fetchWorkflow(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "workflow not found")
 		return
 	}
+	if workflow.TenantID != nil && !verifyTenantOwnership(w, r, *workflow.TenantID) {
+		return
+	}
 
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM workflows WHERE id = $1`, id)
+	_, err = h.DB.Exec(r.Context(), `DELETE FROM workflows WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete workflow")
 		return

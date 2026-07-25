@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Bell,
   Calendar,
@@ -32,6 +32,8 @@ import { Bar, BarChart, Pie, PieChart as RePieChart, Cell, XAxis, YAxis, Cartesi
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
+import { portalApi } from "@/lib/api"
+import type { WorkspaceDashboard } from "@/lib/types"
 
 import { DashboardTab } from "./_components/dashboard-tab"
 import { LearningTab } from "./_components/learning-tab"
@@ -109,43 +111,16 @@ const roleConfigs = {
   },
 }
 
-const securityItems = [
-  { label: "登录密码", status: "strong", statusText: "安全", action: "修改" },
-  { label: "手机绑定", status: "bound", statusText: "138****8888", action: "更换" },
-  { label: "邮箱绑定", status: "unbound", statusText: "未绑定", action: "绑定" },
-  { label: "登录设备", status: "normal", statusText: "3台设备", action: "管理" },
-]
+// 这些模块数据需从后端接口获取，当前先置空，避免展示写死的 Mock 数据
+const securityItems: { label: string; status: string; statusText: string; action: string }[] = []
 
-const weeklyData = [
-  { day: "周一", value: 45 },
-  { day: "周二", value: 52 },
-  { day: "周三", value: 38 },
-  { day: "周四", value: 65 },
-  { day: "周五", value: 48 },
-  { day: "周六", value: 28 },
-  { day: "周日", value: 15 },
-]
+const weeklyData: { day: string; value: number }[] = []
 
-const monthlyTrend = [
-  { month: "1月", students: 1200, courses: 45 },
-  { month: "2月", students: 1350, courses: 48 },
-  { month: "3月", students: 1480, courses: 52 },
-  { month: "4月", students: 1620, courses: 58 },
-]
+const monthlyTrend: { month: string; students: number; courses: number }[] = []
 
-const resourceUsage = [
-  { name: "视频资源", value: 35, color: "#3b82f6" },
-  { name: "文档资源", value: 28, color: "#10b981" },
-  { name: "题库资源", value: 22, color: "#f59e0b" },
-  { name: "其他资源", value: 15, color: "#8b5cf6" },
-]
+const resourceUsage: { name: string; value: number; color: string }[] = []
 
-const contacts = [
-  { id: 1, name: "教务处", phone: "0571-88888001", avatar: "教" },
-  { id: 2, name: "学生处", phone: "0571-88888002", avatar: "学" },
-  { id: 3, name: "信息中心", phone: "0571-88888003", avatar: "信" },
-  { id: 4, name: "人事处", phone: "0571-88888004", avatar: "人" },
-]
+const contacts: { id: number; name: string; phone: string; avatar: string }[] = []
 
 function generateCalendarDays(year: number, month: number) {
   const firstDay = new Date(year, month, 1)
@@ -297,6 +272,12 @@ function TeacherWorkspace() {
 
 export default function WorkspacePage() {
   const { user, activeRole, loading: isLoading } = usePortalAuth()
+  const [dashboard, setDashboard] = useState<WorkspaceDashboard | null>(null)
+
+  useEffect(() => {
+    if (!activeRole?.code) return
+    portalApi.workspaceDashboard({ role: activeRole.code }).then(setDashboard).catch(() => setDashboard(null))
+  }, [activeRole?.code])
 
   if (isLoading) {
     return (
@@ -363,14 +344,30 @@ export default function WorkspacePage() {
   const roleConfigKey: keyof typeof roleConfigs =
     currentRole === "student" ? "teacher" : currentRole === "teacher" ? "teacher" : "admin"
   const config = roleConfigs[roleConfigKey] || roleConfigs.teacher
-  const calendarDays = generateCalendarDays(2026, 3)
-  const weekDays = ["日", "一", "二", "三", "四", "五", "六"]
-  const todoPieData = config.todoItems.map((item) => ({
+
+  // 从后端仪表盘接口取真实数据，原静态假数据仅作为兜底空值
+  const announcements = dashboard?.announcements || []
+  const todos = dashboard?.todos || []
+  const stats = dashboard?.stats || config.stats
+  const todoColors = ["#ef4444", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"]
+  const todosWithColor = todos.map((item, idx) => ({ ...item, color: todoColors[idx % todoColors.length] }))
+  const todoPieData = todosWithColor.map((item) => ({
     name: item.title,
     value: item.count,
     color: item.color,
   }))
-  const totalTodo = config.todoItems.reduce((acc, item) => acc + item.count, 0)
+  const totalTodo = todosWithColor.reduce((acc, item) => acc + item.count, 0)
+
+  const today = new Date()
+  const todayLabel = today.toLocaleDateString("zh-CN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+  })
+  const calendarDays = generateCalendarDays(today.getFullYear(), today.getMonth())
+  const weekDays = ["日", "一", "二", "三", "四", "五", "六"]
+  const calendarEvents: { id: number; title: string; time: string; date: number; color: string }[] = []
   const RoleIcon = roleIcons[roleConfigKey] || GraduationCap
 
   return (
@@ -378,7 +375,7 @@ export default function WorkspacePage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">我的服务台</h1>
-          <p className="text-sm text-gray-500 mt-1">{config.welcomeText}今天是2026年4月14日，星期二。</p>
+          <p className="text-sm text-gray-500 mt-1">{config.welcomeText}今天是{todayLabel}。</p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-100 shadow-sm">
           <RoleIcon className="w-5 h-5 text-blue-600" />
@@ -391,8 +388,8 @@ export default function WorkspacePage() {
         <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm">{config.stats.label1}</p>
-              <p className="text-2xl font-bold">{config.stats.value1}</p>
+              <p className="text-blue-100 text-sm">{stats.label1}</p>
+              <p className="text-2xl font-bold">{stats.value1}</p>
             </div>
             <div className="w-12 h-12 bg-card/20 rounded-lg flex items-center justify-center">
               <BookOpen className="w-6 h-6" />
@@ -402,8 +399,8 @@ export default function WorkspacePage() {
         <Card className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white border-0">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-emerald-100 text-sm">{config.stats.label2}</p>
-              <p className="text-2xl font-bold">{config.stats.value2}</p>
+              <p className="text-emerald-100 text-sm">{stats.label2}</p>
+              <p className="text-2xl font-bold">{stats.value2}</p>
             </div>
             <div className="w-12 h-12 bg-card/20 rounded-lg flex items-center justify-center">
               <Users className="w-6 h-6" />
@@ -425,7 +422,7 @@ export default function WorkspacePage() {
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-purple-100 text-sm">消息通知</p>
-              <p className="text-2xl font-bold">{config.announcements.filter((a) => a.isNew).length}</p>
+              <p className="text-2xl font-bold">{announcements.filter((a) => a.isNew).length}</p>
             </div>
             <div className="w-12 h-12 bg-card/20 rounded-lg flex items-center justify-center">
               <Bell className="w-6 h-6" />
@@ -454,7 +451,7 @@ export default function WorkspacePage() {
           <CardContent>
             <ScrollArea className="h-[200px]">
               <div className="space-y-3">
-                {config.announcements.map((item) => (
+                {announcements.map((item) => (
                   <div key={item.id} className="flex items-start gap-2 group cursor-pointer p-2 -mx-2 rounded-lg hover:bg-slate-50 transition-colors">
                     <Badge
                       variant={item.type === "重要" ? "destructive" : "secondary"}
@@ -503,7 +500,7 @@ export default function WorkspacePage() {
                 <div key={day} className="text-center text-xs text-muted-foreground py-1">{day}</div>
               ))}
               {calendarDays.map((day, index) => {
-                const hasEvent = day && config.calendarEvents.some((e) => e.date === day)
+                const hasEvent = day && calendarEvents.some((e) => e.date === day)
                 const isToday = day === 14
                 return (
                   <div
@@ -524,7 +521,7 @@ export default function WorkspacePage() {
             <div className="border-t border-border pt-2">
               <div className="text-xs text-muted-foreground mb-2">今日日程</div>
               <div className="space-y-1.5">
-                {config.calendarEvents.filter((e) => e.date === 14).map((event) => (
+                {calendarEvents.filter((e) => e.date === today.getDate()).map((event) => (
                   <div key={event.id} className="flex items-center gap-2 text-xs">
                     <span className={`w-1.5 h-1.5 rounded-full ${event.color}`} />
                     <span className="text-muted-foreground">{event.time}</span>
@@ -581,7 +578,7 @@ export default function WorkspacePage() {
                 </div>
               </div>
               <div className="flex-1 space-y-2">
-                {config.todoItems.map((item) => (
+                {todosWithColor.map((item) => (
                   <div key={item.id} className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />

@@ -128,8 +128,15 @@ func (h *WithdrawalHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tx, err := h.DB.Begin(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		return
+	}
+	defer tx.Rollback(r.Context())
+
 	id := uuid.NewString()
-	_, err := h.DB.Exec(r.Context(), `
+	_, err = tx.Exec(r.Context(), `
 		INSERT INTO withdrawals (id, institution_id, amount, account_type, account_info, status, created_at)
 		VALUES ($1, $2, $3, $4, $5, 'pending', NOW())
 	`, id, *claims.InstitutionID, req.Amount, req.AccountType, req.AccountInfo)
@@ -138,10 +145,14 @@ func (h *WithdrawalHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Deduct balance immediately upon request creation (or move to paid stage based on business rule)
-	_, err = h.DB.Exec(r.Context(), `UPDATE institutions SET balance = balance - $1 WHERE id = $2`, req.Amount, *claims.InstitutionID)
+	_, err = tx.Exec(r.Context(), `UPDATE institutions SET balance = balance - $1 WHERE id = $2`, req.Amount, *claims.InstitutionID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to deduct balance")
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
 		return
 	}
 
