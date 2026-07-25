@@ -491,9 +491,9 @@ function MixedTagEditor({
       const kp = knowledgePoints.find(k => k.id === id)
       if (!kp) return null
       const kpShort = kp.name.length > 5 ? kp.name.slice(0, 5) : kp.name
-      span.className = 'inline-flex items-center px-1 py-0.5 rounded text-[10px] font-normal bg-blue-50 text-blue-600 border border-blue-200 mx-0.5 align-middle cursor-default'
+      span.className = 'inline-flex items-center px-1 rounded text-[9px] font-normal bg-blue-50 text-blue-600 border border-blue-200 mx-0.5 align-middle cursor-default h-4'
       span.title = kp.name
-      span.innerHTML = `${kpShort}<button class="ml-0.5 text-blue-400 hover:text-red-500 leading-none">×</button>`
+      span.innerHTML = `${kpShort}<button class="ml-0.5 text-blue-400 hover:text-red-500 leading-none text-[9px]">×</button>`
       span.querySelector('button')!.onclick = (e) => {
         e.stopPropagation()
         span.remove()
@@ -503,9 +503,9 @@ function MixedTagEditor({
       const ab = abilityPoints.find(a => a.id === id)
       if (!ab) return null
       const abShort = ab.name.length > 5 ? ab.name.slice(0, 5) : ab.name
-      span.className = 'inline-flex items-center px-1 py-0.5 rounded text-[10px] font-normal bg-amber-50 text-amber-600 border border-amber-200 mx-0.5 align-middle cursor-default'
+      span.className = 'inline-flex items-center px-1 rounded text-[9px] font-normal bg-amber-50 text-amber-600 border border-amber-200 mx-0.5 align-middle cursor-default h-4'
       span.title = ab.name
-      span.innerHTML = `${abShort}<button class="ml-0.5 text-amber-400 hover:text-red-500 leading-none">×</button>`
+      span.innerHTML = `${abShort}<button class="ml-0.5 text-amber-400 hover:text-red-500 leading-none text-[9px]">×</button>`
       span.querySelector('button')!.onclick = (e) => {
         e.stopPropagation()
         span.remove()
@@ -1378,8 +1378,8 @@ function MethodDialogContent({
             </DialogHeader>
             {(() => {
               const ep = info.points.find(p => p.id === editingGradeMappingPointId)
-              if (!ep || !ep.gradeMapping) return null
-              const gm = ep.gradeMapping
+              if (!ep) return null
+              const gm = ep.gradeMapping || []
               return (
                 <div className="space-y-3 py-2">
                   {gm.map((g, i) => (
