@@ -78,6 +78,7 @@ func (h *ExamResultHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.submit(r.Context(), tenantID, claims.UserID, req.ExamUsageID, req.Answers)
 	if err != nil {
+		log.Printf("submit exam result failed: usage=%s user=%s tenant=%s err=%v", req.ExamUsageID, claims.UserID, tenantID, err)
 		if err == pgx.ErrNoRows {
 			respondError(w, http.StatusNotFound, "exam usage not found")
 			return
@@ -120,12 +121,16 @@ func (h *ExamResultHandler) submit(ctx context.Context, tenantID, userID, usageI
 	for rows.Next() {
 		var id string
 		var qt string
-		var ans domain.JSONSlice
+		var answerStr string
 		var score float64
-		if err := rows.Scan(&id, &qt, &ans, &score); err != nil {
+		if err := rows.Scan(&id, &qt, &answerStr, &score); err != nil {
 			return nil, err
 		}
-		questions = append(questions, q{id: id, qType: qt, answer: toStringSlice(ans), score: score})
+		var answer []string
+		if answerStr != "" {
+			_ = json.Unmarshal([]byte(answerStr), &answer)
+		}
+		questions = append(questions, q{id: id, qType: qt, answer: answer, score: score})
 	}
 
 	score := 0.0
@@ -260,16 +265,6 @@ func isCorrect(qType string, correct []string, raw interface{}) bool {
 		// fill / essay / short_answer need manual grading
 		return false
 	}
-}
-
-func toStringSlice(v []interface{}) []string {
-	var out []string
-	for _, x := range v {
-		if s, ok := x.(string); ok {
-			out = append(out, s)
-		}
-	}
-	return out
 }
 
 func roundScore(s float64) float64 {
