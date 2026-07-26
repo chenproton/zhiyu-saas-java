@@ -147,9 +147,11 @@ export default function AppsPage() {
 
   const visibleQuickAccess = quickAccess.filter((item) => hasMenuPermission(item.href))
 
+  const hasSubscriptionData = Object.keys(subscriptionModules).length > 0
+
   const allModules: ModuleSection[] = useMemo(() => {
     return menuItems
-      .filter((item) => subscriptionModules[item.id] === true)
+      .filter((item) => !hasSubscriptionData || subscriptionModules[item.id] === true)
       .map((item) => {
         const configured = modulesData.platforms.find((p) => p.id === item.id)
         let modules: ModuleItem[]
@@ -180,7 +182,7 @@ export default function AppsPage() {
         }
       })
       .filter((section) => section.modules.length > 0)
-  }, [modulesData.platforms, hasMenuPermission, subscriptionModules])
+  }, [modulesData.platforms, hasMenuPermission, subscriptionModules, hasSubscriptionData])
 
   useEffect(() => {
     const handleScroll = () => {
