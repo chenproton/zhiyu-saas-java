@@ -322,26 +322,29 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, v := range req.KnowledgePointIds {
-		kpID, ok := v.(string)
-		if !ok || kpID == "" {
-			continue
+	// original 节点内容来自颗粒课，不单独绑定知识点和资源
+	if req.RefType != "original" {
+		for _, v := range req.KnowledgePointIds {
+			kpID, ok := v.(string)
+			if !ok || kpID == "" {
+				continue
+			}
+			_, err = tx.Exec(r.Context(), `INSERT INTO node_knowledge_point_bindings (node_id, knowledge_point_id) VALUES ($1, $2)`, id, kpID)
+			if err != nil {
+				respondError(w, http.StatusInternalServerError, "failed to insert knowledge point binding")
+				return
+			}
 		}
-		_, err = tx.Exec(r.Context(), `INSERT INTO node_knowledge_point_bindings (node_id, knowledge_point_id) VALUES ($1, $2)`, id, kpID)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to insert knowledge point binding")
-			return
-		}
-	}
-	for _, v := range req.ResourceIds {
-		resID, ok := v.(string)
-		if !ok || resID == "" {
-			continue
-		}
-		_, err = tx.Exec(r.Context(), `INSERT INTO node_resource_bindings (node_id, resource_id) VALUES ($1, $2)`, id, resID)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to insert resource binding")
-			return
+		for _, v := range req.ResourceIds {
+			resID, ok := v.(string)
+			if !ok || resID == "" {
+				continue
+			}
+			_, err = tx.Exec(r.Context(), `INSERT INTO node_resource_bindings (node_id, resource_id) VALUES ($1, $2)`, id, resID)
+			if err != nil {
+				respondError(w, http.StatusInternalServerError, "failed to insert resource binding")
+				return
+			}
 		}
 	}
 
@@ -563,6 +566,73 @@ func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []cours
 		}
 	} else {
 		return nil, err
+	}
+
+	// original 节点从来源颗粒课继承知识点和资源
+	originalSourceIDs := make([]string, 0, len(items))
+	nodeIDBySource := make(map[string][]string, len(items))
+	for _, b := range bases {
+		if b.RefType == "original" && b.SourceID != nil && *b.SourceID != "" {
+			sourceID := *b.SourceID
+			originalSourceIDs = append(originalSourceIDs, sourceID)
+			nodeIDBySource[sourceID] = append(nodeIDBySource[sourceID], b.ID)
+		}
+	}
+	if len(originalSourceIDs) > 0 {
+		// knowledge points from granular course
+		if rows, err := h.DB.Query(ctx, `
+			SELECT ckb.course_id, kp.id, kp.name, kp.code, kp.description, TRUE AS linked
+			FROM course_knowledge_bindings ckb
+			JOIN knowledge_points kp ON kp.id = ckb.knowledge_point_id
+			WHERE ckb.course_id = ANY($1) AND ckb.bind_type = 'course'
+			ORDER BY kp.id ASC
+		`, originalSourceIDs); err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var courseID string
+				var kp SystemCourseNodeKnowledgePoint
+				if err := rows.Scan(&courseID, &kp.ID, &kp.Name, &kp.Code, &kp.Description, &kp.Linked); err != nil {
+					return nil, err
+				}
+				for _, nodeID := range nodeIDBySource[courseID] {
+					if idx, ok := nodeIndex[nodeID]; ok {
+						items[idx].KnowledgePoints = append(items[idx].KnowledgePoints, kp)
+					}
+				}
+			}
+		} else {
+			return nil, err
+		}
+
+		// resources from granular course
+		if rows, err := h.DB.Query(ctx, `
+			SELECT crb.course_id, COALESCE(nr.id, tr.id) AS id,
+				COALESCE(nr.name, tr.name) AS name,
+				COALESCE(nr.type, tr.type) AS type,
+				COALESCE(nr.url, tr.url) AS url,
+				nr.size AS size
+			FROM course_resource_bindings crb
+			LEFT JOIN node_resources nr ON nr.id = crb.resource_id
+			LEFT JOIN task_resources tr ON tr.id = crb.resource_id
+			WHERE crb.course_id = ANY($1)
+			ORDER BY crb.created_at ASC
+		`, originalSourceIDs); err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var courseID string
+				var res SystemCourseNodeResource
+				if err := rows.Scan(&courseID, &res.ID, &res.Name, &res.Type, &res.URL, &res.Size); err != nil {
+					return nil, err
+				}
+				for _, nodeID := range nodeIDBySource[courseID] {
+					if idx, ok := nodeIndex[nodeID]; ok {
+						items[idx].Resources = append(items[idx].Resources, res)
+					}
+				}
+			}
+		} else {
+			return nil, err
+		}
 	}
 
 	return items, nil
