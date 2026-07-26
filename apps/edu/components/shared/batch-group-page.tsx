@@ -61,14 +61,13 @@ interface BatchGroupPageProps {
   namePlaceholder: string
   workflowHint: string
   detailHref?: (id: string) => string
-  scene?: string
 }
 
 interface BatchView extends BatchGroupItem {
   workflowName?: string
 }
 
-export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, detailHref, scene }: BatchGroupPageProps) {
+export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, detailHref }: BatchGroupPageProps) {
   const { toast } = useToast()
   const { tenantId } = useAuth()
   const [batches, setBatches] = useState<BatchView[]>([])
@@ -103,7 +102,7 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
     try {
       const [batchRes, wfRes] = await Promise.all([
         api.list({ limit: 1000 }),
-        workflowApi.list({ scene, limit: 1000 }),
+        workflowApi.list({ limit: 1000 }),
       ])
       setWorkflows(wfRes.items)
       const wfMap = new Map(wfRes.items.map((w) => [w.id, w.name]))

@@ -22,11 +22,10 @@ import { WorkflowEditor, buildWorkflowSteps, WorkflowStepEditor } from "@/compon
 const DEFAULT_STEP: WorkflowStepEditor = { name: "", approverIds: [], approvalMode: "any" }
 
 interface WorkflowConfigPageProps {
-  scene: string
   subtitle: string
 }
 
-export function WorkflowConfigPage({ scene, subtitle }: WorkflowConfigPageProps) {
+export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
   const { toast } = useToast()
   const { tenantId } = useAuth()
   const [workflows, setWorkflows] = useState<Workflow[]>([])
@@ -89,7 +88,7 @@ export function WorkflowConfigPage({ scene, subtitle }: WorkflowConfigPageProps)
     try {
       const body = {
         name: name.trim(), description: description.trim() || undefined, steps: built,
-        scene, status: "active" as const,
+        status: "active" as const,
         majorIds,
       }
       if (editId) { await workflowApi.update(editId, body); toast({ title: "保存成功" }) }
