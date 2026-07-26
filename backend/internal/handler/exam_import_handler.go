@@ -86,20 +86,16 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 
 		name := strings.TrimSpace(row[0])
 		description := nullableStr(col(row, 1))
-		duration := parseIntDefault(col(row, 2), 60)
-		coverImage := nullableStr(col(row, 3))
-		collaboratorIDs := parseUUIDSlice(splitTrim(col(row, 4), ","))
-		collaboratorDeptIDs := parseUUIDSlice(splitTrim(col(row, 5), ","))
-		batchName := col(row, 6)
+		batchName := col(row, 2)
 
 		batchID := h.lookupEvaluationBatch(ctx, tenantID, batchName)
 
 		examID := uuid.NewString()
 		_, err := h.DB.Exec(ctx, `
-			INSERT INTO exams (id, tenant_id, name, description, status, total_score, duration, cover_image,
-				collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, creator_id, is_temp)
-			VALUES ($1,$2,$3,$4,'draft',0,$5,$6,$7,$8,$9,'v1.0','mine',$10,false)
-		`, examID, tenantID, name, description, duration, coverImage, collaboratorIDs, collaboratorDeptIDs, batchID, userID)
+			INSERT INTO exams (id, tenant_id, name, description, status, total_score, duration,
+				batch_id, version, owner_type, creator_id, is_temp)
+			VALUES ($1,$2,$3,$4,'draft',0,60,$5,'v1.0','mine',$6,false)
+		`, examID, tenantID, name, description, batchID, userID)
 		if err != nil {
 			result.Failed++
 			msg := fmt.Sprintf("试卷[%s]创建失败: %v", name, err)
@@ -184,3 +180,4 @@ func parseIntDefault(s string, defaultVal int) int {
 	}
 	return v
 }
+

@@ -28,8 +28,8 @@ func TestEvaluationImports(t *testing.T) {
 	// 1. import question bank
 	bankFile := buildExcel(t, "题库基本信息", [][]interface{}{
 		{"填写说明"},
-		{"题库名称 *", "题库简介", "封面URL", "共建人ID", "共建部门ID", "所属批次", "知识点"},
-		{"安全生产题库", "安全培训考核用", "", "", "", "", "安全规范,操作标准"},
+		{"题库名称 *", "题库简介", "所属批次"},
+		{"安全生产题库", "安全培训考核用", ""},
 	})
 	req := makeRequest(t, "/api/v1/import/question-banks/excel", bankFile, claims)
 	hBank := &handler.QuestionBankImportHandler{DB: env.DB}
@@ -74,8 +74,8 @@ func TestEvaluationImports(t *testing.T) {
 	// 3. import exam
 	examFile := buildExcel(t, "试卷基本信息", [][]interface{}{
 		{"填写说明"},
-		{"试卷名称 *", "试卷简介", "时长(分钟) *", "封面URL", "共建人ID", "共建部门ID", "所属批次"},
-		{"安全知识期末考试", "期末考核", "90", "", "", "", ""},
+		{"试卷名称 *", "试卷简介", "所属批次"},
+		{"安全知识期末考试", "期末考核", ""},
 	})
 	req = makeRequest(t, "/api/v1/import/exams/excel", examFile, claims)
 	hExam := &handler.ExamImportHandler{DB: env.DB}

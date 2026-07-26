@@ -508,12 +508,12 @@ func (h *TemplateHandler) generateQuestionBankTemplate(ctx context.Context, tena
 	// Sheet 1: 题库基本信息
 	s1, _ := f.NewSheet("题库基本信息")
 	f.SetActiveSheet(s1)
-	headers1 := []string{"题库名称 *", "题库简介", "封面URL", "共建人ID", "共建部门ID", "所属批次", "知识点"}
-	widths1 := []float64{28, 42, 36, 28, 28, 22, 32}
-	setA1("题库基本信息", 7, "填写说明：\n* 必填列。\n所属批次：从「批次参考」Sheet 选取，匹配则关联，不匹配则忽略。\n知识点：多个用逗号分隔，系统中不存在则自动新建并关联到本题库。\n共建人ID / 共建部门ID：多个用逗号分隔，仅接受有效 UUID，无效值会被忽略。\n导入后默认状态为 draft")
+	headers1 := []string{"题库名称 *", "题库简介", "所属批次"}
+	widths1 := []float64{28, 42, 22}
+	setA1("题库基本信息", 3, "填写说明：\n* 必填列。\n所属批次：从「批次参考」Sheet 选取，匹配则关联，不匹配则忽略。\n导入后默认状态为 draft")
 	setHdr("题库基本信息", 2, headers1, widths1)
 	f.SetPanes("题库基本信息", &excelize.Panes{Freeze: true, YSplit: 2})
-	f.AutoFilter("题库基本信息", "A2:G2", []excelize.AutoFilterOptions{})
+	f.AutoFilter("题库基本信息", "A2:C2", []excelize.AutoFilterOptions{})
 
 	// Reference sheets
 	var batches [][]string
@@ -525,16 +525,6 @@ func (h *TemplateHandler) generateQuestionBankTemplate(ctx context.Context, tena
 	}
 	bRows.Close()
 	h.addRefSheet(f, "【参考】批次", []string{"批次名称"}, []float64{32}, "仅作参考，无需编辑修改。", batches)
-
-	var kps [][]string
-	kRows, _ := h.DB.Query(ctx, `SELECT name FROM knowledge_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	for kRows.Next() {
-		var n string
-		kRows.Scan(&n)
-		kps = append(kps, []string{n})
-	}
-	kRows.Close()
-	h.addRefSheet(f, "【参考】知识点", []string{"知识点名称"}, []float64{36}, "仅作参考，无需编辑修改。题目/题库中的知识点名称与本表一致则关联已有，不一致则自动新建。", kps)
 
 	return f
 }
@@ -620,12 +610,12 @@ func (h *TemplateHandler) generateExamTemplate(ctx context.Context, tenantID str
 	// Sheet 1: 试卷基本信息
 	s1, _ := f.NewSheet("试卷基本信息")
 	f.SetActiveSheet(s1)
-	headers1 := []string{"试卷名称 *", "试卷简介", "时长(分钟) *", "封面URL", "共建人ID", "共建部门ID", "所属批次"}
-	widths1 := []float64{28, 42, 14, 36, 28, 28, 22}
-	setA1("试卷基本信息", 7, "填写说明：\n* 必填列。\n时长单位为分钟，默认60。\n所属批次：从「批次参考」Sheet 选取，匹配则关联，不匹配则忽略。\n共建人ID / 共建部门ID：多个用逗号分隔，仅接受有效 UUID。\n导入后默认状态为 draft")
+	headers1 := []string{"试卷名称 *", "试卷简介", "所属批次"}
+	widths1 := []float64{28, 42, 22}
+	setA1("试卷基本信息", 3, "填写说明：\n* 必填列。\n所属批次：从「批次参考」Sheet 选取，匹配则关联，不匹配则忽略。\n导入后默认状态为 draft")
 	setHdr("试卷基本信息", 2, headers1, widths1)
 	f.SetPanes("试卷基本信息", &excelize.Panes{Freeze: true, YSplit: 2})
-	f.AutoFilter("试卷基本信息", "A2:G2", []excelize.AutoFilterOptions{})
+	f.AutoFilter("试卷基本信息", "A2:C2", []excelize.AutoFilterOptions{})
 
 	// Sheet 2: 试卷题目
 	_, _ = f.NewSheet("试卷题目")

@@ -81,41 +81,22 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 
 		name := strings.TrimSpace(row[0])
 		description := nullableStr(col(row, 1))
-		coverImage := nullableStr(col(row, 2))
-		collaboratorIDs := parseUUIDSlice(splitTrim(col(row, 3), ","))
-		collaboratorDeptIDs := parseUUIDSlice(splitTrim(col(row, 4), ","))
-		batchName := col(row, 5)
-		knowledgeNames := splitTrim(col(row, 6), ",")
+		batchName := col(row, 2)
 
 		batchID := h.lookupEvaluationBatch(ctx, tenantID, batchName)
-		knowledgeIDs := h.findOrCreateKnowledgePoints(ctx, tenantID, knowledgeNames)
 
 		bankID := uuid.NewString()
 		_, err := h.DB.Exec(ctx, `
-			INSERT INTO question_banks (id, tenant_id, name, description, cover_image, status, question_count, creator_id,
-				collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, is_draft_pool)
-			VALUES ($1,$2,$3,$4,$5,'draft',0,$6,$7,$8,$9,'v1.0','mine',false)
-		`, bankID, tenantID, name, description, coverImage, userID, collaboratorIDs, collaboratorDeptIDs, batchID)
+			INSERT INTO question_banks (id, tenant_id, name, description, status, question_count, creator_id,
+				batch_id, version, owner_type, is_draft_pool)
+			VALUES ($1,$2,$3,$4,'draft',0,$5,$6,'v1.0','mine',false)
+		`, bankID, tenantID, name, description, userID, batchID)
 		if err != nil {
 			result.Failed++
 			msg := fmt.Sprintf("题库[%s]创建失败: %v", name, err)
 			result.Errors = append(result.Errors, msg)
 			log.Printf("[import/question-banks] %s", msg)
 			continue
-		}
-
-		for _, kpID := range knowledgeIDs {
-			if kpID == "" {
-				continue
-			}
-			_, err := h.DB.Exec(ctx, `
-				INSERT INTO question_bank_knowledge_points (id, question_bank_id, knowledge_point_id)
-				VALUES ($1,$2,$3)
-				ON CONFLICT (question_bank_id, knowledge_point_id) DO NOTHING
-			`, uuid.NewString(), bankID, kpID)
-			if err != nil {
-				log.Printf("[import/question-banks] 题库[%s]知识点关联失败: %v", name, err)
-			}
 		}
 
 		result.Created++
@@ -135,46 +116,3 @@ func (h *QuestionBankImportHandler) lookupEvaluationBatch(ctx context.Context, t
 	return &id
 }
 
-func (h *QuestionBankImportHandler) findOrCreateKnowledgePoints(ctx context.Context, tenantID string, names []string) []string {
-	ids := []string{}
-	for _, name := range names {
-		name = strings.TrimSpace(name)
-		if name == "" {
-			continue
-		}
-		var id string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
-		if err == nil {
-			ids = append(ids, id)
-			continue
-		}
-		id = uuid.NewString()
-		_, err = h.DB.Exec(ctx, `INSERT INTO knowledge_points (id, tenant_id, name) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, id, tenantID, name)
-		if err != nil {
-			log.Printf("[import/question-banks] create knowledge point %s failed: %v", name, err)
-		}
-		var existing string
-		err = h.DB.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
-		if existing != "" {
-			ids = append(ids, existing)
-		} else if id != "" {
-			ids = append(ids, id)
-		}
-	}
-	return ids
-}
-
-func parseUUIDSlice(values []string) []string {
-	result := []string{}
-	for _, v := range values {
-		v = strings.TrimSpace(v)
-		if v == "" {
-			continue
-		}
-		if _, err := uuid.Parse(v); err != nil {
-			continue
-		}
-		result = append(result, v)
-	}
-	return result
-}
