@@ -271,7 +271,7 @@ func (h *CourseImportHandler) importNodes(ctx context.Context, xlsx *excelize.Fi
 			manualDifficulty:    parseIntDefault(col(row, 7), 0),
 			knowledgeNames:      splitTrim(col(row, 8), ","),
 			resourceNames:       splitTrim(col(row, 9), ","),
-			evalMethodNames:     splitTrim(col(row, 10), ","),
+			evalMethodNames:     splitTrim(strings.ReplaceAll(col(row, 10), "，", ","), ","),
 			courseID:            courseID,
 		})
 	}
@@ -404,10 +404,13 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, tenant
 		}
 		switch methodKey {
 		case "homework":
-			_, _ = h.DB.Exec(ctx, `
+			_, err := h.DB.Exec(ctx, `
 				INSERT INTO node_homeworks (id, tenant_id, node_id, title, requirement, need_attachment)
 				VALUES ($1,$2,$3,$4,'',false)
 			`, uuid.NewString(), tenantID, nodeID, "作业测评")
+			if err != nil {
+				result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]作业测评创建失败: %v", nr.courseName, nr.nodeName, err))
+			}
 		default:
 			title := "题库测验"
 			if methodKey == "paper" {
@@ -415,10 +418,13 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, tenant
 			} else if methodKey == "quiz" {
 				title = "随堂测"
 			}
-			_, _ = h.DB.Exec(ctx, `
+			_, err := h.DB.Exec(ctx, `
 				INSERT INTO node_quizzes (id, tenant_id, node_id, title, type)
 				VALUES ($1,$2,$3,$4,$5)
 			`, uuid.NewString(), tenantID, nodeID, title, methodKey)
+			if err != nil {
+				result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]测评[%s]创建失败: %v", nr.courseName, nr.nodeName, evalName, err))
+			}
 		}
 	}
 

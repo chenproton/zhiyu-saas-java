@@ -562,7 +562,7 @@ func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []cours
 		return nil, err
 	}
 
-	// original 节点从来源颗粒课继承知识点和资源
+	// original 节点从来源颗粒课继承知识点和资源（以绑定表为准，避免 courses 数组字段为空）
 	originalSourceIDs := make([]string, 0, len(items))
 	nodeIDBySource := make(map[string][]string, len(items))
 	for _, b := range bases {
@@ -573,14 +573,33 @@ func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []cours
 		}
 	}
 	if len(originalSourceIDs) > 0 {
-		// knowledge points from granular course
+		// 先收集各 original 节点已有的知识点/资源 ID，避免重复追加
+		kpSeen := make(map[string]map[string]bool)
+		resSeen := make(map[string]map[string]bool)
+		for _, b := range bases {
+			if b.RefType != "original" {
+				continue
+			}
+			if kpSeen[b.ID] == nil {
+				kpSeen[b.ID] = make(map[string]bool)
+			}
+			for _, id := range b.KnowledgePointIds {
+				kpSeen[b.ID][id] = true
+			}
+			if resSeen[b.ID] == nil {
+				resSeen[b.ID] = make(map[string]bool)
+			}
+			for _, id := range b.ResourceIds {
+				resSeen[b.ID][id] = true
+			}
+		}
+
+		// knowledge points from granular course bindings
 		if rows, err := h.DB.Query(ctx, `
-			SELECT c.id, kp.id, kp.name, kp.code, kp.description, TRUE AS linked
-			FROM courses c
-			JOIN LATERAL unnest(c.knowledge_point_ids) AS kp_id ON true
-			JOIN knowledge_points kp ON kp.id = kp_id
-			WHERE c.id = ANY($1)
-			ORDER BY c.id, array_position(c.knowledge_point_ids, kp_id)
+			SELECT ckb.course_id, kp.id, kp.name, kp.code, kp.description, TRUE AS linked
+			FROM course_knowledge_bindings ckb
+			JOIN knowledge_points kp ON kp.id = ckb.knowledge_point_id
+			WHERE ckb.course_id = ANY($1) AND ckb.bind_type = 'course'
 		`, originalSourceIDs); err == nil {
 			defer rows.Close()
 			for rows.Next() {
@@ -591,6 +610,10 @@ func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []cours
 				}
 				for _, nodeID := range nodeIDBySource[courseID] {
 					if idx, ok := nodeIndex[nodeID]; ok {
+						if kpSeen[nodeID][kp.ID] {
+							continue
+						}
+						kpSeen[nodeID][kp.ID] = true
 						items[idx].KnowledgePoints = append(items[idx].KnowledgePoints, kp)
 					}
 				}
@@ -599,18 +622,16 @@ func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []cours
 			return nil, err
 		}
 
-		// resources from granular course
+		// resources from granular course bindings
 		if rows, err := h.DB.Query(ctx, `
-			SELECT c.id, rl.id,
+			SELECT crb.course_id, rl.id,
 				rl.name,
 				rl.resource_type,
 				COALESCE(rl.url, '') AS url,
 				rl.file_size::int AS size
-			FROM courses c
-			JOIN LATERAL unnest(c.resource_ids) AS res_id ON true
-			JOIN resource_library rl ON rl.id = res_id
-			WHERE c.id = ANY($1)
-			ORDER BY c.id, array_position(c.resource_ids, res_id)
+			FROM course_resource_bindings crb
+			JOIN resource_library rl ON rl.id = crb.resource_id
+			WHERE crb.course_id = ANY($1)
 		`, originalSourceIDs); err == nil {
 			defer rows.Close()
 			for rows.Next() {
@@ -621,6 +642,10 @@ func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []cours
 				}
 				for _, nodeID := range nodeIDBySource[courseID] {
 					if idx, ok := nodeIndex[nodeID]; ok {
+						if resSeen[nodeID][res.ID] {
+							continue
+						}
+						resSeen[nodeID][res.ID] = true
 						items[idx].Resources = append(items[idx].Resources, res)
 					}
 				}
