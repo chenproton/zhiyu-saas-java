@@ -349,35 +349,69 @@ func (h *OrgHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var childCount int
-	if err := h.DB.QueryRow(r.Context(),
-		`SELECT COUNT(*) FROM organizations WHERE parent_id = $1`, id,
-	).Scan(&childCount); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to check child organizations")
-		return
-	}
-	if childCount > 0 {
-		respondError(w, http.StatusConflict, "该组织下仍有子节点，请先删除子节点")
-		return
-	}
-
-	var userCount int
-	if err := h.DB.QueryRow(r.Context(),
-		`SELECT COUNT(*) FROM users WHERE org_node_id = $1`, id,
-	).Scan(&userCount); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to check organization members")
-		return
-	}
-	if userCount > 0 {
-		respondError(w, http.StatusConflict, "该组织下仍有用户，请先移除用户")
-		return
-	}
-
-	_, err = h.DB.Exec(r.Context(), `DELETE FROM organizations WHERE id = $1`, id)
+	// 收集目标节点及其所有后代节点 ID（限定同一租户）
+	subtreeIDs := []string{id}
+	rows, err := h.DB.Query(r.Context(), `
+		WITH RECURSIVE subtree AS (
+			SELECT id, parent_id FROM organizations WHERE id = $1 AND tenant_id = $2
+			UNION ALL
+			SELECT o.id, o.parent_id FROM organizations o
+			JOIN subtree s ON o.parent_id = s.id
+			WHERE o.tenant_id = $2
+		)
+		SELECT id FROM subtree
+	`, id, org.TenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete organization")
+		respondError(w, http.StatusInternalServerError, "failed to collect subtree organizations")
 		return
 	}
+	for rows.Next() {
+		var subID string
+		if err := rows.Scan(&subID); err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to scan subtree organizations")
+			return
+		}
+		subtreeIDs = append(subtreeIDs, subID)
+	}
+	rows.Close()
+
+	uuidIDs := make([]uuid.UUID, 0, len(subtreeIDs))
+	for _, sid := range subtreeIDs {
+		uid, err := uuid.Parse(sid)
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, "invalid organization id")
+			return
+		}
+		uuidIDs = append(uuidIDs, uid)
+	}
+
+	tx, err := h.DB.Begin(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	if _, err := tx.Exec(r.Context(), `
+		UPDATE users SET org_node_id = NULL, updated_at = NOW()
+		WHERE org_node_id = ANY($1::uuid[]) AND tenant_id = $2
+	`, uuidIDs, org.TenantID); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to clear user organization bindings")
+		return
+	}
+
+	if _, err := tx.Exec(r.Context(), `
+		DELETE FROM organizations WHERE id = ANY($1::uuid[]) AND tenant_id = $2
+	`, uuidIDs, org.TenantID); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to delete organizations")
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
+		return
+	}
+
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 

@@ -358,6 +358,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 				r.Post("/users/batch", userManagementHandler.BatchCreate)
 				r.Post("/users/batch-graduate", userManagementHandler.BatchGraduate)
 				r.Post("/users/batch-delete", userManagementHandler.BatchDelete)
+				r.Post("/users/batch-org-node", userManagementHandler.BatchUpdateOrgNode)
 
 				r.Route("/staff-titles", func(r chi.Router) {
 					r.Get("/", staffTitleHandler.List)

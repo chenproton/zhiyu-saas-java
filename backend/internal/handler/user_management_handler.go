@@ -87,6 +87,11 @@ type BatchDeleteUsersRequest struct {
 	UserIDs []string `json:"userIds"`
 }
 
+type BatchUpdateOrgNodeRequest struct {
+	UserIDs   []string `json:"userIds"`
+	OrgNodeID *string  `json:"orgNodeId"`
+}
+
 type BindUserRolesRequest struct {
 	RoleIDs []string `json:"roleIds"`
 }
@@ -608,6 +613,65 @@ func (h *UserManagementHandler) BatchDelete(w http.ResponseWriter, r *http.Reque
 	}
 
 	respondJSON(w, http.StatusOK, map[string]int64{"count": result.RowsAffected() + tag.RowsAffected()})
+}
+
+// BatchUpdateOrgNode 批量更新选中用户的组织节点归属。
+// orgNodeId 为空时，会清空用户的 org_node_id（用于删除节点后解绑）。
+func (h *UserManagementHandler) BatchUpdateOrgNode(w http.ResponseWriter, r *http.Request) {
+	if !h.canManageUsers(r) {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+
+	claims := middleware.CurrentUser(r)
+	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
+		respondError(w, http.StatusForbidden, "missing tenant")
+		return
+	}
+	callerTenantID := *claims.TenantID
+
+	var req BatchUpdateOrgNodeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if len(req.UserIDs) == 0 {
+		respondError(w, http.StatusBadRequest, "userIds is required")
+		return
+	}
+
+	if req.OrgNodeID != nil && *req.OrgNodeID != "" {
+		var exists bool
+		if err := h.DB.QueryRow(r.Context(),
+			`SELECT EXISTS(SELECT 1 FROM organizations WHERE id = $1 AND tenant_id = $2)`,
+			*req.OrgNodeID, callerTenantID,
+		).Scan(&exists); err != nil || !exists {
+			respondError(w, http.StatusBadRequest, "invalid orgNodeId")
+			return
+		}
+	}
+
+	uuids := make([]uuid.UUID, len(req.UserIDs))
+	for i, id := range req.UserIDs {
+		uid, err := uuid.Parse(id)
+		if err != nil {
+			respondError(w, http.StatusBadRequest, "invalid userId: "+id)
+			return
+		}
+		uuids[i] = uid
+	}
+
+	result, err := h.DB.Exec(r.Context(),
+		`UPDATE users SET org_node_id = $1, updated_at = NOW()
+		 WHERE id = ANY($2::uuid[]) AND tenant_id = $3`,
+		req.OrgNodeID, uuids, callerTenantID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to update user organization bindings")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]int64{"count": result.RowsAffected()})
 }
 
 // BindRoles replaces the user's role bindings with the given set (at least one),

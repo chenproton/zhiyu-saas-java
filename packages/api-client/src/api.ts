@@ -569,6 +569,8 @@ export const portalUserManagementApi = {
     portalRequest<{ count: number }>("/users/batch-graduate", { method: "POST", body: JSON.stringify(req) }),
   batchDelete: (userIds: string[]) =>
     portalRequest<{ count: number }>("/users/batch-delete", { method: "POST", body: JSON.stringify({ userIds }) }),
+  batchUpdateOrgNode: (req: { userIds: string[]; orgNodeId?: string }) =>
+    portalRequest<{ count: number }>("/users/batch-org-node", { method: "POST", body: JSON.stringify(req) }),
 }
 
 export const portalStaffTitleApi = {

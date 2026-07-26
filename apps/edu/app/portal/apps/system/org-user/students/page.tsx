@@ -23,7 +23,8 @@ import type { Organization } from "@/lib/types/backend"
 import { useToast } from "@/hooks/use-toast"
 import {
   Plus, Power, Pencil, Trash2, Search, Filter, Upload, Download, FileDown,
-  FolderTree, Key, Loader2, AlertCircle, RotateCcw, Award, ChevronLeft, ChevronRight
+  FolderTree, Key, Loader2, AlertCircle, RotateCcw, Award, ChevronLeft, ChevronRight,
+  Users
 } from "lucide-react"
 
 const DEPT_TYPE = "二级学院"
@@ -98,6 +99,9 @@ export default function StudentsPage() {
 	const [batchDeleting, setBatchDeleting] = useState(false)
 	const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 	const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null)
+	const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false)
+	const [joinTargetNodeId, setJoinTargetNodeId] = useState<string>("")
+	const [joinLoading, setJoinLoading] = useState(false)
 
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -222,6 +226,27 @@ export default function StudentsPage() {
 			setSelectedStudents([])
 		}
 		await refetch()
+	}
+
+	const handleBatchJoin = async () => {
+		if (selectedStudents.length === 0) return
+		if (!joinTargetNodeId) {
+			toast({ variant: "destructive", title: "请选择目标班级" })
+			return
+		}
+		setJoinLoading(true)
+		try {
+			await portalUserManagementApi.batchUpdateOrgNode({ userIds: selectedStudents, orgNodeId: joinTargetNodeId })
+			toast({ title: `已将 ${selectedStudents.length} 名学生加入班级` })
+			setIsJoinDialogOpen(false)
+			setJoinTargetNodeId("")
+			setSelectedStudents([])
+			await refetch()
+		} catch (err) {
+			toast({ variant: "destructive", title: "批量加入班级失败", description: err instanceof Error ? err.message : "未知错误" })
+		} finally {
+			setJoinLoading(false)
+		}
 	}
 
   const resetForm = () => {
@@ -382,6 +407,10 @@ export default function StudentsPage() {
           <Button variant="outline" size="sm" disabled title="即将上线">
             <Download className="h-4 w-4 mr-1" />导出
           </Button>
+			<Button variant="outline" size="sm" disabled={selectedStudents.length === 0 || joinLoading || graduateLoading || batchDeleting} onClick={() => { setJoinTargetNodeId(""); setIsJoinDialogOpen(true) }}>
+				{joinLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Users className="h-4 w-4 mr-1" />}
+				{selectedStudents.length > 0 ? `批量加入班级(${selectedStudents.length})` : "批量加入班级"}
+			</Button>
 			<Button variant="outline" size="sm" disabled={selectedStudents.length === 0 || graduateLoading || batchDeleting} onClick={handleBatchGraduate}>
 				{graduateLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Award className="h-4 w-4 mr-1" />}
 				{selectedStudents.length > 0 ? `批量毕业(${selectedStudents.length})` : "批量毕业"}
@@ -698,6 +727,36 @@ export default function StudentsPage() {
             {importStep === "upload" && (
               <Button variant="ghost" size="sm" onClick={() => setImportStep("download")}>上一步</Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 批量加入班级 */}
+      <Dialog open={isJoinDialogOpen} onOpenChange={setIsJoinDialogOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle>批量加入班级</DialogTitle>
+            <DialogDescription>为选中的 {selectedStudents.length} 名学生统一关联一个班级</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>目标班级 <span className="text-destructive">*</span></Label>
+              <OrgNodePicker
+                tenantId={tenantId}
+                value={joinTargetNodeId}
+                onChange={(value) => setJoinTargetNodeId(value || "")}
+                selectableTypes={[CLASS_TYPE]}
+                placeholder="选择班级"
+                title="选择班级"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsJoinDialogOpen(false)} disabled={joinLoading}>取消</Button>
+            <Button onClick={handleBatchJoin} disabled={joinLoading || !joinTargetNodeId}>
+              {joinLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              确认加入
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

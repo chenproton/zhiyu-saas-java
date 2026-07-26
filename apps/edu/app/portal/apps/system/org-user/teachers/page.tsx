@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast"
 import {
   Plus, Trash2, Search, Filter, Upload, Download, FileDown,
   FolderTree, Key, Loader2, AlertCircle, RotateCcw, Pencil, ChevronLeft, ChevronRight,
-  UserCheck, UserX, UserPlus, Ban
+  UserCheck, UserX, UserPlus, Ban, Users
 } from "lucide-react"
 
 interface Teacher {
@@ -75,6 +75,9 @@ export default function TeachersPage() {
   const [selectedTeachers, setSelectedTeachers] = useState<string[]>([])
   const [batchDeleting, setBatchDeleting] = useState(false)
   const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null)
+  const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false)
+  const [joinTargetNodeId, setJoinTargetNodeId] = useState<string>("")
+  const [joinLoading, setJoinLoading] = useState(false)
 
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -287,6 +290,27 @@ export default function TeachersPage() {
     await refetch()
   }
 
+  const handleBatchJoin = async () => {
+    if (selectedTeachers.length === 0) return
+    if (!joinTargetNodeId) {
+      toast({ variant: "destructive", title: "请选择目标部门/组织节点" })
+      return
+    }
+    setJoinLoading(true)
+    try {
+      await portalUserManagementApi.batchUpdateOrgNode({ userIds: selectedTeachers, orgNodeId: joinTargetNodeId })
+      toast({ title: `已将 ${selectedTeachers.length} 名教职工加入部门` })
+      setIsJoinDialogOpen(false)
+      setJoinTargetNodeId("")
+      setSelectedTeachers([])
+      await refetch()
+    } catch (err) {
+      toast({ variant: "destructive", title: "批量加入部门失败", description: err instanceof Error ? err.message : "未知错误" })
+    } finally {
+      setJoinLoading(false)
+    }
+  }
+
   const resetPassword = (teacher: Teacher) => {
     setResetTarget({ id: teacher.id, name: teacher.name })
   }
@@ -348,6 +372,10 @@ export default function TeachersPage() {
           <Button variant="destructive" size="sm" disabled={selectedTeachers.length === 0 || batchDeleting} onClick={handleBatchDelete}>
             {batchDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
             {selectedTeachers.length > 0 ? `批量删除(${selectedTeachers.length})` : "批量删除"}
+          </Button>
+          <Button variant="outline" size="sm" disabled={selectedTeachers.length === 0 || joinLoading || batchDeleting} onClick={() => { setJoinTargetNodeId(""); setIsJoinDialogOpen(true) }}>
+            {joinLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Users className="h-4 w-4 mr-1" />}
+            {selectedTeachers.length > 0 ? `批量加入部门(${selectedTeachers.length})` : "批量加入部门"}
           </Button>
           <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
             <Upload className="h-4 w-4 mr-1" />导入
@@ -682,6 +710,35 @@ export default function TeachersPage() {
             {importStep === "upload" && (
               <Button variant="ghost" size="sm" onClick={() => setImportStep("download")}>上一步</Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 批量加入部门/组织节点 */}
+      <Dialog open={isJoinDialogOpen} onOpenChange={setIsJoinDialogOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle>批量加入部门</DialogTitle>
+            <DialogDescription>为选中的 {selectedTeachers.length} 名教职工统一关联一个组织节点</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>目标组织节点 <span className="text-destructive">*</span></Label>
+              <OrgNodePicker
+                tenantId={tenantId}
+                value={joinTargetNodeId}
+                onChange={(value) => setJoinTargetNodeId(value || "")}
+                placeholder="选择组织节点"
+                title="选择组织节点"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsJoinDialogOpen(false)} disabled={joinLoading}>取消</Button>
+            <Button onClick={handleBatchJoin} disabled={joinLoading || !joinTargetNodeId}>
+              {joinLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              确认加入
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

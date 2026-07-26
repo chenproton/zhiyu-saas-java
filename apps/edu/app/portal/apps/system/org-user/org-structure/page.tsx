@@ -817,7 +817,7 @@ export default function OrgStructurePage() {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         title="确认删除"
-        description={`确定删除组织节点「${deleteTarget?.name}」吗？如果该节点下还有子节点或成员，删除可能会失败。`}
+        description={`确定删除组织节点「${deleteTarget?.name}」吗？其子节点会被一并删除，节点下的用户将保留但清空所属班级/部门。`}
         confirmText="删除"
         variant="destructive"
         onConfirm={confirmDelete}
