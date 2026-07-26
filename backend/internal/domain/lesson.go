@@ -23,19 +23,29 @@ type Course struct {
 	Semester      *string        `json:"semester,omitempty"`
 	ClassName     *string        `json:"className,omitempty"`
 	Status        CourseStatus   `json:"status"`
-	CoverColor    *string        `json:"coverColor,omitempty"`
-	CoverImage    *string        `json:"coverImage,omitempty"`
-	CourseTag     *string        `json:"courseTag,omitempty"`
-	CreatorID     string         `json:"creatorId"`
-	CoCreatorIds  JSONSlice      `json:"coCreatorIds,omitempty"`
-	BatchID       *string        `json:"batchId,omitempty"`
-	BatchName     *string        `json:"batchName,omitempty"`
-	NodeCount     int            `json:"nodeCount"`
-	ResourceCount int            `json:"resourceCount"`
-	ViewCount     int            `json:"viewCount"`
-	StudyCount    int            `json:"studyCount"`
-	CreatedAt     time.Time      `json:"createdAt"`
-	UpdatedAt     time.Time      `json:"updatedAt"`
+	CoverColor        *string        `json:"coverColor,omitempty"`
+	CoverImage        *string        `json:"coverImage,omitempty"`
+	CourseTag         *string        `json:"courseTag,omitempty"`
+	Difficulty        *int           `json:"difficulty,omitempty"`
+	Description       *string        `json:"description,omitempty"`
+	KnowledgePointIds JSONSlice      `json:"knowledgePointIds,omitempty"`
+	ResourceIds       JSONSlice      `json:"resourceIds,omitempty"`
+	CreatorID         string         `json:"creatorId"`
+	CoCreatorIds      JSONSlice      `json:"coCreatorIds,omitempty"`
+	BatchID           *string        `json:"batchId,omitempty"`
+	BatchName         *string        `json:"batchName,omitempty"`
+	NodeCount         int            `json:"nodeCount"`
+	ResourceCount     int            `json:"resourceCount"`
+	ViewCount         int            `json:"viewCount"`
+	StudyCount        int            `json:"studyCount"`
+	CreatedAt         time.Time      `json:"createdAt"`
+	UpdatedAt         time.Time      `json:"updatedAt"`
+}
+
+type CourseResourceBinding struct {
+	ID         string `json:"id"`
+	CourseID   string `json:"courseId"`
+	ResourceID string `json:"resourceId"`
 }
 
 type KnowledgePoint struct {

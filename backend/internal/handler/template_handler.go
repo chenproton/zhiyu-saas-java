@@ -344,6 +344,125 @@ func (h *TemplateHandler) generateScenarioTemplate(ctx context.Context, tenantID
 	return f
 }
 
+func (h *TemplateHandler) generateGranularCourseTemplate(ctx context.Context, tenantID string) *excelize.File {
+	f := excelize.NewFile()
+
+	_, majors, _, _, knowledgePoints, _, resources := h.queryDicts(ctx, tenantID)
+	lessonBatches := h.queryLessonBatches(ctx, tenantID)
+
+	hdrStyle := makeHeaderStyle(f)
+	dataStyle := makeDataStyle(f)
+	noteStyle := makeNoteStyle(f)
+	wrapAlign := makeWrapAlign(f)
+	_ = dataStyle
+
+	setHdr := func(sheet string, row int, headers []string, widths []float64) {
+		for ci, h := range headers {
+			cell, _ := excelize.CoordinatesToCellName(ci+1, row)
+			f.SetCellValue(sheet, cell, h)
+			f.SetCellStyle(sheet, cell, cell, hdrStyle)
+			f.SetColWidth(sheet, colName(ci+1), colName(ci+1), widths[ci])
+		}
+		f.SetRowHeight(sheet, row, 28)
+	}
+	setRows := func(sheet string, startRow int, data [][]string) {
+		for ri, row := range data {
+			r := startRow + ri
+			for ci, v := range row {
+				cell, _ := excelize.CoordinatesToCellName(ci+1, r)
+				f.SetCellValue(sheet, cell, v)
+				f.SetCellStyle(sheet, cell, cell, dataStyle)
+				f.SetCellStyle(sheet, cell, cell, wrapAlign)
+			}
+			f.SetRowHeight(sheet, r, 24)
+		}
+	}
+	_ = setRows
+
+	setA1 := func(sheet string, cols int, text string) {
+		start, _ := excelize.CoordinatesToCellName(1, 1)
+		end, _ := excelize.CoordinatesToCellName(cols, 1)
+		f.MergeCell(sheet, start, end)
+		f.SetCellValue(sheet, start, text)
+		f.SetCellStyle(sheet, start, end, noteStyle)
+		f.SetCellStyle(sheet, start, end, wrapAlign)
+		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+2)*16)
+	}
+
+	// Sheet 1: 课程基本信息
+	s1, _ := f.NewSheet("课程基本信息")
+	f.DeleteSheet("Sheet1")
+	f.SetActiveSheet(s1)
+	headers1 := []string{"课程名称 *", "适用专业", "课程简介", "难度", "预计课时", "学习目标", "关联知识点", "课程资源", "所属批次"}
+	widths1 := []float64{28, 24, 42, 10, 12, 42, 28, 28, 20}
+	setA1("课程基本信息", 9, "填写说明：\n* 必填列。\n适用专业：从「专业字典」Sheet 选取，匹配则关联，不匹配则忽略\n难度：1-5，1 最易，5 最难\n预计课时：数字，单位小时\n关联知识点：从「知识点库」Sheet 选取，多个逗号分隔；匹配则关联，不匹配则自动新建并关联\n课程资源：从「任务资源库」Sheet 选取，多个逗号分隔；匹配则关联，不匹配则自动新建为文档类型资源并关联\n所属批次：从「批次字典」Sheet 选取，匹配则关联，不匹配则忽略\n导入后默认状态为 draft")
+	setHdr("课程基本信息", 2, headers1, widths1)
+	f.SetPanes("课程基本信息", &excelize.Panes{Freeze: true, YSplit: 2})
+	f.AutoFilter("课程基本信息", "A2:I2", []excelize.AutoFilterOptions{})
+
+	// Reference sheets
+	h.addRefSheet(f, "【参考】专业字典", []string{"专业名称", "专业编码"}, []float64{32, 18},
+		"仅作参考，无需编辑修改。\n课程基本信息 Sheet「适用专业」与本表名称一致则关联已有，不一致则忽略（不新建专业）。",
+		func() [][]string {
+			var data [][]string
+			for _, v := range majors {
+				data = append(data, []string{v[0], v[1]})
+			}
+			return data
+		}())
+
+	h.addRefSheet(f, "【参考】批次字典", []string{"批次名称"}, []float64{36},
+		"仅作参考，无需编辑修改。\n课程基本信息 Sheet「所属批次」与本表名称一致则关联已有，不一致则忽略（不新建批次）。",
+		func() [][]string {
+			var data [][]string
+			for _, v := range lessonBatches {
+				data = append(data, []string{v})
+			}
+			return data
+		}())
+
+	h.addRefSheet(f, "【参考】知识点库", []string{"知识点名称"}, []float64{36},
+		"仅作参考，无需编辑修改。\n课程基本信息 Sheet「关联知识点」与本表名称一致则关联已有，不一致则自动新建并关联。",
+		func() [][]string {
+			var data [][]string
+			for _, v := range knowledgePoints {
+				data = append(data, []string{v})
+			}
+			return data
+		}())
+
+	h.addRefSheet(f, "【参考】任务资源库", []string{"资源名称", "资源类型"}, []float64{42, 16},
+		"仅作参考，无需编辑修改。\n课程基本信息 Sheet「课程资源」与本表一致则关联已有，不一致则自动新建为文档类型资源并关联。",
+		func() [][]string {
+			var data [][]string
+			for _, v := range resources {
+				t := v[1]
+				if t == "" {
+					t = "文档"
+				}
+				data = append(data, []string{v[0], t})
+			}
+			return data
+		}())
+
+	return f
+}
+
+func (h *TemplateHandler) ServeGranularCourseTemplate(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	ctx := r.Context()
+	f := h.generateGranularCourseTemplate(ctx, tenantID)
+	writeExcel(w, f, "颗粒课批量导入模板.xlsx")
+}
+
 func (h *TemplateHandler) ServeSystemCourseTemplate(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {

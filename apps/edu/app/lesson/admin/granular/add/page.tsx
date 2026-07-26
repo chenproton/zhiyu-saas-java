@@ -21,8 +21,8 @@ import {
 } from "@/components/ui/select"
 
 import type { SystemCourseNode, NodeResource } from "@/lib/types/lesson-source"
-import type { Course } from "@/lib/types/lesson"
-import { courseApi, knowledgeApi, fileApi, approvalApi, majorApi, lessonBatchApi } from "@/lib/api"
+import type { Course, KnowledgePointItem as SharedKnowledgePointItem } from "@/lib/types/lesson"
+import { courseApi, knowledgeApi, fileApi, approvalApi, majorApi, lessonBatchApi, courseResourceApi } from "@/lib/api"
 
 import { KnowledgeSelector } from "../../_components/knowledge/knowledge-selector"
 import { ResourceSelector, type ResourceItem } from "../../_components/resources/resource-selector"
@@ -55,6 +55,7 @@ function AddGranularPageInner() {
   const [courseName, setCourseName] = useState("")
   const [courseCode, setCourseCode] = useState("")
   const [hours, setHours] = useState("")
+  const [courseDescription, setCourseDescription] = useState("")
   const [learningGoal, setLearningGoal] = useState("")
   const [major, setMajor] = useState("")
   const [majorId, setMajorId] = useState("")
@@ -81,28 +82,51 @@ function AddGranularPageInner() {
         const [kpRes] = await Promise.all([
           knowledgeApi.list({ limit: 1000 }),
         ])
-        setKnowledgePool(
-          kpRes.items.map((k) => ({
-            id: k.id,
-            name: k.name,
-            code: k.code,
-            description: k.description,
-            linked: false,
-          }))
-        )
+        const pool = kpRes.items.map((k) => ({
+          id: k.id,
+          name: k.name,
+          code: k.code,
+          description: k.description,
+          linked: k.linked,
+        }))
+        setKnowledgePool(pool)
 
         if (editId) {
-          const c = await courseApi.get(editId)
+          const [c, resRes] = await Promise.all([
+            courseApi.get(editId),
+            courseResourceApi.list({ courseId: editId, limit: 200 }),
+          ])
           setCourse(c)
           setCourseName(c.name)
           setCourseCode(c.code)
-          setHours(String(c.onlineHours ?? c.offlineHours ?? ""))
-          setLearningGoal("") // course 表无学习目标字段
+          setHours(String(c.onlineHours ?? ""))
+          setCourseDescription(c.description || "")
+          setLearningGoal(c.description || "")
           setMajor(c.majorName || "")
           setMajorId(c.majorId || "")
-          setDifficulty(0)
+          setDifficulty(c.difficulty || 0)
           setCoverImage(c.coverImage || "")
           if (c.batchId) setBatchId(c.batchId)
+
+          const selectedKpIds = new Set((c.knowledgePointIds || []).filter((id): id is string => !!id))
+          setKnowledgePoints(
+            pool
+              .filter((k) => selectedKpIds.has(k.id))
+              .map((k) => ({ ...k, linked: true }))
+          )
+
+          const resources = (resRes.items || []).map((r: any) => ({
+            id: r.id,
+            name: r.name,
+            type: r.type,
+            url: r.url || r.URL,
+            description: r.description,
+            size: r.size,
+            uploadedBy: r.uploadedBy,
+            uploadedAt: r.uploadedAt,
+          }))
+          setResourcePool(resources)
+          setSelectedResourceIds((c.resourceIds || []).filter((id): id is string => !!id))
         } else {
           setCourseCode(`GRA-${Date.now().toString(36).toUpperCase()}`)
         }
@@ -153,14 +177,14 @@ function AddGranularPageInner() {
       order: 1,
       type: "normal",
       status: "draft" as const,
-      teachingGoals: learningGoal,
+      teachingGoals: courseDescription || learningGoal,
       duration: parseInt(hours) || 0,
       knowledgePoints: kpForCheck,
       resources: resForCheck,
       quizzes: [],
       homeworks: [],
     }
-  }, [editId, courseName, hours, learningGoal, knowledgePoints, selectedResourceIds, resourcePool])
+  }, [editId, courseName, hours, courseDescription, learningGoal, knowledgePoints, selectedResourceIds, resourcePool])
 
   const handleSave = async () => {
     if (!courseName) {
@@ -169,7 +193,11 @@ function AddGranularPageInner() {
     }
     setSaving(true)
     try {
-      const payload: Partial<Omit<Course, "id" | "createdAt" | "updatedAt">> = {
+      const description = courseDescription || learningGoal || undefined
+      const knowledgePointIds = knowledgePoints
+        .map((kp) => kp.id)
+        .filter((id) => !id.startsWith("kp-custom-"))
+      const payload: Partial<Omit<Course, "id" | "createdAt" | "updatedAt" | "nodeCount" | "resourceCount" | "studyCount" | "viewCount">> = {
         name: courseName,
         code: courseCode,
         type: "granular",
@@ -183,6 +211,10 @@ function AddGranularPageInner() {
         status: course?.status || "draft",
         creatorId: course?.creatorId || undefined,
         coCreatorIds: course?.coCreatorIds ?? [],
+        difficulty: difficulty > 0 ? difficulty : undefined,
+        description,
+        knowledgePointIds,
+        resourceIds: selectedResourceIds,
       }
       if (editId) {
         await courseApi.update(editId, payload)
@@ -298,8 +330,8 @@ function AddGranularPageInner() {
                   <div className="md:col-span-2 space-y-1.5">
                     <Label className="text-xs">学习目标</Label>
                     <RichTextEditor
-                      value={learningGoal}
-                      onChange={setLearningGoal}
+                      value={courseDescription}
+                      onChange={setCourseDescription}
                       minHeight={280}
                     />
                   </div>
@@ -386,6 +418,7 @@ function AddGranularPageInner() {
                   selectedIds={selectedResourceIds}
                   onChange={setSelectedResourceIds}
                   onUpload={(r) => setResourcePool((prev) => [...prev, r])}
+                  courseId={editId || undefined}
                 />
               </CardContent>
             </Card>

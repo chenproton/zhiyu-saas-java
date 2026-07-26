@@ -897,6 +897,17 @@ export const nodeResourceApi = {
     request<{ id: string }>(`/lesson/node-resources/${id}`, { method: "DELETE" }),
 }
 
+export const courseResourceApi = {
+  list: (params?: { courseId?: string; search?: string; limit?: number; offset?: number }) =>
+    request<ListResponse<NodeResource>>(`/lesson/course-resources${buildQuery(params || {})}`),
+  create: (req: Omit<NodeResource, "id" | "uploadedAt" | "nodeId"> & { courseId: string }) =>
+    request<NodeResource>("/lesson/course-resources/create", { method: "POST", body: JSON.stringify(req) }),
+  bind: (data: { courseId: string; resourceId: string }) =>
+    request<{ id: string }>("/lesson/course-resources", { method: "POST", body: JSON.stringify(data) }),
+  unbind: (id: string) =>
+    request<{ id: string }>(`/lesson/course-resources/${id}`, { method: "DELETE" }),
+}
+
 export const lessonBatchApi = {
   ...createCrudApi<LessonBatch, Omit<LessonBatch, "id" | "createdAt" | "updatedAt">, Partial<Omit<LessonBatch, "id" | "createdAt" | "updatedAt">>>("/lesson/batches"),
   updateStatus: (id: string, status: string) =>
@@ -1013,7 +1024,7 @@ export const importExportApi = {
     }
     return res.json()
   },
-  downloadTemplate: (entity: "positions" | "scenarios" | "courses" | "system-courses" | "question-banks" | "exams" | "industries" | "majors" | "organizations" | "students" | "teachers") => {
+  downloadTemplate: (entity: "positions" | "scenarios" | "courses" | "system-courses" | "granular-courses" | "question-banks" | "exams" | "industries" | "majors" | "organizations" | "students" | "teachers") => {
     const token = getToken()
     return fetch(`${API_BASE}/templates/${entity}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},

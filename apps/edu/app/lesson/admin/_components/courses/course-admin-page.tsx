@@ -16,6 +16,7 @@ interface CourseAdminPageProps {
   subtitle: string
   courseType: CourseType
   addHref: string
+  importExcelEntity?: string
 }
 
 function draftSuffix() {
@@ -65,7 +66,7 @@ function mapCourseBatch(backend: any): ContentBatch {
   return { id: backend.id, name: backend.name, workflowId: backend.workflowId }
 }
 
-export function CourseAdminPage({ title, subtitle, courseType, addHref }: CourseAdminPageProps) {
+export function CourseAdminPage({ title, subtitle, courseType, addHref, importExcelEntity }: CourseAdminPageProps) {
   const { user } = useAuth()
   const currentUserId = user?.id ?? ""
   const typeLabel = courseType === "system" ? "体系课" : courseType === "granular" ? "颗粒课" : "混合课"
@@ -85,7 +86,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
       approvalTargetType="course"
       importEntityName="courses"
       exportEntityName="courses"
-      importExcelEntity="courses"
+      importExcelEntity={importExcelEntity ?? "courses"}
       listParams={{ type: courseType }}
       coBuilderField="coCreatorIds"
       statusFilterOptions={[

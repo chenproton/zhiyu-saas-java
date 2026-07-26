@@ -21,6 +21,9 @@ export interface Course {
   coverColor?: string
   coverImage?: string
   courseTag?: string
+  difficulty?: number
+  knowledgePointIds?: string[]
+  resourceIds?: string[]
   creatorId: string
   coCreatorIds: string[]
   batchId?: string

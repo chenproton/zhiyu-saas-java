@@ -24,47 +24,55 @@ type CourseListResponse struct {
 }
 
 type CreateCourseRequest struct {
-	Code          string           `json:"code"`
-	Name          string           `json:"name"`
-	Type          string           `json:"type"`
-	Category      string           `json:"category"`
-	MajorID       *string          `json:"majorId"`
-	TeacherID     *string          `json:"teacherId"`
-	IndustryID    *string          `json:"industryId"`
-	Version       *string          `json:"version"`
-	OnlineHours   *float64         `json:"onlineHours"`
-	OfflineHours  *float64         `json:"offlineHours"`
-	OnlineWeight  *float64         `json:"onlineWeight"`
-	OfflineWeight *float64         `json:"offlineWeight"`
-	Semester      *string          `json:"semester"`
-	ClassName     *string          `json:"className"`
-	CoverColor    *string          `json:"coverColor"`
-	CoverImage    *string          `json:"coverImage"`
-	CourseTag     *string          `json:"courseTag"`
-	CoCreatorIds  domain.JSONSlice `json:"coCreatorIds"`
-	BatchID       *string          `json:"batchId"`
+	Code              string           `json:"code"`
+	Name              string           `json:"name"`
+	Type              string           `json:"type"`
+	Category          string           `json:"category"`
+	MajorID           *string          `json:"majorId"`
+	TeacherID         *string          `json:"teacherId"`
+	IndustryID        *string          `json:"industryId"`
+	Version           *string          `json:"version"`
+	OnlineHours       *float64         `json:"onlineHours"`
+	OfflineHours      *float64         `json:"offlineHours"`
+	OnlineWeight      *float64         `json:"onlineWeight"`
+	OfflineWeight     *float64         `json:"offlineWeight"`
+	Semester          *string          `json:"semester"`
+	ClassName         *string          `json:"className"`
+	CoverColor        *string          `json:"coverColor"`
+	CoverImage        *string          `json:"coverImage"`
+	CourseTag         *string          `json:"courseTag"`
+	Difficulty        *int             `json:"difficulty"`
+	Description       *string          `json:"description"`
+	KnowledgePointIds domain.JSONSlice `json:"knowledgePointIds"`
+	ResourceIds       domain.JSONSlice `json:"resourceIds"`
+	CoCreatorIds      domain.JSONSlice `json:"coCreatorIds"`
+	BatchID           *string          `json:"batchId"`
 }
 
 type UpdateCourseRequest struct {
-	Code          string           `json:"code"`
-	Name          string           `json:"name"`
-	Type          string           `json:"type"`
-	Category      string           `json:"category"`
-	MajorID       *string          `json:"majorId"`
-	TeacherID     *string          `json:"teacherId"`
-	IndustryID    *string          `json:"industryId"`
-	Version       *string          `json:"version"`
-	OnlineHours   *float64         `json:"onlineHours"`
-	OfflineHours  *float64         `json:"offlineHours"`
-	OnlineWeight  *float64         `json:"onlineWeight"`
-	OfflineWeight *float64         `json:"offlineWeight"`
-	Semester      *string          `json:"semester"`
-	ClassName     *string          `json:"className"`
-	CoverColor    *string          `json:"coverColor"`
-	CoverImage    *string          `json:"coverImage"`
-	CourseTag     *string          `json:"courseTag"`
-	CoCreatorIds  domain.JSONSlice `json:"coCreatorIds"`
-	BatchID       *string          `json:"batchId"`
+	Code              string           `json:"code"`
+	Name              string           `json:"name"`
+	Type              string           `json:"type"`
+	Category          string           `json:"category"`
+	MajorID           *string          `json:"majorId"`
+	TeacherID         *string          `json:"teacherId"`
+	IndustryID        *string          `json:"industryId"`
+	Version           *string          `json:"version"`
+	OnlineHours       *float64         `json:"onlineHours"`
+	OfflineHours      *float64         `json:"offlineHours"`
+	OnlineWeight      *float64         `json:"onlineWeight"`
+	OfflineWeight     *float64         `json:"offlineWeight"`
+	Semester          *string          `json:"semester"`
+	ClassName         *string          `json:"className"`
+	CoverColor        *string          `json:"coverColor"`
+	CoverImage        *string          `json:"coverImage"`
+	CourseTag         *string          `json:"courseTag"`
+	Difficulty        *int             `json:"difficulty"`
+	Description       *string          `json:"description"`
+	KnowledgePointIds domain.JSONSlice `json:"knowledgePointIds"`
+	ResourceIds       domain.JSONSlice `json:"resourceIds"`
+	CoCreatorIds      domain.JSONSlice `json:"coCreatorIds"`
+	BatchID           *string          `json:"batchId"`
 }
 
 func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +146,10 @@ func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 	query := `
 		SELECT c.id, c.code, c.name, c.type, c.category, c.major_id, m.name AS major_name, c.teacher_id, c.industry_id, i.name AS industry_name, c.version,
 			c.online_hours, c.offline_hours, c.online_weight, c.offline_weight, c.semester, c.class_name,
-			c.status, c.cover_color, c.cover_image, c.course_tag, c.creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name,
+			c.status, c.cover_color, c.cover_image, c.course_tag, c.difficulty, c.description,
+			(SELECT COALESCE(array_agg(ckb.knowledge_point_id), '{}') FROM course_knowledge_bindings ckb WHERE ckb.course_id = c.id AND ckb.bind_type = 'course') AS knowledge_point_ids,
+			(SELECT COALESCE(array_agg(crb.resource_id), '{}') FROM course_resource_bindings crb WHERE crb.course_id = c.id) AS resource_ids,
+			c.creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name,
 			c.node_count, c.resource_count,
 			(SELECT COUNT(*) FROM view_logs WHERE target_type = 'course' AND target_id = c.id) AS view_count,
 			c.study_count, c.created_at, c.updated_at
@@ -216,12 +227,12 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 	_, err := h.DB.Exec(r.Context(), `
 		INSERT INTO courses (id, tenant_id, code, name, type, category, major_id, teacher_id, industry_id, version,
 			online_hours, offline_hours, online_weight, offline_weight, semester, class_name,
-			status, cover_color, cover_image, course_tag, creator_id, co_creator_ids, batch_id,
+			status, cover_color, cover_image, course_tag, difficulty, description, creator_id, co_creator_ids, batch_id,
 			node_count, resource_count, study_count)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'draft', $17, $18, $19, $20, $21, $22, 0, 0, 0)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'draft', $17, $18, $19, $20, $21, $22, $23, $24, 0, 0, 0)
 	`, id, tenantID, req.Code, req.Name, req.Type, req.Category, req.MajorID, req.TeacherID, req.IndustryID, req.Version,
 		req.OnlineHours, req.OfflineHours, req.OnlineWeight, req.OfflineWeight, req.Semester, req.ClassName,
-		req.CoverColor, req.CoverImage, req.CourseTag, claims.UserID, req.CoCreatorIds, req.BatchID)
+		req.CoverColor, req.CoverImage, req.CourseTag, req.Difficulty, req.Description, claims.UserID, req.CoCreatorIds, req.BatchID)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "课程代码已存在，请使用其他代码")
@@ -230,6 +241,9 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "failed to create course")
 		return
 	}
+
+	h.bindCourseKnowledgePoints(r.Context(), id, tenantID, req.KnowledgePointIds)
+	h.bindCourseResources(r.Context(), id, tenantID, req.ResourceIds)
 
 	course, _ := h.fetchCourse(r.Context(), id)
 	respondJSON(w, http.StatusCreated, course)
@@ -252,6 +266,11 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 	var req UpdateCourseRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
 		return
 	}
 
@@ -307,6 +326,12 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if req.CourseTag == nil {
 		req.CourseTag = existing.CourseTag
 	}
+	if req.Difficulty == nil {
+		req.Difficulty = existing.Difficulty
+	}
+	if req.Description == nil {
+		req.Description = existing.Description
+	}
 	batchID := req.BatchID
 
 	if req.CoCreatorIds == nil {
@@ -317,11 +342,11 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		UPDATE courses SET code = $1, name = $2, type = $3, category = $4, major_id = $5, teacher_id = $6,
 			industry_id = $7, version = $8, online_hours = $9, offline_hours = $10, online_weight = $11,
 			offline_weight = $12, semester = $13, class_name = $14, cover_color = $15, cover_image = $16,
-			course_tag = $17, co_creator_ids = $18, batch_id = $19, updated_at = NOW()
-		WHERE id = $20
+			course_tag = $17, difficulty = $18, description = $19, co_creator_ids = $20, batch_id = $21, updated_at = NOW()
+		WHERE id = $22
 	`, req.Code, req.Name, req.Type, req.Category, req.MajorID, req.TeacherID, req.IndustryID, req.Version,
 		req.OnlineHours, req.OfflineHours, req.OnlineWeight, req.OfflineWeight, req.Semester, req.ClassName,
-		req.CoverColor, req.CoverImage, req.CourseTag, req.CoCreatorIds, batchID, id)
+		req.CoverColor, req.CoverImage, req.CourseTag, req.Difficulty, req.Description, req.CoCreatorIds, batchID, id)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "课程代码已存在，请使用其他代码")
@@ -329,6 +354,13 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 		respondError(w, http.StatusInternalServerError, "failed to update course")
 		return
+	}
+
+	if req.KnowledgePointIds != nil {
+		h.replaceCourseKnowledgePoints(r.Context(), id, tenantID, req.KnowledgePointIds)
+	}
+	if req.ResourceIds != nil {
+		h.replaceCourseResources(r.Context(), id, tenantID, req.ResourceIds)
 	}
 
 	course, _ := h.fetchCourse(r.Context(), id)
@@ -405,7 +437,10 @@ func (h *CourseHandler) fetchCourse(ctx context.Context, id string) (*domain.Cou
 	err := h.DB.QueryRow(ctx, `
 		SELECT c.id, c.code, c.name, c.type, c.category, c.major_id, m.name AS major_name, c.teacher_id, c.industry_id, i.name AS industry_name, c.version,
 			c.online_hours, c.offline_hours, c.online_weight, c.offline_weight, c.semester, c.class_name,
-			c.status, c.cover_color, c.cover_image, c.course_tag, c.creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name,
+			c.status, c.cover_color, c.cover_image, c.course_tag, c.difficulty, c.description,
+			(SELECT COALESCE(array_agg(ckb.knowledge_point_id), '{}') FROM course_knowledge_bindings ckb WHERE ckb.course_id = c.id AND ckb.bind_type = 'course') AS knowledge_point_ids,
+			(SELECT COALESCE(array_agg(crb.resource_id), '{}') FROM course_resource_bindings crb WHERE crb.course_id = c.id) AS resource_ids,
+			c.creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name,
 			c.node_count, c.resource_count,
 			(SELECT COUNT(*) FROM view_logs WHERE target_type = 'course' AND target_id = c.id) AS view_count,
 			c.study_count, c.created_at, c.updated_at
@@ -417,7 +452,8 @@ func (h *CourseHandler) fetchCourse(ctx context.Context, id string) (*domain.Cou
 	`, id).Scan(
 		&c.ID, &c.Code, &c.Name, &c.Type, &c.Category, &c.MajorID, &c.MajorName, &c.TeacherID, &c.IndustryID, &c.IndustryName, &c.Version,
 		&c.OnlineHours, &c.OfflineHours, &c.OnlineWeight, &c.OfflineWeight, &c.Semester, &c.ClassName,
-		&c.Status, &c.CoverColor, &c.CoverImage, &c.CourseTag, &c.CreatorID, &c.CoCreatorIds, &c.BatchID, &c.BatchName,
+		&c.Status, &c.CoverColor, &c.CoverImage, &c.CourseTag, &c.Difficulty, &c.Description,
+		&c.KnowledgePointIds, &c.ResourceIds, &c.CreatorID, &c.CoCreatorIds, &c.BatchID, &c.BatchName,
 		&c.NodeCount, &c.ResourceCount, &c.ViewCount, &c.StudyCount, &c.CreatedAt, &c.UpdatedAt,
 	)
 	if err != nil {
@@ -433,7 +469,8 @@ func (h *CourseHandler) scanCourseRows(rows pgx.Rows) ([]domain.Course, error) {
 		if err := rows.Scan(
 			&c.ID, &c.Code, &c.Name, &c.Type, &c.Category, &c.MajorID, &c.MajorName, &c.TeacherID, &c.IndustryID, &c.IndustryName, &c.Version,
 			&c.OnlineHours, &c.OfflineHours, &c.OnlineWeight, &c.OfflineWeight, &c.Semester, &c.ClassName,
-			&c.Status, &c.CoverColor, &c.CoverImage, &c.CourseTag, &c.CreatorID, &c.CoCreatorIds, &c.BatchID, &c.BatchName,
+			&c.Status, &c.CoverColor, &c.CoverImage, &c.CourseTag, &c.Difficulty, &c.Description,
+			&c.KnowledgePointIds, &c.ResourceIds, &c.CreatorID, &c.CoCreatorIds, &c.BatchID, &c.BatchName,
 			&c.NodeCount, &c.ResourceCount, &c.ViewCount, &c.StudyCount, &c.CreatedAt, &c.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -441,4 +478,42 @@ func (h *CourseHandler) scanCourseRows(rows pgx.Rows) ([]domain.Course, error) {
 		items = append(items, c)
 	}
 	return items, nil
+}
+
+func (h *CourseHandler) bindCourseKnowledgePoints(ctx context.Context, courseID, tenantID string, ids domain.JSONSlice) {
+	for _, v := range ids {
+		kpID, ok := v.(string)
+		if !ok || kpID == "" || strings.HasPrefix(kpID, "kp-custom-") {
+			continue
+		}
+		_, _ = h.DB.Exec(ctx, `
+			INSERT INTO course_knowledge_bindings (id, tenant_id, course_id, knowledge_point_id, bind_type, source_id)
+			VALUES ($1, $2, $3, $4, 'course', NULL)
+			ON CONFLICT (course_id, knowledge_point_id, bind_type, source_id) DO NOTHING
+		`, uuid.NewString(), tenantID, courseID, kpID)
+	}
+}
+
+func (h *CourseHandler) replaceCourseKnowledgePoints(ctx context.Context, courseID, tenantID string, ids domain.JSONSlice) {
+	_, _ = h.DB.Exec(ctx, `DELETE FROM course_knowledge_bindings WHERE course_id = $1 AND bind_type = 'course'`, courseID)
+	h.bindCourseKnowledgePoints(ctx, courseID, tenantID, ids)
+}
+
+func (h *CourseHandler) bindCourseResources(ctx context.Context, courseID, tenantID string, ids domain.JSONSlice) {
+	for _, v := range ids {
+		resID, ok := v.(string)
+		if !ok || resID == "" {
+			continue
+		}
+		_, _ = h.DB.Exec(ctx, `
+			INSERT INTO course_resource_bindings (id, tenant_id, course_id, resource_id)
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (course_id, resource_id) DO NOTHING
+		`, uuid.NewString(), tenantID, courseID, resID)
+	}
+}
+
+func (h *CourseHandler) replaceCourseResources(ctx context.Context, courseID, tenantID string, ids domain.JSONSlice) {
+	_, _ = h.DB.Exec(ctx, `DELETE FROM course_resource_bindings WHERE course_id = $1`, courseID)
+	h.bindCourseResources(ctx, courseID, tenantID, ids)
 }
