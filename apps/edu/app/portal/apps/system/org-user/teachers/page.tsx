@@ -27,7 +27,7 @@ import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
 import {
   Plus, Trash2, Search, Filter, Upload, Download, FileDown,
   FolderTree, Key, Loader2, AlertCircle, RotateCcw, Pencil, ChevronLeft, ChevronRight,
-  UserCheck, UserX, UserPlus, Ban, Users
+  UserCheck, Ban, Users
 } from "lucide-react"
 
 interface Teacher {
@@ -38,21 +38,19 @@ interface Teacher {
   orgNodeId?: string
   roles: string[]
   positions: string[]
-  status: "在职" | "离职" | "外聘" | "禁用"
+  status: "正常" | "禁用"
 }
 
 function mapTeacherStatus(status: string): Teacher["status"] {
-  if (status === "active") return "在职"
-  if (status === "inactive") return "离职"
+  if (status === "active") return "正常"
   if (status === "disabled") return "禁用"
-  return "外聘"
+  if (status === "inactive") return "正常"
+  return "正常"
 }
 
 function toBackendStatus(status: Teacher["status"]): string {
-  if (status === "在职") return "active"
-  if (status === "离职") return "inactive"
+  if (status === "正常") return "active"
   if (status === "禁用") return "disabled"
-  if (status === "外聘") return "active"
   return "active"
 }
 
@@ -490,9 +488,7 @@ export default function TeachersPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全部状态</SelectItem>
-                  <SelectItem value="在职">在职</SelectItem>
-                  <SelectItem value="离职">离职</SelectItem>
-                  <SelectItem value="外聘">外聘</SelectItem>
+                  <SelectItem value="正常">正常</SelectItem>
                   <SelectItem value="禁用">禁用</SelectItem>
                 </SelectContent>
               </Select>
@@ -561,7 +557,7 @@ export default function TeachersPage() {
                           ) : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={teacher.status === "在职" ? "default" : teacher.status === "禁用" ? "destructive" : "secondary"}>{teacher.status}</Badge>
+                          <Badge variant={teacher.status === "正常" ? "default" : "destructive"}>{teacher.status}</Badge>
                         </TableCell>
                         <TableCell className="text-right relative">
                           <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
@@ -569,17 +565,9 @@ export default function TeachersPage() {
                               <Pencil className="mr-1 h-3 w-3" />
                               编辑
                             </Button>
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => changeStatus(teacher, "在职")}>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => changeStatus(teacher, "正常")}>
                               <UserCheck className="mr-1 h-3 w-3" />
-                              {teacher.status !== "在职" ? "设为在职" : "✓ 在职"}
-                            </Button>
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => changeStatus(teacher, "离职")}>
-                              <UserX className="mr-1 h-3 w-3" />
-                              {teacher.status !== "离职" ? "设为离职" : "✓ 离职"}
-                            </Button>
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => changeStatus(teacher, "外聘")}>
-                              <UserPlus className="mr-1 h-3 w-3" />
-                              {teacher.status !== "外聘" ? "设为外聘" : "✓ 外聘"}
+                              {teacher.status !== "正常" ? "设为正常" : "✓ 正常"}
                             </Button>
                             <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={() => changeStatus(teacher, "禁用")}>
                               <Ban className="mr-1 h-3 w-3" />

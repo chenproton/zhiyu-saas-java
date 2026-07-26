@@ -382,7 +382,7 @@ func (h *UserManagementHandler) UpdateStatus(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if req.Status != "active" && req.Status != "inactive" && req.Status != "disabled" && req.Status != "graduated" {
+	if req.Status != "active" && req.Status != "disabled" && req.Status != "graduated" {
 		respondError(w, http.StatusBadRequest, "invalid status")
 		return
 	}

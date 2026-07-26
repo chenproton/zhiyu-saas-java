@@ -998,7 +998,7 @@ func (h *TemplateHandler) generateStudentTemplate(ctx context.Context, tenantID 
 	f.SetActiveSheet(s1)
 	headers := []string{"登录账号(学号) *", "姓名 *", "密码 *", "班级(组织节点路径) *", "状态"}
 	widths := []float64{24, 16, 20, 42, 12}
-	setA1("学生列表", 5, "填写说明：\n* 必填列。\n登录账号(学号)：租户内唯一，已存在则跳过。\n密码：长度至少 8 位，且需同时包含字母和数字。\n班级(组织节点路径)：支持多级路径，用于精确定位班级。\n  格式示例：学校-学院-班级 或 学校/学院/班级\n  若系统中该班级名称唯一，也可只写班级名称。\n状态：在籍 / 休学 / 退学 / 毕业 / 结业，默认为在籍。")
+	setA1("学生列表", 5, "填写说明：\n* 必填列。\n登录账号(学号)：租户内唯一，已存在则跳过。\n密码：长度至少 8 位，且需同时包含字母和数字。\n班级(组织节点路径)：支持多级路径，用于精确定位班级。\n  格式示例：学校-学院-班级 或 学校/学院/班级\n  若系统中该班级名称唯一，也可只写班级名称。\n状态：正常 / 禁用 / 毕业，默认为正常。")
 	setHdr("学生列表", 2, headers, widths)
 	f.SetPanes("学生列表", &excelize.Panes{Freeze: true, YSplit: 2})
 	f.AutoFilter("学生列表", "A2:E2", []excelize.AutoFilterOptions{})
@@ -1039,7 +1039,7 @@ func (h *TemplateHandler) generateTeacherTemplate(ctx context.Context, tenantID 
 	f.SetActiveSheet(s1)
 	headers := []string{"登录账号(工号) *", "姓名 *", "密码 *", "所属组织节点(路径)", "职位(逗号分隔)", "状态"}
 	widths := []float64{24, 16, 20, 42, 28, 12}
-	setA1("教师列表", 6, "填写说明：\n* 必填列。\n登录账号(工号)：租户内唯一，已存在则跳过。\n密码：长度至少 8 位，且需同时包含字母和数字。\n所属组织节点(路径)：支持多级路径，用于精确定位组织节点。\n  格式示例：学校-学院 或 学校/学院\n  若系统中该组织节点名称唯一，也可只写组织节点名称。\n职位：多个职位用逗号分隔，须与系统中已存在的职位名称一致，不匹配则忽略。\n状态：在职 / 离职 / 外聘 / 禁用，默认为在职。")
+	setA1("教师列表", 6, "填写说明：\n* 必填列。\n登录账号(工号)：租户内唯一，已存在则跳过。\n密码：长度至少 8 位，且需同时包含字母和数字。\n所属组织节点(路径)：支持多级路径，用于精确定位组织节点。\n  格式示例：学校-学院 或 学校/学院\n  若系统中该组织节点名称唯一，也可只写组织节点名称。\n职位：多个职位用逗号分隔，须与系统中已存在的职位名称一致，不匹配则忽略。\n状态：正常 / 禁用，默认为正常。")
 	setHdr("教师列表", 2, headers, widths)
 	f.SetPanes("教师列表", &excelize.Panes{Freeze: true, YSplit: 2})
 	f.AutoFilter("教师列表", "A2:F2", []excelize.AutoFilterOptions{})

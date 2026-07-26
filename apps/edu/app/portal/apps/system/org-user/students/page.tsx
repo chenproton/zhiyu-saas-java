@@ -39,32 +39,28 @@ interface Student {
   className: string
   department: string
   orgNodeId?: string
-  status: "在籍" | "休学" | "退学" | "毕业" | "结业"
+  status: "正常" | "禁用" | "毕业"
 }
 
 const statusColor: Record<string, string> = {
-  "在籍": "default",
-  "休学": "secondary",
-  "退学": "destructive",
-  "毕业": "default",
-  "结业": "secondary",
+  "正常": "default",
+  "禁用": "destructive",
+  "毕业": "secondary",
 }
 
 function mapStudentStatus(status: string): Student["status"] {
-  if (status === "active") return "在籍"
-  if (status === "inactive") return "休学"
-  if (status === "disabled") return "退学"
+  if (status === "active") return "正常"
+  if (status === "disabled") return "禁用"
   if (status === "graduated") return "毕业"
-  if (status === "completed") return "结业"
-  return "在籍"
+  if (status === "inactive") return "正常"
+  if (status === "completed") return "毕业"
+  return "正常"
 }
 
 function toBackendStatus(status: Student["status"]): string {
-  if (status === "在籍") return "active"
-  if (status === "休学") return "inactive"
-  if (status === "退学") return "disabled"
+  if (status === "正常") return "active"
+  if (status === "禁用") return "disabled"
   if (status === "毕业") return "graduated"
-  if (status === "结业") return "completed"
   return "active"
 }
 
@@ -93,7 +89,7 @@ export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
-  const [statusFilter, setStatusFilter] = useState<string>("在籍")
+  const [statusFilter, setStatusFilter] = useState<string>("正常")
   const [selectedStudents, setSelectedStudents] = useState<string[]>([])
   const [selectedOrgNodeId, setSelectedOrgNodeId] = useState<string | null>(null)
 	const [saving, setSaving] = useState(false)
@@ -526,11 +522,9 @@ export default function StudentsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全部状态</SelectItem>
-                  <SelectItem value="在籍">在籍</SelectItem>
-                  <SelectItem value="休学">休学</SelectItem>
-                  <SelectItem value="退学">退学</SelectItem>
+                  <SelectItem value="正常">正常</SelectItem>
+                  <SelectItem value="禁用">禁用</SelectItem>
                   <SelectItem value="毕业">毕业</SelectItem>
-                  <SelectItem value="结业">结业</SelectItem>
                 </SelectContent>
               </Select>
               <Button variant="outline" size="sm">
@@ -589,17 +583,13 @@ export default function StudentsPage() {
                               <Key className="mr-1 h-3 w-3" />
                               重置密码
                             </Button>
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => changeStatus(student, "在籍")}>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => changeStatus(student, "正常")}>
                               <Power className="mr-1 h-3 w-3" />
-                              {student.status !== "在籍" ? "设为在籍" : "✓ 在籍"}
+                              {student.status !== "正常" ? "设为正常" : "✓ 正常"}
                             </Button>
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => changeStatus(student, "休学")}>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={() => changeStatus(student, "禁用")}>
                               <Power className="mr-1 h-3 w-3" />
-                              {student.status !== "休学" ? "设为休学" : "✓ 休学"}
-                            </Button>
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => changeStatus(student, "退学")}>
-                              <Power className="mr-1 h-3 w-3" />
-                              {student.status !== "退学" ? "设为退学" : "✓ 退学"}
+                              {student.status !== "禁用" ? "设为禁用" : "✓ 禁用"}
                             </Button>
                             <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => changeStatus(student, "毕业")}>
                               <Award className="mr-1 h-3 w-3" />

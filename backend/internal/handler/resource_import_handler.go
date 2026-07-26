@@ -861,7 +861,7 @@ func matchSegments(chain, segments []string) bool {
 func mapUserStatus(s, defaultVal string) string {
 	s = strings.TrimSpace(s)
 	switch s {
-	case "active", "在籍", "在职":
+	case "active", "正常", "在籍", "在职":
 		return "active"
 	case "inactive", "休学", "离职":
 		return "inactive"

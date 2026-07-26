@@ -235,7 +235,7 @@ func TestUser_UpdateStatus(t *testing.T) {
 	defer env.DB.Exec(ctx, "DELETE FROM users WHERE id = $1", created.ID)
 
 	w := do("POST", "/api/v1/users/"+created.ID+"/status", map[string]string{
-		"status": "inactive",
+		"status": "disabled",
 	})
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, testhelper.ErrMsg(w))
@@ -244,8 +244,8 @@ func TestUser_UpdateStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if user.Status != "inactive" {
-		t.Fatalf("expected status 'inactive', got %s", user.Status)
+	if user.Status != "disabled" {
+		t.Fatalf("expected status 'disabled', got %s", user.Status)
 	}
 }
 
