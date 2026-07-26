@@ -4,6 +4,7 @@ import {
   unifiedNavigationConfig,
   sceneNavigationConfig,
   evaluationNavigationConfig,
+  libraryNavigationConfig,
 } from "@/lib/navigation-config"
 
 export interface MenuTreeItem {
@@ -43,6 +44,8 @@ export function buildMenuTree(): MenuTreeItem[] {
   scene.children?.push({ id: "scene-landing", label: "前台落地页", href: "/scene/landing" })
   const ability = platformGroup("ability", "能力评价与测评资源管理平台", evaluationNavigationConfig)
   ability.children?.push({ id: "ability-landing", label: "前台落地页", href: "/evaluation/landing" })
+  const resource = platformGroup("resource", "教学资源共享服务平台", libraryNavigationConfig)
+  resource.children?.push({ id: "resource-landing", label: "前台落地页", href: "/library/landing" })
 
   return [
     {
@@ -73,6 +76,7 @@ export function buildMenuTree(): MenuTreeItem[] {
     course,
     scene,
     ability,
+    resource,
   ]
 }
 
