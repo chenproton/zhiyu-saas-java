@@ -58,18 +58,6 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	if ext == "" {
 		ext = ".bin"
 	}
-	allowed := map[string]bool{
-		".pdf": true, ".doc": true, ".docx": true, ".ppt": true, ".pptx": true,
-		".xls": true, ".xlsx": true, ".txt": true,
-		".mp4": true, ".mov": true, ".avi": true, ".mkv": true, ".webm": true,
-		".mp3": true, ".wav": true, ".ogg": true,
-		".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true,
-		".zip": true, ".rar": true, ".7z": true,
-	}
-	if !allowed[ext] {
-		respondError(w, http.StatusBadRequest, "file type not allowed")
-		return
-	}
 
 	filename := uuid.NewString() + ext
 	destPath := filepath.Join(h.UploadDir, filename)
