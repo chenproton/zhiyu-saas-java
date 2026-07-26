@@ -570,6 +570,24 @@ export default function OrgStructurePage() {
     }
   }
 
+  const handleExport = async () => {
+    try {
+      const res = await importExportApi.exportOrganizationsExcel([])
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "组织架构导出.xlsx"
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+      toast({ title: "导出完成" })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "导出失败", description: err.message || "导出失败" })
+    }
+  }
+
   if (!mounted) {
     return (
       <div className="flex h-64 items-center justify-center gap-2 text-muted-foreground">
@@ -593,7 +611,7 @@ export default function OrgStructurePage() {
             <Upload className="h-4 w-4 mr-1" />
             批量导入
           </Button>
-          <Button variant="outline" size="sm" disabled title="即将上线">
+          <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-1" />
             批量导出
           </Button>

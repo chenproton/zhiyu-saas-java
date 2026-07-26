@@ -385,6 +385,25 @@ export default function TeachersPage() {
     }
   }
 
+  const handleExport = async () => {
+    try {
+      const ids = selectedTeachers.length > 0 ? selectedTeachers : []
+      const res = await importExportApi.exportTeachersExcel(ids)
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "教师导出.xlsx"
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+      toast({ title: ids.length > 0 ? `已导出 ${ids.length} 名教职工` : "导出完成" })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "导出失败", description: err.message || "导出失败" })
+    }
+  }
+
   return (
     <div className="p-6 bg-[#f5f7fa] min-h-full">
       <div className="mb-6 flex items-center justify-between">
@@ -404,8 +423,8 @@ export default function TeachersPage() {
           <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
             <Upload className="h-4 w-4 mr-1" />导入
           </Button>
-          <Button variant="outline" size="sm" disabled title="即将上线">
-            <Download className="h-4 w-4 mr-1" />导出
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-1" />导出{selectedTeachers.length > 0 ? `(${selectedTeachers.length})` : ""}
           </Button>
           <Button size="sm" onClick={openCreateDialog}>
             <Plus className="h-4 w-4 mr-1" />新建教师

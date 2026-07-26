@@ -111,6 +111,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 	questionImportHandler := &handler.QuestionImportHandler{DB: db}
 	examImportHandler := &handler.ExamImportHandler{DB: db}
 	resourceImportHandler := &handler.ResourceImportHandler{DB: db}
+	resourceExportHandler := &handler.ResourceExportHandler{DB: db}
 	templateHandler := &handler.TemplateHandler{DB: db}
 	scenarioExportHandler := &handler.ScenarioExportHandler{DB: db}
 	positionExportHandler := &handler.PositionExportHandler{DB: db}
@@ -302,6 +303,9 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 			r.Get("/templates/teachers", templateHandler.ServeTeacherTemplate)
 			r.Post("/export/scenarios/excel", scenarioExportHandler.ExportExcel)
 			r.Post("/export/positions/excel", positionExportHandler.ExportExcel)
+			r.Post("/export/organizations/excel", resourceExportHandler.ExportOrganizations)
+			r.Post("/export/students/excel", resourceExportHandler.ExportStudents)
+			r.Post("/export/teachers/excel", resourceExportHandler.ExportTeachers)
 
 			r.Get("/orders", orderHandler.List)
 			r.Get("/orders/{id}", orderHandler.Get)

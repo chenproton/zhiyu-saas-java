@@ -1047,6 +1047,39 @@ export const importExportApi = {
       body: JSON.stringify({ ids }),
     })
   },
+  exportOrganizationsExcel: (ids: string[]) => {
+    const token = getToken()
+    return fetch(`${API_BASE}/export/organizations/excel`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ ids }),
+    })
+  },
+  exportStudentsExcel: (ids: string[]) => {
+    const token = getToken()
+    return fetch(`${API_BASE}/export/students/excel`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ ids }),
+    })
+  },
+  exportTeachersExcel: (ids: string[]) => {
+    const token = getToken()
+    return fetch(`${API_BASE}/export/teachers/excel`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ ids }),
+    })
+  },
 }
 
 export const portalApi = {

@@ -417,6 +417,25 @@ export default function StudentsPage() {
     }
   }
 
+  const handleExport = async () => {
+    try {
+      const ids = selectedStudents.length > 0 ? selectedStudents : []
+      const res = await importExportApi.exportStudentsExcel(ids)
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "学生导出.xlsx"
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+      toast({ title: ids.length > 0 ? `已导出 ${ids.length} 名学生` : "导出完成" })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "导出失败", description: err.message || "导出失败" })
+    }
+  }
+
   return (
     <div className="p-6 bg-[#f5f7fa] min-h-full">
       <div className="mb-6 flex items-center justify-between">
@@ -428,8 +447,8 @@ export default function StudentsPage() {
           <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
             <Upload className="h-4 w-4 mr-1" />导入
           </Button>
-          <Button variant="outline" size="sm" disabled title="即将上线">
-            <Download className="h-4 w-4 mr-1" />导出
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-1" />导出{selectedStudents.length > 0 ? `(${selectedStudents.length})` : ""}
           </Button>
 			<Button variant="outline" size="sm" disabled={selectedStudents.length === 0 || joinLoading || graduateLoading || batchDeleting} onClick={() => { setJoinTargetNodeId(""); setIsJoinDialogOpen(true) }}>
 				{joinLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Users className="h-4 w-4 mr-1" />}
