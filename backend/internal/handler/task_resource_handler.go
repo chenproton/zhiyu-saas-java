@@ -29,14 +29,14 @@ type TaskResourceBindingListResponse struct {
 }
 
 type CreateTaskResourceRequest struct {
-	Name              string           `json:"name"`
-	Type              string           `json:"type"`
-	URL               *string          `json:"url"`
-	Description       *string          `json:"description"`
-	Thumbnail         *string          `json:"thumbnail"`
-	Size              *string          `json:"size"`
-	KnowledgePointIDs []string         `json:"knowledgePointIds"`
-	ExtraData         domain.JSONMap   `json:"extraData"`
+	Name              string         `json:"name"`
+	Type              string         `json:"type"`
+	URL               *string        `json:"url"`
+	Description       *string        `json:"description"`
+	Thumbnail         *string        `json:"thumbnail"`
+	Size              *string        `json:"size"`
+	KnowledgePointIDs []string       `json:"knowledgePointIds"`
+	ExtraData         domain.JSONMap `json:"extraData"`
 }
 
 type BindTaskResourceRequest struct {
@@ -74,31 +74,39 @@ func (h *TaskResourceHandler) ListResources(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
+		where = append(where, "rl.tenant_id = $"+itoa(argIdx))
 		args = append(args, effectiveTenantID)
 		argIdx++
 	}
 
+	joinTaskBindings := ""
 	if taskID != "" {
-		where = append(where, "EXISTS (SELECT 1 FROM task_resource_bindings tb WHERE tb.resource_id = tr.id AND tb.task_id = $"+itoa(argIdx)+")")
+		joinTaskBindings = `JOIN task_resource_bindings tb ON tb.resource_id = rl.id AND tb.task_id = $` + itoa(argIdx)
 		args = append(args, taskID)
 		argIdx++
 	}
 	if search != "" {
-		where = append(where, "(tr.name ILIKE $"+itoa(argIdx)+" OR tr.description ILIKE $"+itoa(argIdx)+")")
+		where = append(where, "(rl.name ILIKE $"+itoa(argIdx)+" OR rl.description ILIKE $"+itoa(argIdx)+")")
 		args = append(args, "%"+search+"%")
 		argIdx++
 	}
 
-	countQuery := "SELECT COUNT(*) FROM task_resources tr WHERE " + strings.Join(where, " AND ")
+	countQuery := `
+		SELECT COUNT(*) FROM resource_library rl
+		` + joinTaskBindings + `
+		WHERE ` + strings.Join(where, " AND ")
 	var total int
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT tr.id, tr.name, tr.type, tr.url, tr.description, tr.thumbnail, tr.size, tr.knowledge_point_ids, tr.uploaded_by, tr.uploaded_at
-		FROM task_resources tr
+		SELECT rl.id, rl.name, rl.resource_type, rl.url, rl.description, rl.thumbnail,
+			COALESCE(rl.file_size::text, '') AS size,
+			COALESCE(rl.metadata->>'knowledgePointIds', '[]')::text AS knowledge_point_ids,
+			rl.uploaded_by, rl.created_at
+		FROM resource_library rl
+		` + joinTaskBindings + `
 		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY tr.uploaded_at DESC
+		ORDER BY rl.created_at DESC
 		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
 	args = append(args, limit, offset)
 
@@ -140,13 +148,28 @@ func (h *TaskResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	metadata := domain.JSONMap{}
+	if req.ExtraData != nil {
+		for k, v := range req.ExtraData {
+			metadata[k] = v
+		}
+	}
+	metadata["knowledgePointIds"] = req.KnowledgePointIDs
+
+	var fileSize *int64
+	if req.Size != nil && *req.Size != "" {
+		if parsed, err := parseInt(*req.Size, 0); err == nil {
+			s := int64(parsed)
+			fileSize = &s
+		}
+	}
+
 	id := uuid.NewString()
 	uploadedBy := claims.UserID
 	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO task_resources (id, tenant_id, name, type, url, description, thumbnail, size, knowledge_point_ids, extra_data, uploaded_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-	`, id, tenantID, req.Name, req.Type, req.URL, req.Description, req.Thumbnail, req.Size,
-		coalesceStringSlice(req.KnowledgePointIDs), jsonMapBytes(req.ExtraData), uploadedBy)
+		INSERT INTO resource_library (id, tenant_id, name, resource_type, url, description, thumbnail, file_size, metadata, uploaded_by)
+		VALUES ($1, $2, $3, $4::resource_type, $5, $6, $7, $8, $9, $10)
+	`, id, tenantID, req.Name, req.Type, req.URL, req.Description, req.Thumbnail, fileSize, jsonMapBytes(metadata), uploadedBy)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create resource")
 		return
@@ -222,15 +245,32 @@ func (h *TaskResourceHandler) fetchBinding(ctx context.Context, id string) (*dom
 
 func (h *TaskResourceHandler) fetchResource(ctx context.Context, id string) (*domain.TaskResource, error) {
 	var res domain.TaskResource
+	var metadata domain.JSONMap
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, type, url, description, thumbnail, size, knowledge_point_ids, uploaded_by, uploaded_at
-		FROM task_resources WHERE id = $1
+		SELECT id, name, resource_type, url, description, thumbnail,
+			COALESCE(file_size::text, '') AS size,
+			metadata, uploaded_by, created_at
+		FROM resource_library WHERE id = $1
 	`, id).Scan(
 		&res.ID, &res.Name, &res.Type, &res.URL, &res.Description, &res.Thumbnail,
-		&res.Size, &res.KnowledgePointIDs, &res.UploadedBy, &res.UploadedAt,
+		&res.Size, &metadata, &res.UploadedBy, &res.UploadedAt,
 	)
 	if err != nil {
 		return nil, err
+	}
+	if metadata != nil {
+		res.ExtraData = metadata
+		if kp, ok := metadata["knowledgePointIds"]; ok {
+			if arr, ok := kp.([]interface{}); ok {
+				ids := make([]string, 0, len(arr))
+				for _, v := range arr {
+					if s, ok := v.(string); ok {
+						ids = append(ids, s)
+					}
+				}
+				res.KnowledgePointIDs = ids
+			}
+		}
 	}
 	return &res, nil
 }
@@ -239,8 +279,13 @@ func (h *TaskResourceHandler) scanResourceRows(rows pgx.Rows) ([]domain.TaskReso
 	items := make([]domain.TaskResource, 0)
 	for rows.Next() {
 		var res domain.TaskResource
-		if err := rows.Scan(&res.ID, &res.Name, &res.Type, &res.URL, &res.Description, &res.Thumbnail, &res.Size, &res.KnowledgePointIDs, &res.UploadedBy, &res.UploadedAt); err != nil {
+		var kpRaw string
+		if err := rows.Scan(&res.ID, &res.Name, &res.Type, &res.URL, &res.Description, &res.Thumbnail, &res.Size, &kpRaw, &res.UploadedBy, &res.UploadedAt); err != nil {
 			return nil, err
+		}
+		var kp []string
+		if err := json.Unmarshal([]byte(kpRaw), &kp); err == nil {
+			res.KnowledgePointIDs = kp
 		}
 		items = append(items, res)
 	}

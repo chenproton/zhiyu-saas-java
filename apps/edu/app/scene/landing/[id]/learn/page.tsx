@@ -49,7 +49,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 
-import { scenarioApi, taskApi, taskResourceApi, knowledgeApi, abilityApi, taskEvaluationApi, evaluationResultApi, fileApi } from "@/lib/api"
+import { scenarioApi, taskApi, resourceLibraryApi, knowledgeApi, abilityApi, taskEvaluationApi, evaluationResultApi, fileApi } from "@/lib/api"
 import type { Scenario, ScenarioTask, TaskResource, KnowledgePoint, AbilityPoint, TaskEvaluationMethod, SceneEvaluationResult } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth-provider"
@@ -193,11 +193,17 @@ export default function SceneLearnPage() {
 
   useEffect(() => {
     if (!id || !scenario) return
-    taskResourceApi
-      .listResources({ limit: 10000 })
+    resourceLibraryApi
+      .list({ limit: 10000 })
       .then((res) => {
         const rMap = new Map<string, TaskResource>()
-        ;(res.items || []).forEach((r) => rMap.set(r.id, r))
+        ;(res.items || []).forEach((r: any) => {
+          rMap.set(r.id, {
+            ...r,
+            type: r.resourceType || r.type,
+            size: r.fileSize !== undefined ? String(r.fileSize) : r.size,
+          } as TaskResource)
+        })
         setResourceMap(rMap)
       })
       .catch(() => setResourceMap(new Map()))

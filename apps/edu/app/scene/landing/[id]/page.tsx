@@ -15,7 +15,7 @@ import { formatFileSize } from "@/lib/resource-constants"
 import {
   scenarioApi,
   taskApi,
-  taskResourceApi,
+  resourceLibraryApi,
   knowledgeApi,
   abilityApi,
 } from "@/lib/api"
@@ -365,11 +365,17 @@ export default function SceneDetailPage() {
       })
       .catch(() => setTasks([]))
 
-    taskResourceApi
-      .listResources({ limit: 10000 })
+    resourceLibraryApi
+      .list({ limit: 10000 })
       .then((res) => {
         const rMap = new Map<string, TaskResource>()
-        ;(res.items || []).forEach((r) => rMap.set(r.id, r))
+        ;(res.items || []).forEach((r: any) => {
+          rMap.set(r.id, {
+            ...r,
+            type: r.resourceType || r.type,
+            size: r.fileSize !== undefined ? String(r.fileSize) : r.size,
+          } as TaskResource)
+        })
         setAllResourceMap(rMap)
       })
       .catch(() => setAllResourceMap(new Map()))

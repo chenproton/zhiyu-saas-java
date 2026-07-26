@@ -206,7 +206,7 @@ func (h *ScenarioExportHandler) lookupResourceNames(ctx context.Context, ids []s
 	var names []string
 	for _, id := range ids {
 		var name string
-		h.DB.QueryRow(ctx, `SELECT name FROM task_resources WHERE id=$1`, id).Scan(&name)
+		h.DB.QueryRow(ctx, `SELECT name FROM resource_library WHERE id=$1`, id).Scan(&name)
 		if name != "" {
 			names = append(names, name)
 		}

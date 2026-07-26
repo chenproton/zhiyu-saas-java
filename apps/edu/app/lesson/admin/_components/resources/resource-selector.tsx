@@ -25,7 +25,7 @@ import {
 } from "lucide-react"
 import { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { cn } from "@/lib/utils"
-import { fileApi, nodeResourceApi, courseResourceApi } from "@/lib/api"
+import { fileApi, nodeResourceApi, courseResourceApi, resourceLibraryApi } from "@/lib/api"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -49,6 +49,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { ResourcePreviewModal, usePreviewResources } from "@/components/shared/resource-preview-modal"
+import type { ResourceKind } from "@/lib/types/library"
 
 export interface ResourceItem {
   id: string
@@ -179,23 +180,17 @@ export function ResourceSelector({ pool: externalPool, selectedIds, onChange, on
     if (!useApi) return
     setLoadingPool(true)
     try {
-      let items: any[] = []
-      if (courseScope) {
-        const res = await courseResourceApi.list({ courseId, limit: 200 })
-        items = res.items || []
-      } else {
-        const res = await nodeResourceApi.list({ courseId, nodeId: effectiveNodeId, limit: 200 })
-        items = res.items || []
-      }
-      setInternalPool(items.map((r: any) => ({
+      const res = await resourceLibraryApi.list({ limit: 1000 })
+      setInternalPool((res.items || []).map((r: any) => ({
         id: r.id,
         name: r.name,
-        type: r.type,
-        url: r.url || r.URL,
+        type: r.resourceType || r.type,
+        url: r.url,
         description: r.description,
-        size: r.size,
+        size: r.fileSize ?? r.size,
         uploadedBy: r.uploadedBy,
-        uploadedAt: r.uploadedAt,
+        uploadedAt: r.createdAt,
+        thumbnail: r.thumbnail,
       })))
       setApiAvailable(true)
     } catch (e: any) {
@@ -204,7 +199,7 @@ export function ResourceSelector({ pool: externalPool, selectedIds, onChange, on
     } finally {
       setLoadingPool(false)
     }
-  }, [useApi, courseId, effectiveNodeId, courseScope])
+  }, [useApi])
 
   useEffect(() => {
     if (isDialogOpen && useApi) {
@@ -329,31 +324,21 @@ export function ResourceSelector({ pool: externalPool, selectedIds, onChange, on
 
     if (useApi && apiAvailable) {
       try {
+        const created = await resourceLibraryApi.create({
+          name: newRes.name,
+          resourceType: newRes.type as ResourceKind,
+          url: fileUrl || undefined,
+          description: newResDescription || undefined,
+          fileSize: uploadedSize,
+        })
+        newRes.id = created.id
+        newRes.url = created.url || newRes.url
+        setInternalPool((prev) => [newRes, ...prev])
+
         if (courseScope && courseId) {
-          const created = await courseResourceApi.create({
-            courseId,
-            name: newRes.name,
-            type: newRes.type,
-            url: fileUrl || "",
-            description: newResDescription,
-            size: uploadedSize,
-          })
-          newRes.id = created.id
-          newRes.url = created.url || newRes.url
-          setInternalPool((prev) => [newRes, ...prev])
+          await courseResourceApi.bind({ courseId, resourceId: created.id })
         } else if (effectiveNodeId) {
-          const created = await nodeResourceApi.create({
-            nodeId: effectiveNodeId,
-            name: newRes.name,
-            type: newRes.type,
-            url: fileUrl || "",
-            description: newResDescription,
-            size: uploadedSize,
-          })
           await nodeResourceApi.bind({ nodeId: effectiveNodeId, resourceId: created.id })
-          newRes.id = created.id
-          newRes.url = created.url || newRes.url
-          setInternalPool((prev) => [newRes, ...prev])
         }
       } catch (e: any) {
         toast.error(e.message || "资源保存失败，已转为本地资源")

@@ -104,7 +104,7 @@ func (h *TemplateHandler) queryDicts(ctx context.Context, tenantID string) (indu
 	}
 	rows.Close()
 
-	rows, _ = h.DB.Query(ctx, `SELECT name, COALESCE(type,'') FROM task_resources WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, _ = h.DB.Query(ctx, `SELECT name, COALESCE(resource_type::text,'') FROM resource_library WHERE tenant_id=$1 ORDER BY name`, tenantID)
 	for rows.Next() {
 		var n, t string
 		rows.Scan(&n, &t)

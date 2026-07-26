@@ -441,16 +441,16 @@ func (h *ScenarioImportHandler) findOrCreateResources(ctx context.Context, tenan
 			continue
 		}
 		var id string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM task_resources WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
+		err := h.DB.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
 		if err == nil {
 			ids = append(ids, id)
 			continue
 		}
 		id = uuid.NewString()
-		h.DB.Exec(ctx, `INSERT INTO task_resources (id, tenant_id, name, type, uploaded_by) VALUES ($1,$2,$3,'document',$4) ON CONFLICT DO NOTHING`,
+		h.DB.Exec(ctx, `INSERT INTO resource_library (id, tenant_id, name, resource_type, uploaded_by) VALUES ($1,$2,$3,'document'::resource_type,$4) ON CONFLICT DO NOTHING`,
 			id, tenantID, name, userID)
 		var existing string
-		h.DB.QueryRow(ctx, `SELECT id FROM task_resources WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
+		h.DB.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
 		if existing != "" {
 			ids = append(ids, existing)
 		} else {

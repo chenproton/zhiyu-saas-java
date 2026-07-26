@@ -121,7 +121,7 @@ import { ScoreConfigDialog } from "@/components/evaluation/score-config-dialog"
 import { ExamFormDialog } from "@/components/evaluation/exam-form-dialog"
 import { ResourcePreviewModal, usePreviewResources } from "@/components/shared/resource-preview-modal"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
-import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryApi, majorApi, userManagementApi, fileApi, taskResourceApi, questionBankApi, questionApi, examApi, examUsageApi, taskEvaluationApi, randomDrawQuestionApi } from "@/lib/api"
+import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryApi, majorApi, userManagementApi, fileApi, taskResourceApi, resourceLibraryApi, questionBankApi, questionApi, examApi, examUsageApi, taskEvaluationApi, randomDrawQuestionApi } from "@/lib/api"
 import type { RandomDrawQuestion } from "@/lib/types"
 import type { ScenarioTask as ApiScenarioTask } from "@/lib/types/scene"
 import type { TaskEvaluationMethod } from "@/lib/types/scene"
@@ -1913,7 +1913,7 @@ export default function TasksEditPage() {
           taskApi.list({ scenarioId, limit: 1000 }),
           knowledgeApi.list({ limit: 1000 }),
           abilityApi.list({ limit: 1000 }),
-          taskResourceApi.listResources({ limit: 1000 }),
+          resourceLibraryApi.list({ limit: 1000 }),
           positionApi.list({ limit: 1000 }),
           industryApi.list({ limit: 1000 }),
           majorApi.list({ limit: 1000 }),
@@ -1964,7 +1964,13 @@ export default function TasksEditPage() {
         apRes.items.forEach((ap: any) => abilityPoints.push(ap))
 
         learningResources.length = 0
-        resRes.items.forEach((res: any) => learningResources.push(res))
+        resRes.items.forEach((res: any) => {
+          learningResources.push({
+            ...res,
+            type: res.resourceType || res.type,
+            size: res.fileSize !== undefined ? String(res.fileSize) : res.size,
+          })
+        })
 
         professions.length = 0
         posRes.items.forEach((p: any) => {

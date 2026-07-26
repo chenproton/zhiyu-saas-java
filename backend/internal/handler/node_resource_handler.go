@@ -73,36 +73,40 @@ func (h *NodeResourceHandler) ListResources(w http.ResponseWriter, r *http.Reque
 		respondError(w, http.StatusForbidden, "missing tenant")
 		return
 	}
-	// node_resources 自身不一定有 tenant_id，通过 system_course_nodes 进行租户隔离
-	where = append(where, "EXISTS (SELECT 1 FROM system_course_nodes n WHERE n.id = nr.node_id AND n.tenant_id = $"+itoa(argIdx)+")")
+	where = append(where, "EXISTS (SELECT 1 FROM system_course_nodes n WHERE n.id = nrb.node_id AND n.tenant_id = $"+itoa(argIdx)+")")
 	args = append(args, effectiveTenantID)
 	argIdx++
 
 	if courseID != "" {
-		where = append(where, "EXISTS (SELECT 1 FROM system_course_nodes n WHERE n.id = nr.node_id AND n.course_id = $"+itoa(argIdx)+")")
+		where = append(where, "EXISTS (SELECT 1 FROM system_course_nodes n WHERE n.id = nrb.node_id AND n.course_id = $"+itoa(argIdx)+")")
 		args = append(args, courseID)
 		argIdx++
 	}
 	if nodeID != "" {
-		where = append(where, "nr.node_id = $"+itoa(argIdx))
+		where = append(where, "nrb.node_id = $"+itoa(argIdx))
 		args = append(args, nodeID)
 		argIdx++
 	}
 	if search != "" {
-		where = append(where, "(nr.name ILIKE $"+itoa(argIdx)+" OR nr.url ILIKE $"+itoa(argIdx)+")")
+		where = append(where, "(rl.name ILIKE $"+itoa(argIdx)+" OR rl.url ILIKE $"+itoa(argIdx)+")")
 		args = append(args, "%"+search+"%")
 		argIdx++
 	}
 
-	countQuery := "SELECT COUNT(*) FROM node_resources nr WHERE " + strings.Join(where, " AND ")
+	countQuery := `
+		SELECT COUNT(*) FROM node_resource_bindings nrb
+		JOIN resource_library rl ON rl.id = nrb.resource_id
+		WHERE ` + strings.Join(where, " AND ")
 	var total int
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT nr.id, nr.node_id, nr.name, nr.type, nr.url, nr.size, nr.tenant_id, nr.created_at
-		FROM node_resources nr
+		SELECT rl.id, nrb.node_id, rl.name, rl.resource_type, rl.url,
+			rl.file_size::int, rl.tenant_id, rl.created_at
+		FROM node_resource_bindings nrb
+		JOIN resource_library rl ON rl.id = nrb.resource_id
 		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY nr.created_at DESC
+		ORDER BY rl.created_at DESC
 		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
 	args = append(args, limit, offset)
 
@@ -144,17 +148,32 @@ func (h *NodeResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var fileSize *int64
+	if req.Size != nil {
+		s := int64(*req.Size)
+		fileSize = &s
+	}
+
 	id := uuid.NewString()
 	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO node_resources (id, tenant_id, node_id, name, type, url, size)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`, id, tenantID, req.NodeID, req.Name, req.Type, req.URL, req.Size)
+		INSERT INTO resource_library (id, tenant_id, name, resource_type, url, description, file_size)
+		VALUES ($1, $2, $3, $4::resource_type, $5, $6, $7)
+	`, id, tenantID, req.Name, req.Type, req.URL, req.Description, fileSize)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create node resource")
 		return
 	}
 
+	_, _ = h.DB.Exec(r.Context(), `
+		INSERT INTO node_resource_bindings (id, tenant_id, node_id, resource_id)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (node_id, resource_id) DO NOTHING
+	`, uuid.NewString(), tenantID, req.NodeID, id)
+
 	resource, _ := h.fetchResource(r.Context(), id)
+	if resource != nil {
+		resource.NodeID = req.NodeID
+	}
 	respondJSON(w, http.StatusCreated, resource)
 }
 
@@ -225,14 +244,19 @@ func (h *NodeResourceHandler) fetchBinding(ctx context.Context, id string) (*dom
 func (h *NodeResourceHandler) fetchResource(ctx context.Context, id string) (*domain.NodeResource, error) {
 	var res domain.NodeResource
 	var tenantID *string
+	var fileSize *int64
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, node_id, name, type, url, size, tenant_id, created_at
-		FROM node_resources WHERE id = $1
+		SELECT id, name, resource_type, url, file_size, tenant_id, created_at
+		FROM resource_library WHERE id = $1
 	`, id).Scan(
-		&res.ID, &res.NodeID, &res.Name, &res.Type, &res.URL, &res.Size, &tenantID, &res.UploadedAt,
+		&res.ID, &res.Name, &res.Type, &res.URL, &fileSize, &tenantID, &res.UploadedAt,
 	)
 	if err != nil {
 		return nil, err
+	}
+	if fileSize != nil {
+		s := int(*fileSize)
+		res.Size = &s
 	}
 	return &res, nil
 }
@@ -242,8 +266,13 @@ func (h *NodeResourceHandler) scanResourceRows(rows pgx.Rows) ([]domain.NodeReso
 	for rows.Next() {
 		var res domain.NodeResource
 		var tenantID *string
-		if err := rows.Scan(&res.ID, &res.NodeID, &res.Name, &res.Type, &res.URL, &res.Size, &tenantID, &res.UploadedAt); err != nil {
+		var fileSize *int64
+		if err := rows.Scan(&res.ID, &res.NodeID, &res.Name, &res.Type, &res.URL, &fileSize, &tenantID, &res.UploadedAt); err != nil {
 			return nil, err
+		}
+		if fileSize != nil {
+			s := int(*fileSize)
+			res.Size = &s
 		}
 		items = append(items, res)
 	}

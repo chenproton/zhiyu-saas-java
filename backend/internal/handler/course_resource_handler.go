@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -68,40 +67,45 @@ func (h *CourseResourceHandler) ListResources(w http.ResponseWriter, r *http.Req
 		respondError(w, http.StatusForbidden, "missing tenant")
 		return
 	}
-	where = append(where, "crb.tenant_id = $"+itoa(argIdx))
+	where = append(where, "rl.tenant_id = $"+itoa(argIdx))
 	args = append(args, effectiveTenantID)
 	argIdx++
 
+	joinCourseBindings := ""
 	if courseID != "" {
-		where = append(where, "crb.course_id = $"+itoa(argIdx))
+		joinCourseBindings = `JOIN course_resource_bindings crb ON crb.resource_id = rl.id AND crb.course_id = $` + itoa(argIdx)
 		args = append(args, courseID)
 		argIdx++
+	} else {
+		joinCourseBindings = `LEFT JOIN course_resource_bindings crb ON crb.resource_id = rl.id`
 	}
 	if search != "" {
-		where = append(where, "(COALESCE(nr.name, tr.name) ILIKE $"+itoa(argIdx)+" OR COALESCE(nr.url, tr.url) ILIKE $"+itoa(argIdx)+")")
+		where = append(where, "(rl.name ILIKE $"+itoa(argIdx)+" OR rl.url ILIKE $"+itoa(argIdx)+")")
 		args = append(args, "%"+search+"%")
 		argIdx++
 	}
 
-	countQuery := "SELECT COUNT(*) FROM course_resource_bindings crb WHERE " + strings.Join(where, " AND ")
+	countQuery := `
+		SELECT COUNT(*) FROM resource_library rl
+		` + joinCourseBindings + `
+		WHERE ` + strings.Join(where, " AND ")
 	var total int
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT COALESCE(nr.id, tr.id) AS id,
-			crb.course_id AS node_id,
-			COALESCE(nr.name, tr.name) AS name,
-			COALESCE(nr.type, tr.type) AS type,
-			COALESCE(nr.url, tr.url) AS url,
-			nr.size AS size,
-			COALESCE(nr.tenant_id, tr.tenant_id) AS tenant_id,
-			COALESCE(nr.created_at, tr.uploaded_at) AS uploaded_at,
-			tr.uploaded_by AS uploaded_by
-		FROM course_resource_bindings crb
-		LEFT JOIN node_resources nr ON nr.id = crb.resource_id
-		LEFT JOIN task_resources tr ON tr.id = crb.resource_id
+		SELECT rl.id,
+			COALESCE(crb.course_id, '') AS node_id,
+			rl.name,
+			rl.resource_type AS type,
+			rl.url,
+			rl.file_size::int AS size,
+			rl.tenant_id,
+			rl.created_at AS uploaded_at,
+			rl.uploaded_by
+		FROM resource_library rl
+		` + joinCourseBindings + `
 		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY crb.created_at DESC
+		ORDER BY rl.created_at DESC
 		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
 	args = append(args, limit, offset)
 
@@ -144,10 +148,15 @@ func (h *CourseResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := uuid.NewString()
+	var fileSize *int64
+	if req.Size != nil {
+		s := int64(*req.Size)
+		fileSize = &s
+	}
 	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO task_resources (id, tenant_id, name, type, url, description, size, uploaded_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7::varchar, $8)
-	`, id, tenantID, req.Name, req.Type, req.URL, req.Description, intPtrToString(req.Size), claims.UserID)
+		INSERT INTO resource_library (id, tenant_id, name, resource_type, url, description, file_size, uploaded_by)
+		VALUES ($1, $2, $3, $4::resource_type, $5, $6, $7, $8)
+	`, id, tenantID, req.Name, req.Type, req.URL, req.Description, fileSize, claims.UserID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create course resource")
 		return
@@ -165,10 +174,12 @@ func (h *CourseResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $1 AND NOT ($2::uuid = ANY(resource_ids))
 	`, req.CourseID, id)
 
-	resource, _ := h.fetchTaskResource(r.Context(), id)
+	resource, _ := h.fetchLibraryResource(r.Context(), id)
 	if resource != nil {
 		resource.NodeID = req.CourseID
-		resource.Size = req.Size
+		if req.Size != nil {
+			resource.Size = req.Size
+		}
 	}
 	respondJSON(w, http.StatusCreated, resource)
 }
@@ -257,20 +268,25 @@ func (h *CourseResourceHandler) fetchBinding(ctx context.Context, id string) (*d
 	return &b, nil
 }
 
-func (h *CourseResourceHandler) fetchTaskResource(ctx context.Context, id string) (*domain.NodeResource, error) {
+func (h *CourseResourceHandler) fetchLibraryResource(ctx context.Context, id string) (*domain.NodeResource, error) {
 	var res domain.NodeResource
 	var tenantID *string
 	var uploadedBy *string
+	var fileSize *int64
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, type, url, tenant_id, uploaded_by, uploaded_at
-		FROM task_resources WHERE id = $1
+		SELECT id, name, resource_type, url, file_size, tenant_id, uploaded_by, created_at
+		FROM resource_library WHERE id = $1
 	`, id).Scan(
-		&res.ID, &res.Name, &res.Type, &res.URL, &tenantID, &uploadedBy, &res.UploadedAt,
+		&res.ID, &res.Name, &res.Type, &res.URL, &fileSize, &tenantID, &uploadedBy, &res.UploadedAt,
 	)
 	if err != nil {
 		return nil, err
 	}
 	res.UploadedBy = uploadedBy
+	if fileSize != nil {
+		s := int(*fileSize)
+		res.Size = &s
+	}
 	return &res, nil
 }
 
@@ -280,19 +296,16 @@ func (h *CourseResourceHandler) scanResourceRows(rows pgx.Rows) ([]domain.NodeRe
 		var res domain.NodeResource
 		var tenantID *string
 		var uploadedBy *string
-		if err := rows.Scan(&res.ID, &res.NodeID, &res.Name, &res.Type, &res.URL, &res.Size, &tenantID, &res.UploadedAt, &uploadedBy); err != nil {
+		var fileSize *int64
+		if err := rows.Scan(&res.ID, &res.NodeID, &res.Name, &res.Type, &res.URL, &fileSize, &tenantID, &res.UploadedAt, &uploadedBy); err != nil {
 			return nil, err
 		}
 		res.UploadedBy = uploadedBy
+		if fileSize != nil {
+			s := int(*fileSize)
+			res.Size = &s
+		}
 		items = append(items, res)
 	}
 	return items, nil
-}
-
-func intPtrToString(v *int) *string {
-	if v == nil {
-		return nil
-	}
-	s := fmt.Sprintf("%d", *v)
-	return &s
 }
