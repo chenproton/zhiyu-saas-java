@@ -132,26 +132,36 @@ export default function AppsPage() {
   const contentRef = useRef<HTMLDivElement>(null)
   const { data: modulesData, loading: modulesLoading } = useAppModules()
   const [subscriptionModules, setSubscriptionModules] = useState<Record<string, boolean>>({})
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true)
 
   useEffect(() => {
-    if (!tenantId) return
+    if (!tenantId) {
+      setSubscriptionLoading(false)
+      return
+    }
+    setSubscriptionLoading(true)
     fetch(`/api/v1/subscriptions?tenantId=${tenantId}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data && typeof data.modules === "object") {
           setSubscriptionModules(data.modules)
+        } else {
+          setSubscriptionModules({})
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        setSubscriptionModules({})
+      })
+      .finally(() => {
+        setSubscriptionLoading(false)
+      })
   }, [tenantId])
 
   const visibleQuickAccess = quickAccess.filter((item) => hasMenuPermission(item.href))
 
-  const hasSubscriptionData = Object.keys(subscriptionModules).length > 0
-
   const allModules: ModuleSection[] = useMemo(() => {
     return menuItems
-      .filter((item) => !hasSubscriptionData || subscriptionModules[item.id] === true)
+      .filter((item) => subscriptionModules[item.id] === true)
       .map((item) => {
         const configured = modulesData.platforms.find((p) => p.id === item.id)
         let modules: ModuleItem[]
@@ -182,7 +192,7 @@ export default function AppsPage() {
         }
       })
       .filter((section) => section.modules.length > 0)
-  }, [modulesData.platforms, hasMenuPermission, subscriptionModules, hasSubscriptionData])
+  }, [modulesData.platforms, hasMenuPermission, subscriptionModules])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -279,9 +289,13 @@ export default function AppsPage() {
 
           {/* Main Content */}
           <main ref={contentRef} className="flex-1 px-4 pb-4 pt-4 overflow-y-auto max-h-[calc(100vh-3.5rem-40px)] relative">
-            {modulesLoading ? (
+            {modulesLoading || subscriptionLoading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="text-sm text-muted-foreground">加载中...</div>
+              </div>
+            ) : allModules.length === 0 ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-sm text-muted-foreground">暂无可用应用，请联系管理员开通套餐</div>
               </div>
             ) : (
               allModules.map((section) => {

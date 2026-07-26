@@ -32,6 +32,13 @@ const MENU_TREE_PLATFORM_MAP: Record<string, string> = {
   resource: "resource",
 }
 
+const ACTION_MODULE_PLATFORM_MAP: Record<string, string> = {
+  scene: "scene",
+  job: "career",
+  lesson: "course",
+  evaluation: "ability",
+}
+
 function filterMenuTreeBySubscription(
   tree: MenuTreeItem[],
   modules: Record<string, boolean>,
@@ -114,9 +121,13 @@ export default function RolesPage() {
 
   const menuTree = useMemo(() => {
     const tree = buildMenuTree()
-    if (Object.keys(subscriptionModules).length === 0) return tree
     return filterMenuTreeBySubscription(tree, subscriptionModules)
   }, [subscriptionModules])
+
+  const visibleActionModules = useMemo(
+    () => permissionModuleConfig.filter((mod) => subscriptionModules[ACTION_MODULE_PLATFORM_MAP[mod.module]] === true),
+    [subscriptionModules]
+  )
 
   useEffect(() => {
     if (!tenantId) return
@@ -263,7 +274,10 @@ export default function RolesPage() {
       const permissions: Record<string, any> = { ...(selectedRole.permissions || {}), menus }
 
       // 保留已有的非 menus 结构权限（如 scene/job/lesson/evaluation），并根据 checkedActions 更新
-      for (const mod of permissionModuleConfig) {
+      // 同时受租户套餐控制：未订阅平台的操作权限不保留
+      for (const mod of permissionModuleConfig.filter(
+        (mod) => subscriptionModules[ACTION_MODULE_PLATFORM_MAP[mod.module]] === true
+      )) {
         const modPerms: Record<string, string[]> = {}
         for (const page of mod.pages) {
           const actions: string[] = []
@@ -600,7 +614,7 @@ export default function RolesPage() {
               </div>
               <ScrollArea className="border border-border rounded-lg p-4">
                 <div className="space-y-4">
-                  {permissionModuleConfig.map((mod) => (
+                  {visibleActionModules.map((mod) => (
                     <div key={mod.module} className="rounded-lg border border-border p-4">
                       <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border">
                         <LayoutDashboard className="w-4 h-4 text-primary" />
@@ -627,7 +641,7 @@ export default function RolesPage() {
                       ))}
                     </div>
                   ))}
-                  {permissionModuleConfig.length === 0 && (
+                  {visibleActionModules.length === 0 && (
                     <div className="text-sm text-muted-foreground text-center py-8">暂无可配置的操作权限</div>
                   )}
                 </div>

@@ -252,6 +252,9 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 			r.Get("/auth/portal/me", authHandler.PortalMe)
 			r.Get("/stats/me", statsHandler.MyStats)
 
+			// 当前租户套餐：所有登录用户都需要读取，用于 /portal/apps 入口过滤
+			r.Get("/subscriptions", subscriptionHandler.Get)
+
 			r.Group(func(r chi.Router) {
 				r.Use(jobViewer)
 				r.Get("/job/public/positions", positionHandler.PublicList)
@@ -431,8 +434,6 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 
 				r.Get("/logs/login", logHandler.LoginLogs)
 				r.Get("/logs/operation", logHandler.OperationLogs)
-
-				r.Get("/subscriptions", subscriptionHandler.Get)
 
 				// platform-links / app-modules 为全局目录，读接口公开；
 				// 写接口原要求 platform_admin（教育域死路径），已移除。
