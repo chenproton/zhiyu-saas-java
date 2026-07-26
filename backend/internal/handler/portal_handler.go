@@ -231,38 +231,33 @@ func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantI
 func (h *PortalHandler) stats(ctx context.Context, userID string, tenantID *string, isTeacher bool) *domain.WorkspaceStats {
 	if isTeacher {
 		var courseCount, studentCount int
-		courseQuery := `
-			SELECT COUNT(*) FROM courses c
-			JOIN users u ON u.id = c.creator_id
-			WHERE c.status = 'published' AND (c.teacher_id = $1::uuid OR c.creator_id = $1::uuid)`
-		courseArgs := []interface{}{userID}
-		if tenantID != nil {
-			courseQuery += ` AND u.tenant_id = $2`
-			courseArgs = append(courseArgs, *tenantID)
-		}
-		_ = h.DB.QueryRow(ctx, courseQuery, courseArgs...).Scan(&courseCount)
 		_ = h.DB.QueryRow(ctx, `
-			SELECT COUNT(DISTINCT r.student_user_id) FROM lesson_behavior_records r
-			WHERE r.course_id IN (
-				SELECT c.id FROM courses c
+			WITH teacher_courses AS (
+				SELECT c.id
+				FROM courses c
 				JOIN users u ON u.id = c.creator_id
-				WHERE c.status = 'published' AND (c.teacher_id = $1::uuid OR c.creator_id = $1::uuid)
-					AND ($2::uuid IS NULL OR u.tenant_id = $2::uuid)
+				WHERE c.status = 'published'
+				  AND (c.teacher_id = $1::uuid OR c.creator_id = $1::uuid)
+				  AND ($2::uuid IS NULL OR u.tenant_id = $2::uuid)
 			)
-		`, userID, tenantID).Scan(&studentCount)
+			SELECT
+				(SELECT COUNT(*) FROM teacher_courses),
+				COALESCE((SELECT COUNT(DISTINCT r.student_user_id)
+						  FROM lesson_behavior_records r
+						  WHERE r.course_id IN (SELECT id FROM teacher_courses)), 0)
+		`, userID, tenantID).Scan(&courseCount, &studentCount)
 		return &domain.WorkspaceStats{Label1: "授课课程", Value1: courseCount, Label2: "学生人数", Value2: studentCount}
 	}
 	var courseCount, examCount int
 	_ = h.DB.QueryRow(ctx, `
-		SELECT COUNT(*) FROM courses c
-		JOIN users u ON u.id = c.creator_id
-		WHERE c.status = 'published' AND ($1::uuid IS NULL OR u.tenant_id = $1::uuid)
-	`, tenantID).Scan(&courseCount)
-	_ = h.DB.QueryRow(ctx, `
-		SELECT COUNT(*) FROM exam_usages eu
-		JOIN users u ON u.id = eu.creator_id
-		WHERE eu.status = 'published' AND ($1::uuid IS NULL OR u.tenant_id = $1::uuid)
-	`, tenantID).Scan(&examCount)
+		SELECT
+			(SELECT COUNT(*) FROM courses c
+			 JOIN users u ON u.id = c.creator_id
+			 WHERE c.status = 'published' AND ($1::uuid IS NULL OR u.tenant_id = $1::uuid)),
+			(SELECT COUNT(*) FROM exam_usages eu
+			 JOIN users u ON u.id = eu.creator_id
+			 WHERE eu.status = 'published' AND ($1::uuid IS NULL OR u.tenant_id = $1::uuid))
+	`, tenantID).Scan(&courseCount, &examCount)
 	return &domain.WorkspaceStats{Label1: "可选课程", Value1: courseCount, Label2: "待考测评", Value2: examCount}
 }
 
