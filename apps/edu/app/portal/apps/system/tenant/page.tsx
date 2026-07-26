@@ -32,6 +32,7 @@ import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
 import type { Tenant as BackendTenant } from "@/lib/types/backend"
 import { Spinner } from "@/components/ui/spinner"
+import { SchoolAdminManager } from "@/components/shared/school-admin-manager"
 
 interface Tenant {
   id: string
@@ -152,6 +153,11 @@ export default function TenantPage() {
     setIsEditDialogOpen(true)
   }
 
+  const adminFetcher = async <T,>(path: string, options?: RequestInit): Promise<T> => {
+    const fullPath = path.startsWith("/admin/tenants") ? path : `/admin/tenants${path}`
+    return portalRequest<T>(fullPath, options)
+  }
+
   if (authLoading || loading) {
     return (
       <div className="flex h-64 items-center justify-center gap-2 text-muted-foreground">
@@ -260,6 +266,12 @@ export default function TenantPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {tenantId && (
+        <div className="mt-6">
+          <SchoolAdminManager tenantId={tenantId} fetcher={adminFetcher} />
         </div>
       )}
 
