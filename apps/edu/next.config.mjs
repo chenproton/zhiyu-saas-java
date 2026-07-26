@@ -15,6 +15,15 @@ const nextConfig = {
   experimental: {
     proxyClientMaxBodySize: '150mb',
   },
+  async redirects() {
+    return [
+      {
+        source: '/job/landing',
+        destination: '/job/student',
+        permanent: true,
+      },
+    ]
+  },
   async rewrites() {
     const apiProxy = process.env.API_PROXY_URL || 'http://127.0.0.1:8080'
     return [
