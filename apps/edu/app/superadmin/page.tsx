@@ -38,7 +38,6 @@ import {
   Search,
   Loader2,
   Users,
-  Eye,
   Copy,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
@@ -124,11 +123,9 @@ export default function SuperAdminPage() {
   const [admins, setAdmins] = useState<TenantAdmin[]>([])
   const [adminLoading, setAdminLoading] = useState(false)
   const [adminError, setAdminError] = useState<string | null>(null)
-  const [adminForm, setAdminForm] = useState({ username: "", name: "" })
-  const [adminEditing, setAdminEditing] = useState<TenantAdmin | null>(null)
-  const [adminSubmitting, setAdminSubmitting] = useState(false)
   const [adminDeleteTarget, setAdminDeleteTarget] = useState<TenantAdmin | null>(null)
-  const [adminPreview, setAdminPreview] = useState<{ admin: TenantAdmin; password: string } | null>(null)
+  const [adminInline, setAdminInline] = useState<{ id?: string; username: string; name: string } | null>(null)
+  const [adminInlineSubmitting, setAdminInlineSubmitting] = useState(false)
 
   const { toast } = useToast()
 
@@ -177,10 +174,8 @@ export default function SuperAdminPage() {
   const openAdminModal = (t: AdminTenant) => {
     setAdminModalTenant(t)
     setAdminModalOpen(true)
-    setAdminForm({ username: "", name: "" })
-    setAdminEditing(null)
+    setAdminInline(null)
     setAdminError(null)
-    setAdminPreview(null)
     fetchAdmins(t.id)
   }
 
@@ -197,44 +192,51 @@ export default function SuperAdminPage() {
     }
   }
 
-  const handleAdminSubmit = async () => {
-    if (!adminForm.username || !adminForm.name) {
+  const startAddAdmin = () => {
+    setAdminInline({ username: "", name: "" })
+    setAdminError(null)
+  }
+
+  const startEditAdmin = (a: TenantAdmin) => {
+    setAdminInline({ id: a.id, username: a.username, name: a.name })
+    setAdminError(null)
+  }
+
+  const cancelInlineAdmin = () => {
+    setAdminInline(null)
+    setAdminError(null)
+  }
+
+  const submitInlineAdmin = async () => {
+    if (!adminInline || !adminModalTenant) return
+    if (!adminInline.username || !adminInline.name) {
       setAdminError("账号和姓名不能为空")
       return
     }
-    if (!adminModalTenant) return
 
-    setAdminSubmitting(true)
+    setAdminInlineSubmitting(true)
     setAdminError(null)
     try {
-      if (adminEditing) {
-        await adminFetch(`/${adminModalTenant.id}/admins/${adminEditing.id}`, {
+      if (adminInline.id) {
+        await adminFetch(`/${adminModalTenant.id}/admins/${adminInline.id}`, {
           method: "PUT",
-          body: JSON.stringify({ username: adminForm.username, name: adminForm.name }),
+          body: JSON.stringify({ username: adminInline.username, name: adminInline.name }),
         })
-        toast({ title: "更新成功" })
+        toast({ title: "保存成功" })
       } else {
         const created = await adminFetch<TenantAdmin>(`/${adminModalTenant.id}/admins`, {
           method: "POST",
-          body: JSON.stringify({ username: adminForm.username, name: adminForm.name }),
+          body: JSON.stringify({ username: adminInline.username, name: adminInline.name }),
         })
-        setAdminPreview({ admin: created, password: created.plainPassword || "" })
         toast({ title: "创建成功", description: `初始密码：${created.plainPassword}` })
       }
-      setAdminForm({ username: "", name: "" })
-      setAdminEditing(null)
+      setAdminInline(null)
       await fetchAdmins(adminModalTenant.id)
     } catch (err) {
-      setAdminError(err instanceof Error ? err.message : (adminEditing ? "更新失败" : "创建失败"))
+      setAdminError(err instanceof Error ? err.message : (adminInline.id ? "保存失败" : "创建失败"))
     } finally {
-      setAdminSubmitting(false)
+      setAdminInlineSubmitting(false)
     }
-  }
-
-  const handleAdminEdit = (a: TenantAdmin) => {
-    setAdminEditing(a)
-    setAdminForm({ username: a.username, name: a.name })
-    setAdminPreview(null)
   }
 
   const handleAdminDelete = async () => {
@@ -250,24 +252,45 @@ export default function SuperAdminPage() {
     }
   }
 
-  const handlePreviewPassword = async (a: TenantAdmin) => {
+  const copyToClipboard = async (text: string) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text)
+        return true
+      }
+    } catch {
+      // fallthrough
+    }
+    const ta = document.createElement("textarea")
+    ta.value = text
+    ta.style.position = "fixed"
+    ta.style.left = "-9999px"
+    ta.style.opacity = "0"
+    document.body.appendChild(ta)
+    ta.focus()
+    ta.select()
+    let ok = false
+    try {
+      ok = document.execCommand("copy")
+    } catch {}
+    document.body.removeChild(ta)
+    return ok
+  }
+
+  const handleCopyPassword = async (a: TenantAdmin) => {
     if (!adminModalTenant) return
     try {
       const res = await adminFetch<{ id: string; plainPassword: string }>(`/${adminModalTenant.id}/admins/${a.id}/preview-password`, {
         method: "POST",
       })
-      setAdminPreview({ admin: a, password: res.plainPassword })
+      const ok = await copyToClipboard(res.plainPassword)
+      if (ok) {
+        toast({ title: "密码已复制" })
+      } else {
+        toast({ variant: "destructive", title: "复制失败", description: "请手动复制" })
+      }
     } catch (err) {
-      toast({ variant: "destructive", title: "预览失败", description: err instanceof Error ? err.message : "未知错误" })
-    }
-  }
-
-  const copyPassword = async (password: string) => {
-    try {
-      await navigator.clipboard.writeText(password)
-      toast({ title: "已复制到剪贴板" })
-    } catch {
-      toast({ variant: "destructive", title: "复制失败" })
+      toast({ variant: "destructive", title: "获取密码失败", description: err instanceof Error ? err.message : "未知错误" })
     }
   }
 
@@ -588,60 +611,20 @@ export default function SuperAdminPage() {
       {/* 学校管理员配置弹窗 */}
       <Dialog open={adminModalOpen} onOpenChange={setAdminModalOpen}>
         <DialogContent size="lg" className="max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>学校管理员配置</DialogTitle>
-            <DialogDescription>
-              {adminModalTenant ? `管理租户「${adminModalTenant.name}」的学校管理员账号` : ""}
-            </DialogDescription>
+          <DialogHeader className="flex-row items-center justify-between">
+            <div>
+              <DialogTitle>学校管理员配置</DialogTitle>
+              <DialogDescription>
+                {adminModalTenant ? `管理租户「${adminModalTenant.name}」的学校管理员账号` : ""}
+              </DialogDescription>
+            </div>
+            <Button size="sm" onClick={startAddAdmin} disabled={adminInline !== null}>
+              <Plus className="h-4 w-4 mr-1" />
+              新增
+            </Button>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>登录账号 <span className="text-destructive">*</span></Label>
-                <Input
-                  placeholder="如：admin-xxx"
-                  value={adminForm.username}
-                  onChange={(e) => setAdminForm((p) => ({ ...p, username: e.target.value }))}
-                  disabled={!!adminEditing}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>姓名 <span className="text-destructive">*</span></Label>
-                <Input
-                  placeholder="管理员姓名"
-                  value={adminForm.name}
-                  onChange={(e) => setAdminForm((p) => ({ ...p, name: e.target.value }))}
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              {adminEditing && (
-                <Button variant="outline" size="sm" onClick={() => { setAdminEditing(null); setAdminForm({ username: "", name: "" }); setAdminPreview(null) }}>
-                  取消编辑
-                </Button>
-              )}
-              <Button size="sm" onClick={handleAdminSubmit} disabled={adminSubmitting}>
-                {adminSubmitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-                {adminEditing ? "保存" : "新增管理员"}
-              </Button>
-            </div>
-
-            {adminPreview && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-amber-800">
-                    {adminPreview.admin.name} 的密码：
-                  </span>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-amber-700" onClick={() => copyPassword(adminPreview.password)}>
-                    <Copy className="mr-1 h-3 w-3" />
-                    复制
-                  </Button>
-                </div>
-                <div className="mt-1 font-mono text-amber-900 break-all">{adminPreview.password}</div>
-              </div>
-            )}
-
+          <div className="grid gap-4 py-2">
             {adminError && (
               <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
                 {adminError}
@@ -655,10 +638,42 @@ export default function SuperAdminPage() {
                     <TableHead className="text-muted-foreground">账号</TableHead>
                     <TableHead className="text-muted-foreground">姓名</TableHead>
                     <TableHead className="text-muted-foreground">状态</TableHead>
-                    <TableHead className="text-muted-foreground text-right w-24">操作</TableHead>
+                    <TableHead className="text-muted-foreground text-right w-32">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {adminInline && !adminInline.id && (
+                    <TableRow className="border-border bg-slate-50/50">
+                      <TableCell>
+                        <Input
+                          placeholder="登录账号"
+                          value={adminInline.username}
+                          onChange={(e) => setAdminInline((p) => p ? { ...p, username: e.target.value } : p)}
+                          disabled={adminInlineSubmitting}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          placeholder="姓名"
+                          value={adminInline.name}
+                          onChange={(e) => setAdminInline((p) => p ? { ...p, name: e.target.value } : p)}
+                          disabled={adminInlineSubmitting}
+                        />
+                      </TableCell>
+                      <TableCell>-</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button size="sm" className="h-7 px-2 text-xs" onClick={submitInlineAdmin} disabled={adminInlineSubmitting}>
+                            {adminInlineSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : "保存"}
+                          </Button>
+                          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={cancelInlineAdmin} disabled={adminInlineSubmitting}>
+                            取消
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+
                   {adminLoading ? (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center py-8">
@@ -669,32 +684,68 @@ export default function SuperAdminPage() {
                     <>
                       {admins.map((a) => (
                         <TableRow key={a.id} className="border-border">
-                          <TableCell className="font-mono text-sm">{a.username}</TableCell>
-                          <TableCell>{a.name}</TableCell>
-                          <TableCell>
-                            <Badge variant={a.status === "active" ? "default" : "secondary"}>
-                              {a.status === "active" ? "启用" : "停用"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => handlePreviewPassword(a)}>
-                                <Eye className="mr-1 h-3 w-3" />
-                                预览
-                              </Button>
-                              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => handleAdminEdit(a)}>
-                                <Pencil className="mr-1 h-3 w-3" />
-                                编辑
-                              </Button>
-                              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={() => setAdminDeleteTarget(a)}>
-                                <Trash2 className="mr-1 h-3 w-3" />
-                                删除
-                              </Button>
-                            </div>
-                          </TableCell>
+                          {adminInline && adminInline.id === a.id ? (
+                            <>
+                              <TableCell>
+                                <Input
+                                  value={adminInline.username}
+                                  onChange={(e) => setAdminInline((p) => p ? { ...p, username: e.target.value } : p)}
+                                  disabled={adminInlineSubmitting}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  value={adminInline.name}
+                                  onChange={(e) => setAdminInline((p) => p ? { ...p, name: e.target.value } : p)}
+                                  disabled={adminInlineSubmitting}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={a.status === "active" ? "default" : "secondary"}>
+                                  {a.status === "active" ? "启用" : "停用"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button size="sm" className="h-7 px-2 text-xs" onClick={submitInlineAdmin} disabled={adminInlineSubmitting}>
+                                    {adminInlineSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : "保存"}
+                                  </Button>
+                                  <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={cancelInlineAdmin} disabled={adminInlineSubmitting}>
+                                    取消
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </>
+                          ) : (
+                            <>
+                              <TableCell className="font-mono text-sm">{a.username}</TableCell>
+                              <TableCell>{a.name}</TableCell>
+                              <TableCell>
+                                <Badge variant={a.status === "active" ? "default" : "secondary"}>
+                                  {a.status === "active" ? "启用" : "停用"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => handleCopyPassword(a)}>
+                                    <Copy className="mr-1 h-3 w-3" />
+                                    复制
+                                  </Button>
+                                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => startEditAdmin(a)}>
+                                    <Pencil className="mr-1 h-3 w-3" />
+                                    编辑
+                                  </Button>
+                                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={() => setAdminDeleteTarget(a)}>
+                                    <Trash2 className="mr-1 h-3 w-3" />
+                                    删除
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </>
+                          )}
                         </TableRow>
                       ))}
-                      {admins.length === 0 && !adminLoading && (
+                      {admins.length === 0 && !adminLoading && !adminInline && (
                         <TableRow>
                           <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-8">
                             暂无学校管理员
