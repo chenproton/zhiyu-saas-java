@@ -94,7 +94,7 @@ func (h *CourseResourceHandler) ListResources(w http.ResponseWriter, r *http.Req
 
 	query := `
 		SELECT rl.id,
-			COALESCE(crb.course_id, '') AS node_id,
+			COALESCE(crb.course_id::text, '') AS node_id,
 			rl.name,
 			rl.resource_type AS type,
 			rl.url,
