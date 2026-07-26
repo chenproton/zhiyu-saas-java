@@ -158,6 +158,12 @@ func (h *CourseResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (course_id, resource_id) DO NOTHING
 	`, uuid.NewString(), tenantID, req.CourseID, id)
+	_, _ = h.DB.Exec(r.Context(), `
+		UPDATE courses
+		SET resource_ids = array_append(resource_ids, $2::uuid),
+		    resource_count = COALESCE(array_length(array_append(resource_ids, $2::uuid), 1), 0)
+		WHERE id = $1 AND NOT ($2::uuid = ANY(resource_ids))
+	`, req.CourseID, id)
 
 	resource, _ := h.fetchTaskResource(r.Context(), id)
 	if resource != nil {
@@ -200,6 +206,12 @@ func (h *CourseResourceHandler) BindResource(w http.ResponseWriter, r *http.Requ
 		respondError(w, http.StatusInternalServerError, "failed to bind course resource")
 		return
 	}
+	_, _ = h.DB.Exec(r.Context(), `
+		UPDATE courses
+		SET resource_ids = array_append(resource_ids, $2::uuid),
+		    resource_count = COALESCE(array_length(array_append(resource_ids, $2::uuid), 1), 0)
+		WHERE id = $1 AND NOT ($2::uuid = ANY(resource_ids))
+	`, req.CourseID, req.ResourceID)
 
 	binding, _ := h.fetchBinding(r.Context(), id)
 	respondJSON(w, http.StatusOK, binding)
@@ -212,11 +224,25 @@ func (h *CourseResourceHandler) UnbindResource(w http.ResponseWriter, r *http.Re
 	}
 
 	id := chi.URLParam(r, "id")
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM course_resource_bindings WHERE id = $1`, id)
+	var courseID, resourceID string
+	err := h.DB.QueryRow(r.Context(), `SELECT course_id, resource_id FROM course_resource_bindings WHERE id = $1`, id).Scan(&courseID, &resourceID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "binding not found")
+		return
+	}
+
+	_, err = h.DB.Exec(r.Context(), `DELETE FROM course_resource_bindings WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to unbind course resource")
 		return
 	}
+	_, _ = h.DB.Exec(r.Context(), `
+		UPDATE courses
+		SET resource_ids = array_remove(resource_ids, $2::uuid),
+		    resource_count = COALESCE(array_length(array_remove(resource_ids, $2::uuid), 1), 0)
+		WHERE id = $1
+	`, courseID, resourceID)
+
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 

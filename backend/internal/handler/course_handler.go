@@ -147,10 +147,10 @@ func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 		SELECT c.id, c.code, c.name, c.type, c.category, c.major_id, m.name AS major_name, c.teacher_id, c.industry_id, i.name AS industry_name, c.version,
 			c.online_hours, c.offline_hours, c.online_weight, c.offline_weight, c.semester, c.class_name,
 			c.status, c.cover_color, c.cover_image, c.course_tag, c.difficulty, c.description,
-			(SELECT COALESCE(array_agg(ckb.knowledge_point_id), '{}') FROM course_knowledge_bindings ckb WHERE ckb.course_id = c.id AND ckb.bind_type = 'course') AS knowledge_point_ids,
-			(SELECT COALESCE(array_agg(crb.resource_id), '{}') FROM course_resource_bindings crb WHERE crb.course_id = c.id) AS resource_ids,
+			c.knowledge_point_ids::text[] AS knowledge_point_ids,
+			c.resource_ids::text[] AS resource_ids,
 			c.creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name,
-			c.node_count, c.resource_count,
+			c.node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count,
 			(SELECT COUNT(*) FROM view_logs WHERE target_type = 'course' AND target_id = c.id) AS view_count,
 			c.study_count, c.created_at, c.updated_at
 		FROM courses c
@@ -234,15 +234,18 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if req.CoCreatorIds == nil {
 		req.CoCreatorIds = domain.JSONSlice{}
 	}
+	kpIDs := jsonSliceToUUIDSlice(req.KnowledgePointIds)
+	resIDs := jsonSliceToUUIDSlice(req.ResourceIds)
 	_, err = h.DB.Exec(r.Context(), `
 		INSERT INTO courses (id, tenant_id, code, name, type, category, major_id, teacher_id, industry_id, version,
 			online_hours, offline_hours, online_weight, offline_weight, semester, class_name,
 			status, cover_color, cover_image, course_tag, difficulty, description, creator_id, co_creator_ids, batch_id,
-			node_count, resource_count, study_count)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'draft', $17, $18, $19, $20, $21, $22, $23, $24, 0, 0, 0)
+			knowledge_point_ids, resource_ids, node_count, resource_count, study_count)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'draft', $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, 0, 0, 0)
 	`, id, tenantID, code, req.Name, req.Type, req.Category, req.MajorID, req.TeacherID, req.IndustryID, req.Version,
 		req.OnlineHours, req.OfflineHours, req.OnlineWeight, req.OfflineWeight, req.Semester, req.ClassName,
-		req.CoverColor, req.CoverImage, req.CourseTag, req.Difficulty, req.Description, claims.UserID, req.CoCreatorIds, req.BatchID)
+		req.CoverColor, req.CoverImage, req.CourseTag, req.Difficulty, req.Description, claims.UserID, req.CoCreatorIds, req.BatchID,
+		kpIDs, resIDs)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "课程代码已存在，请使用其他代码")
@@ -251,9 +254,6 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "failed to create course")
 		return
 	}
-
-	h.bindCourseKnowledgePoints(r.Context(), id, tenantID, req.KnowledgePointIds)
-	h.bindCourseResources(r.Context(), id, tenantID, req.ResourceIds)
 
 	course, _ := h.fetchCourse(r.Context(), id)
 	respondJSON(w, http.StatusCreated, course)
@@ -279,8 +279,7 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
+	if _, ok := requireTenant(w, r); !ok {
 		return
 	}
 
@@ -345,15 +344,26 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		req.CoCreatorIds = existing.CoCreatorIds
 	}
 
+	kpIDs := jsonSliceToUUIDSlice(req.KnowledgePointIds)
+	resIDs := jsonSliceToUUIDSlice(req.ResourceIds)
+	if req.KnowledgePointIds == nil {
+		kpIDs = jsonSliceToUUIDSlice(existing.KnowledgePointIds)
+	}
+	if req.ResourceIds == nil {
+		resIDs = jsonSliceToUUIDSlice(existing.ResourceIds)
+	}
+
 	_, err = h.DB.Exec(r.Context(), `
 		UPDATE courses SET name = $1, type = $2, category = $3, major_id = $4, teacher_id = $5,
 			industry_id = $6, version = $7, online_hours = $8, offline_hours = $9, online_weight = $10,
 			offline_weight = $11, semester = $12, class_name = $13, cover_color = $14, cover_image = $15,
-			course_tag = $16, difficulty = $17, description = $18, co_creator_ids = $19, batch_id = $20, updated_at = NOW()
-		WHERE id = $21
+			course_tag = $16, difficulty = $17, description = $18, co_creator_ids = $19, batch_id = $20,
+			knowledge_point_ids = $21, resource_ids = $22, resource_count = COALESCE(array_length($22::uuid[], 1), 0), updated_at = NOW()
+		WHERE id = $23
 	`, req.Name, req.Type, req.Category, req.MajorID, req.TeacherID, req.IndustryID, req.Version,
 		req.OnlineHours, req.OfflineHours, req.OnlineWeight, req.OfflineWeight, req.Semester, req.ClassName,
-		req.CoverColor, req.CoverImage, req.CourseTag, req.Difficulty, req.Description, req.CoCreatorIds, batchID, id)
+		req.CoverColor, req.CoverImage, req.CourseTag, req.Difficulty, req.Description, req.CoCreatorIds, batchID,
+		kpIDs, resIDs, id)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "课程代码已存在，请使用其他代码")
@@ -361,13 +371,6 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 		respondError(w, http.StatusInternalServerError, "failed to update course")
 		return
-	}
-
-	if req.KnowledgePointIds != nil {
-		h.replaceCourseKnowledgePoints(r.Context(), id, tenantID, req.KnowledgePointIds)
-	}
-	if req.ResourceIds != nil {
-		h.replaceCourseResources(r.Context(), id, tenantID, req.ResourceIds)
 	}
 
 	course, _ := h.fetchCourse(r.Context(), id)
@@ -445,10 +448,10 @@ func (h *CourseHandler) fetchCourse(ctx context.Context, id string) (*domain.Cou
 		SELECT c.id, c.code, c.name, c.type, c.category, c.major_id, m.name AS major_name, c.teacher_id, c.industry_id, i.name AS industry_name, c.version,
 			c.online_hours, c.offline_hours, c.online_weight, c.offline_weight, c.semester, c.class_name,
 			c.status, c.cover_color, c.cover_image, c.course_tag, c.difficulty, c.description,
-			(SELECT COALESCE(array_agg(ckb.knowledge_point_id), '{}') FROM course_knowledge_bindings ckb WHERE ckb.course_id = c.id AND ckb.bind_type = 'course') AS knowledge_point_ids,
-			(SELECT COALESCE(array_agg(crb.resource_id), '{}') FROM course_resource_bindings crb WHERE crb.course_id = c.id) AS resource_ids,
+			c.knowledge_point_ids::text[] AS knowledge_point_ids,
+			c.resource_ids::text[] AS resource_ids,
 			c.creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name,
-			c.node_count, c.resource_count,
+			c.node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count,
 			(SELECT COUNT(*) FROM view_logs WHERE target_type = 'course' AND target_id = c.id) AS view_count,
 			c.study_count, c.created_at, c.updated_at
 		FROM courses c
@@ -487,40 +490,14 @@ func (h *CourseHandler) scanCourseRows(rows pgx.Rows) ([]domain.Course, error) {
 	return items, nil
 }
 
-func (h *CourseHandler) bindCourseKnowledgePoints(ctx context.Context, courseID, tenantID string, ids domain.JSONSlice) {
+func jsonSliceToUUIDSlice(ids domain.JSONSlice) []string {
+	out := make([]string, 0, len(ids))
 	for _, v := range ids {
-		kpID, ok := v.(string)
-		if !ok || kpID == "" || strings.HasPrefix(kpID, "kp-custom-") {
+		s, ok := v.(string)
+		if !ok || s == "" || strings.HasPrefix(s, "kp-custom-") {
 			continue
 		}
-		_, _ = h.DB.Exec(ctx, `
-			INSERT INTO course_knowledge_bindings (id, tenant_id, course_id, knowledge_point_id, bind_type, source_id)
-			VALUES ($1, $2, $3, $4, 'course', NULL)
-			ON CONFLICT (course_id, knowledge_point_id, bind_type, source_id) DO NOTHING
-		`, uuid.NewString(), tenantID, courseID, kpID)
+		out = append(out, s)
 	}
-}
-
-func (h *CourseHandler) replaceCourseKnowledgePoints(ctx context.Context, courseID, tenantID string, ids domain.JSONSlice) {
-	_, _ = h.DB.Exec(ctx, `DELETE FROM course_knowledge_bindings WHERE course_id = $1 AND bind_type = 'course'`, courseID)
-	h.bindCourseKnowledgePoints(ctx, courseID, tenantID, ids)
-}
-
-func (h *CourseHandler) bindCourseResources(ctx context.Context, courseID, tenantID string, ids domain.JSONSlice) {
-	for _, v := range ids {
-		resID, ok := v.(string)
-		if !ok || resID == "" {
-			continue
-		}
-		_, _ = h.DB.Exec(ctx, `
-			INSERT INTO course_resource_bindings (id, tenant_id, course_id, resource_id)
-			VALUES ($1, $2, $3, $4)
-			ON CONFLICT (course_id, resource_id) DO NOTHING
-		`, uuid.NewString(), tenantID, courseID, resID)
-	}
-}
-
-func (h *CourseHandler) replaceCourseResources(ctx context.Context, courseID, tenantID string, ids domain.JSONSlice) {
-	_, _ = h.DB.Exec(ctx, `DELETE FROM course_resource_bindings WHERE course_id = $1`, courseID)
-	h.bindCourseResources(ctx, courseID, tenantID, ids)
+	return out
 }

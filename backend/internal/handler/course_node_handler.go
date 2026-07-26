@@ -581,11 +581,12 @@ func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []cours
 	if len(originalSourceIDs) > 0 {
 		// knowledge points from granular course
 		if rows, err := h.DB.Query(ctx, `
-			SELECT ckb.course_id, kp.id, kp.name, kp.code, kp.description, TRUE AS linked
-			FROM course_knowledge_bindings ckb
-			JOIN knowledge_points kp ON kp.id = ckb.knowledge_point_id
-			WHERE ckb.course_id = ANY($1) AND ckb.bind_type = 'course'
-			ORDER BY kp.id ASC
+			SELECT c.id, kp.id, kp.name, kp.code, kp.description, TRUE AS linked
+			FROM courses c
+			JOIN LATERAL unnest(c.knowledge_point_ids) AS kp_id ON true
+			JOIN knowledge_points kp ON kp.id = kp_id
+			WHERE c.id = ANY($1)
+			ORDER BY c.id, array_position(c.knowledge_point_ids, kp_id)
 		`, originalSourceIDs); err == nil {
 			defer rows.Close()
 			for rows.Next() {
@@ -606,16 +607,17 @@ func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []cours
 
 		// resources from granular course
 		if rows, err := h.DB.Query(ctx, `
-			SELECT crb.course_id, COALESCE(nr.id, tr.id) AS id,
+			SELECT c.id, res_id,
 				COALESCE(nr.name, tr.name) AS name,
 				COALESCE(nr.type, tr.type) AS type,
 				COALESCE(nr.url, tr.url, '') AS url,
 				nr.size AS size
-			FROM course_resource_bindings crb
-			LEFT JOIN node_resources nr ON nr.id = crb.resource_id
-			LEFT JOIN task_resources tr ON tr.id = crb.resource_id
-			WHERE crb.course_id = ANY($1)
-			ORDER BY crb.created_at ASC
+			FROM courses c
+			JOIN LATERAL unnest(c.resource_ids) AS res_id ON true
+			LEFT JOIN node_resources nr ON nr.id = res_id
+			LEFT JOIN task_resources tr ON tr.id = res_id
+			WHERE c.id = ANY($1)
+			ORDER BY c.id, array_position(c.resource_ids, res_id)
 		`, originalSourceIDs); err == nil {
 			defer rows.Close()
 			for rows.Next() {

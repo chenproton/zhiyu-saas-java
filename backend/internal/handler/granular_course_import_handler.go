@@ -150,6 +150,9 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 			durPtr = &duration
 		}
 
+		knowledgePointIDs := h.findOrCreateKnowledgePoints(ctx, tenantID, knowledgeNames)
+		resourceIDs := h.findOrCreateResources(ctx, tenantID, resourceNames, userID)
+
 		var existingID string
 		err := h.DB.QueryRow(ctx, `SELECT id FROM courses WHERE tenant_id=$1 AND name=$2 AND type='granular' LIMIT 1`, tenantID, name).Scan(&existingID)
 		exists := err == nil && existingID != ""
@@ -172,15 +175,15 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 			}
 			_, err := h.DB.Exec(ctx, `
 				UPDATE courses
-				SET major_id=$3, batch_id=$4, difficulty=$5, description=$6, online_hours=$7, updated_at=NOW()
+				SET major_id=$3, batch_id=$4, difficulty=$5, description=$6, online_hours=$7,
+				    knowledge_point_ids=$8, resource_ids=$9, resource_count=COALESCE(array_length($9::uuid[], 1), 0), updated_at=NOW()
 				WHERE id=$1 AND tenant_id=$2
-			`, existingID, tenantID, majorID, batchID, diffPtr, descPtr, durPtr)
+			`, existingID, tenantID, majorID, batchID, diffPtr, descPtr, durPtr, knowledgePointIDs, resourceIDs)
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("颗粒课[%s]更新失败: %v", name, err))
 				continue
 			}
-			h.replaceBindings(ctx, existingID, tenantID, userID, knowledgeNames, resourceNames)
 			continue
 		}
 
@@ -195,40 +198,16 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 			INSERT INTO courses (id, tenant_id, code, name, type, category, major_id, teacher_id, industry_id, version,
 				online_hours, offline_hours, online_weight, offline_weight, semester, class_name,
 				status, cover_color, cover_image, course_tag, difficulty, description, creator_id, co_creator_ids, batch_id,
-				node_count, resource_count, study_count)
+				knowledge_point_ids, resource_ids, node_count, resource_count, study_count)
 			VALUES ($1,$2,$3,$4,'granular','granular',$5,NULL,NULL,'V1.0',$6,0,0,0,NULL,NULL,
-				'draft',NULL,NULL,NULL,$7,$8,$9,'{}',$10,0,0,0)
-		`, courseID, tenantID, code, name, majorID, durPtr, diffPtr, descPtr, userID, batchID)
+				'draft',NULL,NULL,NULL,$7,$8,$9,'{}',$10,$11,$12,0,COALESCE(array_length($12::uuid[], 1), 0),0)
+		`, courseID, tenantID, code, name, majorID, durPtr, diffPtr, descPtr, userID, batchID, knowledgePointIDs, resourceIDs)
 		if err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("颗粒课[%s]创建失败: %v", name, err))
 			continue
 		}
-		h.replaceBindings(ctx, courseID, tenantID, userID, knowledgeNames, resourceNames)
 		result.Created++
-	}
-}
-
-func (h *GranularCourseImportHandler) replaceBindings(ctx context.Context, courseID, tenantID, userID string, knowledgeNames, resourceNames []string) {
-	_, _ = h.DB.Exec(ctx, `DELETE FROM course_knowledge_bindings WHERE course_id=$1 AND bind_type='course'`, courseID)
-	_, _ = h.DB.Exec(ctx, `DELETE FROM course_resource_bindings WHERE course_id=$1`, courseID)
-
-	knowledgePointIDs := h.findOrCreateKnowledgePoints(ctx, tenantID, knowledgeNames)
-	for _, kpID := range knowledgePointIDs {
-		_, _ = h.DB.Exec(ctx, `
-			INSERT INTO course_knowledge_bindings (id, tenant_id, course_id, knowledge_point_id, bind_type, source_id)
-			VALUES ($1,$2,$3,$4,'course',NULL)
-			ON CONFLICT (course_id, knowledge_point_id, bind_type, source_id) DO NOTHING
-		`, uuid.NewString(), tenantID, courseID, kpID)
-	}
-
-	resourceIDs := h.findOrCreateResources(ctx, tenantID, resourceNames, userID)
-	for _, resID := range resourceIDs {
-		_, _ = h.DB.Exec(ctx, `
-			INSERT INTO course_resource_bindings (id, tenant_id, course_id, resource_id)
-			VALUES ($1,$2,$3,$4)
-			ON CONFLICT (course_id, resource_id) DO NOTHING
-		`, uuid.NewString(), tenantID, courseID, resID)
 	}
 }
 
