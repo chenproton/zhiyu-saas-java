@@ -1,7 +1,7 @@
 export interface Scenario {
   id: string
   name: string
-  code: string
+  code?: string
   coverImage?: string
   careerPositionId?: string
   industryIds?: string[]

@@ -71,6 +71,7 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
 // 题库接口
 export interface QuestionBank {
   id: string
+  code?: string
   name: string
   description: string
   coverImage?: string
@@ -92,6 +93,7 @@ export interface QuestionBank {
 // 题目接口
 export interface Question {
   id: string
+  code?: string
   bankId: string
   type: QuestionType
   content: string
@@ -123,6 +125,7 @@ export interface ExamQuestion {
 // 试卷接口
 export interface Exam {
   id: string
+  code?: string
   name: string
   description: string
   status: Status

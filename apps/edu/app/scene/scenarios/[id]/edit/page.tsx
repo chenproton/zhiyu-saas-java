@@ -49,7 +49,6 @@ export default function ScenarioEditPage() {
   const [isSaving, setIsSaving] = useState(false)
 
   const [scenarioName, setScenarioName] = useState("")
-  const [scenarioCode, setScenarioCode] = useState("")
   const [positionId, setPositionId] = useState("")
   const [professionIds, setProfessionIds] = useState<string[]>([])
   const [batchId, setBatchId] = useState("")
@@ -87,7 +86,6 @@ export default function ScenarioEditPage() {
         setMajors(majRes.items.filter(m => m.enabled))
 
         setScenarioName(scenario.name || "")
-        setScenarioCode(scenario.code || "")
         setPositionId(scenario.careerPositionId || "")
         setProfessionIds(scenario.professionIds || [])
         setBatchId(scenario.batchId || "")
@@ -131,7 +129,6 @@ export default function ScenarioEditPage() {
   const buildPayload = () => {
     return {
       name: scenarioName.trim(),
-      code: scenarioCode,
       careerPositionId: positionId || null,
       batchId: batchId || null,
       industryIds: industryIds.length > 0 ? industryIds : null,
@@ -237,19 +234,6 @@ export default function ScenarioEditPage() {
                       onChange={(e) => setScenarioName(e.target.value)}
                       placeholder="请输入场景名称"
                     />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <PrdAnnotation data={getAnnotation("editor-field-code")} className="block">
-                      <Label htmlFor="code">场景编码</Label>
-                    </PrdAnnotation>
-                    <Input
-                      id="code"
-                      value={scenarioCode}
-                      disabled
-                      className="bg-gray-50"
-                    />
-                    <p className="text-xs text-gray-400">系统自动生成，不可修改</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">

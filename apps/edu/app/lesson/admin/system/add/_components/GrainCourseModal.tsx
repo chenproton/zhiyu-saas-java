@@ -60,7 +60,7 @@ export default function GrainCourseModal({
     }
     if (searchCode.trim()) {
       result = result.filter((c) =>
-        c.code.toLowerCase().includes(searchCode.trim().toLowerCase())
+        (c.code || "").toLowerCase().includes(searchCode.trim().toLowerCase())
       )
     }
     if (searchCreator.trim()) {

@@ -99,7 +99,6 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
       mapItem={(b) => mapCourse(b, currentUserId)}
       mapBatch={mapCourseBatch}
       createPayload={(uid, label) => ({
-        code: `${courseType.toUpperCase()}-${Date.now()}`,
         name: `新建${label}_${draftSuffix()}`,
         type: courseType,
         category: "default",

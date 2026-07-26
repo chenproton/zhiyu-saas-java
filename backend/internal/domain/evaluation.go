@@ -7,6 +7,7 @@ import "time"
 // QuestionBank represents a repository of questions.
 type QuestionBank struct {
 	ID                  string    `json:"id"`
+	Code                string    `json:"code"`
 	Name                string    `json:"name"`
 	Description         string    `json:"description"`
 	CoverImage          *string   `json:"coverImage,omitempty"`
@@ -41,6 +42,7 @@ const (
 // Question represents a single question entry.
 type Question struct {
 	ID              string       `json:"id"`
+	Code            string       `json:"code"`
 	BankID          string       `json:"bankId"`
 	Type            QuestionType `json:"type"`
 	Content         string       `json:"content"`
@@ -73,6 +75,7 @@ type ExamQuestion struct {
 // Exam represents an exam paper.
 type Exam struct {
 	ID                  string         `json:"id"`
+	Code                string         `json:"code"`
 	Name                string         `json:"name"`
 	Description         string         `json:"description"`
 	Status              string         `json:"status"`

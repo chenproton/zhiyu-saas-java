@@ -91,7 +91,7 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT e.id, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image,
+		SELECT e.id, e.code, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image,
 		e.is_temp,
 			e.collaborator_ids,
 			COALESCE((SELECT u.name FROM users u WHERE u.id = e.creator_id), e.creator_id::text) AS creator_name,
@@ -159,11 +159,16 @@ func (h *ExamHandler) Create(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := requireTenant(w, r); if !ok { return }
 
 	id := uuid.NewString()
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO exams (id, tenant_id, name, description, status, total_score, duration, cover_image,
+	code, err := generateUniqueEntityCode(r.Context(), h.DB, "SJ", "exams", tenantID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to generate exam code")
+		return
+	}
+	_, err = h.DB.Exec(r.Context(), `
+		INSERT INTO exams (id, tenant_id, code, name, description, status, total_score, duration, cover_image,
 			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, creator_id, is_temp)
-		VALUES ($1, $2, $3, $4, 'draft', 0, $5, $6, $7, $8, $9, 'v1.0', 'mine', $10, $11)
-	`, id, tenantID, req.Name, req.Description, req.Duration, req.CoverImage, coalesceStringSlice(req.CollaboratorIDs), coalesceStringSlice(req.CollaboratorDeptIDs), req.BatchID, claims.UserID, req.IsTemp)
+		VALUES ($1, $2, $3, $4, $5, 'draft', 0, $6, $7, $8, $9, $10, 'v1.0', 'mine', $11, $12)
+	`, id, tenantID, code, req.Name, req.Description, req.Duration, req.CoverImage, coalesceStringSlice(req.CollaboratorIDs), coalesceStringSlice(req.CollaboratorDeptIDs), req.BatchID, claims.UserID, req.IsTemp)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "考试名称已存在，请使用其他名称")
@@ -514,7 +519,7 @@ func (h *ExamHandler) fetchExam(ctx context.Context, id string) (domain.Exam, er
 	var e domain.Exam
 	var coverImage, creatorID, batchID *string
 	err := h.DB.QueryRow(ctx, `
-		SELECT e.id, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image,
+		SELECT e.id, e.code, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image,
 		e.is_temp,
 			e.collaborator_ids,
 			COALESCE((SELECT u.name FROM users u WHERE u.id = e.creator_id), e.creator_id::text) AS creator_name,
@@ -526,7 +531,7 @@ func (h *ExamHandler) fetchExam(ctx context.Context, id string) (domain.Exam, er
 			e.collaborator_dept_ids, e.batch_id, e.version, e.owner_type, e.creator_id, e.created_at, e.updated_at
 		FROM exams e WHERE e.id = $1
 	`, id).Scan(
-		&e.ID, &e.Name, &e.Description, &e.Status, &e.TotalScore, &e.Duration, &coverImage,
+		&e.ID, &e.Code, &e.Name, &e.Description, &e.Status, &e.TotalScore, &e.Duration, &coverImage,
 		&e.IsTemp, &e.CollaboratorIDs, &e.CreatorName, &e.CollaboratorNames, &e.CollaboratorDeptIDs, &batchID, &e.Version, &e.OwnerType, &creatorID, &e.CreatedAt, &e.UpdatedAt,
 	)
 	if err != nil {
@@ -577,7 +582,7 @@ func (h *ExamHandler) scanExamRows(ctx context.Context, rows pgx.Rows) ([]domain
 		var e domain.Exam
 		var coverImage, creatorID, batchID *string
 		if err := rows.Scan(
-			&e.ID, &e.Name, &e.Description, &e.Status, &e.TotalScore, &e.Duration, &coverImage,
+			&e.ID, &e.Code, &e.Name, &e.Description, &e.Status, &e.TotalScore, &e.Duration, &coverImage,
 			&e.IsTemp, &e.CollaboratorIDs, &e.CreatorName, &e.CollaboratorNames, &e.CollaboratorDeptIDs, &batchID, &e.Version, &e.OwnerType, &creatorID, &e.CreatedAt, &e.UpdatedAt,
 		); err != nil {
 			return nil, err

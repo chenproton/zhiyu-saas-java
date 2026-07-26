@@ -184,7 +184,7 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 		}
 
 		courseID := uuid.NewString()
-		code := h.generateSystemCourseCode(ctx, tenantID)
+		code := generateEntityCode("XT")
 		_, err = h.DB.Exec(ctx, `
 			INSERT INTO courses (id, tenant_id, code, name, type, category, major_id, teacher_id, industry_id, version,
 				online_hours, offline_hours, online_weight, offline_weight, semester, class_name,

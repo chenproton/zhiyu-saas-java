@@ -194,7 +194,7 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	if req.Code == "" || req.Name == "" || req.Type == "" || req.Category == "" {
+	if req.Name == "" || req.Type == "" || req.Category == "" {
 		respondError(w, http.StatusBadRequest, "missing required fields")
 		return
 	}
@@ -209,17 +209,27 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 		req.Version = &v
 	}
 
+	prefix := "XT"
+	if req.Type == "granular" {
+		prefix = "KL"
+	}
+	code, err := generateUniqueEntityCode(r.Context(), h.DB, prefix, "courses", tenantID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to generate course code")
+		return
+	}
+
 	id := uuid.NewString()
 	if req.CoCreatorIds == nil {
 		req.CoCreatorIds = domain.JSONSlice{}
 	}
-	_, err := h.DB.Exec(r.Context(), `
+	_, err = h.DB.Exec(r.Context(), `
 		INSERT INTO courses (id, tenant_id, code, name, type, category, major_id, teacher_id, industry_id, version,
 			online_hours, offline_hours, online_weight, offline_weight, semester, class_name,
 			status, cover_color, cover_image, course_tag, creator_id, co_creator_ids, batch_id,
 			node_count, resource_count, study_count)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'draft', $17, $18, $19, $20, $21, $22, 0, 0, 0)
-	`, id, tenantID, req.Code, req.Name, req.Type, req.Category, req.MajorID, req.TeacherID, req.IndustryID, req.Version,
+	`, id, tenantID, code, req.Name, req.Type, req.Category, req.MajorID, req.TeacherID, req.IndustryID, req.Version,
 		req.OnlineHours, req.OfflineHours, req.OnlineWeight, req.OfflineWeight, req.Semester, req.ClassName,
 		req.CoverColor, req.CoverImage, req.CourseTag, claims.UserID, req.CoCreatorIds, req.BatchID)
 	if err != nil {
@@ -255,9 +265,6 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Code == "" {
-		req.Code = existing.Code
-	}
 	if req.Name == "" {
 		req.Name = existing.Name
 	}
@@ -314,12 +321,12 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = h.DB.Exec(r.Context(), `
-		UPDATE courses SET code = $1, name = $2, type = $3, category = $4, major_id = $5, teacher_id = $6,
-			industry_id = $7, version = $8, online_hours = $9, offline_hours = $10, online_weight = $11,
-			offline_weight = $12, semester = $13, class_name = $14, cover_color = $15, cover_image = $16,
-			course_tag = $17, co_creator_ids = $18, batch_id = $19, updated_at = NOW()
-		WHERE id = $20
-	`, req.Code, req.Name, req.Type, req.Category, req.MajorID, req.TeacherID, req.IndustryID, req.Version,
+		UPDATE courses SET name = $1, type = $2, category = $3, major_id = $4, teacher_id = $5,
+			industry_id = $6, version = $7, online_hours = $8, offline_hours = $9, online_weight = $10,
+			offline_weight = $11, semester = $12, class_name = $13, cover_color = $14, cover_image = $15,
+			course_tag = $16, co_creator_ids = $17, batch_id = $18, updated_at = NOW()
+		WHERE id = $19
+	`, req.Name, req.Type, req.Category, req.MajorID, req.TeacherID, req.IndustryID, req.Version,
 		req.OnlineHours, req.OfflineHours, req.OnlineWeight, req.OfflineWeight, req.Semester, req.ClassName,
 		req.CoverColor, req.CoverImage, req.CourseTag, req.CoCreatorIds, batchID, id)
 	if err != nil {

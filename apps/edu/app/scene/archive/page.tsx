@@ -86,7 +86,7 @@ export default function SceneArchivePage() {
       result = result.filter(
         (s) =>
           s.name.toLowerCase().includes(q) ||
-          s.code.toLowerCase().includes(q) ||
+          (s.code || "").toLowerCase().includes(q) ||
           (s.professionNames || s.professionIds || []).some((v) => v.toLowerCase().includes(q)) ||
           (s.industryNames || s.industryIds || []).some((v) => v.toLowerCase().includes(q))
       )

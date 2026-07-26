@@ -175,11 +175,12 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 		}
 
 		bankID := uuid.NewString()
+		code := generateEntityCode("TK")
 		_, err = h.DB.Exec(ctx, `
-			INSERT INTO question_banks (id, tenant_id, name, description, status, question_count, creator_id,
+			INSERT INTO question_banks (id, tenant_id, code, name, description, status, question_count, creator_id,
 				batch_id, version, owner_type, is_draft_pool)
-			VALUES ($1,$2,$3,$4,'draft',0,$5,$6,'v1.0','mine',false)
-		`, bankID, tenantID, name, description, userID, batchID)
+			VALUES ($1,$2,$3,$4,$5,'draft',0,$6,$7,'v1.0','mine',false)
+		`, bankID, tenantID, code, name, description, userID, batchID)
 		if err != nil {
 			execRes.Failed++
 			msg := fmt.Sprintf("题库[%s]创建失败: %v", name, err)

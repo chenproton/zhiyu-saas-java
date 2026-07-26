@@ -219,7 +219,7 @@ func (h *ScenarioHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Name == "" || req.Code == "" {
+	if req.Name == "" {
 		respondError(w, http.StatusBadRequest, "missing required fields")
 		return
 	}
@@ -233,13 +233,22 @@ func (h *ScenarioHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if claims.TenantID != nil && *claims.TenantID != "" {
 		tenantID = claims.TenantID
 	}
+	if tenantID == nil || *tenantID == "" {
+		respondError(w, http.StatusForbidden, "missing tenant")
+		return
+	}
+	code, err := generateUniqueEntityCode(r.Context(), h.DB, "CJ", "scenarios", *tenantID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to generate scenario code")
+		return
+	}
 
-	_, err := h.DB.Exec(r.Context(), `
+	_, err = h.DB.Exec(r.Context(), `
 		INSERT INTO scenarios (id, name, code, cover_image, career_position_id, industry_ids,
 			profession_ids, batch_id, difficulty, version, status, background,
 			delivery_goal, creator_id, co_builder_ids, tenant_id)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'draft', $11, $12, $13, $14, $15)
-	`, id, req.Name, req.Code, req.CoverImage, req.CareerPositionID, coalesceStringSlice(req.IndustryIDs),
+	`, id, req.Name, code, req.CoverImage, req.CareerPositionID, coalesceStringSlice(req.IndustryIDs),
 		coalesceStringSlice(req.ProfessionIDs), req.BatchID, req.Difficulty, req.Version, req.Background,
 		req.DeliveryGoal, claims.UserID, coalesceStringSlice(req.CoBuilderIDs), tenantID)
 	if err != nil {
@@ -277,10 +286,6 @@ func (h *ScenarioHandler) Update(w http.ResponseWriter, r *http.Request) {
 	name := req.Name
 	if name == "" {
 		name = existing.Name
-	}
-	code := req.Code
-	if code == "" {
-		code = existing.Code
 	}
 	version := req.Version
 	if version == "" {
@@ -320,19 +325,15 @@ func (h *ScenarioHandler) Update(w http.ResponseWriter, r *http.Request) {
 	deliveryGoal := resolveNullable(req.DeliveryGoal, existing.DeliveryGoal)
 
 	_, err = h.DB.Exec(r.Context(), `
-		UPDATE scenarios SET name = $1, code = $2, cover_image = $3, career_position_id = $4,
-			industry_ids = $5, profession_ids = $6,
-			batch_id = $7, difficulty = $8, version = $9, background = $10, delivery_goal = $11,
-			co_builder_ids = $12, updated_at = NOW()
-		WHERE id = $13
-	`, name, code, coverImage, careerPositionID, industryIDs,
+		UPDATE scenarios SET name = $1, cover_image = $2, career_position_id = $3,
+			industry_ids = $4, profession_ids = $5,
+			batch_id = $6, difficulty = $7, version = $8, background = $9, delivery_goal = $10,
+			co_builder_ids = $11, updated_at = NOW()
+		WHERE id = $12
+	`, name, coverImage, careerPositionID, industryIDs,
 		professionIDs, batchID, difficulty, version, background,
 		deliveryGoal, coBuilderIDs, id)
 	if err != nil {
-		if isUniqueViolation(err) {
-			respondError(w, http.StatusConflict, "场景方案代码已存在，请使用其他代码")
-			return
-		}
 		respondError(w, http.StatusInternalServerError, "failed to update scenario")
 		return
 	}
