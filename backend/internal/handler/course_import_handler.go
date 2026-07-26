@@ -347,9 +347,9 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, tenant
 		if difficulty == 0 && g.Difficulty != nil {
 			difficulty = *g.Difficulty
 		}
-		// 回退到颗粒课关联的知识点和资源
-		baseKnowledgeIDs = h.toStringSlice(g.KnowledgePointIds)
-		baseResourceIDs = h.toStringSlice(g.ResourceIds)
+		// 回退到颗粒课关联的知识点和资源（以绑定表为准，避免 courses 表数组字段为空）
+		baseKnowledgeIDs = h.lookupGranularCourseKnowledgePointIDs(ctx, g.ID)
+		baseResourceIDs = h.lookupGranularCourseResourceIDs(ctx, g.ID)
 	} else {
 		teachingGoals = nr.manualTeachingGoals
 		duration = nr.manualDuration
@@ -494,15 +494,53 @@ func (h *CourseImportHandler) lookupGranularCourse(ctx context.Context, tenantID
 	}
 	var c domain.Course
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, online_hours, description, difficulty, knowledge_point_ids, resource_ids
+		SELECT id, name, online_hours, description, difficulty
 		FROM courses
 		WHERE tenant_id=$1 AND name=$2 AND type='granular'
 		LIMIT 1
-	`, tenantID, name).Scan(&c.ID, &c.Name, &c.OnlineHours, &c.Description, &c.Difficulty, &c.KnowledgePointIds, &c.ResourceIds)
+	`, tenantID, name).Scan(&c.ID, &c.Name, &c.OnlineHours, &c.Description, &c.Difficulty)
 	if err != nil {
 		return nil
 	}
 	return &c
+}
+
+func (h *CourseImportHandler) lookupGranularCourseKnowledgePointIDs(ctx context.Context, courseID string) []string {
+	rows, err := h.DB.Query(ctx, `
+		SELECT knowledge_point_id FROM course_knowledge_bindings
+		WHERE course_id=$1 AND bind_type='course'
+	`, courseID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err == nil && id != "" {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+func (h *CourseImportHandler) lookupGranularCourseResourceIDs(ctx context.Context, courseID string) []string {
+	rows, err := h.DB.Query(ctx, `
+		SELECT resource_id FROM course_resource_bindings
+		WHERE course_id=$1
+	`, courseID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err == nil && id != "" {
+			ids = append(ids, id)
+		}
+	}
+	return ids
 }
 
 func (h *CourseImportHandler) findOrCreateKnowledgePoints(ctx context.Context, tenantID string, names []string) []string {
