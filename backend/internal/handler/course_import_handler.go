@@ -128,6 +128,13 @@ func (h *CourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request
 
 	h.importNodes(ctx, xlsx, tenantID, userID, false, overwrite, courseMap, result)
 
+	if len(result.Errors) > 0 {
+		fmt.Printf("[course-import] tenant=%s created=%d failed=%d skipped=%d errors:\n", tenantID, result.Created, result.Failed, result.Skipped)
+		for _, e := range result.Errors {
+			fmt.Printf("[course-import]   %s\n", e)
+		}
+	}
+
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"created":        result.Created,
 		"failed":         result.Failed,
