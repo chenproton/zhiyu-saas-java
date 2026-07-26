@@ -32,6 +32,7 @@ interface PortalAuthContextType {
   logout: () => void
   hasPermission: (module: string, page?: string, action?: string) => boolean
   hasMenuPermission: (path: string) => boolean
+  subscriptionModules: Record<string, boolean> | null
 }
 
 const PortalAuthContext = createContext<PortalAuthContextType>({
@@ -41,6 +42,7 @@ const PortalAuthContext = createContext<PortalAuthContextType>({
   setActiveRole: () => {},
   hasPermission: () => false,
   hasMenuPermission: () => true,
+  subscriptionModules: null,
 })
 
 export function usePortalAuth() {
@@ -174,6 +176,7 @@ export function PortalAuthProvider({ children }: { children: React.ReactNode }) 
         logout,
         hasPermission,
         hasMenuPermission,
+        subscriptionModules,
       }}
     >
       {children}

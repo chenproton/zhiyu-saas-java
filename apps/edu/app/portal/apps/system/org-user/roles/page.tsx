@@ -104,7 +104,7 @@ function SystemCard({ node, checked, onCheck }: { node: MenuTreeItem; checked: S
 }
 
 export default function RolesPage() {
-  const { tenantId } = usePortalAuth()
+  const { tenantId, subscriptionModules } = usePortalAuth()
   const { toast } = useToast()
   const [roles, setRoles] = useState<Role[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -117,29 +117,16 @@ export default function RolesPage() {
   const [checkedActions, setCheckedActions] = useState<Set<string>>(new Set())
   const [editName, setEditName] = useState("")
   const [isSaving, setIsSaving] = useState(false)
-  const [subscriptionModules, setSubscriptionModules] = useState<Record<string, boolean>>({})
 
   const menuTree = useMemo(() => {
     const tree = buildMenuTree()
-    return filterMenuTreeBySubscription(tree, subscriptionModules)
+    return filterMenuTreeBySubscription(tree, subscriptionModules || {})
   }, [subscriptionModules])
 
   const visibleActionModules = useMemo(
-    () => permissionModuleConfig.filter((mod) => subscriptionModules[ACTION_MODULE_PLATFORM_MAP[mod.module]] === true),
+    () => permissionModuleConfig.filter((mod) => (subscriptionModules || {})[ACTION_MODULE_PLATFORM_MAP[mod.module]] === true),
     [subscriptionModules]
   )
-
-  useEffect(() => {
-    if (!tenantId) return
-    fetch(`/api/v1/subscriptions?tenantId=${tenantId}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data && typeof data.modules === "object") {
-          setSubscriptionModules(data.modules)
-        }
-      })
-      .catch(() => {})
-  }, [tenantId])
 
   const fetchData = useCallback(async () => {
     if (!tenantId) {
@@ -276,7 +263,7 @@ export default function RolesPage() {
       // 保留已有的非 menus 结构权限（如 scene/job/lesson/evaluation），并根据 checkedActions 更新
       // 同时受租户套餐控制：未订阅平台的操作权限不保留
       for (const mod of permissionModuleConfig.filter(
-        (mod) => subscriptionModules[ACTION_MODULE_PLATFORM_MAP[mod.module]] === true
+        (mod) => subscriptionModules?.[ACTION_MODULE_PLATFORM_MAP[mod.module]] === true
       )) {
         const modPerms: Record<string, string[]> = {}
         for (const page of mod.pages) {

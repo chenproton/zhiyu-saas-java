@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { portalRequest } from "@/lib/api"
 
 export function useSubscriptionModules(tenantId?: string): Record<string, boolean> | null {
   const [modules, setModules] = useState<Record<string, boolean> | null>(null)
@@ -11,8 +12,7 @@ export function useSubscriptionModules(tenantId?: string): Record<string, boolea
       return
     }
 
-    fetch(`/api/v1/subscriptions?tenantId=${tenantId}`)
-      .then((res) => (res.ok ? res.json() : null))
+    portalRequest<{ modules?: Record<string, boolean> }>(`/subscriptions?tenantId=${tenantId}`)
       .then((data) => {
         if (data && typeof data.modules === "object") {
           setModules(data.modules)

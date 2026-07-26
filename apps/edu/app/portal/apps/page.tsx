@@ -126,42 +126,18 @@ function ModuleCard({ module }: { module: ModuleItem }) {
 }
 
 export default function AppsPage() {
-  const { hasMenuPermission, tenantId } = usePortalAuth()
+  const { hasMenuPermission, subscriptionModules } = usePortalAuth()
   const [activeMenu, setActiveMenu] = useState(menuItems[0].id)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const contentRef = useRef<HTMLDivElement>(null)
   const { data: modulesData, loading: modulesLoading } = useAppModules()
-  const [subscriptionModules, setSubscriptionModules] = useState<Record<string, boolean>>({})
-  const [subscriptionLoading, setSubscriptionLoading] = useState(true)
-
-  useEffect(() => {
-    if (!tenantId) {
-      setSubscriptionLoading(false)
-      return
-    }
-    setSubscriptionLoading(true)
-    fetch(`/api/v1/subscriptions?tenantId=${tenantId}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data && typeof data.modules === "object") {
-          setSubscriptionModules(data.modules)
-        } else {
-          setSubscriptionModules({})
-        }
-      })
-      .catch(() => {
-        setSubscriptionModules({})
-      })
-      .finally(() => {
-        setSubscriptionLoading(false)
-      })
-  }, [tenantId])
+  const subscriptionLoading = subscriptionModules === null
 
   const visibleQuickAccess = quickAccess.filter((item) => hasMenuPermission(item.href))
 
   const allModules: ModuleSection[] = useMemo(() => {
     return menuItems
-      .filter((item) => subscriptionModules[item.id] === true)
+      .filter((item) => subscriptionModules?.[item.id] === true)
       .map((item) => {
         const configured = modulesData.platforms.find((p) => p.id === item.id)
         let modules: ModuleItem[]
