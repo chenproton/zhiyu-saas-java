@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
@@ -116,4 +117,77 @@ func (h *SubscriptionHandler) fetchSubscriptionByTenant(ctx context.Context, ten
 	sub.ValidUntil = validUntil
 	sub.Modules = modules
 	return sub, nil
+}
+
+func (h *SubscriptionHandler) AdminGet(w http.ResponseWriter, r *http.Request) {
+	tenantID := chi.URLParam(r, "tenantId")
+	if tenantID == "" {
+		respondError(w, http.StatusBadRequest, "missing tenant id")
+		return
+	}
+
+	sub, err := h.fetchSubscriptionByTenant(r.Context(), tenantID)
+	if err != nil {
+		respondJSON(w, http.StatusOK, domain.SubscriptionPackage{
+			TenantID: tenantID,
+			Name:     "",
+			Modules:  domain.JSONMap{},
+			Status:   "inactive",
+		})
+		return
+	}
+	respondJSON(w, http.StatusOK, sub)
+}
+
+func (h *SubscriptionHandler) AdminUpdate(w http.ResponseWriter, r *http.Request) {
+	tenantID := chi.URLParam(r, "tenantId")
+	if tenantID == "" {
+		respondError(w, http.StatusBadRequest, "missing tenant id")
+		return
+	}
+
+	var req UpdateSubscriptionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.Name == "" {
+		respondError(w, http.StatusBadRequest, "missing required fields")
+		return
+	}
+	if req.Modules == nil {
+		req.Modules = domain.JSONMap{}
+	}
+
+	ctx := r.Context()
+	existing, err := h.fetchSubscriptionByTenant(ctx, tenantID)
+	if err == nil && existing.ID != "" {
+		_, err = h.DB.Exec(ctx, `
+			UPDATE subscription_packages SET name = $1, valid_until = $2, modules = $3, status = $4, updated_at = NOW()
+			WHERE id = $5
+		`, req.Name, req.ValidUntil, req.Modules, req.Status, existing.ID)
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to update subscription")
+			return
+		}
+		existing.Name = req.Name
+		existing.ValidUntil = req.ValidUntil
+		existing.Modules = req.Modules
+		existing.Status = req.Status
+		respondJSON(w, http.StatusOK, existing)
+		return
+	}
+
+	id := uuid.NewString()
+	_, err = h.DB.Exec(ctx, `
+		INSERT INTO subscription_packages (id, tenant_id, name, valid_until, modules, status)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, id, tenantID, req.Name, req.ValidUntil, req.Modules, req.Status)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to create subscription")
+		return
+	}
+
+	sub, _ := h.fetchSubscription(ctx, id)
+	respondJSON(w, http.StatusOK, sub)
 }

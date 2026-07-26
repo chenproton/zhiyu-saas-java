@@ -39,7 +39,9 @@ import {
   Loader2,
   Users,
   Eye,
+  Package,
 } from "lucide-react"
+import { platformModuleDefs } from "@/lib/navigation-config"
 import { useToast } from "@/hooks/use-toast"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 
@@ -127,6 +129,18 @@ export default function SuperAdminPage() {
   const [adminInline, setAdminInline] = useState<{ id?: string; username: string; name: string } | null>(null)
   const [adminInlineSubmitting, setAdminInlineSubmitting] = useState(false)
   const [viewPassword, setViewPassword] = useState<{ admin: TenantAdmin; password: string } | null>(null)
+
+  const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false)
+  const [subscriptionTenant, setSubscriptionTenant] = useState<AdminTenant | null>(null)
+  const [subscriptionData, setSubscriptionData] = useState<{
+    id: string
+    name: string
+    validUntil: string
+    status: "active" | "inactive"
+    modules: Record<string, boolean>
+  }>({ id: "", name: "", validUntil: "", status: "active", modules: {} })
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false)
+  const [subscriptionSubmitting, setSubscriptionSubmitting] = useState(false)
 
   const { toast } = useToast()
 
@@ -263,6 +277,63 @@ export default function SuperAdminPage() {
     } catch (err) {
       toast({ variant: "destructive", title: "获取密码失败", description: err instanceof Error ? err.message : "未知错误" })
     }
+  }
+
+  const openSubscriptionModal = (t: AdminTenant) => {
+    setSubscriptionTenant(t)
+    setSubscriptionDialogOpen(true)
+    setSubscriptionLoading(true)
+    adminFetch<{ id: string; name: string; validUntil?: string; status: string; modules: Record<string, boolean> }>(`/${t.id}/subscription`)
+      .then((res) => {
+        const defaultModules: Record<string, boolean> = {}
+        Object.keys(platformModuleDefs).forEach((key) => {
+          defaultModules[key] = res.modules?.[key] ?? false
+        })
+        setSubscriptionData({
+          id: res.id || "",
+          name: res.name || "默认套餐",
+          validUntil: res.validUntil || "",
+          status: (res.status as "active" | "inactive") || "active",
+          modules: defaultModules,
+        })
+      })
+      .catch((err) => {
+        toast({ variant: "destructive", title: "加载套餐失败", description: err instanceof Error ? err.message : "未知错误" })
+      })
+      .finally(() => setSubscriptionLoading(false))
+  }
+
+  const handleSubscriptionSubmit = async () => {
+    if (!subscriptionTenant) return
+    if (!subscriptionData.name) {
+      toast({ variant: "destructive", title: "套餐名称不能为空" })
+      return
+    }
+    setSubscriptionSubmitting(true)
+    try {
+      await adminFetch(`/${subscriptionTenant.id}/subscription`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: subscriptionData.name,
+          validUntil: subscriptionData.validUntil || null,
+          status: subscriptionData.status,
+          modules: subscriptionData.modules,
+        }),
+      })
+      toast({ title: "保存成功" })
+      setSubscriptionDialogOpen(false)
+    } catch (err) {
+      toast({ variant: "destructive", title: "保存失败", description: err instanceof Error ? err.message : "未知错误" })
+    } finally {
+      setSubscriptionSubmitting(false)
+    }
+  }
+
+  const toggleModule = (key: string) => {
+    setSubscriptionData((prev) => ({
+      ...prev,
+      modules: { ...prev.modules, [key]: !prev.modules[key] },
+    }))
   }
 
   const openCreate = () => {
@@ -437,6 +508,15 @@ export default function SuperAdminPage() {
                           variant="ghost"
                           size="sm"
                           className="h-7 px-2 text-xs"
+                          onClick={() => openSubscriptionModal(t)}
+                        >
+                          <Package className="mr-1 h-3 w-3" />
+                          套餐配置
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
                           onClick={() => openEdit(t)}
                         >
                           <Pencil className="mr-1 h-3 w-3" />
@@ -556,6 +636,81 @@ export default function SuperAdminPage() {
             <Button onClick={handleSubmit} disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
               {editingTenant ? "保存" : "创建"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 套餐配置弹窗 */}
+      <Dialog open={subscriptionDialogOpen} onOpenChange={setSubscriptionDialogOpen}>
+        <DialogContent size="lg" className="max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>套餐配置</DialogTitle>
+            <DialogDescription>
+              {subscriptionTenant ? `配置租户「${subscriptionTenant.name}」的订阅套餐` : ""}
+            </DialogDescription>
+          </DialogHeader>
+
+          {subscriptionLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label>套餐名称 <span className="text-destructive">*</span></Label>
+                  <Input
+                    placeholder="如：默认全功能套餐"
+                    value={subscriptionData.name}
+                    onChange={(e) => setSubscriptionData((p) => ({ ...p, name: e.target.value }))}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>有效期至</Label>
+                  <Input
+                    type="date"
+                    value={subscriptionData.validUntil}
+                    onChange={(e) => setSubscriptionData((p) => ({ ...p, validUntil: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label>状态</Label>
+                <Select
+                  value={subscriptionData.status}
+                  onValueChange={(v) => setSubscriptionData((p) => ({ ...p, status: v as "active" | "inactive" }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">启用</SelectItem>
+                    <SelectItem value="inactive">停用</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>平台模块</Label>
+                <div className="grid grid-cols-2 gap-3 rounded-lg border border-border p-3">
+                  {Object.entries(platformModuleDefs).map(([key, def]) => (
+                    <label key={key} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 p-2 rounded-md">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                        checked={!!subscriptionData.modules[key]}
+                        onChange={() => toggleModule(key)}
+                      />
+                      <span>{def.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSubscriptionDialogOpen(false)} disabled={subscriptionSubmitting}>取消</Button>
+            <Button onClick={handleSubscriptionSubmit} disabled={subscriptionLoading || subscriptionSubmitting}>
+              {subscriptionSubmitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+              保存
             </Button>
           </DialogFooter>
         </DialogContent>

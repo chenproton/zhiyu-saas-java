@@ -238,6 +238,10 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 		r.Delete("/admin/tenants/{tenantId}/admins/{id}", tenantHandler.AdminDeleteAdmin)
 		r.Post("/admin/tenants/{tenantId}/admins/{id}/preview-password", tenantHandler.AdminPreviewPassword)
 
+		// Subscription package management under a tenant (superadmin console only)
+		r.Get("/admin/tenants/{tenantId}/subscription", subscriptionHandler.AdminGet)
+		r.Put("/admin/tenants/{tenantId}/subscription", subscriptionHandler.AdminUpdate)
+
 		r.Group(func(r chi.Router) {
 			r.Use(auth)
 			r.Use(authmw.OperationLog(db))
