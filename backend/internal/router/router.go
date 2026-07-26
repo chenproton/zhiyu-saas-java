@@ -228,6 +228,13 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 		r.Post("/admin/tenants/{id}/status", tenantHandler.AdminUpdateStatus)
 		r.Delete("/admin/tenants/{id}", tenantHandler.AdminDelete)
 
+		// School admin management under a tenant (superadmin console only)
+		r.Get("/admin/tenants/{tenantId}/admins", tenantHandler.AdminListAdmins)
+		r.Post("/admin/tenants/{tenantId}/admins", tenantHandler.AdminCreateAdmin)
+		r.Put("/admin/tenants/{tenantId}/admins/{id}", tenantHandler.AdminUpdateAdmin)
+		r.Delete("/admin/tenants/{tenantId}/admins/{id}", tenantHandler.AdminDeleteAdmin)
+		r.Post("/admin/tenants/{tenantId}/admins/{id}/preview-password", tenantHandler.AdminPreviewPassword)
+
 		r.Group(func(r chi.Router) {
 			r.Use(auth)
 			r.Use(authmw.OperationLog(db))

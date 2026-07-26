@@ -2,6 +2,7 @@ package handler_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -271,5 +272,113 @@ func TestTenant_AdminCreate_CreatesSubscription(t *testing.T) {
 	).Scan(&subID)
 	if err != nil {
 		t.Fatalf("subscription not found for admin-created tenant: %v", err)
+	}
+}
+
+
+type tenantAdminResp struct {
+	ID            string `json:"id"`
+	TenantID      string `json:"tenantId"`
+	Username      string `json:"username"`
+	LoginName     string `json:"loginName"`
+	Name          string `json:"name"`
+	Status        string `json:"status"`
+	PlainPassword string `json:"plainPassword"`
+}
+
+type tenantAdminListResp struct {
+	Items []tenantAdminResp `json:"items"`
+	Total int               `json:"total"`
+}
+
+func TestTenantAdmin_CRUD(t *testing.T) {
+	env := testhelper.SetupTestEnv(t)
+	defer env.Cleanup()
+	ctx := context.Background()
+
+	wc := env.DoNoAuth("POST", "/api/v1/admin/tenants", map[string]string{
+		"name": "Admin Mgmt Tenant",
+		"code": "admin-mgmt-test",
+	})
+	if wc.Code != http.StatusCreated {
+		t.Fatalf("create tenant: %d %s", wc.Code, testhelper.ErrMsg(wc))
+	}
+	cr, _ := testhelper.Unmarshal[createTenantResp](wc)
+	created := cr.Tenant
+	defer cleanupTenant(ctx, t, env, created.ID)
+
+	// List admins should contain the default admin created by createTenant.
+	wl := env.DoNoAuth("GET", "/api/v1/admin/tenants/"+created.ID+"/admins", nil)
+	if wl.Code != http.StatusOK {
+		t.Fatalf("list admins: %d %s", wl.Code, testhelper.ErrMsg(wl))
+	}
+	list, _ := testhelper.Unmarshal[tenantAdminListResp](wl)
+	if list.Total != 1 {
+		t.Fatalf("expected 1 default admin, got %+v", list)
+	}
+
+	// Preview default admin password.
+	defaultAdminID := list.Items[0].ID
+	wp := env.DoNoAuth("POST", "/api/v1/admin/tenants/"+created.ID+"/admins/"+defaultAdminID+"/preview-password", nil)
+	if wp.Code != http.StatusOK {
+		t.Fatalf("preview password: %d %s", wp.Code, testhelper.ErrMsg(wp))
+	}
+	var preview struct {
+		ID            string `json:"id"`
+		PlainPassword string `json:"plainPassword"`
+	}
+	if err := json.Unmarshal(wp.Body.Bytes(), &preview); err != nil {
+		t.Fatalf("unmarshal preview: %v", err)
+	}
+	if preview.PlainPassword == "" {
+		t.Fatalf("expected non-empty plain password")
+	}
+
+	// Verify the previewed password can be used to log in via portal login.
+	loginW := env.Do("POST", "/api/v1/auth/portal/login", map[string]string{
+		"username": list.Items[0].Username,
+		"password": preview.PlainPassword,
+	})
+	if loginW.Code != http.StatusOK {
+		t.Fatalf("portal login with preview password: %d %s", loginW.Code, testhelper.ErrMsg(loginW))
+	}
+
+	// Create a new school admin.
+	wc2 := env.DoNoAuth("POST", "/api/v1/admin/tenants/"+created.ID+"/admins", map[string]string{
+		"username": "extra-admin",
+		"name":    "额外管理员",
+	})
+	if wc2.Code != http.StatusCreated {
+		t.Fatalf("create admin: %d %s", wc2.Code, testhelper.ErrMsg(wc2))
+	}
+	newAdmin, _ := testhelper.Unmarshal[tenantAdminResp](wc2)
+	if newAdmin.PlainPassword == "" {
+		t.Fatalf("expected new admin plain password")
+	}
+
+	// Update the new admin.
+	wu := env.DoNoAuth("PUT", "/api/v1/admin/tenants/"+created.ID+"/admins/"+newAdmin.ID, map[string]string{
+		"username": "extra-admin-renamed",
+		"name":    "已重命名管理员",
+	})
+	if wu.Code != http.StatusOK {
+		t.Fatalf("update admin: %d %s", wu.Code, testhelper.ErrMsg(wu))
+	}
+	updated, _ := testhelper.Unmarshal[tenantAdminResp](wu)
+	if updated.Username != "extra-admin-renamed" {
+		t.Fatalf("expected username updated, got %s", updated.Username)
+	}
+
+	// Delete the new admin.
+	wd := env.DoNoAuth("DELETE", "/api/v1/admin/tenants/"+created.ID+"/admins/"+newAdmin.ID, nil)
+	if wd.Code != http.StatusOK {
+		t.Fatalf("delete admin: %d %s", wd.Code, testhelper.ErrMsg(wd))
+	}
+
+	// List should now contain only the default admin again.
+	wl2 := env.DoNoAuth("GET", "/api/v1/admin/tenants/"+created.ID+"/admins", nil)
+	list2, _ := testhelper.Unmarshal[tenantAdminListResp](wl2)
+	if list2.Total != 1 {
+		t.Fatalf("expected 1 admin after delete, got %+v", list2)
 	}
 }

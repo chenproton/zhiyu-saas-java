@@ -75,6 +75,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 
 		authHandler := &handler.AuthHandler{DB: pool, JWTSecret: TestJWTSecret}
 		r.Post("/auth/login", authHandler.Login)
+		r.Post("/auth/portal/login", authHandler.PortalLogin)
 
 		bannerHandler := &handler.BannerHandler{DB: pool}
 		r.Get("/banners", bannerHandler.List)
@@ -89,6 +90,12 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 		r.Put("/admin/tenants/{id}", tenantHandler.AdminUpdate)
 		r.Post("/admin/tenants/{id}/status", tenantHandler.AdminUpdateStatus)
 		r.Delete("/admin/tenants/{id}", tenantHandler.AdminDelete)
+
+		r.Get("/admin/tenants/{tenantId}/admins", tenantHandler.AdminListAdmins)
+		r.Post("/admin/tenants/{tenantId}/admins", tenantHandler.AdminCreateAdmin)
+		r.Put("/admin/tenants/{tenantId}/admins/{id}", tenantHandler.AdminUpdateAdmin)
+		r.Delete("/admin/tenants/{tenantId}/admins/{id}", tenantHandler.AdminDeleteAdmin)
+		r.Post("/admin/tenants/{tenantId}/admins/{id}/preview-password", tenantHandler.AdminPreviewPassword)
 
 		r.Group(func(r chi.Router) {
 			r.Use(auth)

@@ -37,6 +37,9 @@ import {
   Trash2,
   Search,
   Loader2,
+  Users,
+  Eye,
+  Copy,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
@@ -58,6 +61,19 @@ interface AdminTenant {
   status: "active" | "inactive"
   createdAt: string
   updatedAt: string
+}
+
+interface TenantAdmin {
+  id: string
+  tenantId: string
+  username: string
+  loginName: string
+  name: string
+  status: string
+  plainPassword?: string
+  createdAt: string
+  updatedAt: string
+  lastLoginAt?: string
 }
 
 interface ListResponse<T> {
@@ -103,6 +119,17 @@ export default function SuperAdminPage() {
   const [toggleTarget, setToggleTarget] = useState<AdminTenant | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AdminTenant | null>(null)
 
+  const [adminModalOpen, setAdminModalOpen] = useState(false)
+  const [adminModalTenant, setAdminModalTenant] = useState<AdminTenant | null>(null)
+  const [admins, setAdmins] = useState<TenantAdmin[]>([])
+  const [adminLoading, setAdminLoading] = useState(false)
+  const [adminError, setAdminError] = useState<string | null>(null)
+  const [adminForm, setAdminForm] = useState({ username: "", name: "" })
+  const [adminEditing, setAdminEditing] = useState<TenantAdmin | null>(null)
+  const [adminSubmitting, setAdminSubmitting] = useState(false)
+  const [adminDeleteTarget, setAdminDeleteTarget] = useState<TenantAdmin | null>(null)
+  const [adminPreview, setAdminPreview] = useState<{ admin: TenantAdmin; password: string } | null>(null)
+
   const { toast } = useToast()
 
   const resetForm = () => {
@@ -146,6 +173,103 @@ export default function SuperAdminPage() {
     const timer = setTimeout(() => fetchTenants(), 300)
     return () => clearTimeout(timer)
   }, [searchTerm])
+
+  const openAdminModal = (t: AdminTenant) => {
+    setAdminModalTenant(t)
+    setAdminModalOpen(true)
+    setAdminForm({ username: "", name: "" })
+    setAdminEditing(null)
+    setAdminError(null)
+    setAdminPreview(null)
+    fetchAdmins(t.id)
+  }
+
+  const fetchAdmins = async (tenantId: string) => {
+    setAdminLoading(true)
+    setAdminError(null)
+    try {
+      const res = await adminFetch<ListResponse<TenantAdmin>>(`/${tenantId}/admins`)
+      setAdmins(res.items)
+    } catch (err) {
+      setAdminError(err instanceof Error ? err.message : "加载管理员列表失败")
+    } finally {
+      setAdminLoading(false)
+    }
+  }
+
+  const handleAdminSubmit = async () => {
+    if (!adminForm.username || !adminForm.name) {
+      setAdminError("账号和姓名不能为空")
+      return
+    }
+    if (!adminModalTenant) return
+
+    setAdminSubmitting(true)
+    setAdminError(null)
+    try {
+      if (adminEditing) {
+        await adminFetch(`/${adminModalTenant.id}/admins/${adminEditing.id}`, {
+          method: "PUT",
+          body: JSON.stringify({ username: adminForm.username, name: adminForm.name }),
+        })
+        toast({ title: "更新成功" })
+      } else {
+        const created = await adminFetch<TenantAdmin>(`/${adminModalTenant.id}/admins`, {
+          method: "POST",
+          body: JSON.stringify({ username: adminForm.username, name: adminForm.name }),
+        })
+        setAdminPreview({ admin: created, password: created.plainPassword || "" })
+        toast({ title: "创建成功", description: `初始密码：${created.plainPassword}` })
+      }
+      setAdminForm({ username: "", name: "" })
+      setAdminEditing(null)
+      await fetchAdmins(adminModalTenant.id)
+    } catch (err) {
+      setAdminError(err instanceof Error ? err.message : (adminEditing ? "更新失败" : "创建失败"))
+    } finally {
+      setAdminSubmitting(false)
+    }
+  }
+
+  const handleAdminEdit = (a: TenantAdmin) => {
+    setAdminEditing(a)
+    setAdminForm({ username: a.username, name: a.name })
+    setAdminPreview(null)
+  }
+
+  const handleAdminDelete = async () => {
+    if (!adminModalTenant || !adminDeleteTarget) return
+    try {
+      await adminFetch(`/${adminModalTenant.id}/admins/${adminDeleteTarget.id}`, { method: "DELETE" })
+      toast({ title: "删除成功" })
+      await fetchAdmins(adminModalTenant.id)
+    } catch (err) {
+      toast({ variant: "destructive", title: "删除失败", description: err instanceof Error ? err.message : "未知错误" })
+    } finally {
+      setAdminDeleteTarget(null)
+    }
+  }
+
+  const handlePreviewPassword = async (a: TenantAdmin) => {
+    if (!adminModalTenant) return
+    try {
+      const res = await adminFetch<{ id: string; plainPassword: string }>(`/${adminModalTenant.id}/admins/${a.id}/preview-password`, {
+        method: "POST",
+      })
+      setAdminPreview({ admin: a, password: res.plainPassword })
+    } catch (err) {
+      toast({ variant: "destructive", title: "预览失败", description: err instanceof Error ? err.message : "未知错误" })
+    }
+  }
+
+  const copyPassword = async (password: string) => {
+    try {
+      await navigator.clipboard.writeText(password)
+      toast({ title: "已复制到剪贴板" })
+    } catch {
+      toast({ variant: "destructive", title: "复制失败" })
+    }
+  }
 
   const openCreate = () => {
     setEditingTenant(null)
@@ -310,6 +434,15 @@ export default function SuperAdminPage() {
                           variant="ghost"
                           size="sm"
                           className="h-7 px-2 text-xs"
+                          onClick={() => openAdminModal(t)}
+                        >
+                          <Users className="mr-1 h-3 w-3" />
+                          学校管理员配置
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
                           onClick={() => openEdit(t)}
                         >
                           <Pencil className="mr-1 h-3 w-3" />
@@ -450,6 +583,141 @@ export default function SuperAdminPage() {
         confirmText="删除"
         variant="destructive"
         onConfirm={confirmDelete}
+      />
+
+      {/* 学校管理员配置弹窗 */}
+      <Dialog open={adminModalOpen} onOpenChange={setAdminModalOpen}>
+        <DialogContent size="lg" className="max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>学校管理员配置</DialogTitle>
+            <DialogDescription>
+              {adminModalTenant ? `管理租户「${adminModalTenant.name}」的学校管理员账号` : ""}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>登录账号 <span className="text-destructive">*</span></Label>
+                <Input
+                  placeholder="如：admin-xxx"
+                  value={adminForm.username}
+                  onChange={(e) => setAdminForm((p) => ({ ...p, username: e.target.value }))}
+                  disabled={!!adminEditing}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>姓名 <span className="text-destructive">*</span></Label>
+                <Input
+                  placeholder="管理员姓名"
+                  value={adminForm.name}
+                  onChange={(e) => setAdminForm((p) => ({ ...p, name: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              {adminEditing && (
+                <Button variant="outline" size="sm" onClick={() => { setAdminEditing(null); setAdminForm({ username: "", name: "" }); setAdminPreview(null) }}>
+                  取消编辑
+                </Button>
+              )}
+              <Button size="sm" onClick={handleAdminSubmit} disabled={adminSubmitting}>
+                {adminSubmitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+                {adminEditing ? "保存" : "新增管理员"}
+              </Button>
+            </div>
+
+            {adminPreview && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-amber-800">
+                    {adminPreview.admin.name} 的密码：
+                  </span>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-amber-700" onClick={() => copyPassword(adminPreview.password)}>
+                    <Copy className="mr-1 h-3 w-3" />
+                    复制
+                  </Button>
+                </div>
+                <div className="mt-1 font-mono text-amber-900 break-all">{adminPreview.password}</div>
+              </div>
+            )}
+
+            {adminError && (
+              <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+                {adminError}
+              </div>
+            )}
+
+            <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="text-muted-foreground">账号</TableHead>
+                    <TableHead className="text-muted-foreground">姓名</TableHead>
+                    <TableHead className="text-muted-foreground">状态</TableHead>
+                    <TableHead className="text-muted-foreground text-right w-24">操作</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {adminLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-8">
+                        <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    <>
+                      {admins.map((a) => (
+                        <TableRow key={a.id} className="border-border">
+                          <TableCell className="font-mono text-sm">{a.username}</TableCell>
+                          <TableCell>{a.name}</TableCell>
+                          <TableCell>
+                            <Badge variant={a.status === "active" ? "default" : "secondary"}>
+                              {a.status === "active" ? "启用" : "停用"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => handlePreviewPassword(a)}>
+                                <Eye className="mr-1 h-3 w-3" />
+                                预览
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => handleAdminEdit(a)}>
+                                <Pencil className="mr-1 h-3 w-3" />
+                                编辑
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={() => setAdminDeleteTarget(a)}>
+                                <Trash2 className="mr-1 h-3 w-3" />
+                                删除
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {admins.length === 0 && !adminLoading && (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-8">
+                            暂无学校管理员
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={adminDeleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setAdminDeleteTarget(null) }}
+        title="确认删除"
+        description={adminDeleteTarget ? `确定删除管理员「${adminDeleteTarget.name}（${adminDeleteTarget.username}）」吗？此操作不可撤销。` : ""}
+        confirmText="删除"
+        variant="destructive"
+        onConfirm={handleAdminDelete}
       />
     </div>
   )

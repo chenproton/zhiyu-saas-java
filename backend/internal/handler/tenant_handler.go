@@ -327,10 +327,10 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := tx.Exec(r.Context(), `
 		INSERT INTO users (id, tenant_id, institution_id, org_node_id, major_id,
-			role, platform, login_name, username, password_hash, name, email, phone, avatar_url,
+			role, platform, login_name, username, password_hash, plain_password, name, email, phone, avatar_url,
 			student_no, work_id, id_card, title_ids, oauth, status)
-		VALUES ($1, $2, NULL, NULL, NULL, 'school', 'portal', $3, $4, $5, $6, NULL, NULL, NULL, NULL, NULL, NULL, $7, '{}', 'active')
-	`, adminID, id, adminUsername, adminUsername, string(hash), req.Name+"管理员", "{}"); err != nil {
+		VALUES ($1, $2, NULL, NULL, NULL, 'school', 'portal', $3, $4, $5, $6, $7, NULL, NULL, NULL, NULL, NULL, NULL, $8, '{}', 'active')
+	`, adminID, id, adminUsername, adminUsername, string(hash), adminPassword, req.Name+"管理员", "{}"); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create admin user")
 		return
 	}
