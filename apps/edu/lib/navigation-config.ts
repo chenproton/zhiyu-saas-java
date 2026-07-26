@@ -550,6 +550,31 @@ export const platformModuleDefs: Record<string, PlatformModuleDef> = {
   },
 }
 
+const PLATFORM_CARD_DESCRIPTIONS: Record<string, string> = {
+  "system-tenant": "维护租户基本信息与联系方式",
+  "system-resource": "管理套餐、资源编码与行业标准",
+  "system-org-user": "维护组织架构、账户与角色权限",
+  "system-logs": "查看登录与操作审计日志",
+  "career-position-center": "建设与管理产业岗位资源",
+  "career-flow-center": "配置审批流程与分组批次",
+  "career-batch-center": "配置推荐岗位与学习路径",
+  "course-resource-center": "建设体系课与颗粒课资源",
+  "course-hybrid-center": "管理混合课模板与历史档案",
+  "course-approval-center": "配置课程审批流程与批次",
+  "scene-scenario-center": "建设与管理实践场景资源",
+  "scene-batch-flow": "配置场景审批流程与批次",
+  "ability-exam-center": "管理题库、试卷与考试资源",
+  "ability-batch-flow": "配置测评审批流程与批次",
+  "ability-result-center": "查看场景任务评价与认证结果",
+  "resource-resource-center": "管理知识点、能力点与教学资源",
+  "alliance-alliance-entry": "暂未开放",
+  "affairs-affairs-entry": "暂未开放",
+  "ai-ai-entry": "暂未开放",
+  "opc-opc-entry": "暂未开放",
+  "decision-decision-entry": "暂未开放",
+  "research-research-entry": "暂未开放",
+}
+
 export function getPlatformCardModules(platformId: string): PlatformCardModule[] {
   const def = platformModuleDefs[platformId]
   if (!def) return []
@@ -557,7 +582,7 @@ export function getPlatformCardModules(platformId: string): PlatformCardModule[]
   return def.subModules.map((m) => ({
     id: m.id,
     title: m.label,
-    desc: m.children?.map((c) => c.label).join("、") || (m.href === "#" ? "暂未开放" : ""),
+    desc: PLATFORM_CARD_DESCRIPTIONS[`${platformId}-${m.id}`] || (m.href === "#" ? "暂未开放" : ""),
     href: m.href,
   }))
 }
