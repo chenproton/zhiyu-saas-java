@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react"
 import { cn } from "@/lib/utils"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest, buildQuery } from "@/lib/api"
+import { platformModuleDefs } from "@/lib/navigation-config"
 import type { SubscriptionPackage } from "@/lib/types/backend"
 
 interface SubModule {
@@ -20,95 +21,19 @@ interface PackageModule {
   subModules: SubModule[]
 }
 
-const SUBSCRIPTION_PLATFORM_DEFS: Record<string, {
-  label: string
-  pages: { id: string; label: string }[]
-}> = {
-  system: {
-    label: "系统管理",
-    pages: [
-      { id: "tenant", label: "租户信息" },
-      { id: "org-user", label: "组织用户" },
-      { id: "resource", label: "系统资源" },
-      { id: "logs", label: "日志管理" },
-    ],
-  },
-  alliance: {
-    label: "产教协同与人才品牌运营平台",
-    pages: [{ id: "alliance-entry", label: "产教协同平台" }],
-  },
-  career: {
-    label: "职业岗位学习平台",
-    pages: [
-      { id: "position-center", label: "岗位中心" },
-      { id: "recommend-learn", label: "推荐与学习" },
-      { id: "batch-approval", label: "批次与审批管理" },
-    ],
-  },
-  course: {
-    label: "数字课程服务平台",
-    pages: [
-      { id: "online-resources", label: "在线课资源库" },
-      { id: "hybrid-resources", label: "混合课资源库" },
-      { id: "teaching-space", label: "教学空间" },
-      { id: "batch-approval", label: "批次与审批管理" },
-    ],
-  },
-  scene: {
-    label: "实践场景学习平台",
-    pages: [
-      { id: "scene-center", label: "场景中心" },
-      { id: "batch-approval", label: "批次与审批管理" },
-    ],
-  },
-  ability: {
-    label: "能力评价与测评资源管理平台",
-    pages: [
-      { id: "exam-resources", label: "测评资源" },
-      { id: "batch-approval", label: "批次与审批管理" },
-      { id: "results-cert", label: "结果与认证" },
-      { id: "graduate-portrait", label: "毕业与画像" },
-    ],
-  },
-  affairs: {
-    label: "教务服务平台",
-    pages: [{ id: "affairs-entry", label: "教务服务" }],
-  },
-  ai: {
-    label: "AI 智能服务平台",
-    pages: [{ id: "ai-entry", label: "AI 服务" }],
-  },
-  resource: {
-    label: "教学资源共享服务平台",
-    pages: [{ id: "resource-mall", label: "资源商城" }],
-  },
-  opc: {
-    label: "OPC专区",
-    pages: [{ id: "opc-entry", label: "OPC 专区" }],
-  },
-  decision: {
-    label: "敏捷决策中心",
-    pages: [{ id: "decision-entry", label: "决策中心" }],
-  },
-  research: {
-    label: "教科研服务中心",
-    pages: [{ id: "research-entry", label: "教科研服务" }],
-  },
-}
-
 function buildPackageModules(
   modules: Record<string, any> | undefined,
 ): PackageModule[] {
   if (!modules || typeof modules !== "object") return []
 
-  return Object.entries(SUBSCRIPTION_PLATFORM_DEFS)
+  return Object.entries(platformModuleDefs)
     .filter(([key]) => Boolean(modules[key]))
     .map(([key, def]) => {
       const enabled = Boolean(modules[key])
       return {
         name: def.label,
         enabled,
-        subModules: def.pages.map((p) => ({
+        subModules: def.subModules.map((p) => ({
           name: p.label,
           enabled,
         })),

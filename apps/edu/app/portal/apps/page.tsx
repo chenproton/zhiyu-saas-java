@@ -22,15 +22,7 @@ import { cn } from "@/lib/utils"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useAppModules } from "@/hooks/use-platform-links"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
-import {
-  jobNavigationConfig,
-  sceneNavigationConfig,
-  evaluationNavigationConfig,
-  unifiedNavigationConfig,
-  libraryNavigationConfig,
-  portalNavigationConfig,
-} from "@/lib/navigation-config"
-import type { PlatformNavigationConfig } from "@/components/platform-shell"
+import { getPlatformCardModules } from "@/lib/navigation-config"
 
 const menuItems = [
   { id: "system", label: "系统管理", icon: Settings },
@@ -74,31 +66,6 @@ const platformStyles: Record<string, PlatformStyle> = {
   research: { iconColor: "text-violet-600", iconBg: "bg-violet-50" },
 }
 
-const systemModules: ModuleItem[] = [
-  { id: "tenant", title: "租户信息管理", desc: "管理租户基本信息与配置", href: "/portal/apps/system/tenant" },
-  { id: "resource-mgmt", title: "系统资源管理", desc: "套餐、编码、行业、专业", href: "/portal/apps/system/resource/package" },
-  { id: "log", title: "日志管理", desc: "登录日志、操作日志查看", href: "/portal/apps/system/logs/login" },
-  { id: "org-user", title: "组织用户管理", desc: "组织架构、用户账户管理", href: "/portal/apps/system/org-user/org-structure" },
-]
-
-const fallbackModules: Record<string, ModuleItem[]> = {
-  alliance: [{ id: "alliance-entry", title: "产教协同平台", desc: "暂未开放", href: "#" }],
-  affairs: [{ id: "affairs-entry", title: "教务服务", desc: "暂未开放", href: "#" }],
-  ai: [{ id: "ai-entry", title: "AI 服务", desc: "暂未开放", href: "#" }],
-  opc: [{ id: "opc-entry", title: "OPC 专区", desc: "暂未开放", href: "#" }],
-  decision: [{ id: "decision-entry", title: "决策中心", desc: "暂未开放", href: "#" }],
-  research: [{ id: "research-entry", title: "教科研服务", desc: "暂未开放", href: "#" }],
-}
-
-const moduleNavConfigs: Record<string, PlatformNavigationConfig> = {
-  system: portalNavigationConfig,
-  career: jobNavigationConfig,
-  scene: sceneNavigationConfig,
-  course: unifiedNavigationConfig,
-  ability: evaluationNavigationConfig,
-  resource: libraryNavigationConfig,
-}
-
 interface ModuleItem {
   id: string
   title: string
@@ -113,31 +80,6 @@ interface ModuleSection {
   iconColor: string
   iconBg: string
   modules: ModuleItem[]
-}
-
-function getFirstHrefFromNavConfig(config: PlatformNavigationConfig): string {
-  for (const item of config.sideNavItems) {
-    if (item.children && item.children.length > 0) {
-      const firstChild = item.children.find((c) => c.href && c.href !== "#")
-      if (firstChild?.href) return firstChild.href
-    }
-    if (item.href && item.href !== "#") {
-      return item.href
-    }
-  }
-  return "#"
-}
-
-function getGroupModulesFromNavConfig(config: PlatformNavigationConfig): ModuleItem[] {
-  return config.sideNavItems
-    .filter((item) => !item.hidden)
-    .map((item) => ({
-      id: item.id,
-      title: item.label,
-      desc: item.children?.map((c) => c.label).join("、") || "",
-      href: item.children?.find((c) => c.href && c.href !== "#")?.href || item.href || "#",
-    }))
-    .filter((m) => m.href !== "#")
 }
 
 function ModuleCard({ module }: { module: ModuleItem }) {
@@ -195,29 +137,20 @@ export default function AppsPage() {
   const allModules: ModuleSection[] = useMemo(() => {
     return menuItems
       .map((item) => {
-        const config = moduleNavConfigs[item.id]
-        let modules: ModuleItem[] = []
+        const configured = modulesData.platforms.find((p) => p.id === item.id)
+        let modules: ModuleItem[]
 
-        if (config) {
-          if (item.id === "system") {
-            modules = systemModules.filter((m) => hasMenuPermission(m.href))
-          } else {
-            modules = getGroupModulesFromNavConfig(config).filter((m) => hasMenuPermission(m.href))
-          }
+        if (configured?.modules.length) {
+          modules = configured.modules
+            .filter((m) => m.href && m.href !== "#" && hasMenuPermission(m.href))
+            .map((m) => ({
+              id: m.id,
+              title: m.title,
+              desc: (m as any).description || m.desc,
+              href: m.href || "#",
+            }))
         } else {
-          const configured = modulesData.platforms.find((p) => p.id === item.id)
-          if (configured?.modules.length) {
-            modules = configured.modules
-              .filter((m) => m.href && m.href !== "#" && hasMenuPermission(m.href))
-              .map((m) => ({
-                id: m.id,
-                title: m.title,
-                desc: (m as any).description || m.desc,
-                href: m.href || "#",
-              }))
-          } else {
-            modules = (fallbackModules[item.id] || []).filter((m) => hasMenuPermission(m.href))
-          }
+          modules = getPlatformCardModules(item.id).filter((m) => hasMenuPermission(m.href))
         }
 
         return {

@@ -1,4 +1,5 @@
 import type { PlatformNavigationConfig } from "@/components/platform-shell"
+import { Building, Calendar, Database, History, Rocket, Users, type LucideIcon } from "lucide-react"
 
 /* ============================================================
    统一导航树（数字课程平台）
@@ -275,6 +276,78 @@ export const evaluationNavigationConfig: PlatformNavigationConfig = {
 }
 
 /* ============================================================
+   系统管理导航（门户-系统设置）
+   ============================================================ */
+export const systemNavigationConfig: PlatformNavigationConfig = {
+  brandTitle: "系统设置",
+  currentPlatformId: "portal-system",
+  currentPlatformLabel: "系统设置",
+  brandHref: "/portal/apps/system/tenant",
+  brandIcon: "settings",
+  platformIcon: "settings",
+  sideBackHref: "/portal/apps",
+  currentUserName: "用户",
+  currentUserRoleLabel: "平台用户",
+  showCurrentTime: true,
+  showUserMenu: true,
+  userMenuItems: [
+    { id: "workspace", label: "我的服务台", href: "/portal/workspace", icon: "briefcase" },
+    { id: "apps", label: "应用中心", href: "/portal/apps", icon: "layoutGrid" },
+    { id: "logout", label: "退出登录", tone: "danger" },
+  ],
+  sideNavItems: [
+    {
+      id: "tenant",
+      label: "租户信息管理",
+      icon: Building,
+      href: "/portal/apps/system/tenant",
+      matchers: ["/portal/apps/system/tenant"],
+    },
+    {
+      id: "resource",
+      label: "系统资源管理",
+      icon: Database,
+      children: [
+        { id: "package", label: "套餐情况查看", href: "/portal/apps/system/resource/package", matchers: ["/portal/apps/system/resource/package"] },
+        { id: "codes", label: "资源编码管理", href: "/portal/apps/system/resource/codes", matchers: ["/portal/apps/system/resource/codes"] },
+        { id: "industries", label: "行业管理", href: "/portal/apps/system/resource/industries", matchers: ["/portal/apps/system/resource/industries"] },
+        { id: "majors", label: "专业管理", href: "/portal/apps/system/resource/majors", matchers: ["/portal/apps/system/resource/majors"] },
+      ],
+    },
+    {
+      id: "org-user",
+      label: "组织用户管理",
+      icon: Users,
+      children: [
+        { id: "org-types", label: "组织类型管理", href: "/portal/apps/system/org-user/org-types", matchers: ["/portal/apps/system/org-user/org-types"] },
+        { id: "org-structure", label: "组织架构管理", href: "/portal/apps/system/org-user/org-structure", matchers: ["/portal/apps/system/org-user/org-structure"] },
+        { id: "students", label: "学生管理", href: "/portal/apps/system/org-user/students", matchers: ["/portal/apps/system/org-user/students"] },
+        { id: "teachers", label: "教职工管理", href: "/portal/apps/system/org-user/teachers", matchers: ["/portal/apps/system/org-user/teachers"] },
+        { id: "accounts", label: "账户列表", href: "/portal/apps/system/org-user/accounts", matchers: ["/portal/apps/system/org-user/accounts"] },
+        { id: "fields", label: "用户字段扩展", href: "/portal/apps/system/org-user/fields", matchers: ["/portal/apps/system/org-user/fields"] },
+        { id: "relations", label: "关系类型管理", href: "/portal/apps/system/org-user/relations", matchers: ["/portal/apps/system/org-user/relations"] },
+        { id: "graduates", label: "毕业学生管理", href: "/portal/apps/system/org-user/graduates", matchers: ["/portal/apps/system/org-user/graduates"] },
+        { id: "roles", label: "角色权限管理", href: "/portal/apps/system/org-user/roles", matchers: ["/portal/apps/system/org-user/roles"] },
+        { id: "positions", label: "职位管理", href: "/portal/apps/system/org-user/positions", matchers: ["/portal/apps/system/org-user/positions"] },
+      ],
+    },
+    {
+      id: "logs",
+      label: "日志管理",
+      icon: History,
+      children: [
+        { id: "login", label: "登录日志查看", href: "/portal/apps/system/logs/login", matchers: ["/portal/apps/system/logs/login"] },
+        { id: "operation", label: "操作日志查看", href: "/portal/apps/system/logs/operation", matchers: ["/portal/apps/system/logs/operation"] },
+      ],
+    },
+  ],
+  defaultExpandedSideNavIds: ["tenant", "resource", "org-user", "logs"],
+  platformSwitchItems: [],
+  shellClassName: "bg-background",
+  mainClassName: "min-w-0 flex-1",
+}
+
+/* ============================================================
    Portal 导航（门户首页 / 应用中心 / 服务台）
    ============================================================ */
 export const portalNavigationConfig: PlatformNavigationConfig = {
@@ -294,20 +367,8 @@ export const portalNavigationConfig: PlatformNavigationConfig = {
     { id: "apps", label: "应用中心", href: "/portal/apps", icon: "layoutGrid" },
     { id: "logout", label: "退出登录", tone: "danger" },
   ],
-  sideNavItems: [
-    {
-      id: "system",
-      label: "系统管理",
-      icon: "settings",
-      children: [
-        { id: "tenant", label: "租户信息", href: "/portal/apps/system/tenant", matchers: ["/portal/apps/system/tenant"] },
-        { id: "org-user", label: "组织用户", href: "/portal/apps/system/org-user/org-structure", matchers: ["/portal/apps/system/org-user"] },
-        { id: "resource", label: "系统资源", href: "/portal/apps/system/resource/package", matchers: ["/portal/apps/system/resource"] },
-        { id: "logs", label: "日志管理", href: "/portal/apps/system/logs/login", matchers: ["/portal/apps/system/logs"] },
-      ],
-    },
-  ],
-  defaultExpandedSideNavIds: ["system"],
+  sideNavItems: systemNavigationConfig.sideNavItems,
+  defaultExpandedSideNavIds: systemNavigationConfig.defaultExpandedSideNavIds,
   platformSwitchItems: [],
   shellClassName: "bg-background",
   mainClassName: "min-w-0 flex-1",
@@ -351,4 +412,154 @@ export const libraryNavigationConfig: PlatformNavigationConfig = {
   platformSwitchItems: [],
   shellClassName: "bg-background",
   mainClassName: "min-w-0 flex-1",
+}
+
+/* ============================================================
+   平台模块卡片 / 套餐页统一数据源
+   所有平台的一级功能模块都从这里读取，保证 /portal/apps 与
+   /portal/apps/system/resource/package 看到的内容一致。
+   ============================================================ */
+export interface PlatformCardModule {
+  id: string
+  title: string
+  desc: string
+  href: string
+}
+
+function firstHrefFromNavConfig(config: PlatformNavigationConfig): string {
+  for (const item of config.sideNavItems) {
+    if (item.children && item.children.length > 0) {
+      const firstChild = item.children.find((c) => c.href && c.href !== "#")
+      if (firstChild?.href) return firstChild.href
+    }
+    if (item.href && item.href !== "#") {
+      return item.href
+    }
+  }
+  return "#"
+}
+
+function subModulesFromNavConfig(
+  config: PlatformNavigationConfig,
+): { id: string; label: string; href: string; children?: { id: string; label: string; href: string }[] }[] {
+  return config.sideNavItems
+    .filter((item) => !item.hidden)
+    .map((item) => ({
+      id: item.id,
+      label: item.label,
+      href: item.children?.find((c) => c.href && c.href !== "#")?.href || item.href || "#",
+      children: item.children
+        ?.filter((c) => c.href && c.href !== "#")
+        .map((c) => ({ id: c.id, label: c.label, href: c.href })),
+    }))
+    .filter((m) => m.href !== "#")
+}
+
+export interface PlatformModuleDef {
+  id: string
+  label: string
+  icon: LucideIcon | string
+  href: string
+  subModules: ReturnType<typeof subModulesFromNavConfig>
+}
+
+export const platformModuleDefs: Record<string, PlatformModuleDef> = {
+  system: {
+    id: "system",
+    label: "系统管理",
+    icon: "settings",
+    href: firstHrefFromNavConfig(systemNavigationConfig),
+    subModules: subModulesFromNavConfig(systemNavigationConfig),
+  },
+  career: {
+    id: "career",
+    label: "职业岗位学习平台",
+    icon: "briefcase",
+    href: firstHrefFromNavConfig(jobNavigationConfig),
+    subModules: subModulesFromNavConfig(jobNavigationConfig),
+  },
+  scene: {
+    id: "scene",
+    label: "实践场景学习平台",
+    icon: "layers",
+    href: firstHrefFromNavConfig(sceneNavigationConfig),
+    subModules: subModulesFromNavConfig(sceneNavigationConfig),
+  },
+  course: {
+    id: "course",
+    label: "数字课程服务平台",
+    icon: "bookOpen",
+    href: firstHrefFromNavConfig(unifiedNavigationConfig),
+    subModules: subModulesFromNavConfig(unifiedNavigationConfig),
+  },
+  ability: {
+    id: "ability",
+    label: "能力评价与测评资源管理平台",
+    icon: "checkCircle",
+    href: firstHrefFromNavConfig(evaluationNavigationConfig),
+    subModules: subModulesFromNavConfig(evaluationNavigationConfig),
+  },
+  resource: {
+    id: "resource",
+    label: "教学资源共享服务平台",
+    icon: "share2",
+    href: firstHrefFromNavConfig(libraryNavigationConfig),
+    subModules: subModulesFromNavConfig(libraryNavigationConfig),
+  },
+  alliance: {
+    id: "alliance",
+    label: "产教协同与人才品牌运营平台",
+    icon: "users",
+    href: "#",
+    subModules: [{ id: "alliance-entry", label: "产教协同平台", href: "#" }],
+  },
+  affairs: {
+    id: "affairs",
+    label: "教务服务平台",
+    icon: Calendar,
+    href: "#",
+    subModules: [{ id: "affairs-entry", label: "教务服务", href: "#" }],
+  },
+  ai: {
+    id: "ai",
+    label: "AI 智能服务平台",
+    icon: "sparkles",
+    href: "#",
+    subModules: [{ id: "ai-entry", label: "AI 服务", href: "#" }],
+  },
+  opc: {
+    id: "opc",
+    label: "OPC专区",
+    icon: Rocket,
+    href: "#",
+    subModules: [{ id: "opc-entry", label: "OPC 专区", href: "#" }],
+  },
+  decision: {
+    id: "decision",
+    label: "敏捷决策中心",
+    icon: "barChart",
+    href: "#",
+    subModules: [{ id: "decision-entry", label: "决策中心", href: "#" }],
+  },
+  research: {
+    id: "research",
+    label: "教科研服务中心",
+    icon: "graduationCap",
+    href: "#",
+    subModules: [{ id: "research-entry", label: "教科研服务", href: "#" }],
+  },
+}
+
+export function getPlatformCardModules(platformId: string): PlatformCardModule[] {
+  const def = platformModuleDefs[platformId]
+  if (!def) return []
+
+  return def.subModules
+    .filter((m) => m.href !== "#")
+    .map((m) => ({
+      id: m.id,
+      title: m.label,
+      desc: m.children?.map((c) => c.label).join("、") || "",
+      href: m.href,
+    }))
 }

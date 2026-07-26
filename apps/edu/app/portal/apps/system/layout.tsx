@@ -3,64 +3,13 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import {
-  Building,
-  Database,
-  History,
-  Users,
-  ChevronDown,
-  ChevronRight,
-  ChevronLeft,
-  Settings,
-} from "lucide-react"
+import { ChevronDown, ChevronRight, ChevronLeft, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
+import { systemNavigationConfig } from "@/lib/navigation-config"
+import { resolvePlatformIcon } from "@/components/platform-shell"
 
-const menuItems = [
-  {
-    id: "tenant",
-    label: "租户信息管理",
-    icon: Building,
-    href: "/portal/apps/system/tenant",
-  },
-  {
-    id: "resource",
-    label: "系统资源管理",
-    icon: Database,
-    children: [
-      { id: "package", label: "套餐情况查看", href: "/portal/apps/system/resource/package" },
-      { id: "codes", label: "资源编码管理", href: "/portal/apps/system/resource/codes" },
-      { id: "industries", label: "行业管理", href: "/portal/apps/system/resource/industries" },
-      { id: "majors", label: "专业管理", href: "/portal/apps/system/resource/majors" },
-    ],
-  },
-  {
-    id: "org-user",
-    label: "组织用户管理",
-    icon: Users,
-    children: [
-      { id: "org-types", label: "组织类型管理", href: "/portal/apps/system/org-user/org-types" },
-      { id: "org-structure", label: "组织架构管理", href: "/portal/apps/system/org-user/org-structure" },
-      { id: "students", label: "学生管理", href: "/portal/apps/system/org-user/students" },
-      { id: "teachers", label: "教职工管理", href: "/portal/apps/system/org-user/teachers" },
-      { id: "accounts", label: "账户列表", href: "/portal/apps/system/org-user/accounts" },
-      { id: "fields", label: "用户字段扩展", href: "/portal/apps/system/org-user/fields" },
-      { id: "relations", label: "关系类型管理", href: "/portal/apps/system/org-user/relations" },
-      { id: "graduates", label: "毕业学生管理", href: "/portal/apps/system/org-user/graduates" },
-      { id: "roles", label: "角色权限管理", href: "/portal/apps/system/org-user/roles" },
-      { id: "positions", label: "职位管理", href: "/portal/apps/system/org-user/positions" },
-    ],
-  },
-  {
-    id: "logs",
-    label: "日志管理",
-    icon: History,
-    children: [
-      { id: "login-logs", label: "登录日志查看", href: "/portal/apps/system/logs/login" },
-      { id: "operation-logs", label: "操作日志查看", href: "/portal/apps/system/logs/operation" },
-    ],
-  },
-]
+const menuItems = systemNavigationConfig.sideNavItems
 
 export default function SystemLayout({
   children,
@@ -118,7 +67,7 @@ export default function SystemLayout({
 
         <nav className="p-3">
           {visibleMenuItems.map((item: any) => {
-            const Icon = item.icon
+            const Icon = resolvePlatformIcon(item.icon)
             const hasChildren = item.children && item.children.length > 0
             const isExpanded = expandedItems.includes(item.id)
             const itemActive = item.href ? isActive(item.href) : item.children?.some((c: any) => isActive(c.href))
