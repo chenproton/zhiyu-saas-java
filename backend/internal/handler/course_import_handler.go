@@ -138,10 +138,16 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 		}
 		name := strings.TrimSpace(row[0])
 		majorName := col(row, 1)
+		courseIntro := col(row, 2)
 		batchName := col(row, 3)
 
 		majorID := h.lookupMajor(ctx, tenantID, majorName)
 		batchID := h.lookupBatch(ctx, tenantID, batchName, "lesson_batches")
+
+		var descPtr *string
+		if courseIntro != "" {
+			descPtr = &courseIntro
+		}
 
 		var existingID string
 		err := h.DB.QueryRow(ctx, `SELECT id FROM courses WHERE tenant_id=$1 AND name=$2 AND type='system' LIMIT 1`, tenantID, name).Scan(&existingID)
@@ -165,9 +171,9 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 			}
 			_, err := h.DB.Exec(ctx, `
 				UPDATE courses
-				SET major_id=$3, batch_id=$4, updated_at=NOW()
+				SET major_id=$3, batch_id=$4, description=$5, updated_at=NOW()
 				WHERE id=$1 AND tenant_id=$2
-			`, existingID, tenantID, majorID, batchID)
+			`, existingID, tenantID, majorID, batchID, descPtr)
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]更新失败: %v", name, err))
@@ -188,11 +194,11 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 		_, err = h.DB.Exec(ctx, `
 			INSERT INTO courses (id, tenant_id, code, name, type, category, major_id, teacher_id, industry_id, version,
 				online_hours, offline_hours, online_weight, offline_weight, semester, class_name,
-				status, cover_color, cover_image, course_tag, creator_id, co_creator_ids, batch_id,
+				status, cover_color, cover_image, course_tag, difficulty, description, creator_id, co_creator_ids, batch_id,
 				node_count, resource_count, study_count)
 			VALUES ($1,$2,$3,$4,'system','system',$5,NULL,NULL,'V1.0',0,0,0,0,NULL,NULL,
-				'draft',NULL,NULL,NULL,$6,'{}',$7,0,0,0)
-		`, courseID, tenantID, code, name, majorID, userID, batchID)
+				'draft',NULL,NULL,NULL,NULL,$8,$6,'{}',$7,0,0,0)
+		`, courseID, tenantID, code, name, majorID, userID, batchID, descPtr)
 		if err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]创建失败: %v", name, err))
@@ -260,6 +266,7 @@ func (h *CourseImportHandler) importNodes(ctx context.Context, xlsx *excelize.Fi
 		var sourceID, sourceName *string
 		var teachingGoals *string
 		var duration float64
+		var bindManualResources bool
 
 		if refType == "original" {
 			g := h.lookupGranularCourse(ctx, tenantID, nodeName)
@@ -271,14 +278,21 @@ func (h *CourseImportHandler) importNodes(ctx context.Context, xlsx *excelize.Fi
 			sourceID = &g.ID
 			sn := g.Name
 			sourceName = &sn
-			teachingGoals = nil
-			duration = 0
-			if g.OnlineHours != nil {
+			// 优先使用 Excel 中填写的学习目标，未填写时回退到颗粒课描述
+			teachingGoals = manualTeachingGoals
+			if teachingGoals == nil || *teachingGoals == "" {
+				teachingGoals = g.Description
+			}
+			// 优先使用 Excel 中填写的课时，未填写时回退到颗粒课课时
+			duration = manualDuration
+			if duration == 0 && g.OnlineHours != nil {
 				duration = *g.OnlineHours
 			}
+			bindManualResources = true
 		} else {
 			teachingGoals = manualTeachingGoals
 			duration = manualDuration
+			bindManualResources = true
 		}
 
 		nodeID := uuid.NewString()
@@ -296,8 +310,8 @@ func (h *CourseImportHandler) importNodes(ctx context.Context, xlsx *excelize.Fi
 		result.NodeCreated++
 		result.Created++
 
-		// 颗粒课节点自带颗粒课内容，不额外绑定知识点和资源
-		if refType != "original" {
+		// 绑定 Excel 中填写的知识点和资源（颗粒课节点也允许补充/覆盖）
+		if bindManualResources {
 			knowledgePointIDs := h.findOrCreateKnowledgePoints(ctx, tenantID, knowledgeNames)
 			for _, kpID := range knowledgePointIDs {
 				_, _ = h.DB.Exec(ctx, `
@@ -387,11 +401,11 @@ func (h *CourseImportHandler) lookupGranularCourse(ctx context.Context, tenantID
 	}
 	var c domain.Course
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, online_hours
+		SELECT id, name, online_hours, description
 		FROM courses
 		WHERE tenant_id=$1 AND name=$2 AND type='granular'
 		LIMIT 1
-	`, tenantID, name).Scan(&c.ID, &c.Name, &c.OnlineHours)
+	`, tenantID, name).Scan(&c.ID, &c.Name, &c.OnlineHours, &c.Description)
 	if err != nil {
 		return nil
 	}
