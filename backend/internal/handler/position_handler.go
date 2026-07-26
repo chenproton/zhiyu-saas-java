@@ -962,10 +962,12 @@ func (h *PositionHandler) GetFavorite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var count int
-	_ = h.DB.QueryRow(r.Context(), `SELECT COUNT(*) FROM position_favorites WHERE career_position_id = $1`, id).Scan(&count)
-
 	var isFavorite bool
-	_ = h.DB.QueryRow(r.Context(), `SELECT EXISTS(SELECT 1 FROM position_favorites WHERE user_id = $1 AND career_position_id = $2)`, claims.UserID, id).Scan(&isFavorite)
+	_ = h.DB.QueryRow(r.Context(), `
+		SELECT COUNT(*), EXISTS(SELECT 1 FROM position_favorites WHERE user_id = $1 AND career_position_id = $2)
+		FROM position_favorites
+		WHERE career_position_id = $2
+	`, claims.UserID, id).Scan(&count, &isFavorite)
 
 	respondJSON(w, http.StatusOK, FavoriteStatusResponse{IsFavorite: isFavorite, FavoriteCount: count})
 }
