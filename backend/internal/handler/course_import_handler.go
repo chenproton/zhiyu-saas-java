@@ -376,7 +376,7 @@ func (h *CourseImportHandler) lookupMajor(ctx context.Context, tenantID, name st
 		return nil
 	}
 	var id string
-	err := h.DB.QueryRow(ctx, `SELECT id FROM majors WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
+	err := h.DB.QueryRow(ctx, `SELECT id FROM majors WHERE tenant_id=$1 AND normalize(name, NFKC)=normalize($2, NFKC) LIMIT 1`, tenantID, name).Scan(&id)
 	if err != nil {
 		return nil
 	}
