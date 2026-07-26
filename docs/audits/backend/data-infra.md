@@ -4,7 +4,7 @@
 
 - **文件上传**：
   - multipart 上传，最大 100MB。
-  - 白名单扩展名：pdf/doc/docx/ppt/pptx/xls/xlsx/txt/mp4/mov/avi/mkv/webm/mp3/wav/ogg/jpg/jpeg/png/gif/webp/zip/rar/7z。
+  - **不限制扩展名**：业务要求任务资源/资源库等模块的“其他资源”支持任意格式上传，已移除扩展名白名单。
   - 文件保存为 `<UUID>.ext`，返回 `/uploads/<filename>` 路径。
   - `Serve` 接口含路径穿越防护。
 - **文件预览**：`Preview` 接口通过 LibreOffice headless 转换 Office 文件，支持 HTML/PDF/PNG 三种格式，转换后清理临时目录。
@@ -18,7 +18,7 @@
 
 | 检查点 | 结论 | 说明 |
 |---|---|---|
-| 文件上传 | PASS | 100MB 上传；白名单扩展名；UUID 命名；路径穿越防护 |
+| 文件上传 | PASS | 100MB 上传；不限制扩展名；UUID 命名；路径穿越防护 |
 | 文件预览 | PASS | LibreOffice headless 转换；HTML/PDF/PNG 三种格式 |
 | 文件访问 | PASS | `/uploads/{filename}` 路径 |
 | 数据导出 | PASS | CSV 格式；5 种实体；流式输出 |
@@ -29,4 +29,4 @@
 
 ## 风险与约束
 
-- **文件上传无病毒扫描**：上传文件仅限扩展名，不验证文件内容真实性。—— **高危，建议引入文件内容扫描。**
+- **文件上传无内容校验**：已移除扩展名限制，且不验证文件内容真实性。—— **高危，建议引入文件内容扫描或 MIME 校验。**

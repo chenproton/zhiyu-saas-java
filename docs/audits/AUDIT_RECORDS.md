@@ -19,6 +19,21 @@
 
 ## 记录
 
+### 2026-07-26 文件上传扩展名限制移除
+
+- 审计文档：
+  - 更新：`docs/audits/backend/data-infra.md`
+  - 索引：`docs/audits/AUDIT_RECORDS.md`
+- 审查人：Agent
+- 结论：收敛
+- PASS 检查点数量：— / 总检查点数量：—
+- 备注：
+  - 业务要求任务资源/资源库等模块的“其他资源”支持任意格式上传，已移除 `backend/internal/handler/file_handler.go` 中的扩展名白名单。
+  - 保留 100MB 大小限制、UUID 文件名、路径穿越防护。
+  - 更新审计文档，明确文件上传不再限制扩展名，未来不得擅自恢复白名单。
+  - 本地验证通过：`go vet ./...`、`go test ./...`。
+  - 部署验证通过：`./deploy.sh --branch feat/agent-remove-upload-ext-whitelist` 成功完成后端构建、健康检查与 master 合并。
+
 ### 2026-07-25 学生端测评入口与评价结果页审计更新
 
 - 审计文档：
