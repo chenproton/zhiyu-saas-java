@@ -790,22 +790,12 @@ func (h *TemplateHandler) generateMajorTemplate(ctx context.Context, tenantID st
 
 	s1, _ := f.NewSheet("专业列表")
 	f.SetActiveSheet(s1)
-	headers := []string{"专业代码 *", "专业名称 *", "别名", "所属组织节点", "是否启用"}
-	widths := []float64{18, 30, 24, 28, 12}
-	setA1("专业列表", 5, "填写说明：\n* 必填列。\n专业代码：租户内唯一，已存在则更新。\n所属组织节点：填写系统中已存在的组织节点名称，匹配则关联，不匹配则忽略。\n是否启用：true/是/启用 表示启用；false/否/禁用 表示禁用，默认启用。")
+	headers := []string{"专业代码 *", "专业名称 *", "别名", "是否启用"}
+	widths := []float64{18, 30, 24, 12}
+	setA1("专业列表", 4, "填写说明：\n* 必填列。\n专业代码：租户内唯一，已存在则更新。\n别名：可选简称。\n是否启用：true/是/启用 表示启用；false/否/禁用 表示禁用，默认启用。")
 	setHdr("专业列表", 2, headers, widths)
 	f.SetPanes("专业列表", &excelize.Panes{Freeze: true, YSplit: 2})
-	f.AutoFilter("专业列表", "A2:E2", []excelize.AutoFilterOptions{})
-
-	var orgs [][]string
-	rows, _ := h.DB.Query(ctx, `SELECT name FROM organizations WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	for rows.Next() {
-		var n string
-		rows.Scan(&n)
-		orgs = append(orgs, []string{n})
-	}
-	rows.Close()
-	h.addRefSheet(f, "【参考】组织节点", []string{"组织节点名称"}, []float64{36}, "仅作参考，无需编辑修改。专业列表 Sheet「所属组织节点」与本表名称一致则关联。", orgs)
+	f.AutoFilter("专业列表", "A2:D2", []excelize.AutoFilterOptions{})
 
 	return f
 }

@@ -200,7 +200,7 @@ func (h *ResourceImportHandler) doImportIndustries(ctx context.Context, xlsx *ex
 }
 
 // Sheet: 专业列表
-// Columns: 专业代码*, 专业名称*, 别名, 所属组织节点, 是否启用
+// Columns: 专业代码*, 专业名称*, 别名, 是否启用
 func (h *ResourceImportHandler) doImportMajors(ctx context.Context, xlsx *excelize.File, tenantID, _ string, result *resourceImportResult) {
 	rows, err := xlsx.GetRows("专业列表")
 	if err != nil {
@@ -218,26 +218,16 @@ func (h *ResourceImportHandler) doImportMajors(ctx context.Context, xlsx *exceli
 		code := strings.TrimSpace(row[0])
 		name := strings.TrimSpace(row[1])
 		alias := nullableStr(col(row, 2))
-		orgNodeName := col(row, 3)
-		enabled := parseBoolDefault(col(row, 4), true)
-
-		var orgNodeID *string
-		if orgNodeName != "" {
-			var oid string
-			_ = h.DB.QueryRow(ctx, `SELECT id FROM organizations WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, orgNodeName).Scan(&oid)
-			if oid != "" {
-				orgNodeID = &oid
-			}
-		}
+		enabled := parseBoolDefault(col(row, 3), true)
 
 		var existingID string
 		_ = h.DB.QueryRow(ctx, `SELECT id FROM majors WHERE tenant_id=$1 AND code=$2`, tenantID, code).Scan(&existingID)
 
 		if existingID != "" {
 			_, err := h.DB.Exec(ctx, `
-				UPDATE majors SET name=$1, alias=$2, org_node_id=$3, enabled=$4, updated_at=NOW()
-				WHERE id=$5 AND tenant_id=$6
-			`, name, alias, orgNodeID, enabled, existingID, tenantID)
+				UPDATE majors SET name=$1, alias=$2, enabled=$3, updated_at=NOW()
+				WHERE id=$4 AND tenant_id=$5
+			`, name, alias, enabled, existingID, tenantID)
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("专业[%s]更新失败: %v", code, err))
@@ -249,9 +239,9 @@ func (h *ResourceImportHandler) doImportMajors(ctx context.Context, xlsx *exceli
 
 		id := uuid.NewString()
 		_, err = h.DB.Exec(ctx, `
-			INSERT INTO majors (id, tenant_id, org_node_id, code, name, alias, enabled)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
-		`, id, tenantID, orgNodeID, code, name, alias, enabled)
+			INSERT INTO majors (id, tenant_id, code, name, alias, enabled)
+			VALUES ($1, $2, $3, $4, $5, $6)
+		`, id, tenantID, code, name, alias, enabled)
 		if err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("专业[%s]创建失败: %v", code, err))
