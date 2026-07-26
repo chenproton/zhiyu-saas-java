@@ -58,8 +58,10 @@ import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/hooks/use-toast"
 import { UserSelector } from "@/components/shared/user-selector"
+import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
 import { majorApi, workflowApi } from "@/lib/api"
 import type { Major, Workflow } from "@/lib/types/backend"
+import type { ImportPreviewResult } from "@/lib/api"
 
 // ─── Types ───────────────────────────────────────────────────────────────
 
@@ -104,9 +106,11 @@ export interface ContentApprovalApi {
 }
 
 export interface ContentImportExportApi {
-  import: (entity: string, file: File) => Promise<{ created: number; failed: number }>
+  import: (entity: string, file: File, overwrite?: boolean) => Promise<{ created: number; failed: number; skipped?: number; errors?: string[] }>
+  importPreview?: (entity: string, file: File) => Promise<ImportPreviewResult>
   export: (entity: string) => Promise<Response>
-  importExcel?: (entity: string, file: File) => Promise<{ created: number; failed: number; skipped?: number; entity: string }>
+  importExcel?: (entity: string, file: File, overwrite?: boolean) => Promise<{ created: number; failed: number; skipped?: number; entity: string; errors?: string[] }>
+  importExcelPreview?: (entity: string, file: File) => Promise<ImportPreviewResult>
   downloadTemplate?: (entity: "positions" | "scenarios") => Promise<Response>
   exportScenariosExcel?: (ids: string[]) => Promise<Response>
   exportPositionsExcel?: (ids: string[]) => Promise<Response>
@@ -227,6 +231,8 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const [importFile, setImportFile] = useState<File | null>(null)
   const [isImporting, setIsImporting] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
+  const [importPreview, setImportPreview] = useState<ImportPreviewResult | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const loadData = async () => {
@@ -681,15 +687,15 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     if (file) setImportFile(file)
   }
 
-  const handleImport = async () => {
+  const executeImport = async (overwrite = false) => {
     if (!importFile) return
     setIsImporting(true)
     try {
       let result: any
       if (importExportApi.importExcel && importExcelEntity) {
-        result = await importExportApi.importExcel(importExcelEntity, importFile)
+        result = await importExportApi.importExcel(importExcelEntity, importFile, overwrite)
       } else {
-        result = await importExportApi.import(importEntityName, importFile)
+        result = await importExportApi.import(importEntityName, importFile, overwrite)
       }
       const skippedMsg = result.skipped != null ? `，跳过 ${result.skipped} 条` : ""
       let detail = ""
@@ -715,10 +721,38 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       setImportFile(null)
       setImportStep("download")
       setIsImportDialogOpen(false)
+      setIsImportConfirmOpen(false)
+      setImportPreview(null)
       await refresh()
     } catch (err: any) {
       alert(err.message || "导入失败")
     } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const handleImport = async () => {
+    if (!importFile) return
+    setIsImporting(true)
+    try {
+      let preview: ImportPreviewResult | null = null
+      const isExcel = !!(importExportApi.importExcel && importExcelEntity)
+      if (isExcel && importExportApi.importExcelPreview) {
+        preview = await importExportApi.importExcelPreview(importExcelEntity!, importFile)
+      } else if (importExportApi.importPreview) {
+        preview = await importExportApi.importPreview(importEntityName, importFile)
+      }
+
+      if (preview && preview.duplicates > 0) {
+        setImportPreview(preview)
+        setIsImportConfirmOpen(true)
+        setIsImporting(false)
+        return
+      }
+
+      await executeImport(false)
+    } catch (err: any) {
+      alert(err.message || "导入失败")
       setIsImporting(false)
     }
   }
@@ -1180,6 +1214,21 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Import Confirm Dialog */}
+      {importPreview && (
+        <ImportConfirmDialog
+          open={isImportConfirmOpen}
+          onOpenChange={setIsImportConfirmOpen}
+          entityLabel={entityLabel}
+          created={importPreview.created}
+          duplicates={importPreview.duplicates}
+          failed={importPreview.failed}
+          duplicateItems={importPreview.duplicateItems}
+          onConfirmOverwrite={() => executeImport(true)}
+          onConfirmSkip={() => executeImport(false)}
+        />
+      )}
 
       {/* Batch Move Dialog */}
       <Dialog open={isBatchMoveDialogOpen} onOpenChange={setIsBatchMoveDialogOpen}>

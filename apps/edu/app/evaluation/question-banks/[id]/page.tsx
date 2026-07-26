@@ -26,6 +26,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
+import type { ImportPreviewResult } from "@/lib/api"
 import {
   Dialog,
   DialogContent,
@@ -110,6 +112,8 @@ export default function QuestionBankDetailPage() {
   const [isImporting, setIsImporting] = useState(false)
   const [importStep, setImportStep] = useState<"download" | "upload">("download")
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
+  const [importPreview, setImportPreview] = useState<ImportPreviewResult | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   // 获取题目创建人列表（后端暂无用户姓名查询，直接展示 ID）
   const creators = useMemo(() => {
@@ -159,19 +163,40 @@ export default function QuestionBankDetailPage() {
     if (file) setImportFile(file)
   }
 
-  const handleImport = async () => {
+  const executeImport = async (overwrite = false) => {
     if (!importFile) return
     setIsImporting(true)
     try {
-      const result = await importExportApi.importExcel(`question-banks/${bankId}/questions`, importFile)
+      const result = await importExportApi.importExcel(`question-banks/${bankId}/questions`, importFile, overwrite)
       const errorHint = result.errors && result.errors.length > 0 ? `，错误：${result.errors.slice(0, 3).join(";")}` : ""
       alert(`导入完成：成功 ${result.created} 条，失败 ${result.failed || 0} 条，跳过 ${result.skipped || 0} 条${errorHint}`)
       setImportFile(null)
       setIsImportDialogOpen(false)
+      setImportStep("download")
+      setIsImportConfirmOpen(false)
+      setImportPreview(null)
       await loadBankQuestions(bankId)
     } catch (err: any) {
       alert(err.message || "导入失败")
     } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const handleImport = async () => {
+    if (!importFile) return
+    setIsImporting(true)
+    try {
+      const preview = await importExportApi.importExcelPreview(`question-banks/${bankId}/questions`, importFile)
+      if (preview.duplicates > 0) {
+        setImportPreview(preview)
+        setIsImportConfirmOpen(true)
+        setIsImporting(false)
+        return
+      }
+      await executeImport(false)
+    } catch (err: any) {
+      alert(err.message || "导入失败")
       setIsImporting(false)
     }
   }
@@ -724,6 +749,20 @@ export default function QuestionBankDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {importPreview && (
+        <ImportConfirmDialog
+          open={isImportConfirmOpen}
+          onOpenChange={setIsImportConfirmOpen}
+          entityLabel="题目"
+          created={importPreview.created}
+          duplicates={importPreview.duplicates}
+          failed={importPreview.failed}
+          duplicateItems={importPreview.duplicateItems}
+          onConfirmOverwrite={() => executeImport(true)}
+          onConfirmSkip={() => executeImport(false)}
+        />
+      )}
 
       <ConfirmDialog
         open={!!deleteConfirm}

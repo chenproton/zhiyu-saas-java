@@ -165,6 +165,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 	courseHandler := &handler.CourseHandler{DB: db}
 	knowledgePointHandler := &handler.KnowledgePointHandler{DB: db}
 	courseNodeHandler := &handler.CourseNodeHandler{DB: db}
+	nodeResourceHandler := &handler.NodeResourceHandler{DB: db}
 	nodeQuizHandler := &handler.NodeQuizHandler{DB: db}
 	nodeHomeworkHandler := &handler.NodeHomeworkHandler{DB: db}
 	hybridModuleHandler := &handler.HybridModuleHandler{DB: db}
@@ -268,18 +269,30 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 
 			r.Get("/export/{entity}", importExportHandler.Export)
 			r.Post("/import/{entity}", importExportHandler.Import)
+			r.Post("/import/{entity}/preview", importExportHandler.Preview)
 			r.Post("/import/positions/excel", positionImportHandler.ImportExcel)
+			r.Post("/import/positions/preview", positionImportHandler.PreviewExcel)
 			r.Post("/import/scenarios/excel", scenarioImportHandler.ImportExcel)
+			r.Post("/import/scenarios/preview", scenarioImportHandler.PreviewExcel)
 			r.Post("/import/question-banks/excel", questionBankImportHandler.ImportExcel)
+			r.Post("/import/question-banks/preview", questionBankImportHandler.PreviewExcel)
 			r.Post("/import/question-banks/{bankId}/questions/excel", questionImportHandler.ImportExcel)
+			r.Post("/import/question-banks/{bankId}/questions/preview", questionImportHandler.PreviewExcel)
 			r.Post("/import/exams/excel", examImportHandler.ImportExcel)
+			r.Post("/import/exams/preview", examImportHandler.PreviewExcel)
 			r.Post("/import/industries/excel", resourceImportHandler.ImportIndustries)
+			r.Post("/import/industries/preview", resourceImportHandler.PreviewIndustries)
 			r.Post("/import/majors/excel", resourceImportHandler.ImportMajors)
+			r.Post("/import/majors/preview", resourceImportHandler.PreviewMajors)
 			r.Post("/import/organizations/excel", resourceImportHandler.ImportOrganizations)
+			r.Post("/import/organizations/preview", resourceImportHandler.PreviewOrganizations)
 			r.Post("/import/students/excel", resourceImportHandler.ImportStudents)
+			r.Post("/import/students/preview", resourceImportHandler.PreviewStudents)
 			r.Post("/import/teachers/excel", resourceImportHandler.ImportTeachers)
+			r.Post("/import/teachers/preview", resourceImportHandler.PreviewTeachers)
 			r.Get("/templates/positions", templateHandler.ServePositionTemplate)
 			r.Get("/templates/scenarios", templateHandler.ServeScenarioTemplate)
+			r.Get("/templates/system-courses", templateHandler.ServeSystemCourseTemplate)
 			r.Get("/templates/question-banks", templateHandler.ServeQuestionBankTemplate)
 			r.Get("/templates/question-banks/{bankId}/questions", templateHandler.ServeQuestionTemplate)
 			r.Get("/templates/exams", templateHandler.ServeExamTemplate)
@@ -553,6 +566,11 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 				r.Put("/lesson/nodes/{id}", courseNodeHandler.Update)
 				r.Delete("/lesson/nodes/{id}", courseNodeHandler.Delete)
 				r.Post("/lesson/nodes/reorder", courseNodeHandler.Reorder)
+
+				r.Get("/lesson/node-resources", nodeResourceHandler.ListResources)
+				r.Post("/lesson/node-resources", nodeResourceHandler.BindResource)
+				r.Post("/lesson/node-resources/create", nodeResourceHandler.Create)
+				r.Delete("/lesson/node-resources/{id}", nodeResourceHandler.UnbindResource)
 
 				r.Get("/lesson/quizzes", nodeQuizHandler.ListQuizzes)
 				r.Post("/lesson/quizzes", nodeQuizHandler.CreateQuiz)

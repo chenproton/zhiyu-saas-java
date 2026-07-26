@@ -886,6 +886,17 @@ export const courseNodeApi = {
     request<{ ok: boolean }>("/lesson/nodes/reorder", { method: "POST", body: JSON.stringify({ courseId, nodeIds }) }),
 }
 
+export const nodeResourceApi = {
+  list: (params?: { courseId?: string; nodeId?: string; search?: string; limit?: number; offset?: number }) =>
+    request<ListResponse<NodeResource>>(`/lesson/node-resources${buildQuery(params || {})}`),
+  create: (req: Omit<NodeResource, "id" | "uploadedAt">) =>
+    request<NodeResource>("/lesson/node-resources/create", { method: "POST", body: JSON.stringify(req) }),
+  bind: (data: { nodeId: string; resourceId: string }) =>
+    request<{ id: string }>("/lesson/node-resources", { method: "POST", body: JSON.stringify(data) }),
+  unbind: (id: string) =>
+    request<{ id: string }>(`/lesson/node-resources/${id}`, { method: "DELETE" }),
+}
+
 export const lessonBatchApi = {
   ...createCrudApi<LessonBatch, Omit<LessonBatch, "id" | "createdAt" | "updatedAt">, Partial<Omit<LessonBatch, "id" | "createdAt" | "updatedAt">>>("/lesson/batches"),
   updateStatus: (id: string, status: string) =>
@@ -915,26 +926,53 @@ export const fileApi = {
   },
 }
 
+export interface ImportPreviewItem {
+  rowNum: number
+  key: string
+  name: string
+}
+
+export interface ImportPreviewResult {
+  created: number
+  duplicates: number
+  failed: number
+  duplicateItems: ImportPreviewItem[]
+  errors: string[]
+}
+
 export const importExportApi = {
   export: (entity: string) => {
     const token = getToken()
     const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {}
     return fetch(`${API_BASE}/export/${entity}`, { headers })
   },
-  import: async (entity: string, file: File): Promise<{ created: number; failed: number; entity: string }> => {
+  import: async (entity: string, file: File, overwrite = false): Promise<{ created: number; failed: number; entity: string; skipped?: number; errors?: string[] }> => {
     const form = new FormData()
     form.append("file", file)
     const token = getToken()
     const headers: HeadersInit = {}
     if (token) headers.Authorization = `Bearer ${token}`
-    const res = await fetch(`${API_BASE}/import/${entity}`, { method: "POST", body: form, headers })
+    const res = await fetch(`${API_BASE}/import/${entity}?overwrite=${overwrite}`, { method: "POST", body: form, headers })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       throw new Error(data.error || `HTTP ${res.status}`)
     }
     return res.json()
   },
-  importExcel: async (entity: string, file: File): Promise<{
+  importPreview: async (entity: string, file: File): Promise<ImportPreviewResult> => {
+    const form = new FormData()
+    form.append("file", file)
+    const token = getToken()
+    const headers: HeadersInit = {}
+    if (token) headers.Authorization = `Bearer ${token}`
+    const res = await fetch(`${API_BASE}/import/${entity}/preview`, { method: "POST", body: form, headers })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      throw new Error(data.error || `HTTP ${res.status}`)
+    }
+    return res.json()
+  },
+  importExcel: async (entity: string, file: File, overwrite = false): Promise<{
     created: number; failed: number; skipped: number; entity: string;
     positionCreated?: number; responsibilities?: number; abilityBindings?: number;
     scenarioCreated?: number; taskCreated?: number;
@@ -945,14 +983,27 @@ export const importExportApi = {
     const token = getToken()
     const headers: HeadersInit = {}
     if (token) headers.Authorization = `Bearer ${token}`
-    const res = await fetch(`${API_BASE}/import/${entity}/excel`, { method: "POST", body: form, headers })
+    const res = await fetch(`${API_BASE}/import/${entity}/excel?overwrite=${overwrite}`, { method: "POST", body: form, headers })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       throw new Error(data.error || `HTTP ${res.status}`)
     }
     return res.json()
   },
-  downloadTemplate: (entity: "positions" | "scenarios" | "question-banks" | "exams" | "industries" | "majors" | "organizations" | "students" | "teachers") => {
+  importExcelPreview: async (entity: string, file: File): Promise<ImportPreviewResult> => {
+    const form = new FormData()
+    form.append("file", file)
+    const token = getToken()
+    const headers: HeadersInit = {}
+    if (token) headers.Authorization = `Bearer ${token}`
+    const res = await fetch(`${API_BASE}/import/${entity}/preview`, { method: "POST", body: form, headers })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      throw new Error(data.error || `HTTP ${res.status}`)
+    }
+    return res.json()
+  },
+  downloadTemplate: (entity: "positions" | "scenarios" | "system-courses" | "question-banks" | "exams" | "industries" | "majors" | "organizations" | "students" | "teachers") => {
     const token = getToken()
     return fetch(`${API_BASE}/templates/${entity}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},

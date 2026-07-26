@@ -22,40 +22,60 @@ type ResourceImportHandler struct {
 }
 
 type resourceImportResult struct {
-	Created          int
-	Failed           int
-	Skipped          int
-	IndustryCreated  int
-	MajorCreated     int
-	OrgCreated       int
-	StudentCreated   int
-	TeacherCreated   int
-	Errors           []string
+	Created         int
+	Failed          int
+	Skipped         int
+	IndustryCreated int
+	MajorCreated    int
+	OrgCreated      int
+	StudentCreated  int
+	TeacherCreated  int
+	Errors          []string
+}
+
+func (h *ResourceImportHandler) PreviewIndustries(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "industries", h.doImportIndustries, true)
+}
+
+func (h *ResourceImportHandler) PreviewMajors(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "majors", h.doImportMajors, true)
+}
+
+func (h *ResourceImportHandler) PreviewOrganizations(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "organizations", h.doImportOrganizations, true)
+}
+
+func (h *ResourceImportHandler) PreviewStudents(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "students", h.doImportStudents, true)
+}
+
+func (h *ResourceImportHandler) PreviewTeachers(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "teachers", h.doImportTeachers, true)
 }
 
 func (h *ResourceImportHandler) ImportIndustries(w http.ResponseWriter, r *http.Request) {
-	h.importExcel(w, r, "industries", h.doImportIndustries)
+	h.importExcel(w, r, "industries", h.doImportIndustries, false)
 }
 
 func (h *ResourceImportHandler) ImportMajors(w http.ResponseWriter, r *http.Request) {
-	h.importExcel(w, r, "majors", h.doImportMajors)
+	h.importExcel(w, r, "majors", h.doImportMajors, false)
 }
 
 func (h *ResourceImportHandler) ImportOrganizations(w http.ResponseWriter, r *http.Request) {
-	h.importExcel(w, r, "organizations", h.doImportOrganizations)
+	h.importExcel(w, r, "organizations", h.doImportOrganizations, false)
 }
 
 func (h *ResourceImportHandler) ImportStudents(w http.ResponseWriter, r *http.Request) {
-	h.importExcel(w, r, "students", h.doImportStudents)
+	h.importExcel(w, r, "students", h.doImportStudents, false)
 }
 
 func (h *ResourceImportHandler) ImportTeachers(w http.ResponseWriter, r *http.Request) {
-	h.importExcel(w, r, "teachers", h.doImportTeachers)
+	h.importExcel(w, r, "teachers", h.doImportTeachers, false)
 }
 
-type importFunc func(ctx context.Context, xlsx *excelize.File, tenantID, userID string, result *resourceImportResult)
+type importFunc func(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult)
 
-func (h *ResourceImportHandler) importExcel(w http.ResponseWriter, r *http.Request, entity string, fn importFunc) {
+func (h *ResourceImportHandler) importExcel(w http.ResponseWriter, r *http.Request, entity string, fn importFunc, preview bool) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil || !canManagePortal(claims) {
 		respondError(w, http.StatusForbidden, "permission denied")
@@ -67,6 +87,7 @@ func (h *ResourceImportHandler) importExcel(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	userID := claims.UserID
+	overwrite := importOverwriteParam(r)
 
 	if err := r.ParseMultipartForm(50 << 20); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid form")
@@ -86,44 +107,69 @@ func (h *ResourceImportHandler) importExcel(w http.ResponseWriter, r *http.Reque
 	}
 	defer xlsx.Close()
 
-	result := &resourceImportResult{}
-	fn(r.Context(), xlsx, tenantID, userID, result)
+	previewRes, execRes := fn(r.Context(), xlsx, tenantID, userID, preview, overwrite)
+
+	if preview {
+		log.Printf("[import/preview/%s] result: created=%d duplicates=%d failed=%d duplicateItems=%d errors=%d",
+			entity, previewRes.Created, previewRes.Duplicates, previewRes.Failed, len(previewRes.DuplicateItems), len(previewRes.Errors))
+		for _, e := range previewRes.Errors {
+			log.Printf("[import/preview/%s] error: %s", entity, e)
+		}
+		respondJSON(w, http.StatusOK, previewRes)
+		return
+	}
 
 	log.Printf("[import/%s] result: created=%d failed=%d skipped=%d errors=%d",
-		entity, result.Created, result.Failed, result.Skipped, len(result.Errors))
-	for _, e := range result.Errors {
+		entity, execRes.Created, execRes.Failed, execRes.Skipped, len(execRes.Errors))
+	for _, e := range execRes.Errors {
 		log.Printf("[import/%s] error: %s", entity, e)
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"created":         result.Created,
-		"failed":          result.Failed,
-		"skipped":         result.Skipped,
+		"created":         execRes.Created,
+		"failed":          execRes.Failed,
+		"skipped":         execRes.Skipped,
 		"entity":          entity,
-		"industryCreated": result.IndustryCreated,
-		"majorCreated":    result.MajorCreated,
-		"orgCreated":      result.OrgCreated,
-		"studentCreated":  result.StudentCreated,
-		"teacherCreated":  result.TeacherCreated,
-		"errors":          result.Errors,
+		"industryCreated": execRes.IndustryCreated,
+		"majorCreated":    execRes.MajorCreated,
+		"orgCreated":      execRes.OrgCreated,
+		"studentCreated":  execRes.StudentCreated,
+		"teacherCreated":  execRes.TeacherCreated,
+		"errors":          execRes.Errors,
 	})
+}
+
+func appendDuplicate(previewRes *ImportPreviewResult, rowNum int, key, name string) {
+	if len(previewRes.DuplicateItems) < 100 {
+		previewRes.DuplicateItems = append(previewRes.DuplicateItems, ImportPreviewItem{
+			RowNum: rowNum,
+			Key:    key,
+			Name:   name,
+		})
+	}
 }
 
 // Sheet: 行业列表
 // Columns: 行业代码*, 行业名称*, 上级行业代码, 排序, 是否启用
-func (h *ResourceImportHandler) doImportIndustries(ctx context.Context, xlsx *excelize.File, tenantID, _ string, result *resourceImportResult) {
+func (h *ResourceImportHandler) doImportIndustries(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+	previewRes := &ImportPreviewResult{}
+	result := &resourceImportResult{}
+
 	rows, err := xlsx.GetRows("行业列表")
 	if err != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("读取「行业列表」Sheet 失败: %v", err))
-		return
+		msg := fmt.Sprintf("读取「行业列表」Sheet 失败: %v", err)
+		result.Errors = append(result.Errors, msg)
+		previewRes.Errors = append(previewRes.Errors, msg)
+		return previewRes, result
 	}
 
 	codeToID := make(map[string]string)
-	// First pass: create/update all industries by code
+	// First pass: process all industries by code
 	for i, row := range rows {
 		if i < 2 {
 			continue
 		}
+		rowNum := i + 1
 		if len(row) < 2 || strings.TrimSpace(row[0]) == "" || strings.TrimSpace(row[1]) == "" {
 			continue
 		}
@@ -136,33 +182,45 @@ func (h *ResourceImportHandler) doImportIndustries(ctx context.Context, xlsx *ex
 		_ = h.DB.QueryRow(ctx, `SELECT id FROM industries WHERE tenant_id=$1 AND code=$2`, tenantID, code).Scan(&existingID)
 
 		if existingID != "" {
-			_, err := h.DB.Exec(ctx, `
-				UPDATE industries SET name=$1, enabled=$2, sort_order=$3, updated_at=NOW()
-				WHERE id=$4 AND tenant_id=$5
-			`, name, enabled, sortOrder, existingID, tenantID)
-			if err != nil {
-				result.Failed++
-				result.Errors = append(result.Errors, fmt.Sprintf("行业[%s]更新失败: %v", code, err))
+			if !overwrite {
+				result.Skipped++
+				previewRes.Duplicates++
+				appendDuplicate(previewRes, rowNum, code, name)
 				continue
+			}
+			if !preview {
+				_, err := h.DB.Exec(ctx, `
+					UPDATE industries SET name=$1, enabled=$2, sort_order=$3, updated_at=NOW()
+					WHERE id=$4 AND tenant_id=$5
+				`, name, enabled, sortOrder, existingID, tenantID)
+				if err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("行业[%s]更新失败: %v", code, err))
+					continue
+				}
 			}
 			codeToID[code] = existingID
 			result.Created++
+			previewRes.Created++
 			continue
 		}
 
 		id := uuid.NewString()
-		_, err = h.DB.Exec(ctx, `
-			INSERT INTO industries (id, tenant_id, code, name, enabled, sort_order)
-			VALUES ($1, $2, $3, $4, $5, $6)
-		`, id, tenantID, code, name, enabled, sortOrder)
-		if err != nil {
-			result.Failed++
-			result.Errors = append(result.Errors, fmt.Sprintf("行业[%s]创建失败: %v", code, err))
-			continue
+		if !preview {
+			_, err = h.DB.Exec(ctx, `
+				INSERT INTO industries (id, tenant_id, code, name, enabled, sort_order)
+				VALUES ($1, $2, $3, $4, $5, $6)
+			`, id, tenantID, code, name, enabled, sortOrder)
+			if err != nil {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("行业[%s]创建失败: %v", code, err))
+				continue
+			}
+			result.IndustryCreated++
 		}
 		codeToID[code] = id
-		result.IndustryCreated++
 		result.Created++
+		previewRes.Created++
 	}
 
 	// Second pass: resolve parent_id by parent code
@@ -187,31 +245,47 @@ func (h *ResourceImportHandler) doImportIndustries(ctx context.Context, xlsx *ex
 			// Try database in case parent existed before import
 			_ = h.DB.QueryRow(ctx, `SELECT id FROM industries WHERE tenant_id=$1 AND code=$2`, tenantID, parentCode).Scan(&parentID)
 			if parentID == "" {
-				result.Errors = append(result.Errors, fmt.Sprintf("行业[%s]的上级行业[%s]未找到", code, parentCode))
+				msg := fmt.Sprintf("行业[%s]的上级行业[%s]未找到", code, parentCode)
+				result.Errors = append(result.Errors, msg)
+				previewRes.Errors = append(previewRes.Errors, msg)
+				previewRes.Failed++
 				continue
 			}
 		}
 		if parentID == id {
-			result.Errors = append(result.Errors, fmt.Sprintf("行业[%s]不能将自己设为上级", code))
+			msg := fmt.Sprintf("行业[%s]不能将自己设为上级", code)
+			result.Errors = append(result.Errors, msg)
+			previewRes.Errors = append(previewRes.Errors, msg)
+			previewRes.Failed++
 			continue
 		}
-		_, _ = h.DB.Exec(ctx, `UPDATE industries SET parent_id=$1, updated_at=NOW() WHERE id=$2 AND tenant_id=$3`, parentID, id, tenantID)
+		if !preview {
+			_, _ = h.DB.Exec(ctx, `UPDATE industries SET parent_id=$1, updated_at=NOW() WHERE id=$2 AND tenant_id=$3`, parentID, id, tenantID)
+		}
 	}
+
+	return previewRes, result
 }
 
 // Sheet: 专业列表
 // Columns: 专业代码*, 专业名称*, 别名, 是否启用
-func (h *ResourceImportHandler) doImportMajors(ctx context.Context, xlsx *excelize.File, tenantID, _ string, result *resourceImportResult) {
+func (h *ResourceImportHandler) doImportMajors(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+	previewRes := &ImportPreviewResult{}
+	result := &resourceImportResult{}
+
 	rows, err := xlsx.GetRows("专业列表")
 	if err != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("读取「专业列表」Sheet 失败: %v", err))
-		return
+		msg := fmt.Sprintf("读取「专业列表」Sheet 失败: %v", err)
+		result.Errors = append(result.Errors, msg)
+		previewRes.Errors = append(previewRes.Errors, msg)
+		return previewRes, result
 	}
 
 	for i, row := range rows {
 		if i < 2 {
 			continue
 		}
+		rowNum := i + 1
 		if len(row) < 2 || strings.TrimSpace(row[0]) == "" || strings.TrimSpace(row[1]) == "" {
 			continue
 		}
@@ -224,41 +298,60 @@ func (h *ResourceImportHandler) doImportMajors(ctx context.Context, xlsx *exceli
 		_ = h.DB.QueryRow(ctx, `SELECT id FROM majors WHERE tenant_id=$1 AND code=$2`, tenantID, code).Scan(&existingID)
 
 		if existingID != "" {
-			_, err := h.DB.Exec(ctx, `
-				UPDATE majors SET name=$1, alias=$2, enabled=$3, updated_at=NOW()
-				WHERE id=$4 AND tenant_id=$5
-			`, name, alias, enabled, existingID, tenantID)
-			if err != nil {
-				result.Failed++
-				result.Errors = append(result.Errors, fmt.Sprintf("专业[%s]更新失败: %v", code, err))
+			if !overwrite {
+				result.Skipped++
+				previewRes.Duplicates++
+				appendDuplicate(previewRes, rowNum, code, name)
 				continue
 			}
+			if !preview {
+				_, err := h.DB.Exec(ctx, `
+					UPDATE majors SET name=$1, alias=$2, enabled=$3, updated_at=NOW()
+					WHERE id=$4 AND tenant_id=$5
+				`, name, alias, enabled, existingID, tenantID)
+				if err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("专业[%s]更新失败: %v", code, err))
+					continue
+				}
+			}
 			result.Created++
+			previewRes.Created++
 			continue
 		}
 
-		id := uuid.NewString()
-		_, err = h.DB.Exec(ctx, `
-			INSERT INTO majors (id, tenant_id, code, name, alias, enabled)
-			VALUES ($1, $2, $3, $4, $5, $6)
-		`, id, tenantID, code, name, alias, enabled)
-		if err != nil {
-			result.Failed++
-			result.Errors = append(result.Errors, fmt.Sprintf("专业[%s]创建失败: %v", code, err))
-			continue
+		if !preview {
+			id := uuid.NewString()
+			_, err = h.DB.Exec(ctx, `
+				INSERT INTO majors (id, tenant_id, code, name, alias, enabled)
+				VALUES ($1, $2, $3, $4, $5, $6)
+			`, id, tenantID, code, name, alias, enabled)
+			if err != nil {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("专业[%s]创建失败: %v", code, err))
+				continue
+			}
+			result.MajorCreated++
 		}
-		result.MajorCreated++
 		result.Created++
+		previewRes.Created++
 	}
+
+	return previewRes, result
 }
 
 // Sheet: 组织架构
 // Columns: 组织名称*, 组织类型*, 父组织名称, 排序
-func (h *ResourceImportHandler) doImportOrganizations(ctx context.Context, xlsx *excelize.File, tenantID, _ string, result *resourceImportResult) {
+func (h *ResourceImportHandler) doImportOrganizations(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+	previewRes := &ImportPreviewResult{}
+	result := &resourceImportResult{}
+
 	rows, err := xlsx.GetRows("组织架构")
 	if err != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("读取「组织架构」Sheet 失败: %v", err))
-		return
+		msg := fmt.Sprintf("读取「组织架构」Sheet 失败: %v", err)
+		result.Errors = append(result.Errors, msg)
+		previewRes.Errors = append(previewRes.Errors, msg)
+		return previewRes, result
 	}
 
 	typeNameToID := make(map[string]string)
@@ -277,6 +370,7 @@ func (h *ResourceImportHandler) doImportOrganizations(ctx context.Context, xlsx 
 		if i < 2 {
 			continue
 		}
+		rowNum := i + 1
 		if len(row) < 2 || strings.TrimSpace(row[0]) == "" || strings.TrimSpace(row[1]) == "" {
 			continue
 		}
@@ -287,8 +381,11 @@ func (h *ResourceImportHandler) doImportOrganizations(ctx context.Context, xlsx 
 
 		typeID, ok := typeNameToID[typeName]
 		if !ok {
+			msg := fmt.Sprintf("组织[%s]的类型[%s]不存在", name, typeName)
 			result.Failed++
-			result.Errors = append(result.Errors, fmt.Sprintf("组织[%s]的类型[%s]不存在", name, typeName))
+			result.Errors = append(result.Errors, msg)
+			previewRes.Failed++
+			previewRes.Errors = append(previewRes.Errors, msg)
 			continue
 		}
 
@@ -308,53 +405,79 @@ func (h *ResourceImportHandler) doImportOrganizations(ctx context.Context, xlsx 
 		var existingID string
 		_ = h.DB.QueryRow(ctx, `SELECT id FROM organizations WHERE tenant_id=$1 AND name=$2 AND type_id=$3`, tenantID, name, typeID).Scan(&existingID)
 		if existingID != "" {
-			// Update parent/sort only
-			_, _ = h.DB.Exec(ctx, `
-				UPDATE organizations SET parent_id=$1, sort_order=$2, updated_at=NOW()
-				WHERE id=$3 AND tenant_id=$4
-			`, parentID, sortOrder, existingID, tenantID)
+			if !overwrite {
+				result.Skipped++
+				previewRes.Duplicates++
+				appendDuplicate(previewRes, rowNum, fmt.Sprintf("%s|%s", name, typeName), name)
+				continue
+			}
+			if !preview {
+				_, err := h.DB.Exec(ctx, `
+					UPDATE organizations SET name=$1, type_id=$2, parent_id=$3, sort_order=$4, updated_at=NOW()
+					WHERE id=$5 AND tenant_id=$6
+				`, name, typeID, parentID, sortOrder, existingID, tenantID)
+				if err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("组织[%s]更新失败: %v", name, err))
+					continue
+				}
+			}
 			nameToID[name] = existingID
 			result.Created++
+			previewRes.Created++
 			continue
 		}
 
 		id := uuid.NewString()
-		_, err = h.DB.Exec(ctx, `
-			INSERT INTO organizations (id, tenant_id, name, type_id, parent_id, sort_order, member_count)
-			VALUES ($1, $2, $3, $4, $5, $6, 0)
-		`, id, tenantID, name, typeID, parentID, sortOrder)
-		if err != nil {
-			result.Failed++
-			result.Errors = append(result.Errors, fmt.Sprintf("组织[%s]创建失败: %v", name, err))
-			continue
+		if !preview {
+			_, err = h.DB.Exec(ctx, `
+				INSERT INTO organizations (id, tenant_id, name, type_id, parent_id, sort_order, member_count)
+				VALUES ($1, $2, $3, $4, $5, $6, 0)
+			`, id, tenantID, name, typeID, parentID, sortOrder)
+			if err != nil {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("组织[%s]创建失败: %v", name, err))
+				continue
+			}
+			result.OrgCreated++
 		}
 		nameToID[name] = id
-		result.OrgCreated++
 		result.Created++
+		previewRes.Created++
 	}
+
+	return previewRes, result
 }
 
 // Sheet: 学生列表
 // Columns: 登录账号(学号)*, 姓名*, 密码*, 班级(组织节点路径)*, 状态
 // 班级路径示例：学校-学院-班级 或 学校/学院/班级
-func (h *ResourceImportHandler) doImportStudents(ctx context.Context, xlsx *excelize.File, tenantID, _ string, result *resourceImportResult) {
+func (h *ResourceImportHandler) doImportStudents(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+	previewRes := &ImportPreviewResult{}
+	result := &resourceImportResult{}
+
 	rows, err := xlsx.GetRows("学生列表")
 	if err != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("读取「学生列表」Sheet 失败: %v", err))
-		return
+		msg := fmt.Sprintf("读取「学生列表」Sheet 失败: %v", err)
+		result.Errors = append(result.Errors, msg)
+		previewRes.Errors = append(previewRes.Errors, msg)
+		return previewRes, result
 	}
 
 	institutionID := h.getInstitutionID(ctx, tenantID)
 	roleID := h.getRoleIDByCode(ctx, tenantID, "student")
 	if roleID == "" {
-		result.Errors = append(result.Errors, "未找到学生角色(student)，请先在角色管理中创建")
-		return
+		msg := "未找到学生角色(student)，请先在角色管理中创建"
+		result.Errors = append(result.Errors, msg)
+		previewRes.Errors = append(previewRes.Errors, msg)
+		return previewRes, result
 	}
 
 	for i, row := range rows {
 		if i < 2 {
 			continue
 		}
+		rowNum := i + 1
 		if len(row) < 4 || strings.TrimSpace(row[0]) == "" || strings.TrimSpace(row[1]) == "" || strings.TrimSpace(row[2]) == "" || strings.TrimSpace(row[3]) == "" {
 			continue
 		}
@@ -365,56 +488,99 @@ func (h *ResourceImportHandler) doImportStudents(ctx context.Context, xlsx *exce
 		status := mapUserStatus(col(row, 4), "active")
 
 		if !isStrongPassword(password) {
+			msg := fmt.Sprintf("学生[%s]密码强度不足，需至少8位且含字母和数字", username)
 			result.Failed++
-			result.Errors = append(result.Errors, fmt.Sprintf("学生[%s]密码强度不足，需至少8位且含字母和数字", username))
+			result.Errors = append(result.Errors, msg)
+			previewRes.Failed++
+			previewRes.Errors = append(previewRes.Errors, msg)
 			continue
 		}
 
 		orgNodeID, err := h.findOrgNodeByPath(ctx, tenantID, classPath)
 		if err != nil {
+			msg := fmt.Sprintf("学生[%s]的班级[%s]解析失败: %v", username, classPath, err)
 			result.Failed++
-			result.Errors = append(result.Errors, fmt.Sprintf("学生[%s]的班级[%s]解析失败: %v", username, classPath, err))
+			result.Errors = append(result.Errors, msg)
+			previewRes.Failed++
+			previewRes.Errors = append(previewRes.Errors, msg)
 			continue
 		}
 
-		if h.userExists(ctx, tenantID, username) {
-			result.Skipped++
-			result.Errors = append(result.Errors, fmt.Sprintf("学生[%s]已存在，已跳过", username))
+		existingID := h.getUserID(ctx, tenantID, username)
+		if existingID != "" {
+			if !overwrite {
+				result.Skipped++
+				previewRes.Duplicates++
+				appendDuplicate(previewRes, rowNum, username, name)
+				continue
+			}
+			if !preview {
+				hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+				if err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("学生[%s]密码加密失败: %v", username, err))
+					continue
+				}
+				_, err = h.DB.Exec(ctx, `
+					UPDATE users SET name=$1, password_hash=$2, status=$3, org_node_id=$4, updated_at=NOW()
+					WHERE id=$5 AND tenant_id=$6
+				`, name, string(hash), status, orgNodeID, existingID, tenantID)
+				if err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("学生[%s]更新失败: %v", username, err))
+					continue
+				}
+			}
+			result.Created++
+			previewRes.Created++
 			continue
 		}
 
-		err = h.createUser(ctx, tenantID, institutionID, roleID, &orgNodeID, nil, username, password, name, status)
-		if err != nil {
-			result.Failed++
-			result.Errors = append(result.Errors, fmt.Sprintf("学生[%s]创建失败: %v", username, err))
-			continue
+		if !preview {
+			err = h.createUser(ctx, tenantID, institutionID, roleID, &orgNodeID, nil, username, password, name, status)
+			if err != nil {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("学生[%s]创建失败: %v", username, err))
+				continue
+			}
+			result.StudentCreated++
 		}
-		result.StudentCreated++
 		result.Created++
+		previewRes.Created++
 	}
+
+	return previewRes, result
 }
 
 // Sheet: 教师列表
 // Columns: 登录账号(工号)*, 姓名*, 密码*, 所属组织节点(路径), 职位(逗号分隔), 状态
 // 组织节点路径示例：学校-学院 或 学校/学院
-func (h *ResourceImportHandler) doImportTeachers(ctx context.Context, xlsx *excelize.File, tenantID, _ string, result *resourceImportResult) {
+func (h *ResourceImportHandler) doImportTeachers(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+	previewRes := &ImportPreviewResult{}
+	result := &resourceImportResult{}
+
 	rows, err := xlsx.GetRows("教师列表")
 	if err != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("读取「教师列表」Sheet 失败: %v", err))
-		return
+		msg := fmt.Sprintf("读取「教师列表」Sheet 失败: %v", err)
+		result.Errors = append(result.Errors, msg)
+		previewRes.Errors = append(previewRes.Errors, msg)
+		return previewRes, result
 	}
 
 	institutionID := h.getInstitutionID(ctx, tenantID)
 	roleID := h.getRoleIDByCode(ctx, tenantID, "teacher")
 	if roleID == "" {
-		result.Errors = append(result.Errors, "未找到教师角色(teacher)，请先在角色管理中创建")
-		return
+		msg := "未找到教师角色(teacher)，请先在角色管理中创建"
+		result.Errors = append(result.Errors, msg)
+		previewRes.Errors = append(previewRes.Errors, msg)
+		return previewRes, result
 	}
 
 	for i, row := range rows {
 		if i < 2 {
 			continue
 		}
+		rowNum := i + 1
 		if len(row) < 3 || strings.TrimSpace(row[0]) == "" || strings.TrimSpace(row[1]) == "" || strings.TrimSpace(row[2]) == "" {
 			continue
 		}
@@ -426,8 +592,11 @@ func (h *ResourceImportHandler) doImportTeachers(ctx context.Context, xlsx *exce
 		status := mapUserStatus(col(row, 5), "active")
 
 		if !isStrongPassword(password) {
+			msg := fmt.Sprintf("教师[%s]密码强度不足，需至少8位且含字母和数字", username)
 			result.Failed++
-			result.Errors = append(result.Errors, fmt.Sprintf("教师[%s]密码强度不足，需至少8位且含字母和数字", username))
+			result.Errors = append(result.Errors, msg)
+			previewRes.Failed++
+			previewRes.Errors = append(previewRes.Errors, msg)
 			continue
 		}
 
@@ -435,7 +604,11 @@ func (h *ResourceImportHandler) doImportTeachers(ctx context.Context, xlsx *exce
 		if orgPath != "" {
 			oid, err := h.findOrgNodeByPath(ctx, tenantID, orgPath)
 			if err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("教师[%s]的组织节点[%s]解析失败: %v", username, orgPath, err))
+				msg := fmt.Sprintf("教师[%s]的组织节点[%s]解析失败: %v", username, orgPath, err)
+				result.Errors = append(result.Errors, msg)
+				if preview {
+					previewRes.Errors = append(previewRes.Errors, msg)
+				}
 				// Continue without orgNodeID instead of failing the whole row
 			} else {
 				orgNodeID = &oid
@@ -454,29 +627,57 @@ func (h *ResourceImportHandler) doImportTeachers(ctx context.Context, xlsx *exce
 			}
 		}
 
-		if h.userExists(ctx, tenantID, username) {
-			result.Skipped++
-			result.Errors = append(result.Errors, fmt.Sprintf("教师[%s]已存在，已跳过", username))
+		existingID := h.getUserID(ctx, tenantID, username)
+		if existingID != "" {
+			if !overwrite {
+				result.Skipped++
+				previewRes.Duplicates++
+				appendDuplicate(previewRes, rowNum, username, name)
+				continue
+			}
+			if !preview {
+				hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+				if err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("教师[%s]密码加密失败: %v", username, err))
+					continue
+				}
+				_, err = h.DB.Exec(ctx, `
+					UPDATE users SET name=$1, password_hash=$2, status=$3, org_node_id=$4, title_ids=$5, updated_at=NOW()
+					WHERE id=$6 AND tenant_id=$7
+				`, name, string(hash), status, orgNodeID, titleIDs, existingID, tenantID)
+				if err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("教师[%s]更新失败: %v", username, err))
+					continue
+				}
+			}
+			result.Created++
+			previewRes.Created++
 			continue
 		}
 
-		err = h.createUser(ctx, tenantID, institutionID, roleID, orgNodeID, nil, username, password, name, status)
-		if err != nil {
-			result.Failed++
-			result.Errors = append(result.Errors, fmt.Sprintf("教师[%s]创建失败: %v", username, err))
-			continue
-		}
-		if len(titleIDs) > 0 {
-			// Titles were not set during createUser; update them now
-			var uid string
-			_ = h.DB.QueryRow(ctx, `SELECT id FROM users WHERE tenant_id=$1 AND username=$2 LIMIT 1`, tenantID, username).Scan(&uid)
-			if uid != "" {
-				_, _ = h.DB.Exec(ctx, `UPDATE users SET title_ids=$1 WHERE id=$2`, titleIDs, uid)
+		if !preview {
+			err = h.createUser(ctx, tenantID, institutionID, roleID, orgNodeID, nil, username, password, name, status)
+			if err != nil {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("教师[%s]创建失败: %v", username, err))
+				continue
 			}
+			if len(titleIDs) > 0 {
+				var uid string
+				_ = h.DB.QueryRow(ctx, `SELECT id FROM users WHERE tenant_id=$1 AND username=$2 LIMIT 1`, tenantID, username).Scan(&uid)
+				if uid != "" {
+					_, _ = h.DB.Exec(ctx, `UPDATE users SET title_ids=$1 WHERE id=$2`, titleIDs, uid)
+				}
+			}
+			result.TeacherCreated++
 		}
-		result.TeacherCreated++
 		result.Created++
+		previewRes.Created++
 	}
+
+	return previewRes, result
 }
 
 func (h *ResourceImportHandler) getInstitutionID(ctx context.Context, tenantID string) *string {
@@ -494,10 +695,14 @@ func (h *ResourceImportHandler) getRoleIDByCode(ctx context.Context, tenantID, c
 	return id
 }
 
-func (h *ResourceImportHandler) userExists(ctx context.Context, tenantID, username string) bool {
+func (h *ResourceImportHandler) getUserID(ctx context.Context, tenantID, username string) string {
 	var id string
 	_ = h.DB.QueryRow(ctx, `SELECT id FROM users WHERE tenant_id=$1 AND username=$2 LIMIT 1`, tenantID, username).Scan(&id)
-	return id != ""
+	return id
+}
+
+func (h *ResourceImportHandler) userExists(ctx context.Context, tenantID, username string) bool {
+	return h.getUserID(ctx, tenantID, username) != ""
 }
 
 func (h *ResourceImportHandler) createUser(ctx context.Context, tenantID string, institutionID *string, roleID string, orgNodeID, majorID *string, username, password, name, status string) error {

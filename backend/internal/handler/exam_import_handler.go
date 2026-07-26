@@ -18,17 +18,68 @@ type ExamImportHandler struct {
 	DB *pgxpool.Pool
 }
 
+type examImportResult struct {
+	Created        int
+	Failed         int
+	Skipped        int
+	Errors         []string
+	DuplicateItems []ImportPreviewItem
+}
+
+func (h *ExamImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
+	if err := r.ParseMultipartForm(50 << 20); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid form")
+		return
+	}
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "missing file")
+		return
+	}
+	defer file.Close()
+
+	xlsx, err := excelize.OpenReader(file)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "failed to parse Excel file")
+		return
+	}
+	defer xlsx.Close()
+
+	result := &examImportResult{}
+	h.importExams(r.Context(), xlsx, tenantID, claims.UserID, true, false, nil, result)
+
+	respondJSON(w, http.StatusOK, ImportPreviewResult{
+		Created:        result.Created,
+		Duplicates:     len(result.DuplicateItems),
+		Failed:         result.Failed,
+		DuplicateItems: result.DuplicateItems,
+		Errors:         result.Errors,
+	})
+}
+
 func (h *ExamImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
 		respondError(w, http.StatusForbidden, "permission denied")
 		return
 	}
+
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
-	userID := claims.UserID
+	overwrite := importOverwriteParam(r)
 
 	if err := r.ParseMultipartForm(50 << 20); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid form")
@@ -50,7 +101,7 @@ func (h *ExamImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) 
 
 	result := &examImportResult{}
 	examMap := make(map[string]string)
-	h.importExams(r.Context(), xlsx, tenantID, userID, examMap, result)
+	h.importExams(r.Context(), xlsx, tenantID, claims.UserID, false, overwrite, examMap, result)
 	if len(examMap) > 0 {
 		h.importExamQuestions(r.Context(), xlsx, tenantID, examMap, result)
 	}
@@ -58,24 +109,20 @@ func (h *ExamImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"created": result.Created,
 		"failed":  result.Failed,
+		"skipped": result.Skipped,
 		"entity":  "试卷",
 		"errors":  result.Errors,
 	})
 }
 
-type examImportResult struct {
-	Created int
-	Failed  int
-	Errors  []string
-}
-
-func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File, tenantID, userID string, examMap map[string]string, result *examImportResult) {
+func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool, examMap map[string]string, result *examImportResult) {
 	rows, err := xlsx.GetRows("试卷基本信息")
 	if err != nil {
 		log.Printf("[import/exams] sheet '试卷基本信息' not found: %v", err)
 		return
 	}
 
+	seen := make(map[string]bool)
 	for i, row := range rows {
 		if i < 2 {
 			continue
@@ -90,8 +137,64 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 
 		batchID := h.lookupEvaluationBatch(ctx, tenantID, batchName)
 
+		if seen[name] {
+			result.DuplicateItems = append(result.DuplicateItems, ImportPreviewItem{
+				RowNum: i + 1,
+				Key:    name,
+				Name:   name,
+			})
+			if !preview {
+				result.Skipped++
+			}
+			continue
+		}
+		seen[name] = true
+
+		var existingID string
+		err := h.DB.QueryRow(ctx, `SELECT id FROM exams WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
+		exists := err == nil && existingID != ""
+
+		if preview {
+			if exists {
+				result.DuplicateItems = append(result.DuplicateItems, ImportPreviewItem{
+					RowNum: i + 1,
+					Key:    name,
+					Name:   name,
+				})
+			} else {
+				result.Created++
+			}
+			continue
+		}
+
+		if exists {
+			if overwrite {
+				_, err := h.DB.Exec(ctx, `
+					UPDATE exams SET name=$1, description=$2, batch_id=$3, updated_at=NOW()
+					WHERE id=$4 AND tenant_id=$5
+				`, name, description, batchID, existingID, tenantID)
+				if err != nil {
+					result.Failed++
+					msg := fmt.Sprintf("试卷[%s]更新失败: %v", name, err)
+					result.Errors = append(result.Errors, msg)
+					log.Printf("[import/exams] %s", msg)
+					continue
+				}
+				// 覆盖时清空原有题目关联，随后根据新文件内容重新写入
+				_, _ = h.DB.Exec(ctx, `DELETE FROM exam_questions WHERE exam_id=$1`, existingID)
+				if examMap != nil {
+					examMap[name] = existingID
+				}
+				result.Created++
+				log.Printf("[import/exams] updated exam %s (id=%s)", name, existingID)
+			} else {
+				result.Skipped++
+			}
+			continue
+		}
+
 		examID := uuid.NewString()
-		_, err := h.DB.Exec(ctx, `
+		_, err = h.DB.Exec(ctx, `
 			INSERT INTO exams (id, tenant_id, name, description, status, total_score, duration,
 				batch_id, version, owner_type, creator_id, is_temp)
 			VALUES ($1,$2,$3,$4,'draft',0,60,$5,'v1.0','mine',$6,false)
@@ -104,7 +207,9 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 			continue
 		}
 
-		examMap[name] = examID
+		if examMap != nil {
+			examMap[name] = examID
+		}
 		result.Created++
 		log.Printf("[import/exams] created exam %s (id=%s)", name, examID)
 	}
@@ -180,4 +285,3 @@ func parseIntDefault(s string, defaultVal int) int {
 	}
 	return v
 }
-

@@ -73,8 +73,10 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { PageHeaderCard } from "@/components/shared/page-header-card"
+import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
 import { ExamFormDialog } from "@/components/evaluation/exam-form-dialog"
 import { cn } from "@/lib/utils"
+import type { ImportPreviewResult } from "@/lib/api"
 import { useAuth } from "@/components/auth-provider"
 import { UserSelector } from "@/components/shared/user-selector"
 import type { ExamFormData } from "@/lib/types"
@@ -171,6 +173,8 @@ export default function ExamsPage() {
   const [isImporting, setIsImporting] = useState(false)
   const [importStep, setImportStep] = useState<"download" | "upload">("download")
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
+  const [importPreview, setImportPreview] = useState<ImportPreviewResult | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
@@ -668,19 +672,40 @@ export default function ExamsPage() {
     if (file) setImportFile(file)
   }
 
-  const handleImport = async () => {
+  const executeImport = async (overwrite = false) => {
     if (!importFile) return
     setIsImporting(true)
     try {
-      const result = await importExportApi.importExcel("exams", importFile)
+      const result = await importExportApi.importExcel("exams", importFile, overwrite)
       const errorHint = result.errors && result.errors.length > 0 ? `，错误：${result.errors.slice(0, 3).join(";")}` : ""
       alert(`导入完成：成功 ${result.created} 条，失败 ${result.failed || 0} 条，跳过 ${result.skipped || 0} 条${errorHint}`)
       setImportFile(null)
       setIsImportDialogOpen(false)
+      setImportStep("download")
+      setIsImportConfirmOpen(false)
+      setImportPreview(null)
       await loadData()
     } catch (err: any) {
       alert(err.message || "导入失败")
     } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const handleImport = async () => {
+    if (!importFile) return
+    setIsImporting(true)
+    try {
+      const preview = await importExportApi.importExcelPreview("exams", importFile)
+      if (preview.duplicates > 0) {
+        setImportPreview(preview)
+        setIsImportConfirmOpen(true)
+        setIsImporting(false)
+        return
+      }
+      await executeImport(false)
+    } catch (err: any) {
+      alert(err.message || "导入失败")
       setIsImporting(false)
     }
   }
@@ -1287,6 +1312,20 @@ export default function ExamsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {importPreview && (
+        <ImportConfirmDialog
+          open={isImportConfirmOpen}
+          onOpenChange={setIsImportConfirmOpen}
+          entityLabel="试卷"
+          created={importPreview.created}
+          duplicates={importPreview.duplicates}
+          failed={importPreview.failed}
+          duplicateItems={importPreview.duplicateItems}
+          onConfirmOverwrite={() => executeImport(true)}
+          onConfirmSkip={() => executeImport(false)}
+        />
+      )}
 
       {/* Export Dialog */}
       <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>

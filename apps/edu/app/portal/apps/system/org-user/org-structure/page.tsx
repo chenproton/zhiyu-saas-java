@@ -41,6 +41,8 @@ import {
 import { cn } from "@/lib/utils"
 import { orgApi, orgTypeApi, portalUserManagementApi, importExportApi } from "@/lib/api"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
+import type { ImportPreviewResult } from "@/lib/api"
 import type { Organization, OrgType } from "@/lib/types/backend"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { useToast } from "@/hooks/use-toast"
@@ -231,6 +233,8 @@ export default function OrgStructurePage() {
   const [isImporting, setIsImporting] = useState(false)
   const [importStep, setImportStep] = useState<"download" | "upload">("download")
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
+  const [importPreview, setImportPreview] = useState<ImportPreviewResult | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -505,11 +509,11 @@ export default function OrgStructurePage() {
     if (file) setImportFile(file)
   }
 
-  const handleImport = async () => {
+  const executeImport = async (overwrite = false) => {
     if (!importFile || !tenantId) return
     setIsImporting(true)
     try {
-      const result = await importExportApi.importExcel("organizations", importFile)
+      const result = await importExportApi.importExcel("organizations", importFile, overwrite)
       const errorHint = result.errors && result.errors.length > 0 ? `，错误：${result.errors.slice(0, 3).join(";")}` : ""
       toast({
         title: "导入完成",
@@ -518,10 +522,30 @@ export default function OrgStructurePage() {
       setImportFile(null)
       setIsImportDialogOpen(false)
       setImportStep("download")
+      setIsImportConfirmOpen(false)
+      setImportPreview(null)
       await fetchData()
     } catch (err: any) {
       toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
     } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const handleImport = async () => {
+    if (!importFile || !tenantId) return
+    setIsImporting(true)
+    try {
+      const preview = await importExportApi.importExcelPreview("organizations", importFile)
+      if (preview.duplicates > 0) {
+        setImportPreview(preview)
+        setIsImportConfirmOpen(true)
+        setIsImporting(false)
+        return
+      }
+      await executeImport(false)
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
       setIsImporting(false)
     }
   }
@@ -812,6 +836,20 @@ export default function OrgStructurePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {importPreview && (
+        <ImportConfirmDialog
+          open={isImportConfirmOpen}
+          onOpenChange={setIsImportConfirmOpen}
+          entityLabel="组织架构"
+          created={importPreview.created}
+          duplicates={importPreview.duplicates}
+          failed={importPreview.failed}
+          duplicateItems={importPreview.duplicateItems}
+          onConfirmOverwrite={() => executeImport(true)}
+          onConfirmSkip={() => executeImport(false)}
+        />
+      )}
 
       <ConfirmDialog
         open={!!deleteTarget}

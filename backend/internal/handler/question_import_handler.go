@@ -19,6 +19,52 @@ type QuestionImportHandler struct {
 	DB *pgxpool.Pool
 }
 
+func (h *QuestionImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	userID := claims.UserID
+	bankID := chi.URLParam(r, "bankId")
+	if bankID == "" {
+		respondError(w, http.StatusBadRequest, "missing bank id")
+		return
+	}
+
+	if err := r.ParseMultipartForm(50 << 20); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid form")
+		return
+	}
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "missing file")
+		return
+	}
+	defer file.Close()
+
+	var existingBank string
+	err = h.DB.QueryRow(r.Context(), `SELECT id FROM question_banks WHERE id=$1 AND tenant_id=$2`, bankID, tenantID).Scan(&existingBank)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "题库不存在")
+		return
+	}
+
+	xlsx, err := excelize.OpenReader(file)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "failed to parse Excel file")
+		return
+	}
+	defer xlsx.Close()
+
+	previewRes, _ := h.importQuestions(r.Context(), xlsx, tenantID, userID, bankID, true, false)
+	respondJSON(w, http.StatusOK, previewRes)
+}
+
 func (h *QuestionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
@@ -47,7 +93,6 @@ func (h *QuestionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 	}
 	defer file.Close()
 
-	// verify bank exists
 	var existingBank string
 	err = h.DB.QueryRow(r.Context(), `SELECT id FROM question_banks WHERE id=$1 AND tenant_id=$2`, bankID, tenantID).Scan(&existingBank)
 	if err != nil {
@@ -62,8 +107,8 @@ func (h *QuestionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 	}
 	defer xlsx.Close()
 
-	result := &questionImportResult{}
-	h.importQuestions(r.Context(), xlsx, tenantID, userID, bankID, result)
+	overwrite := importOverwriteParam(r)
+	_, result := h.importQuestions(r.Context(), xlsx, tenantID, userID, bankID, false, overwrite)
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"created": result.Created,
@@ -74,20 +119,17 @@ func (h *QuestionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 	})
 }
 
-type questionImportResult struct {
-	Created int
-	Failed  int
-	Skipped int
-	Errors  []string
-}
+func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excelize.File, tenantID, userID, bankID string, preview, overwrite bool) (ImportPreviewResult, ImportExecuteResult) {
+	var previewRes ImportPreviewResult
+	var execRes ImportExecuteResult
 
-func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excelize.File, tenantID, userID, bankID string, result *questionImportResult) {
 	rows, err := xlsx.GetRows("题目明细")
 	if err != nil {
 		log.Printf("[import/questions] sheet '题目明细' not found: %v", err)
-		return
+		return previewRes, execRes
 	}
 
+	seen := make(map[string]bool)
 	for i, row := range rows {
 		if i < 2 {
 			continue
@@ -117,9 +159,14 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 
 		answer, err := buildAnswer(qType, answerRaw, options)
 		if err != nil {
-			result.Failed++
 			msg := fmt.Sprintf("第%d行题目答案解析失败: %v", i+1, err)
-			result.Errors = append(result.Errors, msg)
+			if preview {
+				previewRes.Failed++
+				previewRes.Errors = append(previewRes.Errors, msg)
+			} else {
+				execRes.Failed++
+				execRes.Errors = append(execRes.Errors, msg)
+			}
 			log.Printf("[import/questions] %s", msg)
 			continue
 		}
@@ -127,23 +174,82 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 		answerJSON, _ := json.Marshal(answer)
 		optionsJSON, _ := json.Marshal(options)
 
-		knowledgeIDs := h.findOrCreateKnowledgePoints(ctx, tenantID, knowledgeNames)
+		key := bankID + "|" + content
+		if seen[key] {
+			previewRes.Duplicates++
+			if len(previewRes.DuplicateItems) < 100 {
+				previewRes.DuplicateItems = append(previewRes.DuplicateItems, ImportPreviewItem{
+					RowNum: i + 1,
+					Key:    content,
+					Name:   content,
+				})
+			}
+			if !preview {
+				execRes.Skipped++
+			}
+			continue
+		}
+		seen[key] = true
 
+		var existingID string
+		err = h.DB.QueryRow(ctx, `SELECT id FROM questions WHERE tenant_id=$1 AND bank_id=$2 AND content=$3 LIMIT 1`, tenantID, bankID, content).Scan(&existingID)
+		found := err == nil
+
+		if preview {
+			if found {
+				previewRes.Duplicates++
+				if len(previewRes.DuplicateItems) < 100 {
+					previewRes.DuplicateItems = append(previewRes.DuplicateItems, ImportPreviewItem{
+						RowNum: i + 1,
+						Key:    content,
+						Name:   content,
+					})
+				}
+			} else {
+				previewRes.Created++
+			}
+			continue
+		}
+
+		if found {
+			if overwrite {
+				knowledgeIDs := h.findOrCreateKnowledgePoints(ctx, tenantID, knowledgeNames)
+				_, err = h.DB.Exec(ctx, `
+					UPDATE questions SET type=$1, options=$2, answer=$3, analysis=$4, score=$5, difficulty=$6, knowledge_point_ids=$7
+					WHERE id=$8
+				`, qType, string(optionsJSON), string(answerJSON), analysis, score, difficulty, knowledgeIDs, existingID)
+				if err != nil {
+					execRes.Failed++
+					msg := fmt.Sprintf("第%d行题目更新失败: %v", i+1, err)
+					execRes.Errors = append(execRes.Errors, msg)
+					log.Printf("[import/questions] %s", msg)
+					continue
+				}
+				execRes.Created++
+			} else {
+				execRes.Skipped++
+			}
+			continue
+		}
+
+		knowledgeIDs := h.findOrCreateKnowledgePoints(ctx, tenantID, knowledgeNames)
 		questionID := uuid.NewString()
 		_, err = h.DB.Exec(ctx, `
 			INSERT INTO questions (id, tenant_id, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'draft')
 		`, questionID, tenantID, bankID, qType, content, string(optionsJSON), string(answerJSON), analysis, score, difficulty, knowledgeIDs, userID, source)
 		if err != nil {
-			result.Failed++
+			execRes.Failed++
 			msg := fmt.Sprintf("第%d行题目创建失败: %v", i+1, err)
-			result.Errors = append(result.Errors, msg)
+			execRes.Errors = append(execRes.Errors, msg)
 			log.Printf("[import/questions] %s", msg)
 			continue
 		}
 
-		result.Created++
+		execRes.Created++
 	}
+
+	return previewRes, execRes
 }
 
 func (h *QuestionImportHandler) findOrCreateKnowledgePoints(ctx context.Context, tenantID string, names []string) []string {

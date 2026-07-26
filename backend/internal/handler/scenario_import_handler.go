@@ -20,12 +20,67 @@ type ScenarioImportHandler struct {
 }
 
 type scenarioImportResult struct {
-	Created        int
-	Failed         int
-	Skipped        int
+	Created         int
+	Failed          int
+	Skipped         int
 	ScenarioCreated int
-	TaskCreated    int
-	Errors         []string
+	TaskCreated     int
+	Errors          []string
+	DuplicateItems  []ImportPreviewItem
+}
+
+// parseUploadedExcel parses the multipart form and opens the uploaded Excel file.
+func (h *ScenarioImportHandler) parseUploadedExcel(r *http.Request) (*excelize.File, []string, error) {
+	if err := r.ParseMultipartForm(50 << 20); err != nil {
+		return nil, nil, fmt.Errorf("invalid form")
+	}
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		return nil, nil, fmt.Errorf("missing file")
+	}
+	defer file.Close()
+
+	xlsx, err := excelize.OpenReader(file)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse Excel file")
+	}
+	sheets := xlsx.GetSheetList()
+	return xlsx, sheets, nil
+}
+
+func (h *ScenarioImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
+	xlsx, _, err := h.parseUploadedExcel(r)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer xlsx.Close()
+
+	result := &scenarioImportResult{}
+	scenarioMap := make(map[string]string)
+
+	ctx := r.Context()
+	h.importScenarios(ctx, xlsx, tenantID, claims.UserID, true, false, scenarioMap, result)
+	h.importTasks(ctx, xlsx, tenantID, claims.UserID, true, false, scenarioMap, result)
+
+	respondJSON(w, http.StatusOK, ImportPreviewResult{
+		Created:        result.Created,
+		Duplicates:     len(result.DuplicateItems),
+		Failed:         result.Failed,
+		DuplicateItems: result.DuplicateItems,
+		Errors:         result.Errors,
+	})
 }
 
 func (h *ScenarioImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
@@ -40,21 +95,11 @@ func (h *ScenarioImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	userID := claims.UserID
+	overwrite := importOverwriteParam(r)
 
-	if err := r.ParseMultipartForm(50 << 20); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid form")
-		return
-	}
-	file, _, err := r.FormFile("file")
+	xlsx, sheets, err := h.parseUploadedExcel(r)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "missing file")
-		return
-	}
-	defer file.Close()
-
-	xlsx, err := excelize.OpenReader(file)
-	if err != nil {
-		respondError(w, http.StatusBadRequest, "failed to parse Excel file")
+		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	defer xlsx.Close()
@@ -63,13 +108,13 @@ func (h *ScenarioImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context()
 	scenarioMap := make(map[string]string)
 
-	h.importScenarios(ctx, xlsx, tenantID, userID, scenarioMap, result)
+	h.importScenarios(ctx, xlsx, tenantID, userID, false, overwrite, scenarioMap, result)
 	if len(scenarioMap) == 0 && result.Failed == 0 {
 		respondError(w, http.StatusBadRequest, "no valid scenario data found in Sheet1")
 		return
 	}
 
-	h.importTasks(ctx, xlsx, tenantID, userID, scenarioMap, result)
+	h.importTasks(ctx, xlsx, tenantID, userID, false, overwrite, scenarioMap, result)
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"created":         result.Created,
@@ -79,10 +124,11 @@ func (h *ScenarioImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 		"scenarioCreated": result.ScenarioCreated,
 		"taskCreated":     result.TaskCreated,
 		"errors":          result.Errors,
+		"sheets":          sheets,
 	})
 }
 
-func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excelize.File, tenantID, userID string, scenarioMap map[string]string, result *scenarioImportResult) {
+func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool, scenarioMap map[string]string, result *scenarioImportResult) {
 	rows, err := xlsx.GetRows("场景基本信息")
 	if err != nil {
 		return
@@ -102,14 +148,58 @@ func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excel
 		background := nullableStr(col(row, 5))
 		batchName := col(row, 6)
 
-		code := h.generateScenarioCode(ctx, tenantID)
 		careerPositionID := h.lookupCareerPosition(ctx, tenantID, positionName)
 		industryIDs := h.lookupIndustries(ctx, tenantID, industryNames)
 		professionIDs := h.lookupProfessions(ctx, tenantID, professionNames)
 		batchID := h.lookupBatch(ctx, tenantID, batchName, "scene_batches")
 
+		var existingID string
+		err := h.DB.QueryRow(ctx, `SELECT id FROM scenarios WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
+		exists := err == nil && existingID != ""
+
+		if exists {
+			if preview {
+				if len(result.DuplicateItems) < 100 {
+					result.DuplicateItems = append(result.DuplicateItems, ImportPreviewItem{
+						RowNum: i + 1,
+						Key:    name,
+						Name:   name,
+					})
+				}
+				result.Skipped++
+				continue
+			}
+			if !overwrite {
+				result.Skipped++
+				continue
+			}
+			_, err := h.DB.Exec(ctx, `
+				UPDATE scenarios
+				SET name=$3, career_position_id=$4, industry_ids=$5, profession_ids=$6,
+				    batch_id=$7, difficulty=$8, background=$9
+				WHERE id=$1 AND tenant_id=$2
+			`, existingID, tenantID, name, careerPositionID, industryIDs, professionIDs,
+				batchID, difficulty, background)
+			if err != nil {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("场景[%s]更新失败: %v", name, err))
+				continue
+			}
+			// 覆盖时清空原有任务及任务相关数据，随后根据新文件内容重新写入
+			h.DB.Exec(ctx, `DELETE FROM task_evaluation_methods WHERE task_id IN (SELECT id FROM scenario_tasks WHERE scenario_id=$1)`, existingID)
+			h.DB.Exec(ctx, `DELETE FROM scenario_tasks WHERE scenario_id=$1`, existingID)
+			scenarioMap[name] = existingID
+			continue
+		}
+
+		if preview {
+			result.Created++
+			continue
+		}
+
+		code := h.generateScenarioCode(ctx, tenantID)
 		scenarioID := uuid.NewString()
-		_, err := h.DB.Exec(ctx, `
+		_, err = h.DB.Exec(ctx, `
 			INSERT INTO scenarios (id, tenant_id, name, code, career_position_id, industry_ids, profession_ids,
 				batch_id, difficulty, version, status, background, creator_id, co_builder_ids)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'v1.0','draft',$10,$11,'{}')
@@ -126,7 +216,11 @@ func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excel
 	}
 }
 
-func (h *ScenarioImportHandler) importTasks(ctx context.Context, xlsx *excelize.File, tenantID, userID string, scenarioMap map[string]string, result *scenarioImportResult) {
+func (h *ScenarioImportHandler) importTasks(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool, scenarioMap map[string]string, result *scenarioImportResult) {
+	if preview {
+		return
+	}
+
 	rows, err := xlsx.GetRows("任务配置")
 	if err != nil {
 		return

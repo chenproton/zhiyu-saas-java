@@ -12,7 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Pencil, Trash2, Plus, Loader2, Upload, FileDown } from "lucide-react"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest, buildQuery, type ListResponse, importExportApi } from "@/lib/api"
+import type { ImportPreviewResult } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
 import type { Industry } from "@/lib/types/backend"
 
 export default function IndustriesPage() {
@@ -37,6 +39,8 @@ export default function IndustriesPage() {
   const [isImporting, setIsImporting] = useState(false)
   const [importStep, setImportStep] = useState<"download" | "upload">("download")
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
+  const [importPreview, setImportPreview] = useState<ImportPreviewResult | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchIndustries = async () => {
@@ -190,11 +194,11 @@ export default function IndustriesPage() {
     if (file) setImportFile(file)
   }
 
-  const handleImport = async () => {
+  const executeImport = async (overwrite = false) => {
     if (!importFile || !tenantId) return
     setIsImporting(true)
     try {
-      const result = await importExportApi.importExcel("industries", importFile)
+      const result = await importExportApi.importExcel("industries", importFile, overwrite)
       const errorHint = result.errors && result.errors.length > 0 ? `，错误：${result.errors.slice(0, 3).join(";")}` : ""
       toast({
         title: "导入完成",
@@ -203,10 +207,30 @@ export default function IndustriesPage() {
       setImportFile(null)
       setIsImportDialogOpen(false)
       setImportStep("download")
+      setIsImportConfirmOpen(false)
+      setImportPreview(null)
       await fetchIndustries()
     } catch (err: any) {
       toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
     } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const handleImport = async () => {
+    if (!importFile || !tenantId) return
+    setIsImporting(true)
+    try {
+      const preview = await importExportApi.importExcelPreview("industries", importFile)
+      if (preview.duplicates > 0) {
+        setImportPreview(preview)
+        setIsImportConfirmOpen(true)
+        setIsImporting(false)
+        return
+      }
+      await executeImport(false)
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
       setIsImporting(false)
     }
   }
@@ -405,6 +429,20 @@ export default function IndustriesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {importPreview && (
+        <ImportConfirmDialog
+          open={isImportConfirmOpen}
+          onOpenChange={setIsImportConfirmOpen}
+          entityLabel="行业"
+          created={importPreview.created}
+          duplicates={importPreview.duplicates}
+          failed={importPreview.failed}
+          duplicateItems={importPreview.duplicateItems}
+          onConfirmOverwrite={() => executeImport(true)}
+          onConfirmSkip={() => executeImport(false)}
+        />
+      )}
 
       {/* 新增/编辑行业 */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

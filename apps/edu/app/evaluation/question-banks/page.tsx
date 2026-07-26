@@ -31,8 +31,10 @@ import {
   X,
 } from "lucide-react"
 import { questionBankApi, questionApi, evaluationBatchApi, importExportApi, approvalApi, majorApi, workflowApi } from "@/lib/api"
+import type { ImportPreviewResult } from "@/lib/api"
 import type { QuestionBank, Question, EvaluationBatch } from "@/lib/types"
 import type { Major, Workflow } from "@/lib/types/backend"
+import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -169,6 +171,8 @@ export default function QuestionBanksPage() {
   const [importStep, setImportStep] = useState<"download" | "upload">("download")
   const [isDownloading, setIsDownloading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
+  const [importPreview, setImportPreview] = useState<ImportPreviewResult | null>(null)
 
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
   const [inviteTarget, setInviteTarget] = useState<BackendQuestionBank | null>(null)
@@ -683,19 +687,40 @@ export default function QuestionBanksPage() {
     if (file) setImportFile(file)
   }
 
-  const handleImport = async () => {
+  const executeImport = async (overwrite = false) => {
     if (!importFile) return
     setIsImporting(true)
     try {
-      const result = await importExportApi.importExcel("question-banks", importFile)
+      const result = await importExportApi.importExcel("question-banks", importFile, overwrite)
       const errorHint = result.errors && result.errors.length > 0 ? `，错误：${result.errors.slice(0, 3).join(";")}` : ""
       alert(`导入完成：成功 ${result.created} 条，失败 ${result.failed || 0} 条，跳过 ${result.skipped || 0} 条${errorHint}`)
       setImportFile(null)
       setIsImportDialogOpen(false)
+      setImportStep("download")
+      setIsImportConfirmOpen(false)
+      setImportPreview(null)
       await loadData()
     } catch (err: any) {
       alert(err.message || "导入失败")
     } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const handleImport = async () => {
+    if (!importFile) return
+    setIsImporting(true)
+    try {
+      const preview = await importExportApi.importExcelPreview("question-banks", importFile)
+      if (preview.duplicates > 0) {
+        setImportPreview(preview)
+        setIsImportConfirmOpen(true)
+        setIsImporting(false)
+        return
+      }
+      await executeImport(false)
+    } catch (err: any) {
+      alert(err.message || "导入失败")
       setIsImporting(false)
     }
   }
@@ -1273,6 +1298,20 @@ export default function QuestionBanksPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {importPreview && (
+        <ImportConfirmDialog
+          open={isImportConfirmOpen}
+          onOpenChange={setIsImportConfirmOpen}
+          entityLabel="题库"
+          created={importPreview.created}
+          duplicates={importPreview.duplicates}
+          failed={importPreview.failed}
+          duplicateItems={importPreview.duplicateItems}
+          onConfirmOverwrite={() => executeImport(true)}
+          onConfirmSkip={() => executeImport(false)}
+        />
+      )}
 
       {/* Export Dialog */}
       <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>

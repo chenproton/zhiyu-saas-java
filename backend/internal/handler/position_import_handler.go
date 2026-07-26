@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,6 +16,60 @@ import (
 
 type PositionImportHandler struct {
 	DB *pgxpool.Pool
+}
+
+// parseUploadedExcel parses the multipart form and opens the uploaded Excel file.
+func (h *PositionImportHandler) parseUploadedExcel(r *http.Request) (*excelize.File, []string, error) {
+	if err := r.ParseMultipartForm(50 << 20); err != nil {
+		return nil, nil, fmt.Errorf("invalid form")
+	}
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		return nil, nil, fmt.Errorf("missing file")
+	}
+	defer file.Close()
+
+	xlsx, err := excelize.OpenReader(file)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse Excel file")
+	}
+	sheets := xlsx.GetSheetList()
+	return xlsx, sheets, nil
+}
+
+func (h *PositionImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
+	xlsx, _, err := h.parseUploadedExcel(r)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer xlsx.Close()
+
+	result := &importResult{}
+	positionMap := make(map[string]string)
+
+	ctx := r.Context()
+	h.importPositions(ctx, xlsx, tenantID, claims.UserID, true, false, positionMap, result)
+	h.importResponsibilities(ctx, xlsx, tenantID, claims.UserID, true, false, positionMap, result)
+
+	respondJSON(w, http.StatusOK, ImportPreviewResult{
+		Created:        result.Created,
+		Duplicates:     len(result.DuplicateItems),
+		Failed:         result.Failed,
+		DuplicateItems: result.DuplicateItems,
+		Errors:         result.Errors,
+	})
 }
 
 func (h *PositionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
@@ -31,41 +84,26 @@ func (h *PositionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	userID := claims.UserID
+	overwrite := importOverwriteParam(r)
 
-	if err := r.ParseMultipartForm(50 << 20); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid form")
-		return
-	}
-	file, _, err := r.FormFile("file")
+	xlsx, sheets, err := h.parseUploadedExcel(r)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "missing file")
-		return
-	}
-	defer file.Close()
-
-	xlsx, err := excelize.OpenReader(file)
-	if err != nil {
-		respondError(w, http.StatusBadRequest, "failed to parse Excel file")
+		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	defer xlsx.Close()
 
-	// Log available sheets for debugging
-	sheets := xlsx.GetSheetList()
-	log.Printf("[import/positions] sheets found: %v", sheets)
-
 	result := &importResult{}
-
 	ctx := r.Context()
 	positionMap := make(map[string]string)
 
-	h.importPositions(ctx, xlsx, tenantID, userID, positionMap, result)
+	h.importPositions(ctx, xlsx, tenantID, userID, false, overwrite, positionMap, result)
 	if len(positionMap) == 0 && result.Failed == 0 {
 		respondError(w, http.StatusBadRequest, "no valid position data found in Sheet1")
 		return
 	}
 
-	h.importResponsibilities(ctx, xlsx, tenantID, userID, positionMap, result)
+	h.importResponsibilities(ctx, xlsx, tenantID, userID, false, overwrite, positionMap, result)
 
 	log.Printf("[import/positions] result: created=%d failed=%d skipped=%d positions=%d responsibilities=%d bindings=%d errors=%d",
 		result.Created, result.Failed, result.Skipped, result.PositionCreated, result.RespCreated, result.BindingCreated, len(result.Errors))
@@ -86,7 +124,7 @@ func (h *PositionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 	})
 }
 
-func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excelize.File, tenantID, userID string, positionMap map[string]string, result *importResult) {
+func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool, positionMap map[string]string, result *importResult) {
 	rows, err := xlsx.GetRows("岗位基本信息")
 	if err != nil {
 		return
@@ -115,25 +153,73 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 		batchID := h.lookupBatch(ctx, tenantID, batchName, "batches")
 		majorIDs := h.lookupMajors(ctx, tenantID, majorNames)
 
-		originalName := name
+		var existingID string
+		err := h.DB.QueryRow(ctx, `SELECT id FROM career_positions WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
+		exists := err == nil && existingID != ""
+
+		if exists {
+			if preview {
+				if len(result.DuplicateItems) < 100 {
+					result.DuplicateItems = append(result.DuplicateItems, ImportPreviewItem{
+						RowNum: i + 1,
+						Key:    name,
+						Name:   name,
+					})
+				}
+				result.Skipped++
+				continue
+			}
+			if !overwrite {
+				result.Skipped++
+				continue
+			}
+			_, err := h.DB.Exec(ctx, `
+				UPDATE career_positions
+				SET name=$3, short_name=$4, industry_id=$5, position_type=$6,
+				    salary_min=$7, salary_max=$8, description=$9, requirements=$10,
+				    career_path=$11, batch_id=$12
+				WHERE id=$1 AND tenant_id=$2
+			`, existingID, tenantID, name, shortName, industryID, positionType,
+				salaryMin, salaryMax, description, requirements, careerPath, batchID)
+			if err != nil {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("岗位[%s]更新失败: %v", name, err))
+				continue
+			}
+			// 覆盖时清空原有关联数据，随后根据新文件内容重新写入
+			h.DB.Exec(ctx, `DELETE FROM career_position_majors WHERE career_position_id=$1`, existingID)
+			h.DB.Exec(ctx, `DELETE FROM position_certificates WHERE career_position_id=$1`, existingID)
+			h.DB.Exec(ctx, `DELETE FROM position_responsibilities WHERE career_position_id=$1`, existingID)
+			h.DB.Exec(ctx, `DELETE FROM position_ability_bindings WHERE career_position_id=$1`, existingID)
+
+			for _, mid := range majorIDs {
+				h.DB.Exec(ctx, `INSERT INTO career_position_majors (id, career_position_id, major_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
+					uuid.NewString(), existingID, mid)
+			}
+			for _, certName := range certNames {
+				if certName == "" {
+					continue
+				}
+				certID := h.findOrCreateCert(ctx, tenantID, certName)
+				h.DB.Exec(ctx, `INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
+					uuid.NewString(), tenantID, existingID, certID)
+			}
+			positionMap[name] = existingID
+			continue
+		}
+
+		if preview {
+			result.Created++
+			continue
+		}
 
 		positionID := uuid.NewString()
-		_, err := h.DB.Exec(ctx, `
+		_, err = h.DB.Exec(ctx, `
 			INSERT INTO career_positions (id, tenant_id, name, short_name, industry_id, position_type,
 				salary_min, salary_max, description, requirements, career_path, version, status, created_by, collaborators)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'v1.0','draft',$12,'{}')
 		`, positionID, tenantID, name, shortName, industryID, positionType,
 			salaryMin, salaryMax, description, requirements, careerPath, userID)
-		if isUniqueViolation(err) {
-			name = name + "_" + time.Now().Format("0102150405")
-			positionID = uuid.NewString()
-			_, err = h.DB.Exec(ctx, `
-				INSERT INTO career_positions (id, tenant_id, name, short_name, industry_id, position_type,
-					salary_min, salary_max, description, requirements, career_path, version, status, created_by, collaborators)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'v1.0','draft',$12,'{}')
-			`, positionID, tenantID, name, shortName, industryID, positionType,
-				salaryMin, salaryMax, description, requirements, careerPath, userID)
-		}
 		if err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("岗位[%s]创建失败: %v", name, err))
@@ -157,13 +243,17 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 				uuid.NewString(), tenantID, positionID, certID)
 		}
 
-		positionMap[originalName] = positionID
+		positionMap[name] = positionID
 		result.PositionCreated++
 		result.Created++
 	}
 }
 
-func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx *excelize.File, tenantID, userID string, positionMap map[string]string, result *importResult) {
+func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool, positionMap map[string]string, result *importResult) {
+	if preview {
+		return
+	}
+
 	rows, err := xlsx.GetRows("工作职责与能力点")
 	if err != nil {
 		log.Printf("[import/positions] sheet '工作职责与能力点' not found: %v", err)
@@ -359,6 +449,7 @@ type importResult struct {
 	RespCreated     int
 	BindingCreated  int
 	Errors          []string
+	DuplicateItems  []ImportPreviewItem
 }
 
 func col(row []string, idx int) string {

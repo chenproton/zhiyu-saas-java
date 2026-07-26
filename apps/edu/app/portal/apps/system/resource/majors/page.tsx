@@ -10,10 +10,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Search, Pencil, Trash2, Plus, Loader2, Upload, FileDown } from "lucide-react"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { portalRequest, buildQuery, type ListResponse } from "@/lib/api"
+import { portalRequest, buildQuery, type ListResponse, importExportApi } from "@/lib/api"
+import type { ImportPreviewResult } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
 import type { Major } from "@/lib/types/backend"
-import { importExportApi } from "@/lib/api"
 
 export default function MajorsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
@@ -36,6 +37,8 @@ export default function MajorsPage() {
   const [isImporting, setIsImporting] = useState(false)
   const [importStep, setImportStep] = useState<"download" | "upload">("download")
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
+  const [importPreview, setImportPreview] = useState<ImportPreviewResult | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchMajors = async () => {
@@ -160,11 +163,11 @@ export default function MajorsPage() {
     if (file) setImportFile(file)
   }
 
-  const handleImport = async () => {
+  const executeImport = async (overwrite = false) => {
     if (!importFile || !tenantId) return
     setIsImporting(true)
     try {
-      const result = await importExportApi.importExcel("majors", importFile)
+      const result = await importExportApi.importExcel("majors", importFile, overwrite)
       const errorHint = result.errors && result.errors.length > 0 ? `，错误：${result.errors.slice(0, 3).join(";")}` : ""
       toast({
         title: "导入完成",
@@ -173,10 +176,30 @@ export default function MajorsPage() {
       setImportFile(null)
       setIsImportDialogOpen(false)
       setImportStep("download")
+      setIsImportConfirmOpen(false)
+      setImportPreview(null)
       await fetchMajors()
     } catch (err: any) {
       toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
     } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const handleImport = async () => {
+    if (!importFile || !tenantId) return
+    setIsImporting(true)
+    try {
+      const preview = await importExportApi.importExcelPreview("majors", importFile)
+      if (preview.duplicates > 0) {
+        setImportPreview(preview)
+        setIsImportConfirmOpen(true)
+        setIsImporting(false)
+        return
+      }
+      await executeImport(false)
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
       setIsImporting(false)
     }
   }
@@ -373,6 +396,20 @@ export default function MajorsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {importPreview && (
+        <ImportConfirmDialog
+          open={isImportConfirmOpen}
+          onOpenChange={setIsImportConfirmOpen}
+          entityLabel="专业"
+          created={importPreview.created}
+          duplicates={importPreview.duplicates}
+          failed={importPreview.failed}
+          duplicateItems={importPreview.duplicateItems}
+          onConfirmOverwrite={() => executeImport(true)}
+          onConfirmSkip={() => executeImport(false)}
+        />
+      )}
 
       {/* 新增/编辑专业 */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

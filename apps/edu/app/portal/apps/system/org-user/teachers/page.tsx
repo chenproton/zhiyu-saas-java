@@ -20,8 +20,10 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ResetPasswordDialog } from "@/components/shared/reset-password-dialog"
 import { portalUserManagementApi, portalStaffTitleApi, importExportApi } from "@/lib/api"
 import type { StaffTitle } from "@/lib/types/backend"
+import type { ImportPreviewResult } from "@/lib/api"
 import { MultiSelectSearch } from "@/components/ui/multi-select-search"
 import { useToast } from "@/hooks/use-toast"
+import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
 import {
   Plus, Trash2, Search, Filter, Upload, Download, FileDown,
   FolderTree, Key, Loader2, AlertCircle, RotateCcw, Pencil, ChevronLeft, ChevronRight,
@@ -84,6 +86,8 @@ export default function TeachersPage() {
   const [isImporting, setIsImporting] = useState(false)
   const [importStep, setImportStep] = useState<"download" | "upload">("download")
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
+  const [importPreview, setImportPreview] = useState<ImportPreviewResult | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [formName, setFormName] = useState("")
@@ -320,11 +324,11 @@ export default function TeachersPage() {
     if (file) setImportFile(file)
   }
 
-  const handleImport = async () => {
+  const executeImport = async (overwrite = false) => {
     if (!importFile || !tenantId) return
     setIsImporting(true)
     try {
-      const result = await importExportApi.importExcel("teachers", importFile)
+      const result = await importExportApi.importExcel("teachers", importFile, overwrite)
       const errorHint = result.errors && result.errors.length > 0 ? `，错误：${result.errors.slice(0, 3).join(";")}` : ""
       toast({
         title: "导入完成",
@@ -333,10 +337,30 @@ export default function TeachersPage() {
       setImportFile(null)
       setIsImportDialogOpen(false)
       setImportStep("download")
+      setIsImportConfirmOpen(false)
+      setImportPreview(null)
       await refetch()
     } catch (err: any) {
       toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
     } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const handleImport = async () => {
+    if (!importFile || !tenantId) return
+    setIsImporting(true)
+    try {
+      const preview = await importExportApi.importExcelPreview("teachers", importFile)
+      if (preview.duplicates > 0) {
+        setImportPreview(preview)
+        setIsImportConfirmOpen(true)
+        setIsImporting(false)
+        return
+      }
+      await executeImport(false)
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
       setIsImporting(false)
     }
   }
@@ -713,6 +737,20 @@ export default function TeachersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {importPreview && (
+        <ImportConfirmDialog
+          open={isImportConfirmOpen}
+          onOpenChange={setIsImportConfirmOpen}
+          entityLabel="教师"
+          created={importPreview.created}
+          duplicates={importPreview.duplicates}
+          failed={importPreview.failed}
+          duplicateItems={importPreview.duplicateItems}
+          onConfirmOverwrite={() => executeImport(true)}
+          onConfirmSkip={() => executeImport(false)}
+        />
+      )}
 
       {/* 批量加入部门/组织节点 */}
       <Dialog open={isJoinDialogOpen} onOpenChange={setIsJoinDialogOpen}>
