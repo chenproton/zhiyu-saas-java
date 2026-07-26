@@ -393,12 +393,12 @@ func (h *TemplateHandler) generateGranularCourseTemplate(ctx context.Context, te
 	s1, _ := f.NewSheet("课程基本信息")
 	f.DeleteSheet("Sheet1")
 	f.SetActiveSheet(s1)
-	headers1 := []string{"课程名称 *", "适用专业", "课程简介", "难度", "预计课时", "学习目标", "关联知识点", "课程资源", "所属批次"}
-	widths1 := []float64{28, 24, 42, 10, 12, 42, 28, 28, 20}
-	setA1("课程基本信息", 9, "填写说明：\n* 必填列。\n适用专业：从「专业字典」Sheet 选取，匹配则关联，不匹配则忽略\n难度：1-5，1 最易，5 最难\n预计课时：数字，单位小时\n关联知识点：从「知识点库」Sheet 选取，多个逗号分隔；匹配则关联，不匹配则自动新建并关联\n课程资源：从「任务资源库」Sheet 选取，多个逗号分隔；匹配则关联，不匹配则自动新建为文档类型资源并关联\n所属批次：从「批次字典」Sheet 选取，匹配则关联，不匹配则忽略\n导入后默认状态为 draft")
+	headers1 := []string{"课程名称 *", "适用专业", "难度", "预计课时", "学习目标", "关联知识点", "课程资源", "所属批次"}
+	widths1 := []float64{28, 24, 10, 12, 48, 28, 28, 20}
+	setA1("课程基本信息", 8, "填写说明：\n* 必填列。\n适用专业：从「专业字典」Sheet 选取，匹配则关联，不匹配则忽略\n难度：1-5，1 最易，5 最难\n预计课时：数字，单位小时\n学习目标：课程的总体学习要求\n关联知识点：从「知识点库」Sheet 选取，多个逗号分隔；匹配则关联，不匹配则自动新建并关联\n课程资源：从「任务资源库」Sheet 选取，多个逗号分隔；匹配则关联，不匹配则自动新建为文档类型资源并关联\n所属批次：从「批次字典」Sheet 选取，匹配则关联，不匹配则忽略\n导入后默认状态为 draft")
 	setHdr("课程基本信息", 2, headers1, widths1)
 	f.SetPanes("课程基本信息", &excelize.Panes{Freeze: true, YSplit: 2})
-	f.AutoFilter("课程基本信息", "A2:I2", []excelize.AutoFilterOptions{})
+	f.AutoFilter("课程基本信息", "A2:H2", []excelize.AutoFilterOptions{})
 
 	// Reference sheets
 	h.addRefSheet(f, "【参考】专业字典", []string{"专业名称", "专业编码"}, []float64{32, 18},

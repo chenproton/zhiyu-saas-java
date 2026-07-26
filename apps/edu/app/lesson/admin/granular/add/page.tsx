@@ -54,7 +54,6 @@ function AddGranularPageInner() {
   /* module 1: basic info */
   const [courseName, setCourseName] = useState("")
   const [hours, setHours] = useState("")
-  const [courseDescription, setCourseDescription] = useState("")
   const [learningGoal, setLearningGoal] = useState("")
   const [major, setMajor] = useState("")
   const [majorId, setMajorId] = useState("")
@@ -98,8 +97,7 @@ function AddGranularPageInner() {
           setCourse(c)
           setCourseName(c.name)
           setHours(String(c.onlineHours ?? c.offlineHours ?? ""))
-          setCourseDescription(c.description || "")
-          setLearningGoal("")
+          setLearningGoal(c.description || "")
           setMajor(c.majorName || "")
           setMajorId(c.majorId || "")
           setDifficulty(c.difficulty || 0)
@@ -174,14 +172,14 @@ function AddGranularPageInner() {
       order: 1,
       type: "normal",
       status: "draft" as const,
-      teachingGoals: courseDescription || learningGoal,
+      teachingGoals: learningGoal,
       duration: parseInt(hours) || 0,
       knowledgePoints: kpForCheck,
       resources: resForCheck,
       quizzes: [],
       homeworks: [],
     }
-  }, [editId, courseName, hours, courseDescription, learningGoal, knowledgePoints, selectedResourceIds, resourcePool])
+  }, [editId, courseName, hours, learningGoal, knowledgePoints, selectedResourceIds, resourcePool])
 
   const handleSave = async () => {
     if (!courseName) {
@@ -190,7 +188,7 @@ function AddGranularPageInner() {
     }
     setSaving(true)
     try {
-      const description = courseDescription || learningGoal || undefined
+      const description = learningGoal || undefined
       const knowledgePointIds = knowledgePoints
         .map((kp) => kp.id)
         .filter((id) => !id.startsWith("kp-custom-"))
@@ -321,8 +319,8 @@ function AddGranularPageInner() {
                   <div className="md:col-span-2 space-y-1.5">
                     <Label className="text-xs">学习目标</Label>
                     <RichTextEditor
-                      value={courseDescription}
-                      onChange={setCourseDescription}
+                      value={learningGoal}
+                      onChange={setLearningGoal}
                       minHeight={280}
                     />
                   </div>

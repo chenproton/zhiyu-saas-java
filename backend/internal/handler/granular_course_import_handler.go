@@ -124,22 +124,17 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 		majorName := col(row, 1)
 		difficulty := parseIntDefault(col(row, 2), 0)
 		duration := parseFloatDefault(col(row, 3), 0)
-		courseIntro := col(row, 4)
-		learningGoal := col(row, 5)
-		knowledgeNames := splitTrim(col(row, 6), ",")
-		resourceNames := splitTrim(col(row, 7), ",")
-		batchName := col(row, 8)
+		learningGoal := col(row, 4)
+		knowledgeNames := splitTrim(col(row, 5), ",")
+		resourceNames := splitTrim(col(row, 6), ",")
+		batchName := col(row, 7)
 
 		majorID := h.lookupMajor(ctx, tenantID, majorName)
 		batchID := h.lookupBatch(ctx, tenantID, batchName, "lesson_batches")
 
-		description := courseIntro
-		if description == "" {
-			description = learningGoal
-		}
 		var descPtr *string
-		if description != "" {
-			descPtr = &description
+		if learningGoal != "" {
+			descPtr = &learningGoal
 		}
 		var diffPtr *int
 		if difficulty > 0 {
