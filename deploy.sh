@@ -148,10 +148,8 @@ if [[ -n "$BRANCH_NAME" ]]; then
       exit 1
     }
     echo "  清理上次构建产物..."
-    rm -rf "$BUILD_TREE/apps/marketplace/.next/standalone" \
-           "$BUILD_TREE/apps/marketplace/.next/server" \
-           "$BUILD_TREE/apps/edu/.next/standalone" \
-           "$BUILD_TREE/apps/edu/.next/server" \
+    rm -rf "$BUILD_TREE/apps/marketplace/.next" \
+           "$BUILD_TREE/apps/edu/.next" \
            "$BUILD_TREE/backend/bin" \
            "$BUILD_TREE/backend/tmp"
   else
