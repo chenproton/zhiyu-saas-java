@@ -140,7 +140,11 @@ export default function AppsPage() {
         const configured = modulesData.platforms.find((p) => p.id === item.id)
         let modules: ModuleItem[]
 
-        if (configured?.modules.length) {
+        if (getPlatformCardModules(item.id).length > 0) {
+          // 已在统一平台模块定义中，按一级菜单聚合展示
+          modules = getPlatformCardModules(item.id).filter((m) => hasMenuPermission(m.href))
+        } else if (configured?.modules.length) {
+          // 未在定义中的平台，使用后台配置的模块数据
           modules = configured.modules
             .filter((m) => m.href && m.href !== "#" && hasMenuPermission(m.href))
             .map((m) => ({
@@ -150,7 +154,7 @@ export default function AppsPage() {
               href: m.href || "#",
             }))
         } else {
-          modules = getPlatformCardModules(item.id).filter((m) => hasMenuPermission(m.href))
+          modules = []
         }
 
         return {

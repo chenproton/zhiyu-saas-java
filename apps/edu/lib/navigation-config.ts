@@ -554,12 +554,10 @@ export function getPlatformCardModules(platformId: string): PlatformCardModule[]
   const def = platformModuleDefs[platformId]
   if (!def) return []
 
-  return def.subModules
-    .filter((m) => m.href !== "#")
-    .map((m) => ({
-      id: m.id,
-      title: m.label,
-      desc: m.children?.map((c) => c.label).join("、") || "",
-      href: m.href,
-    }))
+  return def.subModules.map((m) => ({
+    id: m.id,
+    title: m.label,
+    desc: m.children?.map((c) => c.label).join("、") || (m.href === "#" ? "暂未开放" : ""),
+    href: m.href,
+  }))
 }
