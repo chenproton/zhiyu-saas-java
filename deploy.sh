@@ -723,7 +723,7 @@ if [[ "$BACKEND_ONLY" != "true" ]]; then
 
   if [[ "$BUILD_MARKETPLACE" == "true" ]]; then
     echo "==> 构建商城前端..."
-    rm -rf "$MARKETPLACE_DIR/.next/standalone"
+    rm -rf "$MARKETPLACE_DIR/.next"
     NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
       pnpm --filter @zhiyu/marketplace build $BUILD_ARGS || {
       echo "错误：商城前端构建失败" >&2
@@ -743,7 +743,7 @@ if [[ "$BACKEND_ONLY" != "true" ]]; then
 
   if [[ "$BUILD_EDU" == "true" ]]; then
     echo "==> 构建教育管理前端..."
-    rm -rf "$EDU_DIR/.next/standalone"
+    rm -rf "$EDU_DIR/.next"
     NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
       pnpm --filter @zhiyu/edu build $BUILD_ARGS || {
       echo "错误：教育管理前端构建失败" >&2
