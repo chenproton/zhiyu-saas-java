@@ -72,6 +72,7 @@ interface DataContextValue {
 
   // 试卷相关
   exams: Exam[]
+  loadExams: () => Promise<void>
   getExam: (id: string) => Exam | undefined
   createExam: (data: ExamFormData) => Promise<Exam>
   updateExam: (id: string, data: Partial<Exam>) => Promise<void>
@@ -279,7 +280,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const loadExams = useCallback(async () => {
-    const res = await examApi.list()
+    const res = await examApi.list({ limit: 1000 })
     setExams(res.items.map(parseExam))
   }, [])
 
@@ -726,6 +727,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     moveQuestions,
     loadBankQuestions,
     exams,
+    loadExams,
     getExam,
     createExam,
     updateExam,
