@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
+	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 )
 
@@ -136,10 +137,8 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 			continue
 		}
 		name := strings.TrimSpace(row[0])
-		code := col(row, 1)
-		majorName := col(row, 2)
+		majorName := col(row, 1)
 		batchName := col(row, 3)
-		coverImage := nullableStr(col(row, 5))
 
 		majorID := h.lookupMajor(ctx, tenantID, majorName)
 		batchID := h.lookupBatch(ctx, tenantID, batchName, "lesson_batches")
@@ -166,9 +165,9 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 			}
 			_, err := h.DB.Exec(ctx, `
 				UPDATE courses
-				SET code=$3, major_id=$4, batch_id=$5, cover_image=$6, updated_at=NOW()
+				SET major_id=$3, batch_id=$4, updated_at=NOW()
 				WHERE id=$1 AND tenant_id=$2
-			`, existingID, tenantID, code, majorID, batchID, coverImage)
+			`, existingID, tenantID, majorID, batchID)
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]更新失败: %v", name, err))
@@ -184,18 +183,16 @@ func (h *CourseImportHandler) importCourses(ctx context.Context, xlsx *excelize.
 			continue
 		}
 
-		if strings.TrimSpace(code) == "" {
-			code = h.generateSystemCourseCode(ctx, tenantID)
-		}
 		courseID := uuid.NewString()
+		code := h.generateSystemCourseCode(ctx, tenantID)
 		_, err = h.DB.Exec(ctx, `
 			INSERT INTO courses (id, tenant_id, code, name, type, category, major_id, teacher_id, industry_id, version,
 				online_hours, offline_hours, online_weight, offline_weight, semester, class_name,
 				status, cover_color, cover_image, course_tag, creator_id, co_creator_ids, batch_id,
 				node_count, resource_count, study_count)
 			VALUES ($1,$2,$3,$4,'system','system',$5,NULL,NULL,'V1.0',0,0,0,0,NULL,NULL,
-				'draft',NULL,$6,NULL,$7,'{}',$8,0,0,0)
-		`, courseID, tenantID, code, name, majorID, coverImage, userID, batchID)
+				'draft',NULL,NULL,NULL,$6,'{}',$7,0,0,0)
+		`, courseID, tenantID, code, name, majorID, userID, batchID)
 		if err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]创建失败: %v", name, err))
@@ -232,8 +229,8 @@ func (h *CourseImportHandler) importNodes(ctx context.Context, xlsx *excelize.Fi
 		parentName := col(row, 2)
 		refType := mapCourseRefType(col(row, 3))
 		sortOrder := parseIntDefault(col(row, 4), 0)
-		teachingGoals := nullableStr(col(row, 5))
-		duration := parseFloatDefault(col(row, 6), 0)
+		manualTeachingGoals := nullableStr(col(row, 5))
+		manualDuration := parseFloatDefault(col(row, 6), 0)
 		knowledgeNames := splitTrim(col(row, 8), ",")
 		resourceNames := splitTrim(col(row, 9), ",")
 		evalMethodNames := splitTrim(col(row, 10), ",")
@@ -260,12 +257,36 @@ func (h *CourseImportHandler) importNodes(ctx context.Context, xlsx *excelize.Fi
 			}
 		}
 
+		var sourceID, sourceName *string
+		var teachingGoals *string
+		var duration float64
+
+		if refType == "original" {
+			g := h.lookupGranularCourse(ctx, tenantID, nodeName)
+			if g == nil {
+				result.Skipped++
+				result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]未找到同名颗粒课,已跳过", courseName, nodeName))
+				continue
+			}
+			sourceID = &g.ID
+			sn := g.Name
+			sourceName = &sn
+			teachingGoals = nil
+			duration = 0
+			if g.OnlineHours != nil {
+				duration = *g.OnlineHours
+			}
+		} else {
+			teachingGoals = manualTeachingGoals
+			duration = manualDuration
+		}
+
 		nodeID := uuid.NewString()
 		_, err := h.DB.Exec(ctx, `
 			INSERT INTO system_course_nodes (id, tenant_id, course_id, parent_id, name, sort_order, ref_type, source_id, source_name,
 				teaching_goals, duration, status)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,NULL,NULL,$8,$9,'draft')
-		`, nodeID, tenantID, courseID, parentID, nodeName, sortOrder, refType, teachingGoals, duration)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'draft')
+		`, nodeID, tenantID, courseID, parentID, nodeName, sortOrder, refType, sourceID, sourceName, teachingGoals, duration)
 		if err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]创建失败: %v", courseName, nodeName, err))
@@ -275,22 +296,25 @@ func (h *CourseImportHandler) importNodes(ctx context.Context, xlsx *excelize.Fi
 		result.NodeCreated++
 		result.Created++
 
-		knowledgePointIDs := h.findOrCreateKnowledgePoints(ctx, tenantID, knowledgeNames)
-		for _, kpID := range knowledgePointIDs {
-			_, _ = h.DB.Exec(ctx, `
-				INSERT INTO node_knowledge_point_bindings (id, tenant_id, node_id, knowledge_point_id, created_at)
-				VALUES ($1,$2,$3,$4,NOW())
-				ON CONFLICT (node_id, knowledge_point_id) DO NOTHING
-			`, uuid.NewString(), tenantID, nodeID, kpID)
-		}
+		// 颗粒课节点自带颗粒课内容，不额外绑定知识点和资源
+		if refType != "original" {
+			knowledgePointIDs := h.findOrCreateKnowledgePoints(ctx, tenantID, knowledgeNames)
+			for _, kpID := range knowledgePointIDs {
+				_, _ = h.DB.Exec(ctx, `
+					INSERT INTO node_knowledge_point_bindings (id, tenant_id, node_id, knowledge_point_id, created_at)
+					VALUES ($1,$2,$3,$4,NOW())
+					ON CONFLICT (node_id, knowledge_point_id) DO NOTHING
+				`, uuid.NewString(), tenantID, nodeID, kpID)
+			}
 
-		resourceIDs := h.findOrCreateResources(ctx, tenantID, resourceNames, userID)
-		for _, resID := range resourceIDs {
-			_, _ = h.DB.Exec(ctx, `
-				INSERT INTO node_resource_bindings (id, tenant_id, node_id, resource_id, created_at)
-				VALUES ($1,$2,$3,$4,NOW())
-				ON CONFLICT (node_id, resource_id) DO NOTHING
-			`, uuid.NewString(), tenantID, nodeID, resID)
+			resourceIDs := h.findOrCreateResources(ctx, tenantID, resourceNames, userID)
+			for _, resID := range resourceIDs {
+				_, _ = h.DB.Exec(ctx, `
+					INSERT INTO node_resource_bindings (id, tenant_id, node_id, resource_id, created_at)
+					VALUES ($1,$2,$3,$4,NOW())
+					ON CONFLICT (node_id, resource_id) DO NOTHING
+				`, uuid.NewString(), tenantID, nodeID, resID)
+			}
 		}
 
 		for _, evalName := range evalMethodNames {
@@ -348,6 +372,23 @@ func (h *CourseImportHandler) lookupBatch(ctx context.Context, tenantID, name, t
 		return nil
 	}
 	return &id
+}
+
+func (h *CourseImportHandler) lookupGranularCourse(ctx context.Context, tenantID, name string) *domain.Course {
+	if name == "" {
+		return nil
+	}
+	var c domain.Course
+	err := h.DB.QueryRow(ctx, `
+		SELECT id, name, online_hours
+		FROM courses
+		WHERE tenant_id=$1 AND name=$2 AND type='granular'
+		LIMIT 1
+	`, tenantID, name).Scan(&c.ID, &c.Name, &c.OnlineHours)
+	if err != nil {
+		return nil
+	}
+	return &c
 }
 
 func (h *CourseImportHandler) findOrCreateKnowledgePoints(ctx context.Context, tenantID string, names []string) []string {
@@ -420,10 +461,8 @@ func (h *CourseImportHandler) generateSystemCourseCode(ctx context.Context, tena
 func mapCourseRefType(t string) string {
 	t = strings.TrimSpace(t)
 	switch t {
-	case "原创":
+	case "颗粒课":
 		return "original"
-	case "引用":
-		return "resource"
 	default:
 		return "normal"
 	}

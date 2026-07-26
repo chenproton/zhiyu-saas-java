@@ -50,7 +50,7 @@ export interface SystemCourseNode {
   parentId?: string
   name: string
   sortOrder: number
-  refType: "normal" | "original" | "resource"
+  refType: "normal" | "original"
   sourceId?: string
   sourceName?: string
   teachingGoals?: string

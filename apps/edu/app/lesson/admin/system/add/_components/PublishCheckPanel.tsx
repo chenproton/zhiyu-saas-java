@@ -64,21 +64,6 @@ const CHECK_ITEMS: CheckItem[] = [
   },
 ]
 
-const RESOURCE_CHECK_ITEMS: CheckItem[] = [
-  {
-    key: "name",
-    label: "节点名称",
-    check: (node) => !!node.name?.trim(),
-    getStatus: (node) => `已填写：${node.name}`,
-  },
-  {
-    key: "resources",
-    label: "课程资源",
-    check: (node) => (node.resources?.length ?? 0) > 0,
-    getStatus: (node) => `已上传：${node.resources?.length ?? 0} 个文件`,
-  },
-]
-
 export default function PublishCheckPanel({ node }: PublishCheckPanelProps) {
   if (!node) {
     return (
@@ -90,8 +75,7 @@ export default function PublishCheckPanel({ node }: PublishCheckPanelProps) {
     )
   }
 
-  const isResource = node.type === "resource"
-  const items = isResource ? RESOURCE_CHECK_ITEMS : CHECK_ITEMS
+  const items = CHECK_ITEMS
 
   const results = items.map((item) => ({
     ...item,

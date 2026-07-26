@@ -191,9 +191,9 @@ export default function CourseNodeTree({
           <span className="flex-1 truncate" title={node.name}>
             {node.name}
           </span>
-          {node.type === "original" && (
-            <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${NODE_REF_TYPE_COLORS["original"]}`}>
-              {NODE_REF_TYPE_LABELS["original"]}
+          {node.type && (
+            <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${NODE_REF_TYPE_COLORS[node.type]}`}>
+              {NODE_REF_TYPE_LABELS[node.type]}
             </span>
           )}
           <DropdownMenu>

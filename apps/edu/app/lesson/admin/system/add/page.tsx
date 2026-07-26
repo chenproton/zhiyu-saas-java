@@ -508,8 +508,8 @@ function AddSystemPageInner() {
         }
       }
 
-      const refType: "normal" | "original" | "resource" =
-        node.type === "original" ? "original" : node.type === "resource" ? "resource" : "normal"
+      const refType: "normal" | "original" =
+        node.type === "original" ? "original" : "normal"
       const nodePayload = {
         courseId: effectiveCourseId,
         parentId: realParentId,

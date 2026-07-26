@@ -115,7 +115,7 @@ export const COURSE_TYPE_COLORS: Record<CourseType, string> = {
 
 // ====== 体系课节点相关类型 ======
 
-export type NodeRefType = 'normal' | 'original' | 'resource'
+export type NodeRefType = 'normal' | 'original'
 
 export interface KnowledgePoint {
   name: string
@@ -174,15 +174,13 @@ export interface SystemCourseNode {
 }
 
 export const NODE_REF_TYPE_LABELS: Record<NodeRefType, string> = {
-  normal: '普通课程',
+  normal: '手动编辑',
   original: '颗粒课',
-  resource: '资源',
 }
 
 export const NODE_REF_TYPE_COLORS: Record<NodeRefType, string> = {
   normal: 'bg-gray-100 text-gray-600',
   original: 'bg-purple-50 text-purple-600',
-  resource: 'bg-green-50 text-green-600',
 }
 
 export interface KnowledgeGraphNode {
