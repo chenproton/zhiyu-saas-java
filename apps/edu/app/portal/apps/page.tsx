@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useMemo } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import {
   Settings,
@@ -15,12 +15,10 @@ import {
   BarChart3,
   Rocket,
   GraduationCap,
-  Star,
   ChevronRight,
-  ExternalLink,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { useAppModules } from "@/hooks/use-platform-links"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 
@@ -128,7 +126,7 @@ const fallbackModules: Record<string, ModuleItem[]> = {
 interface ModuleItem {
   id: string
   title: string
-  desc: string
+  desc?: string
   href: string
   note?: string
 }
@@ -142,94 +140,14 @@ interface ModuleSection {
   modules: ModuleItem[]
 }
 
-function ModuleCard({
-  module,
-}: {
-  module: ModuleItem
-}) {
-  const isExternal = module.href.startsWith("http")
-  const href = isExternal ? module.href : module.href
-
-  const cardContent = (
-    <>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            className="absolute top-4 right-4 w-6 h-6 flex items-center justify-center rounded-full hover:bg-amber-50 transition-colors opacity-0 group-hover:opacity-100 z-10"
-            onClick={(e) => {
-              e.preventDefault()
-            }}
-          >
-            <Star className="w-3.5 h-3.5 text-muted-foreground hover:text-amber-400 transition-colors" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>设为常用</p>
-        </TooltipContent>
-      </Tooltip>
-
-      <h3 className="text-sm font-medium text-foreground group-hover:text-primary transition-colors mb-2 pr-6 leading-tight flex items-center gap-1">
-        {module.title}
-        {isExternal && <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-primary/70" />}
-      </h3>
-      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{module.note || module.desc}</p>
-
-      <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-        <ChevronRight className="w-4 h-4 text-primary" />
-      </div>
-    </>
-  )
-
-  const className =
-    "bg-card rounded-xl p-5 hover:shadow-lg hover:shadow-border/50 transition-all group relative border border-border hover:border-primary/20 block"
-
-  if (isExternal) {
-    return (
-      <a
-        key={module.id}
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={className}
-      >
-        {cardContent}
-      </a>
-    )
-  }
-
-  if (href === "#") {
-    return (
-      <div key={module.id} className={`${className} cursor-default opacity-60`}>
-        {cardContent}
-      </div>
-    )
-  }
-
-  return (
-    <Link key={module.id} href={href} className={className}>
-      {cardContent}
-    </Link>
-  )
-}
-
 export default function AppsPage() {
   const { hasMenuPermission } = usePortalAuth()
   const [activeMenu, setActiveMenu] = useState(menuItems[0].id)
-  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
   const contentRef = useRef<HTMLDivElement>(null)
   const { data: modulesData, loading: modulesLoading } = useAppModules()
 
   const visibleQuickAccess = quickAccess.filter((item) => hasMenuPermission(item.href))
-
-  const fallbackNotes = useMemo(() => {
-    const map: Record<string, string | undefined> = {}
-    for (const modules of Object.values(fallbackModules)) {
-      for (const m of modules) {
-        if (m.note && m.href) map[m.href] = m.note
-      }
-    }
-    return map
-  }, [])
 
   const allModules: ModuleSection[] = [
     {
@@ -256,8 +174,6 @@ export default function AppsPage() {
             .map((m) => ({
               id: m.id,
               title: m.title,
-              desc: (m as any).description || m.desc,
-              note: (m as any).note || fallbackNotes[m.href],
               href: m.href || "#",
             })),
         }
@@ -364,37 +280,79 @@ export default function AppsPage() {
                 <div className="text-sm text-muted-foreground">加载中...</div>
               </div>
             ) : (
-              allModules.map((section) => {
-                const SectionIcon = section.icon
-                return (
-                  <div
-                    key={section.id}
-                    ref={(el) => {
-                      sectionRefs.current[section.id] = el
-                    }}
-                    className="mb-5"
-                  >
-                    {/* Section Title */}
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center", section.iconBg)}>
-                        <SectionIcon className={cn("w-5 h-5", section.iconColor)} />
+              <div className="grid grid-cols-4 gap-4">
+                {allModules.map((section) => {
+                  const SectionIcon = section.icon
+                  const firstModule = section.modules[0]
+                  const href = firstModule?.href || "#"
+                  const isExternal = href.startsWith("http")
+                  const isDisabled = href === "#"
+
+                  const cardContent = (
+                    <>
+                      <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-4", section.iconBg)}>
+                        <SectionIcon className={cn("w-6 h-6", section.iconColor)} />
                       </div>
-                      <h2 className="text-base font-semibold text-foreground">{section.label}</h2>
-                      <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                        {section.modules.length} 个模块
-                      </span>
+                      <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">
+                        {section.label}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {firstModule?.title || section.modules[0]?.desc || ""}
+                      </p>
+                      <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ChevronRight className="w-5 h-5 text-primary" />
+                      </div>
+                    </>
+                  )
 
-                    </div>
+                  const className =
+                    "bg-card rounded-xl p-5 hover:shadow-lg hover:shadow-border/50 transition-all group relative border border-border hover:border-primary/20 block h-full"
 
-                    {/* Module Cards Grid */}
-                    <div className="grid grid-cols-5 gap-4">
-                      {section.modules.map((module) => (
-                        <ModuleCard key={module.id} module={module} />
-                      ))}
-                    </div>
-                  </div>
-                )
-              })
+                  if (isDisabled) {
+                    return (
+                      <div
+                        key={section.id}
+                        ref={(el) => {
+                          sectionRefs.current[section.id] = el
+                        }}
+                        className={`${className} cursor-default opacity-60`}
+                      >
+                        {cardContent}
+                      </div>
+                    )
+                  }
+
+                  if (isExternal) {
+                    return (
+                      <a
+                        key={section.id}
+                        ref={(el) => {
+                          sectionRefs.current[section.id] = el
+                        }}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={className}
+                      >
+                        {cardContent}
+                      </a>
+                    )
+                  }
+
+                  return (
+                    <Link
+                      key={section.id}
+                      ref={(el) => {
+                        sectionRefs.current[section.id] = el
+                      }}
+                      href={href}
+                      className={className}
+                    >
+                      {cardContent}
+                    </Link>
+                  )
+                })}
+              </div>
             )}
           </main>
         </div>
