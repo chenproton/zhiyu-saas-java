@@ -79,6 +79,7 @@ import { cn } from "@/lib/utils"
 import type { ImportPreviewResult } from "@/lib/api"
 import { useAuth } from "@/components/auth-provider"
 import { UserSelector } from "@/components/shared/user-selector"
+import { useData } from "@/components/providers/data-provider"
 import type { ExamFormData } from "@/lib/types"
 
 
@@ -131,6 +132,7 @@ function formatDate(iso: string) {
 export default function ExamsPage() {
   const router = useRouter()
   const { hasPermission, user, tenantId } = useAuth()
+  const { loadExams } = useData()
   const currentUserId = user?.id ?? ""
 
   const [exams, setExams] = useState<BackendExam[]>([])
@@ -685,6 +687,8 @@ export default function ExamsPage() {
       setIsImportConfirmOpen(false)
       setImportPreview(null)
       await loadData()
+      // 同步刷新全局 DataProvider 中的试卷缓存，避免从列表进入详情时缓存缺失
+      await loadExams()
     } catch (err: any) {
       alert(err.message || "导入失败")
     } finally {
