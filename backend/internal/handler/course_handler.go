@@ -255,6 +255,8 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.replaceCourseBindings(r.Context(), id, tenantID, claims.UserID, kpIDs, resIDs)
+
 	course, _ := h.fetchCourse(r.Context(), id)
 	respondJSON(w, http.StatusCreated, course)
 }
@@ -279,7 +281,8 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, ok := requireTenant(w, r); !ok {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
 		return
 	}
 
@@ -371,6 +374,10 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 		respondError(w, http.StatusInternalServerError, "failed to update course")
 		return
+	}
+
+	if req.KnowledgePointIds != nil || req.ResourceIds != nil {
+		h.replaceCourseBindings(r.Context(), id, tenantID, claims.UserID, kpIDs, resIDs)
 	}
 
 	course, _ := h.fetchCourse(r.Context(), id)
@@ -500,4 +507,25 @@ func jsonSliceToUUIDSlice(ids domain.JSONSlice) []string {
 		out = append(out, s)
 	}
 	return out
+}
+
+func (h *CourseHandler) replaceCourseBindings(ctx context.Context, courseID, tenantID, userID string, kpIDs, resIDs []string) {
+	_, _ = h.DB.Exec(ctx, `DELETE FROM course_knowledge_bindings WHERE course_id = $1 AND bind_type = 'course'`, courseID)
+	_, _ = h.DB.Exec(ctx, `DELETE FROM course_resource_bindings WHERE course_id = $1`, courseID)
+
+	for _, kpID := range kpIDs {
+		_, _ = h.DB.Exec(ctx, `
+			INSERT INTO course_knowledge_bindings (id, tenant_id, course_id, knowledge_point_id, bind_type, source_id)
+			VALUES ($1, $2, $3, $4, 'course', NULL)
+			ON CONFLICT (course_id, knowledge_point_id, bind_type, source_id) DO NOTHING
+		`, uuid.NewString(), tenantID, courseID, kpID)
+	}
+
+	for _, resID := range resIDs {
+		_, _ = h.DB.Exec(ctx, `
+			INSERT INTO course_resource_bindings (id, tenant_id, course_id, resource_id)
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (course_id, resource_id) DO NOTHING
+		`, uuid.NewString(), tenantID, courseID, resID)
+	}
 }

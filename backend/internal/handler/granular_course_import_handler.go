@@ -184,6 +184,7 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 				result.Errors = append(result.Errors, fmt.Sprintf("颗粒课[%s]更新失败: %v", name, err))
 				continue
 			}
+			h.replaceCourseBindings(ctx, existingID, tenantID, userID, knowledgePointIDs, resourceIDs)
 			continue
 		}
 
@@ -207,6 +208,7 @@ func (h *GranularCourseImportHandler) importCourses(ctx context.Context, xlsx *e
 			result.Errors = append(result.Errors, fmt.Sprintf("颗粒课[%s]创建失败: %v", name, err))
 			continue
 		}
+		h.replaceCourseBindings(ctx, courseID, tenantID, userID, knowledgePointIDs, resourceIDs)
 		result.Created++
 	}
 }
@@ -273,16 +275,16 @@ func (h *GranularCourseImportHandler) findOrCreateResources(ctx context.Context,
 			continue
 		}
 		var id string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM task_resources WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
+		err := h.DB.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
 		if err == nil {
 			ids = append(ids, id)
 			continue
 		}
 		id = uuid.NewString()
-		_, _ = h.DB.Exec(ctx, `INSERT INTO task_resources (id, tenant_id, name, type, uploaded_by) VALUES ($1,$2,$3,'document',$4) ON CONFLICT DO NOTHING`,
+		_, _ = h.DB.Exec(ctx, `INSERT INTO resource_library (id, tenant_id, name, resource_type, uploaded_by) VALUES ($1,$2,$3,'document'::resource_type,$4) ON CONFLICT DO NOTHING`,
 			id, tenantID, name, userID)
 		var existing string
-		_ = h.DB.QueryRow(ctx, `SELECT id FROM task_resources WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
+		_ = h.DB.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
 		if existing != "" {
 			ids = append(ids, existing)
 		} else {
@@ -290,6 +292,27 @@ func (h *GranularCourseImportHandler) findOrCreateResources(ctx context.Context,
 		}
 	}
 	return ids
+}
+
+func (h *GranularCourseImportHandler) replaceCourseBindings(ctx context.Context, courseID, tenantID, userID string, knowledgePointIDs, resourceIDs []string) {
+	_, _ = h.DB.Exec(ctx, `DELETE FROM course_knowledge_bindings WHERE course_id=$1 AND bind_type='course'`, courseID)
+	_, _ = h.DB.Exec(ctx, `DELETE FROM course_resource_bindings WHERE course_id=$1`, courseID)
+
+	for _, kpID := range knowledgePointIDs {
+		_, _ = h.DB.Exec(ctx, `
+			INSERT INTO course_knowledge_bindings (id, tenant_id, course_id, knowledge_point_id, bind_type, source_id)
+			VALUES ($1,$2,$3,$4,'course',NULL)
+			ON CONFLICT (course_id, knowledge_point_id, bind_type, source_id) DO NOTHING
+		`, uuid.NewString(), tenantID, courseID, kpID)
+	}
+
+	for _, resID := range resourceIDs {
+		_, _ = h.DB.Exec(ctx, `
+			INSERT INTO course_resource_bindings (id, tenant_id, course_id, resource_id)
+			VALUES ($1,$2,$3,$4)
+			ON CONFLICT (course_id, resource_id) DO NOTHING
+		`, uuid.NewString(), tenantID, courseID, resID)
+	}
 }
 
 func (h *GranularCourseImportHandler) generateGranularCourseCode(ctx context.Context, tenantID string) string {

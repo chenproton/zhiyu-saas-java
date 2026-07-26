@@ -284,9 +284,9 @@ func (h *CourseImportHandler) importNodes(ctx context.Context, xlsx *excelize.Fi
 		nodeID := uuid.NewString()
 		_, err := h.DB.Exec(ctx, `
 			INSERT INTO system_course_nodes (id, tenant_id, course_id, parent_id, name, sort_order, ref_type, source_id, source_name,
-				teaching_goals, duration, status)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'draft')
-		`, nodeID, tenantID, courseID, parentID, nodeName, sortOrder, refType, sourceID, sourceName, teachingGoals, duration)
+				teaching_goals, duration, knowledge_point_ids, resource_ids, status)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+		`, nodeID, tenantID, courseID, parentID, nodeName, sortOrder, refType, sourceID, sourceName, teachingGoals, duration, []string{}, []string{}, "draft")
 		if err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]创建失败: %v", courseName, nodeName, err))
@@ -315,6 +315,13 @@ func (h *CourseImportHandler) importNodes(ctx context.Context, xlsx *excelize.Fi
 					ON CONFLICT (node_id, resource_id) DO NOTHING
 				`, uuid.NewString(), tenantID, nodeID, resID)
 			}
+
+			// 同时写入节点字段，与 scenario_tasks 保持一致
+			_, _ = h.DB.Exec(ctx, `
+				UPDATE system_course_nodes
+				SET knowledge_point_ids = $2, resource_ids = $3
+				WHERE id = $1
+			`, nodeID, knowledgePointIDs, resourceIDs)
 		}
 
 		for _, evalName := range evalMethodNames {
@@ -429,16 +436,16 @@ func (h *CourseImportHandler) findOrCreateResources(ctx context.Context, tenantI
 			continue
 		}
 		var id string
-		err := h.DB.QueryRow(ctx, `SELECT id FROM task_resources WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
+		err := h.DB.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)
 		if err == nil {
 			ids = append(ids, id)
 			continue
 		}
 		id = uuid.NewString()
-		_, _ = h.DB.Exec(ctx, `INSERT INTO task_resources (id, tenant_id, name, type, uploaded_by) VALUES ($1,$2,$3,'document',$4) ON CONFLICT DO NOTHING`,
+		_, _ = h.DB.Exec(ctx, `INSERT INTO resource_library (id, tenant_id, name, resource_type, uploaded_by) VALUES ($1,$2,$3,'document'::resource_type,$4) ON CONFLICT DO NOTHING`,
 			id, tenantID, name, userID)
 		var existing string
-		_ = h.DB.QueryRow(ctx, `SELECT id FROM task_resources WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
+		_ = h.DB.QueryRow(ctx, `SELECT id FROM resource_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
 		if existing != "" {
 			ids = append(ids, existing)
 		} else {
