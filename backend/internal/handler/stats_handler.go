@@ -68,9 +68,13 @@ func (h *StatsHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *StatsHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
-	config := domain.PlatformConfig{}
+	config := domain.PlatformConfig{CreditHoursRatio: 16}
 	_ = h.DB.QueryRow(r.Context(), `SELECT value::float FROM platform_configs WHERE key = 'platform_fee_rate'`).Scan(&config.PlatformFeeRate)
 	_ = h.DB.QueryRow(r.Context(), `SELECT value::float FROM platform_configs WHERE key = 'min_withdrawal_amount'`).Scan(&config.MinWithdrawalAmount)
+	_ = h.DB.QueryRow(r.Context(), `SELECT value::float FROM platform_configs WHERE key = 'credit_hours_ratio'`).Scan(&config.CreditHoursRatio)
+	if config.CreditHoursRatio == 0 {
+		config.CreditHoursRatio = 16
+	}
 	respondJSON(w, http.StatusOK, config)
 }
 
@@ -88,6 +92,9 @@ func (h *StatsHandler) UpdateConfig(w http.ResponseWriter, r *http.Request) {
 
 	_, _ = h.DB.Exec(r.Context(), `UPDATE platform_configs SET value = $1, updated_at = NOW() WHERE key = 'platform_fee_rate'`, config.PlatformFeeRate)
 	_, _ = h.DB.Exec(r.Context(), `UPDATE platform_configs SET value = $1, updated_at = NOW() WHERE key = 'min_withdrawal_amount'`, config.MinWithdrawalAmount)
+	if config.CreditHoursRatio > 0 {
+		_, _ = h.DB.Exec(r.Context(), `UPDATE platform_configs SET value = $1, updated_at = NOW() WHERE key = 'credit_hours_ratio'`, config.CreditHoursRatio)
+	}
 
 	respondJSON(w, http.StatusOK, config)
 }

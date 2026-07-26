@@ -267,6 +267,8 @@ func (h *PortalHandler) stats(ctx context.Context, userID string, tenantID *stri
 }
 
 func (h *PortalHandler) listStudentCourses(ctx context.Context, userID string, tenantID *string) []domain.WorkspaceCourse {
+	ratio := h.creditHoursRatio(ctx)
+
 	query := `
 		SELECT c.id, c.code, c.name, c.type, c.category, c.online_hours, c.offline_hours,
 			c.semester, c.class_name, c.status, c.cover_color, c.cover_image, u.name
@@ -286,6 +288,7 @@ func (h *PortalHandler) listStudentCourses(ctx context.Context, userID string, t
 	defer rows.Close()
 
 	var items []domain.WorkspaceCourse
+	courseIDs := make([]string, 0, 50)
 	for rows.Next() {
 		var c domain.WorkspaceCourse
 		var onlineHours, offlineHours *float64
@@ -297,10 +300,15 @@ func (h *PortalHandler) listStudentCourses(ctx context.Context, userID string, t
 		c.Teacher = teacher
 		c.Status = publishedStatusLabel(status)
 		c.Hours = totalHours(onlineHours, offlineHours)
-		c.Credit = c.Hours / 16
+		c.Credit = int(float64(c.Hours) / ratio)
 		c.Cover = coverText(c.Name)
-		c.Progress = h.courseProgress(ctx, c.ID, userID)
 		items = append(items, c)
+		courseIDs = append(courseIDs, c.ID)
+	}
+
+	progressMap := h.batchCourseProgress(ctx, courseIDs, userID)
+	for i := range items {
+		items[i].Progress = progressMap[items[i].ID]
 	}
 	return items
 }
@@ -325,6 +333,7 @@ func (h *PortalHandler) listStudentSceneTasks(ctx context.Context, userID string
 	defer rows.Close()
 
 	var items []domain.WorkspaceSceneTask
+	taskIDs := make([]string, 0, 50)
 	for rows.Next() {
 		var task domain.WorkspaceSceneTask
 		var difficulty int
@@ -336,8 +345,16 @@ func (h *PortalHandler) listStudentSceneTasks(ctx context.Context, userID string
 		task.Difficulty = difficultyLabel(difficulty)
 		task.Deadline = ""
 		task.TotalScore = 100
-		task.Status = h.sceneTaskStatus(ctx, task.ID, userID)
 		items = append(items, task)
+		taskIDs = append(taskIDs, task.ID)
+	}
+
+	statusMap := h.batchSceneTaskStatus(ctx, taskIDs, userID)
+	for i := range items {
+		items[i].Status = statusMap[items[i].ID]
+		if items[i].Status == "" {
+			items[i].Status = "未开始"
+		}
 	}
 	return items
 }
@@ -410,6 +427,7 @@ func (h *PortalHandler) listTeacherCourses(ctx context.Context, userID string, t
 	defer rows.Close()
 
 	var items []domain.WorkspaceTeacherCourse
+	courseIDs := make([]string, 0, 50)
 	for rows.Next() {
 		var c domain.WorkspaceTeacherCourse
 		var onlineHours, offlineHours *float64
@@ -423,50 +441,114 @@ func (h *PortalHandler) listTeacherCourses(ctx context.Context, userID string, t
 		c.Status = publishedStatusLabel(status)
 		c.Hours = totalHours(onlineHours, offlineHours)
 		c.Cover = coverText(c.Name)
-		c.Students = h.courseStudentCount(ctx, c.ID)
 		c.Progress = 0
 		items = append(items, c)
+		courseIDs = append(courseIDs, c.ID)
+	}
+
+	countMap := h.batchCourseStudentCounts(ctx, courseIDs)
+	for i := range items {
+		items[i].Students = countMap[items[i].ID]
 	}
 	return items
 }
 
-func (h *PortalHandler) courseProgress(ctx context.Context, courseID, userID string) int {
-	var total, present int
-	_ = h.DB.QueryRow(ctx, `
-		SELECT COUNT(*), COUNT(*) FILTER (WHERE attendance = 'present')
+func (h *PortalHandler) creditHoursRatio(ctx context.Context) float64 {
+	var ratio float64
+	_ = h.DB.QueryRow(ctx, `SELECT COALESCE(value::float, 16) FROM platform_configs WHERE key = 'credit_hours_ratio'`).Scan(&ratio)
+	if ratio <= 0 {
+		ratio = 16
+	}
+	return ratio
+}
+
+func (h *PortalHandler) batchCourseProgress(ctx context.Context, courseIDs []string, userID string) map[string]int {
+	result := make(map[string]int)
+	if len(courseIDs) == 0 {
+		return result
+	}
+	rows, err := h.DB.Query(ctx, `
+		SELECT course_id, COUNT(*), COUNT(*) FILTER (WHERE attendance = 'present')
 		FROM lesson_behavior_records
-		WHERE course_id = $1::uuid AND student_user_id = $2::uuid
-	`, courseID, userID).Scan(&total, &present)
-	if total == 0 {
-		return 0
+		WHERE course_id = ANY($1::uuid[]) AND student_user_id = $2::uuid
+		GROUP BY course_id
+	`, courseIDs, userID)
+	if err != nil {
+		return result
 	}
-	return present * 100 / total
+	defer rows.Close()
+	for rows.Next() {
+		var courseID string
+		var total, present int
+		if err := rows.Scan(&courseID, &total, &present); err != nil {
+			continue
+		}
+		if total == 0 {
+			result[courseID] = 0
+		} else {
+			result[courseID] = present * 100 / total
+		}
+	}
+	return result
 }
 
-func (h *PortalHandler) courseStudentCount(ctx context.Context, courseID string) int {
-	var count int
-	_ = h.DB.QueryRow(ctx, `
-		SELECT COUNT(DISTINCT student_user_id) FROM lesson_behavior_records
-		WHERE course_id = $1::uuid
-	`, courseID).Scan(&count)
-	return count
+func (h *PortalHandler) batchCourseStudentCounts(ctx context.Context, courseIDs []string) map[string]int {
+	result := make(map[string]int)
+	if len(courseIDs) == 0 {
+		return result
+	}
+	rows, err := h.DB.Query(ctx, `
+		SELECT course_id, COUNT(DISTINCT student_user_id)
+		FROM lesson_behavior_records
+		WHERE course_id = ANY($1::uuid[])
+		GROUP BY course_id
+	`, courseIDs)
+	if err != nil {
+		return result
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var courseID string
+		var count int
+		if err := rows.Scan(&courseID, &count); err != nil {
+			continue
+		}
+		result[courseID] = count
+	}
+	return result
 }
 
-func (h *PortalHandler) sceneTaskStatus(ctx context.Context, taskID, userID string) string {
-	var status string
-	var score *float64
-	_ = h.DB.QueryRow(ctx, `
-		SELECT status, total_score FROM scene_evaluation_results
-		WHERE task_id = $1::uuid AND evaluatee_id = $2::uuid
-		ORDER BY created_at DESC LIMIT 1
-	`, taskID, userID).Scan(&status, &score)
-	if status == "" {
-		return "未开始"
+func (h *PortalHandler) batchSceneTaskStatus(ctx context.Context, taskIDs []string, userID string) map[string]string {
+	result := make(map[string]string)
+	if len(taskIDs) == 0 {
+		return result
 	}
-	if status == "evaluated" || score != nil {
-		return "已完成"
+	rows, err := h.DB.Query(ctx, `
+		SELECT DISTINCT ON (task_id) task_id, status, total_score
+		FROM scene_evaluation_results
+		WHERE task_id = ANY($1::uuid[]) AND evaluatee_id = $2::uuid
+		ORDER BY task_id, created_at DESC
+	`, taskIDs, userID)
+	if err != nil {
+		return result
 	}
-	return "进行中"
+	defer rows.Close()
+	for rows.Next() {
+		var taskID, status string
+		var score *float64
+		if err := rows.Scan(&taskID, &status, &score); err != nil {
+			continue
+		}
+		switch {
+		case status == "":
+			result[taskID] = "未开始"
+		case status == "evaluated" || score != nil:
+			result[taskID] = "已完成"
+		default:
+			result[taskID] = "进行中"
+		}
+	}
+	return result
 }
 
 func totalHours(online, offline *float64) int {

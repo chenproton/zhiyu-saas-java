@@ -318,6 +318,7 @@ export interface DashboardStats {
 export interface PlatformConfig {
   platformFeeRate: number
   minWithdrawalAmount: number
+  creditHoursRatio?: number
 }
 
 export interface ListResponse<T> {

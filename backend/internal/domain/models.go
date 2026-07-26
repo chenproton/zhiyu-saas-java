@@ -182,4 +182,5 @@ type Banner struct {
 type PlatformConfig struct {
 	PlatformFeeRate     float64 `json:"platformFeeRate"`
 	MinWithdrawalAmount float64 `json:"minWithdrawalAmount"`
+	CreditHoursRatio    float64 `json:"creditHoursRatio"`
 }

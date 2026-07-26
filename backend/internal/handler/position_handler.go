@@ -606,6 +606,92 @@ func (h *PositionHandler) actions() contentActions {
 	}
 }
 
+func (h *PositionHandler) prepareAbilityPoints(ctx context.Context, tenantID string, bindings []FullPositionAbilityBinding) (map[string]string, error) {
+	pointMap := make(map[string]string)
+	nameMap := make(map[string]string)
+
+	for _, binding := range bindings {
+		if binding.Source == "public" && binding.PublicAbilityID != nil && *binding.PublicAbilityID != "" {
+			pointMap[binding.ID] = *binding.PublicAbilityID
+			continue
+		}
+		if binding.Source != "custom" {
+			continue
+		}
+		if binding.AbilityPointID != nil && *binding.AbilityPointID != "" {
+			pointMap[binding.ID] = *binding.AbilityPointID
+			continue
+		}
+		if cachedID, ok := nameMap[binding.Name]; ok {
+			pointMap[binding.ID] = cachedID
+			continue
+		}
+
+		var existingID string
+		err := h.DB.QueryRow(ctx, `
+			SELECT id FROM ability_points WHERE tenant_id = $1 AND name = $2
+		`, tenantID, binding.Name).Scan(&existingID)
+		if err == nil && existingID != "" {
+			pointMap[binding.ID] = existingID
+			nameMap[binding.Name] = existingID
+			continue
+		}
+
+		newID := uuid.NewString()
+		category := mapCategory(binding.Category)
+		attrArray := coalesceStringSlice(binding.Attributes)
+		_, _ = h.DB.Exec(ctx, `
+			INSERT INTO ability_points (id, tenant_id, name, description, category, attributes, is_public)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
+			ON CONFLICT (tenant_id, name) DO NOTHING
+		`, newID, tenantID, binding.Name, binding.Description, category, attrArray, false)
+
+		_ = h.DB.QueryRow(ctx, `
+			SELECT id FROM ability_points WHERE tenant_id = $1 AND name = $2
+		`, tenantID, binding.Name).Scan(&existingID)
+		if existingID != "" {
+			newID = existingID
+		}
+
+		pointMap[binding.ID] = newID
+		nameMap[binding.Name] = newID
+	}
+
+	return pointMap, nil
+}
+
+func (h *PositionHandler) prepareCertificates(ctx context.Context, tenantID string, certs []FullPositionCertificate) (map[string]string, error) {
+	result := make(map[string]string)
+	for _, cert := range certs {
+		if cert.Name == "" {
+			continue
+		}
+		var libraryID string
+		err := h.DB.QueryRow(ctx, `
+			SELECT id FROM certificate_library WHERE tenant_id = $1 AND name = $2
+		`, tenantID, cert.Name).Scan(&libraryID)
+		if err == nil && libraryID != "" {
+			result[cert.Name] = libraryID
+			continue
+		}
+
+		libraryID = uuid.NewString()
+		_, _ = h.DB.Exec(ctx, `
+			INSERT INTO certificate_library (id, tenant_id, name, url, description, image_url)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			ON CONFLICT (tenant_id, name) DO NOTHING
+		`, libraryID, tenantID, cert.Name, cert.URL, cert.Description, cert.Image)
+
+		_ = h.DB.QueryRow(ctx, `
+			SELECT id FROM certificate_library WHERE tenant_id = $1 AND name = $2
+		`, tenantID, cert.Name).Scan(&libraryID)
+		if libraryID != "" {
+			result[cert.Name] = libraryID
+		}
+	}
+	return result, nil
+}
+
 func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
@@ -655,6 +741,19 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		tenantID = *claims.TenantID
 	}
 	log.Printf("[SaveFull] id=%s tenant=%s req=%s", id, tenantID, string(reqBody))
+
+	abilityPointMap, err := h.prepareAbilityPoints(r.Context(), tenantID, req.AbilityBindings)
+	if err != nil {
+		log.Printf("[SaveFull] prepare ability points failed: %v", err)
+		respondError(w, http.StatusInternalServerError, "failed to prepare ability points")
+		return
+	}
+	certificateMap, err := h.prepareCertificates(r.Context(), tenantID, req.Certificates)
+	if err != nil {
+		log.Printf("[SaveFull] prepare certificates failed: %v", err)
+		respondError(w, http.StatusInternalServerError, "failed to prepare certificates")
+		return
+	}
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
@@ -745,15 +844,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		respIDMap[resp.ID] = respID
 	}
 
-	abilityPointMap := make(map[string]string)
-	abilityNameMap := make(map[string]string)
 	bindingIDMap := make(map[string]string)
-	for _, binding := range req.AbilityBindings {
-		if binding.Source == "public" && binding.PublicAbilityID != nil && *binding.PublicAbilityID != "" {
-			abilityPointMap[binding.ID] = *binding.PublicAbilityID
-		}
-	}
-
 	for _, binding := range req.AbilityBindings {
 		if binding.Source != "public" && binding.Source != "custom" {
 			continue
@@ -765,42 +856,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 
 		abilityPointID, exists := abilityPointMap[binding.ID]
 		if !exists {
-			if binding.AbilityPointID != nil && *binding.AbilityPointID != "" {
-				abilityPointID = *binding.AbilityPointID
-			} else {
-				// Cache by name within this request so multiple bindings referencing the
-				// same ability point do not attempt duplicate inserts or queries.
-				if cachedID, ok := abilityNameMap[binding.Name]; ok {
-					abilityPointID = cachedID
-				} else {
-					category := mapCategory(binding.Category)
-					attrArray := coalesceStringSlice(binding.Attributes)
-
-					// Reuse existing ability point with the same name in this tenant to avoid
-					// violating the uq_ability_points_tenant_name unique constraint.
-					var existingAbilityID string
-					err = tx.QueryRow(r.Context(), `
-						SELECT id FROM ability_points WHERE tenant_id = $1 AND name = $2
-					`, claims.TenantID, binding.Name).Scan(&existingAbilityID)
-					if err == nil {
-						abilityPointID = existingAbilityID
-						log.Printf("[SaveFull] reused existing ability_point id=%s name=%s", abilityPointID, binding.Name)
-					} else {
-						abilityPointID = uuid.NewString()
-						_, err = tx.Exec(r.Context(), `
-							INSERT INTO ability_points (id, tenant_id, name, description, category, attributes, is_public)
-							VALUES ($1, $2, $3, $4, $5, $6, $7)
-						`, abilityPointID, claims.TenantID, binding.Name, binding.Description, category, attrArray, false)
-						if err != nil {
-							log.Printf("[SaveFull] insert ability_points failed: %v", err)
-							respondError(w, http.StatusInternalServerError, "failed to create ability point")
-							return
-						}
-					}
-					abilityNameMap[binding.Name] = abilityPointID
-				}
-			}
-			abilityPointMap[binding.ID] = abilityPointID
+			continue
 		}
 
 		bindingID := uuid.NewString()
@@ -860,22 +916,9 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		if cert.Name == "" {
 			continue
 		}
-		// Find or create certificate in library
-		var libraryID string
-		err = tx.QueryRow(r.Context(), `
-			SELECT id FROM certificate_library WHERE tenant_id = $1 AND name = $2
-		`, claims.TenantID, cert.Name).Scan(&libraryID)
-		if err != nil {
-			libraryID = uuid.NewString()
-			_, err = tx.Exec(r.Context(), `
-				INSERT INTO certificate_library (id, tenant_id, name, url, description, image_url)
-				VALUES ($1, $2, $3, $4, $5, $6)
-			`, libraryID, claims.TenantID, cert.Name, cert.URL, cert.Description, cert.Image)
-			if err != nil {
-				log.Printf("[SaveFull] insert certificate_library failed: %v", err)
-				respondError(w, http.StatusInternalServerError, "failed to create certificate in library")
-				return
-			}
+		libraryID, ok := certificateMap[cert.Name]
+		if !ok {
+			continue
 		}
 		_, err = tx.Exec(r.Context(), `
 			INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id)
