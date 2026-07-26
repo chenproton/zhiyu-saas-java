@@ -84,6 +84,7 @@ interface GrainCourseOption {
   description: string
   source: string
   duration: number
+  difficulty: number
 }
 
 /* ---------- convert preview tree ---------- */
@@ -310,9 +311,10 @@ function AddSystemPageInner() {
       setGrainCourses((res.items || []).map((c) => ({
         id: c.id,
         name: c.name,
-        description: c.category,
+        description: c.description || c.category || "",
         source: c.majorName || c.creatorId || "unknown",
-        duration: c.nodeCount,
+        duration: c.onlineHours ?? c.nodeCount ?? 0,
+        difficulty: c.difficulty ?? 0,
       })))
     }).catch(() => setGrainCourses([]))
   }, [])
@@ -396,7 +398,7 @@ function AddSystemPageInner() {
     })
     if (node.homeworks && node.homeworks.length > 0) evalMethods.push("exam")
     setSelectedEvalMethods(Array.from(new Set(evalMethods)))
-    setDifficulty(0)
+    setDifficulty(node.difficulty || 0)
   }, [])
 
   /* load draft when selected node changes */
@@ -457,6 +459,7 @@ function AddSystemPageInner() {
       sourceId: grain.id,
       sourceName: grain.name,
       duration: grain.duration,
+      difficulty: grain.difficulty,
       teachingGoals: grain.description,
       type: isQuote ? "original" : "normal",
     }
@@ -466,7 +469,7 @@ function AddSystemPageInner() {
     setLearningGoal(grain.description)
     setSelectedResourceIds([])
     setSelectedEvalMethods([])
-    setDifficulty(0)
+    setDifficulty(grain.difficulty)
     setShowGrainSelector(false)
   }, [grainSelectedId, selectedNodeId, grainSelectorMode, handleUpdateNode, grainCourses, setNodeModes])
 
@@ -536,6 +539,7 @@ function AddSystemPageInner() {
         sourceName: node.sourceName,
         teachingGoals: draft?.learningGoal || node.teachingGoals,
         duration: draft?.hours ? parseFloat(draft.hours) : node.duration,
+        difficulty: draft?.difficulty ?? node.difficulty,
         knowledgePointIds,
         resourceIds: existingResourceIds,
         status: node.status || "draft",

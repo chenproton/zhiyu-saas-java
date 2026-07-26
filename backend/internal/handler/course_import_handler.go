@@ -28,6 +28,22 @@ type courseImportResult struct {
 	DuplicateItems []ImportPreviewItem
 }
 
+type nodeRow struct {
+	rowNum              int
+	courseName          string
+	nodeName            string
+	parentName          string
+	refType             string
+	sortOrder           int
+	manualTeachingGoals *string
+	manualDuration      float64
+	manualDifficulty    int
+	knowledgeNames      []string
+	resourceNames       []string
+	evalMethodNames     []string
+	courseID            string
+}
+
 func (h *CourseImportHandler) parseUploadedExcel(r *http.Request) (*excelize.File, []string, error) {
 	if err := r.ParseMultipartForm(50 << 20); err != nil {
 		return nil, nil, fmt.Errorf("invalid form")
@@ -220,9 +236,7 @@ func (h *CourseImportHandler) importNodes(ctx context.Context, xlsx *excelize.Fi
 		return
 	}
 
-	// courseName -> nodeName -> nodeID
-	nodeNameMap := make(map[string]map[string]string)
-
+	pending := make([]nodeRow, 0)
 	for i, row := range rows {
 		if i < 2 {
 			continue
@@ -232,137 +246,209 @@ func (h *CourseImportHandler) importNodes(ctx context.Context, xlsx *excelize.Fi
 		}
 		courseName := strings.TrimSpace(row[0])
 		nodeName := strings.TrimSpace(row[1])
-		parentName := col(row, 2)
-		refType := mapCourseRefType(col(row, 3))
-		sortOrder := parseIntDefault(col(row, 4), 0)
-		manualTeachingGoals := nullableStr(col(row, 5))
-		manualDuration := parseFloatDefault(col(row, 6), 0)
-		knowledgeNames := splitTrim(col(row, 8), ",")
-		resourceNames := splitTrim(col(row, 9), ",")
-		evalMethodNames := splitTrim(col(row, 10), ",")
-
 		courseID, ok := courseMap[courseName]
 		if !ok {
 			result.Skipped++
 			result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]找不到课程,已跳过", courseName, nodeName))
 			continue
 		}
+		pending = append(pending, nodeRow{
+			rowNum:              i + 1,
+			courseName:          courseName,
+			nodeName:            nodeName,
+			parentName:          col(row, 2),
+			refType:             mapCourseRefType(col(row, 3)),
+			sortOrder:           parseIntDefault(col(row, 4), 0),
+			manualTeachingGoals: nullableStr(col(row, 5)),
+			manualDuration:      parseFloatDefault(col(row, 6), 0),
+			manualDifficulty:    parseIntDefault(col(row, 7), 0),
+			knowledgeNames:      splitTrim(col(row, 8), ","),
+			resourceNames:       splitTrim(col(row, 9), ","),
+			evalMethodNames:     splitTrim(col(row, 10), ","),
+			courseID:            courseID,
+		})
+	}
 
-		if nodeNameMap[courseName] == nil {
-			nodeNameMap[courseName] = make(map[string]string)
+	// courseName -> nodeName -> nodeID
+	nodeNameMap := make(map[string]map[string]string)
+
+	for len(pending) > 0 {
+		progressed := false
+		remaining := make([]nodeRow, 0)
+
+		for _, nr := range pending {
+			if nodeNameMap[nr.courseName] == nil {
+				nodeNameMap[nr.courseName] = make(map[string]string)
+			}
+
+			var parentID *string
+			if nr.parentName != "" {
+				if pid, ok := nodeNameMap[nr.courseName][nr.parentName]; ok {
+					parentID = &pid
+				} else {
+					remaining = append(remaining, nr)
+					continue
+				}
+			}
+
+			if err := h.createSystemCourseNode(ctx, tenantID, userID, nr, parentID, nodeNameMap, result); err == nil {
+				progressed = true
+			}
 		}
 
-		var parentID *string
-		if parentName != "" {
-			if pid, ok := nodeNameMap[courseName][parentName]; ok {
-				parentID = &pid
-			} else {
+		if !progressed {
+			for _, nr := range remaining {
 				result.Skipped++
-				result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]父节点[%s]未找到,已跳过", courseName, nodeName, parentName))
-				continue
+				result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]父节点[%s]未找到或存在循环依赖,已跳过", nr.courseName, nr.nodeName, nr.parentName))
 			}
+			break
 		}
+		pending = remaining
+	}
+}
 
-		var sourceID, sourceName *string
-		var teachingGoals *string
-		var duration float64
-		var bindManualResources bool
+func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, tenantID, userID string, nr nodeRow, parentID *string, nodeNameMap map[string]map[string]string, result *courseImportResult) error {
+	var sourceID, sourceName *string
+	var teachingGoals *string
+	var duration float64
+	var difficulty int
+	var baseKnowledgeIDs []string
+	var baseResourceIDs []string
 
-		if refType == "original" {
-			g := h.lookupGranularCourse(ctx, tenantID, nodeName)
-			if g == nil {
-				result.Skipped++
-				result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]未找到同名颗粒课,已跳过", courseName, nodeName))
-				continue
-			}
-			sourceID = &g.ID
-			sn := g.Name
-			sourceName = &sn
-			// 优先使用 Excel 中填写的学习目标，未填写时回退到颗粒课描述
-			teachingGoals = manualTeachingGoals
-			if teachingGoals == nil || *teachingGoals == "" {
-				teachingGoals = g.Description
-			}
-			// 优先使用 Excel 中填写的课时，未填写时回退到颗粒课课时
-			duration = manualDuration
-			if duration == 0 && g.OnlineHours != nil {
-				duration = *g.OnlineHours
-			}
-			bindManualResources = true
-		} else {
-			teachingGoals = manualTeachingGoals
-			duration = manualDuration
-			bindManualResources = true
+	if nr.refType == "original" {
+		g := h.lookupGranularCourse(ctx, tenantID, nr.nodeName)
+		if g == nil {
+			result.Skipped++
+			result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]未找到同名颗粒课,已跳过", nr.courseName, nr.nodeName))
+			return fmt.Errorf("granular course not found")
 		}
+		sourceID = &g.ID
+		sn := g.Name
+		sourceName = &sn
+		// 优先使用 Excel 中填写的学习目标，未填写时回退到颗粒课描述
+		teachingGoals = nr.manualTeachingGoals
+		if teachingGoals == nil || *teachingGoals == "" {
+			teachingGoals = g.Description
+		}
+		// 优先使用 Excel 中填写的课时，未填写时回退到颗粒课课时
+		duration = nr.manualDuration
+		if duration == 0 && g.OnlineHours != nil {
+			duration = *g.OnlineHours
+		}
+		// 优先使用 Excel 中填写的难度，未填写时回退到颗粒课难度
+		difficulty = nr.manualDifficulty
+		if difficulty == 0 && g.Difficulty != nil {
+			difficulty = *g.Difficulty
+		}
+		// 回退到颗粒课关联的知识点和资源
+		baseKnowledgeIDs = h.toStringSlice(g.KnowledgePointIds)
+		baseResourceIDs = h.toStringSlice(g.ResourceIds)
+	} else {
+		teachingGoals = nr.manualTeachingGoals
+		duration = nr.manualDuration
+		difficulty = nr.manualDifficulty
+	}
 
-		nodeID := uuid.NewString()
-		_, err := h.DB.Exec(ctx, `
-			INSERT INTO system_course_nodes (id, tenant_id, course_id, parent_id, name, sort_order, ref_type, source_id, source_name,
-				teaching_goals, duration, knowledge_point_ids, resource_ids, status)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-		`, nodeID, tenantID, courseID, parentID, nodeName, sortOrder, refType, sourceID, sourceName, teachingGoals, duration, []string{}, []string{}, "draft")
-		if err != nil {
-			result.Failed++
-			result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]创建失败: %v", courseName, nodeName, err))
+	nodeID := uuid.NewString()
+	_, err := h.DB.Exec(ctx, `
+		INSERT INTO system_course_nodes (id, tenant_id, course_id, parent_id, name, sort_order, ref_type, source_id, source_name,
+			teaching_goals, duration, difficulty, knowledge_point_ids, resource_ids, status)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+	`, nodeID, tenantID, nr.courseID, parentID, nr.nodeName, nr.sortOrder, nr.refType, sourceID, sourceName, teachingGoals, int(duration), difficulty, []string{}, []string{}, "draft")
+	if err != nil {
+		result.Failed++
+		result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]创建失败: %v", nr.courseName, nr.nodeName, err))
+		return err
+	}
+	nodeNameMap[nr.courseName][nr.nodeName] = nodeID
+	result.NodeCreated++
+	result.Created++
+
+	// 合并 Excel 中填写的知识点/资源与颗粒课自带的知识点/资源
+	knowledgePointIDs := h.mergeIDs(h.findOrCreateKnowledgePoints(ctx, tenantID, nr.knowledgeNames), baseKnowledgeIDs)
+	for _, kpID := range knowledgePointIDs {
+		_, _ = h.DB.Exec(ctx, `
+			INSERT INTO node_knowledge_point_bindings (id, tenant_id, node_id, knowledge_point_id, created_at)
+			VALUES ($1,$2,$3,$4,NOW())
+			ON CONFLICT (node_id, knowledge_point_id) DO NOTHING
+		`, uuid.NewString(), tenantID, nodeID, kpID)
+	}
+
+	resourceIDs := h.mergeIDs(h.findOrCreateResources(ctx, tenantID, nr.resourceNames, userID), baseResourceIDs)
+	for _, resID := range resourceIDs {
+		_, _ = h.DB.Exec(ctx, `
+			INSERT INTO node_resource_bindings (id, tenant_id, node_id, resource_id, created_at)
+			VALUES ($1,$2,$3,$4,NOW())
+			ON CONFLICT (node_id, resource_id) DO NOTHING
+		`, uuid.NewString(), tenantID, nodeID, resID)
+	}
+
+	// 同时写入节点字段，与 scenario_tasks 保持一致
+	_, _ = h.DB.Exec(ctx, `
+		UPDATE system_course_nodes
+		SET knowledge_point_ids = $2, resource_ids = $3
+		WHERE id = $1
+	`, nodeID, knowledgePointIDs, resourceIDs)
+
+	for _, evalName := range nr.evalMethodNames {
+		methodKey := mapCourseEvalMethod(evalName)
+		if methodKey == "" {
 			continue
 		}
-		nodeNameMap[courseName][nodeName] = nodeID
-		result.NodeCreated++
-		result.Created++
-
-		// 绑定 Excel 中填写的知识点和资源（颗粒课节点也允许补充/覆盖）
-		if bindManualResources {
-			knowledgePointIDs := h.findOrCreateKnowledgePoints(ctx, tenantID, knowledgeNames)
-			for _, kpID := range knowledgePointIDs {
-				_, _ = h.DB.Exec(ctx, `
-					INSERT INTO node_knowledge_point_bindings (id, tenant_id, node_id, knowledge_point_id, created_at)
-					VALUES ($1,$2,$3,$4,NOW())
-					ON CONFLICT (node_id, knowledge_point_id) DO NOTHING
-				`, uuid.NewString(), tenantID, nodeID, kpID)
-			}
-
-			resourceIDs := h.findOrCreateResources(ctx, tenantID, resourceNames, userID)
-			for _, resID := range resourceIDs {
-				_, _ = h.DB.Exec(ctx, `
-					INSERT INTO node_resource_bindings (id, tenant_id, node_id, resource_id, created_at)
-					VALUES ($1,$2,$3,$4,NOW())
-					ON CONFLICT (node_id, resource_id) DO NOTHING
-				`, uuid.NewString(), tenantID, nodeID, resID)
-			}
-
-			// 同时写入节点字段，与 scenario_tasks 保持一致
+		switch methodKey {
+		case "homework":
 			_, _ = h.DB.Exec(ctx, `
-				UPDATE system_course_nodes
-				SET knowledge_point_ids = $2, resource_ids = $3
-				WHERE id = $1
-			`, nodeID, knowledgePointIDs, resourceIDs)
-		}
-
-		for _, evalName := range evalMethodNames {
-			methodKey := mapCourseEvalMethod(evalName)
-			if methodKey == "" {
-				continue
+				INSERT INTO node_homeworks (id, tenant_id, node_id, title, requirement, need_attachment)
+				VALUES ($1,$2,$3,$4,'',false)
+			`, uuid.NewString(), tenantID, nodeID, "作业测评")
+		default:
+			title := "题库测验"
+			if methodKey == "paper" {
+				title = "试卷测验"
+			} else if methodKey == "quiz" {
+				title = "随堂测"
 			}
-			switch methodKey {
-			case "homework":
-				_, _ = h.DB.Exec(ctx, `
-					INSERT INTO node_homeworks (id, tenant_id, node_id, title, requirement, need_attachment)
-					VALUES ($1,$2,$3,$4,'',false)
-				`, uuid.NewString(), tenantID, nodeID, "作业测评")
-			default:
-				title := "题库测验"
-				if methodKey == "paper" {
-					title = "试卷测验"
-				} else if methodKey == "quiz" {
-					title = "随堂测"
-				}
-				_, _ = h.DB.Exec(ctx, `
-					INSERT INTO node_quizzes (id, tenant_id, node_id, title, type)
-					VALUES ($1,$2,$3,$4,$5)
-				`, uuid.NewString(), tenantID, nodeID, title, methodKey)
-			}
+			_, _ = h.DB.Exec(ctx, `
+				INSERT INTO node_quizzes (id, tenant_id, node_id, title, type)
+				VALUES ($1,$2,$3,$4,$5)
+			`, uuid.NewString(), tenantID, nodeID, title, methodKey)
 		}
 	}
+
+	return nil
+}
+
+func (h *CourseImportHandler) toStringSlice(s domain.JSONSlice) []string {
+	if len(s) == 0 {
+		return nil
+	}
+	var ids []string
+	for _, v := range s {
+		if id, ok := v.(string); ok && id != "" {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+func (h *CourseImportHandler) mergeIDs(manual []string, base []string) []string {
+	seen := make(map[string]bool)
+	var merged []string
+	for _, id := range manual {
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		merged = append(merged, id)
+	}
+	for _, id := range base {
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		merged = append(merged, id)
+	}
+	return merged
 }
 
 func (h *CourseImportHandler) clearCourseNodes(ctx context.Context, courseID string) {
@@ -401,11 +487,11 @@ func (h *CourseImportHandler) lookupGranularCourse(ctx context.Context, tenantID
 	}
 	var c domain.Course
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, online_hours, description
+		SELECT id, name, online_hours, description, difficulty, knowledge_point_ids, resource_ids
 		FROM courses
 		WHERE tenant_id=$1 AND name=$2 AND type='granular'
 		LIMIT 1
-	`, tenantID, name).Scan(&c.ID, &c.Name, &c.OnlineHours, &c.Description)
+	`, tenantID, name).Scan(&c.ID, &c.Name, &c.OnlineHours, &c.Description, &c.Difficulty, &c.KnowledgePointIds, &c.ResourceIds)
 	if err != nil {
 		return nil
 	}

@@ -170,6 +170,7 @@ export interface SystemCourseNode {
   teachingGoals?: string
   knowledgePoints?: KnowledgePoint[]
   duration?: number
+  difficulty?: number
   resources?: NodeResource[]
   quizzes?: NodeQuiz[]
   homeworks?: NodeHomework[]

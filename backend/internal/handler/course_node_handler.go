@@ -35,6 +35,7 @@ type SystemCourseNodeResponse struct {
 	SourceName      *string                          `json:"sourceName,omitempty"`
 	TeachingGoals   *string                          `json:"teachingGoals,omitempty"`
 	Duration        *float64                         `json:"duration,omitempty"`
+	Difficulty      *int                             `json:"difficulty,omitempty"`
 	KnowledgePoints []SystemCourseNodeKnowledgePoint `json:"knowledgePoints,omitempty"`
 	Resources       []SystemCourseNodeResource       `json:"resources,omitempty"`
 	Quizzes         []domain.NodeQuiz                `json:"quizzes,omitempty"`
@@ -68,6 +69,7 @@ type CreateCourseNodeRequest struct {
 	SourceName        *string          `json:"sourceName"`
 	TeachingGoals     *string          `json:"teachingGoals"`
 	Duration          *float64         `json:"duration"`
+	Difficulty        *int             `json:"difficulty"`
 	KnowledgePointIds domain.JSONSlice `json:"knowledgePointIds"`
 	ResourceIds       domain.JSONSlice `json:"resourceIds"`
 	Status            string           `json:"status"`
@@ -81,6 +83,7 @@ type UpdateCourseNodeRequest struct {
 	SourceName        *string          `json:"sourceName"`
 	TeachingGoals     *string          `json:"teachingGoals"`
 	Duration          *float64         `json:"duration"`
+	Difficulty        *int             `json:"difficulty"`
 	KnowledgePointIds domain.JSONSlice `json:"knowledgePointIds"`
 	ResourceIds       domain.JSONSlice `json:"resourceIds"`
 	Status            string           `json:"status"`
@@ -102,6 +105,7 @@ type courseNodeBase struct {
 	SourceName        *string
 	TeachingGoals     *string
 	Duration          *float64
+	Difficulty        *int
 	KnowledgePointIds []string
 	ResourceIds       []string
 	Status            string
@@ -150,7 +154,7 @@ func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	query := `
 		SELECT n.id, n.course_id, n.parent_id, n.name, n.sort_order, n.ref_type, n.source_id, n.source_name,
-			n.teaching_goals, n.duration, n.knowledge_point_ids::text[], n.resource_ids::text[], n.status
+			n.teaching_goals, n.duration, n.difficulty, n.knowledge_point_ids::text[], n.resource_ids::text[], n.status
 		FROM system_course_nodes n
 		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY n.sort_order ASC, n.id ASC
@@ -227,10 +231,10 @@ func (h *CourseNodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	_, err = tx.Exec(r.Context(), `
 		INSERT INTO system_course_nodes (id, tenant_id, course_id, parent_id, name, sort_order, ref_type, source_id, source_name,
-			teaching_goals, duration, knowledge_point_ids, resource_ids, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+			teaching_goals, duration, difficulty, knowledge_point_ids, resource_ids, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 	`, id, tenantID, req.CourseID, req.ParentID, req.Name, req.SortOrder, req.RefType, req.SourceID, req.SourceName,
-		req.TeachingGoals, req.Duration, kpIDs, resIDs, req.Status)
+		req.TeachingGoals, req.Duration, req.Difficulty, kpIDs, resIDs, req.Status)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create course node")
 		return
@@ -290,11 +294,11 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	_, err = tx.Exec(r.Context(), `
 		UPDATE system_course_nodes SET name = $1, sort_order = $2, ref_type = $3, source_id = $4,
-			source_name = $5, teaching_goals = $6, duration = $7,
-			knowledge_point_ids = $8, resource_ids = $9, status = $10, updated_at = NOW()
-		WHERE id = $11
+			source_name = $5, teaching_goals = $6, duration = $7, difficulty = $8,
+			knowledge_point_ids = $9, resource_ids = $10, status = $11, updated_at = NOW()
+		WHERE id = $12
 	`, req.Name, req.SortOrder, req.RefType, req.SourceID, req.SourceName, req.TeachingGoals,
-		req.Duration, kpIDs, resIDs, req.Status, id)
+		req.Duration, req.Difficulty, kpIDs, resIDs, req.Status, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to update course node")
 		return
@@ -384,11 +388,11 @@ func (h *CourseNodeHandler) fetchCourseNode(ctx context.Context, id string) (*Sy
 	var base courseNodeBase
 	err := h.DB.QueryRow(ctx, `
 		SELECT n.id, n.course_id, n.parent_id, n.name, n.sort_order, n.ref_type, n.source_id, n.source_name,
-			n.teaching_goals, n.duration, n.knowledge_point_ids::text[], n.resource_ids::text[], n.status
+			n.teaching_goals, n.duration, n.difficulty, n.knowledge_point_ids::text[], n.resource_ids::text[], n.status
 		FROM system_course_nodes n WHERE n.id = $1
 	`, id).Scan(
 		&base.ID, &base.CourseID, &base.ParentID, &base.Name, &base.SortOrder, &base.RefType, &base.SourceID, &base.SourceName,
-		&base.TeachingGoals, &base.Duration, &base.KnowledgePointIds, &base.ResourceIds, &base.Status,
+		&base.TeachingGoals, &base.Duration, &base.Difficulty, &base.KnowledgePointIds, &base.ResourceIds, &base.Status,
 	)
 	if err != nil {
 		return nil, err
@@ -406,7 +410,7 @@ func (h *CourseNodeHandler) scanCourseNodeBaseRows(rows pgx.Rows) ([]courseNodeB
 		var n courseNodeBase
 		if err := rows.Scan(
 			&n.ID, &n.CourseID, &n.ParentID, &n.Name, &n.SortOrder, &n.RefType, &n.SourceID, &n.SourceName,
-			&n.TeachingGoals, &n.Duration, &n.KnowledgePointIds, &n.ResourceIds, &n.Status,
+			&n.TeachingGoals, &n.Duration, &n.Difficulty, &n.KnowledgePointIds, &n.ResourceIds, &n.Status,
 		); err != nil {
 			return nil, err
 		}
@@ -431,6 +435,7 @@ func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []cours
 			SourceName:    b.SourceName,
 			TeachingGoals: b.TeachingGoals,
 			Duration:      b.Duration,
+			Difficulty:    b.Difficulty,
 			Status:        b.Status,
 		}
 		nodeIndex[b.ID] = i
