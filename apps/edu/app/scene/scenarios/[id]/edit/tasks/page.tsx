@@ -1883,7 +1883,7 @@ export default function TasksEditPage() {
   const router = useRouter()
   const scenarioId = params.id as string
   const { toast } = useToast()
-  const { tenantId, orgNodeId, user } = useAuth()
+  const { tenantId, user } = useAuth()
 
   const [existingScenario, setExistingScenario] = useState<any>(null)
   const [dataLoaded, setDataLoaded] = useState(false)
@@ -2894,7 +2894,6 @@ export default function TasksEditPage() {
           positionAbilityBindings={positionAbilityBindings}
           userNameMap={userNameMap}
           tenantId={tenantId}
-          orgNodeId={orgNodeId}
           majors={majors}
           rubricLibrary={rubricLibrary}
           setRubricLibrary={setRubricLibrary}
@@ -3846,7 +3845,6 @@ function EditCardDialog({
   positionAbilityBindings,
   userNameMap,
   tenantId,
-  orgNodeId,
   majors,
   rubricLibrary,
   setRubricLibrary,
@@ -3866,7 +3864,6 @@ function EditCardDialog({
   positionAbilityBindings: any[]
   userNameMap: Record<string, string>
   tenantId?: string
-  orgNodeId?: string
   majors: any[]
   rubricLibrary: RubricScheme[]
   setRubricLibrary: React.Dispatch<React.SetStateAction<RubricScheme[]>>
@@ -7786,7 +7783,6 @@ function EditCardDialog({
                                 <Label className="text-[11px] text-gray-500">专业背景要求</Label>
                                 <MajorSelect
                                   tenantId={tenantId}
-                                  orgNodeId={orgNodeId}
                                   value={subject.params?.teacherBackground || ""}
                                   onChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, teacherBackground: v || "" } })}
                                   placeholder="选择专业背景"
@@ -7830,7 +7826,6 @@ function EditCardDialog({
                                   <Label className="text-[11px] text-gray-500">专业领域</Label>
                                   <MajorSelect
                                     tenantId={tenantId}
-                                    orgNodeId={orgNodeId}
                                     value={subject.params?.expertise || ""}
                                     onChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, expertise: v || "" } })}
                                     placeholder="选择专业领域"

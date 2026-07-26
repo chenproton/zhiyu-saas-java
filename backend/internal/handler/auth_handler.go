@@ -451,17 +451,16 @@ func (h *AuthHandler) fetchOrganizationByID(ctx context.Context, id string) *dom
 
 func (h *AuthHandler) fetchMajorByID(ctx context.Context, id string) *domain.Major {
 	var m domain.Major
-	var orgNodeID, alias *string
+	var alias *string
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, tenant_id, org_node_id, code, name, alias, enabled, created_at, updated_at
+		SELECT id, tenant_id, code, name, alias, enabled, created_at, updated_at
 		FROM majors WHERE id = $1
 	`, id).Scan(
-		&m.ID, &m.TenantID, &orgNodeID, &m.Code, &m.Name, &alias, &m.Enabled, &m.CreatedAt, &m.UpdatedAt,
+		&m.ID, &m.TenantID, &m.Code, &m.Name, &alias, &m.Enabled, &m.CreatedAt, &m.UpdatedAt,
 	)
 	if err != nil {
 		return nil
 	}
-	m.OrgNodeID = orgNodeID
 	m.Alias = alias
 	return &m
 }

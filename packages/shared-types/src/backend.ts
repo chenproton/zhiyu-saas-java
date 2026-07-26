@@ -122,7 +122,6 @@ export interface OperationLog {
 export interface Major {
   id: string
   tenantId: string
-  orgNodeId?: string
   code: string
   name: string
   alias?: string

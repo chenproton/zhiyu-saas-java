@@ -24,25 +24,22 @@ type MajorListResponse struct {
 }
 
 type CreateMajorRequest struct {
-	TenantID  string  `json:"tenantId"`
-	OrgNodeID *string `json:"orgNodeId"`
-	Code      string  `json:"code"`
-	Name      string  `json:"name"`
-	Alias     *string `json:"alias"`
-	Enabled   bool    `json:"enabled"`
+	TenantID string  `json:"tenantId"`
+	Code     string  `json:"code"`
+	Name     string  `json:"name"`
+	Alias    *string `json:"alias"`
+	Enabled  bool    `json:"enabled"`
 }
 
 type UpdateMajorRequest struct {
-	OrgNodeID *string `json:"orgNodeId"`
-	Code      string  `json:"code"`
-	Name      string  `json:"name"`
-	Alias     *string `json:"alias"`
-	Enabled   bool    `json:"enabled"`
+	Code    string  `json:"code"`
+	Name    string  `json:"name"`
+	Alias   *string `json:"alias"`
+	Enabled bool    `json:"enabled"`
 }
 
 func (h *MajorHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
-	orgNodeID := r.URL.Query().Get("orgNodeId")
 	search := r.URL.Query().Get("search")
 	enabledStr := r.URL.Query().Get("enabled")
 	limitStr := r.URL.Query().Get("limit")
@@ -77,11 +74,6 @@ func (h *MajorHandler) List(w http.ResponseWriter, r *http.Request) {
 		args = append(args, tenantID)
 		argIdx++
 	}
-	if orgNodeID != "" {
-		where = append(where, "org_node_id = $"+itoa(argIdx))
-		args = append(args, orgNodeID)
-		argIdx++
-	}
 	if enabledStr != "" {
 		where = append(where, "enabled = $"+itoa(argIdx))
 		args = append(args, enabledStr == "true")
@@ -98,7 +90,7 @@ func (h *MajorHandler) List(w http.ResponseWriter, r *http.Request) {
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT id, tenant_id, org_node_id, code, name, alias, enabled, created_at, updated_at
+		SELECT id, tenant_id, code, name, alias, enabled, created_at, updated_at
 		FROM majors
 		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY created_at DESC
@@ -158,9 +150,9 @@ func (h *MajorHandler) Create(w http.ResponseWriter, r *http.Request) {
 	id := uuid.NewString()
 
 	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO majors (id, tenant_id, org_node_id, code, name, alias, enabled)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`, id, req.TenantID, req.OrgNodeID, req.Code, req.Name, req.Alias, req.Enabled)
+		INSERT INTO majors (id, tenant_id, code, name, alias, enabled)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, id, req.TenantID, req.Code, req.Name, req.Alias, req.Enabled)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "专业代码已存在，请使用其他代码")
@@ -203,9 +195,9 @@ func (h *MajorHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = h.DB.Exec(r.Context(), `
-		UPDATE majors SET org_node_id = $1, code = $2, name = $3, alias = $4, enabled = $5, updated_at = NOW()
-		WHERE id = $6
-	`, req.OrgNodeID, req.Code, req.Name, req.Alias, req.Enabled, id)
+		UPDATE majors SET code = $1, name = $2, alias = $3, enabled = $4, updated_at = NOW()
+		WHERE id = $5
+	`, req.Code, req.Name, req.Alias, req.Enabled, id)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "专业代码已存在，请使用其他代码")
@@ -259,18 +251,17 @@ func (h *MajorHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 func (h *MajorHandler) fetchMajor(ctx context.Context, id string) (domain.Major, error) {
 	var m domain.Major
-	var orgNodeID, alias *string
+	var alias *string
 
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, tenant_id, org_node_id, code, name, alias, enabled, created_at, updated_at
+		SELECT id, tenant_id, code, name, alias, enabled, created_at, updated_at
 		FROM majors WHERE id = $1
 	`, id).Scan(
-		&m.ID, &m.TenantID, &orgNodeID, &m.Code, &m.Name, &alias, &m.Enabled, &m.CreatedAt, &m.UpdatedAt,
+		&m.ID, &m.TenantID, &m.Code, &m.Name, &alias, &m.Enabled, &m.CreatedAt, &m.UpdatedAt,
 	)
 	if err != nil {
 		return m, err
 	}
-	m.OrgNodeID = orgNodeID
 	m.Alias = alias
 	return m, nil
 }
@@ -279,13 +270,12 @@ func (h *MajorHandler) scanMajorRows(rows pgx.Rows) ([]domain.Major, error) {
 	items := make([]domain.Major, 0)
 	for rows.Next() {
 		var m domain.Major
-		var orgNodeID, alias *string
+		var alias *string
 		if err := rows.Scan(
-			&m.ID, &m.TenantID, &orgNodeID, &m.Code, &m.Name, &alias, &m.Enabled, &m.CreatedAt, &m.UpdatedAt,
+			&m.ID, &m.TenantID, &m.Code, &m.Name, &alias, &m.Enabled, &m.CreatedAt, &m.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
-		m.OrgNodeID = orgNodeID
 		m.Alias = alias
 		items = append(items, m)
 	}

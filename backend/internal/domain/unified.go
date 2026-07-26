@@ -106,7 +106,6 @@ type Organization struct {
 type Major struct {
 	ID         string    `json:"id"`
 	TenantID   string    `json:"tenantId"`
-	OrgNodeID  *string   `json:"orgNodeId,omitempty"`
 	Code       string    `json:"code"`
 	Name       string    `json:"name"`
 	Alias      *string   `json:"alias,omitempty"`
