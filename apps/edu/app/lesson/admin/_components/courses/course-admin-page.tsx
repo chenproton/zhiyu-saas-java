@@ -10,16 +10,6 @@ import {
   type ContentListItem,
   type ContentBatch,
 } from "@/components/shared/content-list-page"
-import { Button } from "@/components/ui/button"
-import { Upload } from "lucide-react"
-import { useState } from "react"
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 
 interface CourseAdminPageProps {
   title: string
@@ -79,7 +69,6 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
   const { user } = useAuth()
   const currentUserId = user?.id ?? ""
   const typeLabel = courseType === "system" ? "体系课" : courseType === "granular" ? "颗粒课" : "混合课"
-  const [resourceImportOpen, setResourceImportOpen] = useState(false)
 
   return (
     <ContentListPage<Course>
@@ -96,6 +85,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
       approvalTargetType="course"
       importEntityName="courses"
       exportEntityName="courses"
+      importExcelEntity="courses"
       listParams={{ type: courseType }}
       coBuilderField="coCreatorIds"
       statusFilterOptions={[
@@ -117,12 +107,6 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
         creatorId: uid || "",
         coCreatorIds: [],
       })}
-      extraHeaderActions={
-        <Button variant="outline" size="sm" onClick={() => setResourceImportOpen(true)}>
-          <Upload className="mr-2 h-4 w-4" />
-          导入资源包
-        </Button>
-      }
       listExtraProps={{ courseType }}
       renderList={(props) => (
         <CourseList
@@ -143,25 +127,6 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref }: Course
           className="border-0 rounded-none"
         />
       )}
-    >
-      <Dialog open={resourceImportOpen} onOpenChange={setResourceImportOpen}>
-        <DialogContent className="sm:max-w-[450px]">
-          <DialogHeader>
-            <DialogTitle>资源包导入</DialogTitle>
-          </DialogHeader>
-          <div className="py-6">
-            <div className="border-2 border-dashed border-slate-200 rounded-lg p-8 flex flex-col items-center justify-center text-center">
-              <Upload className="h-10 w-10 text-slate-300 mb-3" />
-              <p className="text-sm text-slate-600 font-medium">点击或拖拽资源包到此处上传</p>
-              <p className="text-xs text-slate-400 mt-1">支持 .zip, .rar 格式</p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setResourceImportOpen(false)}>取消</Button>
-            <Button disabled>开始导入</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </ContentListPage>
+    />
   )
 }

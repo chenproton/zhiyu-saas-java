@@ -111,7 +111,7 @@ export interface ContentImportExportApi {
   export: (entity: string) => Promise<Response>
   importExcel?: (entity: string, file: File, overwrite?: boolean) => Promise<{ created: number; failed: number; skipped?: number; entity: string; errors?: string[] }>
   importExcelPreview?: (entity: string, file: File) => Promise<ImportPreviewResult>
-  downloadTemplate?: (entity: "positions" | "scenarios") => Promise<Response>
+  downloadTemplate?: (entity: "positions" | "scenarios" | "courses") => Promise<Response>
   exportScenariosExcel?: (ids: string[]) => Promise<Response>
   exportPositionsExcel?: (ids: string[]) => Promise<Response>
 }

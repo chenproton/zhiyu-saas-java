@@ -112,6 +112,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 	examImportHandler := &handler.ExamImportHandler{DB: db}
 	resourceImportHandler := &handler.ResourceImportHandler{DB: db}
 	resourceExportHandler := &handler.ResourceExportHandler{DB: db}
+	courseImportHandler := &handler.CourseImportHandler{DB: db}
 	templateHandler := &handler.TemplateHandler{DB: db}
 	scenarioExportHandler := &handler.ScenarioExportHandler{DB: db}
 	positionExportHandler := &handler.PositionExportHandler{DB: db}
@@ -281,6 +282,8 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 			r.Post("/import/question-banks/{bankId}/questions/preview", questionImportHandler.PreviewExcel)
 			r.Post("/import/exams/excel", examImportHandler.ImportExcel)
 			r.Post("/import/exams/preview", examImportHandler.PreviewExcel)
+			r.Post("/import/courses/excel", courseImportHandler.ImportExcel)
+			r.Post("/import/courses/preview", courseImportHandler.PreviewExcel)
 			r.Post("/import/industries/excel", resourceImportHandler.ImportIndustries)
 			r.Post("/import/industries/preview", resourceImportHandler.PreviewIndustries)
 			r.Post("/import/majors/excel", resourceImportHandler.ImportMajors)
@@ -293,6 +296,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 			r.Post("/import/teachers/preview", resourceImportHandler.PreviewTeachers)
 			r.Get("/templates/positions", templateHandler.ServePositionTemplate)
 			r.Get("/templates/scenarios", templateHandler.ServeScenarioTemplate)
+			r.Get("/templates/courses", templateHandler.ServeSystemCourseTemplate)
 			r.Get("/templates/question-banks", templateHandler.ServeQuestionBankTemplate)
 			r.Get("/templates/question-banks/{bankId}/questions", templateHandler.ServeQuestionTemplate)
 			r.Get("/templates/exams", templateHandler.ServeExamTemplate)

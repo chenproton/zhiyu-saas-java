@@ -1013,7 +1013,7 @@ export const importExportApi = {
     }
     return res.json()
   },
-  downloadTemplate: (entity: "positions" | "scenarios" | "system-courses" | "question-banks" | "exams" | "industries" | "majors" | "organizations" | "students" | "teachers") => {
+  downloadTemplate: (entity: "positions" | "scenarios" | "courses" | "system-courses" | "question-banks" | "exams" | "industries" | "majors" | "organizations" | "students" | "teachers") => {
     const token = getToken()
     return fetch(`${API_BASE}/templates/${entity}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
