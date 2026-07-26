@@ -19,6 +19,40 @@
 
 ## 记录
 
+### 2026-07-26 性能与可维护性最佳实践文档
+
+- 审计文档：
+  - 新增：`docs/audits/backend/performance-maintainability.md`
+  - 索引：`docs/audits/AUDIT_RECORDS.md`
+- 审查人：Agent
+- 结论：收敛
+- PASS 检查点数量：— / 总检查点数量：—
+- 备注：
+  - 汇总当前审计中发现的性能与可维护性优化项。
+  - 提出 Portal 工作台聚合查询优化、统一导入导出格式、内容状态机收敛、大事务拆分、业务规则配置化、审计日志治理、领域服务层拆分等最佳实践方案。
+  - 按 P0-P3 给出优先级建议，范围不涉及安全改造。
+
+### 2026-07-26 审查文档覆盖补全与风险等级校准
+
+- 审计文档：
+  - 更新：`docs/audits/backend/evaluation-platform.md`
+  - 更新：`docs/audits/backend/lesson-platform.md`
+  - 更新：`docs/audits/backend/tenant-org.md`
+  - 更新：`docs/audits/backend/auth-security.md`
+  - 更新：`docs/audits/backend/data-infra.md`
+  - 更新：`docs/audits/backend/operations-platform.md`
+  - 索引：`docs/audits/AUDIT_RECORDS.md`
+- 审查人：Agent
+- 结论：收敛
+- PASS 检查点数量：— / 总检查点数量：—
+- 备注：
+  - 补充 `RandomDrawQuestionHandler` 现场问答题池覆盖。
+  - 补充题库/试卷/题目/课程/颗粒课/基础数据的 Excel 导入、导出与模板下载覆盖。
+  - 补充超管控制台租户订阅管理子路由覆盖。
+  - 补充 `auth/debug/token` 开发调试接口说明。
+  - 调整 `data-infra.md` 文件上传无内容校验风险等级为低危，避免与“简单优先”目标冲突。
+  - 调整 `auth-security.md`、`tenant-org.md`、`operations-platform.md` 中路由权限分层、超管控制台、机构创建等检查点说明，与已列风险保持一致。
+
 ### 2026-07-26 文件上传扩展名限制移除
 
 - 审计文档：
