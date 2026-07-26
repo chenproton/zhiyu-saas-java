@@ -126,16 +126,30 @@ function ModuleCard({ module }: { module: ModuleItem }) {
 }
 
 export default function AppsPage() {
-  const { hasMenuPermission } = usePortalAuth()
+  const { hasMenuPermission, tenantId } = usePortalAuth()
   const [activeMenu, setActiveMenu] = useState(menuItems[0].id)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const contentRef = useRef<HTMLDivElement>(null)
   const { data: modulesData, loading: modulesLoading } = useAppModules()
+  const [subscriptionModules, setSubscriptionModules] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    if (!tenantId) return
+    fetch(`/api/v1/subscriptions?tenantId=${tenantId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && typeof data.modules === "object") {
+          setSubscriptionModules(data.modules)
+        }
+      })
+      .catch(() => {})
+  }, [tenantId])
 
   const visibleQuickAccess = quickAccess.filter((item) => hasMenuPermission(item.href))
 
   const allModules: ModuleSection[] = useMemo(() => {
     return menuItems
+      .filter((item) => subscriptionModules[item.id] === true)
       .map((item) => {
         const configured = modulesData.platforms.find((p) => p.id === item.id)
         let modules: ModuleItem[]
@@ -166,7 +180,7 @@ export default function AppsPage() {
         }
       })
       .filter((section) => section.modules.length > 0)
-  }, [modulesData.platforms, hasMenuPermission])
+  }, [modulesData.platforms, hasMenuPermission, subscriptionModules])
 
   useEffect(() => {
     const handleScroll = () => {

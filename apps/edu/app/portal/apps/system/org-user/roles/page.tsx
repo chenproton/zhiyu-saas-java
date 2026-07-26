@@ -23,6 +23,26 @@ import { useToast } from "@/hooks/use-toast"
 import { buildMenuTree, normalizeMenuPath, permissionModuleConfig } from "@/lib/menu-permissions"
 import type { MenuTreeItem, PermissionModule } from "@/lib/menu-permissions"
 
+const MENU_TREE_PLATFORM_MAP: Record<string, string> = {
+  "system-entry": "system",
+  career: "career",
+  course: "course",
+  scene: "scene",
+  ability: "ability",
+  resource: "resource",
+}
+
+function filterMenuTreeBySubscription(
+  tree: MenuTreeItem[],
+  modules: Record<string, boolean>,
+): MenuTreeItem[] {
+  return tree.filter((node) => {
+    const platformId = MENU_TREE_PLATFORM_MAP[node.id]
+    if (!platformId) return true
+    return modules[platformId] === true
+  })
+}
+
 function SystemCard({ node, checked, onCheck }: { node: MenuTreeItem; checked: Set<string>; onCheck: (id: string) => void }) {
   const childPages = useMemo(() => {
     const pages: MenuTreeItem[] = []
@@ -90,8 +110,25 @@ export default function RolesPage() {
   const [checkedActions, setCheckedActions] = useState<Set<string>>(new Set())
   const [editName, setEditName] = useState("")
   const [isSaving, setIsSaving] = useState(false)
+  const [subscriptionModules, setSubscriptionModules] = useState<Record<string, boolean>>({})
 
-  const menuTree = useMemo(() => buildMenuTree(), [])
+  const menuTree = useMemo(() => {
+    const tree = buildMenuTree()
+    if (Object.keys(subscriptionModules).length === 0) return tree
+    return filterMenuTreeBySubscription(tree, subscriptionModules)
+  }, [subscriptionModules])
+
+  useEffect(() => {
+    if (!tenantId) return
+    fetch(`/api/v1/subscriptions?tenantId=${tenantId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && typeof data.modules === "object") {
+          setSubscriptionModules(data.modules)
+        }
+      })
+      .catch(() => {})
+  }, [tenantId])
 
   const fetchData = useCallback(async () => {
     if (!tenantId) {
