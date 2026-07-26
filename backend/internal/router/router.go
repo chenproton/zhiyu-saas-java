@@ -165,7 +165,6 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 	courseHandler := &handler.CourseHandler{DB: db}
 	knowledgePointHandler := &handler.KnowledgePointHandler{DB: db}
 	courseNodeHandler := &handler.CourseNodeHandler{DB: db}
-	nodeResourceHandler := &handler.NodeResourceHandler{DB: db}
 	nodeQuizHandler := &handler.NodeQuizHandler{DB: db}
 	nodeHomeworkHandler := &handler.NodeHomeworkHandler{DB: db}
 	hybridModuleHandler := &handler.HybridModuleHandler{DB: db}
@@ -292,7 +291,6 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 			r.Post("/import/teachers/preview", resourceImportHandler.PreviewTeachers)
 			r.Get("/templates/positions", templateHandler.ServePositionTemplate)
 			r.Get("/templates/scenarios", templateHandler.ServeScenarioTemplate)
-			r.Get("/templates/system-courses", templateHandler.ServeSystemCourseTemplate)
 			r.Get("/templates/question-banks", templateHandler.ServeQuestionBankTemplate)
 			r.Get("/templates/question-banks/{bankId}/questions", templateHandler.ServeQuestionTemplate)
 			r.Get("/templates/exams", templateHandler.ServeExamTemplate)
@@ -566,11 +564,6 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 				r.Put("/lesson/nodes/{id}", courseNodeHandler.Update)
 				r.Delete("/lesson/nodes/{id}", courseNodeHandler.Delete)
 				r.Post("/lesson/nodes/reorder", courseNodeHandler.Reorder)
-
-				r.Get("/lesson/node-resources", nodeResourceHandler.ListResources)
-				r.Post("/lesson/node-resources", nodeResourceHandler.BindResource)
-				r.Post("/lesson/node-resources/create", nodeResourceHandler.Create)
-				r.Delete("/lesson/node-resources/{id}", nodeResourceHandler.UnbindResource)
 
 				r.Get("/lesson/quizzes", nodeQuizHandler.ListQuizzes)
 				r.Post("/lesson/quizzes", nodeQuizHandler.CreateQuiz)
