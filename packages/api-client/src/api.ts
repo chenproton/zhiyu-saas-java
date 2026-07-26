@@ -50,7 +50,7 @@ import type {
 import type {
   Course,
   KnowledgePoint,
-  SystemCourseNode,
+  SystemCourseNode as BackendSystemCourseNode,
   NodeQuiz,
   NodeQuizQuestion,
   NodeHomework,
@@ -61,6 +61,7 @@ import type {
   LessonBehaviorRecord,
   LessonBehaviorAggregate,
 } from "./types/lesson"
+import type { SystemCourseNode } from "./types/lesson-source"
 import type {
   QuestionBank,
   Question,
@@ -881,7 +882,16 @@ export const courseApi = createContentApi<Course, Omit<Course, "id" | "nodeCount
 export const knowledgeApi = createCrudApi<KnowledgePoint, Omit<KnowledgePoint, "id" | "createdAt" | "updatedAt">, Partial<Omit<KnowledgePoint, "id" | "createdAt" | "updatedAt">>>("/lesson/knowledge-points")
 
 export const courseNodeApi = {
-  ...createCrudApi<SystemCourseNode, Omit<SystemCourseNode, "id" | "createdAt" | "updatedAt">, Partial<Omit<SystemCourseNode, "id" | "createdAt" | "updatedAt">>>("/lesson/nodes"),
+  list: (params?: Record<string, string | number | boolean | undefined>) =>
+    request<ListResponse<SystemCourseNode>>(`/lesson/nodes${buildQuery(params || {})}`),
+  get: (id: string) =>
+    request<SystemCourseNode>(`/lesson/nodes/${id}`),
+  create: (req: Omit<BackendSystemCourseNode, "id" | "createdAt" | "updatedAt">) =>
+    request<SystemCourseNode>("/lesson/nodes", { method: "POST", body: JSON.stringify(req) }),
+  update: (id: string, req: Partial<Omit<BackendSystemCourseNode, "id" | "createdAt" | "updatedAt">>) =>
+    request<SystemCourseNode>(`/lesson/nodes/${id}`, { method: "PUT", body: JSON.stringify(req) }),
+  delete: (id: string) =>
+    request<{ id: string }>(`/lesson/nodes/${id}`, { method: "DELETE" }),
   reorder: (courseId: string, nodeIds: string[]) =>
     request<{ ok: boolean }>("/lesson/nodes/reorder", { method: "POST", body: JSON.stringify({ courseId, nodeIds }) }),
 }
@@ -924,11 +934,15 @@ export const lessonBehaviorApi = {
 export const nodeQuizApi = {
   create: (req: Omit<NodeQuiz, "id">) =>
     request<NodeQuiz>("/lesson/quizzes", { method: "POST", body: JSON.stringify(req) }),
+  delete: (id: string) =>
+    request<{ id: string }>(`/lesson/quizzes/${id}`, { method: "DELETE" }),
 }
 
 export const nodeHomeworkApi = {
   create: (req: Omit<NodeHomework, "id">) =>
     request<NodeHomework>("/lesson/homeworks", { method: "POST", body: JSON.stringify(req) }),
+  delete: (id: string) =>
+    request<{ id: string }>(`/lesson/homeworks/${id}`, { method: "DELETE" }),
 }
 
 export const fileApi = {

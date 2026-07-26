@@ -147,6 +147,7 @@ function AddGranularPageInner() {
 
   const currentCheckNode: SystemCourseNode | undefined = useMemo(() => {
     const kpForCheck = knowledgePoints.map((kp) => ({
+      id: kp.id,
       name: kp.name,
       linked: kp.linked ?? false,
     }))

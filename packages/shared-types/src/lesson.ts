@@ -69,7 +69,7 @@ export interface NodeQuiz {
   id: string
   nodeId: string
   title: string
-  type: "paper" | "question_bank"
+  type: "paper" | "question_bank" | "quiz"
   timeLimit?: number
 }
 

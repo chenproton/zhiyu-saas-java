@@ -118,7 +118,10 @@ export const COURSE_TYPE_COLORS: Record<CourseType, string> = {
 export type NodeRefType = 'normal' | 'original'
 
 export interface KnowledgePoint {
+  id: string
   name: string
+  code?: string
+  description?: string
   linked: boolean
 }
 
@@ -126,7 +129,7 @@ export interface NodeResource {
   id: string
   name: string
   type: string
-  size: number
+  size?: number
   url: string
 }
 
@@ -142,8 +145,8 @@ export interface QuizQuestion {
 export interface NodeQuiz {
   id: string
   title: string
-  type: 'paper' | 'question_bank'
-  questions: QuizQuestion[]
+  type: 'paper' | 'question_bank' | 'quiz'
+  questions?: QuizQuestion[]
   timeLimit?: number
 }
 

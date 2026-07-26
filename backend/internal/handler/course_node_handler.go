@@ -19,8 +19,43 @@ type CourseNodeHandler struct {
 }
 
 type CourseNodeListResponse struct {
-	Items []domain.SystemCourseNode `json:"items"`
-	Total int                       `json:"total"`
+	Items []SystemCourseNodeResponse `json:"items"`
+	Total int                        `json:"total"`
+}
+
+// SystemCourseNodeResponse 是前端编辑页需要的完整节点模型。
+type SystemCourseNodeResponse struct {
+	ID              string                           `json:"id"`
+	CourseID        string                           `json:"courseId"`
+	ParentID        *string                          `json:"parentId,omitempty"`
+	Name            string                           `json:"name"`
+	Order           int                              `json:"order"`
+	Type            string                           `json:"type"`
+	SourceID        *string                          `json:"sourceId,omitempty"`
+	SourceName      *string                          `json:"sourceName,omitempty"`
+	TeachingGoals   *string                          `json:"teachingGoals,omitempty"`
+	Duration        *float64                         `json:"duration,omitempty"`
+	KnowledgePoints []SystemCourseNodeKnowledgePoint `json:"knowledgePoints,omitempty"`
+	Resources       []SystemCourseNodeResource       `json:"resources,omitempty"`
+	Quizzes         []domain.NodeQuiz                `json:"quizzes,omitempty"`
+	Homeworks       []domain.NodeHomework            `json:"homeworks,omitempty"`
+	Status          string                           `json:"status"`
+}
+
+type SystemCourseNodeKnowledgePoint struct {
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Code        *string `json:"code,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Linked      bool    `json:"linked"`
+}
+
+type SystemCourseNodeResource struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
+	URL  string `json:"url"`
+	Size *int   `json:"size,omitempty"`
 }
 
 type CreateCourseNodeRequest struct {
@@ -54,6 +89,20 @@ type UpdateCourseNodeRequest struct {
 type ReorderCourseNodesRequest struct {
 	CourseID string   `json:"courseId"`
 	NodeIDs  []string `json:"nodeIds"`
+}
+
+type courseNodeBase struct {
+	ID            string
+	CourseID      string
+	ParentID      *string
+	Name          string
+	SortOrder     int
+	RefType       string
+	SourceID      *string
+	SourceName    *string
+	TeachingGoals *string
+	Duration      *float64
+	Status        string
 }
 
 func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -99,13 +148,10 @@ func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	query := `
 		SELECT n.id, n.course_id, n.parent_id, n.name, n.sort_order, n.ref_type, n.source_id, n.source_name,
-			n.teaching_goals, n.duration,
-			(SELECT COALESCE(array_agg(kp.knowledge_point_id), '{}') FROM node_knowledge_point_bindings kp WHERE kp.node_id = n.id) AS knowledge_point_ids,
-			(SELECT COALESCE(array_agg(rb.resource_id), '{}') FROM node_resource_bindings rb WHERE rb.node_id = n.id) AS resource_ids,
-			n.status, n.created_at, n.updated_at
+			n.teaching_goals, n.duration, n.status
 		FROM system_course_nodes n
 		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY n.sort_order ASC, n.created_at ASC
+		ORDER BY n.sort_order ASC, n.id ASC
 	`
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
@@ -115,9 +161,15 @@ func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	items, err := h.scanCourseNodeRows(rows)
+	bases, err := h.scanCourseNodeBaseRows(rows)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to scan course nodes")
+		return
+	}
+
+	items, err := h.enrichCourseNodes(r.Context(), bases)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to enrich course nodes")
 		return
 	}
 
@@ -364,36 +416,154 @@ func (h *CourseNodeHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
-func (h *CourseNodeHandler) fetchCourseNode(ctx context.Context, id string) (*domain.SystemCourseNode, error) {
-	var n domain.SystemCourseNode
+func (h *CourseNodeHandler) fetchCourseNode(ctx context.Context, id string) (*SystemCourseNodeResponse, error) {
+	var base courseNodeBase
 	err := h.DB.QueryRow(ctx, `
 		SELECT n.id, n.course_id, n.parent_id, n.name, n.sort_order, n.ref_type, n.source_id, n.source_name,
-			n.teaching_goals, n.duration,
-			(SELECT COALESCE(array_agg(kp.knowledge_point_id), '{}') FROM node_knowledge_point_bindings kp WHERE kp.node_id = n.id) AS knowledge_point_ids,
-			(SELECT COALESCE(array_agg(rb.resource_id), '{}') FROM node_resource_bindings rb WHERE rb.node_id = n.id) AS resource_ids,
-			n.status, n.created_at, n.updated_at
+			n.teaching_goals, n.duration, n.status
 		FROM system_course_nodes n WHERE n.id = $1
 	`, id).Scan(
-		&n.ID, &n.CourseID, &n.ParentID, &n.Name, &n.SortOrder, &n.RefType, &n.SourceID, &n.SourceName,
-		&n.TeachingGoals, &n.Duration, &n.KnowledgePointIds, &n.ResourceIds, &n.Status, &n.CreatedAt, &n.UpdatedAt,
+		&base.ID, &base.CourseID, &base.ParentID, &base.Name, &base.SortOrder, &base.RefType, &base.SourceID, &base.SourceName,
+		&base.TeachingGoals, &base.Duration, &base.Status,
 	)
 	if err != nil {
 		return nil, err
 	}
-	return &n, nil
+	items, err := h.enrichCourseNodes(ctx, []courseNodeBase{base})
+	if err != nil {
+		return nil, err
+	}
+	return &items[0], nil
 }
 
-func (h *CourseNodeHandler) scanCourseNodeRows(rows pgx.Rows) ([]domain.SystemCourseNode, error) {
-	items := make([]domain.SystemCourseNode, 0)
+func (h *CourseNodeHandler) scanCourseNodeBaseRows(rows pgx.Rows) ([]courseNodeBase, error) {
+	items := make([]courseNodeBase, 0)
 	for rows.Next() {
-		var n domain.SystemCourseNode
+		var n courseNodeBase
 		if err := rows.Scan(
 			&n.ID, &n.CourseID, &n.ParentID, &n.Name, &n.SortOrder, &n.RefType, &n.SourceID, &n.SourceName,
-			&n.TeachingGoals, &n.Duration, &n.KnowledgePointIds, &n.ResourceIds, &n.Status, &n.CreatedAt, &n.UpdatedAt,
+			&n.TeachingGoals, &n.Duration, &n.Status,
 		); err != nil {
 			return nil, err
 		}
 		items = append(items, n)
 	}
+	return items, nil
+}
+
+func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []courseNodeBase) ([]SystemCourseNodeResponse, error) {
+	items := make([]SystemCourseNodeResponse, len(bases))
+	nodeIndex := make(map[string]int, len(bases))
+	nodeIDs := make([]string, 0, len(bases))
+	for i, b := range bases {
+		items[i] = SystemCourseNodeResponse{
+			ID:            b.ID,
+			CourseID:      b.CourseID,
+			ParentID:      b.ParentID,
+			Name:          b.Name,
+			Order:         b.SortOrder,
+			Type:          b.RefType,
+			SourceID:      b.SourceID,
+			SourceName:    b.SourceName,
+			TeachingGoals: b.TeachingGoals,
+			Duration:      b.Duration,
+			Status:        b.Status,
+		}
+		nodeIndex[b.ID] = i
+		nodeIDs = append(nodeIDs, b.ID)
+	}
+
+	if len(nodeIDs) == 0 {
+		return items, nil
+	}
+
+	// knowledge points
+	if rows, err := h.DB.Query(ctx, `
+		SELECT nkb.node_id, kp.id, kp.name, kp.code, kp.description, kp.linked
+		FROM node_knowledge_point_bindings nkb
+		JOIN knowledge_points kp ON kp.id = nkb.knowledge_point_id
+		WHERE nkb.node_id = ANY($1)
+		ORDER BY kp.id ASC
+	`, nodeIDs); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var nodeID string
+			var kp SystemCourseNodeKnowledgePoint
+			if err := rows.Scan(&nodeID, &kp.ID, &kp.Name, &kp.Code, &kp.Description, &kp.Linked); err != nil {
+				return nil, err
+			}
+			if idx, ok := nodeIndex[nodeID]; ok {
+				items[idx].KnowledgePoints = append(items[idx].KnowledgePoints, kp)
+			}
+		}
+	} else {
+		return nil, err
+	}
+
+	// resources
+	if rows, err := h.DB.Query(ctx, `
+		SELECT nrb.node_id, nr.id, nr.name, nr.type, nr.url, nr.size
+		FROM node_resource_bindings nrb
+		JOIN node_resources nr ON nr.id = nrb.resource_id
+		WHERE nrb.node_id = ANY($1)
+		ORDER BY nr.id ASC
+	`, nodeIDs); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var nodeID string
+			var res SystemCourseNodeResource
+			if err := rows.Scan(&nodeID, &res.ID, &res.Name, &res.Type, &res.URL, &res.Size); err != nil {
+				return nil, err
+			}
+			if idx, ok := nodeIndex[nodeID]; ok {
+				items[idx].Resources = append(items[idx].Resources, res)
+			}
+		}
+	} else {
+		return nil, err
+	}
+
+	// quizzes
+	if rows, err := h.DB.Query(ctx, `
+		SELECT id, node_id, title, type, time_limit
+		FROM node_quizzes
+		WHERE node_id = ANY($1)
+		ORDER BY id ASC
+	`, nodeIDs); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var q domain.NodeQuiz
+			if err := rows.Scan(&q.ID, &q.NodeID, &q.Title, &q.Type, &q.TimeLimit); err != nil {
+				return nil, err
+			}
+			if idx, ok := nodeIndex[q.NodeID]; ok {
+				items[idx].Quizzes = append(items[idx].Quizzes, q)
+			}
+		}
+	} else {
+		return nil, err
+	}
+
+	// homeworks
+	if rows, err := h.DB.Query(ctx, `
+		SELECT id, node_id, title, requirement, need_attachment, deadline
+		FROM node_homeworks
+		WHERE node_id = ANY($1)
+		ORDER BY id ASC
+	`, nodeIDs); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var hw domain.NodeHomework
+			if err := rows.Scan(&hw.ID, &hw.NodeID, &hw.Title, &hw.Requirement, &hw.NeedAttachment, &hw.Deadline); err != nil {
+				return nil, err
+			}
+			if idx, ok := nodeIndex[hw.NodeID]; ok {
+				items[idx].Homeworks = append(items[idx].Homeworks, hw)
+			}
+		}
+	} else {
+		return nil, err
+	}
+
 	return items, nil
 }

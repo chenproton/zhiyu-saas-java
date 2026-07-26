@@ -200,22 +200,48 @@ function AddSystemPageInner() {
   useEffect(() => {
     if (!editId) return
     setLoadingEdit(true)
-    Promise.all([
-      courseApi.get(editId),
-      courseNodeApi.list({ courseId: editId }),
-    ]).then(([course, nodeRes]) => {
-      setCourseId(course.id)
-      setCourseName(course.name || "")
-      if (course.description) setCourseDescription(course.description)
-      if (course.coverImage) setCoverImage(course.coverImage)
-      if (course.majorId) setMajor(course.majorId)
-      if (course.batchId) setBatchId(course.batchId)
-      setOriginalStatus(course.status || "draft")
-      if (nodeRes.items?.length) {
-        setNodes(nodeRes.items as unknown as SystemCourseNode[])
-        setSelectedNodeId(nodeRes.items[0]?.id || null)
+    ;(async () => {
+      try {
+        const [course, nodeRes, resRes] = await Promise.all([
+          courseApi.get(editId),
+          courseNodeApi.list({ courseId: editId }),
+          nodeResourceApi.list({ courseId: editId, limit: 200 }),
+        ])
+        setCourseId(course.id)
+        setCourseName(course.name || "")
+        if (course.description) setCourseDescription(course.description)
+        if (course.coverImage) setCoverImage(course.coverImage)
+        if (course.majorId) setMajor(course.majorId)
+        if (course.batchId) setBatchId(course.batchId)
+        setOriginalStatus(course.status || "draft")
+        setResourcePool((resRes.items || []).map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          type: r.type,
+          url: r.url || r.URL,
+          description: r.description,
+          size: r.size,
+          uploadedBy: r.uploadedBy,
+          uploadedAt: r.uploadedAt,
+        })))
+        const loadedNodes = (nodeRes.items || []) as SystemCourseNode[]
+        setNodes(loadedNodes)
+        if (loadedNodes.length > 0) {
+          setSelectedNodeId(loadedNodes[0].id)
+        }
+        const initialModes: Record<string, AddMode> = {}
+        loadedNodes.forEach((n) => {
+          if (n.type !== "original") {
+            initialModes[n.id] = "upload"
+          }
+        })
+        setNodeModes((prev) => ({ ...prev, ...initialModes }))
+      } catch (e: any) {
+        toast.error(e.message || "加载课程失败")
+      } finally {
+        setLoadingEdit(false)
       }
-    }).catch(() => {}).finally(() => setLoadingEdit(false))
+    })()
   }, [editId])
 
   const handleAddNode = useCallback((parentId: string | null, name: string, order: number, type?: NodeRefType, sourceId?: string, sourceName?: string) => {
@@ -363,11 +389,12 @@ function AddSystemPageInner() {
     setHours(String(node.duration || ""))
     setLearningGoal(node.teachingGoals || "")
     setKnowledgePoints(
-      (node.knowledgePoints || []).map((kp, i) => ({
-        id: `kp-${node.id}-${i}`,
+      (node.knowledgePoints || []).map((kp) => ({
+        id: kp.id,
         name: kp.name,
-        description: "",
-        linked: kp.linked,
+        code: kp.code,
+        description: kp.description,
+        linked: true,
       }))
     )
     setSelectedResourceIds((node.resources || []).map((r) => r.id))
@@ -375,6 +402,7 @@ function AddSystemPageInner() {
     node.quizzes?.forEach((q) => {
       if (q.type === "question_bank") evalMethods.push("question_bank")
       else if (q.type === "paper") evalMethods.push("paper")
+      else if (q.type === "quiz") evalMethods.push("quiz")
     })
     if (node.homeworks && node.homeworks.length > 0) evalMethods.push("exam")
     setSelectedEvalMethods(Array.from(new Set(evalMethods)))
@@ -426,7 +454,7 @@ function AddSystemPageInner() {
   const handleSelectUploadMode = useCallback(() => {
     if (!selectedNodeId) return
     setNodeModes((prev) => ({ ...prev, [selectedNodeId]: "upload" }))
-  }, [selectedNodeId])
+  }, [selectedNodeId, setNodeModes])
 
   const handleGrainConfirm = useCallback(() => {
     if (!grainSelectedId || !selectedNodeId) return
@@ -450,7 +478,7 @@ function AddSystemPageInner() {
     setSelectedEvalMethods([])
     setDifficulty(0)
     setShowGrainSelector(false)
-  }, [grainSelectedId, selectedNodeId, grainSelectorMode, handleUpdateNode, grainCourses])
+  }, [grainSelectedId, selectedNodeId, grainSelectorMode, handleUpdateNode, grainCourses, setNodeModes])
 
   /* ---------- submit: convert complete nodes to grain ---------- */
   const [convertDialogOpen, setConvertDialogOpen] = useState(false)
@@ -553,9 +581,30 @@ function AddSystemPageInner() {
       }
 
       // 保存测评方式
-      const methods = draft?.selectedEvalMethods || []
+      const currentMethods: string[] = []
+      node.quizzes?.forEach((q) => {
+        if (q.type === "question_bank") currentMethods.push("question_bank")
+        else if (q.type === "paper") currentMethods.push("paper")
+        else if (q.type === "quiz") currentMethods.push("quiz")
+      })
+      if (node.homeworks?.length) currentMethods.push("exam")
+
+      const methods = draft?.selectedEvalMethods
+      const methodsChanged = methods !== undefined &&
+        (methods.length !== currentMethods.length ||
+          [...methods].sort().join(",") !== [...currentMethods].sort().join(","))
+
       if (realNodeId && !realNodeId.startsWith("node-")) {
-        for (const method of methods) {
+        // 测评方式有变更时先清空旧的，避免重复
+        if (methodsChanged) {
+          for (const q of node.quizzes || []) {
+            try { await nodeQuizApi.delete(q.id) } catch {}
+          }
+          for (const hw of node.homeworks || []) {
+            try { await nodeHomeworkApi.delete(hw.id) } catch {}
+          }
+        }
+        for (const method of methods || []) {
           try {
             if (method === "exam") {
               await nodeHomeworkApi.create({ nodeId: realNodeId, title: "作业测评", requirement: "", needAttachment: false })
@@ -563,7 +612,7 @@ function AddSystemPageInner() {
               await nodeQuizApi.create({
                 nodeId: realNodeId,
                 title: method === "question_bank" ? "题库测验" : method === "paper" ? "试卷测验" : "随堂测",
-                type: method === "quiz" ? "question_bank" : (method as "paper" | "question_bank"),
+                type: method === "quiz" ? "quiz" : (method as "paper" | "question_bank"),
               })
             }
           } catch {}
@@ -573,8 +622,14 @@ function AddSystemPageInner() {
 
     // 刷新 nodes
     const refreshed = await courseNodeApi.list({ courseId: effectiveCourseId })
-    setNodes(refreshed.items as unknown as SystemCourseNode[])
-  }, [resourcePool])
+    const refreshedNodes = refreshed.items || []
+    setNodes(refreshedNodes)
+    const newModes: Record<string, AddMode> = {}
+    refreshedNodes.forEach((n) => {
+      if (n.type !== "original") newModes[n.id] = "upload"
+    })
+    setNodeModes((prev) => ({ ...prev, ...newModes }))
+  }, [resourcePool, setNodes, setNodeModes])
 
   const handleSave = useCallback(async () => {
     setSaving(true)
@@ -630,6 +685,7 @@ function AddSystemPageInner() {
 
     // Map knowledgePoints
     const kpForCheck = knowledgePoints.map((kp) => ({
+      id: kp.id,
       name: kp.name,
       linked: kp.linked ?? false,
     }))
