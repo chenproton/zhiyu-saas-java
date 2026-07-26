@@ -252,7 +252,7 @@ function findByLabel(items: { id: string; icon: string; color: string; title: st
 }
 
 const INTERNAL_ROUTES: Record<string, string> = {
-  career: "/job/landing",
+  career: "/job/student",
   scene: "/scene/landing",
   ability: "/evaluation/landing",
   course: "/lesson/landing",

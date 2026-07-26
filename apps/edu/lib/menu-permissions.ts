@@ -36,7 +36,7 @@ function platformGroup(id: string, label: string, config: PlatformNavigationConf
 
 export function buildMenuTree(): MenuTreeItem[] {
   const career = platformGroup("career", "职业岗位学习平台", jobNavigationConfig)
-  career.children?.push({ id: "career-landing", label: "前台落地页", href: "/job/landing" })
+  career.children?.push({ id: "career-landing", label: "前台落地页", href: "/job/student" })
   const course = platformGroup("course", "数字课程服务平台", unifiedNavigationConfig)
   course.children?.push({ id: "course-landing", label: "前台落地页", href: "/lesson/landing" })
   const scene = platformGroup("scene", "实践场景学习平台", sceneNavigationConfig)

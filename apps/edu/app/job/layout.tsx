@@ -15,7 +15,7 @@ export default function JobLayout({
   const router = useRouter()
   const pathname = usePathname()
   const { user, loading, hasMenuPermission } = useAuth()
-  const isJobViewerPage = pathname.startsWith("/job/landing") || pathname.startsWith("/job/student")
+  const isJobViewerPage = pathname.startsWith("/job/student")
 
   useEffect(() => {
     if (!loading && !user) {
