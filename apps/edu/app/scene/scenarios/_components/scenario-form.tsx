@@ -43,7 +43,7 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
   const [users, setUsers] = useState<User[]>([])
 
   const [name, setName] = useState("")
-  const [code, setCode] = useState(`SC-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, "0")}`)
+
   const [version, setVersion] = useState("v1.0")
   const [difficulty, setDifficulty] = useState<number>(3)
   const [background, setBackground] = useState("")
@@ -83,7 +83,6 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
       .get(scenarioId)
       .then((s) => {
         setName(s.name)
-        setCode(s.code)
         setVersion(s.version)
         setDifficulty(s.difficulty)
         setBackground(s.background || "")
@@ -116,15 +115,14 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
   }, [positions])
 
   const handleSave = async (redirectToTasks = false) => {
-    if (!name.trim() || !code.trim()) {
-      toast({ variant: "destructive", title: "请填写完整", description: "场景名称和编码不能为空" })
+    if (!name.trim()) {
+      toast({ variant: "destructive", title: "请填写完整", description: "场景名称不能为空" })
       return
     }
     setSaving(true)
     try {
       const payload: Partial<Scenario> = {
         name: name.trim(),
-        code: code.trim(),
         version: version.trim(),
         difficulty,
         background: background.trim() || undefined,
@@ -211,10 +209,6 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
             <div className="grid gap-2">
               <Label htmlFor="name">场景名称 <span className="text-red-500">*</span></Label>
               <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="请输入场景名称" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="code">场景编码 <span className="text-red-500">*</span></Label>
-              <Input id="code" value={code} onChange={(e) => setCode(e.target.value)} placeholder="请输入场景编码" />
             </div>
           </div>
 

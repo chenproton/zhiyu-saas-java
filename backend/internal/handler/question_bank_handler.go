@@ -88,7 +88,7 @@ func (h *QuestionBankHandler) List(w http.ResponseWriter, r *http.Request) {
 	var total int
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 	query := `
-		SELECT qb.id, qb.name, qb.description, qb.cover_image, qb.status,
+		SELECT qb.id, qb.code, qb.name, qb.description, qb.cover_image, qb.status,
                 (SELECT COUNT(*) FROM questions q WHERE q.bank_id = qb.id) AS question_count,
                 qb.creator_id,
 			COALESCE((SELECT u.name FROM users u WHERE u.id = qb.creator_id), qb.creator_id::text) AS creator_name,
@@ -160,6 +160,11 @@ func (h *QuestionBankHandler) Create(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := requireTenant(w, r); if !ok { return }
 
 	id := uuid.NewString()
+	code, err := generateUniqueEntityCode(r.Context(), h.DB, "TK", "question_banks", tenantID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to generate question bank code")
+		return
+	}
 	creatorID := claims.UserID
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
@@ -169,10 +174,10 @@ func (h *QuestionBankHandler) Create(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(r.Context())
 
 	_, err = tx.Exec(r.Context(), `
-		INSERT INTO question_banks (id, tenant_id, name, description, cover_image, status, question_count, creator_id,
+		INSERT INTO question_banks (id, tenant_id, code, name, description, cover_image, status, question_count, creator_id,
 			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, is_draft_pool)
-		VALUES ($1, $2, $3, $4, $5, 'draft', 0, $6, $7, $8, $9, 'v1.0', 'mine', false)
-	`, id, tenantID, req.Name, req.Description, req.CoverImage, creatorID, coalesceStringSlice(req.CollaboratorIDs), coalesceStringSlice(req.CollaboratorDeptIDs), req.BatchID)
+		VALUES ($1, $2, $3, $4, $5, $6, 'draft', 0, $7, $8, $9, $10, 'v1.0', 'mine', false)
+	`, id, tenantID, code, req.Name, req.Description, req.CoverImage, creatorID, coalesceStringSlice(req.CollaboratorIDs), coalesceStringSlice(req.CollaboratorDeptIDs), req.BatchID)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "题库名称已存在，请使用其他名称")
@@ -417,7 +422,7 @@ func (h *QuestionBankHandler) fetchQuestionBank(ctx context.Context, id string) 
 	var b domain.QuestionBank
 	var coverImage, creatorID, batchID *string
 	err := h.DB.QueryRow(ctx, `
-		SELECT qb.id, qb.name, qb.description, qb.cover_image, qb.status,
+		SELECT qb.id, qb.code, qb.name, qb.description, qb.cover_image, qb.status,
                 (SELECT COUNT(*) FROM questions q WHERE q.bank_id = qb.id) AS question_count,
                 qb.creator_id,
 			COALESCE((SELECT u.name FROM users u WHERE u.id = qb.creator_id), qb.creator_id::text) AS creator_name,
@@ -432,7 +437,7 @@ func (h *QuestionBankHandler) fetchQuestionBank(ctx context.Context, id string) 
 			qb.created_at, qb.updated_at
 		FROM question_banks qb WHERE qb.id = $1
 	`, id).Scan(
-		&b.ID, &b.Name, &b.Description, &coverImage, &b.Status, &b.QuestionCount, &creatorID,
+		&b.ID, &b.Code, &b.Name, &b.Description, &coverImage, &b.Status, &b.QuestionCount, &creatorID,
 		&b.CreatorName, &b.CollaboratorIDs, &b.CollaboratorNames,
 		&b.CollaboratorDeptIDs, &batchID, &b.Version, &b.OwnerType, &b.IsDraftPool,
 		&b.KnowledgePointIDs, &b.CreatedAt, &b.UpdatedAt,
@@ -452,7 +457,7 @@ func (h *QuestionBankHandler) scanQuestionBankRows(rows pgx.Rows) ([]domain.Ques
 		var b domain.QuestionBank
 		var coverImage, creatorID, batchID *string
 		if err := rows.Scan(
-			&b.ID, &b.Name, &b.Description, &coverImage, &b.Status, &b.QuestionCount, &creatorID,
+			&b.ID, &b.Code, &b.Name, &b.Description, &coverImage, &b.Status, &b.QuestionCount, &creatorID,
 			&b.CreatorName, &b.CollaboratorIDs, &b.CollaboratorNames,
 			&b.CollaboratorDeptIDs, &batchID, &b.Version, &b.OwnerType, &b.IsDraftPool,
 			&b.KnowledgePointIDs, &b.CreatedAt, &b.UpdatedAt,
@@ -477,9 +482,14 @@ func (h *QuestionBankHandler) ensureDraftPool(ctx context.Context, tenantID, use
 		return
 	}
 
+	code, err := generateUniqueEntityCode(ctx, h.DB, "TK", "question_banks", tenantID)
+	if err != nil {
+		code = generateEntityCode("TK")
+	}
+
 	_, _ = h.DB.Exec(ctx, `
-		INSERT INTO question_banks (id, tenant_id, name, description, status, question_count, creator_id,
+		INSERT INTO question_banks (id, tenant_id, code, name, description, status, question_count, creator_id,
 			collaborator_ids, collaborator_dept_ids, version, owner_type, is_draft_pool)
-		VALUES (gen_random_uuid(), $1, '我的草稿库', '', 'draft', 0, $2, '{}', '{}', 'v1.0', 'mine', true)
-	`, tenantID, userID)
+		VALUES (gen_random_uuid(), $1, $2, '我的草稿库', '', 'draft', 0, $3, '{}', '{}', 'v1.0', 'mine', true)
+	`, tenantID, code, userID)
 }

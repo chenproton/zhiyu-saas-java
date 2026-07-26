@@ -183,7 +183,6 @@ function AddSystemPageInner() {
   const [globalInfoOpen, setGlobalInfoOpen] = useState(true)
   const [courseId, setCourseId] = useState(editId || "")
   const [courseName, setCourseName] = useState("")
-  const [courseCode, setCourseCode] = useState(`AB8G-A1-${Math.floor(10000000 + Math.random() * 90000000)}`)
   const [major, setMajor] = useState("")
   const [courseDescription, setCourseDescription] = useState("")
   const [coverImage, setCoverImage] = useState("")
@@ -207,7 +206,6 @@ function AddSystemPageInner() {
     ]).then(([course, nodeRes]) => {
       setCourseId(course.id)
       setCourseName(course.name || "")
-      if (course.code) setCourseCode(course.code)
       if (course.description) setCourseDescription(course.description)
       if (course.coverImage) setCoverImage(course.coverImage)
       if (course.majorId) setMajor(course.majorId)
@@ -583,7 +581,6 @@ function AddSystemPageInner() {
     try {
       const payload = {
         name: courseName,
-        code: courseCode,
         majorId: major || undefined,
         description: courseDescription || undefined,
         coverImage: coverImage || undefined,
@@ -619,7 +616,7 @@ function AddSystemPageInner() {
     } finally {
       setSaving(false)
     }
-  }, [courseName, courseCode, major, courseDescription, coverImage, batchId, isEdit, courseId, originalStatus, saveNodes])
+  }, [courseName, major, courseDescription, coverImage, batchId, isEdit, courseId, originalStatus, saveNodes])
 
   const handleFinish = useCallback(async () => {
     await handleSave()
@@ -737,11 +734,6 @@ function AddSystemPageInner() {
                       placeholder="请输入课程名称"
                       className="h-9 text-sm"
                     />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">课程编码</Label>
-                    <Input value={courseCode} disabled className="h-9 text-sm bg-gray-50 text-gray-500" />
-                    <p className="text-[10px] text-gray-400">系统自动生成，不可修改</p>
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">适用专业</Label>

@@ -197,7 +197,7 @@ func (h *ScenarioImportHandler) importScenarios(ctx context.Context, xlsx *excel
 			continue
 		}
 
-		code := h.generateScenarioCode(ctx, tenantID)
+		code := generateEntityCode("CJ")
 		scenarioID := uuid.NewString()
 		_, err = h.DB.Exec(ctx, `
 			INSERT INTO scenarios (id, tenant_id, name, code, career_position_id, industry_ids, profession_ids,

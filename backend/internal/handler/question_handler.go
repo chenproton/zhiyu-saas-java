@@ -105,7 +105,7 @@ func (h *QuestionHandler) List(w http.ResponseWriter, r *http.Request) {
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT id, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status, created_at
+		SELECT id, code, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status, created_at
 		FROM questions
 		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY created_at DESC
@@ -164,15 +164,20 @@ func (h *QuestionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := requireTenant(w, r); if !ok { return }
 
 	id := uuid.NewString()
+	code, err := generateUniqueEntityCode(r.Context(), h.DB, "TM", "questions", tenantID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to generate question code")
+		return
+	}
 	if req.Answer == nil {
 		req.Answer = domain.JSONSlice{}
 	}
 	answerJSON, _ := json.Marshal(req.Answer)
 	optionsJSON, _ := json.Marshal(coalesceStringSlice(req.Options))
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO questions (id, tenant_id, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'draft')
-	`, id, tenantID, req.BankID, req.Type, req.Content, string(optionsJSON), string(answerJSON), req.Analysis, req.Score, req.Difficulty, coalesceStringSlice(req.KnowledgePoints), claims.UserID, req.Source)
+	_, err = h.DB.Exec(r.Context(), `
+		INSERT INTO questions (id, tenant_id, code, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'draft')
+	`, id, tenantID, code, req.BankID, req.Type, req.Content, string(optionsJSON), string(answerJSON), req.Analysis, req.Score, req.Difficulty, coalesceStringSlice(req.KnowledgePoints), claims.UserID, req.Source)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create question")
 		return
@@ -302,10 +307,11 @@ func (h *QuestionHandler) BatchCreate(w http.ResponseWriter, r *http.Request) {
 		answerJSON, _ := json.Marshal(item.Answer)
 		optionsJSON, _ := json.Marshal(coalesceStringSlice(item.Options))
 		id := uuid.NewString()
+		code := generateEntityCode("TM")
 		_, err := tx.Exec(r.Context(), `
-			INSERT INTO questions (id, tenant_id, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'draft')
-		`, id, tenantID, req.BankID, item.Type, item.Content, string(optionsJSON), string(answerJSON), item.Analysis, item.Score, item.Difficulty, coalesceStringSlice(item.KnowledgePoints), claims.UserID, item.Source)
+			INSERT INTO questions (id, tenant_id, code, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'draft')
+		`, id, tenantID, code, req.BankID, item.Type, item.Content, string(optionsJSON), string(answerJSON), item.Analysis, item.Score, item.Difficulty, coalesceStringSlice(item.KnowledgePoints), claims.UserID, item.Source)
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, "failed to batch create questions")
 			return
@@ -325,10 +331,10 @@ func (h *QuestionHandler) fetchQuestion(ctx context.Context, id string) (domain.
 	var q domain.Question
 	var analysis, difficulty, creatorID, source, answerStr, optionsStr *string
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status, created_at
+		SELECT id, code, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status, created_at
 		FROM questions WHERE id = $1
 	`, id).Scan(
-		&q.ID, &q.BankID, &q.Type, &q.Content, &optionsStr, &answerStr, &analysis, &q.Score, &difficulty, &q.KnowledgePoints, &creatorID, &source, &q.Status, &q.CreatedAt,
+		&q.ID, &q.Code, &q.BankID, &q.Type, &q.Content, &optionsStr, &answerStr, &analysis, &q.Score, &difficulty, &q.KnowledgePoints, &creatorID, &source, &q.Status, &q.CreatedAt,
 	)
 	if err != nil {
 		return q, err
@@ -355,7 +361,7 @@ func (h *QuestionHandler) scanQuestionRows(rows pgx.Rows) ([]domain.Question, er
 		var q domain.Question
 		var analysis, difficulty, creatorID, source, answerStr, optionsStr *string
 		if err := rows.Scan(
-			&q.ID, &q.BankID, &q.Type, &q.Content, &optionsStr, &answerStr, &analysis, &q.Score, &difficulty, &q.KnowledgePoints, &creatorID, &source, &q.Status, &q.CreatedAt,
+			&q.ID, &q.Code, &q.BankID, &q.Type, &q.Content, &optionsStr, &answerStr, &analysis, &q.Score, &difficulty, &q.KnowledgePoints, &creatorID, &source, &q.Status, &q.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

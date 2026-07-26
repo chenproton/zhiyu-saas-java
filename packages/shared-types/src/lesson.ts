@@ -1,6 +1,6 @@
 export interface Course {
   id: string
-  code: string
+  code?: string
   name: string
   type: "system" | "granular" | "hybrid"
   category: string

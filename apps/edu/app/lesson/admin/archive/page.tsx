@@ -71,7 +71,7 @@ export default function LessonArchivePage() {
       result = result.filter(
         (c) =>
           c.name.toLowerCase().includes(q) ||
-          c.code.toLowerCase().includes(q) ||
+          (c.code || "").toLowerCase().includes(q) ||
           (c.majorName || "").toLowerCase().includes(q) ||
           (c.category || "").toLowerCase().includes(q)
       )

@@ -214,11 +214,12 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 		}
 
 		positionID := uuid.NewString()
+		code := generateEntityCode("GW")
 		_, err = h.DB.Exec(ctx, `
-			INSERT INTO career_positions (id, tenant_id, name, short_name, industry_id, position_type,
+			INSERT INTO career_positions (id, tenant_id, code, name, short_name, industry_id, position_type,
 				salary_min, salary_max, description, requirements, career_path, version, status, created_by, collaborators)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'v1.0','draft',$12,'{}')
-		`, positionID, tenantID, name, shortName, industryID, positionType,
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'v1.0','draft',$13,'{}')
+		`, positionID, tenantID, code, name, shortName, industryID, positionType,
 			salaryMin, salaryMax, description, requirements, careerPath, userID)
 		if err != nil {
 			result.Failed++

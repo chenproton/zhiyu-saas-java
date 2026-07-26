@@ -65,7 +65,6 @@ function NewScenarioEditForm() {
   const [isSaving, setIsSaving] = useState(false)
 
   const [scenarioName, setScenarioName] = useState("")
-  const [scenarioCode, setScenarioCode] = useState(`SC-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, "0")}`)
   const [positionId, setPositionId] = useState(positionIdFromQuery || "")
   const [professionIds, setProfessionIds] = useState<string[]>([])
   const [batchId, setBatchId] = useState(batchIdFromQuery || "")
@@ -172,7 +171,6 @@ function NewScenarioEditForm() {
 
   const buildPayload = () => ({
     name: scenarioName.trim(),
-    code: scenarioCode,
     careerPositionId: positionId || undefined,
     batchId: batchId || undefined,
     industryIds: industryIds.length > 0 ? industryIds : undefined,
@@ -359,19 +357,6 @@ function NewScenarioEditForm() {
                       onChange={(e) => setScenarioName(e.target.value)}
                       placeholder="请输入场景名称"
                     />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <PrdAnnotation data={getAnnotation("editor-field-code")} className="block">
-                      <Label htmlFor="code">场景编码</Label>
-                    </PrdAnnotation>
-                    <Input
-                      id="code"
-                      value={scenarioCode}
-                      disabled
-                      className="bg-gray-50"
-                    />
-                    <p className="text-xs text-gray-400">系统自动生成，不可修改</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">

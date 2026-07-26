@@ -1,5 +1,6 @@
 export interface CareerPosition {
   id: string
+  code?: string
   batchId?: string
   name: string
   shortName?: string

@@ -53,7 +53,6 @@ function AddGranularPageInner() {
 
   /* module 1: basic info */
   const [courseName, setCourseName] = useState("")
-  const [courseCode, setCourseCode] = useState("")
   const [hours, setHours] = useState("")
   const [courseDescription, setCourseDescription] = useState("")
   const [learningGoal, setLearningGoal] = useState("")
@@ -98,10 +97,9 @@ function AddGranularPageInner() {
           ])
           setCourse(c)
           setCourseName(c.name)
-          setCourseCode(c.code)
-          setHours(String(c.onlineHours ?? ""))
+          setHours(String(c.onlineHours ?? c.offlineHours ?? ""))
           setCourseDescription(c.description || "")
-          setLearningGoal(c.description || "")
+          setLearningGoal("")
           setMajor(c.majorName || "")
           setMajorId(c.majorId || "")
           setDifficulty(c.difficulty || 0)
@@ -127,8 +125,6 @@ function AddGranularPageInner() {
           }))
           setResourcePool(resources)
           setSelectedResourceIds((c.resourceIds || []).filter((id): id is string => !!id))
-        } else {
-          setCourseCode(`GRA-${Date.now().toString(36).toUpperCase()}`)
         }
       } catch (err: any) {
         toast.error(err.message || "加载失败")
@@ -199,7 +195,6 @@ function AddGranularPageInner() {
         .filter((id) => !id.startsWith("kp-custom-"))
       const payload: Partial<Omit<Course, "id" | "createdAt" | "updatedAt" | "nodeCount" | "resourceCount" | "studyCount" | "viewCount">> = {
         name: courseName,
-        code: courseCode,
         type: "granular",
         category: course?.category || "专业基础",
         majorId: majorId || course?.majorId || undefined,
@@ -280,11 +275,6 @@ function AddGranularPageInner() {
                   <div className="space-y-1.5">
                     <Label className="text-xs">课程名称</Label>
                     <Input value={courseName} onChange={(e) => setCourseName(e.target.value)} placeholder="请输入课程名称" className="h-9 text-sm" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">课程编码</Label>
-                    <Input value={courseCode} onChange={(e) => setCourseCode(e.target.value)} className="h-9 text-sm bg-gray-50 text-gray-500" />
-                    <p className="text-[10px] text-gray-400">建议保持系统自动生成编码</p>
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">所属专业</Label>

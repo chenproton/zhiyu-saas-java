@@ -73,12 +73,18 @@ func (h *PositionCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(ctx)
 
 	newID := uuid.NewString()
+	code, err := generateUniqueEntityCode(ctx, tx, "GW", "career_positions", tenantID)
+	if err != nil {
+		slog.Error("[ClonePosition] generate code failed", "error", err)
+		respondError(w, http.StatusInternalServerError, "failed to generate position code")
+		return
+	}
 	_, err = tx.Exec(ctx, `
-		INSERT INTO career_positions (id, tenant_id, batch_id, name, short_name, industry_id, position_type,
+		INSERT INTO career_positions (id, tenant_id, code, batch_id, name, short_name, industry_id, position_type,
 			salary_min, salary_max, cover_image, description, requirements, career_path,
 			version, status, created_by, collaborators)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'draft', $15, $16)
-	`, newID, tenantID, src.BatchID, newName, src.ShortName, src.IndustryID, src.PositionType,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'draft', $16, $17)
+	`, newID, tenantID, code, src.BatchID, newName, src.ShortName, src.IndustryID, src.PositionType,
 		src.SalaryMin, src.SalaryMax, src.CoverImage, src.Description, src.Requirements,
 		src.CareerPath, src.Version, claims.UserID, coalesceStringSlice(src.Collaborators))
 	if err != nil {

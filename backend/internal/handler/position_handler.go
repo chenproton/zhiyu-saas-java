@@ -131,7 +131,7 @@ func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT cp.id, cp.batch_id, cp.name, cp.short_name, cp.industry_id,
+		SELECT cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id,
 			COALESCE((SELECT array_agg(cpm.major_id) FROM career_position_majors cpm WHERE cpm.career_position_id = cp.id), '{}') AS major_ids,
 			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
 			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
@@ -239,7 +239,7 @@ func (h *PositionHandler) PublicList(w http.ResponseWriter, r *http.Request) {
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT cp.id, cp.batch_id, cp.name, cp.short_name, cp.industry_id,
+		SELECT cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id,
 			COALESCE((SELECT array_agg(cpm.major_id) FROM career_position_majors cpm WHERE cpm.career_position_id = cp.id), '{}') AS major_ids,
 			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
 			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
@@ -338,6 +338,11 @@ func (h *PositionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := uuid.NewString()
+	code, err := generateUniqueEntityCode(r.Context(), h.DB, "GW", "career_positions", tenantID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to generate position code")
+		return
+	}
 	status := domain.CareerPositionStatusDraft
 
 	tx, err := h.DB.Begin(r.Context())
@@ -349,11 +354,11 @@ func (h *PositionHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	_, err = tx.Exec(r.Context(), `
 		INSERT INTO career_positions (
-			id, tenant_id, batch_id, name, short_name, industry_id, position_type,
+			id, tenant_id, code, batch_id, name, short_name, industry_id, position_type,
 			salary_min, salary_max, cover_image, description, requirements, career_path,
 			version, status, created_by, collaborators
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-	`, id, tenantID, req.BatchID, req.Name, req.ShortName, req.IndustryID,
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+	`, id, tenantID, code, req.BatchID, req.Name, req.ShortName, req.IndustryID,
 		req.PositionType, req.SalaryMin, req.SalaryMax, req.CoverImage, req.Description,
 		coalesceStringSlice(req.Requirements), req.CareerPath, req.Version, status, claims.UserID,
 		coalesceStringSlice(req.Collaborators))
@@ -1016,7 +1021,7 @@ func (h *PositionHandler) ListFavorites(w http.ResponseWriter, r *http.Request) 
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT cp.id, cp.batch_id, cp.name, cp.short_name, cp.industry_id,
+		SELECT cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id,
 			COALESCE((SELECT array_agg(cpm.major_id) FROM career_position_majors cpm WHERE cpm.career_position_id = cp.id), '{}') AS major_ids,
 			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
 			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
@@ -1113,7 +1118,7 @@ func (h *PositionHandler) fetchPosition(ctx context.Context, id string) (domain.
 	var majorIDs, majorNames, requirements, collaborators []string
 
 	err := h.DB.QueryRow(ctx, `
-		SELECT cp.id, cp.batch_id, cp.name, cp.short_name, cp.industry_id,
+		SELECT cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id,
 			COALESCE((SELECT array_agg(cpm.major_id) FROM career_position_majors cpm WHERE cpm.career_position_id = cp.id), '{}') AS major_ids,
 			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
 			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
@@ -1130,7 +1135,7 @@ func (h *PositionHandler) fetchPosition(ctx context.Context, id string) (domain.
 			cp.created_at, cp.updated_at
 		FROM career_positions cp WHERE cp.id = $1
 	`, id).Scan(
-		&p.ID, &batchID, &p.Name, &shortName, &industryID, &majorIDs, &majorNames, &p.PositionType,
+		&p.ID, &batchID, &p.Code, &p.Name, &shortName, &industryID, &majorIDs, &majorNames, &p.PositionType,
 		&salaryMin, &salaryMax, &coverImage, &description, &requirements, &careerPath,
 		&p.Version, &p.Status, &p.CreatedBy, &p.CreatedByName, &collaborators, &p.CollaboratorNames, &p.FavoriteCount, &p.ViewCount,
 		&p.CreatedAt, &p.UpdatedAt,
@@ -1162,7 +1167,7 @@ func (h *PositionHandler) scanPositionRows(rows pgx.Rows) ([]domain.CareerPositi
 		var majorIDs, majorNames, requirements, collaborators, collaboratorNames []string
 
 		if err := rows.Scan(
-			&p.ID, &batchID, &p.Name, &shortName, &industryID, &majorIDs, &majorNames, &p.PositionType,
+			&p.ID, &batchID, &p.Code, &p.Name, &shortName, &industryID, &majorIDs, &majorNames, &p.PositionType,
 			&salaryMin, &salaryMax, &coverImage, &description, &requirements, &careerPath,
 			&p.Version, &p.Status, &p.CreatedBy, &p.CreatedByName, &collaborators, &collaboratorNames, &p.FavoriteCount, &p.ViewCount,
 			&p.CreatedAt, &p.UpdatedAt,

@@ -15,7 +15,6 @@ func TestCourse_CRUD(t *testing.T) {
 	ctx := context.Background()
 
 	w := env.Do("POST", "/api/v1/lesson/courses", map[string]interface{}{
-		"code":     "TEST001",
 		"name":     "Test Course",
 		"type":     "system",
 		"category": "公共基础课",
@@ -30,8 +29,8 @@ func TestCourse_CRUD(t *testing.T) {
 	}
 	defer env.DB.Exec(ctx, "DELETE FROM courses WHERE id = $1", course.ID)
 
-	if course.Code != "TEST001" {
-		t.Fatalf("expected code TEST001, got %s", course.Code)
+	if course.Code == "" || len(course.Code) < 3 {
+		t.Fatalf("expected auto-generated code, got %s", course.Code)
 	}
 	if course.Name != "Test Course" {
 		t.Fatalf("expected name Test Course, got %s", course.Name)
@@ -62,7 +61,6 @@ func TestCourse_CRUD(t *testing.T) {
 	}
 
 	w = env.Do("PUT", "/api/v1/lesson/courses/"+course.ID, map[string]interface{}{
-		"code":     "TEST001",
 		"name":     "Test Course Updated",
 		"type":     "system",
 		"category": "公共基础课",
@@ -95,7 +93,6 @@ func TestCourse_StatusTransitions(t *testing.T) {
 	ctx := context.Background()
 
 	w := env.Do("POST", "/api/v1/lesson/courses", map[string]interface{}{
-		"code":     "TEST002",
 		"name":     "Status Test",
 		"type":     "system",
 		"category": "公共基础课",
@@ -143,18 +140,23 @@ func TestCourse_StatusTransitions(t *testing.T) {
 func TestCourse_ValidationErrors(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)
 	defer env.Cleanup()
+	ctx := context.Background()
 
 	w := env.Do("POST", "/api/v1/lesson/courses", map[string]interface{}{
 		"name":     "No Code",
 		"type":     "system",
 		"category": "公共基础课",
 	})
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 for missing code, got %d", w.Code)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201 for auto-generated code, got %d", w.Code)
+	}
+	course, _ := testhelper.Unmarshal[domain.Course](w)
+	defer env.DB.Exec(ctx, "DELETE FROM courses WHERE id = $1", course.ID)
+	if course.Code == "" {
+		t.Fatalf("expected auto-generated code, got empty")
 	}
 
 	w = env.Do("POST", "/api/v1/lesson/courses", map[string]interface{}{
-		"code":     "TEST003",
 		"type":     "system",
 		"category": "公共基础课",
 	})

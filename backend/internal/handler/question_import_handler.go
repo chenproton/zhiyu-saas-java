@@ -234,10 +234,11 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 
 		knowledgeIDs := h.findOrCreateKnowledgePoints(ctx, tenantID, knowledgeNames)
 		questionID := uuid.NewString()
+		code := generateEntityCode("TM")
 		_, err = h.DB.Exec(ctx, `
-			INSERT INTO questions (id, tenant_id, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'draft')
-		`, questionID, tenantID, bankID, qType, content, string(optionsJSON), string(answerJSON), analysis, score, difficulty, knowledgeIDs, userID, source)
+			INSERT INTO questions (id, tenant_id, code, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'draft')
+		`, questionID, tenantID, code, bankID, qType, content, string(optionsJSON), string(answerJSON), analysis, score, difficulty, knowledgeIDs, userID, source)
 		if err != nil {
 			execRes.Failed++
 			msg := fmt.Sprintf("第%d行题目创建失败: %v", i+1, err)
