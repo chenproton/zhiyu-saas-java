@@ -38,7 +38,7 @@ import {
   Search,
   Loader2,
   Users,
-  Copy,
+  Eye,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
@@ -126,6 +126,7 @@ export default function SuperAdminPage() {
   const [adminDeleteTarget, setAdminDeleteTarget] = useState<TenantAdmin | null>(null)
   const [adminInline, setAdminInline] = useState<{ id?: string; username: string; name: string } | null>(null)
   const [adminInlineSubmitting, setAdminInlineSubmitting] = useState(false)
+  const [viewPassword, setViewPassword] = useState<{ admin: TenantAdmin; password: string } | null>(null)
 
   const { toast } = useToast()
 
@@ -252,43 +253,13 @@ export default function SuperAdminPage() {
     }
   }
 
-  const copyToClipboard = async (text: string) => {
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(text)
-        return true
-      }
-    } catch {
-      // fallthrough
-    }
-    const ta = document.createElement("textarea")
-    ta.value = text
-    ta.style.position = "fixed"
-    ta.style.left = "-9999px"
-    ta.style.opacity = "0"
-    document.body.appendChild(ta)
-    ta.focus()
-    ta.select()
-    let ok = false
-    try {
-      ok = document.execCommand("copy")
-    } catch {}
-    document.body.removeChild(ta)
-    return ok
-  }
-
-  const handleCopyPassword = async (a: TenantAdmin) => {
+  const handleViewPassword = async (a: TenantAdmin) => {
     if (!adminModalTenant) return
     try {
       const res = await adminFetch<{ id: string; plainPassword: string }>(`/${adminModalTenant.id}/admins/${a.id}/preview-password`, {
         method: "POST",
       })
-      const ok = await copyToClipboard(res.plainPassword)
-      if (ok) {
-        toast({ title: "密码已复制" })
-      } else {
-        toast({ variant: "destructive", title: "复制失败", description: "请手动复制" })
-      }
+      setViewPassword({ admin: a, password: res.plainPassword })
     } catch (err) {
       toast({ variant: "destructive", title: "获取密码失败", description: err instanceof Error ? err.message : "未知错误" })
     }
@@ -727,9 +698,9 @@ export default function SuperAdminPage() {
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex items-center justify-end gap-1">
-                                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => handleCopyPassword(a)}>
-                                    <Copy className="mr-1 h-3 w-3" />
-                                    复制
+                                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => handleViewPassword(a)}>
+                                    <Eye className="mr-1 h-3 w-3" />
+                                    查看密码
                                   </Button>
                                   <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => startEditAdmin(a)}>
                                     <Pencil className="mr-1 h-3 w-3" />
@@ -758,6 +729,23 @@ export default function SuperAdminPage() {
               </Table>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={viewPassword !== null} onOpenChange={(open) => { if (!open) setViewPassword(null) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>查看密码</DialogTitle>
+            <DialogDescription>
+              {viewPassword ? `${viewPassword.admin.name}（${viewPassword.admin.username}）的登录密码` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input readOnly value={viewPassword?.password || ""} onFocus={(e) => e.target.select()} />
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setViewPassword(null)}>关闭</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
