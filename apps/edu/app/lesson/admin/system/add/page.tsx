@@ -31,13 +31,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+
 import {
   Collapsible,
   CollapsibleContent,
@@ -60,12 +54,14 @@ import { CourseEvaluationRulesDialog } from "../../_components/assessment/course
 import { RichTextEditor } from "../../_components/common/rich-text-editor"
 import { EditorShell } from "@/components/shared/editor-shell"
 import { BatchSelector } from "@/components/shared/batch-selector"
+import { MajorSelect } from "@/components/shared/major-select"
 
 import CourseNodeTree from "./_components/CourseNodeTree"
 import PublishCheckPanel from "./_components/PublishCheckPanel"
 
 import type { KnowledgePointItem } from "@/lib/types/lesson"
 import type { EvalRuleConfig } from "@/lib/types/evaluation"
+import type { Major } from "@/lib/types/backend"
 import { courseApi, courseNodeApi, knowledgeApi, majorApi, approvalApi, lessonBatchApi, nodeResourceApi, nodeQuizApi, nodeHomeworkApi } from "@/lib/api"
 
 /* ---------- node editing mode ---------- */
@@ -159,19 +155,6 @@ function ConvertPreviewTree({
 
 /* ---------- main component ---------- */
 
-const defaultMajorNames = [
-  "计算机科学与技术",
-  "软件工程",
-  "数据科学与大数据技术",
-  "人工智能",
-  "网络工程",
-  "信息安全",
-  "物联网工程",
-  "数字媒体技术",
-  "智能科学与技术",
-  "电子与计算机工程",
-]
-
 function AddSystemPageInner() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -184,6 +167,7 @@ function AddSystemPageInner() {
   const [courseId, setCourseId] = useState(editId || "")
   const [courseName, setCourseName] = useState("")
   const [major, setMajor] = useState("")
+  const [majors, setMajors] = useState<Major[]>([])
   const [courseDescription, setCourseDescription] = useState("")
   const [coverImage, setCoverImage] = useState("")
   const [batchId, setBatchId] = useState("")
@@ -196,6 +180,12 @@ function AddSystemPageInner() {
   /* ========== course node tree ========== */
   const [nodes, setNodes] = useState<SystemCourseNode[]>([])
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+
+  useEffect(() => {
+    majorApi.list({ limit: 1000 }).then((res) => {
+      setMajors((res.items || []).filter((m: Major) => m.enabled))
+    }).catch(() => setMajors([]))
+  }, [])
 
   useEffect(() => {
     if (!editId) return
@@ -758,7 +748,7 @@ function AddSystemPageInner() {
                       </span>
                       {major && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
-                          {major}
+                          {majors.find((m) => m.id === major)?.name || major}
                         </span>
                       )}
                     </CardTitle>
@@ -793,16 +783,12 @@ function AddSystemPageInner() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">适用专业</Label>
-                    <Select value={major} onValueChange={setMajor}>
-                      <SelectTrigger className="h-9 text-sm">
-                        <SelectValue placeholder="请选择适用专业" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {defaultMajorNames.filter((m) => m !== "全部").map((m) => (
-                          <SelectItem key={m} value={m}>{m}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <MajorSelect
+                      value={major}
+                      onChange={(v) => setMajor(v || "")}
+                      placeholder="请选择适用专业"
+                      className="h-9 text-sm"
+                    />
                   </div>
                   <BatchSelector value={batchId} onChange={setBatchId} batchApi={lessonBatchApi} />
                   <div className="space-y-1.5">

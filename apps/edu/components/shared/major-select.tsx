@@ -33,14 +33,14 @@ export function MajorSelect({
   const [error, setError] = useState<string>()
 
   const loadMajors = useCallback(async () => {
-    if (!tenantId) {
-      setMajors([])
-      return
-    }
     setLoading(true)
     setError(undefined)
     try {
-      const res = await majorApi.list({ tenantId, limit: 1000 })
+      const params: { tenantId?: string; limit: number } = { limit: 1000 }
+      if (tenantId) {
+        params.tenantId = tenantId
+      }
+      const res = await majorApi.list(params)
       setMajors(res.items.filter((m) => m.enabled))
     } catch (err) {
       setError(err instanceof Error ? err.message : "加载专业失败")
@@ -57,7 +57,7 @@ export function MajorSelect({
     onChange(val || undefined)
   }
 
-  const isDisabled = disabled || loading || !tenantId
+  const isDisabled = disabled || loading
 
   if (error) {
     return <div className="text-sm text-destructive">{error}</div>
