@@ -151,7 +151,7 @@ func (h *MajorHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	_, err := h.DB.Exec(r.Context(), `
 		INSERT INTO majors (id, tenant_id, code, name, alias, enabled)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		VALUES ($1, $2, $3, normalize($4, NFKC), normalize($5, NFKC), $6)
 	`, id, req.TenantID, req.Code, req.Name, req.Alias, req.Enabled)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -195,7 +195,7 @@ func (h *MajorHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = h.DB.Exec(r.Context(), `
-		UPDATE majors SET code = $1, name = $2, alias = $3, enabled = $4, updated_at = NOW()
+		UPDATE majors SET code = $1, name = normalize($2, NFKC), alias = normalize($3, NFKC), enabled = $4, updated_at = NOW()
 		WHERE id = $5
 	`, req.Code, req.Name, req.Alias, req.Enabled, id)
 	if err != nil {
