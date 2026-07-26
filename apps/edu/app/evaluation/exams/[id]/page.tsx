@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, GripVertical, Trash2, Eye, FileText, Wand2, Hand, Plus, Edit, FileUp, Rocket, ImageIcon, Users, Building2, SlidersHorizontal, ChevronDown } from "lucide-react"
@@ -46,6 +46,7 @@ export default function ExamComposerPage() {
   const isPreview = searchParams.get('mode') === 'preview'
   const {
     getExam,
+    loadExams,
     updateExam,
     updateExamStatus,
     addQuestionToExam,
@@ -56,6 +57,23 @@ export default function ExamComposerPage() {
     questionBanks,
     createQuestion,
   } = useData()
+
+  const [loadingExam, setLoadingExam] = useState(!getExam(examId))
+  const triedReload = useRef(false)
+
+  useEffect(() => {
+    if (getExam(examId)) {
+      setLoadingExam(false)
+      return
+    }
+    if (triedReload.current) {
+      setLoadingExam(false)
+      return
+    }
+    triedReload.current = true
+    setLoadingExam(true)
+    loadExams().finally(() => setLoadingExam(false))
+  }, [examId, getExam, loadExams])
 
   const exam = getExam(examId)
 
@@ -111,6 +129,17 @@ export default function ExamComposerPage() {
   const totalScore = useMemo(() => {
     return exam?.questions?.reduce((sum, q) => sum + (q.score || 0), 0) ?? 0
   }, [exam?.questions])
+
+  if (loadingExam) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-lg font-semibold">加载中...</h2>
+          <p className="mb-4 text-muted-foreground">正在获取试卷信息</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!exam) {
     return (
