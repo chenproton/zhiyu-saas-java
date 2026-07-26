@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useMemo } 
 import { authApi, getToken, removeToken, type MeResponse } from "@/lib/api"
 import type { Organization, Major, Role } from "@/lib/types/backend"
 import { checkMenuPermission } from "@/lib/menu-permissions"
+import { useSubscriptionModules } from "@/hooks/use-subscription-modules"
 import { persistActiveRole, resolveActiveRole } from "@/lib/active-role"
 
 export type UserRole = "school" | "enterprise" | "operator"
@@ -128,6 +129,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return {}
   }, [activeRole])
 
+  // 租户套餐是页面可见性的上限，与角色菜单权限共同决定最终可见性
+  const subscriptionModules = useSubscriptionModules(user?.tenantId)
+
   const hasPermission = useCallback((module: string, page?: string, action?: string) => {
     const perms = permissions
     if (!perms || Object.keys(perms).length === 0) return false
@@ -148,8 +152,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [permissions])
 
   const hasMenuPermission = useCallback((path: string) => {
-    return checkMenuPermission(permissions?.menus, path)
-  }, [permissions])
+    return checkMenuPermission(permissions?.menus, path, subscriptionModules ?? undefined)
+  }, [permissions, subscriptionModules])
 
   return (
     <AuthContext.Provider

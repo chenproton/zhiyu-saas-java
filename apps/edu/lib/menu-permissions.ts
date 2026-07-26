@@ -104,13 +104,44 @@ export function getKnownMenuPaths(): Set<string> {
   return knownMenuPaths
 }
 
+const PLATFORM_PATH_PREFIXES = [
+  { prefix: "/portal/apps/system", platform: "system" },
+  { prefix: "/job", platform: "career" },
+  { prefix: "/lesson", platform: "course" },
+  { prefix: "/scene", platform: "scene" },
+  { prefix: "/evaluation", platform: "ability" },
+  { prefix: "/library", platform: "resource" },
+]
+
+function getPathPlatformId(path: string): string | null {
+  const normalized = normalizeMenuPath(path)
+  for (const { prefix, platform } of PLATFORM_PATH_PREFIXES) {
+    if (normalized === prefix || normalized.startsWith(prefix + "/")) {
+      return platform
+    }
+  }
+  return null
+}
+
 /**
  * 菜单权限判定：
- * - 角色未配置 menus（如 {schoolAdmin: true}）→ 不限制，全部可见
+ * - 先受租户套餐（subscriptionModules）控制：路径所属平台未订阅 → 直接不可见
+ * - 角色未配置 menus（如 school_admin）→ 不限制，全部可见
  * - 已配置 menus → 权限树内的页面严格按勾选控制；子路径（如 /job/positions/xxx/edit）继承最近的已授权父菜单
  * - 权限树未覆盖的路径（如资源商城）→ 默认可见
+ *
+ * @param subscriptionModules 为 undefined 时表示尚未加载，跳过套餐检查，避免加载期间误拦截
  */
-export function checkMenuPermission(menus: unknown, path: string): boolean {
+export function checkMenuPermission(
+  menus: unknown,
+  path: string,
+  subscriptionModules?: Record<string, boolean>,
+): boolean {
+  const platformId = getPathPlatformId(path)
+  if (platformId && subscriptionModules && subscriptionModules[platformId] !== true) {
+    return false
+  }
+
   if (!menus || typeof menus !== "object") return true
 
   const granted = new Set<string>()
