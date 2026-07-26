@@ -86,6 +86,46 @@
 
 环境变量（`DATABASE_URL`、`JWT_SECRET`、`PORT`）在 `.env` 或服务器环境变量配置，禁止提交仓库。
 
+## 六、本地调试工具
+
+### 模拟登录 Token 接口
+
+开发阶段如需快速以指定用户身份调用业务接口，可开启模拟登录 Token 接口：
+
+1. 在 `.env` 中开启开关：
+   ```bash
+   ENABLE_DEBUG_AUTH=true
+   ```
+
+2. 调用接口生成 JWT：
+   ```bash
+   # 通过用户 ID 生成
+   curl -X POST http://127.0.0.1:8080/api/v1/auth/debug/token \
+     -H "Content-Type: application/json" \
+     -d '{"user_id": "替换成用户UUID"}'
+
+   # 或通过用户名生成（默认 saas 平台）
+   curl -X POST http://127.0.0.1:8080/api/v1/auth/debug/token \
+     -H "Content-Type: application/json" \
+     -d '{"username": "admin", "platform": "saas"}'
+   ```
+
+3. 返回示例：
+   ```json
+   {
+     "token": "eyJ...",
+     "user": { ... }
+   }
+   ```
+
+4. 后续请求携带该 token：
+   ```bash
+   curl http://127.0.0.1:8080/api/v1/auth/me \
+     -H "Authorization: Bearer eyJ..."
+   ```
+
+> ⚠️ 该接口默认关闭，仅在 `ENABLE_DEBUG_AUTH=true` 时可用，**生产环境务必保持关闭**。
+
 ## 七、AI 协作者约定
 
 1. 只改当次任务相关文件，不碰无关文件。

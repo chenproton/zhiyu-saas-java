@@ -609,7 +609,7 @@ func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []cours
 			SELECT crb.course_id, COALESCE(nr.id, tr.id) AS id,
 				COALESCE(nr.name, tr.name) AS name,
 				COALESCE(nr.type, tr.type) AS type,
-				COALESCE(nr.url, tr.url) AS url,
+				COALESCE(nr.url, tr.url, '') AS url,
 				nr.size AS size
 			FROM course_resource_bindings crb
 			LEFT JOIN node_resources nr ON nr.id = crb.resource_id

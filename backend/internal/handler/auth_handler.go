@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -54,6 +55,17 @@ type preAuthClaims struct {
 	TenantIDs []TenantOption `json:"tenantIds"`
 	JTI       string         `json:"jti"`
 	jwt.RegisteredClaims
+}
+
+type DebugTokenRequest struct {
+	UserID   string `json:"user_id"`
+	Username string `json:"username"`
+	Platform string `json:"platform"`
+}
+
+type DebugTokenResponse struct {
+	Token string      `json:"token"`
+	User  domain.User `json:"user"`
 }
 
 type MeResponse struct {
@@ -263,6 +275,56 @@ func (h *AuthHandler) issueTokenForUser(w http.ResponseWriter, r *http.Request, 
 	respondJSON(w, http.StatusOK, LoginResponse{Token: token, User: *user})
 }
 
+// DebugToken 生成指定用户的 JWT，用于开发/调试阶段模拟登录。
+// 仅当环境变量 ENABLE_DEBUG_AUTH=true 时可用，生产环境务必保持关闭。
+func (h *AuthHandler) DebugToken(w http.ResponseWriter, r *http.Request) {
+	if os.Getenv("ENABLE_DEBUG_AUTH") != "true" {
+		respondError(w, http.StatusNotFound, "not found")
+		return
+	}
+
+	var req DebugTokenRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	var user domain.User
+	var err error
+	if req.UserID != "" {
+		user, err = h.fetchUserByID(r.Context(), req.UserID)
+	} else if req.Username != "" {
+		platform := domain.UserPlatform(req.Platform)
+		if platform == "" {
+			platform = domain.UserPlatformSaas
+		}
+		user, err = h.fetchUserByUsernameAndPlatform(r.Context(), req.Username, platform)
+	} else {
+		respondError(w, http.StatusBadRequest, "user_id or username required")
+		return
+	}
+	if err != nil || user.ID == "" {
+		respondError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	roleCodes := h.fetchUserRoleCodes(r.Context(), user.ID)
+	perms := h.fetchMergedPermissions(r.Context(), user.ID)
+
+	token, err := middleware.GenerateToken(h.JWTSecret, middleware.TokenInput{
+		User:        &user,
+		RoleCodes:   roleCodes,
+		Permissions: perms,
+	})
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to generate token")
+		return
+	}
+
+	user.PasswordHash = ""
+	respondJSON(w, http.StatusOK, DebugTokenResponse{Token: token, User: user})
+}
+
 func (h *AuthHandler) recordLoginLog(r *http.Request, user *domain.User, status string) {
 	if user.TenantID == nil || *user.TenantID == "" {
 		return
@@ -351,6 +413,40 @@ func (h *AuthHandler) fetchUserByID(ctx context.Context, id string) (domain.User
 		       student_no, work_id, id_card, title_ids, oauth, status, last_login_at, created_at, updated_at
 		FROM users WHERE id = $1
 	`, id).Scan(
+		&user.ID, &tenantID, &user.InstitutionID, &orgNodeID, &majorID,
+		&user.Role, &user.Platform, &loginName, &user.Username, &user.PasswordHash, &user.Name, &user.Email,
+		&phone, &avatarURL, &studentNo, &workID, &idCard, &titleIDs, &oauth, &user.Status,
+		&user.LastLoginAt, &user.CreatedAt, &user.UpdatedAt,
+	)
+	if err != nil {
+		return user, err
+	}
+	user.TenantID = tenantID
+	user.OrgNodeID = orgNodeID
+	user.MajorID = majorID
+	user.LoginName = loginName
+	user.Phone = phone
+	user.AvatarURL = avatarURL
+	user.StudentNo = studentNo
+	user.WorkID = workID
+	user.IDCard = idCard
+	user.TitleIDs = titleIDs
+	user.Oauth = oauth
+	return user, nil
+}
+
+func (h *AuthHandler) fetchUserByUsernameAndPlatform(ctx context.Context, username string, platform domain.UserPlatform) (domain.User, error) {
+	var user domain.User
+	var tenantID, orgNodeID, majorID, loginName, phone, avatarURL, studentNo, workID, idCard *string
+	var titleIDs []string
+	var oauth domain.JSONMap
+
+	err := h.DB.QueryRow(ctx, `
+		SELECT id, tenant_id, institution_id, org_node_id, major_id,
+		       role, platform, login_name, username, password_hash, name, email, phone, avatar_url,
+		       student_no, work_id, id_card, title_ids, oauth, status, last_login_at, created_at, updated_at
+		FROM users WHERE username = $1 AND platform = $2
+	`, username, platform).Scan(
 		&user.ID, &tenantID, &user.InstitutionID, &orgNodeID, &majorID,
 		&user.Role, &user.Platform, &loginName, &user.Username, &user.PasswordHash, &user.Name, &user.Email,
 		&phone, &avatarURL, &studentNo, &workID, &idCard, &titleIDs, &oauth, &user.Status,
