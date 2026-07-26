@@ -134,3 +134,21 @@ type LessonBehaviorRecord struct {
 	CreatedAt        time.Time  `json:"createdAt"`
 	UpdatedAt        time.Time  `json:"updatedAt"`
 }
+
+type NodeResource struct {
+	ID          string    `json:"id"`
+	NodeID      string    `json:"nodeId"`
+	Name        string    `json:"name"`
+	Type        string    `json:"type"`
+	URL         *string   `json:"url,omitempty"`
+	Description *string   `json:"description,omitempty"`
+	Size        *int      `json:"size,omitempty"`
+	UploadedBy  *string   `json:"uploadedBy,omitempty"`
+	UploadedAt  time.Time `json:"uploadedAt"`
+}
+
+type NodeResourceBinding struct {
+	ID         string `json:"id"`
+	NodeID     string `json:"nodeId"`
+	ResourceID string `json:"resourceId"`
+}

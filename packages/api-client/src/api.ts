@@ -910,6 +910,16 @@ export const lessonBehaviorApi = {
     request<LessonBehaviorRecord>("/lesson/behavior-collection/records", { method: "POST", body: JSON.stringify(req) }),
 }
 
+export const nodeQuizApi = {
+  create: (req: Omit<NodeQuiz, "id">) =>
+    request<NodeQuiz>("/lesson/quizzes", { method: "POST", body: JSON.stringify(req) }),
+}
+
+export const nodeHomeworkApi = {
+  create: (req: Omit<NodeHomework, "id">) =>
+    request<NodeHomework>("/lesson/homeworks", { method: "POST", body: JSON.stringify(req) }),
+}
+
 export const fileApi = {
   upload: async (file: File): Promise<UploadResponse> => {
     const form = new FormData()

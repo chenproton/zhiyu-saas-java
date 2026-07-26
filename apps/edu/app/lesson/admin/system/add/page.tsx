@@ -66,7 +66,7 @@ import PublishCheckPanel from "./_components/PublishCheckPanel"
 
 import type { KnowledgePointItem } from "@/lib/types/lesson"
 import type { EvalRuleConfig } from "@/lib/types/evaluation"
-import { courseApi, courseNodeApi, knowledgeApi, majorApi, approvalApi, lessonBatchApi } from "@/lib/api"
+import { courseApi, courseNodeApi, knowledgeApi, majorApi, approvalApi, lessonBatchApi, nodeResourceApi, nodeQuizApi, nodeHomeworkApi } from "@/lib/api"
 
 /* ---------- node editing mode ---------- */
 
@@ -344,7 +344,7 @@ function AddSystemPageInner() {
   }, [])
 
   /* module 3: resources */
-  const [resourcePool] = useState<ResourceItem[]>([])
+  const [resourcePool, setResourcePool] = useState<ResourceItem[]>([])
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([])
 
   /* module 4: assessment */
@@ -452,7 +452,7 @@ function AddSystemPageInner() {
     setSelectedEvalMethods([])
     setDifficulty(0)
     setShowGrainSelector(false)
-  }, [grainSelectedId, selectedNodeId, grainSelectorMode, handleUpdateNode])
+  }, [grainSelectedId, selectedNodeId, grainSelectorMode, handleUpdateNode, grainCourses])
 
   /* ---------- submit: convert complete nodes to grain ---------- */
   const [convertDialogOpen, setConvertDialogOpen] = useState(false)
@@ -476,6 +476,108 @@ function AddSystemPageInner() {
 
   const [saving, setSaving] = useState(false)
 
+  const saveNodes = useCallback(async (effectiveCourseId: string) => {
+    // 收集当前所有草稿状态
+    const allDrafts = { ...nodeDraftsRef.current }
+
+    // 按 parentId 分组并排序
+    const sortedNodes = [...nodesRef.current].sort((a, b) => a.order - b.order)
+
+    // 临时 ID -> 真实 ID
+    const idMapping = new Map<string, string>()
+
+    for (const node of sortedNodes) {
+      const draft = allDrafts[node.id]
+      const isTempId = node.id.startsWith("node-")
+      const realParentId = node.parentId ? idMapping.get(node.parentId) || node.parentId : undefined
+
+      // 知识点
+      const kpList = draft?.knowledgePoints || node.knowledgePoints || []
+      const knowledgePointIds = kpList.map((kp) => kp.id).filter((id) => !id.startsWith("kp-custom-"))
+
+      // 资源：已入库的资源直接走绑定，本地临时资源等节点创建后再上传
+      const resIds = draft?.selectedResourceIds || node.resources?.map((r) => r.id) || []
+      const existingResourceIds: string[] = []
+      const localResources: ResourceItem[] = []
+      for (const resId of resIds) {
+        const localRes = resourcePool.find((r) => r.id === resId)
+        if (localRes && (resId.startsWith("res-") || !node.id)) {
+          localResources.push(localRes)
+        } else {
+          existingResourceIds.push(resId)
+        }
+      }
+
+      const refType: "normal" | "original" | "resource" =
+        node.type === "original" ? "original" : node.type === "resource" ? "resource" : "normal"
+      const nodePayload = {
+        courseId: effectiveCourseId,
+        parentId: realParentId,
+        name: node.name,
+        sortOrder: Math.round(node.order),
+        refType,
+        sourceId: node.sourceId,
+        sourceName: node.sourceName,
+        teachingGoals: draft?.learningGoal || node.teachingGoals,
+        duration: draft?.hours ? parseFloat(draft.hours) : node.duration,
+        knowledgePointIds,
+        resourceIds: existingResourceIds,
+        status: node.status || "draft",
+      }
+
+      let realNodeId = node.id
+      if (isTempId) {
+        const created = await courseNodeApi.create(nodePayload)
+        realNodeId = created.id
+        idMapping.set(node.id, created.id)
+      } else {
+        await courseNodeApi.update(node.id, nodePayload)
+        idMapping.set(node.id, node.id)
+      }
+
+      // 上传本地资源并绑定到真实节点
+      if (realNodeId && !realNodeId.startsWith("node-")) {
+        for (const localRes of localResources) {
+          try {
+            const created = await nodeResourceApi.create({
+              nodeId: realNodeId,
+              name: localRes.name,
+              type: localRes.type,
+              url: localRes.url || "",
+              description: localRes.description,
+              size: localRes.size,
+            })
+            await nodeResourceApi.bind({ nodeId: realNodeId, resourceId: created.id })
+          } catch {
+            // 忽略失败，继续
+          }
+        }
+      }
+
+      // 保存测评方式
+      const methods = draft?.selectedEvalMethods || []
+      if (realNodeId && !realNodeId.startsWith("node-")) {
+        for (const method of methods) {
+          try {
+            if (method === "exam") {
+              await nodeHomeworkApi.create({ nodeId: realNodeId, title: "作业测评", requirement: "", needAttachment: false })
+            } else {
+              await nodeQuizApi.create({
+                nodeId: realNodeId,
+                title: method === "question_bank" ? "题库测验" : method === "paper" ? "试卷测验" : "随堂测",
+                type: method === "quiz" ? "question_bank" : (method as "paper" | "question_bank"),
+              })
+            }
+          } catch {}
+        }
+      }
+    }
+
+    // 刷新 nodes
+    const refreshed = await courseNodeApi.list({ courseId: effectiveCourseId })
+    setNodes(refreshed.items as unknown as SystemCourseNode[])
+  }, [resourcePool])
+
   const handleSave = useCallback(async () => {
     setSaving(true)
     try {
@@ -492,31 +594,37 @@ function AddSystemPageInner() {
         creatorId: "",
         coCreatorIds: [] as string[],
       }
+      let effectiveCourseId = courseId
       if (isEdit && courseId) {
         await courseApi.update(courseId, payload)
         if (originalStatus !== "draft") {
           await courseApi.saveDraft(courseId)
           setOriginalStatus("draft")
         }
-        hasSavedRef.current = true
-        toast.success("草稿已保存")
       } else {
         const created = await courseApi.create(payload)
         setCourseId(created.id)
-        hasSavedRef.current = true
-        toast.success("草稿已保存")
+        effectiveCourseId = created.id
       }
-    } catch {
-      toast.error("保存失败")
+      hasSavedRef.current = true
+
+      // 保存节点树
+      if (effectiveCourseId) {
+        await saveNodes(effectiveCourseId)
+      }
+
+      toast.success("草稿已保存")
+    } catch (e: any) {
+      toast.error(e.message || "保存失败")
     } finally {
       setSaving(false)
     }
-  }, [courseName, courseCode, major, courseDescription, coverImage, batchId, isEdit, courseId, originalStatus])
+  }, [courseName, courseCode, major, courseDescription, coverImage, batchId, isEdit, courseId, originalStatus, saveNodes])
 
   const handleFinish = useCallback(async () => {
     await handleSave()
     router.push("/lesson/admin/system")
-  }, [handleSave])
+  }, [handleSave, router])
 
   const currentCheckNode: SystemCourseNode | undefined = useMemo(() => {
     if (!selectedNodeId) return undefined
@@ -896,7 +1004,11 @@ function AddSystemPageInner() {
                         pool={resourcePool}
                         selectedIds={selectedResourceIds}
                         onChange={setSelectedResourceIds}
-                        onUpload={(r) => {/* resourcePool is read-only in this simplified version */}}
+                        onUpload={(r) => {
+                          setResourcePool((prev) => (prev.some((x) => x.id === r.id) ? prev : [r, ...prev]))
+                        }}
+                        courseId={courseId || editId || undefined}
+                        nodeId={selectedNodeId || undefined}
                       />
                     </CardContent>
                   </Card>

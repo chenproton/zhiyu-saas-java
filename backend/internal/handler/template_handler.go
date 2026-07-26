@@ -344,6 +344,136 @@ func (h *TemplateHandler) generateScenarioTemplate(ctx context.Context, tenantID
 	return f
 }
 
+func (h *TemplateHandler) ServeSystemCourseTemplate(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	ctx := r.Context()
+	f := h.generateSystemCourseTemplate(ctx, tenantID)
+	writeExcel(w, f, "体系课批量导入模板.xlsx")
+}
+
+func (h *TemplateHandler) generateSystemCourseTemplate(ctx context.Context, tenantID string) *excelize.File {
+	f := excelize.NewFile()
+
+	_, majors, _, _, knowledgePoints, _, _ := h.queryDicts(ctx, tenantID)
+	lessonBatches := h.queryLessonBatches(ctx, tenantID)
+
+	hdrStyle := makeHeaderStyle(f)
+	dataStyle := makeDataStyle(f)
+	noteStyle := makeNoteStyle(f)
+	wrapAlign := makeWrapAlign(f)
+	_ = dataStyle
+
+	setHdr := func(sheet string, row int, headers []string, widths []float64) {
+		for ci, h := range headers {
+			cell, _ := excelize.CoordinatesToCellName(ci+1, row)
+			f.SetCellValue(sheet, cell, h)
+			f.SetCellStyle(sheet, cell, cell, hdrStyle)
+			f.SetColWidth(sheet, colName(ci+1), colName(ci+1), widths[ci])
+		}
+		f.SetRowHeight(sheet, row, 28)
+	}
+	setRows := func(sheet string, startRow int, data [][]string) {
+		for ri, row := range data {
+			r := startRow + ri
+			for ci, v := range row {
+				cell, _ := excelize.CoordinatesToCellName(ci+1, r)
+				f.SetCellValue(sheet, cell, v)
+				f.SetCellStyle(sheet, cell, cell, dataStyle)
+				f.SetCellStyle(sheet, cell, cell, wrapAlign)
+			}
+			f.SetRowHeight(sheet, r, 24)
+		}
+	}
+	_ = setRows
+
+	setA1 := func(sheet string, cols int, text string) {
+		start, _ := excelize.CoordinatesToCellName(1, 1)
+		end, _ := excelize.CoordinatesToCellName(cols, 1)
+		f.MergeCell(sheet, start, end)
+		f.SetCellValue(sheet, start, text)
+		f.SetCellStyle(sheet, start, end, noteStyle)
+		f.SetCellStyle(sheet, start, end, wrapAlign)
+		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+2)*16)
+	}
+
+	// Sheet 1: 课程基本信息
+	s1, _ := f.NewSheet("课程基本信息")
+	f.DeleteSheet("Sheet1")
+	f.SetActiveSheet(s1)
+	headers1 := []string{"课程名称 *", "课程编码", "适用专业", "所属批次", "课程简介", "封面图片 URL"}
+	widths1 := []float64{28, 20, 24, 20, 48, 42}
+	setA1("课程基本信息", 6, "填写说明：\n* 必填列。课程编码为空时系统自动生成（格式: SYS-YYYY-NNNN）\n适用专业：从「专业字典」Sheet 选取，匹配则关联，不匹配则忽略\n所属批次：从「批次字典」Sheet 选取，匹配则关联，不匹配则忽略\n导入后默认状态为 draft")
+	setHdr("课程基本信息", 2, headers1, widths1)
+	f.SetPanes("课程基本信息", &excelize.Panes{Freeze: true, YSplit: 2})
+	f.AutoFilter("课程基本信息", "A2:F2", []excelize.AutoFilterOptions{})
+
+	// Sheet 2: 节点配置
+	_, _ = f.NewSheet("节点配置")
+	headers2 := []string{"课程名称 *", "节点名称 *", "父节点名称", "节点类型", "排序", "学习目标", "预计课时", "难度", "关联知识点", "课程资源", "测评方式"}
+	widths2 := []float64{22, 24, 18, 12, 8, 34, 12, 8, 28, 28, 28}
+	setA1("节点配置", 11, "填写说明：\n每个节点一行，相同课程下可有多行节点。\n──── 节点基础信息 ────\n课程名称：须与「课程基本信息」Sheet 中一致\n节点名称：必填。编码由系统自动生成\n父节点名称：填写本课程下已出现的节点名称，为空表示一级节点；同名节点以首次出现者为准\n节点类型：normal（默认）/ 原创 / 引用\n排序：数字，越小越靠前\n预计课时：数字\n难度：1-5，1 最易，5 最难\n──── 关联知识点 ────\n从「知识点库」Sheet 选取，多个逗号分隔；匹配则关联，不匹配则自动新建并关联\n──── 课程资源 ────\n多个逗号分隔；匹配则关联，不匹配则自动新建为文档类型资源并关联\n──── 测评方式 ────\n从以下 4 种中任选 0-n 种，多个逗号分隔：\n  题库 / 试卷 / 随堂测 / 作业")
+	setHdr("节点配置", 2, headers2, widths2)
+	f.SetPanes("节点配置", &excelize.Panes{Freeze: true, YSplit: 2})
+	f.AutoFilter("节点配置", "A2:K2", []excelize.AutoFilterOptions{})
+
+	// Reference sheets
+	h.addRefSheet(f, "【参考】专业字典", []string{"专业名称", "专业编码"}, []float64{32, 18},
+		"仅作参考，无需编辑修改。\n课程基本信息 Sheet「适用专业」与本表名称一致则关联已有，不一致则忽略（不新建专业）。",
+		func() [][]string {
+			var data [][]string
+			for _, v := range majors {
+				data = append(data, []string{v[0], v[1]})
+			}
+			return data
+		}())
+
+	h.addRefSheet(f, "【参考】批次字典", []string{"批次名称"}, []float64{36},
+		"仅作参考，无需编辑修改。\n课程基本信息 Sheet「所属批次」与本表名称一致则关联已有，不一致则忽略（不新建批次）。",
+		func() [][]string {
+			var data [][]string
+			for _, v := range lessonBatches {
+				data = append(data, []string{v})
+			}
+			return data
+		}())
+
+	h.addRefSheet(f, "【参考】知识点库", []string{"知识点名称"}, []float64{36},
+		"仅作参考，无需编辑修改。\n节点配置 Sheet「关联知识点」与本表名称一致则关联已有，不一致则自动新建并关联。",
+		func() [][]string {
+			var data [][]string
+			for _, v := range knowledgePoints {
+				data = append(data, []string{v})
+			}
+			return data
+		}())
+
+	h.addRefSheet(f, "【参考】测评方式", []string{"测评方式"}, []float64{24},
+		"仅作参考，无需编辑修改。\n节点配置 Sheet「测评方式」支持：题库、试卷、随堂测、作业。",
+		[][]string{{"题库"}, {"试卷"}, {"随堂测"}, {"作业"}})
+
+	return f
+}
+
+func (h *TemplateHandler) queryLessonBatches(ctx context.Context, tenantID string) []string {
+	var names []string
+	rows, _ := h.DB.Query(ctx, `SELECT name FROM lesson_batches WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	for rows.Next() {
+		var n string
+		rows.Scan(&n)
+		names = append(names, n)
+	}
+	rows.Close()
+	return names
+}
+
 func (h *TemplateHandler) addRefSheet(f *excelize.File, name string, headers []string, widths []float64, note string, data [][]string) {
 	f.NewSheet(name)
 	noteStyle := makeNoteStyle(f)

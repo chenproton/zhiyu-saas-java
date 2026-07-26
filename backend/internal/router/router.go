@@ -167,6 +167,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 	courseNodeHandler := &handler.CourseNodeHandler{DB: db}
 	nodeQuizHandler := &handler.NodeQuizHandler{DB: db}
 	nodeHomeworkHandler := &handler.NodeHomeworkHandler{DB: db}
+	nodeResourceHandler := &handler.NodeResourceHandler{DB: db}
 	hybridModuleHandler := &handler.HybridModuleHandler{DB: db}
 	courseBatchHandler := handler.NewCourseBatchHandler(db)
 	lessonBehaviorHandler := &handler.LessonBehaviorHandler{DB: db}
@@ -579,6 +580,11 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 				r.Post("/lesson/homeworks", nodeHomeworkHandler.Create)
 				r.Put("/lesson/homeworks/{id}", nodeHomeworkHandler.Update)
 				r.Delete("/lesson/homeworks/{id}", nodeHomeworkHandler.Delete)
+
+				r.Get("/lesson/node-resources", nodeResourceHandler.ListResources)
+				r.Post("/lesson/node-resources/create", nodeResourceHandler.Create)
+				r.Post("/lesson/node-resources", nodeResourceHandler.BindResource)
+				r.Delete("/lesson/node-resources/{id}", nodeResourceHandler.UnbindResource)
 
 				r.Get("/lesson/hybrid-modules", hybridModuleHandler.ListModules)
 				r.Post("/lesson/hybrid-modules", hybridModuleHandler.UpsertModule)

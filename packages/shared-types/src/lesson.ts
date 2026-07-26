@@ -105,6 +105,9 @@ export interface NodeResource {
   type: string
   url: string
   size?: number
+  description?: string
+  uploadedBy?: string
+  uploadedAt?: string
 }
 
 export interface CourseKnowledgeBinding {
