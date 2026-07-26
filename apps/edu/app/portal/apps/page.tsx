@@ -74,6 +74,13 @@ const platformStyles: Record<string, PlatformStyle> = {
   research: { iconColor: "text-violet-600", iconBg: "bg-violet-50" },
 }
 
+const systemModules: ModuleItem[] = [
+  { id: "tenant", title: "租户信息管理", desc: "管理租户基本信息与配置", href: "/portal/apps/system/tenant" },
+  { id: "resource-mgmt", title: "系统资源管理", desc: "套餐、编码、行业、专业", href: "/portal/apps/system/resource/package" },
+  { id: "log", title: "日志管理", desc: "登录日志、操作日志查看", href: "/portal/apps/system/logs/login" },
+  { id: "org-user", title: "组织用户管理", desc: "组织架构、用户账户管理", href: "/portal/apps/system/org-user/org-structure" },
+]
+
 const fallbackModules: Record<string, ModuleItem[]> = {
   alliance: [{ id: "alliance-entry", title: "产教协同平台", desc: "暂未开放", href: "#" }],
   affairs: [{ id: "affairs-entry", title: "教务服务", desc: "暂未开放", href: "#" }],
@@ -192,7 +199,11 @@ export default function AppsPage() {
         let modules: ModuleItem[] = []
 
         if (config) {
-          modules = getGroupModulesFromNavConfig(config).filter((m) => hasMenuPermission(m.href))
+          if (item.id === "system") {
+            modules = systemModules.filter((m) => hasMenuPermission(m.href))
+          } else {
+            modules = getGroupModulesFromNavConfig(config).filter((m) => hasMenuPermission(m.href))
+          }
         } else {
           const configured = modulesData.platforms.find((p) => p.id === item.id)
           if (configured?.modules.length) {
