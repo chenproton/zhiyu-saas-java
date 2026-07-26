@@ -1,7 +1,7 @@
 # apps/edu 前端页面菜单结构清单
 
 > 本清单基于 `apps/edu/lib/navigation-config.ts` 与 `apps/edu/lib/menu-permissions.ts` 整理，按「模块 → 一级菜单 → 二级菜单/页面」结构组织。不含 `apps/marketplace`、不含 `app/api/*` 接口路由、不含 `.next/` 构建产物。
-> 已删除页面：`/dashboard/marketplace`、`/job/banners`。
+> 已删除/合并页面：`/dashboard/marketplace`、`/job/banners`、`/job/landing`（合并至 `/job/student`）。
 > 统计时间：2026-07-26
 
 ## 数字课程服务平台
@@ -32,8 +32,7 @@
 | | 审批中心 | `/job/approvals` | 菜单页 |
 | 岗位展示配置 | 岗位推荐 | `/job/recommend` | 菜单页 |
 | | 学习路径 | `/job/learn-roads` | 菜单页 |
-| （前台/其他） | 前台落地页 | `/job/landing` | 非左侧菜单 |
-| （前台/其他） | 学生就业首页 | `/job/student` | 非左侧菜单 |
+| （前台/其他） | 前台落地页/学生就业首页 | `/job/student` | 非左侧菜单 |
 | | ↳ 学生就业详情 | `/job/student/[id]` | 子页面 |
 | | ↳ 学生学习页 | `/job/student/[id]/learn` | 子页面 |
 
