@@ -847,9 +847,15 @@ fi
 
 if [[ "$BACKEND_ONLY" != "true" && "$BUILD_EDU" == "true" && -d "$EDU_STANDALONE_ROOT" ]]; then
   echo "  复制教育管理 standalone 到部署目录..."
+  echo "    源: $EDU_STANDALONE_ROOT (大小: $(du -sh "$EDU_STANDALONE_ROOT" 2>/dev/null | cut -f1))"
+  echo "    源内容: $(ls -la "$EDU_STANDALONE_ROOT" 2>/dev/null | head -5)"
   rm -rf "$DEPLOY_EDU_STANDALONE_ROOT"
   mkdir -p "$(dirname "$DEPLOY_EDU_STANDALONE_ROOT")"
-  cp -a "$EDU_STANDALONE_ROOT" "$DEPLOY_EDU_STANDALONE_ROOT"
+  cp -a "$EDU_STANDALONE_ROOT" "$DEPLOY_EDU_STANDALONE_ROOT" || {
+    echo "错误：教育管理 standalone 复制失败" >&2
+    exit 1
+  }
+  echo "    目标: $DEPLOY_EDU_STANDALONE_ROOT (大小: $(du -sh "$DEPLOY_EDU_STANDALONE_ROOT" 2>/dev/null | cut -f1))"
   rm -rf "$EDU_STANDALONE_ROOT"
   echo "  教育管理前端已切换"
 fi
