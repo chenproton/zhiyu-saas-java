@@ -318,7 +318,7 @@ export default function LessonLandingPage() {
       </div>
 
       {/* Stats bar */}
-      <div className="max-w-[1400px] mx-auto px-8 -mt-12 relative z-20 w-full">
+      <div className="max-w-[1400px] mx-auto px-8 -mt-10 relative z-20 w-full">
         <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_12px_40px_rgba(0,0,0,0.08)] p-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { icon: BookOpen, value: systemCourses.length, label: "体系课", gradient: "from-emerald-500 to-emerald-400" },
