@@ -441,7 +441,13 @@ function HybridCourseAddForm() {
     status: "draft",
     creatorId: existing?.creatorId || "",
     coCreatorIds: existing?.coCreatorIds || [],
-  })
+    detailedDescription: rootForm.detailedDescription || undefined,
+    background: rootForm.background || undefined,
+    estimatedHours: parseInt(rootForm.estimatedHours) || undefined,
+    evalData: {
+      learningGoal: rootForm.courseObjectives || undefined,
+    },
+  } as any)
 
   const handleSave = async () => {
     if (!rootForm.name || !rootForm.code) {
@@ -653,6 +659,35 @@ function HybridCourseAddForm() {
                     onChange={(v) => updateRootForm({ courseObjectives: v })}
                     placeholder="请输入课程目标，可填写多条，按回车分隔"
                   />
+                </div>
+                <div className="mt-5 space-y-1.5">
+                  <Label className="text-xs">详细描述</Label>
+                  <MockRichEditor
+                    value={rootForm.detailedDescription}
+                    onChange={(v) => updateRootForm({ detailedDescription: v })}
+                    placeholder="请输入课程详细描述"
+                  />
+                </div>
+                <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">任务背景</Label>
+                    <Input
+                      value={rootForm.background}
+                      onChange={(e) => updateRootForm({ background: e.target.value })}
+                      placeholder="任务背景说明"
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">预计学时</Label>
+                    <Input
+                      type="number"
+                      value={rootForm.estimatedHours}
+                      onChange={(e) => updateRootForm({ estimatedHours: e.target.value })}
+                      placeholder="预计完成学时"
+                      className="h-9 text-sm"
+                    />
+                  </div>
                 </div>
                 <div className="mt-5 space-y-1.5">
                   <Label className="text-xs">封面图片</Label>

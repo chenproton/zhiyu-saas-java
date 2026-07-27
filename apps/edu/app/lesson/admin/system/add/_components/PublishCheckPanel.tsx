@@ -62,6 +62,30 @@ const CHECK_ITEMS: CheckItem[] = [
       return "未设置测验"
     },
   },
+  {
+    key: "detailedDescription",
+    label: "详细描述",
+    check: (node) => !!node.detailedDescription?.trim(),
+    getStatus: (node) => {
+      const len = node.detailedDescription?.length ?? 0
+      return len > 0 ? `已填写：${len} 字符` : "未填写详细描述"
+    },
+  },
+  {
+    key: "evalData",
+    label: "评价数据",
+    check: (node) => {
+      if (!node.evalData) return false
+      if (typeof node.evalData === "object") return Object.keys(node.evalData).length > 0
+      return false
+    },
+    getStatus: (node) => {
+      const count = node.evalData && typeof node.evalData === "object"
+        ? Object.keys(node.evalData).length
+        : 0
+      return count > 0 ? `已配置：${count} 项` : "未配置评价数据"
+    },
+  },
 ]
 
 export default function PublishCheckPanel({ node }: PublishCheckPanelProps) {

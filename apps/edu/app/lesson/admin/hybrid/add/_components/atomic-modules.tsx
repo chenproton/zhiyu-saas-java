@@ -66,6 +66,9 @@ export interface CourseBasicForm {
   semester: string
   category: CourseCategory
   courseObjectives: string
+  detailedDescription: string
+  background: string
+  estimatedHours: string
   coverImage: string
 }
 
@@ -232,6 +235,9 @@ export function createDefaultNodeModuleData(
       semester: existing?.semester ?? "2026-2027-1",
       category,
       courseObjectives: "",
+      detailedDescription: "",
+      background: "",
+      estimatedHours: "",
       coverImage: "",
     },
     teachingDesignContent: `● 知识目标

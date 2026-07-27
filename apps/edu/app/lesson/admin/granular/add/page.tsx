@@ -53,8 +53,12 @@ function AddGranularPageInner() {
 
   /* module 1: basic info */
   const [courseName, setCourseName] = useState("")
+  const [code, setCode] = useState("")
   const [hours, setHours] = useState("")
   const [learningGoal, setLearningGoal] = useState("")
+  const [detailedDescription, setDetailedDescription] = useState("")
+  const [background, setBackground] = useState("")
+  const [estimatedHours, setEstimatedHours] = useState("")
   const [major, setMajor] = useState("")
   const [majorId, setMajorId] = useState("")
   const [majorNames, setMajorNames] = useState<string[]>([])
@@ -169,17 +173,25 @@ function AddGranularPageInner() {
       courseId: editId || "granular-new",
       parentId: null,
       name: courseName || "未命名",
+      code: code || undefined,
       order: 1,
       type: "normal",
       status: "draft" as const,
       teachingGoals: learningGoal,
+      detailedDescription: detailedDescription || undefined,
+      background: background || undefined,
+      estimatedHours: parseInt(estimatedHours) || undefined,
       duration: parseInt(hours) || 0,
       knowledgePoints: kpForCheck,
       resources: resForCheck,
       quizzes: [],
       homeworks: [],
+      evalData: {
+        learningGoal: learningGoal || undefined,
+        knowledgePointIds: knowledgePoints.map((kp) => kp.id).filter((id) => !id.startsWith("kp-custom-")),
+      },
     }
-  }, [editId, courseName, hours, learningGoal, knowledgePoints, selectedResourceIds, resourcePool])
+  }, [editId, courseName, code, hours, learningGoal, detailedDescription, background, estimatedHours, knowledgePoints, selectedResourceIds, resourcePool])
 
   const handleSave = async () => {
     if (!courseName) {
@@ -206,10 +218,18 @@ function AddGranularPageInner() {
         creatorId: course?.creatorId || undefined,
         coCreatorIds: course?.coCreatorIds ?? [],
         difficulty: difficulty > 0 ? difficulty : undefined,
+        code: code || undefined,
         description,
+        detailedDescription: detailedDescription || undefined,
+        background: background || undefined,
+        estimatedHours: parseInt(estimatedHours) || 0,
+        evalData: {
+          learningGoal: learningGoal || undefined,
+          knowledgePointIds,
+        },
         knowledgePointIds,
         resourceIds: selectedResourceIds,
-      }
+      } as any
       if (editId) {
         await courseApi.update(editId, payload)
         hasSavedRef.current = true
@@ -276,6 +296,10 @@ function AddGranularPageInner() {
                     <Input value={courseName} onChange={(e) => setCourseName(e.target.value)} placeholder="请输入课程名称" className="h-9 text-sm" />
                   </div>
                   <div className="space-y-1.5">
+                    <Label className="text-xs">课程编码</Label>
+                    <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="请输入课程编码" className="h-9 text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
                     <Label className="text-xs">所属专业</Label>
                     <Select value={major} onValueChange={(v) => { setMajor(v); setMajorId(majorMapRef.current.get(v) || "") }}>
                       <SelectTrigger className="h-9 text-sm">
@@ -323,6 +347,22 @@ function AddGranularPageInner() {
                       onChange={setLearningGoal}
                       minHeight={280}
                     />
+                  </div>
+                  <div className="md:col-span-2 space-y-1.5">
+                    <Label className="text-xs">详细描述</Label>
+                    <RichTextEditor
+                      value={detailedDescription}
+                      onChange={setDetailedDescription}
+                      minHeight={200}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">任务背景</Label>
+                    <Input value={background} onChange={(e) => setBackground(e.target.value)} placeholder="任务背景说明" className="h-9 text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">预计学时</Label>
+                    <Input type="number" value={estimatedHours} onChange={(e) => setEstimatedHours(e.target.value)} placeholder="预计完成学时" className="h-9 text-sm" />
                   </div>
                   <div className="md:col-span-2 space-y-1.5">
                     <Label className="text-xs">封面图片</Label>
