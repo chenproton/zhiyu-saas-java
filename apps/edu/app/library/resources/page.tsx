@@ -393,7 +393,7 @@ export default function ResourcesPage() {
               <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="输入资源简介、用途说明等" className="mt-1.5" rows={2} />
             </div>
 
-            {isFileType && !editingItem && (
+            {isFileType && (
               <div
                 className={cn(
                   "border-2 border-dashed rounded-xl p-6 text-center space-y-3 transition-colors",
@@ -447,13 +447,6 @@ export default function ResourcesPage() {
                     </Button>
                   </div>
                 )}
-              </div>
-            )}
-
-            {editingItem && (
-              <div>
-                <Label>链接/地址</Label>
-                <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="资源URL" className="mt-1.5" />
               </div>
             )}
           </div>
