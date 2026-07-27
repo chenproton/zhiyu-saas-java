@@ -39,10 +39,11 @@
 
 ## 二、交付要求
 
-1. 所有修改后必须通过 `./deploy.sh --branch <分支名>` 部署验证
-2. 提交前检查：后端 `go vet ./...` `go test ./...`，前端 `pnpm exec tsc --noEmit` `pnpm lint`，migration 需配对 `.down.sql`
-3. 修改 `AGENTS.md` 或 `docs/` 下的文件必须独立 commit
-4. 单次 commit 只含当次变更
+1. 所有**代码修改**后必须通过 `./deploy.sh --branch <分支名>` 部署验证
+2. **纯文档修改**（`AGENTS.md`、`docs/` 下的文件）无需走 `deploy.sh`，直接 commit 合并即可
+3. 提交前检查：后端 `go vet ./...` `go test ./...`，前端 `pnpm exec tsc --noEmit` `pnpm lint`，migration 需配对 `.down.sql`
+4. 修改 `AGENTS.md` 或 `docs/` 下的文件必须独立 commit
+5. 单次 commit 只含当次变更
 
 ## 三、开发原则
 
