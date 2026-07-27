@@ -37,6 +37,7 @@ import { PageHeaderCard } from "@/components/shared/page-header-card"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { examUsageApi } from "@/lib/api"
 import type { ExamUsage } from "@/lib/types"
+import { TableRowActions } from "@/components/shared/table-row-actions"
 
 const STATUS_LABELS: Record<ExamUsage["status"], string> = {
   draft: "草稿",
@@ -347,8 +348,7 @@ export default function ExamUsagePage() {
                           {usage.targetType ? TARGET_TYPE_LABELS[usage.targetType] : "-"}
                         </span>
                       </TableCell>
-                      <TableCell className="sticky right-0 bg-white text-right relative">
-                        <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                      <TableRowActions className="sticky right-0 bg-white">
                           {canStart(usage.status) && (
                             <Button
                               variant="ghost"
@@ -393,8 +393,7 @@ export default function ExamUsagePage() {
                               删除
                             </Button>
                           )}
-                        </div>
-                      </TableCell>
+                        </TableRowActions>
                     </TableRow>
                   )
                 })

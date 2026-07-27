@@ -14,6 +14,7 @@ import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { usePortalUsers } from "@/hooks/use-portal-users"
 import { useOrgTree, findOrgAncestor } from "@/hooks/use-org-tree"
 import { OrgNodePicker } from "@/components/shared/org-node-picker"
+import { TableRowActions } from "@/components/shared/table-row-actions"
 import { portalUserManagementApi } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Search, Download, RotateCcw, Loader2, Pencil } from "lucide-react"
@@ -237,8 +238,7 @@ export default function GraduatesPage() {
                     <TableCell>
                       <Badge>毕业</Badge>
                     </TableCell>
-                    <TableCell className="text-right relative">
-                      <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                    <TableRowActions>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -257,8 +257,7 @@ export default function GraduatesPage() {
                           <RotateCcw className="mr-1 h-3 w-3" />
                           重新入学
                         </Button>
-                      </div>
-                    </TableCell>
+                    </TableRowActions>
                   </TableRow>
                 ))}
                 {filteredGraduates.length === 0 && (

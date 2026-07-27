@@ -42,10 +42,10 @@ import { cn } from "@/lib/utils"
 import { orgApi, orgTypeApi, portalUserManagementApi, importExportApi } from "@/lib/api"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
-import type { ImportPreviewResult } from "@/lib/api"
 import type { Organization, OrgType } from "@/lib/types/backend"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { useToast } from "@/hooks/use-toast"
+import { useImportFlow } from "@/hooks/use-import-flow"
 
 type OrgNodeType = string
 
@@ -229,13 +229,8 @@ export default function OrgStructurePage() {
   const nodeRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
-  const [importFile, setImportFile] = useState<File | null>(null)
-  const [isImporting, setIsImporting] = useState(false)
   const [importStep, setImportStep] = useState<"download" | "upload">("download")
-  const [isDownloading, setIsDownloading] = useState(false)
   const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
-  const [importPreview, setImportPreview] = useState<ImportPreviewResult | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -297,6 +292,31 @@ export default function OrgStructurePage() {
     fetchData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId])
+
+  const importFlow = useImportFlow({
+    importType: "organizations",
+    entityLabel: "组织",
+    templateFileName: "组织批量导入模板.xlsx",
+    onSuccess: fetchData,
+  })
+
+  const doImport = async (overwrite = false) => {
+    const ok = await importFlow.executeImport(overwrite)
+    if (ok) {
+      setIsImportDialogOpen(false)
+      setImportStep("download")
+      setIsImportConfirmOpen(false)
+    }
+  }
+
+  const doHandleImport = async () => {
+    const ok = await importFlow.handleImport()
+    if (ok) {
+      setIsImportDialogOpen(false)
+      setImportStep("download")
+      setIsImportConfirmOpen(false)
+    }
+  }
 
   const stats = useMemo(() => {
     const knownTypes = Object.values(typeNames)
@@ -503,72 +523,6 @@ export default function OrgStructurePage() {
   const statEntries = useMemo(() => {
     return Object.entries(typeNames).map(([, name]) => ({ name, count: stats[name] || 0 }))
   }, [typeNames, stats])
-
-  const handleImportFileSelect = (files: FileList | null) => {
-    const file = files?.[0]
-    if (file) setImportFile(file)
-  }
-
-  const executeImport = async (overwrite = false) => {
-    if (!importFile || !tenantId) return
-    setIsImporting(true)
-    try {
-      const result = await importExportApi.importExcel("organizations", importFile, overwrite)
-      const errorHint = result.errors && result.errors.length > 0 ? `，错误：${result.errors.slice(0, 3).join(";")}` : ""
-      toast({
-        title: "导入完成",
-        description: `成功 ${result.created} 条，失败 ${result.failed || 0} 条，跳过 ${result.skipped || 0} 条${errorHint}`,
-      })
-      setImportFile(null)
-      setIsImportDialogOpen(false)
-      setImportStep("download")
-      setIsImportConfirmOpen(false)
-      setImportPreview(null)
-      await fetchData()
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
-    } finally {
-      setIsImporting(false)
-    }
-  }
-
-  const handleImport = async () => {
-    if (!importFile || !tenantId) return
-    setIsImporting(true)
-    try {
-      const preview = await importExportApi.importExcelPreview("organizations", importFile)
-      if (preview.duplicates > 0) {
-        setImportPreview(preview)
-        setIsImportConfirmOpen(true)
-        setIsImporting(false)
-        return
-      }
-      await executeImport(false)
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
-      setIsImporting(false)
-    }
-  }
-
-  const handleDownloadTemplate = async () => {
-    setIsDownloading(true)
-    try {
-      const res = await importExportApi.downloadTemplate("organizations")
-      const blob = await res.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = "组织架构批量导入模板.xlsx"
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.URL.revokeObjectURL(url)
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "下载模板失败", description: err.message || "下载模板失败" })
-    } finally {
-      setIsDownloading(false)
-    }
-  }
 
   const handleExport = async () => {
     try {
@@ -790,7 +744,7 @@ export default function OrgStructurePage() {
       )}
 
       {/* 导入组织架构 */}
-      <Dialog open={isImportDialogOpen} onOpenChange={(open) => { setIsImportDialogOpen(open); if (!open) { setImportStep("download"); setImportFile(null) } }}>
+      <Dialog open={isImportDialogOpen} onOpenChange={(open) => { setIsImportDialogOpen(open); if (!open) { setImportStep("download"); importFlow.setImportFile(null) } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>批量导入组织架构</DialogTitle>
@@ -812,40 +766,40 @@ export default function OrgStructurePage() {
                 <Button
                   className="w-full"
                   size="lg"
-                  onClick={handleDownloadTemplate}
-                  disabled={isDownloading}
+                  onClick={importFlow.handleDownloadTemplate}
+                  disabled={importFlow.isDownloading}
                 >
                   <FileDown className="mr-2 h-5 w-5" />
-                  {isDownloading ? "下载中..." : "下载组织架构批量导入模板"}
+                  {importFlow.isDownloading ? "下载中..." : "下载组织架构批量导入模板"}
                 </Button>
               </div>
             ) : (
               <div
                 className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => importFlow.fileInputRef.current?.click()}
               >
                 <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
                 <p className="text-sm text-muted-foreground mb-2">
-                  {importFile ? importFile.name : "点击选择已填写的 Excel (.xlsx) 文件"}
+                  {importFlow.importFile ? importFlow.importFile.name : "点击选择已填写的 Excel (.xlsx) 文件"}
                 </p>
                 <p className="text-xs text-muted-foreground">仅支持 .xlsx 格式</p>
                 <input
-                  ref={fileInputRef}
+                  ref={importFlow.fileInputRef}
                   type="file"
                   accept=".xlsx"
                   className="hidden"
-                  onChange={(e) => handleImportFileSelect(e.target.files)}
+                  onChange={(e) => importFlow.handleFileSelect(e.target.files)}
                 />
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsImportDialogOpen(false); setImportStep("download"); setImportFile(null) }}>取消</Button>
+            <Button variant="outline" onClick={() => { setIsImportDialogOpen(false); setImportStep("download"); importFlow.setImportFile(null) }}>取消</Button>
             {importStep === "download" ? (
               <Button onClick={() => setImportStep("upload")}>下一步</Button>
             ) : (
-              <Button onClick={handleImport} disabled={!importFile || isImporting}>
-                {isImporting ? "导入中..." : "开始导入"}
+              <Button onClick={doHandleImport} disabled={!importFlow.importFile || importFlow.isImporting}>
+                {importFlow.isImporting ? "导入中..." : "开始导入"}
               </Button>
             )}
             {importStep === "upload" && (
@@ -855,17 +809,17 @@ export default function OrgStructurePage() {
         </DialogContent>
       </Dialog>
 
-      {importPreview && (
+      {importFlow.importPreview && (
         <ImportConfirmDialog
           open={isImportConfirmOpen}
           onOpenChange={setIsImportConfirmOpen}
           entityLabel="组织架构"
-          created={importPreview.created}
-          duplicates={importPreview.duplicates}
-          failed={importPreview.failed}
-          duplicateItems={importPreview.duplicateItems}
-          onConfirmOverwrite={() => executeImport(true)}
-          onConfirmSkip={() => executeImport(false)}
+          created={importFlow.importPreview.created}
+          duplicates={importFlow.importPreview.duplicates}
+          failed={importFlow.importPreview.failed}
+          duplicateItems={importFlow.importPreview.duplicateItems}
+          onConfirmOverwrite={() => doImport(true)}
+          onConfirmSkip={() => doImport(false)}
         />
       )}
 

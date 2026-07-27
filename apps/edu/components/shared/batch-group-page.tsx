@@ -38,6 +38,7 @@ import { workflowApi, majorApi } from "@/lib/api"
 import type { Workflow, Major } from "@/lib/types/backend"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { TableRowActions } from "@/components/shared/table-row-actions"
 
 export interface BatchGroupItem {
   id: string
@@ -416,8 +417,7 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
                           {batch.status === "open" ? "开放中" : "已截止"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right relative">
-                        <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                      <TableRowActions>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -445,8 +445,7 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
                             <Trash2 className="mr-1 h-3 w-3" />
                             删除
                           </Button>
-                        </div>
-                      </TableCell>
+                        </TableRowActions>
                     </TableRow>
                   ))
                 )}

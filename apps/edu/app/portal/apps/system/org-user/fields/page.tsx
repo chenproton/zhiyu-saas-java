@@ -12,6 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalUserExtensionFieldApi, roleApi } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { TableRowActions } from "@/components/shared/table-row-actions"
 import { Pencil, AlertCircle, Loader2, RotateCcw } from "lucide-react"
 import type { Role, UserExtensionField } from "@/lib/types/backend"
 
@@ -189,8 +190,7 @@ export default function UserFieldsPage() {
                   <TableCell className="text-center">
                     <Switch checked={field.enabled} onCheckedChange={() => handleToggle(field)} />
                   </TableCell>
-                  <TableCell className="text-right relative">
-                    <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                    <TableRowActions>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -200,8 +200,7 @@ export default function UserFieldsPage() {
                         <Pencil className="mr-1 h-3 w-3" />
                         编辑
                       </Button>
-                    </div>
-                  </TableCell>
+                    </TableRowActions>
                 </TableRow>
               ))
             )}

@@ -35,15 +35,7 @@ import { examApi, examUsageApi, examResultApi } from "@/lib/api"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 
-/* ─── 状态颜色映射 ─── */
-const statusConfig: Record<string, { bg: string; color: string; label: string }> = {
-  draft: { bg: "#f5f6f7", color: "#8f959e", label: "草稿" },
-  pending: { bg: "#dbeafe", color: "#3b82f6", label: "审核中" },
-  rejected: { bg: "#fee2e2", color: "#dc2626", label: "已驳回" },
-  approved: { bg: "#e0e7ff", color: "#4f46e5", label: "已通过" },
-  published: { bg: "#dcfce7", color: "#16a34a", label: "已发布" },
-}
-
+/* ─── 题型标签映射 ─── */
 const typeLabelMap: Record<string, string> = {
   single: "单选题",
   multiple: "多选题",
@@ -203,7 +195,6 @@ export default function ExamDetailPage() {
     )
   }
 
-  const cfg = statusConfig[exam.status] || statusConfig.draft
   const totalScore = exam.questions.reduce((s, q) => s + (q.score || 0), 0)
   const answeredCount = Object.keys(answers).length
   const timeStatus = getExamTimeStatus(exam.status)

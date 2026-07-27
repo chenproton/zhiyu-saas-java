@@ -2,21 +2,12 @@
 
 import { Copy, Eye, GitBranch, Pencil, Rocket, Send, Trash2, Undo2, CheckCircle, XCircle, ArrowDownFromLine, MessageSquare, UserPlus, Archive } from "lucide-react"
 import Link from "next/link"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { cn } from "@/lib/utils"
-
-const statusConfig = {
-  draft: { label: "草稿", className: "bg-gray-100 text-gray-500" },
-  pending: { label: "审批中", className: "bg-yellow-50 text-yellow-600" },
-  approved: { label: "已通过", className: "bg-blue-50 text-blue-600" },
-  rejected: { label: "已驳回", className: "bg-red-50 text-red-500" },
-  published: { label: "已发布", className: "bg-green-50 text-green-600" },
-  archived: { label: "已归档", className: "bg-purple-50 text-purple-600" },
-}
 
 export interface ScenarioListItem {
   id: string
@@ -118,7 +109,6 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
       {/* Body */}
       <div className="divide-y divide-slate-100">
         {scenarios.map((scenario) => {
-          const status = statusConfig[scenario.status]
           const isSelected = selectedIds.includes(scenario.id)
 
           return (
@@ -142,9 +132,7 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                     <p className="text-sm font-medium text-slate-900 line-clamp-1 hover:text-primary">{scenario.name}</p>
                   </Link>
                 </PrdAnnotation>
-                <Badge variant="secondary" className={cn("text-xs mt-1", status.className)}>
-                  {status.label}
-                </Badge>
+                <StatusBadge status={scenario.status} />
               </div>
               <div className="col-span-1 text-sm text-slate-600 truncate">{scenario.code}</div>
               <div className="col-span-1 text-center text-sm text-slate-600">{scenario.version}</div>

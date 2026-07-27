@@ -86,6 +86,16 @@
 
 环境变量（`DATABASE_URL`、`JWT_SECRET`、`PORT`）在 `.env` 或服务器环境变量配置，禁止提交仓库。
 
+### 演示环境
+
+| 项目 | 值 |
+|------|-----|
+| SSH | `ssh root@171.80.10.237`（密码 `lEL9cHcBQMjCEqp6`） |
+| 项目目录 | `/root/projects/zhiyu-saas` |
+| 部署脚本 | `./deploydemo.sh`（非 `./deploy.sh`） |
+
+> 该环境为演示/测试用途。
+
 ## 六、本地调试工具
 
 ### 模拟登录 Token 接口
@@ -126,7 +136,74 @@
 
 > ⚠️ 该接口默认关闭，仅在 `ENABLE_DEBUG_AUTH=true` 时可用，**生产环境务必保持关闭**。
 
-## 七、AI 协作者约定
+## 七、前端公共组件目录
+
+> **核心原则：新增页面时，优先查找以下公共组件复用，避免重复造轮子。** 所有组件位于 `apps/edu/components/shared/`。
+
+### 页面级组件（整页壳子，注入 API 即可）
+
+| 组件 | 文件 | 适用场景 | 使用方式 |
+|------|------|---------|---------|
+| `ContentListPage<T>` | `content-list-page.tsx` | **内容资源管理列表页**（岗位/场景/课程/题库/试卷等，含 Tab 筛选、批量操作、导入导出） | 注入 `itemApi`/`batchApi`/`approvalApi` + `renderList` 渲染函子 |
+| `EvaluationListTable` | `evaluation/evaluation-list-table.tsx` | **评测列表渲染器**（题库/试卷的 renderList，含草稿池/权限/审批按钮等评测特有逻辑） | `renderList` 中传入 `<EvaluationListTable ... type="bank"|"exam" />` |
+| `BatchGroupPage` | `batch-group-page.tsx` | **批次分组管理页**（新建/编辑/删除批次，关联审批流程） | 注入 `api: BatchGroupApi` + `subtitle`/`namePlaceholder`/`workflowHint` 文案 |
+| `WorkflowConfigPage` | `workflow-config-page.tsx` | **审批流配置页**（创建/编辑/删除审批流模板） | 仅需 `subtitle` 文案 |
+| `ApprovalListPage<T>` | `approval-list-page.tsx` | **审批中心列表页**（待审批/已审批 Tab、单选/批量通过驳回） | 注入审批数据 + `columns` 列定义 + `detailHref` 链接 |
+| `EditorShell` | `editor-shell.tsx` | **内容编辑器框架**（全屏/内嵌、步骤导航、保存/提交按钮） | 设置 `mode`/`step`/`onSaveDraft`/`onSubmit` 等回调 |
+
+### 表单/交互组件
+
+| 组件 | 文件 | 适用场景 | 使用方式 |
+|------|------|---------|---------|
+| `UserSelector` | `user-selector.tsx`（400行） | **选择用户**（支持多选/单选、组织树筛选、排除学生） | `value`+`onChange`+`multiple`+`excludeStudent`+`tenantId` |
+| `OrgFilterTree` | `org-filter-tree.tsx` | **组织树筛选边栏**（点击节点筛选） | `onSelect(orgId)` 回调 |
+| `OrgNodePicker` | `org-node-picker.tsx` | **组织节点选择器**（Popover 形式） | `value`+`onChange` |
+| `StatusBadge` | `status-badge.tsx` | **状态标签**（统一颜色体系，覆盖 draft/pending/approved/rejected/published/archived 等） | `<StatusBadge status={item.status} />` |
+| `TableRowActions` | `table-row-actions.tsx` | **表格行悬浮操作按钮**（替代手写 `group-hover:opacity-100` 模式） | `<TableRowActions><Button>编辑</Button><Button>删除</Button></TableRowActions>` |
+| `ConfirmDialog` | `confirm-dialog.tsx` | **确认对话框**（危险操作二次确认） | `open`+`onOpenChange`+`title`+`description`+`variant`+`onConfirm` |
+| `ImportConfirmDialog` | `import-confirm-dialog.tsx` | **导入重复确认对话框**（覆盖/跳过选择） | `open`+`entityLabel`+`created/duplicates/failed`+`onConfirmOverwrite`+`onConfirmSkip` |
+| `ResourcePreviewModal` | `resource-preview-modal.tsx` | **文件预览弹窗**（kkFileView iframe，可拖拽/缩放/堆叠） | `<ResourcePreviewModal resource={...} open={...} onOpenChange={...} />` |
+
+### Hooks
+
+| Hook | 文件 | 适用场景 |
+|------|------|---------|
+| `useApprovalDialogs` | `approval-dialogs.tsx` | **审批通过/驳回对话框**（返回 dialogs + approveAction + batchActionButtons） |
+| `useApprovals` | `@/hooks/use-approvals` | **审批记录数据**（records、approve、reject、batchApprove、batchReject、getStepInfo） |
+| `useSubmitterNames` | `@/hooks/use-submitter-names` | **提交人姓名缓存**（getName(userId) 批量解析用户名） |
+| `useImportFlow` | `@/hooks/use-import-flow` | **导入流程逻辑**（下载模板、预览、执行导入、重复处理） |
+
+### 布局/展示组件
+
+| 组件 | 文件 | 适用场景 |
+|------|------|---------|
+| `PageHeaderCard` | `page-header-card.tsx` | **页头统计卡片**（标题 + 统计数字 + 操作按钮） |
+| `PlatformShell` | `platform-shell/` | **平台整体布局壳子**（侧边栏 + 顶栏 + 内容区） |
+| `WorkflowEditor` | `workflow-editor.tsx` | **审批流步骤编辑器**（多步骤 + 审批人选择） |
+| `BatchSelector` | `batch-selector.tsx` | **批次选择器**（下拉选择 + 创建新批次） |
+| `SchoolAdminManager` | `school-admin-manager.tsx` | **学校管理员管理**（添加/删除管理员） |
+| `ResetPasswordDialog` | `reset-password-dialog.tsx` | **重置密码对话框** |
+
+### 通用页面模式速查
+
+| 页面类型 | 复用方案 | 示例 |
+|---------|---------|------|
+| 带审批的内容资源管理（岗位/场景/课程/题库/试卷） | `ContentListPage` + 模块专用 `renderList` | `app/job/positions/page.tsx`、`app/scene/page.tsx`、`app/evaluation/question-banks/page.tsx` |
+| 批次分组管理 | `BatchGroupPage` | `app/*/batches/page.tsx`（4 个模块全是 15 行薄壳） |
+| 审批流配置 | `WorkflowConfigPage` | `app/*/workflows/page.tsx`（4 个模块全是 7 行薄壳） |
+| 审批中心 | `ApprovalListPage` | `app/*/approvals/page.tsx`（4 个模块复用） |
+| 内容编辑器 | `EditorShell` | `app/*/[id]/edit/page.tsx`（7 个编辑器页面复用） |
+| Portal 系统管理 CRUD 表格 | 暂无统一组件，参考 `teachers/students` 模式 | 待抽象 |
+| 归档管理 | 暂无统一组件，参考 `job/archive` 模式 | 待抽象 |
+
+### 注意事项
+
+1. **不要定义本地 `STATUS_CONFIG`**。已有的全局 `getStatusConfig()`（在 `packages/shared-types/src/status.ts`）覆盖了 draft/pending/approved/rejected/published/archived/reviewing 等全部状态，配合 `<StatusBadge>` 使用即可。
+2. **表格行操作按钮**应使用 `<TableRowActions>` 组件，不要手写 `group-hover:opacity-100` 的 div。
+3. **共建人选择**优先使用已有的 `CoBuilderDialog`，避免在页面中内联实现两栏穿梭选人。
+4. **导入流程**新页面应使用 `useImportFlow` hook，统一下载模板、预览、去重确认、执行导入的流程。
+
+## 八、AI 协作者约定
 
 1. 只改当次任务相关文件，不碰无关文件。
 2. 忽略工作区中他人的未提交修改，不得还原或覆盖。

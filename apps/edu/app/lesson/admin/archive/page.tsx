@@ -24,6 +24,7 @@ import { courseApi, lessonBatchApi } from "@/lib/api"
 import type { Course, LessonBatch } from "@/lib/types/lesson"
 import { COURSE_STATUS_LABELS, COURSE_STATUS_COLORS } from "@/lib/types/lesson-source"
 import { useToast } from "@/hooks/use-toast"
+import { TableRowActions } from "@/components/shared/table-row-actions"
 
 export default function LessonArchivePage() {
   const { toast } = useToast()
@@ -203,8 +204,7 @@ export default function LessonArchivePage() {
                           {COURSE_STATUS_LABELS[course.status]}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right relative">
-                        <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                      <TableRowActions>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -225,8 +225,7 @@ export default function LessonArchivePage() {
                             <Power className="mr-1 h-3 w-3" />
                             恢复
                           </Button>
-                        </div>
-                      </TableCell>
+                        </TableRowActions>
                     </TableRow>
                   ))
                 )}

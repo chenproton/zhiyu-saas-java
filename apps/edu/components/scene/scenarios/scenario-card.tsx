@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { cn } from "@/lib/utils"
 import type { Scenario } from "@/lib/types/scene"
 
@@ -19,17 +20,7 @@ interface ScenarioCardProps {
   scenario: Scenario
 }
 
-const statusConfig = {
-  draft: { label: "草稿", className: "bg-gray-100 text-gray-500" },
-  pending: { label: "审批中", className: "bg-yellow-50 text-yellow-600" },
-  approved: { label: "已通过", className: "bg-blue-50 text-blue-600" },
-  rejected: { label: "已驳回", className: "bg-red-50 text-red-500" },
-  published: { label: "已发布", className: "bg-green-50 text-green-600" },
-  archived: { label: "已归档", className: "bg-purple-50 text-purple-600" },
-}
-
 export function ScenarioCard({ scenario }: ScenarioCardProps) {
-  const status = statusConfig[scenario.status]
 
   const renderDifficulty = (level: number) => {
     return (
@@ -58,9 +49,7 @@ export function ScenarioCard({ scenario }: ScenarioCardProps) {
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
           <div className="absolute top-3 left-3">
-            <Badge variant="secondary" className={cn("text-xs font-medium", status.className)}>
-              {status.label}
-            </Badge>
+            <StatusBadge status={scenario.status} />
           </div>
           <div className="absolute top-3 right-3">
             <Badge variant="outline" className="bg-white/90 backdrop-blur-sm text-xs font-medium text-gray-600">

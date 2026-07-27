@@ -30,6 +30,7 @@ import { portalUserRelationApi } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { UserSelector } from "@/components/shared/user-selector"
+import { TableRowActions } from "@/components/shared/table-row-actions"
 
 const relationTypes = [
   { value: "superior", label: "上下级" },
@@ -166,8 +167,7 @@ export default function RelationsPage() {
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{relation.createdAt}</TableCell>
-                  <TableCell className="text-right relative">
-                    <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                    <TableRowActions>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -177,8 +177,7 @@ export default function RelationsPage() {
                         <Trash2 className="mr-1 h-3 w-3" />
                         删除
                       </Button>
-                    </div>
-                  </TableCell>
+                    </TableRowActions>
                 </TableRow>
               ))
             )}

@@ -23,18 +23,10 @@ import {
   RotateCcw,
   Trash2,
 } from "lucide-react"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { scenarioApi, sceneBatchApi } from "@/lib/api"
 import type { Scenario, SceneBatch } from "@/lib/types/scene"
 import { useToast } from "@/hooks/use-toast"
-
-const statusConfig: Record<string, { label: string; className: string }> = {
-  draft: { label: "草稿", className: "bg-gray-100 text-gray-500" },
-  pending: { label: "审批中", className: "bg-yellow-50 text-yellow-600" },
-  approved: { label: "已通过", className: "bg-blue-50 text-blue-600" },
-  rejected: { label: "已驳回", className: "bg-red-50 text-red-500" },
-  published: { label: "已发布", className: "bg-green-50 text-green-600" },
-  archived: { label: "已归档", className: "bg-purple-50 text-purple-600" },
-}
 
 export default function SceneArchivePage() {
   const router = useRouter()
@@ -276,7 +268,6 @@ export default function SceneArchivePage() {
                     </TableRow>
                   ) : (
                     filtered.map((entry) => {
-                      const st = statusConfig[entry.status] || statusConfig.draft
                       const isSelected = selectedIds.includes(entry.id)
                       return (
                         <TableRow key={entry.id} className="group" data-state={isSelected ? "selected" : undefined}>
@@ -304,9 +295,7 @@ export default function SceneArchivePage() {
                             {new Date(entry.updatedAt).toLocaleDateString()}
                           </TableCell>
                           <TableCell>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs whitespace-nowrap ${st.className}`}>
-                              {st.label}
-                            </span>
+                            <StatusBadge status={entry.status} />
                           </TableCell>
                           <TableCell className="text-right px-3">
                             <div className="flex items-center justify-end gap-1">
