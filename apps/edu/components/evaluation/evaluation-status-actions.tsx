@@ -132,86 +132,84 @@ export function EvaluationStatusActions({
 
   return (
     <>
-      <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
-        {onView && (!b || status !== 'draft') && (
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onView() }}>
-            <Eye className="mr-1 h-3 w-3" />
-            {b ? "查看详情" : "配置试卷"}
-          </Button>
-        )}
-        {onView && !b && status === 'draft' && (
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onView() }}>
-            <Eye className="mr-1 h-3 w-3" />
-            配置试卷
-          </Button>
-        )}
-        {onPreview && !b && (
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onPreview() }}>
-            <MonitorPlay className="mr-1 h-3 w-3" />
-            预览试卷
-          </Button>
-        )}
-        {onClone && (
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onClone() }}>
-            <Copy className="mr-1 h-3 w-3" />
-            克隆
-          </Button>
-        )}
-        {canEdit && onEdit && (
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onEdit() }}>
-            <Edit className="mr-1 h-3 w-3" />
-            {b ? "编辑" : "修改试卷基本信息"}
-          </Button>
-        )}
-        {onInvite && (
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onInvite() }}>
-            <UserPlus className="mr-1 h-3 w-3" />
-            邀请共建
-          </Button>
-        )}
-        {canSubmit && (
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700" onClick={(e) => { e.stopPropagation(); setConfirmType('submit') }}>
-            <Send className="mr-1 h-3 w-3" />
-            提交审批
-          </Button>
-        )}
-        {canWithdraw && (
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-amber-600 hover:text-amber-700" onClick={(e) => { e.stopPropagation(); setConfirmType('withdraw') }}>
-            <Undo2 className="mr-1 h-3 w-3" />
-            {b ? "撤回" : "撤回审批"}
-          </Button>
-        )}
-        {canApprove && (
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700" onClick={(e) => { e.stopPropagation(); setConfirmType('approve') }}>
-            <CheckCircle className="mr-1 h-3 w-3" />
-            通过
-          </Button>
-        )}
-        {canReject && (
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={(e) => { e.stopPropagation(); setConfirmType('reject') }}>
-            <XCircle className="mr-1 h-3 w-3" />
-            驳回
-          </Button>
-        )}
-        {canPublish && (
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700" onClick={(e) => { e.stopPropagation(); setConfirmType('publish') }}>
-            <Rocket className="mr-1 h-3 w-3" />
-            发布
-          </Button>
-        )}
-        {canUnpublish && (
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={(e) => { e.stopPropagation(); setConfirmType('unpublish') }}>
-            <XCircle className="mr-1 h-3 w-3" />
-            取消发布
-          </Button>
-        )}
-        {canDelete && onDelete && (
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={(e) => { e.stopPropagation(); setConfirmType('delete') }}>
-            <Trash2 className="mr-1 h-3 w-3" />
-            删除
-          </Button>
-        )}
-      </div>
+      {onView && (!b || status !== 'draft') && (
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onView() }}>
+          <Eye className="mr-1 h-3 w-3" />
+          {b ? "查看详情" : "配置试卷"}
+        </Button>
+      )}
+      {onView && !b && status === 'draft' && (
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onView() }}>
+          <Eye className="mr-1 h-3 w-3" />
+          配置试卷
+        </Button>
+      )}
+      {onPreview && !b && (
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onPreview() }}>
+          <MonitorPlay className="mr-1 h-3 w-3" />
+          预览试卷
+        </Button>
+      )}
+      {onClone && (
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onClone() }}>
+          <Copy className="mr-1 h-3 w-3" />
+          克隆
+        </Button>
+      )}
+      {canEdit && onEdit && (
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onEdit() }}>
+          <Edit className="mr-1 h-3 w-3" />
+          {b ? "编辑" : "修改试卷基本信息"}
+        </Button>
+      )}
+      {onInvite && (
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onInvite() }}>
+          <UserPlus className="mr-1 h-3 w-3" />
+          邀请共建
+        </Button>
+      )}
+      {canSubmit && (
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700" onClick={(e) => { e.stopPropagation(); setConfirmType('submit') }}>
+          <Send className="mr-1 h-3 w-3" />
+          提交审批
+        </Button>
+      )}
+      {canWithdraw && (
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-amber-600 hover:text-amber-700" onClick={(e) => { e.stopPropagation(); setConfirmType('withdraw') }}>
+          <Undo2 className="mr-1 h-3 w-3" />
+          {b ? "撤回" : "撤回审批"}
+        </Button>
+      )}
+      {canApprove && (
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700" onClick={(e) => { e.stopPropagation(); setConfirmType('approve') }}>
+          <CheckCircle className="mr-1 h-3 w-3" />
+          通过
+        </Button>
+      )}
+      {canReject && (
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={(e) => { e.stopPropagation(); setConfirmType('reject') }}>
+          <XCircle className="mr-1 h-3 w-3" />
+          驳回
+        </Button>
+      )}
+      {canPublish && (
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700" onClick={(e) => { e.stopPropagation(); setConfirmType('publish') }}>
+          <Rocket className="mr-1 h-3 w-3" />
+          发布
+        </Button>
+      )}
+      {canUnpublish && (
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={(e) => { e.stopPropagation(); setConfirmType('unpublish') }}>
+          <XCircle className="mr-1 h-3 w-3" />
+          取消发布
+        </Button>
+      )}
+      {canDelete && onDelete && (
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={(e) => { e.stopPropagation(); setConfirmType('delete') }}>
+          <Trash2 className="mr-1 h-3 w-3" />
+          删除
+        </Button>
+      )}
 
       {confirmType && (
         <ConfirmDialog

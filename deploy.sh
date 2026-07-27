@@ -71,20 +71,15 @@ if [[ "$DEMO_MODE" == "true" && -n "$BRANCH_NAME" ]]; then
   echo "错误：--demo 和 --branch 不能同时使用" >&2; exit 1
 fi
 
-# ==================== 模式配置 ====================
-if [[ "$DEMO_MODE" == "true" ]]; then
-  export GOPROXY="${GOPROXY:-https://goproxy.cn,direct}"
-  export GOTOOLCHAIN="${GOTOOLCHAIN:-auto}"
-  PM2_BACKEND_NAME="zhiyu-demo-backend"
-  PM2_MARKETPLACE_NAME="zhiyu-demo-marketplace"
-  PM2_EDU_NAME="zhiyu-demo-edu"
-  BACKUP_PREFIX="zhiyu-demo"
-else
-  PM2_BACKEND_NAME="zhiyu-backend"
-  PM2_MARKETPLACE_NAME="zhiyu-marketplace"
-  PM2_EDU_NAME="zhiyu-edu"
-  BACKUP_PREFIX="zhiyu-saas"
-fi
+# ==================== Go 加速 ====================
+export GOPROXY="${GOPROXY:-https://goproxy.cn,direct}"
+export GOTOOLCHAIN="${GOTOOLCHAIN:-auto}"
+
+# ==================== PM2 / 备份配置 ====================
+PM2_BACKEND_NAME="zhiyu-backend"
+PM2_MARKETPLACE_NAME="zhiyu-marketplace"
+PM2_EDU_NAME="zhiyu-edu"
+BACKUP_PREFIX="zhiyu-saas"
 
 # ==================== 路径配置 ====================
 BACKEND_PORT=8080

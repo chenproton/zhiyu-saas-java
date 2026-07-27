@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/table"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { TableRowActions } from "@/components/shared/table-row-actions"
+import { EvaluationStatusActions } from "@/components/evaluation/evaluation-status-actions"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth-provider"
 import type { ContentListItem, ListRenderProps } from "@/components/shared/content-list-page"
@@ -151,280 +152,47 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">{formatDate(item.updatedAt)}</TableCell>
               <TableRowActions className="sticky right-0 bg-white">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={() => router.push(detailHref(item.id))}
-                >
-                  <Eye className="mr-1 h-3 w-3" />
-                  查看
-                </Button>
-                {isBank ? (
-                  <>
-                    {!isDraftPool && item.status !== "archived" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => router.push(detailHref(item.id))}
-                      >
-                        <Pencil className="mr-1 h-3 w-3" />
-                        编辑
-                      </Button>
-                    )}
-                    {!isDraftPool && item.status === "archived" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
-                        onClick={() => onUnpublish(item as any)}
-                      >
-                        <RotateCcw className="mr-1 h-3 w-3" />
-                        恢复
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => onClone(item as any)}
-                    >
-                      <Copy className="mr-1 h-3 w-3" />
-                      克隆
-                    </Button>
-                    {!isDraftPool && (item.status === "draft" || item.status === "rejected") && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
-                        onClick={() => onSubmitApproval(item as any)}
-                      >
-                        <Send className="mr-1 h-3 w-3" />
-                        提交审批
-                      </Button>
-                    )}
-                    {!isDraftPool && item.status === "rejected" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-orange-600 hover:text-orange-700"
-                        onClick={() => onViewRejectReason(item as any)}
-                      >
-                        <MessageSquare className="mr-1 h-3 w-3" />
-                        查看驳回原因
-                      </Button>
-                    )}
-                    {!isDraftPool && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700"
-                        onClick={() => onInviteCoBuild(item as any)}
-                      >
-                        <UserPlus className="mr-1 h-3 w-3" />
-                        邀请共建
-                      </Button>
-                    )}
-                    {!isDraftPool && item.status !== "pending" && item.status !== "archived" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-purple-600 hover:text-purple-700"
-                        onClick={() => onArchive(item as any)}
-                      >
-                        <Archive className="mr-1 h-3 w-3" />
-                        归档
-                      </Button>
-                    )}
-                    {!isDraftPool && item.status === "pending" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-amber-600 hover:text-amber-700"
-                        onClick={() => onWithdrawApproval(item as any)}
-                      >
-                        <Undo2 className="mr-1 h-3 w-3" />
-                        撤回
-                      </Button>
-                    )}
-                    {!isDraftPool && item.status === "approved" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700"
-                        onClick={() => onPublish(item as any)}
-                      >
-                        <Rocket className="mr-1 h-3 w-3" />
-                        发布
-                      </Button>
-                    )}
-                    {!isDraftPool && item.status === "published" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                        onClick={() => onUnpublish(item as any)}
-                      >
-                        <ArrowDownFromLine className="mr-1 h-3 w-3" />
-                        取消发布
-                      </Button>
-                    )}
-                    {!isDraftPool && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                        onClick={() => onDelete(item as any)}
-                      >
-                        <Trash2 className="mr-1 h-3 w-3" />
-                        删除
-                      </Button>
-                    )}
-                  </>
+                {isBank && isDraftPool ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => router.push(detailHref(item.id))}
+                  >
+                    <Eye className="mr-1 h-3 w-3" />
+                    查看
+                  </Button>
                 ) : (
                   <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => onClone(item as any)}
-                    >
-                      <Copy className="mr-1 h-3 w-3" />
-                      克隆
-                    </Button>
-                    {item.status !== "archived" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => router.push(detailHref(item.id))}
-                      >
-                        <Pencil className="mr-1 h-3 w-3" />
-                        编辑
-                      </Button>
-                    )}
-                    {item.status === "archived" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
-                        onClick={() => onUnpublish(item as any)}
-                      >
-                        <RotateCcw className="mr-1 h-3 w-3" />
-                        恢复
-                      </Button>
-                    )}
-                    {(item.status === "draft" || item.status === "rejected") && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
-                        onClick={() => onSubmitApproval(item as any)}
-                      >
-                        <Send className="mr-1 h-3 w-3" />
-                        提交审批
-                      </Button>
-                    )}
+                    <EvaluationStatusActions
+                      type={type}
+                      status={item.status}
+                      onView={() => router.push(detailHref(item.id))}
+                      onEdit={item.status !== "archived" ? () => router.push(detailHref(item.id)) : undefined}
+                      onClone={() => onClone(item)}
+                      onDelete={() => onDelete(item)}
+                      onInvite={() => onInviteCoBuild(item)}
+                      onStatusChange={(action) => {
+                        switch (action) {
+                          case 'submit': onSubmitApproval(item); break
+                          case 'withdraw': onWithdrawApproval(item); break
+                          case 'publish': onPublish(item); break
+                          case 'unpublish': onUnpublish(item); break
+                          case 'archive': onArchive(item); break
+                          case 'approve': onReview?.(item.id, "approved"); break
+                          case 'reject': onReview?.(item.id, "rejected"); break
+                        }
+                      }}
+                    />
                     {item.status === "rejected" && (
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs text-orange-600 hover:text-orange-700"
-                        onClick={() => onViewRejectReason(item as any)}
+                        onClick={() => onViewRejectReason(item)}
                       >
                         <MessageSquare className="mr-1 h-3 w-3" />
                         查看驳回原因
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700"
-                      onClick={() => onInviteCoBuild(item as any)}
-                    >
-                      <UserPlus className="mr-1 h-3 w-3" />
-                      邀请共建
-                    </Button>
-                    {item.status !== "pending" && item.status !== "archived" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-purple-600 hover:text-purple-700"
-                        onClick={() => onArchive(item as any)}
-                      >
-                        <Archive className="mr-1 h-3 w-3" />
-                        归档
-                      </Button>
-                    )}
-                    {item.status === "pending" && (
-                      <>
-                        {hasPermission("evaluation", "exams", "review") && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
-                            onClick={() => onReview?.(item.id, "approved")}
-                          >
-                            <CheckCircle className="mr-1 h-3 w-3" />
-                            通过
-                          </Button>
-                        )}
-                        {hasPermission("evaluation", "exams", "reject") && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                            onClick={() => onReview?.(item.id, "rejected")}
-                          >
-                            <XCircle className="mr-1 h-3 w-3" />
-                            驳回
-                          </Button>
-                        )}
-                        {hasPermission("evaluation", "exams", "withdraw_approval") && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs text-amber-600 hover:text-amber-700"
-                            onClick={() => onWithdrawApproval(item as any)}
-                          >
-                            <Undo2 className="mr-1 h-3 w-3" />
-                            撤回
-                          </Button>
-                        )}
-                      </>
-                    )}
-                    {item.status === "approved" && hasPermission("evaluation", "exams", "publish") && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700"
-                        onClick={() => onPublish(item as any)}
-                      >
-                        <Rocket className="mr-1 h-3 w-3" />
-                        发布
-                      </Button>
-                    )}
-                    {item.status === "published" && hasPermission("evaluation", "exams", "unpublish") && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                        onClick={() => onUnpublish(item as any)}
-                      >
-                        <ArrowDownFromLine className="mr-1 h-3 w-3" />
-                        取消发布
-                      </Button>
-                    )}
-                    {hasPermission("evaluation", "exams", "delete") && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                        onClick={() => onDelete(item as any)}
-                      >
-                        <Trash2 className="mr-1 h-3 w-3" />
-                        删除
                       </Button>
                     )}
                   </>
