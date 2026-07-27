@@ -163,17 +163,23 @@ export interface SystemCourseNode {
   courseId: string
   parentId: string | null
   name: string
+  code?: string
   order: number
   type: NodeRefType
   sourceId?: string
   sourceName?: string
   teachingGoals?: string
+  detailedDescription?: string
+  descriptionPdf?: string
+  background?: string
+  estimatedHours?: number
   knowledgePoints?: KnowledgePoint[]
   duration?: number
   difficulty?: number
   resources?: NodeResource[]
   quizzes?: NodeQuiz[]
   homeworks?: NodeHomework[]
+  evalData?: Record<string, any>
   status: CourseStatus
 }
 

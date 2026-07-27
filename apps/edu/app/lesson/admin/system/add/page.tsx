@@ -71,11 +71,16 @@ type AddMode = "upload" | "clone" | "quote"
 interface NodeDraft {
   hours: string
   learningGoal: string
+  detailedDescription: string
+  background: string
+  estimatedHours: string
   knowledgePoints: KnowledgePointItem[]
   selectedResourceIds: string[]
   selectedEvalMethods: string[]
   evalRules?: EvalRuleConfig
+  evalData?: Record<string, any>
   difficulty: number
+  coverImage?: string
 }
 
 interface GrainCourseOption {
@@ -342,6 +347,9 @@ function AddSystemPageInner() {
   const [hours, setHours] = useState("")
   const [learningGoal, setLearningGoal] = useState("")
   const [difficulty, setDifficulty] = useState<number>(0)
+  const [background, setBackground] = useState("")
+  const [detailedDescription, setDetailedDescription] = useState("")
+  const [estimatedHours, setEstimatedHours] = useState("")
 
   /* module 2: knowledge points */
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePointItem[]>([])
@@ -380,6 +388,9 @@ function AddSystemPageInner() {
     }
     setHours(String(node.duration || ""))
     setLearningGoal(node.teachingGoals || "")
+    setDetailedDescription(node.detailedDescription || "")
+    setBackground(node.background || "")
+    setEstimatedHours(node.estimatedHours ? String(node.estimatedHours) : "")
     setKnowledgePoints(
       (node.knowledgePoints || []).map((kp) => ({
         id: kp.id,
@@ -408,6 +419,9 @@ function AddSystemPageInner() {
     if (draft) {
       setHours(draft.hours)
       setLearningGoal(draft.learningGoal)
+      setDetailedDescription(draft.detailedDescription)
+      setBackground(draft.background)
+      setEstimatedHours(draft.estimatedHours)
       setKnowledgePoints(draft.knowledgePoints)
       setSelectedResourceIds(draft.selectedResourceIds)
       setSelectedEvalMethods(draft.selectedEvalMethods)
@@ -427,13 +441,16 @@ function AddSystemPageInner() {
       [selectedNodeId]: {
         hours,
         learningGoal,
+        detailedDescription,
+        background,
+        estimatedHours,
         knowledgePoints,
         selectedResourceIds,
         selectedEvalMethods,
         difficulty,
       },
     }))
-  }, [selectedNodeId, hours, learningGoal, knowledgePoints, selectedResourceIds, selectedEvalMethods, difficulty])
+  }, [selectedNodeId, hours, learningGoal, detailedDescription, background, estimatedHours, knowledgePoints, selectedResourceIds, selectedEvalMethods, difficulty])
 
   /* ---------- node mode selection handlers ---------- */
   const openGrainSelector = useCallback((mode: AddMode) => {
@@ -533,15 +550,20 @@ function AddSystemPageInner() {
         courseId: effectiveCourseId,
         parentId: realParentId,
         name: node.name,
+        code: contentCode,
         sortOrder: Math.round(node.order),
         refType,
         sourceId: node.sourceId,
         sourceName: node.sourceName,
         teachingGoals: draft?.learningGoal || node.teachingGoals,
+        detailedDescription: draft?.detailedDescription || node.detailedDescription,
+        background: draft?.background || node.background,
+        estimatedHours: (draft?.estimatedHours || node.estimatedHours) ? parseFloat(draft?.estimatedHours || String(node.estimatedHours || "")) : undefined,
         duration: draft?.hours ? parseFloat(draft.hours) : node.duration,
         difficulty: draft?.difficulty ?? node.difficulty,
         knowledgePointIds,
         resourceIds: existingResourceIds,
+        evalData: draft?.evalData || node.evalData,
         status: node.status || "draft",
       }
 
@@ -998,6 +1020,22 @@ function AddSystemPageInner() {
                             onChange={setLearningGoal}
                             minHeight={280}
                           />
+                        </div>
+                        <div className="md:col-span-2 space-y-1.5">
+                          <Label className="text-xs">详细描述</Label>
+                          <RichTextEditor
+                            value={detailedDescription}
+                            onChange={setDetailedDescription}
+                            minHeight={200}
+                          />
+                        </div>
+                        <div className="md:col-span-2 space-y-1.5">
+                          <Label className="text-xs">任务背景</Label>
+                          <Input value={background} onChange={(e) => setBackground(e.target.value)} placeholder="任务背景说明" className="h-9 text-sm" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">预计学时</Label>
+                          <Input type="number" value={estimatedHours} onChange={(e) => setEstimatedHours(e.target.value)} placeholder="预计完成学时" className="h-9 text-sm" />
                         </div>
                       </div>
                     </CardContent>
