@@ -17,7 +17,8 @@ import type { CareerPosition, Scenario } from "@/lib/types"
 import { StatsBar } from "./stats-bar"
 import { JobCard } from "./job-card"
 import { SceneCard } from "@/components/scene/student/scene-card"
-import { Pagination } from "./pagination"
+import { LandingPagination } from "@/components/shared/landing-pagination"
+import { LandingFilterRow } from "@/components/shared/landing-filter-row"
 import { RankingList } from "./ranking-list"
 import { PlatformFooter } from "./platform-footer"
 
@@ -37,65 +38,6 @@ const SCENE_SORT_OPTIONS = [
 
 const difficultyMap: Record<number, string> = {
   1: "入门", 2: "初级", 3: "中级", 4: "高级", 5: "专家",
-}
-
-function FilterRow({
-  label,
-  items,
-  selected,
-  onSelect,
-  showBorder = true,
-}: {
-  label: string
-  items: string[]
-  selected: string
-  onSelect: (item: string) => void
-  showBorder?: boolean
-}) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [expanded, setExpanded] = useState(false)
-  const [overflow, setOverflow] = useState(false)
-
-  useEffect(() => {
-    const el = containerRef.current
-    if (el) {
-      setOverflow(el.scrollHeight > el.clientHeight + 2)
-    }
-  }, [items])
-
-  return (
-    <div className={`flex items-start gap-3 sm:gap-4 py-3 ${showBorder ? "border-b border-dashed border-[#e7e5e4]" : ""}`}>
-      <span className="text-sm text-[#374151] font-medium min-w-[40px] pt-1.5">{label}</span>
-      <div className="flex-1 min-w-0">
-        <div
-          ref={containerRef}
-          className={`flex flex-wrap gap-2.5 ${expanded ? "" : "max-h-[80px] overflow-hidden"}`}
-        >
-          {items.map((item) => (
-            <button
-              key={item}
-              onClick={() => onSelect(item)}
-              className={`px-3.5 py-1.5 rounded-full text-[13px] border transition-all whitespace-nowrap ${
-                selected === item
-                  ? "bg-blue-500 text-white border-blue-500 shadow-sm"
-                  : "bg-slate-50 text-[#475569] border-slate-200 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50"
-              }`}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-        {overflow && (
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="text-[12px] text-blue-500 hover:text-blue-600 mt-1.5 font-medium"
-          >
-            {expanded ? "收起" : "展开"}
-          </button>
-        )}
-      </div>
-    </div>
-  )
 }
 
 interface JobHomeProps {
@@ -696,15 +638,15 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
             <div className="space-y-0">
               {isScene ? (
                 <>
-                  <FilterRow label="行业" items={industries} selected={selectedIndustry} onSelect={setSelectedIndustry} />
-                  <FilterRow label="岗位" items={positionNames} selected={selectedPosition} onSelect={setSelectedPosition} />
-                  <FilterRow label="专业" items={professionNames} selected={selectedProfession} onSelect={setSelectedProfession} />
-                  <FilterRow label="难度" items={difficulties} selected={selectedDifficulty} onSelect={setSelectedDifficulty} showBorder={false} />
+                  <LandingFilterRow label="行业" items={industries} selected={selectedIndustry} onSelect={setSelectedIndustry} accentColor="blue" />
+                  <LandingFilterRow label="岗位" items={positionNames} selected={selectedPosition} onSelect={setSelectedPosition} accentColor="blue" />
+                  <LandingFilterRow label="专业" items={professionNames} selected={selectedProfession} onSelect={setSelectedProfession} accentColor="blue" />
+                  <LandingFilterRow label="难度" items={difficulties} selected={selectedDifficulty} onSelect={setSelectedDifficulty} showBorder={false} accentColor="blue" />
                 </>
               ) : (
                 <>
-                  <FilterRow label="行业" items={industries} selected={selectedIndustry} onSelect={setSelectedIndustry} />
-                  <FilterRow label="专业" items={majors} selected={selectedMajor} onSelect={setSelectedMajor} showBorder={false} />
+                  <LandingFilterRow label="行业" items={industries} selected={selectedIndustry} onSelect={setSelectedIndustry} accentColor="blue" />
+                  <LandingFilterRow label="专业" items={majors} selected={selectedMajor} onSelect={setSelectedMajor} showBorder={false} accentColor="blue" />
                 </>
               )}
             </div>
@@ -822,13 +764,14 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
                       />
                     ))}
               </div>
-              <Pagination
+              <LandingPagination
                 currentPage={currentPage}
                 totalPages={totalPages}
                 onPageChange={(p) => {
                   setCurrentPage(p)
                   listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
                 }}
+                accentColor="blue"
               />
             </>
           )}

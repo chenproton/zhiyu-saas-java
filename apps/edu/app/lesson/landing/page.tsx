@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input"
 import { courseApi } from "@/lib/api"
 import type { Course } from "@/lib/types"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
+import { LandingFilterRow } from "@/components/shared/landing-filter-row"
+import { LandingPagination } from "@/components/shared/landing-pagination"
 
 const CARDS_PER_PAGE = 12
 const SORT_OPTIONS = [
@@ -28,63 +30,6 @@ const coverGradients = [
   "linear-gradient(135deg,#ea580c,#f97316)",
   "linear-gradient(135deg,#2563eb,#3b82f6)",
 ]
-
-function FilterRow({
-  label,
-  items,
-  selected,
-  onSelect,
-  showBorder = true,
-}: {
-  label: string
-  items: string[]
-  selected: string
-  onSelect: (item: string) => void
-  showBorder?: boolean
-}) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [expanded, setExpanded] = useState(false)
-  const [overflow, setOverflow] = useState(false)
-
-  useEffect(() => {
-    const el = containerRef.current
-    if (el) setOverflow(el.scrollHeight > el.clientHeight + 2)
-  }, [items])
-
-  return (
-    <div className={`flex items-start gap-3 sm:gap-4 py-3 ${showBorder ? "border-b border-dashed border-[#cbd5e1]" : ""}`}>
-      <span className="text-sm text-[#374151] font-medium min-w-[40px] pt-1.5">{label}</span>
-      <div className="flex-1 min-w-0">
-        <div
-          ref={containerRef}
-          className={`flex flex-wrap gap-2.5 ${expanded ? "" : "max-h-[80px] overflow-hidden"}`}
-        >
-          {items.map((item) => (
-            <button
-              key={item}
-              onClick={() => onSelect(item)}
-              className={`px-3.5 py-1.5 rounded-full text-[13px] border transition-all whitespace-nowrap ${
-                selected === item
-                  ? "bg-emerald-500 text-white border-emerald-500 shadow-sm"
-                  : "bg-slate-50 text-[#475569] border-slate-200 hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50/50"
-              }`}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-        {overflow && (
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="text-[12px] text-emerald-500 hover:text-emerald-600 mt-1.5 font-medium"
-          >
-            {expanded ? "收起" : "展开"}
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
 
 function CourseCard({ course, index }: { course: Course; index: number }) {
   return (
@@ -123,52 +68,6 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
         </div>
       </div>
     </Link>
-  )
-}
-
-function Pagination({
-  currentPage,
-  totalPages,
-  onPageChange,
-}: {
-  currentPage: number
-  totalPages: number
-  onPageChange: (p: number) => void
-}) {
-  if (totalPages <= 1) return null
-  return (
-    <div className="flex justify-center items-center gap-2 mt-8">
-      <button
-        disabled={currentPage <= 1}
-        onClick={() => onPageChange(currentPage - 1)}
-        className="px-3 py-2 rounded-lg text-[13px] border border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-      >
-        上一页
-      </button>
-      {Array.from({ length: totalPages }, (_, i) => i + 1).slice(
-        Math.max(0, currentPage - 3),
-        Math.min(totalPages, currentPage + 2)
-      ).map((p) => (
-        <button
-          key={p}
-          onClick={() => onPageChange(p)}
-          className={`w-9 h-9 rounded-lg text-[13px] font-medium transition-all ${
-            p === currentPage
-              ? "bg-emerald-500 text-white shadow-sm"
-              : "bg-white border border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-600"
-          }`}
-        >
-          {p}
-        </button>
-      ))}
-      <button
-        disabled={currentPage >= totalPages}
-        onClick={() => onPageChange(currentPage + 1)}
-        className="px-3 py-2 rounded-lg text-[13px] border border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-      >
-        下一页
-      </button>
-    </div>
   )
 }
 
@@ -349,10 +248,10 @@ export default function LessonLandingPage() {
           </div>
           <div className="space-y-0">
             {industries.length > 1 && (
-              <FilterRow label="行业" items={industries} selected={selectedIndustry} onSelect={setSelectedIndustry} />
+              <LandingFilterRow label="行业" items={industries} selected={selectedIndustry} onSelect={setSelectedIndustry} accentColor="emerald" />
             )}
             {batches.length > 1 && (
-              <FilterRow label="批次" items={batches} selected={selectedBatch} onSelect={setSelectedBatch} showBorder={industries.length <= 1} />
+              <LandingFilterRow label="批次" items={batches} selected={selectedBatch} onSelect={setSelectedBatch} showBorder={industries.length <= 1} accentColor="emerald" />
             )}
           </div>
           {activeFilters.length > 0 && (
@@ -456,13 +355,14 @@ export default function LessonLandingPage() {
                     <CourseCard key={course.id} course={course} index={i} />
                   ))}
                 </div>
-                <Pagination
+                <LandingPagination
                   currentPage={currentPage}
                   totalPages={totalPages}
                   onPageChange={(p) => {
                     setCurrentPage(p)
                     listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
                   }}
+                  accentColor="emerald"
                 />
               </div>
             )}

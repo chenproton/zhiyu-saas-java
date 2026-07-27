@@ -2,14 +2,42 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
-interface PaginationProps {
+const ACCENT_CLASSES: Record<string, {
+  active: string
+  hover: string
+}> = {
+  purple: {
+    active: "bg-purple-500 border-purple-500 text-white shadow-md shadow-purple-500/20",
+    hover: "hover:border-purple-300 hover:text-purple-600 hover:bg-purple-50/50",
+  },
+  emerald: {
+    active: "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20",
+    hover: "hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50/50",
+  },
+  blue: {
+    active: "bg-blue-500 border-blue-500 text-white shadow-md shadow-blue-500/20",
+    hover: "hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50",
+  },
+}
+
+interface LandingPaginationProps {
   currentPage: number
   totalPages: number
   onPageChange: (page: number) => void
+  accentColor?: "purple" | "emerald" | "blue"
 }
 
-export function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
+export function LandingPagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+  accentColor = "blue",
+}: LandingPaginationProps) {
   if (totalPages <= 1) return null
+
+  const cls = ACCENT_CLASSES[accentColor] || ACCENT_CLASSES.blue
+  const pageBtn = `min-w-[36px] h-9 px-2.5 rounded-xl border text-[13px] flex items-center justify-center transition-all bg-white border-slate-200 text-slate-500 ${cls.hover}`
+  const arrowBtn = `w-9 h-9 border border-slate-200 rounded-xl bg-white text-slate-500 flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed ${cls.hover}`
 
   const pages: (number | string)[] = []
   const maxVisible = 5
@@ -29,7 +57,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
   return (
     <div className="flex items-center justify-center gap-2 mt-8">
       <button
-        className="w-9 h-9 border border-slate-200 rounded-xl bg-white text-slate-500 flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50"
+        className={arrowBtn}
         disabled={currentPage <= 1}
         onClick={() => onPageChange(currentPage - 1)}
       >
@@ -43,13 +71,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
             <button
               key={p}
               onClick={() => onPageChange(p as number)}
-              className={`
-                min-w-[36px] h-9 px-2.5 rounded-xl border text-[13px] flex items-center justify-center transition-all
-                ${currentPage === p
-                  ? "bg-blue-500 border-blue-500 text-white font-semibold shadow-md shadow-blue-500/20"
-                  : "bg-white border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50"
-                }
-              `}
+              className={`${pageBtn} ${currentPage === p ? `${cls.active} font-semibold` : ""}`}
             >
               {p}
             </button>
@@ -57,7 +79,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
         )}
       </div>
       <button
-        className="w-9 h-9 border border-slate-200 rounded-xl bg-white text-slate-500 flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50"
+        className={arrowBtn}
         disabled={currentPage >= totalPages}
         onClick={() => onPageChange(currentPage + 1)}
       >

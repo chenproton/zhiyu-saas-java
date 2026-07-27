@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input"
 import { questionBankApi, examApi, evaluationBatchApi } from "@/lib/api"
 import type { QuestionBank, Exam } from "@/lib/types"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
+import { LandingFilterRow } from "@/components/shared/landing-filter-row"
+import { LandingPagination } from "@/components/shared/landing-pagination"
 
 const CARDS_PER_PAGE = 12
 const SORT_OPTIONS = [
@@ -28,32 +30,6 @@ const coverGradients = [
   "linear-gradient(135deg,#f43f5e,#fb7185)",
   "linear-gradient(135deg,#8b5cf6,#a78bfa)",
 ]
-
-function FilterRow({
-  label, items, selected, onSelect, showBorder = true,
-}: { label: string; items: string[]; selected: string; onSelect: (v: string) => void; showBorder?: boolean }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [expanded, setExpanded] = useState(false)
-  const [overflow, setOverflow] = useState(false)
-  useEffect(() => { const el = containerRef.current; if (el) setOverflow(el.scrollHeight > el.clientHeight + 2) }, [items])
-  if (items.length <= 1) return null
-  return (
-    <div className={`flex items-start gap-3 sm:gap-4 py-3 ${showBorder ? "border-b border-dashed border-[#cbd5e1]" : ""}`}>
-      <span className="text-sm text-[#374151] font-medium min-w-[40px] pt-1.5">{label}</span>
-      <div className="flex-1 min-w-0">
-        <div ref={containerRef} className={`flex flex-wrap gap-2.5 ${expanded ? "" : "max-h-[80px] overflow-hidden"}`}>
-          {items.map((item) => (
-            <button key={item} onClick={() => onSelect(item)}
-              className={`px-3.5 py-1.5 rounded-full text-[13px] border transition-all whitespace-nowrap ${
-                selected === item ? "bg-purple-500 text-white border-purple-500 shadow-sm" : "bg-slate-50 text-[#475569] border-slate-200 hover:border-purple-300 hover:text-purple-600 hover:bg-purple-50/50"
-              }`}>{item}</button>
-          ))}
-        </div>
-        {overflow && <button onClick={() => setExpanded(!expanded)} className="text-[12px] text-purple-500 hover:text-purple-600 mt-1.5 font-medium">{expanded ? "收起" : "展开"}</button>}
-      </div>
-    </div>
-  )
-}
 
 function BankCard({ bank, index }: { bank: QuestionBank; index: number }) {
   return (
@@ -98,19 +74,6 @@ function ExamCard({ exam, index }: { exam: Exam; index: number }) {
         </div>
       </div>
     </Link>
-  )
-}
-
-function Pagination({ currentPage, totalPages, onPageChange }: { currentPage: number; totalPages: number; onPageChange: (p: number) => void }) {
-  if (totalPages <= 1) return null
-  return (
-    <div className="flex justify-center items-center gap-2 mt-8">
-      <button disabled={currentPage <= 1} onClick={() => onPageChange(currentPage - 1)} className="px-3 py-2 rounded-lg text-[13px] border border-slate-200 bg-white text-slate-600 hover:border-purple-300 hover:text-purple-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all">上一页</button>
-      {Array.from({ length: totalPages }, (_, i) => i + 1).slice(Math.max(0, currentPage - 3), Math.min(totalPages, currentPage + 2)).map((p) => (
-        <button key={p} onClick={() => onPageChange(p)} className={`w-9 h-9 rounded-lg text-[13px] font-medium transition-all ${p === currentPage ? "bg-purple-500 text-white shadow-sm" : "bg-white border border-slate-200 text-slate-600 hover:border-purple-300 hover:text-purple-600"}`}>{p}</button>
-      ))}
-      <button disabled={currentPage >= totalPages} onClick={() => onPageChange(currentPage + 1)} className="px-3 py-2 rounded-lg text-[13px] border border-slate-200 bg-white text-slate-600 hover:border-purple-300 hover:text-purple-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all">下一页</button>
-    </div>
   )
 }
 
@@ -237,7 +200,7 @@ export default function LandingHomePage() {
         <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6 mb-6">
           <div className="flex items-center gap-2.5 text-[16px] font-bold text-[#0f172a] mb-5"><div className="w-1 h-5 rounded-full bg-gradient-to-b from-purple-400 to-purple-600" /><Filter className="w-4 h-4 text-purple-500" />资源筛选</div>
           <div className="space-y-0">
-            {batches.length > 1 && <FilterRow label="批次" items={batches} selected={selectedBatch} onSelect={setSelectedBatch} showBorder={false} />}
+            {batches.length > 1 && <LandingFilterRow label="批次" items={batches} selected={selectedBatch} onSelect={setSelectedBatch} showBorder={false} accentColor="purple" />}
           </div>
           {(keyword.trim() || selectedBatch !== "全部") && (
             <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-dashed border-[#cbd5e1]">
@@ -274,7 +237,7 @@ export default function LandingHomePage() {
             {filteredBanks.length > 0 && (
               <div className="mb-10"><div className="flex items-center justify-between mb-5"><h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2"><div className="w-1 h-5 rounded-full bg-gradient-to-b from-purple-400 to-purple-600" />题库<span className="text-[13px] text-[#64748b] font-normal ml-1">({filteredBanks.length})</span></h2></div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">{pageBanks.map((bank, i) => (<BankCard key={bank.id} bank={bank} index={i} />))}</div>
-                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => { setCurrentPage(p); listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }) }} />
+                <LandingPagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => { setCurrentPage(p); listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }) }} accentColor="purple" />
               </div>
             )}
             {filteredExams.length > 0 && (
