@@ -133,6 +133,7 @@ import { EditorShell } from "@/components/shared/editor-shell"
 import { MajorSelect } from "@/components/shared/major-select"
 import { KnowledgePointFormDialog } from "@/components/shared/knowledge-point-form-dialog"
 import { GranularLessonSelectDialog } from "@/components/shared/granular-lesson-select-dialog"
+import { CourseEvalConfig, type CourseEvalData } from "@/app/lesson/admin/_components/eval/course-eval-config"
 import { useAuth } from "@/components/auth-provider"
 import type {
   Task, PositionAbility, GradeMapping,
@@ -5639,132 +5640,26 @@ function EditCardDialog({
       }
 
       case "evaluation": {
-        const [primaryTab, setPrimaryTab] = useState<"platform" | "industry">("platform")
-        const [secondaryTab, setSecondaryTab] = useState("全部")
-
-        const primaryTabs = [
-          { key: "platform" as const, label: "平台通用" },
-          { key: "industry" as const, label: "行业专属" },
-        ]
-
-        const secondaryTabsMap: Record<string, string[]> = {
-          platform: ["全部", "知识评价", "过程评价", "成果评价"],
-          industry: ["全部", "智慧物流", "网络安全"],
+        const evalDataForTasks: CourseEvalData = {
+          methods: state.evaluationMethods as any,
+          methodConfigs: {},
         }
-
-        const secondaryTabs = secondaryTabsMap[primaryTab]
-
-        const toggleMethod = (key: string) => {
-          const opts = evaluationMethodOptions.find(o => o.key === key)
-          if (!opts || !opts.available) return
-          const enabled = state.evaluationMethods.includes(key)
-          const newMethods = enabled ? state.evaluationMethods.filter(m => m !== key) : [...state.evaluationMethods, key]
-          const newDisabled = enabled
-            ? Array.from(new Set([...(state.disabledEvaluationMethods || []), key]))
-            : (state.disabledEvaluationMethods || []).filter(m => m !== key)
-          const newWeights = { ...state.methodWeights }
-          if (enabled) {
-            newWeights[key] = 0
-          }
-          updateState({ evaluationMethods: newMethods, disabledEvaluationMethods: newDisabled, methodWeights: newWeights })
-        }
-
-        const filteredMethods = evaluationMethodOptions.filter(m => {
-          if (m.primaryCategory !== primaryTab) return false
-          if (secondaryTab === "全部") return true
-          return m.secondaryCategory === secondaryTab
-        })
-
         return (
-          <div className="h-full overflow-y-auto pr-2 space-y-4">
-            {/* 一级分类 */}
-            <div className="flex items-center gap-2 border-b pb-2">
-              {primaryTabs.map(tab => (
-                <button
-                  key={tab.key}
-                  onClick={() => {
-                    setPrimaryTab(tab.key)
-                    setSecondaryTab("全部")
-                  }}
-                  className={cn(
-                    "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
-                    primaryTab === tab.key
-                      ? "bg-primary text-white"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  )}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* 二级分类 */}
-            <div className="flex items-center gap-2">
-              {secondaryTabs.map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setSecondaryTab(tab)}
-                  className={cn(
-                    "px-3 py-1 rounded-md text-xs font-medium transition-colors border",
-                    secondaryTab === tab
-                      ? "border-primary text-primary bg-primary/5"
-                      : "border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50"
-                  )}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-
-            {/* 测评方式网格 */}
-            <div className="grid grid-cols-2 gap-2">
-              {filteredMethods.map(method => {
-                const enabled = state.evaluationMethods.includes(method.key)
-                return (
-                  <button
-                    key={method.key}
-                    disabled={!method.available}
-                    onClick={() => toggleMethod(method.key)}
-                    className={cn(
-                      "p-2.5 rounded-lg border text-left transition-all flex flex-col gap-1.5 relative overflow-hidden",
-                      !method.available
-                        ? "opacity-50 cursor-not-allowed bg-white border-gray-200"
-                        : enabled
-                          ? "border-primary bg-white ring-1 ring-primary/20 shadow-sm"
-                          : "border-gray-200 hover:border-primary/40 bg-white hover:shadow-sm"
-                    )}
-                  >
-                    {!method.available && (
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-                        <span className="text-xl font-bold text-gray-300/60 rotate-[-12deg] select-none border-2 border-gray-300/40 px-3 py-1 rounded">未开通</span>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between relative z-10">
-                      <div className="flex items-center gap-2.5">
-                        <div className={cn("p-2 rounded-lg", method.available ? method.color : "bg-gray-100 text-gray-400")}>{method.icon}</div>
-                        <div>
-                          <p className={cn("text-sm font-semibold", !method.available && "text-gray-400")}>{method.label}</p>
-                          <p className="text-[11px] text-gray-400 mt-0.5">{method.desc}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-
-                        {enabled && (
-                          <div className="flex items-center gap-1.5 text-primary text-xs font-medium bg-primary/5 px-2 py-1 rounded-full">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            已开通
-                          </div>
-                        )}
-                        {!method.available && (
-                          <Badge variant="outline" className="text-[10px] text-gray-400 border-gray-300 bg-white">未开通</Badge>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+          <CourseEvalConfig
+            value={evalDataForTasks}
+            onChange={(data) => {
+              const newMethods = data.methods
+              const newDisabled = (state.disabledEvaluationMethods || []).filter((d: string) => newMethods.includes(d as any))
+              const newWeights = { ...state.methodWeights }
+              for (const m of newMethods) {
+                if (!state.evaluationMethods.includes(m)) newWeights[m] = 0
+              }
+              for (const m of state.evaluationMethods.filter((sm: string) => !newMethods.includes(sm as any))) {
+                newWeights[m] = 0
+              }
+              updateState({ evaluationMethods: newMethods as string[], methodWeights: newWeights, disabledEvaluationMethods: newDisabled })
+            }}
+          />
         )
       }
 
