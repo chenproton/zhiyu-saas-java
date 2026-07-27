@@ -47,6 +47,6 @@
 
 ## 风险与约束
 
-- **申诉 remark 已持久化但不在 API 响应中返回**：`appeal_handler.go` 的 `Process` 接口解析了 `remark` 字段且已写入 SQL UPDATE（`remark = $2`），但 `AppealRecord` 结构体和 `fetchAppeal` 的 SELECT 未包含 `remark` 字段，导致 API 响应中不返回 remark。—— **低风险，按需修复。**
+- **申诉 remark 已解析但未持久化**：`appeal_handler.go` 的 `Process` 接口解析了 `remark` 字段，但实际 SQL UPDATE 仅写入 `status`，`remark` 被丢弃。`AppealRecord` 结构体也不包含 `remark` 字段。—— **低风险，按需修复。**
 - **毕业选题无竞争保护**：`ApplyTopic` 仅递增 `applied_count`，无事务级容量检查，并发申请可能超出容量。—— **核心业务防重复，建议加乐观锁。**
 - **现场问答题删除无引用检查**：`RandomDrawQuestionHandler.Delete` 直接删除记录，未检查该题是否被场景任务评价规则或混合课课后模块引用。删除后可能导致已有配置中的题目 ID 失效。—— **低危，当前按简单优先原则接受；若后续出现配置失效反馈，可补充引用检查或软删除。**

@@ -32,9 +32,9 @@
 | 密码安全 | PASS | bcrypt 哈希；密码在 API 响应中始终被剥离 |
 | 操作审计日志 | PASS | `OperationLog` 中间件记录所有写操作；25+ 模块名中文映射 |
 | 登录日志 | PASS | 每次登录记录 IP、设备、状态 |
-| 路由权限分层 | PASS | 公开路由 → 认证路由 → 平台管理员 → 系统管理员 → 业务用户；分层清晰。超管控制台 `/api/v1/admin/tenants` 按产品决策未启用 JWT 鉴权，风险另行列出 |
+| 路由权限分层 | PASS | 公开路由 → 认证路由 → 平台管理员 → 系统管理员 → 业务用户；分层清晰。超管控制台 `/api/v1/admin/tenants` 路由组已纳入 `auth` + `platformAdmin`（`RequireRole("platform_admin")`）中间件保护，仅平台管理员可访问 |
 
 ## 风险与约束
 
-- **管理员租户控制台未鉴权**：`/api/v1/admin/tenants` 路由组无认证保护（产品决策），仅在前端隐藏入口。若 API 地址暴露，任何人可操作租户数据。—— **高危，需评估是否加鉴权。**
+- **超管控制台已鉴权**：`/api/v1/admin/tenants` 路由组现已纳入 `auth` + `platformAdmin` 中间件，需使用 `platform_admin` 角色的账号登录 `/superadmin` 后方可操作。—— **已修复。**
 - **跨域 CORS 当前为 `*`**：允许任意来源访问。生产环境需收紧为具体域名。

@@ -19,6 +19,21 @@
 
 ## 记录
 
+### 2026-07-27 审查文档同步：代码安全修复后的审计状态更新
+
+- 审计文档：
+  - 更新：`docs/audits/backend/auth-security.md`
+  - 更新：`docs/audits/backend/tenant-org.md`
+  - 更新：`docs/audits/backend/evaluation-platform.md`
+  - 索引：`docs/audits/AUDIT_RECORDS.md`
+- 审查人：Agent
+- 结论：收敛
+- PASS 检查点数量：— / 总检查点数量：—
+- 备注：
+  - `auth-security.md`：超管控制台路由现已受 `auth` + `platformAdmin` 保护，更新检查点说明和风险状态为"已修复"。
+  - `tenant-org.md`：`users.plain_password` 列已通过 migration 085 删除；`AdminPreviewPassword` 已改为 `AdminResetPassword`，更新核心决策、检查点和风险状态。
+  - `evaluation-platform.md`：修正申诉 remark 审计错误——remark 字段被解析但从未写入 SQL UPDATE，并非"已持久化但未返回"。
+
 ### 2026-07-26 性能与可维护性最佳实践文档
 
 - 审计文档：
