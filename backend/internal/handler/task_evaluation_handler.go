@@ -666,11 +666,15 @@ func (h *TaskEvaluationHandler) ensureExamUsageForMethod(
 
 func (h *TaskEvaluationHandler) createTempExam(ctx context.Context, tx pgx.Tx, tenantID, name string, duration int, creatorID string) (string, error) {
 	id := uuid.NewString()
-	_, err := tx.Exec(ctx, `
-		INSERT INTO exams (id, tenant_id, name, description, status, total_score, duration, cover_image,
+	code, err := generateUniqueEntityCode(ctx, tx, "SJ", "exams", tenantID)
+	if err != nil {
+		return "", fmt.Errorf("generate exam code: %w", err)
+	}
+	_, err = tx.Exec(ctx, `
+		INSERT INTO exams (id, tenant_id, code, name, description, status, total_score, duration, cover_image,
 			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, creator_id, is_temp)
-		VALUES ($1, $2, $3, '', 'draft', 0, $4, NULL, '{}', '{}', NULL, 'v1.0', 'mine', $5, TRUE)
-	`, id, tenantID, name, duration, creatorID)
+		VALUES ($1, $2, $3, $4, '', 'draft', 0, $5, NULL, '{}', '{}', NULL, 'v1.0', 'mine', $6, TRUE)
+	`, id, tenantID, code, name, duration, creatorID)
 	if err != nil {
 		return "", fmt.Errorf("create temp exam: %w", err)
 	}
