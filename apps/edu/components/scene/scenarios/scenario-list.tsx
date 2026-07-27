@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 import { StatusBadge } from "@/components/shared/status-badge"
+import { HoverActionBar } from "@/components/shared/hover-action-bar"
 import { cn } from "@/lib/utils"
 
 export interface ScenarioListItem {
@@ -151,7 +152,7 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                 </PrdAnnotation>
               </div>
               <div className="col-span-1 text-right relative">
-                <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                <HoverActionBar>
                   <PrdAnnotation data={getAnnotation("row-action-view")}>
                     <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
                       <Link href={`/scene/landing/${scenario.id}`}>
@@ -348,7 +349,7 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                       </Button>
                     </PrdAnnotation>
                   )}
-                </div>
+                </HoverActionBar>
               </div>
             </div>
           )

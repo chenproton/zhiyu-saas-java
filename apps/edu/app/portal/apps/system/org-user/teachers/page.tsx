@@ -3,33 +3,20 @@
 import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { TableCell, TableHead } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { cn } from "@/lib/utils"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { usePortalUsers } from "@/hooks/use-portal-users"
 import { useOrgTree } from "@/hooks/use-org-tree"
 import { OrgNodePicker } from "@/components/shared/org-node-picker"
 import { TableRowActions } from "@/components/shared/table-row-actions"
-import { OrgFilterTree, collectOrgSubtreeIds } from "@/components/shared/org-filter-tree"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import { ResetPasswordDialog } from "@/components/shared/reset-password-dialog"
 import { portalUserManagementApi, portalStaffTitleApi, importExportApi } from "@/lib/api"
 import type { StaffTitle } from "@/lib/types/backend"
 import { MultiSelectSearch } from "@/components/ui/multi-select-search"
 import { useToast } from "@/hooks/use-toast"
-import { useImportFlow } from "@/hooks/use-import-flow"
-import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
-import {
-  Plus, Trash2, Search, Filter, Upload, Download, FileDown,
-  FolderTree, Key, Loader2, AlertCircle, RotateCcw, Pencil, ChevronLeft, ChevronRight,
-  UserCheck, Ban, Users
-} from "lucide-react"
+import { PortalSidebarCrudPage } from "@/components/shared/portal-sidebar-crud-page"
+import { Pencil, Trash2, Key, UserCheck, Ban, Users, Loader2 } from "lucide-react"
 
 interface Teacher {
   id: string
@@ -45,7 +32,6 @@ interface Teacher {
 function mapTeacherStatus(status: string): Teacher["status"] {
   if (status === "active") return "正常"
   if (status === "disabled") return "禁用"
-  if (status === "inactive") return "正常"
   return "正常"
 }
 
@@ -58,38 +44,25 @@ function toBackendStatus(status: Teacher["status"]): string {
 export default function TeachersPage() {
   const { institution, institutionId, tenantId } = usePortalAuth()
   const { toast } = useToast()
-  const [searchTerm, setSearchTerm] = useState("")
   const { users, roles: tenantRoles, total, page, pageSize, setPage, loading, error, refetch } = usePortalUsers({
     roleCode: "teacher",
-    search: searchTerm || undefined,
   })
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const { orgs, orgMap, orgTypeMap, loading: orgLoading } = useOrgTree(tenantId)
 
   const [teachers, setTeachers] = useState<Teacher[]>([])
+  const [staffTitles, setStaffTitles] = useState<StaffTitle[]>([])
+  const [statusFilter, setStatusFilter] = useState("all")
+
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null)
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [selectedOrgNodeId, setSelectedOrgNodeId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
-  const [selectedTeachers, setSelectedTeachers] = useState<string[]>([])
   const [batchDeleting, setBatchDeleting] = useState(false)
-  const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null)
-  const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false)
-  const [joinTargetNodeId, setJoinTargetNodeId] = useState<string>("")
-  const [joinLoading, setJoinLoading] = useState(false)
-
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
-  const [importStep, setImportStep] = useState<"download" | "upload">("download")
-  const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
 
   const [formName, setFormName] = useState("")
   const [formUsername, setFormUsername] = useState("")
   const [formPassword, setFormPassword] = useState("")
-  const [formOrgNodeId, setFormOrgNodeId] = useState<string>("")
+  const [formOrgNodeId, setFormOrgNodeId] = useState("")
   const [formTitleIds, setFormTitleIds] = useState<string[]>([])
-  const [staffTitles, setStaffTitles] = useState<StaffTitle[]>([])
 
   useEffect(() => {
     setTeachers(
@@ -116,49 +89,11 @@ export default function TeachersPage() {
     }).catch(() => {})
   }, [tenantId])
 
-  const importFlow = useImportFlow({
-    importType: "teachers",
-    entityLabel: "教师",
-    templateFileName: "教师批量导入模板.xlsx",
-    onSuccess: refetch,
-  })
-
-  const doImport = async (overwrite = false) => {
-    const ok = await importFlow.executeImport(overwrite)
-    if (ok) {
-      setIsImportDialogOpen(false)
-      setImportStep("download")
-      setIsImportConfirmOpen(false)
-    }
-  }
-
-  const doHandleImport = async () => {
-    const ok = await importFlow.handleImport()
-    if (ok) {
-      setIsImportDialogOpen(false)
-      setImportStep("download")
-      setIsImportConfirmOpen(false)
-    }
-  }
-
   const titleNameMap = useMemo(() => {
     const map = new Map<string, string>()
     staffTitles.forEach((t) => map.set(t.id, t.name))
     return map
   }, [staffTitles])
-
-  const selectedOrgIds = useMemo(() => {
-    if (!selectedOrgNodeId) return null
-    return collectOrgSubtreeIds(orgMap, selectedOrgNodeId)
-  }, [selectedOrgNodeId, orgMap])
-
-  const filteredTeachers = teachers.filter((teacher) => {
-    if (statusFilter !== "all" && teacher.status !== statusFilter) return false
-    if (selectedOrgIds) {
-      return !!teacher.orgNodeId && selectedOrgIds.has(teacher.orgNodeId)
-    }
-    return true
-  })
 
   const resetForm = () => {
     setFormName("")
@@ -166,96 +101,6 @@ export default function TeachersPage() {
     setFormPassword("")
     setFormOrgNodeId("")
     setFormTitleIds([])
-  }
-
-  const openCreateDialog = () => {
-    setSelectedTeacher(null)
-    resetForm()
-    setIsDialogOpen(true)
-  }
-
-  const openEditDialog = (teacher: Teacher) => {
-    setSelectedTeacher(teacher)
-    setFormName(teacher.name)
-    setFormUsername(teacher.loginAccount)
-    setFormPassword("")
-    setFormOrgNodeId(teacher.orgNodeId || "")
-    setFormTitleIds(teacher.positions)
-    setIsDialogOpen(true)
-  }
-
-  const handleUpdate = async () => {
-    if (!selectedTeacher || !formName.trim() || !formUsername.trim()) return
-    const original = users.find((u) => u.id === selectedTeacher.id)
-    if (!original) {
-      toast({ variant: "destructive", title: "保存失败", description: "未找到原始用户数据" })
-      return
-    }
-    setSaving(true)
-    try {
-      await portalUserManagementApi.update(selectedTeacher.id, {
-        institutionId: original.institutionId,
-        orgNodeId: formOrgNodeId || undefined,
-        majorId: original.majorId,
-        role: original.role,
-        loginName: formUsername.trim(),
-        username: formUsername.trim(),
-        name: formName.trim(),
-        email: original.email,
-        phone: original.phone,
-        avatarUrl: original.avatarUrl,
-        studentNo: original.studentNo,
-        workId: original.workId,
-        idCard: original.idCard,
-        titleIds: formTitleIds,
-      })
-      toast({ title: "保存成功" })
-      setIsDialogOpen(false)
-      resetForm()
-      setSelectedTeacher(null)
-      await refetch()
-    } catch (err) {
-      toast({ variant: "destructive", title: "保存失败", description: err instanceof Error ? err.message : "未知错误" })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleCreate = async () => {
-    if (!tenantId) {
-      toast({ variant: "destructive", title: "创建失败", description: "未获取到租户信息，请重新登录" })
-      return
-    }
-    if (!formName.trim() || !formUsername.trim() || !formPassword.trim()) return
-    const teacherRole = tenantRoles.find((r) => r.code === "teacher")
-    if (!teacherRole) {
-      toast({ variant: "destructive", title: "创建失败", description: "未找到教师角色，请先在角色管理中创建" })
-      return
-    }
-    setSaving(true)
-    try {
-      await portalUserManagementApi.create({
-        tenantId,
-        institutionId,
-        roleId: teacherRole.id,
-        role: "school",
-        platform: "portal",
-        loginName: formUsername.trim(),
-        username: formUsername.trim(),
-        password: formPassword.trim(),
-        name: formName.trim(),
-        orgNodeId: formOrgNodeId || undefined,
-        titleIds: formTitleIds.length > 0 ? formTitleIds : undefined,
-      })
-      toast({ title: "创建成功" })
-      setIsDialogOpen(false)
-      resetForm()
-      await refetch()
-    } catch (err) {
-      toast({ variant: "destructive", title: "创建失败", description: err instanceof Error ? err.message : "未知错误" })
-    } finally {
-      setSaving(false)
-    }
   }
 
   const changeStatus = async (teacher: Teacher, targetStatus: Teacher["status"]) => {
@@ -268,499 +113,276 @@ export default function TeachersPage() {
     }
   }
 
-  const handleDeleteClick = (id: string) => {
-    setDeleteTarget(id)
-  }
-
-  const confirmDeleteTeacher = async () => {
-    if (!deleteTarget) return
-    try {
-      await portalUserManagementApi.delete(deleteTarget)
-      toast({ title: "删除成功" })
-      await refetch()
-    } catch (err) {
-      toast({ variant: "destructive", title: "删除失败", description: err instanceof Error ? err.message : "未知错误" })
-    } finally {
-      setDeleteTarget(null)
-    }
-  }
-
-  const toggleSelectTeacher = (id: string) => {
-    setSelectedTeachers((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]))
-  }
-
-  const toggleSelectAll = () => {
-    if (selectedTeachers.length === filteredTeachers.length && filteredTeachers.length > 0) {
-      setSelectedTeachers([])
-    } else {
-      setSelectedTeachers(filteredTeachers.map((t) => t.id))
-    }
-  }
-
-  const handleBatchDelete = async () => {
-    if (selectedTeachers.length === 0) return
-    if (!window.confirm(`确定要删除选中的 ${selectedTeachers.length} 名教师吗？此操作不可撤销。`)) return
-    setBatchDeleting(true)
-    try {
-      await portalUserManagementApi.batchDelete(selectedTeachers)
-      toast({ title: `成功删除 ${selectedTeachers.length} 名教师` })
-    } catch (err) {
-      toast({ variant: "destructive", title: "批量删除失败", description: err instanceof Error ? err.message : "未知错误" })
-    } finally {
-      setBatchDeleting(false)
-      setSelectedTeachers([])
-    }
-    await refetch()
-  }
-
-  const handleBatchJoin = async () => {
-    if (selectedTeachers.length === 0) return
-    if (!joinTargetNodeId) {
-      toast({ variant: "destructive", title: "请选择目标部门/组织节点" })
-      return
-    }
-    setJoinLoading(true)
-    try {
-      await portalUserManagementApi.batchUpdateOrgNode({ userIds: selectedTeachers, orgNodeId: joinTargetNodeId })
-      toast({ title: `已将 ${selectedTeachers.length} 名教职工加入部门` })
-      setIsJoinDialogOpen(false)
-      setJoinTargetNodeId("")
-      setSelectedTeachers([])
-      await refetch()
-    } catch (err) {
-      toast({ variant: "destructive", title: "批量加入部门失败", description: err instanceof Error ? err.message : "未知错误" })
-    } finally {
-      setJoinLoading(false)
-    }
-  }
-
-  const resetPassword = (teacher: Teacher) => {
-    setResetTarget({ id: teacher.id, name: teacher.name })
-  }
-
-  const handleExport = async () => {
-    try {
-      const ids = selectedTeachers.length > 0 ? selectedTeachers : []
-      const res = await importExportApi.exportTeachersExcel(ids)
-      const blob = await res.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = "教师导出.xlsx"
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.URL.revokeObjectURL(url)
-      toast({ title: ids.length > 0 ? `已导出 ${ids.length} 名教职工` : "导出完成" })
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "导出失败", description: err.message || "导出失败" })
-    }
-  }
+  const formValid = formName.trim() && formUsername.trim() && (!!selectedTeacher || formPassword.trim())
 
   return (
-    <div className="p-6 bg-[#f5f7fa] min-h-full">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">教职工管理</h1>
-          <p className="mt-1 text-sm text-muted-foreground">维护教师档案信息</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="destructive" size="sm" disabled={selectedTeachers.length === 0 || batchDeleting} onClick={handleBatchDelete}>
+    <PortalSidebarCrudPage
+      title="教职工管理"
+      description="维护教师档案信息"
+      entityLabel="教师"
+      searchPlaceholder="搜索姓名或登录账号..."
+      createButtonLabel="新建教师"
+      items={teachers}
+      loading={loading}
+      error={error}
+      total={total}
+      page={page}
+      pageSize={pageSize}
+      setPage={setPage}
+      refetch={refetch}
+      orgs={orgs}
+      orgMap={orgMap}
+      orgTypeMap={orgTypeMap}
+      orgLoading={orgLoading}
+      sidebarAllLabel="全部教职工"
+      statusFilter={statusFilter}
+      setStatusFilter={setStatusFilter}
+      statusOptions={[
+        { value: "all", label: "全部状态" },
+        { value: "正常", label: "正常" },
+        { value: "禁用", label: "禁用" },
+      ]}
+      filterItems={(items, search, status) =>
+        items.filter((t) => {
+          if (status !== "all" && t.status !== status) return false
+          if (!search) return true
+          return t.name.includes(search) || t.loginAccount.includes(search)
+        })
+      }
+      getItemOrgNodeId={(item) => item.orgNodeId}
+      importConfig={{ importType: "teachers", entityLabel: "教师", templateFileName: "教师批量导入模板.xlsx" }}
+      colSpan={7}
+      renderTableHeader={() => (
+        <>
+          <TableHead>登录账号（工号）</TableHead>
+          <TableHead>姓名</TableHead>
+          <TableHead>所属组织节点</TableHead>
+          <TableHead>关联角色</TableHead>
+          <TableHead>职位</TableHead>
+          <TableHead>状态</TableHead>
+          <TableHead className="text-right">操作</TableHead>
+        </>
+      )}
+      renderTableRow={(teacher, actions) => (
+        <>
+          <TableCell className="font-mono text-sm">{teacher.loginAccount}</TableCell>
+          <TableCell className="font-medium">{teacher.name}</TableCell>
+          <TableCell>{teacher.department}</TableCell>
+          <TableCell>
+            {teacher.roles.length > 0 ? (
+              <div className="flex gap-1 flex-wrap">
+                {teacher.roles.map((role, i) => (
+                  <Badge key={i} variant="outline" className="text-xs">{role}</Badge>
+                ))}
+              </div>
+            ) : <span className="text-muted-foreground">—</span>}
+          </TableCell>
+          <TableCell>
+            {teacher.positions.length > 0 ? (
+              <div className="flex gap-1 flex-wrap">
+                {teacher.positions.map((pos, i) => (
+                  <Badge key={i} variant="secondary" className="text-xs">{titleNameMap.get(pos) || pos}</Badge>
+                ))}
+              </div>
+            ) : <span className="text-muted-foreground">—</span>}
+          </TableCell>
+          <TableCell>
+            <Badge variant={teacher.status === "正常" ? "default" : "destructive"}>{teacher.status}</Badge>
+          </TableCell>
+          <TableRowActions>
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={actions.edit}>
+              <Pencil className="mr-1 h-3 w-3" />
+              编辑
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => changeStatus(teacher, "正常")}>
+              <UserCheck className="mr-1 h-3 w-3" />
+              {teacher.status !== "正常" ? "设为正常" : "正常"}
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={() => changeStatus(teacher, "禁用")}>
+              <Ban className="mr-1 h-3 w-3" />
+              {teacher.status !== "禁用" ? "设为禁用" : "禁用"}
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={actions.onResetPwd}>
+              <Key className="mr-1 h-3 w-3" />
+              重置密码
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={actions.onDelete}>
+              <Trash2 className="mr-1 h-3 w-3" />
+              删除
+            </Button>
+          </TableRowActions>
+        </>
+      )}
+      headerActions={(selectedIds, openJoinDialog) => (
+        <>
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={selectedIds.length === 0 || batchDeleting}
+            onClick={async () => {
+              if (!window.confirm(`确定要删除选中的 ${selectedIds.length} 名教师吗？此操作不可撤销。`)) return
+              setBatchDeleting(true)
+              try {
+                await portalUserManagementApi.batchDelete(selectedIds)
+                toast({ title: `成功删除 ${selectedIds.length} 名教师` })
+              } catch (err) {
+                toast({ variant: "destructive", title: "批量删除失败", description: err instanceof Error ? err.message : "未知错误" })
+              } finally {
+                setBatchDeleting(false)
+                await refetch()
+              }
+            }}
+          >
             {batchDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
-            {selectedTeachers.length > 0 ? `批量删除(${selectedTeachers.length})` : "批量删除"}
+            {selectedIds.length > 0 ? `批量删除(${selectedIds.length})` : "批量删除"}
           </Button>
-          <Button variant="outline" size="sm" disabled={selectedTeachers.length === 0 || joinLoading || batchDeleting} onClick={() => { setJoinTargetNodeId(""); setIsJoinDialogOpen(true) }}>
-            {joinLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Users className="h-4 w-4 mr-1" />}
-            {selectedTeachers.length > 0 ? `批量加入部门(${selectedTeachers.length})` : "批量加入部门"}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={selectedIds.length === 0 || batchDeleting}
+            onClick={openJoinDialog}
+          >
+            <Users className="h-4 w-4 mr-1" />
+            {selectedIds.length > 0 ? `批量加入部门(${selectedIds.length})` : "批量加入部门"}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
-            <Upload className="h-4 w-4 mr-1" />导入
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-1" />导出{selectedTeachers.length > 0 ? `(${selectedTeachers.length})` : ""}
-          </Button>
-          <Button size="sm" onClick={openCreateDialog}>
-            <Plus className="h-4 w-4 mr-1" />新建教师
-          </Button>
-        </div>
-      </div>
-
-      {error && (
-        <div className="mb-4 rounded border border-destructive/20 bg-destructive/10 p-4 text-destructive flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-medium">加载失败</p>
-            <p className="text-sm opacity-90">{error}</p>
-          </div>
-          <Button variant="outline" size="sm" onClick={refetch}>
-            <RotateCcw className="h-4 w-4 mr-1" />重试
-          </Button>
-        </div>
+        </>
       )}
-
-      <div className="flex gap-4 items-start">
-        <div className="w-64 shrink-0 rounded-lg border border-gray-100 bg-white shadow-sm p-4">
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
-            <FolderTree className="h-4 w-4 text-primary" />组织架构
-          </h3>
-          <ScrollArea className="h-[500px]">
-            <div className="space-y-1">
-              <button
-                onClick={() => setSelectedOrgNodeId(null)}
-                className={cn(
-                  "w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors",
-                  selectedOrgNodeId === null ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-                )}
-              >
-                全部教职工
-              </button>
-              {orgLoading ? (
-                <div className="flex items-center gap-2 px-2 py-4 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> 加载中...
-                </div>
-              ) : (
-                <OrgFilterTree
-                  nodes={orgs}
-                  orgTypeMap={orgTypeMap}
-                  selectedId={selectedOrgNodeId}
-                  onSelect={setSelectedOrgNodeId}
-                />
-              )}
-            </div>
-          </ScrollArea>
-        </div>
-
-        <div className="flex-1 space-y-4">
-          <div className="rounded-lg border border-gray-100 bg-white shadow-sm p-4">
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder="搜索姓名或登录账号..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="全部状态" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部状态</SelectItem>
-                  <SelectItem value="正常">正常</SelectItem>
-                  <SelectItem value="禁用">禁用</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-1" />筛选
-              </Button>
-            </div>
+      onOpenCreate={() => { setSelectedTeacher(null); resetForm(); setIsDialogOpen(true) }}
+      onOpenEdit={(teacher) => {
+        setSelectedTeacher(teacher)
+        setFormName(teacher.name)
+        setFormUsername(teacher.loginAccount)
+        setFormPassword("")
+        setFormOrgNodeId(teacher.orgNodeId || "")
+        setFormTitleIds(teacher.positions)
+        setIsDialogOpen(true)
+      }}
+      isEditDialogOpen={isDialogOpen}
+      setIsEditDialogOpen={setIsDialogOpen}
+      editDialogTitle={selectedTeacher ? "编辑教师" : "新建教师"}
+      editDialogDescription={selectedTeacher ? "修改教职工基本信息" : "填写教职工基本信息"}
+      renderForm={() => (
+        <>
+          <div className="grid gap-2">
+            <Label>姓名 <span className="text-destructive">*</span></Label>
+            <Input placeholder="请输入姓名" value={formName} onChange={(e) => setFormName(e.target.value)} />
           </div>
-
-          <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border">
-                  <TableHead className="w-12">
-                    <Checkbox
-                      checked={selectedTeachers.length === filteredTeachers.length && filteredTeachers.length > 0}
-                      onCheckedChange={toggleSelectAll}
-                    />
-                  </TableHead>
-                  <TableHead>登录账号（工号）</TableHead>
-                  <TableHead>姓名</TableHead>
-                  <TableHead>所属组织节点</TableHead>
-                  <TableHead>关联角色</TableHead>
-                  <TableHead>职位</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-12">
-                      <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-                      <p className="mt-2 text-sm text-muted-foreground">加载中...</p>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  <>
-                    {filteredTeachers.map((teacher) => (
-                      <TableRow key={teacher.id} className={cn("border-border", "group")}>
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedTeachers.includes(teacher.id)}
-                            onCheckedChange={() => toggleSelectTeacher(teacher.id)}
-                          />
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">{teacher.loginAccount}</TableCell>
-                        <TableCell className="font-medium">{teacher.name}</TableCell>
-                        <TableCell>{teacher.department}</TableCell>
-                        <TableCell>
-                          {teacher.roles.length > 0 ? (
-                            <div className="flex gap-1 flex-wrap">
-                              {teacher.roles.map((role, i) => (
-                                <Badge key={i} variant="outline" className="text-xs">{role}</Badge>
-                              ))}
-                            </div>
-                          ) : <span className="text-muted-foreground">—</span>}
-                        </TableCell>
-                        <TableCell>
-                          {teacher.positions.length > 0 ? (
-                            <div className="flex gap-1 flex-wrap">
-                              {teacher.positions.map((pos, i) => (
-                                <Badge key={i} variant="secondary" className="text-xs">{titleNameMap.get(pos) || pos}</Badge>
-                              ))}
-                            </div>
-                          ) : <span className="text-muted-foreground">—</span>}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={teacher.status === "正常" ? "default" : "destructive"}>{teacher.status}</Badge>
-                        </TableCell>
-                          <TableRowActions>
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => openEditDialog(teacher)}>
-                              <Pencil className="mr-1 h-3 w-3" />
-                              编辑
-                            </Button>
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => changeStatus(teacher, "正常")}>
-                              <UserCheck className="mr-1 h-3 w-3" />
-                              {teacher.status !== "正常" ? "设为正常" : "✓ 正常"}
-                            </Button>
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={() => changeStatus(teacher, "禁用")}>
-                              <Ban className="mr-1 h-3 w-3" />
-                              {teacher.status !== "禁用" ? "设为禁用" : "✓ 禁用"}
-                            </Button>
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => resetPassword(teacher)}>
-                              <Key className="mr-1 h-3 w-3" />
-                              重置密码
-                            </Button>
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={() => handleDeleteClick(teacher.id)}>
-                              <Trash2 className="mr-1 h-3 w-3" />
-                              删除
-                            </Button>
-                          </TableRowActions>
-                      </TableRow>
-                    ))}
-                    {filteredTeachers.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                          {searchTerm ? "未找到匹配的教职工" : "暂无教职工数据"}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </>
-                )}
-              </TableBody>
-            </Table>
+          <div className="grid gap-2">
+            <Label>登录账号（工号） <span className="text-destructive">*</span></Label>
+            <Input placeholder="如：T001" value={formUsername} onChange={(e) => setFormUsername(e.target.value)} />
           </div>
-
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>共 {total} 条记录{selectedTeachers.length > 0 ? `，已选择 ${selectedTeachers.length} 条` : ""}</span>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage(page - 1)}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span>{page} / {totalPages}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage(page + 1)}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent size="sm">
-          <DialogHeader>
-            <DialogTitle>{selectedTeacher ? "编辑教师" : "新建教师"}</DialogTitle>
-            <DialogDescription>{selectedTeacher ? "修改教职工基本信息" : "填写教职工基本信息"}</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
+          {!selectedTeacher && (
             <div className="grid gap-2">
-              <Label>姓名 <span className="text-destructive">*</span></Label>
-              <Input placeholder="请输入姓名" value={formName} onChange={(e) => setFormName(e.target.value)} />
+              <Label>密码 <span className="text-destructive">*</span></Label>
+              <Input type="text" placeholder="请输入密码" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} />
             </div>
-            <div className="grid gap-2">
-              <Label>登录账号（工号） <span className="text-destructive">*</span></Label>
-              <Input placeholder="如：T001" value={formUsername} onChange={(e) => setFormUsername(e.target.value)} />
-            </div>
-            {!selectedTeacher && (
-              <div className="grid gap-2">
-                <Label>密码 <span className="text-destructive">*</span></Label>
-                <Input type="text" placeholder="请输入密码" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} />
-              </div>
-            )}
-            <div className="grid gap-2">
-              <Label>所属组织节点</Label>
-              <OrgNodePicker
-                tenantId={tenantId}
-                value={formOrgNodeId}
-                onChange={(value) => setFormOrgNodeId(value || "")}
-                placeholder="选择所属组织节点"
-                title="选择所属组织节点"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>职位</Label>
-              <MultiSelectSearch
-                options={staffTitles.map((t) => ({ label: t.name, value: t.id }))}
-                selected={formTitleIds}
-                onChange={setFormTitleIds}
-                placeholder="选择职位"
-                searchPlaceholder="搜索职位..."
-                emptyText="未找到匹配的职位"
-              />
-            </div>
+          )}
+          <div className="grid gap-2">
+            <Label>所属组织节点</Label>
+            <OrgNodePicker
+              tenantId={tenantId}
+              value={formOrgNodeId}
+              onChange={(value) => setFormOrgNodeId(value || "")}
+              placeholder="选择所属组织节点"
+              title="选择所属组织节点"
+            />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={saving}>取消</Button>
-            <Button
-              onClick={selectedTeacher ? handleUpdate : handleCreate}
-              disabled={saving || !formName.trim() || !formUsername.trim() || (!selectedTeacher && !formPassword.trim())}
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              保存
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 导入教师 */}
-      <Dialog open={isImportDialogOpen} onOpenChange={(open) => { setIsImportDialogOpen(open); if (!open) { setImportStep("download"); importFlow.setImportFile(null) } }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>导入教师</DialogTitle>
-            <DialogDescription>
-              第 {importStep === "download" ? "1" : "2"} 步：{importStep === "download" ? "下载模板并填写数据" : "上传已填写的 Excel 文件"}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            {importStep === "download" ? (
-              <div className="space-y-4">
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <p className="text-sm font-medium mb-2">操作指引</p>
-                  <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                    <li>点击下方按钮下载最新的导入模板（含系统字典数据）</li>
-                    <li>参照模板中各 Sheet 的填写说明，填入教师数据</li>
-                    <li>完成后点击"下一步"上传文件</li>
-                  </ol>
-                </div>
-                <Button
-                  className="w-full"
-                  size="lg"
-                  onClick={importFlow.handleDownloadTemplate}
-                  disabled={importFlow.isDownloading}
-                >
-                  <FileDown className="mr-2 h-5 w-5" />
-                  {importFlow.isDownloading ? "下载中..." : "下载教师批量导入模板"}
-                </Button>
-              </div>
-            ) : (
-              <div
-                className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer"
-                onClick={() => importFlow.fileInputRef.current?.click()}
-              >
-                <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
-                <p className="text-sm text-muted-foreground mb-2">
-                  {importFlow.importFile ? importFlow.importFile.name : "点击选择已填写的 Excel (.xlsx) 文件"}
-                </p>
-                <p className="text-xs text-muted-foreground">仅支持 .xlsx 格式</p>
-                <input
-                  ref={importFlow.fileInputRef}
-                  type="file"
-                  accept=".xlsx"
-                  className="hidden"
-                  onChange={(e) => importFlow.handleFileSelect(e.target.files)}
-                />
-              </div>
-            )}
+          <div className="grid gap-2">
+            <Label>职位</Label>
+            <MultiSelectSearch
+              options={staffTitles.map((t) => ({ label: t.name, value: t.id }))}
+              selected={formTitleIds}
+              onChange={setFormTitleIds}
+              placeholder="选择职位"
+              searchPlaceholder="搜索职位..."
+              emptyText="未找到匹配的职位"
+            />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsImportDialogOpen(false); setImportStep("download"); importFlow.setImportFile(null) }}>取消</Button>
-            {importStep === "download" ? (
-              <Button onClick={() => setImportStep("upload")}>下一步</Button>
-            ) : (
-              <Button onClick={doHandleImport} disabled={!importFlow.importFile || importFlow.isImporting}>
-                {importFlow.isImporting ? "导入中..." : "开始导入"}
-              </Button>
-            )}
-            {importStep === "upload" && (
-              <Button variant="ghost" size="sm" onClick={() => setImportStep("download")}>上一步</Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {importFlow.importPreview && (
-        <ImportConfirmDialog
-          open={isImportConfirmOpen}
-          onOpenChange={setIsImportConfirmOpen}
-          entityLabel="教师"
-          created={importFlow.importPreview.created}
-          duplicates={importFlow.importPreview.duplicates}
-          failed={importFlow.importPreview.failed}
-          duplicateItems={importFlow.importPreview.duplicateItems}
-          onConfirmOverwrite={() => doImport(true)}
-          onConfirmSkip={() => doImport(false)}
-        />
+        </>
       )}
-
-      {/* 批量加入部门/组织节点 */}
-      <Dialog open={isJoinDialogOpen} onOpenChange={setIsJoinDialogOpen}>
-        <DialogContent className="sm:max-w-[450px]">
-          <DialogHeader>
-            <DialogTitle>批量加入部门</DialogTitle>
-            <DialogDescription>为选中的 {selectedTeachers.length} 名教职工统一关联一个组织节点</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>目标组织节点 <span className="text-destructive">*</span></Label>
-              <OrgNodePicker
-                tenantId={tenantId}
-                value={joinTargetNodeId}
-                onChange={(value) => setJoinTargetNodeId(value || "")}
-                placeholder="选择组织节点"
-                title="选择组织节点"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsJoinDialogOpen(false)} disabled={joinLoading}>取消</Button>
-            <Button onClick={handleBatchJoin} disabled={joinLoading || !joinTargetNodeId}>
-              {joinLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              确认加入
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <ConfirmDialog
-        open={deleteTarget !== null}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
-        title="确认删除"
-        description="确定要删除该教职工吗？此操作不可恢复。"
-        confirmText="删除"
-        variant="destructive"
-        onConfirm={confirmDeleteTeacher}
-      />
-
-      <ResetPasswordDialog
-        open={!!resetTarget}
-        onOpenChange={(open) => { if (!open) setResetTarget(null) }}
-        userId={resetTarget?.id}
-        userName={resetTarget?.name}
-        onSuccess={async () => {
-          toast({ title: "密码重置成功" })
+      formValid={!!formValid}
+      saving={saving}
+      onFormSave={async () => {
+        setSaving(true)
+        try {
+          if (selectedTeacher) {
+            const original = users.find((u) => u.id === selectedTeacher.id)
+            if (!original) {
+              toast({ variant: "destructive", title: "保存失败", description: "未找到原始用户数据" })
+              return
+            }
+            await portalUserManagementApi.update(selectedTeacher.id, {
+              institutionId: original.institutionId,
+              orgNodeId: formOrgNodeId || undefined,
+              majorId: original.majorId,
+              role: original.role,
+              loginName: formUsername.trim(),
+              username: formUsername.trim(),
+              name: formName.trim(),
+              email: original.email,
+              phone: original.phone,
+              avatarUrl: original.avatarUrl,
+              studentNo: original.studentNo,
+              workId: original.workId,
+              idCard: original.idCard,
+              titleIds: formTitleIds,
+            })
+            toast({ title: "保存成功" })
+          } else {
+            if (!tenantId) {
+              toast({ variant: "destructive", title: "创建失败", description: "未获取到租户信息" })
+              return
+            }
+            const teacherRole = tenantRoles.find((r) => r.code === "teacher")
+            if (!teacherRole) {
+              toast({ variant: "destructive", title: "创建失败", description: "未找到教师角色" })
+              return
+            }
+            await portalUserManagementApi.create({
+              tenantId,
+              institutionId,
+              roleId: teacherRole.id,
+              role: "school",
+              platform: "portal",
+              loginName: formUsername.trim(),
+              username: formUsername.trim(),
+              password: formPassword.trim(),
+              name: formName.trim(),
+              orgNodeId: formOrgNodeId || undefined,
+              titleIds: formTitleIds.length > 0 ? formTitleIds : undefined,
+            })
+            toast({ title: "创建成功" })
+          }
+          setIsDialogOpen(false)
+          resetForm()
+          setSelectedTeacher(null)
           await refetch()
-        }}
-      />
-    </div>
+        } catch (err) {
+          toast({ variant: "destructive", title: "保存失败", description: err instanceof Error ? err.message : "未知错误" })
+        } finally {
+          setSaving(false)
+        }
+      }}
+      onDelete={async (id) => {
+        await portalUserManagementApi.delete(id)
+      }}
+      onExport={async (selectedIds) => {
+        const res = await importExportApi.exportTeachersExcel(selectedIds)
+        const blob = await res.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = "教师导出.xlsx"
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        window.URL.revokeObjectURL(url)
+        toast({ title: selectedIds.length > 0 ? `已导出 ${selectedIds.length} 名教职工` : "导出完成" })
+      }}
+      joinEntityLabel="部门"
+      onBatchJoin={async (orgNodeId, userIds) => {
+        await portalUserManagementApi.batchUpdateOrgNode({ userIds, orgNodeId })
+      }}
+    />
   )
 }

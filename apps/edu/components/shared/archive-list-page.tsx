@@ -1,0 +1,348 @@
+"use client"
+
+import { useState, type ReactNode } from "react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Checkbox } from "@/components/ui/checkbox"
+import { cn } from "@/lib/utils"
+import { Search, GraduationCap, Eye, RotateCcw, Trash2 } from "lucide-react"
+import { StatusBadge } from "@/components/shared/status-badge"
+
+export interface ArchiveColumn<T> {
+  header: string
+  className?: string
+  cell: (item: T) => ReactNode
+}
+
+export interface ArchiveListPageProps<
+  T extends { id: string; name: string; status: string }
+> {
+  entityLabel: string
+  pageTitle: string
+  pageDescription: string
+
+  sidebarTitle: string
+  sidebarItems: { id: string; name: string }[]
+  sidebarSelectedId: string | null
+  onSidebarSelect: (id: string | null) => void
+
+  items: T[]
+  loading: boolean
+
+  onRestore: (item: T) => Promise<void>
+  onDelete?: (item: T) => Promise<void>
+  onBatchRestore?: (ids: string[]) => Promise<void>
+  onBatchDelete?: (ids: string[]) => Promise<void>
+
+  detailHref: (item: T) => string
+
+  searchPlaceholder: string
+  searchValue: string
+  onSearchChange: (value: string) => void
+
+  columns: ArchiveColumn<T>[]
+
+  renderStatus?: (item: T) => ReactNode
+  emptyMessage?: string
+}
+
+export function ArchiveListPage<
+  T extends { id: string; name: string; status: string }
+>({
+  entityLabel,
+  pageTitle,
+  pageDescription,
+  sidebarTitle,
+  sidebarItems,
+  sidebarSelectedId,
+  onSidebarSelect,
+  items,
+  loading,
+  onRestore,
+  onDelete,
+  onBatchRestore,
+  onBatchDelete,
+  detailHref,
+  searchPlaceholder,
+  searchValue,
+  onSearchChange,
+  columns,
+  renderStatus,
+  emptyMessage = `暂无归档${entityLabel}`,
+}: ArchiveListPageProps<T>) {
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+
+  const hasBatchOps = !!(onBatchRestore || onBatchDelete)
+
+  const handleSelect = (id: string, checked: boolean) => {
+    setSelectedIds((prev) =>
+      checked
+        ? prev.includes(id)
+          ? prev
+          : [...prev, id]
+        : prev.filter((item) => item !== id)
+    )
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    setSelectedIds(checked ? items.map((p) => p.id) : [])
+  }
+
+  const allSelected =
+    items.length > 0 && items.every((p) => selectedIds.includes(p.id))
+  const someSelected =
+    items.some((p) => selectedIds.includes(p.id)) && !allSelected
+
+  const handleBatchRestore = async () => {
+    if (!onBatchRestore || selectedIds.length === 0) return
+    await onBatchRestore(selectedIds)
+    setSelectedIds([])
+  }
+
+  const handleBatchDelete = async () => {
+    if (!onBatchDelete || selectedIds.length === 0) return
+    await onBatchDelete(selectedIds)
+    setSelectedIds([])
+  }
+
+  const handleRestore = async (item: T) => {
+    await onRestore(item)
+  }
+
+  const handleDelete = async (item: T) => {
+    if (!onDelete) return
+    await onDelete(item)
+    setSelectedIds((prev) => prev.filter((id) => id !== item.id))
+  }
+
+  const colSpan = columns.length + (hasBatchOps ? 2 : 1)
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold">{pageTitle}</h1>
+        <p className="text-muted-foreground mt-1">{pageDescription}</p>
+      </div>
+
+      <div className="flex gap-4 items-start">
+        <div className="w-64 shrink-0 rounded-lg border border-gray-100 bg-white shadow-sm p-4">
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
+            <GraduationCap className="h-4 w-4 text-primary" />
+            {sidebarTitle}
+          </h3>
+          <ScrollArea className="h-[500px]">
+            <div className="space-y-1">
+              <button
+                onClick={() => onSidebarSelect(null)}
+                className={cn(
+                  "w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors",
+                  sidebarSelectedId === null
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-muted"
+                )}
+              >
+                全部专业
+              </button>
+              {sidebarItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => onSidebarSelect(item.id)}
+                  className={cn(
+                    "w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors",
+                    sidebarSelectedId === item.id
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-muted"
+                  )}
+                >
+                  {item.name}
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+
+        <div className="flex-1 min-w-0 space-y-4">
+          <div className="rounded-lg border border-gray-100 bg-white shadow-sm p-4">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={searchPlaceholder}
+                className="pl-9"
+                value={searchValue}
+                onChange={(e) => onSearchChange(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {hasBatchOps && selectedIds.length > 0 && (
+            <div className="flex items-center justify-between rounded-lg border border-gray-100 bg-white shadow-sm p-3">
+              <span className="text-sm text-muted-foreground">
+                已选择{" "}
+                <span className="font-medium text-foreground">
+                  {selectedIds.length}
+                </span>{" "}
+                个{entityLabel}
+              </span>
+              <div className="flex items-center gap-2">
+                {onBatchRestore && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={handleBatchRestore}
+                  >
+                    <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                    批量恢复
+                  </Button>
+                )}
+                {onBatchDelete && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                    onClick={handleBatchDelete}
+                  >
+                    <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                    批量删除
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-lg border border-gray-100 bg-white shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table className="min-w-[900px] w-full">
+                <TableHeader>
+                  <TableRow>
+                    {hasBatchOps && (
+                      <TableHead className="w-10 px-3">
+                        <Checkbox
+                          checked={
+                            someSelected ? "indeterminate" : allSelected
+                          }
+                          onCheckedChange={(checked) =>
+                            handleSelectAll(checked === true)
+                          }
+                          aria-label="全选"
+                        />
+                      </TableHead>
+                    )}
+                    {columns.map((col, i) => (
+                      <TableHead key={i} className={col.className}>
+                        {col.header}
+                      </TableHead>
+                    ))}
+                    <TableHead className="w-20">状态</TableHead>
+                    <TableHead className="w-28 text-right px-3">操作</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={colSpan}
+                        className="text-center py-10 text-muted-foreground"
+                      >
+                        加载中...
+                      </TableCell>
+                    </TableRow>
+                  ) : items.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={colSpan}
+                        className="text-center py-10 text-muted-foreground"
+                      >
+                        {emptyMessage}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    items.map((item) => {
+                      const isSelected = selectedIds.includes(item.id)
+                      return (
+                        <TableRow
+                          key={item.id}
+                          className="group"
+                          data-state={isSelected ? "selected" : undefined}
+                        >
+                          {hasBatchOps && (
+                            <TableCell className="px-3">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={(checked) =>
+                                  handleSelect(item.id, checked === true)
+                                }
+                                aria-label={`选择 ${item.name}`}
+                              />
+                            </TableCell>
+                          )}
+                          {columns.map((col, i) => (
+                            <TableCell key={i} className={col.className}>
+                              {col.cell(item)}
+                            </TableCell>
+                          ))}
+                          <TableCell>
+                            {renderStatus ? (
+                              renderStatus(item)
+                            ) : (
+                              <StatusBadge status={item.status} />
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right px-3">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                asChild
+                              >
+                                <Link href={detailHref(item)}>
+                                  <Eye className="mr-1 h-3 w-3" />
+                                  查看
+                                </Link>
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
+                                onClick={() => handleRestore(item)}
+                              >
+                                <RotateCcw className="mr-1 h-3 w-3" />
+                                恢复
+                              </Button>
+                              {onDelete && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                                  onClick={() => handleDelete(item)}
+                                >
+                                  <Trash2 className="mr-1 h-3 w-3" />
+                                  删除
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

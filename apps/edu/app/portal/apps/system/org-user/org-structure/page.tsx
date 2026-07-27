@@ -39,6 +39,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { HoverActionBar } from "@/components/shared/hover-action-bar"
 import { orgApi, orgTypeApi, portalUserManagementApi, importExportApi } from "@/lib/api"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
@@ -143,7 +144,7 @@ function TreeNode({
           <Users className="w-3 h-3" />
           {node.memberCount}
         </div>
-        <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+        <HoverActionBar>
           <Button
             variant="ghost"
             size="sm"
@@ -182,7 +183,7 @@ function TreeNode({
             <Trash2 className="mr-1 h-3 w-3" />
             删除
           </Button>
-        </div>
+        </HoverActionBar>
       </div>
 
       {hasChildren && node.expanded && (

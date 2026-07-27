@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import { StatusBadge } from "@/components/shared/status-badge"
+import { HoverActionBar } from "@/components/shared/hover-action-bar"
 import type { Position } from "@/lib/types/job-source"
 
 interface PositionListProps {
@@ -141,7 +142,7 @@ export function PositionList({
               </div>
               <div className="col-span-1 text-center text-xs text-slate-500">{position.favoriteCount}</div>
               <div className="col-span-1 text-right relative">
-                <div className="flex items-center justify-end gap-1 absolute right-0 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm z-10 px-2 py-1 rounded-lg shadow-sm border border-slate-100 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                <HoverActionBar>
                   <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
                     <Link href={`/job/student/${position.id}`} className="flex items-center">
                       <Eye className="mr-1 h-3 w-3" />
@@ -314,7 +315,7 @@ export function PositionList({
                       删除
                     </Button>
                   )}
-                </div>
+                </HoverActionBar>
               </div>
             </div>
           )

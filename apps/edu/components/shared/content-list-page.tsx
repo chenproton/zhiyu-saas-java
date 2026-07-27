@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import {
   Check,
@@ -59,6 +59,7 @@ import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/hooks/use-toast"
 import { UserSelector } from "@/components/shared/user-selector"
 import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
+import { useImportFlow } from "@/hooks/use-import-flow"
 import { majorApi, workflowApi } from "@/lib/api"
 import type { Major, Workflow } from "@/lib/types/backend"
 import type { ImportPreviewResult } from "@/lib/api"
@@ -230,12 +231,28 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const [inviteTarget, setInviteTarget] = useState<T | null>(null)
   const [inviteSelectedIds, setInviteSelectedIds] = useState<string[]>([])
   const [importStep, setImportStep] = useState<"download" | "upload">("download")
-  const [importFile, setImportFile] = useState<File | null>(null)
-  const [isImporting, setIsImporting] = useState(false)
-  const [isDownloading, setIsDownloading] = useState(false)
   const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
-  const [importPreview, setImportPreview] = useState<ImportPreviewResult | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [csvImporting, setCsvImporting] = useState(false)
+
+  const hasExcel = !!(importExcelEntity)
+
+  const importFlow = useImportFlow({
+    importType: (importExcelEntity || "positions") as "positions" | "scenarios" | "courses",
+    entityLabel,
+    templateFileName: `${entityLabel}批量导入模板.xlsx`,
+    onSuccess: async () => {
+      setImportStep("download")
+      setIsImportDialogOpen(false)
+      setIsImportConfirmOpen(false)
+      await refresh()
+    },
+  })
+
+  useEffect(() => {
+    if (importFlow.importPreview && hasExcel) {
+      setIsImportConfirmOpen(true)
+    }
+  }, [importFlow.importPreview, hasExcel])
 
   const loadData = async () => {
     setIsLoading(true)
@@ -707,97 +724,59 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     setSelectedStatus(null)
   }
 
-  const handleDownloadTemplate = async () => {
-    if (!importExcelEntity || !importExportApi.downloadTemplate) return
-    setIsDownloading(true)
+  const handleImportFileSelect = (files: FileList | null) => {
+    importFlow.handleFileSelect(files)
+  }
+
+  const handleImportClick = async () => {
+    if (!importFlow.importFile) return
+    if (hasExcel) {
+      return importFlow.handleImport()
+    }
+    setCsvImporting(true)
     try {
-      const res = await importExportApi.downloadTemplate(importExcelEntity as "positions" | "scenarios")
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `${entityLabel}批量导入模板.xlsx`
-      a.click()
-      URL.revokeObjectURL(url)
+      let preview: ImportPreviewResult | null = null
+      if (importExportApi.importPreview) {
+        preview = await importExportApi.importPreview(importEntityName, importFlow.importFile)
+      }
+      if (preview && preview.duplicates > 0) {
+        importFlow.setImportPreview(preview)
+        setCsvImporting(false)
+        return
+      }
+      await doExecuteImport(false)
     } catch (err: any) {
-      alert(err.message || "下载模板失败")
-    } finally {
-      setIsDownloading(false)
+      alert(err.message || "导入失败")
+      setCsvImporting(false)
     }
   }
 
-  const handleImportFileSelect = (files: FileList | null) => {
-    const file = files?.[0]
-    if (file) setImportFile(file)
-  }
-
-  const executeImport = async (overwrite = false) => {
-    if (!importFile) return
-    setIsImporting(true)
+  const doExecuteImport = async (overwrite = false) => {
+    if (!importFlow.importFile) return
+    if (hasExcel) {
+      await importFlow.executeImport(overwrite)
+      return
+    }
+    setCsvImporting(true)
     try {
       let result: any
       if (importExportApi.importExcel && importExcelEntity) {
-        result = await importExportApi.importExcel(importExcelEntity, importFile, overwrite)
+        result = await importExportApi.importExcel(importExcelEntity, importFlow.importFile, overwrite)
       } else {
-        result = await importExportApi.import(importEntityName, importFile, overwrite)
+        result = await importExportApi.import(importEntityName, importFlow.importFile, overwrite)
       }
       const skippedMsg = result.skipped != null ? `，跳过 ${result.skipped} 条` : ""
-      let detail = ""
-      if (result.positionCreated != null) {
-        detail = `\n1. 岗位：成功 ${result.positionCreated} 条，失败 ${result.failed} 条，跳过 ${result.skipped || 0} 条`
-      }
-      if (result.responsibilities != null) {
-        detail += `\n2. 工作职责：成功 ${result.responsibilities} 条`
-      }
-      if (result.abilityBindings != null) {
-        detail += `\n3. 能力点绑定：成功 ${result.abilityBindings} 条`
-      }
-      if (result.scenarioCreated != null) {
-        detail = `\n1. 场景：成功 ${result.scenarioCreated} 条，失败 ${result.failed} 条，跳过 ${result.skipped || 0} 条`
-      }
-      if (result.taskCreated != null) {
-        detail += `\n2. 任务：成功 ${result.taskCreated} 条`
-      }
-      if (detail === "") {
-        detail = `成功 ${result.created} 条，失败 ${result.failed} 条${skippedMsg}`
-      }
-      alert(`导入完成：${detail}`)
-      setImportFile(null)
+      alert(`导入完成：成功 ${result.created} 条，失败 ${result.failed} 条${skippedMsg}`)
+      importFlow.setImportFile(null)
+      importFlow.setImportPreview(null)
       setImportStep("download")
       setIsImportDialogOpen(false)
       setIsImportConfirmOpen(false)
-      setImportPreview(null)
       await refresh()
     } catch (err: any) {
       alert(err.message || "导入失败")
     } finally {
-      setIsImporting(false)
-    }
-  }
-
-  const handleImport = async () => {
-    if (!importFile) return
-    setIsImporting(true)
-    try {
-      let preview: ImportPreviewResult | null = null
-      const isExcel = !!(importExportApi.importExcel && importExcelEntity)
-      if (isExcel && importExportApi.importExcelPreview) {
-        preview = await importExportApi.importExcelPreview(importExcelEntity!, importFile)
-      } else if (importExportApi.importPreview) {
-        preview = await importExportApi.importPreview(importEntityName, importFile)
-      }
-
-      if (preview && preview.duplicates > 0) {
-        setImportPreview(preview)
-        setIsImportConfirmOpen(true)
-        setIsImporting(false)
-        return
-      }
-
-      await executeImport(false)
-    } catch (err: any) {
-      alert(err.message || "导入失败")
-      setIsImporting(false)
+      setCsvImporting(false)
     }
   }
 
@@ -1169,7 +1148,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       )}
 
       {/* Import Dialog */}
-      <Dialog open={isImportDialogOpen} onOpenChange={(open) => { setIsImportDialogOpen(open); if (!open) { setImportStep("download"); setImportFile(null) } }}>
+      <Dialog open={isImportDialogOpen} onOpenChange={(open) => { setIsImportDialogOpen(open); if (!open) { setImportStep("download"); importFlow.setImportFile(null) } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>导入{entityLabel}</DialogTitle>
@@ -1194,27 +1173,27 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
                   <Button
                     className="w-full"
                     size="lg"
-                    onClick={handleDownloadTemplate}
-                    disabled={isDownloading}
+                    onClick={importFlow.handleDownloadTemplate}
+                    disabled={importFlow.isDownloading}
                   >
                     <FileDown className="mr-2 h-5 w-5" />
-                    {isDownloading ? "下载中..." : `下载${entityLabel}批量导入模板`}
+                    {importFlow.isDownloading ? "下载中..." : `下载${entityLabel}批量导入模板`}
                   </Button>
                 </div>
               ) : (
                 <div
                   className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => importFlow.fileInputRef.current?.click()}
                 >
                   <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
                   <p className="text-sm text-muted-foreground mb-2">
-                    {importFile ? importFile.name : "点击选择已填写的 Excel (.xlsx) 文件"}
+                    {importFlow.importFile ? importFlow.importFile.name : "点击选择已填写的 Excel (.xlsx) 文件"}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     仅支持 .xlsx 格式
                   </p>
                   <input
-                    ref={fileInputRef}
+                    ref={importFlow.fileInputRef}
                     type="file"
                     accept=".xlsx"
                     className="hidden"
@@ -1225,14 +1204,14 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
             ) : (
               <div
                 className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => importFlow.fileInputRef.current?.click()}
               >
                 <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
                 <p className="text-sm text-muted-foreground mb-2">
-                  {importFile ? importFile.name : "点击选择 CSV 文件"}
+                  {importFlow.importFile ? importFlow.importFile.name : "点击选择 CSV 文件"}
                 </p>
                 <input
-                  ref={fileInputRef}
+                  ref={importFlow.fileInputRef}
                   type="file"
                   accept=".csv"
                   className="hidden"
@@ -1242,12 +1221,12 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsImportDialogOpen(false); setImportStep("download"); setImportFile(null) }}>取消</Button>
+            <Button variant="outline" onClick={() => { setIsImportDialogOpen(false); setImportStep("download"); importFlow.setImportFile(null) }}>取消</Button>
             {importExcelEntity && importStep === "download" ? (
               <Button onClick={() => setImportStep("upload")}>下一步</Button>
             ) : (
-              <Button onClick={handleImport} disabled={!importFile || isImporting}>
-                {isImporting ? "导入中..." : "开始导入"}
+              <Button onClick={handleImportClick} disabled={!importFlow.importFile || (hasExcel ? importFlow.isImporting : csvImporting)}>
+                {(hasExcel ? importFlow.isImporting : csvImporting) ? "导入中..." : "开始导入"}
               </Button>
             )}
             {importExcelEntity && importStep === "upload" && (
@@ -1260,17 +1239,17 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       </Dialog>
 
       {/* Import Confirm Dialog */}
-      {importPreview && (
+      {importFlow.importPreview && (
         <ImportConfirmDialog
           open={isImportConfirmOpen}
           onOpenChange={setIsImportConfirmOpen}
           entityLabel={entityLabel}
-          created={importPreview.created}
-          duplicates={importPreview.duplicates}
-          failed={importPreview.failed}
-          duplicateItems={importPreview.duplicateItems}
-          onConfirmOverwrite={() => executeImport(true)}
-          onConfirmSkip={() => executeImport(false)}
+          created={importFlow.importPreview.created}
+          duplicates={importFlow.importPreview.duplicates}
+          failed={importFlow.importPreview.failed}
+          duplicateItems={importFlow.importPreview.duplicateItems}
+          onConfirmOverwrite={() => doExecuteImport(true)}
+          onConfirmSkip={() => doExecuteImport(false)}
         />
       )}
 
