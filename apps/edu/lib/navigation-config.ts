@@ -396,14 +396,6 @@ export const libraryNavigationConfig: PlatformNavigationConfig = {
   ],
   sideNavItems: [
     {
-      id: "my-resource-center",
-      label: "我的资源库",
-      icon: "user",
-      children: [
-        { id: "my-resources", label: "我的资源", href: "/library/my-resources", matchers: ["/library/my-resources"] },
-      ],
-    },
-    {
       id: "resource-center",
       label: "公共资源库",
       icon: "folderKanban",
@@ -425,8 +417,16 @@ export const libraryNavigationConfig: PlatformNavigationConfig = {
         { id: "questions", label: "现场问答题库", href: "/library/questions", matchers: ["/library/questions"] },
       ],
     },
+    {
+      id: "my-resource-center",
+      label: "我的资源库",
+      icon: "user",
+      children: [
+        { id: "my-resources", label: "我的资源", href: "/library/my-resources", matchers: ["/library/my-resources"] },
+      ],
+    },
   ],
-  defaultExpandedSideNavIds: ["my-resource-center", "resource-center"],
+  defaultExpandedSideNavIds: ["resource-center", "my-resource-center"],
   platformSwitchItems: [],
   shellClassName: "bg-background",
   mainClassName: "min-w-0 flex-1",
@@ -584,6 +584,7 @@ const PLATFORM_CARD_DESCRIPTIONS: Record<string, string> = {
   "ability-exam-center": "管理题库、试卷与考试资源",
   "ability-batch-flow": "配置测评审批流程与批次",
   "ability-result-center": "查看场景任务评价与认证结果",
+  "resource-my-resource-center": "管理个人教学资源",
   "resource-resource-center": "管理知识点、能力点与教学资源",
   "alliance-alliance-entry": "暂未开放",
   "affairs-affairs-entry": "暂未开放",
