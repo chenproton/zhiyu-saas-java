@@ -17,6 +17,7 @@ interface TaskInfoCardProps {
   onBackgroundChange?: (v: string) => void
   hoursLabel?: string
   showBackground?: boolean
+  showName?: boolean
 }
 
 export function TaskInfoCard({
@@ -26,10 +27,11 @@ export function TaskInfoCard({
   background, onBackgroundChange,
   hoursLabel = "学生完成任务的预估时长",
   showBackground = true,
+  showName = true,
 }: TaskInfoCardProps) {
   return (
     <div className="space-y-4">
-      <div><Label>名称</Label><Input value={name} onChange={e => onNameChange(e.target.value)} className="mt-1.5" /></div>
+      {showName && <div><Label>名称</Label><Input value={name} onChange={e => onNameChange(e.target.value)} className="mt-1.5" /></div>}
       <div>
         <div className="flex items-center gap-2">
           <Label>预估学时</Label>

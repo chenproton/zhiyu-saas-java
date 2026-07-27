@@ -49,6 +49,8 @@ import type { SystemCourseNode, NodeResource, NodeRefType } from "@/lib/types/le
 
 import { KnowledgeSelector } from "../../_components/knowledge/knowledge-selector"
 import { CourseEvalConfig, type CourseEvalData } from "../../_components/eval/course-eval-config"
+import { TaskInfoCard } from "@/app/scene/scenarios/[id]/edit/tasks/_components/task-info-card"
+import { TaskDescriptionCard } from "@/app/scene/scenarios/[id]/edit/tasks/_components/task-description-card"
 import { ResourceSelector, type ResourceItem } from "../../_components/resources/resource-selector"
 import { EvaluationMethodSelector } from "../../_components/assessment/evaluation-method-selector"
 import { CourseEvaluationRulesDialog } from "../../_components/assessment/course-evaluation-rules-dialog"
@@ -994,44 +996,37 @@ function AddSystemPageInner() {
                           <Input value={contentCode} disabled className="h-9 text-sm bg-gray-50 text-gray-500" />
                           <p className="text-[10px] text-gray-400">系统自动生成，不可修改</p>
                         </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">预计课时</Label>
-                          <Input type="number" value={hours} onChange={(e) => setHours(e.target.value)} placeholder="请输入课时数" className="h-9 text-sm" />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">难度等级</Label>
-                          <div className="flex items-center gap-1">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <button key={star} onClick={() => setDifficulty(star)} className="p-1 transition-colors">
-                                <Star className={`w-5 h-5 ${star <= difficulty ? "text-amber-400 fill-amber-400" : "text-gray-200"}`} />
-                              </button>
-                            ))}
-                            <span className="text-xs text-gray-400 ml-2">{difficulty > 0 ? `${difficulty} 星` : "请选择难度"}</span>
-                          </div>
-                        </div>
-                        <div className="md:col-span-2 space-y-1.5">
-                          <Label className="text-xs">学习目标</Label>
-                          <RichTextEditor
-                            value={learningGoal}
-                            onChange={setLearningGoal}
-                            minHeight={280}
+                        <div className="md:col-span-2">
+                          <TaskInfoCard
+                            name=""
+                            onNameChange={() => {}}
+                            difficulty={difficulty}
+                            onDifficultyChange={setDifficulty}
+                            hours={parseInt(hours) || 0}
+                            onHoursChange={v => setHours(String(v))}
+                            background={background}
+                            onBackgroundChange={setBackground}
+                            showBackground={true}
+                            showName={false}
+                            hoursLabel="课时数"
                           />
-                        </div>
-                        <div className="md:col-span-2 space-y-1.5">
-                          <Label className="text-xs">详细描述</Label>
-                          <RichTextEditor
-                            value={detailedDescription}
-                            onChange={setDetailedDescription}
-                            minHeight={200}
-                          />
-                        </div>
-                        <div className="md:col-span-2 space-y-1.5">
-                          <Label className="text-xs">任务背景</Label>
-                          <Input value={background} onChange={(e) => setBackground(e.target.value)} placeholder="任务背景说明" className="h-9 text-sm" />
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs">预计学时</Label>
                           <Input type="number" value={estimatedHours} onChange={(e) => setEstimatedHours(e.target.value)} placeholder="预计完成学时" className="h-9 text-sm" />
+                        </div>
+                        <div className="md:col-span-2 space-y-1.5">
+                          <Label className="text-xs">学习目标</Label>
+                          <RichTextEditor value={learningGoal} onChange={setLearningGoal} minHeight={280} />
+                        </div>
+                        <div className="md:col-span-2">
+                          <TaskDescriptionCard
+                            description={detailedDescription}
+                            onDescriptionChange={setDetailedDescription}
+                            descriptionPdf={null}
+                            onDescriptionPdfChange={() => {}}
+                            toast={(o) => { if (o.variant === "destructive") toast.error(o.title || ""); else toast.success(o.title || ""); }}
+                          />
                         </div>
                       </div>
                     </CardContent>
