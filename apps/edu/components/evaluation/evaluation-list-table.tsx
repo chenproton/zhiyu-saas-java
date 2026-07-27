@@ -3,19 +3,8 @@
 import { useRouter } from "next/navigation"
 import {
   Archive,
-  ArrowDownFromLine,
-  CheckCircle,
-  Copy,
   Eye,
   MessageSquare,
-  Pencil,
-  Rocket,
-  RotateCcw,
-  Send,
-  Trash2,
-  Undo2,
-  UserPlus,
-  XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -178,7 +167,6 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
                           case 'withdraw': onWithdrawApproval(item); break
                           case 'publish': onPublish(item); break
                           case 'unpublish': onUnpublish(item); break
-                          case 'archive': onArchive(item); break
                           case 'approve': onReview?.(item.id, "approved"); break
                           case 'reject': onReview?.(item.id, "rejected"); break
                         }
@@ -193,6 +181,17 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
                       >
                         <MessageSquare className="mr-1 h-3 w-3" />
                         查看驳回原因
+                      </Button>
+                    )}
+                    {item.status !== "pending" && item.status !== "archived" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-purple-600 hover:text-purple-700"
+                        onClick={() => onArchive(item)}
+                      >
+                        <Archive className="mr-1 h-3 w-3" />
+                        归档
                       </Button>
                     )}
                   </>
