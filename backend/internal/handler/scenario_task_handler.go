@@ -123,6 +123,10 @@ func (h *ScenarioTaskHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(items) > 0 {
+		h.populateEvalData(r.Context(), items)
+	}
+
 	respondJSON(w, http.StatusOK, ScenarioTaskListResponse{Items: items, Total: total})
 }
 
@@ -138,6 +142,7 @@ func (h *ScenarioTaskHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "task not found")
 		return
 	}
+	h.populateEvalData(r.Context(), []domain.ScenarioTask{*task})
 	respondJSON(w, http.StatusOK, task)
 }
 
@@ -318,6 +323,59 @@ func (h *ScenarioTaskHandler) scanTaskRows(rows pgx.Rows) ([]domain.ScenarioTask
 		items = append(items, t)
 	}
 	return items, nil
+}
+
+func (h *ScenarioTaskHandler) populateEvalData(ctx context.Context, items []domain.ScenarioTask) {
+	if len(items) == 0 {
+		return
+	}
+	taskIDs := make([]string, len(items))
+	for i, it := range items {
+		taskIDs[i] = it.ID
+	}
+
+	rows, err := h.DB.Query(ctx, `
+		SELECT task_id, method_key, weight
+		FROM task_evaluation_methods
+		WHERE task_id = ANY($1) AND is_enabled = true
+		ORDER BY method_key
+	`, taskIDs)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	type methodSummary struct {
+		methods []string
+		weights map[string]float64
+	}
+	methodsByTask := make(map[string]*methodSummary)
+	for rows.Next() {
+		var taskID, methodKey string
+		var weight float64
+		if err := rows.Scan(&taskID, &methodKey, &weight); err != nil {
+			continue
+		}
+		ms, ok := methodsByTask[taskID]
+		if !ok {
+			ms = &methodSummary{weights: make(map[string]float64)}
+			methodsByTask[taskID] = ms
+		}
+		ms.methods = append(ms.methods, methodKey)
+		ms.weights[methodKey] = weight
+	}
+
+	for i := range items {
+		ms, ok := methodsByTask[items[i].ID]
+		if !ok {
+			continue
+		}
+		if items[i].EvalData == nil {
+			items[i].EvalData = make(domain.JSONMap)
+		}
+		items[i].EvalData["evaluationMethods"] = ms.methods
+		items[i].EvalData["methodWeights"] = ms.weights
+	}
 }
 
 func jsonMapBytes(m domain.JSONMap) []byte {
