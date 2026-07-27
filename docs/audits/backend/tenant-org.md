@@ -14,7 +14,8 @@
 - **组织类型管理**：`OrgTypeHandler` 实现 CRUD，组织类型分三类（`internal` 内部 / `business` 业务 / `external` 外部），默认类型受保护不可删除，删除时检查是否被 `organizations` 引用。
 - **用户关系管理**：`UserRelationHandler` 管理用户间的关联关系（发起人 → 目标，含关系类型），创建时校验双方均属于当前租户且不允许自关联，支持按用户名搜索。当前实现为 List/Create/Delete（未提供 Get/Update）。
 - **基础数据**：`majors`（专业）、`industries`（行业两层级树）、`resource_codes`（资源编码）、`staff_titles`（职工职称）均支持租户范围唯一约束。
-- **超管控制台**：`TenantHandler` 提供 `/api/v1/admin/tenants` 路由组，支持跨租户查询、创建、更新、状态变更、删除租户。按产品决策，该路由组不做 JWT 鉴权，仅作为内部隐藏控制台使用。新增 `/api/v1/admin/tenants/{tenantId}/admins` 子路由，支持在 superadmin 控制台对学校管理员进行增删改查及密码预览。
+- **基础数据 Excel 导入/导出/模板下载**：`ResourceImportHandler` 支持行业、专业、组织、学生、教师的 Excel 批量导入与预览；`ResourceExportHandler` 支持组织、学生、教师的 Excel 导出；`TemplateHandler` 提供对应标准模板下载。
+- **超管控制台**：`TenantHandler` 提供 `/api/v1/admin/tenants` 路由组，支持跨租户查询、创建、更新、状态变更、删除租户。按产品决策，该路由组不做 JWT 鉴权，仅作为内部隐藏控制台使用。新增 `/api/v1/admin/tenants/{tenantId}/admins` 子路由，支持在 superadmin 控制台对学校管理员进行增删改查及密码预览；新增 `/api/v1/admin/tenants/{tenantId}/subscription` 子路由，支持查看与更新租户订阅套餐。
 
 ## 检查点
 
@@ -29,8 +30,10 @@
 | login_name 唯一性 | PASS | `tenantID + "_" + rawLoginName` 拼接保证跨租户唯一 |
 | 批量操作 | PASS | `BatchCreate`（事务内去重）、`BatchGraduate`、`BatchDelete` |
 | 基础数据 CRUD | PASS | 专业、行业、资源编码、职工职称、组织类型均支持完整 CRUD |
+| 基础数据 Excel 导入导出 | PASS | 行业/专业/组织/学生/教师导入；组织/学生/教师导出；支持预览与错误行统计 |
+| 基础数据模板下载 | PASS | `TemplateHandler` 提供专业、行业、组织、学生、教师标准模板 |
 | 用户关系管理 | PASS | List/Create/Delete + 租户内校验双方用户存在性；禁止自关联；支持按用户名搜索 |
-| 超管控制台 | PASS | `/admin/tenants` 支持跨租户租户列表/创建/更新/状态/删除；新增学校管理员配置子路由 |
+| 超管控制台 | PASS | `/admin/tenants` 支持跨租户租户列表/创建/更新/状态/删除；新增学校管理员配置及租户订阅管理子路由（功能实现 PASS；鉴权按产品决策未启用，依赖网络层/URL 隐藏保护） |
 
 ## 风险与约束
 

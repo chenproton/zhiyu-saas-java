@@ -18,6 +18,7 @@
 - **操作审计**：`OperationLog` 中间件自动记录所有 POST/PUT/DELETE 操作到 `operation_logs` 表，跳过 `/behavior-collection/` 和 `/view` 路径。
 - **登录日志**：每次登录记录 IP、设备（UA 截断）、状态。
 - **超时保护**：`/api/v1` 路由组全局 30 秒超时。
+- **开发调试接口**：`ENABLE_DEBUG_AUTH=true` 时，`/auth/debug/token` 可按用户 ID 或用户名生成 JWT，仅供本地开发使用，生产环境必须关闭。
 
 ## 检查点
 
@@ -31,7 +32,7 @@
 | 密码安全 | PASS | bcrypt 哈希；密码在 API 响应中始终被剥离 |
 | 操作审计日志 | PASS | `OperationLog` 中间件记录所有写操作；25+ 模块名中文映射 |
 | 登录日志 | PASS | 每次登录记录 IP、设备、状态 |
-| 路由权限分层 | PASS | 公开路由 → 认证路由 → 平台管理员 → 系统管理员 → 业务用户 |
+| 路由权限分层 | PASS | 公开路由 → 认证路由 → 平台管理员 → 系统管理员 → 业务用户；分层清晰。超管控制台 `/api/v1/admin/tenants` 按产品决策未启用 JWT 鉴权，风险另行列出 |
 
 ## 风险与约束
 
