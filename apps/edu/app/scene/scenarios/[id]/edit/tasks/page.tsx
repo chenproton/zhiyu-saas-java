@@ -134,6 +134,10 @@ import { MajorSelect } from "@/components/shared/major-select"
 import { KnowledgePointFormDialog } from "@/components/shared/knowledge-point-form-dialog"
 import { GranularLessonSelectDialog } from "@/components/shared/granular-lesson-select-dialog"
 import { CourseEvalConfig, type CourseEvalData } from "@/app/lesson/admin/_components/eval/course-eval-config"
+import { TaskInfoCard } from "./_components/task-info-card"
+import { TaskDescriptionCard } from "./_components/task-description-card"
+import { TaskWeightCard } from "./_components/task-weight-card"
+import { TaskKnowledgeCard } from "./_components/task-knowledge-card"
 import { useAuth } from "@/components/auth-provider"
 import type {
   Task, PositionAbility, GradeMapping,
@@ -3865,155 +3869,47 @@ function RandomDrawResourcePanel({
 
 // ============ Edit Card Dialog ============
 
-function EditCardDialog({
-  allTasks,
-  taskId,
-  cardType,
-  task,
+
+// ============ EvalRulesPanel (extracted from EditCardDialog) ============
+
+const DEFAULT_RANDOM_DRAW_RESOURCE_CONFIG = { questionCount: 5, difficulty: "mixed", types: { single: true, multiple: true, judge: true }, autoDraw: true, submitFormatDesc: "", venueResources: "" }
+const DEFAULT_REVIEW_RESOURCE_CONFIG = { materialType: "project_report", submitFormatDesc: "请提交 PDF 格式的项目报告，包含完整的项目背景、实现方案、测试结果和总结反思。", deadlineDays: 7, allowResubmit: false, venueResources: "多媒体教室（容纳30人）、投影仪、白板、评委席桌椅、计时器、签到表、评分表及文具。", requiresMaterial: true }
+const DEFAULT_OUTCOME_RESOURCE_CONFIG = { materialType: "project_report", submitFormatDesc: "请提交 PDF 格式的成果材料，包含完整的项目背景、实现方案、测试结果和总结反思。", deadlineDays: 7, allowResubmit: false, venueResources: "多媒体教室（容纳30人）、投影仪、白板、评委席桌椅、计时器、签到表、评分表及文具。", requiresMaterial: true }
+const DEFAULT_HOMEWORK_RESOURCE_CONFIG = { materialType: "homework_file", submitFormatDesc: "请提交 PDF 或 DOCX 格式的作业文件。", deadlineDays: 7, allowResubmit: false, venueResources: "", requiresMaterial: true }
+
+function EvalRulesPanel({
   state,
   updateState,
-  updateTask,
-  allTaskStates,
-  updateAnyState,
-  onClose,
-  positionId,
   toast,
-  positionAbilityBindings,
-  userNameMap,
-  tenantId,
+  positionId,
   majors,
+  tenantId,
   rubricLibrary,
   setRubricLibrary,
+  reviewSteps,
+  setReviewSteps,
 }: {
-  allTasks: Task[]
-  taskId: string
-  cardType: CardType
-  task: Task
   state: TaskState
   updateState: (u: Partial<TaskState>) => void
-  updateTask: (u: Partial<Task>) => void
-  allTaskStates: Record<string, TaskState>
-  updateAnyState: (id: string, u: Partial<TaskState>) => void
-  onClose: () => void
-  positionId?: string
   toast: (opts: { title?: string; description?: string; variant?: "default" | "destructive" }) => void
-  positionAbilityBindings: any[]
-  userNameMap: Record<string, string>
-  tenantId?: string
+  positionId?: string
   majors: any[]
+  tenantId?: string
   rubricLibrary: RubricScheme[]
   setRubricLibrary: React.Dispatch<React.SetStateAction<RubricScheme[]>>
+  reviewSteps: any[]
+  setReviewSteps: React.Dispatch<React.SetStateAction<any[]>>
 }) {
-  const config = cardConfigs.find(c => c.type === cardType)!
-  const [localTask, setLocalTask] = useState({ name: task.name, type: task.taskType, difficulty: task.difficulty, hours: task.estimatedHours, background: task.background })
-  const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
-
-  // For knowledge / ability "create new"
-  const [showAddKnowledge, setShowAddKnowledge] = useState(false)
-  const [newKnowledgeName, setNewKnowledgeName] = useState("")
-  const [newKnowledgeDesc, setNewKnowledgeDesc] = useState("")
-  const [newKnowledgeCategory, setNewKnowledgeCategory] = useState("通用")
-
-  const [showAddAbility, setShowAddAbility] = useState(false)
-  const [newAbilityName, setNewAbilityName] = useState("")
-  const [newAbilityDesc, setNewAbilityDesc] = useState("")
-  const [newAbilityCategory, setNewAbilityCategory] = useState("通用")
-
-  // For evaluation full-screen dialog
-  const [evalDialogOpen, setEvalDialogOpen] = useState(false)
-
-  // For scoring config
-  const [selectedGradeTaskId, setSelectedGradeTaskId] = useState(taskId)
-
-  // For resources filter
-  const [resType, setResType] = useState("all")
-
-  // For ability search
-  const [abilitySearch, setAbilitySearch] = useState("")
-  const [abilityDetailOpen, setAbilityDetailOpen] = useState(false)
-  const [selectedAbilityForDetail, setSelectedAbilityForDetail] = useState<string | null>(null)
-  const [expandedDomains, setExpandedDomains] = useState<Record<string, boolean>>({})
-
-  // For knowledge
-  const [kpSearch, setKpSearch] = useState("")
-  const [kpDetailOpen, setKpDetailOpen] = useState(false)
-  const [selectedKpForDetail, setSelectedKpForDetail] = useState<string | null>(null)
-  const [kpFormOpen, setKpFormOpen] = useState(false)
-  const [kpFormMode, setKpFormMode] = useState<"add" | "clone" | "edit">("add")
-  const [kpFormTarget, setKpFormTarget] = useState<(typeof knowledgePoints)[0] | null>(null)
-  const [kpFormInitial, setKpFormInitial] = useState({ name: "", description: "", code: "", granularLessonIds: [] as string[] })
-  const [glSelectOpen, setGlSelectOpen] = useState(false)
-  const [glSelectTargetKp, setGlSelectTargetKp] = useState<string | null>(null)
-
-  // Determine if a knowledge point is reference (original library) or custom (added/cloned)
-  const isReferenceKp = (kpId: string) => !customKnowledgePointIds.has(kpId)
-
-  // For random draw custom questions (现场问答题)
-  const [rdqSearch, setRdqSearch] = useState("")
-  const [rdqActionOpen, setRdqActionOpen] = useState(false)
-  const [rdqActionMode, setRdqActionMode] = useState<"add" | "edit" | null>(null)
-  const [rdqActionTarget, setRdqActionTarget] = useState<{ id: string; name: string; description: string; answer: string } | null>(null)
-  const [newRdqForm, setNewRdqForm] = useState({ name: "", description: "", answer: "", majorId: "" })
-  const [rdqDetailOpen, setRdqDetailOpen] = useState(false)
-  const [selectedRdqForDetail, setSelectedRdqForDetail] = useState<string | null>(null)
-
-  // For resources search & upload
-  const [resSearchName, setResSearchName] = useState("")
-  const [resSearchProvider, setResSearchProvider] = useState("")
-  const [showUploadRes, setShowUploadRes] = useState(false)
-  const [newResName, setNewResName] = useState("")
-  const [newResType, setNewResType] = useState("document")
-  const [newResUrl, setNewResUrl] = useState("")
-  const [newResDescription, setNewResDescription] = useState("")
-  const [newResAddress, setNewResAddress] = useState("")
-  const [newResOpenTime, setNewResOpenTime] = useState("")
-  const [newResCapacity, setNewResCapacity] = useState("")
-  const [newResContact, setNewResContact] = useState("")
-  const [newResLocation, setNewResLocation] = useState("")
-  const [newResQuantity, setNewResQuantity] = useState("")
-  const [newResVersion, setNewResVersion] = useState("")
-  const [newResLicense, setNewResLicense] = useState("")
-  const [newResFile, setNewResFile] = useState<File | null>(null)
-  const [newResUploading, setNewResUploading] = useState(false)
-  const [showUploadTypePicker, setShowUploadTypePicker] = useState(false)
-
-  // For question bank config
-  const [questionTab, setQuestionTab] = useState<"my" | "collab" | "public">("my")
-  const [questionSearch, setQuestionSearch] = useState("")
-  const [showAddQuestion, setShowAddQuestion] = useState(false)
-  const [newQuestionType, setNewQuestionType] = useState<"single" | "multiple" | "judgment" | "short_answer" | "essay" | "fill_blank">("single")
-  const [newQuestionName, setNewQuestionName] = useState("")
-  const [newQuestionContent, setNewQuestionContent] = useState("")
-  const [newQuestionDifficulty, setNewQuestionDifficulty] = useState<"easy" | "medium" | "hard">("easy")
-  const [newQuestionScore, setNewQuestionScore] = useState(10)
-  const [newQuestionOptions, setNewQuestionOptions] = useState(["", "", "", ""])
-  const [newQuestionAnswer, setNewQuestionAnswer] = useState("")
-  const [newQuestionMultipleAnswer, setNewQuestionMultipleAnswer] = useState<string[]>([])
-  const [newQuestionJudgmentAnswer, setNewQuestionJudgmentAnswer] = useState<"true" | "false">("true")
-  const [newQuestionBank, setNewQuestionBank] = useState("draft")
-  const [questionDetailOpen, setQuestionDetailOpen] = useState(false)
-  const [selectedQuestionForDetail, setSelectedQuestionForDetail] = useState<string | null>(null)
-
-  // For assessment config
-  const [assessActiveTab, setAssessActiveTab] = useState<string | null>(state.evaluationMethods[0] || null)
-
-  // For method dialog view mode (scheme list / scheme edit) — persisted across remounts
   const [methodDialogViews, setMethodDialogViews] = useState<Record<string, "list" | "edit">>({})
   const [newPointName, setNewPointName] = useState("")
-
   const [editingRubricId, setEditingRubricId] = useState<string | null>(null)
 
-  // For evaluation rules
   const [erQSearch, setErQSearch] = useState("")
   const [erPSearch, setErPSearch] = useState("")
   const [erKpSearch, setErKpSearch] = useState("")
   const [erAbSearch, setErAbSearch] = useState("")
-
-  // Dialog states for evaluation rules card layout
   const [erDialogOpen, setErDialogOpen] = useState<"object" | "subject" | "resource" | "method" | null>(null)
   const [erDialogMethod, setErDialogMethod] = useState<string | null>(null)
-
-  // For rubric knowledge/ability multi-select dialogs
   const [rubricKpDialogOpen, setRubricKpDialogOpen] = useState(false)
   const [rubricKpSearch, setRubricKpSearch] = useState("")
   const [rubricKpTargetPointId, setRubricKpTargetPointId] = useState<string | null>(null)
@@ -4022,12 +3918,19 @@ function EditCardDialog({
   const [rubricAbSearch, setRubricAbSearch] = useState("")
   const [rubricAbTargetPointId, setRubricAbTargetPointId] = useState<string | null>(null)
   const [rubricAbTargetField, setRubricAbTargetField] = useState<string | null>(null)
+  const [questionTab, setQuestionTab] = useState<"my" | "collab" | "public">("my")
+  const [questionSearch, setQuestionSearch] = useState("")
+  const [showAddQuestion, setShowAddQuestion] = useState(false)
+  const [questionDetailOpen, setQuestionDetailOpen] = useState(false)
+  const [selectedQuestionForDetail, setSelectedQuestionForDetail] = useState<string | null>(null)
 
-  // Default resource configs (used when a method is first enabled)
-  const DEFAULT_REVIEW_RESOURCE_CONFIG = { materialType: "project_report", submitFormatDesc: "请提交 PDF 格式的项目报告，包含完整的项目背景、实现方案、测试结果和总结反思。", deadlineDays: 7, allowResubmit: false, venueResources: "多媒体教室（容纳30人）、投影仪、白板、评委席桌椅、计时器、签到表、评分表及文具。", requiresMaterial: true }
-  const DEFAULT_OUTCOME_RESOURCE_CONFIG = { materialType: "project_report", submitFormatDesc: "请提交 PDF 格式的成果材料，包含完整的项目背景、实现方案、测试结果和总结反思。", deadlineDays: 7, allowResubmit: false, venueResources: "多媒体教室（容纳30人）、投影仪、白板、评委席桌椅、计时器、签到表、评分表及文具。", requiresMaterial: true }
-  const DEFAULT_HOMEWORK_RESOURCE_CONFIG = { materialType: "homework_file", submitFormatDesc: "请提交 PDF 或 DOCX 格式的作业文件。", deadlineDays: 7, allowResubmit: false, venueResources: "", requiresMaterial: true }
-  const DEFAULT_RANDOM_DRAW_RESOURCE_CONFIG = { questionCount: 5, difficulty: "mixed", types: { single: true, multiple: true, judge: true }, autoDraw: true, submitFormatDesc: "", venueResources: "" }
+  const [editingReviewStepId, setEditingReviewStepId] = useState<string | null>(null)
+  const [editingStepLabel, setEditingStepLabel] = useState("")
+  const [editingStepDesc, setEditingStepDesc] = useState("")
+  const [showAddStep, setShowAddStep] = useState(false)
+  const [newStepLabel, setNewStepLabel] = useState("")
+  const [newStepDesc, setNewStepDesc] = useState("")
+  const [newStepSubjectType, setNewStepSubjectType] = useState("")
 
   const [selectedPaperForDetail, setSelectedPaperForDetail] = useState<string | null>(null)
   const [paperDetailOpen, setPaperDetailOpen] = useState(false)
@@ -4038,1632 +3941,25 @@ function EditCardDialog({
   const [newPaperQuestionCount, setNewPaperQuestionCount] = useState(10)
   const [newPaperTotalScore, setNewPaperTotalScore] = useState(100)
 
-  const [reviewSteps, setReviewSteps] = useState([
-    { id: "rs-1", label: "初评", desc: "由指导教师进行第一轮评审", enabled: true, subjectType: "teacher" as string | null, weight: 40 },
-    { id: "rs-2", label: "复评", desc: "由专家组进行第二轮复核", enabled: false, subjectType: null as string | null, weight: 30 },
-    { id: "rs-3", label: "终评", desc: "答辩委员会最终评定", enabled: false, subjectType: null as string | null, weight: 30 },
-  ])
+  const [rdqSearch, setRdqSearch] = useState("")
+  const [rdqActionOpen, setRdqActionOpen] = useState(false)
+  const [rdqActionMode, setRdqActionMode] = useState<"add" | "edit" | null>(null)
+  const [rdqActionTarget, setRdqActionTarget] = useState<{ id: string; name: string; description: string; answer: string } | null>(null)
+  const [newRdqForm, setNewRdqForm] = useState({ name: "", description: "", answer: "", majorId: "" })
+  const [rdqDetailOpen, setRdqDetailOpen] = useState(false)
+  const [selectedRdqForDetail, setSelectedRdqForDetail] = useState<string | null>(null)
+
+  const [newQuestionType, setNewQuestionType] = useState<"single" | "multiple" | "judgment" | "short_answer" | "essay" | "fill_blank">("single")
+  const [newQuestionName, setNewQuestionName] = useState("")
+  const [newQuestionContent, setNewQuestionContent] = useState("")
+  const [newQuestionDifficulty, setNewQuestionDifficulty] = useState<"easy" | "medium" | "hard">("easy")
+  const [newQuestionScore, setNewQuestionScore] = useState(10)
+  const [newQuestionOptions, setNewQuestionOptions] = useState(["", "", "", ""])
+  const [newQuestionAnswer, setNewQuestionAnswer] = useState("")
+  const [newQuestionMultipleAnswer, setNewQuestionMultipleAnswer] = useState<string[]>([])
+  const [newQuestionJudgmentAnswer, setNewQuestionJudgmentAnswer] = useState<"true" | "false">("true")
+  const [newQuestionBank, setNewQuestionBank] = useState("draft")
 
-  useEffect(() => {
-    if (state.reviewSteps && state.reviewSteps.length > 0) {
-      setReviewSteps(state.reviewSteps.map((rs: any) => ({
-        id: rs.id || `rs-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-        label: rs.label,
-        desc: rs.desc || "",
-        enabled: rs.enabled,
-        subjectType: rs.subjectType,
-        weight: rs.weight,
-      })))
-    }
-  }, [state.reviewSteps])
-
-  const [editingReviewStepId, setEditingReviewStepId] = useState<string | null>(null)
-  const [editingStepLabel, setEditingStepLabel] = useState("")
-  const [editingStepDesc, setEditingStepDesc] = useState("")
-  const [showAddStep, setShowAddStep] = useState(false)
-  const [newStepLabel, setNewStepLabel] = useState("")
-  const [newStepDesc, setNewStepDesc] = useState("")
-  const [newStepSubjectType, setNewStepSubjectType] = useState("")
-
-  const ensureTempExam = async (mk: "question_bank" | "quiz", currentCfg: any): Promise<string | null> => {
-    const questionIds = mk === "question_bank" ? state.questionBankQuestions : state.quizQuestions
-    const existingExamId = currentCfg?.examId
-    const questionScores = currentCfg?.questionScores || {}
-    const existingQuestionIds = currentCfg?.examQuestionIds || []
-    if (!questionIds || questionIds.length === 0) {
-      if (existingExamId) {
-        try {
-          const usages = await examUsageApi.list({ examId: existingExamId })
-          for (const u of usages.items || []) await examUsageApi.delete(u.id)
-          await examApi.delete(existingExamId)
-        } catch { /* ignore */ }
-      }
-      return null
-    }
-    const sortedNew = [...questionIds].sort().join(",")
-    const sortedOld = [...existingQuestionIds].sort().join(",")
-    if (existingExamId && sortedNew === sortedOld) return existingExamId
-    if (existingExamId) {
-      try {
-        const usages = await examUsageApi.list({ examId: existingExamId })
-        for (const u of usages.items || []) await examUsageApi.delete(u.id)
-        await examApi.delete(existingExamId)
-      } catch { /* ignore */ }
-    }
-    const label = mk === "question_bank" ? "题库" : "随堂测"
-    const examName = `${task.name}-${label}临时试卷`
-    // If name already taken, lookup existing exam; else create new with unique name
-    let exam: any
-    try {
-      exam = await examApi.create({ name: examName, duration: currentCfg?.timeLimit || 90, isTemp: true } as any)
-    } catch {
-      // Name conflict — append timestamp to make unique
-      exam = await examApi.create({ name: `${examName}-${Date.now()}`, duration: currentCfg?.timeLimit || 90, isTemp: true } as any)
-    }
-    for (const qid of questionIds) {
-      await examApi.addQuestion(exam.id, qid, questionScores[qid] || 10)
-    }
-    await examUsageApi.create({ examId: exam.id, name: `${exam.name} 默认安排`, targetType: "public", targetIds: [taskId] } as any)
-    return exam.id
-  }
-
-  const handleSave = async () => {
-    if (cardType === "info") {
-      updateTask({ name: localTask.name, taskType: localTask.type as "assessment"|"training", difficulty: localTask.difficulty as 1|2|3|4|5, estimatedHours: localTask.hours, background: localTask.background })
-    } else if (cardType === "evaluationRules") {
-      const toTaskEvalPoint = (ep: EvalPoint): import("@/lib/mock-data").TaskEvalPoint => {
-        const gmMax = ep.gradeMapping && ep.gradeMapping.length > 0
-          ? Math.max(...ep.gradeMapping.map(g => g.maxScore))
-          : 100
-        return {
-          id: ep.id,
-          name: ep.name,
-          desc: ep.desc,
-          weight: ep.weight || 0,
-          maxScore: ep.weight || gmMax,
-          scoringMethod: ep.scoringMethod,
-          gradeMapping: ep.gradeMapping,
-          subType: ep.subType,
-          types: ep.types,
-          knowledgePointIds: ep.knowledgePointIds,
-          abilityPointIds: ep.abilityPointIds,
-        }
-      }
-      const enabledReviewSteps = reviewSteps.filter(s => s.enabled).map(s => ({
-        id: s.id,
-        label: s.label,
-        desc: s.desc,
-        enabled: s.enabled,
-        subjectType: s.subjectType,
-        weight: s.weight,
-      }))
-      updateTask({
-        evalPoints: {
-          randomDraw: state.randomDrawEvalPoints.map(toTaskEvalPoint),
-          review: state.reviewEvalPoints.map(toTaskEvalPoint),
-          paper: state.paperEvalPoints.map(toTaskEvalPoint),
-          questionBank: state.questionBankEvalPoints.map(toTaskEvalPoint),
-        },
-        reviewSteps: enabledReviewSteps,
-      })
-      // Ensure newly-enabled methods have default resource configs and sync review steps to task state
-      const updatedRC = { ...state.methodResourceConfigs }
-      state.evaluationMethods.forEach(mk => {
-        if (mk === "random_draw") updatedRC[mk] = { ...DEFAULT_RANDOM_DRAW_RESOURCE_CONFIG, ...updatedRC[mk] }
-        if (mk === "review") updatedRC[mk] = { ...DEFAULT_REVIEW_RESOURCE_CONFIG, ...updatedRC[mk] }
-        if (mk === "outcome") updatedRC[mk] = { ...DEFAULT_OUTCOME_RESOURCE_CONFIG, ...updatedRC[mk] }
-        if (mk === "homework") updatedRC[mk] = { ...DEFAULT_HOMEWORK_RESOURCE_CONFIG, ...updatedRC[mk] }
-      })
-      updateState({ methodResourceConfigs: updatedRC, reviewSteps: enabledReviewSteps })
-      // Persist evaluation methods (including resource config) to backend immediately
-      let currentVersion = state.evalMethodVersion
-      let methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC }, { reviewSteps })
-      if (methodsInput.length > 0) {
-        try {
-          const savedRes = await taskEvaluationApi.saveMethods(taskId, { version: currentVersion, methods: methodsInput })
-          currentVersion = savedRes.methods.reduce((max, m) => Math.max(max, m.version || 0), 0)
-          updateState({ evalMethodVersion: currentVersion })
-        } catch (err: any) {
-          toast({ variant: "destructive", title: "评价规则保存失败", description: err.message })
-          return
-        }
-      }
-      // Generate temp exams for question_bank / quiz and persist examId back
-      const tempExamMethods = methodsInput.filter(m => m.methodKey === "question_bank" || m.methodKey === "quiz")
-      if (tempExamMethods.length > 0) {
-        for (const m of tempExamMethods) {
-          try {
-            const mk = m.methodKey as "question_bank" | "quiz"
-            const examId = await ensureTempExam(mk, updatedRC[mk])
-            if (examId) {
-              updatedRC[mk] = { ...updatedRC[mk], examId, examQuestionIds: mk === "question_bank" ? state.questionBankQuestions : state.quizQuestions }
-            }
-          } catch { /* temp exam creation failed, skip */ }
-        }
-        updateState({ methodResourceConfigs: updatedRC })
-        methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC }, { reviewSteps })
-        try {
-          const savedRes = await taskEvaluationApi.saveMethods(taskId, { version: currentVersion, methods: methodsInput })
-          currentVersion = savedRes.methods.reduce((max, m) => Math.max(max, m.version || 0), 0)
-          updateState({ evalMethodVersion: currentVersion })
-        } catch { /* ignore */ }
-      }
-      // Ensure exam usage exists for paper so students can access it from the landing page
-      if (state.evaluationMethods.includes("paper") && state.paperIds.length > 0) {
-        const paperId = state.paperIds[0]
-        try {
-          const usages = await examUsageApi.list({ examId: paperId })
-          if ((usages.items || []).length === 0) {
-            const paperCfg = updatedRC.paper || {}
-            await examUsageApi.create({
-              examId: paperId,
-              name: `${task.name}-试卷默认安排`,
-              targetType: "public",
-              targetIds: [taskId],
-              duration: paperCfg.duration || 90,
-            } as any)
-          }
-        } catch { /* ignore */ }
-      }
-    }
-    onClose()
-  }
-
-  const handleAddKnowledge = () => {
-    if (!newKnowledgeName.trim()) return
-    const newId = generateUUID()
-    customKnowledgePointIds.add(newId)
-    knowledgePoints.push({ id: newId, name: newKnowledgeName.trim(), description: newKnowledgeDesc.trim(), category: newKnowledgeCategory })
-    updateState({ knowledgePoints: [...state.knowledgePoints, newId] })
-    setNewKnowledgeName("")
-    setNewKnowledgeDesc("")
-    setShowAddKnowledge(false)
-  }
-
-  const handleAddAbility = () => {
-    if (!newAbilityName.trim()) return
-    const newId = generateUUID()
-    customAbilityPointIds.add(newId)
-    abilityPoints.push({ id: newId, name: newAbilityName.trim(), description: newAbilityDesc.trim(), category: newAbilityCategory })
-    updateState({ abilityPoints: [...state.abilityPoints, newId] })
-    setNewAbilityName("")
-    setNewAbilityDesc("")
-    setShowAddAbility(false)
-  }
-
-  const validateResourceFile = (file: File, type: string): string | null => {
-    if (file.size > RESOURCE_MAX_FILE_SIZE) {
-      return "文件大小超过 100MB"
-    }
-    const allowed = resourceTypeExtensionMap[type] || []
-    if (allowed.length === 0) return null
-    const ext = file.name.split(".").pop()?.toLowerCase() || ""
-    if (!allowed.includes(ext)) {
-      return `不支持的文件格式，请上传 ${allowed.map(e => `.${e}`).join("、")} 文件`
-    }
-    return null
-  }
-
-  const handleUploadResource = async () => {
-    if (!newResName.trim()) return
-
-    const fileTypes = ["document", "spreadsheet", "image", "audio", "video", "archive", "other", "software"]
-    const isFileType = fileTypes.includes(newResType)
-    let fileUrl = newResUrl.trim()
-    let uploadedSize: number | undefined
-
-    if (isFileType && newResFile) {
-      const err = validateResourceFile(newResFile, newResType)
-      if (err) {
-        toast({ variant: "destructive", title: "文件校验失败", description: err })
-        return
-      }
-      setNewResUploading(true)
-      try {
-        const res = await fileApi.upload(newResFile)
-        fileUrl = res.url
-        uploadedSize = res.size
-      } catch (err: any) {
-        toast({ variant: "destructive", title: "上传失败", description: err.message })
-        return
-      } finally {
-        setNewResUploading(false)
-      }
-    }
-
-    if (newResType === "link" && !fileUrl) {
-      toast({ variant: "destructive", title: "请填写链接地址" })
-      return
-    }
-
-    const newId = `lr-upload-${Date.now()}`
-    let extraData: Record<string, any> = {}
-    switch (newResType) {
-      case "link":
-        extraData = { url: fileUrl, description: newResDescription.trim() }
-        break
-      case "venue":
-        extraData = { address: newResAddress.trim(), openTime: newResOpenTime.trim(), capacity: newResCapacity.trim(), contact: newResContact.trim(), description: newResDescription.trim() }
-        break
-      case "facility":
-        extraData = { location: newResLocation.trim(), quantity: newResQuantity.trim(), description: newResDescription.trim() }
-        break
-      case "software":
-        extraData = { version: newResVersion.trim(), url: fileUrl, license: newResLicense.trim(), description: newResDescription.trim() }
-        break
-      default:
-        extraData = { description: newResDescription.trim() }
-        break
-    }
-
-    const thumbnail = newResType === "image" && fileUrl ? fileUrl : "/placeholder.svg"
-    const newRes = {
-      id: newId,
-      name: newResName.trim(),
-      type: newResType as any,
-      url: fileUrl,
-      description: newResDescription.trim(),
-      knowledgePoints: [],
-      size: uploadedSize !== undefined ? `${uploadedSize}` : undefined,
-      uploadedAt: new Date().toISOString().slice(0, 10),
-      uploadedBy: "当前用户",
-      thumbnail,
-      extraData,
-      ...extraData,
-    }
-    customResourceIds.add(newId)
-    learningResources.push(newRes as any)
-    updateState({ resources: [...state.resources, newId] })
-    setNewResName("")
-    setNewResType("document")
-    setNewResUrl("")
-    setNewResFile(null)
-    setNewResUploading(false)
-    setNewResDescription("")
-    setNewResAddress("")
-    setNewResOpenTime("")
-    setNewResCapacity("")
-    setNewResContact("")
-    setNewResLocation("")
-    setNewResQuantity("")
-    setNewResVersion("")
-    setNewResLicense("")
-    setShowUploadRes(false)
-    toast({ title: "资源已上传并选中" })
-  }
-
-  // Rich text editor mock toolbar items
-  const toolbarItems = [
-    [{ icon: <Heading1 className="h-4 w-4" />, label: "H1" }, { icon: <Heading2 className="h-4 w-4" />, label: "H2" }],
-    [{ icon: <Type className="h-4 w-4" />, label: "正文" }],
-    [{ icon: <b className="text-xs">B</b>, label: "加粗" }, { icon: <i className="text-xs">I</i>, label: "斜体" }, { icon: <u className="text-xs">U</u>, label: "下划线" }, { icon: <Strikethrough className="h-4 w-4" />, label: "删除线" }],
-    [{ icon: <AlignLeft className="h-4 w-4" />, label: "左对齐" }, { icon: <AlignCenter className="h-4 w-4" />, label: "居中" }, { icon: <AlignRight className="h-4 w-4" />, label: "右对齐" }],
-    [{ icon: <List className="h-4 w-4" />, label: "无序列表" }, { icon: <ListOrdered className="h-4 w-4" />, label: "有序列表" }],
-    [{ icon: <Quote className="h-4 w-4" />, label: "引用" }, { icon: <Code className="h-4 w-4" />, label: "代码" }],
-    [{ icon: <LinkIcon className="h-4 w-4" />, label: "链接" }, { icon: <Image className="h-4 w-4" />, label: "图片" }, { icon: <Video className="h-4 w-4" />, label: "视频" }],
-    [{ icon: <Table className="h-4 w-4" />, label: "表格" }, { icon: <Minus className="h-4 w-4" />, label: "分割线" }],
-    [{ icon: <Palette className="h-4 w-4" />, label: "字体颜色" }, { icon: <Sparkles className="h-4 w-4" />, label: "背景色" }],
-  ]
-
-  const renderContent = () => {
-    switch (cardType) {
-      case "info":
-        return (
-          <div className="space-y-4">
-            <div><Label>任务名称</Label><Input value={localTask.name} onChange={e => setLocalTask({ ...localTask, name: e.target.value })} className="mt-1.5" /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>任务类型</Label><Select value={localTask.type} onValueChange={v => setLocalTask({ ...localTask, type: v as "assessment"|"training" })}><SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="training">训练</SelectItem><SelectItem value="assessment">考核</SelectItem></SelectContent></Select></div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <Label>预估学时</Label>
-                  <span className="text-xs text-gray-400">学生完成任务的预估时长</span>
-                </div>
-                <Input type="number" value={localTask.hours} onChange={e => setLocalTask({ ...localTask, hours: +e.target.value })} className="mt-1.5" />
-              </div>
-            </div>
-            <div><Label>难度</Label><div className="flex gap-1 mt-1.5">{([1,2,3,4,5] as const).map(n => <button key={n} onClick={() => setLocalTask({ ...localTask, difficulty: n })}><Star className={cn("h-6 w-6", n <= localTask.difficulty ? "fill-amber-400 text-amber-400" : "text-gray-200")} /></button>)}</div></div>
-            <div><Label>背景</Label><Textarea value={localTask.background} onChange={e => setLocalTask({ ...localTask, background: e.target.value })} className="mt-1.5" rows={3} /></div>
-          </div>
-        )
-
-      case "description": {
-        const [descMode, setDescMode] = useState<"rich_text" | "pdf">("rich_text")
-        const [pdfUploading, setPdfUploading] = useState(false)
-        const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false)
-        const pdfInputRef = useRef<HTMLInputElement>(null)
-
-        const pdfFileName = state.descriptionPdf ? state.descriptionPdf.split('/').pop() || state.descriptionPdf : ""
-
-        const handlePdfUpload = async (file: File) => {
-          if (!file) return
-          if (file.type !== "application/pdf") {
-            toast({ variant: "destructive", title: "请上传 PDF 文件" })
-            return
-          }
-          if (file.size > 20 * 1024 * 1024) {
-            toast({ variant: "destructive", title: "文件大小超过 20MB" })
-            return
-          }
-          setPdfUploading(true)
-          try {
-            const res = await fileApi.upload(file)
-            updateState({ descriptionPdf: res.url })
-            toast({ title: "上传成功" })
-          } catch (err: any) {
-            toast({ variant: "destructive", title: "上传失败", description: err.message })
-          } finally {
-            setPdfUploading(false)
-          }
-        }
-
-        const onPdfDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          const file = e.dataTransfer.files?.[0]
-          if (file) handlePdfUpload(file)
-        }
-
-        return (
-          <div className="space-y-3 h-full flex flex-col">
-            <Tabs value={descMode} onValueChange={v => setDescMode(v as "rich_text" | "pdf")}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="rich_text">富文本编辑</TabsTrigger>
-                <TabsTrigger value="pdf">上传任务说明书</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            {descMode === "rich_text" ? (
-              <div className="flex-1 flex flex-col min-h-0">
-                <p className="text-xs text-gray-500 mb-2">可编写详细的操作手册，支持图文混排</p>
-                <div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-[450px]">
-                  {/* Mock Toolbar */}
-                  <div className="bg-gray-50 border-b px-3 py-2 flex flex-wrap gap-1">
-                    {toolbarItems.map((group, gi) => (
-                      <div key={gi} className="flex items-center gap-0.5 mr-2">
-                        {group.map((item, ii) => (
-                          <Button key={ii} variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-600 hover:text-primary hover:bg-primary/5" title={item.label}>
-                            {item.icon}
-                          </Button>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                  {/* Mock Editor Area */}
-                  <div className="p-4 flex-1 bg-white">
-                    <Textarea
-                      value={state.description}
-                      onChange={e => updateState({ description: e.target.value })}
-                      placeholder={`任务描述
-
-你需要完成 [具体任务]。该任务基于 [背景/前提]，要求你 [核心动作]。执行时请注意 [关键约束]，确保理解需求后再开始。
-
-任务目标
-
-• 核心目标：[一句话概括最终成果]
-• 目标一：[具体子目标]
-• 目标二：[具体子目标]
-• 目标三：[具体子目标]
-• 成功标准：[任务完成的具体标志]
-
-任务结果
-
-请提交以下内容：
-
-• 主交付物：[如报告/代码/方案]
-• 格式要求：[如 Markdown/JSON/纯文本]
-• 附属说明：[假设、来源、取舍等]
-• 篇幅要求：[如不少于 500 字/代码 100 行内]
-
-测评要求
-
-• 准确性（30%）：内容正确，逻辑清晰，来源可靠
-• 完整性（25%）：覆盖所有子目标，无遗漏
-• 清晰度（20%）：结构分明，表达简洁
-• 实用性（15%）：结论可操作，建议可落地
-• 规范性（10%）：符合格式，术语统一，无明显错误
-
-一票否决项：若出现 [如抄袭/泄密/核心事实错误]，视为未通过。`}
-                      className="border-0 min-h-full w-full focus-visible:ring-0 resize-none text-sm leading-relaxed"
-                    />
-                  </div>
-                  {/* Mock Status Bar */}
-                  <div className="bg-gray-50 border-t px-3 py-1.5 flex items-center justify-between text-xs text-gray-400">
-                    <span>纯文本模式</span>
-                    <span>{state.description.length} 字符</span>
-                  </div>
-                </div>
-                {state.description.includes('<img') || state.description.includes('<video') ? (
-                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm text-blue-700 flex items-center gap-2 mt-2">
-                    <Image className="h-4 w-4" />
-                    检测到已插入多媒体内容
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <div
-                className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-8 space-y-4 cursor-pointer hover:border-primary/30 hover:bg-gray-50/50 transition-colors"
-                onClick={() => !pdfUploading && pdfInputRef.current?.click()}
-                onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
-                onDrop={onPdfDrop}
-              >
-                <input
-                  ref={pdfInputRef}
-                  type="file"
-                  accept="application/pdf"
-                  className="hidden"
-                  onChange={e => {
-                    const file = e.target.files?.[0]
-                    if (file) handlePdfUpload(file)
-                    e.target.value = ""
-                  }}
-                />
-                {state.descriptionPdf ? (
-                  <div className="text-center space-y-3 pointer-events-none">
-                    <div className="w-24 h-32 bg-red-50 border border-red-200 rounded-lg flex flex-col items-center justify-center mx-auto">
-                      <File className="h-10 w-10 text-red-500 mb-2" />
-                      <span className="text-[10px] text-red-600 font-medium">PDF</span>
-                    </div>
-                    <p className="text-sm font-medium text-gray-700 max-w-xs truncate">{pdfFileName}</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center">
-                      {pdfUploading ? <Loader2 className="h-8 w-8 text-gray-400 animate-spin" /> : <Upload className="h-8 w-8 text-gray-400" />}
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm font-medium text-gray-700">点击或拖拽上传任务说明书</p>
-                      <p className="text-xs text-gray-500 mt-1">支持 PDF 格式，最大 20MB</p>
-                    </div>
-                  </>
-                )}
-                {state.descriptionPdf && (
-                  <div className="flex items-center gap-2 pointer-events-auto" onClick={e => e.stopPropagation()}>
-                    <Button variant="outline" size="sm" onClick={() => setPdfPreviewOpen(true)}>
-                      <Eye className="h-4 w-4 mr-1" />预览
-                    </Button>
-                    <Button variant="outline" size="sm" disabled={pdfUploading} onClick={() => pdfInputRef.current?.click()}>
-                      <Upload className="h-4 w-4 mr-1" />重新上传
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => updateState({ descriptionPdf: null })}>
-                      <Trash2 className="h-4 w-4 mr-1" />移除文件
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* PDF Preview Dialog */}
-            <Dialog open={pdfPreviewOpen} onOpenChange={setPdfPreviewOpen}>
-              <DialogContent className="sm:max-w-4xl h-[80vh] flex flex-col">
-                <DialogHeader className="shrink-0">
-                  <DialogTitle className="flex items-center gap-2">
-                    <File className="h-5 w-5 text-red-500" />
-                    <span className="truncate">{pdfFileName || "任务说明书预览"}</span>
-                  </DialogTitle>
-                </DialogHeader>
-                <div className="flex-1 min-h-0 border rounded-lg overflow-hidden bg-gray-50">
-                  {state.descriptionPdf ? (
-                    <iframe
-                      src={state.descriptionPdf}
-                      title={pdfFileName || "PDF 预览"}
-                      className="w-full h-full"
-                    />
-                  ) : (
-                    <div className="h-full flex items-center justify-center text-gray-400">暂无文件</div>
-                  )}
-                </div>
-                <DialogFooter className="shrink-0 gap-2">
-                  <Button variant="outline" onClick={() => setPdfPreviewOpen(false)}>关闭</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-        )
-      }
-
-      case "knowledge": {
-        const filteredKp = knowledgePoints.filter(k => !kpSearch || (k.name || "").includes(kpSearch) || (k.description || "").includes(kpSearch) || (k.code || "").includes(kpSearch))
-        const hasResults = kpSearch ? filteredKp.length > 0 : false
-
-        const generateKpCode = () => `KP-${Date.now().toString().slice(-6)}`
-
-        const handleReferenceKp = (kpId: string) => {
-          if (state.knowledgePoints.includes(kpId)) return
-          updateState({ knowledgePoints: [...state.knowledgePoints, kpId] })
-        }
-
-        const handleRemoveKp = (kpId: string) => {
-          updateState({ knowledgePoints: state.knowledgePoints.filter(x => x !== kpId) })
-        }
-
-        const openAddKp = () => {
-          setKpFormMode("add")
-          setKpFormTarget(null)
-          setKpFormInitial({ name: kpSearch, description: "", code: generateKpCode(), granularLessonIds: [] })
-          setKpFormOpen(true)
-        }
-
-        const openCloneKp = (kp: (typeof knowledgePoints)[0]) => {
-          setKpFormMode("clone")
-          setKpFormTarget(kp)
-          setKpFormInitial({ name: `${kp.name}（克隆）`, description: kp.description || "", code: generateKpCode(), granularLessonIds: kp.granularLessons || [] })
-          setKpFormOpen(true)
-        }
-
-        const openEditKp = (kp: (typeof knowledgePoints)[0]) => {
-          setKpFormMode("edit")
-          setKpFormTarget(kp)
-          setKpFormInitial({ name: kp.name, description: kp.description || "", code: kp.code || generateKpCode(), granularLessonIds: kp.granularLessons || [] })
-          setKpFormOpen(true)
-        }
-
-        const handleSaveKp = (values: { name: string; description: string; code: string; granularLessonIds: string[] }) => {
-          if (kpFormMode === "edit" && kpFormTarget) {
-            const kp = knowledgePoints.find(k => k.id === kpFormTarget.id)
-            if (kp) {
-              kp.name = values.name.trim()
-              kp.description = values.description.trim()
-              kp.code = values.code
-              kp.granularLessons = values.granularLessonIds
-            }
-            setKpFormOpen(false)
-            return
-          }
-          const newId = generateUUID()
-          const newKp = {
-            id: newId,
-            name: values.name.trim(),
-            description: values.description.trim(),
-            code: values.code,
-            granularLessons: values.granularLessonIds,
-          }
-          knowledgePoints.push(newKp as any)
-          customKnowledgePointIds.add(newId)
-          updateState({ knowledgePoints: [...state.knowledgePoints, newId] })
-          setKpFormOpen(false)
-          setKpSearch("")
-        }
-
-        const handleCreateGranularLesson = async (): Promise<string | undefined> => {
-          const baseName = kpFormInitial.name || "新建颗粒课"
-          try {
-            const created = await courseApi.create({
-              name: `基于「${baseName}」的颗粒课`,
-              type: "granular",
-              category: "专业基础",
-            } as any)
-            const newCourseId = created.id
-            granularLessons.push({ id: newCourseId, name: created.name, code: created.code, description: created.description })
-            setKpFormInitial(prev => ({ ...prev, granularLessonIds: [...prev.granularLessonIds, newCourseId] }))
-            if (kpFormMode === "edit" && kpFormTarget) {
-              const kp = knowledgePoints.find(k => k.id === kpFormTarget.id)
-              if (kp) {
-                kp.granularLessons = [...(kp.granularLessons || []), newCourseId]
-                updateState({ knowledgePoints: [...state.knowledgePoints] })
-              }
-            }
-            if (confirm("占位颗粒课已创建并关联，是否立即前往完善？")) {
-              window.open(`/lesson/admin/granular/add?id=${newCourseId}`, "_blank")
-            }
-            return newCourseId
-          } catch (err: any) {
-            return undefined
-          }
-        }
-
-        const openGlSelect = (kpId: string) => {
-          setGlSelectTargetKp(kpId)
-          setGlSelectOpen(true)
-        }
-
-        const handleToggleGlForKp = (glIds: string[]) => {
-          const kp = knowledgePoints.find(k => k.id === glSelectTargetKp)
-          if (!kp) return
-          kp.granularLessons = glIds
-          updateState({ knowledgePoints: [...state.knowledgePoints] })
-        }
-
-        const detailKp = selectedKpForDetail ? knowledgePoints.find(k => k.id === selectedKpForDetail) : null
-        const detailGranularLessons = detailKp?.granularLessons?.map((gid: any) => granularLessons.find((g: any) => g.id === gid)).filter(Boolean) || []
-
-        const glTargetKp = glSelectTargetKp ? knowledgePoints.find(k => k.id === glSelectTargetKp) : null
-        const glSelectedIds = glTargetKp?.granularLessons || []
-
-        return (
-          <div className="h-full flex flex-col">
-            {/* Search Bar + Add Button */}
-            <div className="flex items-center gap-3 mb-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  value={kpSearch}
-                  onChange={e => setKpSearch(e.target.value)}
-                  placeholder="搜索知识点名称、描述或编码..."
-                  className="pl-9"
-                />
-              </div>
-              <Button onClick={openAddKp}>
-                <Plus className="h-4 w-4 mr-1" />新增知识点
-              </Button>
-            </div>
-
-            <div className="flex gap-4 flex-1 min-h-0">
-              {/* Left: Search Results */}
-              <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
-                <p className="text-sm font-medium mb-3 text-gray-700">
-                  {kpSearch ? `搜索结果 (${filteredKp.length})` : "全部知识点"}
-                </p>
-                <div className="flex-1 overflow-y-auto pr-1">
-                  {!kpSearch && filteredKp.length === 0 && (
-                    <div className="text-center text-gray-400 py-8">
-                      <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">请输入关键词搜索知识点</p>
-                    </div>
-                  )}
-                  {kpSearch && !hasResults && (
-                    <div className="p-6 text-center text-gray-500 text-sm border border-dashed rounded-lg">
-                      <p className="mb-2">未找到 "{kpSearch}" 相关的知识点</p>
-                      <Button variant="outline" size="sm" onClick={openAddKp}>
-                        <Plus className="h-3 w-3 mr-1" />新增此知识点
-                      </Button>
-                    </div>
-                  )}
-                  {filteredKp.length > 0 && (
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50 sticky top-0 z-10">
-                        <tr>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[28%]">知识点名称</th>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[18%]">知识点编码</th>
-                          <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[34%]">知识点描述</th>
-                          <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {filteredKp.map(kp => {
-                          const isSelected = state.knowledgePoints.includes(kp.id)
-                          return (
-                            <tr key={kp.id} className={cn("hover:bg-gray-50 transition-colors", isSelected ? "bg-primary/[0.03]" : "")}>
-                              <td className="px-3 py-2">
-                                <span className="text-sm font-medium text-gray-800">{kp.name}</span>
-                              </td>
-                              <td className="px-3 py-2">
-                                {kp.code ? (
-                                  <Badge variant="outline" className="text-[10px] h-5 px-1.5">{kp.code}</Badge>
-                                ) : (
-                                  <span className="text-xs text-gray-400">-</span>
-                                )}
-                              </td>
-                              <td className="px-3 py-2">
-                                <p className="text-xs text-gray-500 line-clamp-1" title={kp.description}>{kp.description}</p>
-                              </td>
-                              <td className="px-3 py-2">
-                                <div className="flex items-center justify-end gap-1">
-                                  <PrdAnnotation data={getAnnotation("kp-action-detail")}>
-                                    <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary" onClick={() => { setSelectedKpForDetail(kp.id); setKpDetailOpen(true) }}>
-                                      详情
-                                    </Button>
-                                  </PrdAnnotation>
-                                  {isSelected ? (
-                                    <PrdAnnotation data={getAnnotation("kp-action-cancel")}>
-                                      <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => handleRemoveKp(kp.id)}>
-                                        取消
-                                      </Button>
-                                    </PrdAnnotation>
-                                  ) : (
-                                    <>
-                                      <Button size="sm" className="h-6 text-[11px] px-2" onClick={() => handleReferenceKp(kp.id)}>
-                                        引用
-                                      </Button>
-                                      <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => openCloneKp(kp)}>
-                                        克隆
-                                      </Button>
-                                    </>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              </div>
-
-              {/* Right: Selected Knowledge Points - Compact Grid */}
-              <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
-                <p className="text-sm font-medium mb-3 text-gray-700">已选择知识点 ({state.knowledgePoints.length})</p>
-                <div className="flex-1 overflow-y-auto">
-                  {state.knowledgePoints.length === 0 ? (
-                    <div className="text-center text-gray-400 py-8">
-                      <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-xs">从左侧搜索并选择知识点</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-2">
-                      {state.knowledgePoints.map(kpId => {
-                        const kp = knowledgePoints.find(k => k.id === kpId)
-                        if (!kp) return null
-                        const isReference = !customKnowledgePointIds.has(kpId)
-                        const kpGlNames = kp.granularLessons?.map((gid: any) => granularLessons.find((g: any) => g.id === gid)?.name).filter(Boolean) || []
-                        return (
-                          <div key={kpId} className={cn(
-                            "p-2 rounded-lg border cursor-pointer transition-colors relative overflow-hidden",
-                            isReference
-                              ? "border-gray-200 bg-gray-50 hover:bg-gray-100"
-                              : "border-primary/20 bg-primary/5 hover:bg-primary/10"
-                          )} onClick={() => {
-                            if (isReference) {
-                              setSelectedKpForDetail(kp.id)
-                              setKpDetailOpen(true)
-                            } else {
-                              openEditKp(kp)
-                            }
-                          }}>
-                            <div className="flex items-center gap-1 mb-1">
-                              <span className="text-xs font-medium flex-1 truncate">{kp.name}</span>
-                              <Button variant="ghost" size="icon" className="h-5 w-5 text-gray-400 -mr-1 -mt-1" onClick={(e) => { e.stopPropagation(); handleRemoveKp(kpId) }}>
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            <p className="text-[11px] text-gray-500 line-clamp-1 mb-1">{kp.description}</p>
-                            {kpGlNames.length > 0 && (
-                              <div className="flex items-center gap-0.5 flex-wrap">
-                                {kpGlNames.slice(0, 2).map((name: any, i: number) => (
-                                  <Badge key={i} variant="outline" className="text-[9px] font-normal px-1 py-0 h-4">{name}</Badge>
-                                ))}
-                                {kpGlNames.length > 2 && <span className="text-[9px] text-gray-400">+{kpGlNames.length - 2}</span>}
-                              </div>
-                            )}
-                            {/* Reference badge — corner mark at bottom-right */}
-                            {isReference && (
-                              <div className="absolute bottom-0 right-0">
-                                <div className="bg-gray-200 text-gray-600 text-[9px] px-1.5 py-0.5 rounded-tl-md border-t border-l border-white/80">
-                                  引用
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <KnowledgePointFormDialog
-              open={kpFormOpen}
-              onOpenChange={setKpFormOpen}
-              mode={kpFormMode}
-              initialValues={kpFormInitial}
-              granularCourses={granularLessons}
-              onSave={handleSaveKp}
-              onCreateGranularLesson={handleCreateGranularLesson}
-            />
-
-            <GranularLessonSelectDialog
-              open={glSelectOpen}
-              onOpenChange={setGlSelectOpen}
-              title={glTargetKp ? `为「${glTargetKp.name}」选择颗粒课` : "选择颗粒课"}
-              granularCourses={granularLessons}
-              selectedIds={glSelectedIds}
-              onChange={handleToggleGlForKp}
-            />
-
-            {/* Knowledge Point Detail Dialog */}
-            <Dialog open={kpDetailOpen} onOpenChange={setKpDetailOpen}>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <PrdAnnotation data={getAnnotation("dialog-knowledge-detail")}>
-                    <DialogTitle>知识点详情</DialogTitle>
-                  </PrdAnnotation>
-                </DialogHeader>
-                {detailKp && (
-                  <div className="space-y-4 py-2">
-                    <div className="flex items-center gap-2">
-                      <Label className="text-xs text-gray-500">知识点名称</Label>
-                      {!customKnowledgePointIds.has(detailKp.id) && (
-                        <Badge variant="secondary" className="text-[10px] h-5">引用（不可编辑）</Badge>
-                      )}
-                      {customKnowledgePointIds.has(detailKp.id) && (
-                        <Badge variant="outline" className="text-[10px] h-5 border-primary/30 text-primary">自定义（可编辑）</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm font-medium">{detailKp.name}</p>
-                    <div>
-                      <Label className="text-xs text-gray-500">知识点描述</Label>
-                      <p className="text-sm text-gray-700 mt-1">{detailKp.description}</p>
-                    </div>
-                    {detailKp.code && (
-                      <div>
-                        <Label className="text-xs text-gray-500">编码</Label>
-                        <p className="text-sm text-gray-700 mt-1">{detailKp.code}</p>
-                      </div>
-                    )}
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs text-gray-500">关联颗粒课</Label>
-                        {customKnowledgePointIds.has(detailKp.id) && (
-                          <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="sm" className="h-6 text-[11px] px-2 text-primary" onClick={() => { setKpDetailOpen(false); openGlSelect(detailKp.id) }}>
-                              引用颗粒课
-                            </Button>
-                            <Button variant="ghost" size="sm" className="h-6 text-[11px] px-2 text-primary" onClick={async () => {
-                              try {
-                                const created = await courseApi.create({
-                                  name: `基于「${detailKp.name}」的颗粒课`,
-                                  type: "granular",
-                                  category: "专业基础",
-                                } as any)
-                                const newCourseId = created.id
-                                granularLessons.push({ id: newCourseId, name: created.name, code: created.code, description: created.description })
-                                const kp = knowledgePoints.find(k => k.id === detailKp.id)
-                                if (kp) {
-                                  kp.granularLessons = [...(kp.granularLessons || []), newCourseId]
-                                  updateState({ knowledgePoints: [...state.knowledgePoints] })
-                                }
-                                if (confirm("占位颗粒课已创建并关联，是否立即前往完善？")) {
-                                  window.open(`/lesson/admin/granular/add?id=${newCourseId}`, "_blank")
-                                }
-                              } catch (err: any) {
-                              }
-                            }}>
-                              新增颗粒课
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {detailGranularLessons.length > 0 ? detailGranularLessons.map((gl: any) => (
-                          <Badge key={gl!.id} variant="outline" className="text-xs">{gl!.name}</Badge>
-                        )) : <p className="text-sm text-gray-400">暂无关联颗粒课</p>}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </DialogContent>
-            </Dialog>
-          </div>
-        )
-      }
-
-      case "ability": {
-        // abilityDetailOpen, selectedAbilityForDetail, expandedDomains, abilitySearch are defined at component top level
-
-        // If no position is associated, show warning instead of ability list
-        if (!positionId) {
-          return (
-            <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 py-16">
-              <AlertCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p className="text-sm font-medium text-gray-600">请先关联岗位后，再选择考察能力点</p>
-            </div>
-          )
-        }
-
-        // Build position name map
-        const positionNameMap: Record<string, string> = {}
-        professions.forEach((p: any) => p.positions.forEach((pos: any) => { positionNameMap[pos.id] = pos.name }))
-
-        // Build abilities related to current position from bindings
-        const bindings = positionAbilityBindings.filter((b: any) => b.careerPositionId === positionId)
-        const bindingMap = new Map(bindings.map((b: any) => [b.abilityPointId, b]))
-        const relatedAbilities = abilityPoints
-          .filter((ab: any) => bindingMap.has(ab.id))
-          .map((ab: any) => {
-            const binding = bindingMap.get(ab.id)
-            return {
-              ...ab,
-              positionIds: [positionId],
-              domain: binding?.domain || ab.domain || "其他",
-              requiredLevel: binding?.requiredLevel || ab.requiredLevel,
-              proficiencyDesc: binding?.rubricDescription || ab.proficiencyDesc,
-            }
-          })
-
-        if (relatedAbilities.length === 0) {
-          return (
-            <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 py-16">
-              <Award className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p className="text-sm font-medium text-gray-600 mb-1">目标岗位暂无关联能力点</p>
-              <p className="text-xs text-gray-400 mb-4">请先去岗位配置页关联能力点后，再回到本页面选择</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => positionId && window.open(`/job/positions/${positionId}/edit`, "_blank")}
-              >
-                去岗位配置页关联
-                <ArrowRight className="h-3.5 w-3.5 ml-1" />
-              </Button>
-            </div>
-          )
-        }
-
-        const toggleAbility = (abId: string) => {
-          const selected = state.abilityPoints.includes(abId)
-          updateState({ abilityPoints: selected ? state.abilityPoints.filter(x => x !== abId) : [...state.abilityPoints, abId] })
-        }
-
-        // Group by domain
-        const domainGroups = relatedAbilities.reduce((acc, ab) => {
-          const domain = ab.domain || "其他"
-          if (!acc[domain]) acc[domain] = []
-          acc[domain].push(ab)
-          return acc
-        }, {} as Record<string, typeof relatedAbilities>)
-
-        const detailAb = selectedAbilityForDetail ? abilityPoints.find(a => a.id === selectedAbilityForDetail) : null
-
-        const requiredLevelColors: Record<string, string> = {
-          "了解": "bg-gray-100 text-gray-600 border-gray-200",
-          "理解": "bg-blue-50 text-blue-600 border-blue-200",
-          "掌握": "bg-green-50 text-green-600 border-green-200",
-          "熟练": "bg-orange-50 text-orange-600 border-orange-200",
-          "精通": "bg-purple-50 text-purple-600 border-purple-200",
-        }
-
-        const domainIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-          "前端工程化": Code,
-          "系统设计": Database,
-          "质量保障": Shield,
-          "职业素养": Users,
-          "服务端开发": Server,
-          "运维部署": Wrench,
-          "数据分析": BookOpen,
-        }
-
-        const categoryColors: Record<string, string> = {
-          "开发能力": "bg-blue-50 text-blue-600 border-blue-200",
-          "设计能力": "bg-purple-50 text-purple-600 border-purple-200",
-          "优化能力": "bg-green-50 text-green-600 border-green-200",
-          "软技能": "bg-orange-50 text-orange-600 border-orange-200",
-          "分析能力": "bg-cyan-50 text-cyan-600 border-cyan-200",
-          "工程能力": "bg-indigo-50 text-indigo-600 border-indigo-200",
-        }
-
-        return (
-          <div className="h-full flex flex-col">
-            {/* Header bar */}
-            <div className="flex items-center gap-4 mb-4 shrink-0">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input value={abilitySearch} onChange={e => setAbilitySearch(e.target.value)} placeholder="搜索能力点名称、编码或描述..." className="pl-9" />
-              </div>
-              <div className="text-sm text-gray-500 shrink-0">
-                共 <span className="font-medium text-gray-800">{relatedAbilities.length}</span> 个关联能力点，已选 <span className="font-medium text-primary">{state.abilityPoints.length}</span> 个
-              </div>
-            </div>
-
-            <div className="flex-1 min-h-0 border rounded-xl overflow-hidden">
-              <div className="h-full overflow-y-auto p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 content-start">
-                {Object.entries(domainGroups).map(([domain, abilities]: [string, any]) => {
-                  const filtered = abilities.filter((a: any) =>
-                    !abilitySearch ||
-                    (a.name || "").includes(abilitySearch) ||
-                    (a.description || "").includes(abilitySearch) ||
-                    (a.code || "").includes(abilitySearch)
-                  )
-                  if (filtered.length === 0) return null
-                  const expanded = expandedDomains[domain] !== false
-                  const DomainIcon = domainIconMap[domain] || Award
-                  return (
-                    <div key={domain} className="border rounded-xl overflow-hidden bg-white flex flex-col">
-                      <button
-                        className="w-full flex items-center gap-2 px-4 py-2.5 bg-sky-50 text-sm font-semibold text-sky-700 hover:bg-sky-100 transition-colors shrink-0"
-                        onClick={() => setExpandedDomains(prev => ({ ...prev, [domain]: !expanded }))}
-                      >
-                        {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                        <DomainIcon className="h-4 w-4" />
-                        <span className="flex-1 text-left truncate">{domain}</span>
-                        <Badge className="text-[10px] bg-white text-sky-600 border-sky-200 shrink-0">{filtered.length} 个能力点</Badge>
-                      </button>
-                      {expanded && (
-                        <div className="divide-y divide-gray-100 max-h-[180px] overflow-y-auto">
-                          {filtered.map((ab: any) => {
-                            const selected = state.abilityPoints.includes(ab.id)
-                            const levelLabel = ab.requiredLevel
-                              ? (COMPETENCY_LEVEL_LABELS[ab.requiredLevel as keyof typeof COMPETENCY_LEVEL_LABELS] || ab.requiredLevel)
-                              : undefined
-                            return (
-                              <div
-                                key={ab.id}
-                                onClick={() => toggleAbility(ab.id)}
-                                className={cn(
-                                  "px-4 py-2.5 cursor-pointer transition-colors group",
-                                  selected
-                                    ? "bg-primary/[0.03] border-l-2 border-l-primary"
-                                    : "hover:bg-gray-50 border-l-2 border-l-transparent"
-                                )}
-                              >
-                                {/* Row 1: checkbox + name + code + badges */}
-                                <div className="flex items-center gap-2">
-                                  <div className={cn(
-                                    "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors",
-                                    selected ? "bg-primary border-primary" : "border-gray-300 group-hover:border-gray-400"
-                                  )}>
-                                    {selected && <Check className="h-3 w-3 text-white" />}
-                                  </div>
-                                  <span className="text-sm font-medium text-gray-800 truncate">{ab.name}</span>
-                                  {ab.code && <span className="text-[11px] text-gray-400 font-mono shrink-0">{ab.code}</span>}
-                                  <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-                                    {levelLabel && (
-                                      <Badge variant="outline" className={cn("text-[10px] font-medium h-5 px-1", requiredLevelColors[levelLabel] || "")}>
-                                        胜任标准：{levelLabel}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                </div>
-                                {/* Row 2: description + standard description */}
-                                <div className="flex items-center gap-2 mt-1 ml-6">
-                                  <p className="text-xs text-gray-500 line-clamp-1 flex-1">{ab.description}</p>
-                                  <span
-                                    className="text-[10px] text-gray-500 shrink-0 line-clamp-1 max-w-[50%] text-right"
-                                    title={ab.proficiencyDesc || undefined}
-                                  >
-                                    {ab.proficiencyDesc || "岗位胜任标准描述"}
-                                  </span>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-                {Object.entries(domainGroups).filter(([_, abilities]: [string, any]) =>
-                  abilities.some((a: any) =>
-                    !abilitySearch ||
-                    (a.name || "").includes(abilitySearch) ||
-                    (a.description || "").includes(abilitySearch) ||
-                    (a.code || "").includes(abilitySearch)
-                  )
-                ).length === 0 && (
-                  <div className="col-span-full text-center text-gray-400 py-16">
-                    <Award className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p className="text-sm">未找到匹配的能力点</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Ability Detail Dialog */}
-            <Dialog open={abilityDetailOpen} onOpenChange={setAbilityDetailOpen}>
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                  <PrdAnnotation data={getAnnotation("dialog-ability-detail")}>
-                    <DialogTitle>能力点详情</DialogTitle>
-                  </PrdAnnotation>
-                </DialogHeader>
-                {detailAb && (
-                  <div className="space-y-4 py-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-base font-semibold">{detailAb.name}</p>
-                      {detailAb.code && <Badge variant="outline" className="font-mono">{detailAb.code}</Badge>}
-                    </div>
-                    <div>
-                      <Label className="text-xs text-gray-500">能力点描述</Label>
-                      <p className="text-sm text-gray-700 mt-1">{detailAb.description}</p>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-gray-500">所属能力领域</Label>
-                      <p className="text-sm text-gray-700 mt-1">{detailAb.domain || "-"}</p>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-gray-500">关联岗位</Label>
-                      <div className="flex flex-wrap gap-1.5 mt-1">
-                        {(detailAb.positionIds?.map((pid: any) => positionNameMap[pid]).filter(Boolean) || []).map((name: any, i: number) => (
-                          <Badge key={i} variant="secondary">{name}</Badge>
-                        ))}
-                        {(!detailAb.positionIds || detailAb.positionIds.length === 0) && <span className="text-sm text-gray-400">-</span>}
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-gray-500">胜任标准</Label>
-                      <p className="text-sm text-gray-700 mt-1">
-                        {detailAb.requiredLevel
-                          ? (COMPETENCY_LEVEL_LABELS[detailAb.requiredLevel as keyof typeof COMPETENCY_LEVEL_LABELS] || detailAb.requiredLevel)
-                          : "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-gray-500">岗位胜任标准描述</Label>
-                      <p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{detailAb.proficiencyDesc || "-"}</p>
-                    </div>
-                  </div>
-                )}
-              </DialogContent>
-            </Dialog>
-          </div>
-        )
-      }
-
-      case "resources": {
-        const resFileInputRef = useRef<HTMLInputElement>(null)
-        const types = ["all", "document", "spreadsheet", "image", "link", "audio", "video", "archive", "venue", "facility", "software", "other"]
-        const getUploaderName = (uploadedBy?: string) => {
-          if (!uploadedBy) return "-"
-          return userNameMap[uploadedBy] || uploadedBy
-        }
-        const formatDate = (dateStr?: string) => {
-          if (!dateStr) return "-"
-          const d = new Date(dateStr)
-          return isNaN(d.getTime()) ? dateStr : d.toISOString().slice(0, 10)
-        }
-        const filteredRes = learningResources.filter(r => {
-          const matchType = resType === "all" || r.type === resType
-          const matchName = !resSearchName || r.name.includes(resSearchName)
-          const uploaderName = getUploaderName(r.uploadedBy)
-          const matchProvider = !resSearchProvider || uploaderName.includes(resSearchProvider)
-          return matchType && matchName && matchProvider
-        })
-
-        const toggleResource = (rid: string) => {
-          const selected = state.resources.includes(rid)
-          updateState({ resources: selected ? state.resources.filter(x => x !== rid) : [...state.resources, rid] })
-        }
-
-        const resetFilters = () => {
-          setResType("all")
-          setResSearchName("")
-          setResSearchProvider("")
-        }
-
-        const handleResFileSelect = (file: File) => {
-          const err = validateResourceFile(file, newResType)
-          if (err) {
-            toast({ variant: "destructive", title: "文件校验失败", description: err })
-            return
-          }
-          setNewResFile(file)
-        }
-
-        const onResFileDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          const file = e.dataTransfer.files?.[0]
-          if (file) handleResFileSelect(file)
-        }
-
-        const fileTypesWithUpload = ["document", "spreadsheet", "image", "audio", "video", "archive", "other", "software"]
-
-        return (
-          <div className="h-full flex flex-col">
-            {/* Toolbar */}
-            <div className="shrink-0 space-y-3 mb-4">
-              {/* Type filters */}
-              <div className="flex gap-1.5 flex-wrap">
-                {types.map(t => (
-                  <Button
-                    key={t}
-                    variant={resType === t ? "default" : "outline"}
-                    size="sm"
-                    className={cn("text-xs h-7", resType === t ? "" : "bg-white")}
-                    onClick={() => setResType(t)}
-                  >
-                    {resourceTypeIcons[t] && <span className="mr-1.5">{resourceTypeIcons[t]}</span>}
-                    {resourceTypeLabels[t] || t}
-                  </Button>
-                ))}
-              </div>
-              {/* Search & Actions */}
-              <div className="flex items-center gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    value={resSearchName}
-                    onChange={e => setResSearchName(e.target.value)}
-                    placeholder="搜索资源名称..."
-                    className="pl-9 text-sm"
-                  />
-                </div>
-                <div className="relative flex-1">
-                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    value={resSearchProvider}
-                    onChange={e => setResSearchProvider(e.target.value)}
-                    placeholder="搜索资源提供者..."
-                    className="pl-9 text-sm"
-                  />
-                </div>
-                <Button variant="outline" size="sm" className="h-9 text-xs" onClick={resetFilters}>
-                  <RotateCcw className="h-3.5 w-3.5 mr-1" />重置
-                </Button>
-                <Button size="sm" className="h-9 text-xs" onClick={() => {
-                  if (resType === "all") {
-                    setShowUploadTypePicker(true)
-                  } else {
-                    setNewResType(resType)
-                    setShowUploadRes(true)
-                  }
-                }}>
-                  <Upload className="h-3.5 w-3.5 mr-1" />上传资源
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex gap-4 flex-1 min-h-0">
-              {/* Left: Resource cards grid */}
-              <div className="flex-1 flex flex-col min-h-0 border rounded-xl p-4 overflow-hidden">
-                <div className="flex items-center justify-between mb-3 shrink-0">
-                  <p className="text-sm font-medium text-gray-700">
-                    资源列表 <span className="text-gray-400 font-normal">({filteredRes.length})</span>
-                  </p>
-                </div>
-                <div className="flex-1 overflow-y-auto pr-1">
-                  {filteredRes.length === 0 ? (
-                    <div className="text-center text-gray-400 py-16">
-                      <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p className="text-sm">未找到匹配的资源</p>
-                      <p className="text-xs mt-1">尝试调整筛选条件</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                      {filteredRes.map(r => {
-                        const selected = state.resources.includes(r.id)
-                        return (
-                          <div
-                            key={r.id}
-                            className={cn(
-                              "relative rounded-lg border overflow-hidden transition-all cursor-pointer group",
-                              selected
-                                ? "border-primary shadow-sm ring-1 ring-primary/10"
-                                : "border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white"
-                            )}
-                            onClick={() => toggleResource(r.id)}
-                          >
-                            {/* Thumbnail area */}
-                            <div className="relative h-20 bg-gray-50 border-b border-gray-100 overflow-hidden">
-                              {r.thumbnail && r.type === "image" ? (
-                                <img src={r.thumbnail} alt={r.name} className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <div className={cn("p-2 rounded-lg border", resourceTypeColors[r.type] || "bg-gray-50 border-gray-200")}>
-                                    {resourceTypeIcons[r.type] || <Package className="h-5 w-5 text-gray-400" />}
-                                  </div>
-                                </div>
-                              )}
-                              {selected && (
-                                <div className="absolute top-1.5 right-1.5 bg-primary text-white rounded-full p-0.5 shadow-sm">
-                                  <CheckCircle2 className="h-3.5 w-3.5" />
-                                </div>
-                              )}
-                              {/* Type badge */}
-                              <div className="absolute bottom-1.5 left-1.5">
-                                <Badge className={cn("text-[9px] border", resourceTypeColors[r.type] || "")}>
-                                  {resourceTypeLabels[r.type] || r.type}
-                                </Badge>
-                              </div>
-                            </div>
-                            {/* Info */}
-                            <div className="p-2">
-                              <p className="text-xs font-medium text-gray-800 truncate mb-1">{r.name}</p>
-                              <div className="flex items-center justify-between text-[11px] text-gray-500">
-                                <span className="flex items-center gap-1 truncate max-w-[80px]">
-                                  <Users className="h-3 w-3 shrink-0" />{getUploaderName(r.uploadedBy)}
-                                </span>
-                                <span className="shrink-0">{formatDate(r.uploadedAt)}</span>
-                              </div>
-                            </div>
-                            {/* Actions */}
-                            <div className="px-2 pb-2 flex items-center gap-1">
-                              <PrdAnnotation data={getAnnotation("resource-action-preview")}>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 text-[10px] px-1 flex-1 text-gray-500 hover:text-primary"
-                                  onClick={(e) => { e.stopPropagation(); r.url ? addPreviewResource(r) : window.open(r.url || "#", "_blank") }}
-                                >
-                                  <Eye className="h-3 w-3 mr-0.5" />预览
-                                </Button>
-                              </PrdAnnotation>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Right: Selected resources sidebar */}
-              <div className="w-72 shrink-0 flex flex-col min-h-0 border rounded-xl p-4 bg-gray-50/50 overflow-hidden">
-                <div className="flex items-center justify-between mb-3 shrink-0">
-                  <p className="text-sm font-semibold text-gray-700">已选资源</p>
-                  <Badge variant="secondary" className="text-[10px]">{state.resources.length}</Badge>
-                </div>
-                <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
-                  {state.resources.length === 0 ? (
-                    <div className="text-center text-gray-400 py-8">
-                      <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-xs">请从左侧选择资源</p>
-                    </div>
-                  ) : (
-                    state.resources.map(rid => {
-                      const r = learningResources.find(res => res.id === rid)
-                      if (!r) return null
-                      return (
-                        <div key={rid} className="flex items-center gap-2.5 p-2.5 rounded-lg border border-primary/20 bg-white shadow-sm">
-                          <div className={cn("w-9 h-9 rounded-lg border flex items-center justify-center shrink-0", resourceTypeColors[r.type] || "bg-gray-50")}>
-                            {resourceTypeIcons[r.type] || <Package className="h-4 w-4 text-gray-400" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium truncate text-gray-800">{r.name}</p>
-                            <p className="text-[10px] text-gray-400 truncate">{getUploaderName(r.uploadedBy)} · {formatDate(r.uploadedAt)}</p>
-                          </div>
-                          <PrdAnnotation data={getAnnotation("resource-action-cancel")}>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-500 shrink-0" onClick={() => toggleResource(rid)}>
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </PrdAnnotation>
-                        </div>
-                      )
-                    })
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Upload Type Picker Dialog */}
-            <Dialog open={showUploadTypePicker} onOpenChange={setShowUploadTypePicker}>
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                  <PrdAnnotation data={getAnnotation("dialog-resource-type-select")}>
-                    <DialogTitle>选择资源类型</DialogTitle>
-                  </PrdAnnotation>
-                  <DialogDescription>请选择要上传的资源类型</DialogDescription>
-                </DialogHeader>
-                <div className="grid grid-cols-3 gap-3 py-4">
-                  {types.filter(t => t !== "all").map(t => (
-                    <button
-                      key={t}
-                      onClick={() => {
-                        setNewResType(t)
-                        setShowUploadTypePicker(false)
-                        setShowUploadRes(true)
-                      }}
-                      className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 hover:border-primary hover:bg-primary/5 transition-all text-center"
-                    >
-                      <div className={cn("p-2 rounded-lg border", resourceTypeColors[t] || "bg-gray-50 border-gray-200")}>
-                        {resourceTypeIcons[t] || <Package className="h-5 w-5 text-gray-400" />}
-                      </div>
-                      <span className="text-xs font-medium text-gray-700">{resourceTypeLabels[t] || t}</span>
-                    </button>
-                  ))}
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            {/* Upload Resource Dialog */}
-            <Dialog open={showUploadRes} onOpenChange={setShowUploadRes}>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <PrdAnnotation data={getAnnotation("dialog-resource-upload")}>
-                    <DialogTitle>上传资源到公共库</DialogTitle>
-                  </PrdAnnotation>
-                  <DialogDescription>补充本地资源，上传后将加入资源公共库并自动选中</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-1">
-                  <div>
-                    <Label>资源名称</Label>
-                    <Input value={newResName} onChange={e => setNewResName(e.target.value)} placeholder="输入资源名称" className="mt-1.5" />
-                  </div>
-                  {newResType === "all" && (
-                    <div>
-                      <Label>资源类型</Label>
-                      <Select value={newResType} onValueChange={v => setNewResType(v)}>
-                        <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="document">文档资源</SelectItem>
-                          <SelectItem value="spreadsheet">表格资源</SelectItem>
-                          <SelectItem value="image">图片资源</SelectItem>
-                          <SelectItem value="link">链接资源</SelectItem>
-                          <SelectItem value="audio">音频资源</SelectItem>
-                          <SelectItem value="video">视频资源</SelectItem>
-                          <SelectItem value="archive">压缩包资源</SelectItem>
-                          <SelectItem value="venue">场地资源</SelectItem>
-                          <SelectItem value="facility">设施设备资源</SelectItem>
-                          <SelectItem value="software">软件资源</SelectItem>
-                          <SelectItem value="other">其他资源</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {/* Link type: URL */}
-                  {newResType === "link" && (
-                    <div>
-                      <Label>URL 地址</Label>
-                      <Input value={newResUrl} onChange={e => setNewResUrl(e.target.value)} placeholder="https://..." className="mt-1.5" />
-                    </div>
-                  )}
-
-                  {/* Venue type: address, open time, capacity, contact */}
-                  {newResType === "venue" && (
-                    <>
-                      <div>
-                        <Label>场地地址</Label>
-                        <Input value={newResAddress} onChange={e => setNewResAddress(e.target.value)} placeholder="输入场地详细地址" className="mt-1.5" />
-                      </div>
-                      <div>
-                        <Label>开放时间</Label>
-                        <Input value={newResOpenTime} onChange={e => setNewResOpenTime(e.target.value)} placeholder="例如：周一至周五 09:00-18:00" className="mt-1.5" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label>容纳人数</Label>
-                          <Input value={newResCapacity} onChange={e => setNewResCapacity(e.target.value)} placeholder="例如：50人" className="mt-1.5" />
-                        </div>
-                        <div>
-                          <Label>联系人/电话</Label>
-                          <Input value={newResContact} onChange={e => setNewResContact(e.target.value)} placeholder="输入联系人或电话" className="mt-1.5" />
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Facility type: location, quantity */}
-                  {newResType === "facility" && (
-                    <>
-                      <div>
-                        <Label>所在位置</Label>
-                        <Input value={newResLocation} onChange={e => setNewResLocation(e.target.value)} placeholder="输入设施所在位置" className="mt-1.5" />
-                      </div>
-                      <div>
-                        <Label>数量</Label>
-                        <Input value={newResQuantity} onChange={e => setNewResQuantity(e.target.value)} placeholder="输入设施数量" className="mt-1.5" />
-                      </div>
-                    </>
-                  )}
-
-                  {/* Tool / Software type: version, url, license */}
-                  {newResType === "software" && (
-                    <>
-                      <div>
-                        <Label>版本号</Label>
-                        <Input value={newResVersion} onChange={e => setNewResVersion(e.target.value)} placeholder="例如：v2.1.0" className="mt-1.5" />
-                      </div>
-                      <div>
-                        <Label>下载链接</Label>
-                        <Input value={newResUrl} onChange={e => setNewResUrl(e.target.value)} placeholder="https://..." className="mt-1.5" />
-                      </div>
-                      {newResType === "software" && (
-                        <div>
-                          <Label>授权信息</Label>
-                          <Input value={newResLicense} onChange={e => setNewResLicense(e.target.value)} placeholder="例如：MIT / 商业授权 / 校内授权" className="mt-1.5" />
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* Description for all types */}
-                  <div>
-                    <Label>资源描述</Label>
-                    <Textarea value={newResDescription} onChange={e => setNewResDescription(e.target.value)} placeholder="输入资源简介、用途说明等" className="mt-1.5" rows={2} />
-                  </div>
-
-                  {/* File upload for file-based types */}
-                  {fileTypesWithUpload.includes(newResType) && (
-                    <div
-                      className={cn(
-                        "border-2 border-dashed rounded-xl p-6 text-center space-y-3 transition-colors",
-                        newResUploading ? "border-primary/30 bg-gray-50/50" : "border-gray-200 hover:border-primary/30 hover:bg-gray-50/50 cursor-pointer"
-                      )}
-                      onClick={() => !newResUploading && resFileInputRef.current?.click()}
-                      onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
-                      onDrop={onResFileDrop}
-                    >
-                      <input
-                        ref={resFileInputRef}
-                        type="file"
-                        accept={resourceTypeAccept[newResType]}
-                        className="hidden"
-                        onChange={e => {
-                          const file = e.target.files?.[0]
-                          if (file) handleResFileSelect(file)
-                          e.target.value = ""
-                        }}
-                      />
-                      {newResFile ? (
-                        <div className="text-center space-y-2 pointer-events-none">
-                          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                            <File className="h-6 w-6 text-primary" />
-                          </div>
-                          <p className="text-sm font-medium text-gray-700">{newResFile.name}</p>
-                          <p className="text-xs text-gray-500">{(newResFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto">
-                            {newResUploading ? <Loader2 className="h-6 w-6 text-gray-400 animate-spin" /> : <Upload className="h-6 w-6 text-gray-400" />}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">点击或拖拽上传文件</p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {resourceTypeAccept[newResType]
-                                ? `支持 ${resourceTypeAccept[newResType]}，最大 100MB`
-                                : "支持多种格式，最大 100MB"}
-                            </p>
-                          </div>
-                        </>
-                      )}
-                      {newResFile && !newResUploading && (
-                        <div className="flex items-center justify-center gap-2 pointer-events-auto" onClick={e => e.stopPropagation()}>
-                          <Button variant="outline" size="sm" onClick={() => resFileInputRef.current?.click()}>
-                            <Upload className="h-3.5 w-3.5 mr-1" />重新选择
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => setNewResFile(null)}>
-                            <X className="h-3.5 w-3.5 mr-1" />清除
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowUploadRes(false)}>取消</Button>
-                  <Button
-                    onClick={handleUploadResource}
-                    disabled={
-                      !newResName.trim() ||
-                      newResUploading ||
-                      (newResType === "link" && !newResUrl.trim()) ||
-                      (fileTypesWithUpload.includes(newResType) && !newResFile && !newResUrl.trim())
-                    }
-                  >
-                    {newResUploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-                    上传并选中
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            {/* Resource Preview Mask */}
-            {previewResources.length > 0 && (
-              <div
-                className="fixed inset-0 bg-black/40 z-[90]"
-                onClick={() => previewResources.forEach((r) => removePreviewResource(r.id))}
-              />
-            )}
-
-            {/* Resource Preview Modals */}
-            {previewResources.map((r, i) => (
-              <ResourcePreviewModal
-                key={r.id}
-                resource={r}
-                open
-                index={i}
-                onOpenChange={() => removePreviewResource(r.id)}
-              />
-            ))}
-          </div>
-        )
-      }
-
-      case "evaluation": {
-        const evalDataForTasks: CourseEvalData = {
-          methods: state.evaluationMethods as any,
-          methodConfigs: {},
-        }
-        return (
-          <CourseEvalConfig
-            value={evalDataForTasks}
-            onChange={(data) => {
-              const newMethods = data.methods
-              const newDisabled = (state.disabledEvaluationMethods || []).filter((d: string) => newMethods.includes(d as any))
-              const newWeights = { ...state.methodWeights }
-              for (const m of newMethods) {
-                if (!state.evaluationMethods.includes(m)) newWeights[m] = 0
-              }
-              for (const m of state.evaluationMethods.filter((sm: string) => !newMethods.includes(sm as any))) {
-                newWeights[m] = 0
-              }
-              updateState({ evaluationMethods: newMethods as string[], methodWeights: newWeights, disabledEvaluationMethods: newDisabled })
-            }}
-          />
-        )
-      }
-
-      case "evaluationRules": {
         const qSearch = erQSearch
         const setQSearch = setErQSearch
         const pSearch = erPSearch
@@ -8536,15 +6832,1184 @@ function EditCardDialog({
         )
       }
 
-      case "weight": {
+
+function EditCardDialog({
+  allTasks,
+  taskId,
+  cardType,
+  task,
+  state,
+  updateState,
+  updateTask,
+  allTaskStates,
+  updateAnyState,
+  onClose,
+  positionId,
+  toast,
+  positionAbilityBindings,
+  userNameMap,
+  tenantId,
+  majors,
+  rubricLibrary,
+  setRubricLibrary,
+}: {
+  allTasks: Task[]
+  taskId: string
+  cardType: CardType
+  task: Task
+  state: TaskState
+  updateState: (u: Partial<TaskState>) => void
+  updateTask: (u: Partial<Task>) => void
+  allTaskStates: Record<string, TaskState>
+  updateAnyState: (id: string, u: Partial<TaskState>) => void
+  onClose: () => void
+  positionId?: string
+  toast: (opts: { title?: string; description?: string; variant?: "default" | "destructive" }) => void
+  positionAbilityBindings: any[]
+  userNameMap: Record<string, string>
+  tenantId?: string
+  majors: any[]
+  rubricLibrary: RubricScheme[]
+  setRubricLibrary: React.Dispatch<React.SetStateAction<RubricScheme[]>>
+}) {
+  const config = cardConfigs.find(c => c.type === cardType)!
+  const [localTask, setLocalTask] = useState({ name: task.name, type: task.taskType, difficulty: task.difficulty, hours: task.estimatedHours, background: task.background })
+  const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
+
+  // For knowledge / ability "create new"
+  const [showAddKnowledge, setShowAddKnowledge] = useState(false)
+  const [newKnowledgeName, setNewKnowledgeName] = useState("")
+  const [newKnowledgeDesc, setNewKnowledgeDesc] = useState("")
+  const [newKnowledgeCategory, setNewKnowledgeCategory] = useState("通用")
+
+  const [showAddAbility, setShowAddAbility] = useState(false)
+  const [newAbilityName, setNewAbilityName] = useState("")
+  const [newAbilityDesc, setNewAbilityDesc] = useState("")
+  const [newAbilityCategory, setNewAbilityCategory] = useState("通用")
+
+  // For evaluation full-screen dialog
+  const [evalDialogOpen, setEvalDialogOpen] = useState(false)
+
+  // For scoring config
+  const [selectedGradeTaskId, setSelectedGradeTaskId] = useState(taskId)
+
+  // For resources filter
+  const [resType, setResType] = useState("all")
+
+  // For ability search
+  const [abilitySearch, setAbilitySearch] = useState("")
+  const [abilityDetailOpen, setAbilityDetailOpen] = useState(false)
+  const [selectedAbilityForDetail, setSelectedAbilityForDetail] = useState<string | null>(null)
+  const [expandedDomains, setExpandedDomains] = useState<Record<string, boolean>>({})
+
+  // For knowledge
+  const [kpSearch, setKpSearch] = useState("")
+  const [kpDetailOpen, setKpDetailOpen] = useState(false)
+  const [selectedKpForDetail, setSelectedKpForDetail] = useState<string | null>(null)
+  const [kpFormOpen, setKpFormOpen] = useState(false)
+  const [kpFormMode, setKpFormMode] = useState<"add" | "clone" | "edit">("add")
+  const [kpFormTarget, setKpFormTarget] = useState<(typeof knowledgePoints)[0] | null>(null)
+  const [kpFormInitial, setKpFormInitial] = useState({ name: "", description: "", code: "", granularLessonIds: [] as string[] })
+  const [glSelectOpen, setGlSelectOpen] = useState(false)
+  const [glSelectTargetKp, setGlSelectTargetKp] = useState<string | null>(null)
+
+  // Determine if a knowledge point is reference (original library) or custom (added/cloned)
+  const isReferenceKp = (kpId: string) => !customKnowledgePointIds.has(kpId)
+
+  // For random draw custom questions (现场问答题)
+
+
+  // For resources search & upload
+  const [resSearchName, setResSearchName] = useState("")
+  const [resSearchProvider, setResSearchProvider] = useState("")
+  const [showUploadRes, setShowUploadRes] = useState(false)
+  const [newResName, setNewResName] = useState("")
+  const [newResType, setNewResType] = useState("document")
+  const [newResUrl, setNewResUrl] = useState("")
+  const [newResDescription, setNewResDescription] = useState("")
+  const [newResAddress, setNewResAddress] = useState("")
+  const [newResOpenTime, setNewResOpenTime] = useState("")
+  const [newResCapacity, setNewResCapacity] = useState("")
+  const [newResContact, setNewResContact] = useState("")
+  const [newResLocation, setNewResLocation] = useState("")
+  const [newResQuantity, setNewResQuantity] = useState("")
+  const [newResVersion, setNewResVersion] = useState("")
+  const [newResLicense, setNewResLicense] = useState("")
+  const [newResFile, setNewResFile] = useState<File | null>(null)
+  const [newResUploading, setNewResUploading] = useState(false)
+  const [showUploadTypePicker, setShowUploadTypePicker] = useState(false)
+
+  // For question bank config
+
+
+  // For assessment config
+  const [assessActiveTab, setAssessActiveTab] = useState<string | null>(state.evaluationMethods[0] || null)
+
+  const [reviewSteps, setReviewSteps] = useState([
+    { id: "rs-1", label: "初评", desc: "由指导教师进行第一轮评审", enabled: true, subjectType: "teacher" as string | null, weight: 40 },
+    { id: "rs-2", label: "复评", desc: "由专家组进行第二轮复核", enabled: false, subjectType: null as string | null, weight: 30 },
+    { id: "rs-3", label: "终评", desc: "答辩委员会最终评定", enabled: false, subjectType: null as string | null, weight: 30 },
+  ])
+
+  useEffect(() => {
+    if (state.reviewSteps && state.reviewSteps.length > 0) {
+      setReviewSteps(state.reviewSteps.map((rs: any) => ({
+        id: rs.id || `rs-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+        label: rs.label,
+        desc: rs.desc || "",
+        enabled: rs.enabled,
+        subjectType: rs.subjectType,
+        weight: rs.weight,
+      })))
+    }
+  }, [state.reviewSteps])
+
+
+
+  const ensureTempExam = async (mk: "question_bank" | "quiz", currentCfg: any): Promise<string | null> => {
+    const questionIds = mk === "question_bank" ? state.questionBankQuestions : state.quizQuestions
+    const existingExamId = currentCfg?.examId
+    const questionScores = currentCfg?.questionScores || {}
+    const existingQuestionIds = currentCfg?.examQuestionIds || []
+    if (!questionIds || questionIds.length === 0) {
+      if (existingExamId) {
+        try {
+          const usages = await examUsageApi.list({ examId: existingExamId })
+          for (const u of usages.items || []) await examUsageApi.delete(u.id)
+          await examApi.delete(existingExamId)
+        } catch { /* ignore */ }
+      }
+      return null
+    }
+    const sortedNew = [...questionIds].sort().join(",")
+    const sortedOld = [...existingQuestionIds].sort().join(",")
+    if (existingExamId && sortedNew === sortedOld) return existingExamId
+    if (existingExamId) {
+      try {
+        const usages = await examUsageApi.list({ examId: existingExamId })
+        for (const u of usages.items || []) await examUsageApi.delete(u.id)
+        await examApi.delete(existingExamId)
+      } catch { /* ignore */ }
+    }
+    const label = mk === "question_bank" ? "题库" : "随堂测"
+    const examName = `${task.name}-${label}临时试卷`
+    // If name already taken, lookup existing exam; else create new with unique name
+    let exam: any
+    try {
+      exam = await examApi.create({ name: examName, duration: currentCfg?.timeLimit || 90, isTemp: true } as any)
+    } catch {
+      // Name conflict — append timestamp to make unique
+      exam = await examApi.create({ name: `${examName}-${Date.now()}`, duration: currentCfg?.timeLimit || 90, isTemp: true } as any)
+    }
+    for (const qid of questionIds) {
+      await examApi.addQuestion(exam.id, qid, questionScores[qid] || 10)
+    }
+    await examUsageApi.create({ examId: exam.id, name: `${exam.name} 默认安排`, targetType: "public", targetIds: [taskId] } as any)
+    return exam.id
+  }
+
+  const handleSave = async () => {
+    if (cardType === "info") {
+      updateTask({ name: localTask.name, taskType: localTask.type as "assessment"|"training", difficulty: localTask.difficulty as 1|2|3|4|5, estimatedHours: localTask.hours, background: localTask.background })
+    } else if (cardType === "evaluationRules") {
+      const toTaskEvalPoint = (ep: EvalPoint): import("@/lib/mock-data").TaskEvalPoint => {
+        const gmMax = ep.gradeMapping && ep.gradeMapping.length > 0
+          ? Math.max(...ep.gradeMapping.map(g => g.maxScore))
+          : 100
+        return {
+          id: ep.id,
+          name: ep.name,
+          desc: ep.desc,
+          weight: ep.weight || 0,
+          maxScore: ep.weight || gmMax,
+          scoringMethod: ep.scoringMethod,
+          gradeMapping: ep.gradeMapping,
+          subType: ep.subType,
+          types: ep.types,
+          knowledgePointIds: ep.knowledgePointIds,
+          abilityPointIds: ep.abilityPointIds,
+        }
+      }
+      const enabledReviewSteps = reviewSteps.filter(s => s.enabled).map(s => ({
+        id: s.id,
+        label: s.label,
+        desc: s.desc,
+        enabled: s.enabled,
+        subjectType: s.subjectType,
+        weight: s.weight,
+      }))
+      updateTask({
+        evalPoints: {
+          randomDraw: state.randomDrawEvalPoints.map(toTaskEvalPoint),
+          review: state.reviewEvalPoints.map(toTaskEvalPoint),
+          paper: state.paperEvalPoints.map(toTaskEvalPoint),
+          questionBank: state.questionBankEvalPoints.map(toTaskEvalPoint),
+        },
+        reviewSteps: enabledReviewSteps,
+      })
+      // Ensure newly-enabled methods have default resource configs and sync review steps to task state
+      const updatedRC = { ...state.methodResourceConfigs }
+      state.evaluationMethods.forEach(mk => {
+        if (mk === "random_draw") updatedRC[mk] = { ...DEFAULT_RANDOM_DRAW_RESOURCE_CONFIG, ...updatedRC[mk] }
+        if (mk === "review") updatedRC[mk] = { ...DEFAULT_REVIEW_RESOURCE_CONFIG, ...updatedRC[mk] }
+        if (mk === "outcome") updatedRC[mk] = { ...DEFAULT_OUTCOME_RESOURCE_CONFIG, ...updatedRC[mk] }
+        if (mk === "homework") updatedRC[mk] = { ...DEFAULT_HOMEWORK_RESOURCE_CONFIG, ...updatedRC[mk] }
+      })
+      updateState({ methodResourceConfigs: updatedRC, reviewSteps: enabledReviewSteps })
+      // Persist evaluation methods (including resource config) to backend immediately
+      let currentVersion = state.evalMethodVersion
+      let methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC }, { reviewSteps })
+      if (methodsInput.length > 0) {
+        try {
+          const savedRes = await taskEvaluationApi.saveMethods(taskId, { version: currentVersion, methods: methodsInput })
+          currentVersion = savedRes.methods.reduce((max, m) => Math.max(max, m.version || 0), 0)
+          updateState({ evalMethodVersion: currentVersion })
+        } catch (err: any) {
+          toast({ variant: "destructive", title: "评价规则保存失败", description: err.message })
+          return
+        }
+      }
+      // Generate temp exams for question_bank / quiz and persist examId back
+      const tempExamMethods = methodsInput.filter(m => m.methodKey === "question_bank" || m.methodKey === "quiz")
+      if (tempExamMethods.length > 0) {
+        for (const m of tempExamMethods) {
+          try {
+            const mk = m.methodKey as "question_bank" | "quiz"
+            const examId = await ensureTempExam(mk, updatedRC[mk])
+            if (examId) {
+              updatedRC[mk] = { ...updatedRC[mk], examId, examQuestionIds: mk === "question_bank" ? state.questionBankQuestions : state.quizQuestions }
+            }
+          } catch { /* temp exam creation failed, skip */ }
+        }
+        updateState({ methodResourceConfigs: updatedRC })
+        methodsInput = taskStateToMethodsInput({ ...state, methodResourceConfigs: updatedRC }, { reviewSteps })
+        try {
+          const savedRes = await taskEvaluationApi.saveMethods(taskId, { version: currentVersion, methods: methodsInput })
+          currentVersion = savedRes.methods.reduce((max, m) => Math.max(max, m.version || 0), 0)
+          updateState({ evalMethodVersion: currentVersion })
+        } catch { /* ignore */ }
+      }
+      // Ensure exam usage exists for paper so students can access it from the landing page
+      if (state.evaluationMethods.includes("paper") && state.paperIds.length > 0) {
+        const paperId = state.paperIds[0]
+        try {
+          const usages = await examUsageApi.list({ examId: paperId })
+          if ((usages.items || []).length === 0) {
+            const paperCfg = updatedRC.paper || {}
+            await examUsageApi.create({
+              examId: paperId,
+              name: `${task.name}-试卷默认安排`,
+              targetType: "public",
+              targetIds: [taskId],
+              duration: paperCfg.duration || 90,
+            } as any)
+          }
+        } catch { /* ignore */ }
+      }
+    }
+    onClose()
+  }
+
+  const handleAddKnowledge = () => {
+    if (!newKnowledgeName.trim()) return
+    const newId = generateUUID()
+    customKnowledgePointIds.add(newId)
+    knowledgePoints.push({ id: newId, name: newKnowledgeName.trim(), description: newKnowledgeDesc.trim(), category: newKnowledgeCategory })
+    updateState({ knowledgePoints: [...state.knowledgePoints, newId] })
+    setNewKnowledgeName("")
+    setNewKnowledgeDesc("")
+    setShowAddKnowledge(false)
+  }
+
+  const handleAddAbility = () => {
+    if (!newAbilityName.trim()) return
+    const newId = generateUUID()
+    customAbilityPointIds.add(newId)
+    abilityPoints.push({ id: newId, name: newAbilityName.trim(), description: newAbilityDesc.trim(), category: newAbilityCategory })
+    updateState({ abilityPoints: [...state.abilityPoints, newId] })
+    setNewAbilityName("")
+    setNewAbilityDesc("")
+    setShowAddAbility(false)
+  }
+
+  const validateResourceFile = (file: File, type: string): string | null => {
+    if (file.size > RESOURCE_MAX_FILE_SIZE) {
+      return "文件大小超过 100MB"
+    }
+    const allowed = resourceTypeExtensionMap[type] || []
+    if (allowed.length === 0) return null
+    const ext = file.name.split(".").pop()?.toLowerCase() || ""
+    if (!allowed.includes(ext)) {
+      return `不支持的文件格式，请上传 ${allowed.map(e => `.${e}`).join("、")} 文件`
+    }
+    return null
+  }
+
+  const handleUploadResource = async () => {
+    if (!newResName.trim()) return
+
+    const fileTypes = ["document", "spreadsheet", "image", "audio", "video", "archive", "other", "software"]
+    const isFileType = fileTypes.includes(newResType)
+    let fileUrl = newResUrl.trim()
+    let uploadedSize: number | undefined
+
+    if (isFileType && newResFile) {
+      const err = validateResourceFile(newResFile, newResType)
+      if (err) {
+        toast({ variant: "destructive", title: "文件校验失败", description: err })
+        return
+      }
+      setNewResUploading(true)
+      try {
+        const res = await fileApi.upload(newResFile)
+        fileUrl = res.url
+        uploadedSize = res.size
+      } catch (err: any) {
+        toast({ variant: "destructive", title: "上传失败", description: err.message })
+        return
+      } finally {
+        setNewResUploading(false)
+      }
+    }
+
+    if (newResType === "link" && !fileUrl) {
+      toast({ variant: "destructive", title: "请填写链接地址" })
+      return
+    }
+
+    const newId = `lr-upload-${Date.now()}`
+    let extraData: Record<string, any> = {}
+    switch (newResType) {
+      case "link":
+        extraData = { url: fileUrl, description: newResDescription.trim() }
+        break
+      case "venue":
+        extraData = { address: newResAddress.trim(), openTime: newResOpenTime.trim(), capacity: newResCapacity.trim(), contact: newResContact.trim(), description: newResDescription.trim() }
+        break
+      case "facility":
+        extraData = { location: newResLocation.trim(), quantity: newResQuantity.trim(), description: newResDescription.trim() }
+        break
+      case "software":
+        extraData = { version: newResVersion.trim(), url: fileUrl, license: newResLicense.trim(), description: newResDescription.trim() }
+        break
+      default:
+        extraData = { description: newResDescription.trim() }
+        break
+    }
+
+    const thumbnail = newResType === "image" && fileUrl ? fileUrl : "/placeholder.svg"
+    const newRes = {
+      id: newId,
+      name: newResName.trim(),
+      type: newResType as any,
+      url: fileUrl,
+      description: newResDescription.trim(),
+      knowledgePoints: [],
+      size: uploadedSize !== undefined ? `${uploadedSize}` : undefined,
+      uploadedAt: new Date().toISOString().slice(0, 10),
+      uploadedBy: "当前用户",
+      thumbnail,
+      extraData,
+      ...extraData,
+    }
+    customResourceIds.add(newId)
+    learningResources.push(newRes as any)
+    updateState({ resources: [...state.resources, newId] })
+    setNewResName("")
+    setNewResType("document")
+    setNewResUrl("")
+    setNewResFile(null)
+    setNewResUploading(false)
+    setNewResDescription("")
+    setNewResAddress("")
+    setNewResOpenTime("")
+    setNewResCapacity("")
+    setNewResContact("")
+    setNewResLocation("")
+    setNewResQuantity("")
+    setNewResVersion("")
+    setNewResLicense("")
+    setShowUploadRes(false)
+    toast({ title: "资源已上传并选中" })
+  }
+
+  const renderContent = () => {
+    switch (cardType) {
+      case "info":
+        return <TaskInfoCard localTask={localTask} onUpdate={u => setLocalTask({ ...localTask, ...u } as typeof localTask)} />
+
+      case "description":
+        return <TaskDescriptionCard state={state} updateState={updateState} toast={toast} />
+
+      case "knowledge":
         return (
-          <div className="flex flex-col items-center justify-center h-full text-gray-400">
-            <Scale className="h-12 w-12 mb-3 opacity-50" />
-            <p className="text-sm">任务权重已在全局配置</p>
-            <p className="text-xs mt-1">请点击顶部「配置任务权重」按钮进行设置</p>
+          <TaskKnowledgeCard
+            state={state} updateState={updateState}
+            kpSearch={kpSearch} setKpSearch={setKpSearch}
+            kpDetailOpen={kpDetailOpen} setKpDetailOpen={setKpDetailOpen}
+            selectedKpForDetail={selectedKpForDetail} setSelectedKpForDetail={setSelectedKpForDetail}
+            kpFormOpen={kpFormOpen} setKpFormOpen={setKpFormOpen}
+            kpFormMode={kpFormMode} setKpFormMode={setKpFormMode}
+            kpFormTarget={kpFormTarget} setKpFormTarget={setKpFormTarget}
+            kpFormInitial={kpFormInitial} setKpFormInitial={setKpFormInitial}
+            glSelectOpen={glSelectOpen} setGlSelectOpen={setGlSelectOpen}
+            glSelectTargetKp={glSelectTargetKp} setGlSelectTargetKp={setGlSelectTargetKp}
+          />
+        )
+
+      case "ability": {
+        // abilityDetailOpen, selectedAbilityForDetail, expandedDomains, abilitySearch are defined at component top level
+
+        // If no position is associated, show warning instead of ability list
+        if (!positionId) {
+          return (
+            <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 py-16">
+              <AlertCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p className="text-sm font-medium text-gray-600">请先关联岗位后，再选择考察能力点</p>
+            </div>
+          )
+        }
+
+        // Build position name map
+        const positionNameMap: Record<string, string> = {}
+        professions.forEach((p: any) => p.positions.forEach((pos: any) => { positionNameMap[pos.id] = pos.name }))
+
+        // Build abilities related to current position from bindings
+        const bindings = positionAbilityBindings.filter((b: any) => b.careerPositionId === positionId)
+        const bindingMap = new Map(bindings.map((b: any) => [b.abilityPointId, b]))
+        const relatedAbilities = abilityPoints
+          .filter((ab: any) => bindingMap.has(ab.id))
+          .map((ab: any) => {
+            const binding = bindingMap.get(ab.id)
+            return {
+              ...ab,
+              positionIds: [positionId],
+              domain: binding?.domain || ab.domain || "其他",
+              requiredLevel: binding?.requiredLevel || ab.requiredLevel,
+              proficiencyDesc: binding?.rubricDescription || ab.proficiencyDesc,
+            }
+          })
+
+        if (relatedAbilities.length === 0) {
+          return (
+            <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 py-16">
+              <Award className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p className="text-sm font-medium text-gray-600 mb-1">目标岗位暂无关联能力点</p>
+              <p className="text-xs text-gray-400 mb-4">请先去岗位配置页关联能力点后，再回到本页面选择</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => positionId && window.open(`/job/positions/${positionId}/edit`, "_blank")}
+              >
+                去岗位配置页关联
+                <ArrowRight className="h-3.5 w-3.5 ml-1" />
+              </Button>
+            </div>
+          )
+        }
+
+        const toggleAbility = (abId: string) => {
+          const selected = state.abilityPoints.includes(abId)
+          updateState({ abilityPoints: selected ? state.abilityPoints.filter(x => x !== abId) : [...state.abilityPoints, abId] })
+        }
+
+        // Group by domain
+        const domainGroups = relatedAbilities.reduce((acc, ab) => {
+          const domain = ab.domain || "其他"
+          if (!acc[domain]) acc[domain] = []
+          acc[domain].push(ab)
+          return acc
+        }, {} as Record<string, typeof relatedAbilities>)
+
+        const detailAb = selectedAbilityForDetail ? abilityPoints.find(a => a.id === selectedAbilityForDetail) : null
+
+        const requiredLevelColors: Record<string, string> = {
+          "了解": "bg-gray-100 text-gray-600 border-gray-200",
+          "理解": "bg-blue-50 text-blue-600 border-blue-200",
+          "掌握": "bg-green-50 text-green-600 border-green-200",
+          "熟练": "bg-orange-50 text-orange-600 border-orange-200",
+          "精通": "bg-purple-50 text-purple-600 border-purple-200",
+        }
+
+        const domainIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+          "前端工程化": Code,
+          "系统设计": Database,
+          "质量保障": Shield,
+          "职业素养": Users,
+          "服务端开发": Server,
+          "运维部署": Wrench,
+          "数据分析": BookOpen,
+        }
+
+        const categoryColors: Record<string, string> = {
+          "开发能力": "bg-blue-50 text-blue-600 border-blue-200",
+          "设计能力": "bg-purple-50 text-purple-600 border-purple-200",
+          "优化能力": "bg-green-50 text-green-600 border-green-200",
+          "软技能": "bg-orange-50 text-orange-600 border-orange-200",
+          "分析能力": "bg-cyan-50 text-cyan-600 border-cyan-200",
+          "工程能力": "bg-indigo-50 text-indigo-600 border-indigo-200",
+        }
+
+        return (
+          <div className="h-full flex flex-col">
+            {/* Header bar */}
+            <div className="flex items-center gap-4 mb-4 shrink-0">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input value={abilitySearch} onChange={e => setAbilitySearch(e.target.value)} placeholder="搜索能力点名称、编码或描述..." className="pl-9" />
+              </div>
+              <div className="text-sm text-gray-500 shrink-0">
+                共 <span className="font-medium text-gray-800">{relatedAbilities.length}</span> 个关联能力点，已选 <span className="font-medium text-primary">{state.abilityPoints.length}</span> 个
+              </div>
+            </div>
+
+            <div className="flex-1 min-h-0 border rounded-xl overflow-hidden">
+              <div className="h-full overflow-y-auto p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 content-start">
+                {Object.entries(domainGroups).map(([domain, abilities]: [string, any]) => {
+                  const filtered = abilities.filter((a: any) =>
+                    !abilitySearch ||
+                    (a.name || "").includes(abilitySearch) ||
+                    (a.description || "").includes(abilitySearch) ||
+                    (a.code || "").includes(abilitySearch)
+                  )
+                  if (filtered.length === 0) return null
+                  const expanded = expandedDomains[domain] !== false
+                  const DomainIcon = domainIconMap[domain] || Award
+                  return (
+                    <div key={domain} className="border rounded-xl overflow-hidden bg-white flex flex-col">
+                      <button
+                        className="w-full flex items-center gap-2 px-4 py-2.5 bg-sky-50 text-sm font-semibold text-sky-700 hover:bg-sky-100 transition-colors shrink-0"
+                        onClick={() => setExpandedDomains(prev => ({ ...prev, [domain]: !expanded }))}
+                      >
+                        {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        <DomainIcon className="h-4 w-4" />
+                        <span className="flex-1 text-left truncate">{domain}</span>
+                        <Badge className="text-[10px] bg-white text-sky-600 border-sky-200 shrink-0">{filtered.length} 个能力点</Badge>
+                      </button>
+                      {expanded && (
+                        <div className="divide-y divide-gray-100 max-h-[180px] overflow-y-auto">
+                          {filtered.map((ab: any) => {
+                            const selected = state.abilityPoints.includes(ab.id)
+                            const levelLabel = ab.requiredLevel
+                              ? (COMPETENCY_LEVEL_LABELS[ab.requiredLevel as keyof typeof COMPETENCY_LEVEL_LABELS] || ab.requiredLevel)
+                              : undefined
+                            return (
+                              <div
+                                key={ab.id}
+                                onClick={() => toggleAbility(ab.id)}
+                                className={cn(
+                                  "px-4 py-2.5 cursor-pointer transition-colors group",
+                                  selected
+                                    ? "bg-primary/[0.03] border-l-2 border-l-primary"
+                                    : "hover:bg-gray-50 border-l-2 border-l-transparent"
+                                )}
+                              >
+                                {/* Row 1: checkbox + name + code + badges */}
+                                <div className="flex items-center gap-2">
+                                  <div className={cn(
+                                    "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors",
+                                    selected ? "bg-primary border-primary" : "border-gray-300 group-hover:border-gray-400"
+                                  )}>
+                                    {selected && <Check className="h-3 w-3 text-white" />}
+                                  </div>
+                                  <span className="text-sm font-medium text-gray-800 truncate">{ab.name}</span>
+                                  {ab.code && <span className="text-[11px] text-gray-400 font-mono shrink-0">{ab.code}</span>}
+                                  <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                                    {levelLabel && (
+                                      <Badge variant="outline" className={cn("text-[10px] font-medium h-5 px-1", requiredLevelColors[levelLabel] || "")}>
+                                        胜任标准：{levelLabel}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                                {/* Row 2: description + standard description */}
+                                <div className="flex items-center gap-2 mt-1 ml-6">
+                                  <p className="text-xs text-gray-500 line-clamp-1 flex-1">{ab.description}</p>
+                                  <span
+                                    className="text-[10px] text-gray-500 shrink-0 line-clamp-1 max-w-[50%] text-right"
+                                    title={ab.proficiencyDesc || undefined}
+                                  >
+                                    {ab.proficiencyDesc || "岗位胜任标准描述"}
+                                  </span>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+                {Object.entries(domainGroups).filter(([_, abilities]: [string, any]) =>
+                  abilities.some((a: any) =>
+                    !abilitySearch ||
+                    (a.name || "").includes(abilitySearch) ||
+                    (a.description || "").includes(abilitySearch) ||
+                    (a.code || "").includes(abilitySearch)
+                  )
+                ).length === 0 && (
+                  <div className="col-span-full text-center text-gray-400 py-16">
+                    <Award className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">未找到匹配的能力点</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Ability Detail Dialog */}
+            <Dialog open={abilityDetailOpen} onOpenChange={setAbilityDetailOpen}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <PrdAnnotation data={getAnnotation("dialog-ability-detail")}>
+                    <DialogTitle>能力点详情</DialogTitle>
+                  </PrdAnnotation>
+                </DialogHeader>
+                {detailAb && (
+                  <div className="space-y-4 py-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-base font-semibold">{detailAb.name}</p>
+                      {detailAb.code && <Badge variant="outline" className="font-mono">{detailAb.code}</Badge>}
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">能力点描述</Label>
+                      <p className="text-sm text-gray-700 mt-1">{detailAb.description}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">所属能力领域</Label>
+                      <p className="text-sm text-gray-700 mt-1">{detailAb.domain || "-"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">关联岗位</Label>
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {(detailAb.positionIds?.map((pid: any) => positionNameMap[pid]).filter(Boolean) || []).map((name: any, i: number) => (
+                          <Badge key={i} variant="secondary">{name}</Badge>
+                        ))}
+                        {(!detailAb.positionIds || detailAb.positionIds.length === 0) && <span className="text-sm text-gray-400">-</span>}
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">胜任标准</Label>
+                      <p className="text-sm text-gray-700 mt-1">
+                        {detailAb.requiredLevel
+                          ? (COMPETENCY_LEVEL_LABELS[detailAb.requiredLevel as keyof typeof COMPETENCY_LEVEL_LABELS] || detailAb.requiredLevel)
+                          : "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">岗位胜任标准描述</Label>
+                      <p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{detailAb.proficiencyDesc || "-"}</p>
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
           </div>
         )
       }
+
+      case "resources": {
+        const resFileInputRef = useRef<HTMLInputElement>(null)
+        const types = ["all", "document", "spreadsheet", "image", "link", "audio", "video", "archive", "venue", "facility", "software", "other"]
+        const getUploaderName = (uploadedBy?: string) => {
+          if (!uploadedBy) return "-"
+          return userNameMap[uploadedBy] || uploadedBy
+        }
+        const formatDate = (dateStr?: string) => {
+          if (!dateStr) return "-"
+          const d = new Date(dateStr)
+          return isNaN(d.getTime()) ? dateStr : d.toISOString().slice(0, 10)
+        }
+        const filteredRes = learningResources.filter(r => {
+          const matchType = resType === "all" || r.type === resType
+          const matchName = !resSearchName || r.name.includes(resSearchName)
+          const uploaderName = getUploaderName(r.uploadedBy)
+          const matchProvider = !resSearchProvider || uploaderName.includes(resSearchProvider)
+          return matchType && matchName && matchProvider
+        })
+
+        const toggleResource = (rid: string) => {
+          const selected = state.resources.includes(rid)
+          updateState({ resources: selected ? state.resources.filter(x => x !== rid) : [...state.resources, rid] })
+        }
+
+        const resetFilters = () => {
+          setResType("all")
+          setResSearchName("")
+          setResSearchProvider("")
+        }
+
+        const handleResFileSelect = (file: File) => {
+          const err = validateResourceFile(file, newResType)
+          if (err) {
+            toast({ variant: "destructive", title: "文件校验失败", description: err })
+            return
+          }
+          setNewResFile(file)
+        }
+
+        const onResFileDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          const file = e.dataTransfer.files?.[0]
+          if (file) handleResFileSelect(file)
+        }
+
+        const fileTypesWithUpload = ["document", "spreadsheet", "image", "audio", "video", "archive", "other", "software"]
+
+        return (
+          <div className="h-full flex flex-col">
+            {/* Toolbar */}
+            <div className="shrink-0 space-y-3 mb-4">
+              {/* Type filters */}
+              <div className="flex gap-1.5 flex-wrap">
+                {types.map(t => (
+                  <Button
+                    key={t}
+                    variant={resType === t ? "default" : "outline"}
+                    size="sm"
+                    className={cn("text-xs h-7", resType === t ? "" : "bg-white")}
+                    onClick={() => setResType(t)}
+                  >
+                    {resourceTypeIcons[t] && <span className="mr-1.5">{resourceTypeIcons[t]}</span>}
+                    {resourceTypeLabels[t] || t}
+                  </Button>
+                ))}
+              </div>
+              {/* Search & Actions */}
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    value={resSearchName}
+                    onChange={e => setResSearchName(e.target.value)}
+                    placeholder="搜索资源名称..."
+                    className="pl-9 text-sm"
+                  />
+                </div>
+                <div className="relative flex-1">
+                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    value={resSearchProvider}
+                    onChange={e => setResSearchProvider(e.target.value)}
+                    placeholder="搜索资源提供者..."
+                    className="pl-9 text-sm"
+                  />
+                </div>
+                <Button variant="outline" size="sm" className="h-9 text-xs" onClick={resetFilters}>
+                  <RotateCcw className="h-3.5 w-3.5 mr-1" />重置
+                </Button>
+                <Button size="sm" className="h-9 text-xs" onClick={() => {
+                  if (resType === "all") {
+                    setShowUploadTypePicker(true)
+                  } else {
+                    setNewResType(resType)
+                    setShowUploadRes(true)
+                  }
+                }}>
+                  <Upload className="h-3.5 w-3.5 mr-1" />上传资源
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex gap-4 flex-1 min-h-0">
+              {/* Left: Resource cards grid */}
+              <div className="flex-1 flex flex-col min-h-0 border rounded-xl p-4 overflow-hidden">
+                <div className="flex items-center justify-between mb-3 shrink-0">
+                  <p className="text-sm font-medium text-gray-700">
+                    资源列表 <span className="text-gray-400 font-normal">({filteredRes.length})</span>
+                  </p>
+                </div>
+                <div className="flex-1 overflow-y-auto pr-1">
+                  {filteredRes.length === 0 ? (
+                    <div className="text-center text-gray-400 py-16">
+                      <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p className="text-sm">未找到匹配的资源</p>
+                      <p className="text-xs mt-1">尝试调整筛选条件</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {filteredRes.map(r => {
+                        const selected = state.resources.includes(r.id)
+                        return (
+                          <div
+                            key={r.id}
+                            className={cn(
+                              "relative rounded-lg border overflow-hidden transition-all cursor-pointer group",
+                              selected
+                                ? "border-primary shadow-sm ring-1 ring-primary/10"
+                                : "border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white"
+                            )}
+                            onClick={() => toggleResource(r.id)}
+                          >
+                            {/* Thumbnail area */}
+                            <div className="relative h-20 bg-gray-50 border-b border-gray-100 overflow-hidden">
+                              {r.thumbnail && r.type === "image" ? (
+                                <img src={r.thumbnail} alt={r.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <div className={cn("p-2 rounded-lg border", resourceTypeColors[r.type] || "bg-gray-50 border-gray-200")}>
+                                    {resourceTypeIcons[r.type] || <Package className="h-5 w-5 text-gray-400" />}
+                                  </div>
+                                </div>
+                              )}
+                              {selected && (
+                                <div className="absolute top-1.5 right-1.5 bg-primary text-white rounded-full p-0.5 shadow-sm">
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                </div>
+                              )}
+                              {/* Type badge */}
+                              <div className="absolute bottom-1.5 left-1.5">
+                                <Badge className={cn("text-[9px] border", resourceTypeColors[r.type] || "")}>
+                                  {resourceTypeLabels[r.type] || r.type}
+                                </Badge>
+                              </div>
+                            </div>
+                            {/* Info */}
+                            <div className="p-2">
+                              <p className="text-xs font-medium text-gray-800 truncate mb-1">{r.name}</p>
+                              <div className="flex items-center justify-between text-[11px] text-gray-500">
+                                <span className="flex items-center gap-1 truncate max-w-[80px]">
+                                  <Users className="h-3 w-3 shrink-0" />{getUploaderName(r.uploadedBy)}
+                                </span>
+                                <span className="shrink-0">{formatDate(r.uploadedAt)}</span>
+                              </div>
+                            </div>
+                            {/* Actions */}
+                            <div className="px-2 pb-2 flex items-center gap-1">
+                              <PrdAnnotation data={getAnnotation("resource-action-preview")}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 text-[10px] px-1 flex-1 text-gray-500 hover:text-primary"
+                                  onClick={(e) => { e.stopPropagation(); r.url ? addPreviewResource(r) : window.open(r.url || "#", "_blank") }}
+                                >
+                                  <Eye className="h-3 w-3 mr-0.5" />预览
+                                </Button>
+                              </PrdAnnotation>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right: Selected resources sidebar */}
+              <div className="w-72 shrink-0 flex flex-col min-h-0 border rounded-xl p-4 bg-gray-50/50 overflow-hidden">
+                <div className="flex items-center justify-between mb-3 shrink-0">
+                  <p className="text-sm font-semibold text-gray-700">已选资源</p>
+                  <Badge variant="secondary" className="text-[10px]">{state.resources.length}</Badge>
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
+                  {state.resources.length === 0 ? (
+                    <div className="text-center text-gray-400 py-8">
+                      <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-xs">请从左侧选择资源</p>
+                    </div>
+                  ) : (
+                    state.resources.map(rid => {
+                      const r = learningResources.find(res => res.id === rid)
+                      if (!r) return null
+                      return (
+                        <div key={rid} className="flex items-center gap-2.5 p-2.5 rounded-lg border border-primary/20 bg-white shadow-sm">
+                          <div className={cn("w-9 h-9 rounded-lg border flex items-center justify-center shrink-0", resourceTypeColors[r.type] || "bg-gray-50")}>
+                            {resourceTypeIcons[r.type] || <Package className="h-4 w-4 text-gray-400" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate text-gray-800">{r.name}</p>
+                            <p className="text-[10px] text-gray-400 truncate">{getUploaderName(r.uploadedBy)} · {formatDate(r.uploadedAt)}</p>
+                          </div>
+                          <PrdAnnotation data={getAnnotation("resource-action-cancel")}>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-500 shrink-0" onClick={() => toggleResource(rid)}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </PrdAnnotation>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Upload Type Picker Dialog */}
+            <Dialog open={showUploadTypePicker} onOpenChange={setShowUploadTypePicker}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <PrdAnnotation data={getAnnotation("dialog-resource-type-select")}>
+                    <DialogTitle>选择资源类型</DialogTitle>
+                  </PrdAnnotation>
+                  <DialogDescription>请选择要上传的资源类型</DialogDescription>
+                </DialogHeader>
+                <div className="grid grid-cols-3 gap-3 py-4">
+                  {types.filter(t => t !== "all").map(t => (
+                    <button
+                      key={t}
+                      onClick={() => {
+                        setNewResType(t)
+                        setShowUploadTypePicker(false)
+                        setShowUploadRes(true)
+                      }}
+                      className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 hover:border-primary hover:bg-primary/5 transition-all text-center"
+                    >
+                      <div className={cn("p-2 rounded-lg border", resourceTypeColors[t] || "bg-gray-50 border-gray-200")}>
+                        {resourceTypeIcons[t] || <Package className="h-5 w-5 text-gray-400" />}
+                      </div>
+                      <span className="text-xs font-medium text-gray-700">{resourceTypeLabels[t] || t}</span>
+                    </button>
+                  ))}
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Upload Resource Dialog */}
+            <Dialog open={showUploadRes} onOpenChange={setShowUploadRes}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <PrdAnnotation data={getAnnotation("dialog-resource-upload")}>
+                    <DialogTitle>上传资源到公共库</DialogTitle>
+                  </PrdAnnotation>
+                  <DialogDescription>补充本地资源，上传后将加入资源公共库并自动选中</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-1">
+                  <div>
+                    <Label>资源名称</Label>
+                    <Input value={newResName} onChange={e => setNewResName(e.target.value)} placeholder="输入资源名称" className="mt-1.5" />
+                  </div>
+                  {newResType === "all" && (
+                    <div>
+                      <Label>资源类型</Label>
+                      <Select value={newResType} onValueChange={v => setNewResType(v)}>
+                        <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="document">文档资源</SelectItem>
+                          <SelectItem value="spreadsheet">表格资源</SelectItem>
+                          <SelectItem value="image">图片资源</SelectItem>
+                          <SelectItem value="link">链接资源</SelectItem>
+                          <SelectItem value="audio">音频资源</SelectItem>
+                          <SelectItem value="video">视频资源</SelectItem>
+                          <SelectItem value="archive">压缩包资源</SelectItem>
+                          <SelectItem value="venue">场地资源</SelectItem>
+                          <SelectItem value="facility">设施设备资源</SelectItem>
+                          <SelectItem value="software">软件资源</SelectItem>
+                          <SelectItem value="other">其他资源</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Link type: URL */}
+                  {newResType === "link" && (
+                    <div>
+                      <Label>URL 地址</Label>
+                      <Input value={newResUrl} onChange={e => setNewResUrl(e.target.value)} placeholder="https://..." className="mt-1.5" />
+                    </div>
+                  )}
+
+                  {/* Venue type: address, open time, capacity, contact */}
+                  {newResType === "venue" && (
+                    <>
+                      <div>
+                        <Label>场地地址</Label>
+                        <Input value={newResAddress} onChange={e => setNewResAddress(e.target.value)} placeholder="输入场地详细地址" className="mt-1.5" />
+                      </div>
+                      <div>
+                        <Label>开放时间</Label>
+                        <Input value={newResOpenTime} onChange={e => setNewResOpenTime(e.target.value)} placeholder="例如：周一至周五 09:00-18:00" className="mt-1.5" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>容纳人数</Label>
+                          <Input value={newResCapacity} onChange={e => setNewResCapacity(e.target.value)} placeholder="例如：50人" className="mt-1.5" />
+                        </div>
+                        <div>
+                          <Label>联系人/电话</Label>
+                          <Input value={newResContact} onChange={e => setNewResContact(e.target.value)} placeholder="输入联系人或电话" className="mt-1.5" />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Facility type: location, quantity */}
+                  {newResType === "facility" && (
+                    <>
+                      <div>
+                        <Label>所在位置</Label>
+                        <Input value={newResLocation} onChange={e => setNewResLocation(e.target.value)} placeholder="输入设施所在位置" className="mt-1.5" />
+                      </div>
+                      <div>
+                        <Label>数量</Label>
+                        <Input value={newResQuantity} onChange={e => setNewResQuantity(e.target.value)} placeholder="输入设施数量" className="mt-1.5" />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Tool / Software type: version, url, license */}
+                  {newResType === "software" && (
+                    <>
+                      <div>
+                        <Label>版本号</Label>
+                        <Input value={newResVersion} onChange={e => setNewResVersion(e.target.value)} placeholder="例如：v2.1.0" className="mt-1.5" />
+                      </div>
+                      <div>
+                        <Label>下载链接</Label>
+                        <Input value={newResUrl} onChange={e => setNewResUrl(e.target.value)} placeholder="https://..." className="mt-1.5" />
+                      </div>
+                      {newResType === "software" && (
+                        <div>
+                          <Label>授权信息</Label>
+                          <Input value={newResLicense} onChange={e => setNewResLicense(e.target.value)} placeholder="例如：MIT / 商业授权 / 校内授权" className="mt-1.5" />
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Description for all types */}
+                  <div>
+                    <Label>资源描述</Label>
+                    <Textarea value={newResDescription} onChange={e => setNewResDescription(e.target.value)} placeholder="输入资源简介、用途说明等" className="mt-1.5" rows={2} />
+                  </div>
+
+                  {/* File upload for file-based types */}
+                  {fileTypesWithUpload.includes(newResType) && (
+                    <div
+                      className={cn(
+                        "border-2 border-dashed rounded-xl p-6 text-center space-y-3 transition-colors",
+                        newResUploading ? "border-primary/30 bg-gray-50/50" : "border-gray-200 hover:border-primary/30 hover:bg-gray-50/50 cursor-pointer"
+                      )}
+                      onClick={() => !newResUploading && resFileInputRef.current?.click()}
+                      onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+                      onDrop={onResFileDrop}
+                    >
+                      <input
+                        ref={resFileInputRef}
+                        type="file"
+                        accept={resourceTypeAccept[newResType]}
+                        className="hidden"
+                        onChange={e => {
+                          const file = e.target.files?.[0]
+                          if (file) handleResFileSelect(file)
+                          e.target.value = ""
+                        }}
+                      />
+                      {newResFile ? (
+                        <div className="text-center space-y-2 pointer-events-none">
+                          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                            <File className="h-6 w-6 text-primary" />
+                          </div>
+                          <p className="text-sm font-medium text-gray-700">{newResFile.name}</p>
+                          <p className="text-xs text-gray-500">{(newResFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto">
+                            {newResUploading ? <Loader2 className="h-6 w-6 text-gray-400 animate-spin" /> : <Upload className="h-6 w-6 text-gray-400" />}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">点击或拖拽上传文件</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {resourceTypeAccept[newResType]
+                                ? `支持 ${resourceTypeAccept[newResType]}，最大 100MB`
+                                : "支持多种格式，最大 100MB"}
+                            </p>
+                          </div>
+                        </>
+                      )}
+                      {newResFile && !newResUploading && (
+                        <div className="flex items-center justify-center gap-2 pointer-events-auto" onClick={e => e.stopPropagation()}>
+                          <Button variant="outline" size="sm" onClick={() => resFileInputRef.current?.click()}>
+                            <Upload className="h-3.5 w-3.5 mr-1" />重新选择
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setNewResFile(null)}>
+                            <X className="h-3.5 w-3.5 mr-1" />清除
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowUploadRes(false)}>取消</Button>
+                  <Button
+                    onClick={handleUploadResource}
+                    disabled={
+                      !newResName.trim() ||
+                      newResUploading ||
+                      (newResType === "link" && !newResUrl.trim()) ||
+                      (fileTypesWithUpload.includes(newResType) && !newResFile && !newResUrl.trim())
+                    }
+                  >
+                    {newResUploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+                    上传并选中
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Resource Preview Mask */}
+            {previewResources.length > 0 && (
+              <div
+                className="fixed inset-0 bg-black/40 z-[90]"
+                onClick={() => previewResources.forEach((r) => removePreviewResource(r.id))}
+              />
+            )}
+
+            {/* Resource Preview Modals */}
+            {previewResources.map((r, i) => (
+              <ResourcePreviewModal
+                key={r.id}
+                resource={r}
+                open
+                index={i}
+                onOpenChange={() => removePreviewResource(r.id)}
+              />
+            ))}
+          </div>
+        )
+      }
+
+      case "evaluation": {
+        const evalDataForTasks: CourseEvalData = {
+          methods: state.evaluationMethods as any,
+          methodConfigs: {},
+        }
+        return (
+          <CourseEvalConfig
+            value={evalDataForTasks}
+            onChange={(data) => {
+              const newMethods = data.methods
+              const newDisabled = (state.disabledEvaluationMethods || []).filter((d: string) => newMethods.includes(d as any))
+              const newWeights = { ...state.methodWeights }
+              for (const m of newMethods) {
+                if (!state.evaluationMethods.includes(m)) newWeights[m] = 0
+              }
+              for (const m of state.evaluationMethods.filter((sm: string) => !newMethods.includes(sm as any))) {
+                newWeights[m] = 0
+              }
+              updateState({ evaluationMethods: newMethods as string[], methodWeights: newWeights, disabledEvaluationMethods: newDisabled })
+            }}
+          />
+        )
+      }
+
+      case "evaluationRules":
+        return (
+          <EvalRulesPanel
+            state={state}
+            updateState={updateState}
+            toast={toast}
+            positionId={positionId}
+            majors={majors}
+            tenantId={tenantId}
+            rubricLibrary={rubricLibrary}
+            setRubricLibrary={setRubricLibrary}
+            reviewSteps={reviewSteps}
+            setReviewSteps={setReviewSteps}
+          />
+        )
+      case "weight":
+        return <TaskWeightCard />
     }
   }
 
