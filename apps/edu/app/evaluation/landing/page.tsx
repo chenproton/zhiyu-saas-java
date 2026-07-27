@@ -29,6 +29,51 @@ const coverGradients = [
   "linear-gradient(135deg,#0891b2,#06b6d4)",
 ]
 
+function FilterRow({
+  label,
+  items,
+  selected,
+  onSelect,
+  showBorder = true,
+}: {
+  label: string
+  items: string[]
+  selected: string
+  onSelect: (item: string) => void
+  showBorder?: boolean
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [expanded, setExpanded] = useState(false)
+  const [overflow, setOverflow] = useState(false)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (el) setOverflow(el.scrollHeight > el.clientHeight + 2)
+  }, [items])
+
+  if (items.length <= 1) return null
+  return (
+    <div className={`flex items-start gap-3 sm:gap-4 py-3 ${showBorder ? "border-b border-dashed border-[#cbd5e1]" : ""}`}>
+      <span className="text-sm text-[#374151] font-medium min-w-[40px] pt-1.5">{label}</span>
+      <div className="flex-1 min-w-0">
+        <div ref={containerRef} className={`flex flex-wrap gap-2.5 ${expanded ? "" : "max-h-[80px] overflow-hidden"}`}>
+          {items.map((item) => (
+            <button key={item} onClick={() => onSelect(item)}
+              className={`px-3.5 py-1.5 rounded-full text-[13px] border transition-all whitespace-nowrap ${
+                selected === item ? "bg-blue-500 text-white border-blue-500 shadow-sm" : "bg-slate-50 text-[#475569] border-slate-200 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50"
+              }`}>{item}</button>
+          ))}
+        </div>
+        {overflow && (
+          <button onClick={() => setExpanded(!expanded)} className="text-[12px] text-blue-500 hover:text-blue-600 mt-1.5 font-medium">
+            {expanded ? "收起" : "展开"}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function BankCard({ bank, index }: { bank: QuestionBank; index: number }) {
   return (
     <Link href={`/evaluation/landing/banks/${bank.id}`} className="group block no-underline text-inherit">
@@ -96,6 +141,7 @@ export default function LandingHomePage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [sort, setSort] = useState("default")
   const [keyword, setKeyword] = useState("")
+  const [selectedBatch, setSelectedBatch] = useState("全部")
 
   useEffect(() => {
     setLoading(true)
@@ -104,6 +150,12 @@ export default function LandingHomePage() {
       examApi.list({ status: "published", limit: 1000 } as any).then((res) => setExams(res.items || [])),
     ]).catch(() => {}).finally(() => setLoading(false))
   }, [])
+  const batches = useMemo(() => {
+    const set = new Set<string>()
+    banks.forEach((b) => { if ((b as any).batchName) set.add((b as any).batchName) })
+    exams.forEach((e) => { if ((e as any).batchName) set.add((e as any).batchName) })
+    return ["全部", ...Array.from(set).sort()]
+  }, [banks, exams])
 
   const filteredBanks = useMemo(() => {
     let list = [...banks]
@@ -111,13 +163,14 @@ export default function LandingHomePage() {
       const k = keyword.trim().toLowerCase()
       list = list.filter((b) => b.name.toLowerCase().includes(k) || (b.description || "").toLowerCase().includes(k))
     }
+    if (selectedBatch !== "全部") list = list.filter((b) => (b as any).batchName === selectedBatch)
     switch (sort) {
       case "recent": list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); break
       case "update": list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()); break
       default: list.sort((a, b) => a.name.localeCompare(b.name, "zh-CN")); break
     }
     return list
-  }, [banks, keyword, sort])
+  }, [banks, keyword, sort, selectedBatch])
 
   const filteredExams = useMemo(() => {
     let list = [...exams]
@@ -125,17 +178,18 @@ export default function LandingHomePage() {
       const k = keyword.trim().toLowerCase()
       list = list.filter((e) => e.name.toLowerCase().includes(k) || (e.description || "").toLowerCase().includes(k))
     }
+    if (selectedBatch !== "全部") list = list.filter((e) => (e as any).batchName === selectedBatch)
     switch (sort) {
       case "recent": list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); break
       case "update": list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()); break
       default: list.sort((a, b) => a.name.localeCompare(b.name, "zh-CN")); break
     }
     return list
-  }, [exams, keyword, sort])
+  }, [exams, keyword, sort, selectedBatch])
 
   const totalPages = Math.max(1, Math.ceil(filteredBanks.length / CARDS_PER_PAGE))
   const pageBanks = useMemo(() => { const start = (currentPage - 1) * CARDS_PER_PAGE; return filteredBanks.slice(start, start + CARDS_PER_PAGE) }, [filteredBanks, currentPage])
-  useEffect(() => { setCurrentPage(1) }, [keyword, sort])
+  useEffect(() => { setCurrentPage(1) }, [keyword, sort, selectedBatch])
 
   const totalQuestions = banks.reduce((sum, b) => sum + (b.questionCount || 0), 0)
 
@@ -193,11 +247,17 @@ export default function LandingHomePage() {
       <main ref={listRef} className="max-w-[1400px] mx-auto px-8 py-6 w-full flex-1">
         <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6 mb-5">
           <div className="flex items-center gap-2.5 text-[16px] font-bold text-[#0f172a] mb-5"><div className="w-1 h-5 rounded-full bg-gradient-to-b from-blue-400 to-blue-600" /><Filter className="w-4 h-4 text-blue-500" />资源筛选</div>
-          {keyword.trim() && (
+          <div className="space-y-0">
+            {batches.length > 1 && (
+              <FilterRow label="批次" items={batches} selected={selectedBatch} onSelect={setSelectedBatch} showBorder={false} />
+            )}
+          </div>
+          {(keyword.trim() || selectedBatch !== "全部") && (
             <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-dashed border-[#cbd5e1]">
               <span className="text-[13px] text-[#64748b]">已选条件：</span>
-              <span className="inline-flex items-center gap-1.5 bg-[#eff6ff] text-blue-600 text-xs px-2.5 py-1 rounded-full border border-blue-100">关键词：{keyword.trim()}<X className="w-3 h-3 cursor-pointer hover:text-red-500 transition-colors" onClick={() => setKeyword("")} /></span>
-              <button onClick={() => setKeyword("")} className="text-[13px] text-blue-600 hover:text-blue-700 font-medium">清空筛选</button>
+              {keyword.trim() && <span className="inline-flex items-center gap-1.5 bg-[#eff6ff] text-blue-600 text-xs px-2.5 py-1 rounded-full border border-blue-100">关键词：{keyword.trim()}<X className="w-3 h-3 cursor-pointer hover:text-red-500 transition-colors" onClick={() => setKeyword("")} /></span>}
+              {selectedBatch !== "全部" && <span className="inline-flex items-center gap-1.5 bg-[#eff6ff] text-blue-600 text-xs px-2.5 py-1 rounded-full border border-blue-100">批次：{selectedBatch}<X className="w-3 h-3 cursor-pointer hover:text-red-500 transition-colors" onClick={() => setSelectedBatch("全部")} /></span>}
+              <button onClick={() => { setKeyword(""); setSelectedBatch("全部") }} className="text-[13px] text-blue-600 hover:text-blue-700 font-medium">清空筛选</button>
             </div>
           )}
         </div>
