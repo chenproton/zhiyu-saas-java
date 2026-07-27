@@ -115,6 +115,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import { createTagElement } from "@/lib/dom-utils"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 import { ScoreConfigDialog } from "@/components/evaluation/score-config-dialog"
@@ -482,37 +483,31 @@ function MixedTagEditor({
   }
 
   const createTagSpan = (type: 'kp' | 'ab', id: string): HTMLSpanElement | null => {
-    const span = document.createElement('span')
-    span.contentEditable = 'false'
-    span.dataset.tag = 'true'
-    span.dataset.type = type
-    span.dataset.id = id
     if (type === 'kp') {
       const kp = knowledgePoints.find(k => k.id === id)
       if (!kp) return null
-      const kpShort = kp.name.length > 5 ? kp.name.slice(0, 5) : kp.name
-      span.className = 'inline-flex items-center px-1 rounded text-[9px] font-normal bg-blue-50 text-blue-600 border border-blue-200 mx-0.5 align-middle cursor-default h-4'
-      span.title = kp.name
-      span.innerHTML = `${kpShort}<button class="ml-0.5 text-blue-400 hover:text-red-500 leading-none text-[9px]">×</button>`
-      span.querySelector('button')!.onclick = (e) => {
-        e.stopPropagation()
-        span.remove()
+      const name = kp.name.length > 5 ? kp.name.slice(0, 5) : kp.name
+      const span = createTagElement('kp', id, name, () => {
         onChangeRef.current({ knowledgePointIds: kpIdsRef.current.filter(i => i !== id) })
-      }
+      }, {
+        className: 'inline-flex items-center px-1 rounded text-[9px] font-normal bg-blue-50 text-blue-600 border border-blue-200 mx-0.5 align-middle cursor-default h-4',
+        btnClassName: 'ml-0.5 text-blue-400 hover:text-red-500 leading-none text-[9px]',
+      })
+      if (span) span.title = kp.name
+      return span
     } else {
       const ab = abilityPoints.find(a => a.id === id)
       if (!ab) return null
-      const abShort = ab.name.length > 5 ? ab.name.slice(0, 5) : ab.name
-      span.className = 'inline-flex items-center px-1 rounded text-[9px] font-normal bg-amber-50 text-amber-600 border border-amber-200 mx-0.5 align-middle cursor-default h-4'
-      span.title = ab.name
-      span.innerHTML = `${abShort}<button class="ml-0.5 text-amber-400 hover:text-red-500 leading-none text-[9px]">×</button>`
-      span.querySelector('button')!.onclick = (e) => {
-        e.stopPropagation()
-        span.remove()
+      const name = ab.name.length > 5 ? ab.name.slice(0, 5) : ab.name
+      const span = createTagElement('ab', id, name, () => {
         onChangeRef.current({ abilityPointIds: abIdsRef.current.filter(i => i !== id) })
-      }
+      }, {
+        className: 'inline-flex items-center px-1 rounded text-[9px] font-normal bg-amber-50 text-amber-600 border border-amber-200 mx-0.5 align-middle cursor-default h-4',
+        btnClassName: 'ml-0.5 text-amber-400 hover:text-red-500 leading-none text-[9px]',
+      })
+      if (span) span.title = ab.name
+      return span
     }
-    return span
   }
 
   // Initial mount only

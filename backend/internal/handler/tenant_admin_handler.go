@@ -215,10 +215,9 @@ func (h *TenantHandler) AdminDeleteAdmin(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, http.StatusOK, map[string]string{"id": adminID, "deleted": "true"})
 }
 
-// AdminPreviewPassword returns the plaintext password of a school admin.
-// If no plaintext is stored (legacy admin), a new random password is generated
-// and saved before returning.
-func (h *TenantHandler) AdminPreviewPassword(w http.ResponseWriter, r *http.Request) {
+// AdminResetPassword generates a new random password for a school admin,
+// hashes and saves it, then returns the new password once.
+func (h *TenantHandler) AdminResetPassword(w http.ResponseWriter, r *http.Request) {
 	tenantID := chi.URLParam(r, "tenantId")
 	adminID := chi.URLParam(r, "id")
 
@@ -227,36 +226,32 @@ func (h *TenantHandler) AdminPreviewPassword(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	admin, err := h.fetchTenantAdmin(r.Context(), tenantID, adminID)
-	if err != nil {
+	if _, err := h.fetchTenantAdmin(r.Context(), tenantID, adminID); err != nil {
 		respondError(w, http.StatusNotFound, "admin not found")
 		return
 	}
 
-	var plainPassword string
-	err = h.DB.QueryRow(r.Context(), `SELECT plain_password FROM users WHERE id = $1`, adminID).Scan(&plainPassword)
-	if err != nil || plainPassword == "" {
-		plainPassword, err = generateSecurePassword(12)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to generate password")
-			return
-		}
-		hash, err := bcrypt.GenerateFromPassword([]byte(plainPassword), bcrypt.DefaultCost)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to hash password")
-			return
-		}
-		if _, err := h.DB.Exec(r.Context(), `
-			UPDATE users SET password_hash = $1, plain_password = $2, updated_at = NOW()
-			WHERE id = $3
-		`, string(hash), plainPassword, adminID); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to save password")
-			return
-		}
+	newPassword, err := generateSecurePassword(12)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to generate password")
+		return
 	}
 
-	_ = admin
-	respondJSON(w, http.StatusOK, map[string]string{"id": adminID, "plainPassword": plainPassword})
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to hash password")
+		return
+	}
+
+	if _, err := h.DB.Exec(r.Context(), `
+		UPDATE users SET password_hash = $1, updated_at = NOW()
+		WHERE id = $2
+	`, string(hash), adminID); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to save password")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"id": adminID, "newPassword": newPassword})
 }
 
 func (h *TenantHandler) createTenantAdmin(ctx context.Context, tenantID, username, name, plainPassword string) (TenantAdminResponse, error) {
@@ -278,11 +273,11 @@ func (h *TenantHandler) createTenantAdmin(ctx context.Context, tenantID, usernam
 
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO users (id, tenant_id, institution_id, org_node_id, major_id,
-			role, platform, login_name, username, password_hash, plain_password, name, email, phone, avatar_url,
+			role, platform, login_name, username, password_hash, name, email, phone, avatar_url,
 			student_no, work_id, id_card, title_ids, oauth, status)
-		VALUES ($1, $2, NULL, NULL, NULL, 'school', 'portal', $3, $4, $5, $6, $7, NULL, NULL, NULL,
+		VALUES ($1, $2, NULL, NULL, NULL, 'school', 'portal', $3, $4, $5, $6, NULL, NULL, NULL,
 			NULL, NULL, NULL, '{}', '{}', 'active')
-	`, adminID, tenantID, loginName, username, string(hash), plainPassword, name); err != nil {
+	`, adminID, tenantID, loginName, username, string(hash), name); err != nil {
 		return admin, err
 	}
 

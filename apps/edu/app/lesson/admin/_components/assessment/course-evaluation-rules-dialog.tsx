@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
+import { createTagElement } from "@/lib/dom-utils"
 import type { GradeMapping, KnowledgePointItem } from "@/lib/types/lesson"
 import type {
   EvalRuleConfig,
@@ -1301,25 +1302,19 @@ export function CourseEvaluationRulesDialog({
     onChangeRef.current = onChange
 
     const createTagSpan = (type: 'kp' | 'ab', id: string): HTMLSpanElement | null => {
-      const span = document.createElement('span')
-      span.contentEditable = 'false'
-      span.dataset.tag = 'true'
-      span.dataset.type = type
-      span.dataset.id = id
       if (type === 'kp') {
         const kp = knowledgePoints.find(k => k.id === id)
         if (!kp) return null
-        span.className = 'inline-flex items-center px-1 py-0.5 rounded text-[10px] font-normal bg-blue-50 text-blue-600 border border-blue-200 mx-0.5 align-middle cursor-default'
-        span.innerHTML = `${kp.name}<button class="ml-0.5 text-blue-400 hover:text-red-500 leading-none">×</button>`
-        span.querySelector('button')!.onclick = (e) => { e.stopPropagation(); span.remove(); onChangeRef.current({ knowledgePointIds: knowledgePointIds.filter(i => i !== id) }) }
+        return createTagElement('kp', id, kp.name, () => {
+          onChangeRef.current({ knowledgePointIds: knowledgePointIds.filter(i => i !== id) })
+        })
       } else {
         const ab = abilityPoints.find(a => a.id === id)
         if (!ab) return null
-        span.className = 'inline-flex items-center px-1 py-0.5 rounded text-[10px] font-normal bg-amber-50 text-amber-600 border border-amber-200 mx-0.5 align-middle cursor-default'
-        span.innerHTML = `${ab.name}<button class="ml-0.5 text-amber-400 hover:text-red-500 leading-none">×</button>`
-        span.querySelector('button')!.onclick = (e) => { e.stopPropagation(); span.remove(); onChangeRef.current({ abilityPointIds: abilityPointIds.filter(i => i !== id) }) }
+        return createTagElement('ab', id, ab.name, () => {
+          onChangeRef.current({ abilityPointIds: abilityPointIds.filter(i => i !== id) })
+        })
       }
-      return span
     }
 
     useLayoutEffect(() => {

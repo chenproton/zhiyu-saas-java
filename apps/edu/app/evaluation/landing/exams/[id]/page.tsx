@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 import {
   ArrowLeft, Clock, FileText, CheckCircle2, AlertCircle, Send,
@@ -148,7 +148,6 @@ export default function ExamDetailPage() {
     setSubmitting(true)
     try {
       await examResultApi.submit({ examUsageId: currentUsage.id, answers, methodKey })
-      // 后端 ExamResultHandler.submit 会根据 methodKey 把结果同步到对应 method_key 的 scene_evaluation_results。
       setSubmitted(true)
     } catch {
       alert("提交失败，请重试")
@@ -157,18 +156,26 @@ export default function ExamDetailPage() {
     }
   }, [currentUsage, answers, methodKey])
 
+  const handleSubmitRef = useRef(handleSubmit)
+  handleSubmitRef.current = handleSubmit
+
   useEffect(() => {
     if (started && exam && !submitted) {
       setTimeLeft(exam.duration * 60)
+      let submittedByTimer = false
       const timer = setInterval(() => {
         setTimeLeft((prev) => {
-          if (prev <= 1) { clearInterval(timer); handleSubmit(); return 0 }
-          return prev - 1
+          if (prev <= 1 && !submittedByTimer) {
+            submittedByTimer = true
+            clearInterval(timer)
+            handleSubmitRef.current()
+          }
+          return prev > 0 ? prev - 1 : 0
         })
       }, 1000)
       return () => clearInterval(timer)
     }
-  }, [started, exam, submitted, handleSubmit])
+  }, [started, exam, submitted])
 
   if (examLoading) {
     return (

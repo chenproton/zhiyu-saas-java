@@ -96,7 +96,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 		r.Get("/api/v1/files/preview", fileHandler.Preview)
 	})
 
-	authHandler := &handler.AuthHandler{DB: db, JWTSecret: jwtSecret}
+	authHandler := handler.NewAuthHandler(db, jwtSecret)
 	institutionHandler := &handler.InstitutionHandler{DB: db}
 	resourceHandler := &handler.ResourceHandler{DB: db}
 	orderHandler := &handler.OrderHandler{DB: db}
@@ -203,15 +203,13 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 
 	systemAdmin := authmw.RequireSystemPermission()
 	portalWorkspace := authmw.RequireRole("teacher", "student", "school_admin")
-	// 业务内容路由不再按角色 code 限制：页面入口由角色菜单权限（roles.permissions.menus）
-	// 在前端控制，写操作由 handler 内的 canModifyContent 控制。
-	businessUser := authmw.RequireRole()
+	businessUser := authmw.RequireRole("teacher", "school_admin", "enterprise_mentor", "platform_admin")
 	jobViewer := authmw.RequireRole("teacher", "student", "school_admin", "enterprise_mentor", "platform_admin")
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
-	r.Get("/uploads/{filename}", fileHandler.Serve)
+
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(middleware.Timeout(30 * time.Second))
@@ -227,24 +225,6 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 		r.Get("/platform-links", platformLinkHandler.List)
 		r.Get("/app-modules", appModuleHandler.List)
 
-		// Superadmin console (internal hidden page, unauthenticated by product decision)
-		r.Get("/admin/tenants", tenantHandler.AdminList)
-		r.Post("/admin/tenants", tenantHandler.AdminCreate)
-		r.Put("/admin/tenants/{id}", tenantHandler.AdminUpdate)
-		r.Post("/admin/tenants/{id}/status", tenantHandler.AdminUpdateStatus)
-		r.Delete("/admin/tenants/{id}", tenantHandler.AdminDelete)
-
-		// School admin management under a tenant (superadmin console only)
-		r.Get("/admin/tenants/{tenantId}/admins", tenantHandler.AdminListAdmins)
-		r.Post("/admin/tenants/{tenantId}/admins", tenantHandler.AdminCreateAdmin)
-		r.Put("/admin/tenants/{tenantId}/admins/{id}", tenantHandler.AdminUpdateAdmin)
-		r.Delete("/admin/tenants/{tenantId}/admins/{id}", tenantHandler.AdminDeleteAdmin)
-		r.Post("/admin/tenants/{tenantId}/admins/{id}/preview-password", tenantHandler.AdminPreviewPassword)
-
-		// Subscription package management under a tenant (superadmin console only)
-		r.Get("/admin/tenants/{tenantId}/subscription", subscriptionHandler.AdminGet)
-		r.Put("/admin/tenants/{tenantId}/subscription", subscriptionHandler.AdminUpdate)
-
 		r.Group(func(r chi.Router) {
 			r.Use(auth)
 			r.Use(authmw.OperationLog(db))
@@ -257,6 +237,29 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {	r := chi.NewRouter()
 
 			// 当前租户套餐：所有登录用户都需要读取，用于 /portal/apps 入口过滤
 			r.Get("/subscriptions", subscriptionHandler.Get)
+
+			// Authenticated file access
+			r.Get("/uploads/{filename}", fileHandler.Serve)
+
+			// Superadmin console (platform_admin only)
+			r.Group(func(r chi.Router) {
+				r.Use(platformAdmin)
+
+				r.Get("/admin/tenants", tenantHandler.AdminList)
+				r.Post("/admin/tenants", tenantHandler.AdminCreate)
+				r.Put("/admin/tenants/{id}", tenantHandler.AdminUpdate)
+				r.Post("/admin/tenants/{id}/status", tenantHandler.AdminUpdateStatus)
+				r.Delete("/admin/tenants/{id}", tenantHandler.AdminDelete)
+
+				r.Get("/admin/tenants/{tenantId}/admins", tenantHandler.AdminListAdmins)
+				r.Post("/admin/tenants/{tenantId}/admins", tenantHandler.AdminCreateAdmin)
+				r.Put("/admin/tenants/{tenantId}/admins/{id}", tenantHandler.AdminUpdateAdmin)
+				r.Delete("/admin/tenants/{tenantId}/admins/{id}", tenantHandler.AdminDeleteAdmin)
+				r.Post("/admin/tenants/{tenantId}/admins/{id}/reset-password", tenantHandler.AdminResetPassword)
+
+				r.Get("/admin/tenants/{tenantId}/subscription", subscriptionHandler.AdminGet)
+				r.Put("/admin/tenants/{tenantId}/subscription", subscriptionHandler.AdminUpdate)
+			})
 
 			r.Group(func(r chi.Router) {
 				r.Use(jobViewer)

@@ -8,13 +8,12 @@ import (
 )
 
 // RequireRole returns a middleware that only allows users bound to at least
-// one role whose code is in the given allow-list. The empty allow-list means no
-// restriction (useful when the caller builds the list conditionally).
+// one role whose code is in the given allow-list.
 func RequireRole(allowedCodes ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if len(allowedCodes) == 0 {
-				next.ServeHTTP(w, r)
+				http.Error(w, `{"error":"permission denied"}`, http.StatusForbidden)
 				return
 			}
 			claims := CurrentUser(r)

@@ -73,7 +73,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 	r.Route("/api/v1", func(r chi.Router) {
 		auth := middleware.JWT(TestJWTSecret)
 
-		authHandler := &handler.AuthHandler{DB: pool, JWTSecret: TestJWTSecret}
+		authHandler := handler.NewAuthHandler(pool, TestJWTSecret)
 		r.Post("/auth/login", authHandler.Login)
 		r.Post("/auth/portal/login", authHandler.PortalLogin)
 
@@ -95,7 +95,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 		r.Post("/admin/tenants/{tenantId}/admins", tenantHandler.AdminCreateAdmin)
 		r.Put("/admin/tenants/{tenantId}/admins/{id}", tenantHandler.AdminUpdateAdmin)
 		r.Delete("/admin/tenants/{tenantId}/admins/{id}", tenantHandler.AdminDeleteAdmin)
-		r.Post("/admin/tenants/{tenantId}/admins/{id}/preview-password", tenantHandler.AdminPreviewPassword)
+		r.Post("/admin/tenants/{tenantId}/admins/{id}/reset-password", tenantHandler.AdminResetPassword)
 
 		r.Group(func(r chi.Router) {
 			r.Use(auth)

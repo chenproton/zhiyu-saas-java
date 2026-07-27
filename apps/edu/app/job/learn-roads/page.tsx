@@ -259,7 +259,6 @@ export default function LearnRoadsPage() {
       const allTasks = taskResults.flatMap((r) => r.items || [])
       setPositionScenarios(scens)
       setPositionTasks(allTasks)
-      console.log('[learn-roads] loaded scenes for', positionId, 'scenes', scens.length, 'tasks', allTasks.length, scens.map((s) => ({ id: s.id, name: s.name, status: s.status })))
       return { scenarios: scens, tasks: allTasks }
     } catch (err) {
       console.error('[learn-roads] load scenes failed', err)
@@ -289,15 +288,12 @@ export default function LearnRoadsPage() {
         setLearnRoads(roads)
 
         const existing = roads.find((r) => r.positionIds?.includes(position.id))
-        console.log('[learn-roads] existing road', existing?.id, 'positionIds', existing?.positionIds, 'steps', existing?.steps?.length)
         let loadedScenes: Scene[] = []
         if (existing?.id) {
           setLearnRoadId(existing.id)
           loadedScenes = stepsToScenes(existing.steps || [], scenarios, tasks)
-          console.log('[learn-roads] loaded scenes from existing road', loadedScenes.length, loadedScenes.map((s) => ({ id: s.id, name: s.name })))
         } else if (scenarios.length) {
           const steps = scenesToSteps(scenarios.map((s) => scenarioToScene(s, tasks)))
-          console.log('[learn-roads] creating road with steps', steps.length)
           const created = await learnRoadApi.create({
             name: `${position.name}学习路径`,
             positionIds: [position.id],
@@ -307,7 +303,6 @@ export default function LearnRoadsPage() {
           setLearnRoadId(created.id)
           loadedScenes = stepsToScenes(created.steps || [], scenarios, tasks)
         } else {
-          console.log('[learn-roads] creating empty road')
           const created = await learnRoadApi.create({
             name: `${position.name}学习路径`,
             positionIds: [position.id],
