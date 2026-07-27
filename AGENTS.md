@@ -159,7 +159,6 @@
 | 组件 | 文件 | 适用场景 | 使用方式 |
 |------|------|---------|---------|
 | `UserSelector` | `user-selector.tsx`（400行） | **选择用户**（支持多选/单选、组织树筛选、排除学生） | `value`+`onChange`+`multiple`+`excludeStudent`+`tenantId` |
-| `OrgFilterTree` | `org-filter-tree.tsx` | **组织树筛选边栏**（点击节点筛选） | `onSelect(orgId)` 回调 |
 | `OrgNodePicker` | `org-node-picker.tsx` | **组织节点选择器**（Popover 形式） | `value`+`onChange` |
 | `StatusBadge` | `status-badge.tsx` | **状态标签**（统一颜色体系，覆盖 draft/pending/approved/rejected/published/archived 等） | `<StatusBadge status={item.status} />` |
 | `TableRowActions` | `table-row-actions.tsx` | **表格行悬浮操作按钮**（替代手写 `group-hover:opacity-100` 模式，需配合 `<Table>` 使用） | `<TableRowActions><Button>编辑</Button><Button>删除</Button></TableRowActions>` |
@@ -172,7 +171,7 @@
 
 | Hook | 文件 | 适用场景 |
 |------|------|---------|
-| `useApprovalDialogs` | `approval-dialogs.tsx` | **审批通过/驳回对话框**（返回 dialogs + approveAction + batchActionButtons） |
+| `useApprovalDialogs` | `_components/approval-dialogs.tsx` | **审批通过/驳回对话框**（返回 dialogs + approveAction + batchActionButtons，已内聚到 ApprovalListPage） |
 | `useApprovals` | `@/hooks/use-approvals` | **审批记录数据**（records、approve、reject、batchApprove、batchReject、getStepInfo） |
 | `useSubmitterNames` | `@/hooks/use-submitter-names` | **提交人姓名缓存**（getName(userId) 批量解析用户名） |
 | `useImportFlow` | `@/hooks/use-import-flow` | **导入流程逻辑**（下载模板、预览、执行导入、重复处理） |
@@ -190,10 +189,20 @@
 |------|------|---------|
 | `PageHeaderCard` | `page-header-card.tsx` | **页头统计卡片**（标题 + 统计数字 + 操作按钮） |
 | `PlatformShell` | `platform-shell/` | **平台整体布局壳子**（侧边栏 + 顶栏 + 内容区） |
-| `WorkflowEditor` | `workflow-editor.tsx` | **审批流步骤编辑器**（多步骤 + 审批人选择） |
+| `LogTableShell<T>` | `log-table-shell.tsx` | **日志表格壳子**（表格 + 加载/空态 + 分页，注入 `columns` 列定义） |
 | `BatchSelector` | `batch-selector.tsx` | **批次选择器**（下拉选择 + 创建新批次） |
-| `SchoolAdminManager` | `school-admin-manager.tsx` | **学校管理员管理**（添加/删除管理员） |
 | `ResetPasswordDialog` | `reset-password-dialog.tsx` | **重置密码对话框** |
+
+### 内部组件约定（`_components/`）
+
+> 以下组件已从公共 API 中移除，仅作为特定页面壳子的内部子组件存在。新增页面时不要直接引用这些组件。
+
+| 组件 | 位置 | 所属页面壳子 |
+|------|------|-------------|
+| `WorkflowEditor` | `shared/_components/` | `WorkflowConfigPage` |
+| `ApprovalDialogs` | `shared/_components/` | `ApprovalListPage` |
+| `OrgFilterTree` | `shared/_components/` | `PortalSidebarCrudPage` |
+| `SchoolAdminManager` | `portal/.../tenant/_components/` | 租户信息管理页 |
 
 ### 通用页面模式速查
 
@@ -206,13 +215,16 @@
 | 内容编辑器 | `EditorShell` | `app/*/[id]/edit/page.tsx`（7 个编辑器页面复用） |
 | Portal 系统管理 CRUD 表格 | `PortalCrudPage` / `PortalSidebarCrudPage` | `app/portal/apps/system/resource/industries/page.tsx`、`teachers/page.tsx` |
 | 归档管理 | `ArchiveListPage` | `app/*/archive/page.tsx`（3 个模块复用） |
+| 日志查看（表格+分页） | `LogTableShell<T>` | `app/portal/apps/system/logs/login/page.tsx`、`operation/page.tsx` |
 
 ### 注意事项
 
-1. **不要定义本地 `STATUS_CONFIG`**。已有的全局 `getStatusConfig()`（在 `packages/shared-types/src/status.ts`）覆盖了 draft/pending/approved/rejected/published/archived/reviewing 等全部状态，配合 `<StatusBadge>` 使用即可。
+1. **不要定义本地 `STATUS_CONFIG`**。已有的全局 `getStatusConfig()`（在 `packages/shared-types/src/status.ts`）覆盖了 draft/pending/approved/rejected/published/archived/reviewing/in_progress/finished 等全部状态，配合 `<StatusBadge>` 使用即可。
 2. **表格行操作按钮**应使用 `<TableRowActions>` 组件，不要手写 `group-hover:opacity-100` 的 div。
 3. **共建人选择**优先使用已有的 `CoBuilderDialog`，避免在页面中内联实现两栏穿梭选人。
 4. **导入流程**新页面应使用 `useImportFlow` hook，统一下载模板、预览、去重确认、执行导入的流程。
+5. **删除确认**统一使用 `<ConfirmDialog>`，禁止使用浏览器原生 `window.confirm()`。
+6. **就近放置**：仅被一个页面/组件使用的子组件，放在该消费者的 `_components/` 子目录下，不要放入 `shared/`。
 
 ## 八、AI 协作者约定
 

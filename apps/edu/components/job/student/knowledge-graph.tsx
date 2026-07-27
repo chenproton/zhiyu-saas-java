@@ -84,7 +84,7 @@ export function KnowledgeGraph({
     abilityDomains.forEach((d) => domainByName.set(d.name, d))
 
     const coveredBindingIds = new Set<string>()
-    abilityDomains.forEach((d) => (d.bindingIds || []).forEach((id) => coveredBindingIds.add(id)))
+    abilityDomains.forEach((d) => (d.bindingIds || []).forEach((id: string) => coveredBindingIds.add(id)))
 
     const fallbackDomains: AbilityDomain[] = []
     bindings.forEach((b) => {
