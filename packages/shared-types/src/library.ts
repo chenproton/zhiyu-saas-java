@@ -53,6 +53,7 @@ export interface OnSiteQuestionLibraryItem {
   difficulty?: string
   knowledgePointIds?: string[]
   tags?: string[]
+  creatorId?: string
   createdAt: string
   updatedAt: string
 }

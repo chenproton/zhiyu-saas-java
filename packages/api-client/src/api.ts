@@ -724,7 +724,7 @@ export const positionApi = {
 }
 
 export const abilityApi = {
-  list: (params?: { category?: string; isPublic?: boolean; search?: string; limit?: number; offset?: number }) =>
+  list: (params?: { category?: string; isPublic?: boolean; search?: string; creatorId?: string; limit?: number; offset?: number }) =>
     request<ListResponse<AbilityPoint>>(`/job/abilities${buildQuery(params || {})}`),
   get: (id: string) => request<AbilityPoint>(`/job/abilities/${id}`),
   create: (req: Omit<AbilityPoint, "id" | "createdAt">) =>
@@ -771,7 +771,7 @@ export const positionCertificateApi = {
 }
 
 export const certificateLibraryApi = {
-  list: (params?: { search?: string; limit?: number; offset?: number }) =>
+  list: (params?: { search?: string; creatorId?: string; limit?: number; offset?: number }) =>
     request<ListResponse<CertificateLibraryItem>>(`/job/certificate-library${buildQuery(params || {})}`),
   get: (id: string) => request<CertificateLibraryItem>(`/job/certificate-library/${id}`),
   create: (req: Omit<CertificateLibraryItem, "id" | "tenantId" | "createdAt">) =>
@@ -1339,7 +1339,7 @@ export const evaluationBatchApi = {
 // ==================== Phase 3.6: Resource Sharing Platform APIs ====================
 
 export const resourceLibraryApi = {
-  list: (params?: { search?: string; resourceType?: string; limit?: number; offset?: number }) =>
+  list: (params?: { search?: string; resourceType?: string; uploadedBy?: string; limit?: number; offset?: number }) =>
     request<ListResponse<ResourceLibraryItem>>(`/library/resources${buildQuery(params || {})}`),
   get: (id: string) => request<ResourceLibraryItem>(`/library/resources/${id}`),
   create: (req: Omit<ResourceLibraryItem, "id" | "tenantId" | "createdAt" | "updatedAt">) =>
@@ -1350,7 +1350,7 @@ export const resourceLibraryApi = {
 }
 
 export const onSiteQuestionLibraryApi = {
-  list: (params?: { search?: string; questionType?: string; difficulty?: string; limit?: number; offset?: number }) =>
+  list: (params?: { search?: string; questionType?: string; difficulty?: string; creatorId?: string; limit?: number; offset?: number }) =>
     request<ListResponse<OnSiteQuestionLibraryItem>>(`/library/on-site-questions${buildQuery(params || {})}`),
   get: (id: string) => request<OnSiteQuestionLibraryItem>(`/library/on-site-questions/${id}`),
   create: (req: Omit<OnSiteQuestionLibraryItem, "id" | "tenantId" | "createdAt" | "updatedAt">) =>

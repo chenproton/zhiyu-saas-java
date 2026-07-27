@@ -48,6 +48,7 @@ func (h *AbilityHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	category := r.URL.Query().Get("category")
 	search := r.URL.Query().Get("search")
+	creatorID := r.URL.Query().Get("creatorId")
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
 
@@ -85,13 +86,18 @@ func (h *AbilityHandler) List(w http.ResponseWriter, r *http.Request) {
 		args = append(args, "%"+search+"%")
 		argIdx++
 	}
+	if creatorID != "" {
+		where = append(where, "creator_id = $"+itoa(argIdx))
+		args = append(args, creatorID)
+		argIdx++
+	}
 
 	countQuery := "SELECT COUNT(*) FROM ability_points WHERE " + strings.Join(where, " AND ")
 	var total int
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT id, name, code, description, category, attributes, is_public, created_at
+		SELECT id, name, code, description, category, attributes, is_public, creator_id, created_at
 		FROM ability_points
 		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY created_at DESC
@@ -146,16 +152,18 @@ func (h *AbilityHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	claims := middleware.CurrentUser(r)
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
 
 	id := uuid.NewString()
+	creatorID := claims.UserID
 	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO ability_points (id, tenant_id, name, description, category, attributes, is_public)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`, id, tenantID, req.Name, req.Description, req.Category, coalesceStringSlice(req.Attributes), req.IsPublic)
+		INSERT INTO ability_points (id, tenant_id, name, description, category, attributes, is_public, creator_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`, id, tenantID, req.Name, req.Description, req.Category, coalesceStringSlice(req.Attributes), req.IsPublic, creatorID)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "能力点名称已存在，请使用其他名称")
@@ -235,10 +243,10 @@ func (h *AbilityHandler) fetchAbility(ctx context.Context, id string) (domain.Ab
 	var description *string
 
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, code, description, category, attributes, is_public, created_at
+		SELECT id, name, code, description, category, attributes, is_public, creator_id, created_at
 		FROM ability_points WHERE id = $1
 	`, id).Scan(
-		&a.ID, &a.Name, &a.Code, &description, &a.Category, &a.Attributes, &a.IsPublic, &a.CreatedAt,
+		&a.ID, &a.Name, &a.Code, &description, &a.Category, &a.Attributes, &a.IsPublic, &a.CreatorID, &a.CreatedAt,
 	)
 	if err != nil {
 		return a, err
@@ -253,7 +261,7 @@ func (h *AbilityHandler) scanAbilityRows(rows pgx.Rows) ([]domain.AbilityPoint, 
 		var a domain.AbilityPoint
 		var description, code *string
 		if err := rows.Scan(
-			&a.ID, &a.Name, &code, &description, &a.Category, &a.Attributes, &a.IsPublic, &a.CreatedAt,
+			&a.ID, &a.Name, &code, &description, &a.Category, &a.Attributes, &a.IsPublic, &a.CreatorID, &a.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

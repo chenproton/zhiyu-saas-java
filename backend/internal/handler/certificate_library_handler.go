@@ -45,6 +45,7 @@ func (h *CertificateLibraryHandler) List(w http.ResponseWriter, r *http.Request)
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
 	search := r.URL.Query().Get("search")
+	creatorID := r.URL.Query().Get("creatorId")
 
 	limit := 50
 	offset := 0
@@ -64,13 +65,18 @@ func (h *CertificateLibraryHandler) List(w http.ResponseWriter, r *http.Request)
 		args = append(args, "%"+search+"%")
 		argIdx++
 	}
+	if creatorID != "" {
+		where = append(where, "creator_id = $"+itoa(argIdx))
+		args = append(args, creatorID)
+		argIdx++
+	}
 
 	countQuery := "SELECT COUNT(*) FROM certificate_library WHERE " + strings.Join(where, " AND ")
 	var total int
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT id, tenant_id, name, url, description, image_url, created_at
+		SELECT id, tenant_id, name, url, description, image_url, creator_id, created_at
 		FROM certificate_library
 		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY created_at DESC
@@ -87,9 +93,9 @@ func (h *CertificateLibraryHandler) List(w http.ResponseWriter, r *http.Request)
 	items := make([]domain.CertificateLibraryItem, 0)
 	for rows.Next() {
 		var item domain.CertificateLibraryItem
-		var url, description, imageURL *string
+		var url, description, imageURL, creatorID *string
 		if err := rows.Scan(
-			&item.ID, &item.TenantID, &item.Name, &url, &description, &imageURL, &item.CreatedAt,
+			&item.ID, &item.TenantID, &item.Name, &url, &description, &imageURL, &creatorID, &item.CreatedAt,
 		); err != nil {
 			respondError(w, http.StatusInternalServerError, "failed to scan certificate library")
 			return
@@ -97,6 +103,7 @@ func (h *CertificateLibraryHandler) List(w http.ResponseWriter, r *http.Request)
 		item.URL = url
 		item.Description = description
 		item.ImageURL = imageURL
+		item.CreatorID = creatorID
 		items = append(items, item)
 	}
 
@@ -119,6 +126,7 @@ func (h *CertificateLibraryHandler) Get(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *CertificateLibraryHandler) Create(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
@@ -136,10 +144,11 @@ func (h *CertificateLibraryHandler) Create(w http.ResponseWriter, r *http.Reques
 	}
 
 	id := uuid.NewString()
+	creatorID := claims.UserID
 	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO certificate_library (id, tenant_id, name, url, description, image_url)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, id, tenantID, req.Name, req.URL, req.Description, req.ImageURL)
+		INSERT INTO certificate_library (id, tenant_id, name, url, description, image_url, creator_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, id, tenantID, req.Name, req.URL, req.Description, req.ImageURL, creatorID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create certificate")
 		return
@@ -230,13 +239,13 @@ func (h *CertificateLibraryHandler) Delete(w http.ResponseWriter, r *http.Reques
 
 func (h *CertificateLibraryHandler) fetchItem(ctx context.Context, id string) (domain.CertificateLibraryItem, error) {
 	var item domain.CertificateLibraryItem
-	var url, description, imageURL *string
+	var url, description, imageURL, creatorID *string
 
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, tenant_id, name, url, description, image_url, created_at
+		SELECT id, tenant_id, name, url, description, image_url, creator_id, created_at
 		FROM certificate_library WHERE id = $1
 	`, id).Scan(
-		&item.ID, &item.TenantID, &item.Name, &url, &description, &imageURL, &item.CreatedAt,
+		&item.ID, &item.TenantID, &item.Name, &url, &description, &imageURL, &creatorID, &item.CreatedAt,
 	)
 	if err != nil {
 		return item, err
@@ -244,5 +253,6 @@ func (h *CertificateLibraryHandler) fetchItem(ctx context.Context, id string) (d
 	item.URL = url
 	item.Description = description
 	item.ImageURL = imageURL
+	item.CreatorID = creatorID
 	return item, nil
 }

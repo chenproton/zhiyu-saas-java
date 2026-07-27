@@ -68,6 +68,7 @@ func (h *ResourceLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
 	resourceType := r.URL.Query().Get("resourceType")
 	orgName := r.URL.Query().Get("orgName")
 	majorName := r.URL.Query().Get("majorName")
+	uploadedBy := r.URL.Query().Get("uploadedBy")
 
 	limit := 50
 	offset := 0
@@ -100,6 +101,11 @@ func (h *ResourceLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
 	if majorName != "" {
 		where = append(where, "m.name = $"+itoa(argIdx))
 		args = append(args, majorName)
+		argIdx++
+	}
+	if uploadedBy != "" {
+		where = append(where, "rl.uploaded_by = $"+itoa(argIdx))
+		args = append(args, uploadedBy)
 		argIdx++
 	}
 

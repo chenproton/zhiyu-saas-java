@@ -54,6 +54,7 @@ func (h *OnSiteQuestionLibraryHandler) List(w http.ResponseWriter, r *http.Reque
 	search := r.URL.Query().Get("search")
 	questionType := r.URL.Query().Get("questionType")
 	difficulty := r.URL.Query().Get("difficulty")
+	creatorID := r.URL.Query().Get("creatorId")
 
 	limit := 50
 	offset := 0
@@ -83,13 +84,18 @@ func (h *OnSiteQuestionLibraryHandler) List(w http.ResponseWriter, r *http.Reque
 		args = append(args, difficulty)
 		argIdx++
 	}
+	if creatorID != "" {
+		where = append(where, "creator_id = $"+itoa(argIdx))
+		args = append(args, creatorID)
+		argIdx++
+	}
 
 	countQuery := "SELECT COUNT(*) FROM on_site_question_library WHERE " + strings.Join(where, " AND ")
 	var total int
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT id, tenant_id, question_text, answer, question_type, score, difficulty, knowledge_point_ids, tags, created_at, updated_at
+		SELECT id, tenant_id, question_text, answer, question_type, score, difficulty, knowledge_point_ids, tags, creator_id, created_at, updated_at
 		FROM on_site_question_library
 		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY created_at DESC
@@ -128,6 +134,7 @@ func (h *OnSiteQuestionLibraryHandler) Get(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *OnSiteQuestionLibraryHandler) Create(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
@@ -154,10 +161,11 @@ func (h *OnSiteQuestionLibraryHandler) Create(w http.ResponseWriter, r *http.Req
 	}
 
 	id := uuid.NewString()
+	creatorID := claims.UserID
 	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO on_site_question_library (id, tenant_id, question_text, answer, question_type, score, difficulty, knowledge_point_ids, tags)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-	`, id, tenantID, req.QuestionText, req.Answer, req.QuestionType, req.Score, req.Difficulty, req.KnowledgePointIDs, req.Tags)
+		INSERT INTO on_site_question_library (id, tenant_id, question_text, answer, question_type, score, difficulty, knowledge_point_ids, tags, creator_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	`, id, tenantID, req.QuestionText, req.Answer, req.QuestionType, req.Score, req.Difficulty, req.KnowledgePointIDs, req.Tags, creatorID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create question")
 		return
@@ -262,16 +270,16 @@ func (h *OnSiteQuestionLibraryHandler) Delete(w http.ResponseWriter, r *http.Req
 
 func (h *OnSiteQuestionLibraryHandler) fetchItem(ctx context.Context, id string) (domain.OnSiteQuestionLibraryItem, error) {
 	var item domain.OnSiteQuestionLibraryItem
-	var answer, difficulty *string
+	var answer, difficulty, creatorID *string
 	var knowledgePointIDs []string
 	var tags []string
 
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, tenant_id, question_text, answer, question_type, score, difficulty, knowledge_point_ids, tags, created_at, updated_at
+		SELECT id, tenant_id, question_text, answer, question_type, score, difficulty, knowledge_point_ids, tags, creator_id, created_at, updated_at
 		FROM on_site_question_library WHERE id = $1
 	`, id).Scan(
 		&item.ID, &item.TenantID, &item.QuestionText, &answer, &item.QuestionType,
-		&item.Score, &difficulty, &knowledgePointIDs, &tags, &item.CreatedAt, &item.UpdatedAt,
+		&item.Score, &difficulty, &knowledgePointIDs, &tags, &creatorID, &item.CreatedAt, &item.UpdatedAt,
 	)
 	if err != nil {
 		return item, err
@@ -280,6 +288,7 @@ func (h *OnSiteQuestionLibraryHandler) fetchItem(ctx context.Context, id string)
 	item.Difficulty = difficulty
 	item.KnowledgePointIDs = knowledgePointIDs
 	item.Tags = tags
+	item.CreatorID = creatorID
 	return item, nil
 }
 
@@ -287,12 +296,12 @@ func (h *OnSiteQuestionLibraryHandler) scanQuestionRows(rows pgx.Rows) ([]domain
 	items := make([]domain.OnSiteQuestionLibraryItem, 0)
 	for rows.Next() {
 		var item domain.OnSiteQuestionLibraryItem
-		var answer, difficulty *string
+		var answer, difficulty, creatorID *string
 		var knowledgePointIDs []string
 		var tags []string
 		if err := rows.Scan(
 			&item.ID, &item.TenantID, &item.QuestionText, &answer, &item.QuestionType,
-			&item.Score, &difficulty, &knowledgePointIDs, &tags, &item.CreatedAt, &item.UpdatedAt,
+			&item.Score, &difficulty, &knowledgePointIDs, &tags, &creatorID, &item.CreatedAt, &item.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -300,6 +309,7 @@ func (h *OnSiteQuestionLibraryHandler) scanQuestionRows(rows pgx.Rows) ([]domain
 		item.Difficulty = difficulty
 		item.KnowledgePointIDs = knowledgePointIDs
 		item.Tags = tags
+		item.CreatorID = creatorID
 		items = append(items, item)
 	}
 	return items, nil

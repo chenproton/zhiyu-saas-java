@@ -46,6 +46,7 @@ type OnSiteQuestionLibraryItem struct {
 	Difficulty       *string   `json:"difficulty,omitempty"`
 	KnowledgePointIDs []string `json:"knowledgePointIds,omitempty"`
 	Tags             []string  `json:"tags,omitempty"`
+	CreatorID        *string   `json:"creatorId,omitempty"`
 	CreatedAt        time.Time `json:"createdAt"`
 	UpdatedAt        time.Time `json:"updatedAt"`
 }

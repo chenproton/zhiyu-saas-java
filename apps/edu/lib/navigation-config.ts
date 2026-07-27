@@ -396,6 +396,14 @@ export const libraryNavigationConfig: PlatformNavigationConfig = {
   ],
   sideNavItems: [
     {
+      id: "my-resource-center",
+      label: "我的资源库",
+      icon: "user",
+      children: [
+        { id: "my-resources", label: "我的资源", href: "/library/my-resources", matchers: ["/library/my-resources"] },
+      ],
+    },
+    {
       id: "resource-center",
       label: "公共资源库",
       icon: "folderKanban",
@@ -408,7 +416,7 @@ export const libraryNavigationConfig: PlatformNavigationConfig = {
       ],
     },
   ],
-  defaultExpandedSideNavIds: ["resource-center"],
+  defaultExpandedSideNavIds: ["my-resource-center", "resource-center"],
   platformSwitchItems: [],
   shellClassName: "bg-background",
   mainClassName: "min-w-0 flex-1",

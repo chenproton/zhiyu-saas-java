@@ -63,6 +63,7 @@ type CertificateLibraryItem struct {
 	URL         *string   `json:"url,omitempty"`
 	Description *string   `json:"description,omitempty"`
 	ImageURL    *string   `json:"imageUrl,omitempty"`
+	CreatorID   *string   `json:"creatorId,omitempty"`
 	CreatedAt   time.Time `json:"createdAt"`
 }
 
@@ -92,6 +93,7 @@ type AbilityPoint struct {
 	Code        *string         `json:"code,omitempty"`
 	Attributes  []string        `json:"attributes"`
 	IsPublic    bool            `json:"isPublic"`
+	CreatorID   *string         `json:"creatorId,omitempty"`
 	CreatedAt   time.Time       `json:"createdAt"`
 }
 

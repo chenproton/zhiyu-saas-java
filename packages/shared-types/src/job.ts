@@ -43,6 +43,7 @@ export interface CertificateLibraryItem {
   url?: string
   description?: string
   imageUrl?: string
+  creatorId?: string
   createdAt: string
 }
 
@@ -62,6 +63,7 @@ export interface AbilityPoint {
   category: "knowledge" | "skill" | "quality"
   attributes: string[]
   isPublic: boolean
+  creatorId?: string
   createdAt: string
 }
 
