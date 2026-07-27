@@ -68,7 +68,7 @@ export function JobCard({ position, index = 0, isHot, scenarioCount = 0, taskCou
           </div>
           <div className="relative z-10">
             <div className="text-base font-bold leading-snug mb-1 line-clamp-2 group-hover:text-blue-100 transition-colors">{displayTitle}</div>
-            <div className="text-xs text-white/80">岗位编码：{position.id.slice(0, 8)}</div>
+            <div className="text-xs text-white/80">岗位编码：{position.code || position.id.slice(0, 8)}</div>
           </div>
         </div>
         <div className="p-5 flex-1 flex flex-col">

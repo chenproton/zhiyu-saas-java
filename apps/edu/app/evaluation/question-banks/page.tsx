@@ -831,6 +831,7 @@ export default function QuestionBanksPage() {
               />
             </TableHead>
             <TableHead className="w-[160px]">题库名称</TableHead>
+            <TableHead className="w-[120px]">题库编码</TableHead>
             <TableHead className="w-[120px]">题库简介</TableHead>
             <TableHead className="w-[80px]">题目数量</TableHead>
             <TableHead className="w-[100px]">所属批次</TableHead>
@@ -868,6 +869,9 @@ export default function QuestionBanksPage() {
                       </span>
                     )}
                   </button>
+                </TableCell>
+                <TableCell className="truncate">
+                  <span className="text-sm text-muted-foreground">{bank.code || bank.id.slice(0, 8)}</span>
                 </TableCell>
                 <TableCell className="truncate max-w-[120px]">
                   <span className="text-sm text-muted-foreground truncate block">

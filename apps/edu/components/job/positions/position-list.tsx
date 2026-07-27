@@ -89,7 +89,7 @@ export function PositionList({
           />
         </div>
         <div className="col-span-2">岗位名称</div>
-        <div className="col-span-1 text-center">版本</div>
+        <div className="col-span-1">岗位编码</div>
         <div className="col-span-1">所属行业</div>
         <div className="col-span-1">所属专业</div>
         <div className="col-span-1">所属批次分组</div>
@@ -125,11 +125,14 @@ export function PositionList({
                 <Link href={`${basePath}/${position.id}/edit`} className="block">
                   <p className="text-sm font-medium text-slate-900 line-clamp-1 hover:text-primary">{position.name}</p>
                 </Link>
-                <Badge variant="secondary" className={cn("text-xs mt-1", status.className)}>
-                  {status.label}
-                </Badge>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <Badge variant="secondary" className={cn("text-xs", status.className)}>
+                    {status.label}
+                  </Badge>
+                  <span className="text-xs text-slate-400">v{position.version}</span>
+                </div>
               </div>
-              <div className="col-span-1 text-center text-sm text-slate-600">{position.version}</div>
+              <div className="col-span-1 text-sm text-slate-600 truncate">{position.code || position.id.slice(0, 8)}</div>
               <div className="col-span-1 text-sm text-slate-600 truncate">{getIndustryName(position.industry)}</div>
               <div className="col-span-1 text-sm text-slate-600 truncate">
                 {getMajorNames(position.majors)}

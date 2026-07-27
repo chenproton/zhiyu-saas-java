@@ -45,6 +45,7 @@ export function convertApiWorkflowToLocal(w: ApiWorkflow): Workflow {
 export function convertCareerPositionToPosition(cp: CareerPosition): Position {
   return {
     id: cp.id,
+    code: cp.code || '',
     batchId: cp.batchId || '',
     version: cp.version,
     status: cp.status,

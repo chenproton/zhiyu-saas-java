@@ -820,6 +820,7 @@ export default function ExamsPage() {
               />
             </TableHead>
             <TableHead className="w-[160px]">试卷名称</TableHead>
+            <TableHead className="w-[120px]">试卷编码</TableHead>
             <TableHead className="w-[120px]">试卷简介</TableHead>
             <TableHead className="w-[80px]">题目数量</TableHead>
             <TableHead className="w-[80px]">总分</TableHead>
@@ -851,6 +852,9 @@ export default function ExamsPage() {
                   >
                     {exam.name}
                   </button>
+                </TableCell>
+                <TableCell className="truncate">
+                  <span className="text-sm text-muted-foreground">{exam.code || exam.id.slice(0, 8)}</span>
                 </TableCell>
                 <TableCell className="truncate max-w-[120px]">
                   <span className="text-sm text-muted-foreground truncate block">

@@ -165,6 +165,7 @@ export interface CompetencyItem {
 // 岗位
 export interface Position {
   id: string
+  code?: string
   batchId: string
   version: string
   status: PositionStatus
