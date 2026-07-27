@@ -10,8 +10,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
-import { questionBankApi, questionApi } from "@/lib/api"
-import type { QuestionBank, Question } from "@/lib/types"
+import { questionBankApi, questionApi, knowledgeApi } from "@/lib/api"
+import type { QuestionBank, Question, KnowledgePoint } from "@/lib/types"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
 
 const coverGradients = [
@@ -93,6 +93,7 @@ export default function BankDetailPage() {
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState("全部")
   const [showAllAnswers, setShowAllAnswers] = useState(false)
+  const [knowledgePointMap, setKnowledgePointMap] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (!id) return
@@ -102,6 +103,11 @@ export default function BankDetailPage() {
       questionApi.list({ bankId: id, limit: 10000 } as any)
         .then((res) => setQuestions(res.items || []))
         .catch(() => setQuestions([])),
+      knowledgeApi.list({ limit: 1000 }).then((res: { items: KnowledgePoint[] }) => {
+        const map: Record<string, string> = {}
+        res.items.forEach((kp) => { map[kp.id] = kp.name })
+        setKnowledgePointMap(map)
+      }).catch(() => {}),
     ]).finally(() => setLoading(false))
   }, [id])
 
@@ -358,7 +364,7 @@ export default function BankDetailPage() {
                             {q.knowledgePoints && q.knowledgePoints.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-2">
                                 {q.knowledgePoints.slice(0, 4).map((kp) => (
-                                  <span key={kp} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-50 text-slate-400 border border-slate-100">{kp}</span>
+                                  <span key={kp} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-50 text-slate-400 border border-slate-100">{knowledgePointMap[kp] || kp}</span>
                                 ))}
                               </div>
                             )}
