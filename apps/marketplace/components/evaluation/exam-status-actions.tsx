@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { ConfirmDialog } from "../../../edu/components/shared/confirm-dialog"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import {
   Edit,
   Trash2,
