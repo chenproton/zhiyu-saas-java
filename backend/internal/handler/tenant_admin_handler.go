@@ -32,7 +32,7 @@ type TenantAdminResponse struct {
 	LoginName     string     `json:"loginName"`
 	Name          string     `json:"name"`
 	Status        string     `json:"status"`
-	PlainPassword string     `json:"plainPassword,omitempty"`
+	NewPassword   string     `json:"newPassword,omitempty"`
 	CreatedAt     time.Time  `json:"createdAt"`
 	UpdatedAt     time.Time  `json:"updatedAt"`
 	LastLoginAt   *time.Time `json:"lastLoginAt,omitempty"`
@@ -110,7 +110,7 @@ func (h *TenantHandler) AdminCreateAdmin(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	admin.PlainPassword = plainPassword
+	admin.NewPassword = plainPassword
 	respondJSON(w, http.StatusCreated, admin)
 }
 

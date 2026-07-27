@@ -283,7 +283,7 @@ type tenantAdminResp struct {
 	LoginName     string `json:"loginName"`
 	Name          string `json:"name"`
 	Status        string `json:"status"`
-	PlainPassword string `json:"plainPassword"`
+	NewPassword string `json:"newPassword"`
 }
 
 type tenantAdminListResp struct {
@@ -319,25 +319,25 @@ func TestTenantAdmin_CRUD(t *testing.T) {
 
 	// Preview default admin password.
 	defaultAdminID := list.Items[0].ID
-	wp := env.DoNoAuth("POST", "/api/v1/admin/tenants/"+created.ID+"/admins/"+defaultAdminID+"/preview-password", nil)
+	wp := env.DoNoAuth("POST", "/api/v1/admin/tenants/"+created.ID+"/admins/"+defaultAdminID+"/reset-password", nil)
 	if wp.Code != http.StatusOK {
 		t.Fatalf("preview password: %d %s", wp.Code, testhelper.ErrMsg(wp))
 	}
 	var preview struct {
 		ID            string `json:"id"`
-		PlainPassword string `json:"plainPassword"`
+		NewPassword string `json:"newPassword"`
 	}
 	if err := json.Unmarshal(wp.Body.Bytes(), &preview); err != nil {
 		t.Fatalf("unmarshal preview: %v", err)
 	}
-	if preview.PlainPassword == "" {
-		t.Fatalf("expected non-empty plain password")
+	if preview.NewPassword == "" {
+		t.Fatalf("expected non-empty new password")
 	}
 
 	// Verify the previewed password can be used to log in via portal login.
 	loginW := env.Do("POST", "/api/v1/auth/portal/login", map[string]string{
 		"username": list.Items[0].Username,
-		"password": preview.PlainPassword,
+		"password": preview.NewPassword,
 	})
 	if loginW.Code != http.StatusOK {
 		t.Fatalf("portal login with preview password: %d %s", loginW.Code, testhelper.ErrMsg(loginW))
@@ -352,8 +352,8 @@ func TestTenantAdmin_CRUD(t *testing.T) {
 		t.Fatalf("create admin: %d %s", wc2.Code, testhelper.ErrMsg(wc2))
 	}
 	newAdmin, _ := testhelper.Unmarshal[tenantAdminResp](wc2)
-	if newAdmin.PlainPassword == "" {
-		t.Fatalf("expected new admin plain password")
+	if newAdmin.NewPassword == "" {
+		t.Fatalf("expected new admin new password")
 	}
 
 	// Update the new admin.
