@@ -312,14 +312,15 @@ export default function ExamDetailPage() {
                       return q.content.split(/(\{\d+\})/).map((part, idx) => {
                         if (/\{\d+\}/.test(part)) {
                           blankIndex++
-                          const val = ((answers[q.id] as string[]) || [])[blankIndex] || ""
+                          const currentBlankIndex = blankIndex
+                          const val = ((answers[q.id] as string[]) || [])[currentBlankIndex] || ""
                           return (
                             <input
                               key={idx}
                               type="text"
                               value={val}
-                              onChange={(e) => handleFill(q.id, blankIndex, e.target.value)}
-                              placeholder={`空${blankIndex + 1}`}
+                              onChange={(e) => handleFill(q.id, currentBlankIndex, e.target.value)}
+                              placeholder={`空${currentBlankIndex + 1}`}
                               style={{
                                 width: Math.max(60, val.length * 14 + 20),
                                 minWidth: 60,
