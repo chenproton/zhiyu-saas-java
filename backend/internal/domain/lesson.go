@@ -79,7 +79,6 @@ type SystemCourseNode struct {
 	Duration          *float64  `json:"duration,omitempty"`
 	Difficulty        *int      `json:"difficulty,omitempty"`
 	KnowledgePointIds JSONSlice `json:"knowledgePointIds,omitempty"`
-	AbilityPointIds   JSONSlice `json:"abilityPointIds,omitempty"`
 	ResourceIds       JSONSlice `json:"resourceIds,omitempty"`
 	EvalData          JSONMap   `json:"evalData,omitempty"`
 	Status            string    `json:"status"`
