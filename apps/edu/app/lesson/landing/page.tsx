@@ -260,55 +260,56 @@ export default function LessonLandingPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#F1FAFF]">
       {/* Hero Banner */}
-      <div className="relative w-full pt-16 overflow-hidden">
+      <div className="relative w-full pt-24 pb-2 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-[rgba(5,150,105,0.88)] via-[rgba(16,185,129,0.78)] to-[rgba(20,184,166,0.78)]" />
         <div
-          className="absolute inset-0 opacity-[0.12]"
+          className="absolute inset-0 opacity-[0.08]"
           style={{
-            backgroundImage: `linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)`,
-            backgroundSize: "48px 48px",
+            backgroundImage: `linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px)`,
+            backgroundSize: "52px 52px",
           }}
         />
-        <div className="absolute top-[-80px] right-[10%] w-[420px] h-[420px] rounded-full bg-white/10 blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-[-60px] left-[5%] w-[320px] h-[320px] rounded-full bg-emerald-400/15 blur-[90px] pointer-events-none" />
+        <div className="absolute top-[-120px] right-[-5%] w-[500px] h-[500px] rounded-full bg-emerald-300/20 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-80px] left-[8%] w-[400px] h-[400px] rounded-full bg-teal-400/15 blur-[100px] pointer-events-none" />
+        <div className="absolute top-[20%] left-[30%] w-[300px] h-[300px] rounded-full bg-cyan-400/10 blur-[80px] pointer-events-none" />
 
-        <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-14 pt-2 flex flex-col lg:flex-row justify-between items-start gap-8">
-          <div className="flex-1 pt-4">
-            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md text-white px-3.5 py-1.5 rounded-full text-[13px] border border-white/25 mb-5 shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
+        <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-20 pt-4 flex flex-col lg:flex-row justify-between items-start gap-10">
+          <div className="flex-1 pt-6">
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md text-white px-4 py-2 rounded-full text-[13px] border border-white/20 mb-6 shadow-[0_4px_16px_rgba(0,0,0,0.15)]">
               <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
               体系化课程 · 颗粒化知识管理
             </div>
-            <h1 className="text-[42px] sm:text-[48px] lg:text-[52px] font-bold text-white leading-[1.15] mb-5 drop-shadow-sm">
-              课程教学管理平台<br />从基础到进阶，系统提升专业能力
+            <h1 className="text-[44px] sm:text-[50px] lg:text-[56px] font-extrabold text-white leading-[1.1] mb-6 drop-shadow-lg tracking-tight">
+              课程教学管理平台<br /><span className="text-emerald-200">从基础到进阶，系统提升专业能力</span>
             </h1>
-            <p className="text-[17px] text-white/85 mb-7 max-w-2xl leading-relaxed">
+            <p className="text-[18px] text-white/80 mb-8 max-w-xl leading-relaxed">
               体系化课程设计、颗粒化知识点管理、多维度教学资源整合，让教与学更高效
             </p>
             <Button
-              className="inline-flex items-center gap-2 bg-white text-emerald-600 hover:bg-emerald-50 hover:-translate-y-0.5 px-7 h-12 rounded-full text-sm font-semibold shadow-lg transition-all"
+              className="inline-flex items-center gap-2 bg-white text-emerald-600 hover:bg-emerald-50 hover:-translate-y-0.5 px-8 h-13 rounded-full text-[15px] font-semibold shadow-xl shadow-emerald-500/25 transition-all"
               onClick={() => listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
             >
               浏览课程 <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
 
-          <div className="w-full lg:w-[400px] shrink-0 flex flex-col gap-4 pt-4">
-            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 text-white shadow-[0_8px_32px_rgba(0,0,0,0.18)]">
-              <div className="text-[14px] font-semibold text-white/80 mb-4">课程统计</div>
-              <div className="space-y-3">
+          <div className="w-full lg:w-[420px] shrink-0 flex flex-col gap-5 pt-6">
+            <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-2xl p-7 text-white shadow-[0_12px_40px_rgba(0,0,0,0.25)]">
+              <div className="text-[15px] font-bold text-white/90 mb-5 flex items-center gap-2"><span className="w-5 h-5 rounded-md bg-white/20 flex items-center justify-center">📊</span>课程统计</div>
+              <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-[13px] text-white/70">课程总数</span>
-                  <span className="text-[22px] font-bold">{courses.length}</span>
+                  <span className="text-[14px] text-white/65">课程总数</span>
+                  <span className="text-[26px] font-bold">{courses.length.toLocaleString()}</span>
                 </div>
-                <hr className="border-white/10" />
+                <hr className="border-white/8" />
                 <div className="flex justify-between items-center">
-                  <span className="text-[13px] text-white/70">课程节点</span>
-                  <span className="text-[22px] font-bold">{totalNodes}</span>
+                  <span className="text-[14px] text-white/65">课程节点</span>
+                  <span className="text-[26px] font-bold">{totalNodes.toLocaleString()}</span>
                 </div>
-                <hr className="border-white/10" />
+                <hr className="border-white/8" />
                 <div className="flex justify-between items-center">
-                  <span className="text-[13px] text-white/70">教学资源</span>
-                  <span className="text-[22px] font-bold">{totalResources}</span>
+                  <span className="text-[14px] text-white/65">教学资源</span>
+                  <span className="text-[26px] font-bold">{totalResources.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -317,8 +318,8 @@ export default function LessonLandingPage() {
       </div>
 
       {/* Stats bar */}
-      <div className="max-w-[1400px] mx-auto px-8 -mt-10 relative z-20 w-full">
-        <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_8px_32px_rgba(0,0,0,0.06)] p-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="max-w-[1400px] mx-auto px-8 -mt-12 relative z-20 w-full">
+        <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_12px_40px_rgba(0,0,0,0.08)] p-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { icon: BookOpen, value: systemCourses.length, label: "体系课", gradient: "from-emerald-500 to-emerald-400" },
             { icon: Layers, value: granularCourses.length, label: "颗粒课", gradient: "from-teal-500 to-teal-400" },
