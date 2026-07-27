@@ -47,6 +47,7 @@ import {
 } from "@/components/ui/select"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { TableRowActions } from "@/components/shared/table-row-actions"
 import { BankFormDialog } from "@/components/evaluation/bank-form-dialog"
 import { QuestionFormDialog } from "@/components/evaluation/question-form-dialog"
 import { QuestionPreview } from "@/components/evaluation/question-preview"
