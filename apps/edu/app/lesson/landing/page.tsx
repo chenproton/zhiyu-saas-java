@@ -273,27 +273,27 @@ export default function LessonLandingPage() {
         <div className="absolute bottom-[-80px] left-[8%] w-[400px] h-[400px] rounded-full bg-teal-400/15 blur-[100px] pointer-events-none" />
         <div className="absolute top-[20%] left-[30%] w-[300px] h-[300px] rounded-full bg-cyan-400/10 blur-[80px] pointer-events-none" />
 
-        <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-14 pt-2 flex flex-col lg:flex-row justify-between items-start gap-10">
+        <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-14 pt-2 flex flex-col lg:flex-row justify-between items-start gap-8">
           <div className="flex-1 pt-4">
-            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md text-white px-4 py-2 rounded-full text-[13px] border border-white/20 mb-6 shadow-[0_4px_16px_rgba(0,0,0,0.15)]">
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md text-white px-3.5 py-1.5 rounded-full text-[13px] border border-white/25 mb-5 shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
               <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
               体系化课程 · 颗粒化知识管理
             </div>
-            <h1 className="text-[44px] sm:text-[50px] lg:text-[56px] font-extrabold text-white leading-[1.1] mb-6 drop-shadow-lg tracking-tight">
+            <h1 className="text-[42px] sm:text-[48px] lg:text-[52px] font-bold text-white leading-[1.15] mb-5 drop-shadow-sm">
               课程教学管理平台<br /><span className="text-emerald-200">从基础到进阶，系统提升专业能力</span>
             </h1>
-            <p className="text-[18px] text-white/80 mb-8 max-w-xl leading-relaxed">
+            <p className="text-[17px] text-white/85 mb-7 max-w-2xl leading-relaxed">
               体系化课程设计、颗粒化知识点管理、多维度教学资源整合，让教与学更高效
             </p>
             <Button
-              className="inline-flex items-center gap-2 bg-white text-emerald-600 hover:bg-emerald-50 hover:-translate-y-0.5 px-8 h-13 rounded-full text-[15px] font-semibold shadow-xl shadow-emerald-500/25 transition-all"
+              className="inline-flex items-center gap-2 bg-white text-emerald-600 hover:bg-emerald-50 hover:-translate-y-0.5 px-7 h-12 rounded-full text-sm font-semibold shadow-lg transition-all"
               onClick={() => listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
             >
               浏览课程 <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
 
-          <div className="w-full lg:w-[420px] shrink-0 flex flex-col gap-5 pt-6">
+          <div className="w-full lg:w-[420px] shrink-0 flex flex-col gap-4 pt-4">
             <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-2xl p-7 text-white shadow-[0_12px_40px_rgba(0,0,0,0.25)]">
               <div className="text-[15px] font-bold text-white/90 mb-5 flex items-center gap-2"><span className="w-5 h-5 rounded-md bg-white/20 flex items-center justify-center">📊</span>课程统计</div>
               <div className="space-y-4">
