@@ -64,9 +64,9 @@ export interface SystemCourseNode {
   estimatedHours?: number
   duration?: number
   difficulty?: number
-  knowledgePointIds: string[]
-  abilityPointIds: string[]
-  resourceIds: string[]
+  knowledgePointIds?: string[]
+  abilityPointIds?: string[]
+  resourceIds?: string[]
   evalData?: Record<string, any>
   status: string
   createdAt: string
