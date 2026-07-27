@@ -96,7 +96,7 @@ func (h *KnowledgePointHandler) List(w http.ResponseWriter, r *http.Request) {
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT id, name, code, description, linked, granular_lesson_ids, creator_id, created_at, updated_at
+		SELECT id, name, code, description, linked, granular_lesson_ids::text[] AS granular_lesson_ids, creator_id, created_at, updated_at
 		FROM knowledge_points
 		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY created_at DESC
@@ -254,7 +254,7 @@ func (h *KnowledgePointHandler) Delete(w http.ResponseWriter, r *http.Request) {
 func (h *KnowledgePointHandler) fetchKnowledgePoint(ctx context.Context, id string) (*domain.KnowledgePoint, error) {
 	var kp domain.KnowledgePoint
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, code, description, linked, granular_lesson_ids, creator_id, created_at, updated_at
+		SELECT id, name, code, description, linked, granular_lesson_ids::text[] AS granular_lesson_ids, creator_id, created_at, updated_at
 		FROM knowledge_points WHERE id = $1
 	`, id).Scan(
 		&kp.ID, &kp.Name, &kp.Code, &kp.Description, &kp.Linked, &kp.GranularLessonIds,
