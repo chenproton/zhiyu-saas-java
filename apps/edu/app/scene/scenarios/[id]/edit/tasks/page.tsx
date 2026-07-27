@@ -1961,7 +1961,7 @@ export default function TasksEditPage() {
         })
 
         knowledgePoints.length = 0
-        kpRes.items.forEach((kp: any) => knowledgePoints.push(kp))
+        kpRes.items.forEach((kp: any) => knowledgePoints.push({ ...kp, granularLessons: kp.granularLessonIds || [] }))
 
         granularLessons.length = 0
         glRes.items.forEach((gl: any) => granularLessons.push(gl))
@@ -2368,8 +2368,9 @@ export default function TasksEditPage() {
         } as any)
         kpIdMapping[kpId] = created.id
         const idx = knowledgePoints.findIndex(k => k.id === kpId)
-        if (idx >= 0) knowledgePoints[idx] = { ...knowledgePoints[idx], id: created.id }
+        if (idx >= 0) knowledgePoints[idx] = { ...knowledgePoints[idx], id: created.id, granularLessons: created.granularLessonIds || knowledgePoints[idx].granularLessons || [] }
         customKnowledgePointIds.delete(kpId)
+        customKnowledgePointIds.add(created.id)
       } catch (err: any) {
         console.error("Failed to persist custom knowledge point", kpId, err)
       }
