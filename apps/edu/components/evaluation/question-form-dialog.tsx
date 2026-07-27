@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client"
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
@@ -91,10 +90,7 @@ export function QuestionFormDialog({
         if (cancelled) return
         setKnowledgePoints(res.items.map((kp) => ({ id: kp.id, name: kp.name })))
       })
-      .catch((err) => {
-        if (!cancelled) {
-          console.error('Failed to load knowledge points', err)
-        }
+      .catch((_err) => {
       })
       .finally(() => {
         if (!cancelled) setLoadingKnowledgePoints(false)

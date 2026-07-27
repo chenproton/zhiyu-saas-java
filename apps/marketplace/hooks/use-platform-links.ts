@@ -47,8 +47,6 @@ export function usePlatformLinks() {
         }))
         setData({ platforms })
       }
-    } catch (err) {
-      console.error("Failed to fetch platform links:", err)
     } finally {
       setLoading(false)
     }
@@ -84,7 +82,6 @@ export async function savePlatformLinks(data: PlatformLinksData): Promise<boolea
     })
     return res.ok
   } catch (err) {
-    console.error("Failed to save platform links:", err)
     return false
   }
 }
@@ -100,8 +97,6 @@ export function useAppModules() {
         const json = await res.json()
         setData(json)
       }
-    } catch (err) {
-      console.error("Failed to fetch app modules:", err)
     } finally {
       setLoading(false)
     }
@@ -130,7 +125,6 @@ export async function saveAppModules(data: AppModulesData): Promise<boolean> {
     })
     return res.ok
   } catch (err) {
-    console.error("Failed to save app modules:", err)
     return false
   }
 }

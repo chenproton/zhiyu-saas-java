@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client"
 
 import { useState, useEffect, useRef } from "react"
@@ -63,8 +62,7 @@ export function ExamFormDialog({
       .then((res) => {
         if (!cancelled) setBatches(res.items.map((b) => ({ id: b.id, name: b.name })))
       })
-      .catch((err) => {
-        if (!cancelled) console.error('Failed to load batches', err)
+      .catch((_err) => {
       })
       .finally(() => {
         if (!cancelled) setLoadingBatches(false)

@@ -20,7 +20,6 @@ export async function GET() {
     const data = fs.readFileSync(DATA_PATH, 'utf-8')
     return NextResponse.json(JSON.parse(data))
   } catch (error) {
-    console.error('Error reading PRD annotations:', error)
     return NextResponse.json({ overrides: {}, floatingAnnotations: [] })
   }
 }
@@ -32,7 +31,6 @@ export async function POST(request: Request) {
     fs.writeFileSync(DATA_PATH, JSON.stringify(body, null, 2))
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error saving PRD annotations:', error)
     return NextResponse.json({ error: 'Failed to save' }, { status: 500 })
   }
 }

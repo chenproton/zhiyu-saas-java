@@ -1944,7 +1944,6 @@ export default function TasksEditPage() {
             const bindingsRes = await abilityApi.listBindings({ careerPositionId: scenarioData.careerPositionId })
             setPositionAbilityBindings(bindingsRes.items)
           } catch (err) {
-            console.error("Failed to load position ability bindings", err)
             setPositionAbilityBindings([])
           }
         } else {
@@ -2133,13 +2132,11 @@ export default function TasksEditPage() {
             }
           }
         } catch (cloneLoadErr) {
-          console.error("Failed to load clone candidate tasks", cloneLoadErr)
         }
         setCloneDataVersion(v => v + 1)
 
         setDataLoaded(true)
       } catch (err) {
-        console.error("Failed to load task data", err)
       }
     }
     load()
@@ -2345,7 +2342,6 @@ export default function TasksEditPage() {
       setIsCloneOpen(false)
       setSelectedClone([])
     } catch (err: any) {
-      console.error("Clone failed", err)
       toast({ variant: "destructive", title: "克隆失败", description: err.message })
     } finally {
       setIsCloning(false)
@@ -2400,7 +2396,6 @@ export default function TasksEditPage() {
           persistedCustomKnowledgePointIds.add(created.id)
         }
       } catch (err: any) {
-        console.error("Failed to persist custom knowledge point", kpId, err)
       }
     }
 
@@ -2422,7 +2417,6 @@ export default function TasksEditPage() {
         if (idx >= 0) abilityPoints[idx] = { ...abilityPoints[idx], id: created.id }
         customAbilityPointIds.delete(abId)
       } catch (err: any) {
-        console.error("Failed to persist custom ability point", abId, err)
       }
     }
 
@@ -2448,7 +2442,6 @@ export default function TasksEditPage() {
         if (idx >= 0) learningResources[idx] = { ...learningResources[idx], id: created.id }
         customResourceIds.delete(resId)
       } catch (err: any) {
-        console.error("Failed to persist custom resource", resId, err)
       }
     }
 
@@ -4652,7 +4645,6 @@ function EditCardDialog({
             }
             return newCourseId
           } catch (err: any) {
-            console.error("Failed to create granular lesson", err)
             return undefined
           }
         }
@@ -4913,7 +4905,6 @@ function EditCardDialog({
                                   window.open(`/lesson/admin/granular/add?id=${newCourseId}`, "_blank")
                                 }
                               } catch (err: any) {
-                                console.error("Failed to create granular lesson", err)
                               }
                             }}>
                               新增颗粒课

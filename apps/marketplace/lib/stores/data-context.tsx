@@ -149,7 +149,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const resp = await positionApi.list({ limit: 1000 })
       setPositions(resp.items.map(convertCareerPositionToPosition))
     } catch (err) {
-      console.error('Failed to load positions:', err)
     }
   }, [])
 
@@ -158,7 +157,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const resp = await batchApi.list({ limit: 1000 })
       setBatches(resp.items.map(convertJobBatchToBatch))
     } catch (err) {
-      console.error('Failed to load batches:', err)
     }
   }, [])
 
@@ -182,7 +180,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const resp = await recommendApi.list({ limit: 1000 })
       setRecommendations(resp.items.map(convertApiRecommendationToLocal))
     } catch (err) {
-      console.error('Failed to load recommendations:', err)
     }
   }, [])
 
@@ -207,7 +204,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const resp = await workflowApi.list({ limit: 1000 })
       setWorkflows(resp.items.map(convertApiWorkflowToLocal))
     } catch (err) {
-      console.error('Failed to load workflows:', err)
     }
   }, [])
 
@@ -247,7 +243,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const positionMap = new Map(positionResp.items.map((p) => [p.id, p]))
       setApprovals(approvalResp.items.map((ar) => convertApiApprovalToLocal(ar, positionMap)))
     } catch (err) {
-      console.error('Failed to load approvals:', err)
     }
   }, [])
 
@@ -269,7 +264,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const resp = await abilityApi.list({ limit: 1000 })
       setAbilities(resp.items.map(convertApiAbilityToLocal))
     } catch (err) {
-      console.error('Failed to load abilities:', err)
     }
   }, [])
 

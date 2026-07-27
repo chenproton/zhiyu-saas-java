@@ -15,7 +15,6 @@ export async function GET(request: Request) {
     const comments = await adapter.getCommentsByAnnotationId(annotationId)
     return NextResponse.json(comments)
   } catch (error) {
-    console.error('Error fetching comments:', error)
     return NextResponse.json({ error: 'Failed to fetch comments' }, { status: 500 })
   }
 }
@@ -31,7 +30,6 @@ export async function POST(request: Request) {
     const comment = await adapter.createComment({ annotationId, user, text, parentId, imageUrl })
     return NextResponse.json(comment, { status: 201 })
   } catch (error) {
-    console.error('Error creating comment:', error)
     return NextResponse.json({ error: 'Failed to create comment' }, { status: 500 })
   }
 }
@@ -53,7 +51,6 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting comment:', error)
     return NextResponse.json({ error: 'Failed to delete comment' }, { status: 500 })
   }
 }

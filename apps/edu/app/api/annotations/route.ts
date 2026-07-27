@@ -16,7 +16,6 @@ export async function GET(request: Request) {
     const annotations = await adapter.getAnnotationsByPage(page, context)
     return NextResponse.json(annotations)
   } catch (error) {
-    console.error('Error fetching annotations:', error)
     return NextResponse.json({ error: 'Failed to fetch annotations' }, { status: 500 })
   }
 }
@@ -32,7 +31,6 @@ export async function POST(request: Request) {
     const annotation = await adapter.createAnnotation({ page, context, x, y, content, imageUrl })
     return NextResponse.json(annotation, { status: 201 })
   } catch (error) {
-    console.error('Error creating annotation:', error)
     return NextResponse.json({ error: 'Failed to create annotation' }, { status: 500 })
   }
 }
@@ -59,7 +57,6 @@ export async function PUT(request: Request) {
 
     return NextResponse.json(updated)
   } catch (error) {
-    console.error('Error updating annotation:', error)
     return NextResponse.json({ error: 'Failed to update annotation' }, { status: 500 })
   }
 }
@@ -81,7 +78,6 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting annotation:', error)
     return NextResponse.json({ error: 'Failed to delete annotation' }, { status: 500 })
   }
 }

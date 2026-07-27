@@ -106,7 +106,7 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 300 }
                       title={item.label}
                       onClick={() => {
                         // Mock toolbar action - in real app would format text
-                        console.log("Toolbar action:", item.label)
+                      
                       }}
                     >
                       {item.icon}

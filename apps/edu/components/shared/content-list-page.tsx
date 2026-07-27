@@ -316,7 +316,6 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
 
       setFrontItems(front)
     } catch (err) {
-      console.error(`Failed to load ${entityLabel} data:`, err)
     } finally {
       setIsLoading(false)
     }
@@ -433,14 +432,12 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       const item = frontItems.find((i) => i.id === id)
       const batch = batches.find((b) => b.id === batchId)
       if (!batch) {
-        console.error(`提交审批失败：${entityLabel}「${item?.name ?? id}」未关联批次`)
         continue
       }
       try {
         await itemApi.submit(id)
         await approvalApi.create({ targetType: approvalTargetType, targetId: id, workflowId: batch.workflowId })
       } catch (err) {
-        console.error("提交审批失败", err)
       }
     }
   }
@@ -563,7 +560,6 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       a.remove()
       window.URL.revokeObjectURL(url)
     } catch (err) {
-      console.error("导出失败", err)
     }
     setIsExportDialogOpen(false)
     setSelectedIds([])
@@ -659,7 +655,6 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       await approvalApi.create({ targetType: approvalTargetType, targetId: item.id, workflowId: batch.workflowId })
       await refresh()
     } catch (err) {
-      console.error("提交审批失败", err)
       alert("提交审批失败，请稍后重试")
     }
   }
@@ -678,7 +673,6 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       setSubmitSelectedMajorId("all")
       await refresh()
     } catch (err) {
-      console.error("提交审批失败", err)
       alert("提交审批失败，请稍后重试")
     }
   }
@@ -788,7 +782,6 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
         : `${addHref}?id=${newItem.id}&new=true`
       router.push(url)
     } catch (err: any) {
-      console.error(`Failed to create ${entityLabel}:`, err)
       alert(err.message || "创建失败")
     }
   }

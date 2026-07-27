@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client"
 
 import { useState, useMemo, useCallback, useEffect } from "react"
@@ -87,8 +86,7 @@ export function RandomQuestionDialog({
           createdAt: new Date((q.createdAt as unknown as string) || Date.now()),
         })))
       })
-      .catch((err) => {
-        if (!cancelled) console.error('Failed to load questions', err)
+      .catch((_err) => {
       })
       .finally(() => {
         if (!cancelled) setLoadingQuestions(false)
@@ -123,8 +121,7 @@ export function RandomQuestionDialog({
         if (cancelled) return
         setKnowledgePoints(res.items.map((kp) => ({ id: kp.id, name: kp.name })))
       })
-      .catch((err) => {
-        if (!cancelled) console.error('Failed to load knowledge points', err)
+      .catch((_err) => {
       })
       .finally(() => {
         if (!cancelled) setLoadingKnowledgePoints(false)

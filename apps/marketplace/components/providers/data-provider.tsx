@@ -398,7 +398,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         ])
       } catch (err) {
         if (!cancelled) {
-          console.error('Failed to load evaluation data', err)
         }
       }
     }
