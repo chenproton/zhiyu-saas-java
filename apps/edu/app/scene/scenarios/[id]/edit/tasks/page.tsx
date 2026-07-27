@@ -1890,6 +1890,7 @@ export default function TasksEditPage() {
     knowledgePoints.forEach((kp: any) => {
       if (kp.creatorId && kp.creatorId === user.id) {
         customKnowledgePointIds.add(kp.id)
+        persistedCustomKnowledgePointIds.add(kp.id)
       }
     })
   }
@@ -2372,18 +2373,32 @@ export default function TasksEditPage() {
       const kp = knowledgePoints.find(k => k.id === kpId)
       if (!kp) continue
       try {
-        const created = await knowledgeApi.create({
-          name: kp.name,
-          code: kp.code,
-          description: kp.description,
-          linked: false,
-          granularLessonIds: kp.granularLessons || [],
-        } as any)
-        kpIdMapping[kpId] = created.id
-        const idx = knowledgePoints.findIndex(k => k.id === kpId)
-        if (idx >= 0) knowledgePoints[idx] = { ...knowledgePoints[idx], id: created.id, granularLessons: created.granularLessonIds || knowledgePoints[idx].granularLessons || [] }
-        customKnowledgePointIds.delete(kpId)
-        customKnowledgePointIds.add(created.id)
+        if (persistedCustomKnowledgePointIds.has(kpId)) {
+          // Already persisted in a previous save: update instead of re-create
+          const updated = await knowledgeApi.update(kpId, {
+            name: kp.name,
+            code: kp.code,
+            description: kp.description,
+            linked: kp.linked ?? false,
+            granularLessonIds: kp.granularLessons || [],
+          } as any)
+          const idx = knowledgePoints.findIndex(k => k.id === kpId)
+          if (idx >= 0) knowledgePoints[idx].granularLessons = updated.granularLessonIds || knowledgePoints[idx].granularLessons || []
+        } else {
+          const created = await knowledgeApi.create({
+            name: kp.name,
+            code: kp.code,
+            description: kp.description,
+            linked: false,
+            granularLessonIds: kp.granularLessons || [],
+          } as any)
+          kpIdMapping[kpId] = created.id
+          const idx = knowledgePoints.findIndex(k => k.id === kpId)
+          if (idx >= 0) knowledgePoints[idx] = { ...knowledgePoints[idx], id: created.id, granularLessons: created.granularLessonIds || knowledgePoints[idx].granularLessons || [] }
+          customKnowledgePointIds.delete(kpId)
+          customKnowledgePointIds.add(created.id)
+          persistedCustomKnowledgePointIds.add(created.id)
+        }
       } catch (err: any) {
         console.error("Failed to persist custom knowledge point", kpId, err)
       }
@@ -2978,6 +2993,7 @@ const difficultyLabels: Record<string, string> = {
 
 // Module-level sets to track custom (added/cloned) points/resources across dialog re-opens
 const customKnowledgePointIds = new Set<string>()
+const persistedCustomKnowledgePointIds = new Set<string>()
 const customAbilityPointIds = new Set<string>()
 const customResourceIds = new Set<string>()
 
