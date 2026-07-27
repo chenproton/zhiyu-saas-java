@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch"
 import { abilityApi } from "@/lib/api"
 import type { AbilityPoint } from "@/lib/types/job"
 import { useToast } from "@/hooks/use-toast"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 
 const CATEGORY_LABELS: Record<string, string> = { knowledge: "知识", skill: "技能", quality: "素质" }
 const CATEGORY_COLORS: Record<string, string> = { knowledge: "#7c3aed", skill: "#f97316", quality: "#06b6d4" }
@@ -32,6 +33,7 @@ export default function AbilityPointsPage() {
   const [category, setCategory] = useState("knowledge")
   const [isPublic, setIsPublic] = useState(false)
   const [attributes, setAttributes] = useState("")
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
   const loadItems = async () => {
     setLoading(true)
@@ -49,7 +51,8 @@ export default function AbilityPointsPage() {
 
   const handleOpenAdd = () => { setEditingItem(null); setName(""); setDescription(""); setCategory("knowledge"); setIsPublic(false); setAttributes(""); setIsDialogOpen(true) }
   const handleOpenEdit = (item: AbilityPoint) => { setEditingItem(item); setName(item.name); setDescription(item.description || ""); setCategory(item.category); setIsPublic(item.isPublic); setAttributes(item.attributes?.join(", ") || ""); setIsDialogOpen(true) }
-  const handleDelete = async (id: string) => { if (!confirm("确定要删除？")) return; try { await abilityApi.delete(id); toast({ title: "删除成功" }); loadItems() } catch (err: any) { toast({ variant: "destructive", title: "删除失败", description: err.message }) } }
+  const handleDelete = (id: string) => { setDeleteTarget(id) }
+  const confirmDelete = async () => { if (!deleteTarget) return; try { await abilityApi.delete(deleteTarget); toast({ title: "删除成功" }); loadItems() } catch (err: any) { toast({ variant: "destructive", title: "删除失败", description: err.message }) } finally { setDeleteTarget(null) } }
   const handleSubmit = async () => {
     if (!name.trim()) { toast({ variant: "destructive", title: "名称不能为空" }); return }
     const attrList = attributes ? attributes.split(",").map(s => s.trim()).filter(Boolean) : []
@@ -123,6 +126,15 @@ export default function AbilityPointsPage() {
         </CardContent>
       </Card>
 
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        title="确认删除"
+        description="确定要删除该能力点吗？此操作不可恢复。"
+        confirmText="删除"
+        variant="destructive"
+        onConfirm={confirmDelete}
+      />
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>{editingItem ? "编辑能力点" : "新增能力点"}</DialogTitle></DialogHeader>

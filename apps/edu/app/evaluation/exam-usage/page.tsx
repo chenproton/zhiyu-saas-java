@@ -35,16 +35,10 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { useData } from "@/components/providers/data-provider"
 import { PageHeaderCard } from "@/components/shared/page-header-card"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { examUsageApi } from "@/lib/api"
 import type { ExamUsage } from "@/lib/types"
 import { TableRowActions } from "@/components/shared/table-row-actions"
-
-const STATUS_LABELS: Record<ExamUsage["status"], string> = {
-  draft: "草稿",
-  pending: "待开始",
-  in_progress: "进行中",
-  finished: "已结束",
-}
 
 const TARGET_TYPE_LABELS: Record<NonNullable<ExamUsage["targetType"]>, string> = {
   class: "班级",
@@ -195,23 +189,6 @@ export default function ExamUsagePage() {
     }).format(new Date(iso))
   }
 
-  const getStatusBadge = (status: ExamUsage["status"]) => {
-    switch (status) {
-      case "draft":
-        return <Badge variant="secondary">{STATUS_LABELS[status]}</Badge>
-      case "pending":
-        return (
-          <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">
-            {STATUS_LABELS[status]}
-          </Badge>
-        )
-      case "in_progress":
-        return <Badge className="bg-green-500 hover:bg-green-600">{STATUS_LABELS[status]}</Badge>
-      case "finished":
-        return <Badge variant="outline">{STATUS_LABELS[status]}</Badge>
-    }
-  }
-
   const canStart = (status: ExamUsage["status"]) => status === "draft" || status === "pending"
   const canFinish = (status: ExamUsage["status"]) => status === "in_progress"
   const canDelete = (status: ExamUsage["status"]) => status === "draft" || status === "finished"
@@ -342,7 +319,7 @@ export default function ExamUsagePage() {
                           <span className="text-xs">-</span>
                         )}
                       </TableCell>
-                      <TableCell>{getStatusBadge(usage.status)}</TableCell>
+                      <TableCell><StatusBadge status={usage.status} /></TableCell>
                       <TableCell>
                         <span className="text-sm text-muted-foreground">
                           {usage.targetType ? TARGET_TYPE_LABELS[usage.targetType] : "-"}

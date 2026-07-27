@@ -20,6 +20,8 @@ const STATUS_MAP: Record<string, StatusConfig> = {
   not_submitted: { label: "未提交",  color: "#d97706", bg: "#fef3c7" },
   none:          { label: "无规则",  color: "#8f959e", bg: "#f5f6f7" },
   disabled:      { label: "已禁用",  color: "#8f959e", bg: "#f5f6f7" },
+  in_progress:   { label: "进行中",  color: "#16a34a", bg: "#dcfce7" },
+  finished:      { label: "已结束",  color: "#8f959e", bg: "#f5f6f7" },
 }
 
 export function getStatusConfig(status: string): StatusConfig {

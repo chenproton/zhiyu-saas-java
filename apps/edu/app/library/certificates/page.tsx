@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { certificateLibraryApi } from "@/lib/api"
 import type { CertificateLibraryItem } from "@/lib/types/job"
 import { useToast } from "@/hooks/use-toast"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 
 export default function CertificatesPage() {
   const { toast } = useToast()
@@ -24,6 +25,7 @@ export default function CertificatesPage() {
   const [url, setUrl] = useState("")
   const [description, setDescription] = useState("")
   const [imageUrl, setImageUrl] = useState("")
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
   const loadItems = async () => {
     setLoading(true)
@@ -37,7 +39,8 @@ export default function CertificatesPage() {
 
   const handleOpenAdd = () => { setEditingItem(null); setName(""); setUrl(""); setDescription(""); setImageUrl(""); setIsDialogOpen(true) }
   const handleOpenEdit = (item: CertificateLibraryItem) => { setEditingItem(item); setName(item.name); setUrl(item.url || ""); setDescription(item.description || ""); setImageUrl(item.imageUrl || ""); setIsDialogOpen(true) }
-  const handleDelete = async (id: string) => { if (!confirm("确定要删除？")) return; try { await certificateLibraryApi.delete(id); toast({ title: "删除成功" }); loadItems() } catch (err: any) { toast({ variant: "destructive", title: "删除失败", description: err.message }) } }
+  const handleDelete = (id: string) => { setDeleteTarget(id) }
+  const confirmDelete = async () => { if (!deleteTarget) return; try { await certificateLibraryApi.delete(deleteTarget); toast({ title: "删除成功" }); loadItems() } catch (err: any) { toast({ variant: "destructive", title: "删除失败", description: err.message }) } finally { setDeleteTarget(null) } }
   const handleSubmit = async () => {
     if (!name.trim()) { toast({ variant: "destructive", title: "名称不能为空" }); return }
     try {
@@ -97,6 +100,15 @@ export default function CertificatesPage() {
         </CardContent>
       </Card>
 
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        title="确认删除"
+        description="确定要删除该证书吗？此操作不可恢复。"
+        confirmText="删除"
+        variant="destructive"
+        onConfirm={confirmDelete}
+      />
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent><DialogHeader><DialogTitle>{editingItem ? "编辑证书" : "新增证书"}</DialogTitle></DialogHeader>
         <div className="space-y-4">

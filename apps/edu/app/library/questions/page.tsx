@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { onSiteQuestionLibraryApi } from "@/lib/api"
 import type { OnSiteQuestionLibraryItem } from "@/lib/types/library"
 import { useToast } from "@/hooks/use-toast"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 
 const QUESTION_TYPE_LABELS: Record<string, string> = { short_answer: "简答", essay: "论述", oral: "口答", practice: "实操" }
 const DIFFICULTY: Record<string, { label: string; color: string }> = {
@@ -38,6 +39,7 @@ export default function OnSiteQuestionsPage() {
   const [score, setScore] = useState("0")
   const [difficulty, setDifficulty] = useState("medium")
   const [tags, setTags] = useState("")
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
   const loadItems = async () => {
     setLoading(true)
@@ -55,7 +57,8 @@ export default function OnSiteQuestionsPage() {
 
   const handleOpenAdd = () => { setEditingItem(null); setQuestionText(""); setAnswer(""); setQuestionType("short_answer"); setScore("0"); setDifficulty("medium"); setTags(""); setIsDialogOpen(true) }
   const handleOpenEdit = (item: OnSiteQuestionLibraryItem) => { setEditingItem(item); setQuestionText(item.questionText); setAnswer(item.answer || ""); setQuestionType(item.questionType); setScore(String(item.score)); setDifficulty(item.difficulty || "medium"); setTags(item.tags?.join(", ") || ""); setIsDialogOpen(true) }
-  const handleDelete = async (id: string) => { if (!confirm("确定要删除？")) return; try { await onSiteQuestionLibraryApi.delete(id); toast({ title: "删除成功" }); loadItems() } catch (err: any) { toast({ variant: "destructive", title: "删除失败", description: err.message }) } }
+  const handleDelete = (id: string) => { setDeleteTarget(id) }
+  const confirmDelete = async () => { if (!deleteTarget) return; try { await onSiteQuestionLibraryApi.delete(deleteTarget); toast({ title: "删除成功" }); loadItems() } catch (err: any) { toast({ variant: "destructive", title: "删除失败", description: err.message }) } finally { setDeleteTarget(null) } }
   const handleSubmit = async () => {
     if (!questionText.trim()) { toast({ variant: "destructive", title: "题目内容不能为空" }); return }
     const tagList = tags ? tags.split(",").map(s => s.trim()).filter(Boolean) : []
@@ -126,6 +129,15 @@ export default function OnSiteQuestionsPage() {
         </CardContent>
       </Card>
 
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        title="确认删除"
+        description="确定要删除该题目吗？此操作不可恢复。"
+        confirmText="删除"
+        variant="destructive"
+        onConfirm={confirmDelete}
+      />
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>{editingItem ? "编辑题目" : "新增题目"}</DialogTitle></DialogHeader>

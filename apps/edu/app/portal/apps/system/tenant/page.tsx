@@ -32,7 +32,7 @@ import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
 import type { Tenant as BackendTenant } from "@/lib/types/backend"
 import { Spinner } from "@/components/ui/spinner"
-import { SchoolAdminManager } from "@/components/shared/school-admin-manager"
+import { SchoolAdminManager } from "./_components/school-admin-manager"
 
 interface Tenant {
   id: string

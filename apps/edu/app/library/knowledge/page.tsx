@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch"
 import { knowledgeApi, courseApi } from "@/lib/api"
 import type { KnowledgePoint } from "@/lib/types/lesson"
 import { useToast } from "@/hooks/use-toast"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import {
   KnowledgePointFormDialog,
   type KnowledgePointFormValues,
@@ -25,6 +26,7 @@ export default function KnowledgePointsPage() {
   const [dialogMode, setDialogMode] = useState<"add" | "edit">("add")
   const [linked, setLinked] = useState(false)
   const [granularCourses, setGranularCourses] = useState<GranularLessonOption[]>([])
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
   const loadItems = async () => {
     setLoading(true)
@@ -71,16 +73,8 @@ export default function KnowledgePointsPage() {
     setIsDialogOpen(true)
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("确定要删除？")) return
-    try {
-      await knowledgeApi.delete(id)
-      toast({ title: "删除成功" })
-      loadItems()
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "删除失败", description: err.message })
-    }
-  }
+  const handleDelete = (id: string) => { setDeleteTarget(id) }
+  const confirmDelete = async () => { if (!deleteTarget) return; try { await knowledgeApi.delete(deleteTarget); toast({ title: "删除成功" }); loadItems() } catch (err: any) { toast({ variant: "destructive", title: "删除失败", description: err.message }) } finally { setDeleteTarget(null) } }
 
   const handleSave = async (values: KnowledgePointFormValues) => {
     try {
@@ -201,6 +195,15 @@ export default function KnowledgePointsPage() {
         </CardContent>
       </Card>
 
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        title="确认删除"
+        description="确定要删除该知识点吗？此操作不可恢复。"
+        confirmText="删除"
+        variant="destructive"
+        onConfirm={confirmDelete}
+      />
       <KnowledgePointFormDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}

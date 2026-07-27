@@ -51,8 +51,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { StatusBadge } from "@/components/shared/status-badge"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { StatusBadge } from "../../../../edu/components/shared/status-badge"
+import { ConfirmDialog } from "../../../../edu/components/shared/confirm-dialog"
 import { BankFormDialog } from "@/components/evaluation/bank-form-dialog"
 import { QuestionFormDialog } from "@/components/evaluation/question-form-dialog"
 import { QuestionPreview } from "@/components/evaluation/question-preview"

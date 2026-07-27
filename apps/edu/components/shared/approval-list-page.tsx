@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CheckSquare, Eye } from "lucide-react"
-import { useApprovalDialogs } from "@/components/shared/approval-dialogs"
+import { useApprovalDialogs } from "@/components/shared/_components/approval-dialogs"
 import type { ApprovalStepInfo } from "@/hooks/use-approvals"
 import { Toaster } from "sonner"
 
