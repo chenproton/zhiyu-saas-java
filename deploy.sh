@@ -1,18 +1,20 @@
 #!/bin/bash
 #
-# deploy.sh - 本地构建发布脚本（Next.js 双前端 + Go 后端 + PostgreSQL）
-# 运行时产物部署到代码目录之外（默认 /opt/zhiyu-saas），实现代码与运行数据分离。
+# deploy.sh - 知育 SaaS 统一部署脚本
+#
+# 开发环境（多 Agent 协作）：
+#   ./deploy.sh --branch feat/agent-xxx [--backend-only|-b] [--frontend-only|-f] [--skip-checks] ...
+#   基于 master 创建隔离工作树，仅合入指定分支改动，健康检查通过后自动合并到 master。
+#
+# 演示/生产环境（当前服务器直接部署）：
+#   ./deploy.sh --demo [--backend-only|-b] [--frontend-only|-f] [--skip-checks] [--skip-backup] [--skip-pull]
+#   直接在当前目录拉取 master 最新代码 → 构建 → 部署 → 健康检查，无需分支隔离。
 #
 # 用法：
-#   ./deploy.sh --branch <分支名>                    # 全量部署（前端 + 后端 + 数据库备份）
-#   ./deploy.sh --branch <分支名> --backend-only     # 仅部署后端
-#   ./deploy.sh --branch <分支名> --frontend-only    # 仅部署前端（商城 + 教育管理）
-#   ./deploy.sh --branch <分支名> --skip-backup      # 跳过数据库备份
-#   ./deploy.sh --branch <分支名> --skip-checks      # 跳过代码检查
-#   ./deploy.sh --branch <分支名> --skip-merge       # 跳过自动合并到 master
-#   ./deploy.sh --branch <分支名> --force-install    # 强制重装依赖
-#   ./deploy.sh --branch <分支名> --skip-typecheck   # 跳过前端类型检查（构建时）
-#   ./deploy.sh --branch <分支名> --turbopack        # 使用 Turbopack 构建（实验性）
+#   ./deploy.sh --branch <分支名>                    # 全量部署（分支隔离模式）
+#   ./deploy.sh --demo                                # 全量部署（演示/直接部署模式）
+#   ./deploy.sh --demo --frontend-only                # 仅部署前端
+#   ./deploy.sh --demo --skip-pull                    # 跳过 git pull
 #
 set -euo pipefail
 
@@ -28,6 +30,8 @@ USE_TURBOPACK=false
 BRANCH_NAME=""
 BUILD_TREE=""
 ORIGINAL_PROJECT_ROOT=""
+DEMO_MODE=false
+SKIP_PULL=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -67,13 +71,34 @@ while [[ $# -gt 0 ]]; do
       BRANCH_NAME="$2"
       shift 2
       ;;
+    --demo)
+      DEMO_MODE=true
+      shift
+      ;;
+    --skip-pull)
+      SKIP_PULL=true
+      shift
+      ;;
     --help|-h)
-      echo "用法：$0 --branch <分支名> [--backend-only|-b] [--frontend-only|-f] [--skip-backup] [--skip-checks] [--skip-merge] [--force-install] [--skip-typecheck] [--turbopack]"
+      echo "用法："
+      echo "  开发环境: $0 --branch <分支名> [选项]"
+      echo "  演示环境: $0 --demo [选项]"
+      echo ""
+      echo "选项："
+      echo "  --backend-only,-b    仅部署后端"
+      echo "  --frontend-only,-f   仅部署前端"
+      echo "  --skip-backup        跳过数据库备份"
+      echo "  --skip-checks        跳过代码检查"
+      echo "  --skip-merge         跳过自动合并到 master（仅分支模式）"
+      echo "  --force-install      强制重装依赖"
+      echo "  --skip-typecheck     跳过前端类型检查"
+      echo "  --turbopack          使用 Turbopack 构建"
+      echo "  --skip-pull          跳过 git pull（仅 demo 模式）"
       exit 0
       ;;
     *)
       echo "错误：未知参数 $1" >&2
-      echo "用法：$0 --branch <分支名> [--backend-only|-b] [--frontend-only|-f] [--skip-backup] [--skip-checks] [--skip-merge] [--force-install] [--skip-typecheck] [--turbopack]" >&2
+      echo "用法：$0 --branch <分支名> 或 $0 --demo" >&2
       exit 1
       ;;
   esac
@@ -83,6 +108,434 @@ if [[ "$BACKEND_ONLY" == "true" && "$FRONTEND_ONLY" == "true" ]]; then
   echo "错误：--backend-only 和 --frontend-only 不能同时使用" >&2
   exit 1
 fi
+
+# ==================== 模式互斥检查 ====================
+if [[ "$DEMO_MODE" == "true" && -n "$BRANCH_NAME" ]]; then
+  echo "错误：--demo 和 --branch 不能同时使用" >&2
+  exit 1
+fi
+
+if [[ "$DEMO_MODE" == "false" && "$SKIP_PULL" == "true" ]]; then
+  echo "错误：--skip-pull 仅在 --demo 模式下可用" >&2
+  exit 1
+fi
+
+# ==================== 演示模式：直接部署流程 ====================
+if [[ "$DEMO_MODE" == "true" ]]; then
+  # Go 编译环境（中国大陆服务器使用 goproxy.cn 加速）
+  export GOPROXY="${GOPROXY:-https://goproxy.cn,direct}"
+  export GOTOOLCHAIN="${GOTOOLCHAIN:-auto}"
+
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  PROJECT_ROOT="$SCRIPT_DIR"
+  BACKEND_DIR="$PROJECT_ROOT/backend"
+  MARKETPLACE_DIR="$PROJECT_ROOT/apps/marketplace"
+  EDU_DIR="$PROJECT_ROOT/apps/edu"
+
+  DEPLOY_DIR="${DEPLOY_DIR:-/opt/zhiyu-saas}"
+  BACKEND_PORT="${BACKEND_PORT:-8080}"
+  MARKETPLACE_PORT="${MARKETPLACE_PORT:-3010}"
+  EDU_PORT="${EDU_PORT:-3020}"
+
+  # 加载 .env
+  if [[ -f "$PROJECT_ROOT/.env" ]]; then
+    set -a
+    source "$PROJECT_ROOT/.env"
+    set +a
+  fi
+
+  BACKEND_PORT="${BACKEND_PORT_ENV:-${PORT:-$BACKEND_PORT}}"
+  MARKETPLACE_PORT="${MARKETPLACE_PORT_ENV:-$MARKETPLACE_PORT}"
+  EDU_PORT="${EDU_PORT_ENV:-$EDU_PORT}"
+
+  # ==================== 依赖检查 ====================
+  echo "==> 检查本地依赖..."
+  DEPS_OK=true
+
+  for dep in go node pnpm pm2 psql git; do
+    if ! command -v "$dep" > /dev/null 2>&1; then
+      echo "错误：缺少 $dep" >&2
+      DEPS_OK=false
+    fi
+  done
+
+  if [[ "$FRONTEND_ONLY" != "true" ]] && ! command -v pg_dump > /dev/null 2>&1 && [[ "$SKIP_BACKUP" != "true" ]]; then
+    echo "错误：缺少 pg_dump（使用 --skip-backup 跳过数据库备份）" >&2
+    DEPS_OK=false
+  fi
+
+  if [[ "$DEPS_OK" != "true" ]]; then
+    exit 1
+  fi
+
+  # ==================== 必需环境变量 ====================
+  if [[ "$FRONTEND_ONLY" != "true" ]]; then
+    REQUIRED_VARS=(DATABASE_URL JWT_SECRET)
+    for v in "${REQUIRED_VARS[@]}"; do
+      if [[ -z "${!v:-}" ]]; then
+        echo "错误：缺少环境变量 ${v}，请在 .env 中配置" >&2
+        exit 1
+      fi
+    done
+  fi
+
+  # ==================== 拉取最新代码 ====================
+  if [[ "$SKIP_PULL" != "true" ]]; then
+    echo "==> 拉取最新代码..."
+    git pull origin master 2>&1 || {
+      echo "错误：git pull 失败，使用 --skip-pull 跳过" >&2
+      exit 1
+    }
+    echo "  当前 commit: $(git rev-parse --short HEAD)"
+  else
+    echo "==> 跳过 git pull（--skip-pull）"
+  fi
+
+  # ==================== 辅助函数 ====================
+  health_check() {
+    local url="$1"
+    local max="${2:-20}"
+    local interval="${3:-2}"
+    local attempt=0
+    while [[ $attempt -lt $max ]]; do
+      if curl -sf -o /dev/null "$url" 2>/dev/null; then
+        return 0
+      fi
+      sleep "$interval"
+      ((attempt++))
+    done
+    return 1
+  }
+
+  wait_for_port_release() {
+    local port="$1"
+    local timeout="${2:-10}"
+    local elapsed=0
+    while [[ $elapsed -lt $timeout ]]; do
+      if ! lsof -ti:"$port" > /dev/null 2>&1; then
+        return 0
+      fi
+      sleep 1
+      ((elapsed++))
+    done
+    return 1
+  }
+
+  # ==================== 准备部署目录 ====================
+  echo "==> 准备部署目录: $DEPLOY_DIR"
+  mkdir -p "$DEPLOY_DIR/backend/bin" \
+    "$DEPLOY_DIR/apps/marketplace" \
+    "$DEPLOY_DIR/apps/edu" \
+    "$DEPLOY_DIR/data/uploads" \
+    "$DEPLOY_DIR/logs" \
+    "$DEPLOY_DIR/backups"
+
+  # ==================== 代码检查 ====================
+  if [[ "$SKIP_CHECKS" != "true" ]]; then
+    echo "==> 运行代码检查..."
+    if [[ "$FRONTEND_ONLY" != "true" ]]; then
+      echo "  Go 编译检查..."
+      (cd "$BACKEND_DIR" && go build -o /dev/null ./cmd/server/main.go) || {
+        echo "错误：Go 编译失败" >&2
+        exit 1
+      }
+    fi
+  else
+    echo "==> 跳过代码检查"
+  fi
+
+  # ==================== 安装前端依赖 ====================
+  if [[ "$BACKEND_ONLY" != "true" ]]; then
+    echo "==> 安装前端依赖..."
+    pnpm install --prefer-offline --frozen-lockfile || {
+      echo "  提示：frozen-lockfile 安装失败，尝试更新 lockfile..."
+      pnpm install --prefer-offline --no-frozen-lockfile || {
+        echo "错误：pnpm install 失败" >&2
+        exit 1
+      }
+    }
+  fi
+
+  # ==================== 构建后端 ====================
+  if [[ "$FRONTEND_ONLY" != "true" ]]; then
+    echo "==> 构建 Go 后端..."
+    mkdir -p "$BACKEND_DIR/bin"
+    go build -C "$BACKEND_DIR" -o "$BACKEND_DIR/bin/server" ./cmd/server/main.go || {
+      echo "错误：Go 构建失败" >&2
+      exit 1
+    }
+    echo "  后端构建完成"
+  fi
+
+  # ==================== 构建前端 ====================
+  if [[ "$BACKEND_ONLY" != "true" ]]; then
+    echo "==> 构建商城前端..."
+    rm -rf "$MARKETPLACE_DIR/.next/standalone"
+    NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
+      pnpm --filter @zhiyu/marketplace build || {
+      echo "错误：商城构建失败" >&2
+      exit 1
+    }
+    STANDALONE_M="$MARKETPLACE_DIR/.next/standalone/apps/marketplace"
+    mkdir -p "$STANDALONE_M/.next/server"
+    rsync -a --delete --exclude="*.map" "$MARKETPLACE_DIR/.next/server/" "$STANDALONE_M/.next/server/"
+    if [[ -d "$MARKETPLACE_DIR/.next/static" ]]; then
+      mkdir -p "$STANDALONE_M/.next/static"
+      rsync -a --delete --exclude="*.map" "$MARKETPLACE_DIR/.next/static/" "$STANDALONE_M/.next/static/"
+    fi
+    if [[ -d "$MARKETPLACE_DIR/public" ]]; then
+      mkdir -p "$STANDALONE_M/public"
+      rsync -a --delete --exclude="*.map" "$MARKETPLACE_DIR/public/" "$STANDALONE_M/public/"
+    fi
+    echo "  商城构建完成"
+
+    echo "==> 构建教育管理前端..."
+    rm -rf "$EDU_DIR/.next/standalone"
+    NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
+      pnpm --filter @zhiyu/edu build || {
+      echo "错误：教育管理构建失败" >&2
+      exit 1
+    }
+    STANDALONE_E="$EDU_DIR/.next/standalone/apps/edu"
+    mkdir -p "$STANDALONE_E/.next/server"
+    rsync -a --delete --exclude="*.map" "$EDU_DIR/.next/server/" "$STANDALONE_E/.next/server/"
+    if [[ -d "$EDU_DIR/.next/static" ]]; then
+      mkdir -p "$STANDALONE_E/.next/static"
+      rsync -a --delete --exclude="*.map" "$EDU_DIR/.next/static/" "$STANDALONE_E/.next/static/"
+    fi
+    if [[ -d "$EDU_DIR/public" ]]; then
+      mkdir -p "$STANDALONE_E/public"
+      rsync -a --delete --exclude="*.map" "$EDU_DIR/public/" "$STANDALONE_E/public/"
+    fi
+    echo "  教育管理构建完成"
+  fi
+
+  # ==================== 数据库备份 ====================
+  if [[ "$SKIP_BACKUP" != "true" && "$FRONTEND_ONLY" != "true" ]]; then
+    echo "==> 备份数据库..."
+    BACKUP_FILE="$DEPLOY_DIR/backups/zhiyu-demo-$(date +%Y%m%d-%H%M%S).dump"
+    if pg_isready -d "$DATABASE_URL" > /dev/null 2>&1; then
+      pg_dump -d "$DATABASE_URL" -Fc -Z 6 > "$BACKUP_FILE.tmp" 2>/dev/null && mv "$BACKUP_FILE.tmp" "$BACKUP_FILE" && chmod 600 "$BACKUP_FILE" || {
+        echo "  警告：数据库备份失败，继续部署..."
+        rm -f "$BACKUP_FILE.tmp"
+      }
+      echo "  备份完成: $BACKUP_FILE"
+      find "$DEPLOY_DIR/backups" -name 'zhiyu-demo-*.dump' -mtime +14 -delete 2>/dev/null || true
+    else
+      echo "  PostgreSQL 未就绪，跳过备份"
+    fi
+  fi
+
+  # ==================== 停止旧服务 ====================
+  echo "==> 停止旧服务..."
+
+  if [[ "$FRONTEND_ONLY" != "true" ]]; then
+    pm2 stop zhiyu-demo-backend 2>/dev/null || true
+    pm2 delete zhiyu-demo-backend 2>/dev/null || true
+    wait_for_port_release "$BACKEND_PORT" 10 || {
+      pid=$(lsof -t -i:"$BACKEND_PORT" 2>/dev/null || true)
+      [[ -n "$pid" ]] && kill -9 "$pid" 2>/dev/null || true
+    }
+  fi
+
+  if [[ "$BACKEND_ONLY" != "true" ]]; then
+    for app in zhiyu-demo-marketplace zhiyu-demo-edu; do
+      pm2 stop "$app" 2>/dev/null || true
+      pm2 delete "$app" 2>/dev/null || true
+    done
+    wait_for_port_release "$MARKETPLACE_PORT" 10 || {
+      pid=$(lsof -t -i:"$MARKETPLACE_PORT" 2>/dev/null || true)
+      [[ -n "$pid" ]] && kill -9 "$pid" 2>/dev/null || true
+    }
+    wait_for_port_release "$EDU_PORT" 10 || {
+      pid=$(lsof -t -i:"$EDU_PORT" 2>/dev/null || true)
+      [[ -n "$pid" ]] && kill -9 "$pid" 2>/dev/null || true
+    }
+  fi
+
+  sleep 1
+
+  # ==================== 复制产物到部署目录 ====================
+  echo "==> 部署产物到 $DEPLOY_DIR..."
+
+  if [[ "$FRONTEND_ONLY" != "true" ]]; then
+    cp "$BACKEND_DIR/bin/server" "$DEPLOY_DIR/backend/bin/server"
+    chmod +x "$DEPLOY_DIR/backend/bin/server"
+    cp "$PROJECT_ROOT/.env" "$DEPLOY_DIR/backend/.env"
+    chmod 600 "$DEPLOY_DIR/backend/.env"
+    echo "  后端已部署"
+  fi
+
+  if [[ "$BACKEND_ONLY" != "true" ]]; then
+    MARKETPLACE_STANDALONE_ROOT="$MARKETPLACE_DIR/.next/standalone"
+    if [[ -d "$MARKETPLACE_STANDALONE_ROOT" ]]; then
+      rm -rf "$DEPLOY_DIR/apps/marketplace/.next/standalone"
+      mkdir -p "$(dirname "$DEPLOY_DIR/apps/marketplace/.next/standalone")"
+      cp -a "$MARKETPLACE_STANDALONE_ROOT" "$DEPLOY_DIR/apps/marketplace/.next/standalone"
+      echo "  商城前端已部署"
+    fi
+
+    EDU_STANDALONE_ROOT="$EDU_DIR/.next/standalone"
+    if [[ -d "$EDU_STANDALONE_ROOT" ]]; then
+      rm -rf "$DEPLOY_DIR/apps/edu/.next/standalone"
+      mkdir -p "$(dirname "$DEPLOY_DIR/apps/edu/.next/standalone")"
+      cp -a "$EDU_STANDALONE_ROOT" "$DEPLOY_DIR/apps/edu/.next/standalone"
+      echo "  教育管理前端已部署"
+    fi
+  fi
+
+  # ==================== 生成 PM2 配置 ====================
+  cat > "$DEPLOY_DIR/ecosystem.config.js" << PM2EOF
+module.exports = {
+  apps: [
+    {
+      name: 'zhiyu-demo-backend',
+      cwd: '$DEPLOY_DIR/backend',
+      script: './bin/server',
+      instances: 1,
+      exec_mode: 'fork',
+      env: {
+        PORT: $BACKEND_PORT,
+        UPLOAD_DIR: '$DEPLOY_DIR/data/uploads',
+      },
+      error_file: '$DEPLOY_DIR/logs/backend-error.log',
+      out_file: '$DEPLOY_DIR/logs/backend-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      autorestart: true,
+      max_restarts: 5,
+      min_uptime: '10s',
+      max_memory_restart: '512M',
+      kill_timeout: 5000,
+    },
+    {
+      name: 'zhiyu-demo-marketplace',
+      cwd: '$DEPLOY_DIR/apps/marketplace/.next/standalone/apps/marketplace',
+      script: 'server.js',
+      instances: 1,
+      exec_mode: 'fork',
+      env: {
+        NODE_ENV: 'production',
+        PORT: $MARKETPLACE_PORT,
+        HOSTNAME: '0.0.0.0',
+      },
+      error_file: '$DEPLOY_DIR/logs/marketplace-error.log',
+      out_file: '$DEPLOY_DIR/logs/marketplace-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      autorestart: true,
+      max_restarts: 5,
+      min_uptime: '10s',
+      max_memory_restart: '1G',
+      kill_timeout: 5000,
+    },
+    {
+      name: 'zhiyu-demo-edu',
+      cwd: '$DEPLOY_DIR/apps/edu/.next/standalone/apps/edu',
+      script: 'server.js',
+      instances: 1,
+      exec_mode: 'fork',
+      env: {
+        NODE_ENV: 'production',
+        PORT: $EDU_PORT,
+        HOSTNAME: '0.0.0.0',
+      },
+      error_file: '$DEPLOY_DIR/logs/edu-error.log',
+      out_file: '$DEPLOY_DIR/logs/edu-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      autorestart: true,
+      max_restarts: 5,
+      min_uptime: '10s',
+      max_memory_restart: '1G',
+      kill_timeout: 5000,
+    },
+  ],
+};
+PM2EOF
+
+  # ==================== 数据库迁移 ====================
+  if [[ "$FRONTEND_ONLY" != "true" ]]; then
+    echo "==> 执行数据库迁移..."
+    (cd "$BACKEND_DIR" && go run ./cmd/migrate/main.go up) || {
+      echo "错误：数据库迁移失败" >&2
+      exit 1
+    }
+  fi
+
+  # ==================== PM2 启动 ====================
+  echo ""
+  echo "==> 启动服务..."
+
+  if [[ "$FRONTEND_ONLY" == "true" ]]; then
+    pm2 start "$DEPLOY_DIR/ecosystem.config.js" --only "zhiyu-demo-marketplace,zhiyu-demo-edu" --env production || {
+      echo "错误：PM2 启动失败" >&2
+      exit 1
+    }
+  elif [[ "$BACKEND_ONLY" == "true" ]]; then
+    pm2 start "$DEPLOY_DIR/ecosystem.config.js" --only "zhiyu-demo-backend" --env production || {
+      echo "错误：PM2 启动失败" >&2
+      exit 1
+    }
+  else
+    pm2 start "$DEPLOY_DIR/ecosystem.config.js" --env production || {
+      echo "错误：PM2 启动失败" >&2
+      exit 1
+    }
+  fi
+
+  pm2 save
+
+  # ==================== 健康检查 ====================
+  echo ""
+  echo "==> 健康检查..."
+
+  HEALTH_OK=true
+
+  if [[ "$FRONTEND_ONLY" != "true" ]]; then
+    if health_check "http://127.0.0.1:$BACKEND_PORT/health" 15 2; then
+      echo "  后端健康检查通过: http://127.0.0.1:$BACKEND_PORT/health"
+    else
+      echo "  错误：后端健康检查失败" >&2
+      HEALTH_OK=false
+    fi
+  fi
+
+  if [[ "$BACKEND_ONLY" != "true" ]]; then
+    if health_check "http://127.0.0.1:$MARKETPLACE_PORT/login" 15 2; then
+      echo "  商城健康检查通过: http://127.0.0.1:$MARKETPLACE_PORT/login"
+    else
+      echo "  错误：商城健康检查失败" >&2
+      HEALTH_OK=false
+    fi
+
+    if health_check "http://127.0.0.1:$EDU_PORT/portal/login" 15 2; then
+      echo "  教育管理健康检查通过: http://127.0.0.1:$EDU_PORT/portal/login"
+    else
+      echo "  错误：教育管理健康检查失败" >&2
+      HEALTH_OK=false
+    fi
+  fi
+
+  if [[ "$HEALTH_OK" != "true" ]]; then
+    echo ""
+    echo "⚠️  部分服务健康检查失败，请检查日志:" >&2
+    echo "   pm2 logs --lines 50" >&2
+    exit 1
+  fi
+
+  echo ""
+  echo "✨ 部署完成！"
+  echo "   部署目录: $DEPLOY_DIR"
+  echo "   后端 API: http://localhost:$BACKEND_PORT"
+  echo "   商城前端: http://localhost:$MARKETPLACE_PORT"
+  echo "   教育管理: http://localhost:$EDU_PORT"
+  echo "   日志目录: $DEPLOY_DIR/logs"
+  echo ""
+  echo "   查看日志: pm2 logs"
+  echo "   查看状态: pm2 status"
+
+  exit 0
+fi
+
+# ==================== 开发模式：分支隔离流程 ====================
 
 # ==================== 配置区 ====================
 BACKEND_PORT=8080
@@ -259,6 +712,8 @@ if [[ -z "$BRANCH_NAME" ]]; then
   echo "  基于 master 创建干净工作树，仅合入指定分支的改动，确保不引入其他 Agent 的中间代码。" >&2
   echo "" >&2
   echo "示例: $0 --branch feat/agent-A-学生档案 --frontend-only" >&2
+  echo "" >&2
+  echo "演示环境请使用: $0 --demo" >&2
   exit 1
 fi
 
@@ -398,7 +853,7 @@ generate_ecosystem_config() {
 module.exports = {
   apps: [
     {
-      name: 'zhiyu-backend',
+      name: '$PM2_BACKEND_NAME',
       cwd: '$DEPLOY_BACKEND_DIR',
       script: './bin/server',
       instances: 1,
@@ -422,7 +877,7 @@ module.exports = {
       listen_timeout: 10000,
     },
     {
-      name: 'zhiyu-marketplace',
+      name: '$PM2_MARKETPLACE_NAME',
       cwd: '$DEPLOY_MARKETPLACE_STANDALONE',
       script: 'server.js',
       instances: 1,
@@ -448,7 +903,7 @@ module.exports = {
       listen_timeout: 10000,
     },
     {
-      name: 'zhiyu-edu',
+      name: '$PM2_EDU_NAME',
       cwd: '$DEPLOY_EDU_STANDALONE',
       script: 'server.js',
       instances: 1,
@@ -500,11 +955,11 @@ restore_rollback() {
 
   echo "  停止当前进程..."
   if [[ "$FRONTEND_ONLY" == "true" ]]; then
-    pm2 stop "zhiyu-marketplace" "zhiyu-edu" &>/dev/null || true
-    pm2 delete "zhiyu-marketplace" "zhiyu-edu" &>/dev/null || true
+    pm2 stop "$PM2_MARKETPLACE_NAME" "$PM2_EDU_NAME" &>/dev/null || true
+    pm2 delete "$PM2_MARKETPLACE_NAME" "$PM2_EDU_NAME" &>/dev/null || true
   elif [[ "$BACKEND_ONLY" == "true" ]]; then
-    pm2 stop "zhiyu-backend" &>/dev/null || true
-    pm2 delete "zhiyu-backend" &>/dev/null || true
+    pm2 stop "$PM2_BACKEND_NAME" &>/dev/null || true
+    pm2 delete "$PM2_BACKEND_NAME" &>/dev/null || true
   else
     pm2 stop all &>/dev/null || true
     pm2 delete all &>/dev/null || true
@@ -534,9 +989,9 @@ restore_rollback() {
   echo "  重启旧版本服务..."
   generate_ecosystem_config
   if [[ "$FRONTEND_ONLY" == "true" ]]; then
-    pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --only "zhiyu-marketplace,zhiyu-edu" --env production || true
+    pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --only "$PM2_MARKETPLACE_NAME,$PM2_EDU_NAME" --env production || true
   elif [[ "$BACKEND_ONLY" == "true" ]]; then
-    pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --only "zhiyu-backend" --env production || true
+    pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --only "$PM2_BACKEND_NAME" --env production || true
   else
     pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --env production || true
   fi
@@ -578,6 +1033,11 @@ restore_rollback() {
   echo "⚠️  注意：如果本次部署应用了新的数据库 migration，代码已回滚但 schema 可能仍处在新版本。" >&2
   echo "    请检查 $snapshot_dir/snapshot.json 中的 applied_migrations_before，必要时手动执行对应 down migration。" >&2
 }
+
+# PM2 应用名称
+PM2_BACKEND_NAME="zhiyu-backend"
+PM2_MARKETPLACE_NAME="zhiyu-marketplace"
+PM2_EDU_NAME="zhiyu-edu"
 
 # ==================== 准备部署目录 ====================
 echo "==> 准备部署目录: $DEPLOY_DIR"
@@ -788,8 +1248,8 @@ fi
 echo "==> 停止旧服务..."
 
 if [[ "$FRONTEND_ONLY" != "true" ]]; then
-  pm2 stop "zhiyu-backend" &>/dev/null || true
-  pm2 delete "zhiyu-backend" &>/dev/null || true
+  pm2 stop "$PM2_BACKEND_NAME" &>/dev/null || true
+  pm2 delete "$PM2_BACKEND_NAME" &>/dev/null || true
   if ! wait_for_port_release "$BACKEND_PORT" 10; then
     echo "  警告：后端端口 $BACKEND_PORT 仍未释放，尝试强制清理..." >&2
     backend_pid=$(lsof -t -i:"$BACKEND_PORT" 2>/dev/null || true)
@@ -798,7 +1258,7 @@ if [[ "$FRONTEND_ONLY" != "true" ]]; then
 fi
 
 if [[ "$BACKEND_ONLY" != "true" ]]; then
-  for app in zhiyu-marketplace zhiyu-edu; do
+  for app in "$PM2_MARKETPLACE_NAME" "$PM2_EDU_NAME"; do
     pm2 stop "$app" &>/dev/null || true
     pm2 delete "$app" &>/dev/null || true
   done
@@ -875,13 +1335,13 @@ echo ""
 echo "==> 本地 PM2 启动服务..."
 
 if [[ "$FRONTEND_ONLY" == "true" ]]; then
-  pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --only "zhiyu-marketplace,zhiyu-edu" --env production || {
+  pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --only "$PM2_MARKETPLACE_NAME,$PM2_EDU_NAME" --env production || {
     echo "错误：PM2 启动失败" >&2
     restore_rollback "$SNAPSHOT_DIR"
     exit 1
   }
 elif [[ "$BACKEND_ONLY" == "true" ]]; then
-  pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --only "zhiyu-backend" --env production || {
+  pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --only "$PM2_BACKEND_NAME" --env production || {
     echo "错误：PM2 启动失败" >&2
     restore_rollback "$SNAPSHOT_DIR"
     exit 1

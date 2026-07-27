@@ -92,7 +92,7 @@
 |------|-----|
 | SSH | `ssh root@171.80.10.237`（密码 `lEL9cHcBQMjCEqp6`） |
 | 项目目录 | `/root/projects/zhiyu-saas` |
-| 部署脚本 | `./deploydemo.sh`（非 `./deploy.sh`） |
+| 部署脚本 | `./deploy.sh --demo`（也可用 `./deploydemo.sh` 兼容旧脚本） |
 
 > 该环境为演示/测试用途。
 
