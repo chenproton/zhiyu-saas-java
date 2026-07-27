@@ -1956,7 +1956,13 @@ export default function TasksEditPage() {
         })
 
         knowledgePoints.length = 0
-        kpRes.items.forEach((kp: any) => knowledgePoints.push({ ...kp, granularLessons: kp.granularLessonIds || [] }))
+        customKnowledgePointIds.clear()
+        kpRes.items.forEach((kp: any) => {
+          knowledgePoints.push({ ...kp, granularLessons: kp.granularLessonIds || [] })
+          if (kp.creatorId && kp.creatorId === user?.id) {
+            customKnowledgePointIds.add(kp.id)
+          }
+        })
 
         granularLessons.length = 0
         glRes.items.forEach((gl: any) => granularLessons.push(gl))
