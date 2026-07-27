@@ -28,7 +28,7 @@ export default function LibraryLayout({
   const content = isLanding ? (
     <>{children}</>
   ) : (
-    <PlatformShell config={libraryNavigationConfig}>
+    <PlatformShell config={{ ...libraryNavigationConfig, sideBackHref: "/portal/apps" }}>
       {children}
     </PlatformShell>
   )
