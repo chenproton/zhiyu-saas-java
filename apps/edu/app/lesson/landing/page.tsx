@@ -1,20 +1,24 @@
 "use client"
 
 import Link from "next/link"
-import { useState, useEffect, useMemo } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
-  BookOpen, GraduationCap, FileText, Search, Layers,
-  Clock, AlertCircle, Loader2, MapPin, ArrowUpDown,
+  Search, Filter, X, ChevronRight,
+  BookOpen, Layers, FileText, GraduationCap,
+  Clock, Sparkles, MapPin,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Input } from "@/components/ui/input"
 import { courseApi } from "@/lib/api"
 import type { Course } from "@/lib/types"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
 
-const courseTypeMap: Record<string, string> = {
-  system: "体系课", granular: "颗粒课", hybrid: "混合课",
-}
+const CARDS_PER_PAGE = 12
+const SORT_OPTIONS = [
+  { value: "default", label: "默认排序" },
+  { value: "recent", label: "最近收录" },
+  { value: "update", label: "最近更新" },
+]
 
 const coverGradients = [
   "linear-gradient(135deg,#059669,#10b981)",
@@ -25,31 +29,58 @@ const coverGradients = [
   "linear-gradient(135deg,#2563eb,#3b82f6)",
 ]
 
-interface FilterBarProps {
+function FilterRow({
+  label,
+  items,
+  selected,
+  onSelect,
+  showBorder = true,
+}: {
   label: string
-  options: string[]
+  items: string[]
   selected: string
-  onChange: (v: string) => void
-}
-function FilterBar({ label, options, selected, onChange }: FilterBarProps) {
-  if (options.length <= 1) return null
+  onSelect: (item: string) => void
+  showBorder?: boolean
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [expanded, setExpanded] = useState(false)
+  const [overflow, setOverflow] = useState(false)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (el) setOverflow(el.scrollHeight > el.clientHeight + 2)
+  }, [items])
+
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-[13px] text-slate-400 shrink-0">{label}：</span>
-      <div className="flex flex-wrap gap-1.5">
-        {options.map((opt) => (
+    <div className={`flex items-start gap-3 sm:gap-4 py-3 ${showBorder ? "border-b border-dashed border-[#cbd5e1]" : ""}`}>
+      <span className="text-sm text-[#374151] font-medium min-w-[40px] pt-1.5">{label}</span>
+      <div className="flex-1 min-w-0">
+        <div
+          ref={containerRef}
+          className={`flex flex-wrap gap-2.5 ${expanded ? "" : "max-h-[80px] overflow-hidden"}`}
+        >
+          {items.map((item) => (
+            <button
+              key={item}
+              onClick={() => onSelect(item)}
+              className={`px-3.5 py-1.5 rounded-full text-[13px] border transition-all whitespace-nowrap ${
+                selected === item
+                  ? "bg-emerald-500 text-white border-emerald-500 shadow-sm"
+                  : "bg-slate-50 text-[#475569] border-slate-200 hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50/50"
+              }`}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+        {overflow && (
           <button
-            key={opt}
-            onClick={() => onChange(opt)}
-            className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-all cursor-pointer border ${
-              selected === opt
-                ? "bg-emerald-500 text-white border-emerald-500 shadow-sm"
-                : "bg-white text-slate-500 border-slate-200 hover:border-emerald-300 hover:text-emerald-600"
-            }`}
+            onClick={() => setExpanded(!expanded)}
+            className="text-[12px] text-emerald-500 hover:text-emerald-600 mt-1.5 font-medium"
           >
-            {opt}
+            {expanded ? "收起" : "展开"}
           </button>
-        ))}
+        )}
       </div>
     </div>
   )
@@ -58,12 +89,17 @@ function FilterBar({ label, options, selected, onChange }: FilterBarProps) {
 function CourseCard({ course, index }: { course: Course; index: number }) {
   return (
     <Link href={`/lesson/landing/${course.id}`} className="group block no-underline text-inherit">
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-emerald-200 hover:-translate-y-0.5 transition-all h-full flex flex-col">
+      <div className="bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:border-emerald-200 hover:-translate-y-0.5 transition-all h-full flex flex-col shadow-[0_2px_6px_rgba(0,0,0,0.04)]">
         <div className="h-[120px] flex items-center justify-center shrink-0 relative" style={{ background: coverGradients[index % coverGradients.length] }}>
           <span className="text-white text-lg font-bold drop-shadow-lg">{course.name.slice(0, 8)}</span>
           <span className="absolute top-3 right-3 bg-white/25 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-[11px] font-medium border border-white/10">
             已发布
           </span>
+          {course.batchName && (
+            <span className="absolute bottom-3 left-3 bg-white/20 backdrop-blur-sm text-white px-2 py-0.5 rounded text-[10px] border border-white/10">
+              {course.batchName}
+            </span>
+          )}
         </div>
         <div className="p-5 flex-1 flex flex-col">
           <h3 className="text-[15px] font-semibold text-slate-800 mb-1.5 truncate">{course.name}</h3>
@@ -74,10 +110,7 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
               </span>
             )}
             {course.industryName && (
-              <span className="text-[11px] text-slate-400">{course.industryName}</span>
-            )}
-            {course.batchName && (
-              <span className="text-[11px] px-1.5 py-0.5 rounded bg-slate-50 text-slate-400 border border-slate-100">{course.batchName}</span>
+              <span className="text-[11px] px-1.5 py-0.5 rounded bg-slate-50 text-slate-400 border border-slate-100">{course.industryName}</span>
             )}
           </div>
           <p className="text-xs text-slate-400 leading-relaxed mb-3 line-clamp-2 flex-1">{course.description || "暂无课程描述"}</p>
@@ -93,22 +126,68 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
   )
 }
 
+function Pagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number
+  totalPages: number
+  onPageChange: (p: number) => void
+}) {
+  if (totalPages <= 1) return null
+  return (
+    <div className="flex justify-center items-center gap-2 mt-8">
+      <button
+        disabled={currentPage <= 1}
+        onClick={() => onPageChange(currentPage - 1)}
+        className="px-3 py-2 rounded-lg text-[13px] border border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+      >
+        上一页
+      </button>
+      {Array.from({ length: totalPages }, (_, i) => i + 1).slice(
+        Math.max(0, currentPage - 3),
+        Math.min(totalPages, currentPage + 2)
+      ).map((p) => (
+        <button
+          key={p}
+          onClick={() => onPageChange(p)}
+          className={`w-9 h-9 rounded-lg text-[13px] font-medium transition-all ${
+            p === currentPage
+              ? "bg-emerald-500 text-white shadow-sm"
+              : "bg-white border border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-600"
+          }`}
+        >
+          {p}
+        </button>
+      ))}
+      <button
+        disabled={currentPage >= totalPages}
+        onClick={() => onPageChange(currentPage + 1)}
+        className="px-3 py-2 rounded-lg text-[13px] border border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+      >
+        下一页
+      </button>
+    </div>
+  )
+}
+
 export default function LessonLandingPage() {
+  const listRef = useRef<HTMLDivElement>(null)
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
-  const [search, setSearch] = useState("")
 
-  const [industryFilter, setIndustryFilter] = useState("全部")
-  const [batchFilter, setBatchFilter] = useState("全部")
-  const [sort, setSort] = useState<"default" | "recent" | "update">("default")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [sort, setSort] = useState("default")
+  const [keyword, setKeyword] = useState("")
+  const [selectedIndustry, setSelectedIndustry] = useState("全部")
+  const [selectedBatch, setSelectedBatch] = useState("全部")
 
   useEffect(() => {
     setLoading(true)
-    setError(false)
     courseApi.list({ status: "published", limit: 1000 } as any).then((res) => {
       setCourses(res.items || [])
-    }).catch(() => setError(true)).finally(() => setLoading(false))
+    }).catch(() => setCourses([])).finally(() => setLoading(false))
   }, [])
 
   const industries = useMemo(() => {
@@ -123,181 +202,305 @@ export default function LessonLandingPage() {
     return ["全部", ...Array.from(set).sort()]
   }, [courses])
 
-  const filteredCourses = useMemo(() => {
-    let list = courses
+  const filtered = useMemo(() => {
+    let list = [...courses]
 
-    if (search.trim()) {
-      const q = search.toLowerCase()
+    if (keyword.trim()) {
+      const k = keyword.trim().toLowerCase()
       list = list.filter((c) =>
-        c.name.toLowerCase().includes(q) ||
-        (c.description || "").toLowerCase().includes(q) ||
-        (c.majorName || "").toLowerCase().includes(q)
+        c.name.toLowerCase().includes(k) ||
+        (c.description || "").toLowerCase().includes(k) ||
+        (c.majorName || "").toLowerCase().includes(k)
       )
     }
+    if (selectedIndustry !== "全部") list = list.filter((c) => c.industryName === selectedIndustry)
+    if (selectedBatch !== "全部") list = list.filter((c) => c.batchName === selectedBatch)
 
-    if (industryFilter !== "全部") {
-      list = list.filter((c) => c.industryName === industryFilter)
+    switch (sort) {
+      case "recent":
+        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        break
+      case "update":
+        list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        break
+      default:
+        list.sort((a, b) => a.name.localeCompare(b.name, "zh-CN"))
+        break
     }
-
-    if (batchFilter !== "全部") {
-      list = list.filter((c) => c.batchName === batchFilter)
-    }
-
-    if (sort === "recent") {
-      list = [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    } else if (sort === "update") {
-      list = [...list].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    }
-
     return list
-  }, [courses, search, industryFilter, batchFilter, sort])
+  }, [courses, keyword, selectedIndustry, selectedBatch, sort])
 
-  const systemCourses = useMemo(() => filteredCourses.filter((c) => c.type === "system"), [filteredCourses])
-  const granularCourses = useMemo(() => filteredCourses.filter((c) => c.type === "granular"), [filteredCourses])
+  const systemCourses = useMemo(() => filtered.filter((c) => c.type === "system"), [filtered])
+  const granularCourses = useMemo(() => filtered.filter((c) => c.type === "granular"), [filtered])
+
+  const totalPages = Math.max(1, Math.ceil(systemCourses.length / CARDS_PER_PAGE))
+  const pageSystemCourses = useMemo(() => {
+    const start = (currentPage - 1) * CARDS_PER_PAGE
+    return systemCourses.slice(start, start + CARDS_PER_PAGE)
+  }, [systemCourses, currentPage])
+
+  useEffect(() => { setCurrentPage(1) }, [selectedIndustry, selectedBatch, keyword, sort])
+
+  const activeFilters = useMemo(() => {
+    const filters: { type: string; label: string }[] = []
+    if (selectedIndustry !== "全部") filters.push({ type: "industry", label: `行业：${selectedIndustry}` })
+    if (selectedBatch !== "全部") filters.push({ type: "batch", label: `批次：${selectedBatch}` })
+    if (keyword.trim()) filters.push({ type: "keyword", label: `关键词：${keyword.trim()}` })
+    return filters
+  }, [selectedIndustry, selectedBatch, keyword])
+
+  const executeSearch = () => {
+    setCurrentPage(1)
+    setTimeout(() => listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50)
+  }
 
   const totalNodes = courses.reduce((sum, c) => sum + (c.nodeCount || 0), 0)
   const totalResources = courses.reduce((sum, c) => sum + (c.resourceCount || 0), 0)
 
-  const stats = [
-    { num: courses.length, label: "已发布课程", icon: BookOpen, color: "#059669" },
-    { num: systemCourses.length + (filteredCourses.filter((c) => c.type === "hybrid").length), label: "体系课", icon: GraduationCap, color: "#0891b2" },
-    { num: totalNodes, label: "课程节点", icon: Layers, color: "#7c3aed" },
-    { num: totalResources, label: "教学资源", icon: FileText, color: "#db2777" },
-  ]
-
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8fafc]" style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" }}>
-      <div
-        className="relative overflow-hidden"
-        style={{ background: "linear-gradient(135deg, #064e3b 0%, #047857 40%, #059669 100%)" }}
-      >
-        <div className="max-w-[1400px] mx-auto px-6 py-16">
-          <div className="max-w-[640px] mx-auto text-center">
-            <h1 className="text-[40px] font-bold text-white mb-3 tracking-tight">课程教学管理平台</h1>
-            <p className="text-[15px] text-white/85 mb-8">体系化课程设计、颗粒化知识点管理、多维度教学资源整合，让教与学更高效</p>
-            <div className="bg-white rounded-full p-1.5 pl-6 flex items-center shadow-[0_10px_30px_rgba(0,0,0,0.15)]">
-              <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
-              <input
-                type="text"
-                placeholder="搜索课程名称、描述、专业"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="flex-1 border-none outline-none text-sm py-3 text-slate-700 bg-transparent"
-              />
-              {search && (
-                <button onClick={() => setSearch("")} className="text-slate-400 hover:text-slate-600 text-sm px-3 shrink-0">清除</button>
-              )}
+    <div className="min-h-screen flex flex-col bg-[#F1FAFF]">
+      {/* Hero Banner */}
+      <div className="relative w-full pt-16 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-[rgba(5,150,105,0.88)] via-[rgba(16,185,129,0.78)] to-[rgba(20,184,166,0.78)]" />
+        <div
+          className="absolute inset-0 opacity-[0.12]"
+          style={{
+            backgroundImage: `linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)`,
+            backgroundSize: "48px 48px",
+          }}
+        />
+        <div className="absolute top-[-80px] right-[10%] w-[420px] h-[420px] rounded-full bg-white/10 blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-[-60px] left-[5%] w-[320px] h-[320px] rounded-full bg-emerald-400/15 blur-[90px] pointer-events-none" />
+
+        <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-14 pt-2 flex flex-col lg:flex-row justify-between items-start gap-8">
+          <div className="flex-1 pt-4">
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md text-white px-3.5 py-1.5 rounded-full text-[13px] border border-white/25 mb-5 shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
+              <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+              体系化课程 · 颗粒化知识管理
+            </div>
+            <h1 className="text-[42px] sm:text-[48px] lg:text-[52px] font-bold text-white leading-[1.15] mb-5 drop-shadow-sm">
+              课程教学管理平台<br />从基础到进阶，系统提升专业能力
+            </h1>
+            <p className="text-[17px] text-white/85 mb-7 max-w-2xl leading-relaxed">
+              体系化课程设计、颗粒化知识点管理、多维度教学资源整合，让教与学更高效
+            </p>
+            <Button
+              className="inline-flex items-center gap-2 bg-white text-emerald-600 hover:bg-emerald-50 hover:-translate-y-0.5 px-7 h-12 rounded-full text-sm font-semibold shadow-lg transition-all"
+              onClick={() => listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            >
+              浏览课程 <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <div className="w-full lg:w-[400px] shrink-0 flex flex-col gap-4 pt-4">
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 text-white shadow-[0_8px_32px_rgba(0,0,0,0.18)]">
+              <div className="text-[14px] font-semibold text-white/80 mb-4">课程统计</div>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-[13px] text-white/70">课程总数</span>
+                  <span className="text-[22px] font-bold">{courses.length}</span>
+                </div>
+                <hr className="border-white/10" />
+                <div className="flex justify-between items-center">
+                  <span className="text-[13px] text-white/70">课程节点</span>
+                  <span className="text-[22px] font-bold">{totalNodes}</span>
+                </div>
+                <hr className="border-white/10" />
+                <div className="flex justify-between items-center">
+                  <span className="text-[13px] text-white/70">教学资源</span>
+                  <span className="text-[22px] font-bold">{totalResources}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <main className="flex-1 max-w-[1400px] mx-auto px-6 py-10 w-full">
-        {loading ? (
-          <div className="space-y-6">
-            <Skeleton className="h-[100px] w-full rounded-xl" />
-            <Skeleton className="h-[300px] w-full rounded-xl" />
+      {/* Stats bar */}
+      <div className="max-w-[1400px] mx-auto px-8 -mt-10 relative z-20 w-full">
+        <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_8px_32px_rgba(0,0,0,0.06)] p-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { icon: BookOpen, value: systemCourses.length, label: "体系课", gradient: "from-emerald-500 to-emerald-400" },
+            { icon: Layers, value: granularCourses.length, label: "颗粒课", gradient: "from-teal-500 to-teal-400" },
+            { icon: FileText, value: totalResources, label: "教学资源", gradient: "from-cyan-500 to-cyan-400" },
+            { icon: GraduationCap, value: totalNodes, label: "课程节点", gradient: "from-green-500 to-green-400" },
+          ].map((s, i) => (
+            <div key={i} className="flex items-center gap-4 p-4 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md hover:bg-[#f8fafc] cursor-default group">
+              <div className={`relative w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg bg-gradient-to-br ${s.gradient} shrink-0 overflow-hidden`}>
+                <s.icon className="w-7 h-7 relative z-10" strokeWidth={1.8} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[28px] font-bold text-[#0f172a] leading-none tracking-tight">{s.value.toLocaleString()}</div>
+                <div className="text-[13px] text-[#64748b] mt-1 font-medium">{s.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <main ref={listRef} className="max-w-[1400px] mx-auto px-8 py-6 w-full flex-1">
+        {/* Filter */}
+        <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6 mb-5">
+          <div className="flex items-center gap-2.5 text-[16px] font-bold text-[#0f172a] mb-5">
+            <div className="w-1 h-5 rounded-full bg-gradient-to-b from-emerald-400 to-emerald-600" />
+            <Filter className="w-4 h-4 text-emerald-500" />
+            课程筛选
           </div>
-        ) : error ? (
-          <div className="text-center py-20 bg-white rounded-2xl border border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
-            <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-400" />
-            <p className="text-slate-500 mb-4">加载课程列表失败，请稍后重试</p>
-            <Button onClick={() => window.location.reload()} className="rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-600 hover:to-emerald-500 text-white shadow-lg shadow-emerald-500/25">
-              重新加载
+          <div className="space-y-0">
+            {industries.length > 1 && (
+              <FilterRow label="行业" items={industries} selected={selectedIndustry} onSelect={setSelectedIndustry} />
+            )}
+            {batches.length > 1 && (
+              <FilterRow label="批次" items={batches} selected={selectedBatch} onSelect={setSelectedBatch} showBorder={industries.length <= 1} />
+            )}
+          </div>
+          {activeFilters.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3 pt-4 mt-3 border-t border-dashed border-[#cbd5e1]">
+              <span className="text-[13px] text-[#64748b]">已选条件：</span>
+              {activeFilters.map((f) => (
+                <span
+                  key={f.type}
+                  className="inline-flex items-center gap-1.5 bg-[#ecfdf5] text-emerald-600 text-xs px-2.5 py-1 rounded-full border border-emerald-100"
+                >
+                  {f.label}
+                  <X
+                    className="w-3 h-3 cursor-pointer hover:text-red-500 transition-colors"
+                    onClick={() => {
+                      if (f.type === "industry") setSelectedIndustry("全部")
+                      if (f.type === "batch") setSelectedBatch("全部")
+                      if (f.type === "keyword") setKeyword("")
+                    }}
+                  />
+                </span>
+              ))}
+              <button
+                onClick={() => { setSelectedIndustry("全部"); setSelectedBatch("全部"); setKeyword("") }}
+                className="text-[13px] text-emerald-600 hover:text-emerald-700 font-medium"
+              >
+                清空筛选
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Toolbar */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-0.5 bg-white p-1 rounded-xl border border-[#e7e5e4] shadow-sm">
+            {SORT_OPTIONS.map((s) => (
+              <button
+                key={s.value}
+                onClick={() => setSort(s.value)}
+                className={`px-5 py-2 rounded-[10px] text-[13px] transition-all font-medium ${
+                  sort === s.value ? "bg-emerald-500 text-white shadow-md" : "text-[#475569] hover:text-emerald-600 hover:bg-[#f8fafc]"
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+          <div className="relative w-full sm:w-[340px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94a3b8]" />
+            <Input
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") executeSearch() }}
+              placeholder="搜索课程名称、描述或专业"
+              className="pl-10 pr-[72px] h-11 bg-[#f8fafc] border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100 focus:bg-white transition-all"
+            />
+            <Button
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-[10px] px-5 h-8 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-600 hover:to-emerald-500 text-white text-xs font-medium shadow-sm hover:shadow-md transition-all"
+              onClick={executeSearch}
+            >
+              搜索
             </Button>
+          </div>
+        </div>
+
+        <div className="text-[13px] text-[#64748b] mb-5">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            当前共展示 <b className="text-emerald-600">{filtered.length}</b> 个课程
+          </span>
+        </div>
+
+        {/* Content */}
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-[#e7e5e4] h-[360px] animate-pulse shadow-sm" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20 text-[#94a3b8] bg-white rounded-2xl border border-[#e7e5e4] shadow-sm">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[#f8fafc] flex items-center justify-center">
+              <Search className="w-8 h-8 opacity-30" />
+            </div>
+            <div className="text-[15px] font-medium text-[#475569]">暂无匹配的课程</div>
+            <div className="text-[13px] mt-1">试试调整筛选条件或搜索关键词</div>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
-              {stats.map((s, i) => (
-                <div key={i} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex items-center gap-4 hover:shadow-[0_8px_28px_rgba(0,0,0,0.06)] transition-all">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: s.color + "15" }}>
-                    <s.icon className="w-6 h-6" style={{ color: s.color }} />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-slate-800">{s.num}</div>
-                    <div className="text-[13px] text-slate-400">{s.label}</div>
-                  </div>
+            {/* 体系课 */}
+            {systemCourses.length > 0 && (
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2">
+                    <div className="w-1 h-5 rounded-full bg-gradient-to-b from-emerald-400 to-emerald-600" />
+                    体系课
+                    <span className="text-[13px] text-[#64748b] font-normal ml-1">({systemCourses.length})</span>
+                  </h2>
                 </div>
-              ))}
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                  {pageSystemCourses.map((course, i) => (
+                    <CourseCard key={course.id} course={course} index={i} />
+                  ))}
+                </div>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={(p) => {
+                    setCurrentPage(p)
+                    listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+                  }}
+                />
+              </div>
+            )}
 
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-5 mb-8">
-              <div className="flex flex-col md:flex-row md:items-center gap-4 flex-wrap">
-                <FilterBar label="行业筛选" options={industries} selected={industryFilter} onChange={setIndustryFilter} />
-                <FilterBar label="批次分组" options={batches} selected={batchFilter} onChange={setBatchFilter} />
-                <div className="flex items-center gap-2 ml-auto">
-                  <ArrowUpDown className="w-4 h-4 text-slate-400" />
-                  {[
-                    { key: "default", label: "默认排序" },
-                    { key: "recent", label: "最近收录" },
-                    { key: "update", label: "最近更新" },
-                  ].map((s) => (
-                    <button
-                      key={s.key}
-                      onClick={() => setSort(s.key as typeof sort)}
-                      className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-all cursor-pointer border ${
-                        sort === s.key
-                          ? "bg-slate-800 text-white border-slate-800 shadow-sm"
-                          : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"
-                      }`}
-                    >
-                      {s.label}
-                    </button>
+            {/* 颗粒课 */}
+            {granularCourses.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="text-xl font-bold text-[#0f172a] flex items-center gap-2">
+                    <div className="w-1 h-5 rounded-full bg-gradient-to-b from-teal-400 to-teal-600" />
+                    颗粒课
+                    <span className="text-[13px] text-[#64748b] font-normal ml-1">({granularCourses.length})</span>
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                  {granularCourses.map((course, i) => (
+                    <CourseCard key={course.id} course={course} index={i} />
                   ))}
                 </div>
               </div>
-            </div>
-
-            {filteredCourses.length === 0 ? (
-              <div className="text-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-200">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
-                  <BookOpen className="w-8 h-8 opacity-40" />
-                </div>
-                <div className="text-[15px] font-medium text-slate-600">{search || industryFilter !== "全部" || batchFilter !== "全部" ? "没有找到匹配的课程" : "暂无已发布课程"}</div>
-              </div>
-            ) : (
-              <>
-                {systemCourses.length > 0 && (
-                  <div className="mb-10">
-                    <div className="flex items-center justify-between mb-5">
-                      <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                        <span className="w-1 h-6 rounded-full bg-gradient-to-b from-emerald-500 to-emerald-400" />
-                        体系课
-                        <span className="text-[13px] text-slate-400 font-normal ml-1">({systemCourses.length})</span>
-                      </h2>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                      {systemCourses.map((course, i) => (
-                        <CourseCard key={course.id} course={course} index={i} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {granularCourses.length > 0 && (
-                  <div className="mb-10">
-                    <div className="flex items-center justify-between mb-5">
-                      <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                        <span className="w-1 h-6 rounded-full bg-gradient-to-b from-cyan-500 to-cyan-400" />
-                        颗粒课
-                        <span className="text-[13px] text-slate-400 font-normal ml-1">({granularCourses.length})</span>
-                      </h2>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                      {granularCourses.map((course, i) => (
-                        <CourseCard key={course.id} course={course} index={i} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
             )}
           </>
         )}
       </main>
 
       <PlatformFooter />
+
+      <style jsx>{`
+        .custom-scrollbar-thin::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar-thin::-webkit-scrollbar-thumb {
+          background: rgba(255,255,255,0.3);
+          border-radius: 2px;
+        }
+        .custom-scrollbar-thin::-webkit-scrollbar-track {
+          background: transparent;
+        }
+      `}</style>
     </div>
   )
 }
