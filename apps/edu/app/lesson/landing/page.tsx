@@ -260,7 +260,7 @@ export default function LessonLandingPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#F1FAFF]">
       {/* Hero Banner */}
-      <div className="relative w-full pt-24 pb-2 overflow-hidden">
+      <div className="relative w-full pt-16 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-[rgba(5,150,105,0.88)] via-[rgba(16,185,129,0.78)] to-[rgba(20,184,166,0.78)]" />
         <div
           className="absolute inset-0 opacity-[0.08]"
@@ -273,8 +273,8 @@ export default function LessonLandingPage() {
         <div className="absolute bottom-[-80px] left-[8%] w-[400px] h-[400px] rounded-full bg-teal-400/15 blur-[100px] pointer-events-none" />
         <div className="absolute top-[20%] left-[30%] w-[300px] h-[300px] rounded-full bg-cyan-400/10 blur-[80px] pointer-events-none" />
 
-        <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-20 pt-4 flex flex-col lg:flex-row justify-between items-start gap-10">
-          <div className="flex-1 pt-6">
+        <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-14 pt-2 flex flex-col lg:flex-row justify-between items-start gap-10">
+          <div className="flex-1 pt-4">
             <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md text-white px-4 py-2 rounded-full text-[13px] border border-white/20 mb-6 shadow-[0_4px_16px_rgba(0,0,0,0.15)]">
               <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
               体系化课程 · 颗粒化知识管理

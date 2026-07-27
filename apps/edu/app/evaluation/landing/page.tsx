@@ -179,15 +179,15 @@ export default function LandingHomePage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#faf5ff]">
       {/* Hero Banner */}
-      <div className="relative w-full pt-24 pb-2 overflow-hidden">
+      <div className="relative w-full pt-16 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-[#4c1d95] via-[#7c3aed] to-[#a78bfa]" />
         <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: `linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px)`, backgroundSize: "52px 52px" }} />
         <div className="absolute top-[-120px] right-[-5%] w-[500px] h-[500px] rounded-full bg-purple-300/20 blur-[120px] pointer-events-none" />
         <div className="absolute bottom-[-80px] left-[8%] w-[400px] h-[400px] rounded-full bg-violet-400/15 blur-[100px] pointer-events-none" />
         <div className="absolute top-[20%] left-[30%] w-[300px] h-[300px] rounded-full bg-fuchsia-400/10 blur-[80px] pointer-events-none" />
 
-        <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-20 pt-4 flex flex-col lg:flex-row justify-between items-start gap-10">
-          <div className="flex-1 pt-6">
+        <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-14 pt-2 flex flex-col lg:flex-row justify-between items-start gap-10">
+          <div className="flex-1 pt-4">
             <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md text-white px-4 py-2 rounded-full text-[13px] border border-white/20 mb-6 shadow-[0_4px_16px_rgba(0,0,0,0.15)]">
               <Sparkles className="w-3.5 h-3.5 text-yellow-300" />海量题库 · 智能组卷 · 在线考试
             </div>
