@@ -5117,10 +5117,10 @@ function EditCardDialog({
   const renderContent = () => {
     switch (cardType) {
       case "info":
-        return <TaskInfoCard localTask={localTask} onUpdate={u => setLocalTask({ ...localTask, ...u } as typeof localTask)} />
+        return <TaskInfoCard name={localTask.name} onNameChange={v => setLocalTask({ ...localTask, name: v })} difficulty={localTask.difficulty as 1|2|3|4|5} onDifficultyChange={v => setLocalTask({ ...localTask, difficulty: v as 1|2|3|4|5 })} hours={localTask.hours} onHoursChange={v => setLocalTask({ ...localTask, hours: v })} background={localTask.background} onBackgroundChange={v => setLocalTask({ ...localTask, background: v })} />
 
       case "description":
-        return <TaskDescriptionCard state={state} updateState={updateState} toast={toast} />
+        return <TaskDescriptionCard description={state.description} onDescriptionChange={v => updateState({ description: v })} descriptionPdf={state.descriptionPdf} onDescriptionPdfChange={v => updateState({ descriptionPdf: v })} toast={toast} />
 
       case "knowledge":
         return (

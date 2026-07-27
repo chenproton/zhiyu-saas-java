@@ -50,24 +50,21 @@ const toolbarItems = [
   [{ icon: <Palette className="h-4 w-4" />, label: "字体颜色" }, { icon: <Sparkles className="h-4 w-4" />, label: "背景色" }],
 ]
 
-interface TaskState {
-  description: string
-  descriptionPdf: string | null
-}
-
 interface TaskDescriptionCardProps {
-  state: TaskState
-  updateState: (u: Partial<TaskState>) => void
+  description: string
+  onDescriptionChange: (v: string) => void
+  descriptionPdf: string | null
+  onDescriptionPdfChange: (v: string | null) => void
   toast: (opts: { title?: string; description?: string; variant?: "default" | "destructive" }) => void
 }
 
-export function TaskDescriptionCard({ state, updateState, toast }: TaskDescriptionCardProps) {
+export function TaskDescriptionCard({ description, onDescriptionChange, descriptionPdf, onDescriptionPdfChange, toast }: TaskDescriptionCardProps) {
   const [descMode, setDescMode] = useState<"rich_text" | "pdf">("rich_text")
   const [pdfUploading, setPdfUploading] = useState(false)
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false)
   const pdfInputRef = useRef<HTMLInputElement>(null)
 
-  const pdfFileName = state.descriptionPdf ? state.descriptionPdf.split("/").pop() || state.descriptionPdf : ""
+  const pdfFileName = descriptionPdf ? descriptionPdf.split("/").pop() || descriptionPdf : ""
 
   const handlePdfUpload = async (file: File) => {
     if (!file) return
@@ -82,7 +79,7 @@ export function TaskDescriptionCard({ state, updateState, toast }: TaskDescripti
     setPdfUploading(true)
     try {
       const res = await fileApi.upload(file)
-      updateState({ descriptionPdf: res.url })
+      onDescriptionPdfChange(res.url)
       toast({ title: "上传成功" })
     } catch (err: any) {
       toast({ variant: "destructive", title: "上传失败", description: err.message })
@@ -123,8 +120,8 @@ export function TaskDescriptionCard({ state, updateState, toast }: TaskDescripti
             </div>
             <div className="p-4 flex-1 bg-white">
               <Textarea
-                value={state.description}
-                onChange={e => updateState({ description: e.target.value })}
+                value={description}
+                onChange={e => onDescriptionChange(e.target.value)}
                 placeholder={`任务描述
 
 你需要完成 [具体任务]。该任务基于 [背景/前提]，要求你 [核心动作]。执行时请注意 [关键约束]，确保理解需求后再开始。
@@ -160,10 +157,10 @@ export function TaskDescriptionCard({ state, updateState, toast }: TaskDescripti
             </div>
             <div className="bg-gray-50 border-t px-3 py-1.5 flex items-center justify-between text-xs text-gray-400">
               <span>纯文本模式</span>
-              <span>{state.description.length} 字符</span>
+              <span>{description.length} 字符</span>
             </div>
           </div>
-          {state.description.includes("<img") || state.description.includes("<video") ? (
+          {description.includes("<img") || description.includes("<video") ? (
             <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm text-blue-700 flex items-center gap-2 mt-2">
               <Image className="h-4 w-4" />
               检测到已插入多媒体内容
@@ -188,7 +185,7 @@ export function TaskDescriptionCard({ state, updateState, toast }: TaskDescripti
               e.target.value = ""
             }}
           />
-          {state.descriptionPdf ? (
+          {descriptionPdf ? (
             <div className="text-center space-y-3 pointer-events-none">
               <div className="w-24 h-32 bg-red-50 border border-red-200 rounded-lg flex flex-col items-center justify-center mx-auto">
                 <File className="h-10 w-10 text-red-500 mb-2" />
@@ -207,7 +204,7 @@ export function TaskDescriptionCard({ state, updateState, toast }: TaskDescripti
               </div>
             </>
           )}
-          {state.descriptionPdf && (
+          {descriptionPdf && (
             <div className="flex items-center gap-2 pointer-events-auto" onClick={e => e.stopPropagation()}>
               <Button variant="outline" size="sm" onClick={() => setPdfPreviewOpen(true)}>
                 <Eye className="h-4 w-4 mr-1" />预览
@@ -215,7 +212,7 @@ export function TaskDescriptionCard({ state, updateState, toast }: TaskDescripti
               <Button variant="outline" size="sm" disabled={pdfUploading} onClick={() => pdfInputRef.current?.click()}>
                 <Upload className="h-4 w-4 mr-1" />重新上传
               </Button>
-              <Button variant="outline" size="sm" onClick={() => updateState({ descriptionPdf: null })}>
+              <Button variant="outline" size="sm" onClick={() => onDescriptionPdfChange(null)}>
                 <Trash2 className="h-4 w-4 mr-1" />移除文件
               </Button>
             </div>
@@ -233,9 +230,9 @@ export function TaskDescriptionCard({ state, updateState, toast }: TaskDescripti
             </DialogTitle>
           </DialogHeader>
           <div className="flex-1 min-h-0 border rounded-lg overflow-hidden bg-gray-50">
-            {state.descriptionPdf ? (
+            {descriptionPdf ? (
               <iframe
-                src={state.descriptionPdf}
+                src={descriptionPdf}
                 title={pdfFileName || "PDF 预览"}
                 className="w-full h-full"
               />
