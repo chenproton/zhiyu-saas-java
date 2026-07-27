@@ -36,6 +36,10 @@
 | 学分计算 | PASS | 总课时 / 16 |
 | 角色切换 | PASS | 支持前端传 `role` 动态切换视图 |
 
+## 性能约束
+
+- 当前每次 `/portal/workspace/dashboard` 请求执行 10+ 次 DB 查询，无缓存层。优化方案（查询合并、短周期缓存、按需加载、后台预计算）详见 `performance-maintainability.md#一`。
+
 ## 风险与约束
 
 - 无明显高风险项，模块设计简洁合理。

@@ -204,6 +204,23 @@
   - 完成认证授权、数据基础设施、评价/考核、岗位/职业、课程/教学、运营与商城、Portal 工作台、场景/实践、审批流引擎九大后端平台模块的审查基线。
   - 各文档均列出核心决策、可验证检查点及已知风险与约束。
 
+### 2026-07-28 中间件层、学生端落地页、数据库迁移审计基线
+
+- 审计文档：
+  - 新增：`docs/audits/backend/middleware.md`
+  - 新增：`docs/audits/frontend/landing-pages.md`
+  - 新增：`docs/audits/backend/migrations.md`
+  - 更新：`docs/audits/backend/portal-workspace.md`
+  - 索引：`docs/audits/AUDIT_RECORDS.md`
+- 审查人：Agent
+- 结论：收敛
+- PASS 检查点数量：— / 总检查点数量：—
+- 备注：
+  - `middleware.md`：审查操作日志中间件（路径排除、数据捕获、敏感信息泄漏风险）、RBAC 中间件（RequireRole/RequirePermission/SystemPermission 逻辑正确性）、平台隔离中间件（RequirePlatform 强制校验）。发现操作日志 `detail` 字段含完整 query string 可能泄漏敏感参数、管理员权限 `admin: true` 绕过所有细粒度检查等风险项。
+  - `landing-pages.md`：审查 `/scene/landing`、`/job/student`、`/evaluation/landing`、`/lesson/landing`、`/library/landing` 8 个学生端落地页。发现所有落地页实际调用认证 API 而非真正的公开端点，`evaluation/landing` 未使用后端提供的 `landingApi` 公开接口，部分页面缺少 loading UI 反馈。
+  - `migrations.md`：审查 001-088 共 90 个迁移文件的配对完整性、命名规范、CASCADE 覆盖率、破坏性操作和回滚安全。确认 100% `.up.sql`/`.down.sql` 配对，发现 8 处 DROP COLUMN 和 4 处 DROP TABLE 为不可逆数据删除，迁移 038 大范围 `ALTER TABLE` 无锁超时保护。
+  - `portal-workspace.md`：新增"性能约束"节，交叉引用 `performance-maintainability.md#一` 关于 10+ 次 DB 查询的优化建议。
+
 ### 2026-07-15 共享包与 API 客户端审计基线
 
 - 审计文档：
