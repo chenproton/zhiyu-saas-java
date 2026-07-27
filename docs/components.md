@@ -1,6 +1,8 @@
 # 前端公共组件速查
 
 > 所有组件均位于 `apps/edu/components/shared/`。新增页面时优先复用，避免重复造轮子。
+> 评测配置组件位于 `apps/edu/app/lesson/admin/_components/eval/`，同时被课程和任务编辑器复用。
+> 任务步骤卡片位于 `apps/edu/app/scene/scenarios/[id]/edit/tasks/_components/`。
 
 ## 页面级组件
 
@@ -45,6 +47,9 @@
 | `ImportConfirmDialog` | 导入重复确认对话框 | `open`, `entityLabel`, `created/duplicates/failed`, `onConfirmOverwrite/onConfirmSkip` |
 | `ResetPasswordDialog` | 重置密码对话框 | `open`, `userId`, `userName`, `onSuccess` |
 | `PlatformShell` | 平台整体布局（侧边栏 + 顶栏 + 内容区） | 包裹页面内容 |
+| `LandingFilterRow` | Landing 页筛选行（标签云+展开收起） | `label`, `items`, `selected`, `onSelect`, `accentColor` |
+| `LandingPagination` | Landing 页分页器（省略号+图标按钮） | `currentPage`, `totalPages`, `onPageChange`, `accentColor` |
+| `LogTableShell<T>` | 日志表格壳子（表格+分页+加载态） | `items`, `columns`, `total`, `page`, `totalPages` |
 
 ## Hooks
 
@@ -53,6 +58,48 @@
 | `useImportFlow` | `@/hooks/use-import-flow` | 导入流程（下载模板、预览、执行导入、重复处理） |
 | `useApprovals` | `@/hooks/use-approvals` | 审批记录（records、approve、reject、batchApprove、batchReject、getStepInfo） |
 | `useSubmitterNames` | `@/hooks/use-submitter-names` | 提交人姓名批量缓存 |
+
+## 评测配置组件（课程/任务复用）
+
+> 组件位于 `apps/edu/app/lesson/admin/_components/eval/course-eval-config.tsx`，同时被课程编辑器和任务编辑器使用。架构分两层：
+
+### 第一层：`CourseEvalConfig` — 测评方式选择 + 4 步规则配置
+
+| Props | 说明 |
+|------|------|
+| `value` | `CourseEvalData`（methods + methodConfigs） |
+| `onChange` | 回调 |
+
+**包含功能：**
+- 测评方式选择网格（平台通用/行业专属 Tab 分类）
+- 已选方法的 4 步卡片（①测评对象 → ②评价主体 → ③测评资源 → ④评价标准）
+- 4 个独立 Dialog 配置各项
+- 评价量规/评分规则双模式 + 等级映射（A/B/C/D）
+
+### 第二层：测评方式面板（每种一个独立组件）
+
+> 位于 `apps/edu/app/scene/scenarios/[id]/edit/tasks/_components/`
+
+| 组件 | 文件 | 对应测评方式 |
+|------|------|-----------|
+| `BankQuestionSelectorPanel` | `bank-question-selector-panel.tsx` | 题库、随堂测 |
+| `PaperConfigPanel` | `paper-config-panel.tsx` | 试卷 |
+| `RandomDrawResourcePanel` | `random-draw-resource-panel.tsx` | 现场问答 |
+| `ResourceMaterialConfig` | `resource-material-config.tsx` | 现场评审、成果评价、作业 |
+| `MethodConfigDialog` | `method-config-dialog.tsx` | 所有方式的评价标准配置 |
+
+**新增测评方式只需：** 创建新面板组件 + 在 `CourseEvalConfig` 的 `EVALUATION_METHOD_OPTIONS` 数组中加一行。
+
+## 任务步骤卡片（任务编辑器专用）
+
+> 位于 `apps/edu/app/scene/scenarios/[id]/edit/tasks/_components/`
+
+| 组件 | 文件 | 功能 |
+|------|------|------|
+| `TaskInfoCard` | `task-info-card.tsx` | 任务名称/类型/学时/难度/背景 |
+| `TaskDescriptionCard` | `task-description-card.tsx` | 富文本说明 + PDF 上传 |
+| `TaskKnowledgeCard` | `task-knowledge-card.tsx` | 知识点搜索/选择/克隆 |
+| `TaskWeightCard` | `task-weight-card.tsx` | 任务间权重分配 |
 
 ## 评测专用组件
 
@@ -75,3 +122,4 @@
 3. **删除确认**：使用 `<ConfirmDialog>`，禁止 `window.confirm()`
 4. **导入流程**：使用 `useImportFlow` hook，统一下载模板、预览、去重确认
 5. **就近放置**：仅被一处使用的子组件放在消费者 `_components/` 下，不要放入 `shared/`
+6. **新增测评方式**：在 `EVALUATION_METHOD_OPTIONS` 数组加一行 + 创建对应的面板组件即可
