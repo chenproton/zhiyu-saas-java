@@ -17,8 +17,8 @@ func New(databaseURL string) (*DB, error) {
 		return nil, fmt.Errorf("parse database url: %w", err)
 	}
 
-	config.MinConns = 2
-	config.MaxConns = 10
+	config.MinConns = 4
+	config.MaxConns = 40
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {

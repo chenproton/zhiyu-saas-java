@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"sync"
@@ -23,6 +24,22 @@ type AuthHandler struct {
 	DB         *pgxpool.Pool
 	JWTSecret  string
 	usedNonces sync.Map // map[string]time.Time
+}
+
+func NewAuthHandler(db *pgxpool.Pool, jwtSecret string) *AuthHandler {
+	h := &AuthHandler{DB: db, JWTSecret: jwtSecret}
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		for range ticker.C {
+			h.usedNonces.Range(func(key, value interface{}) bool {
+				if t, ok := value.(time.Time); ok && time.Since(t) > 10*time.Minute {
+					h.usedNonces.Delete(key)
+				}
+				return true
+			})
+		}
+	}()
+	return h
 }
 
 type LoginRequest struct {
@@ -255,7 +272,9 @@ func (h *AuthHandler) SelectTenant(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) issueTokenForUser(w http.ResponseWriter, r *http.Request, user *domain.User) {
-	_, _ = h.DB.Exec(r.Context(), `UPDATE users SET last_login_at = $1 WHERE id = $2`, time.Now(), user.ID)
+	if _, err := h.DB.Exec(r.Context(), `UPDATE users SET last_login_at = $1 WHERE id = $2`, time.Now(), user.ID); err != nil {
+		slog.Warn("failed to update last_login_at", "userId", user.ID, "error", err)
+	}
 	h.recordLoginLog(r, user, "success")
 
 	roleCodes := h.fetchUserRoleCodes(r.Context(), user.ID)
@@ -337,10 +356,13 @@ func (h *AuthHandler) recordLoginLog(r *http.Request, user *domain.User, status 
 	if len(device) > 256 {
 		device = device[:256]
 	}
-	_, _ = h.DB.Exec(r.Context(), `
+	_, err := h.DB.Exec(r.Context(), `
 		INSERT INTO login_logs (tenant_id, user_id, user_name, ip, device, status)
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`, *user.TenantID, user.ID, userName, middleware.ClientIP(r), device, status)
+	if err != nil {
+		slog.Warn("failed to record login log", "userId", user.ID, "error", err)
+	}
 }
 
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {

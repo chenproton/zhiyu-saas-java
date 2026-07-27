@@ -407,6 +407,31 @@ export function buildQuery(params: Record<string, string | number | boolean | un
   return s ? `?${s}` : ""
 }
 
+async function authedFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const defaultPlatform = getDefaultPlatform()
+  const platform = defaultPlatform === "portal" || isPortalPath() ? "portal" : "saas"
+  const token = getToken(platform)
+  const headers: Record<string, string> = {}
+  if (token) headers["Authorization"] = `Bearer ${token}`
+  if (!(init.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json"
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: { ...headers, ...(init.headers as Record<string, string> || {}) },
+  })
+
+  if (res.status === 401 && typeof window !== "undefined" && token) {
+    localStorage.removeItem(TOKEN_KEYS[platform as keyof typeof TOKEN_KEYS])
+    const loginPath = platform === "portal" ? "/portal/login" : "/login"
+    if (!window.location.pathname.startsWith(loginPath)) {
+      window.location.href = loginPath
+    }
+  }
+  return res
+}
+
 import { createCrudApi, createContentApi } from "./api-factory"
 
 // ==================== Core APIs (unchanged) ====================
@@ -950,10 +975,7 @@ export const fileApi = {
   upload: async (file: File): Promise<UploadResponse> => {
     const form = new FormData()
     form.append("file", file)
-    const token = getToken()
-    const headers: HeadersInit = {}
-    if (token) headers.Authorization = `Bearer ${token}`
-    const res = await fetch(`${API_BASE}/files/upload`, { method: "POST", body: form, headers })
+    const res = await authedFetch("/files/upload", { method: "POST", body: form })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       throw new Error(data.error || `HTTP ${res.status}`)
@@ -978,17 +1000,12 @@ export interface ImportPreviewResult {
 
 export const importExportApi = {
   export: (entity: string) => {
-    const token = getToken()
-    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {}
-    return fetch(`${API_BASE}/export/${entity}`, { headers })
+    return authedFetch(`/export/${entity}`)
   },
   import: async (entity: string, file: File, overwrite = false): Promise<{ created: number; failed: number; entity: string; skipped?: number; errors?: string[] }> => {
     const form = new FormData()
     form.append("file", file)
-    const token = getToken()
-    const headers: HeadersInit = {}
-    if (token) headers.Authorization = `Bearer ${token}`
-    const res = await fetch(`${API_BASE}/import/${entity}?overwrite=${overwrite}`, { method: "POST", body: form, headers })
+    const res = await authedFetch(`/import/${entity}?overwrite=${overwrite}`, { method: "POST", body: form })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       throw new Error(data.error || `HTTP ${res.status}`)
@@ -998,10 +1015,7 @@ export const importExportApi = {
   importPreview: async (entity: string, file: File): Promise<ImportPreviewResult> => {
     const form = new FormData()
     form.append("file", file)
-    const token = getToken()
-    const headers: HeadersInit = {}
-    if (token) headers.Authorization = `Bearer ${token}`
-    const res = await fetch(`${API_BASE}/import/${entity}/preview`, { method: "POST", body: form, headers })
+    const res = await authedFetch(`/import/${entity}/preview`, { method: "POST", body: form })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       throw new Error(data.error || `HTTP ${res.status}`)
@@ -1016,10 +1030,7 @@ export const importExportApi = {
   }> => {
     const form = new FormData()
     form.append("file", file)
-    const token = getToken()
-    const headers: HeadersInit = {}
-    if (token) headers.Authorization = `Bearer ${token}`
-    const res = await fetch(`${API_BASE}/import/${entity}/excel?overwrite=${overwrite}`, { method: "POST", body: form, headers })
+    const res = await authedFetch(`/import/${entity}/excel?overwrite=${overwrite}`, { method: "POST", body: form })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       throw new Error(data.error || `HTTP ${res.status}`)
@@ -1029,10 +1040,7 @@ export const importExportApi = {
   importExcelPreview: async (entity: string, file: File): Promise<ImportPreviewResult> => {
     const form = new FormData()
     form.append("file", file)
-    const token = getToken()
-    const headers: HeadersInit = {}
-    if (token) headers.Authorization = `Bearer ${token}`
-    const res = await fetch(`${API_BASE}/import/${entity}/preview`, { method: "POST", body: form, headers })
+    const res = await authedFetch(`/import/${entity}/preview`, { method: "POST", body: form })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       throw new Error(data.error || `HTTP ${res.status}`)
@@ -1040,69 +1048,38 @@ export const importExportApi = {
     return res.json()
   },
   downloadTemplate: (entity: "positions" | "scenarios" | "courses" | "system-courses" | "granular-courses" | "question-banks" | "exams" | "industries" | "majors" | "organizations" | "students" | "teachers") => {
-    const token = getToken()
-    return fetch(`${API_BASE}/templates/${entity}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
+    return authedFetch(`/templates/${entity}`)
   },
   downloadQuestionTemplate: (bankId: string) => {
-    const token = getToken()
-    return fetch(`${API_BASE}/templates/question-banks/${bankId}/questions`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
+    return authedFetch(`/templates/question-banks/${bankId}/questions`)
   },
   exportScenariosExcel: (ids: string[]) => {
-    const token = getToken()
-    return fetch(`${API_BASE}/export/scenarios/excel`, {
+    return authedFetch(`/export/scenarios/excel`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
       body: JSON.stringify({ ids }),
     })
   },
   exportPositionsExcel: (ids: string[]) => {
-    const token = getToken()
-    return fetch(`${API_BASE}/export/positions/excel`, {
+    return authedFetch(`/export/positions/excel`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
       body: JSON.stringify({ ids }),
     })
   },
   exportOrganizationsExcel: (ids: string[]) => {
-    const token = getToken()
-    return fetch(`${API_BASE}/export/organizations/excel`, {
+    return authedFetch(`/export/organizations/excel`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
       body: JSON.stringify({ ids }),
     })
   },
   exportStudentsExcel: (ids: string[]) => {
-    const token = getToken()
-    return fetch(`${API_BASE}/export/students/excel`, {
+    return authedFetch(`/export/students/excel`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
       body: JSON.stringify({ ids }),
     })
   },
   exportTeachersExcel: (ids: string[]) => {
-    const token = getToken()
-    return fetch(`${API_BASE}/export/teachers/excel`, {
+    return authedFetch(`/export/teachers/excel`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
       body: JSON.stringify({ ids }),
     })
   },

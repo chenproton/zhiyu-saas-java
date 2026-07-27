@@ -18,20 +18,20 @@ func Load() (*Config, error) {
 	_ = godotenv.Load("../../.env")
 	_ = godotenv.Load(".env")
 
-	cfg := &Config{
-		DatabaseURL: getEnv("DATABASE_URL", ""),
-		JWTSecret:   getEnv("JWT_SECRET", "change-me"),
-		Port:        getEnv("PORT", "8080"),
-	}
-
-	if cfg.DatabaseURL == "" {
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
 		return nil, fmt.Errorf("DATABASE_URL is required")
 	}
-	if cfg.JWTSecret == "" {
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET is required")
 	}
 
-	return cfg, nil
+	return &Config{
+		DatabaseURL: dbURL,
+		JWTSecret:   jwtSecret,
+		Port:        getEnv("PORT", "8080"),
+	}, nil
 }
 
 func getEnv(key, fallback string) string {
