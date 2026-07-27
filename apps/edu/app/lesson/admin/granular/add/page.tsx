@@ -26,6 +26,7 @@ import { courseApi, knowledgeApi, fileApi, approvalApi, majorApi, lessonBatchApi
 
 import { KnowledgeSelector } from "../../_components/knowledge/knowledge-selector"
 import { ResourceSelector, type ResourceItem } from "../../_components/resources/resource-selector"
+import { CourseEvalConfig, type CourseEvalData } from "../../_components/eval/course-eval-config"
 import { RichTextEditor } from "../../_components/common/rich-text-editor"
 import PublishCheckPanel from "../../system/add/_components/PublishCheckPanel"
 import { EditorShell } from "@/components/shared/editor-shell"
@@ -74,6 +75,9 @@ function AddGranularPageInner() {
   /* module 3: resources */
   const [resourcePool, setResourcePool] = useState<ResourceItem[]>([])
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([])
+
+  /* module 4: assessment */
+  const [evalData, setEvalData] = useState<CourseEvalData | undefined>()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -186,10 +190,7 @@ function AddGranularPageInner() {
       resources: resForCheck,
       quizzes: [],
       homeworks: [],
-      evalData: {
-        learningGoal: learningGoal || undefined,
-        knowledgePointIds: knowledgePoints.map((kp) => kp.id).filter((id) => !id.startsWith("kp-custom-")),
-      },
+      evalData: evalData || undefined,
     }
   }, [editId, courseName, code, hours, learningGoal, detailedDescription, background, estimatedHours, knowledgePoints, selectedResourceIds, resourcePool])
 
@@ -449,6 +450,19 @@ function AddGranularPageInner() {
                   onUpload={(r) => setResourcePool((prev) => [...prev, r])}
                   courseId={editId || undefined}
                 />
+              </CardContent>
+            </Card>
+
+            {/* Module 4: Assessment & Evaluation */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-[#1890ff]" />
+                  配置测评方式与评价标准
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <CourseEvalConfig value={evalData} onChange={setEvalData} />
               </CardContent>
             </Card>
 

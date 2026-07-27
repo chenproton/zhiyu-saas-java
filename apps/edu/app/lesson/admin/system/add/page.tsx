@@ -48,6 +48,7 @@ import { cn } from "@/lib/utils"
 import type { SystemCourseNode, NodeResource, NodeRefType } from "@/lib/types/lesson-source"
 
 import { KnowledgeSelector } from "../../_components/knowledge/knowledge-selector"
+import { CourseEvalConfig, type CourseEvalData } from "../../_components/eval/course-eval-config"
 import { ResourceSelector, type ResourceItem } from "../../_components/resources/resource-selector"
 import { EvaluationMethodSelector } from "../../_components/assessment/evaluation-method-selector"
 import { CourseEvaluationRulesDialog } from "../../_components/assessment/course-evaluation-rules-dialog"
@@ -78,7 +79,7 @@ interface NodeDraft {
   selectedResourceIds: string[]
   selectedEvalMethods: string[]
   evalRules?: EvalRuleConfig
-  evalData?: Record<string, any>
+  evalData?: CourseEvalData
   difficulty: number
   coverImage?: string
 }
@@ -372,7 +373,7 @@ function AddSystemPageInner() {
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([])
 
   /* module 4: assessment */
-  const [selectedEvalMethods, setSelectedEvalMethods] = useState<string[]>([])
+  const [evalData, setEvalData] = useState<CourseEvalData | undefined>()
 
   /* module 5: evaluation rules */
 
@@ -382,7 +383,7 @@ function AddSystemPageInner() {
       setLearningGoal("")
       setKnowledgePoints([])
       setSelectedResourceIds([])
-      setSelectedEvalMethods([])
+      setEvalData(undefined)
       setDifficulty(0)
       return
     }
@@ -401,14 +402,7 @@ function AddSystemPageInner() {
       }))
     )
     setSelectedResourceIds((node.resources || []).map((r) => r.id))
-    const evalMethods: string[] = []
-    node.quizzes?.forEach((q) => {
-      if (q.type === "question_bank") evalMethods.push("question_bank")
-      else if (q.type === "paper") evalMethods.push("paper")
-      else if (q.type === "quiz") evalMethods.push("quiz")
-    })
-    if (node.homeworks && node.homeworks.length > 0) evalMethods.push("exam")
-    setSelectedEvalMethods(Array.from(new Set(evalMethods)))
+    setEvalData(node.evalData as CourseEvalData | undefined || undefined)
     setDifficulty(node.difficulty || 0)
   }, [])
 
@@ -424,7 +418,7 @@ function AddSystemPageInner() {
       setEstimatedHours(draft.estimatedHours)
       setKnowledgePoints(draft.knowledgePoints)
       setSelectedResourceIds(draft.selectedResourceIds)
-      setSelectedEvalMethods(draft.selectedEvalMethods)
+      setEvalData(draft.evalData)
       setDifficulty(draft.difficulty)
     } else if (node) {
       resetFormFromNode(node)
@@ -446,11 +440,12 @@ function AddSystemPageInner() {
         estimatedHours,
         knowledgePoints,
         selectedResourceIds,
-        selectedEvalMethods,
+        selectedEvalMethods: evalData?.methods?.map(m => m.methodKey) || [],
+        evalData,
         difficulty,
       },
     }))
-  }, [selectedNodeId, hours, learningGoal, detailedDescription, background, estimatedHours, knowledgePoints, selectedResourceIds, selectedEvalMethods, difficulty])
+  }, [selectedNodeId, hours, learningGoal, detailedDescription, background, estimatedHours, knowledgePoints, selectedResourceIds, evalData, difficulty])
 
   /* ---------- node mode selection handlers ---------- */
   const openGrainSelector = useCallback((mode: AddMode) => {
@@ -485,7 +480,7 @@ function AddSystemPageInner() {
     setHours(String(grain.duration))
     setLearningGoal(grain.description)
     setSelectedResourceIds([])
-    setSelectedEvalMethods([])
+    setEvalData(undefined)
     setDifficulty(grain.difficulty)
     setShowGrainSelector(false)
   }, [grainSelectedId, selectedNodeId, grainSelectorMode, handleUpdateNode, grainCourses, setNodeModes])
@@ -503,11 +498,11 @@ function AddSystemPageInner() {
       const resourceCount = node.id === selectedNodeId ? selectedResourceIds.length : (node.resources?.length || 0)
       const evalCount =
         node.id === selectedNodeId
-          ? selectedEvalMethods.length
+          ? evalData?.methods?.length || 0
           : (node.quizzes?.length || 0) + (node.homeworks?.length || 0)
       return !!name && !!goals && duration > 0 && resourceCount > 0 && evalCount > 0
     },
-    [selectedNodeId, selectedNode, learningGoal, hours, selectedResourceIds, selectedEvalMethods]
+    [selectedNodeId, selectedNode, learningGoal, hours, selectedResourceIds, evalData]
   )
 
   const [saving, setSaving] = useState(false)
@@ -605,7 +600,7 @@ function AddSystemPageInner() {
       })
       if (node.homeworks?.length) currentMethods.push("exam")
 
-      const methods = draft?.selectedEvalMethods
+      const methods = draft?.evalData?.methods?.map(m => m.methodKey) || []
       const methodsChanged = methods !== undefined &&
         (methods.length !== currentMethods.length ||
           [...methods].sort().join(",") !== [...currentMethods].sort().join(","))
@@ -722,8 +717,9 @@ function AddSystemPageInner() {
       .filter(Boolean) as NodeResource[]
 
     // Map quizzes from eval methods
-    const quizzesForCheck = selectedEvalMethods.length > 0
-      ? selectedEvalMethods.map((method, i) => ({
+    const evalMethods = evalData?.methods?.map(m => m.methodKey) || []
+    const quizzesForCheck = evalMethods.length > 0
+      ? evalMethods.map((method, i) => ({
           id: `qz-${i}`,
           title: method === "exam" ? "作业测评" : method === "question_bank" ? "题库测验" : method === "paper" ? "试卷测验" : "现场问答",
           type: method === "question_bank" ? "question_bank" as const : "paper" as const,
@@ -740,7 +736,7 @@ function AddSystemPageInner() {
       resources: resForCheck.length > 0 ? resForCheck : node.resources,
       quizzes: quizzesForCheck.length > 0 ? quizzesForCheck : node.quizzes,
     }
-  }, [selectedNodeId, nodes, learningGoal, hours, knowledgePoints, selectedResourceIds, resourcePool, selectedEvalMethods])
+  }, [selectedNodeId, nodes, learningGoal, hours, knowledgePoints, selectedResourceIds, resourcePool, evalData])
 
   return (
     <EditorShell
@@ -1089,63 +1085,16 @@ function AddSystemPageInner() {
                     </CardContent>
                   </Card>
 
-                  {/* Module 4: Assessment */}
+                  {/* Module 4: Assessment & Evaluation Rules */}
                   <Card className="border-0 shadow-sm">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm font-semibold flex items-center gap-2">
                         <ClipboardList className="w-4 h-4 text-[#1890ff]" />
-                        配置课程测评方式
+                        配置测评方式与评价标准
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      <EvaluationMethodSelector
-                        selectedKeys={selectedEvalMethods}
-                        onChange={setSelectedEvalMethods}
-                      />
-                    </CardContent>
-                  </Card>
-
-                  {/* Module 5: Evaluation Rules */}
-                  <Card className="border-0 shadow-sm">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                        <Award className="w-4 h-4 text-[#1890ff]" />
-                        配置课程评价规则
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0 space-y-4">
-                      {selectedEvalMethods.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center text-gray-400 py-12">
-                          <Database className="h-12 w-12 mb-3 opacity-50" />
-                          <p className="text-sm">尚未配置评价方式</p>
-                          <p className="text-xs mt-1">请先在「配置课程测评方式」中选择评价类型</p>
-                        </div>
-                      ) : (
-                        <CourseEvaluationRulesDialog
-                          inline
-                          evaluationMethods={selectedEvalMethods}
-                          initialConfig={selectedNodeId ? nodeDrafts[selectedNodeId]?.evalRules : undefined}
-                          onChange={(config) => {
-                            if (!selectedNodeId) return
-                            setNodeDrafts((prev) => ({
-                              ...prev,
-                              [selectedNodeId]: {
-                                ...(prev[selectedNodeId] || {
-                                  hours: "",
-                                  learningGoal: "",
-                                  knowledgePoints: [],
-                                  selectedResourceIds: [],
-                                  selectedEvalMethods: [],
-                                  difficulty: 3,
-                                }),
-                                evalRules: config,
-                              },
-                            }))
-                          }}
-                          title="配置节点评价规则"
-                          knowledgePoints={knowledgePoints}
-                        />
-                      )}
+                      <CourseEvalConfig value={evalData} onChange={setEvalData} />
                     </CardContent>
                   </Card>
                 </>
