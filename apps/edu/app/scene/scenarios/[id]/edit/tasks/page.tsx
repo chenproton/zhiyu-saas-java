@@ -1882,6 +1882,18 @@ export default function TasksEditPage() {
   const { toast } = useToast()
   const { tenantId, user } = useAuth()
 
+  // Sync persisted custom knowledge points whenever auth/user becomes available.
+  // The initial data load may run before useAuth resolves user, leaving the
+  // module-level custom set empty. This recompute ensures KPs created by the
+  // current user are marked as custom without waiting for a full reload.
+  if (user?.id && knowledgePoints.length > 0) {
+    knowledgePoints.forEach((kp: any) => {
+      if (kp.creatorId && kp.creatorId === user.id) {
+        customKnowledgePointIds.add(kp.id)
+      }
+    })
+  }
+
   const [existingScenario, setExistingScenario] = useState<any>(null)
   const [dataLoaded, setDataLoaded] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
