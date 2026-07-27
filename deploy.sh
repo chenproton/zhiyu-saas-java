@@ -309,7 +309,9 @@ health_check() {
 }
 
 assemble_standalone() {
-  local app_dir="$1" app_name="$2" standalone_dir="$app_dir/.next/standalone/apps/$app_name"
+  local app_dir="$1"
+  local app_name="$2"
+  local standalone_dir="$app_dir/.next/standalone/apps/$app_name"
   [[ ! -d "$app_dir/.next/server" ]] && { echo "错误：$app_name 缺少 .next/server" >&2; return 1; }
   mkdir -p "$standalone_dir/.next/server"
   rsync -a --delete --exclude="*.map" "$app_dir/.next/server/" "$standalone_dir/.next/server/"

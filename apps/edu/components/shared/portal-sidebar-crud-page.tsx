@@ -217,7 +217,6 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
     if (!deleteTarget) return
     try {
       await onDelete(deleteTarget)
-      toast({ title: "删除成功" })
     } catch (err) {
       toast({
         variant: "destructive",
