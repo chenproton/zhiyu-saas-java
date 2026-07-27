@@ -159,6 +159,8 @@ export default function ExamsPage() {
   const [isBatchMoveDialogOpen, setIsBatchMoveDialogOpen] = useState(false)
   const [moveTargetBatchId, setMoveTargetBatchId] = useState("")
   const [moveSelectedMajorId, setMoveSelectedMajorId] = useState("all")
+  const [batchMoveMode, setBatchMoveMode] = useState<"move" | "bindThenSubmit">("move")
+  const [batchSubmitEligibleIds, setBatchSubmitEligibleIds] = useState<string[]>([])
   const [isSubmitBatchDialogOpen, setIsSubmitBatchDialogOpen] = useState(false)
   const [submitBatchTarget, setSubmitBatchTarget] = useState<BackendExam | null>(null)
   const [submitSelectedBatchId, setSubmitSelectedBatchId] = useState("")
@@ -574,12 +576,36 @@ export default function ExamsPage() {
     }
   }
 
-  const handleBatchSubmitApproval = async () => {
-    for (const exam of selectedExams) {
-      if (exam.status === "draft" || exam.status === "rejected") {
-        await examApi.submit(exam.id)
+  const doBatchSubmit = async (submitItems: { id: string; batchId: string }[]) => {
+    for (const { id, batchId } of submitItems) {
+      const batch = batches.find((b) => b.id === batchId)
+      if (!batch) {
+        console.error(`提交审批失败：试卷「${id}」未关联批次`)
+        continue
+      }
+      try {
+        await examApi.submit(id)
+        await approvalApi.create({ targetType: "exam", targetId: id, workflowId: batch.workflowId })
+      } catch (err) {
+        console.error("提交审批失败", err)
       }
     }
+  }
+
+  const handleBatchSubmitApproval = async () => {
+    const eligibleItems = selectedExams.filter(
+      (exam) => exam.status === "draft" || exam.status === "rejected"
+    )
+    const hasUnbound = eligibleItems.some((exam) => !exam.batchId)
+    if (hasUnbound) {
+      setBatchMoveMode("bindThenSubmit")
+      setBatchSubmitEligibleIds(eligibleItems.map((exam) => exam.id))
+      setMoveSelectedMajorId("all")
+      setMoveTargetBatchId("")
+      setIsBatchMoveDialogOpen(true)
+      return
+    }
+    await doBatchSubmit(eligibleItems.map((exam) => ({ id: exam.id, batchId: exam.batchId! })))
     setSelectedIds([])
     await loadData()
   }
@@ -648,8 +674,29 @@ export default function ExamsPage() {
 
   const handleBatchMove = async () => {
     if (!moveTargetBatchId) return
+    if (batchMoveMode === "bindThenSubmit") {
+      const submitItems = batchSubmitEligibleIds.map((id) => {
+        const exam = exams.find((e) => e.id === id)
+        return { id, batchId: exam?.batchId || moveTargetBatchId }
+      }).filter((it) => it.batchId)
+      const unboundIds = submitItems.filter((it) => {
+        const exam = exams.find((e) => e.id === it.id)
+        return exam && !exam.batchId
+      }).map((it) => it.id)
+      for (const id of unboundIds) {
+        try { await examApi.update(id, { batchId: moveTargetBatchId }) } catch (_) {}
+      }
+      await doBatchSubmit(submitItems)
+      setBatchSubmitEligibleIds([])
+      setBatchMoveMode("move")
+      setIsBatchMoveDialogOpen(false)
+      setMoveTargetBatchId("")
+      setSelectedIds([])
+      await loadData()
+      return
+    }
     for (const id of selectedIds) {
-      await examApi.update(id, { batchId: moveTargetBatchId })
+      try { await examApi.update(id, { batchId: moveTargetBatchId }) } catch (_) {}
     }
     setSelectedIds([])
     setMoveTargetBatchId("")
@@ -1158,7 +1205,7 @@ export default function ExamsPage() {
               <Copy className="mr-1 h-3 w-3" />
               克隆
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected} onClick={() => { setMoveSelectedMajorId("all"); setMoveTargetBatchId(""); setIsBatchMoveDialogOpen(true) }}>
+            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected} onClick={() => { setBatchMoveMode("move"); setBatchSubmitEligibleIds([]); setMoveSelectedMajorId("all"); setMoveTargetBatchId(""); setIsBatchMoveDialogOpen(true) }}>
               <FolderKanban className="mr-1 h-3 w-3" />
               调整批次分组
             </Button>
@@ -1360,8 +1407,17 @@ export default function ExamsPage() {
       <Dialog open={isBatchMoveDialogOpen} onOpenChange={setIsBatchMoveDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>调整批次分组</DialogTitle>
-            <DialogDescription>将选中的 {selectedIds.length} 个试卷移动到指定批次</DialogDescription>
+            <DialogTitle>
+              {batchMoveMode === "bindThenSubmit" ? "选择批次并提交审批" : "调整批次分组"}
+            </DialogTitle>
+            <DialogDescription>
+              {batchMoveMode === "bindThenSubmit"
+                ? `已选中 ${batchSubmitEligibleIds.length} 个可提交的试卷，其中 ${batchSubmitEligibleIds.filter((id) => {
+                    const exam = exams.find((e) => e.id === id)
+                    return exam && !exam.batchId
+                  }).length} 个未关联批次，请选择批次分组后自动提交审批`
+                : `将选中的 ${selectedIds.length} 个试卷移动到指定批次`}
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
             {majors.length > 0 && (
@@ -1410,7 +1466,9 @@ export default function ExamsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsBatchMoveDialogOpen(false)}>取消</Button>
-            <Button onClick={handleBatchMove} disabled={!moveTargetBatchId}>确认移动</Button>
+            <Button onClick={handleBatchMove} disabled={!moveTargetBatchId}>
+              {batchMoveMode === "bindThenSubmit" ? "确认并提交审批" : "确认移动"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

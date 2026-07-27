@@ -215,6 +215,8 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const [isBatchMoveDialogOpen, setIsBatchMoveDialogOpen] = useState(false)
   const [moveTargetBatchId, setMoveTargetBatchId] = useState("")
   const [moveSelectedMajorId, setMoveSelectedMajorId] = useState("all")
+  const [batchMoveMode, setBatchMoveMode] = useState<"move" | "bindThenSubmit">("move")
+  const [batchSubmitEligibleIds, setBatchSubmitEligibleIds] = useState<string[]>([])
   const [isSubmitBatchDialogOpen, setIsSubmitBatchDialogOpen] = useState(false)
   const [submitBatchTarget, setSubmitBatchTarget] = useState<T | null>(null)
   const [submitSelectedBatchId, setSubmitSelectedBatchId] = useState("")
@@ -409,21 +411,40 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
 
   // ─── Handlers ──────────────────────────────────────────────────────────
 
-  const handleBatchSubmitApproval = async () => {
-    for (const id of selectedIds) {
+  const doBatchSubmit = async (submitItems: { id: string; batchId: string }[]) => {
+    for (const { id, batchId } of submitItems) {
       const item = frontItems.find((i) => i.id === id)
-      if (item && (item.status === "draft" || item.status === "rejected")) {
-        const batch = batches.find((b) => b.id === item.batchId)
-        if (batch) {
-          try {
-            await itemApi.submit(id)
-            await approvalApi.create({ targetType: approvalTargetType, targetId: id, workflowId: batch.workflowId })
-          } catch (err) {
-            console.error("提交审批失败", err)
-          }
-        }
+      const batch = batches.find((b) => b.id === batchId)
+      if (!batch) {
+        console.error(`提交审批失败：${entityLabel}「${item?.name ?? id}」未关联批次`)
+        continue
+      }
+      try {
+        await itemApi.submit(id)
+        await approvalApi.create({ targetType: approvalTargetType, targetId: id, workflowId: batch.workflowId })
+      } catch (err) {
+        console.error("提交审批失败", err)
       }
     }
+  }
+
+  const handleBatchSubmitApproval = async () => {
+    const eligibleItems = selectedIds
+      .map((id) => {
+        const item = frontItems.find((i) => i.id === id)
+        return item && (item.status === "draft" || item.status === "rejected") ? item : null
+      })
+      .filter(Boolean) as T[]
+    const hasUnbound = eligibleItems.some((item) => !item.batchId)
+    if (hasUnbound) {
+      setBatchMoveMode("bindThenSubmit")
+      setBatchSubmitEligibleIds(eligibleItems.map((item) => item.id))
+      setMoveSelectedMajorId("all")
+      setMoveTargetBatchId("")
+      setIsBatchMoveDialogOpen(true)
+      return
+    }
+    await doBatchSubmit(eligibleItems.map((item) => ({ id: item.id, batchId: item.batchId! })))
     setSelectedIds([])
     await refresh()
   }
@@ -532,6 +553,8 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   }
 
   const handleBatchMove = () => {
+    setBatchMoveMode("move")
+    setBatchSubmitEligibleIds([])
     setMoveSelectedMajorId("all")
     setMoveTargetBatchId("")
     setIsBatchMoveDialogOpen(true)
@@ -539,6 +562,27 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
 
   const handleConfirmMove = async () => {
     if (!moveTargetBatchId) return
+    if (batchMoveMode === "bindThenSubmit") {
+      const submitItems = batchSubmitEligibleIds.map((id) => {
+        const item = frontItems.find((i) => i.id === id)
+        return { id, batchId: item?.batchId || moveTargetBatchId }
+      }).filter((it) => it.batchId)
+      const unboundIds = submitItems.filter((it) => {
+        const item = frontItems.find((i) => i.id === it.id)
+        return item && !item.batchId
+      }).map((it) => it.id)
+      for (const id of unboundIds) {
+        try { await itemApi.update(id, { batchId: moveTargetBatchId }) } catch (_) {}
+      }
+      await doBatchSubmit(submitItems)
+      setBatchSubmitEligibleIds([])
+      setBatchMoveMode("move")
+      setIsBatchMoveDialogOpen(false)
+      setMoveTargetBatchId("")
+      setSelectedIds([])
+      await refresh()
+      return
+    }
     for (const id of selectedIds) {
       try { await itemApi.update(id, { batchId: moveTargetBatchId }) } catch (_) {}
     }
@@ -1234,8 +1278,17 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       <Dialog open={isBatchMoveDialogOpen} onOpenChange={setIsBatchMoveDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>调整批次分组</DialogTitle>
-            <DialogDescription>将选中的 {selectedIds.length} 个{entityLabel}移动到指定批次</DialogDescription>
+            <DialogTitle>
+              {batchMoveMode === "bindThenSubmit" ? "选择批次并提交审批" : "调整批次分组"}
+            </DialogTitle>
+            <DialogDescription>
+              {batchMoveMode === "bindThenSubmit"
+                ? `已选中 ${batchSubmitEligibleIds.length} 个可提交的${entityLabel}，其中 ${batchSubmitEligibleIds.filter((id) => {
+                    const item = frontItems.find((i) => i.id === id)
+                    return item && !item.batchId
+                  }).length} 个未关联批次，请选择批次分组后自动提交审批`
+                : `将选中的 ${selectedIds.length} 个${entityLabel}移动到指定批次`}
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             {renderBatchSelector(
@@ -1248,7 +1301,9 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsBatchMoveDialogOpen(false)}>取消</Button>
-            <Button onClick={handleConfirmMove} disabled={!moveTargetBatchId}>确认移动</Button>
+            <Button onClick={handleConfirmMove} disabled={!moveTargetBatchId}>
+              {batchMoveMode === "bindThenSubmit" ? "确认并提交审批" : "确认移动"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

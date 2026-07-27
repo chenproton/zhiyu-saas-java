@@ -154,6 +154,8 @@ export default function QuestionBanksPage() {
   const [isBatchMoveDialogOpen, setIsBatchMoveDialogOpen] = useState(false)
   const [moveTargetBatchId, setMoveTargetBatchId] = useState("")
   const [moveSelectedMajorId, setMoveSelectedMajorId] = useState("all")
+  const [batchMoveMode, setBatchMoveMode] = useState<"move" | "bindThenSubmit">("move")
+  const [batchSubmitEligibleIds, setBatchSubmitEligibleIds] = useState<string[]>([])
   const [isSubmitBatchDialogOpen, setIsSubmitBatchDialogOpen] = useState(false)
   const [submitBatchTarget, setSubmitBatchTarget] = useState<BackendQuestionBank | null>(null)
   const [submitSelectedBatchId, setSubmitSelectedBatchId] = useState("")
@@ -573,12 +575,36 @@ export default function QuestionBanksPage() {
     }
   }
 
-  const handleBatchSubmitApproval = async () => {
-    for (const bank of selectedBanks) {
-      if (bank.status === "draft" || bank.status === "rejected") {
-        await questionBankApi.submit(bank.id)
+  const doBatchSubmit = async (submitItems: { id: string; batchId: string }[]) => {
+    for (const { id, batchId } of submitItems) {
+      const batch = batches.find((b) => b.id === batchId)
+      if (!batch) {
+        console.error(`提交审批失败：题库「${id}」未关联批次`)
+        continue
+      }
+      try {
+        await questionBankApi.submit(id)
+        await approvalApi.create({ targetType: "question_bank", targetId: id, workflowId: batch.workflowId })
+      } catch (err) {
+        console.error("提交审批失败", err)
       }
     }
+  }
+
+  const handleBatchSubmitApproval = async () => {
+    const eligibleItems = selectedBanks.filter(
+      (bank) => bank.status === "draft" || bank.status === "rejected"
+    )
+    const hasUnbound = eligibleItems.some((bank) => !bank.batchId)
+    if (hasUnbound) {
+      setBatchMoveMode("bindThenSubmit")
+      setBatchSubmitEligibleIds(eligibleItems.map((bank) => bank.id))
+      setMoveSelectedMajorId("all")
+      setMoveTargetBatchId("")
+      setIsBatchMoveDialogOpen(true)
+      return
+    }
+    await doBatchSubmit(eligibleItems.map((bank) => ({ id: bank.id, batchId: bank.batchId! })))
     setSelectedIds([])
     await loadData()
   }
@@ -661,8 +687,29 @@ export default function QuestionBanksPage() {
 
   const handleBatchMove = async () => {
     if (!moveTargetBatchId) return
+    if (batchMoveMode === "bindThenSubmit") {
+      const submitItems = batchSubmitEligibleIds.map((id) => {
+        const bank = banks.find((b) => b.id === id)
+        return { id, batchId: bank?.batchId || moveTargetBatchId }
+      }).filter((it) => it.batchId)
+      const unboundIds = submitItems.filter((it) => {
+        const bank = banks.find((b) => b.id === it.id)
+        return bank && !bank.batchId
+      }).map((it) => it.id)
+      for (const id of unboundIds) {
+        try { await questionBankApi.update(id, { batchId: moveTargetBatchId }) } catch (_) {}
+      }
+      await doBatchSubmit(submitItems)
+      setBatchSubmitEligibleIds([])
+      setBatchMoveMode("move")
+      setIsBatchMoveDialogOpen(false)
+      setMoveTargetBatchId("")
+      setSelectedIds([])
+      await loadData()
+      return
+    }
     for (const id of selectedIds) {
-      await questionBankApi.update(id, { batchId: moveTargetBatchId })
+      try { await questionBankApi.update(id, { batchId: moveTargetBatchId }) } catch (_) {}
     }
     setSelectedIds([])
     setMoveTargetBatchId("")
@@ -1140,7 +1187,7 @@ export default function QuestionBanksPage() {
               <Copy className="mr-1 h-3 w-3" />
               克隆
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected} onClick={() => { setMoveSelectedMajorId("all"); setMoveTargetBatchId(""); setIsBatchMoveDialogOpen(true) }}>
+            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!hasSelected} onClick={() => { setBatchMoveMode("move"); setBatchSubmitEligibleIds([]); setMoveSelectedMajorId("all"); setMoveTargetBatchId(""); setIsBatchMoveDialogOpen(true) }}>
               <FolderKanban className="mr-1 h-3 w-3" />
               调整批次分组
             </Button>
@@ -1342,8 +1389,17 @@ export default function QuestionBanksPage() {
       <Dialog open={isBatchMoveDialogOpen} onOpenChange={setIsBatchMoveDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>调整批次分组</DialogTitle>
-            <DialogDescription>将选中的 {selectedIds.length} 个题库移动到指定批次</DialogDescription>
+            <DialogTitle>
+              {batchMoveMode === "bindThenSubmit" ? "选择批次并提交审批" : "调整批次分组"}
+            </DialogTitle>
+            <DialogDescription>
+              {batchMoveMode === "bindThenSubmit"
+                ? `已选中 ${batchSubmitEligibleIds.length} 个可提交的题库，其中 ${batchSubmitEligibleIds.filter((id) => {
+                    const bank = banks.find((b) => b.id === id)
+                    return bank && !bank.batchId
+                  }).length} 个未关联批次，请选择批次分组后自动提交审批`
+                : `将选中的 ${selectedIds.length} 个题库移动到指定批次`}
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
             {majors.length > 0 && (
@@ -1392,7 +1448,9 @@ export default function QuestionBanksPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsBatchMoveDialogOpen(false)}>取消</Button>
-            <Button onClick={handleBatchMove} disabled={!moveTargetBatchId}>确认移动</Button>
+            <Button onClick={handleBatchMove} disabled={!moveTargetBatchId}>
+              {batchMoveMode === "bindThenSubmit" ? "确认并提交审批" : "确认移动"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
