@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 import { scenarioApi, sceneBatchApi } from "@/lib/api"
 import type { Scenario, SceneBatch } from "@/lib/types/scene"
 import { useToast } from "@/hooks/use-toast"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ArchiveListPage, type ArchiveColumn } from "@/components/shared/archive-list-page"
 
 export default function SceneArchivePage() {
@@ -16,6 +17,8 @@ export default function SceneArchivePage() {
   const [selectedProfession, setSelectedProfession] = useState<string | null>(
     null
   )
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+  const [batchDeleteTarget, setBatchDeleteTarget] = useState<string[] | null>(null)
 
   const loadData = async () => {
     setLoading(true)
@@ -97,10 +100,13 @@ export default function SceneArchivePage() {
   }
 
   const handleDelete = async (scenario: Scenario) => {
-    if (!window.confirm(`确定删除场景「${scenario.name}」吗？删除后不可恢复。`))
-      return
+    setDeleteTarget({ id: scenario.id, name: scenario.name })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
     try {
-      await scenarioApi.delete(scenario.id)
+      await scenarioApi.delete(deleteTarget.id)
       await loadData()
       toast({ title: "已删除" })
     } catch (err: any) {
@@ -109,6 +115,8 @@ export default function SceneArchivePage() {
         title: "删除失败",
         description: err.message || "请稍后重试",
       })
+    } finally {
+      setDeleteTarget(null)
     }
   }
 
@@ -127,18 +135,23 @@ export default function SceneArchivePage() {
   }
 
   const handleBatchDelete = async (ids: string[]) => {
-    if (!window.confirm(`确定删除选中的 ${ids.length} 个场景吗？删除后不可恢复。`))
-      return
+    setBatchDeleteTarget(ids)
+  }
+
+  const confirmBatchDelete = async () => {
+    if (!batchDeleteTarget || batchDeleteTarget.length === 0) return
     try {
-      await Promise.all(ids.map((id) => scenarioApi.delete(id)))
+      await Promise.all(batchDeleteTarget.map((id) => scenarioApi.delete(id)))
       await loadData()
-      toast({ title: `已批量删除 ${ids.length} 个场景` })
+      toast({ title: `已批量删除 ${batchDeleteTarget.length} 个场景` })
     } catch (err: any) {
       toast({
         variant: "destructive",
         title: "批量删除失败",
         description: err.message || "请稍后重试",
       })
+    } finally {
+      setBatchDeleteTarget(null)
     }
   }
 
@@ -212,25 +225,43 @@ export default function SceneArchivePage() {
   ]
 
   return (
-    <ArchiveListPage
-      entityLabel="场景"
-      pageTitle="场景历史档案库"
-      pageDescription="查看已归档的场景记录，支持恢复为草稿继续编辑"
-      sidebarTitle="按专业归档"
-      sidebarItems={professions.map((p) => ({ id: p, name: p }))}
-      sidebarSelectedId={selectedProfession}
-      onSidebarSelect={setSelectedProfession}
-      items={filtered}
-      loading={loading}
-      onRestore={handleRestore}
-      onDelete={handleDelete}
-      onBatchRestore={handleBatchRestore}
-      onBatchDelete={handleBatchDelete}
-      detailHref={(item) => `/scene/scenarios/${item.id}/edit`}
-      searchPlaceholder="搜索场景名称 / 编码 / 专业 / 行业"
-      searchValue={search}
-      onSearchChange={setSearch}
-      columns={columns}
-    />
+    <>
+      <ArchiveListPage
+        entityLabel="场景"
+        pageTitle="场景历史档案库"
+        pageDescription="查看已归档的场景记录，支持恢复为草稿继续编辑"
+        sidebarTitle="按专业归档"
+        sidebarItems={professions.map((p) => ({ id: p, name: p }))}
+        sidebarSelectedId={selectedProfession}
+        onSidebarSelect={setSelectedProfession}
+        items={filtered}
+        loading={loading}
+        onRestore={handleRestore}
+        onDelete={handleDelete}
+        onBatchRestore={handleBatchRestore}
+        onBatchDelete={handleBatchDelete}
+        detailHref={(item) => `/scene/scenarios/${item.id}/edit`}
+        searchPlaceholder="搜索场景名称 / 编码 / 专业 / 行业"
+        searchValue={search}
+        onSearchChange={setSearch}
+        columns={columns}
+      />
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        title="确认删除"
+        description={`确定删除场景「${deleteTarget?.name}」吗？删除后不可恢复。`}
+        variant="destructive"
+        onConfirm={confirmDelete}
+      />
+      <ConfirmDialog
+        open={batchDeleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setBatchDeleteTarget(null) }}
+        title="确认批量删除"
+        description={`确定删除选中的 ${batchDeleteTarget?.length || 0} 个场景吗？删除后不可恢复。`}
+        variant="destructive"
+        onConfirm={confirmBatchDelete}
+      />
+    </>
   )
 }

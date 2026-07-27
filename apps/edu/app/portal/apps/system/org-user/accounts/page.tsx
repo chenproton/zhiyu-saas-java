@@ -14,6 +14,7 @@ import { useOrgTree } from "@/hooks/use-org-tree"
 import { portalUserManagementApi } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ResetPasswordDialog } from "@/components/shared/reset-password-dialog"
 import { TableRowActions } from "@/components/shared/table-row-actions"
 import { Search, Trash2, Loader2, AlertCircle, RotateCcw, Check, ChevronDown, X, ChevronLeft, ChevronRight, Users, KeyRound, Power } from "lucide-react"
@@ -37,6 +38,8 @@ export default function AccountsPage() {
 
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([])
   const [batchDeleting, setBatchDeleting] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+  const [batchDeleteTarget, setBatchDeleteTarget] = useState<string[] | null>(null)
 
   const [bindTarget, setBindTarget] = useState<{ id: string; name: string } | null>(null)
   const [bindRoleIds, setBindRoleIds] = useState<string[]>([])
@@ -87,12 +90,17 @@ export default function AccountsPage() {
     }
   }
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`确定要删除账户「${name}」吗？此操作不可撤销。`)) return
+  const handleDelete = (id: string, name: string) => {
+    setDeleteTarget({ id, name })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
     try {
-      await portalUserManagementApi.delete(id)
+      await portalUserManagementApi.delete(deleteTarget.id)
       toast({ title: "删除成功" })
       await refetch()
+      setDeleteTarget(null)
     } catch (err) {
       toast({ variant: "destructive", title: "删除失败", description: err instanceof Error ? err.message : "未知错误" })
     }
@@ -110,18 +118,23 @@ export default function AccountsPage() {
     }
   }
 
-  const handleBatchDelete = async () => {
+  const handleBatchDelete = () => {
     if (selectedAccounts.length === 0) return
-    if (!window.confirm(`确定要删除选中的 ${selectedAccounts.length} 个账户吗？此操作不可撤销。`)) return
+    setBatchDeleteTarget([...selectedAccounts])
+  }
+
+  const confirmBatchDelete = async () => {
+    if (!batchDeleteTarget || batchDeleteTarget.length === 0) return
     setBatchDeleting(true)
     try {
-      await portalUserManagementApi.batchDelete(selectedAccounts)
-      toast({ title: `成功删除 ${selectedAccounts.length} 个账户` })
+      await portalUserManagementApi.batchDelete(batchDeleteTarget)
+      toast({ title: `成功删除 ${batchDeleteTarget.length} 个账户` })
     } catch (err) {
       toast({ variant: "destructive", title: "批量删除失败", description: err instanceof Error ? err.message : "未知错误" })
     } finally {
       setBatchDeleting(false)
       setSelectedAccounts([])
+      setBatchDeleteTarget(null)
     }
     await refetch()
   }
@@ -406,6 +419,24 @@ export default function AccountsPage() {
           toast({ title: "密码重置成功" })
           await refetch()
         }}
+      />
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        title="确认删除"
+        description={`确定要删除账户「${deleteTarget?.name}」吗？此操作不可撤销。`}
+        variant="destructive"
+        onConfirm={confirmDelete}
+      />
+
+      <ConfirmDialog
+        open={batchDeleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setBatchDeleteTarget(null) }}
+        title="确认批量删除"
+        description={`确定要删除选中的 ${batchDeleteTarget?.length || 0} 个账户吗？此操作不可撤销。`}
+        variant="destructive"
+        onConfirm={confirmBatchDelete}
       />
     </div>
   )

@@ -9,6 +9,7 @@ import {
   convertJobBatchToBatch,
 } from "@/lib/stores/job-converters"
 import { useToast } from "@/hooks/use-toast"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { useIndustryMap, useMajorMap } from "@/lib/use-resource-maps"
 import { ArchiveListPage, type ArchiveColumn } from "@/components/shared/archive-list-page"
 
@@ -19,6 +20,8 @@ export default function PositionArchivePage() {
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState("")
   const [selectedMajor, setSelectedMajor] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+  const [batchDeleteTarget, setBatchDeleteTarget] = useState<string[] | null>(null)
   const industryMap = useIndustryMap()
   const majorMap = useMajorMap()
 
@@ -104,9 +107,13 @@ export default function PositionArchivePage() {
   }
 
   const handleDelete = async (position: Position) => {
-    if (!window.confirm(`确定删除岗位「${position.name}」吗？删除后不可恢复。`)) return
+    setDeleteTarget({ id: position.id, name: position.name })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
     try {
-      await positionApi.delete(position.id)
+      await positionApi.delete(deleteTarget.id)
       await loadData()
       toast({ title: "已删除" })
     } catch (err: any) {
@@ -115,6 +122,8 @@ export default function PositionArchivePage() {
         title: "删除失败",
         description: err.message || "请稍后重试",
       })
+    } finally {
+      setDeleteTarget(null)
     }
   }
 
@@ -133,17 +142,23 @@ export default function PositionArchivePage() {
   }
 
   const handleBatchDelete = async (ids: string[]) => {
-    if (!window.confirm(`确定删除选中的 ${ids.length} 个岗位吗？删除后不可恢复。`)) return
+    setBatchDeleteTarget(ids)
+  }
+
+  const confirmBatchDelete = async () => {
+    if (!batchDeleteTarget || batchDeleteTarget.length === 0) return
     try {
-      await Promise.all(ids.map((id) => positionApi.delete(id)))
+      await Promise.all(batchDeleteTarget.map((id) => positionApi.delete(id)))
       await loadData()
-      toast({ title: `已批量删除 ${ids.length} 个岗位` })
+      toast({ title: `已批量删除 ${batchDeleteTarget.length} 个岗位` })
     } catch (err: any) {
       toast({
         variant: "destructive",
         title: "批量删除失败",
         description: err.message || "请稍后重试",
       })
+    } finally {
+      setBatchDeleteTarget(null)
     }
   }
 
@@ -214,25 +229,43 @@ export default function PositionArchivePage() {
   ]
 
   return (
-    <ArchiveListPage
-      entityLabel="岗位"
-      pageTitle="岗位历史档案库"
-      pageDescription="查看已归档的岗位记录，支持恢复为草稿继续编辑"
-      sidebarTitle="按专业归档"
-      sidebarItems={majors.map((m) => ({ id: m, name: m }))}
-      sidebarSelectedId={selectedMajor}
-      onSidebarSelect={setSelectedMajor}
-      items={filtered}
-      loading={loading}
-      onRestore={handleRestore}
-      onDelete={handleDelete}
-      onBatchRestore={handleBatchRestore}
-      onBatchDelete={handleBatchDelete}
-      detailHref={(item) => `/job/positions/${item.id}/edit`}
-      searchPlaceholder="搜索岗位名称 / 简称 / 行业 / 专业"
-      searchValue={search}
-      onSearchChange={setSearch}
-      columns={columns}
-    />
+    <>
+      <ArchiveListPage
+        entityLabel="岗位"
+        pageTitle="岗位历史档案库"
+        pageDescription="查看已归档的岗位记录，支持恢复为草稿继续编辑"
+        sidebarTitle="按专业归档"
+        sidebarItems={majors.map((m) => ({ id: m, name: m }))}
+        sidebarSelectedId={selectedMajor}
+        onSidebarSelect={setSelectedMajor}
+        items={filtered}
+        loading={loading}
+        onRestore={handleRestore}
+        onDelete={handleDelete}
+        onBatchRestore={handleBatchRestore}
+        onBatchDelete={handleBatchDelete}
+        detailHref={(item) => `/job/positions/${item.id}/edit`}
+        searchPlaceholder="搜索岗位名称 / 简称 / 行业 / 专业"
+        searchValue={search}
+        onSearchChange={setSearch}
+        columns={columns}
+      />
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        title="确认删除"
+        description={`确定删除岗位「${deleteTarget?.name}」吗？删除后不可恢复。`}
+        variant="destructive"
+        onConfirm={confirmDelete}
+      />
+      <ConfirmDialog
+        open={batchDeleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setBatchDeleteTarget(null) }}
+        title="确认批量删除"
+        description={`确定删除选中的 ${batchDeleteTarget?.length || 0} 个岗位吗？删除后不可恢复。`}
+        variant="destructive"
+        onConfirm={confirmBatchDelete}
+      />
+    </>
   )
 }

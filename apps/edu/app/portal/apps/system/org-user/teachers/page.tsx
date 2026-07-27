@@ -11,6 +11,7 @@ import { usePortalUsers } from "@/hooks/use-portal-users"
 import { useOrgTree } from "@/hooks/use-org-tree"
 import { OrgNodePicker } from "@/components/shared/org-node-picker"
 import { TableRowActions } from "@/components/shared/table-row-actions"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { portalUserManagementApi, portalStaffTitleApi, importExportApi } from "@/lib/api"
 import type { StaffTitle } from "@/lib/types/backend"
 import { MultiSelectSearch } from "@/components/ui/multi-select-search"
@@ -57,6 +58,7 @@ export default function TeachersPage() {
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null)
   const [saving, setSaving] = useState(false)
   const [batchDeleting, setBatchDeleting] = useState(false)
+  const [batchDeleteTarget, setBatchDeleteTarget] = useState<string[] | null>(null)
 
   const [formName, setFormName] = useState("")
   const [formUsername, setFormUsername] = useState("")
@@ -113,10 +115,26 @@ export default function TeachersPage() {
     }
   }
 
+  const confirmBatchDelete = async () => {
+    if (!batchDeleteTarget || batchDeleteTarget.length === 0) return
+    setBatchDeleting(true)
+    try {
+      await portalUserManagementApi.batchDelete(batchDeleteTarget)
+      toast({ title: `成功删除 ${batchDeleteTarget.length} 名教师` })
+    } catch (err) {
+      toast({ variant: "destructive", title: "批量删除失败", description: err instanceof Error ? err.message : "未知错误" })
+    } finally {
+      setBatchDeleting(false)
+      setBatchDeleteTarget(null)
+    }
+    await refetch()
+  }
+
   const formValid = formName.trim() && formUsername.trim() && (!!selectedTeacher || formPassword.trim())
 
   return (
-    <PortalSidebarCrudPage
+    <>
+      <PortalSidebarCrudPage
       title="教职工管理"
       description="维护教师档案信息"
       entityLabel="教师"
@@ -219,18 +237,9 @@ export default function TeachersPage() {
             variant="destructive"
             size="sm"
             disabled={selectedIds.length === 0 || batchDeleting}
-            onClick={async () => {
-              if (!window.confirm(`确定要删除选中的 ${selectedIds.length} 名教师吗？此操作不可撤销。`)) return
-              setBatchDeleting(true)
-              try {
-                await portalUserManagementApi.batchDelete(selectedIds)
-                toast({ title: `成功删除 ${selectedIds.length} 名教师` })
-              } catch (err) {
-                toast({ variant: "destructive", title: "批量删除失败", description: err instanceof Error ? err.message : "未知错误" })
-              } finally {
-                setBatchDeleting(false)
-                await refetch()
-              }
+            onClick={() => {
+              if (selectedIds.length === 0) return
+              setBatchDeleteTarget([...selectedIds])
             }}
           >
             {batchDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
@@ -383,6 +392,15 @@ export default function TeachersPage() {
       onBatchJoin={async (orgNodeId, userIds) => {
         await portalUserManagementApi.batchUpdateOrgNode({ userIds, orgNodeId })
       }}
-    />
+      />
+      <ConfirmDialog
+        open={batchDeleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setBatchDeleteTarget(null) }}
+        title="确认批量删除"
+        description={`确定要删除选中的 ${batchDeleteTarget?.length || 0} 名教师吗？此操作不可撤销。`}
+        variant="destructive"
+        onConfirm={confirmBatchDelete}
+      />
+    </>
   )
 }

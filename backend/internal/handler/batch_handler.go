@@ -166,6 +166,26 @@ func (h *BatchHandler) List(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]any{"items": items, "total": total})
 }
 
+func (h *BatchHandler) checkTenantAccess(w http.ResponseWriter, r *http.Request, id string) bool {
+	if !h.Config.TenantScoped {
+		return true
+	}
+
+	tc := h.Config.TenantFilterColumn
+	if tc == "" {
+		tc = "tenant_id"
+	}
+
+	var entityTenantID string
+	err := h.DB.QueryRow(r.Context(), "SELECT "+tc+" FROM "+h.Config.WriteTableName+" WHERE id = $1", id).Scan(&entityTenantID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, h.Config.EntityName+" not found")
+		return false
+	}
+
+	return verifyTenantOwnership(w, r, entityTenantID)
+}
+
 func (h *BatchHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "permission denied")
@@ -173,6 +193,9 @@ func (h *BatchHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
+	if !h.checkTenantAccess(w, r, id) {
+		return
+	}
 	batch, err := h.Config.ScanRow(r.Context(), h.DB, id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, h.Config.EntityName+" not found")
@@ -241,6 +264,9 @@ func (h *BatchHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
+	if !h.checkTenantAccess(w, r, id) {
+		return
+	}
 	if _, err := h.Config.ScanRow(r.Context(), h.DB, id); err != nil {
 		respondError(w, http.StatusNotFound, h.Config.EntityName+" not found")
 		return
@@ -290,6 +316,9 @@ func (h *BatchHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
+	if !h.checkTenantAccess(w, r, id) {
+		return
+	}
 	if _, err := h.Config.ScanRow(r.Context(), h.DB, id); err != nil {
 		respondError(w, http.StatusNotFound, h.Config.EntityName+" not found")
 		return
@@ -310,6 +339,9 @@ func (h *BatchHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
+	if !h.checkTenantAccess(w, r, id) {
+		return
+	}
 	if _, err := h.Config.ScanRow(r.Context(), h.DB, id); err != nil {
 		respondError(w, http.StatusNotFound, h.Config.EntityName+" not found")
 		return

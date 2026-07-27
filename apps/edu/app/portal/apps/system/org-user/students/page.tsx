@@ -11,6 +11,7 @@ import { usePortalUsers } from "@/hooks/use-portal-users"
 import { useOrgTree, findOrgAncestor } from "@/hooks/use-org-tree"
 import { OrgNodePicker } from "@/components/shared/org-node-picker"
 import { TableRowActions } from "@/components/shared/table-row-actions"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { portalUserManagementApi, importExportApi } from "@/lib/api"
 import type { Organization } from "@/lib/types/backend"
 import { useToast } from "@/hooks/use-toast"
@@ -77,6 +78,7 @@ export default function StudentsPage() {
   const [saving, setSaving] = useState(false)
   const [graduateLoading, setGraduateLoading] = useState(false)
   const [batchDeleting, setBatchDeleting] = useState(false)
+  const [batchDeleteTarget, setBatchDeleteTarget] = useState<string[] | null>(null)
 
   const [formName, setFormName] = useState("")
   const [formUsername, setFormUsername] = useState("")
@@ -123,10 +125,26 @@ export default function StudentsPage() {
     }
   }
 
+  const confirmBatchDelete = async () => {
+    if (!batchDeleteTarget || batchDeleteTarget.length === 0) return
+    setBatchDeleting(true)
+    try {
+      await portalUserManagementApi.batchDelete(batchDeleteTarget)
+      toast({ title: `成功删除 ${batchDeleteTarget.length} 名学生` })
+    } catch (err) {
+      toast({ variant: "destructive", title: "批量删除失败", description: err instanceof Error ? err.message : "未知错误" })
+    } finally {
+      setBatchDeleting(false)
+      setBatchDeleteTarget(null)
+    }
+    await refetch()
+  }
+
   const formValid = formName.trim() && formUsername.trim() && !!formClassNodeId && (!!selectedStudent || formPassword.trim())
 
   return (
-    <PortalSidebarCrudPage
+    <>
+      <PortalSidebarCrudPage
       title="学生管理"
       description="管理学生基础信息与学籍数据"
       entityLabel="学生"
@@ -246,18 +264,9 @@ export default function StudentsPage() {
             variant="destructive"
             size="sm"
             disabled={selectedIds.length === 0 || batchDeleting}
-            onClick={async () => {
-              if (!window.confirm(`确定要删除选中的 ${selectedIds.length} 名学生吗？此操作不可撤销。`)) return
-              setBatchDeleting(true)
-              try {
-                await portalUserManagementApi.batchDelete(selectedIds)
-                toast({ title: `成功删除 ${selectedIds.length} 名学生` })
-              } catch (err) {
-                toast({ variant: "destructive", title: "批量删除失败", description: err instanceof Error ? err.message : "未知错误" })
-              } finally {
-                setBatchDeleting(false)
-                await refetch()
-              }
+            onClick={() => {
+              if (selectedIds.length === 0) return
+              setBatchDeleteTarget([...selectedIds])
             }}
           >
             {batchDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
@@ -394,6 +403,15 @@ export default function StudentsPage() {
         await portalUserManagementApi.batchUpdateOrgNode({ userIds, orgNodeId })
       }}
       orgNodePickerProps={{ selectableTypes: [CLASS_TYPE], placeholder: "选择班级", title: "选择班级" }}
-    />
+      />
+      <ConfirmDialog
+        open={batchDeleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setBatchDeleteTarget(null) }}
+        title="确认批量删除"
+        description={`确定要删除选中的 ${batchDeleteTarget?.length || 0} 名学生吗？此操作不可撤销。`}
+        variant="destructive"
+        onConfirm={confirmBatchDelete}
+      />
+    </>
   )
 }
