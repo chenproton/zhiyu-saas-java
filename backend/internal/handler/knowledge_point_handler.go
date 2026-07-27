@@ -174,6 +174,8 @@ func (h *KnowledgePointHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.syncCourseKnowledgePoints(r.Context(), tenantID, id, jsonSliceToStringSlice(req.GranularLessonIds))
+
 	kp, _ := h.fetchKnowledgePoint(r.Context(), id)
 	respondJSON(w, http.StatusCreated, kp)
 }
@@ -204,6 +206,11 @@ func (h *KnowledgePointHandler) Update(w http.ResponseWriter, r *http.Request) {
 		req.GranularLessonIds = domain.JSONSlice{}
 	}
 
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
 	_, err := h.DB.Exec(r.Context(), `
 		UPDATE knowledge_points SET name = $1, code = $2, description = $3, linked = $4,
 			granular_lesson_ids = $5, updated_at = NOW()
@@ -217,6 +224,8 @@ func (h *KnowledgePointHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "failed to update knowledge point")
 		return
 	}
+
+	h.syncCourseKnowledgePoints(r.Context(), tenantID, id, jsonSliceToStringSlice(req.GranularLessonIds))
 
 	kp, _ := h.fetchKnowledgePoint(r.Context(), id)
 	respondJSON(w, http.StatusOK, kp)
@@ -270,4 +279,37 @@ func (h *KnowledgePointHandler) scanKnowledgePointRows(rows pgx.Rows) ([]domain.
 		items = append(items, kp)
 	}
 	return items, nil
+}
+
+// syncCourseKnowledgePoints 维护颗粒课对当前知识点的双向引用：
+// 将 knowledgePointID 加入所有关联颗粒课的 knowledge_point_ids，并从已移除关联的颗粒课中删除。
+func (h *KnowledgePointHandler) syncCourseKnowledgePoints(ctx context.Context, tenantID, knowledgePointID string, courseIDs []string) {
+	if tenantID == "" {
+		return
+	}
+	_, _ = h.DB.Exec(ctx, `
+		UPDATE courses
+		SET knowledge_point_ids = array_append(knowledge_point_ids, $1),
+		    updated_at = NOW()
+		WHERE tenant_id = $2 AND id = ANY($3::uuid[]) AND NOT $1 = ANY(knowledge_point_ids)
+	`, knowledgePointID, tenantID, courseIDs)
+	_, _ = h.DB.Exec(ctx, `
+		UPDATE courses
+		SET knowledge_point_ids = array_remove(knowledge_point_ids, $1),
+		    updated_at = NOW()
+		WHERE tenant_id = $2 AND ($3::uuid[] IS NULL OR id <> ALL($3::uuid[]))
+		  AND $1 = ANY(knowledge_point_ids)
+	`, knowledgePointID, tenantID, courseIDs)
+}
+
+func jsonSliceToStringSlice(ids domain.JSONSlice) []string {
+	out := make([]string, 0, len(ids))
+	for _, v := range ids {
+		s, ok := v.(string)
+		if !ok || s == "" {
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
 }
