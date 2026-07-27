@@ -150,6 +150,9 @@
 | `WorkflowConfigPage` | `workflow-config-page.tsx` | **审批流配置页**（创建/编辑/删除审批流模板） | 仅需 `subtitle` 文案 |
 | `ApprovalListPage<T>` | `approval-list-page.tsx` | **审批中心列表页**（待审批/已审批 Tab、单选/批量通过驳回） | 注入审批数据 + `columns` 列定义 + `detailHref` 链接 |
 | `EditorShell` | `editor-shell.tsx` | **内容编辑器框架**（全屏/内嵌、步骤导航、保存/提交按钮） | 设置 `mode`/`step`/`onSaveDraft`/`onSubmit` 等回调 |
+| `PortalCrudPage<T>` | `portal-crud-page.tsx` | **Portal 系统管理 CRUD 表格页**（行业/专业等，含搜索/新增/编辑/删除/启停） | 注入 `fetchItems`/`columns`/`renderForm`/`onSave`/`onDelete` + `importFlow` |
+| `PortalSidebarCrudPage<T>` | `portal-sidebar-crud-page.tsx` | **Portal 组织树筛选 CRUD 表格页**（教师/学生等，含左侧组织树+表格+批量操作+导入导出） | 注入 `fetchItems`/`columns`/`renderForm`/`onSave`/`onDelete` + `importFlow` + `orgFilterTree` |
+| `ArchiveListPage<T>` | `archive-list-page.tsx` | **归档管理页**（左侧分类筛选+表格+恢复/删除） | 注入 `columns`/`detailHref`/`onRestore`/`onDelete` + 数据 + 侧边栏项目 |
 
 ### 表单/交互组件
 
@@ -159,7 +162,8 @@
 | `OrgFilterTree` | `org-filter-tree.tsx` | **组织树筛选边栏**（点击节点筛选） | `onSelect(orgId)` 回调 |
 | `OrgNodePicker` | `org-node-picker.tsx` | **组织节点选择器**（Popover 形式） | `value`+`onChange` |
 | `StatusBadge` | `status-badge.tsx` | **状态标签**（统一颜色体系，覆盖 draft/pending/approved/rejected/published/archived 等） | `<StatusBadge status={item.status} />` |
-| `TableRowActions` | `table-row-actions.tsx` | **表格行悬浮操作按钮**（替代手写 `group-hover:opacity-100` 模式） | `<TableRowActions><Button>编辑</Button><Button>删除</Button></TableRowActions>` |
+| `TableRowActions` | `table-row-actions.tsx` | **表格行悬浮操作按钮**（替代手写 `group-hover:opacity-100` 模式，需配合 `<Table>` 使用） | `<TableRowActions><Button>编辑</Button><Button>删除</Button></TableRowActions>` |
+| `HoverActionBar` | `hover-action-bar.tsx` | **悬浮操作按钮栏**（用于 Grid 布局或非 Table 场景的 hover 操作） | `<div className="relative"><HoverActionBar>...</HoverActionBar></div>` |
 | `ConfirmDialog` | `confirm-dialog.tsx` | **确认对话框**（危险操作二次确认） | `open`+`onOpenChange`+`title`+`description`+`variant`+`onConfirm` |
 | `ImportConfirmDialog` | `import-confirm-dialog.tsx` | **导入重复确认对话框**（覆盖/跳过选择） | `open`+`entityLabel`+`created/duplicates/failed`+`onConfirmOverwrite`+`onConfirmSkip` |
 | `ResourcePreviewModal` | `resource-preview-modal.tsx` | **文件预览弹窗**（kkFileView iframe，可拖拽/缩放/堆叠） | `<ResourcePreviewModal resource={...} open={...} onOpenChange={...} />` |
@@ -172,6 +176,13 @@
 | `useApprovals` | `@/hooks/use-approvals` | **审批记录数据**（records、approve、reject、batchApprove、batchReject、getStepInfo） |
 | `useSubmitterNames` | `@/hooks/use-submitter-names` | **提交人姓名缓存**（getName(userId) 批量解析用户名） |
 | `useImportFlow` | `@/hooks/use-import-flow` | **导入流程逻辑**（下载模板、预览、执行导入、重复处理） |
+
+### 评测专用组件
+
+| 组件 | 文件 | 适用场景 |
+|------|------|---------|
+| `EvaluationListTable` | `evaluation/evaluation-list-table.tsx` | **评测列表渲染器**（题库/试卷的 renderList，含草稿池/权限/审批按钮） |
+| `EvaluationStatusActions` | `evaluation/evaluation-status-actions.tsx` | **评测资源状态操作按钮行**（编辑/提交/撤回/通过/驳回/发布等，题库/试卷统一） |
 
 ### 布局/展示组件
 
@@ -193,8 +204,8 @@
 | 审批流配置 | `WorkflowConfigPage` | `app/*/workflows/page.tsx`（4 个模块全是 7 行薄壳） |
 | 审批中心 | `ApprovalListPage` | `app/*/approvals/page.tsx`（4 个模块复用） |
 | 内容编辑器 | `EditorShell` | `app/*/[id]/edit/page.tsx`（7 个编辑器页面复用） |
-| Portal 系统管理 CRUD 表格 | 暂无统一组件，参考 `teachers/students` 模式 | 待抽象 |
-| 归档管理 | 暂无统一组件，参考 `job/archive` 模式 | 待抽象 |
+| Portal 系统管理 CRUD 表格 | `PortalCrudPage` / `PortalSidebarCrudPage` | `app/portal/apps/system/resource/industries/page.tsx`、`teachers/page.tsx` |
+| 归档管理 | `ArchiveListPage` | `app/*/archive/page.tsx`（3 个模块复用） |
 
 ### 注意事项
 
