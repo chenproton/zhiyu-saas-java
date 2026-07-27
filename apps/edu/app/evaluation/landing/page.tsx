@@ -9,7 +9,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { questionBankApi, examApi } from "@/lib/api"
+import { questionBankApi, examApi, evaluationBatchApi } from "@/lib/api"
 import type { QuestionBank, Exam } from "@/lib/types"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
 
@@ -137,6 +137,7 @@ export default function LandingHomePage() {
   const listRef = useRef<HTMLDivElement>(null)
   const [banks, setBanks] = useState<QuestionBank[]>([])
   const [exams, setExams] = useState<Exam[]>([])
+  const [batchNames, setBatchNames] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const [sort, setSort] = useState("default")
@@ -148,14 +149,20 @@ export default function LandingHomePage() {
     Promise.all([
       questionBankApi.list({ status: "published", limit: 1000 } as any).then((res) => setBanks(res.items || [])),
       examApi.list({ status: "published", limit: 1000 } as any).then((res) => setExams(res.items || [])),
+      evaluationBatchApi.list({ limit: 1000 }).then((res) => {
+        const map = new Map<string, string>()
+        ;(res.items || []).forEach((b: any) => { if (b.id && b.name) map.set(b.id, b.name) })
+        setBatchNames(map)
+      }).catch(() => {}),
     ]).catch(() => {}).finally(() => setLoading(false))
   }, [])
   const batches = useMemo(() => {
     const set = new Set<string>()
-    banks.forEach((b) => { if ((b as any).batchName) set.add((b as any).batchName) })
-    exams.forEach((e) => { if ((e as any).batchName) set.add((e as any).batchName) })
+    const lookup = (id: string) => batchNames.get(id) || id
+    banks.forEach((b) => { if (b.batchId) set.add(lookup(b.batchId)) })
+    exams.forEach((e) => { if (e.batchId) set.add(lookup(e.batchId)) })
     return ["全部", ...Array.from(set).sort()]
-  }, [banks, exams])
+  }, [banks, exams, batchNames])
 
   const filteredBanks = useMemo(() => {
     let list = [...banks]
@@ -163,14 +170,16 @@ export default function LandingHomePage() {
       const k = keyword.trim().toLowerCase()
       list = list.filter((b) => b.name.toLowerCase().includes(k) || (b.description || "").toLowerCase().includes(k))
     }
-    if (selectedBatch !== "全部") list = list.filter((b) => (b as any).batchName === selectedBatch)
+    if (selectedBatch !== "全部") list = list.filter((b) => {
+      return b.batchId && (batchNames.get(b.batchId) || b.batchId) === selectedBatch
+    })
     switch (sort) {
       case "recent": list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); break
       case "update": list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()); break
       default: list.sort((a, b) => a.name.localeCompare(b.name, "zh-CN")); break
     }
     return list
-  }, [banks, keyword, sort, selectedBatch])
+  }, [banks, keyword, sort, selectedBatch, batchNames])
 
   const filteredExams = useMemo(() => {
     let list = [...exams]
@@ -178,14 +187,16 @@ export default function LandingHomePage() {
       const k = keyword.trim().toLowerCase()
       list = list.filter((e) => e.name.toLowerCase().includes(k) || (e.description || "").toLowerCase().includes(k))
     }
-    if (selectedBatch !== "全部") list = list.filter((e) => (e as any).batchName === selectedBatch)
+    if (selectedBatch !== "全部") list = list.filter((e) => {
+      return e.batchId && (batchNames.get(e.batchId) || e.batchId) === selectedBatch
+    })
     switch (sort) {
       case "recent": list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); break
       case "update": list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()); break
       default: list.sort((a, b) => a.name.localeCompare(b.name, "zh-CN")); break
     }
     return list
-  }, [exams, keyword, sort, selectedBatch])
+  }, [exams, keyword, sort, selectedBatch, batchNames])
 
   const totalPages = Math.max(1, Math.ceil(filteredBanks.length / CARDS_PER_PAGE))
   const pageBanks = useMemo(() => { const start = (currentPage - 1) * CARDS_PER_PAGE; return filteredBanks.slice(start, start + CARDS_PER_PAGE) }, [filteredBanks, currentPage])
