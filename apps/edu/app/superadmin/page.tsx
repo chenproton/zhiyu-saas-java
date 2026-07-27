@@ -40,13 +40,19 @@ import {
   Users,
   Eye,
   Package,
+  LogIn,
+  LogOut,
+  Shield,
 } from "lucide-react"
 import { platformModuleDefs } from "@/lib/navigation-config"
 import { useToast } from "@/hooks/use-toast"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { TableRowActions } from "@/components/shared/table-row-actions"
+import { getToken, setToken, removeToken } from "@zhiyu/api-client"
 
 const API_BASE = "/api/v1/admin/tenants"
+const LOGIN_URL = "/api/v1/auth/login"
+const ME_URL = "/api/v1/auth/saas/me"
 
 interface AdminTenant {
   id: string
@@ -72,7 +78,7 @@ interface TenantAdmin {
   loginName: string
   name: string
   status: string
-  plainPassword?: string
+  newPassword?: string
   createdAt: string
   updatedAt: string
   lastLoginAt?: string
@@ -84,11 +90,20 @@ interface ListResponse<T> {
 }
 
 async function adminFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getToken()
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   }
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`
+  }
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers })
+  if (res.status === 401 && typeof window !== "undefined") {
+    removeToken()
+    window.location.reload()
+    throw new Error("会话已过期，请重新登录")
+  }
   const data = await res.json().catch(() => ({ error: "请求失败" }))
   if (!res.ok) {
     throw new Error(data.error || `HTTP ${res.status}`)
@@ -97,6 +112,13 @@ async function adminFetch<T>(path: string, options: RequestInit = {}): Promise<T
 }
 
 export default function SuperAdminPage() {
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null)
+  const [authUser, setAuthUser] = useState<string>("")
+  const [loginUsername, setLoginUsername] = useState("")
+  const [loginPassword, setLoginPassword] = useState("")
+  const [loginLoading, setLoginLoading] = useState(false)
+  const [loginError, setLoginError] = useState<string | null>(null)
+
   const [tenants, setTenants] = useState<AdminTenant[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -145,6 +167,76 @@ export default function SuperAdminPage() {
 
   const { toast } = useToast()
 
+  useEffect(() => {
+    const token = getToken()
+    if (token) {
+      fetch(`${ME_URL}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => res.json().catch(() => null))
+        .then((data) => {
+          if (data?.user?.role === "platform_admin" || data?.user?.roleCodes?.includes?.("platform_admin")) {
+            setAuthenticated(true)
+            setAuthUser(data.user.username || data.user.name || "管理员")
+          } else if (data?.user) {
+            setAuthenticated(false)
+            setLoginError("当前账号不是平台管理员")
+            removeToken()
+          } else {
+            setAuthenticated(false)
+            removeToken()
+          }
+        })
+        .catch(() => {
+          setAuthenticated(false)
+          removeToken()
+        })
+    } else {
+      setAuthenticated(false)
+    }
+  }, [])
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoginLoading(true)
+    setLoginError(null)
+    try {
+      const res = await fetch(LOGIN_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: loginUsername, password: loginPassword }),
+      })
+      const data = await res.json().catch(() => ({ error: "请求失败" }))
+      if (!res.ok) {
+        throw new Error(data.error || `HTTP ${res.status}`)
+      }
+      if (data.token && data.user) {
+        const isPlatformAdmin =
+          data.user.role === "platform_admin" ||
+          data.user.roleCodes?.includes?.("platform_admin")
+        if (!isPlatformAdmin) {
+          throw new Error("当前账号不是平台管理员，无权限访问")
+        }
+        setToken(data.token)
+        setAuthenticated(true)
+        setAuthUser(data.user.username || data.user.name || "管理员")
+      } else {
+        throw new Error("登录响应缺少 token")
+      }
+    } catch (err) {
+      setLoginError(err instanceof Error ? err.message : "登录失败")
+    } finally {
+      setLoginLoading(false)
+    }
+  }
+
+  const handleLogout = () => {
+    removeToken()
+    setAuthenticated(false)
+    setLoginUsername("")
+    setLoginPassword("")
+  }
+
   const resetForm = () => {
     setFormData({ name: "", code: "", contact: "", phone: "", domain: "", enterpriseCode: "", address: "", description: "", status: "active" })
   }
@@ -179,13 +271,16 @@ export default function SuperAdminPage() {
   }, [searchTerm])
 
   useEffect(() => {
-    fetchTenants()
-  }, [fetchTenants])
+    if (authenticated) {
+      fetchTenants()
+    }
+  }, [fetchTenants, authenticated])
 
   useEffect(() => {
+    if (!authenticated) return
     const timer = setTimeout(() => fetchTenants(), 300)
     return () => clearTimeout(timer)
-  }, [searchTerm])
+  }, [searchTerm, authenticated])
 
   const openAdminModal = (t: AdminTenant) => {
     setAdminModalTenant(t)
@@ -244,7 +339,7 @@ export default function SuperAdminPage() {
           method: "POST",
           body: JSON.stringify({ username: adminInline.username, name: adminInline.name }),
         })
-        toast({ title: "创建成功", description: `初始密码：${created.plainPassword}` })
+        toast({ title: "创建成功", description: created.newPassword ? `初始密码：${created.newPassword}` : "创建成功" })
       }
       setAdminInline(null)
       await fetchAdmins(adminModalTenant.id)
@@ -268,13 +363,13 @@ export default function SuperAdminPage() {
     }
   }
 
-  const handleViewPassword = async (a: TenantAdmin) => {
+  const handleResetPassword = async (a: TenantAdmin) => {
     if (!adminModalTenant) return
     try {
-      const res = await adminFetch<{ id: string; plainPassword: string }>(`/${adminModalTenant.id}/admins/${a.id}/preview-password`, {
+      const res = await adminFetch<{ id: string; newPassword: string }>(`/${adminModalTenant.id}/admins/${a.id}/reset-password`, {
         method: "POST",
       })
-      setViewPassword({ admin: a, password: res.plainPassword })
+      setViewPassword({ admin: a, password: res.newPassword })
     } catch (err) {
       toast({ variant: "destructive", title: "获取密码失败", description: err instanceof Error ? err.message : "未知错误" })
     }
@@ -436,6 +531,80 @@ export default function SuperAdminPage() {
     }
   }
 
+  if (authenticated === null) {
+    return (
+      <div className="min-h-screen bg-[#f5f7fa] flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen bg-[#f5f7fa] flex items-center justify-center">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+            <div className="text-center mb-8">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                <Shield className="h-8 w-8 text-primary" />
+              </div>
+              <h1 className="text-2xl font-bold text-foreground">超级管理员控制台</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                请使用平台管理员账号登录
+              </p>
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">账号</Label>
+                <Input
+                  id="username"
+                  placeholder="请输入平台管理员账号"
+                  value={loginUsername}
+                  onChange={(e) => setLoginUsername(e.target.value)}
+                  required
+                  disabled={loginLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">密码</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="请输入密码"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  required
+                  disabled={loginLoading}
+                />
+              </div>
+
+              {loginError && (
+                <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+                  {loginError}
+                </div>
+              )}
+
+              <Button type="submit" className="w-full" disabled={loginLoading || !loginUsername || !loginPassword}>
+                {loginLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    登录中...
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="mr-2 h-4 w-4" />
+                    登录
+                  </>
+                )}
+              </Button>
+            </form>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 bg-[#f5f7fa] min-h-full">
       <div className="mb-6 flex items-center justify-between">
@@ -443,10 +612,17 @@ export default function SuperAdminPage() {
           <h1 className="text-xl font-semibold text-foreground">超级管理员 - 租户管理</h1>
           <p className="mt-1 text-sm text-muted-foreground">管理所有平台租户，支持增删改查</p>
         </div>
-        <Button onClick={openCreate} size="sm">
-          <Plus className="h-4 w-4 mr-1" />
-          新增租户
-        </Button>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">{authUser}</span>
+          <Button variant="outline" size="sm" onClick={handleLogout}>
+            <LogOut className="h-4 w-4 mr-1" />
+            退出
+          </Button>
+          <Button onClick={openCreate} size="sm">
+            <Plus className="h-4 w-4 mr-1" />
+            新增租户
+          </Button>
+        </div>
       </div>
 
       <div className="mb-4 flex items-center gap-4">
@@ -560,7 +736,6 @@ export default function SuperAdminPage() {
         </>
       )}
 
-      {/* 新增/编辑对话框 */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent size="lg" className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -640,7 +815,6 @@ export default function SuperAdminPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 套餐配置弹窗 */}
       <Dialog open={subscriptionDialogOpen} onOpenChange={setSubscriptionDialogOpen}>
         <DialogContent size="lg" className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -733,7 +907,6 @@ export default function SuperAdminPage() {
         onConfirm={confirmDelete}
       />
 
-      {/* 学校管理员配置弹窗 */}
       <Dialog open={adminModalOpen} onOpenChange={setAdminModalOpen}>
         <DialogContent size="lg" className="max-h-[80vh] overflow-y-auto">
           <DialogHeader className="flex-row items-center justify-between">
@@ -852,9 +1025,9 @@ export default function SuperAdminPage() {
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex items-center justify-end gap-1">
-                                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => handleViewPassword(a)}>
+                                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => handleResetPassword(a)}>
                                     <Eye className="mr-1 h-3 w-3" />
-                                    查看密码
+                                    重置密码
                                   </Button>
                                   <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => startEditAdmin(a)}>
                                     <Pencil className="mr-1 h-3 w-3" />
@@ -889,9 +1062,9 @@ export default function SuperAdminPage() {
       <Dialog open={viewPassword !== null} onOpenChange={(open) => { if (!open) setViewPassword(null) }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>查看密码</DialogTitle>
+            <DialogTitle>重置密码</DialogTitle>
             <DialogDescription>
-              {viewPassword ? `${viewPassword.admin.name}（${viewPassword.admin.username}）的登录密码` : ""}
+              {viewPassword ? `${viewPassword.admin.name}（${viewPassword.admin.username}）的新密码，请妥善保管，关闭后将不可再次查看` : ""}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
