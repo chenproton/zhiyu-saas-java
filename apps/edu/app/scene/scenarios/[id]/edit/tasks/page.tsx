@@ -8329,13 +8329,14 @@ function EditCardDialog({
             </Dialog>
 
             <Dialog open={erDialogOpen === "resource"} onOpenChange={v => !v && setErDialogOpen(null)}>
-              <DialogContent className="sm:max-w-[72vw] max-w-[72vw] max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
+              <DialogContent className="sm:max-w-[72vw] max-w-[72vw] max-h-[90vh] flex flex-col overflow-hidden">
+                <DialogHeader className="shrink-0">
                   <PrdAnnotation data={getAnnotation("dialog-test-resource")}><DialogTitle>测评资源配置</DialogTitle></PrdAnnotation>
                   <DialogDescription>
                     配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的测评资源
                   </DialogDescription>
                 </DialogHeader>
+                <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
                 {erDialogMethod === "question_bank" ? (
                   <BankQuestionSelectorPanel
                     field="questionBankQuestions"
@@ -8378,6 +8379,7 @@ function EditCardDialog({
                 ) : erDialogMethod ? (
                   renderEvalResourceOnlyPanel(erDialogMethod, majors)
                 ) : null}
+                </div>
               </DialogContent>
             </Dialog>
 
