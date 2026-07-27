@@ -318,8 +318,8 @@ export default function ExamDetailPage() {
                   <div style={{ fontSize: 14, lineHeight: 2.2, display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 8px" }}>
                     {(() => {
                       let blankIndex = -1
-                      return q.content.split(/(_{2,})/).map((part, idx) => {
-                        if (/_{2,}/.test(part)) {
+                      return q.content.split(/(\{\d+\})/).map((part, idx) => {
+                        if (/\{\d+\}/.test(part)) {
                           blankIndex++
                           const val = ((answers[q.id] as string[]) || [])[blankIndex] || ""
                           return (
