@@ -440,7 +440,7 @@ function AddSystemPageInner() {
         estimatedHours,
         knowledgePoints,
         selectedResourceIds,
-        selectedEvalMethods: evalData?.methods?.map(m => m.methodKey) || [],
+        selectedEvalMethods: evalData?.methods || [],
         evalData,
         difficulty,
       },
@@ -600,7 +600,7 @@ function AddSystemPageInner() {
       })
       if (node.homeworks?.length) currentMethods.push("exam")
 
-      const methods = draft?.evalData?.methods?.map(m => m.methodKey) || []
+      const methods = draft?.evalData?.methods || []
       const methodsChanged = methods !== undefined &&
         (methods.length !== currentMethods.length ||
           [...methods].sort().join(",") !== [...currentMethods].sort().join(","))
@@ -617,7 +617,7 @@ function AddSystemPageInner() {
         }
         for (const method of methods || []) {
           try {
-            if (method === "exam") {
+            if (method === "homework" || String(method) === "exam") {
               await nodeHomeworkApi.create({ nodeId: realNodeId, title: "作业测评", requirement: "", needAttachment: false })
             } else {
               await nodeQuizApi.create({
@@ -717,11 +717,11 @@ function AddSystemPageInner() {
       .filter(Boolean) as NodeResource[]
 
     // Map quizzes from eval methods
-    const evalMethods = evalData?.methods?.map(m => m.methodKey) || []
+    const evalMethods = evalData?.methods || []
     const quizzesForCheck = evalMethods.length > 0
       ? evalMethods.map((method, i) => ({
           id: `qz-${i}`,
-          title: method === "exam" ? "作业测评" : method === "question_bank" ? "题库测验" : method === "paper" ? "试卷测验" : "现场问答",
+          title: (String(method) === "exam" || method === "homework") ? "作业测评" : method === "question_bank" ? "题库测验" : method === "paper" ? "试卷测验" : "现场问答",
           type: method === "question_bank" ? "question_bank" as const : "paper" as const,
           questions: [] as any[],
         }))
