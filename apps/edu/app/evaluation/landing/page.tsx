@@ -1,27 +1,20 @@
 "use client"
 
 import Link from "next/link"
-import { useState, useMemo, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
-  Clock, Calendar, FileText, BookOpen, Users, Award,
-  BarChart3, Target, TrendingUp, Layers, Star, CheckCircle2,
-  MapPin, Zap, Eye, Search, ClipboardList,
+  Clock, FileText, Search, Layers, Library, ClipboardList, Loader2,
 } from "lucide-react"
-import { useData } from "@/components/providers/data-provider"
-import { PrdAnnotation } from "@/components/prd-annotation"
-import { getAnnotation } from "@/lib/prd-annotations"
-import { positionApi } from "@/lib/api"
+import { questionBankApi, examApi } from "@/lib/api"
+import type { QuestionBank, Exam } from "@/lib/types"
 
-function SectionHeader({ title, subtitle, moreHref }: { title: string; subtitle?: string; moreHref?: string }) {
+function SectionHeader({ title, moreHref }: { title: string; moreHref?: string }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 20 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-        <h2 style={{ fontSize: 20, fontWeight: "bold", color: "#1e293b", position: "relative", paddingLeft: 12 }}>
-          <span style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", width: 4, height: 20, background: "linear-gradient(180deg, #2563eb, #3b82f6)", borderRadius: 2 }} />
-          {title}
-        </h2>
-        {subtitle && <span style={{ color: "#94a3b8", fontSize: 13 }}>{subtitle}</span>}
-      </div>
+      <h2 style={{ fontSize: 20, fontWeight: "bold", color: "#1e293b", position: "relative", paddingLeft: 12 }}>
+        <span style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", width: 4, height: 20, background: "linear-gradient(180deg, #2563eb, #3b82f6)", borderRadius: 2 }} />
+        {title}
+      </h2>
       {moreHref && (
         <Link href={moreHref} style={{ color: "#2563eb", fontSize: 13, textDecoration: "none" }}
           onMouseEnter={(e) => { e.currentTarget.style.textDecoration = "underline" }}
@@ -33,174 +26,82 @@ function SectionHeader({ title, subtitle, moreHref }: { title: string; subtitle?
   )
 }
 
-const examStatusMap: Record<string, { bg: string; color: string; label: string }> = {
-  published: { bg: "#dcfce7", color: "#16a34a", label: "进行中" },
-  draft: { bg: "#f1f5f9", color: "#64748b", label: "草稿" },
-  pending: { bg: "#dbeafe", color: "#2563eb", label: "审核中" },
-}
-
-function PositionFilter({
-  selected,
-  onChange,
-  options,
-}: {
-  selected: string[]
-  onChange: (next: string[]) => void
-  options: string[]
-}) {
-  const [expanded, setExpanded] = useState(false)
-  const visible = expanded ? options : options.slice(0, 8)
-
-  const toggle = (pos: string) => {
-    if (pos === "全部") {
-      onChange(["全部"])
-      return
-    }
-    let next = selected.includes(pos)
-      ? selected.filter((s) => s !== pos)
-      : [...selected.filter((s) => s !== "全部"), pos]
-    if (next.length === 0) next = ["全部"]
-    onChange(next)
-  }
-
-  return (
-    <div style={{ marginBottom: 20 }}>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-        <span style={{ fontSize: 13, color: "#94a3b8" }}>岗位筛选：</span>
-        {visible.map((pos) => (
-          <button
-            key={pos}
-            onClick={() => toggle(pos)}
-            style={{
-              padding: "5px 14px", borderRadius: 20, fontSize: 13, cursor: "pointer",
-              border: "none", fontWeight: 500, transition: "all 0.2s",
-              background: selected.includes(pos) ? "#2563eb" : "#f1f5f9",
-              color: selected.includes(pos) ? "#fff" : "#64748b",
-            }}
-          >
-            {pos}
-          </button>
-        ))}
-        {options.length > 8 && (
-          <button
-            onClick={() => setExpanded(!expanded)}
-            style={{
-              padding: "5px 14px", borderRadius: 20, fontSize: 13, cursor: "pointer",
-              fontWeight: 500, transition: "all 0.2s",
-              background: "#fff", color: "#2563eb", border: "1px solid #2563eb",
-            }}
-          >
-            {expanded ? "收起" : "展开更多"}
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
-
-const certStatusMap: Record<string, string> = {
-  published: "进行中", ready: "待发布", reviewing: "审核中",
-  rejected: "已驳回", draft: "草稿", none: "无规则",
-}
+const coverGradients = [
+  "linear-gradient(135deg, #2563eb, #3b82f6)",
+  "linear-gradient(135deg, #7c3aed, #8b5cf6)",
+  "linear-gradient(135deg, #059669, #10b981)",
+  "linear-gradient(135deg, #db2777, #ec4899)",
+  "linear-gradient(135deg, #ea580c, #f97316)",
+  "linear-gradient(135deg, #0891b2, #06b6d4)",
+]
 
 export default function LandingHomePage() {
-  const {
-    exams, questionBanks, evaluationCategories, evaluationMethods,
-    graduationProjectTopics, studentAbilityPortraits, positionsList,
-  } = useData()
-
-  const [activeMethodCategory, setActiveMethodCategory] = useState("全部")
-  const [activeMethodSub, setActiveMethodSub] = useState("全部")
-  const [activeResourceTab, setActiveResourceTab] = useState("题库")
-  const [portraitMajor, setPortraitMajor] = useState("全部")
-  const [selectedPositions, setSelectedPositions] = useState<string[]>(["全部"])
-  const [positionOptions, setPositionOptions] = useState<string[]>(["全部"])
+  const [banks, setBanks] = useState<QuestionBank[]>([])
+  const [exams, setExams] = useState<Exam[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState("")
 
   useEffect(() => {
-    positionApi.list({ limit: 100 }).then((res) => {
-      const names = res.items.map((p) => p.name).filter(Boolean)
-      setPositionOptions(["全部", ...names])
-    }).catch(() => {})
+    setLoading(true)
+    Promise.all([
+      questionBankApi.list({ limit: 100 }).then((res) => setBanks(res.items || [])),
+      examApi.list({ limit: 100 }).then((res) => setExams(res.items || [])),
+    ]).catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
-  /* ── 统计数据 ── */
-  const stats = useMemo(() => [
-    { num: evaluationMethods.length, label: "测评方式" },
-    { num: questionBanks.length, label: "题库数量" },
-    { num: exams.length, label: "试卷数量" },
-    { num: exams.filter((e) => e.status === "published").length, label: "考试场次" },
-    { num: positionsList.length, label: "岗位认证项目" },
-    { num: graduationProjectTopics.length, label: "毕业选题" },
-  ], [evaluationMethods, questionBanks, exams, positionsList, graduationProjectTopics])
+  const publishedBanks = useMemo(
+    () => banks.filter((b) => b.status === "published"),
+    [banks]
+  )
+  const publishedExams = useMemo(
+    () => exams.filter((e) => e.status === "published"),
+    [exams]
+  )
+  const totalQuestions = useMemo(
+    () => banks.reduce((sum, b) => sum + (b.questionCount || 0), 0),
+    [banks]
+  )
 
-  /* ── 考试中心 ── */
-  const publishedExams = exams.filter((e) => e.status === "published").slice(0, 4)
+  const stats = [
+    { num: publishedBanks.length, label: "已发布题库", icon: <Library className="h-5 w-5" /> },
+    { num: publishedExams.length, label: "已发布试卷", icon: <ClipboardList className="h-5 w-5" /> },
+    { num: totalQuestions, label: "题目总数", icon: <FileText className="h-5 w-5" /> },
+  ]
 
-  /* ── 测评方式 ── */
-  const methodCategoryTabs = ["全部", ...evaluationCategories.map((c) => c.name)]
+  const filteredExams = useMemo(() => {
+    if (!search) return publishedExams.slice(0, 4)
+    const q = search.toLowerCase()
+    return publishedExams.filter((e) =>
+      e.name.toLowerCase().includes(q) || (e.description || "").toLowerCase().includes(q)
+    ).slice(0, 4)
+  }, [publishedExams, search])
 
-  const availableSubCategories = useMemo(() => {
-    const subs = new Set<string>()
-    evaluationMethods.filter((m) => m.enabled).forEach((m) => {
-      if (activeMethodCategory === "全部") {
-        subs.add(m.subCategoryName || '-')
-      } else {
-        const cat = evaluationCategories.find((c) => c.id === m.categoryId)
-        if (cat?.name === activeMethodCategory) {
-          subs.add(m.subCategoryName || '-')
-        }
-      }
-    })
-    return ["全部", ...Array.from(subs)]
-  }, [activeMethodCategory, evaluationMethods, evaluationCategories])
-
-  const filteredMethods = useMemo(() => {
-    let methods = evaluationMethods.filter((m) => m.enabled)
-    if (activeMethodCategory !== "全部") {
-      methods = methods.filter((m) => {
-        const cat = evaluationCategories.find((c) => c.id === m.categoryId)
-        return cat?.name === activeMethodCategory
-      })
-    }
-    if (activeMethodSub !== "全部") {
-      methods = methods.filter((m) => (m.subCategoryName || '-') === activeMethodSub)
-    }
-    return methods.slice(0, 8)
-  }, [evaluationMethods, activeMethodCategory, activeMethodSub, evaluationCategories])
-
-  /* ── 测评资源 ── */
-  const resourceBanks = questionBanks.filter((b) => b.status === "published").slice(0, 3)
-  const resourceExams = exams.filter((e) => e.status === "published").slice(0, 3)
-
-  /* ── 毕业设计 ── */
-  const publishedTopics = graduationProjectTopics.filter((t) => t.status === "published").slice(0, 6)
-
-  /* ── 画像 ── */
-  const topPortraits = studentAbilityPortraits.slice().sort((a, b) => b.totalCredits - a.totalCredits).slice(0, 8)
-  const majors = ["全部", ...Array.from(new Set(studentAbilityPortraits.map((p) => p.majorName)))]
-
-  const filteredPortraits = topPortraits.filter((p) => {
-    const matchMajor = portraitMajor === "全部" || p.majorName === portraitMajor
-    const matchPos = selectedPositions.includes("全部") || selectedPositions.includes(p.positionName)
-    return matchMajor && matchPos
-  })
+  const filteredBanks = useMemo(() => {
+    if (!search) return publishedBanks.slice(0, 4)
+    const q = search.toLowerCase()
+    return publishedBanks.filter((b) =>
+      b.name.toLowerCase().includes(q) || (b.description || "").toLowerCase().includes(q)
+    ).slice(0, 4)
+  }, [publishedBanks, search])
 
   return (
     <div>
-      {/* ═══ Hero Banner ═══ */}
       <div style={{
         background: "linear-gradient(135deg, #1e3a5f 0%, #2d5a87 40%, #3b82f6 100%)",
-        color: "#fff", padding: "60px 20px 50px", textAlign: "center", position: "relative", overflow: "hidden", minHeight: 360,
+        color: "#fff", padding: "60px 20px 50px", textAlign: "center", position: "relative", overflow: "hidden", minHeight: 340,
       }}>
-        <div style={{ maxWidth: 720, margin: "0 auto", position: "relative", zIndex: 1 }}>
-           <h1 style={{ fontSize: 40, fontWeight: "bold", marginBottom: 12, letterSpacing: 1 }}>能力评价与测评资源管理平台</h1>
-          <p style={{ fontSize: 15, opacity: 0.85, marginBottom: 28 }}>集测评资源、岗位能力认定、毕业设计、学生画像于一体的一站式能力成长平台</p>
+        <div style={{ maxWidth: 640, margin: "0 auto", position: "relative", zIndex: 1 }}>
+          <h1 style={{ fontSize: 40, fontWeight: "bold", marginBottom: 12, letterSpacing: 1 }}>测评资源平台</h1>
+          <p style={{ fontSize: 15, opacity: 0.85, marginBottom: 28 }}>海量题库与试卷资源，支持在线考试与智能组卷，助力教学测评</p>
           <div style={{
             background: "#fff", borderRadius: 50, padding: "5px 5px 5px 24px",
             display: "flex", alignItems: "center", boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
           }}>
             <Search style={{ width: 18, height: 18, color: "#94a3b8", marginRight: 10 }} />
-            <input type="text" placeholder="搜索题库、试卷、考试、岗位能力认证、毕业设计、学生画像"
+            <input type="text" placeholder="搜索题库、试卷名称"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               style={{ flex: 1, border: "none", outline: "none", fontSize: 14, padding: "12px 0", color: "#333", background: "transparent" }} />
             <button style={{
               background: "linear-gradient(135deg, #2563eb, #3b82f6)", color: "#fff", border: "none",
@@ -210,558 +111,158 @@ export default function LandingHomePage() {
         </div>
       </div>
 
-      {/* ═══ 主内容 ═══ */}
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "40px 20px 0" }}>
 
-        <PrdAnnotation data={getAnnotation("lp-stats")}>
-          {/* ── 数据看板 ── */}
-          <section style={{ marginBottom: 50 }}>
-          <div style={{
-            background: "#fff", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", padding: 24,
-            display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 20,
-          }}>
-            {stats.map((s, i) => {
-              const statIds = ["lp-stat-eval", "lp-stat-bank", "lp-stat-exam", "lp-stat-usage", "lp-stat-position", "lp-stat-topic"]
-              return (
-                <PrdAnnotation key={i} data={getAnnotation(statIds[i])}>
-                <div style={{ textAlign: "center", borderRight: i < stats.length - 1 ? "1px solid #f1f5f9" : "none" }}>
-                  <div style={{ fontSize: 28, fontWeight: "bold", color: "#2563eb", lineHeight: 1.2 }}>{s.num}</div>
-                  <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 6 }}>{s.label}</div>
-                </div>
-                </PrdAnnotation>
-              )
-            })}
+        {loading ? (
+          <div style={{ display: "flex", justifyContent: "center", padding: 80 }}>
+            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
           </div>
-        </section>
-        </PrdAnnotation>
-
-        <PrdAnnotation data={getAnnotation("lp-exam-center")}>
-          {/* ── 考试中心 ── */}
-          <section style={{ marginBottom: 50 }}>
-          <SectionHeader title="考试中心" subtitle="所有已发布的考试" moreHref="/evaluation/landing/exams" />
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {publishedExams.map((exam) => {
-              const st = examStatusMap[exam.status] || examStatusMap.draft
-              return (
-                <Link key={exam.id} href={`/evaluation/landing/exams/${exam.id}`} className="block" style={{ textDecoration: "none", color: "inherit" }}>
-                  <PrdAnnotation data={getAnnotation("lp-exam-card")}>
-                  <div
-                    className="h-full cursor-pointer rounded-xl bg-white p-5 transition-all duration-300"
-                    style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
-                    onMouseEnter={(e) => {
-                      const el = e.currentTarget
-                      el.style.transform = "translateY(-4px)"
-                      el.style.boxShadow = "0 8px 24px rgba(0,0,0,0.1)"
-                    }}
-                    onMouseLeave={(e) => {
-                      const el = e.currentTarget
-                      el.style.transform = "translateY(0)"
-                      el.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)"
-                    }}
-                  >
-                    <div className="mb-3 flex items-start justify-between">
-                      <div
-                        className="flex h-10 w-10 items-center justify-center rounded-lg"
-                        style={{ background: "#eff6ff", color: "#2563eb" }}
-                      >
-                        <ClipboardList className="h-5 w-5" />
-                      </div>
-                      <span
-                        className="flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
-                        style={{ background: st.bg, color: st.color }}
-                      >
-                        {st.label}
-                      </span>
-                    </div>
-                    <h3 className="mb-1 text-base font-semibold text-gray-900">{exam.name}</h3>
-                    <p className="mb-3 text-sm text-gray-500 line-clamp-2">
-                      {exam.description || "暂无描述"}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {exam.duration} 分钟
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <FileText className="h-3 w-3" />
-                        {exam.questions.length} 题
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(exam.createdAt).toLocaleDateString("zh-CN")}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
-                      <Users className="h-3 w-3" />
-                      {exam.description ? exam.description.slice(0, 20) + "..." : "待发布"}
-                    </div>
-                    {exam.status === "published" && (
-                      <div className="mt-4">
-                        <span
-                          className="block w-full rounded-lg py-2 text-center text-sm font-medium"
-                          style={{ background: "#2563eb", color: "#fff" }}
-                        >
-                          去考试
-                        </span>
-                      </div>
-                    )}
+        ) : (
+          <>
+            <section style={{ marginBottom: 50 }}>
+              <div style={{
+                background: "#fff", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", padding: 24,
+                display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20,
+              }}>
+                {stats.map((s, i) => (
+                  <div key={i} style={{ textAlign: "center", borderRight: i < stats.length - 1 ? "1px solid #f1f5f9" : "none" }}>
+                    <div style={{ display: "flex", justifyContent: "center", marginBottom: 8, color: "#2563eb" }}>{s.icon}</div>
+                    <div style={{ fontSize: 28, fontWeight: "bold", color: "#2563eb", lineHeight: 1.2 }}>{s.num}</div>
+                    <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 6 }}>{s.label}</div>
                   </div>
-                  </PrdAnnotation>
-                </Link>
-              )
-            })}
-            {publishedExams.length === 0 && (
-              <div style={{ gridColumn: "span 4", textAlign: "center", padding: 40, color: "#94a3b8", background: "#fff", borderRadius: 10 }}>暂无已发布考试</div>
-            )}
-          </div>
-        </section>
-        </PrdAnnotation>
+                ))}
+              </div>
+            </section>
 
-        <PrdAnnotation data={getAnnotation("lp-certifications")}>
-          {/* ── 岗位能力认证 ── */}
-          <section style={{ marginBottom: 50 }}>
-          <SectionHeader title="岗位能力认证项目库" moreHref="/evaluation/landing/certifications" />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16 }}>
-            {positionsList.slice(0, 5).map((pos, i) => {
-              const covers = [
-                "linear-gradient(135deg, #667eea, #764ba2)",
-                "linear-gradient(135deg, #f093fb, #f5576c)",
-                "linear-gradient(135deg, #4facfe, #00f2fe)",
-                "linear-gradient(135deg, #fa709a, #fee140)",
-                "linear-gradient(135deg, #30cfd0, #330867)",
-              ]
-              return (
-                <Link key={pos.id} href={`/evaluation/landing/certifications/${pos.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-                  <PrdAnnotation data={getAnnotation("lp-cert-card")}>
-                  <div style={{
+            <section style={{ marginBottom: 50 }}>
+              <SectionHeader title="题库中心" />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
+                {filteredBanks.map((bank, i) => (
+                  <div key={bank.id} style={{
                     background: "#fff", borderRadius: 10, overflow: "hidden",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.06)", transition: "all 0.25s", cursor: "pointer",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.06)", transition: "all 0.25s", cursor: "default",
                   }}
                     onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.08)" }}
                     onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.06)" }}>
                     <div style={{
-                      height: 100, background: covers[i % 5], position: "relative",
+                      height: 100, background: coverGradients[i % coverGradients.length],
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      color: "#fff", fontSize: 15, fontWeight: "bold",
+                      color: "#fff", fontSize: 18, fontWeight: "bold",
                     }}>
-                      {pos.name}
+                      <Library className="h-10 w-10" />
                     </div>
-                    <div style={{ padding: 14 }}>
-                      <h3 style={{ fontSize: 14, marginBottom: 8, color: "#1e293b", fontWeight: 600 }}>{pos.name}认证</h3>
-                      <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.8 }}>
-                        创建人：{pos.updatedBy} &nbsp; 更新：{pos.lastUpdated}<br />
-                        适用专业：{pos.professionalDirection}
-                      </div>
-                      <div style={{
-                        display: "flex", justifyContent: "center", marginTop: 10,
-                        paddingTop: 10, borderTop: "1px dashed #f1f5f9",
-                      }}>
-                        <div style={{ textAlign: "center" }}>
-                          <div style={{ fontSize: 18, fontWeight: "bold", color: "#2563eb" }}>{pos.relatedAbilityCount}</div>
-                          <div style={{ fontSize: 12, color: "#94a3b8" }}>能力项</div>
-                        </div>
+                    <div style={{ padding: 16 }}>
+                      <h3 style={{ fontSize: 15, marginBottom: 8, color: "#1e293b", fontWeight: 600 }}>{bank.name}</h3>
+                      <p style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, height: 36, overflow: "hidden" }}>
+                        {bank.description || "暂无描述"}
+                      </p>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontSize: 12, color: "#64748b" }}>
+                        <span className="flex items-center gap-1"><FileText className="h-3 w-3" /> {bank.questionCount} 题</span>
+                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> v{bank.version}</span>
+                        {bank.creatorName && <span className="flex items-center gap-1"><Layers className="h-3 w-3" /> {bank.creatorName}</span>}
+                        <span style={{ color: "#94a3b8" }}>{new Date(bank.createdAt).toLocaleDateString("zh-CN")}</span>
                       </div>
                     </div>
                   </div>
-                  </PrdAnnotation>
-                </Link>
-              )
-            })}
-          </div>
-        </section>
-        </PrdAnnotation>
-
-        <PrdAnnotation data={getAnnotation("lp-evaluation-methods")}>
-          {/* ── 测评方式 ── */}
-          <section style={{ marginBottom: 50 }}>
-          <SectionHeader title="测评方式库" moreHref="/evaluation/landing/evaluation-methods" />
-          <div style={{ background: "#fff", padding: "15px 20px", borderRadius: 10, marginBottom: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-            {/* 一级分类 */}
-            <div style={{ display: "flex", alignItems: "center", padding: "8px 0", borderBottom: "1px dashed #f1f5f9", fontSize: 13 }}>
-              <span style={{ color: "#94a3b8", width: 80, flexShrink: 0 }}>一级分类：</span>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {methodCategoryTabs.map((tab) => (
-                  <span key={tab} onClick={() => { setActiveMethodCategory(tab); setActiveMethodSub("全部") }} style={{
-                    padding: "4px 12px", borderRadius: 4, cursor: "pointer",
-                    color: activeMethodCategory === tab ? "#2563eb" : "#64748b",
-                    background: activeMethodCategory === tab ? "#eff6ff" : "transparent",
-                    fontWeight: activeMethodCategory === tab ? 500 : 400,
-                    transition: "all 0.3s",
-                  }}>
-                    {tab}
-                  </span>
                 ))}
-              </div>
-            </div>
-            {/* 二级分类 */}
-            <div style={{ display: "flex", alignItems: "center", padding: "8px 0", fontSize: 13 }}>
-              <span style={{ color: "#94a3b8", width: 80, flexShrink: 0 }}>二级分类：</span>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {availableSubCategories.map((sub) => (
-                  <span key={sub} onClick={() => setActiveMethodSub(sub)} style={{
-                    padding: "4px 12px", borderRadius: 4, cursor: "pointer",
-                    color: activeMethodSub === sub ? "#2563eb" : "#64748b",
-                    background: activeMethodSub === sub ? "#eff6ff" : "transparent",
-                    fontWeight: activeMethodSub === sub ? 500 : 400,
-                    transition: "all 0.3s",
-                  }}>
-                    {sub}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
-            {filteredMethods.map((method, i) => {
-              const covers = [
-                "linear-gradient(135deg, #a8edea, #fed6e3)",
-                "linear-gradient(135deg, #ffecd2, #fcb69f)",
-                "linear-gradient(135deg, #84fab0, #8fd3f4)",
-                "linear-gradient(135deg, #a1c4fd, #c2e9fb)",
-              ]
-              const icons = ["📝", "💻", "🎤", "📁"]
-              return (
-                <PrdAnnotation key={method.id} data={getAnnotation("lp-method-card")}>
-                <div style={{
-                    background: "#fff", borderRadius: 10, overflow: "hidden",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.06)", transition: "all 0.25s", cursor: "pointer",
-                  }}
-                  onClick={() => method.docLink && window.open(method.docLink, '_blank')}
-                  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.08)" }}
-                  onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.06)" }}>
-                  <div style={{
-                    height: 110, background: covers[i % 4],
-                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36,
-                  }}>{icons[i % 4]}</div>
-                  <div style={{ padding: 16 }}>
-                    <h3 style={{ fontSize: 14, marginBottom: 8, color: "#1e293b", fontWeight: 600 }}>{method.name}</h3>
-                    <p style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, height: 36, overflow: "hidden" }}>
-                      {method.description || "暂无说明"}
-                    </p>
-                    <span style={{ fontSize: 13, color: "#2563eb", fontWeight: 500 }}>查看使用说明 ›</span>
-                  </div>
-                </div>
-                </PrdAnnotation>
-              )
-            })}
-            {filteredMethods.length === 0 && (
-              <div style={{ gridColumn: "span 4", textAlign: "center", padding: 40, color: "#94a3b8", background: "#fff", borderRadius: 10 }}>暂无测评方式</div>
-            )}
-          </div>
-        </section>
-        </PrdAnnotation>
-
-        <PrdAnnotation data={getAnnotation("lp-resources")}>
-          {/* ── 测评资源 ── */}
-          <section style={{ marginBottom: 50 }}>
-          <SectionHeader title="测评资源库" moreHref="/evaluation/landing/resources" />
-          <div style={{ display: "flex", gap: 30, borderBottom: "1px solid #e2e8f0", marginBottom: 20 }}>
-            {["题库", "试卷库"].map((tab) => (
-              <button key={tab} onClick={() => setActiveResourceTab(tab)} style={{
-                padding: "10px 0", fontSize: 15, cursor: "pointer", position: "relative",
-                color: activeResourceTab === tab ? "#2563eb" : "#64748b",
-                fontWeight: activeResourceTab === tab ? "bold" : "normal",
-                border: "none", background: "none",
-              }}>
-                {tab}
-                {activeResourceTab === tab && (
-                  <span style={{ position: "absolute", bottom: -1, left: 0, right: 0, height: 2, background: "#2563eb" }} />
+                {filteredBanks.length === 0 && (
+                  <div style={{ gridColumn: "span 4", textAlign: "center", padding: 40, color: "#94a3b8", background: "#fff", borderRadius: 10 }}>暂无已发布题库</div>
                 )}
-              </button>
-            ))}
-          </div>
-
-          {activeResourceTab === "题库" ? (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
-              {resourceBanks.map((bank, i) => {
-                const covers = [
-                  "linear-gradient(135deg, #fa709a, #fee140)",
-                  "linear-gradient(135deg, #30cfd0, #330867)",
-                  "linear-gradient(135deg, #a8c0ff, #3f2b96)",
-                ]
-                return (
-                  <Link key={bank.id} href={`/evaluation/landing/resources/banks/${bank.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-                    <PrdAnnotation data={getAnnotation("lp-resource-bank-card")}>
-                    <div style={{
-                      background: "#fff", borderRadius: 10, overflow: "hidden",
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.06)", transition: "all 0.25s", cursor: "pointer",
-                    }}
-                      onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.08)" }}
-                      onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.06)" }}>
-                      <div style={{
-                        height: 100, background: covers[i % 3],
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        color: "#fff", fontSize: 20, fontWeight: "bold",
-                      }}>{bank.name.slice(0, 6)}</div>
-                      <div style={{ padding: 16 }}>
-                        <h3 style={{ fontSize: 15, marginBottom: 10, color: "#1e293b", fontWeight: 600 }}>{bank.name}</h3>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontSize: 12, color: "#64748b" }}>
-                          <span>题目数量：<strong style={{ color: "#2563eb" }}>{bank.questionCount}</strong></span>
-                          <span>题型：选择/编程</span>
-                          <span>创建人：{bank.creatorId || "系统"}</span>
-                          <span>共建：{bank.collaboratorIds?.length || 0}人</span>
-                          <span>创建：{new Date(bank.createdAt).toLocaleDateString("zh-CN")}</span>
-                          <span>更新：{new Date(bank.updatedAt).toLocaleDateString("zh-CN")}</span>
-                          <span>版本：{bank.version}</span>
-                          <span>编码：{bank.id.slice(0, 6).toUpperCase()}</span>
-                        </div>
-                      </div>
-                    </div>
-                    </PrdAnnotation>
-                  </Link>
-                )
-              })}
-              {resourceBanks.length === 0 && (
-                <div style={{ gridColumn: "span 3", textAlign: "center", padding: 40, color: "#94a3b8", background: "#fff", borderRadius: 10 }}>暂无题库</div>
-              )}
-            </div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
-              {resourceExams.map((exam, i) => {
-                const covers = [
-                  "linear-gradient(135deg, #fa709a, #fee140)",
-                  "linear-gradient(135deg, #30cfd0, #330867)",
-                  "linear-gradient(135deg, #a8c0ff, #3f2b96)",
-                ]
-                return (
-                  <Link key={exam.id} href={`/evaluation/landing/resources/exams/${exam.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-                    <PrdAnnotation data={getAnnotation("lp-resource-exam-card")}>
-                    <div style={{
-                      background: "#fff", borderRadius: 10, overflow: "hidden",
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.06)", transition: "all 0.25s", cursor: "pointer",
-                    }}
-                      onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.08)" }}
-                      onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.06)" }}>
-                      <div style={{
-                        height: 100, background: covers[i % 3],
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        color: "#fff", fontSize: 20, fontWeight: "bold",
-                      }}>{exam.name.slice(0, 6)}</div>
-                      <div style={{ padding: 16 }}>
-                        <h3 style={{ fontSize: 15, marginBottom: 10, color: "#1e293b", fontWeight: 600 }}>{exam.name}</h3>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontSize: 12, color: "#64748b" }}>
-                          <span>时长：<strong style={{ color: "#2563eb" }}>{exam.duration}分钟</strong></span>
-                          <span>题数：{exam.questions.length}题</span>
-                          <span>总分：{exam.questions.reduce((s, q) => s + q.score, 0)}分</span>
-                          <span>版本：{exam.version}</span>
-                          <span>创建：{new Date(exam.createdAt).toLocaleDateString("zh-CN")}</span>
-                          <span>更新：{new Date(exam.updatedAt).toLocaleDateString("zh-CN")}</span>
-                        </div>
-                      </div>
-                    </div>
-                    </PrdAnnotation>
-                  </Link>
-                )
-              })}
-              {resourceExams.length === 0 && (
-                <div style={{ gridColumn: "span 3", textAlign: "center", padding: 40, color: "#94a3b8", background: "#fff", borderRadius: 10 }}>暂无试卷</div>
-              )}
-            </div>
-          )}
-        </section>
-        </PrdAnnotation>
-
-        <PrdAnnotation data={getAnnotation("lp-graduation")}>
-          {/* ── 毕业设计 ── */}
-          <section style={{ marginBottom: 50 }}>
-          <SectionHeader title="毕业设计选题中心" subtitle="去选题中心" moreHref="/evaluation/landing/graduation" />
-          <div style={{ background: "#fff", padding: "15px 20px", borderRadius: 10, marginBottom: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-            {[
-              { label: "院系：", tags: ["全部", "计算机学院", "软件学院", "信息学院", "大数据学院"] },
-              { label: "专业：", tags: ["全部", "计算机科学与技术", "软件工程", "网络工程", "数据科学"] },
-              { label: "岗位：", tags: ["全部", "Java开发", "前端开发", "算法工程师", "运维工程师"] },
-              { label: "标签：", tags: ["全部", "热门", "创新", "实战", "前沿"] },
-            ].map((row, idx) => (
-              <div key={idx} style={{ display: "flex", alignItems: "center", padding: "8px 0", borderBottom: idx < 3 ? "1px dashed #f1f5f9" : "none", fontSize: 13 }}>
-                <span style={{ color: "#94a3b8", width: 60, flexShrink: 0 }}>{row.label}</span>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  {row.tags.map((tag) => (
-                    <span key={tag} style={{
-                      padding: "4px 12px", borderRadius: 4, cursor: "pointer", color: "#64748b",
-                      transition: "all 0.3s",
-                    }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "#eff6ff"; e.currentTarget.style.color = "#2563eb" }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#64748b" }}>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
               </div>
-            ))}
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
-            {publishedTopics.map((topic) => (
-              <Link key={topic.id} href={`/evaluation/landing/graduation/${topic.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-                <PrdAnnotation data={getAnnotation("lp-grad-card")}>
-                <div style={{
-                  background: "#fff", borderRadius: 10, padding: 18,
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.06)", transition: "all 0.25s",
-                  cursor: "pointer", borderLeft: "4px solid #3b82f6",
-                }}
-                  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.08)" }}
-                  onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.06)" }}>
-                  <h3 style={{ fontSize: 14, marginBottom: 10, lineHeight: 1.5, color: "#1e293b", fontWeight: 600 }}>{topic.name}</h3>
-                  <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 10 }}>
-                    📚 {topic.positionName} · 👨‍🏫 {topic.advisorName} · 🏷️ {topic.source === "scene" ? "校内" : "企业"}
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, paddingTop: 12, borderTop: "1px dashed #f1f5f9" }}>
-                    <span style={{ fontSize: 12, color: "#94a3b8", display: "flex", alignItems: "center", gap: 4 }}>
-                      <Eye style={{ width: 12, height: 12 }} /> {topic.appliedCount}次浏览
-                    </span>
-                    <button style={{
-                      background: "#2563eb", color: "#fff", padding: "6px 14px",
-                      borderRadius: 4, fontSize: 12, cursor: "pointer", border: "none",
-                    }}>加入毕设选题</button>
-                  </div>
-                </div>
-                </PrdAnnotation>
-              </Link>
-            ))}
-            {publishedTopics.length === 0 && (
-              <div style={{ gridColumn: "span 3", textAlign: "center", padding: 40, color: "#94a3b8", background: "#fff", borderRadius: 10 }}>暂无选题</div>
-            )}
-          </div>
-        </section>
-        </PrdAnnotation>
+            </section>
 
-        <PrdAnnotation data={getAnnotation("lp-portraits")}>
-          {/* ── 学生画像排行榜 ── */}
-          <section style={{ marginBottom: 50 }}>
-          <SectionHeader title="学生画像排行榜" subtitle="按岗位查看关联专业排行榜" />
-          <div style={{ background: "#fff", borderRadius: 10, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-            {/* 岗位筛选 — 平铺多选 */}
-            <PositionFilter selected={selectedPositions} onChange={setSelectedPositions} options={positionOptions} />
-
-            {/* 关联专业卡片 */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
-              {(selectedPositions.includes("全部")
-                ? Array.from(new Set(studentAbilityPortraits.map((p) => p.majorName))).map((majorName) => ({
-                    majorName,
-                    students: studentAbilityPortraits.filter((p) => p.majorName === majorName),
-                  }))
-                : Array.from(
-                    new Set(
-                      studentAbilityPortraits
-                        .filter((p) => selectedPositions.includes(p.positionName))
-                        .map((p) => p.majorName)
-                    )
-                  ).map((majorName) => ({
-                    majorName,
-                    students: studentAbilityPortraits.filter(
-                      (p) => p.majorName === majorName && selectedPositions.includes(p.positionName)
-                    ),
-                  }))
-              ).map(({ majorName, students }, i) => {
-                const gradeMap: Record<string, number> = { A: 5, B: 4, C: 3, D: 2, E: 1 }
-                const avgGradeVal =
-                  students.reduce((s, p) => s + (gradeMap[p.overallGrade] || 3), 0) / students.length
-                const avgGradeLetter =
-                  avgGradeVal >= 4.5 ? "A" : avgGradeVal >= 3.5 ? "B" : avgGradeVal >= 2.5 ? "C" : avgGradeVal >= 1.5 ? "D" : "E"
-                const avgRankPct =
-                  students.reduce((s, p) => s + (p.majorRank / p.majorTotal) * 100, 0) / students.length
-                const avgCredits =
-                  students.reduce((s, p) => s + p.totalCredits, 0) / students.length
-                const covers = [
-                  "linear-gradient(135deg, #667eea, #764ba2)",
-                  "linear-gradient(135deg, #f093fb, #f5576c)",
-                  "linear-gradient(135deg, #4facfe, #00f2fe)",
-                  "linear-gradient(135deg, #fa709a, #fee140)",
-                  "linear-gradient(135deg, #30cfd0, #330867)",
-                  "linear-gradient(135deg, #a8edea, #fed6e3)",
-                ]
-                return (
-                  <Link key={majorName} href={`/evaluation/landing/portrait/major/${encodeURIComponent(majorName)}`} style={{ textDecoration: "none", color: "inherit" }}>
-                    <PrdAnnotation data={getAnnotation("lp-portrait-card")}>
+            <section style={{ marginBottom: 50 }}>
+              <SectionHeader title="试卷中心" moreHref="/evaluation/landing/exams" />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
+                {filteredExams.map((exam, i) => (
+                  <Link key={exam.id} href={`/evaluation/landing/exams/${exam.id}`} style={{ textDecoration: "none", color: "inherit" }}>
                     <div style={{
                       background: "#fff", borderRadius: 10, overflow: "hidden",
                       boxShadow: "0 1px 3px rgba(0,0,0,0.06)", transition: "all 0.25s", cursor: "pointer",
-                      border: "1px solid #f1f5f9",
                     }}
                       onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.08)" }}
                       onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.06)" }}>
                       <div style={{
-                        height: 100, background: covers[i % covers.length], position: "relative",
+                        height: 100, background: coverGradients[(i + 3) % coverGradients.length],
                         display: "flex", alignItems: "center", justifyContent: "center",
                         color: "#fff", fontSize: 18, fontWeight: "bold",
                       }}>
-                        {majorName.slice(0, 6)}
+                        <ClipboardList className="h-10 w-10" />
                       </div>
                       <div style={{ padding: 16 }}>
-                        <h3 style={{ fontSize: 15, marginBottom: 10, color: "#1e293b", fontWeight: 600 }}>{majorName}</h3>
+                        <h3 style={{ fontSize: 15, marginBottom: 8, color: "#1e293b", fontWeight: 600 }}>{exam.name}</h3>
+                        <p style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, height: 36, overflow: "hidden" }}>
+                          {exam.description || "暂无描述"}
+                        </p>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontSize: 12, color: "#64748b" }}>
-                          <span>学生数量：<strong style={{ color: "#2563eb" }}>{students.length} 人</strong></span>
-                          <span>平均评级：<strong style={{ color: "#f59e0b" }}>{avgGradeLetter}</strong></span>
-                          <span>平均学分：<strong>{avgCredits.toFixed(1)}</strong></span>
-                          <span>平均排名：<strong>{avgRankPct.toFixed(1)}%</strong></span>
+                          <span className="flex items-center gap-1"><FileText className="h-3 w-3" /> {exam.questions.length} 题</span>
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {exam.duration} 分钟</span>
+                          <span>总分 {exam.totalScore}</span>
+                          {exam.creatorName && <span>{exam.creatorName}</span>}
                         </div>
-                        <div style={{
-                          marginTop: 12, paddingTop: 12, borderTop: "1px dashed #f1f5f9",
-                          textAlign: "center", fontSize: 13, color: "#2563eb", fontWeight: 500,
-                        }}>
-                          查看专业排行榜 ›
+                        <div style={{ marginTop: 12 }}>
+                          <span style={{
+                            display: "block", width: "100%", borderRadius: 8, padding: "8px 0",
+                            textAlign: "center", fontSize: 14, fontWeight: 500,
+                            background: "#2563eb", color: "#fff",
+                          }}>去考试</span>
                         </div>
                       </div>
                     </div>
-                    </PrdAnnotation>
                   </Link>
-                )
-              })}
-              {(selectedPositions.includes("全部")
-                ? Array.from(new Set(studentAbilityPortraits.map((p) => p.majorName)))
-                : Array.from(new Set(studentAbilityPortraits.filter((p) => selectedPositions.includes(p.positionName)).map((p) => p.majorName)))
-              ).length === 0 && (
-                <div style={{ gridColumn: "span 3", textAlign: "center", padding: 40, color: "#94a3b8" }}>暂无关联专业</div>
-              )}
-            </div>
-          </div>
-        </section>
-        </PrdAnnotation>
+                ))}
+                {filteredExams.length === 0 && (
+                  <div style={{ gridColumn: "span 4", textAlign: "center", padding: 40, color: "#94a3b8", background: "#fff", borderRadius: 10 }}>暂无已发布试卷</div>
+                )}
+              </div>
+            </section>
+          </>
+        )}
 
-      {/* Footer */}
-      <footer style={{background: '#141a2e', marginTop: 60, width: '100vw', position: 'relative', left: 'calc(-50vw + 50%)'}}>
-        <div style={{height: 3, background: 'linear-gradient(90deg, #8b5cf6, #818cf8, #22d3ee)'}} />
-        <div style={{padding: '48px 5% 32px'}}>
-          <div style={{display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 32, maxWidth: 1280, margin: '0 auto'}}>
-            <div>
-              <h3 style={{fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 12}}>场景化数智教学服务平台</h3>
-              <p style={{fontSize: 13, color: '#a8b3cf', lineHeight: 1.8, margin: 0}}>专注职业教育数字化</p>
-              <div style={{fontSize: 12, color: '#6b7a99', marginTop: 8}}>版本：V3.2.1</div>
-              <a href="#" style={{color: '#22d3ee', fontSize: 13, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8}}>访问官网 →</a>
+        <footer style={{ background: '#141a2e', marginTop: 60, width: '100vw', position: 'relative', left: 'calc(-50vw + 50%)' }}>
+          <div style={{ height: 3, background: 'linear-gradient(90deg, #8b5cf6, #818cf8, #22d3ee)' }} />
+          <div style={{ padding: '48px 5% 32px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 32, maxWidth: 1280, margin: '0 auto' }}>
+              <div>
+                <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 12 }}>场景化数智教学服务平台</h3>
+                <p style={{ fontSize: 13, color: '#a8b3cf', lineHeight: 1.8, margin: 0 }}>专注职业教育数字化</p>
+                <div style={{ fontSize: 12, color: '#6b7a99', marginTop: 8 }}>版本：V3.2.1</div>
+                <a href="#" style={{ color: '#22d3ee', fontSize: 13, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8 }}>访问官网 →</a>
+              </div>
+              <div>
+                <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 12 }}>教学资源</h3>
+                <p style={{ fontSize: 13, color: '#a8b3cf', lineHeight: 1.8, margin: 0 }}>岗位标准、实践场景、企业导师</p>
+                <a href="#" style={{ color: '#22d3ee', fontSize: 13, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8 }}>进入资源商城 →</a>
+              </div>
+              <div>
+                <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 12 }}>技术支持</h3>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  <li style={{ fontSize: 13, color: '#a8b3cf', lineHeight: 1.8 }}>服务热线：400-888-8888</li>
+                  <li style={{ fontSize: 13, color: '#a8b3cf', lineHeight: 1.8 }}>邮箱：support@example.com</li>
+                  <li><a href="#" style={{ color: '#22d3ee', fontSize: 13, textDecoration: 'none' }}>使用手册</a></li>
+                  <li><a href="#" style={{ color: '#22d3ee', fontSize: 13, textDecoration: 'none' }}>常见问题</a></li>
+                </ul>
+              </div>
+              <div>
+                <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 12 }}>校内支持</h3>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  <li style={{ fontSize: 13, color: '#a8b3cf', lineHeight: 1.8 }}>授权院校：XX职业技术学院</li>
+                  <li style={{ fontSize: 13, color: '#a8b3cf', lineHeight: 1.8 }}>校内管理员：张老师</li>
+                  <li style={{ fontSize: 13, color: '#a8b3cf', lineHeight: 1.8 }}>管理员电话：0000-12345678</li>
+                </ul>
+              </div>
             </div>
-            <div>
-              <h3 style={{fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 12}}>教学资源</h3>
-              <p style={{fontSize: 13, color: '#a8b3cf', lineHeight: 1.8, margin: 0}}>岗位标准、实践场景、企业导师</p>
-              <a href="#" style={{color: '#22d3ee', fontSize: 13, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8}}>进入资源商城 →</a>
-            </div>
-            <div>
-              <h3 style={{fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 12}}>技术支持</h3>
-              <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
-                <li style={{fontSize: 13, color: '#a8b3cf', lineHeight: 1.8}}>服务热线：400-888-8888</li>
-                <li style={{fontSize: 13, color: '#a8b3cf', lineHeight: 1.8}}>邮箱：support@example.com</li>
-                <li><a href="#" style={{color: '#22d3ee', fontSize: 13, textDecoration: 'none'}}>使用手册</a></li>
-                <li><a href="#" style={{color: '#22d3ee', fontSize: 13, textDecoration: 'none'}}>常见问题</a></li>
-              </ul>
-            </div>
-            <div>
-              <h3 style={{fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 12}}>校内支持</h3>
-              <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
-                <li style={{fontSize: 13, color: '#a8b3cf', lineHeight: 1.8}}>授权院校：XX职业技术学院</li>
-                <li style={{fontSize: 13, color: '#a8b3cf', lineHeight: 1.8}}>校内管理员：张老师</li>
-                <li style={{fontSize: 13, color: '#a8b3cf', lineHeight: 1.8}}>管理员电话：0000-12345678</li>
-              </ul>
+            <hr style={{ border: 'none', borderTop: '1px solid #29324a', margin: '40px 0 24px' }} />
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, fontSize: 12, color: '#6b7a99', maxWidth: 1280, margin: '0 auto' }}>
+              <div>
+                <a href="#" style={{ color: '#6b7a99', textDecoration: 'none' }}>隐私政策</a>
+                <span style={{ color: '#29324a' }}>&nbsp;|&nbsp;</span>
+                <a href="#" style={{ color: '#6b7a99', textDecoration: 'none' }}>用户协议</a>
+              </div>
+              <div style={{ textAlign: 'right' }}>版权所有 © 2020-2026 杭州知与未来科技有限公司 ｜ 软件著作权登记号：2020SR0123456 ｜ 京ICP备2025105397号-1</div>
             </div>
           </div>
-          <hr style={{border: 'none', borderTop: '1px solid #29324a', margin: '40px 0 24px'}} />
-          <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, fontSize: 12, color: '#6b7a99', maxWidth: 1280, margin: '0 auto'}}>
-            <div>
-              <a href="#" style={{color: '#6b7a99', textDecoration: 'none'}}>隐私政策</a>
-              <span style={{color: '#29324a'}}>&nbsp;|&nbsp;</span>
-              <a href="#" style={{color: '#6b7a99', textDecoration: 'none'}}>用户协议</a>
-            </div>
-            <div style={{textAlign: 'right'}}>版权所有 © 2020-2026 杭州知与未来科技有限公司 ｜ 软件著作权登记号：2020SR0123456 ｜ 京ICP备2025105397号-1</div>
-          </div>
-        </div>
-      </footer>
+        </footer>
 
       </div>
     </div>
