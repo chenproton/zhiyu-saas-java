@@ -134,6 +134,9 @@ import { MajorSelect } from "@/components/shared/major-select"
 import { KnowledgePointFormDialog } from "@/components/shared/knowledge-point-form-dialog"
 import { GranularLessonSelectDialog } from "@/components/shared/granular-lesson-select-dialog"
 import { CourseEvalConfig, type CourseEvalData } from "@/app/lesson/admin/_components/eval/course-eval-config"
+import { KnowledgeSelector } from "@/app/lesson/admin/_components/knowledge/knowledge-selector"
+import type { KnowledgePointItem } from "@/lib/types/lesson"
+import { ResourceSelector, type ResourceItem } from "@/app/lesson/admin/_components/resources/resource-selector"
 import { TaskInfoCard } from "./_components/task-info-card"
 import { TaskDescriptionCard } from "./_components/task-description-card"
 import { TaskWeightCard } from "./_components/task-weight-card"
@@ -5122,21 +5125,26 @@ function EditCardDialog({
       case "description":
         return <TaskDescriptionCard description={state.description} onDescriptionChange={v => updateState({ description: v })} descriptionPdf={state.descriptionPdf} onDescriptionPdfChange={v => updateState({ descriptionPdf: v })} toast={toast} />
 
-      case "knowledge":
+      case "knowledge": {
+        const pool: KnowledgePointItem[] = knowledgePoints.map((kp: any) => ({
+          id: kp.id, name: kp.name, code: kp.code, description: kp.description, linked: kp.linked ?? true,
+        }))
+        const selected: KnowledgePointItem[] = (state.knowledgePoints || []).map((id: string) =>
+          pool.find(p => p.id === id) || { id, name: id, linked: false }
+        )
         return (
-          <TaskKnowledgeCard
-            state={state} updateState={updateState}
-            kpSearch={kpSearch} setKpSearch={setKpSearch}
-            kpDetailOpen={kpDetailOpen} setKpDetailOpen={setKpDetailOpen}
-            selectedKpForDetail={selectedKpForDetail} setSelectedKpForDetail={setSelectedKpForDetail}
-            kpFormOpen={kpFormOpen} setKpFormOpen={setKpFormOpen}
-            kpFormMode={kpFormMode} setKpFormMode={setKpFormMode}
-            kpFormTarget={kpFormTarget} setKpFormTarget={setKpFormTarget}
-            kpFormInitial={kpFormInitial} setKpFormInitial={setKpFormInitial}
-            glSelectOpen={glSelectOpen} setGlSelectOpen={setGlSelectOpen}
-            glSelectTargetKp={glSelectTargetKp} setGlSelectTargetKp={setGlSelectTargetKp}
+          <KnowledgeSelector
+            selected={selected}
+            pool={pool}
+            onChange={(items) => updateState({ knowledgePoints: items.map(i => i.id) })}
+            onAddCustom={(name, description) => {
+              const newId = `kp-custom-${Date.now()}`
+              knowledgePoints.push({ id: newId, name, description, code: "", linked: false })
+              updateState({ knowledgePoints: [...state.knowledgePoints, newId] })
+            }}
           />
         )
+      }
 
       case "ability": {
         // abilityDetailOpen, selectedAbilityForDetail, expandedDomains, abilitySearch are defined at component top level
@@ -5389,464 +5397,16 @@ function EditCardDialog({
       }
 
       case "resources": {
-        const resFileInputRef = useRef<HTMLInputElement>(null)
-        const types = ["all", "document", "spreadsheet", "image", "link", "audio", "video", "archive", "venue", "facility", "software", "other"]
-        const getUploaderName = (uploadedBy?: string) => {
-          if (!uploadedBy) return "-"
-          return userNameMap[uploadedBy] || uploadedBy
-        }
-        const formatDate = (dateStr?: string) => {
-          if (!dateStr) return "-"
-          const d = new Date(dateStr)
-          return isNaN(d.getTime()) ? dateStr : d.toISOString().slice(0, 10)
-        }
-        const filteredRes = learningResources.filter(r => {
-          const matchType = resType === "all" || r.type === resType
-          const matchName = !resSearchName || r.name.includes(resSearchName)
-          const uploaderName = getUploaderName(r.uploadedBy)
-          const matchProvider = !resSearchProvider || uploaderName.includes(resSearchProvider)
-          return matchType && matchName && matchProvider
-        })
-
-        const toggleResource = (rid: string) => {
-          const selected = state.resources.includes(rid)
-          updateState({ resources: selected ? state.resources.filter(x => x !== rid) : [...state.resources, rid] })
-        }
-
-        const resetFilters = () => {
-          setResType("all")
-          setResSearchName("")
-          setResSearchProvider("")
-        }
-
-        const handleResFileSelect = (file: File) => {
-          const err = validateResourceFile(file, newResType)
-          if (err) {
-            toast({ variant: "destructive", title: "文件校验失败", description: err })
-            return
-          }
-          setNewResFile(file)
-        }
-
-        const onResFileDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          const file = e.dataTransfer.files?.[0]
-          if (file) handleResFileSelect(file)
-        }
-
-        const fileTypesWithUpload = ["document", "spreadsheet", "image", "audio", "video", "archive", "other", "software"]
-
+        const rPool: ResourceItem[] = learningResources.map((r: any) => ({
+          id: r.id, name: r.name, type: r.type, url: r.url, description: r.description, size: r.size,
+        }))
         return (
-          <div className="h-full flex flex-col">
-            {/* Toolbar */}
-            <div className="shrink-0 space-y-3 mb-4">
-              {/* Type filters */}
-              <div className="flex gap-1.5 flex-wrap">
-                {types.map(t => (
-                  <Button
-                    key={t}
-                    variant={resType === t ? "default" : "outline"}
-                    size="sm"
-                    className={cn("text-xs h-7", resType === t ? "" : "bg-white")}
-                    onClick={() => setResType(t)}
-                  >
-                    {resourceTypeIcons[t] && <span className="mr-1.5">{resourceTypeIcons[t]}</span>}
-                    {resourceTypeLabels[t] || t}
-                  </Button>
-                ))}
-              </div>
-              {/* Search & Actions */}
-              <div className="flex items-center gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    value={resSearchName}
-                    onChange={e => setResSearchName(e.target.value)}
-                    placeholder="搜索资源名称..."
-                    className="pl-9 text-sm"
-                  />
-                </div>
-                <div className="relative flex-1">
-                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    value={resSearchProvider}
-                    onChange={e => setResSearchProvider(e.target.value)}
-                    placeholder="搜索资源提供者..."
-                    className="pl-9 text-sm"
-                  />
-                </div>
-                <Button variant="outline" size="sm" className="h-9 text-xs" onClick={resetFilters}>
-                  <RotateCcw className="h-3.5 w-3.5 mr-1" />重置
-                </Button>
-                <Button size="sm" className="h-9 text-xs" onClick={() => {
-                  if (resType === "all") {
-                    setShowUploadTypePicker(true)
-                  } else {
-                    setNewResType(resType)
-                    setShowUploadRes(true)
-                  }
-                }}>
-                  <Upload className="h-3.5 w-3.5 mr-1" />上传资源
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex gap-4 flex-1 min-h-0">
-              {/* Left: Resource cards grid */}
-              <div className="flex-1 flex flex-col min-h-0 border rounded-xl p-4 overflow-hidden">
-                <div className="flex items-center justify-between mb-3 shrink-0">
-                  <p className="text-sm font-medium text-gray-700">
-                    资源列表 <span className="text-gray-400 font-normal">({filteredRes.length})</span>
-                  </p>
-                </div>
-                <div className="flex-1 overflow-y-auto pr-1">
-                  {filteredRes.length === 0 ? (
-                    <div className="text-center text-gray-400 py-16">
-                      <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p className="text-sm">未找到匹配的资源</p>
-                      <p className="text-xs mt-1">尝试调整筛选条件</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                      {filteredRes.map(r => {
-                        const selected = state.resources.includes(r.id)
-                        return (
-                          <div
-                            key={r.id}
-                            className={cn(
-                              "relative rounded-lg border overflow-hidden transition-all cursor-pointer group",
-                              selected
-                                ? "border-primary shadow-sm ring-1 ring-primary/10"
-                                : "border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white"
-                            )}
-                            onClick={() => toggleResource(r.id)}
-                          >
-                            {/* Thumbnail area */}
-                            <div className="relative h-20 bg-gray-50 border-b border-gray-100 overflow-hidden">
-                              {r.thumbnail && r.type === "image" ? (
-                                <img src={r.thumbnail} alt={r.name} className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <div className={cn("p-2 rounded-lg border", resourceTypeColors[r.type] || "bg-gray-50 border-gray-200")}>
-                                    {resourceTypeIcons[r.type] || <Package className="h-5 w-5 text-gray-400" />}
-                                  </div>
-                                </div>
-                              )}
-                              {selected && (
-                                <div className="absolute top-1.5 right-1.5 bg-primary text-white rounded-full p-0.5 shadow-sm">
-                                  <CheckCircle2 className="h-3.5 w-3.5" />
-                                </div>
-                              )}
-                              {/* Type badge */}
-                              <div className="absolute bottom-1.5 left-1.5">
-                                <Badge className={cn("text-[9px] border", resourceTypeColors[r.type] || "")}>
-                                  {resourceTypeLabels[r.type] || r.type}
-                                </Badge>
-                              </div>
-                            </div>
-                            {/* Info */}
-                            <div className="p-2">
-                              <p className="text-xs font-medium text-gray-800 truncate mb-1">{r.name}</p>
-                              <div className="flex items-center justify-between text-[11px] text-gray-500">
-                                <span className="flex items-center gap-1 truncate max-w-[80px]">
-                                  <Users className="h-3 w-3 shrink-0" />{getUploaderName(r.uploadedBy)}
-                                </span>
-                                <span className="shrink-0">{formatDate(r.uploadedAt)}</span>
-                              </div>
-                            </div>
-                            {/* Actions */}
-                            <div className="px-2 pb-2 flex items-center gap-1">
-                              <PrdAnnotation data={getAnnotation("resource-action-preview")}>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 text-[10px] px-1 flex-1 text-gray-500 hover:text-primary"
-                                  onClick={(e) => { e.stopPropagation(); r.url ? addPreviewResource(r) : window.open(r.url || "#", "_blank") }}
-                                >
-                                  <Eye className="h-3 w-3 mr-0.5" />预览
-                                </Button>
-                              </PrdAnnotation>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Right: Selected resources sidebar */}
-              <div className="w-72 shrink-0 flex flex-col min-h-0 border rounded-xl p-4 bg-gray-50/50 overflow-hidden">
-                <div className="flex items-center justify-between mb-3 shrink-0">
-                  <p className="text-sm font-semibold text-gray-700">已选资源</p>
-                  <Badge variant="secondary" className="text-[10px]">{state.resources.length}</Badge>
-                </div>
-                <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
-                  {state.resources.length === 0 ? (
-                    <div className="text-center text-gray-400 py-8">
-                      <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-xs">请从左侧选择资源</p>
-                    </div>
-                  ) : (
-                    state.resources.map(rid => {
-                      const r = learningResources.find(res => res.id === rid)
-                      if (!r) return null
-                      return (
-                        <div key={rid} className="flex items-center gap-2.5 p-2.5 rounded-lg border border-primary/20 bg-white shadow-sm">
-                          <div className={cn("w-9 h-9 rounded-lg border flex items-center justify-center shrink-0", resourceTypeColors[r.type] || "bg-gray-50")}>
-                            {resourceTypeIcons[r.type] || <Package className="h-4 w-4 text-gray-400" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium truncate text-gray-800">{r.name}</p>
-                            <p className="text-[10px] text-gray-400 truncate">{getUploaderName(r.uploadedBy)} · {formatDate(r.uploadedAt)}</p>
-                          </div>
-                          <PrdAnnotation data={getAnnotation("resource-action-cancel")}>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-500 shrink-0" onClick={() => toggleResource(rid)}>
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </PrdAnnotation>
-                        </div>
-                      )
-                    })
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Upload Type Picker Dialog */}
-            <Dialog open={showUploadTypePicker} onOpenChange={setShowUploadTypePicker}>
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                  <PrdAnnotation data={getAnnotation("dialog-resource-type-select")}>
-                    <DialogTitle>选择资源类型</DialogTitle>
-                  </PrdAnnotation>
-                  <DialogDescription>请选择要上传的资源类型</DialogDescription>
-                </DialogHeader>
-                <div className="grid grid-cols-3 gap-3 py-4">
-                  {types.filter(t => t !== "all").map(t => (
-                    <button
-                      key={t}
-                      onClick={() => {
-                        setNewResType(t)
-                        setShowUploadTypePicker(false)
-                        setShowUploadRes(true)
-                      }}
-                      className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 hover:border-primary hover:bg-primary/5 transition-all text-center"
-                    >
-                      <div className={cn("p-2 rounded-lg border", resourceTypeColors[t] || "bg-gray-50 border-gray-200")}>
-                        {resourceTypeIcons[t] || <Package className="h-5 w-5 text-gray-400" />}
-                      </div>
-                      <span className="text-xs font-medium text-gray-700">{resourceTypeLabels[t] || t}</span>
-                    </button>
-                  ))}
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            {/* Upload Resource Dialog */}
-            <Dialog open={showUploadRes} onOpenChange={setShowUploadRes}>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <PrdAnnotation data={getAnnotation("dialog-resource-upload")}>
-                    <DialogTitle>上传资源到公共库</DialogTitle>
-                  </PrdAnnotation>
-                  <DialogDescription>补充本地资源，上传后将加入资源公共库并自动选中</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-1">
-                  <div>
-                    <Label>资源名称</Label>
-                    <Input value={newResName} onChange={e => setNewResName(e.target.value)} placeholder="输入资源名称" className="mt-1.5" />
-                  </div>
-                  {newResType === "all" && (
-                    <div>
-                      <Label>资源类型</Label>
-                      <Select value={newResType} onValueChange={v => setNewResType(v)}>
-                        <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="document">文档资源</SelectItem>
-                          <SelectItem value="spreadsheet">表格资源</SelectItem>
-                          <SelectItem value="image">图片资源</SelectItem>
-                          <SelectItem value="link">链接资源</SelectItem>
-                          <SelectItem value="audio">音频资源</SelectItem>
-                          <SelectItem value="video">视频资源</SelectItem>
-                          <SelectItem value="archive">压缩包资源</SelectItem>
-                          <SelectItem value="venue">场地资源</SelectItem>
-                          <SelectItem value="facility">设施设备资源</SelectItem>
-                          <SelectItem value="software">软件资源</SelectItem>
-                          <SelectItem value="other">其他资源</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {/* Link type: URL */}
-                  {newResType === "link" && (
-                    <div>
-                      <Label>URL 地址</Label>
-                      <Input value={newResUrl} onChange={e => setNewResUrl(e.target.value)} placeholder="https://..." className="mt-1.5" />
-                    </div>
-                  )}
-
-                  {/* Venue type: address, open time, capacity, contact */}
-                  {newResType === "venue" && (
-                    <>
-                      <div>
-                        <Label>场地地址</Label>
-                        <Input value={newResAddress} onChange={e => setNewResAddress(e.target.value)} placeholder="输入场地详细地址" className="mt-1.5" />
-                      </div>
-                      <div>
-                        <Label>开放时间</Label>
-                        <Input value={newResOpenTime} onChange={e => setNewResOpenTime(e.target.value)} placeholder="例如：周一至周五 09:00-18:00" className="mt-1.5" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label>容纳人数</Label>
-                          <Input value={newResCapacity} onChange={e => setNewResCapacity(e.target.value)} placeholder="例如：50人" className="mt-1.5" />
-                        </div>
-                        <div>
-                          <Label>联系人/电话</Label>
-                          <Input value={newResContact} onChange={e => setNewResContact(e.target.value)} placeholder="输入联系人或电话" className="mt-1.5" />
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Facility type: location, quantity */}
-                  {newResType === "facility" && (
-                    <>
-                      <div>
-                        <Label>所在位置</Label>
-                        <Input value={newResLocation} onChange={e => setNewResLocation(e.target.value)} placeholder="输入设施所在位置" className="mt-1.5" />
-                      </div>
-                      <div>
-                        <Label>数量</Label>
-                        <Input value={newResQuantity} onChange={e => setNewResQuantity(e.target.value)} placeholder="输入设施数量" className="mt-1.5" />
-                      </div>
-                    </>
-                  )}
-
-                  {/* Tool / Software type: version, url, license */}
-                  {newResType === "software" && (
-                    <>
-                      <div>
-                        <Label>版本号</Label>
-                        <Input value={newResVersion} onChange={e => setNewResVersion(e.target.value)} placeholder="例如：v2.1.0" className="mt-1.5" />
-                      </div>
-                      <div>
-                        <Label>下载链接</Label>
-                        <Input value={newResUrl} onChange={e => setNewResUrl(e.target.value)} placeholder="https://..." className="mt-1.5" />
-                      </div>
-                      {newResType === "software" && (
-                        <div>
-                          <Label>授权信息</Label>
-                          <Input value={newResLicense} onChange={e => setNewResLicense(e.target.value)} placeholder="例如：MIT / 商业授权 / 校内授权" className="mt-1.5" />
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* Description for all types */}
-                  <div>
-                    <Label>资源描述</Label>
-                    <Textarea value={newResDescription} onChange={e => setNewResDescription(e.target.value)} placeholder="输入资源简介、用途说明等" className="mt-1.5" rows={2} />
-                  </div>
-
-                  {/* File upload for file-based types */}
-                  {fileTypesWithUpload.includes(newResType) && (
-                    <div
-                      className={cn(
-                        "border-2 border-dashed rounded-xl p-6 text-center space-y-3 transition-colors",
-                        newResUploading ? "border-primary/30 bg-gray-50/50" : "border-gray-200 hover:border-primary/30 hover:bg-gray-50/50 cursor-pointer"
-                      )}
-                      onClick={() => !newResUploading && resFileInputRef.current?.click()}
-                      onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
-                      onDrop={onResFileDrop}
-                    >
-                      <input
-                        ref={resFileInputRef}
-                        type="file"
-                        accept={resourceTypeAccept[newResType]}
-                        className="hidden"
-                        onChange={e => {
-                          const file = e.target.files?.[0]
-                          if (file) handleResFileSelect(file)
-                          e.target.value = ""
-                        }}
-                      />
-                      {newResFile ? (
-                        <div className="text-center space-y-2 pointer-events-none">
-                          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                            <File className="h-6 w-6 text-primary" />
-                          </div>
-                          <p className="text-sm font-medium text-gray-700">{newResFile.name}</p>
-                          <p className="text-xs text-gray-500">{(newResFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto">
-                            {newResUploading ? <Loader2 className="h-6 w-6 text-gray-400 animate-spin" /> : <Upload className="h-6 w-6 text-gray-400" />}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">点击或拖拽上传文件</p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {resourceTypeAccept[newResType]
-                                ? `支持 ${resourceTypeAccept[newResType]}，最大 100MB`
-                                : "支持多种格式，最大 100MB"}
-                            </p>
-                          </div>
-                        </>
-                      )}
-                      {newResFile && !newResUploading && (
-                        <div className="flex items-center justify-center gap-2 pointer-events-auto" onClick={e => e.stopPropagation()}>
-                          <Button variant="outline" size="sm" onClick={() => resFileInputRef.current?.click()}>
-                            <Upload className="h-3.5 w-3.5 mr-1" />重新选择
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => setNewResFile(null)}>
-                            <X className="h-3.5 w-3.5 mr-1" />清除
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowUploadRes(false)}>取消</Button>
-                  <Button
-                    onClick={handleUploadResource}
-                    disabled={
-                      !newResName.trim() ||
-                      newResUploading ||
-                      (newResType === "link" && !newResUrl.trim()) ||
-                      (fileTypesWithUpload.includes(newResType) && !newResFile && !newResUrl.trim())
-                    }
-                  >
-                    {newResUploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-                    上传并选中
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            {/* Resource Preview Mask */}
-            {previewResources.length > 0 && (
-              <div
-                className="fixed inset-0 bg-black/40 z-[90]"
-                onClick={() => previewResources.forEach((r) => removePreviewResource(r.id))}
-              />
-            )}
-
-            {/* Resource Preview Modals */}
-            {previewResources.map((r, i) => (
-              <ResourcePreviewModal
-                key={r.id}
-                resource={r}
-                open
-                index={i}
-                onOpenChange={() => removePreviewResource(r.id)}
-              />
-            ))}
-          </div>
+          <ResourceSelector
+            pool={rPool}
+            selectedIds={state.resources || []}
+            onChange={(ids: string[]) => updateState({ resources: ids })}
+            onUpload={(r: ResourceItem) => { learningResources.push(r); }}
+          />
         )
       }
 
