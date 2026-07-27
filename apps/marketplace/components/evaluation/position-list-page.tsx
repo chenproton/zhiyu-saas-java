@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { StatusBadge } from "../../../../edu/components/shared/status-badge"
+import { StatusBadge } from "../../../edu/components/shared/status-badge"
 import { LevelMappingDisplay } from "./level-mapping-display"
 import { LevelMappingDialog } from "./level-mapping-dialog"
 import { positionApi } from "@/lib/api"
@@ -56,7 +56,7 @@ import {
   XCircle,
   CheckCircle,
 } from "lucide-react"
-import { PageHeaderCard } from "../../../../edu/components/shared/page-header-card"
+import { PageHeaderCard } from "../../../edu/components/shared/page-header-card"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 
