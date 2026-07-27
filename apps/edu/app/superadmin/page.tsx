@@ -52,7 +52,6 @@ import { getToken, setToken, removeToken } from "@zhiyu/api-client"
 
 const API_BASE = "/api/v1/admin/tenants"
 const LOGIN_URL = "/api/v1/auth/login"
-const ME_URL = "/api/v1/auth/saas/me"
 
 interface AdminTenant {
   id: string
@@ -170,27 +169,20 @@ export default function SuperAdminPage() {
   useEffect(() => {
     const token = getToken()
     if (token) {
-      fetch(`${ME_URL}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json().catch(() => null))
-        .then((data) => {
-          if (data?.user?.role === "platform_admin" || data?.user?.roleCodes?.includes?.("platform_admin")) {
-            setAuthenticated(true)
-            setAuthUser(data.user.username || data.user.name || "管理员")
-          } else if (data?.user) {
-            setAuthenticated(false)
-            setLoginError("当前账号不是平台管理员")
-            removeToken()
-          } else {
-            setAuthenticated(false)
-            removeToken()
-          }
-        })
-        .catch(() => {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]))
+        if (payload.roleCodes?.includes("platform_admin")) {
+          setAuthenticated(true)
+          setAuthUser(payload.username || "管理员")
+        } else {
           setAuthenticated(false)
+          setLoginError("当前账号不是平台管理员")
           removeToken()
-        })
+        }
+      } catch {
+        setAuthenticated(false)
+        removeToken()
+      }
     } else {
       setAuthenticated(false)
     }
@@ -211,10 +203,8 @@ export default function SuperAdminPage() {
         throw new Error(data.error || `HTTP ${res.status}`)
       }
       if (data.token && data.user) {
-        const isPlatformAdmin =
-          data.user.role === "platform_admin" ||
-          data.user.roleCodes?.includes?.("platform_admin")
-        if (!isPlatformAdmin) {
+        const payload = JSON.parse(atob(data.token.split(".")[1]))
+        if (!payload.roleCodes?.includes("platform_admin")) {
           throw new Error("当前账号不是平台管理员，无权限访问")
         }
         setToken(data.token)
