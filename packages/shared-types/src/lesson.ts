@@ -52,14 +52,22 @@ export interface SystemCourseNode {
   courseId: string
   parentId?: string
   name: string
+  code?: string
   sortOrder: number
   refType: "normal" | "original"
   sourceId?: string
   sourceName?: string
   teachingGoals?: string
+  detailedDescription?: string
+  descriptionPdf?: string
+  background?: string
+  estimatedHours?: number
   duration?: number
+  difficulty?: number
   knowledgePointIds: string[]
+  abilityPointIds: string[]
   resourceIds: string[]
+  evalData?: Record<string, any>
   status: string
   createdAt: string
   updatedAt: string

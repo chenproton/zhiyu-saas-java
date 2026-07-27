@@ -25,22 +25,29 @@ type CourseNodeListResponse struct {
 
 // SystemCourseNodeResponse 是前端编辑页需要的完整节点模型。
 type SystemCourseNodeResponse struct {
-	ID              string                           `json:"id"`
-	CourseID        string                           `json:"courseId"`
-	ParentID        *string                          `json:"parentId,omitempty"`
-	Name            string                           `json:"name"`
-	Order           int                              `json:"order"`
-	Type            string                           `json:"type"`
-	SourceID        *string                          `json:"sourceId,omitempty"`
-	SourceName      *string                          `json:"sourceName,omitempty"`
-	TeachingGoals   *string                          `json:"teachingGoals,omitempty"`
-	Duration        *float64                         `json:"duration,omitempty"`
-	Difficulty      *int                             `json:"difficulty,omitempty"`
-	KnowledgePoints []SystemCourseNodeKnowledgePoint `json:"knowledgePoints,omitempty"`
-	Resources       []SystemCourseNodeResource       `json:"resources,omitempty"`
-	Quizzes         []domain.NodeQuiz                `json:"quizzes,omitempty"`
-	Homeworks       []domain.NodeHomework            `json:"homeworks,omitempty"`
-	Status          string                           `json:"status"`
+	ID                 string                           `json:"id"`
+	CourseID           string                           `json:"courseId"`
+	ParentID           *string                          `json:"parentId,omitempty"`
+	Name               string                           `json:"name"`
+	Code               *string                          `json:"code,omitempty"`
+	Order              int                              `json:"order"`
+	Type               string                           `json:"type"`
+	SourceID           *string                          `json:"sourceId,omitempty"`
+	SourceName         *string                          `json:"sourceName,omitempty"`
+	TeachingGoals      *string                          `json:"teachingGoals,omitempty"`
+	DetailedDescription *string                         `json:"detailedDescription,omitempty"`
+	DescriptionPdf     *string                          `json:"descriptionPdf,omitempty"`
+	Background         *string                          `json:"background,omitempty"`
+	EstimatedHours     *float64                         `json:"estimatedHours,omitempty"`
+	Duration           *float64                         `json:"duration,omitempty"`
+	Difficulty         *int                             `json:"difficulty,omitempty"`
+	KnowledgePoints    []SystemCourseNodeKnowledgePoint `json:"knowledgePoints,omitempty"`
+	AbilityPoints      []SystemCourseNodeAbilityPoint   `json:"abilityPoints,omitempty"`
+	Resources          []SystemCourseNodeResource       `json:"resources,omitempty"`
+	Quizzes            []domain.NodeQuiz                `json:"quizzes,omitempty"`
+	Homeworks          []domain.NodeHomework            `json:"homeworks,omitempty"`
+	EvalData           domain.JSONMap                   `json:"evalData,omitempty"`
+	Status             string                           `json:"status"`
 }
 
 type SystemCourseNodeKnowledgePoint struct {
@@ -49,6 +56,13 @@ type SystemCourseNodeKnowledgePoint struct {
 	Code        *string `json:"code,omitempty"`
 	Description *string `json:"description,omitempty"`
 	Linked      bool    `json:"linked"`
+}
+
+type SystemCourseNodeAbilityPoint struct {
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Category    string  `json:"category"`
+	Description *string `json:"description,omitempty"`
 }
 
 type SystemCourseNodeResource struct {
@@ -60,33 +74,47 @@ type SystemCourseNodeResource struct {
 }
 
 type CreateCourseNodeRequest struct {
-	CourseID          string           `json:"courseId"`
-	ParentID          *string          `json:"parentId"`
-	Name              string           `json:"name"`
-	SortOrder         int              `json:"sortOrder"`
-	RefType           string           `json:"refType"`
-	SourceID          *string          `json:"sourceId"`
-	SourceName        *string          `json:"sourceName"`
-	TeachingGoals     *string          `json:"teachingGoals"`
-	Duration          *float64         `json:"duration"`
-	Difficulty        *int             `json:"difficulty"`
-	KnowledgePointIds domain.JSONSlice `json:"knowledgePointIds"`
-	ResourceIds       domain.JSONSlice `json:"resourceIds"`
-	Status            string           `json:"status"`
+	CourseID           string           `json:"courseId"`
+	ParentID           *string          `json:"parentId"`
+	Name               string           `json:"name"`
+	Code               *string          `json:"code"`
+	SortOrder          int              `json:"sortOrder"`
+	RefType            string           `json:"refType"`
+	SourceID           *string          `json:"sourceId"`
+	SourceName         *string          `json:"sourceName"`
+	TeachingGoals      *string          `json:"teachingGoals"`
+	DetailedDescription *string         `json:"detailedDescription"`
+	DescriptionPdf     *string          `json:"descriptionPdf"`
+	Background         *string          `json:"background"`
+	EstimatedHours     *float64         `json:"estimatedHours"`
+	Duration           *float64         `json:"duration"`
+	Difficulty         *int             `json:"difficulty"`
+	KnowledgePointIds  domain.JSONSlice `json:"knowledgePointIds"`
+	AbilityPointIds    domain.JSONSlice `json:"abilityPointIds"`
+	ResourceIds        domain.JSONSlice `json:"resourceIds"`
+	EvalData           domain.JSONMap   `json:"evalData"`
+	Status             string           `json:"status"`
 }
 
 type UpdateCourseNodeRequest struct {
-	Name              string           `json:"name"`
-	SortOrder         int              `json:"sortOrder"`
-	RefType           string           `json:"refType"`
-	SourceID          *string          `json:"sourceId"`
-	SourceName        *string          `json:"sourceName"`
-	TeachingGoals     *string          `json:"teachingGoals"`
-	Duration          *float64         `json:"duration"`
-	Difficulty        *int             `json:"difficulty"`
-	KnowledgePointIds domain.JSONSlice `json:"knowledgePointIds"`
-	ResourceIds       domain.JSONSlice `json:"resourceIds"`
-	Status            string           `json:"status"`
+	Name               string           `json:"name"`
+	Code               *string          `json:"code"`
+	SortOrder          int              `json:"sortOrder"`
+	RefType            string           `json:"refType"`
+	SourceID           *string          `json:"sourceId"`
+	SourceName         *string          `json:"sourceName"`
+	TeachingGoals      *string          `json:"teachingGoals"`
+	DetailedDescription *string         `json:"detailedDescription"`
+	DescriptionPdf     *string          `json:"descriptionPdf"`
+	Background         *string          `json:"background"`
+	EstimatedHours     *float64         `json:"estimatedHours"`
+	Duration           *float64         `json:"duration"`
+	Difficulty         *int             `json:"difficulty"`
+	KnowledgePointIds  domain.JSONSlice `json:"knowledgePointIds"`
+	AbilityPointIds    domain.JSONSlice `json:"abilityPointIds"`
+	ResourceIds        domain.JSONSlice `json:"resourceIds"`
+	EvalData           domain.JSONMap   `json:"evalData"`
+	Status             string           `json:"status"`
 }
 
 type ReorderCourseNodesRequest struct {
@@ -95,20 +123,27 @@ type ReorderCourseNodesRequest struct {
 }
 
 type courseNodeBase struct {
-	ID                string
-	CourseID          string
-	ParentID          *string
-	Name              string
-	SortOrder         int
-	RefType           string
-	SourceID          *string
-	SourceName        *string
-	TeachingGoals     *string
-	Duration          *float64
-	Difficulty        *int
-	KnowledgePointIds []string
-	ResourceIds       []string
-	Status            string
+	ID                 string
+	CourseID           string
+	ParentID           *string
+	Name               string
+	Code               *string
+	SortOrder          int
+	RefType            string
+	SourceID           *string
+	SourceName         *string
+	TeachingGoals      *string
+	DetailedDescription *string
+	DescriptionPdf     *string
+	Background         *string
+	EstimatedHours     *float64
+	Duration           *float64
+	Difficulty         *int
+	KnowledgePointIds  []string
+	AbilityPointIds    []string
+	ResourceIds        []string
+	EvalData           domain.JSONMap
+	Status             string
 }
 
 func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -153,8 +188,9 @@ func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT n.id, n.course_id, n.parent_id, n.name, n.sort_order, n.ref_type, n.source_id, n.source_name,
-			n.teaching_goals, n.duration, n.difficulty, n.knowledge_point_ids::text[], n.resource_ids::text[], n.status
+		SELECT n.id, n.course_id, n.parent_id, n.name, n.code, n.sort_order, n.ref_type, n.source_id, n.source_name,
+			n.teaching_goals, n.detailed_description, n.description_pdf, n.background, n.estimated_hours,
+			n.duration, n.difficulty, n.knowledge_point_ids::text[], n.ability_point_ids::text[], n.resource_ids::text[], n.eval_data, n.status
 		FROM system_course_nodes n
 		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY n.sort_order ASC, n.id ASC
@@ -227,14 +263,17 @@ func (h *CourseNodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(r.Context())
 
 	kpIDs := jsonSliceToUUIDSlice(req.KnowledgePointIds)
+	abIDs := jsonSliceToUUIDSlice(req.AbilityPointIds)
 	resIDs := jsonSliceToUUIDSlice(req.ResourceIds)
 
 	_, err = tx.Exec(r.Context(), `
-		INSERT INTO system_course_nodes (id, tenant_id, course_id, parent_id, name, sort_order, ref_type, source_id, source_name,
-			teaching_goals, duration, difficulty, knowledge_point_ids, resource_ids, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-	`, id, tenantID, req.CourseID, req.ParentID, req.Name, req.SortOrder, req.RefType, req.SourceID, req.SourceName,
-		req.TeachingGoals, req.Duration, req.Difficulty, kpIDs, resIDs, req.Status)
+		INSERT INTO system_course_nodes (id, tenant_id, course_id, parent_id, name, code, sort_order, ref_type, source_id, source_name,
+			teaching_goals, detailed_description, description_pdf, background, estimated_hours,
+			duration, difficulty, knowledge_point_ids, ability_point_ids, resource_ids, eval_data, status)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+	`, id, tenantID, req.CourseID, req.ParentID, req.Name, req.Code, req.SortOrder, req.RefType, req.SourceID, req.SourceName,
+		req.TeachingGoals, req.DetailedDescription, req.DescriptionPdf, req.Background, req.EstimatedHours,
+		req.Duration, req.Difficulty, kpIDs, abIDs, resIDs, req.EvalData, req.Status)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create course node")
 		return
@@ -242,6 +281,9 @@ func (h *CourseNodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	for _, kpID := range kpIDs {
 		_, _ = tx.Exec(r.Context(), `INSERT INTO node_knowledge_point_bindings (node_id, knowledge_point_id) VALUES ($1, $2)`, id, kpID)
+	}
+	for _, abID := range abIDs {
+		_, _ = tx.Exec(r.Context(), `INSERT INTO node_ability_point_bindings (node_id, ability_point_id) VALUES ($1, $2)`, id, abID)
 	}
 	for _, resID := range resIDs {
 		_, _ = tx.Exec(r.Context(), `INSERT INTO node_resource_bindings (node_id, resource_id) VALUES ($1, $2)`, id, resID)
@@ -279,9 +321,11 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	kpIDs := jsonSliceToUUIDSlice(req.KnowledgePointIds)
+	abIDs := jsonSliceToUUIDSlice(req.AbilityPointIds)
 	resIDs := jsonSliceToUUIDSlice(req.ResourceIds)
 	if req.RefType == "original" {
 		kpIDs = []string{}
+		abIDs = []string{}
 		resIDs = []string{}
 	}
 
@@ -293,21 +337,27 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(r.Context())
 
 	_, err = tx.Exec(r.Context(), `
-		UPDATE system_course_nodes SET name = $1, sort_order = $2, ref_type = $3, source_id = $4,
-			source_name = $5, teaching_goals = $6, duration = $7, difficulty = $8,
-			knowledge_point_ids = $9, resource_ids = $10, status = $11, updated_at = NOW()
-		WHERE id = $12
-	`, req.Name, req.SortOrder, req.RefType, req.SourceID, req.SourceName, req.TeachingGoals,
-		req.Duration, req.Difficulty, kpIDs, resIDs, req.Status, id)
+		UPDATE system_course_nodes SET name = $1, code = $2, sort_order = $3, ref_type = $4, source_id = $5,
+			source_name = $6, teaching_goals = $7, detailed_description = $8, description_pdf = $9,
+			background = $10, estimated_hours = $11, duration = $12, difficulty = $13,
+			knowledge_point_ids = $14, ability_point_ids = $15, resource_ids = $16, eval_data = $17, status = $18, updated_at = NOW()
+		WHERE id = $19
+	`, req.Name, req.Code, req.SortOrder, req.RefType, req.SourceID, req.SourceName, req.TeachingGoals,
+		req.DetailedDescription, req.DescriptionPdf, req.Background, req.EstimatedHours,
+		req.Duration, req.Difficulty, kpIDs, abIDs, resIDs, req.EvalData, req.Status, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to update course node")
 		return
 	}
 
 	_, _ = tx.Exec(r.Context(), `DELETE FROM node_knowledge_point_bindings WHERE node_id = $1`, id)
+	_, _ = tx.Exec(r.Context(), `DELETE FROM node_ability_point_bindings WHERE node_id = $1`, id)
 	_, _ = tx.Exec(r.Context(), `DELETE FROM node_resource_bindings WHERE node_id = $1`, id)
 	for _, kpID := range kpIDs {
 		_, _ = tx.Exec(r.Context(), `INSERT INTO node_knowledge_point_bindings (node_id, knowledge_point_id) VALUES ($1, $2)`, id, kpID)
+	}
+	for _, abID := range abIDs {
+		_, _ = tx.Exec(r.Context(), `INSERT INTO node_ability_point_bindings (node_id, ability_point_id) VALUES ($1, $2)`, id, abID)
 	}
 	for _, resID := range resIDs {
 		_, _ = tx.Exec(r.Context(), `INSERT INTO node_resource_bindings (node_id, resource_id) VALUES ($1, $2)`, id, resID)
@@ -387,12 +437,14 @@ func (h *CourseNodeHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 func (h *CourseNodeHandler) fetchCourseNode(ctx context.Context, id string) (*SystemCourseNodeResponse, error) {
 	var base courseNodeBase
 	err := h.DB.QueryRow(ctx, `
-		SELECT n.id, n.course_id, n.parent_id, n.name, n.sort_order, n.ref_type, n.source_id, n.source_name,
-			n.teaching_goals, n.duration, n.difficulty, n.knowledge_point_ids::text[], n.resource_ids::text[], n.status
+		SELECT n.id, n.course_id, n.parent_id, n.name, n.code, n.sort_order, n.ref_type, n.source_id, n.source_name,
+			n.teaching_goals, n.detailed_description, n.description_pdf, n.background, n.estimated_hours,
+			n.duration, n.difficulty, n.knowledge_point_ids::text[], n.ability_point_ids::text[], n.resource_ids::text[], n.eval_data, n.status
 		FROM system_course_nodes n WHERE n.id = $1
 	`, id).Scan(
-		&base.ID, &base.CourseID, &base.ParentID, &base.Name, &base.SortOrder, &base.RefType, &base.SourceID, &base.SourceName,
-		&base.TeachingGoals, &base.Duration, &base.Difficulty, &base.KnowledgePointIds, &base.ResourceIds, &base.Status,
+		&base.ID, &base.CourseID, &base.ParentID, &base.Name, &base.Code, &base.SortOrder, &base.RefType, &base.SourceID, &base.SourceName,
+		&base.TeachingGoals, &base.DetailedDescription, &base.DescriptionPdf, &base.Background, &base.EstimatedHours,
+		&base.Duration, &base.Difficulty, &base.KnowledgePointIds, &base.AbilityPointIds, &base.ResourceIds, &base.EvalData, &base.Status,
 	)
 	if err != nil {
 		return nil, err
@@ -409,8 +461,9 @@ func (h *CourseNodeHandler) scanCourseNodeBaseRows(rows pgx.Rows) ([]courseNodeB
 	for rows.Next() {
 		var n courseNodeBase
 		if err := rows.Scan(
-			&n.ID, &n.CourseID, &n.ParentID, &n.Name, &n.SortOrder, &n.RefType, &n.SourceID, &n.SourceName,
-			&n.TeachingGoals, &n.Duration, &n.Difficulty, &n.KnowledgePointIds, &n.ResourceIds, &n.Status,
+			&n.ID, &n.CourseID, &n.ParentID, &n.Name, &n.Code, &n.SortOrder, &n.RefType, &n.SourceID, &n.SourceName,
+			&n.TeachingGoals, &n.DetailedDescription, &n.DescriptionPdf, &n.Background, &n.EstimatedHours,
+			&n.Duration, &n.Difficulty, &n.KnowledgePointIds, &n.AbilityPointIds, &n.ResourceIds, &n.EvalData, &n.Status,
 		); err != nil {
 			return nil, err
 		}
@@ -425,18 +478,24 @@ func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []cours
 	nodeIDs := make([]string, 0, len(bases))
 	for i, b := range bases {
 		items[i] = SystemCourseNodeResponse{
-			ID:            b.ID,
-			CourseID:      b.CourseID,
-			ParentID:      b.ParentID,
-			Name:          b.Name,
-			Order:         b.SortOrder,
-			Type:          b.RefType,
-			SourceID:      b.SourceID,
-			SourceName:    b.SourceName,
-			TeachingGoals: b.TeachingGoals,
-			Duration:      b.Duration,
-			Difficulty:    b.Difficulty,
-			Status:        b.Status,
+			ID:                 b.ID,
+			CourseID:           b.CourseID,
+			ParentID:           b.ParentID,
+			Name:               b.Name,
+			Code:               b.Code,
+			Order:              b.SortOrder,
+			Type:               b.RefType,
+			SourceID:           b.SourceID,
+			SourceName:         b.SourceName,
+			TeachingGoals:      b.TeachingGoals,
+			DetailedDescription: b.DetailedDescription,
+			DescriptionPdf:     b.DescriptionPdf,
+			Background:         b.Background,
+			EstimatedHours:     b.EstimatedHours,
+			Duration:           b.Duration,
+			Difficulty:         b.Difficulty,
+			EvalData:           b.EvalData,
+			Status:             b.Status,
 		}
 		nodeIndex[b.ID] = i
 		nodeIDs = append(nodeIDs, b.ID)
@@ -448,10 +507,14 @@ func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []cours
 
 	// knowledge points
 	kpIDSet := make(map[string]bool)
+	abIDSet := make(map[string]bool)
 	resIDSet := make(map[string]bool)
 	for _, b := range bases {
 		for _, id := range b.KnowledgePointIds {
 			kpIDSet[id] = true
+		}
+		for _, id := range b.AbilityPointIds {
+			abIDSet[id] = true
 		}
 		for _, id := range b.ResourceIds {
 			resIDSet[id] = true
@@ -461,6 +524,10 @@ func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []cours
 	kpIDs := make([]string, 0, len(kpIDSet))
 	for id := range kpIDSet {
 		kpIDs = append(kpIDs, id)
+	}
+	abIDs := make([]string, 0, len(abIDSet))
+	for id := range abIDSet {
+		abIDs = append(abIDs, id)
 	}
 	resIDs := make([]string, 0, len(resIDSet))
 	for id := range resIDSet {
@@ -507,10 +574,35 @@ func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []cours
 		}
 	}
 
+	abMap := make(map[string]SystemCourseNodeAbilityPoint)
+	if len(abIDs) > 0 {
+		if rows, err := h.DB.Query(ctx, `
+			SELECT ap.id, ap.name, ap.category, ap.description
+			FROM ability_points ap
+			WHERE ap.id = ANY($1::uuid[])
+		`, abIDs); err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var ap SystemCourseNodeAbilityPoint
+				if err := rows.Scan(&ap.ID, &ap.Name, &ap.Category, &ap.Description); err != nil {
+					return nil, err
+				}
+				abMap[ap.ID] = ap
+			}
+		} else {
+			return nil, err
+		}
+	}
+
 	for i, b := range bases {
 		for _, id := range b.KnowledgePointIds {
 			if kp, ok := kpMap[id]; ok {
 				items[i].KnowledgePoints = append(items[i].KnowledgePoints, kp)
+			}
+		}
+		for _, id := range b.AbilityPointIds {
+			if ap, ok := abMap[id]; ok {
+				items[i].AbilityPoints = append(items[i].AbilityPoints, ap)
 			}
 		}
 		for _, id := range b.ResourceIds {
