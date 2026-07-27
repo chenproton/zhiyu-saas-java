@@ -54,6 +54,15 @@ func (h *CertGradeHandler) ListGrades(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var positionTenantID string
+	if err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM career_positions WHERE id = $1`, positionID).Scan(&positionTenantID); err != nil {
+		respondError(w, http.StatusNotFound, "position not found")
+		return
+	}
+	if !verifyTenantOwnership(w, r, positionTenantID) {
+		return
+	}
+
 	gradeRows, err := h.DB.Query(r.Context(), `
 		SELECT id, position_id, grade_year, total_ability_points, avg_achievement_rate, last_updated
 		FROM certification_grade_data

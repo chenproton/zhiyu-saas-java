@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"unicode"
@@ -50,6 +51,9 @@ func respondError(w http.ResponseWriter, status int, message string) {
 	respondJSON(w, status, map[string]string{"error": message})
 }
 
+// MaxPageSize limits the number of items per page to prevent unbounded queries.
+const MaxPageSize = 200
+
 func parseInt(s string, defaultVal int) (int, error) {
 	if s == "" {
 		return defaultVal, nil
@@ -59,6 +63,31 @@ func parseInt(s string, defaultVal int) (int, error) {
 		return defaultVal, err
 	}
 	return v, nil
+}
+
+func parsePageLimit(s string, defaultVal int) (int, error) {
+	v, err := parseInt(s, defaultVal)
+	if err != nil {
+		return defaultVal, err
+	}
+	if v > MaxPageSize {
+		v = MaxPageSize
+	}
+	if v < 1 {
+		v = defaultVal
+	}
+	return v, nil
+}
+
+func executeCountQuery(ctx context.Context, db interface {
+	QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row
+}, query string, args []interface{}) int {
+	var total int
+	if err := db.QueryRow(ctx, query, args...).Scan(&total); err != nil {
+		slog.Error("count query failed", "error", err, "query", query)
+		return 0
+	}
+	return total
 }
 
 func itoa(i int) string {

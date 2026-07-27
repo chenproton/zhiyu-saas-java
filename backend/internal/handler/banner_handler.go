@@ -17,6 +17,7 @@ type BannerHandler struct {
 
 type BannerListResponse struct {
 	Items []domain.Banner `json:"items"`
+	Total int             `json:"total"`
 }
 
 type CreateBannerRequest struct {
@@ -28,9 +29,24 @@ type CreateBannerRequest struct {
 }
 
 func (h *BannerHandler) List(w http.ResponseWriter, r *http.Request) {
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+
+	limit := 50
+	offset := 0
+	if v, err := parseInt(limitStr, 50); err == nil && v > 0 {
+		limit = v
+	}
+	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
+		offset = v
+	}
+
+	var total int
+	_ = h.DB.QueryRow(r.Context(), `SELECT COUNT(*) FROM banners`).Scan(&total)
+
 	rows, err := h.DB.Query(r.Context(), `
-		SELECT id, title, image, link, sort, enabled FROM banners ORDER BY sort, id
-	`)
+		SELECT id, title, image, link, sort, enabled FROM banners ORDER BY sort, id LIMIT $1 OFFSET $2
+	`, limit, offset)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to list banners")
 		return
@@ -47,7 +63,7 @@ func (h *BannerHandler) List(w http.ResponseWriter, r *http.Request) {
 		items = append(items, b)
 	}
 
-	respondJSON(w, http.StatusOK, BannerListResponse{Items: items})
+	respondJSON(w, http.StatusOK, BannerListResponse{Items: items, Total: total})
 }
 
 func (h *BannerHandler) Create(w http.ResponseWriter, r *http.Request) {

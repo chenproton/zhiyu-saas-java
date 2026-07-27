@@ -24,22 +24,33 @@ type AuthHandler struct {
 	DB         *pgxpool.Pool
 	JWTSecret  string
 	usedNonces sync.Map // map[string]time.Time
+	stopCh     chan struct{}
 }
 
 func NewAuthHandler(db *pgxpool.Pool, jwtSecret string) *AuthHandler {
-	h := &AuthHandler{DB: db, JWTSecret: jwtSecret}
+	h := &AuthHandler{DB: db, JWTSecret: jwtSecret, stopCh: make(chan struct{})}
 	go func() {
 		ticker := time.NewTicker(5 * time.Minute)
-		for range ticker.C {
-			h.usedNonces.Range(func(key, value interface{}) bool {
-				if t, ok := value.(time.Time); ok && time.Since(t) > 10*time.Minute {
-					h.usedNonces.Delete(key)
-				}
-				return true
-			})
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				h.usedNonces.Range(func(key, value interface{}) bool {
+					if t, ok := value.(time.Time); ok && time.Since(t) > 10*time.Minute {
+						h.usedNonces.Delete(key)
+					}
+					return true
+				})
+			case <-h.stopCh:
+				return
+			}
 		}
 	}()
 	return h
+}
+
+func (h *AuthHandler) Shutdown() {
+	close(h.stopCh)
 }
 
 type LoginRequest struct {
@@ -295,11 +306,18 @@ func (h *AuthHandler) issueTokenForUser(w http.ResponseWriter, r *http.Request, 
 }
 
 // DebugToken 生成指定用户的 JWT，用于开发/调试阶段模拟登录。
-// 仅当环境变量 ENABLE_DEBUG_AUTH=true 时可用，生产环境务必保持关闭。
+// 需同时满足：ENABLE_DEBUG_AUTH=true + 请求头 X-Debug-Token 匹配 DEBUG_AUTH_TOKEN 环境变量值。
+// 生产环境务必保持 ENABLE_DEBUG_AUTH 未设置或为 false。
 func (h *AuthHandler) DebugToken(w http.ResponseWriter, r *http.Request) {
 	if os.Getenv("ENABLE_DEBUG_AUTH") != "true" {
 		respondError(w, http.StatusNotFound, "not found")
 		return
+	}
+	if expected := os.Getenv("DEBUG_AUTH_TOKEN"); expected != "" {
+		if r.Header.Get("X-Debug-Token") != expected {
+			respondError(w, http.StatusForbidden, "invalid debug token")
+			return
+		}
 	}
 
 	var req DebugTokenRequest

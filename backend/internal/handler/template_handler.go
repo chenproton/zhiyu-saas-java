@@ -56,7 +56,10 @@ func writeExcel(w http.ResponseWriter, f *excelize.File, filename string) {
 }
 
 func (h *TemplateHandler) queryDicts(ctx context.Context, tenantID string) (industries [][2]string, majors [][2]string, certs [][3]string, positions [][2]string, knowledgePoints []string, abilityPoints [][2]string, resources [][2]string) {
-	rows, _ := h.DB.Query(ctx, `SELECT name, COALESCE(code,'') FROM industries WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, err := h.DB.Query(ctx, `SELECT name, COALESCE(code,'') FROM industries WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	if err != nil {
+		return
+	}
 	for rows.Next() {
 		var n, c string
 		rows.Scan(&n, &c)
@@ -64,7 +67,10 @@ func (h *TemplateHandler) queryDicts(ctx context.Context, tenantID string) (indu
 	}
 	rows.Close()
 
-	rows, _ = h.DB.Query(ctx, `SELECT name, COALESCE(code,'') FROM majors WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, err = h.DB.Query(ctx, `SELECT name, COALESCE(code,'') FROM majors WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	if err != nil {
+		return
+	}
 	for rows.Next() {
 		var n, c string
 		rows.Scan(&n, &c)
@@ -72,7 +78,10 @@ func (h *TemplateHandler) queryDicts(ctx context.Context, tenantID string) (indu
 	}
 	rows.Close()
 
-	rows, _ = h.DB.Query(ctx, `SELECT name, COALESCE(url,''), COALESCE(description,'') FROM certificate_library WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, err = h.DB.Query(ctx, `SELECT name, COALESCE(url,''), COALESCE(description,'') FROM certificate_library WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	if err != nil {
+		return
+	}
 	for rows.Next() {
 		var n, u, d string
 		rows.Scan(&n, &u, &d)
@@ -80,7 +89,10 @@ func (h *TemplateHandler) queryDicts(ctx context.Context, tenantID string) (indu
 	}
 	rows.Close()
 
-	rows, _ = h.DB.Query(ctx, `SELECT name, COALESCE(short_name,'') FROM career_positions WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, err = h.DB.Query(ctx, `SELECT name, COALESCE(short_name,'') FROM career_positions WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	if err != nil {
+		return
+	}
 	for rows.Next() {
 		var n, s string
 		rows.Scan(&n, &s)
@@ -88,7 +100,10 @@ func (h *TemplateHandler) queryDicts(ctx context.Context, tenantID string) (indu
 	}
 	rows.Close()
 
-	rows, _ = h.DB.Query(ctx, `SELECT name FROM knowledge_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, err = h.DB.Query(ctx, `SELECT name FROM knowledge_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	if err != nil {
+		return
+	}
 	for rows.Next() {
 		var n string
 		rows.Scan(&n)
@@ -96,7 +111,10 @@ func (h *TemplateHandler) queryDicts(ctx context.Context, tenantID string) (indu
 	}
 	rows.Close()
 
-	rows, _ = h.DB.Query(ctx, `SELECT name, COALESCE(category::text,'') FROM ability_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, err = h.DB.Query(ctx, `SELECT name, COALESCE(category::text,'') FROM ability_points WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	if err != nil {
+		return
+	}
 	for rows.Next() {
 		var n, c string
 		rows.Scan(&n, &c)
@@ -104,7 +122,10 @@ func (h *TemplateHandler) queryDicts(ctx context.Context, tenantID string) (indu
 	}
 	rows.Close()
 
-	rows, _ = h.DB.Query(ctx, `SELECT name, COALESCE(resource_type::text,'') FROM resource_library WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	rows, err = h.DB.Query(ctx, `SELECT name, COALESCE(resource_type::text,'') FROM resource_library WHERE tenant_id=$1 ORDER BY name`, tenantID)
+	if err != nil {
+		return
+	}
 	for rows.Next() {
 		var n, t string
 		rows.Scan(&n, &t)

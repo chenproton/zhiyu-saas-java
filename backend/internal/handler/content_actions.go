@@ -141,22 +141,13 @@ func (c contentActions) review(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var current domain.ContentStatus
-	if err := c.db.QueryRow(r.Context(), `SELECT status FROM `+c.table+` WHERE id = $1`, id).Scan(&current); err != nil {
-		if err == pgx.ErrNoRows {
-			respondError(w, http.StatusNotFound, c.entityName+" not found")
-		} else {
-			respondError(w, http.StatusInternalServerError, "failed to fetch current status")
-		}
-		return
-	}
-	if current != domain.StatusPending {
-		respondError(w, http.StatusBadRequest, "can only review pending "+c.entityName)
-		return
-	}
-
-	if _, err := c.db.Exec(r.Context(), `UPDATE `+c.table+` SET status = $1, updated_at = NOW() WHERE id = $2`, status, id); err != nil {
+	tag, err := c.db.Exec(r.Context(), `UPDATE `+c.table+` SET status = $1, updated_at = NOW() WHERE id = $2 AND status = $3`, status, id, domain.StatusPending)
+	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to review "+c.entityName)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		respondError(w, http.StatusBadRequest, c.entityName+" not found or not in pending status")
 		return
 	}
 

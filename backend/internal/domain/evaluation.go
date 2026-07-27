@@ -99,6 +99,7 @@ type Exam struct {
 // ExamUsage represents a usage record of an exam.
 type ExamUsage struct {
 	ID          string    `json:"id"`
+	TenantID    string    `json:"-"`
 	ExamID      string    `json:"examId"`
 	Name        string    `json:"name"`
 	Description *string   `json:"description,omitempty"`

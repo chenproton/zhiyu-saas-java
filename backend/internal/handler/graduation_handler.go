@@ -296,11 +296,16 @@ func (h *GraduationHandler) ApplyTopic(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE graduation_project_topics SET applied_count = applied_count + 1 WHERE id = $1
+	tag, err := h.DB.Exec(r.Context(), `
+		UPDATE graduation_project_topics SET applied_count = applied_count + 1 
+		WHERE id = $1 AND applied_count < capacity
 	`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to apply topic")
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		respondError(w, http.StatusBadRequest, "topic not found or already full")
 		return
 	}
 

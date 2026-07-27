@@ -20,6 +20,13 @@ func New(databaseURL string) (*DB, error) {
 	config.MinConns = 4
 	config.MaxConns = 40
 
+	if config.ConnConfig.RuntimeParams == nil {
+		config.ConnConfig.RuntimeParams = make(map[string]string)
+	}
+	if _, ok := config.ConnConfig.RuntimeParams["statement_timeout"]; !ok {
+		config.ConnConfig.RuntimeParams["statement_timeout"] = "15000"
+	}
+
 	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
 		return nil, fmt.Errorf("create pool: %w", err)

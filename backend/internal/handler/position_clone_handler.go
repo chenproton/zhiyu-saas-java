@@ -188,6 +188,7 @@ func (h *PositionCloneHandler) clonePositionMajors(ctx context.Context, tx pgx.T
 		slog.Error("[ClonePosition] query majors failed", "error", err)
 		return err
 	}
+	defer rows.Close()
 
 	var majors []string
 	for rows.Next() {
@@ -197,7 +198,6 @@ func (h *PositionCloneHandler) clonePositionMajors(ctx context.Context, tx pgx.T
 		}
 		majors = append(majors, majorID)
 	}
-	rows.Close()
 	if err := rows.Err(); err != nil {
 		return err
 	}
@@ -230,6 +230,7 @@ func (h *PositionCloneHandler) clonePositionResponsibilities(ctx context.Context
 		slog.Error("[ClonePosition] query responsibilities failed", "error", err)
 		return err
 	}
+	defer r.Close()
 	for r.Next() {
 		var rr respRow
 		if err := r.Scan(&rr.OldID, &rr.Name, &rr.Description, &rr.SortOrder); err != nil {
@@ -237,7 +238,6 @@ func (h *PositionCloneHandler) clonePositionResponsibilities(ctx context.Context
 		}
 		rows2 = append(rows2, rr)
 	}
-	r.Close()
 	if err := r.Err(); err != nil {
 		return err
 	}
@@ -265,6 +265,7 @@ func (h *PositionCloneHandler) clonePositionAbilityBindings(ctx context.Context,
 		slog.Error("[ClonePosition] query ability bindings failed", "error", err)
 		return err
 	}
+	defer rows.Close()
 
 	type bindingRow struct {
 		oldBindingID, oldRespID, abilityPointID, source string
@@ -282,7 +283,6 @@ func (h *PositionCloneHandler) clonePositionAbilityBindings(ctx context.Context,
 		}
 		bindings = append(bindings, br)
 	}
-	rows.Close()
 	if err := rows.Err(); err != nil {
 		return err
 	}
@@ -319,6 +319,7 @@ func (h *PositionCloneHandler) cloneAbilityDomains(ctx context.Context, tx pgx.T
 		slog.Error("[ClonePosition] query ability domains failed", "error", err)
 		return err
 	}
+	defer rows.Close()
 
 	type domainRow struct {
 		name          string
@@ -334,7 +335,6 @@ func (h *PositionCloneHandler) cloneAbilityDomains(ctx context.Context, tx pgx.T
 		}
 		domains = append(domains, dr)
 	}
-	rows.Close()
 	if err := rows.Err(); err != nil {
 		return err
 	}
@@ -366,6 +366,7 @@ func (h *PositionCloneHandler) clonePositionCertificates(ctx context.Context, tx
 		slog.Error("[ClonePosition] query certificates failed", "error", err)
 		return err
 	}
+	defer rows.Close()
 
 	var libIDs []string
 	for rows.Next() {
@@ -375,7 +376,6 @@ func (h *PositionCloneHandler) clonePositionCertificates(ctx context.Context, tx
 		}
 		libIDs = append(libIDs, libID)
 	}
-	rows.Close()
 	if err := rows.Err(); err != nil {
 		return err
 	}

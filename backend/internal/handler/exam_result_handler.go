@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"sort"
 	"strings"
 	"time"
 
@@ -43,19 +42,34 @@ func (h *ExamResultHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items, err := h.listByUsage(r.Context(), usageID)
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+	limit := 50
+	offset := 0
+	if v, err := parseInt(limitStr, 50); err == nil && v > 0 {
+		limit = v
+	}
+	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
+		offset = v
+	}
+
+	total, err := h.countByUsage(r.Context(), usageID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to count exam results")
+		return
+	}
+
+	items, err := h.listByUsage(r.Context(), usageID, limit, offset)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to list exam results")
 		return
 	}
 
-	// compute rank by score desc
-	sort.SliceStable(items, func(i, j int) bool { return items[i].Score > items[j].Score })
 	for i := range items {
 		items[i].Score = roundScore(items[i].Score)
 	}
 
-	respondJSON(w, http.StatusOK, ExamResultListResponse{Items: items, Total: len(items)})
+	respondJSON(w, http.StatusOK, ExamResultListResponse{Items: items, Total: total})
 }
 
 func (h *ExamResultHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -209,14 +223,21 @@ func (h *ExamResultHandler) submit(ctx context.Context, tenantID, userID, usageI
 	}, nil
 }
 
-func (h *ExamResultHandler) listByUsage(ctx context.Context, usageID string) ([]domain.ExamResult, error) {
+func (h *ExamResultHandler) countByUsage(ctx context.Context, usageID string) (int, error) {
+	var total int
+	err := h.DB.QueryRow(ctx, `SELECT COUNT(*) FROM exam_results WHERE exam_usage_id = $1`, usageID).Scan(&total)
+	return total, err
+}
+
+func (h *ExamResultHandler) listByUsage(ctx context.Context, usageID string, limit, offset int) ([]domain.ExamResult, error) {
 	rows, err := h.DB.Query(ctx, `
 		SELECT er.id, er.exam_usage_id, er.user_id, er.student_name, er.class_name, er.grade, er.major_id, COALESCE(m.name, '') AS major_name, er.score, er.total_score, er.is_pass, er.answers, er.submit_time, er.created_at
 		FROM exam_results er
 		LEFT JOIN majors m ON m.id = er.major_id
 		WHERE er.exam_usage_id = $1
 		ORDER BY er.score DESC, er.submit_time ASC
-	`, usageID)
+		LIMIT $2 OFFSET $3
+	`, usageID, limit, offset)
 	if err != nil {
 		return nil, err
 	}

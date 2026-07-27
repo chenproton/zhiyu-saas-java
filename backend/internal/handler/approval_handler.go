@@ -207,6 +207,11 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !h.isUserApproverForStep(&record, user.UserID) {
+		respondError(w, http.StatusForbidden, "not authorized to review this step")
+		return
+	}
+
 	entry := domain.JSONMap{
 		"action":       req.Action,
 		"remark":       req.Remark,
@@ -219,11 +224,16 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 
 	if req.Action == string(domain.ApprovalStatusRejected) {
 		record.Status = string(domain.ApprovalStatusRejected)
-		_, err = h.DB.Exec(r.Context(), `
-			UPDATE approval_records SET status = $1, history = $2, updated_at = NOW() WHERE id = $3
-		`, record.Status, record.History, id)
+		tag, err := h.DB.Exec(r.Context(), `
+			UPDATE approval_records SET status = $1, history = $2, updated_at = NOW()
+			WHERE id = $3 AND status = $4
+		`, record.Status, record.History, id, string(domain.ApprovalStatusPending))
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, "failed to review approval record")
+			return
+		}
+		if tag.RowsAffected() == 0 {
+			respondError(w, http.StatusBadRequest, "approval record is not pending")
 			return
 		}
 		h.syncEntityStatusQuiet(r.Context(), record.TargetType, record.TargetID, string(domain.ApprovalStatusRejected))
@@ -244,8 +254,9 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 	stepComplete := h.isStepComplete(workflow, &record, stepIdx)
 	if !stepComplete {
 		_, err = h.DB.Exec(r.Context(), `
-			UPDATE approval_records SET history = $1, updated_at = NOW() WHERE id = $2
-		`, record.History, id)
+			UPDATE approval_records SET history = $1, updated_at = NOW()
+			WHERE id = $2 AND status = $3
+		`, record.History, id, string(domain.ApprovalStatusPending))
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, "failed to update approval record")
 			return
@@ -255,24 +266,52 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	newStatus := record.Status
 	if h.isLastStep(workflow, stepIdx) {
-		record.Status = string(domain.ApprovalStatusApproved)
-		record.CurrentStepIdx = stepIdx + 1
-		h.syncEntityStatusQuiet(r.Context(), record.TargetType, record.TargetID, string(domain.ApprovalStatusApproved))
-	} else {
-		record.CurrentStepIdx = stepIdx + 1
+		newStatus = string(domain.ApprovalStatusApproved)
 	}
+	newStepIdx := stepIdx + 1
 
-	_, err = h.DB.Exec(r.Context(), `
-		UPDATE approval_records SET status = $1, current_step_idx = $2, history = $3, updated_at = NOW() WHERE id = $4
-	`, record.Status, record.CurrentStepIdx, record.History, id)
+	tag, err := h.DB.Exec(r.Context(), `
+		UPDATE approval_records SET status = $1, current_step_idx = $2, history = $3, updated_at = NOW()
+		WHERE id = $4 AND status = $5
+	`, newStatus, newStepIdx, record.History, id, string(domain.ApprovalStatusPending))
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to review approval record")
 		return
 	}
+	if tag.RowsAffected() == 0 {
+		respondError(w, http.StatusBadRequest, "approval record is not pending")
+		return
+	}
+
+	if newStatus == string(domain.ApprovalStatusApproved) {
+		h.syncEntityStatusQuiet(r.Context(), record.TargetType, record.TargetID, string(domain.ApprovalStatusApproved))
+	}
 
 	record, _ = h.fetchApproval(r.Context(), id)
 	respondJSON(w, http.StatusOK, record)
+}
+
+func (h *ApprovalHandler) isUserApproverForStep(record *domain.ApprovalRecord, userID string) bool {
+	if record.WorkflowID == nil {
+		return true
+	}
+	wf, err := h.fetchWorkflow(context.Background(), *record.WorkflowID)
+	if err != nil || len(wf.Steps) == 0 || record.CurrentStepIdx >= len(wf.Steps) {
+		return true
+	}
+	stepMap, ok := wf.Steps[record.CurrentStepIdx].(map[string]interface{})
+	if !ok {
+		return true
+	}
+	approverIdsRaw, _ := stepMap["approverIds"].([]interface{})
+	for _, a := range approverIdsRaw {
+		if id, _ := a.(string); id == userID {
+			return true
+		}
+	}
+	return false
 }
 
 func (h *ApprovalHandler) isStepComplete(workflow *domain.Workflow, record *domain.ApprovalRecord, stepIdx int) bool {

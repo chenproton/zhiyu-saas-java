@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/zhiyu-saas/backend/internal/middleware"
 )
 
 type LandingHandler struct {
@@ -31,7 +32,19 @@ type LandingExamListResponse struct {
 }
 
 func (h *LandingHandler) ListExams(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "permission denied")
+		return
+	}
+	effectiveTenantID, ok := tenantFilter(claims)
+	if !ok {
+		respondError(w, http.StatusForbidden, "missing tenant")
+		return
+	}
+
 	now := time.Now()
+	args := []interface{}{effectiveTenantID}
 
 	query := `
 		SELECT e.id, e.name, COALESCE(e.description, ''), e.duration,
@@ -48,11 +61,11 @@ func (h *LandingHandler) ListExams(w http.ResponseWriter, r *http.Request) {
 			LIMIT 1
 		) org ON TRUE
 		LEFT JOIN organizations parent_org ON parent_org.id = org.parent_id
-		WHERE e.status = 'published' AND e.is_temp = FALSE
+		WHERE e.status = 'published' AND e.is_temp = FALSE AND e.tenant_id = $1
 		ORDER BY eu.start_time ASC NULLS LAST
 		LIMIT 100`
 
-	rows, err := h.DB.Query(r.Context(), query)
+	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to list landing exams")
 		return

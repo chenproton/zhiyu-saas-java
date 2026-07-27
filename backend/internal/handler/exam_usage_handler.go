@@ -93,7 +93,7 @@ func (h *ExamUsageHandler) List(w http.ResponseWriter, r *http.Request) {
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id, created_at, updated_at
+		SELECT id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id, created_at, updated_at
 		FROM exam_usages
 		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY created_at DESC
@@ -117,16 +117,13 @@ func (h *ExamUsageHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ExamUsageHandler) Get(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-
 	id := chi.URLParam(r, "id")
 	usage, err := h.fetchExamUsage(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "exam usage not found")
+		return
+	}
+	if !verifyTenantOwnership(w, r, usage.TenantID) {
 		return
 	}
 	respondJSON(w, http.StatusOK, usage)
@@ -166,15 +163,13 @@ func (h *ExamUsageHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ExamUsageHandler) Update(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+	id := chi.URLParam(r, "id")
+	usage, err := h.fetchExamUsage(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "exam usage not found")
 		return
 	}
-
-	id := chi.URLParam(r, "id")
-	if _, err := h.fetchExamUsage(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "exam usage not found")
+	if !verifyTenantOwnership(w, r, usage.TenantID) {
 		return
 	}
 
@@ -188,7 +183,7 @@ func (h *ExamUsageHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
+	_, err = h.DB.Exec(r.Context(), `
 		UPDATE exam_usages SET name = $1, description = $2, start_time = $3, end_time = $4,
 			duration = $5, target_type = $6, target_ids = $7, updated_at = NOW()
 		WHERE id = $8
@@ -198,24 +193,22 @@ func (h *ExamUsageHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	usage, _ := h.fetchExamUsage(r.Context(), id)
+	usage, _ = h.fetchExamUsage(r.Context(), id)
 	respondJSON(w, http.StatusOK, usage)
 }
 
 func (h *ExamUsageHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
-		return
-	}
-
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchExamUsage(r.Context(), id); err != nil {
+	usage, err := h.fetchExamUsage(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "exam usage not found")
 		return
 	}
+	if !verifyTenantOwnership(w, r, usage.TenantID) {
+		return
+	}
 
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM exam_usages WHERE id = $1`, id)
+	_, err = h.DB.Exec(r.Context(), `DELETE FROM exam_usages WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete exam usage")
 		return
@@ -224,36 +217,42 @@ func (h *ExamUsageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ExamUsageHandler) Start(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+	id := chi.URLParam(r, "id")
+	usage, err := h.fetchExamUsage(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "exam usage not found")
+		return
+	}
+	if !verifyTenantOwnership(w, r, usage.TenantID) {
 		return
 	}
 
-	id := chi.URLParam(r, "id")
-	_, err := h.DB.Exec(r.Context(), `UPDATE exam_usages SET status = 'in_progress', updated_at = NOW() WHERE id = $1`, id)
+	_, err = h.DB.Exec(r.Context(), `UPDATE exam_usages SET status = 'in_progress', updated_at = NOW() WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to start exam usage")
 		return
 	}
-	usage, _ := h.fetchExamUsage(r.Context(), id)
+	usage, _ = h.fetchExamUsage(r.Context(), id)
 	respondJSON(w, http.StatusOK, usage)
 }
 
 func (h *ExamUsageHandler) Finish(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+	id := chi.URLParam(r, "id")
+	usage, err := h.fetchExamUsage(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "exam usage not found")
+		return
+	}
+	if !verifyTenantOwnership(w, r, usage.TenantID) {
 		return
 	}
 
-	id := chi.URLParam(r, "id")
-	_, err := h.DB.Exec(r.Context(), `UPDATE exam_usages SET status = 'finished', updated_at = NOW() WHERE id = $1`, id)
+	_, err = h.DB.Exec(r.Context(), `UPDATE exam_usages SET status = 'finished', updated_at = NOW() WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to finish exam usage")
 		return
 	}
-	usage, _ := h.fetchExamUsage(r.Context(), id)
+	usage, _ = h.fetchExamUsage(r.Context(), id)
 	respondJSON(w, http.StatusOK, usage)
 }
 
@@ -264,10 +263,10 @@ func (h *ExamUsageHandler) fetchExamUsage(ctx context.Context, id string) (domai
 	var duration *int
 	var creatorID *string
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id, created_at, updated_at
+		SELECT id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id, created_at, updated_at
 		FROM exam_usages WHERE id = $1
 	`, id).Scan(
-		&u.ID, &u.ExamID, &u.Name, &description, &startTime, &endTime, &duration, &targetType, &u.TargetIDs, &u.Status, &creatorID, &u.CreatedAt, &u.UpdatedAt,
+		&u.ID, &u.TenantID, &u.ExamID, &u.Name, &description, &startTime, &endTime, &duration, &targetType, &u.TargetIDs, &u.Status, &creatorID, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		return u, err
@@ -296,7 +295,7 @@ func (h *ExamUsageHandler) scanExamUsageRows(rows pgx.Rows) ([]domain.ExamUsage,
 		var duration *int
 		var creatorID *string
 		if err := rows.Scan(
-			&u.ID, &u.ExamID, &u.Name, &description, &startTime, &endTime, &duration, &targetType, &u.TargetIDs, &u.Status, &creatorID, &u.CreatedAt, &u.UpdatedAt,
+			&u.ID, &u.TenantID, &u.ExamID, &u.Name, &description, &startTime, &endTime, &duration, &targetType, &u.TargetIDs, &u.Status, &creatorID, &u.CreatedAt, &u.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
