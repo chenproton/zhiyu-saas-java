@@ -528,4 +528,29 @@ func (h *CourseHandler) replaceCourseBindings(ctx context.Context, courseID, ten
 			ON CONFLICT (course_id, resource_id) DO NOTHING
 		`, uuid.NewString(), tenantID, courseID, resID)
 	}
+
+	h.syncKnowledgePointGranularLessons(ctx, tenantID, courseID, kpIDs)
+}
+
+// syncKnowledgePointGranularLessons 维护知识点对当前颗粒课的双向引用：
+// 将 courseID 加入所有关联知识点的 granular_lesson_ids，并从已移除关联的知识点中删除。
+func (h *CourseHandler) syncKnowledgePointGranularLessons(ctx context.Context, tenantID, courseID string, kpIDs []string) {
+	if tenantID == "" {
+		return
+	}
+	// 添加新关联
+	_, _ = h.DB.Exec(ctx, `
+		UPDATE knowledge_points
+		SET granular_lesson_ids = array_append(granular_lesson_ids, $1),
+		    updated_at = NOW()
+		WHERE tenant_id = $2 AND id = ANY($3::uuid[]) AND NOT $1 = ANY(granular_lesson_ids)
+	`, courseID, tenantID, kpIDs)
+	// 移除旧关联
+	_, _ = h.DB.Exec(ctx, `
+		UPDATE knowledge_points
+		SET granular_lesson_ids = array_remove(granular_lesson_ids, $1),
+		    updated_at = NOW()
+		WHERE tenant_id = $2 AND ($3::uuid[] IS NULL OR id <> ALL($3::uuid[]))
+		  AND $1 = ANY(granular_lesson_ids)
+	`, courseID, tenantID, kpIDs)
 }

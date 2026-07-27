@@ -4,15 +4,16 @@ import { useEffect, useState } from "react"
 import { Pencil, Plus, Search, Trash2, BookOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { knowledgeApi } from "@/lib/api"
+import { knowledgeApi, courseApi } from "@/lib/api"
 import type { KnowledgePoint } from "@/lib/types/lesson"
 import { useToast } from "@/hooks/use-toast"
+import {
+  KnowledgePointFormDialog,
+  type KnowledgePointFormValues,
+} from "@/components/shared/knowledge-point-form-dialog"
+import type { GranularLessonOption } from "@/components/shared/granular-lesson-select-dialog"
 
 export default function KnowledgePointsPage() {
   const { toast } = useToast()
@@ -21,10 +22,9 @@ export default function KnowledgePointsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<KnowledgePoint | null>(null)
-  const [name, setName] = useState("")
-  const [code, setCode] = useState("")
-  const [description, setDescription] = useState("")
+  const [dialogMode, setDialogMode] = useState<"add" | "edit">("add")
   const [linked, setLinked] = useState(false)
+  const [granularCourses, setGranularCourses] = useState<GranularLessonOption[]>([])
 
   const loadItems = async () => {
     setLoading(true)
@@ -38,23 +38,115 @@ export default function KnowledgePointsPage() {
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { loadItems() }, [searchQuery])
+  const loadGranularCourses = async () => {
+    try {
+      const res = await courseApi.list({ type: "granular", limit: 1000 })
+      setGranularCourses(
+        res.items.map((c) => ({
+          id: c.id,
+          name: c.name,
+          code: c.code,
+          description: c.description || undefined,
+        }))
+      )
+    } catch {
+      setGranularCourses([])
+    }
+  }
 
-  const handleOpenAdd = () => { setEditingItem(null); setName(""); setCode(""); setDescription(""); setLinked(false); setIsDialogOpen(true) }
-  const handleOpenEdit = (item: KnowledgePoint) => { setEditingItem(item); setName(item.name); setCode(item.code || ""); setDescription(item.description || ""); setLinked(item.linked); setIsDialogOpen(true) }
-  const handleDelete = async (id: string) => { if (!confirm("确定要删除？")) return; try { await knowledgeApi.delete(id); toast({ title: "删除成功" }); loadItems() } catch (err: any) { toast({ variant: "destructive", title: "删除失败", description: err.message }) } }
-  const handleSubmit = async () => {
-    if (!name.trim()) { toast({ variant: "destructive", title: "名称不能为空" }); return }
+  useEffect(() => { loadItems() }, [searchQuery])
+  useEffect(() => { loadGranularCourses() }, [])
+
+  const handleOpenAdd = () => {
+    setEditingItem(null)
+    setDialogMode("add")
+    setLinked(false)
+    setIsDialogOpen(true)
+  }
+
+  const handleOpenEdit = (item: KnowledgePoint) => {
+    setEditingItem(item)
+    setDialogMode("edit")
+    setLinked(item.linked)
+    setIsDialogOpen(true)
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("确定要删除？")) return
+    try {
+      await knowledgeApi.delete(id)
+      toast({ title: "删除成功" })
+      loadItems()
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "删除失败", description: err.message })
+    }
+  }
+
+  const handleSave = async (values: KnowledgePointFormValues) => {
     try {
       if (editingItem) {
-        await knowledgeApi.update(editingItem.id, { name: name.trim(), code: code.trim() || undefined, description: description.trim() || undefined, linked, granularLessonIds: editingItem.granularLessonIds || [] } as any)
+        await knowledgeApi.update(editingItem.id, {
+          name: values.name,
+          code: values.code || undefined,
+          description: values.description || undefined,
+          linked,
+          granularLessonIds: values.granularLessonIds,
+        } as any)
         toast({ title: "更新成功" })
       } else {
-        await knowledgeApi.create({ name: name.trim(), code: code.trim() || undefined, description: description.trim() || undefined, linked, granularLessonIds: [] } as any)
+        await knowledgeApi.create({
+          name: values.name,
+          code: values.code || undefined,
+          description: values.description || undefined,
+          linked,
+          granularLessonIds: values.granularLessonIds,
+        } as any)
         toast({ title: "创建成功" })
       }
-      setIsDialogOpen(false); loadItems()
-    } catch (err: any) { toast({ variant: "destructive", title: "保存失败", description: err.message }) }
+      setIsDialogOpen(false)
+      loadItems()
+      loadGranularCourses()
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "保存失败", description: err.message })
+    }
+  }
+
+  const handleCreateGranularLesson = async (): Promise<string | undefined> => {
+    const baseName = editingItem?.name || "新建颗粒课"
+    try {
+      const created = await courseApi.create({
+        name: `基于「${baseName}」的颗粒课`,
+        type: "granular",
+        category: "专业基础",
+      } as any)
+      const newCourseId = created.id
+      setGranularCourses((prev) => [
+        ...prev,
+        {
+          id: newCourseId,
+          name: created.name,
+          code: created.code,
+          description: created.description || undefined,
+        },
+      ])
+      if (editingItem) {
+        await knowledgeApi.update(editingItem.id, {
+          name: editingItem.name,
+          code: editingItem.code || undefined,
+          description: editingItem.description || undefined,
+          linked: editingItem.linked,
+          granularLessonIds: [...(editingItem.granularLessonIds || []), newCourseId],
+        } as any)
+        loadItems()
+      }
+      if (confirm("占位颗粒课已创建并关联，是否立即前往完善？")) {
+        window.open(`/lesson/admin/granular/add?id=${newCourseId}`, "_blank")
+      }
+      return newCourseId
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "创建颗粒课失败", description: err.message })
+      return undefined
+    }
   }
 
   return (
@@ -109,21 +201,24 @@ export default function KnowledgePointsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{editingItem ? "编辑知识点" : "新增知识点"}</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div><Label>名称 *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="知识点名称" /></div>
-            <div><Label>编码</Label><Input value={code} onChange={e => setCode(e.target.value)} placeholder="编码" /></div>
-            <div><Label>描述</Label><Input value={description} onChange={e => setDescription(e.target.value)} placeholder="简要描述" /></div>
-            <div className="flex items-center space-x-2"><Switch checked={linked} onCheckedChange={setLinked} /><Label>关联课程</Label></div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>取消</Button>
-            <Button onClick={handleSubmit}>保存</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <KnowledgePointFormDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        mode={dialogMode}
+        initialValues={
+          editingItem
+            ? {
+                name: editingItem.name,
+                description: editingItem.description || "",
+                code: editingItem.code || "",
+                granularLessonIds: editingItem.granularLessonIds || [],
+              }
+            : undefined
+        }
+        granularCourses={granularCourses}
+        onSave={handleSave}
+        onCreateGranularLesson={handleCreateGranularLesson}
+      />
     </div>
   )
 }

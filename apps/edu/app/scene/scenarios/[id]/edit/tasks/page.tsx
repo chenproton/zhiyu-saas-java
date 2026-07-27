@@ -121,7 +121,7 @@ import { ScoreConfigDialog } from "@/components/evaluation/score-config-dialog"
 import { ExamFormDialog } from "@/components/evaluation/exam-form-dialog"
 import { ResourcePreviewModal, usePreviewResources } from "@/components/shared/resource-preview-modal"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
-import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryApi, majorApi, userManagementApi, fileApi, taskResourceApi, resourceLibraryApi, questionBankApi, questionApi, examApi, examUsageApi, taskEvaluationApi, randomDrawQuestionApi } from "@/lib/api"
+import { scenarioApi, taskApi, knowledgeApi, abilityApi, positionApi, industryApi, majorApi, userManagementApi, fileApi, taskResourceApi, resourceLibraryApi, questionBankApi, questionApi, examApi, examUsageApi, taskEvaluationApi, randomDrawQuestionApi, courseApi } from "@/lib/api"
 import type { RandomDrawQuestion } from "@/lib/types"
 import type { ScenarioTask as ApiScenarioTask } from "@/lib/types/scene"
 import type { TaskEvaluationMethod } from "@/lib/types/scene"
@@ -130,6 +130,8 @@ import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import { EditorShell } from "@/components/shared/editor-shell"
 import { MajorSelect } from "@/components/shared/major-select"
+import { KnowledgePointFormDialog } from "@/components/shared/knowledge-point-form-dialog"
+import { GranularLessonSelectDialog } from "@/components/shared/granular-lesson-select-dialog"
 import { useAuth } from "@/components/auth-provider"
 import type {
   Task, PositionAbility, GradeMapping,
@@ -1908,7 +1910,7 @@ export default function TasksEditPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [scenarioData, tasksRes, kpRes, apRes, resRes, posRes, indRes, majRes, userRes, examRes] = await Promise.all([
+        const [scenarioData, tasksRes, kpRes, apRes, resRes, posRes, indRes, majRes, userRes, examRes, glRes] = await Promise.all([
           scenarioApi.get(scenarioId),
           taskApi.list({ scenarioId, limit: 1000 }),
           knowledgeApi.list({ limit: 1000 }),
@@ -1919,6 +1921,7 @@ export default function TasksEditPage() {
           majorApi.list({ limit: 1000 }),
           userManagementApi.list({ limit: 1000 }),
           examApi.list({ limit: 1000 }),
+          courseApi.list({ type: "granular", limit: 1000 }),
         ])
 
         // Populate module-level arrays with API data (scenarios array populated below with clone candidates)
@@ -1959,6 +1962,9 @@ export default function TasksEditPage() {
 
         knowledgePoints.length = 0
         kpRes.items.forEach((kp: any) => knowledgePoints.push(kp))
+
+        granularLessons.length = 0
+        glRes.items.forEach((gl: any) => granularLessons.push(gl))
 
         abilityPoints.length = 0
         apRes.items.forEach((ap: any) => abilityPoints.push(ap))
@@ -3908,13 +3914,12 @@ function EditCardDialog({
   const [kpSearch, setKpSearch] = useState("")
   const [kpDetailOpen, setKpDetailOpen] = useState(false)
   const [selectedKpForDetail, setSelectedKpForDetail] = useState<string | null>(null)
-  const [kpActionOpen, setKpActionOpen] = useState(false)
-  const [kpActionMode, setKpActionMode] = useState<"add" | "clone" | "edit" | null>(null)
-  const [kpActionTarget, setKpActionTarget] = useState<(typeof knowledgePoints)[0] | null>(null)
-  const [newKpForm, setNewKpForm] = useState({ name: "", description: "", code: "", granularLessons: [] as string[] })
+  const [kpFormOpen, setKpFormOpen] = useState(false)
+  const [kpFormMode, setKpFormMode] = useState<"add" | "clone" | "edit">("add")
+  const [kpFormTarget, setKpFormTarget] = useState<(typeof knowledgePoints)[0] | null>(null)
+  const [kpFormInitial, setKpFormInitial] = useState({ name: "", description: "", code: "", granularLessonIds: [] as string[] })
   const [glSelectOpen, setGlSelectOpen] = useState(false)
   const [glSelectTargetKp, setGlSelectTargetKp] = useState<string | null>(null)
-  const [glSearch, setGlSearch] = useState("")
 
   // Determine if a knowledge point is reference (original library) or custom (added/cloned)
   const isReferenceKp = (kpId: string) => !customKnowledgePointIds.has(kpId)
@@ -4547,74 +4552,96 @@ function EditCardDialog({
         }
 
         const openAddKp = () => {
-          setNewKpForm({ name: kpSearch, description: "", code: generateKpCode(), granularLessons: [] })
-          setKpActionMode("add")
-          setKpActionTarget(null)
-          setKpActionOpen(true)
+          setKpFormMode("add")
+          setKpFormTarget(null)
+          setKpFormInitial({ name: kpSearch, description: "", code: generateKpCode(), granularLessonIds: [] })
+          setKpFormOpen(true)
         }
 
         const openCloneKp = (kp: (typeof knowledgePoints)[0]) => {
-          setNewKpForm({ name: `${kp.name}（克隆）`, description: kp.description, code: generateKpCode(), granularLessons: kp.granularLessons || [] })
-          setKpActionMode("clone")
-          setKpActionTarget(kp)
-          setKpActionOpen(true)
+          setKpFormMode("clone")
+          setKpFormTarget(kp)
+          setKpFormInitial({ name: `${kp.name}（克隆）`, description: kp.description || "", code: generateKpCode(), granularLessonIds: kp.granularLessons || [] })
+          setKpFormOpen(true)
         }
 
         const openEditKp = (kp: (typeof knowledgePoints)[0]) => {
-          setNewKpForm({ name: kp.name, description: kp.description, code: kp.code || generateKpCode(), granularLessons: kp.granularLessons || [] })
-          setKpActionMode("edit")
-          setKpActionTarget(kp)
-          setKpActionOpen(true)
+          setKpFormMode("edit")
+          setKpFormTarget(kp)
+          setKpFormInitial({ name: kp.name, description: kp.description || "", code: kp.code || generateKpCode(), granularLessonIds: kp.granularLessons || [] })
+          setKpFormOpen(true)
         }
 
-        const handleSaveKp = () => {
-          if (!newKpForm.name.trim()) return
-          if (kpActionMode === "edit" && kpActionTarget) {
-            // Update existing custom knowledge point in place
-            const kp = knowledgePoints.find(k => k.id === kpActionTarget.id)
+        const handleSaveKp = (values: { name: string; description: string; code: string; granularLessonIds: string[] }) => {
+          if (kpFormMode === "edit" && kpFormTarget) {
+            const kp = knowledgePoints.find(k => k.id === kpFormTarget.id)
             if (kp) {
-              kp.name = newKpForm.name.trim()
-              kp.description = newKpForm.description.trim()
-              kp.code = newKpForm.code
-              kp.granularLessons = newKpForm.granularLessons
+              kp.name = values.name.trim()
+              kp.description = values.description.trim()
+              kp.code = values.code
+              kp.granularLessons = values.granularLessonIds
             }
-            setKpActionOpen(false)
+            setKpFormOpen(false)
             return
           }
           const newId = generateUUID()
           const newKp = {
             id: newId,
-            name: newKpForm.name.trim(),
-            description: newKpForm.description.trim(),
-            code: newKpForm.code,
-            granularLessons: newKpForm.granularLessons,
+            name: values.name.trim(),
+            description: values.description.trim(),
+            code: values.code,
+            granularLessons: values.granularLessonIds,
           }
           knowledgePoints.push(newKp as any)
           customKnowledgePointIds.add(newId)
           updateState({ knowledgePoints: [...state.knowledgePoints, newId] })
-          setKpActionOpen(false)
+          setKpFormOpen(false)
           setKpSearch("")
+        }
+
+        const handleCreateGranularLesson = async (): Promise<string | undefined> => {
+          const baseName = kpFormInitial.name || "新建颗粒课"
+          try {
+            const created = await courseApi.create({
+              name: `基于「${baseName}」的颗粒课`,
+              type: "granular",
+              category: "专业基础",
+            } as any)
+            const newCourseId = created.id
+            granularLessons.push({ id: newCourseId, name: created.name, code: created.code, description: created.description })
+            setKpFormInitial(prev => ({ ...prev, granularLessonIds: [...prev.granularLessonIds, newCourseId] }))
+            if (kpFormMode === "edit" && kpFormTarget) {
+              const kp = knowledgePoints.find(k => k.id === kpFormTarget.id)
+              if (kp) {
+                kp.granularLessons = [...(kp.granularLessons || []), newCourseId]
+                updateState({ knowledgePoints: [...state.knowledgePoints] })
+              }
+            }
+            if (confirm("占位颗粒课已创建并关联，是否立即前往完善？")) {
+              window.open(`/lesson/admin/granular/add?id=${newCourseId}`, "_blank")
+            }
+            return newCourseId
+          } catch (err: any) {
+            console.error("Failed to create granular lesson", err)
+            return undefined
+          }
         }
 
         const openGlSelect = (kpId: string) => {
           setGlSelectTargetKp(kpId)
-          setGlSearch("")
           setGlSelectOpen(true)
         }
 
-        const handleToggleGlForKp = (glId: string) => {
+        const handleToggleGlForKp = (glIds: string[]) => {
           const kp = knowledgePoints.find(k => k.id === glSelectTargetKp)
           if (!kp) return
-          const current = kp.granularLessons || []
-          const updated = current.includes(glId) ? current.filter((x: any) => x !== glId) : [...current, glId]
-          kp.granularLessons = updated
+          kp.granularLessons = glIds
           updateState({ knowledgePoints: [...state.knowledgePoints] })
         }
 
         const detailKp = selectedKpForDetail ? knowledgePoints.find(k => k.id === selectedKpForDetail) : null
         const detailGranularLessons = detailKp?.granularLessons?.map((gid: any) => granularLessons.find((g: any) => g.id === gid)).filter(Boolean) || []
 
-        const glFiltered = granularLessons.filter(g => !glSearch || g.name.includes(glSearch) || (g.code && g.code.includes(glSearch)))
         const glTargetKp = glSelectTargetKp ? knowledgePoints.find(k => k.id === glSelectTargetKp) : null
         const glSelectedIds = glTargetKp?.granularLessons || []
 
@@ -4781,175 +4808,24 @@ function EditCardDialog({
               </div>
             </div>
 
-            {/* Add / Clone Knowledge Dialog */}
-            <Dialog open={kpActionOpen} onOpenChange={setKpActionOpen}>
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                  <PrdAnnotation data={getAnnotation("dialog-knowledge-form")}>
-                    <DialogTitle>{kpActionMode === "add" ? "新增知识点" : kpActionMode === "clone" ? "克隆知识点" : "编辑知识点"}</DialogTitle>
-                  </PrdAnnotation>
-                  <DialogDescription>
-                    {kpActionMode === "add" ? "创建一个新的知识点" : kpActionMode === "clone" ? `基于「${kpActionTarget?.name}」创建副本` : "修改知识点信息"}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div>
-                    <Label>知识点名称</Label>
-                    <Input
-                      value={newKpForm.name}
-                      onChange={e => setNewKpForm({ ...newKpForm, name: e.target.value })}
-                      placeholder="输入知识点名称"
-                      className="mt-1.5"
-                    />
-                  </div>
-                  <div>
-                    <Label>描述</Label>
-                    <Textarea
-                      value={newKpForm.description}
-                      onChange={e => setNewKpForm({ ...newKpForm, description: e.target.value })}
-                      placeholder="输入知识点描述"
-                      className="mt-1.5 max-h-[120px] overflow-y-auto resize-none"
-                      rows={3}
-                    />
-                  </div>
-                  <div>
-                    <Label>编码</Label>
-                    <Input
-                      value={newKpForm.code}
-                      disabled={kpActionMode !== "edit"}
-                      onChange={e => setNewKpForm({ ...newKpForm, code: e.target.value })}
-                      className={cn("mt-1.5", kpActionMode !== "edit" && "bg-gray-50")}
-                    />
-                    <p className="text-xs text-gray-400 mt-1">{kpActionMode === "edit" ? "可修改编码" : "系统自动生成，不可修改"}</p>
-                  </div>
-                  <div>
-                    <Label>关联颗粒课</Label>
-                    <div className="mt-1.5">
-                      {newKpForm.granularLessons.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5 mb-2">
-                          {newKpForm.granularLessons.map(gid => {
-                            const gl = granularLessons.find((g: any) => g.id === gid)
-                            return gl ? (
-                              <Badge key={gid} variant="secondary" className="text-xs gap-1">
-                                {gl.name}
-                                <X className="h-3 w-3 cursor-pointer" onClick={() => setNewKpForm({ ...newKpForm, granularLessons: newKpForm.granularLessons.filter(x => x !== gid) })} />
-                              </Badge>
-                            ) : null
-                          })}
-                        </div>
-                      ) : null}
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="flex-1" onClick={() => { setGlSelectTargetKp("new-kp"); setGlSearch(""); setGlSelectOpen(true) }}>
-                          <Plus className="h-3 w-3 mr-1" />选择颗粒课
-                        </Button>
-                        <Button variant="outline" size="sm" className="flex-1" onClick={() => window.open("/granular-lessons/new", "_blank")}>
-                          <Plus className="h-3 w-3 mr-1" />新建颗粒课
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setKpActionOpen(false)}>取消</Button>
-                  <Button onClick={handleSaveKp} disabled={!newKpForm.name.trim()}>
-                    {kpActionMode === "add" ? "新增并选中" : kpActionMode === "clone" ? "克隆并选中" : "保存修改"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <KnowledgePointFormDialog
+              open={kpFormOpen}
+              onOpenChange={setKpFormOpen}
+              mode={kpFormMode}
+              initialValues={kpFormInitial}
+              granularCourses={granularLessons}
+              onSave={handleSaveKp}
+              onCreateGranularLesson={handleCreateGranularLesson}
+            />
 
-            {/* Granular Lesson Selection Dialog */}
-            <Dialog open={glSelectOpen} onOpenChange={setGlSelectOpen}>
-              <DialogContent className="sm:max-w-[800px] max-h-[80vh] h-[80vh] flex flex-col">
-                <DialogHeader>
-                  <PrdAnnotation data={getAnnotation("dialog-link-knowledge")}>
-                    <DialogTitle>
-                      {glTargetKp ? `为「${glTargetKp.name}」选择颗粒课` : "选择颗粒课"}
-                    </DialogTitle>
-                  </PrdAnnotation>
-                </DialogHeader>
-                <div className="flex gap-4 flex-1 min-h-0 py-4">
-                  {/* Left: All granular lessons */}
-                  <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
-                    <div className="relative mb-3">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <Input
-                        value={glSearch}
-                        onChange={e => setGlSearch(e.target.value)}
-                        placeholder="搜索颗粒课名称或编码..."
-                        className="pl-9"
-                      />
-                    </div>
-                    <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                      {glFiltered.map(gl => {
-                        const isSelected = glSelectedIds.includes(gl.id)
-                        return (
-                          <div key={gl.id} className={cn("p-3 rounded-lg border cursor-pointer transition-all", isSelected ? "border-primary bg-primary/5" : "border-gray-200 hover:border-gray-300")} onClick={() => {
-                            if (glSelectTargetKp === "new-kp") {
-                              setNewKpForm(prev => {
-                                const current = prev.granularLessons
-                                const updated = current.includes(gl.id) ? current.filter(x => x !== gl.id) : [...current, gl.id]
-                                return { ...prev, granularLessons: updated }
-                              })
-                            } else {
-                              handleToggleGlForKp(gl.id)
-                            }
-                          }}>
-                            <div className="flex items-center gap-2">
-                              <div className={cn("w-4 h-4 rounded border flex items-center justify-center", isSelected ? "bg-primary border-primary" : "border-gray-300")}>
-                                {isSelected && <Check className="h-3 w-3 text-white" />}
-                              </div>
-                              <span className="text-sm font-medium flex-1">{gl.name}</span>
-                              {gl.code && <Badge variant="outline" className="text-[10px]">{gl.code}</Badge>}
-                            </div>
-                            <p className="text-xs text-gray-500 mt-1 ml-6">{gl.description}</p>
-                          </div>
-                        )
-                      })}
-                      {glFiltered.length === 0 && (
-                        <div className="text-center text-gray-400 py-8">
-                          <p className="text-sm">未找到匹配的颗粒课</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right: Selected */}
-                  <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
-                    <p className="text-sm font-medium mb-3 text-gray-700">已选择 ({glSelectedIds.length})</p>
-                    <div className="flex-1 overflow-y-auto space-y-2">
-                      {glSelectedIds.length === 0 ? (
-                        <div className="text-center text-gray-400 py-8">
-                          <p className="text-xs">从左侧选择颗粒课</p>
-                        </div>
-                      ) : (
-                        glSelectedIds.map((gid: any) => {
-                          const gl = granularLessons.find((g: any) => g.id === gid)
-                          if (!gl) return null
-                          return (
-                            <div key={gid} className="flex items-center gap-2 p-2 rounded border bg-gray-50">
-                              <span className="text-sm flex-1 truncate">{gl.name}</span>
-                              <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400" onClick={() => {
-                                if (glSelectTargetKp === "new-kp") {
-                                  setNewKpForm(prev => ({ ...prev, granularLessons: prev.granularLessons.filter(x => x !== gid) }))
-                                } else {
-                                  handleToggleGlForKp(gid)
-                                }
-                              }}>
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          )
-                        })
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={() => setGlSelectOpen(false)}>确定</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <GranularLessonSelectDialog
+              open={glSelectOpen}
+              onOpenChange={setGlSelectOpen}
+              title={glTargetKp ? `为「${glTargetKp.name}」选择颗粒课` : "选择颗粒课"}
+              granularCourses={granularLessons}
+              selectedIds={glSelectedIds}
+              onChange={handleToggleGlForKp}
+            />
 
             {/* Knowledge Point Detail Dialog */}
             <Dialog open={kpDetailOpen} onOpenChange={setKpDetailOpen}>
@@ -4989,7 +4865,27 @@ function EditCardDialog({
                             <Button variant="ghost" size="sm" className="h-6 text-[11px] px-2 text-primary" onClick={() => { setKpDetailOpen(false); openGlSelect(detailKp.id) }}>
                               引用颗粒课
                             </Button>
-                            <Button variant="ghost" size="sm" className="h-6 text-[11px] px-2 text-primary" onClick={() => window.open("/granular-lessons/new", "_blank")}>
+                            <Button variant="ghost" size="sm" className="h-6 text-[11px] px-2 text-primary" onClick={async () => {
+                              try {
+                                const created = await courseApi.create({
+                                  name: `基于「${detailKp.name}」的颗粒课`,
+                                  type: "granular",
+                                  category: "专业基础",
+                                } as any)
+                                const newCourseId = created.id
+                                granularLessons.push({ id: newCourseId, name: created.name, code: created.code, description: created.description })
+                                const kp = knowledgePoints.find(k => k.id === detailKp.id)
+                                if (kp) {
+                                  kp.granularLessons = [...(kp.granularLessons || []), newCourseId]
+                                  updateState({ knowledgePoints: [...state.knowledgePoints] })
+                                }
+                                if (confirm("占位颗粒课已创建并关联，是否立即前往完善？")) {
+                                  window.open(`/lesson/admin/granular/add?id=${newCourseId}`, "_blank")
+                                }
+                              } catch (err: any) {
+                                console.error("Failed to create granular lesson", err)
+                              }
+                            }}>
                               新增颗粒课
                             </Button>
                           </div>
