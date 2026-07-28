@@ -201,7 +201,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Get("/subscriptions", subscriptionHandler.Get)
 			r.Put("/subscriptions/{id}", subscriptionHandler.Update)
 
-			platformLinkHandler := &handler.PlatformLinkHandler{DB: pool}
+			platformLinkHandler := &handler.PlatformLinkHandler{DB: pool, Store: store.NewPlatformLinksStore(pool)}
 			r.Get("/platform-links", platformLinkHandler.List)
 			r.Get("/platform-links/{id}", platformLinkHandler.Get)
 			r.Post("/platform-links", platformLinkHandler.Create)
@@ -276,7 +276,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/job/recommendations/{id}", recommendHandler.Update)
 			r.Delete("/job/recommendations/{id}", recommendHandler.Delete)
 
-			learnRoadHandler := &handler.LearnRoadHandler{DB: pool}
+			learnRoadHandler := &handler.LearnRoadHandler{DB: pool, Store: store.NewLearnRoadsStore(pool)}
 			r.Get("/job/learn-roads", learnRoadHandler.List)
 			r.Get("/job/learn-roads/{id}", learnRoadHandler.Get)
 			r.Post("/job/learn-roads", learnRoadHandler.Create)
@@ -461,7 +461,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Get("/evaluation/portraits/archives", studentPortraitHandler.ListArchives)
 			r.Post("/evaluation/portraits/archives", studentPortraitHandler.CreateArchive)
 
-			microCertHandler := &handler.MicroCertHandler{DB: pool}
+			microCertHandler := &handler.MicroCertHandler{DB: pool, Store: store.NewMicroCertStore(pool)}
 			r.Get("/evaluation/certificates/templates", microCertHandler.ListTemplates)
 			r.Post("/evaluation/certificates/templates", microCertHandler.CreateTemplate)
 			r.Get("/evaluation/certificates/templates/{id}", microCertHandler.ListTemplates)

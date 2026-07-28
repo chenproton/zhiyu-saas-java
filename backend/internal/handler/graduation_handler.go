@@ -194,7 +194,7 @@ func (h *GraduationHandler) UpdateTopic(w http.ResponseWriter, r *http.Request) 
 	startDate, _ := time.Parse(time.RFC3339, req.StartDate)
 	endDate, _ := time.Parse(time.RFC3339, req.EndDate)
 
-	_, err := h.DB.Exec(r.Context(), `
+	_, err = h.DB.Exec(r.Context(), `
 		UPDATE graduation_project_topics SET name = $1, career_position_id = $2, college = $3, source = $4,
 			capacity = $5, advisor_id = $6, enterprise_mentor_id = $7, start_date = $8, end_date = $9, description = $10
 		WHERE id = $11
@@ -208,7 +208,7 @@ func (h *GraduationHandler) UpdateTopic(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	topic, _ := h.fetchTopic(r.Context(), id)
+	topic, _ = h.fetchTopic(r.Context(), id)
 	respondJSON(w, http.StatusOK, topic)
 }
 

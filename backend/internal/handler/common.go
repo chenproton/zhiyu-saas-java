@@ -461,13 +461,13 @@ var (
 		"b.id, b.name, b.code, b.org_node_id, b.major_id, COALESCE(m.name, '') AS major_name, b.workflow_id, b.status, b.position_count, b.published_count, b.pending_count, b.created_at, b.updated_at",
 		"eb.id, eb.name, eb.code, eb.org_node_id, eb.major_id, COALESCE(m.name, '') AS major_name, eb.workflow_id, eb.status, eb.created_at, eb.updated_at",
 		"er.id, er.exam_usage_id, er.user_id, er.student_name, er.class_name, er.grade, er.major_id, COALESCE(m.name, '') AS major_name, er.score, er.total_score, er.is_pass, er.answers, er.submit_time, er.created_at",
-		"id, career_position_id, name, description, binding_ids, sort_order",
+		"id, tenant_id, career_position_id, name, description, binding_ids, sort_order",
 		"id, career_position_id, name, description, sort_order",
 		"id, career_position_id, responsibility_id, ability_point_id, source, domain, required_level, rubric_description, attributes, weight",
 		"id, career_position_id, status, rule_source, created_at, updated_at",
 		"id, category_id, name, enabled, sub_category_name, description, doc_link",
 		"id, code, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status, created_at",
-		"id, name, career_position_id, college, source, status, capacity, applied_count, advisor_id, enterprise_mentor_id, start_date, end_date, description, created_at",
+		"id, tenant_id, name, career_position_id, college, source, status, capacity, applied_count, advisor_id, enterprise_mentor_id, start_date, end_date, description, created_at",
 		"id, name, code, description, category, attributes, is_public, creator_id, created_at",
 		"id, name, code, description, linked, granular_lesson_ids::text[] AS granular_lesson_ids, creator_id, created_at, updated_at",
 		"id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, admin_ids, status, created_at, updated_at",
@@ -580,8 +580,10 @@ func executeListQuery[T any](ctx context.Context, db listQueryDB, r *http.Reques
 	if _, err := sanitizeIdentifier(cfg.SelectColumns, allowedListQuerySelectColumns); err != nil {
 		return nil, 0, err
 	}
-	if _, err := sanitizeIdentifier(cfg.OrderBy, allowedListQueryOrderBy); err != nil {
-		return nil, 0, err
+	if cfg.OrderBy != "" {
+		if _, err := sanitizeIdentifier(cfg.OrderBy, allowedListQueryOrderBy); err != nil {
+			return nil, 0, err
+		}
 	}
 	if _, err := sanitizeIdentifier(cfg.TenantColumn, allowedListQueryTenantColumns); err != nil {
 		return nil, 0, err

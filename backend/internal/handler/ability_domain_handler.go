@@ -152,7 +152,7 @@ func (h *AbilityDomainHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
+	_, err = h.DB.Exec(r.Context(), `
 		UPDATE ability_domains SET
 			career_position_id = $1, name = $2, description = $3, binding_ids = $4, sort_order = $5
 		WHERE id = $6
@@ -162,7 +162,7 @@ func (h *AbilityDomainHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	d, _ := h.fetchDomain(r.Context(), id)
+	d, _ = h.fetchDomain(r.Context(), id)
 	respondJSON(w, http.StatusOK, d)
 }
 
