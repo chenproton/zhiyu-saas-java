@@ -31,18 +31,6 @@ export type {
   PlatformIconKey,
 } from "./components/platform-shell"
 
-export { createJsonFileAdapter } from "./lib/annotations"
-export type {
-  AnnotationAdapter,
-  Annotation,
-  Comment,
-  AnnotationMode,
-  AnnotationStore,
-  AnnotationTheme,
-  AnnotationSystemProps,
-  UseAnnotationsConfig,
-} from "./lib/annotations"
-
 export {
   parseDate,
   parseOptDate,
