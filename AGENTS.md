@@ -63,7 +63,7 @@
 
 环境变量（`DATABASE_URL`、`JWT_SECRET`、`PORT`）在 `.env` 配置，禁止提交仓库。
 
-> 演示环境：`ssh root@171.80.10.237`（密码 `lEL9cHcBQMjCEqp6`），项目位于 `/root/projects/zhiyu-saas`。
+> 演示环境：服务器地址与登录凭证请咨询运维或查看安全凭证存储，项目位于 `/root/projects/zhiyu-saas`。
 
 ## 五、前端公共组件
 

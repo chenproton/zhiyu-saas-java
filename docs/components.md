@@ -1,6 +1,7 @@
 # 前端公共组件速查
 
-> 所有组件均位于 `apps/edu/components/shared/`。新增页面时优先复用，避免重复造轮子。
+> 所有通用组件均位于 `packages/ui/src/components/shared/`（通过 `@zhiyu/ui` 使用）。新增页面时优先复用，避免重复造轮子。
+> 页面级共享壳（如 `ContentListPage`、`PortalCrudPage`）目前位于 `apps/edu/components/shared/`，长期可视情况下沉到 `packages/ui` 或独立包。
 > 评测配置组件位于 `apps/edu/app/lesson/admin/_components/eval/`，同时被课程和任务编辑器复用。
 > 任务步骤卡片位于 `apps/edu/app/scene/scenarios/[id]/edit/tasks/_components/`。
 

@@ -9,10 +9,10 @@
 
 | 维度 | 评分 | 状态 |
 |------|------|------|
-| 组件抽象 | 9.0/10 | P0 跨 app 重复全部消除，packages/ui 形成完整共享层 |
-| 代码结构 | 8.5/10 | router/api-client 已拆分，超大文件仍有改善空间 |
-| 可迭代性 | 8.0/10 | 核心架构稳定，双份类型已标记 deprecated，executeListQuery 100% 覆盖 |
-| 可读性 | 8.0/10 | alert/confirm 清零，group-hover 收敛，中英混用分层清晰 |
+| 组件抽象 | 7.0/10 | 跨 app 重复已大幅消除，但 `@zhiyu/ui` 仍混有 edu 领域代码，页面级组件未完全下沉 |
+| 代码结构 | 6.5/10 | router/api-client 已拆分，但后端缺少 repository 层，超大文件（5,000+ 行）和重复 SQL/事务模式仍较多 |
+| 可迭代性 | 6.5/10 | 核心架构稳定，但类型安全薄弱（大量 `any`）、双份类型未清理、测试覆盖率低 |
+| 可读性 | 7.0/10 | alert/confirm 已清零，group-hover 大部分收敛，但中英混用、超大文件、局部状态样式影响阅读 |
 
 ---
 
@@ -389,14 +389,21 @@ export { AuthProvider as PortalAuthProvider, useAuth as usePortalAuth } from "@/
 
 ### 25. 手写 `group-hover:opacity` 替换为 `HoverActionBar`
 
-**问题**：12 处手写 `group-hover:opacity-*` 模式，其中 3 处是标准的 hover 操作按钮，应用 `HoverActionBar` 替代。其余 9 处为图片浮层、装饰渐变、模态框 chrome 等非操作按钮场景，不需要替换。
+**问题**：12 处手写 `group-hover:opacity-*` 模式，其中标准 hover 操作按钮场景应使用 `HoverActionBar` 替代。其余为图片浮层、装饰渐变、模态框 chrome 等非操作按钮场景，不需要替换。
 
-**文件**（已修复 3 处）：
-- `apps/edu/app/evaluation/scene-results/[id]/page.tsx` — 附件列表的预览/下载按钮 → `HoverActionBar`
-- `apps/edu/components/job/position-builder/step-ability-modeling.tsx` — 职责项的编辑/删除按钮 → `HoverActionBar`
-- `apps/edu/components/evaluation/question-form-dialog.tsx` — 选项的排序/删除按钮 → `HoverActionBar`
+**已修复**：
+- `apps/edu/components/job/position-builder/step-ability-modeling.tsx` — 能力绑定卡片的删除按钮 → `HoverActionBar`
 
-- [x] 任务完成
+**遗留（非标准操作按钮场景，保留手写）**：
+- `apps/edu/app/job/positions/[id]/edit/page.tsx:342` — 封面图 overlay（更换/移除封面）
+- `apps/edu/app/scene/scenarios/[id]/edit/page.tsx:350` — 封面图 overlay
+- `apps/edu/components/job/student/stats-bar.tsx:44` — 统计图标装饰渐变
+- `apps/edu/components/job/student/job-home.tsx:509` — 统计图标装饰渐变
+- `apps/edu/app/portal/apps/page.tsx:96` — 导航指示器 chevron
+- `apps/edu/components/portal/yi-know-assistant.tsx:390, 728` — 快捷操作 chip / 机器人关闭按钮
+- `apps/edu/components/shared/resource-preview-modal.tsx:200, 234` — 模态框 header / 拖拽手柄
+
+- [x] 任务完成（标准操作按钮场景已收敛，剩余为合理非表格场景）
 
 ---
 
@@ -434,6 +441,11 @@ export { AuthProvider as PortalAuthProvider, useAuth as usePortalAuth } from "@/
 | A9 | tenant admin CRUD 双份实现 | `tenant_admin_handler.go` vs `tenant_internal_admin_handler.go` | 提取共用方法到 `TenantHandler` | 0.5 天 |
 | A10 | 认证状态码不一致 | `node_resource_handler.go:46`、`scenario_grade_handler.go:36` 返回 401，其余多返回 403 | 统一状态码 | 0.5 小时 |
 | A11 | SQL scan 错误静默跳过 | `scenario_grade_handler.go:116`、`tenant_admin_handler.go:68` | 统一返回 500 或记录日志 | 0.5 小时 |
+| A12 | SQL 标识符拼接风险 | `import_export_handler.go`、`content_actions.go`、`common.go` | 新增 `sanitizeIdentifier` 白名单校验；已修复 ✅ | 0.5 小时 |
+| A13 | 导出功能缺少租户过滤 | `import_export_handler.go` | `Export` 增加 `WHERE tenant_id = $1`；已修复 ✅ | 0.5 小时 |
+| A14 | `context.Background()` 进入请求路径 | `approval_handler.go:251` | `isUserApproverForStep` 使用 `r.Context()`；已修复 ✅ | 0.5 小时 |
+| A15 | 错误日志级别错误 | `auth_handler.go`、`user_management_handler.go`、`evaluation_result_handler.go`、`exam_result_handler.go` | `slog.Info("ERROR ...")` 改为 `slog.Error`；已修复 ✅ | 0.5 小时 |
+| A16 | 后端缺少 Repository/Service 层 | `internal/handler/*.go` 共 95+ 个 handler | 引入 `internal/store/<domain>`，handler 只负责 HTTP 编排 | 1-2 周 |
 
 ### B. 前端 edu
 
@@ -445,12 +457,17 @@ export { AuthProvider as PortalAuthProvider, useAuth as usePortalAuth } from "@/
 | B4 | 共享组件自身未完全遵守规范 | `approval-list-page.tsx`、`archive-list-page.tsx`、`portal-crud-page.tsx` | 已改用 `TableRowActions` / `ConfirmDialog` | 已完成 |
 | B5 | Landing detail 页面高度重复 | `app/scene/landing/[id]/page.tsx`、`app/lesson/landing/[id]/page.tsx` | 提取 `LandingDetailShell` 共享组件 | 0.5 天 |
 | B6 | Empty state 硬编码重复 | 约 80 处散落各页面 | 统一使用 `EmptyState` / `EmptyPlaceholder` | 0.5 天 |
-| B7 | `generateId` 重复实现 | `lib/evaluation-rule-store.ts`、`lib/stores/data-context.tsx`、`app/scene/page.tsx` 等 | 提取到 `lib/utils.ts` 的 `generateId(prefix)` | 0.5 小时 |
-| B8 | 手动 status badge 未收敛 | `app/lesson/landing/[id]/page.tsx`、`app/library/ability/page.tsx` 等 | 统一使用 `StatusBadge` + `getStatusConfig()` | 0.5 天 |
+| B7 | `generateId` 重复实现 | `app/lesson/admin/_components/eval/course-eval-config.tsx` 等 | 提取到 `packages/ui/src/lib/utils.ts` 的 `generateId(prefix)`；已修复 ✅ | 0.5 小时 |
+| B8 | 手动 status badge 未收敛 | `accounts`、`students`、`course-list`、`archive`、`GrainCourseModal`、`exam landing` 等 | 统一使用 `StatusBadge` + `getStatusConfig()`；已修复 ✅ | 0.5 天 |
+| B9 | 共享组件类型安全薄弱 | `content-list-page.tsx`、`batch-group-page.tsx`、`approval-list-page.tsx` 等 | 为公共 API 引入泛型，清除 `any[]`/`any` | 2-3 天 |
+| B10 | 导入流程未统一 | `app/evaluation/question-banks/[id]/page.tsx` | 改用 `useImportFlow` hook | 0.5 天 |
+| B11 | `ContentListPage` 导入逻辑重复 | `components/shared/content-list-page.tsx` | 将手动 CSV 导入路径完全收敛到 `useImportFlow` | 0.5 天 |
+| B12 | `DataProvider` 领域混杂 | `components/providers/data-provider.tsx` (743 行) | 按领域拆分或转为针对性 hooks | 1-2 天 |
+| B13 | 前端 `any` 大量残留 | 全项目 `.tsx` 约 544 处 | 补全 DTO 类型，替换 `as any` | 1-2 周 |
 
 ### C. 前端 marketplace（已删除，仅作存档）
 
-> `apps/marketplace` 前端源码已于 commit `25d0586` 彻底移除，当前工作树无相关代码。以下问题来自历史版本，若后续恢复 marketplace 可参考。
+> `apps/marketplace` 前端源码已彻底移除（git 不再跟踪），当前工作树无相关源码。若本地磁盘仍残留 `apps/marketplace/node_modules` 等被 `.gitignore` 忽略的文件，可手动清理。以下问题来自历史版本，若后续恢复 marketplace 可参考。
 
 | # | 问题 | 位置 | 建议方案 | 预估 |
 |---|------|------|---------|------|
@@ -463,8 +480,20 @@ export { AuthProvider as PortalAuthProvider, useAuth as usePortalAuth } from "@/
 
 | # | 问题 | 位置 | 建议方案 | 预估 |
 |---|------|------|---------|------|
-| D1 | API client 缺少高级能力 | `packages/api-client/src/api-helpers.ts` | 增加 typed `ApiError`、interceptor、retry、`useListQuery` | 2-3 天 |
+| D1 | API client 错误处理不一致 | `packages/api-client/src/api-helpers.ts` | 统一 `request`/`authedFetch` 为单一 pipeline，导出 typed `ApiError` | 1-2 天 |
 | D2 | 页面级组件未下沉 | `apps/edu/components/shared/*` | 迁移到 `packages/ui` 或新建 `@zhiyu/page-kit` | 3-5 天 |
+| D3 | 应用专属代码泄漏到 `@zhiyu/ui` | `use-import-flow.ts`、`use-platform-links.ts`、`providers/data-provider.tsx` | 迁移到 `apps/edu/lib/` 或新建 `@zhiyu/edu-kit` | 2-3 天 |
+| D4 | `shared-types` 包含运行时逻辑 | `packages/shared-types/src/evaluation-rules.ts` | 将 `uid()`/`clone()`/转换函数迁到 utils 包，types 包只保留类型 | 0.5 天 |
+| D5 | 废弃类型系统仍在使用 | `job-source.ts`、`lesson-source.ts`、`scene-mock.ts` | 迁移调用方到规范类型后删除这三个文件 | 2 天 |
+| D6 | `@zhiyu/ui` 依赖声明不全 | `packages/ui/package.json` | 补充运行时依赖及 `next` peerDependency；已修复 ✅ | 0.5 小时 |
+
+### E. 部署与文档
+
+| # | 问题 | 位置 | 建议方案 | 预估 |
+|---|------|------|---------|------|
+| E1 | `deploy.sh` 依赖检查遗漏 | `deploy.sh:223-231` | 补充 `flock`、`lsof`、`rsync`、`systemd-run`、`curl`、`docker` 检查或降级 | 0.5 小时 |
+| E2 | 前端健康检查 URL 脆弱 | `deploy.sh:716` | 在 `apps/edu` 增加 `/api/health` 等专用端点并更新检查 | 0.5 小时 |
+| E3 | `ecosystem.config.js` 与 `deploy.sh` 生成配置不一致 | 根目录 `ecosystem.config.js` | 删除仓库中的文件（`deploy.sh` 自己生成）或改为一致模板 | 0.5 小时 |
 
 ---
 
@@ -484,33 +513,65 @@ export { AuthProvider as PortalAuthProvider, useAuth as usePortalAuth } from "@/
 | B4 | 后端错误消息中英混用/英文 | `backend/internal/handler/content_actions.go` | 翻译 `invalid status transition` / `current status` |
 | B5 | `template_handler.go` 中 dead code | `backend/internal/handler/template_handler.go` | 删除未使用的 `setRows`、多余的 blank assignment |
 | B6 | `tenant_admin_handler.go` 中 dead assignment | `backend/internal/handler/tenant_admin_handler.go` | 删除未使用的 `existing` 变量 |
+| F7 | `AGENTS.md` 暴露生产服务器密码 | `AGENTS.md:66` | 移除明文密码，改为引用安全凭证存储 |
+| F8 | `docs/components.md` 组件位置描述过期 | `docs/components.md:3` | 更新为 `packages/ui/src/components/shared/`，并说明页面级组件位置 |
+| F9 | `.env.example` 不完整 | `.env.example` | 补全 `BACKEND_PORT_ENV`、`EDU_PORT`、`UPLOAD_DIR`、`DEPLOY_DIR`、`ROLLBACK_KEEP`、`BUILD_CPU_QUOTA`、`NGINX_CONTAINER`、`ENABLE_DEBUG_AUTH`、`DEBUG_AUTH_TOKEN`、`TEST_DATABASE_URL` |
+| F10 | `apps/edu` build 脚本与 `deploy.sh` 冲突 | `apps/edu/package.json:7` | 移除 `next build --webpack` 中的 `--webpack`，避免与 `deploy.sh` 追加的 `--turbopack` 冲突 |
+| F11 | 根 workspace 递归脚本引用缺失脚本 | `package.json:10-12` | 将 `lint`/`test` 限定到实际拥有脚本的包（`@zhiyu/edu`、`@zhiyu/api-client`） |
+| F12 | `@zhiyu/ui` package.json 依赖声明不全 | `packages/ui/package.json` | 补充所有运行时依赖（radix、lucide-react、sonner 等）及 `next` peerDependency |
+| F13 | 废弃的全局状态模块 | `apps/edu/lib/stores/data-context.tsx` | 确认无引用后删除 |
+| F14 | `cn()` 重复定义 | `packages/ui/src/components/platform-shell/utils.ts` | 改为从 `@/lib/utils` 导入 |
+| F15 | `uid()`/`clone()` 重复且 `object-utils.ts` 无用 | `packages/ui/src/lib/object-utils.ts`、`packages/shared-types/src/evaluation-rules.ts` | 删除未使用的 `object-utils.ts`；`shared-types` 中的实现保留（避免循环依赖） |
+| F16 | `generateId()` 重复实现 | `apps/edu/app/lesson/admin/_components/eval/course-eval-config.tsx` | 提取到 `packages/ui/src/lib/utils.ts` 并复用 |
+| F17 | `Empty*` 组件未从 `@zhiyu/ui` barrel 导出 | `packages/ui/src/index.ts` | 导出 `Empty`、`EmptyHeader`、`EmptyTitle`、`EmptyDescription`、`EmptyContent`、`EmptyMedia` |
+| F18 | 本地状态样式未使用 `StatusBadge` | `accounts`、`students`、`course-list`、`archive`、`GrainCourseModal`、`exam landing` 等页面 | 删除本地 `STATUS_CONFIG`，改用 `<StatusBadge status={...} />`；在 `STATUS_MAP` 补充 `active`、`graduated` |
+| F19 | 标准 hover 操作按钮未用 `HoverActionBar` | `apps/edu/components/job/position-builder/step-ability-modeling.tsx` | 替换手写 `group-hover` 为 `<HoverActionBar>` |
+| F20 | 后端 `context.Background()` 进入请求路径 | `backend/internal/handler/approval_handler.go:251` | `isUserApproverForStep` 接收 `ctx` 并使用 `r.Context()` |
+| F21 | 导出功能缺少租户过滤 | `backend/internal/handler/import_export_handler.go` | `Export` 增加 `WHERE tenant_id = $1` |
+| F22 | SQL 标识符拼接风险 | `import_export_handler.go`、`content_actions.go`、`common.go` | 新增 `sanitizeIdentifier` 白名单校验，替换所有表名/列名拼接点 |
+| F23 | 错误日志级别错误 | `auth_handler.go`、`user_management_handler.go`、`evaluation_result_handler.go`、`exam_result_handler.go` | `slog.Info("ERROR ...")` 改为 `slog.Error("...", "error", err, ...)` |
+| F24 | 后端全量 `gofmt` | `backend/**/*.go` | 运行 `gofmt -w .` 统一格式 |
 
-验证结果：
+验证结果（2026-07-28 后续全量修复后）：
 - `apps/edu`: `pnpm lint` ✅ 0 errors / 0 warnings；`pnpm typecheck` ✅ 通过
-- `backend`: `go vet ./...` ✅；`go test ./...` ✅ 通过
+- `packages/ui`: `pnpm typecheck` ✅ 通过
+- `packages/shared-types`: `pnpm typecheck` ✅ 通过
+- `packages/api-client`: `pnpm typecheck` ✅ 通过；`pnpm test` ✅ 通过
+- `backend`: `gofmt -w .` ✅；`go vet ./...` ✅；`go test ./...` ✅ 通过
 
 ---
 
 ## 执行顺序建议
 
 ```
-已完成:
+已完成（本次全量审查后）：
   ✅ P0 全部 (platform-shell, data-provider, hooks, annotations, barrel export)
   ✅ P1 大部分 (evaluation 拆分, draftSuffix, typeMetaFor, window.confirm, alert,
-              router 拆分, executeListQuery, parsePageLimit, portal-auth-context)
+              router 拆分, executeListQuery, parsePageLimit, portal-auth-context,
+              B7 generateId 去重)
   ✅ P2 大部分 (api.ts 拆分, ai.ts 导出, Oplog 确认, Library 原生 table)
   ✅ #24 marketplace dead re-export 清理
-  ✅ #25 手写 group-hover 替换为 HoverActionBar
+  ✅ #25 手写 group-hover 替换为 HoverActionBar（标准操作按钮场景已收敛，剩余为合理非表格场景）
+  ✅ F7-F24 本次直接修复的简单问题（密码、文档、构建脚本、依赖、死代码、工具函数去重、
+           StatusBadge、HoverActionBar、Empty 导出、后端 context/租户过滤/SQL 拼接/日志级别/gofmt）
 
-剩余待执行:
-  1 → #21 后端错误消息统一中文（P2, 2h，剩余大量中英混用）
-  2 → #15 testhelper 与 router 同步（P1, 1.5d）
-  3 → #19 packages/ui 领域代码清理（P2, 0.5h）
-  4 → #26 tasks/page.tsx 拆分（P2, 2d，高优先级但成本高）
-  5 → #6 双份类型系统清理（P1, 2d，涉及引用面广，低优先级）
+剩余待执行（复杂问题，建议排入后续迭代）：
+  1 → 后端引入 Repository/Service 层（高优先级，成本高，替代 #23）
+  2 → 前端超大文件拆分（tasks/page.tsx、course-evaluation-rules-dialog、atomic-modules、
+       scene-results、content-list-page、data-provider 等）
+  3 → 前端 `any` 清理与共享组件泛型化（ContentListPage、BatchGroupPage、tasks page）
+  4 → `@zhiyu/ui` 应用专属代码迁出（useImportFlow、usePlatformLinks、data-provider）
+  5 → `shared-types` 运行时函数迁出与废弃类型系统清理（job-source/lesson-source/scene-mock）
+  6 → API client 错误处理统一（request/authedFetch 合并为单一 pipeline + typed ApiError）
+  7 → `library/**` CRUD 页面统一接入共享 shell
+  8 → migration 版本号冲突修复（006/064/067）与 019→021 缺口
+  9 → 后端测试覆盖提升（handler/middleware 当前 31.4%/12.6%）
+  10 → #15 testhelper 与 router 同步（P1, 1.5d）
+  11 → #21 后端错误消息统一中文（P2, 2h，本次仅修复了日志级别，中英混用仍大量存在）
+  12 → #26 tasks/page.tsx 拆分（P2, 2d）
 
-不执行:
-  ⏭️ #23 Repository 层（成本过高，暂缓）
+暂缓/不执行:
+  ⏭️ 旧的 #23 "Repository 层" 已升级为更高优先级的"后端引入 Repository/Service 层"，不再暂缓
 ```
 
 ## 架构目标
@@ -518,50 +579,41 @@ export { AuthProvider as PortalAuthProvider, useAuth as usePortalAuth } from "@/
 ```
 当前:
 ├── packages/
-│   ├── shared-types/     ← 类型包（双份类型已标记 deprecated，ai.ts 已导出）
-│   ├── api-client/       ← API 客户端（已按 domain 拆分为 10 个模块）
-│   └── ui/               ← UI 组件（已有 barrel export，含少量待清理的领域代码）
+│   ├── shared-types/     ← 类型包（双份类型已标记 deprecated；含运行时函数 uid/clone 待迁出）
+│   ├── api-client/       ← API 客户端（已按 domain 拆分；request/authedFetch 错误处理不一致）
+│   └── ui/               ← UI 组件（已有 barrel export；仍混有 edu 领域代码 useImportFlow/usePlatformLinks/data-provider）
 ├── apps/
 │   ├── edu/
-│   │   ├── shared/*      ← 页面级共享抽象，部分可继续下沉到 packages/ui/
+│   │   ├── shared/*      ← 页面级共享抽象，类型安全薄弱（大量 any），部分可继续下沉
 │   │   ├── platform-shell/  ← 已从 packages/ui 统一导入，本地仅保留组合层
-│   │   ├── providers/    ← data-provider 共享核心已下沉 packages/ui
+│   │   ├── providers/    ← data-provider 共享核心在 packages/ui，edu 保留 743 行 app-specific 数据模型
 │   │   ├── hooks/        ← use-mobile/use-toast 薄 re-export 已删除
-│   │   └── lib/          ← annotations 薄 re-export 已删除
+│   │   └── lib/          ← annotations 薄 re-export 已删除； dead data-context.tsx 已清理
 │   └── marketplace/
-│       └── 死代码已清理，仅保留 marketplace 独有组件和页面
+│       └── 前端源码已移除（git 不再跟踪）
 └── backend/
     └── internal/
-        ├── handler/      ← 分页样板已收敛，日志已统一为 slog，view_log 已抽象
+        ├── handler/      ← 95+ handler 直接内联 SQL/事务/权限；已收敛 executeListQuery、view_log、部分安全修复
         └── router/       ← 已按领域拆分，支持 graceful shutdown
 
 目标:
 ├── packages/
-│   ├── shared-types/     ← 清理重复类型，拆分超大文件
-│   ├── api-client/       ← 按 domain 拆分
+│   ├── shared-types/     ← 纯类型包，清理重复类型，拆分超大文件
+│   ├── api-client/       ← 按 domain 拆分；统一错误处理 pipeline + typed ApiError
 │   └── ui/
-│       ├── components/
-│       │   ├── status-badge.tsx
-│       │   ├── confirm-dialog.tsx
-│       │   ├── table-row-actions.tsx
-│       │   ├── hover-action-bar.tsx
-│       │   ├── empty-state.tsx
-│       │   └── loading-view.tsx
+│       ├── components/   ← 通用 UI 组件（status-badge、confirm-dialog、table-row-actions、hover-action-bar、empty 等）
 │       ├── platform-shell/
-│       │   ├── config.ts, icons.ts, utils.ts, index.ts
-│       │   └── PlatformSideNav.tsx
-│       ├── hooks/
-│       │   ├── use-mobile.ts
-│       │   ├── use-toast.ts
-│       │   └── use-platform-links.ts
-│       ├── data-provider.tsx (共享核心)
-│       └── lib/
-│           └── utils.ts (cn 等)
+│       ├── hooks/        ← 通用 hooks（use-mobile、use-toast）
+│       └── lib/          ← 通用工具（cn、generateId）
 ├── apps/
-│   ├── edu/              ← 只保留 edu 独有的组件和页面
-│   └── marketplace/      ← 只保留 marketplace 独有的组件和页面
+│   ├── edu/
+│   │   ├── shared/*      ← 页面级 edu 组件，类型完整
+│   │   ├── lib/          ← edu 领域 hooks/utils（useImportFlow、usePlatformLinks、data-provider 核心）
+│   │   └── ...           ← 只保留 edu 独有的页面和组件
+│   └── marketplace/      ← 若恢复，从 packages/ui 复用通用组件
 └── backend/
     └── internal/
-        ├── handler/      ← 泛型 List 查询，统一错误消息中文
+        ├── store/        ← 按领域 repository/service 层
+        ├── handler/      ← 只负责 HTTP 编排、参数校验、响应封装
         └── router/       ← 按平台拆分
 ```
