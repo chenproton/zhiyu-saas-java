@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -43,58 +42,23 @@ func (h *RandomDrawQuestionHandler) List(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	search := r.URL.Query().Get("search")
 	majorID := r.URL.Query().Get("majorId")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
 
-	limit := 200
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 200); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-
-	if majorID != "" {
-		where = append(where, "rdq.major_id = $"+itoa(argIdx))
-		args = append(args, majorID)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "(rdq.name ILIKE $"+itoa(argIdx)+" OR rdq.description ILIKE $"+itoa(argIdx)+" OR m.name ILIKE $"+itoa(argIdx)+")")
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM random_draw_questions rdq LEFT JOIN majors m ON m.id = rdq.major_id WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT rdq.id, rdq.name, rdq.description, rdq.answer, rdq.major_id, m.name AS major_name, rdq.created_at, rdq.updated_at
-		FROM random_draw_questions rdq
-		LEFT JOIN majors m ON m.id = rdq.major_id
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY rdq.created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.RandomDrawQuestion]{
+		Table:         "random_draw_questions rdq LEFT JOIN majors m ON m.id = rdq.major_id",
+		SelectColumns: "rdq.id, rdq.name, rdq.description, rdq.answer, rdq.major_id, m.name AS major_name, rdq.created_at, rdq.updated_at",
+		TenantScoped:  false,
+		SearchColumns: []string{"rdq.name", "rdq.description", "m.name"},
+		DefaultLimit:  200,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if majorID != "" {
+				qb.addCondition("rdq.major_id = " + qb.nextArg(majorID))
+			}
+		},
+		ScanRows: h.scanRows,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询随机抽题失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取随机抽题失败")
 		return
 	}
 

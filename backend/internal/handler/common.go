@@ -312,6 +312,7 @@ type listQueryConfig[T any] struct {
 	SearchParam   string // query parameter name for search; defaults to "search"
 	OrderBy       string
 	NoPagination  bool // when true, no LIMIT/OFFSET is appended (full list)
+	DefaultLimit  int  // fallback page size when limit param is missing; defaults to 50
 	ExtraFilter   listQueryFilter
 	ScanRows      func(pgx.Rows) ([]T, error)
 }
@@ -376,9 +377,13 @@ func executeListQuery[T any](ctx context.Context, db listQueryDB, r *http.Reques
 
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
-	limit := 50
+	defaultLimit := cfg.DefaultLimit
+	if defaultLimit <= 0 {
+		defaultLimit = 50
+	}
+	limit := defaultLimit
 	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
+	if v, err := parsePageLimit(limitStr, defaultLimit); err == nil && v > 0 {
 		limit = v
 	}
 	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
