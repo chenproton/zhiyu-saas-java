@@ -81,70 +81,9 @@ func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	courseType := r.URL.Query().Get("type")
-	category := r.URL.Query().Get("category")
-	status := r.URL.Query().Get("status")
-	search := r.URL.Query().Get("search")
-	batchID := r.URL.Query().Get("batchId")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "c.tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if courseType != "" {
-		where = append(where, "c.type = $"+itoa(argIdx))
-		args = append(args, courseType)
-		argIdx++
-	}
-	if category != "" {
-		where = append(where, "c.category = $"+itoa(argIdx))
-		args = append(args, category)
-		argIdx++
-	}
-	if status != "" {
-		where = append(where, "c.status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "(c.name ILIKE $"+itoa(argIdx)+" OR c.code ILIKE $"+itoa(argIdx)+")")
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-	if batchID != "" {
-		where = append(where, "c.batch_id = $"+itoa(argIdx))
-		args = append(args, batchID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM courses c WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT c.id, c.code, c.name, c.type, c.category, c.major_id, m.name AS major_name, c.teacher_id, c.industry_id, i.name AS industry_name, c.version,
+	cfg := listQueryConfig[domain.Course]{
+		Table: "courses c LEFT JOIN majors m ON m.id = c.major_id LEFT JOIN industries i ON i.id = c.industry_id LEFT JOIN lesson_batches lb ON lb.id = c.batch_id",
+		SelectColumns: `c.id, c.code, c.name, c.type, c.category, c.major_id, m.name AS major_name, c.teacher_id, c.industry_id, i.name AS industry_name, c.version,
 			c.online_hours, c.offline_hours, c.online_weight, c.offline_weight, c.semester, c.class_name,
 			c.status, c.cover_color, c.cover_image, c.course_tag, c.difficulty, c.description,
 			c.knowledge_point_ids::text[] AS knowledge_point_ids,
@@ -152,26 +91,41 @@ func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 			c.creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name,
 			c.node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count,
 			(SELECT COUNT(*) FROM view_logs WHERE target_type = 'course' AND target_id = c.id) AS view_count,
-			c.study_count, c.created_at, c.updated_at
-		FROM courses c
-		LEFT JOIN majors m ON m.id = c.major_id
-		LEFT JOIN industries i ON i.id = c.industry_id
-		LEFT JOIN lesson_batches lb ON lb.id = c.batch_id
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY c.created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询课程列表失败")
-		return
+			c.study_count, c.created_at, c.updated_at`,
+		TenantScoped:  true,
+		TenantColumn:  "c.tenant_id",
+		SearchColumns: []string{"c.name", "c.code"},
+		SearchParam:   "search",
+		OrderBy:       "c.created_at DESC",
+		DefaultLimit:  50,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			courseType := r.URL.Query().Get("type")
+			category := r.URL.Query().Get("category")
+			status := r.URL.Query().Get("status")
+			batchID := r.URL.Query().Get("batchId")
+			if courseType != "" {
+				qb.addCondition("c.type = " + qb.nextArg(courseType))
+			}
+			if category != "" {
+				qb.addCondition("c.category = " + qb.nextArg(category))
+			}
+			if status != "" {
+				qb.addCondition("c.status = " + qb.nextArg(status))
+			}
+			if batchID != "" {
+				qb.addCondition("c.batch_id = " + qb.nextArg(batchID))
+			}
+		},
+		ScanRows: h.scanCourseRows,
 	}
-	defer rows.Close()
 
-	items, err := h.scanCourseRows(rows)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "课程数据读取失败")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "查询课程列表失败")
 		return
 	}
 
