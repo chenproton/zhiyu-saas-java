@@ -51,7 +51,9 @@ export function CompetencyStandards({ responsibilities, bindings, abilityPoints 
   }, [responsibilities, bindings, abilityNameMap])
 
   useEffect(() => {
-    if (groups.length > 0 && !activeId) setActiveId(groups[0].duty)
+    if (groups.length > 0 && !activeId) {
+      queueMicrotask(() => setActiveId(groups[0].duty))
+    }
   }, [groups, activeId])
 
   useEffect(() => {

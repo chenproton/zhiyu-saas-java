@@ -63,7 +63,14 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
   const loadMajors = async () => { try { const res = await majorApi.list(); setMajors(res.items || []) } catch {} }
 
   useEffect(() => {
-    loadWorkflows(); loadMajors()
+    let cancelled = false
+    ;(async () => {
+      await loadWorkflows()
+      await loadMajors()
+    })()
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

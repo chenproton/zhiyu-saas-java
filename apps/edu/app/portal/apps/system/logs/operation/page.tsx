@@ -43,7 +43,9 @@ export default function OperationLogsPage() {
   }, [tenantId, page])
 
   useEffect(() => {
-    loadLogs()
+    ;(async () => {
+      await loadLogs()
+    })()
   }, [loadLogs])
 
   const handleRefresh = () => loadLogs()

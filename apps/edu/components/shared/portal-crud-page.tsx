@@ -79,16 +79,27 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
   const [importStep, setImportStep] = useState<"download" | "upload">("download")
   const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
 
-  const importFlow = useImportFlow({
+  const {
+    fileInputRef,
+    importFile,
+    setImportFile,
+    isImporting,
+    isDownloading,
+    importPreview,
+    handleFileSelect,
+    handleImport,
+    executeImport,
+    handleDownloadTemplate,
+  } = useImportFlow({
     ...importConfig,
     onSuccess: onRetry,
   })
 
   useEffect(() => {
-    if (importFlow.importPreview) {
-      setIsImportConfirmOpen(true)
+    if (importPreview) {
+      queueMicrotask(() => setIsImportConfirmOpen(true))
     }
-  }, [importFlow.importPreview])
+  }, [importPreview])
 
   const filteredItems = useMemo(
     () => filterItems(items, searchTerm),
@@ -156,7 +167,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
   }
 
   const doImport = async (overwrite = false) => {
-    const ok = await importFlow.executeImport(overwrite)
+    const ok = await executeImport(overwrite)
     if (ok) {
       setIsImportDialogOpen(false)
       setImportStep("download")
@@ -165,7 +176,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
   }
 
   const doHandleImport = async () => {
-    const ok = await importFlow.handleImport()
+    const ok = await handleImport()
     if (ok) {
       setIsImportDialogOpen(false)
       setImportStep("download")
@@ -257,7 +268,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
           setIsImportDialogOpen(open)
           if (!open) {
             setImportStep("download")
-            importFlow.setImportFile(null)
+            setImportFile(null)
           }
         }}
       >
@@ -283,29 +294,29 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
                 <Button
                   className="w-full"
                   size="lg"
-                  onClick={importFlow.handleDownloadTemplate}
-                  disabled={importFlow.isDownloading}
+                  onClick={handleDownloadTemplate}
+                  disabled={isDownloading}
                 >
                   <FileDown className="mr-2 h-5 w-5" />
-                  {importFlow.isDownloading ? "下载中..." : `下载${entityLabel}批量导入模板`}
+                  {isDownloading ? "下载中..." : `下载${entityLabel}批量导入模板`}
                 </Button>
               </div>
             ) : (
               <div
                 className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer"
-                onClick={() => importFlow.fileInputRef.current?.click()}
+                onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
                 <p className="text-sm text-muted-foreground mb-2">
-                  {importFlow.importFile ? importFlow.importFile.name : "点击选择已填写的 Excel (.xlsx) 文件"}
+                  {importFile ? importFile.name : "点击选择已填写的 Excel (.xlsx) 文件"}
                 </p>
                 <p className="text-xs text-muted-foreground">仅支持 .xlsx 格式</p>
                 <input
-                  ref={importFlow.fileInputRef}
+                  ref={fileInputRef}
                   type="file"
                   accept=".xlsx"
                   className="hidden"
-                  onChange={(e) => importFlow.handleFileSelect(e.target.files)}
+                  onChange={(e) => handleFileSelect(e.target.files)}
                 />
               </div>
             )}
@@ -316,7 +327,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
               onClick={() => {
                 setIsImportDialogOpen(false)
                 setImportStep("download")
-                importFlow.setImportFile(null)
+                setImportFile(null)
               }}
             >
               取消
@@ -324,8 +335,8 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
             {importStep === "download" ? (
               <Button onClick={() => setImportStep("upload")}>下一步</Button>
             ) : (
-              <Button onClick={doHandleImport} disabled={!importFlow.importFile || importFlow.isImporting}>
-                {importFlow.isImporting ? "导入中..." : "开始导入"}
+              <Button onClick={doHandleImport} disabled={!importFile || isImporting}>
+                {isImporting ? "导入中..." : "开始导入"}
               </Button>
             )}
             {importStep === "upload" && (
@@ -337,15 +348,15 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
         </DialogContent>
       </Dialog>
 
-      {importFlow.importPreview && (
+      {importPreview && (
         <ImportConfirmDialog
           open={isImportConfirmOpen}
           onOpenChange={setIsImportConfirmOpen}
           entityLabel={entityLabel}
-          created={importFlow.importPreview.created}
-          duplicates={importFlow.importPreview.duplicates}
-          failed={importFlow.importPreview.failed}
-          duplicateItems={importFlow.importPreview.duplicateItems}
+          created={importPreview.created}
+          duplicates={importPreview.duplicates}
+          failed={importPreview.failed}
+          duplicateItems={importPreview.duplicateItems}
           onConfirmOverwrite={() => doImport(true)}
           onConfirmSkip={() => doImport(false)}
         />

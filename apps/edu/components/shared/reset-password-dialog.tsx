@@ -39,11 +39,16 @@ export function ResetPasswordDialog({
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (open) {
+    let cancelled = false
+    ;(async () => {
+      if (!open || cancelled) return
       setPassword("")
       setConfirmPassword("")
       setError(null)
       setSubmitting(false)
+    })()
+    return () => {
+      cancelled = true
     }
   }, [open])
 

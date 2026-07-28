@@ -73,12 +73,17 @@ export default function JobStudentDetailPage() {
 
   useEffect(() => {
     if (!id) return
-    setLoading(true)
-    positionApi
-      .get(id)
-      .then(setPosition)
-      .catch(() => setPosition(null))
-      .finally(() => setLoading(false))
+    ;(async () => {
+      setLoading(true)
+      try {
+        const pos = await positionApi.get(id)
+        setPosition(pos)
+      } catch {
+        setPosition(null)
+      } finally {
+        setLoading(false)
+      }
+    })()
   }, [id])
 
   useEffect(() => {

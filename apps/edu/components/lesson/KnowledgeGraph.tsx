@@ -48,7 +48,9 @@ export default function KnowledgeGraph({
   const dragOffset = useRef({ x: 0, y: 0 })
 
   useEffect(() => {
-    setNodePositions(new Map(nodes.map((n) => [n.id, { x: n.x, y: n.y }])))
+    ;(async () => {
+      setNodePositions(new Map(nodes.map((n) => [n.id, { x: n.x, y: n.y }])))
+    })()
   }, [nodes])
 
   const handleWheel = useCallback((e: React.WheelEvent) => {

@@ -167,25 +167,27 @@ export default function SuperAdminPage() {
   const { toast } = useToast()
 
   useEffect(() => {
-    const token = getToken("saas")
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split(".")[1]))
-        if (payload.roleCodes?.includes("platform_admin")) {
-          setAuthenticated(true)
-          setAuthUser(payload.username || "管理员")
-        } else {
+    ;(async () => {
+      const token = getToken("saas")
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split(".")[1]))
+          if (payload.roleCodes?.includes("platform_admin")) {
+            setAuthenticated(true)
+            setAuthUser(payload.username || "管理员")
+          } else {
+            setAuthenticated(false)
+            setLoginError("当前账号不是平台管理员")
+            removeToken("saas")
+          }
+        } catch {
           setAuthenticated(false)
-          setLoginError("当前账号不是平台管理员")
           removeToken("saas")
         }
-      } catch {
+      } else {
         setAuthenticated(false)
-        removeToken("saas")
       }
-    } else {
-      setAuthenticated(false)
-    }
+    })()
   }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -261,9 +263,11 @@ export default function SuperAdminPage() {
   }, [searchTerm])
 
   useEffect(() => {
-    if (authenticated) {
-      fetchTenants()
-    }
+    ;(async () => {
+      if (authenticated) {
+        await fetchTenants()
+      }
+    })()
   }, [fetchTenants, authenticated])
 
   useEffect(() => {

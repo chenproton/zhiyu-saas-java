@@ -137,26 +137,29 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
   }, [])
 
   useEffect(() => {
-    if (!isInitialized && position.responsibilities.length > 0) {
-      setSelectedRespId(position.responsibilities[0].id)
-      setIsInitialized(true)
-    }
+    ;(async () => {
+      if (!isInitialized && position.responsibilities.length > 0) {
+        setSelectedRespId(position.responsibilities[0].id)
+        setIsInitialized(true)
+      }
+    })()
   }, [position.responsibilities, isInitialized])
 
   useEffect(() => {
-    if (!abilityPoolFilterPosition) {
-      setAbilityPoolFilterPositionAbilities(new Set())
-      return
-    }
-    abilityApi.listBindings({ careerPositionId: abilityPoolFilterPosition })
-      .then((res) => {
+    ;(async () => {
+      if (!abilityPoolFilterPosition) {
+        setAbilityPoolFilterPositionAbilities(new Set())
+        return
+      }
+      try {
+        const res = await abilityApi.listBindings({ careerPositionId: abilityPoolFilterPosition })
         const ids = new Set<string>()
         res.items.forEach(b => {
           if (b.abilityPointId) ids.add(b.abilityPointId)
         })
         setAbilityPoolFilterPositionAbilities(ids)
-      })
-      .catch(() => {})
+      } catch { /* ignore */ }
+    })()
   }, [abilityPoolFilterPosition])
 
   const selectedResp = position.responsibilities.find(r => r.id === selectedRespId)

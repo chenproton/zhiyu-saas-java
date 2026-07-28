@@ -189,6 +189,8 @@ function AddSystemPageInner() {
   /* ========== course node tree ========== */
   const [nodes, setNodes] = useState<SystemCourseNode[]>([])
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [nodeModes, setNodeModes] = useState<Record<string, AddMode>>({})
+  const [resourcePool, setResourcePool] = useState<ResourceItem[]>([])
 
   useEffect(() => {
     majorApi.list({ limit: 1000 }).then((res) => {
@@ -198,8 +200,8 @@ function AddSystemPageInner() {
 
   useEffect(() => {
     if (!editId) return
-    setLoadingEdit(true)
     ;(async () => {
+      setLoadingEdit(true)
       try {
         const [course, nodeRes, resRes] = await Promise.all([
           courseApi.get(editId),
@@ -307,7 +309,6 @@ function AddSystemPageInner() {
   const selectedNode = nodes.find((n) => n.id === selectedNodeId)
 
   /* node editing mode */
-  const [nodeModes, setNodeModes] = useState<Record<string, AddMode>>({})
   const [showGrainSelector, setShowGrainSelector] = useState(false)
   const [grainSelectorMode, setGrainSelectorMode] = useState<AddMode>("clone")
   const [grainSearch, setGrainSearch] = useState("")
@@ -341,12 +342,15 @@ function AddSystemPageInner() {
   /* per-node draft cache */
   const [nodeDrafts, setNodeDrafts] = useState<Record<string, NodeDraft>>({})
   const nodeDraftsRef = useRef(nodeDrafts)
-  nodeDraftsRef.current = nodeDrafts
   const nodesRef = useRef(nodes)
-  nodesRef.current = nodes
+
+  useEffect(() => {
+    nodeDraftsRef.current = nodeDrafts
+    nodesRef.current = nodes
+  }, [nodeDrafts, nodes])
 
   /* module 1: basic info */
-  const [contentCode] = useState(isEdit ? "CNT-SQL001" : `CNT-${Date.now().toString(36).toUpperCase()}`)
+  const [contentCode] = useState(() => isEdit ? "CNT-SQL001" : `CNT-${Date.now().toString(36).toUpperCase()}`)
   const [hours, setHours] = useState("")
   const [learningGoal, setLearningGoal] = useState("")
   const [difficulty, setDifficulty] = useState<number>(0)
@@ -371,7 +375,6 @@ function AddSystemPageInner() {
   }, [])
 
   /* module 3: resources */
-  const [resourcePool, setResourcePool] = useState<ResourceItem[]>([])
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([])
 
   /* module 4: assessment */
@@ -432,21 +435,23 @@ function AddSystemPageInner() {
   /* save draft when form changes */
   useEffect(() => {
     if (!selectedNodeId) return
-    setNodeDrafts((prev) => ({
-      ...prev,
-      [selectedNodeId]: {
-        hours,
-        learningGoal,
-        detailedDescription,
-        background,
-        estimatedHours,
-        knowledgePoints,
-        selectedResourceIds,
-        selectedEvalMethods: evalData?.methods || [],
-        evalData,
-        difficulty,
-      },
-    }))
+    ;(async () => {
+      setNodeDrafts((prev) => ({
+        ...prev,
+        [selectedNodeId]: {
+          hours,
+          learningGoal,
+          detailedDescription,
+          background,
+          estimatedHours,
+          knowledgePoints,
+          selectedResourceIds,
+          selectedEvalMethods: evalData?.methods || [],
+          evalData,
+          difficulty,
+        },
+      }))
+    })()
   }, [selectedNodeId, hours, learningGoal, detailedDescription, background, estimatedHours, knowledgePoints, selectedResourceIds, evalData, difficulty])
 
   /* ---------- node mode selection handlers ---------- */

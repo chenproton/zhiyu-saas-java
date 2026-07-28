@@ -43,7 +43,13 @@ export default function LoginLogsPage() {
   }, [tenantId, page])
 
   useEffect(() => {
-    loadLogs()
+    let cancelled = false
+    ;(async () => {
+      await loadLogs()
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [loadLogs])
 
   const handleRefresh = () => loadLogs()

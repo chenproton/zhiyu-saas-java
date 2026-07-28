@@ -37,8 +37,10 @@ export default function MajorsPage() {
   }, [tenantId])
 
   useEffect(() => {
-    if (authLoading || !tenantId) return
-    fetchMajors()
+    ;(async () => {
+      if (authLoading || !tenantId) return
+      await fetchMajors()
+    })()
   }, [tenantId, authLoading, fetchMajors])
 
   return (

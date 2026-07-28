@@ -47,11 +47,19 @@ export function AssessmentTab() {
   const [examFilter, setExamFilter] = useState("all")
 
   useEffect(() => {
-    setLoading(true)
-    portalApi.workspaceDashboard({ role: "student" })
-      .then((res) => setExams(res.exams || []))
-      .catch(() => setExams([]))
-      .finally(() => setLoading(false))
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      try {
+        const res = await portalApi.workspaceDashboard({ role: "student" })
+        if (!cancelled) setExams(res.exams || [])
+      } catch {
+        if (!cancelled) setExams([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
   }, [])
 
   const filteredExams = examFilter === "all"

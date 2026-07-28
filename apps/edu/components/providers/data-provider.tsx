@@ -222,30 +222,30 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (pathname.startsWith("/portal")) return
 
-    const tasks: Promise<void>[] = []
+    const tasks: (() => Promise<void>)[] = []
     if (shouldLoadEvaluation || shouldLoadScene) {
       tasks.push(
-        loadQuestionBanks(),
-        loadExams(),
-        loadEvaluationMethods(),
-        loadSceneTasks(),
-        loadSceneResults(),
-        loadJobAbilityResults(),
-        loadApprovalItems()
+        loadQuestionBanks,
+        loadExams,
+        loadEvaluationMethods,
+        loadSceneTasks,
+        loadSceneResults,
+        loadJobAbilityResults,
+        loadApprovalItems
       )
     }
     if (shouldLoadGraduation) {
       tasks.push(
-        loadGraduationTopics(),
-        loadGraduationArchives(),
-        loadGraduationEvaluations(),
-        loadGraduationQueryResults()
+        loadGraduationTopics,
+        loadGraduationArchives,
+        loadGraduationEvaluations,
+        loadGraduationQueryResults
       )
     }
     if (shouldLoadPortrait) {
       tasks.push(
-        loadStudentAbilityArchives(),
-        loadStudentAbilityPortraits()
+        loadStudentAbilityArchives,
+        loadStudentAbilityPortraits
       )
     }
     if (tasks.length === 0) return
@@ -253,9 +253,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false
     const loadAll = async () => {
       try {
-        await Promise.all(tasks.slice(0, 4))
+        await Promise.all(tasks.slice(0, 4).map((fn) => fn()))
         if (cancelled) return
-        await Promise.all(tasks.slice(4))
+        await Promise.all(tasks.slice(4).map((fn) => fn()))
       } catch (err) {
         if (!cancelled) {
           console.error('Failed to load evaluation data', err)

@@ -271,18 +271,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // 从 localStorage 恢复收藏，并加载真实岗位/批次/推荐/审批流/审批数据
   useEffect(() => {
-    const storedFavorites = localStorage.getItem(FAVORITES_KEY)
-    if (storedFavorites) {
-      try {
-        setFavorites(JSON.parse(storedFavorites))
-      } catch {
-        // 忽略解析错误
+    ;(async () => {
+      const storedFavorites = localStorage.getItem(FAVORITES_KEY)
+      if (storedFavorites) {
+        try {
+          setFavorites(JSON.parse(storedFavorites))
+        } catch {
+          // 忽略解析错误
+        }
       }
-    }
 
-    Promise.all([loadPositions(), loadBatches(), loadRecommendations(), loadWorkflows(), loadApprovals(), loadAbilities()]).finally(() => {
-      setIsLoaded(true)
-    })
+      await Promise.all([loadPositions(), loadBatches(), loadRecommendations(), loadWorkflows(), loadApprovals(), loadAbilities()]).finally(() => {
+        setIsLoaded(true)
+      })
+    })()
   }, [loadPositions, loadBatches, loadRecommendations, loadWorkflows, loadApprovals, loadAbilities])
 
   // 保存收藏到 localStorage

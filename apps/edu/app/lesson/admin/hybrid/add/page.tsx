@@ -83,16 +83,22 @@ function HybridCourseAddForm() {
   const [existing, setExisting] = useState<Course | null>(null)
   const [majorNames, setMajorNames] = useState<string[]>([])
   const majorMapRef = useRef<Map<string, string>>(new Map())
+  const [batchId, setBatchId] = useState("")
 
   useEffect(() => {
-    if (!editId) {
-      setExisting(null)
-      return
-    }
-    courseApi.get(editId).then((c) => {
-      setExisting(c)
-      if (c.batchId) setBatchId(c.batchId)
-    }).catch(() => setExisting(null))
+    ;(async () => {
+      if (!editId) {
+        setExisting(null)
+        return
+      }
+      try {
+        const c = await courseApi.get(editId)
+        setExisting(c)
+        if (c.batchId) setBatchId(c.batchId)
+      } catch {
+        setExisting(null)
+      }
+    })()
   }, [editId])
 
   useEffect(() => {
@@ -196,8 +202,6 @@ function HybridCourseAddForm() {
   const [saving, setSaving] = useState(false)
 
   const rootForm = nodeDataMap[FIRST_NODE_ID]?.form || createDefaultNodeModuleData().form
-
-  const [batchId, setBatchId] = useState("")
 
   const updateRootForm = useCallback((patch: Partial<CourseBasicForm>) => {
     setNodeDataMap((prev) => ({

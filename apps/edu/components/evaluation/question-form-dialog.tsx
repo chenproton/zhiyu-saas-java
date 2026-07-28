@@ -85,17 +85,17 @@ export function QuestionFormDialog({
   useEffect(() => {
     if (!open) return
     let cancelled = false
-    setLoadingKnowledgePoints(true)
-    knowledgeApi.list({ limit: 1000 })
-      .then((res) => {
+    ;(async () => {
+      setLoadingKnowledgePoints(true)
+      try {
+        const res = await knowledgeApi.list({ limit: 1000 })
         if (cancelled) return
         setKnowledgePoints(res.items.map((kp) => ({ id: kp.id, name: kp.name })))
-      })
-      .catch((_err) => {
-      })
-      .finally(() => {
+      } catch (_err) {
+      } finally {
         if (!cancelled) setLoadingKnowledgePoints(false)
-      })
+      }
+    })()
     return () => { cancelled = true }
   }, [open])
 
@@ -109,32 +109,34 @@ export function QuestionFormDialog({
   }, [])
 
   useEffect(() => {
-    if (question) {
-      setType(question.type)
-      setContent(question.content)
-      setOptions(question.options || ["", "", "", ""])
-      if (question.type === "single") {
-        const indexes = answerToIndexes(question.answer, question.options || [])
-        setAnswer(Array.isArray(indexes) ? indexes[0] ?? "" : indexes)
-      } else if (question.type === "multiple") {
-        setAnswer(answerToIndexes(question.answer, question.options || []))
+    queueMicrotask(() => {
+      if (question) {
+        setType(question.type)
+        setContent(question.content)
+        setOptions(question.options || ["", "", "", ""])
+        if (question.type === "single") {
+          const indexes = answerToIndexes(question.answer, question.options || [])
+          setAnswer(Array.isArray(indexes) ? indexes[0] ?? "" : indexes)
+        } else if (question.type === "multiple") {
+          setAnswer(answerToIndexes(question.answer, question.options || []))
+        } else {
+          setAnswer(question.answer)
+        }
+        setAnalysis(question.analysis || "")
+        setDifficulty(question.difficulty || "medium")
+        setKnowledgePointIds(question.knowledgePoints || [])
       } else {
-        setAnswer(question.answer)
+        setType(defaultType || "single")
+        setContent("")
+        setOptions(["", "", "", ""])
+        setAnswer(defaultType === "multiple" ? [] : "")
+        setAnalysis("")
+        setDifficulty("medium")
+        setKnowledgePointIds([])
       }
-      setAnalysis(question.analysis || "")
-      setDifficulty(question.difficulty || "medium")
-      setKnowledgePointIds(question.knowledgePoints || [])
-    } else {
-      setType(defaultType || "single")
-      setContent("")
-      setOptions(["", "", "", ""])
-      setAnswer(defaultType === "multiple" ? [] : "")
-      setAnalysis("")
-      setDifficulty("medium")
-      setKnowledgePointIds([])
-    }
-    setKnowledgeOpen(false)
-    setAdvancedOpen(false)
+      setKnowledgeOpen(false)
+      setAdvancedOpen(false)
+    })
   }, [question, open, defaultType, answerToIndexes])
 
   useEffect(() => {
@@ -161,13 +163,15 @@ export function QuestionFormDialog({
 
   useEffect(() => {
     if (type !== "fill") return
-    const current = Array.isArray(answer) ? [...answer] : (answer ? [answer as string] : [])
-    if (current.length < blankCount) {
-      while (current.length < blankCount) current.push("")
-      setAnswer(current)
-    } else if (current.length > blankCount) {
-      setAnswer(current.slice(0, blankCount))
-    }
+    queueMicrotask(() => {
+      const current = Array.isArray(answer) ? [...answer] : (answer ? [answer as string] : [])
+      if (current.length < blankCount) {
+        while (current.length < blankCount) current.push("")
+        setAnswer(current)
+      } else if (current.length > blankCount) {
+        setAnswer(current.slice(0, blankCount))
+      }
+    })
   }, [blankCount, type, answer])
 
   const buildFormData = useCallback((): QuestionFormData => {

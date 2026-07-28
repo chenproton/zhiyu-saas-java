@@ -78,10 +78,10 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
 
   useEffect(() => {
     if (!scenarioId) return
-    setLoading(true)
-    scenarioApi
-      .get(scenarioId)
-      .then((s) => {
+    ;(async () => {
+      setLoading(true)
+      try {
+        const s = await scenarioApi.get(scenarioId)
         setName(s.name)
         setVersion(s.version)
         setDifficulty(s.difficulty)
@@ -92,11 +92,12 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
         setIndustryIds(s.industryIds || [])
         setCoBuilderIds(s.coBuilderIds || [])
         setOriginalStatus(s.status || "draft")
-      })
-      .catch((err: any) => {
+      } catch (err: any) {
         toast({ variant: "destructive", title: "加载场景失败", description: err.message || "请稍后重试" })
-      })
-      .finally(() => setLoading(false))
+      } finally {
+        setLoading(false)
+      }
+    })()
   }, [scenarioId, toast])
 
   const selectedPosition = useMemo(

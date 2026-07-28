@@ -43,7 +43,9 @@ export default function LessonArchivePage() {
   }, [toast])
 
   useEffect(() => {
-    loadData()
+    ;(async () => {
+      await loadData()
+    })()
   }, [loadData])
 
   const majors = useMemo(() => {

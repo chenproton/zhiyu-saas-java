@@ -297,7 +297,10 @@ export function useEvalRuleStore(options: UseEvalRuleStoreOptions) {
   const [state, dispatch] = useReducer(reducer, initialState)
   const lastMethodsRef = useRef<string>(JSON.stringify(normalizedMethods))
   const onChangeRef = useRef(onChange)
-  onChangeRef.current = onChange
+
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
 
   // 同步 props 中的 evaluationMethods 变化，采用合并策略而非全量重置
   useEffect(() => {

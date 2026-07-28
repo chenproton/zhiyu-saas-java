@@ -66,17 +66,25 @@ export function ManualQuestionDialog({
   }, [questionBanks])
 
   useEffect(() => {
-    if (open && publishedBanks.length > 0 && !selectedBankId) {
-      const firstBankId = publishedBanks[0].id
-      setSelectedBankId(firstBankId)
-    }
+    ;(async () => {
+      if (open && publishedBanks.length > 0 && !selectedBankId) {
+        const firstBankId = publishedBanks[0].id
+        setSelectedBankId(firstBankId)
+      }
+    })()
   }, [open, publishedBanks, selectedBankId])
 
   useEffect(() => {
-    if (selectedBankId) {
-      setLoadingQuestions(true)
-      loadBankQuestions?.(selectedBankId)?.finally(() => setLoadingQuestions(false))
-    }
+    ;(async () => {
+      if (selectedBankId) {
+        setLoadingQuestions(true)
+        try {
+          await loadBankQuestions?.(selectedBankId)
+        } finally {
+          setLoadingQuestions(false)
+        }
+      }
+    })()
   }, [selectedBankId, loadBankQuestions])
 
   useEffect(() => {

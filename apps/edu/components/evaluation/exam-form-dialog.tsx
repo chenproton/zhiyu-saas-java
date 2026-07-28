@@ -59,33 +59,35 @@ export function ExamFormDialog({
   useEffect(() => {
     if (!open) return
     let cancelled = false
-    setLoadingBatches(true)
-    evaluationBatchApi.list({ limit: 1000 })
-      .then((res) => {
+    ;(async () => {
+      setLoadingBatches(true)
+      try {
+        const res = await evaluationBatchApi.list({ limit: 1000 })
         if (!cancelled) setBatches(res.items.map((b) => ({ id: b.id, name: b.name })))
-      })
-      .catch((_err) => {
-      })
-      .finally(() => {
+      } catch {
+      } finally {
         if (!cancelled) setLoadingBatches(false)
-      })
+      }
+    })()
     return () => { cancelled = true }
   }, [open])
 
   useEffect(() => {
-    if (exam) {
-      setName(exam.name)
-      setDescription(exam.description)
-      setCollaboratorIds(exam.collaboratorIds || [])
-      setBatchId(exam.batchId || "")
-      setCoverUrl(exam.coverImage || "")
-    } else {
-      setName("")
-      setDescription("")
-      setCollaboratorIds([])
-      setBatchId("")
-      setCoverUrl("")
-    }
+    ;(async () => {
+      if (exam) {
+        setName(exam.name)
+        setDescription(exam.description)
+        setCollaboratorIds(exam.collaboratorIds || [])
+        setBatchId(exam.batchId || "")
+        setCoverUrl(exam.coverImage || "")
+      } else {
+        setName("")
+        setDescription("")
+        setCollaboratorIds([])
+        setBatchId("")
+        setCoverUrl("")
+      }
+    })()
   }, [exam, open])
 
   const handleSubmit = (e: React.FormEvent) => {

@@ -142,11 +142,12 @@ export default function LibraryLandingPage() {
     return Array.from(set).sort()
   }, [resources, orgFilter])
 
+  const [now] = useState(() => Date.now())
+
   const filteredResources = useMemo(() => {
     let list = resources
     if (typeFilter !== "全部") list = list.filter(r => r.resourceType === typeFilter)
     if (timeFilter !== "all") {
-      const now = Date.now()
       const ms = timeFilter === "week" ? 7 * 86400000 : timeFilter === "month" ? 30 * 86400000 : 365 * 86400000
       list = list.filter(r => now - new Date(r.createdAt).getTime() < ms)
     }
@@ -162,7 +163,7 @@ export default function LibraryLandingPage() {
       list = [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     }
     return list
-  }, [resources, typeFilter, search, timeFilter, orgFilter, majorFilter, sortBy])
+  }, [resources, typeFilter, search, timeFilter, orgFilter, majorFilter, sortBy, now])
 
   const totalCount = resources.length + knowledgeCount + abilityCount + certCount + questionCount
 

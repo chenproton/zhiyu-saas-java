@@ -46,7 +46,13 @@ export default function PositionsPage() {
   }, [tenantId])
 
   useEffect(() => {
-    fetchPositions()
+    let cancelled = false
+    ;(async () => {
+      await fetchPositions()
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [fetchPositions])
 
   const filteredPositions = useMemo(() =>

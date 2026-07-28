@@ -18,17 +18,19 @@ export function LearningTab() {
   const [sceneFilter, setSceneFilter] = useState("all")
 
   useEffect(() => {
-    setLoading(true)
-    portalApi.workspaceDashboard({ role: "student" })
-      .then((res) => {
+    ;(async () => {
+      setLoading(true)
+      try {
+        const res = await portalApi.workspaceDashboard({ role: "student" })
         setCourses(res.courses || [])
         setSceneTasks(res.sceneTasks || [])
-      })
-      .catch(() => {
+      } catch {
         setCourses([])
         setSceneTasks([])
-      })
-      .finally(() => setLoading(false))
+      } finally {
+        setLoading(false)
+      }
+    })()
   }, [])
 
   const filteredCourses = courses.filter((c) => {

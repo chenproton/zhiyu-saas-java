@@ -67,7 +67,9 @@ export function useApprovals({ targetType, limit = 1000 }: UseApprovalsOptions):
   }, [targetType, limit])
 
   useEffect(() => {
-    refresh()
+    ;(async () => {
+      await refresh()
+    })()
   }, [refresh])
 
   const getStepInfo = useCallback((record?: ApprovalRecord | null): ApprovalStepInfo | undefined => {

@@ -119,8 +119,19 @@ export default function CourseDetailPage() {
 
   useEffect(() => {
     if (!id) return
-    setLoading(true)
-    courseApi.get(id).then(setCourse).catch(() => setCourse(null)).finally(() => setLoading(false))
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      try {
+        const c = await courseApi.get(id)
+        if (!cancelled) setCourse(c)
+      } catch {
+        if (!cancelled) setCourse(null)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
   }, [id])
 
   useEffect(() => {

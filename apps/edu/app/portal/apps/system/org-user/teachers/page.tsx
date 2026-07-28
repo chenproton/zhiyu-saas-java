@@ -67,21 +67,25 @@ export default function TeachersPage() {
   const [formTitleIds, setFormTitleIds] = useState<string[]>([])
 
   useEffect(() => {
-    setTeachers(
-      users.map((u) => {
-        const orgNode = u.orgNodeId ? orgMap.get(u.orgNodeId) : undefined
-        return {
-          id: u.id,
-          name: u.name,
-          loginAccount: u.username || u.loginName || "",
-          department: orgNode?.name || institution?.name || "—",
-          orgNodeId: u.orgNodeId,
-          roles: u.roleNames ?? [],
-          positions: u.titleIds ?? [],
-          status: mapTeacherStatus(u.status),
-        }
-      })
-    )
+    let cancelled = false
+    ;(async () => {
+      setTeachers(
+        users.map((u) => {
+          const orgNode = u.orgNodeId ? orgMap.get(u.orgNodeId) : undefined
+          return {
+            id: u.id,
+            name: u.name,
+            loginAccount: u.username || u.loginName || "",
+            department: orgNode?.name || institution?.name || "—",
+            orgNodeId: u.orgNodeId,
+            roles: u.roleNames ?? [],
+            positions: u.titleIds ?? [],
+            status: mapTeacherStatus(u.status),
+          }
+        })
+      )
+    })()
+    return () => { cancelled = true }
   }, [users, institution, orgMap])
 
   useEffect(() => {

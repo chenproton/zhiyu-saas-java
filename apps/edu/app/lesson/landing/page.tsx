@@ -83,10 +83,17 @@ export default function LessonLandingPage() {
   const [selectedBatch, setSelectedBatch] = useState("全部")
 
   useEffect(() => {
-    setLoading(true)
-    courseApi.list({ status: "published", limit: 1000 } as any).then((res) => {
-      setCourses(res.items || [])
-    }).catch(() => setCourses([])).finally(() => setLoading(false))
+    ;(async () => {
+      setLoading(true)
+      try {
+        const res = await courseApi.list({ status: "published", limit: 1000 } as any)
+        setCourses(res.items || [])
+      } catch {
+        setCourses([])
+      } finally {
+        setLoading(false)
+      }
+    })()
   }, [])
 
   const industries = useMemo(() => {
@@ -138,7 +145,11 @@ export default function LessonLandingPage() {
     return systemCourses.slice(start, start + CARDS_PER_PAGE)
   }, [systemCourses, currentPage])
 
-  useEffect(() => { setCurrentPage(1) }, [selectedIndustry, selectedBatch, keyword, sort])
+  useEffect(() => {
+    ;(async () => {
+      setCurrentPage(1)
+    })()
+  }, [selectedIndustry, selectedBatch, keyword, sort])
 
   const activeFilters = useMemo(() => {
     const filters: { type: string; label: string }[] = []

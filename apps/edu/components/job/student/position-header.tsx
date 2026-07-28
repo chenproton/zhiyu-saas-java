@@ -38,16 +38,24 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (!user) {
-      setIsHeart(false)
-      return
-    }
-    positionApi.getFavorite(position.id)
-      .then((res) => {
+    let cancelled = false
+    ;(async () => {
+      if (!user) {
+        setIsHeart(false)
+        return
+      }
+      try {
+        const res = await positionApi.getFavorite(position.id)
+        if (cancelled) return
         setIsHeart(res.isFavorite)
         setFavoriteCount(res.favoriteCount)
-      })
-      .catch(() => {})
+      } catch {
+        // ignore
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [user, position.id])
 
   const toggleHeart = async () => {

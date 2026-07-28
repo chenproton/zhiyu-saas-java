@@ -72,7 +72,13 @@ export default function UserFieldsPage() {
   }, [tenantId])
 
   useEffect(() => {
-    fetchData()
+    let cancelled = false
+    ;(async () => {
+      await fetchData()
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [fetchData])
 
   const handleToggle = async (field: ExtendField) => {

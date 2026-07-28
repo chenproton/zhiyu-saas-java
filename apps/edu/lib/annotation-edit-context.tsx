@@ -68,18 +68,20 @@ export function AnnotationEditProvider({
 
   // Load from localStorage on mount
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved) setOverrides(JSON.parse(saved))
-    } catch {
-      // ignore
-    }
-    try {
-      const saved = localStorage.getItem(FLOATING_KEY)
-      if (saved) setFloatingAnnotations(JSON.parse(saved))
-    } catch {
-      // ignore
-    }
+    queueMicrotask(() => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY)
+        if (saved) setOverrides(JSON.parse(saved))
+      } catch {
+        // ignore
+      }
+      try {
+        const saved = localStorage.getItem(FLOATING_KEY)
+        if (saved) setFloatingAnnotations(JSON.parse(saved))
+      } catch {
+        // ignore
+      }
+    })
   }, [])
 
   // Persist overrides

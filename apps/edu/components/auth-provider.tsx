@@ -82,7 +82,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    fetchMe()
+    ;(async () => {
+      await fetchMe()
+    })()
   }, [fetchMe])
 
   const logout = useCallback(() => {

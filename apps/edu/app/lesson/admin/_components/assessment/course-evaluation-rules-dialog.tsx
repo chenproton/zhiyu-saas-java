@@ -256,6 +256,22 @@ export function CourseEvaluationRulesDialog({
   const [editingStepLabel, setEditingStepLabel] = useState("")
   const [editingStepDesc, setEditingStepDesc] = useState("")
 
+  // EvalResourceOnlyPanel 状态（从内部组件提升）
+  const [rdqMajorTab, setRdqMajorTab] = useState("全部")
+  const [rdqDrawMode, setRdqDrawMode] = useState<"random" | "manual">("random")
+  const [rdqDrawCount, setRdqDrawCount] = useState(5)
+  const [paperEndTime, setPaperEndTime] = useState("")
+  const [qbDrawMode, setQbDrawMode] = useState<"all" | "practice">("all")
+  const [qbPassRate, setQbPassRate] = useState(60)
+
+  // MethodDialogContent 状态（从内部组件提升）
+  const [gradeMappingDialogOpen, setGradeMappingDialogOpen] = useState(false)
+  const [editingGradeMappingPointId, setEditingGradeMappingPointId] = useState<string | null>(null)
+  const [localDraft, setLocalDraft] = useState<{ name: string; mode: "rubric" | "score_rule"; types: EvalSubType[]; scoreRuleItems: ScoreRuleItem[] }>({ name: "", mode: "rubric", types: [], scoreRuleItems: [] })
+  const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false)
+  const [saveTemplateMode, setSaveTemplateMode] = useState<"new" | "replace">("new")
+  const [selectedReplaceTemplateId, setSelectedReplaceTemplateId] = useState<string | null>(null)
+
   // 资源配置统一收敛到 config.methodResourceConfigs，确保可随 onChange 回传保存
   const getResourceConfig = useCallback(<T = Record<string, any>>(methodKey: string, defaults: T): T => {
     return (config.methodResourceConfigs?.[methodKey] as T) || defaults
@@ -867,15 +883,8 @@ export function CourseEvaluationRulesDialog({
     )
   }
 
-   const EvalResourceOnlyPanel = ({ methodKey }: { methodKey: string }) => {
-    const [rdqMajorTab, setRdqMajorTab] = useState("全部")
-    const [rdqDrawMode, setRdqDrawMode] = useState<"random" | "manual">("random")
-    const [rdqDrawCount, setRdqDrawCount] = useState(5)
-    const [paperEndTime, setPaperEndTime] = useState("")
-    const [qbDrawMode, setQbDrawMode] = useState<"all" | "practice">("all")
-    const [qbPassRate, setQbPassRate] = useState(60)
-
-    if (methodKey === "random_draw") {
+  const evalResourceOnlyPanel = erDialogMethod ? (() => {
+    if (erDialogMethod === "random_draw") {
       const rdqMajorOptions = ["全部", "经济学", "物流管理", "机械工程", "计算机科学", "电子信息", "工商管理", "会计学", "市场营销", "土木工程", "英语", "法学"]
       const filteredRdq = config.randomDrawCustomQuestions.filter(q => {
         const matchMajor = rdqMajorTab === "全部" || q.majorId === rdqMajorTab
@@ -1022,7 +1031,7 @@ export function CourseEvaluationRulesDialog({
         </div>
       )
     }
-    if (methodKey === "review") {
+    if (erDialogMethod === "review") {
       return (
         <div className="space-y-4">
           <div className="p-4 bg-amber-50 rounded-lg border border-amber-100 text-sm text-amber-700">
@@ -1131,7 +1140,7 @@ export function CourseEvaluationRulesDialog({
         </div>
       )
     }
-    if (methodKey === "paper") {
+    if (erDialogMethod === "paper") {
       const selectPaper = (paperId: string) => { updateConfig({ paperIds: [paperId], paperWeights: { [paperId]: 100 } }) }
       return (
         <div className="space-y-4">
@@ -1203,7 +1212,7 @@ export function CourseEvaluationRulesDialog({
         </div>
       )
     }
-    if (methodKey === "question_bank") {
+    if (erDialogMethod === "question_bank") {
       return (
         <div className="space-y-4">
           <QuestionSelectorPanel field="questionBankQuestions" selectedIds={config.questionBankQuestions} showAutoSelect={true} />
@@ -1230,7 +1239,7 @@ export function CourseEvaluationRulesDialog({
         </div>
       )
     }
-    if (methodKey === "outcome") {
+    if (erDialogMethod === "outcome") {
       return (
         <div className="space-y-4">
           <div className="p-4 bg-cyan-50 rounded-lg border border-cyan-100 text-sm text-cyan-700"><div className="flex items-center gap-2 mb-2"><Info className="h-4 w-4" /><span className="font-medium">成果评价说明</span></div><p>成果评价时教师根据学生提交的成果材料进行打分。评价点配置请在「评价标准配置」卡片中设置。</p></div>
@@ -1243,7 +1252,7 @@ export function CourseEvaluationRulesDialog({
         </div>
       )
     }
-    if (methodKey === "homework") {
+    if (erDialogMethod === "homework") {
       return (
         <div className="space-y-4">
           <div className="p-4 bg-pink-50 rounded-lg border border-pink-100 text-sm text-pink-700"><div className="flex items-center gap-2 mb-2"><Info className="h-4 w-4" /><span className="font-medium">作业说明</span></div><p>学生提交作业后，教师按评分规则进行打分。评价点配置请在「评价标准配置」卡片中设置。</p></div>
@@ -1255,7 +1264,7 @@ export function CourseEvaluationRulesDialog({
         </div>
       )
     }
-    if (methodKey === "quiz") {
+    if (erDialogMethod === "quiz") {
       const quizPresetTimes = [5, 10, 15, 20, 30]
       const quizIsPreset = quizPresetTimes.includes(mockResQuiz.timeLimit)
       return (
@@ -1283,7 +1292,7 @@ export function CourseEvaluationRulesDialog({
       )
     }
     return null
-  }
+  })() : null
 
   const getMethodEvalInfo = (methodKey: string) => {
     switch (methodKey) {
@@ -1356,18 +1365,12 @@ export function CourseEvaluationRulesDialog({
     )
   }
 
-  const MethodDialogContent = ({ methodKey }: { methodKey: string }) => {
-    const info = getMethodEvalInfo(methodKey)
-    const [gradeMappingDialogOpen, setGradeMappingDialogOpen] = useState(false)
-    const [editingGradeMappingPointId, setEditingGradeMappingPointId] = useState<string | null>(null)
-    const [localDraft, setLocalDraft] = useState<{ name: string; mode: "rubric" | "score_rule"; types: EvalSubType[]; scoreRuleItems: ScoreRuleItem[] }>({ name: "", mode: "rubric", types: [], scoreRuleItems: [] })
-    const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false)
-    const [saveTemplateMode, setSaveTemplateMode] = useState<"new" | "replace">("new")
-    const [selectedReplaceTemplateId, setSelectedReplaceTemplateId] = useState<string | null>(null)
-    const rubricIdField = methodKey === "random_draw" ? "randomDrawRubricId" : methodKey === "review" ? "reviewRubricId" : methodKey === "outcome" ? "outcomeRubricId" : methodKey === "homework" ? "homeworkRubricId" : "reviewRubricId"
+  const methodDialogContent = erDialogMethod ? (() => {
+    const info = getMethodEvalInfo(erDialogMethod)
+    const rubricIdField = erDialogMethod === "random_draw" ? "randomDrawRubricId" : erDialogMethod === "review" ? "reviewRubricId" : erDialogMethod === "outcome" ? "outcomeRubricId" : erDialogMethod === "homework" ? "homeworkRubricId" : "reviewRubricId"
     const currentRubricId = (config as any)[rubricIdField] as string | null
-    const view = methodDialogViews[methodKey] || "list"
-    const setView = (v: "list" | "edit" | "template") => setMethodDialogViews(prev => ({ ...prev, [methodKey]: v }))
+    const view = methodDialogViews[erDialogMethod] || "list"
+    const setView = (v: "list" | "edit" | "template") => setMethodDialogViews(prev => ({ ...prev, [erDialogMethod]: v }))
     const currentScheme = rubricLibrary.find(s => s.id === currentRubricId)
 
     const applyScheme = (schemeId: string) => {
@@ -1412,10 +1415,10 @@ export function CourseEvaluationRulesDialog({
               <div>
                 <Label className="text-xs text-gray-500">评价标准类型</Label>
                 <div className="flex gap-3 mt-1">
-                  {methodKey !== "homework" && <button onClick={() => { if (editingRubricId) setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, mode: "rubric" } : s)); else setLocalDraft(prev => ({ ...prev, mode: "rubric" })); }} className={cn("px-3 py-1.5 rounded-lg text-xs border transition-all flex items-center gap-1.5", draftScheme.mode === "rubric" ? "bg-primary/10 text-primary border-primary" : "bg-white text-gray-500 border-gray-200 hover:border-gray-300")}><div className={cn("w-3.5 h-3.5 rounded-full border flex items-center justify-center", draftScheme.mode === "rubric" ? "border-primary" : "border-gray-300")}>{draftScheme.mode === "rubric" && <div className="w-2 h-2 rounded-full bg-primary" />}</div>评价量规</button>}
+                  {erDialogMethod !== "homework" && <button onClick={() => { if (editingRubricId) setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, mode: "rubric" } : s)); else setLocalDraft(prev => ({ ...prev, mode: "rubric" })); }} className={cn("px-3 py-1.5 rounded-lg text-xs border transition-all flex items-center gap-1.5", draftScheme.mode === "rubric" ? "bg-primary/10 text-primary border-primary" : "bg-white text-gray-500 border-gray-200 hover:border-gray-300")}><div className={cn("w-3.5 h-3.5 rounded-full border flex items-center justify-center", draftScheme.mode === "rubric" ? "border-primary" : "border-gray-300")}>{draftScheme.mode === "rubric" && <div className="w-2 h-2 rounded-full bg-primary" />}</div>评价量规</button>}
                   <button onClick={() => { if (editingRubricId) setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, mode: "score_rule", scoreRuleItems: s.scoreRuleItems?.length ? s.scoreRuleItems : [{ id: uid("sr"), name: "", desc: "", rule: "", weight: 0 }] } : s)); else setLocalDraft(prev => ({ ...prev, mode: "score_rule", scoreRuleItems: prev.scoreRuleItems?.length ? prev.scoreRuleItems : [{ id: uid("sr"), name: "", desc: "", rule: "", weight: 0 }] })); }} className={cn("px-3 py-1.5 rounded-lg text-xs border transition-all flex items-center gap-1.5", draftScheme.mode === "score_rule" ? "bg-primary/10 text-primary border-primary" : "bg-white text-gray-500 border-gray-200 hover:border-gray-300")}><div className={cn("w-3.5 h-3.5 rounded-full border flex items-center justify-center", draftScheme.mode === "score_rule" ? "border-primary" : "border-gray-300")}>{draftScheme.mode === "score_rule" && <div className="w-2 h-2 rounded-full bg-primary" />}</div>评分规则</button>
                 </div>
-                {methodKey === "homework" && <p className="text-[10px] text-gray-400 mt-1">作业测评仅需使用评分规则即可</p>}
+                {erDialogMethod === "homework" && <p className="text-[10px] text-gray-400 mt-1">作业测评仅需使用评分规则即可</p>}
               </div>
             </div>
           </div>
@@ -1594,7 +1597,7 @@ export function CourseEvaluationRulesDialog({
         {!currentRubricId && <div className="text-center text-gray-400 py-6"><Target className="h-8 w-8 mx-auto mb-2 opacity-50" /><p className="text-sm">尚未选用评价标准</p><p className="text-xs mt-1">请从上方列表中选用一个评价标准方案</p></div>}
       </div>
     )
-  }
+  })() : null
 
   const ResourceCard = ({ methodKey, onClick }: { methodKey: string; onClick: () => void }) => {
     const summary = getMethodConfigSummary(methodKey)
@@ -1633,7 +1636,7 @@ export function CourseEvaluationRulesDialog({
     )
   }
 
-  const BodyContent = () => (
+  const bodyContent = (
     <>
       {config.evaluationMethods.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-gray-400 py-12">
@@ -1740,19 +1743,19 @@ export function CourseEvaluationRulesDialog({
     </>
   )
 
-  const SubDialogs = () => (
+  const subDialogs = (
     <>
       <Dialog open={erDialogOpen === "resource"} onOpenChange={v => !v && setErDialogOpen(null)}>
         <DialogContent className="sm:max-w-[85vw] max-w-[85vw] h-[92vh] overflow-y-auto">
           <DialogHeader><DialogTitle>测评资源配置</DialogTitle><DialogDescription>配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的测评资源</DialogDescription></DialogHeader>
-          {erDialogMethod && <EvalResourceOnlyPanel methodKey={erDialogMethod} />}
+          {evalResourceOnlyPanel}
         </DialogContent>
       </Dialog>
 
       <Dialog open={erDialogOpen === "method"} onOpenChange={v => !v && setErDialogOpen(null)}>
         <DialogContent className="sm:max-w-[90vw] max-w-[90vw] h-[92vh] overflow-y-auto">
           <DialogHeader><DialogTitle>评价标准配置</DialogTitle><DialogDescription>配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的评价点与评分规则</DialogDescription></DialogHeader>
-          {erDialogMethod && <MethodDialogContent methodKey={erDialogMethod} />}
+          {methodDialogContent}
         </DialogContent>
       </Dialog>
 
@@ -1932,9 +1935,9 @@ export function CourseEvaluationRulesDialog({
           </div>
         </div>
         <div className="border rounded-xl p-4 bg-white">
-          <BodyContent />
+          {bodyContent}
         </div>
-        <SubDialogs />
+        {subDialogs}
       </div>
     )
   }
@@ -1947,7 +1950,7 @@ export function CourseEvaluationRulesDialog({
           <DialogDescription>配置各评价方式的测评对象、评价主体、测评资源与评价标准</DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-hidden py-4">
-          <BodyContent />
+          {bodyContent}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange?.(false)}>取消</Button>
@@ -1960,7 +1963,7 @@ export function CourseEvaluationRulesDialog({
           }}>保存</Button>
         </DialogFooter>
       </DialogContent>
-      <SubDialogs />
+      {subDialogs}
     </Dialog>
   )
 }

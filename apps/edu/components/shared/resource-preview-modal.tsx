@@ -33,6 +33,7 @@ function ResourcePreviewModalInner({ resource, open, onOpenChange, index = 0 }: 
   const [dragging, setDragging] = useState(false)
   const [resizing, setResizing] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [zIndex, setZIndex] = useState(0)
 
   const contentRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -44,35 +45,45 @@ function ResourcePreviewModalInner({ resource, open, onOpenChange, index = 0 }: 
   const applyLayoutRef = useRef<() => void>(() => {})
   const bringToFrontRef = useRef<() => void>(() => {})
 
-  applyLayoutRef.current = () => {
-    const el = contentRef.current
-    if (!el) return
-    el.style.transform = `translate3d(calc(-50% + ${positionRef.current.x}px), calc(-50% + ${positionRef.current.y}px), 0)`
-    el.style.width = sizeRef.current.width ? `${sizeRef.current.width}px` : ""
-    el.style.height = sizeRef.current.height ? `${sizeRef.current.height}px` : ""
-    el.style.zIndex = String(zIndexRef.current)
-  }
-
-  bringToFrontRef.current = () => {
-    zIndexRef.current = ++globalZIndexCounter
-    applyLayoutRef.current()
-  }
-
   useEffect(() => {
-    setMounted(true)
+    applyLayoutRef.current = () => {
+      const el = contentRef.current
+      if (!el) return
+      el.style.transform = `translate3d(calc(-50% + ${positionRef.current.x}px), calc(-50% + ${positionRef.current.y}px), 0)`
+      el.style.width = sizeRef.current.width ? `${sizeRef.current.width}px` : ""
+      el.style.height = sizeRef.current.height ? `${sizeRef.current.height}px` : ""
+      el.style.zIndex = String(zIndexRef.current)
+    }
+
+    bringToFrontRef.current = () => {
+      const nextZ = ++globalZIndexCounter
+      zIndexRef.current = nextZ
+      setZIndex(nextZ)
+      applyLayoutRef.current()
+    }
   }, [])
 
   useEffect(() => {
-    if (open) {
-      positionRef.current = initialPosition
-      sizeRef.current = {}
-      setPosition(initialPosition)
-      setSize({})
-      if (zIndexRef.current === 0) {
-        zIndexRef.current = ++globalZIndexCounter
+    ;(async () => {
+      setMounted(true)
+    })()
+  }, [])
+
+  useEffect(() => {
+    ;(async () => {
+      if (open) {
+        positionRef.current = initialPosition
+        sizeRef.current = {}
+        setPosition(initialPosition)
+        setSize({})
+        if (zIndexRef.current === 0) {
+          const nextZ = ++globalZIndexCounter
+          zIndexRef.current = nextZ
+          setZIndex(nextZ)
+        }
+        applyLayoutRef.current()
       }
-      applyLayoutRef.current()
-    }
+    })()
   }, [open, initialPosition])
 
   useEffect(() => {
@@ -175,7 +186,7 @@ function ResourcePreviewModalInner({ resource, open, onOpenChange, index = 0 }: 
         transform: `translate3d(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px), 0)`,
         width: size.width,
         height: size.height,
-        zIndex: zIndexRef.current,
+        zIndex,
       }}
       onMouseDown={() => bringToFrontRef.current()}
     >

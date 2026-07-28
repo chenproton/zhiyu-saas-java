@@ -66,19 +66,23 @@ export default function PlatformConfigPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   useEffect(() => {
-    if (linksData.platforms.length > 0) {
-      const map: Record<string, { url: string; enabled: boolean }> = {}
-      for (const p of linksData.platforms) {
-        map[p.id] = { url: p.url, enabled: p.enabled }
+    ;(async () => {
+      if (linksData.platforms.length > 0) {
+        const map: Record<string, { url: string; enabled: boolean }> = {}
+        for (const p of linksData.platforms) {
+          map[p.id] = { url: p.url, enabled: p.enabled }
+        }
+        setLinksForm(map)
       }
-      setLinksForm(map)
-    }
+    })()
   }, [linksData])
 
   useEffect(() => {
-    if (modulesData.platforms.length > 0) {
-      setModulesForm({ platforms: modulesData.platforms.map((p) => ({ ...p, modules: [...p.modules] })) })
-    }
+    ;(async () => {
+      if (modulesData.platforms.length > 0) {
+        setModulesForm({ platforms: modulesData.platforms.map((p) => ({ ...p, modules: [...p.modules] })) })
+      }
+    })()
   }, [modulesData])
 
   const handleLinkChange = (id: string, field: "url" | "enabled", value: string | boolean) => {

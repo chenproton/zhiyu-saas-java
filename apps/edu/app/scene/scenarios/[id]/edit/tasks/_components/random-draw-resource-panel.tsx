@@ -72,8 +72,10 @@ export function RandomDrawResourcePanel({
   const [rdqDrawCount, setRdqDrawCount] = useState(rdCfg.drawCount ?? 5)
 
   useEffect(() => {
-    setRdqDrawMode((rdCfg.drawMode as "random" | "manual") ?? "random")
-    setRdqDrawCount(rdCfg.drawCount ?? 5)
+    ;(async () => {
+      setRdqDrawMode((rdCfg.drawMode as "random" | "manual") ?? "random")
+      setRdqDrawCount(rdCfg.drawCount ?? 5)
+    })()
   }, [rdCfg.drawMode, rdCfg.drawCount])
   const [allQuestions, setAllQuestions] = useState<RandomDrawQuestion[]>([])
   const [loading, setLoading] = useState(true)
@@ -82,8 +84,10 @@ export function RandomDrawResourcePanel({
   const [venueResources, setVenueResources] = useState<string>(rdCfg.venueResources || "")
 
   useEffect(() => {
-    setSubmitFormatDesc(rdCfg.submitFormatDesc || "")
-    setVenueResources(rdCfg.venueResources || "")
+    ;(async () => {
+      setSubmitFormatDesc(rdCfg.submitFormatDesc || "")
+      setVenueResources(rdCfg.venueResources || "")
+    })()
   }, [rdCfg.submitFormatDesc, rdCfg.venueResources])
 
   const loadQuestions = useCallback(async () => {
@@ -94,7 +98,11 @@ export function RandomDrawResourcePanel({
     setLoading(false)
   }, [])
 
-  useEffect(() => { loadQuestions() }, [loadQuestions])
+  useEffect(() => {
+    ;(async () => {
+      await loadQuestions()
+    })()
+  }, [loadQuestions])
 
   const filteredRdq = allQuestions.filter(q => {
     const matchMajor = rdqMajorTab === "全部" || q.majorId === rdqMajorTab

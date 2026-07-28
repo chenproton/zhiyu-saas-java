@@ -68,43 +68,45 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
   const [selectedProfession, setSelectedProfession] = useState<string>("全部")
 
   useEffect(() => {
-    setLoading(true)
-    const fetches: Promise<void>[] = []
+    ;(async () => {
+      setLoading(true)
+      const fetches: Promise<void>[] = []
 
-    if (isScene) {
-      fetches.push(
-        scenarioApi
-          .list({ status: "published", limit: 1000 })
-          .then(async (res) => {
-            const scens = res.items || []
-            setScenarios(scens)
-            const results = await Promise.all(
-              scens.map((s) => taskApi.list({ scenarioId: s.id, limit: 1000 }).catch(() => ({ items: [], total: 0 })))
-            )
-            const map = new Map<string, number>()
-            scens.forEach((s, idx) => {
-              map.set(s.id, results[idx]?.items?.length ?? 0)
+      if (isScene) {
+        fetches.push(
+          scenarioApi
+            .list({ status: "published", limit: 1000 })
+            .then(async (res) => {
+              const scens = res.items || []
+              setScenarios(scens)
+              const results = await Promise.all(
+                scens.map((s) => taskApi.list({ scenarioId: s.id, limit: 1000 }).catch(() => ({ items: [], total: 0 })))
+              )
+              const map = new Map<string, number>()
+              scens.forEach((s, idx) => {
+                map.set(s.id, results[idx]?.items?.length ?? 0)
+              })
+              setTaskCountMap(map)
             })
-            setTaskCountMap(map)
-          })
-          .catch(() => { setScenarios([]); setTaskCountMap(new Map()) })
-      )
-      fetches.push(
-        publicPositionApi
-          .list({ status: "published", limit: 1000 })
-          .then((res) => setPositions(res.items || []))
-          .catch(() => setPositions([]))
-      )
-    } else {
-      fetches.push(
-        publicPositionApi
-          .list({ status: "published", limit: 1000 })
-          .then((res) => setPositions(res.items || []))
-          .catch(() => setPositions([]))
-      )
-    }
+            .catch(() => { setScenarios([]); setTaskCountMap(new Map()) })
+        )
+        fetches.push(
+          publicPositionApi
+            .list({ status: "published", limit: 1000 })
+            .then((res) => setPositions(res.items || []))
+            .catch(() => setPositions([]))
+        )
+      } else {
+        fetches.push(
+          publicPositionApi
+            .list({ status: "published", limit: 1000 })
+            .then((res) => setPositions(res.items || []))
+            .catch(() => setPositions([]))
+        )
+      }
 
-    Promise.all(fetches).finally(() => setLoading(false))
+      await Promise.all(fetches).finally(() => setLoading(false))
+    })()
   }, [isScene])
 
   useEffect(() => {
@@ -145,11 +147,15 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
   }, [isScene])
 
   useEffect(() => {
-    if (!user) { setFavoritePositions([]); return }
-    positionApi
-      .listFavorites()
-      .then((res) => setFavoritePositions(res.items || []))
-      .catch(() => setFavoritePositions([]))
+    ;(async () => {
+      if (!user) { setFavoritePositions([]); return }
+      try {
+        const res = await positionApi.listFavorites()
+        setFavoritePositions(res.items || [])
+      } catch {
+        setFavoritePositions([])
+      }
+    })()
   }, [user, isScene])
 
   const scenarioCountMap = useMemo(() => {
@@ -316,7 +322,11 @@ export function JobHome({ mode = "job" }: JobHomeProps) {
     return filtered.slice(start, start + CARDS_PER_PAGE)
   }, [filtered, currentPage])
 
-  useEffect(() => { setCurrentPage(1) }, [selectedIndustry, selectedMajor, selectedPosition, selectedProfession, selectedDifficulty, keyword, sort])
+  useEffect(() => {
+    ;(async () => {
+      setCurrentPage(1)
+    })()
+  }, [selectedIndustry, selectedMajor, selectedPosition, selectedProfession, selectedDifficulty, keyword, sort])
 
   const activeFilters = useMemo(() => {
     const filters: { type: string; label: string }[] = []

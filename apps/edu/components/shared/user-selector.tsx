@@ -173,8 +173,21 @@ export function UserSelector({
     finally { setUsersLoading(false) }
   }, [selectedOrgId, userSearch, tenantId, usePortalApi, excludeStudent, stableExcludeUserIds, orgMap, mergeUserCache])
 
-  useEffect(() => { loadOrgTree() }, [loadOrgTree])
-  useEffect(() => { if (open) loadUsers() }, [open, loadUsers])
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      await loadOrgTree()
+    })()
+    return () => { cancelled = true }
+  }, [loadOrgTree])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      if (open) await loadUsers()
+    })()
+    return () => { cancelled = true }
+  }, [open, loadUsers])
 
   // Resolve names for selected ids that are not in cache yet (e.g. echo on edit),
   // so the trigger shows user names instead of raw ids.
@@ -195,7 +208,7 @@ export function UserSelector({
   }, [value, userCache, usePortalApi, mergeUserCache])
 
   useEffect(() => {
-    if (open) setSelectedIds([...value])
+    if (open) queueMicrotask(() => setSelectedIds([...value]))
   }, [open, value])
 
   const toggleOrg = (id: string) => {

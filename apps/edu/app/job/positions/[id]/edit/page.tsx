@@ -66,45 +66,48 @@ function PositionEditPageContent({ params }: PageProps) {
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    Promise.all([
-      positionApi.list({ limit: 1000 }),
-      batchApi.list({ limit: 1000 }),
-    ])
-      .then(([posRes, batchRes]) => {
+    ;(async () => {
+      setLoading(true)
+      try {
+        const [posRes, batchRes] = await Promise.all([
+          positionApi.list({ limit: 1000 }),
+          batchApi.list({ limit: 1000 }),
+        ])
         if (cancelled) return
         const posList = posRes.items.map(convertCareerPositionToPosition)
         setPositions(posList)
         setBatches(batchRes.items.map(convertJobBatchToBatch))
-      })
-      .catch((err: any) => {
+      } catch (err: any) {
         if (!cancelled) toast.error(err?.message || '请稍后重试')
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false)
-      })
+      }
+    })()
     return () => { cancelled = true }
   }, [])
 
   useEffect(() => {
-    const found = positions.find((p) => p.id === id)
-    if (found && !position) {
-      setPosition({ ...found })
-    }
+    ;(async () => {
+      const found = positions.find((p) => p.id === id)
+      if (found && !position) {
+        setPosition({ ...found })
+      }
+    })()
   }, [id, positions, position])
 
   useEffect(() => {
     if (!position || detailsLoaded) return
-    setDetailsLoading(true)
     let cancelled = false
-    Promise.all([
-      positionResponsibilityApi.list({ careerPositionId: position.id, limit: 1000 }),
-      positionCertificateApi.list({ careerPositionId: position.id, limit: 1000 }),
-      abilityApi.listBindings({ careerPositionId: position.id }),
-      abilityApi.listDomains(position.id),
-      abilityApi.list({ limit: 1000 }),
-    ])
-      .then(([respRes, certRes, bindingRes, domainRes, abilityRes]) => {
+    ;(async () => {
+      setDetailsLoading(true)
+      try {
+        const [respRes, certRes, bindingRes, domainRes, abilityRes] = await Promise.all([
+          positionResponsibilityApi.list({ careerPositionId: position.id, limit: 1000 }),
+          positionCertificateApi.list({ careerPositionId: position.id, limit: 1000 }),
+          abilityApi.listBindings({ careerPositionId: position.id }),
+          abilityApi.listDomains(position.id),
+          abilityApi.list({ limit: 1000 }),
+        ])
         if (cancelled) {
           setDetailsLoading(false)
           return
@@ -138,24 +141,26 @@ function PositionEditPageContent({ params }: PageProps) {
         })
         setDetailsLoaded(true)
         setDetailsLoading(false)
-      })
-      .catch((err: any) => {
+      } catch (err: any) {
         setDetailsLoading(false)
         if (!cancelled) {
           console.error('Failed to load position details:', err)
           toast.error(err?.message || '请稍后重试')
         }
-      })
+      }
+    })()
     return () => { cancelled = true }
   }, [position, detailsLoaded])
 
   useEffect(() => {
-    const stepParam = searchParams.get('step')
-    if (stepParam === '2') {
-      setActiveStep('ability')
-    } else if (stepParam === '3') {
-      setActiveStep('competency')
-    }
+    ;(async () => {
+      const stepParam = searchParams.get('step')
+      if (stepParam === '2') {
+        setActiveStep('ability')
+      } else if (stepParam === '3') {
+        setActiveStep('competency')
+      }
+    })()
   }, [searchParams])
 
   useEffect(() => {

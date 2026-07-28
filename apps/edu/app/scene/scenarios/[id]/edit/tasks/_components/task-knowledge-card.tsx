@@ -35,6 +35,10 @@ function generateUUID(): string {
   })
 }
 
+function generateKpCode() {
+  return `KP-${Date.now().toString().slice(-6)}`
+}
+
 interface TaskState {
   knowledgePoints: string[]
   descriptionPdf?: string | null
@@ -90,8 +94,6 @@ export function TaskKnowledgeCard({
 
   const filteredKp = knowledgePoints.filter(k => !kpSearch || (k.name || "").includes(kpSearch) || (k.description || "").includes(kpSearch) || (k.code || "").includes(kpSearch))
   const hasResults = kpSearch ? filteredKp.length > 0 : false
-
-  const generateKpCode = () => `KP-${Date.now().toString().slice(-6)}`
 
   const handleReferenceKp = (kpId: string) => {
     if (state.knowledgePoints.includes(kpId)) return

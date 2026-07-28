@@ -58,12 +58,14 @@ export function KnowledgePointFormDialog({
   const [glSelectOpen, setGlSelectOpen] = useState(false)
 
   useEffect(() => {
-    if (open) {
-      setName(initialValues?.name ?? "")
-      setDescription(initialValues?.description ?? "")
-      setCode(initialValues?.code ?? (mode === "edit" ? "" : generateKpCode()))
-      setGranularLessonIds(initialValues?.granularLessonIds ?? [])
-    }
+    ;(async () => {
+      if (open) {
+        setName(initialValues?.name ?? "")
+        setDescription(initialValues?.description ?? "")
+        setCode(initialValues?.code ?? (mode === "edit" ? "" : generateKpCode()))
+        setGranularLessonIds(initialValues?.granularLessonIds ?? [])
+      }
+    })()
   }, [open, initialValues, mode])
 
   const title =

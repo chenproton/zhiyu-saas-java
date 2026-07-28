@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Plus, Trash2, ChevronDown, ChevronRight, X, CheckCircle2, Search } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -105,10 +105,11 @@ function LevelRuleEditor({ gradeMapping, onChange }: { gradeMapping: GradeMappin
 export function EvaluationRulesEditor({ evalPoints, knowledgePoints, onChange }: EvaluationRulesEditorProps) {
   const [expandedTypes, setExpandedTypes] = useState<Record<string, boolean>>({})
   const [kpSearch, setKpSearch] = useState("")
+  const idCounterRef = useRef(0)
 
   const addEvalPoint = (subType?: string, presetName?: string) => {
     const newPoint: EvalPoint = {
-      id: `ep-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      id: `ep-${++idCounterRef.current}`,
       name: presetName || "未命名评价点",
       desc: "",
       subType,

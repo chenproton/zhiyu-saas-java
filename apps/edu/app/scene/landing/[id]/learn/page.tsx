@@ -165,13 +165,18 @@ export default function SceneLearnPage() {
   const [myResults, setMyResults] = useState<SceneEvaluationResult[]>([])
 
   useEffect(() => {
-    if (!id) return
-    setLoading(true)
-    scenarioApi
-      .get(id)
-      .then(setScenario)
-      .catch(() => setScenario(null))
-      .finally(() => setLoading(false))
+    ;(async () => {
+      if (!id) return
+      setLoading(true)
+      try {
+        const s = await scenarioApi.get(id)
+        setScenario(s)
+      } catch {
+        setScenario(null)
+      } finally {
+        setLoading(false)
+      }
+    })()
   }, [id])
 
   useEffect(() => {
@@ -222,11 +227,16 @@ export default function SceneLearnPage() {
   }, [id, scenario])
 
   useEffect(() => {
-    if (!activeTaskId) return
-    setEvalMethods([])
-    taskEvaluationApi.listMethods(activeTaskId)
-      .then((res) => setEvalMethods((res.methods || []).filter((m: TaskEvaluationMethod) => m.isEnabled !== false)))
-      .catch(() => setEvalMethods([]))
+    ;(async () => {
+      if (!activeTaskId) return
+      setEvalMethods([])
+      try {
+        const res = await taskEvaluationApi.listMethods(activeTaskId)
+        setEvalMethods((res.methods || []).filter((m: TaskEvaluationMethod) => m.isEnabled !== false))
+      } catch {
+        setEvalMethods([])
+      }
+    })()
   }, [activeTaskId])
 
   useEffect(() => {
@@ -855,11 +865,13 @@ function EvalMethodSubmitDialog({
   const [submitted, setSubmitted] = useState(false)
 
   useEffect(() => {
-    if (open) {
-      setText("")
-      setFiles([])
-      setSubmitted(false)
-    }
+    ;(async () => {
+      if (open) {
+        setText("")
+        setFiles([])
+        setSubmitted(false)
+      }
+    })()
   }, [open])
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

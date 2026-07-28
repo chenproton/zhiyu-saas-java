@@ -42,13 +42,15 @@ export function ScoreConfigDialog({
   const [typeScores, setTypeScores] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    if (open && types.length > 0) {
-      const init: Record<string, string> = {}
-      types.forEach((t) => {
-        init[t] = "0"
-      })
-      setTypeScores(init)
-    }
+    ;(async () => {
+      if (open && types.length > 0) {
+        const init: Record<string, string> = {}
+        types.forEach((t) => {
+          init[t] = "0"
+        })
+        setTypeScores(init)
+      }
+    })()
   }, [open, types])
 
   const totalInput = useMemo(() => {

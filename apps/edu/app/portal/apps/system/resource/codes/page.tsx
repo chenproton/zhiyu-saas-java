@@ -20,23 +20,22 @@ export default function ResourceCodesPage() {
     if (authLoading || !tenantId) return
 
     let cancelled = false
-    setLoading(true)
-    setError(null)
-
-    portalRequest<ListResponse<ResourceCode>>(`/resource-codes${buildQuery({ tenantId, limit: 1000 })}`)
-      .then((res) => {
+    ;(async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await portalRequest<ListResponse<ResourceCode>>(`/resource-codes${buildQuery({ tenantId, limit: 1000 })}`)
         if (!cancelled) {
           setCodes(res.items)
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "加载资源编码失败")
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false)
-      })
+      }
+    })()
 
     return () => {
       cancelled = true

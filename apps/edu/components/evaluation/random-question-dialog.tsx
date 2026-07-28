@@ -77,20 +77,21 @@ export function RandomQuestionDialog({
   useEffect(() => {
     if (!open) return
     let cancelled = false
-    setLoadingQuestions(true)
-    questionApi.list({ limit: 10000 })
-      .then((res) => {
+    ;(async () => {
+      setLoadingQuestions(true)
+      try {
+        const res = await questionApi.list({ limit: 10000 })
         if (cancelled) return
         setQuestions(res.items.map((q) => ({
           ...q,
           createdAt: new Date((q.createdAt as unknown as string) || Date.now()),
         })))
-      })
-      .catch((_err) => {
-      })
-      .finally(() => {
+      } catch (_err) {
+        // ignore
+      } finally {
         if (!cancelled) setLoadingQuestions(false)
-      })
+      }
+    })()
     return () => { cancelled = true }
   }, [open])
 
@@ -115,17 +116,18 @@ export function RandomQuestionDialog({
   useEffect(() => {
     if (!open) return
     let cancelled = false
-    setLoadingKnowledgePoints(true)
-    knowledgeApi.list({ limit: 1000 })
-      .then((res) => {
+    ;(async () => {
+      setLoadingKnowledgePoints(true)
+      try {
+        const res = await knowledgeApi.list({ limit: 1000 })
         if (cancelled) return
         setKnowledgePoints(res.items.map((kp) => ({ id: kp.id, name: kp.name })))
-      })
-      .catch((_err) => {
-      })
-      .finally(() => {
+      } catch (_err) {
+        // ignore
+      } finally {
         if (!cancelled) setLoadingKnowledgePoints(false)
-      })
+      }
+    })()
     return () => { cancelled = true }
   }, [open])
 

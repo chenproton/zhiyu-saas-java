@@ -86,20 +86,6 @@ export default function MyResourcesPage() {
 
   const userId = user?.id
 
-  useEffect(() => {
-    if (!userId) return
-
-    if (activeTab === "knowledge" && knowledgeItems.length === 0) loadKnowledge()
-    else if (activeTab === "ability" && abilityItems.length === 0) loadAbilities()
-    else if (activeTab === "certificates" && certificateItems.length === 0) loadCertificates()
-    else if (activeTab === "questions" && questionItems.length === 0) loadQuestions()
-    else if (activeTab.startsWith("resource:")) {
-      const kind = activeTab.replace("resource:", "") as ResourceKind
-      if (resourceItemsMap[kind].length === 0) loadResourceKind(kind)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- load functions and item lengths are intentionally excluded to avoid infinite loops: the effect only triggers initial fetch when item list is empty
-  }, [activeTab, userId])
-
   const loadKnowledge = async () => {
     setLoadingKnowledge(true)
     try {
@@ -149,6 +135,26 @@ export default function MyResourcesPage() {
       toast({ variant: "destructive", title: "加载资源失败", description: err.message })
     } finally { setLoadingResourceKind(null) }
   }
+
+  useEffect(() => {
+    if (!userId) return
+
+    if (activeTab === "knowledge" && knowledgeItems.length === 0) {
+      (async () => { await loadKnowledge() })()
+    } else if (activeTab === "ability" && abilityItems.length === 0) {
+      (async () => { await loadAbilities() })()
+    } else if (activeTab === "certificates" && certificateItems.length === 0) {
+      (async () => { await loadCertificates() })()
+    } else if (activeTab === "questions" && questionItems.length === 0) {
+      (async () => { await loadQuestions() })()
+    } else if (activeTab.startsWith("resource:")) {
+      const kind = activeTab.replace("resource:", "") as ResourceKind
+      if (resourceItemsMap[kind].length === 0) {
+        (async () => { await loadResourceKind(kind) })()
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load functions and item lengths are intentionally excluded to avoid infinite loops: the effect only triggers initial fetch when item list is empty
+  }, [activeTab, userId])
 
   const countForTab = (tab: TabKey) => {
     if (tab === "knowledge") return knowledgeItems.length

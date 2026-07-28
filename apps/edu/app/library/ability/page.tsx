@@ -48,7 +48,11 @@ export default function AbilityPointsPage() {
     finally { setLoading(false) }
   }, [searchQuery, categoryFilter, toast])
 
-  useEffect(() => { loadItems() }, [loadItems])
+  useEffect(() => {
+    ;(async () => {
+      await loadItems()
+    })()
+  }, [loadItems])
 
   const handleOpenAdd = () => { setEditingItem(null); setName(""); setDescription(""); setCategory("knowledge"); setIsPublic(false); setAttributes(""); setIsDialogOpen(true) }
   const handleOpenEdit = (item: AbilityPoint) => { setEditingItem(item); setName(item.name); setDescription(item.description || ""); setCategory(item.category); setIsPublic(item.isPublic); setAttributes(item.attributes?.join(", ") || ""); setIsDialogOpen(true) }

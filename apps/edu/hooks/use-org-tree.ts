@@ -40,17 +40,17 @@ export function useOrgTree(tenantId?: string): UseOrgTreeResult {
   const refetch = useCallback(() => setRefetchKey((k) => k + 1), [])
 
   useEffect(() => {
-    if (!tenantId) {
-      setOrgs([])
-      setOrgTypes([])
-      return
-    }
+    ;(async () => {
+      if (!tenantId) {
+        setOrgs([])
+        setOrgTypes([])
+        return
+      }
 
-    let cancelled = false
-    setLoading(true)
-    setError(undefined)
+      let cancelled = false
+      setLoading(true)
+      setError(undefined)
 
-    async function fetchData() {
       try {
         const [treeRes, typesRes] = await Promise.all([
           orgApi.tree({ tenantId }),
@@ -65,12 +65,11 @@ export function useOrgTree(tenantId?: string): UseOrgTreeResult {
       } finally {
         if (!cancelled) setLoading(false)
       }
-    }
 
-    fetchData()
-    return () => {
-      cancelled = true
-    }
+      return () => {
+        cancelled = true
+      }
+    })()
   }, [tenantId, refetchKey])
 
   const orgTree = useMemo(() => {

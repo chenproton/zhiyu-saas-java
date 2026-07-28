@@ -29,7 +29,9 @@ export function TopNav() {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
+    ;(async () => {
+      setMounted(true)
+    })()
     const updateTime = () => {
       const now = new Date()
       const weekDays = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"]

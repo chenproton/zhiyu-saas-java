@@ -157,6 +157,318 @@ function countScenesAndTasks(road?: LearnRoad): { sceneCount: number; taskCount:
   }
 }
 
+interface EditViewProps {
+  editingPosition: Position
+  batches: Batch[]
+  scenes: Scene[]
+  setScenes: React.Dispatch<React.SetStateAction<Scene[]>>
+  selectedSceneId: string | null
+  setSelectedSceneId: React.Dispatch<React.SetStateAction<string | null>>
+  positionScenarios: Scenario[]
+  positionTasks: ScenarioTask[]
+  editLoading: boolean
+  saving: boolean
+  saved: boolean
+  learnRoadId: string | null
+  onBack: () => void
+  onSave: () => void
+  setSaved: React.Dispatch<React.SetStateAction<boolean>>
+  moveScene: (index: number, direction: -1 | 1) => void
+}
+
+function EditView({
+  editingPosition,
+  batches,
+  scenes,
+  setScenes,
+  selectedSceneId,
+  setSelectedSceneId,
+  positionScenarios,
+  positionTasks,
+  editLoading,
+  saving,
+  saved,
+  learnRoadId,
+  onBack,
+  onSave,
+  setSaved,
+  moveScene,
+}: EditViewProps) {
+  const timelineRef = useRef<HTMLDivElement>(null)
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+
+  const batch = batches.find((b) => b.id === editingPosition.batchId)
+
+  const scrollTimeline = (direction: -1 | 1) => {
+    timelineRef.current?.scrollBy({ left: direction * 200, behavior: 'smooth' })
+  }
+
+  const handleDragStart = (index: number) => {
+    setDraggingIndex(index)
+  }
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    setDragOverIndex(index)
+  }
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault()
+    if (draggingIndex === null || draggingIndex === targetIndex) {
+      setDraggingIndex(null)
+      setDragOverIndex(null)
+      return
+    }
+    const newScenes = [...scenes]
+    const [moved] = newScenes.splice(draggingIndex, 1)
+    newScenes.splice(targetIndex, 0, moved)
+    setScenes(newScenes)
+    setSaved(false)
+    setDraggingIndex(null)
+    setDragOverIndex(null)
+  }
+
+  const handleDragEnd = () => {
+    setDraggingIndex(null)
+    setDragOverIndex(null)
+  }
+
+  return (
+    <div className="space-y-6 relative">
+      {editLoading && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm rounded-lg">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={onBack} disabled={editLoading}>
+            <ArrowLeft className="mr-1 h-4 w-4" />
+            返回岗位列表
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">{editingPosition.name}</h1>
+            <p className="text-muted-foreground mt-1">
+              {batch ? batch.name : '未关联批次'} · {editingPosition.shortName}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              已加载 {positionScenarios.length} 个场景，{positionTasks.length} 个任务
+              {scenes.length === 0 && positionScenarios.length > 0 && ' · 点击下方“保存顺序”生成学习路径'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button onClick={onSave} disabled={editLoading || saving || !learnRoadId}>
+            {saving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            {saved ? '已保存' : '保存顺序'}
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <div className="rounded-2xl bg-[#f8f5f0] p-6 sm:p-8 relative overflow-hidden">
+          <h2 className="text-center text-xl sm:text-2xl font-bold text-slate-800">
+            {editingPosition.name}学习路径
+          </h2>
+          <p className="text-center text-sm text-slate-500 mt-2">
+            点击上方阶段图标，查看该阶段的学习任务
+          </p>
+          <div className="relative mt-8">
+            <button
+              onClick={() => scrollTimeline(-1)}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-slate-500 shadow-sm hover:bg-white"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => scrollTimeline(1)}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-slate-500 shadow-sm hover:bg-white"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+            <div
+              ref={timelineRef}
+              className="overflow-x-auto pb-4 px-8"
+            >
+              <div className="relative flex items-start justify-between min-w-max">
+                <div className="absolute top-14 left-0 right-0 h-1.5 rounded-full bg-gradient-to-r from-blue-400 via-green-400 via-amber-400 via-pink-400 via-purple-500 to-rose-500" />
+                {scenes.map((scene, idx) => {
+                  const Icon = NODE_ICONS[idx % NODE_ICONS.length]
+                  const color = NODE_COLORS[idx % NODE_COLORS.length]
+                  const isSelected = selectedSceneId === scene.id
+                  return (
+                    <button
+                      key={scene.id}
+                      onClick={() => setSelectedSceneId(scene.id)}
+                      className="relative z-10 flex flex-col items-center min-w-[150px] mx-3 first:ml-4 last:mr-4"
+                    >
+                      <div className="h-5 text-xs text-slate-400">
+                        {idx === 0 ? 'START · 第1站' : `第${idx + 1}站`}
+                      </div>
+                      {scene.coverImage ? (
+                        <div
+                          className={cn(
+                            'mt-2 flex h-14 w-14 items-center justify-center rounded-full overflow-hidden shadow-lg transition-transform bg-white',
+                            isSelected && 'ring-4 ring-white scale-110'
+                          )}
+                        >
+                          <img
+                            src={scene.coverImage}
+                            alt={scene.name}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          className={cn(
+                            'mt-2 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-transform',
+                            color.bg,
+                            isSelected && 'ring-4 ring-white scale-110'
+                          )}
+                        >
+                          <Icon className="h-6 w-6" />
+                        </div>
+                      )}
+                      <div
+                        className={cn(
+                          'mt-3 text-sm font-bold text-center max-w-[140px]',
+                          isSelected ? 'text-blue-600' : 'text-slate-800'
+                        )}
+                      >
+                        {scene.name}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1">
+                        {scene.tasks.length} 任务 · {scene.hours} 课时
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+          {scenes.length === 0 && !editLoading && (
+            <div className="text-center py-10 text-slate-500">
+              <Layers className="h-10 w-10 mx-auto mb-2 opacity-40" />
+              <p>该岗位下暂无已发布场景，请先创建并发布场景</p>
+            </div>
+          )}
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">场景顺序</CardTitle>
+            <CardDescription>拖拽场景卡片可调整顺序，点击场景查看任务</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {scenes.map((scene, index) => {
+              const isSelected = selectedSceneId === scene.id
+              return (
+                <div
+                  key={scene.id}
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDrop={(e) => handleDrop(e, index)}
+                  onDragLeave={() => setDragOverIndex(null)}
+                  onDragEnd={handleDragEnd}
+                  onClick={() => setSelectedSceneId(scene.id)}
+                  className={cn(
+                    'group flex cursor-pointer items-center justify-between rounded-lg border p-4 transition-all',
+                    isSelected
+                      ? 'border-blue-500 bg-blue-50 shadow-sm'
+                      : 'border-slate-200 bg-white hover:bg-slate-50',
+                    draggingIndex === index && 'opacity-40',
+                    dragOverIndex === index && dragOverIndex !== draggingIndex && 'border-blue-400 bg-blue-50/60'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="cursor-grab text-slate-400 hover:text-slate-600 active:cursor-grabbing"
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
+                      <GripVertical className="h-5 w-5" />
+                    </span>
+                    {scene.coverImage ? (
+                      <img
+                        src={scene.coverImage}
+                        alt={scene.name}
+                        className="h-8 w-8 rounded-full object-cover border border-slate-200"
+                      />
+                    ) : (
+                      <span
+                        className={cn(
+                          'flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors',
+                          isSelected
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200'
+                        )}
+                      >
+                        {index + 1}
+                      </span>
+                    )}
+                    <div>
+                      <div
+                        className={cn(
+                          'font-medium transition-colors',
+                          isSelected ? 'text-blue-700' : 'text-slate-900'
+                        )}
+                      >
+                        {scene.name}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {scene.tasks.length} 任务 · {scene.hours} 课时
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {isSelected && (
+                      <ChevronRight className="h-5 w-5 text-blue-500 animate-in fade-in duration-200" />
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={index === 0}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        moveScene(index, -1)
+                      }}
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={index === scenes.length - 1}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        moveScene(index, 1)
+                      }}
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
+            {scenes.length === 0 && !editLoading && (
+              <div className="text-center py-8 text-slate-500">
+                <FolderOpen className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <p>暂无可排序的场景</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
 export default function LearnRoadsPage() {
   const { toast } = useToast()
 
@@ -199,27 +511,28 @@ export default function LearnRoadsPage() {
   }, [toast])
 
   useEffect(() => {
-    loadJobData()
+    (async () => {
+      await loadJobData()
+    })()
   }, [loadJobData])
 
   useEffect(() => {
     let cancelled = false
-    setListLoading(true)
-    learnRoadApi
-      .list({ limit: 1000 })
-      .then((res) => {
+    ;(async () => {
+      setListLoading(true)
+      try {
+        const res = await learnRoadApi.list({ limit: 1000 })
         if (!cancelled) setLearnRoads(res.items || [])
-      })
-      .catch((err) => {
+      } catch (err) {
         toast({
           title: '加载失败',
           description: err instanceof Error ? err.message : '无法获取学习路径数据',
           variant: 'destructive',
         })
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setListLoading(false)
-      })
+      }
+    })()
     return () => {
       cancelled = true
     }
@@ -493,286 +806,28 @@ export default function LearnRoadsPage() {
     </div>
   )
 
-  const EditView = () => {
-    const timelineRef = useRef<HTMLDivElement>(null)
-    const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
-    const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
-
-    if (!editingPosition) return null
-    const batch = batches.find((b) => b.id === editingPosition.batchId)
-
-    const scrollTimeline = (direction: -1 | 1) => {
-      timelineRef.current?.scrollBy({ left: direction * 200, behavior: 'smooth' })
-    }
-
-    const handleDragStart = (index: number) => {
-      setDraggingIndex(index)
-    }
-
-    const handleDragOver = (e: React.DragEvent, index: number) => {
-      e.preventDefault()
-      setDragOverIndex(index)
-    }
-
-    const handleDrop = (e: React.DragEvent, targetIndex: number) => {
-      e.preventDefault()
-      if (draggingIndex === null || draggingIndex === targetIndex) {
-        setDraggingIndex(null)
-        setDragOverIndex(null)
-        return
-      }
-      const newScenes = [...scenes]
-      const [moved] = newScenes.splice(draggingIndex, 1)
-      newScenes.splice(targetIndex, 0, moved)
-      setScenes(newScenes)
-      setSaved(false)
-      setDraggingIndex(null)
-      setDragOverIndex(null)
-    }
-
-    const handleDragEnd = () => {
-      setDraggingIndex(null)
-      setDragOverIndex(null)
-    }
-
-    return (
-      <div className="space-y-6 relative">
-        {editLoading && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm rounded-lg">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        )}
-
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" onClick={handleBack} disabled={editLoading}>
-              <ArrowLeft className="mr-1 h-4 w-4" />
-              返回岗位列表
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">{editingPosition.name}</h1>
-              <p className="text-muted-foreground mt-1">
-                {batch ? batch.name : '未关联批次'} · {editingPosition.shortName}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                已加载 {positionScenarios.length} 个场景，{positionTasks.length} 个任务
-                {scenes.length === 0 && positionScenarios.length > 0 && ' · 点击下方“保存顺序”生成学习路径'}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button onClick={handleSave} disabled={editLoading || saving || !learnRoadId}>
-              {saving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="mr-2 h-4 w-4" />
-              )}
-              {saved ? '已保存' : '保存顺序'}
-            </Button>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="rounded-2xl bg-[#f8f5f0] p-6 sm:p-8 relative overflow-hidden">
-            <h2 className="text-center text-xl sm:text-2xl font-bold text-slate-800">
-              {editingPosition.name}学习路径
-            </h2>
-            <p className="text-center text-sm text-slate-500 mt-2">
-              点击上方阶段图标，查看该阶段的学习任务
-            </p>
-            <div className="relative mt-8">
-              <button
-                onClick={() => scrollTimeline(-1)}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-slate-500 shadow-sm hover:bg-white"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => scrollTimeline(1)}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-slate-500 shadow-sm hover:bg-white"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-              <div
-                ref={timelineRef}
-                className="overflow-x-auto pb-4 px-8"
-              >
-                <div className="relative flex items-start justify-between min-w-max">
-                  <div className="absolute top-14 left-0 right-0 h-1.5 rounded-full bg-gradient-to-r from-blue-400 via-green-400 via-amber-400 via-pink-400 via-purple-500 to-rose-500" />
-                  {scenes.map((scene, idx) => {
-                    const Icon = NODE_ICONS[idx % NODE_ICONS.length]
-                    const color = NODE_COLORS[idx % NODE_COLORS.length]
-                    const isSelected = selectedSceneId === scene.id
-                    return (
-                      <button
-                        key={scene.id}
-                        onClick={() => setSelectedSceneId(scene.id)}
-                        className="relative z-10 flex flex-col items-center min-w-[150px] mx-3 first:ml-4 last:mr-4"
-                      >
-                        <div className="h-5 text-xs text-slate-400">
-                          {idx === 0 ? 'START · 第1站' : `第${idx + 1}站`}
-                        </div>
-                        {scene.coverImage ? (
-                          <div
-                            className={cn(
-                              'mt-2 flex h-14 w-14 items-center justify-center rounded-full overflow-hidden shadow-lg transition-transform bg-white',
-                              isSelected && 'ring-4 ring-white scale-110'
-                            )}
-                          >
-                            <img
-                              src={scene.coverImage}
-                              alt={scene.name}
-                              className="h-full w-full object-cover"
-                            />
-                          </div>
-                        ) : (
-                          <div
-                            className={cn(
-                              'mt-2 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-transform',
-                              color.bg,
-                              isSelected && 'ring-4 ring-white scale-110'
-                            )}
-                          >
-                            <Icon className="h-6 w-6" />
-                          </div>
-                        )}
-                        <div
-                          className={cn(
-                            'mt-3 text-sm font-bold text-center max-w-[140px]',
-                            isSelected ? 'text-blue-600' : 'text-slate-800'
-                          )}
-                        >
-                          {scene.name}
-                        </div>
-                        <div className="text-xs text-slate-500 mt-1">
-                          {scene.tasks.length} 任务 · {scene.hours} 课时
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-            {scenes.length === 0 && !editLoading && (
-              <div className="text-center py-10 text-slate-500">
-                <Layers className="h-10 w-10 mx-auto mb-2 opacity-40" />
-                <p>该岗位下暂无已发布场景，请先创建并发布场景</p>
-              </div>
-            )}
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">场景顺序</CardTitle>
-              <CardDescription>拖拽场景卡片可调整顺序，点击场景查看任务</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {scenes.map((scene, index) => {
-                const isSelected = selectedSceneId === scene.id
-                return (
-                  <div
-                    key={scene.id}
-                    draggable
-                    onDragStart={() => handleDragStart(index)}
-                    onDragOver={(e) => handleDragOver(e, index)}
-                    onDrop={(e) => handleDrop(e, index)}
-                    onDragLeave={() => setDragOverIndex(null)}
-                    onDragEnd={handleDragEnd}
-                    onClick={() => setSelectedSceneId(scene.id)}
-                    className={cn(
-                      'group flex cursor-pointer items-center justify-between rounded-lg border p-4 transition-all',
-                      isSelected
-                        ? 'border-blue-500 bg-blue-50 shadow-sm'
-                        : 'border-slate-200 bg-white hover:bg-slate-50',
-                      draggingIndex === index && 'opacity-40',
-                      dragOverIndex === index && dragOverIndex !== draggingIndex && 'border-blue-400 bg-blue-50/60'
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span
-                        className="cursor-grab text-slate-400 hover:text-slate-600 active:cursor-grabbing"
-                        onMouseDown={(e) => e.stopPropagation()}
-                      >
-                        <GripVertical className="h-5 w-5" />
-                      </span>
-                      {scene.coverImage ? (
-                        <img
-                          src={scene.coverImage}
-                          alt={scene.name}
-                          className="h-8 w-8 rounded-full object-cover border border-slate-200"
-                        />
-                      ) : (
-                        <span
-                          className={cn(
-                            'flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors',
-                            isSelected
-                              ? 'bg-blue-500 text-white'
-                              : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200'
-                          )}
-                        >
-                          {index + 1}
-                        </span>
-                      )}
-                      <div>
-                        <div
-                          className={cn(
-                            'font-medium transition-colors',
-                            isSelected ? 'text-blue-700' : 'text-slate-900'
-                          )}
-                        >
-                          {scene.name}
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          {scene.tasks.length} 任务 · {scene.hours} 课时
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {isSelected && (
-                        <ChevronRight className="h-5 w-5 text-blue-500 animate-in fade-in duration-200" />
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={index === 0}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          moveScene(index, -1)
-                        }}
-                      >
-                        <ArrowUp className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={index === scenes.length - 1}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          moveScene(index, 1)
-                        }}
-                      >
-                        <ArrowDown className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )
-              })}
-              {scenes.length === 0 && !editLoading && (
-                <div className="text-center py-8 text-slate-500">
-                  <FolderOpen className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                  <p>暂无可排序的场景</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6">
-      {view === 'list' ? ListView() : <EditView />}
+      {view === 'list' ? ListView() : editingPosition ? (
+        <EditView
+          editingPosition={editingPosition}
+          batches={batches}
+          scenes={scenes}
+          setScenes={setScenes}
+          selectedSceneId={selectedSceneId}
+          setSelectedSceneId={setSelectedSceneId}
+          positionScenarios={positionScenarios}
+          positionTasks={positionTasks}
+          editLoading={editLoading}
+          saving={saving}
+          saved={saved}
+          learnRoadId={learnRoadId}
+          onBack={handleBack}
+          onSave={handleSave}
+          setSaved={setSaved}
+          moveScene={moveScene}
+        />
+      ) : null}
     </div>
   )
 }

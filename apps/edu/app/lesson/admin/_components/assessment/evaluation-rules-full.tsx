@@ -247,7 +247,7 @@ export function EvaluationRulesFullEditor({
   }
 
   /* ---------- Question Selector Panel ---------- */
-  const QuestionSelectorPanel = ({ methodKey }: { methodKey: string }) => {
+  const renderQuestionSelectorPanel = (methodKey: string) => {
     const cfg = ensureConfig(configs, methodKey)
     const selectedIds = cfg.resource?.selectedQuestionIds || []
 
@@ -428,7 +428,7 @@ export function EvaluationRulesFullEditor({
   }
 
   /* ---------- Paper Selector Panel ---------- */
-  const PaperSelectorPanel = ({ methodKey }: { methodKey: string }) => {
+  const renderPaperSelectorPanel = (methodKey: string) => {
     const cfg = ensureConfig(configs, methodKey)
     const res = cfg.resource!
 
@@ -695,7 +695,7 @@ export function EvaluationRulesFullEditor({
   }
 
   /* ---------- Homework / Review Panel ---------- */
-  const HomeworkPanel = ({ methodKey }: { methodKey: string }) => {
+  const renderHomeworkPanel = (methodKey: string) => {
     const cfg = ensureConfig(configs, methodKey)
     const res = cfg.resource!
 
@@ -812,13 +812,13 @@ export function EvaluationRulesFullEditor({
   }
 
   /* ---------- QuestionBank / Quiz Panel ---------- */
-  const QuestionBankPanel = ({ methodKey }: { methodKey: string }) => {
+  const renderQuestionBankPanel = (methodKey: string) => {
     const cfg = ensureConfig(configs, methodKey)
     const res = cfg.resource!
 
     return (
       <div className="space-y-4">
-        <QuestionSelectorPanel methodKey={methodKey} />
+        {renderQuestionSelectorPanel(methodKey)}
         <div className="border rounded-xl p-4">
           <p className="text-sm font-medium mb-3">抽题规则</p>
           <div className="grid grid-cols-2 gap-3">
@@ -955,7 +955,7 @@ export function EvaluationRulesFullEditor({
   }
 
   /* ---------- Dialog Content Router ---------- */
-  const ResourceDialog = () => {
+  const renderResourceDialog = () => {
     const methodKey = dialogMethod
 
     return (
@@ -1005,11 +1005,11 @@ export function EvaluationRulesFullEditor({
         )}
 
         {methodKey === "paper" ? (
-          <PaperSelectorPanel methodKey={methodKey} />
+          renderPaperSelectorPanel(methodKey)
         ) : methodKey === "exam" ? (
-          <HomeworkPanel methodKey={methodKey} />
+          renderHomeworkPanel(methodKey)
         ) : methodKey === "question_bank" || methodKey === "quiz" ? (
-          <QuestionBankPanel methodKey={methodKey} />
+          renderQuestionBankPanel(methodKey)
         ) : null}
       </div>
     )
@@ -1181,7 +1181,7 @@ export function EvaluationRulesFullEditor({
               配置 {dialogMethod ? methodOptions.find((o) => o.key === dialogMethod)?.label : ""} 的测评资源
             </DialogDescription>
           </DialogHeader>
-          {dialogMethod && <ResourceDialog />}
+          {dialogMethod && renderResourceDialog()}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               关闭

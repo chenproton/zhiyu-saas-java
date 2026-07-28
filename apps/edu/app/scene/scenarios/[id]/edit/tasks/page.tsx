@@ -211,7 +211,7 @@ const cardConfigs: { type: CardType; title: string; icon: React.ReactNode }[] = 
 const resourceTypeIcons: Record<string, React.ReactNode> = {
   document: <FileText className="h-4 w-4 text-blue-500" />,
   spreadsheet: <Table className="h-4 w-4 text-teal-500" />,
-  image: <Image className="h-4 w-4 text-green-500" />,
+  image: <Image className="h-4 w-4 text-green-500" aria-label="图片" />,
   link: <Link2 className="h-4 w-4 text-cyan-500" />,
   audio: <Headphones className="h-4 w-4 text-violet-500" />,
   video: <Video className="h-4 w-4 text-red-500" />,
@@ -704,6 +704,7 @@ export default function TasksEditPage() {
   const [users, setUsers] = useState<any[]>([])
   const [positionAbilityBindings, setPositionAbilityBindings] = useState<any[]>([])
   const [rubricLibrary, setRubricLibrary] = useState<RubricScheme[]>([])
+  const [cloneDataVersion, setCloneDataVersion] = useState(0)
 
   const userNameMap = useMemo(() => {
     const map: Record<string, string> = {}
@@ -956,7 +957,6 @@ export default function TasksEditPage() {
   const [cloneTab, setCloneTab] = useState<"my" | "collab" | "public">("my")
   const [selectedClone, setSelectedClone] = useState<string[]>([])
   const [isCloning, setIsCloning] = useState(false)
-  const [cloneDataVersion, setCloneDataVersion] = useState(0)
   const [isWeightConfigOpen, setIsWeightConfigOpen] = useState(false)
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null)
   const [deleteConfirmTask, setDeleteConfirmTask] = useState<{ id: string; name: string } | null>(null)
@@ -1273,6 +1273,7 @@ export default function TasksEditPage() {
     })
     setTaskStates(updatedTaskStates)
 
+    const newTasks: Task[] = []
     for (let i = 0; i < tasks.length; i++) {
       const t = tasks[i]
       const ts = updatedTaskStates[t.id] || makeDefaultTaskState(0, 0)
@@ -1298,21 +1299,25 @@ export default function TasksEditPage() {
       if (t.id.startsWith("task-")) {
         const created = await taskApi.create(payload)
         const oldId = t.id
-        t.id = created.id
+        const newTask = { ...t, id: created.id }
+        newTasks.push(newTask)
         // 临时 ID 创建的 task 需要把 state key 迁移到真实 ID，否则后续状态丢失
-        updatedTaskStates[t.id] = { ...ts, evalMethodVersion: ts.evalMethodVersion }
+        updatedTaskStates[newTask.id] = { ...ts, evalMethodVersion: ts.evalMethodVersion }
         delete updatedTaskStates[oldId]
-        const savedRes = await taskEvaluationApi.saveMethods(t.id, { version: ts.evalMethodVersion, methods: taskStateToMethodsInput(ts) })
+        const savedRes = await taskEvaluationApi.saveMethods(newTask.id, { version: ts.evalMethodVersion, methods: taskStateToMethodsInput(ts) })
         const newVersion = (savedRes.methods || []).reduce((max, m) => Math.max(max, m.version || 0), 0)
-        updatedTaskStates[t.id].evalMethodVersion = newVersion
+        updatedTaskStates[newTask.id] = { ...updatedTaskStates[newTask.id], evalMethodVersion: newVersion }
       } else {
         await taskApi.update(t.id, payload)
+        newTasks.push(t)
         const methodsInput = taskStateToMethodsInput(ts)
         const savedRes = await taskEvaluationApi.saveMethods(t.id, { version: ts.evalMethodVersion, methods: methodsInput })
         const newVersion = (savedRes.methods || []).reduce((max, m) => Math.max(max, m.version || 0), 0)
-        updatedTaskStates[t.id].evalMethodVersion = newVersion
+        updatedTaskStates[t.id] = { ...updatedTaskStates[t.id], evalMethodVersion: newVersion }
       }
     }
+    setTasks(newTasks)
+    setTaskStates(updatedTaskStates)
   }
 
   const handleSaveDraft = async () => {
@@ -1797,17 +1802,25 @@ function PaperDetailWrapper({ paperId, open, onOpenChange }: { paperId: string |
     if (open && paperId) {
       const cached = loadedExams.find(e => e.id === paperId)
       if (cached?.questions?.length) {
-        setPaper(cached)
+        queueMicrotask(() => setPaper(cached))
       } else {
-        setLoading(true)
-        examApi.get(paperId).then((data: any) => {
-          const idx = loadedExams.findIndex(e => e.id === paperId)
-          if (idx >= 0) loadedExams[idx] = { ...loadedExams[idx], ...data }
-          else loadedExams.push(data)
-          setPaper(data)
-        }).catch(() => {
-          setPaper(cached || null)
-        }).finally(() => setLoading(false))
+        let cancelled = false
+        ;(async () => {
+          setLoading(true)
+          try {
+            const data = await examApi.get(paperId) as any
+            if (cancelled) return
+            const idx = loadedExams.findIndex(e => e.id === paperId)
+            if (idx >= 0) loadedExams[idx] = { ...loadedExams[idx], ...data }
+            else loadedExams.push(data)
+            setPaper(data)
+          } catch {
+            if (!cancelled) setPaper(cached || null)
+          } finally {
+            if (!cancelled) setLoading(false)
+          }
+        })()
+        return () => { cancelled = true }
       }
     }
   }, [open, paperId])
@@ -1984,6 +1997,11 @@ function EvalRulesPanel({
   const [newRdqForm, setNewRdqForm] = useState({ name: "", description: "", answer: "", majorId: "" })
   const [rdqDetailOpen, setRdqDetailOpen] = useState(false)
   const [selectedRdqForDetail, setSelectedRdqForDetail] = useState<string | null>(null)
+  const [rdqMajorTab, setRdqMajorTab] = useState("全部")
+  const [rdqDrawMode, setRdqDrawMode] = useState<"random" | "manual">("random")
+  const [rdqDrawCount, setRdqDrawCount] = useState(5)
+  const [qbDrawMode, setQbDrawMode] = useState<"all" | "practice">("all")
+  const [qbPassRate, setQbPassRate] = useState(60)
 
   const [newQuestionType, setNewQuestionType] = useState<"single" | "multiple" | "judgment" | "short_answer" | "essay" | "fill_blank">("single")
   const [newQuestionName, setNewQuestionName] = useState("")
@@ -2746,18 +2764,10 @@ function EvalRulesPanel({
         }
 
         // Resource-only panel (no eval points)
-        const EvalResourceOnlyPanel = ({ methodKey, majors: majorsParam }: { methodKey: string; majors: any[] }) => {
-          const majorOptions = useMemo(() => [{ id: "全部", name: "全部" }, ...majorsParam.map((m: any) => ({ id: m.id, name: m.name }))], [majorsParam])
-          const majorNameMap = useMemo(() => {
-            const map: Record<string, string> = {}
-            majorsParam.forEach((m: any) => { map[m.id] = m.name })
-            return map
-          }, [majorsParam])
-          const [rdqMajorTab, setRdqMajorTab] = useState("全部")
-          const [rdqDrawMode, setRdqDrawMode] = useState<"random" | "manual">("random")
-          const [rdqDrawCount, setRdqDrawCount] = useState(5)
-          const [qbDrawMode, setQbDrawMode] = useState<"all" | "practice">("all")
-          const [qbPassRate, setQbPassRate] = useState(60)
+        const renderEvalResourceOnlyPanel = (methodKey: string, majorsParam: any[]) => {
+          const majorOptions = [{ id: "全部", name: "全部" }, ...majorsParam.map((m: any) => ({ id: m.id, name: m.name }))]
+          const majorNameMap: Record<string, string> = {}
+          majorsParam.forEach((m: any) => { majorNameMap[m.id] = m.name })
 
           if (methodKey === "random_draw") {
             const filteredRdq = state.randomDrawCustomQuestions.filter(q => {
@@ -3690,7 +3700,7 @@ function EvalRulesPanel({
           }
         }
 
-        const ObjectDialogContent = ({ methodKey }: { methodKey: string }) => {
+        const renderObjectDialogContent = (methodKey: string) => {
           const currentObject = state.methodEvalObjects[methodKey] || state.evalObject
           return (
             <div className="space-y-4">
@@ -3719,7 +3729,7 @@ function EvalRulesPanel({
           )
         }
 
-        const SubjectDialogContent = ({ methodKey }: { methodKey: string }) => {
+        const renderSubjectDialogContent = (methodKey: string) => {
           const currentSubjects = state.methodEvalSubjects[methodKey] || state.evalSubjects
           const evalObject = state.methodEvalObjects[methodKey] || state.evalObject
           const displayTypes = ["teacher", "enterprise_mentor", "self", "peer"] as const
@@ -4305,7 +4315,7 @@ function EvalRulesPanel({
                     配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的测评对象
                   </DialogDescription>
                 </DialogHeader>
-                {erDialogMethod && <ObjectDialogContent methodKey={erDialogMethod} />}
+                {erDialogMethod && renderObjectDialogContent(erDialogMethod)}
               </DialogContent>
             </Dialog>
 
@@ -4317,7 +4327,7 @@ function EvalRulesPanel({
                     配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的评价主体
                   </DialogDescription>
                 </DialogHeader>
-                {erDialogMethod && <SubjectDialogContent methodKey={erDialogMethod} />}
+                {erDialogMethod && renderSubjectDialogContent(erDialogMethod)}
               </DialogContent>
             </Dialog>
 
@@ -4370,7 +4380,7 @@ function EvalRulesPanel({
                     setSelectedRdqForDetail={setSelectedRdqForDetail}
                   />
                 ) : erDialogMethod ? (
-                  <EvalResourceOnlyPanel methodKey={erDialogMethod} majors={majors} />
+                  renderEvalResourceOnlyPanel(erDialogMethod, majors)
                 ) : null}
                 </div>
               </DialogContent>
@@ -4838,14 +4848,16 @@ function EditCardDialog({
 
   useEffect(() => {
     if (state.reviewSteps && state.reviewSteps.length > 0) {
-      setReviewSteps(state.reviewSteps.map((rs: any) => ({
-        id: rs.id || `rs-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-        label: rs.label,
-        desc: rs.desc || "",
-        enabled: rs.enabled,
-        subjectType: rs.subjectType,
-        weight: rs.weight,
-      })))
+      queueMicrotask(() => {
+        setReviewSteps(state.reviewSteps.map((rs: any) => ({
+          id: rs.id || `rs-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+          label: rs.label,
+          desc: rs.desc || "",
+          enabled: rs.enabled,
+          subjectType: rs.subjectType,
+          weight: rs.weight,
+        })))
+      })
     }
   }, [state.reviewSteps])
 

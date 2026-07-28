@@ -55,7 +55,13 @@ export default function OrgTypesPage() {
   }
 
   useEffect(() => {
-    fetchData()
+    let cancelled = false
+    ;(async () => {
+      await fetchData()
+    })()
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId, searchTerm])
 

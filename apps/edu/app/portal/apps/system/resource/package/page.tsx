@@ -52,11 +52,12 @@ export default function PackagePage() {
     if (authLoading || !tenantId) return
 
     let cancelled = false
-    setLoading(true)
-    setError(null)
+    ;(async () => {
+      setLoading(true)
+      setError(null)
 
-    portalRequest<SubscriptionPackage>(`/subscriptions${buildQuery({ tenantId })}`)
-      .then((res) => {
+      try {
+        const res = await portalRequest<SubscriptionPackage>(`/subscriptions${buildQuery({ tenantId })}`)
         if (!cancelled) {
           setSubscription(res)
           const parsed = buildPackageModules(res.modules)
@@ -64,15 +65,14 @@ export default function PackagePage() {
             setExpandedModules([parsed[0].name])
           }
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "加载套餐信息失败")
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false)
-      })
+      }
+    })()
 
     return () => {
       cancelled = true

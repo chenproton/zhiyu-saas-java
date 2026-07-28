@@ -23,6 +23,10 @@ import { questionApi } from "@/lib/api"
 import type { NodeQuiz, QuizQuestion } from "@/lib/types/lesson-source"
 import { X, Check } from "lucide-react"
 
+function generateQuizId() {
+  return `quiz-${Date.now()}`
+}
+
 interface QuizConfigModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -75,7 +79,7 @@ export default function QuizConfigModal({
       .map((q) => ({ ...q }))
     if (questions.length === 0) return
     onConfirm({
-      id: `quiz-${Date.now()}`,
+      id: generateQuizId(),
       title: quizTitle || "随堂测验",
       type: "question_bank",
       questions,

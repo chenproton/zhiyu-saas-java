@@ -50,7 +50,13 @@ export function MajorSelect({
   }, [tenantId])
 
   useEffect(() => {
-    loadMajors()
+    let cancelled = false
+    ;(async () => {
+      await loadMajors()
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [loadMajors])
 
   const handleChange = (val: string) => {

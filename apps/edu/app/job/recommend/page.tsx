@@ -102,7 +102,9 @@ export default function PostRecommendPage() {
   }, [toast])
 
   useEffect(() => {
-    loadData()
+    ;(async () => {
+      await loadData()
+    })()
   }, [loadData])
 
   const allRecommendations = useMemo(() => {

@@ -67,7 +67,11 @@ export default function ResourcesPage() {
     } finally { setLoading(false) }
   }, [toast])
 
-  useEffect(() => { loadItems() }, [loadItems])
+  useEffect(() => {
+    ;(async () => {
+      await loadItems()
+    })()
+  }, [loadItems])
 
   const items = useMemo(() => {
     let list = allItems

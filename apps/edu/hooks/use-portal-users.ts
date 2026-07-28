@@ -46,13 +46,13 @@ export function usePortalUsers(options: UsePortalUsersOptions = {}): UsePortalUs
   }, [roles])
 
   useEffect(() => {
-    if (!tenantId) return
-
     let cancelled = false
-    setLoading(true)
-    setError(undefined)
+    ;(async () => {
+      if (!tenantId) return
 
-    async function fetchData() {
+      setLoading(true)
+      setError(undefined)
+
       try {
         const rolesRes = await roleApi.list(tenantId ? { tenantId, limit: 1000 } : { limit: 1000 })
         if (cancelled) return
@@ -75,9 +75,7 @@ export function usePortalUsers(options: UsePortalUsersOptions = {}): UsePortalUs
       } finally {
         if (!cancelled) setLoading(false)
       }
-    }
-
-    fetchData()
+    })()
     return () => {
       cancelled = true
     }

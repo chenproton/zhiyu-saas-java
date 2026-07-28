@@ -114,7 +114,9 @@ export default function TenantPage() {
 
   useEffect(() => {
     if (authLoading) return
-    fetchTenant()
+    ;(async () => {
+      await fetchTenant()
+    })()
   }, [fetchTenant, authLoading])
 
   const handleUpdate = async () => {

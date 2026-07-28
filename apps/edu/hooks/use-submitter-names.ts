@@ -9,14 +9,23 @@ export function useSubmitterNames() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    setLoading(true)
-    userManagementApi
-      .list({ limit: 1000 })
-      .then((res) => {
-        setUserMap(new Map(res.items.map((u) => [u.id, u])))
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      try {
+        const res = await userManagementApi.list({ limit: 1000 })
+        if (!cancelled) {
+          setUserMap(new Map(res.items.map((u) => [u.id, u])))
+        }
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const getName = (userId: string) => userMap.get(userId)?.name || userId

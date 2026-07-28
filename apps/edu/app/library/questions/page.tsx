@@ -54,7 +54,11 @@ export default function OnSiteQuestionsPage() {
     } catch (err: any) { toast({ variant: "destructive", title: "加载失败", description: err.message }) }
     finally { setLoading(false) }
   }, [searchQuery, typeFilter, difficultyFilter, toast])
-  useEffect(() => { loadItems() }, [loadItems])
+  useEffect(() => {
+    ;(async () => {
+      await loadItems()
+    })()
+  }, [loadItems])
 
   const handleOpenAdd = () => { setEditingItem(null); setQuestionText(""); setAnswer(""); setQuestionType("short_answer"); setScore("0"); setDifficulty("medium"); setTags(""); setIsDialogOpen(true) }
   const handleOpenEdit = (item: OnSiteQuestionLibraryItem) => { setEditingItem(item); setQuestionText(item.questionText); setAnswer(item.answer || ""); setQuestionType(item.questionType); setScore(String(item.score)); setDifficulty(item.difficulty || "medium"); setTags(item.tags?.join(", ") || ""); setIsDialogOpen(true) }

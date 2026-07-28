@@ -48,7 +48,23 @@ export function BankQuestionSelectorPanel({
   const [scoreDialogOpen, setScoreDialogOpen] = useState(false)
   const [preloadedQuestions, setPreloadedQuestions] = useState<any[]>([])
 
-  useEffect(() => { loadBanks() }, [])
+  const loadBanks = async () => {
+    setLoadingBanks(true)
+    try {
+      const res = await questionBankApi.list({ limit: 1000 }) as unknown as { items: any[] }
+      setBanks(res.items)
+    } catch (_) {} finally { setLoadingBanks(false) }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      await loadBanks()
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     const missingIds = selectedIds.filter(qid => !questionCache.has(qid) && !preloadedQuestions.some(q => q.id === qid))
@@ -65,14 +81,6 @@ export function BankQuestionSelectorPanel({
       setPreloadedQuestions(prev => [...prev, ...loaded])
     })
   }, [selectedIds, preloadedQuestions])
-
-  const loadBanks = async () => {
-    setLoadingBanks(true)
-    try {
-      const res = await questionBankApi.list({ limit: 1000 }) as unknown as { items: any[] }
-      setBanks(res.items)
-    } catch (_) {} finally { setLoadingBanks(false) }
-  }
 
   const loadQuestions = async (bankId: string) => {
     setLoadingQuestions(true)

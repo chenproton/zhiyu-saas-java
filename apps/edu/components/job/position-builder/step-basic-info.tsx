@@ -75,24 +75,24 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
   // 加载真实行业/专业数据
   useEffect(() => {
     let cancelled = false
-    setOptionsLoading(true)
-    Promise.all([
-      industryApi.list({ limit: 1000 }),
-      majorApi.list({ limit: 1000 }),
-    ])
-      .then(([indRes, majorRes]) => {
+    ;(async () => {
+      setOptionsLoading(true)
+      try {
+        const [indRes, majorRes] = await Promise.all([
+          industryApi.list({ limit: 1000 }),
+          majorApi.list({ limit: 1000 }),
+        ])
         if (cancelled) return
         setIndustries((indRes.items || []).filter((i) => i.enabled).map((i) => ({ id: i.id, name: i.name })))
         setMajors((majorRes.items || []).filter((m) => m.enabled).map((m) => ({ id: m.id, name: m.name })))
-      })
-      .catch(() => {
+      } catch {
         if (cancelled) return
         setIndustries([])
         setMajors([])
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setOptionsLoading(false)
-      })
+      }
+    })()
     return () => {
       cancelled = true
     }
@@ -107,9 +107,10 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
   // 加载证书库
   useEffect(() => {
     let cancelled = false
-    setLibraryLoading(true)
-    certificateLibraryApi.list({ limit: 1000 })
-      .then((res) => {
+    ;(async () => {
+      setLibraryLoading(true)
+      try {
+        const res = await certificateLibraryApi.list({ limit: 1000 })
         if (cancelled) return
         setCertificateLibrary(res.items.map((item) => ({
           id: item.id,
@@ -118,17 +119,20 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
           description: item.description ?? '',
           image: item.imageUrl ?? '',
         })))
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setCertificateLibrary([])
-      })
-      .finally(() => { if (!cancelled) setLibraryLoading(false) })
+      } finally {
+        if (!cancelled) setLibraryLoading(false)
+      }
+    })()
     return () => { cancelled = true }
   }, [])
 
   // 同步已选证书状态，防止异步加载/重新进入编辑页后选择框与保存数据不一致
   useEffect(() => {
-    setSelectedCertIds(position.certificates?.map((c) => c.libraryId || c.id) || [])
+    queueMicrotask(() => {
+      setSelectedCertIds(position.certificates?.map((c) => c.libraryId || c.id) || [])
+    })
   }, [position.certificates])
 
   const openCertDialog = () => {

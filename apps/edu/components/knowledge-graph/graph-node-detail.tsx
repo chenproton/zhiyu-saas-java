@@ -240,8 +240,10 @@ export function GraphDetailStack({
   const [stack, setStack] = useState<NodeLite[]>([])
 
   useEffect(() => {
-    if (rootNode) setStack([rootNode])
-    else setStack([])
+    queueMicrotask(() => {
+      if (rootNode) setStack([rootNode])
+      else setStack([])
+    })
   }, [rootNode])
 
   if (!rootNode || stack.length === 0) return null

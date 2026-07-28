@@ -71,7 +71,13 @@ export default function ResourceTypePage() {
     } finally { setLoading(false) }
   }, [resourceKind, toast])
 
-  useEffect(() => { loadItems() }, [loadItems])
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      await loadItems()
+    })()
+    return () => { cancelled = true }
+  }, [loadItems])
 
   const filtered = searchQuery
     ? items.filter(r => {

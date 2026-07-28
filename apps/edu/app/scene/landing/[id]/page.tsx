@@ -346,12 +346,17 @@ export default function SceneDetailPage() {
 
   useEffect(() => {
     if (!id) return
-    setLoading(true)
-    scenarioApi
-      .get(id)
-      .then(setScenario)
-      .catch(() => setScenario(null))
-      .finally(() => setLoading(false))
+    ;(async () => {
+      setLoading(true)
+      try {
+        const sc = await scenarioApi.get(id)
+        setScenario(sc)
+      } catch {
+        setScenario(null)
+      } finally {
+        setLoading(false)
+      }
+    })()
   }, [id])
 
   useEffect(() => {

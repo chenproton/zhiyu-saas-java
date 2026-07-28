@@ -75,7 +75,7 @@ export function RollCallPanel({ onBack }: { onBack?: () => void }) {
   const [count, setCount] = useState(5)
   const [duration, setDuration] = useState(30)
   const [isActive, setIsActive] = useState(false)
-  const [records, setRecords] = useState(EMPTY_STUDENTS.map((s) => ({ ...s, called: Math.random() > 0.5 })))
+  const [records, setRecords] = useState(() => EMPTY_STUDENTS.map((s) => ({ ...s, called: Math.random() > 0.5 })))
 
   return (
     <div className="space-y-4">

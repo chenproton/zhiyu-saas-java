@@ -70,7 +70,9 @@ export default function RelationsPage() {
   }, [searchText, toast])
 
   useEffect(() => {
-    loadRelations()
+    ;(async () => {
+      await loadRelations()
+    })()
   }, [loadRelations])
 
   const handleCreate = async () => {

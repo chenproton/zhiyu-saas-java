@@ -58,8 +58,21 @@ export default function KnowledgePointsPage() {
     }
   }
 
-  useEffect(() => { loadItems() }, [loadItems])
-  useEffect(() => { loadGranularCourses() }, [])
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      await loadItems()
+    })()
+    return () => { cancelled = true }
+  }, [loadItems])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      await loadGranularCourses()
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   const handleOpenAdd = () => {
     setEditingItem(null)

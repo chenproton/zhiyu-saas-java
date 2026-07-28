@@ -41,7 +41,9 @@ export default function SceneArchivePage() {
   }, [toast])
 
   useEffect(() => {
-    loadData()
+    ;(async () => {
+      await loadData()
+    })()
   }, [loadData])
 
   const professions = useMemo(() => {

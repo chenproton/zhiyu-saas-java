@@ -537,7 +537,7 @@ export function TeacherCoursesTab({ prepAssociations = {}, onAssociate }: Teache
 
   useEffect(() => {
     if (semesters.length > 0 && !semesters.includes(selectedTerm)) {
-      setSelectedTerm(semesters[0])
+      queueMicrotask(() => setSelectedTerm(semesters[0]))
     }
   }, [semesters, selectedTerm])
 
@@ -552,11 +552,13 @@ export function TeacherCoursesTab({ prepAssociations = {}, onAssociate }: Teache
   const termSessions = classSessions.filter((s) => planCourseIds.has(s.courseId))
 
   useEffect(() => {
-    if (termPlans.length > 0) {
-      setSelectedPlanId(termPlans[0].id)
-    } else {
-      setSelectedPlanId(null)
-    }
+    queueMicrotask(() => {
+      if (termPlans.length > 0) {
+        setSelectedPlanId(termPlans[0].id)
+      } else {
+        setSelectedPlanId(null)
+      }
+    })
   }, [selectedTerm, termPlans])
 
   const openCourseDialog = (course: WorkspaceTeacherCourse, tab: string) => {

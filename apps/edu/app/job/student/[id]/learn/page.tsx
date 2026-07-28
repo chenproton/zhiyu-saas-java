@@ -36,12 +36,19 @@ export default function JobStudentLearnPage() {
 
   useEffect(() => {
     if (!id) return
-    setLoading(true)
-    publicPositionApi
-      .get(id)
-      .then(setPosition)
-      .catch(() => setPosition(null))
-      .finally(() => setLoading(false))
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      try {
+        const pos = await publicPositionApi.get(id)
+        if (!cancelled) setPosition(pos)
+      } catch {
+        if (!cancelled) setPosition(null)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
   }, [id])
 
   useEffect(() => {

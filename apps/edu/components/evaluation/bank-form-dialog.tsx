@@ -60,33 +60,36 @@ export function BankFormDialog({
   useEffect(() => {
     if (!open) return
     let cancelled = false
-    setLoadingBatches(true)
-    evaluationBatchApi.list({ limit: 1000 })
-      .then((res) => {
+    ;(async () => {
+      setLoadingBatches(true)
+      try {
+        const res = await evaluationBatchApi.list({ limit: 1000 })
         if (!cancelled) setBatches(res.items.map((b) => ({ id: b.id, name: b.name })))
-      })
-      .catch((_err) => {
-      })
-      .finally(() => {
+      } catch (_err) {
+        // ignore
+      } finally {
         if (!cancelled) setLoadingBatches(false)
-      })
+      }
+    })()
     return () => { cancelled = true }
   }, [open])
 
   useEffect(() => {
-    if (bank) {
-      setName(bank.name)
-      setDescription(bank.description)
-      setCoverUrl(bank.coverImage || "")
-      setCollaboratorIds(bank.collaboratorIds || [])
-      setBatchId(bank.batchId || "")
-    } else {
-      setName("")
-      setDescription("")
-      setCoverUrl("")
-      setCollaboratorIds([])
-      setBatchId("")
-    }
+    queueMicrotask(() => {
+      if (bank) {
+        setName(bank.name)
+        setDescription(bank.description)
+        setCoverUrl(bank.coverImage || "")
+        setCollaboratorIds(bank.collaboratorIds || [])
+        setBatchId(bank.batchId || "")
+      } else {
+        setName("")
+        setDescription("")
+        setCoverUrl("")
+        setCollaboratorIds([])
+        setBatchId("")
+      }
+    })
   }, [bank, open])
 
   const handleSubmit = (e: React.FormEvent) => {

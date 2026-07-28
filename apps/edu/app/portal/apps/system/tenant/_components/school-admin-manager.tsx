@@ -71,7 +71,13 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
   }
 
   useEffect(() => {
-    fetchAdmins()
+    let cancelled = false
+    ;(async () => {
+      await fetchAdmins()
+    })()
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId])
 

@@ -115,13 +115,16 @@ function MixedTagEditor({
   const ref = useRef<HTMLDivElement>(null)
   const isComposing = useRef(false)
   const onChangeRef = useRef(onChange)
-  onChangeRef.current = onChange
   const kpIdsRef = useRef(knowledgePointIds)
-  kpIdsRef.current = knowledgePointIds
   const abIdsRef = useRef(abilityPointIds)
-  abIdsRef.current = abilityPointIds
   const prevTags = useRef({ kp: [] as string[], ab: [] as string[] })
   const cursorOffsetRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    onChangeRef.current = onChange
+    kpIdsRef.current = knowledgePointIds
+    abIdsRef.current = abilityPointIds
+  }, [onChange, knowledgePointIds, abilityPointIds])
 
   const updateCursorOffset = () => {
     const el = ref.current
@@ -410,12 +413,14 @@ export function MethodDialogContent({
           : methodKey === "homework"
             ? "score_rule"
             : (hasManualScoreRule ? "score_rule" : "rubric")
-        setLocalDraft({
-          name: savedConfig.rubricName || "",
-          mode,
-          types: [],
-          scoreRuleItems: savedScoreRuleItems.map((it: ScoreRuleItem) => ({ ...it }))
-        })
+        ;(async () => {
+          setLocalDraft({
+            name: savedConfig.rubricName || "",
+            mode,
+            types: [],
+            scoreRuleItems: savedScoreRuleItems.map((it: ScoreRuleItem) => ({ ...it }))
+          })
+        })()
       }
     }
   }, [view, currentRubricId, methodKey, info.field, info.points.length, state.methodResourceConfigs])

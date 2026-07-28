@@ -27,6 +27,10 @@ import { cn } from "@/lib/utils"
 import { courseApi } from "@/lib/api"
 import type { Course, KnowledgePointItem } from "@/lib/types/lesson"
 
+function generateKpCode() {
+  return `KP-${Date.now().toString().slice(-6)}`
+}
+
 interface KnowledgeSelectorProps {
   selected: KnowledgePointItem[]
   pool: KnowledgePointItem[]
@@ -119,8 +123,6 @@ export function KnowledgeSelector({ selected, pool, onChange, onAddCustom }: Kno
   )
 
   const hasResults = kpSearch ? filtered.length > 0 : false
-
-  const generateKpCode = () => `KP-${Date.now().toString().slice(-6)}`
 
   const handleReferenceKp = (kp: KnowledgePointItem) => {
     if (selected.find((s) => s.id === kp.id)) return

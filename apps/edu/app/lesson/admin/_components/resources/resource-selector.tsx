@@ -203,7 +203,9 @@ export function ResourceSelector({ pool: externalPool, selectedIds, onChange, on
 
   useEffect(() => {
     if (isDialogOpen && useApi) {
-      loadResources()
+      (async () => {
+        await loadResources()
+      })()
     }
   }, [isDialogOpen, useApi, loadResources])
 

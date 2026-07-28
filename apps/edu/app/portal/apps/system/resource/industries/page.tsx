@@ -39,7 +39,9 @@ export default function IndustriesPage() {
 
   useEffect(() => {
     if (authLoading || !tenantId) return
-    fetchIndustries()
+    ;(async () => {
+      await fetchIndustries()
+    })()
   }, [tenantId, authLoading, fetchIndustries])
 
   const parentMap = useMemo(() => {

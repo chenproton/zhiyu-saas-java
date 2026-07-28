@@ -43,7 +43,11 @@ export default function CertificatesPage() {
     } catch (err: any) { toast({ variant: "destructive", title: "加载失败", description: err.message }) }
     finally { setLoading(false) }
   }, [searchQuery, toast])
-  useEffect(() => { loadItems() }, [loadItems])
+  useEffect(() => {
+    ;(async () => {
+      await loadItems()
+    })()
+  }, [loadItems])
 
   const handleOpenAdd = () => { setEditingItem(null); setName(""); setUrl(""); setDescription(""); setImageUrl(""); setIsDialogOpen(true) }
   const handleOpenEdit = (item: CertificateLibraryItem) => { setEditingItem(item); setName(item.name); setUrl(item.url || ""); setDescription(item.description || ""); setImageUrl(item.imageUrl || ""); setIsDialogOpen(true) }

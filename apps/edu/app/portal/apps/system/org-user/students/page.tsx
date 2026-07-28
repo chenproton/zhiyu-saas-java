@@ -86,26 +86,28 @@ export default function StudentsPage() {
   const [formClassNodeId, setFormClassNodeId] = useState("")
 
   useEffect(() => {
-    setStudents(
-      users.map((u) => {
-        const classNode = u.orgNodeId ? orgMap.get(u.orgNodeId) : undefined
-        const className = classNode?.name || "—"
-        let departmentName = institution?.name || "—"
-        if (classNode) {
-          const deptNode = findOrgAncestor(orgMap, classNode.id, (org) => getOrgTypeName(org, orgTypeMap) === DEPT_TYPE)
-          departmentName = deptNode?.name || institution?.name || "—"
-        }
-        return {
-          id: u.id,
-          name: u.name,
-          loginAccount: u.username || u.loginName || "",
-          className,
-          department: departmentName,
-          orgNodeId: u.orgNodeId,
-          status: mapStudentStatus(u.status),
-        }
-      })
-    )
+    ;(async () => {
+      setStudents(
+        users.map((u) => {
+          const classNode = u.orgNodeId ? orgMap.get(u.orgNodeId) : undefined
+          const className = classNode?.name || "—"
+          let departmentName = institution?.name || "—"
+          if (classNode) {
+            const deptNode = findOrgAncestor(orgMap, classNode.id, (org) => getOrgTypeName(org, orgTypeMap) === DEPT_TYPE)
+            departmentName = deptNode?.name || institution?.name || "—"
+          }
+          return {
+            id: u.id,
+            name: u.name,
+            loginAccount: u.username || u.loginName || "",
+            className,
+            department: departmentName,
+            orgNodeId: u.orgNodeId,
+            status: mapStudentStatus(u.status),
+          }
+        })
+      )
+    })()
   }, [users, institution, orgMap, orgTypeMap])
 
   const resetForm = () => {

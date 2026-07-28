@@ -149,7 +149,9 @@ export default function RolesPage() {
   }, [tenantId, searchTerm])
 
   useEffect(() => {
-    fetchData()
+    ;(async () => {
+      await fetchData()
+    })()
   }, [fetchData])
 
   const filteredRoles = useMemo(

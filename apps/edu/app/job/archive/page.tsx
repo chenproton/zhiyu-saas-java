@@ -46,7 +46,9 @@ export default function PositionArchivePage() {
   }, [toast])
 
   useEffect(() => {
-    loadData()
+    ;(async () => {
+      await loadData()
+    })()
   }, [loadData])
 
   const majors = useMemo(() => {

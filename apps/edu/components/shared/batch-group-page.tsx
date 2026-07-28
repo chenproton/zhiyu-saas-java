@@ -88,16 +88,23 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
 
   useEffect(() => {
     if (!tenantId) {
-      setMajors([])
+      queueMicrotask(() => setMajors([]))
       return
     }
-    majorApi.list({ tenantId, limit: 1000 })
-      .then((res) => {
-        setMajors(res.items.filter((m) => m.enabled))
-      })
-      .catch((err: any) => {
-        toast({ variant: "destructive", title: "加载专业失败", description: err.message || "请稍后重试" })
-      })
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await majorApi.list({ tenantId, limit: 1000 })
+        if (!cancelled) setMajors(res.items.filter((m) => m.enabled))
+      } catch (err: any) {
+        if (!cancelled) {
+          toast({ variant: "destructive", title: "加载专业失败", description: err.message || "请稍后重试" })
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [tenantId, toast])
 
   const loadData = async () => {
@@ -123,7 +130,13 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
   }
 
   useEffect(() => {
-    loadData()
+    let cancelled = false
+    ;(async () => {
+      await loadData()
+    })()
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

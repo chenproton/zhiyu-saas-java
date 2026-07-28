@@ -97,9 +97,11 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
   }, [road, orderedScenarios])
 
   useEffect(() => {
-    if (activeIndex >= steps.length && steps.length > 0) {
-      setActiveIndex(0)
-    }
+    ;(async () => {
+      if (activeIndex >= steps.length && steps.length > 0) {
+        setActiveIndex(0)
+      }
+    })()
   }, [steps, activeIndex])
 
   useEffect(() => {
