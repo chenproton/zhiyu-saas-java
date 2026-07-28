@@ -51,7 +51,7 @@ import { TableRowActions } from "@/components/shared/table-row-actions"
 import { getToken, setToken, removeToken } from "@zhiyu/api-client"
 
 const API_BASE = "/api/v1/admin/tenants"
-const LOGIN_URL = "/api/v1/auth/login"
+const LOGIN_URL = "/api/v1/auth/saas/login"
 
 interface AdminTenant {
   id: string
@@ -89,7 +89,7 @@ interface ListResponse<T> {
 }
 
 async function adminFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken()
+  const token = getToken("saas")
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
@@ -99,7 +99,7 @@ async function adminFetch<T>(path: string, options: RequestInit = {}): Promise<T
   }
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers })
   if (res.status === 401 && typeof window !== "undefined") {
-    removeToken()
+    removeToken("saas")
     window.location.reload()
     throw new Error("会话已过期，请重新登录")
   }
@@ -167,7 +167,7 @@ export default function SuperAdminPage() {
   const { toast } = useToast()
 
   useEffect(() => {
-    const token = getToken()
+    const token = getToken("saas")
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]))
@@ -177,11 +177,11 @@ export default function SuperAdminPage() {
         } else {
           setAuthenticated(false)
           setLoginError("当前账号不是平台管理员")
-          removeToken()
+          removeToken("saas")
         }
       } catch {
         setAuthenticated(false)
-        removeToken()
+        removeToken("saas")
       }
     } else {
       setAuthenticated(false)
@@ -207,7 +207,7 @@ export default function SuperAdminPage() {
         if (!payload.roleCodes?.includes("platform_admin")) {
           throw new Error("当前账号不是平台管理员，无权限访问")
         }
-        setToken(data.token)
+        setToken(data.token, "saas")
         setAuthenticated(true)
         setAuthUser(data.user.username || data.user.name || "管理员")
       } else {
@@ -221,7 +221,7 @@ export default function SuperAdminPage() {
   }
 
   const handleLogout = () => {
-    removeToken()
+    removeToken("saas")
     setAuthenticated(false)
     setLoginUsername("")
     setLoginPassword("")
