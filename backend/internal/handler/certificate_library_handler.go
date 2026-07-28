@@ -1,22 +1,21 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type CertificateLibraryHandler struct {
-	DB *pgxpool.Pool
+	DB    *pgxpool.Pool
+	Store *store.CertificateLibraryStore
 }
 
 type CertificateLibraryListResponse struct {
@@ -51,7 +50,7 @@ func (h *CertificateLibraryHandler) List(w http.ResponseWriter, r *http.Request)
 				qb.addCondition("creator_id = " + qb.nextArg(creatorID))
 			}
 		},
-		ScanRows: h.scanCertificateLibraryRows,
+		ScanRows: h.Store.ScanRows,
 	})
 	if err != nil {
 		if errors.Is(err, ErrMissingTenant) {
@@ -73,7 +72,7 @@ func (h *CertificateLibraryHandler) Get(w http.ResponseWriter, r *http.Request) 
 	}
 
 	id := chi.URLParam(r, "id")
-	item, err := h.fetchItem(r.Context(), id)
+	item, err := h.Store.GetByID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "证书不存在")
 		return
@@ -99,18 +98,20 @@ func (h *CertificateLibraryHandler) Create(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	id := uuid.NewString()
-	creatorID := claims.UserID
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO certificate_library (id, tenant_id, name, url, description, image_url, creator_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`, id, tenantID, req.Name, req.URL, req.Description, req.ImageURL, creatorID)
+	id, err := h.Store.Create(r.Context(), store.CertificateLibraryCreateParams{
+		TenantID:    tenantID,
+		Name:        req.Name,
+		URL:         req.URL,
+		Description: req.Description,
+		ImageURL:    req.ImageURL,
+		CreatorID:   claims.UserID,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "创建证书失败")
 		return
 	}
 
-	item, _ := h.fetchItem(r.Context(), id)
+	item, _ := h.Store.GetByID(r.Context(), id)
 	respondJSON(w, http.StatusCreated, item)
 }
 
@@ -121,7 +122,7 @@ func (h *CertificateLibraryHandler) Update(w http.ResponseWriter, r *http.Reques
 	}
 
 	id := chi.URLParam(r, "id")
-	existing, err := h.fetchItem(r.Context(), id)
+	existing, err := h.Store.GetByID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "证书不存在")
 		return
@@ -137,34 +138,37 @@ func (h *CertificateLibraryHandler) Update(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	name := existing.Name
-	url := existing.URL
-	description := existing.Description
-	imageURL := existing.ImageURL
+	updateName := existing.Name
 	if req.Name != nil {
-		name = *req.Name
+		updateName = *req.Name
 	}
+	updateURL := ""
 	if req.URL != nil {
-		url = req.URL
+		updateURL = *req.URL
+	} else if existing.URL != nil {
+		updateURL = *existing.URL
 	}
-	if req.Description != nil {
-		description = req.Description
+	updateDesc := req.Description
+	if updateDesc == nil {
+		updateDesc = existing.Description
 	}
-	if req.ImageURL != nil {
-		imageURL = req.ImageURL
+	updateImg := req.ImageURL
+	if updateImg == nil {
+		updateImg = existing.ImageURL
 	}
 
-	_, err = h.DB.Exec(r.Context(), `
-		UPDATE certificate_library SET
-			name = $1, url = $2, description = $3, image_url = $4
-		WHERE id = $5
-	`, name, url, description, imageURL, id)
+	err = h.Store.Update(r.Context(), id, store.CertificateLibraryUpdateParams{
+		Name:        updateName,
+		URL:         updateURL,
+		Description: updateDesc,
+		ImageURL:    updateImg,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "更新证书失败")
 		return
 	}
 
-	item, _ := h.fetchItem(r.Context(), id)
+	item, _ := h.Store.GetByID(r.Context(), id)
 	respondJSON(w, http.StatusOK, item)
 }
 
@@ -175,59 +179,18 @@ func (h *CertificateLibraryHandler) Delete(w http.ResponseWriter, r *http.Reques
 	}
 
 	id := chi.URLParam(r, "id")
-	existing, err := h.fetchItem(r.Context(), id)
+	existing, err := h.Store.GetByID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "证书不存在")
 		return
 	}
-
 	if !verifyTenantOwnership(w, r, existing.TenantID) {
 		return
 	}
 
-	_, err = h.DB.Exec(r.Context(), `DELETE FROM certificate_library WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Store.Delete(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除证书失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
-}
-
-func (h *CertificateLibraryHandler) fetchItem(ctx context.Context, id string) (domain.CertificateLibraryItem, error) {
-	var item domain.CertificateLibraryItem
-	var url, description, imageURL, creatorID *string
-
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, tenant_id, name, url, description, image_url, creator_id, created_at
-		FROM certificate_library WHERE id = $1
-	`, id).Scan(
-		&item.ID, &item.TenantID, &item.Name, &url, &description, &imageURL, &creatorID, &item.CreatedAt,
-	)
-	if err != nil {
-		return item, err
-	}
-	item.URL = url
-	item.Description = description
-	item.ImageURL = imageURL
-	item.CreatorID = creatorID
-	return item, nil
-}
-
-func (h *CertificateLibraryHandler) scanCertificateLibraryRows(rows pgx.Rows) ([]domain.CertificateLibraryItem, error) {
-	items := make([]domain.CertificateLibraryItem, 0)
-	for rows.Next() {
-		var item domain.CertificateLibraryItem
-		var url, description, imageURL, creatorID *string
-		if err := rows.Scan(
-			&item.ID, &item.TenantID, &item.Name, &url, &description, &imageURL, &creatorID, &item.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		item.URL = url
-		item.Description = description
-		item.ImageURL = imageURL
-		item.CreatorID = creatorID
-		items = append(items, item)
-	}
-	return items, nil
 }

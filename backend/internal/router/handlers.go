@@ -144,7 +144,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		positionAbilityHandler:        &handler.PositionAbilityHandler{DB: db},
 		positionResponsibilityHandler: &handler.PositionResponsibilityHandler{DB: db},
 		positionCertificateHandler:    &handler.PositionCertificateHandler{DB: db},
-		certificateLibraryHandler:     &handler.CertificateLibraryHandler{DB: db},
+		certificateLibraryHandler:     &handler.CertificateLibraryHandler{DB: db, Store: store.NewCertificateLibraryStore(db)},
 		abilityDomainHandler:          &handler.AbilityDomainHandler{DB: db},
 		jobBatchHandler:               handler.NewJobBatchHandler(db),
 		recommendHandler:              &handler.RecommendHandler{DB: db},
