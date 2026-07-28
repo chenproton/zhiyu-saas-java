@@ -3,12 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev:marketplace": "pnpm --filter @zhiyu/marketplace dev",
     "dev:edu": "pnpm --filter @zhiyu/edu dev",
-    "build:marketplace": "pnpm --filter @zhiyu/marketplace build",
     "build:edu": "pnpm --filter @zhiyu/edu build",
     "build:backend": "cd backend && go build -o bin/server ./cmd/server/main.go",
-    "build:all": "pnpm build:backend && pnpm build:marketplace && pnpm build:edu",
+    "build:all": "pnpm build:backend && pnpm build:edu",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"

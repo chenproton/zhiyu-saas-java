@@ -77,13 +77,11 @@ export GOTOOLCHAIN="${GOTOOLCHAIN:-auto}"
 
 # ==================== PM2 / 备份配置 ====================
 PM2_BACKEND_NAME="zhiyu-backend"
-PM2_MARKETPLACE_NAME="zhiyu-marketplace"
 PM2_EDU_NAME="zhiyu-edu"
 BACKUP_PREFIX="zhiyu-saas"
 
 # ==================== 路径配置 ====================
 BACKEND_PORT=8080
-MARKETPLACE_PORT=3010
 EDU_PORT=3020
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -92,7 +90,6 @@ ORIGINAL_PROJECT_ROOT="$PROJECT_ROOT"
 
 DEPLOY_DIR="${DEPLOY_DIR:-/opt/zhiyu-saas}"
 BACKEND_DIR="$PROJECT_ROOT/backend"
-MARKETPLACE_DIR="$PROJECT_ROOT/apps/marketplace"
 EDU_DIR="$PROJECT_ROOT/apps/edu"
 
 # ==================== 部署锁 ====================
@@ -145,7 +142,7 @@ if [[ -n "$BRANCH_NAME" ]]; then
       echo "错误：无法切换到最新 master" >&2; exit 1
     }
     echo "  清理上次构建产物..."
-    rm -rf "$BUILD_TREE/apps/marketplace/.next" "$BUILD_TREE/apps/edu/.next" \
+    rm -rf "$BUILD_TREE/apps/edu/.next" \
            "$BUILD_TREE/backend/bin" "$BUILD_TREE/backend/tmp"
   else
     [[ -d "$BUILD_TREE" ]] && { echo "  清理残留目录: $BUILD_TREE"; rm -rf "$BUILD_TREE"; }
@@ -189,7 +186,6 @@ if [[ -n "$BRANCH_NAME" ]]; then
 
   PROJECT_ROOT="$BUILD_TREE"
   BACKEND_DIR="$PROJECT_ROOT/backend"
-  MARKETPLACE_DIR="$PROJECT_ROOT/apps/marketplace"
   EDU_DIR="$PROJECT_ROOT/apps/edu"
   echo "  构建根目录: $PROJECT_ROOT"
 fi
@@ -202,7 +198,6 @@ if [[ -f "$PROJECT_ROOT/.env" ]]; then
 fi
 
 BACKEND_PORT="${BACKEND_PORT_ENV:-${PORT:-$BACKEND_PORT}}"
-MARKETPLACE_PORT="${MARKETPLACE_PORT_ENV:-$MARKETPLACE_PORT}"
 EDU_PORT="${EDU_PORT_ENV:-$EDU_PORT}"
 DEPLOY_DIR="${DEPLOY_DIR:-/opt/zhiyu-saas}"
 
@@ -237,18 +232,13 @@ fi
 
 # ==================== 部署目录结构 ====================
 BACKEND_BIN_NEW="$BACKEND_DIR/bin/server.new"
-MARKETPLACE_STANDALONE_ROOT="$MARKETPLACE_DIR/.next/standalone"
 EDU_STANDALONE_ROOT="$EDU_DIR/.next/standalone"
-MARKETPLACE_STANDALONE="$MARKETPLACE_STANDALONE_ROOT/apps/marketplace"
 EDU_STANDALONE="$EDU_STANDALONE_ROOT/apps/edu"
 
 DEPLOY_BACKEND_DIR="$DEPLOY_DIR/backend"
 DEPLOY_BACKEND_BIN="$DEPLOY_BACKEND_DIR/bin/server"
-DEPLOY_MARKETPLACE_DIR="$DEPLOY_DIR/apps/marketplace"
 DEPLOY_EDU_DIR="$DEPLOY_DIR/apps/edu"
-DEPLOY_MARKETPLACE_STANDALONE_ROOT="$DEPLOY_MARKETPLACE_DIR/.next/standalone"
 DEPLOY_EDU_STANDALONE_ROOT="$DEPLOY_EDU_DIR/.next/standalone"
-DEPLOY_MARKETPLACE_STANDALONE="$DEPLOY_MARKETPLACE_STANDALONE_ROOT/apps/marketplace"
 DEPLOY_EDU_STANDALONE="$DEPLOY_EDU_STANDALONE_ROOT/apps/edu"
 
 DEPLOY_DATA_DIR="$DEPLOY_DIR/data"
@@ -344,24 +334,6 @@ module.exports = {
       listen_timeout: 10000,
     },
     {
-      name: '$PM2_MARKETPLACE_NAME',
-      cwd: '$DEPLOY_MARKETPLACE_STANDALONE',
-      script: 'server.js',
-      instances: 1,
-      exec_mode: 'fork',
-      env: { NODE_ENV: 'production', PORT: $MARKETPLACE_PORT, HOSTNAME: '0.0.0.0' },
-      env_production: { NODE_ENV: 'production', PORT: $MARKETPLACE_PORT, HOSTNAME: '0.0.0.0' },
-      error_file: '$DEPLOY_LOG_DIR/marketplace-error.log',
-      out_file: '$DEPLOY_LOG_DIR/marketplace-out.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-      autorestart: true,
-      max_restarts: 5,
-      min_uptime: '10s',
-      max_memory_restart: '1G',
-      kill_timeout: 5000,
-      listen_timeout: 10000,
-    },
-    {
       name: '$PM2_EDU_NAME',
       cwd: '$DEPLOY_EDU_STANDALONE',
       script: 'server.js',
@@ -390,8 +362,8 @@ restore_rollback() {
   echo ""; echo "==> 部署失败，开始回滚..."
   echo "  停止当前进程..."
   if [[ "$FRONTEND_ONLY" == "true" ]]; then
-    pm2 stop "$PM2_MARKETPLACE_NAME" "$PM2_EDU_NAME" &>/dev/null || true
-    pm2 delete "$PM2_MARKETPLACE_NAME" "$PM2_EDU_NAME" &>/dev/null || true
+    pm2 stop "$PM2_EDU_NAME" &>/dev/null || true
+    pm2 delete "$PM2_EDU_NAME" &>/dev/null || true
   elif [[ "$BACKEND_ONLY" == "true" ]]; then
     pm2 stop "$PM2_BACKEND_NAME" &>/dev/null || true
     pm2 delete "$PM2_BACKEND_NAME" &>/dev/null || true
@@ -404,11 +376,6 @@ restore_rollback() {
   [[ -f "$snapshot_dir/server" ]] && {
     mkdir -p "$(dirname "$DEPLOY_BACKEND_BIN")"; cp "$snapshot_dir/server" "$DEPLOY_BACKEND_BIN"
   }
-  [[ -d "$snapshot_dir/marketplace" ]] && {
-    rm -rf "$DEPLOY_MARKETPLACE_STANDALONE_ROOT"
-    mkdir -p "$(dirname "$DEPLOY_MARKETPLACE_STANDALONE_ROOT")"
-    mv "$snapshot_dir/marketplace" "$DEPLOY_MARKETPLACE_STANDALONE_ROOT"
-  }
   [[ -d "$snapshot_dir/edu" ]] && {
     rm -rf "$DEPLOY_EDU_STANDALONE_ROOT"
     mkdir -p "$(dirname "$DEPLOY_EDU_STANDALONE_ROOT")"
@@ -418,7 +385,7 @@ restore_rollback() {
   echo "  重启旧版本服务..."
   generate_ecosystem_config
   if [[ "$FRONTEND_ONLY" == "true" ]]; then
-    pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --only "$PM2_MARKETPLACE_NAME,$PM2_EDU_NAME" --env production || true
+    pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --only "$PM2_EDU_NAME" --env production || true
   elif [[ "$BACKEND_ONLY" == "true" ]]; then
     pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --only "$PM2_BACKEND_NAME" --env production || true
   else
@@ -435,11 +402,6 @@ restore_rollback() {
     fi
   fi
   if [[ "$BACKEND_ONLY" != "true" ]]; then
-    if health_check "http://127.0.0.1:$MARKETPLACE_PORT/login" 12 2; then
-      echo "  商城回滚后健康检查通过"
-    else
-      echo "  错误：商城回滚后健康检查失败" >&2; rollback_ok=false
-    fi
     if health_check "http://127.0.0.1:$EDU_PORT/portal/login" 12 2; then
       echo "  教育管理回滚后健康检查通过"
     else
@@ -453,7 +415,7 @@ restore_rollback() {
 
 # ==================== 准备部署目录 ====================
 echo "==> 准备部署目录: $DEPLOY_DIR"
-mkdir -p "$DEPLOY_BACKEND_DIR/bin" "$DEPLOY_MARKETPLACE_DIR" "$DEPLOY_EDU_DIR" \
+mkdir -p "$DEPLOY_BACKEND_DIR/bin" "$DEPLOY_EDU_DIR" \
   "$DEPLOY_DATA_DIR" "$DEPLOY_UPLOAD_DIR" "$DEPLOY_LOG_DIR" \
   "$DEPLOY_BACKUP_DIR" "$DEPLOY_ROLLBACK_DIR"
 
@@ -481,9 +443,6 @@ save_snapshot "$SNAPSHOT_DIR" "$DEPLOY_MODE"
 if [[ "$FRONTEND_ONLY" != "true" && -f "$DEPLOY_BACKEND_BIN" ]]; then
   cp "$DEPLOY_BACKEND_BIN" "$SNAPSHOT_DIR/server"
 fi
-if [[ "$BACKEND_ONLY" != "true" && -d "$DEPLOY_MARKETPLACE_STANDALONE_ROOT" ]]; then
-  mv "$DEPLOY_MARKETPLACE_STANDALONE_ROOT" "$SNAPSHOT_DIR/marketplace"
-fi
 if [[ "$BACKEND_ONLY" != "true" && -d "$DEPLOY_EDU_STANDALONE_ROOT" ]]; then
   mv "$DEPLOY_EDU_STANDALONE_ROOT" "$SNAPSHOT_DIR/edu"
 fi
@@ -509,7 +468,7 @@ if [[ "$SKIP_CHECKS" != "true" ]]; then
       echo "  跳过前端类型检查（--skip-typecheck）"
     else
       echo "  前端类型检查..."
-      (cd "$PROJECT_ROOT" && pnpm --filter @zhiyu/marketplace typecheck && pnpm --filter @zhiyu/edu typecheck) || {
+      (cd "$PROJECT_ROOT" && pnpm --filter @zhiyu/edu typecheck) || {
         echo "错误：TypeScript 类型检查未通过" >&2; exit 1
       }
     fi
@@ -549,7 +508,6 @@ fi
 
 # ==================== 构建前端（增量构建） ====================
 if [[ "$BACKEND_ONLY" != "true" ]]; then
-  BUILD_MARKETPLACE=true
   BUILD_EDU=true
 
   # 检测变更文件，决定增量还是全量构建
@@ -558,16 +516,14 @@ if [[ "$BACKEND_ONLY" != "true" ]]; then
     if [[ -n "$PREV_COMMIT" ]] && [[ "$SKIP_PULL" != "true" || -n "$PREV_COMMIT" ]]; then
       CHANGED_FILES=$(git -C "$PROJECT_ROOT" diff --name-only "$PREV_COMMIT" HEAD 2>/dev/null || echo "")
       if [[ -n "$CHANGED_FILES" ]]; then
-        BUILD_MARKETPLACE=false
         BUILD_EDU=false
-        echo "$CHANGED_FILES" | grep -q "^apps/marketplace/" && { BUILD_MARKETPLACE=true; echo "  检测到商城改动，将构建 marketplace"; }
         echo "$CHANGED_FILES" | grep -q "^apps/edu/" && { BUILD_EDU=true; echo "  检测到教育管理改动，将构建 edu"; }
         if echo "$CHANGED_FILES" | grep -qE "^(packages/|package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|tsconfig\.json|turbo\.json)"; then
-          BUILD_MARKETPLACE=true; BUILD_EDU=true
+          BUILD_EDU=true
           echo "  检测到共享依赖/根配置改动，全量构建"
         fi
-        if [[ "$BUILD_MARKETPLACE" == "false" && "$BUILD_EDU" == "false" ]]; then
-          [[ "$FRONTEND_ONLY" == "true" ]] && { BUILD_MARKETPLACE=true; BUILD_EDU=true; }
+        if [[ "$BUILD_EDU" == "false" ]]; then
+          [[ "$FRONTEND_ONLY" == "true" ]] && { BUILD_EDU=true; }
           [[ "$FRONTEND_ONLY" != "true" ]] && echo "==> 无前端文件变更，跳过构建"
         fi
       else
@@ -580,45 +536,24 @@ if [[ "$BACKEND_ONLY" != "true" ]]; then
     # 开发模式：对比分支与 master 的差异
     CHANGED_FILES=$(git -C "$PROJECT_ROOT" diff --name-only HEAD origin/master 2>/dev/null || git -C "$PROJECT_ROOT" diff --name-only HEAD master 2>/dev/null || echo "")
     if [[ -n "$CHANGED_FILES" ]]; then
-      BUILD_MARKETPLACE=false
       BUILD_EDU=false
-      echo "$CHANGED_FILES" | grep -q "^apps/marketplace/" && { BUILD_MARKETPLACE=true; echo "  检测到商城改动，将构建 marketplace"; }
       echo "$CHANGED_FILES" | grep -q "^apps/edu/" && { BUILD_EDU=true; echo "  检测到教育管理改动，将构建 edu"; }
       if echo "$CHANGED_FILES" | grep -qE "^(packages/|package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|tsconfig\.json|turbo\.json)"; then
-        BUILD_MARKETPLACE=true; BUILD_EDU=true
+        BUILD_EDU=true
         echo "  检测到共享依赖/根配置改动，全量构建"
       fi
-      if [[ "$BUILD_MARKETPLACE" == "false" && "$BUILD_EDU" == "false" && "$FRONTEND_ONLY" == "true" ]]; then
-        BUILD_MARKETPLACE=true; BUILD_EDU=true
+      if [[ "$BUILD_EDU" == "false" && "$FRONTEND_ONLY" == "true" ]]; then
+        BUILD_EDU=true
         echo "  frontend-only 模式下全量构建"
       fi
     fi
   fi
 
   # 如果没有快照可用，强制执行构建
-  [[ "$BUILD_MARKETPLACE" == "false" && ! -d "$SNAPSHOT_DIR/marketplace" ]] && { BUILD_MARKETPLACE=true; echo "  无商城快照，将构建 marketplace"; }
   [[ "$BUILD_EDU" == "false" && ! -d "$SNAPSHOT_DIR/edu" ]] && { BUILD_EDU=true; echo "  无教育管理快照，将构建 edu"; }
 
   BUILD_ARGS=""
   [[ "$USE_TURBOPACK" == "true" ]] && { BUILD_ARGS="--turbopack"; echo "  使用 Turbopack 构建"; }
-
-  if [[ "$BUILD_MARKETPLACE" == "true" ]]; then
-    echo "==> 构建商城前端..."
-    rm -rf "$MARKETPLACE_DIR/.next"
-    NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
-      pnpm --filter @zhiyu/marketplace build $BUILD_ARGS || {
-      echo "错误：商城前端构建失败" >&2; restore_rollback "$SNAPSHOT_DIR"; exit 1
-    }
-    assemble_standalone "$MARKETPLACE_DIR" "marketplace"
-    echo "  商城产物: $MARKETPLACE_STANDALONE"
-  else
-    echo "==> 跳过商城构建（无改动）"
-    if [[ -d "$SNAPSHOT_DIR/marketplace" ]]; then
-      mkdir -p "$(dirname "$DEPLOY_MARKETPLACE_STANDALONE_ROOT")"
-      cp -a "$SNAPSHOT_DIR/marketplace" "$DEPLOY_MARKETPLACE_STANDALONE_ROOT"
-      echo "  从快照恢复商城产物"
-    fi
-  fi
 
   if [[ "$BUILD_EDU" == "true" ]]; then
     echo "==> 构建教育管理前端..."
@@ -676,11 +611,11 @@ if [[ "$FRONTEND_ONLY" != "true" ]]; then
 fi
 
 if [[ "$BACKEND_ONLY" != "true" ]]; then
-  for app in "$PM2_MARKETPLACE_NAME" "$PM2_EDU_NAME"; do
+  for app in "$PM2_EDU_NAME"; do
     pm2 stop "$app" &>/dev/null || true
     pm2 delete "$app" &>/dev/null || true
   done
-  for port in "$MARKETPLACE_PORT" "$EDU_PORT"; do
+  for port in "$EDU_PORT"; do
     if ! wait_for_port_release "$port" 10; then
       pid=$(lsof -t -i:"$port" 2>/dev/null || true)
       [[ -n "$pid" ]] && kill -9 "$pid" 2>/dev/null || true
@@ -703,15 +638,6 @@ if [[ "$FRONTEND_ONLY" != "true" && -f "$BACKEND_BIN_NEW" ]]; then
     chmod 600 "$DEPLOY_BACKEND_DIR/.env"
   fi
   echo "  后端已切换"
-fi
-
-if [[ "$BACKEND_ONLY" != "true" && "$BUILD_MARKETPLACE" == "true" && -d "$MARKETPLACE_STANDALONE_ROOT" ]]; then
-  echo "  复制商城 standalone 到部署目录..."
-  rm -rf "$DEPLOY_MARKETPLACE_STANDALONE_ROOT"
-  mkdir -p "$(dirname "$DEPLOY_MARKETPLACE_STANDALONE_ROOT")"
-  cp -a "$MARKETPLACE_STANDALONE_ROOT" "$DEPLOY_MARKETPLACE_STANDALONE_ROOT"
-  rm -rf "$MARKETPLACE_STANDALONE_ROOT"
-  echo "  商城前端已切换"
 fi
 
 if [[ "$BACKEND_ONLY" != "true" && "$BUILD_EDU" == "true" && -d "$EDU_STANDALONE_ROOT" ]]; then
@@ -741,7 +667,7 @@ echo ""
 echo "==> PM2 启动服务..."
 
 if [[ "$FRONTEND_ONLY" == "true" ]]; then
-  pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --only "$PM2_MARKETPLACE_NAME,$PM2_EDU_NAME" --env production || {
+  pm2 start "$DEPLOY_ECOSYSTEM_CONFIG" --only "$PM2_EDU_NAME" --env production || {
     echo "错误：PM2 启动失败" >&2; restore_rollback "$SNAPSHOT_DIR"; exit 1
   }
 elif [[ "$BACKEND_ONLY" == "true" ]]; then
@@ -771,11 +697,6 @@ if [[ "$FRONTEND_ONLY" != "true" ]]; then
 fi
 
 if [[ "$BACKEND_ONLY" != "true" ]]; then
-  if health_check "http://127.0.0.1:$MARKETPLACE_PORT/login" 15 2; then
-    echo "  商城健康检查通过: http://127.0.0.1:$MARKETPLACE_PORT/login"
-  else
-    echo "  错误：商城健康检查失败" >&2; HEALTH_OK=false
-  fi
   if health_check "http://127.0.0.1:$EDU_PORT/portal/login" 15 2; then
     echo "  教育管理健康检查通过: http://127.0.0.1:$EDU_PORT/portal/login"
   else
@@ -854,7 +775,6 @@ echo ""
 echo "✨ 部署完成！"
 echo "   部署目录: $DEPLOY_DIR"
 echo "   后端 API: http://localhost:$BACKEND_PORT"
-echo "   商城访问: http://localhost:$MARKETPLACE_PORT"
 echo "   教育管理: http://localhost:$EDU_PORT"
 echo "   日志目录: $DEPLOY_LOG_DIR"
 echo "   回滚快照: $SNAPSHOT_DIR"
