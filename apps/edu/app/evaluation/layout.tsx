@@ -1,57 +1,12 @@
 "use client"
 
-import { useEffect } from "react"
-import { usePathname, useRouter } from "next/navigation"
-import { Loader2 } from "lucide-react"
-import { PlatformShell } from "@/components/platform-shell"
 import { evaluationNavigationConfig } from "@/lib/navigation-config"
-import { useAuth } from "@/components/auth-provider"
+import { PlatformLayout } from "@/components/shared/platform-layout"
 
-export default function EvaluationLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const { user, loading, hasMenuPermission } = useAuth()
-  const isLanding = pathname.startsWith("/evaluation/landing")
-
-  useEffect(() => {
-    if (!loading && !user && !isLanding) {
-      router.replace("/portal/login")
-    }
-  }, [loading, user, isLanding, router])
-
-  const allowed = !loading && !!user && hasMenuPermission(pathname)
-
-  const content = isLanding ? (
-    <>{children}</>
-  ) : (
-    <PlatformShell
-      config={{
-        ...evaluationNavigationConfig,
-        sideBackHref: "/portal/apps",
-      }}
-    >
-      {children}
-    </PlatformShell>
-  )
-
+export default function EvaluationLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
-      {content}
-      {!isLanding && (loading || !allowed) && (
-        <div className="fixed inset-0 z-50 flex h-screen items-center justify-center bg-[#f5f7fa]">
-          {loading ? (
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          ) : (
-            <div className="text-sm text-muted-foreground">
-              当前角色暂无权限访问该页面，请联系管理员在角色权限中开通
-            </div>
-          )}
-        </div>
-      )}
-    </>
+    <PlatformLayout navigationConfig={evaluationNavigationConfig} landingPath="/evaluation/landing">
+      {children}
+    </PlatformLayout>
   )
 }

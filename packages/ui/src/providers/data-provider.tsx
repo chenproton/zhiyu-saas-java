@@ -184,10 +184,10 @@ export interface DataContextValue {
   rectificationDetails: RectificationDetail[]
   appealRecords: AppealRecord[]
   evaluationStandards: EvaluationStandard[]
-  createProcessEvaluation: (data: any) => ProcessEvaluation
-  createRectificationDetail: (data: any) => RectificationDetail
+  createProcessEvaluation: (data: Record<string, unknown>) => ProcessEvaluation
+  createRectificationDetail: (data: Record<string, unknown>) => RectificationDetail
   updateRectificationDetail: (id: string, data: Partial<RectificationDetail>) => void
-  createAppealRecord: (data: any) => AppealRecord
+  createAppealRecord: (data: Record<string, unknown>) => AppealRecord
   updateAppealRecord: (id: string, data: Partial<AppealRecord>) => void
   updateEvaluationStandard: (id: string, data: Partial<EvaluationStandard>) => void
 
@@ -202,7 +202,7 @@ export interface DataContextValue {
   updateGraduationProjectEvaluation: (id: string, data: Partial<GraduationProjectEvaluation>) => Promise<void>
 
   // 学生能力画像管理操作
-  createStudentAbilityArchive: (data: any) => Promise<StudentAbilityArchive>
+  createStudentAbilityArchive: (data: Record<string, unknown>) => Promise<StudentAbilityArchive>
   updateStudentAbilityArchive: (id: string, data: Partial<StudentAbilityArchive>) => Promise<void>
   deleteStudentAbilityArchive: (id: string) => Promise<void>
   updateCreditConversionRules: (rules: CreditConversionRule[]) => void

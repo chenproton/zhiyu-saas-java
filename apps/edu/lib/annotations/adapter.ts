@@ -1,1 +1,1 @@
-export * from "../../../../packages/ui/src/lib/annotations/adapter"
+export * from "@zhiyu/ui/lib/annotations/adapter"

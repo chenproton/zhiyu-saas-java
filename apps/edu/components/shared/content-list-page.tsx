@@ -276,8 +276,8 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
           ])
           setMajors((majorsResp.items as Major[]).filter((m) => m.enabled))
           setWorkflows(workflowsResp.items as Workflow[])
-        } catch (_) {
-          // 专业/审批流加载失败不影响列表展示
+        } catch (err) {
+          console.error(err)
         }
       }
       let front = itemsResp.items.map((i: any) => mapItem(i, currentUserId))
@@ -311,8 +311,8 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
             }
             return item
           })
-        } catch (_) {
-          // 审批记录读取失败不影响列表展示
+        } catch (err) {
+          console.error(err)
         }
       }
 
@@ -469,7 +469,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     for (const id of selectedIds) {
       const item = frontItems.find((i) => i.id === id)
       if (item && item.status === "pending") {
-        try { await itemApi.withdraw(id) } catch (_) {}
+        try { await itemApi.withdraw(id) } catch (err) { console.error(err) }
       }
     }
     setSelectedIds([])
@@ -480,7 +480,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     for (const id of selectedIds) {
       const item = frontItems.find((i) => i.id === id)
       if (item && item.status === "published") {
-        try { await itemApi.unpublish(id) } catch (_) {}
+        try { await itemApi.unpublish(id) } catch (err) { console.error(err) }
       }
     }
     setSelectedIds([])
@@ -491,7 +491,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     for (const id of selectedIds) {
       const item = frontItems.find((i) => i.id === id)
       if (item && item.status === "approved") {
-        try { await itemApi.publish(id) } catch (_) {}
+        try { await itemApi.publish(id) } catch (err) { console.error(err) }
       }
     }
     setSelectedIds([])
@@ -500,7 +500,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
 
   const handleBatchDelete = async () => {
     for (const id of selectedIds) {
-      try { await itemApi.delete(id) } catch (_) {}
+      try { await itemApi.delete(id) } catch (err) { console.error(err) }
     }
     setSelectedIds([])
     await refresh()
@@ -520,7 +520,8 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
         await itemApi.delete(item.id)
       }
       await refresh()
-    } catch (_) {
+    } catch (err) {
+      console.error(err)
     } finally {
       setConfirmAction(null)
     }
@@ -530,7 +531,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     for (const id of selectedIds) {
       const item = frontItems.find((i) => i.id === id)
       if (item && ["draft", "rejected", "approved", "published"].includes(item.status)) {
-        try { await itemApi.archive(item.id) } catch (_) {}
+        try { await itemApi.archive(item.id) } catch (err) { console.error(err) }
       }
     }
     setSelectedIds([])
@@ -552,8 +553,9 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
             batchId: item.batchId,
           })
         }
-      } catch (_) {
+      } catch (err) {
         failed++
+        console.error(err)
       }
     }
     if (failed > 0) {
@@ -602,7 +604,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
         return item && !item.batchId
       }).map((it) => it.id)
       for (const id of unboundIds) {
-        try { await itemApi.update(id, { batchId: moveTargetBatchId }) } catch (_) {}
+        try { await itemApi.update(id, { batchId: moveTargetBatchId }) } catch (err) { console.error(err) }
       }
       await doBatchSubmit(submitItems)
       setBatchSubmitEligibleIds([])
@@ -614,7 +616,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       return
     }
     for (const id of selectedIds) {
-      try { await itemApi.update(id, { batchId: moveTargetBatchId }) } catch (_) {}
+      try { await itemApi.update(id, { batchId: moveTargetBatchId }) } catch (err) { console.error(err) }
     }
     setSelectedIds([])
     setIsBatchMoveDialogOpen(false)
@@ -694,15 +696,15 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   }
 
   const handleWithdrawApproval = async (item: T) => {
-    try { await itemApi.withdraw(item.id); await refresh() } catch (_) {}
+    try { await itemApi.withdraw(item.id); await refresh() } catch (err) { console.error(err) }
   }
 
   const handlePublish = async (item: T) => {
-    try { await itemApi.publish(item.id); await refresh() } catch (_) {}
+    try { await itemApi.publish(item.id); await refresh() } catch (err) { console.error(err) }
   }
 
   const handleUnpublish = async (item: T) => {
-    try { await itemApi.unpublish(item.id); await refresh() } catch (_) {}
+    try { await itemApi.unpublish(item.id); await refresh() } catch (err) { console.error(err) }
   }
 
   const handleInviteCoBuild = (item: T) => {
@@ -718,7 +720,8 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       setIsInviteDialogOpen(false)
       setInviteTarget(null)
       await refresh()
-    } catch (_) {
+    } catch (err) {
+      console.error(err)
       toast({ variant: "destructive", title: "保存失败", description: "调整共建人失败，请稍后重试" })
     }
   }

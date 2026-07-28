@@ -1,1 +1,1 @@
-export * from "../../../../packages/ui/src/lib/annotations/types"
+export * from "@zhiyu/ui/lib/annotations/types"

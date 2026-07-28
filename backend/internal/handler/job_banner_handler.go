@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 )
 
@@ -17,19 +17,8 @@ type JobBannerHandler struct {
 	DB *pgxpool.Pool
 }
 
-type JobBannerConfig struct {
-	ID        string    `json:"id"`
-	Title     string    `json:"title"`
-	ImageURL  string    `json:"imageUrl"`
-	LinkURL   *string   `json:"linkUrl,omitempty"`
-	SortOrder int       `json:"sortOrder"`
-	IsEnabled  bool      `json:"isEnabled"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
-}
-
 type JobBannerListResponse struct {
-	Items []JobBannerConfig `json:"items"`
+	Items []domain.JobBannerConfig `json:"items"`
 	Total int               `json:"total"`
 }
 
@@ -57,7 +46,7 @@ func (h *JobBannerHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	isEnabledStr := r.URL.Query().Get("isEnabled")
 
-	items, total, err := executeListQuery[JobBannerConfig](r.Context(), h.DB, r, listQueryConfig[JobBannerConfig]{
+	items, total, err := executeListQuery[domain.JobBannerConfig](r.Context(), h.DB, r, listQueryConfig[domain.JobBannerConfig]{
 		Table:         "banner_configs",
 		SelectColumns: "id, title, image_url, link_url, sort_order, is_enabled, created_at, updated_at",
 		TenantScoped:  true,
@@ -190,8 +179,8 @@ func (h *JobBannerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 
-func (h *JobBannerHandler) fetchBanner(ctx context.Context, id string) (JobBannerConfig, error) {
-	var b JobBannerConfig
+func (h *JobBannerHandler) fetchBanner(ctx context.Context, id string) (domain.JobBannerConfig, error) {
+	var b domain.JobBannerConfig
 	var linkURL *string
 
 	err := h.DB.QueryRow(ctx, `
@@ -207,10 +196,10 @@ func (h *JobBannerHandler) fetchBanner(ctx context.Context, id string) (JobBanne
 	return b, nil
 }
 
-func (h *JobBannerHandler) scanBannerRows(rows pgx.Rows) ([]JobBannerConfig, error) {
-	items := make([]JobBannerConfig, 0)
+func (h *JobBannerHandler) scanBannerRows(rows pgx.Rows) ([]domain.JobBannerConfig, error) {
+	items := make([]domain.JobBannerConfig, 0)
 	for rows.Next() {
-		var b JobBannerConfig
+		var b domain.JobBannerConfig
 		var linkURL *string
 		if err := rows.Scan(
 			&b.ID, &b.Title, &b.ImageURL, &linkURL, &b.SortOrder, &b.IsEnabled, &b.CreatedAt, &b.UpdatedAt,

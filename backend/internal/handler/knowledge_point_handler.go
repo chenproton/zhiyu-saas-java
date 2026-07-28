@@ -114,7 +114,14 @@ func (h *KnowledgePointHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if req.GranularLessonIds == nil {
 		req.GranularLessonIds = domain.JSONSlice{}
 	}
-	_, err := h.DB.Exec(r.Context(), `
+	tx, err := h.DB.Begin(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "创建知识点失败")
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	_, err = tx.Exec(r.Context(), `
 		INSERT INTO knowledge_points (id, tenant_id, name, code, description, linked, granular_lesson_ids, creator_id)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`, id, tenantID, req.Name, req.Code, req.Description, req.Linked, req.GranularLessonIds, creatorID)
@@ -128,6 +135,11 @@ func (h *KnowledgePointHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.syncCourseKnowledgePoints(r.Context(), tenantID, id, jsonSliceToStringSlice(req.GranularLessonIds))
+
+	if err := tx.Commit(r.Context()); err != nil {
+		respondError(w, http.StatusInternalServerError, "创建知识点失败")
+		return
+	}
 
 	kp, _ := h.fetchKnowledgePoint(r.Context(), id)
 	respondJSON(w, http.StatusCreated, kp)
@@ -164,7 +176,14 @@ func (h *KnowledgePointHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
+	tx, err := h.DB.Begin(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "更新知识点失败")
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	_, err = tx.Exec(r.Context(), `
 		UPDATE knowledge_points SET name = $1, code = $2, description = $3, linked = $4,
 			granular_lesson_ids = $5, updated_at = NOW()
 		WHERE id = $6
@@ -179,6 +198,11 @@ func (h *KnowledgePointHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.syncCourseKnowledgePoints(r.Context(), tenantID, id, jsonSliceToStringSlice(req.GranularLessonIds))
+
+	if err := tx.Commit(r.Context()); err != nil {
+		respondError(w, http.StatusInternalServerError, "更新知识点失败")
+		return
+	}
 
 	kp, _ := h.fetchKnowledgePoint(r.Context(), id)
 	respondJSON(w, http.StatusOK, kp)

@@ -238,7 +238,14 @@ func (h *RoleHandler) Assign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.DB.Exec(r.Context(), `
+	tx, err := h.DB.Begin(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "分配角色失败")
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	_, err = tx.Exec(r.Context(), `
 		INSERT INTO user_roles (id, user_id, role_id)
 		VALUES ($1, $2, $3)
 		ON CONFLICT (user_id, role_id) DO NOTHING
@@ -248,7 +255,16 @@ func (h *RoleHandler) Assign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, _ = h.DB.Exec(r.Context(), `UPDATE roles SET user_count = user_count + 1 WHERE id = $1`, id)
+	_, err = tx.Exec(r.Context(), `UPDATE roles SET user_count = user_count + 1 WHERE id = $1`, id)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "分配角色失败")
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		respondError(w, http.StatusInternalServerError, "分配角色失败")
+		return
+	}
 
 	respondJSON(w, http.StatusOK, map[string]string{"roleId": id, "userId": req.UserID})
 }

@@ -165,3 +165,14 @@ type LearnRoad struct {
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 }
+
+type JobBannerConfig struct {
+	ID        string    `json:"id"`
+	Title     string    `json:"title"`
+	ImageURL  string    `json:"imageUrl"`
+	LinkURL   *string   `json:"linkUrl,omitempty"`
+	SortOrder int       `json:"sortOrder"`
+	IsEnabled  bool      `json:"isEnabled"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}

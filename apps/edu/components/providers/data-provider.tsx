@@ -588,32 +588,32 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     rectificationDetails,
     appealRecords,
     evaluationStandards,
-    createProcessEvaluation: (data: any) => {
+    createProcessEvaluation: (data: Record<string, unknown>) => {
       const newEval: ProcessEvaluation = {
         id: `pe-${Date.now()}`,
-        archiveId: data.archiveId,
-        studentName: data.studentName,
-        topicName: data.topicName,
-        phase: data.phase,
-        advisorScore: data.advisorScore,
-        comment: data.comment,
+        archiveId: data.archiveId as string,
+        studentName: data.studentName as string,
+        topicName: data.topicName as string,
+        phase: data.phase as ProcessEvaluation['phase'],
+        advisorScore: data.advisorScore as number,
+        comment: data.comment as string,
         evaluatedAt: new Date(),
       }
       setProcessEvaluations((prev) => [...prev, newEval])
       return newEval
     },
-    createRectificationDetail: (data: any) => {
+    createRectificationDetail: (data: Record<string, unknown>) => {
       const newRect: RectificationDetail = {
         id: `rect-${Date.now()}`,
-        archiveId: data.archiveId,
-        studentId: data.studentId,
-        studentName: data.studentName,
-        topicName: data.topicName,
-        requirement: data.requirement,
-        deadline: new Date(data.deadline),
+        archiveId: data.archiveId as string,
+        studentId: data.studentId as string,
+        studentName: data.studentName as string,
+        topicName: data.topicName as string,
+        requirement: data.requirement as string,
+        deadline: new Date(data.deadline as string),
         status: 'pending',
-        studentResponse: data.studentResponse,
-        submittedAt: data.submittedAt ? new Date(data.submittedAt) : undefined,
+        studentResponse: data.studentResponse as string,
+        submittedAt: data.submittedAt ? new Date(data.submittedAt as string) : undefined,
       }
       setRectificationDetails((prev) => [...prev, newRect])
       return newRect
@@ -623,13 +623,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         prev.map((r) => (r.id === id ? { ...r, ...data } : r))
       )
     },
-    createAppealRecord: (data: any) => {
+    createAppealRecord: (data: Record<string, unknown>) => {
       const newAppeal: AppealRecord = {
         id: `appeal-${Date.now()}`,
-        studentId: data.studentId,
-        studentName: data.studentName,
-        type: data.type,
-        reason: data.reason,
+        studentId: data.studentId as string,
+        studentName: data.studentName as string,
+        type: data.type as AppealRecord['type'],
+        reason: data.reason as string,
         status: 'pending',
         createdAt: new Date(),
       }
@@ -660,18 +660,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       await loadGraduationEvaluations()
     },
 
-    createStudentAbilityArchive: async (data: any): Promise<StudentAbilityArchive> => {
+    createStudentAbilityArchive: async (data: Record<string, unknown>): Promise<StudentAbilityArchive> => {
       const created = await portraitApi.upsertArchive({
-        studentName: data.studentName,
-        studentId: data.studentId,
-        className: data.className,
-        materialType: data.materialType,
-        materialName: data.materialName,
-        issuingOrg: data.issuingOrg,
-        obtainDate: data.obtainDate ? new Date(data.obtainDate) : new Date(),
+        studentName: data.studentName as string,
+        studentId: data.studentId as string,
+        className: data.className as string,
+        materialType: data.materialType as string,
+        materialName: data.materialName as string,
+        issuingOrg: data.issuingOrg as string,
+        obtainDate: data.obtainDate ? new Date(data.obtainDate as string) : new Date(),
         auditStatus: 'pending',
         convertedCredit: 0,
-        direction: data.direction || 'positive',
+        direction: (data.direction as string) || 'positive',
         isEnabled: true,
       } as Partial<StudentAbilityArchive>)
       await loadStudentAbilityArchives()
