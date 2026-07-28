@@ -69,13 +69,50 @@
 
 > 新增页面时先查阅组件速查表：[`docs/components.md`](docs/components.md)
 
-核心约束：
+### 页面级壳（`apps/edu/components/shared/`）
+
+- `ContentListPage<T>` — 内容资源管理列表页（含 Tab 筛选、批量操作、导入导出），4 个业务模块共用
+- `BatchGroupPage` — 批次分组管理，4 个模块共用
+- `WorkflowConfigPage` — 审批流配置，4 个模块共用
+- `ApprovalListPage<T>` — 审批中心（待审批/已审批），4 个模块共用
+- `ArchiveListPage<T>` — 归档管理（左侧筛选+表格+恢复/删除），3 个模块共用
+- `PortalCrudPage<T>` — Portal 系统管理 CRUD 表格
+- `PortalSidebarCrudPage<T>` — Portal 组织树筛选 CRUD 表格
+- `EditorShell` — 内容编辑器框架（步骤导航、保存/提交），7 个页面共用
+- `PlatformLayout` — 认证守卫版 PlatformShell（未登录跳转、无权限拒绝）
+- `LogTableShell<T>` — 日志表格壳
+- `EvaluationListTable` — 评测列表渲染器
+
+### 基础交互（`packages/ui/src/components/shared/`，`@zhiyu/ui` 导入）
 
 1. **不要定义本地 `STATUS_CONFIG`**。已有全局 `getStatusConfig()`（`packages/shared-types/src/status.ts`），配合 `<StatusBadge>` 使用
 2. **删除确认** 使用 `<ConfirmDialog>`，禁止 `window.confirm()`
 3. **表格行操作** 使用 `<TableRowActions>` / `<HoverActionBar>`，不要手写 `group-hover`
 4. **导入流程** 使用 `useImportFlow` hook
 5. **就近放置**：仅被一处使用的子组件放在消费者 `_components/` 下，不要放入 `shared/`
+
+### 选择器
+
+- `MajorSelect` — 专业下拉，自动加载
+- `BatchSelector` — 批次选择+创建
+- `UserSelector` — 用户选择（多选/单选/排除）
+- `OrgNodePicker` — 组织节点 Popover
+
+### 其他交互组件
+
+- `ResourcePreviewModal` — 文件预览弹窗
+- `ImportConfirmDialog` — 导入重复确认
+- `ResetPasswordDialog` — 重置密码
+- `CoverImageUpload` — 封面上传
+- `GranularLessonSelectDialog` — 课时多选
+- `KnowledgePointFormDialog` — 知识点CRUD
+- `PageHeaderCard` / `LandingFilterRow` / `LandingPagination` — Landing 页组件
+
+### Hooks
+
+- `useImportFlow` / `useApprovals` / `useSubmitterNames` / `useOrgTree` / `usePortalUsers` / `useSubscriptionModules` — `@/hooks/`
+- `useToast` / `useIsMobile` / `usePlatformLinks` / `useAppModules` — `@zhiyu/ui`
+- `DataProvider`（`createDataContext` + `createUseData` 工厂） — 评测数据上下文，`@zhiyu/ui` 导出
 
 ## 六、AI 协作者约定
 

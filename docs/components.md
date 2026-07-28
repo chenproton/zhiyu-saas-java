@@ -1,9 +1,10 @@
 # 前端公共组件速查
 
-> 所有通用组件均位于 `packages/ui/src/components/shared/`（通过 `@zhiyu/ui` 使用）。新增页面时优先复用，避免重复造轮子。
-> 页面级共享壳（如 `ContentListPage`、`PortalCrudPage`）目前位于 `apps/edu/components/shared/`，长期可视情况下沉到 `packages/ui` 或独立包。
-> 评测配置组件位于 `apps/edu/app/lesson/admin/_components/eval/`，同时被课程和任务编辑器复用。
-> 任务步骤卡片位于 `apps/edu/app/scene/scenarios/[id]/edit/tasks/_components/`。
+> **通用 UI 组件**位于 `packages/ui/src/components/shared/`（通过 `@zhiyu/ui` 使用）。
+> **页面级共享壳**位于 `apps/edu/components/shared/`，长期可视情况下沉到 `packages/ui` 或独立包。
+> **评测配置组件**位于 `apps/edu/app/lesson/admin/_components/eval/`，同时被课程和任务编辑器复用。
+> **任务步骤卡片**位于 `apps/edu/app/scene/scenarios/[id]/edit/tasks/_components/`。
+> **通用 Hooks** 位于 `@/hooks/`（`apps/edu/hooks/`）和 `packages/ui/src/hooks/`。
 
 ## 页面级组件
 
@@ -40,25 +41,74 @@
 | `ConfirmDialog` | 删除/危险操作二次确认 | `open`, `onOpenChange`, `title`, `description`, `variant`, `onConfirm` |
 | `TableRowActions` | 表格行悬浮操作按钮，替代手写 `group-hover` | 包裹 `<Button>` 子元素 |
 | `HoverActionBar` | 非 Table 场景的 hover 操作栏 | 包裹子元素 |
-| `UserSelector` | 选择用户（多选/单选、组织树筛选、排除学生） | `value`, `onChange`, `multiple`, `excludeStudent`, `tenantId` |
-| `OrgNodePicker` | 组织节点选择器（Popover） | `value`, `onChange` |
-| `PageHeaderCard` | 页头统计卡片（标题 + 统计数字 + 操作按钮） | `title`, `stats`, `actions` |
-| `BatchSelector` | 批次选择器（下拉选择 + 创建新批次） | `value`, `onChange` |
 | `ResourcePreviewModal` | 文件预览弹窗（kkFileView iframe） | `resource`, `open`, `onOpenChange` |
 | `ImportConfirmDialog` | 导入重复确认对话框 | `open`, `entityLabel`, `created/duplicates/failed`, `onConfirmOverwrite/onConfirmSkip` |
 | `ResetPasswordDialog` | 重置密码对话框 | `open`, `userId`, `userName`, `onSuccess` |
-| `PlatformShell` | 平台整体布局（侧边栏 + 顶栏 + 内容区） | 包裹页面内容 |
+| `LogTableShell<T>` | 日志表格壳子（表格+分页+加载态） | `items`, `columns`, `total`, `page`, `totalPages` |
+| `CoverImageUpload` | 封面上传（预览/替换/删除） | `imageUrl`, `uploading`, `label`, `alt`, `onUpload`, `onRemove` |
+| `GranularLessonSelectDialog` | 课时多选对话框（搜索+勾选+批量确认） | `open`, `onOpenChange`, `granularCourses`, `selectedIds`, `onChange` |
+| `KnowledgePointFormDialog` | 知识点创建/编辑/克隆表单（内嵌课时选择） | `open`, `onOpenChange`, `onSubmit`, `initialValues`, `title` |
+
+## 选择器组件
+
+| 组件 | 用途 | 关键 Props |
+|------|------|-----------|
+| `MajorSelect` | 专业下拉选择器，自动加载列表 | `tenantId?`, `value?`, `onChange`, `placeholder?`, `disabled?` |
+| `BatchSelector` | 批次选择器（下拉选择 + 创建新批次） | `value`, `onChange` |
+| `UserSelector` | 选择用户（多选/单选、组织树筛选、排除学生） | `value`, `onChange`, `multiple`, `excludeStudent`, `tenantId` |
+| `OrgNodePicker` | 组织节点选择器（Popover） | `value`, `onChange` |
+
+## 布局组件
+
+| 组件 | 用途 | 关键 Props |
+|------|------|-----------|
+| `PlatformShell` | 平台整体布局（侧边栏 + 顶栏 + 内容区） | 包裹页面内容，`config: PlatformNavigationConfig` |
+| `PlatformLayout` | 认证守卫版 PlatformShell（未登录跳转登录页，无权限展示拒绝页） | `navigationConfig`, `landingPath`, `children` |
+| `EditorShell` | 内容编辑器框架（全屏/内嵌、步骤导航、保存/提交） | `mode`, `step`, `onSaveDraft`, `onSubmit` 等回调 |
+| `PageHeaderCard` | 页头统计卡片（标题 + 统计数字 + 操作按钮） | `title`, `stats`, `actions` |
 | `LandingFilterRow` | Landing 页筛选行（标签云+展开收起） | `label`, `items`, `selected`, `onSelect`, `accentColor` |
 | `LandingPagination` | Landing 页分页器（省略号+图标按钮） | `currentPage`, `totalPages`, `onPageChange`, `accentColor` |
-| `LogTableShell<T>` | 日志表格壳子（表格+分页+加载态） | `items`, `columns`, `total`, `page`, `totalPages` |
 
 ## Hooks
 
-| Hook | 来源 | 用途 |
-|------|------|------|
-| `useImportFlow` | `@/hooks/use-import-flow` | 导入流程（下载模板、预览、执行导入、重复处理） |
-| `useApprovals` | `@/hooks/use-approvals` | 审批记录（records、approve、reject、batchApprove、batchReject、getStepInfo） |
-| `useSubmitterNames` | `@/hooks/use-submitter-names` | 提交人姓名批量缓存 |
+### 数据获取 Hooks（`@/hooks/`）
+
+| Hook | 用途 |
+|------|------|
+| `useImportFlow` | 导入流程（下载模板、预览、执行导入、重复处理），来自 `@zhiyu/ui` re-export |
+| `useApprovals` | 审批记录（records、approve、reject、batchApprove、batchReject、getStepInfo） |
+| `useSubmitterNames` | 提交人姓名批量缓存 |
+| `useOrgTree` | 组织树数据（orgs、orgTree、orgMap、orgTypeMap、typeNameMap、loading、refetch） |
+| `usePortalUsers` | Portal 用户列表（users、roles、roleMap、total、loading、refetch），支持 `roleCode` 筛选 |
+| `useSubscriptionModules` | 租户订阅模块开关，返回 `Record<string, boolean>` |
+
+### 通用 UI Hooks（`@zhiyu/ui`）
+
+| Hook | 用途 |
+|------|------|
+| `useToast` | Toast 通知（`toast`, `dismiss`, `toasts`），配合 `<Toaster>` 使用 |
+| `useIsMobile` | 响应式断点，viewport < 768px 时返回 `true` |
+| `usePlatformLinks` | 平台链接配置（`data`, `loading`, `getUrl`, `isEnabled`, `refresh`） |
+| `useAppModules` | 应用模块配置（`data`, `loading`, `getModules`, `refresh`） |
+
+## DataProvider（评测数据上下文）
+
+> 工厂模式：`createDataContext()` → Context，`createUseData(ctx)` → Hook，`@zhiyu/ui` 导出。
+
+| 数据域 | 方法 |
+|--------|------|
+| 题库 | `listQuestionBanks`, `getQuestionBank`, `createQuestionBank`, `updateQuestionBank`, `deleteQuestionBank` |
+| 题目 | `listQuestions`, `getQuestion`, `createQuestion`, `updateQuestion`, `deleteQuestion` |
+| 试卷 | `listExams`, `getExam`, `createExam`, `updateExam`, `deleteExam` |
+| 场景任务 | `listSceneTasks`, `getSceneTask` |
+| 评测结果 | `listEvaluationResults`, `createEvaluationResult`, `updateEvaluationResult`, `deleteEvaluationResult` |
+| 岗位能力 | `listJobAbilities`, `createJobAbilityResult`, `getJobAbilityResult`, `deleteJobAbilityResult` |
+| 审批 | `mapApprovalRecord()` + `APPROVAL_TYPE_MAP` 类型映射 |
+| 毕业设计 | `listGraduationProjects`, `createGraduationProject`, `updateGraduationProject`, `deleteGraduationProject` |
+| 学生档案 | `listStudentArchives`, `getStudentArchive`, `createStudentArchive`, `updateStudentArchive`, `deleteStudentArchive` |
+| 学生画像 | `getStudentPortrait`, `updateStudentPortrait` |
+| 证书发放 | `listCertRecords`, `createCertRecord`, `updateCertRecord`, `updateCertStatus`, `deleteCertRecord` |
+| 学分转换 | `listCreditRules`, `createCreditRule`, `updateCreditRule`, `deleteCreditRule` |
 
 ## 评测配置组件（课程/任务复用）
 
