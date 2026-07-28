@@ -166,7 +166,11 @@ func (h *ScenarioTaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "任务不存在")
 		return
 	}
-	if task.TenantID != nil && !verifyTenantOwnership(w, r, *task.TenantID) {
+	if task.TenantID == nil {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	if !verifyTenantOwnership(w, r, *task.TenantID) {
 		return
 	}
 
@@ -176,18 +180,28 @@ func (h *ScenarioTaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var newScenarioTenantID *string
+	err = h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM scenarios WHERE id = $1`, req.ScenarioID).Scan(&newScenarioTenantID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "场景不存在")
+		return
+	}
+	if newScenarioTenantID != nil && !verifyTenantOwnership(w, r, *newScenarioTenantID) {
+		return
+	}
+
 	_, err = h.DB.Exec(r.Context(), `
 		UPDATE scenario_tasks SET scenario_id=$1, name=$2, code=$3, sort_order=$4,
 			description=$5, detailed_description=$6, description_pdf=$7, estimated_hours=$8, task_type=$9,
 			difficulty=$10, background=$11, dependency_ids=$12, is_referenced=$13,
 			source_scenario_id=$14, knowledge_point_ids=$15, ability_point_ids=$16,
 			resource_ids=$17, eval_data=$18
-		WHERE id=$19
+		WHERE id=$19 AND tenant_id=$20
 	`, req.ScenarioID, req.Name, req.Code, req.SortOrder, req.Description, req.DetailedDescription, req.DescriptionPdf,
 		req.EstimatedHours, req.TaskType, req.Difficulty, req.Background,
 		coalesceStringSlice(req.DependencyIDs), req.IsReferenced, req.SourceScenarioID,
 		coalesceStringSlice(req.KnowledgePointIDs), coalesceStringSlice(req.AbilityPointIDs),
-		coalesceStringSlice(req.ResourceIDs), jsonMapBytes(req.EvalData), id)
+		coalesceStringSlice(req.ResourceIDs), jsonMapBytes(req.EvalData), id, task.TenantID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "更新任务失败")
 		return
@@ -209,11 +223,15 @@ func (h *ScenarioTaskHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "任务不存在")
 		return
 	}
-	if task.TenantID != nil && !verifyTenantOwnership(w, r, *task.TenantID) {
+	if task.TenantID == nil {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	if !verifyTenantOwnership(w, r, *task.TenantID) {
 		return
 	}
 
-	_, err = h.DB.Exec(r.Context(), `DELETE FROM scenario_tasks WHERE id = $1`, id)
+	_, err = h.DB.Exec(r.Context(), `DELETE FROM scenario_tasks WHERE id = $1 AND tenant_id = $2`, id, task.TenantID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "删除任务失败")
 		return

@@ -182,9 +182,9 @@ func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantI
 					ID:        id,
 					Title:     name,
 					Type:      "course",
-					DayOfWeek: int(time.Now().Weekday()),
+					DayOfWeek: 1,
 					Period:    className,
-					Location:  className,
+					Location:  "",
 					Teacher:   teacher,
 					Status:    "进行中",
 				})

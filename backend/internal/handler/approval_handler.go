@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -142,7 +141,11 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if record.TenantID != nil && !verifyTenantOwnership(w, r, *record.TenantID) {
+	if record.TenantID == nil {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	if !verifyTenantOwnership(w, r, *record.TenantID) {
 		return
 	}
 
@@ -203,9 +206,10 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 		if tableName, ok := entityTableMap[record.TargetType]; ok {
 			if _, err := tx.Exec(r.Context(),
 				fmt.Sprintf("UPDATE %s SET status = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3", tableName),
-				string(domain.ApprovalStatusRejected), record.TargetID, record.TenantID,
+				string(domain.ApprovalStatusRejected), record.TargetID, *record.TenantID,
 			); err != nil {
-				slog.Error("同步实体状态失败", "targetType", record.TargetType, "targetId", record.TargetID, "error", err)
+				respondError(w, http.StatusInternalServerError, "同步实体状态失败")
+				return
 			}
 		}
 
@@ -273,9 +277,10 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 		if tableName, ok := entityTableMap[record.TargetType]; ok {
 			if _, err := tx.Exec(r.Context(),
 				fmt.Sprintf("UPDATE %s SET status = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3", tableName),
-				string(domain.ApprovalStatusApproved), record.TargetID, record.TenantID,
+				string(domain.ApprovalStatusApproved), record.TargetID, *record.TenantID,
 			); err != nil {
-				slog.Error("同步实体状态失败", "targetType", record.TargetType, "targetId", record.TargetID, "error", err)
+				respondError(w, http.StatusInternalServerError, "同步实体状态失败")
+				return
 			}
 		}
 	}
@@ -360,13 +365,6 @@ func (h *ApprovalHandler) isLastStep(workflow *domain.Workflow, stepIdx int) boo
 	return stepIdx >= len(workflow.Steps)-1
 }
 
-func (h *ApprovalHandler) syncEntityStatusQuiet(ctx context.Context, targetType, targetID, status string) {
-	if err := h.syncEntityStatus(ctx, targetType, targetID, status); err != nil {
-		slog.Info(fmt.Sprintf("warn: sync entity status failed targetType=%s targetId=%s status=%s err=%v\n",
-			targetType, targetID, status, err))
-	}
-}
-
 func (h *ApprovalHandler) fetchWorkflow(ctx context.Context, id string) (domain.Workflow, error) {
 	var w domain.Workflow
 	var tenantID, scene, description *string
@@ -396,18 +394,6 @@ var entityTableMap = map[string]string{
 	"course":          "courses",
 	"question_bank":   "question_banks",
 	"exam":            "exams",
-}
-
-func (h *ApprovalHandler) syncEntityStatus(ctx context.Context, targetType, targetID, status string) error {
-	tableName, ok := entityTableMap[targetType]
-	if !ok {
-		return nil
-	}
-	_, err := h.DB.Exec(ctx,
-		fmt.Sprintf("UPDATE %s SET status = $1, updated_at = NOW() WHERE id = $2", tableName),
-		status, targetID,
-	)
-	return err
 }
 
 func (h *ApprovalHandler) fetchApproval(ctx context.Context, id string) (domain.ApprovalRecord, error) {

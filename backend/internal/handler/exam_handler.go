@@ -569,25 +569,31 @@ func (h *ExamHandler) scanExamRows(ctx context.Context, rows pgx.Rows) ([]domain
 	}
 
 	if len(examIDs) > 0 {
-		questionsMap := h.batchFetchExamQuestions(ctx, examIDs)
+		questionsMap, err := h.batchFetchExamQuestions(ctx, examIDs)
+		if err != nil {
+			return nil, err
+		}
 		for i := range items {
 			items[i].Questions = questionsMap[items[i].ID]
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return items, nil
 }
 
-func (h *ExamHandler) batchFetchExamQuestions(ctx context.Context, examIDs []string) map[string][]domain.ExamQuestion {
+func (h *ExamHandler) batchFetchExamQuestions(ctx context.Context, examIDs []string) (map[string][]domain.ExamQuestion, error) {
 	result := make(map[string][]domain.ExamQuestion)
 	if len(examIDs) == 0 {
-		return result
+		return result, nil
 	}
 	rows, err := h.DB.Query(ctx, `
 		SELECT id, exam_id, question_id, type, content, options, answer, analysis, score, sort_order
 		FROM exam_questions WHERE exam_id = ANY($1) ORDER BY exam_id, sort_order
 	`, examIDs)
 	if err != nil {
-		return result
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -595,7 +601,7 @@ func (h *ExamHandler) batchFetchExamQuestions(ctx context.Context, examIDs []str
 		var q domain.ExamQuestion
 		var analysis, optionsStr, answerStr *string
 		if err := rows.Scan(&q.ID, &q.ExamID, &q.QuestionID, &q.Type, &q.Content, &optionsStr, &answerStr, &analysis, &q.Score, &q.Order); err != nil {
-			continue
+			return nil, err
 		}
 		q.Analysis = analysis
 		if optionsStr != nil {
@@ -609,5 +615,8 @@ func (h *ExamHandler) batchFetchExamQuestions(ctx context.Context, examIDs []str
 		}
 		result[q.ExamID] = append(result[q.ExamID], q)
 	}
-	return result
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
