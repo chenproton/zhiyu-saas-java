@@ -12,6 +12,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CheckSquare, Eye } from "lucide-react"
 import { useApprovalDialogs } from "@/components/shared/_components/approval-dialogs"
+import { TableRowActions } from "@/components/shared/table-row-actions"
 import type { ApprovalStepInfo } from "@/hooks/use-approvals"
 import { Toaster } from "sonner"
 
@@ -163,7 +164,7 @@ export function ApprovalListPage<T extends { id: string; status: string; stepInf
                   <TableRow><TableCell colSpan={colSpan} className="text-center py-12 text-gray-500">暂无数据</TableCell></TableRow>
                 ) : (
                   data.map((item) => (
-                    <TableRow key={item.id}>
+                    <TableRow key={item.id} className="group">
                       <TableCell className="text-center">
                         <Checkbox
                           checked={selectedIds.has(item.id)}
@@ -177,20 +178,18 @@ export function ApprovalListPage<T extends { id: string; status: string; stepInf
                           {col.cell(item)}
                         </TableCell>
                       ))}
-                      <TableCell className="text-right whitespace-nowrap sticky right-0 bg-white z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">
-                        <div className="flex items-center justify-end gap-3">
-                          <Button variant="outline" size="sm" asChild>
-                            <Link href={detailHref(item)}>
-                              <Eye className="mr-1 h-3 w-3" />查看
-                            </Link>
-                          </Button>
-                          {approveAction ? (
-                            <div className="inline-flex" onClick={() => setCurrentItem(item)}>
-                              {approveAction(item.status)}
-                            </div>
-                          ) : null}
-                        </div>
-                      </TableCell>
+                      <TableRowActions className="sticky right-0 bg-white shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)]">
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={detailHref(item)}>
+                            <Eye className="mr-1 h-3 w-3" />查看
+                          </Link>
+                        </Button>
+                        {approveAction ? (
+                          <div className="inline-flex" onClick={() => setCurrentItem(item)}>
+                            {approveAction(item.status)}
+                          </div>
+                        ) : null}
+                      </TableRowActions>
                     </TableRow>
                   ))
                 )}

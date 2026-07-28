@@ -8,10 +8,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Search, Trash2, Plus, Loader2, Upload, FileDown } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { useImportFlow, type UseImportFlowOptions } from "@/hooks/use-import-flow"
 import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
 import { TableRowActions } from "@/components/shared/table-row-actions"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 
 export interface PortalCrudPageConfig<T extends { id: string; enabled?: boolean }> {
   title: string
@@ -374,29 +375,15 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
-      <Dialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null)
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>确认删除</DialogTitle>
-            <DialogDescription>{deleteTarget && getDeleteDescription(deleteTarget)}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>
-              取消
-            </Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
-              {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              删除
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        title="确认删除"
+        description={deleteTarget ? getDeleteDescription(deleteTarget) : ""}
+        variant="destructive"
+        confirmText={deleting ? "删除中..." : "删除"}
+        onConfirm={confirmDelete}
+      />
     </div>
   )
 }

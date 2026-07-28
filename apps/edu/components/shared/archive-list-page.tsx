@@ -17,6 +17,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import { Search, GraduationCap, Eye, RotateCcw, Trash2 } from "lucide-react"
 import { StatusBadge } from "@/components/shared/status-badge"
+import { TableRowActions } from "@/components/shared/table-row-actions"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 
 export interface ArchiveColumn<T> {
   header: string
@@ -81,6 +83,7 @@ export function ArchiveListPage<
   emptyMessage = `暂无归档${entityLabel}`,
 }: ArchiveListPageProps<T>) {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [deleteTarget, setDeleteTarget] = useState<T | null>(null)
 
   const hasBatchOps = !!(onBatchRestore || onBatchDelete)
 
@@ -121,8 +124,14 @@ export function ArchiveListPage<
 
   const handleDelete = async (item: T) => {
     if (!onDelete) return
-    await onDelete(item)
-    setSelectedIds((prev) => prev.filter((id) => id !== item.id))
+    setDeleteTarget(item)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || !onDelete) return
+    await onDelete(deleteTarget)
+    setSelectedIds((prev) => prev.filter((id) => id !== deleteTarget.id))
+    setDeleteTarget(null)
   }
 
   const colSpan = columns.length + (hasBatchOps ? 2 : 1)
@@ -298,41 +307,39 @@ export function ArchiveListPage<
                               <StatusBadge status={item.status} />
                             )}
                           </TableCell>
-                          <TableCell className="text-right px-3">
-                            <div className="flex items-center justify-end gap-1">
+                          <TableRowActions className="px-3">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              asChild
+                            >
+                              <Link href={detailHref(item)}>
+                                <Eye className="mr-1 h-3 w-3" />
+                                查看
+                              </Link>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
+                              onClick={() => handleRestore(item)}
+                            >
+                              <RotateCcw className="mr-1 h-3 w-3" />
+                              恢复
+                            </Button>
+                            {onDelete && (
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 px-2 text-xs"
-                                asChild
+                                className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                                onClick={() => handleDelete(item)}
                               >
-                                <Link href={detailHref(item)}>
-                                  <Eye className="mr-1 h-3 w-3" />
-                                  查看
-                                </Link>
+                                <Trash2 className="mr-1 h-3 w-3" />
+                                删除
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
-                                onClick={() => handleRestore(item)}
-                              >
-                                <RotateCcw className="mr-1 h-3 w-3" />
-                                恢复
-                              </Button>
-                              {onDelete && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                                  onClick={() => handleDelete(item)}
-                                >
-                                  <Trash2 className="mr-1 h-3 w-3" />
-                                  删除
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
+                            )}
+                          </TableRowActions>
                         </TableRow>
                       )
                     })
@@ -343,6 +350,15 @@ export function ArchiveListPage<
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        title="确认删除"
+        description={deleteTarget ? `确定永久删除 "${deleteTarget.name}" 吗？此操作不可恢复。` : ""}
+        variant="destructive"
+        onConfirm={confirmDelete}
+      />
     </div>
   )
 }
