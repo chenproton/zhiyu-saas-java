@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+
 import { TableCell, TableHead } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,7 +14,7 @@ import { TableRowActions } from "@/components/shared/table-row-actions"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { portalUserManagementApi, importExportApi } from "@/lib/api"
 import type { Organization } from "@/lib/types/backend"
-import { useToast } from "@zhiyu/ui"
+import { useToast, StatusBadge } from "@zhiyu/ui"
 import { PortalSidebarCrudPage } from "@/components/shared/portal-sidebar-crud-page"
 import { Pencil, Power, Trash2, Key, Award, Users, Loader2 } from "lucide-react"
 
@@ -31,18 +31,6 @@ interface Student {
   status: "正常" | "禁用" | "毕业"
 }
 
-const statusColor: Record<string, string> = {
-  "正常": "default",
-  "禁用": "destructive",
-  "毕业": "secondary",
-}
-
-function classBadge(variant: string) {
-  if (variant === "destructive") return "destructive" as const
-  if (variant === "secondary") return "secondary" as const
-  return "default" as const
-}
-
 function mapStudentStatus(status: string): Student["status"] {
   if (status === "active") return "正常"
   if (status === "disabled") return "禁用"
@@ -55,6 +43,13 @@ function toBackendStatus(status: Student["status"]): string {
   if (status === "禁用") return "disabled"
   if (status === "毕业") return "graduated"
   return "active"
+}
+
+function toStatusBadgeKey(status: Student["status"]): string {
+  if (status === "正常") return "active"
+  if (status === "禁用") return "disabled"
+  if (status === "毕业") return "graduated"
+  return status
 }
 
 function getOrgTypeName(org: Organization | undefined, orgTypeMap: Map<string, { name: string }>): string | undefined {
@@ -200,7 +195,7 @@ export default function StudentsPage() {
           <TableCell>{student.department}</TableCell>
           <TableCell>{student.className}</TableCell>
           <TableCell>
-            <Badge variant={classBadge(statusColor[student.status])}>{student.status}</Badge>
+            <StatusBadge status={toStatusBadgeKey(student.status)} />
           </TableCell>
           <TableRowActions>
             <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={actions.edit}>

@@ -6,7 +6,8 @@ import { useEffect, useMemo, useState } from "react"
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 import type { PlatformNavigationConfig, SideNavItem } from "./config"
 import { resolvePlatformIcon } from "./icons"
-import { cn, matchesPath } from "./utils"
+import { cn } from "@/lib/utils"
+import { matchesPath } from "./utils"
 
 function isSideItemActive(pathname: string, item: SideNavItem) {
   if (item.children?.length) {

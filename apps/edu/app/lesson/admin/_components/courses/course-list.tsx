@@ -2,12 +2,12 @@
 
 import { Copy, Eye, Pencil, Rocket, Send, Trash2, Undo2, CheckCircle, XCircle, ArrowDownFromLine, UserPlus, Archive, MessageSquare } from "lucide-react"
 import Link from "next/link"
-import { Badge } from "@/components/ui/badge"
+
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import { HoverActionBar } from "@/components/shared/hover-action-bar"
-import { COURSE_STATUS_LABELS, COURSE_STATUS_COLORS } from "@/lib/types/lesson-source"
+import { StatusBadge } from "@zhiyu/ui"
 import type { Course, CourseType } from "@/lib/types/lesson-source"
 
 interface CourseListProps {
@@ -108,9 +108,7 @@ export function CourseList({
                 <Link href={editPath(course.id)} className="block">
                   <p className="text-sm font-medium text-slate-900 line-clamp-1 hover:text-primary">{course.name}</p>
                 </Link>
-                <Badge variant="secondary" className={cn("text-xs mt-1", COURSE_STATUS_COLORS[course.status])}>
-                  {COURSE_STATUS_LABELS[course.status]}
-                </Badge>
+                <StatusBadge status={course.status} />
               </div>
               <div className="col-span-1 text-sm text-slate-600 truncate">{course.code}</div>
               <div className="col-span-1 text-center text-sm text-slate-600">{course.version}</div>
@@ -119,9 +117,7 @@ export function CourseList({
               <div className="col-span-1 text-sm text-slate-600 truncate">{course.batchName || "-"}</div>
               <div className="col-span-1 text-xs text-slate-500 truncate">{course.creator || "-"}</div>
               <div className="col-span-1 text-center">
-                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${COURSE_STATUS_COLORS[course.status]}`}>
-                  {COURSE_STATUS_LABELS[course.status]}
-                </span>
+                <StatusBadge status={course.status} />
               </div>
               <div className="col-span-1 text-right relative">
                 <HoverActionBar>

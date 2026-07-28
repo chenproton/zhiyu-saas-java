@@ -8,23 +8,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { Badge } from "@/components/ui/badge"
+
 import { usePortalUsers } from "@/hooks/use-portal-users"
 import { useOrgTree } from "@/hooks/use-org-tree"
 import { portalUserManagementApi } from "@/lib/api"
-import { useToast } from "@zhiyu/ui"
+import { Badge } from "@/components/ui/badge"
+import { useToast, StatusBadge } from "@zhiyu/ui"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ResetPasswordDialog } from "@/components/shared/reset-password-dialog"
 import { TableRowActions } from "@/components/shared/table-row-actions"
 import { Search, Trash2, Loader2, AlertCircle, RotateCcw, Check, ChevronDown, X, ChevronLeft, ChevronRight, Users, KeyRound, Power } from "lucide-react"
-
-function mapAccountStatus(status: string): { label: string; className: string } {
-  if (status === "active") {
-    return { label: "正常", className: "bg-green-100 text-green-700" }
-  }
-  return { label: "禁用", className: "bg-red-100 text-red-700" }
-}
 
 export default function AccountsPage() {
   const { toast } = useToast()
@@ -140,7 +134,6 @@ export default function AccountsPage() {
   }
 
   const accounts = users.map((user) => {
-    const statusStyle = mapAccountStatus(user.status)
     const orgNode = user.orgNodeId ? orgMap.get(user.orgNodeId) : undefined
     const orgTypeName = orgNode ? orgTypeMap.get(orgNode.typeId)?.name : undefined
     return {
@@ -153,8 +146,6 @@ export default function AccountsPage() {
       loginName: user.username || user.loginName || "",
       rawLoginName: user.loginName || "",
       status: user.status,
-      statusLabel: statusStyle.label,
-      statusClassName: statusStyle.className,
       lastLogin: user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString("zh-CN") : "—",
     }
   })
@@ -260,7 +251,7 @@ export default function AccountsPage() {
                   </TableCell>
                   <TableCell>{account.loginName}</TableCell>
                   <TableCell>
-                    <span className={`px-2 py-1 rounded text-xs ${account.statusClassName}`}>{account.statusLabel}</span>
+                    <StatusBadge status={account.status} />
                   </TableCell>
                   <TableCell className="text-muted-foreground">{account.lastLogin}</TableCell>
                     <TableRowActions>

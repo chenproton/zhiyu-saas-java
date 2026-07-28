@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { HoverActionBar } from '@/components/shared/hover-action-bar'
+import { HoverActionBar } from '@zhiyu/ui'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
@@ -558,18 +558,20 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                                 key={binding.id}
                                 className="rounded-2xl border border-gray-200 bg-white p-5 hover:border-indigo-200 hover:shadow-md transition-all duration-200 group"
                               >
-                                <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-start justify-between mb-4 relative">
                                   <div className="flex items-center gap-2.5 min-w-0 pr-1">
                                     <div className={`w-2 h-2 rounded-full shrink-0 ${colorClass}`} />
                                     <span className="text-sm font-semibold text-gray-800 block truncate">{binding.name}</span>
                                   </div>
-                                  <button
-                                    onClick={() => handleRemoveBinding(binding.id)}
-                                    className="shrink-0 p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
-                                    title="移除"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
+                                  <HoverActionBar>
+                                    <button
+                                      onClick={() => handleRemoveBinding(binding.id)}
+                                      className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                      title="移除"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </HoverActionBar>
                                 </div>
 
                                 <div className="relative mb-3 mx-1" style={{ height: 38 }}>

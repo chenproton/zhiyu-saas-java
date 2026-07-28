@@ -17,6 +17,7 @@ import {
   DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { generateId } from "@/lib/utils"
 
 type EvalMethodKey = "question_bank" | "paper" | "quiz" | "random_draw" | "review" | "outcome" | "homework"
 
@@ -97,8 +98,6 @@ interface CourseEvalConfigProps {
   value?: CourseEvalData
   onChange?: (data: CourseEvalData) => void
 }
-
-function generateId() { return `${Date.now()}-${Math.random().toString(36).slice(2, 6)}` }
 
 const DEFAULT_GRADE: GradeMappingItem[] = [
   { id: "grade-1", grade: "A", minScore: 90, maxScore: 100, remark: "表现卓越" },

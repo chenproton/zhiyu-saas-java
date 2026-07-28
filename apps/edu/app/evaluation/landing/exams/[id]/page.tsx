@@ -5,8 +5,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 import {
   ArrowLeft, Clock, FileText, CheckCircle2, AlertCircle, Send,
-  ListOrdered, Signal, Trophy, Calendar, PlayCircle, BarChart3,
-  ChevronRight, BookOpen, Users, Info, UserX, UserCheck,
+  ListOrdered, PlayCircle, BarChart3, BookOpen, Users, Info,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -31,7 +30,7 @@ import { useData } from "@/components/providers/data-provider"
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts"
 import type { Exam, ExamUsage } from "@/lib/types"
 import { examApi, examUsageApi, examResultApi } from "@/lib/api"
-import { useToast } from "@zhiyu/ui"
+import { useToast, StatusBadge } from "@zhiyu/ui"
 
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
@@ -47,17 +46,6 @@ const typeLabelMap: Record<string, string> = {
 }
 
 const pieColors = ["#2563eb", "#3b82f6", "#60a5fa", "#93c5fd", "#bfdbfe", "#dbeafe"]
-
-function getExamTimeStatus(status?: string): { bg: string; color: string; label: string } {
-  const map: Record<string, { bg: string; color: string; label: string }> = {
-    published: { label: "进行中", bg: "#dbeafe", color: "#2563eb" },
-    draft: { label: "未开始", bg: "#fef3c7", color: "#d97706" },
-    archived: { label: "已完成", bg: "#dcfce7", color: "#16a34a" },
-    pending: { label: "审核中", bg: "#e0e7ff", color: "#4f46e5" },
-    rejected: { label: "已驳回", bg: "#fee2e2", color: "#dc2626" },
-  }
-  return map[status || ""] || { label: "进行中", bg: "#dbeafe", color: "#2563eb" }
-}
 
 function getTargetAudience(): { type: string; detail: string } {
   // 考试对象名单由考试安排接口决定，当前不展示模拟学生
@@ -216,7 +204,6 @@ export default function ExamDetailPage() {
 
   const totalScore = exam.questions.reduce((s, q) => s + (q.score || 0), 0)
   const answeredCount = Object.keys(answers).length
-  const timeStatus = getExamTimeStatus(exam.status)
   const targetAudience = getTargetAudience()
   const canStart = examAccessState === 'started' && (isSceneTask || exam.status === "published") && currentUsage
 
@@ -427,9 +414,7 @@ export default function ExamDetailPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <PrdAnnotation data={getAnnotation("le-status")}>
               <PrdAnnotation data={getAnnotation("le-time-status")}>
-                <span style={{ padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 500, background: timeStatus.bg, color: timeStatus.color }}>
-                  {timeStatus.label}
-                </span>
+                <StatusBadge status={exam.status} />
               </PrdAnnotation>
             </PrdAnnotation>
           </div>

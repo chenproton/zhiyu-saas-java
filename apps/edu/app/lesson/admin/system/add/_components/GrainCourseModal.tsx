@@ -22,7 +22,7 @@ import {
 import { Search } from "lucide-react"
 import { courseApi } from "@/lib/api"
 import type { Course } from "@/lib/types/lesson"
-import { COURSE_STATUS_LABELS, COURSE_STATUS_COLORS } from "@/lib/types/lesson-source"
+import { StatusBadge } from "@zhiyu/ui"
 
 interface GrainCourseModalProps {
   open: boolean
@@ -166,13 +166,7 @@ export default function GrainCourseModal({
                     </TableCell>
                     <TableCell>{course.teacherId}</TableCell>
                     <TableCell>
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                          COURSE_STATUS_COLORS[course.status]
-                        }`}
-                      >
-                        {COURSE_STATUS_LABELS[course.status]}
-                      </span>
+                      <StatusBadge status={course.status} />
                     </TableCell>
                     <TableCell>{course.nodeCount}</TableCell>
                   </TableRow>

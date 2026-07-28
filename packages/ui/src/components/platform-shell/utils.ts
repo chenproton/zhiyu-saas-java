@@ -1,9 +1,4 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
+import { cn } from "@/lib/utils"
 
 export function matchesPath(pathname: string, href?: string, matchers?: string[]) {
   const targets = matchers && matchers.length > 0 ? matchers : href ? [href] : []

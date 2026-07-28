@@ -4,11 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { courseApi, lessonBatchApi } from "@/lib/api"
 import type { Course, LessonBatch } from "@/lib/types/lesson"
-import {
-  COURSE_STATUS_LABELS,
-  COURSE_STATUS_COLORS,
-} from "@/lib/types/lesson-source"
-import { useToast } from "@zhiyu/ui"
+
+import { useToast, StatusBadge } from "@zhiyu/ui"
 import {
   ArchiveListPage,
   type ArchiveColumn,
@@ -161,13 +158,7 @@ export default function LessonArchivePage() {
     },
   ]
 
-  const renderStatus = (course: Course) => (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-xs ${COURSE_STATUS_COLORS[course.status]}`}
-    >
-      {COURSE_STATUS_LABELS[course.status]}
-    </span>
-  )
+  const renderStatus = (course: Course) => <StatusBadge status={course.status} />
 
   return (
     <ArchiveListPage
