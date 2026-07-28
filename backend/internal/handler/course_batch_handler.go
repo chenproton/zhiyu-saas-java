@@ -25,12 +25,11 @@ func NewCourseBatchHandler(db *pgxpool.Pool) *CourseBatchHandler {
 			SearchColumns:      []string{"name", "code"},
 			TenantScoped:       true,
 			TenantFilterColumn: "lb.tenant_id",
-			ExtraListFilters: func(r *http.Request, argIdx int) (clauses []string, args []any) {
+			ExtraListFilters: func(r *http.Request, qb *listQueryBuilder) {
 				majorID := r.URL.Query().Get("majorId")
-				if majorID == "" {
-					return nil, nil
+				if majorID != "" {
+					qb.addCondition("lb.major_id = " + qb.nextArg(majorID))
 				}
-				return []string{"lb.major_id = $" + itoa(argIdx)}, []any{majorID}
 			},
 			CreateExtraCols:  []string{"course_count"},
 			CreateExtraVals:  []any{0},
@@ -61,8 +60,8 @@ func scanLessonBatchRow(ctx context.Context, db *pgxpool.Pool, id string) (any, 
 	return &b, nil
 }
 
-func scanLessonBatchRows(rows pgx.Rows) (any, error) {
-	items := make([]domain.LessonBatch, 0)
+func scanLessonBatchRows(rows pgx.Rows) ([]any, error) {
+	items := make([]any, 0)
 	for rows.Next() {
 		var b domain.LessonBatch
 		var majorID, majorName *string

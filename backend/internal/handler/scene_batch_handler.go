@@ -52,8 +52,8 @@ func scanSceneBatchRow(ctx context.Context, db *pgxpool.Pool, id string) (any, e
 	return b, nil
 }
 
-func scanSceneBatchRows(rows pgx.Rows) (any, error) {
-	items := make([]domain.SceneBatch, 0)
+func scanSceneBatchRows(rows pgx.Rows) ([]any, error) {
+	items := make([]any, 0)
 	for rows.Next() {
 		var b domain.SceneBatch
 		var code, orgNodeID, majorID, majorName, workflowID *string
