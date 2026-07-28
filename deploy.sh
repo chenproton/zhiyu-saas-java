@@ -22,7 +22,7 @@ SKIP_CHECKS=false
 SKIP_MERGE=false
 FORCE_INSTALL=0
 SKIP_TYPECHECK=false
-USE_TURBOPACK=false
+USE_TURBOPACK=true
 BRANCH_NAME=""
 BUILD_TREE=""
 ORIGINAL_PROJECT_ROOT=""
@@ -454,15 +454,9 @@ echo "  快照已保存: $SNAPSHOT_DIR"
 find "$DEPLOY_ROLLBACK_DIR" -maxdepth 1 -type d -name '2*' 2>/dev/null | sort | head -n -"$ROLLBACK_KEEP" | xargs -r rm -rf || true
 
 # ==================== 代码检查 ====================
+# 注意：Go 编译和 Next.js 构建已在后续步骤中执行，无需重复检查
 if [[ "$SKIP_CHECKS" != "true" ]]; then
   echo "==> 运行代码检查..."
-  if [[ "$FRONTEND_ONLY" != "true" ]]; then
-    echo "  Go 编译检查..."
-    (cd "$BACKEND_DIR" && go build -o /tmp/zhiyu-server-check ./cmd/server/main.go) || {
-      echo "错误：Go 后端编译失败" >&2; exit 1
-    }
-    rm -f /tmp/zhiyu-server-check
-  fi
   if [[ "$BACKEND_ONLY" != "true" ]]; then
     if [[ "$SKIP_TYPECHECK" == "true" ]]; then
       echo "  跳过前端类型检查（--skip-typecheck）"
@@ -497,13 +491,38 @@ if [[ "$BACKEND_ONLY" != "true" ]]; then
 fi
 
 # ==================== 构建后端 ====================
+GO_BUILD_PID=""
 if [[ "$FRONTEND_ONLY" != "true" ]]; then
-  echo "==> 构建 Go 后端..."
+  echo "==> 启动 Go 后端构建（后台）..."
   mkdir -p "$BACKEND_DIR/bin"
-  go build -C "$BACKEND_DIR" -o "$BACKEND_BIN_NEW" ./cmd/server/main.go || {
-    echo "错误：Go 后端构建失败" >&2; exit 1
-  }
-  echo "  后端二进制: $BACKEND_BIN_NEW"
+  nice -n 19 go build -C "$BACKEND_DIR" -o "$BACKEND_BIN_NEW" ./cmd/server/main.go &
+  GO_BUILD_PID=$!
+  echo "  Go 构建 PID: $GO_BUILD_PID"
+fi
+
+# ==================== 启动数据库备份（后台） ====================
+BACKUP_PID=""
+BACKUP_TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+BACKUP_FILE="$BACKUP_DIR/${BACKUP_PREFIX}-backup-${BACKUP_TIMESTAMP}.dump"
+if [[ "$SKIP_BACKUP" != "true" && "$FRONTEND_ONLY" != "true" ]]; then
+  echo "==> 启动数据库备份（后台）..."
+  mkdir -p "$BACKUP_DIR"; chmod 700 "$BACKUP_DIR"
+  (
+    if pg_isready -d "$DATABASE_URL" > /dev/null 2>&1; then
+      pg_dump -d "$DATABASE_URL" -Fc -Z 6 > "$BACKUP_FILE.tmp" 2>/dev/null && \
+        mv "$BACKUP_FILE.tmp" "$BACKUP_FILE" && chmod 600 "$BACKUP_FILE" || {
+        if [[ "$DEMO_MODE" == "true" ]]; then
+          echo "  警告：数据库备份失败，继续部署..."; rm -f "$BACKUP_FILE.tmp"
+        else
+          echo "  错误：数据库备份失败" >&2; exit 1
+        fi
+      }
+    else
+      echo "  警告：PostgreSQL 未就绪，跳过备份"
+    fi
+  ) &
+  BACKUP_PID=$!
+  echo "  备份 PID: $BACKUP_PID"
 fi
 
 # ==================== 构建前端（增量构建） ====================
@@ -552,14 +571,16 @@ if [[ "$BACKEND_ONLY" != "true" ]]; then
   # 如果没有快照可用，强制执行构建
   [[ "$BUILD_EDU" == "false" && ! -d "$SNAPSHOT_DIR/edu" ]] && { BUILD_EDU=true; echo "  无教育管理快照，将构建 edu"; }
 
+  BUILD_CPU_QUOTA="${BUILD_CPU_QUOTA:-300%}"
   BUILD_ARGS=""
   [[ "$USE_TURBOPACK" == "true" ]] && { BUILD_ARGS="--turbopack"; echo "  使用 Turbopack 构建"; }
 
   if [[ "$BUILD_EDU" == "true" ]]; then
-    echo "==> 构建教育管理前端..."
+    echo "==> 构建教育管理前端（CPU 限制: $BUILD_CPU_QUOTA）..."
     rm -rf "$EDU_DIR/.next"
     NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
-      pnpm --filter @zhiyu/edu build $BUILD_ARGS || {
+      systemd-run --scope --quiet -p CPUQuota="$BUILD_CPU_QUOTA" -- \
+        pnpm --filter @zhiyu/edu build $BUILD_ARGS || {
       echo "错误：教育管理前端构建失败" >&2; restore_rollback "$SNAPSHOT_DIR"; exit 1
     }
     assemble_standalone "$EDU_DIR" "edu"
@@ -574,27 +595,22 @@ if [[ "$BACKEND_ONLY" != "true" ]]; then
   fi
 fi
 
-# ==================== 数据库备份 ====================
-if [[ "$SKIP_BACKUP" != "true" && "$FRONTEND_ONLY" != "true" ]]; then
-  echo "==> 备份数据库..."
-  mkdir -p "$BACKUP_DIR"; chmod 700 "$BACKUP_DIR"
-  BACKUP_TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-  BACKUP_FILE="$BACKUP_DIR/${BACKUP_PREFIX}-backup-${BACKUP_TIMESTAMP}.dump"
-  if pg_isready -d "$DATABASE_URL" > /dev/null 2>&1; then
-    pg_dump -d "$DATABASE_URL" -Fc -Z 6 > "$BACKUP_FILE.tmp" && mv "$BACKUP_FILE.tmp" "$BACKUP_FILE" && chmod 600 "$BACKUP_FILE" || {
-      if [[ "$DEMO_MODE" == "true" ]]; then
-        echo "  警告：数据库备份失败，继续部署..."; rm -f "$BACKUP_FILE.tmp"
-      else
-        echo "错误：数据库备份失败" >&2; exit 1
-      fi
-    }
-    echo "  备份完成: $BACKUP_FILE"
-    find "$BACKUP_DIR" -maxdepth 1 -name "${BACKUP_PREFIX}-backup-*.dump" -type f -mtime +14 -delete
-  else
-    echo "  警告：PostgreSQL 未就绪，跳过备份"
+# ==================== 等待后台任务完成 ====================
+if [[ -n "$GO_BUILD_PID" ]]; then
+  echo "==> 等待 Go 后端构建完成..."
+  if ! wait "$GO_BUILD_PID"; then
+    echo "错误：Go 后端构建失败" >&2; exit 1
   fi
-else
-  echo "==> 跳过数据库备份"
+  echo "  后端二进制: $BACKEND_BIN_NEW"
+fi
+
+if [[ -n "$BACKUP_PID" ]]; then
+  echo "==> 等待数据库备份完成..."
+  wait "$BACKUP_PID"
+  echo "  备份完成: $BACKUP_FILE"
+  find "$BACKUP_DIR" -maxdepth 1 -name "${BACKUP_PREFIX}-backup-*.dump" -type f -mtime +14 -delete 2>/dev/null || true
+elif [[ "$SKIP_BACKUP" != "true" && "$FRONTEND_ONLY" != "true" ]]; then
+  echo "==> 跳过数据库备份（--skip-backup）"
 fi
 
 # ==================== 停止旧服务 ====================
