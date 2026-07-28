@@ -83,16 +83,8 @@ func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cfg := listQueryConfig[domain.Course]{
-		Table: "courses c LEFT JOIN majors m ON m.id = c.major_id LEFT JOIN industries i ON i.id = c.industry_id LEFT JOIN lesson_batches lb ON lb.id = c.batch_id",
-		SelectColumns: `c.id, c.code, c.name, c.type, c.category, c.major_id, m.name AS major_name, c.teacher_id, c.industry_id, i.name AS industry_name, c.version,
-			c.online_hours, c.offline_hours, c.online_weight, c.offline_weight, c.semester, c.class_name,
-			c.status, c.cover_color, c.cover_image, c.course_tag, c.difficulty, c.description,
-			c.knowledge_point_ids::text[] AS knowledge_point_ids,
-			c.resource_ids::text[] AS resource_ids,
-			c.creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name,
-			c.node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count,
-			(SELECT COUNT(*) FROM view_logs WHERE target_type = 'course' AND target_id = c.id) AS view_count,
-			c.study_count, c.created_at, c.updated_at`,
+		Table: "courses c LEFT JOIN majors m ON m.id = c.major_id LEFT JOIN industries i ON i.id = c.industry_id LEFT JOIN lesson_batches lb ON lb.id = c.batch_id LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM view_logs WHERE target_type = 'course' AND target_id = c.id) vlc ON true",
+		SelectColumns: `c.id, c.code, c.name, c.type, c.category, c.major_id, m.name AS major_name, c.teacher_id, c.industry_id, i.name AS industry_name, c.version, c.online_hours, c.offline_hours, c.online_weight, c.offline_weight, c.semester, c.class_name, c.status, c.cover_color, c.cover_image, c.course_tag, c.difficulty, c.description, c.knowledge_point_ids::text[] AS knowledge_point_ids, c.resource_ids::text[] AS resource_ids, c.creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name, c.node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count, COALESCE(vlc.cnt, 0) AS view_count, c.study_count, c.created_at, c.updated_at`,
 		TenantScoped:  true,
 		TenantColumn:  "c.tenant_id",
 		SearchColumns: []string{"c.name", "c.code"},

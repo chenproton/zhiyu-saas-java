@@ -89,9 +89,9 @@ func (h *QuestionBankHandler) List(w http.ResponseWriter, r *http.Request) {
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 	query := `
 		SELECT qb.id, qb.code, qb.name, qb.description, qb.cover_image, qb.status,
-                (SELECT COUNT(*) FROM questions q WHERE q.bank_id = qb.id) AS question_count,
-                qb.creator_id,
-			COALESCE((SELECT u.name FROM users u WHERE u.id = qb.creator_id), qb.creator_id::text) AS creator_name,
+			COALESCE(qcnt.cnt, 0) AS question_count,
+			qb.creator_id,
+			COALESCE(cr_u.name, qb.creator_id::text) AS creator_name,
 			qb.collaborator_ids,
 			COALESCE((
 				SELECT array_agg(u.name ORDER BY ord)
@@ -99,9 +99,12 @@ func (h *QuestionBankHandler) List(w http.ResponseWriter, r *http.Request) {
 				JOIN users u ON u.id = c.id
 			), '{}') AS collaborator_names,
 			qb.collaborator_dept_ids, qb.batch_id, qb.version, qb.owner_type, qb.is_draft_pool,
-			(SELECT COALESCE(array_agg(kp.knowledge_point_id), '{}') FROM question_bank_knowledge_points kp WHERE kp.question_bank_id = qb.id) AS knowledge_point_ids,
+			COALESCE(kparr.ids, '{}') AS knowledge_point_ids,
 			qb.created_at, qb.updated_at
 		FROM question_banks qb
+		LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM questions q WHERE q.bank_id = qb.id) qcnt ON true
+		LEFT JOIN users cr_u ON cr_u.id = qb.creator_id
+		LEFT JOIN LATERAL (SELECT COALESCE(array_agg(kp.knowledge_point_id), '{}') AS ids FROM question_bank_knowledge_points kp WHERE kp.question_bank_id = qb.id) kparr ON true
 		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY qb.is_draft_pool DESC, qb.created_at DESC
 		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)

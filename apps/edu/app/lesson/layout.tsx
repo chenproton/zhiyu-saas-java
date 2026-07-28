@@ -1,6 +1,6 @@
 "use client"
 
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 
@@ -10,6 +10,7 @@ export default function LessonLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+  const router = useRouter()
   const { user, loading } = useAuth()
   const isLanding = pathname.startsWith("/lesson/landing")
 
@@ -26,6 +27,7 @@ export default function LessonLayout({
   }
 
   if (!user) {
+    router.replace("/portal/login")
     return null
   }
 

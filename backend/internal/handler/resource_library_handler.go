@@ -150,6 +150,10 @@ func (h *ResourceLibraryHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "资源不存在")
 		return
 	}
+
+	if !verifyTenantOwnership(w, r, item.TenantID) {
+		return
+	}
 	respondJSON(w, http.StatusOK, item)
 }
 

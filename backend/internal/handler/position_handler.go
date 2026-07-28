@@ -64,22 +64,8 @@ func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 	publicOnly := claims == nil
 
 	baseCfg := listQueryConfig[domain.CareerPosition]{
-		Table: "career_positions cp",
-		SelectColumns: `cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id,
-			COALESCE((SELECT array_agg(cpm.major_id) FROM career_position_majors cpm WHERE cpm.career_position_id = cp.id), '{}') AS major_ids,
-			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
-			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
-			cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by,
-			COALESCE((SELECT u.name FROM users u WHERE u.id = cp.created_by), cp.created_by::text) AS created_by_name,
-			cp.collaborators,
-			COALESCE((
-				SELECT array_agg(u.name ORDER BY ord)
-				FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord)
-				JOIN users u ON u.id = c.id
-			), '{}') AS collaborator_names,
-			(SELECT COUNT(*) FROM position_favorites pf WHERE pf.career_position_id = cp.id) AS favorite_count,
-			(SELECT COUNT(*) FROM view_logs vl WHERE vl.target_type = 'career_position' AND vl.target_id = cp.id) AS view_count,
-			cp.created_at, cp.updated_at`,
+		Table: "career_positions cp LEFT JOIN LATERAL (SELECT COALESCE(array_agg(cpm.major_id), '{}') AS major_ids, COALESCE(array_agg(m.name), '{}') AS major_names FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id) maj ON true LEFT JOIN users cr_u ON cr_u.id = cp.created_by",
+		SelectColumns: `cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id, COALESCE(maj.major_ids, '{}') AS major_ids, COALESCE(maj.major_names, '{}') AS major_names, cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description, cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by, COALESCE(cr_u.name, cp.created_by::text) AS created_by_name, cp.collaborators, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, (SELECT COUNT(*) FROM position_favorites pf WHERE pf.career_position_id = cp.id) AS favorite_count, (SELECT COUNT(*) FROM view_logs vl WHERE vl.target_type = 'career_position' AND vl.target_id = cp.id) AS view_count, cp.created_at, cp.updated_at`,
 		SearchColumns: []string{"cp.name"},
 		SearchParam:   "search",
 		OrderBy:       "cp.created_at DESC",
@@ -166,22 +152,8 @@ func (h *PositionHandler) PublicList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cfg := listQueryConfig[domain.CareerPosition]{
-		Table: "career_positions cp",
-		SelectColumns: `cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id,
-			COALESCE((SELECT array_agg(cpm.major_id) FROM career_position_majors cpm WHERE cpm.career_position_id = cp.id), '{}') AS major_ids,
-			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
-			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
-			cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by,
-			COALESCE((SELECT u.name FROM users u WHERE u.id = cp.created_by), cp.created_by::text) AS created_by_name,
-			cp.collaborators,
-			COALESCE((
-				SELECT array_agg(u.name ORDER BY ord)
-				FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord)
-				JOIN users u ON u.id = c.id
-			), '{}') AS collaborator_names,
-			(SELECT COUNT(*) FROM position_favorites pf WHERE pf.career_position_id = cp.id) AS favorite_count,
-			(SELECT COUNT(*) FROM view_logs vl WHERE vl.target_type = 'career_position' AND vl.target_id = cp.id) AS view_count,
-			cp.created_at, cp.updated_at`,
+		Table: "career_positions cp LEFT JOIN LATERAL (SELECT COALESCE(array_agg(cpm.major_id), '{}') AS major_ids, COALESCE(array_agg(m.name), '{}') AS major_names FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id) maj ON true LEFT JOIN users cr_u ON cr_u.id = cp.created_by",
+		SelectColumns: `cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id, COALESCE(maj.major_ids, '{}') AS major_ids, COALESCE(maj.major_names, '{}') AS major_names, cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description, cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by, COALESCE(cr_u.name, cp.created_by::text) AS created_by_name, cp.collaborators, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, (SELECT COUNT(*) FROM position_favorites pf WHERE pf.career_position_id = cp.id) AS favorite_count, (SELECT COUNT(*) FROM view_logs vl WHERE vl.target_type = 'career_position' AND vl.target_id = cp.id) AS view_count, cp.created_at, cp.updated_at`,
 		TenantScoped:  false,
 		SearchColumns: []string{"cp.name"},
 		SearchParam:   "search",
@@ -973,22 +945,8 @@ func (h *PositionHandler) ListFavorites(w http.ResponseWriter, r *http.Request) 
 	}
 
 	cfg := listQueryConfig[domain.CareerPosition]{
-		Table: "position_favorites pf JOIN career_positions cp ON cp.id = pf.career_position_id",
-		SelectColumns: `cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id,
-			COALESCE((SELECT array_agg(cpm.major_id) FROM career_position_majors cpm WHERE cpm.career_position_id = cp.id), '{}') AS major_ids,
-			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
-			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
-			cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by,
-			COALESCE((SELECT u.name FROM users u WHERE u.id = cp.created_by), cp.created_by::text) AS created_by_name,
-			cp.collaborators,
-			COALESCE((
-				SELECT array_agg(u.name ORDER BY ord)
-				FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord)
-				JOIN users u ON u.id = c.id
-			), '{}') AS collaborator_names,
-			(SELECT COUNT(*) FROM position_favorites pf2 WHERE pf2.career_position_id = cp.id) AS favorite_count,
-			(SELECT COUNT(*) FROM view_logs vl WHERE vl.target_type = 'career_position' AND vl.target_id = cp.id) AS view_count,
-			cp.created_at, cp.updated_at`,
+		Table: "position_favorites pf JOIN career_positions cp ON cp.id = pf.career_position_id LEFT JOIN LATERAL (SELECT COALESCE(array_agg(cpm.major_id), '{}') AS major_ids, COALESCE(array_agg(m.name), '{}') AS major_names FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id) maj ON true LEFT JOIN users cr_u ON cr_u.id = cp.created_by",
+		SelectColumns: `cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id, COALESCE(maj.major_ids, '{}') AS major_ids, COALESCE(maj.major_names, '{}') AS major_names, cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description, cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by, COALESCE(cr_u.name, cp.created_by::text) AS created_by_name, cp.collaborators, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, (SELECT COUNT(*) FROM position_favorites pf2 WHERE pf2.career_position_id = cp.id) AS favorite_count, (SELECT COUNT(*) FROM view_logs vl WHERE vl.target_type = 'career_position' AND vl.target_id = cp.id) AS view_count, cp.created_at, cp.updated_at`,
 		TenantScoped: false,
 		OrderBy:      "pf.created_at DESC",
 		DefaultLimit: 50,

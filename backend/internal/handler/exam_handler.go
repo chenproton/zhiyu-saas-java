@@ -550,6 +550,7 @@ func (h *ExamHandler) fetchExamQuestions(ctx context.Context, examID string) ([]
 
 func (h *ExamHandler) scanExamRows(ctx context.Context, rows pgx.Rows) ([]domain.Exam, error) {
 	items := make([]domain.Exam, 0)
+	examIDs := make([]string, 0)
 	for rows.Next() {
 		var e domain.Exam
 		var coverImage, creatorID, batchID *string
@@ -562,8 +563,51 @@ func (h *ExamHandler) scanExamRows(ctx context.Context, rows pgx.Rows) ([]domain
 		e.CoverImage = coverImage
 		e.CreatorID = creatorID
 		e.BatchID = batchID
-		e.Questions, _ = h.fetchExamQuestions(ctx, e.ID)
+		e.Questions = []domain.ExamQuestion{}
 		items = append(items, e)
+		examIDs = append(examIDs, e.ID)
+	}
+
+	if len(examIDs) > 0 {
+		questionsMap := h.batchFetchExamQuestions(ctx, examIDs)
+		for i := range items {
+			items[i].Questions = questionsMap[items[i].ID]
+		}
 	}
 	return items, nil
+}
+
+func (h *ExamHandler) batchFetchExamQuestions(ctx context.Context, examIDs []string) map[string][]domain.ExamQuestion {
+	result := make(map[string][]domain.ExamQuestion)
+	if len(examIDs) == 0 {
+		return result
+	}
+	rows, err := h.DB.Query(ctx, `
+		SELECT id, exam_id, question_id, type, content, options, answer, analysis, score, sort_order
+		FROM exam_questions WHERE exam_id = ANY($1) ORDER BY exam_id, sort_order
+	`, examIDs)
+	if err != nil {
+		return result
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var q domain.ExamQuestion
+		var analysis, optionsStr, answerStr *string
+		if err := rows.Scan(&q.ID, &q.ExamID, &q.QuestionID, &q.Type, &q.Content, &optionsStr, &answerStr, &analysis, &q.Score, &q.Order); err != nil {
+			continue
+		}
+		q.Analysis = analysis
+		if optionsStr != nil {
+			_ = json.Unmarshal([]byte(*optionsStr), &q.Options)
+		}
+		if answerStr != nil {
+			_ = json.Unmarshal([]byte(*answerStr), &q.Answer)
+		}
+		if q.Answer == nil {
+			q.Answer = domain.JSONSlice{}
+		}
+		result[q.ExamID] = append(result[q.ExamID], q)
+	}
+	return result
 }

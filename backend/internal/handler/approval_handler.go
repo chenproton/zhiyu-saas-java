@@ -142,6 +142,10 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if record.TenantID != nil && !verifyTenantOwnership(w, r, *record.TenantID) {
+		return
+	}
+
 	if record.Status != string(domain.ApprovalStatusPending) {
 		respondError(w, http.StatusBadRequest, "审批记录不在待处理状态")
 		return
@@ -198,8 +202,8 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 
 		if tableName, ok := entityTableMap[record.TargetType]; ok {
 			if _, err := tx.Exec(r.Context(),
-				fmt.Sprintf("UPDATE %s SET status = $1, updated_at = NOW() WHERE id = $2", tableName),
-				string(domain.ApprovalStatusRejected), record.TargetID,
+				fmt.Sprintf("UPDATE %s SET status = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3", tableName),
+				string(domain.ApprovalStatusRejected), record.TargetID, record.TenantID,
 			); err != nil {
 				slog.Error("同步实体状态失败", "targetType", record.TargetType, "targetId", record.TargetID, "error", err)
 			}
@@ -268,8 +272,8 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 	if newStatus == string(domain.ApprovalStatusApproved) {
 		if tableName, ok := entityTableMap[record.TargetType]; ok {
 			if _, err := tx.Exec(r.Context(),
-				fmt.Sprintf("UPDATE %s SET status = $1, updated_at = NOW() WHERE id = $2", tableName),
-				string(domain.ApprovalStatusApproved), record.TargetID,
+				fmt.Sprintf("UPDATE %s SET status = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3", tableName),
+				string(domain.ApprovalStatusApproved), record.TargetID, record.TenantID,
 			); err != nil {
 				slog.Error("同步实体状态失败", "targetType", record.TargetType, "targetId", record.TargetID, "error", err)
 			}

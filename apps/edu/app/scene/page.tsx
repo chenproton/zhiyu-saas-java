@@ -1,7 +1,7 @@
 "use client"
 
 import { ScenarioList, type ScenarioListItem } from "@/components/scene/scenarios/scenario-list"
-import { scenarioApi, sceneBatchApi, taskApi, importExportApi, approvalApi } from "@/lib/api"
+import { scenarioApi, sceneBatchApi, importExportApi, approvalApi } from "@/lib/api"
 import { useAuth } from "@/components/auth-provider"
 import {
   ContentListPage,
@@ -27,7 +27,7 @@ function mapScenario(backend: any, _currentUserId: string): ScenarioListItem & {
     creatorId: backend.creatorId,
     coCreatorIds: backend.coBuilderIds || [],
     publishTime: backend.publishTime,
-    taskCount: 0,
+    taskCount: backend.taskCount || 0,
   }
 }
 
@@ -67,23 +67,10 @@ export default function SceneHallPage() {
       mapBatch={mapSceneBatch}
       afterLoad={async (items, batches) => {
         const batchMap = new Map(batches.map((b) => [b.id, b.name]))
-        try {
-          const tasks = await taskApi.list({ limit: 10000 })
-          const counts: Record<string, number> = {}
-          tasks.items.forEach((t: any) => {
-            counts[t.scenarioId] = (counts[t.scenarioId] || 0) + 1
-          })
-          return items.map((item) => ({
-            ...item,
-            batchName: item.batchId ? batchMap.get(item.batchId) || "-" : undefined,
-            taskCount: counts[item.id] || 0,
-          }))
-        } catch {
-          return items.map((item) => ({
-            ...item,
-            batchName: item.batchId ? batchMap.get(item.batchId) || "-" : undefined,
-          }))
-        }
+        return items.map((item) => ({
+          ...item,
+          batchName: item.batchId ? batchMap.get(item.batchId) || "-" : undefined,
+        }))
       }}
       createRedirectUrl={(id) => `/scene/scenarios/${id}/edit?new=true`}
       coBuilderField="coBuilderIds"

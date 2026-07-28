@@ -25,6 +25,7 @@ type Scenario struct {
 	UpdatedAt        time.Time      `json:"updatedAt"`
 	PublishTime      *time.Time     `json:"publishTime,omitempty"`
 	ViewCount        int            `json:"viewCount"`
+	TaskCount        int            `json:"taskCount"`
 }
 
 type ScenarioTask struct {

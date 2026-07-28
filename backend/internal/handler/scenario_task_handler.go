@@ -105,6 +105,9 @@ func (h *ScenarioTaskHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "任务不存在")
 		return
 	}
+	if task.TenantID != nil && !verifyTenantOwnership(w, r, *task.TenantID) {
+		return
+	}
 	h.populateEvalData(r.Context(), []domain.ScenarioTask{*task})
 	respondJSON(w, http.StatusOK, task)
 }
@@ -125,16 +128,23 @@ func (h *ScenarioTaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var tenantID *string
-	_ = h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM scenarios WHERE id = $1`, req.ScenarioID).Scan(&tenantID)
+	var scenarioTenantID *string
+	err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM scenarios WHERE id = $1`, req.ScenarioID).Scan(&scenarioTenantID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "场景不存在")
+		return
+	}
+	if scenarioTenantID != nil && !verifyTenantOwnership(w, r, *scenarioTenantID) {
+		return
+	}
 
-	_, err := h.DB.Exec(r.Context(), `INSERT INTO scenario_tasks (`+taskInsertColumns+`)
+	_, err = h.DB.Exec(r.Context(), `INSERT INTO scenario_tasks (`+taskInsertColumns+`)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
 	`, req.ScenarioID, req.Name, req.Code, req.SortOrder, req.Description, req.DetailedDescription, req.DescriptionPdf,
 		req.EstimatedHours, req.TaskType, req.Difficulty, req.Background,
 		coalesceStringSlice(req.DependencyIDs), req.IsReferenced, req.SourceScenarioID,
 		coalesceStringSlice(req.KnowledgePointIDs), coalesceStringSlice(req.AbilityPointIDs),
-		coalesceStringSlice(req.ResourceIDs), jsonMapBytes(req.EvalData), tenantID)
+		coalesceStringSlice(req.ResourceIDs), jsonMapBytes(req.EvalData), scenarioTenantID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "创建任务失败")
 		return
@@ -151,8 +161,12 @@ func (h *ScenarioTaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchTask(r.Context(), id); err != nil {
+	task, err := h.fetchTask(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "任务不存在")
+		return
+	}
+	if task.TenantID != nil && !verifyTenantOwnership(w, r, *task.TenantID) {
 		return
 	}
 
@@ -162,7 +176,7 @@ func (h *ScenarioTaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
+	_, err = h.DB.Exec(r.Context(), `
 		UPDATE scenario_tasks SET scenario_id=$1, name=$2, code=$3, sort_order=$4,
 			description=$5, detailed_description=$6, description_pdf=$7, estimated_hours=$8, task_type=$9,
 			difficulty=$10, background=$11, dependency_ids=$12, is_referenced=$13,
@@ -179,8 +193,8 @@ func (h *ScenarioTaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, _ := h.fetchTask(r.Context(), id)
-	respondJSON(w, http.StatusOK, task)
+	result, _ := h.fetchTask(r.Context(), id)
+	respondJSON(w, http.StatusOK, result)
 }
 
 func (h *ScenarioTaskHandler) Delete(w http.ResponseWriter, r *http.Request) {
@@ -190,12 +204,16 @@ func (h *ScenarioTaskHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchTask(r.Context(), id); err != nil {
+	task, err := h.fetchTask(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "任务不存在")
 		return
 	}
+	if task.TenantID != nil && !verifyTenantOwnership(w, r, *task.TenantID) {
+		return
+	}
 
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM scenario_tasks WHERE id = $1`, id)
+	_, err = h.DB.Exec(r.Context(), `DELETE FROM scenario_tasks WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "删除任务失败")
 		return
@@ -216,6 +234,16 @@ func (h *ScenarioTaskHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.ScenarioID == "" {
 		respondError(w, http.StatusBadRequest, "缺少场景ID")
+		return
+	}
+
+	var scenarioTenantID *string
+	err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM scenarios WHERE id = $1`, req.ScenarioID).Scan(&scenarioTenantID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "场景不存在")
+		return
+	}
+	if scenarioTenantID != nil && !verifyTenantOwnership(w, r, *scenarioTenantID) {
 		return
 	}
 
