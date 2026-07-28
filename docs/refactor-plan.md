@@ -15,19 +15,6 @@
 
 ---
 
-## 已完成的改进（历史记录，仅供追溯）
-
-以下问题已在本次迭代中完成，此处仅记录不再追踪：
-
-- **Repository 层**：Industry, Major, StaffTitle, OrgType, CertificateLibrary, OnSiteQuestionLibrary, LearnRoad, PlatformLink, MicroCert, Role — 共 10 个实体。JobBanner/Ability/AbilityDomain 经评估后回退（纯 CRUD 无业务逻辑，强行抽象增加样板）
-- **安全性**：sanitizeIdentifier 白名单、Approval 事务原子化、Clone JSON decode 错误处理、oplog 路径匹配修复、batch_handler WriteTableName 校验
-- **基础设施**：withTx helper、lookupIDByName helper、parseUploadedExcel 统一到 import_common.go
-- **一致性**：ScenarioStatus 别名化 ContentStatus；slog.Error 覆盖所有 migrated handler；冗余 tenant_id 筛选已清理
-- **前端**：useResourceCrud hook、ResourceUploadZone、CoverImageUpload 组件提取；stores/→converters/ 重命名；ConfirmDialog 统一；StatusBadge 统一
-- **共享包**：certification.ts 删除重复 statusConfig/actionConfig；TableRowActions 组合 HoverActionBar；RolesStore.RemoveUser 死代码删除
-
----
-
 ## 剩余未完成项
 
 以下为评估后确认值得修复但未在本轮执行的遗留项：
