@@ -64,7 +64,7 @@ func (h *WorkflowHandler) List(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to list workflows")
+		respondError(w, http.StatusInternalServerError, "查询审批流程失败")
 		return
 	}
 
@@ -80,7 +80,7 @@ func (h *WorkflowHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	workflow, err := h.fetchWorkflow(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "workflow not found")
+		respondError(w, http.StatusNotFound, "审批流程不存在")
 		return
 	}
 	if workflow.TenantID != nil && !verifyTenantOwnership(w, r, *workflow.TenantID) {
@@ -126,7 +126,7 @@ func (h *WorkflowHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "工作流名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create workflow")
+		respondError(w, http.StatusInternalServerError, "创建审批流程失败")
 		return
 	}
 
@@ -143,7 +143,7 @@ func (h *WorkflowHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	existing, err := h.fetchWorkflow(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "workflow not found")
+		respondError(w, http.StatusNotFound, "审批流程不存在")
 		return
 	}
 	if existing.TenantID != nil && !verifyTenantOwnership(w, r, *existing.TenantID) {
@@ -165,7 +165,7 @@ func (h *WorkflowHandler) Update(w http.ResponseWriter, r *http.Request) {
 		req.Status = string(existing.Status)
 	}
 	if req.Status != string(domain.WorkflowStatusActive) && req.Status != string(domain.WorkflowStatusInactive) {
-		respondError(w, http.StatusBadRequest, "invalid status")
+		respondError(w, http.StatusBadRequest, "无效状态")
 		return
 	}
 
@@ -186,7 +186,7 @@ func (h *WorkflowHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "工作流名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update workflow")
+		respondError(w, http.StatusInternalServerError, "更新审批流程失败")
 		return
 	}
 
@@ -203,7 +203,7 @@ func (h *WorkflowHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	workflow, err := h.fetchWorkflow(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "workflow not found")
+		respondError(w, http.StatusNotFound, "审批流程不存在")
 		return
 	}
 	if workflow.TenantID != nil && !verifyTenantOwnership(w, r, *workflow.TenantID) {
@@ -212,7 +212,7 @@ func (h *WorkflowHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM workflows WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete workflow")
+		respondError(w, http.StatusInternalServerError, "删除审批流程失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

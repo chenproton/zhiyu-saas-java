@@ -64,7 +64,7 @@ func (h *KnowledgePointHandler) List(w http.ResponseWriter, r *http.Request) {
 		if err.Error() == "missing tenant" {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 		} else {
-			respondError(w, http.StatusInternalServerError, "failed to list knowledge points")
+			respondError(w, http.StatusInternalServerError, "查询知识点失败")
 		}
 		return
 	}
@@ -81,7 +81,7 @@ func (h *KnowledgePointHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	kp, err := h.fetchKnowledgePoint(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "knowledge point not found")
+		respondError(w, http.StatusNotFound, "知识点不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, kp)
@@ -123,7 +123,7 @@ func (h *KnowledgePointHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "知识点名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create knowledge point")
+		respondError(w, http.StatusInternalServerError, "创建知识点失败")
 		return
 	}
 
@@ -141,7 +141,7 @@ func (h *KnowledgePointHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchKnowledgePoint(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "knowledge point not found")
+		respondError(w, http.StatusNotFound, "知识点不存在")
 		return
 	}
 
@@ -174,7 +174,7 @@ func (h *KnowledgePointHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "知识点名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update knowledge point")
+		respondError(w, http.StatusInternalServerError, "更新知识点失败")
 		return
 	}
 
@@ -192,13 +192,13 @@ func (h *KnowledgePointHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchKnowledgePoint(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "knowledge point not found")
+		respondError(w, http.StatusNotFound, "知识点不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM knowledge_points WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete knowledge point")
+		respondError(w, http.StatusInternalServerError, "删除知识点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

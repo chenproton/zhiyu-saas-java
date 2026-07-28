@@ -62,7 +62,7 @@ func (h *StudentPortraitHandler) List(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to list student portraits")
+		respondError(w, http.StatusInternalServerError, "查询学生画像失败")
 		return
 	}
 
@@ -79,7 +79,7 @@ func (h *StudentPortraitHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	portrait, err := h.fetchPortrait(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "student portrait not found")
+		respondError(w, http.StatusNotFound, "学生画像不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, portrait)
@@ -98,11 +98,11 @@ func (h *StudentPortraitHandler) Generate(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if req.UserID == "" {
-		respondError(w, http.StatusBadRequest, "missing user id")
+		respondError(w, http.StatusBadRequest, "缺少用户ID")
 		return
 	}
 	if req.CareerPositionID == "" {
-		respondError(w, http.StatusBadRequest, "missing career position id")
+		respondError(w, http.StatusBadRequest, "缺少岗位ID")
 		return
 	}
 
@@ -117,7 +117,7 @@ func (h *StudentPortraitHandler) Generate(w http.ResponseWriter, r *http.Request
 		VALUES ($1, $2, $3, $4, 'D', '[]', NULL, NULL, NULL, NULL, '[]', NOW(), 0, 0, 0, 0, '[]', false, 0, '', '')
 	`, id, tenantID, req.UserID, req.CareerPositionID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to generate portrait")
+		respondError(w, http.StatusInternalServerError, "生成画像失败")
 		return
 	}
 
@@ -206,7 +206,7 @@ func (h *StudentPortraitHandler) CreateArchive(w http.ResponseWriter, r *http.Re
 		VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 0, $8, true)
 	`, id, tenantID, req.UserID, req.MaterialType, req.MaterialName, req.IssuingOrg, req.ObtainDate, *direction)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create student archive")
+		respondError(w, http.StatusInternalServerError, "创建学生档案失败")
 		return
 	}
 

@@ -41,7 +41,7 @@ func (h *EvaluationMethodHandler) ListCategories(w http.ResponseWriter, r *http.
 		SELECT id, name, sort_order FROM evaluation_method_categories ORDER BY sort_order
 	`)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list categories")
+		respondError(w, http.StatusInternalServerError, "查询分类失败")
 		return
 	}
 	defer rows.Close()
@@ -50,7 +50,7 @@ func (h *EvaluationMethodHandler) ListCategories(w http.ResponseWriter, r *http.
 	for rows.Next() {
 		var c domain.EvaluationMethodCategory
 		if err := rows.Scan(&c.ID, &c.Name, &c.Order); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to scan categories")
+			respondError(w, http.StatusInternalServerError, "读取分类失败")
 			return
 		}
 		items = append(items, c)
@@ -82,7 +82,7 @@ func (h *EvaluationMethodHandler) ListMethods(w http.ResponseWriter, r *http.Req
 		if err.Error() == "missing tenant" {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 		} else {
-			respondError(w, http.StatusInternalServerError, "failed to list methods")
+			respondError(w, http.StatusInternalServerError, "查询测评方式失败")
 		}
 		return
 	}
@@ -105,7 +105,7 @@ func (h *EvaluationMethodHandler) Toggle(w http.ResponseWriter, r *http.Request)
 	}
 
 	if _, err := h.fetchMethod(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "method not found")
+		respondError(w, http.StatusNotFound, "测评方式不存在")
 		return
 	}
 
@@ -113,7 +113,7 @@ func (h *EvaluationMethodHandler) Toggle(w http.ResponseWriter, r *http.Request)
 		UPDATE evaluation_methods SET enabled = $1 WHERE id = $2
 	`, req.Enabled, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to toggle method")
+		respondError(w, http.StatusInternalServerError, "切换测评方式失败")
 		return
 	}
 

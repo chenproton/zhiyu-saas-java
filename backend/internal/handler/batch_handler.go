@@ -122,7 +122,7 @@ func (h *BatchHandler) checkTenantAccess(w http.ResponseWriter, r *http.Request,
 	var entityTenantID string
 	err := h.DB.QueryRow(r.Context(), "SELECT tenant_id FROM "+h.Config.WriteTableName+" WHERE id = $1", id).Scan(&entityTenantID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, h.Config.EntityName+" not found")
+		respondError(w, http.StatusNotFound, h.Config.EntityName+"不存在")
 		return false
 	}
 
@@ -141,7 +141,7 @@ func (h *BatchHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	batch, err := h.Config.ScanRow(r.Context(), h.DB, id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, h.Config.EntityName+" not found")
+		respondError(w, http.StatusNotFound, h.Config.EntityName+"不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, batch)
@@ -211,7 +211,7 @@ func (h *BatchHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := h.Config.ScanRow(r.Context(), h.DB, id); err != nil {
-		respondError(w, http.StatusNotFound, h.Config.EntityName+" not found")
+		respondError(w, http.StatusNotFound, h.Config.EntityName+"不存在")
 		return
 	}
 
@@ -263,7 +263,7 @@ func (h *BatchHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := h.Config.ScanRow(r.Context(), h.DB, id); err != nil {
-		respondError(w, http.StatusNotFound, h.Config.EntityName+" not found")
+		respondError(w, http.StatusNotFound, h.Config.EntityName+"不存在")
 		return
 	}
 
@@ -286,7 +286,7 @@ func (h *BatchHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := h.Config.ScanRow(r.Context(), h.DB, id); err != nil {
-		respondError(w, http.StatusNotFound, h.Config.EntityName+" not found")
+		respondError(w, http.StatusNotFound, h.Config.EntityName+"不存在")
 		return
 	}
 

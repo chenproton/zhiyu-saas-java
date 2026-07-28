@@ -65,7 +65,7 @@ func (h *ApprovalHandler) List(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to list approval records")
+		respondError(w, http.StatusInternalServerError, "查询审批记录失败")
 		return
 	}
 
@@ -81,7 +81,7 @@ func (h *ApprovalHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	record, err := h.fetchApproval(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "approval record not found")
+		respondError(w, http.StatusNotFound, "审批记录不存在")
 		return
 	}
 	if record.TenantID != nil && !verifyTenantOwnership(w, r, *record.TenantID) {
@@ -118,7 +118,7 @@ func (h *ApprovalHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`, id, user.TenantID, req.TargetType, req.TargetID, req.WorkflowID, 0, status, user.UserID, history)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create approval record")
+		respondError(w, http.StatusInternalServerError, "创建审批记录失败")
 		return
 	}
 
@@ -136,12 +136,12 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	record, err := h.fetchApproval(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "approval record not found")
+		respondError(w, http.StatusNotFound, "审批记录不存在")
 		return
 	}
 
 	if record.Status != string(domain.ApprovalStatusPending) {
-		respondError(w, http.StatusBadRequest, "approval record is not pending")
+		respondError(w, http.StatusBadRequest, "审批记录不在待处理状态")
 		return
 	}
 
@@ -152,12 +152,12 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Action != string(domain.ApprovalStatusApproved) && req.Action != string(domain.ApprovalStatusRejected) {
-		respondError(w, http.StatusBadRequest, "invalid action")
+		respondError(w, http.StatusBadRequest, "无效操作")
 		return
 	}
 
 	if !h.isUserApproverForStep(&record, user.UserID) {
-		respondError(w, http.StatusForbidden, "not authorized to review this step")
+		respondError(w, http.StatusForbidden, "无权评审此步骤")
 		return
 	}
 
@@ -178,11 +178,11 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 			WHERE id = $3 AND status = $4
 		`, record.Status, record.History, id, string(domain.ApprovalStatusPending))
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to review approval record")
+			respondError(w, http.StatusInternalServerError, "评审审批记录失败")
 			return
 		}
 		if tag.RowsAffected() == 0 {
-			respondError(w, http.StatusBadRequest, "approval record is not pending")
+			respondError(w, http.StatusBadRequest, "审批记录不在待处理状态")
 			return
 		}
 		h.syncEntityStatusQuiet(r.Context(), record.TargetType, record.TargetID, string(domain.ApprovalStatusRejected))
@@ -207,7 +207,7 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 			WHERE id = $2 AND status = $3
 		`, record.History, id, string(domain.ApprovalStatusPending))
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to update approval record")
+			respondError(w, http.StatusInternalServerError, "更新审批记录失败")
 			return
 		}
 		record, _ = h.fetchApproval(r.Context(), id)
@@ -226,11 +226,11 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $4 AND status = $5
 	`, newStatus, newStepIdx, record.History, id, string(domain.ApprovalStatusPending))
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to review approval record")
+		respondError(w, http.StatusInternalServerError, "评审审批记录失败")
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		respondError(w, http.StatusBadRequest, "approval record is not pending")
+		respondError(w, http.StatusBadRequest, "审批记录不在待处理状态")
 		return
 	}
 

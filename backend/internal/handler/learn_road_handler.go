@@ -54,7 +54,7 @@ func (h *LearnRoadHandler) List(w http.ResponseWriter, r *http.Request) {
 		if err.Error() == "missing tenant" {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 		} else {
-			respondError(w, http.StatusInternalServerError, "failed to list learn roads")
+			respondError(w, http.StatusInternalServerError, "查询学习路径失败")
 		}
 		return
 	}
@@ -71,7 +71,7 @@ func (h *LearnRoadHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	road, err := h.fetchLearnRoad(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "learn road not found")
+		respondError(w, http.StatusNotFound, "学习路径不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, road)
@@ -121,7 +121,7 @@ func (h *LearnRoadHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "学习路线名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create learn road")
+		respondError(w, http.StatusInternalServerError, "创建学习路径失败")
 		return
 	}
 
@@ -138,7 +138,7 @@ func (h *LearnRoadHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	existing, err := h.fetchLearnRoad(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "learn road not found")
+		respondError(w, http.StatusNotFound, "学习路径不存在")
 		return
 	}
 
@@ -181,7 +181,7 @@ func (h *LearnRoadHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "学习路线名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update learn road")
+		respondError(w, http.StatusInternalServerError, "更新学习路径失败")
 		return
 	}
 
@@ -197,13 +197,13 @@ func (h *LearnRoadHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchLearnRoad(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "learn road not found")
+		respondError(w, http.StatusNotFound, "学习路径不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM learn_roads WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete learn road")
+		respondError(w, http.StatusInternalServerError, "删除学习路径失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

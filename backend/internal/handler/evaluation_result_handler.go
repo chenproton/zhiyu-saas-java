@@ -93,7 +93,7 @@ func (h *EvaluationResultHandler) List(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("List evaluation results error: %v", err)
-		respondError(w, http.StatusInternalServerError, "failed to list evaluation results")
+		respondError(w, http.StatusInternalServerError, "查询评价结果失败")
 		return
 	}
 
@@ -110,7 +110,7 @@ func (h *EvaluationResultHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	res, err := h.fetchResult(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "evaluation result not found")
+		respondError(w, http.StatusNotFound, "评价结果不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, res)
@@ -129,7 +129,7 @@ func (h *EvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if req.TaskID == "" || req.MethodKey == "" || req.EvaluateeID == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields (taskId, methodKey, evaluateeId)")
+		respondError(w, http.StatusBadRequest, "缺少必填字段（taskId、methodKey、evaluateeId）")
 		return
 	}
 
@@ -164,7 +164,7 @@ func (h *EvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Request)
 		req.EvaluatorID, req.EvaluatorType, req.MaxScore,
 		evalPointScores, objectiveAnswers, subjectiveContent, drawnQuestions, now, now).Scan(&id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to submit evaluation result")
+		respondError(w, http.StatusInternalServerError, "提交评价结果失败")
 		return
 	}
 
@@ -188,7 +188,7 @@ func (h *EvaluationResultHandler) Grade(w http.ResponseWriter, r *http.Request) 
 
 	res, err := h.fetchResult(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "evaluation result not found")
+		respondError(w, http.StatusNotFound, "评价结果不存在")
 		return
 	}
 
@@ -200,7 +200,7 @@ func (h *EvaluationResultHandler) Grade(w http.ResponseWriter, r *http.Request) 
 		WHERE id = $7
 	`, req.Score, req.Comment, evalPointScores, drawnQuestions, subjectiveContent, claims.UserID, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to grade result")
+		respondError(w, http.StatusInternalServerError, "评分失败")
 		return
 	}
 
@@ -225,7 +225,7 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -242,7 +242,7 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 	for _, item := range req.Items {
 		res, err := h.fetchResult(r.Context(), item.ID)
 		if err != nil {
-			respondError(w, http.StatusNotFound, "evaluation result not found")
+			respondError(w, http.StatusNotFound, "评价结果不存在")
 			return
 		}
 
@@ -252,7 +252,7 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 			WHERE id = $5
 		`, item.Score, item.Comment, evalPointScores, claims.UserID, item.ID)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to batch grade")
+			respondError(w, http.StatusInternalServerError, "批量评分失败")
 			return
 		}
 
@@ -261,7 +261,7 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 

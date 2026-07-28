@@ -1,4 +1,4 @@
-import type { Status } from "./evaluation"
+import type { Status } from "./content-status"
 
 // 难度等级
 export type Difficulty = 'easy' | 'medium' | 'hard'

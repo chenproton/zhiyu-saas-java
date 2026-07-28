@@ -4,6 +4,14 @@ import { useEffect, useState } from "react"
 import { BookOpen, Lightbulb, Award, MessageSquare, FileText, Table, Image, Link, Music, Video, Archive, Building, Wrench, AppWindow, HelpCircle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Table as ShadcnTable,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { knowledgeApi, abilityApi, certificateLibraryApi, onSiteQuestionLibraryApi, resourceLibraryApi } from "@/lib/api"
 import type { KnowledgePoint, AbilityPoint, CertificateLibraryItem, ResourceLibraryItem, OnSiteQuestionLibraryItem } from "@/lib/types"
 import { RESOURCE_TYPE_LABELS, type ResourceKind } from "@/lib/types/library"
@@ -193,11 +201,11 @@ export default function MyResourcesPage() {
                 knowledgeItems,
                 ["名称", "编码", "描述"],
                 (item: KnowledgePoint) => (
-                  <tr key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
-                    <td className="p-3"><div className="flex items-center gap-2"><BookOpen className="size-4 text-blue-500" /><span className="text-sm font-medium text-slate-700">{item.name}</span></div></td>
-                    <td className="p-3 text-sm text-slate-400">{item.code || "-"}</td>
-                    <td className="p-3 text-sm text-slate-400 max-w-[300px] truncate">{item.description || "-"}</td>
-                  </tr>
+                  <TableRow key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
+                    <TableCell className="p-3"><div className="flex items-center gap-2"><BookOpen className="size-4 text-blue-500" /><span className="text-sm font-medium text-slate-700">{item.name}</span></div></TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400">{item.code || "-"}</TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400 max-w-[300px] truncate">{item.description || "-"}</TableCell>
+                  </TableRow>
                 ),
               )}
             </TabsContent>
@@ -208,11 +216,11 @@ export default function MyResourcesPage() {
                 abilityItems,
                 ["名称", "分类", "描述"],
                 (item: AbilityPoint) => (
-                  <tr key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
-                    <td className="p-3"><div className="flex items-center gap-2"><Lightbulb className="size-4 text-amber-500" /><span className="text-sm font-medium text-slate-700">{item.name}</span></div></td>
-                    <td className="p-3 text-sm text-slate-400"><span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{item.category === "knowledge" ? "知识" : item.category === "skill" ? "技能" : "素养"}</span></td>
-                    <td className="p-3 text-sm text-slate-400 max-w-[300px] truncate">{item.description || "-"}</td>
-                  </tr>
+                  <TableRow key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
+                    <TableCell className="p-3"><div className="flex items-center gap-2"><Lightbulb className="size-4 text-amber-500" /><span className="text-sm font-medium text-slate-700">{item.name}</span></div></TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400"><span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{item.category === "knowledge" ? "知识" : item.category === "skill" ? "技能" : "素养"}</span></TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400 max-w-[300px] truncate">{item.description || "-"}</TableCell>
+                  </TableRow>
                 ),
               )}
             </TabsContent>
@@ -223,11 +231,11 @@ export default function MyResourcesPage() {
                 certificateItems,
                 ["名称", "描述", "链接"],
                 (item: CertificateLibraryItem) => (
-                  <tr key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
-                    <td className="p-3"><div className="flex items-center gap-2"><Award className="size-4 text-emerald-500" /><span className="text-sm font-medium text-slate-700">{item.name}</span></div></td>
-                    <td className="p-3 text-sm text-slate-400 max-w-[300px] truncate">{item.description || "-"}</td>
-                    <td className="p-3 text-sm text-slate-400 max-w-[200px] truncate">{item.url || "-"}</td>
-                  </tr>
+                  <TableRow key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
+                    <TableCell className="p-3"><div className="flex items-center gap-2"><Award className="size-4 text-emerald-500" /><span className="text-sm font-medium text-slate-700">{item.name}</span></div></TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400 max-w-[300px] truncate">{item.description || "-"}</TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400 max-w-[200px] truncate">{item.url || "-"}</TableCell>
+                  </TableRow>
                 ),
               )}
             </TabsContent>
@@ -239,10 +247,10 @@ export default function MyResourcesPage() {
                   resourceItemsMap[kind],
                   ["名称", "描述"],
                   (item: ResourceLibraryItem) => (
-                    <tr key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
-                      <td className="p-3"><div className="flex items-center gap-2">{RESOURCE_ICONS[kind]}<span className="text-sm font-medium text-slate-700">{item.name}</span></div></td>
-                      <td className="p-3 text-sm text-slate-400 max-w-[400px] truncate">{item.description || "-"}</td>
-                    </tr>
+                    <TableRow key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
+                      <TableCell className="p-3"><div className="flex items-center gap-2">{RESOURCE_ICONS[kind]}<span className="text-sm font-medium text-slate-700">{item.name}</span></div></TableCell>
+                      <TableCell className="p-3 text-sm text-slate-400 max-w-[400px] truncate">{item.description || "-"}</TableCell>
+                    </TableRow>
                   ),
                 )}
               </TabsContent>
@@ -254,11 +262,11 @@ export default function MyResourcesPage() {
                 questionItems,
                 ["题目", "题型", "分值"],
                 (item: OnSiteQuestionLibraryItem) => (
-                  <tr key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
-                    <td className="p-3"><div className="flex items-center gap-2"><MessageSquare className="size-4 text-rose-500" /><span className="text-sm font-medium text-slate-700">{item.questionText}</span></div></td>
-                    <td className="p-3 text-sm text-slate-400"><span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{item.questionType}</span></td>
-                    <td className="p-3 text-sm text-slate-400">{item.score}</td>
-                  </tr>
+                  <TableRow key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
+                    <TableCell className="p-3"><div className="flex items-center gap-2"><MessageSquare className="size-4 text-rose-500" /><span className="text-sm font-medium text-slate-700">{item.questionText}</span></div></TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400"><span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{item.questionType}</span></TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400">{item.score}</TableCell>
+                  </TableRow>
                 ),
               )}
             </TabsContent>
@@ -277,34 +285,34 @@ function renderTable<T>(
 ) {
   return (
     <div className="rounded-lg border">
-      <table className="w-full">
-        <thead>
-          <tr className="border-b bg-slate-50/50">
+      <ShadcnTable>
+        <TableHeader>
+          <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
             {headerLabels.map((label) => (
-              <th key={label} className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <TableHead key={label} className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 {label}
-              </th>
+              </TableHead>
             ))}
-          </tr>
-        </thead>
-        <tbody>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {loading && (
-            <tr>
-              <td colSpan={headerLabels.length} className="p-12 text-center text-muted-foreground">
+            <TableRow>
+              <TableCell colSpan={headerLabels.length} className="p-12 text-center text-muted-foreground">
                 加载中...
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           )}
           {!loading && items.length === 0 && (
-            <tr>
-              <td colSpan={headerLabels.length} className="p-12 text-center text-muted-foreground">
+            <TableRow>
+              <TableCell colSpan={headerLabels.length} className="p-12 text-center text-muted-foreground">
                 暂无数据
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           )}
           {items.map(renderRow)}
-        </tbody>
-      </table>
+        </TableBody>
+      </ShadcnTable>
     </div>
   )
 }

@@ -58,13 +58,13 @@ func (c contentActions) canTransition(from, to domain.ContentStatus) bool {
 
 func (c contentActions) checkTenantAccess(w http.ResponseWriter, r *http.Request, id string) bool {
 	if _, err := uuid.Parse(id); err != nil {
-		respondError(w, http.StatusNotFound, c.entityName+" not found")
+		respondError(w, http.StatusNotFound, c.entityName+"不存在")
 		return false
 	}
 	var entityTenantID string
 	err := c.db.QueryRow(r.Context(), `SELECT tenant_id FROM `+c.table+` WHERE id = $1`, id).Scan(&entityTenantID)
 	if err == pgx.ErrNoRows {
-		respondError(w, http.StatusNotFound, c.entityName+" not found")
+		respondError(w, http.StatusNotFound, c.entityName+"不存在")
 		return false
 	}
 	if err != nil {
@@ -91,7 +91,7 @@ func (c contentActions) transition(w http.ResponseWriter, r *http.Request, statu
 	var current domain.ContentStatus
 	err := c.db.QueryRow(r.Context(), `SELECT status FROM `+c.table+` WHERE id = $1`, id).Scan(&current)
 	if err == pgx.ErrNoRows {
-		respondError(w, http.StatusNotFound, c.entityName+" not found")
+		respondError(w, http.StatusNotFound, c.entityName+"不存在")
 		return
 	}
 	if err != nil {
@@ -134,7 +134,7 @@ func (c contentActions) transition(w http.ResponseWriter, r *http.Request, statu
 
 	entity, err := c.fetch(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, c.entityName+" not found")
+		respondError(w, http.StatusNotFound, c.entityName+"不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, entity)
@@ -174,7 +174,7 @@ func (c contentActions) review(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		respondError(w, http.StatusBadRequest, c.entityName+" not found or not in pending status")
+		respondError(w, http.StatusBadRequest, c.entityName+"不存在或不在待处理状态")
 		return
 	}
 
@@ -205,7 +205,7 @@ func (c contentActions) invite(w http.ResponseWriter, r *http.Request) {
 	}
 	entity, err := c.fetch(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, c.entityName+" not found")
+		respondError(w, http.StatusNotFound, c.entityName+"不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, entity)

@@ -92,7 +92,7 @@ func (h *GraduationHandler) ListTopics(w http.ResponseWriter, r *http.Request) {
 		if err.Error() == "missing tenant" {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 		} else {
-			respondError(w, http.StatusInternalServerError, "failed to list graduation topics")
+			respondError(w, http.StatusInternalServerError, "查询毕业设计课题失败")
 		}
 		return
 	}
@@ -110,7 +110,7 @@ func (h *GraduationHandler) GetTopic(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	topic, err := h.fetchTopic(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "graduation topic not found")
+		respondError(w, http.StatusNotFound, "毕业设计课题不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, topic)
@@ -152,7 +152,7 @@ func (h *GraduationHandler) CreateTopic(w http.ResponseWriter, r *http.Request) 
 			respondError(w, http.StatusConflict, "毕业设计题目名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create graduation topic")
+		respondError(w, http.StatusInternalServerError, "创建毕业设计课题失败")
 		return
 	}
 
@@ -169,7 +169,7 @@ func (h *GraduationHandler) UpdateTopic(w http.ResponseWriter, r *http.Request) 
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchTopic(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "graduation topic not found")
+		respondError(w, http.StatusNotFound, "毕业设计课题不存在")
 		return
 	}
 
@@ -196,7 +196,7 @@ func (h *GraduationHandler) UpdateTopic(w http.ResponseWriter, r *http.Request) 
 			respondError(w, http.StatusConflict, "毕业设计题目名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update graduation topic")
+		respondError(w, http.StatusInternalServerError, "更新毕业设计课题失败")
 		return
 	}
 
@@ -213,35 +213,35 @@ func (h *GraduationHandler) DeleteTopic(w http.ResponseWriter, r *http.Request) 
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchTopic(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "graduation topic not found")
+		respondError(w, http.StatusNotFound, "毕业设计课题不存在")
 		return
 	}
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
 
 	_, err = tx.Exec(r.Context(), `DELETE FROM graduation_project_evaluations WHERE topic_id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete topic evaluations")
+		respondError(w, http.StatusInternalServerError, "删除课题评价失败")
 		return
 	}
 	_, err = tx.Exec(r.Context(), `DELETE FROM graduation_project_archives WHERE topic_id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete topic archives")
+		respondError(w, http.StatusInternalServerError, "删除课题档案失败")
 		return
 	}
 	_, err = tx.Exec(r.Context(), `DELETE FROM graduation_project_topics WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete graduation topic")
+		respondError(w, http.StatusInternalServerError, "删除毕业设计课题失败")
 		return
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -260,11 +260,11 @@ func (h *GraduationHandler) ApplyTopic(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $1 AND applied_count < capacity
 	`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to apply topic")
+		respondError(w, http.StatusInternalServerError, "申请课题失败")
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		respondError(w, http.StatusBadRequest, "topic not found or already full")
+		respondError(w, http.StatusBadRequest, "课题不存在或已满员")
 		return
 	}
 
@@ -301,7 +301,7 @@ func (h *GraduationHandler) ArchivesCRUD(w http.ResponseWriter, r *http.Request)
 			VALUES ($1, $2, $3, $4, $5, 'making', 0, NOW(), false)
 		`, id, tenantID, req.TopicID, req.UserID, req.Phase)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to create graduation archive")
+			respondError(w, http.StatusInternalServerError, "创建毕业档案失败")
 			return
 		}
 
@@ -345,7 +345,7 @@ func (h *GraduationHandler) ArchivesCRUD(w http.ResponseWriter, r *http.Request)
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list graduation archives")
+		respondError(w, http.StatusInternalServerError, "查询毕业档案失败")
 		return
 	}
 	defer rows.Close()
@@ -355,7 +355,7 @@ func (h *GraduationHandler) ArchivesCRUD(w http.ResponseWriter, r *http.Request)
 		var a domain.GraduationProjectArchive
 		if err := rows.Scan(&a.ID, &a.TopicID, &a.UserID,
 			&a.Phase, &a.DocStatus, &a.DocCount, &a.LastUpdated, &a.HasRectification); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to scan graduation archives")
+			respondError(w, http.StatusInternalServerError, "读取毕业档案失败")
 			return
 		}
 		items = append(items, a)
@@ -393,7 +393,7 @@ func (h *GraduationHandler) EvaluationsCRUD(w http.ResponseWriter, r *http.Reque
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', NOW())
 		`, id, tenantID, req.TopicID, req.UserID, req.AdvisorScore, req.EnterpriseScore, req.DefenseScore, req.ComprehensiveGrade, req.IsExcellent)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to create graduation evaluation")
+			respondError(w, http.StatusInternalServerError, "创建毕业评价失败")
 			return
 		}
 
@@ -444,7 +444,7 @@ func (h *GraduationHandler) EvaluationsCRUD(w http.ResponseWriter, r *http.Reque
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list graduation evaluations")
+		respondError(w, http.StatusInternalServerError, "查询毕业评价失败")
 		return
 	}
 	defer rows.Close()
@@ -456,7 +456,7 @@ func (h *GraduationHandler) EvaluationsCRUD(w http.ResponseWriter, r *http.Reque
 		var comprehensiveGrade *string
 		if err := rows.Scan(&e.ID, &e.TopicID, &e.UserID, &advisorScore, &enterpriseScore, &defenseScore,
 			&comprehensiveGrade, &e.IsExcellent, &e.Status, &e.EvaluatedAt); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to scan graduation evaluations")
+			respondError(w, http.StatusInternalServerError, "读取毕业评价失败")
 			return
 		}
 		e.AdvisorScore = advisorScore
@@ -500,7 +500,7 @@ func (h *GraduationHandler) QueryResults(w http.ResponseWriter, r *http.Request)
 
 	rows, err := h.DB.Query(r.Context(), query, limit, offset)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list graduation query results")
+		respondError(w, http.StatusInternalServerError, "查询毕业查询结果失败")
 		return
 	}
 	defer rows.Close()
@@ -511,7 +511,7 @@ func (h *GraduationHandler) QueryResults(w http.ResponseWriter, r *http.Request)
 		var className, majorName, projectGrade *string
 		if err := rows.Scan(&q.ID, &q.UserID, &className, &majorName, &q.CreditCompleted, &q.CreditRequired,
 			&q.ScenePassed, &q.SceneRequired, &projectGrade, &q.GraduationStatus, &q.AbilityCertStatus, &q.RectificationCount, &q.UpdatedAt); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to scan graduation query results")
+			respondError(w, http.StatusInternalServerError, "读取毕业查询结果失败")
 			return
 		}
 		q.ClassName = className

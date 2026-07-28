@@ -62,7 +62,7 @@ func (h *MicroCertHandler) ListTemplates(w http.ResponseWriter, r *http.Request)
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to list micro cert templates")
+		respondError(w, http.StatusInternalServerError, "查询微证书模板失败")
 		return
 	}
 
@@ -98,7 +98,7 @@ func (h *MicroCertHandler) CreateTemplate(w http.ResponseWriter, r *http.Request
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`, id, tenantID, req.Title, certTypeUUID.String(), req.CertTypeName, req.Content, req.CoverImage)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create micro cert template")
+		respondError(w, http.StatusInternalServerError, "创建微证书模板失败")
 		return
 	}
 
@@ -115,7 +115,7 @@ func (h *MicroCertHandler) UpdateTemplate(w http.ResponseWriter, r *http.Request
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchTemplate(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "micro cert template not found")
+		respondError(w, http.StatusNotFound, "微证书模板不存在")
 		return
 	}
 
@@ -139,7 +139,7 @@ func (h *MicroCertHandler) UpdateTemplate(w http.ResponseWriter, r *http.Request
 		WHERE id = $6
 	`, req.Title, certTypeUUID.String(), req.CertTypeName, req.Content, req.CoverImage, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update micro cert template")
+		respondError(w, http.StatusInternalServerError, "更新微证书模板失败")
 		return
 	}
 
@@ -156,18 +156,18 @@ func (h *MicroCertHandler) DeleteTemplate(w http.ResponseWriter, r *http.Request
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchTemplate(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "micro cert template not found")
+		respondError(w, http.StatusNotFound, "微证书模板不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM cert_issuance_records WHERE template_id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete related issuance records")
+		respondError(w, http.StatusInternalServerError, "删除相关颁发记录失败")
 		return
 	}
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM micro_cert_templates WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete micro cert template")
+		respondError(w, http.StatusInternalServerError, "删除微证书模板失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -192,7 +192,7 @@ func (h *MicroCertHandler) IssueCerts(w http.ResponseWriter, r *http.Request) {
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -207,14 +207,14 @@ func (h *MicroCertHandler) IssueCerts(w http.ResponseWriter, r *http.Request) {
 			VALUES ($1, $2, $3, $4, $5, 'issued', $6)
 		`, recordID, tenantID, req.TemplateID, userID, time.Now(), uuid.NewString())
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to issue certs")
+			respondError(w, http.StatusInternalServerError, "颁发证书失败")
 			return
 		}
 		count++
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
