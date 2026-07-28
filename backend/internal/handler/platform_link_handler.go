@@ -1,22 +1,21 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type PlatformLinkHandler struct {
-	DB *pgxpool.Pool
+	DB    *pgxpool.Pool
+	Store *store.PlatformLinksStore
 }
 
 type PlatformLinkListResponse struct {
@@ -49,7 +48,7 @@ func (h *PlatformLinkHandler) List(w http.ResponseWriter, r *http.Request) {
 				qb.addCondition("enabled = " + qb.nextArg(enabledStr == "true"))
 			}
 		},
-		ScanRows: h.scanPlatformLinkRows,
+		ScanRows: h.Store.ScanRows,
 	}
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
@@ -68,7 +67,7 @@ func (h *PlatformLinkHandler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *PlatformLinkHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	link, err := h.fetchPlatformLink(r.Context(), id)
+	link, err := h.Store.GetByID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "平台链接不存在")
 		return
@@ -94,19 +93,17 @@ func (h *PlatformLinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := uuid.NewString()
-
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO platform_links (id, platform, url, enabled)
-		VALUES ($1, $2, $3, $4)
-		ON CONFLICT (platform) DO UPDATE SET url = EXCLUDED.url, enabled = EXCLUDED.enabled
-	`, id, req.Platform, req.URL, req.Enabled)
+	_, err := h.Store.Upsert(r.Context(), store.PlatformLinkUpsertParams{
+		Platform: req.Platform,
+		URL:      req.URL,
+		Enabled:  req.Enabled,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "创建平台链接失败")
 		return
 	}
 
-	link, _ := h.fetchPlatformLinkByPlatform(r.Context(), req.Platform)
+	link, _ := h.Store.GetByPlatform(r.Context(), req.Platform)
 	respondJSON(w, http.StatusCreated, link)
 }
 
@@ -118,7 +115,7 @@ func (h *PlatformLinkHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchPlatformLink(r.Context(), id); err != nil {
+	if _, err := h.Store.GetByID(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "平台链接不存在")
 		return
 	}
@@ -129,16 +126,15 @@ func (h *PlatformLinkHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE platform_links SET url = $1, enabled = $2
-		WHERE id = $3
-	`, req.URL, req.Enabled, id)
-	if err != nil {
+	if err := h.Store.Update(r.Context(), id, store.PlatformLinkUpdateParams{
+		URL:     req.URL,
+		Enabled: req.Enabled,
+	}); err != nil {
 		respondError(w, http.StatusInternalServerError, "更新平台链接失败")
 		return
 	}
 
-	link, _ := h.fetchPlatformLink(r.Context(), id)
+	link, _ := h.Store.GetByID(r.Context(), id)
 	respondJSON(w, http.StatusOK, link)
 }
 
@@ -150,53 +146,14 @@ func (h *PlatformLinkHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchPlatformLink(r.Context(), id); err != nil {
+	if _, err := h.Store.GetByID(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "平台链接不存在")
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM platform_links WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Store.Delete(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除平台链接失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
-}
-
-func (h *PlatformLinkHandler) fetchPlatformLink(ctx context.Context, id string) (domain.PlatformLink, error) {
-	var link domain.PlatformLink
-
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, platform, url, enabled
-		FROM platform_links WHERE id = $1
-	`, id).Scan(
-		&link.ID, &link.Platform, &link.URL, &link.Enabled,
-	)
-	return link, err
-}
-
-func (h *PlatformLinkHandler) fetchPlatformLinkByPlatform(ctx context.Context, platform string) (domain.PlatformLink, error) {
-	var link domain.PlatformLink
-
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, platform, url, enabled
-		FROM platform_links WHERE platform = $1
-	`, platform).Scan(
-		&link.ID, &link.Platform, &link.URL, &link.Enabled,
-	)
-	return link, err
-}
-
-func (h *PlatformLinkHandler) scanPlatformLinkRows(rows pgx.Rows) ([]domain.PlatformLink, error) {
-	items := make([]domain.PlatformLink, 0)
-	for rows.Next() {
-		var link domain.PlatformLink
-		if err := rows.Scan(
-			&link.ID, &link.Platform, &link.URL, &link.Enabled,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, link)
-	}
-	return items, nil
 }

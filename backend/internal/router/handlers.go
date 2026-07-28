@@ -131,7 +131,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		resourceCodeHandler:           &handler.ResourceCodeHandler{DB: db},
 		logHandler:                    &handler.LogHandler{DB: db},
 		subscriptionHandler:           &handler.SubscriptionHandler{DB: db},
-		platformLinkHandler:           &handler.PlatformLinkHandler{DB: db},
+		platformLinkHandler:           &handler.PlatformLinkHandler{DB: db, Store: store.NewPlatformLinksStore(db)},
 		appModuleHandler:              &handler.AppModuleHandler{DB: db},
 		staffTitleHandler:             &handler.StaffTitleHandler{DB: db, Store: store.NewStaffTitlesStore(db)},
 		userExtensionFieldHandler:     &handler.UserExtensionFieldHandler{DB: db},
