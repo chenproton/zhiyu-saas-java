@@ -11,7 +11,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { formatFileSize } from "@/lib/resource-constants"
+import { formatFileSize } from "@/lib/utils"
 import {
   scenarioApi,
   taskApi,

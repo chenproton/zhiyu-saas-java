@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Upload, FileText, Video, Image, X, Music } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { formatFileSize } from "@/lib/resource-constants"
+import { formatFileSize } from "@/lib/utils"
 
 interface ResourceItem {
   id: string

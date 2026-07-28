@@ -53,7 +53,7 @@ import { scenarioApi, taskApi, resourceLibraryApi, knowledgeApi, abilityApi, tas
 import type { Scenario, ScenarioTask, TaskResource, KnowledgePoint, AbilityPoint, TaskEvaluationMethod, SceneEvaluationResult } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth-provider"
-import { formatFileSize } from "@/lib/resource-constants"
+import { formatFileSize } from "@/lib/utils"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
 import { ResourcePreviewModal, usePreviewResources } from "@/components/shared/resource-preview-modal"
 
