@@ -72,7 +72,7 @@ func registerEvaluationRoutes(r chi.Router, h *Handlers) {
 
 	r.Get("/evaluation/certificates/templates", h.microCertHandler.ListTemplates)
 	r.Post("/evaluation/certificates/templates", h.microCertHandler.CreateTemplate)
-	r.Get("/evaluation/certificates/templates/{id}", h.microCertHandler.ListTemplates)
+	r.Get("/evaluation/certificates/templates/{id}", h.microCertHandler.GetTemplate)
 	r.Put("/evaluation/certificates/templates/{id}", h.microCertHandler.UpdateTemplate)
 	r.Delete("/evaluation/certificates/templates/{id}", h.microCertHandler.DeleteTemplate)
 	r.Post("/evaluation/certificates/issue", h.microCertHandler.IssueCerts)
