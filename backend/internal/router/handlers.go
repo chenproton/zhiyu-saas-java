@@ -178,7 +178,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		certificationHandler:          &handler.CertificationHandler{DB: db},
 		graduationHandler:             &handler.GraduationHandler{DB: db},
 		studentPortraitHandler:        &handler.StudentPortraitHandler{DB: db},
-		microCertHandler:              &handler.MicroCertHandler{DB: db},
+		microCertHandler:              &handler.MicroCertHandler{DB: db, Store: store.NewMicroCertStore(db)},
 		appealHandler:                 &handler.AppealHandler{DB: db},
 		evaluationMethodHandler:       &handler.EvaluationMethodHandler{DB: db},
 		evaluationBatchHandler:        handler.NewEvaluationBatchHandler(db),
