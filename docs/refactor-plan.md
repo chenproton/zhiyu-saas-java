@@ -92,9 +92,9 @@
 - 删除 `apps/marketplace/lib/annotations/adapter.ts`、`json-file-adapter.ts`、`types.ts`
 - 所有 consumer 改为直接从 `@zhiyu/ui/lib/annotations/*` 导入 → 后续已全部迁出 `@zhiyu/ui`，API Route 改为从 `apps/edu/lib/annotations/*` 导入
 
-**遗留**：`prd-annotations.ts` 和 `annotation-edit-context.tsx` 是领域代码，已移回 `apps/edu/lib/`；`apps/marketplace/lib/annotation-edit-context.tsx` 仍作为跨 app re-export 保留（被 root layout 依赖），长期应移入共享包。
+**后续**：随着 PRD 标注系统整体下线，`apps/edu/lib/prd-annotations.ts`、`apps/edu/lib/annotation-edit-context.tsx` 及 `apps/edu/components/prd-annotation.tsx` 已在本次清理中删除；相关 API Route 与 `apps/edu/lib/annotations/` 一并移除。
 
-- [x] 任务完成
+- [x] 任务完成（annotation 相关代码已整体删除）
 
 ---
 
@@ -315,21 +315,25 @@ export { AuthProvider as PortalAuthProvider, useAuth as usePortalAuth } from "@/
 
 ---
 
-### 19. `packages/ui/src/lib/` 领域代码清理
+### 19. `packages/ui/src/lib/` 领域代码清理 / PRD 标注系统已删除
 
-**问题**：`prd-annotations.ts` (1345 行) 和 `annotation-edit-context.tsx` 是领域功能代码，不应在共享 UI 包中。`packages/ui/src/lib/annotations/json-file-adapter.ts` 进一步使用了 Node.js `fs`/`path`，被 Turbopack 拉入客户端 bundle 导致构建失败。
+**状态**：已下线删除（本次清理）
 
-**方案**：将 `packages/ui/src/lib/annotations/` 整个目录（adapter、types、json-file-adapter）迁出到 `apps/edu/lib/annotations/`，API Route 改为从 `@/lib/annotations/json-file-adapter` 导入；`@zhiyu/ui` barrel 不再导出 annotations 相关 API。
+**原问题**：`prd-annotations.ts` (1345 行) 和 `annotation-edit-context.tsx` 是领域功能代码，不应在共享 UI 包中。`packages/ui/src/lib/annotations/json-file-adapter.ts` 进一步使用了 Node.js `fs`/`path`，被 Turbopack 拉入客户端 bundle 导致构建失败。
 
-**实际结果**：
-- `packages/ui/src/lib/annotations/` 已整体迁移到 `apps/edu/lib/annotations/`
-- `apps/edu/app/api/annotations/route.ts`、`apps/edu/app/api/comments/route.ts` 已更新导入路径
+**已执行**：
+- 早期已将 `packages/ui/src/lib/annotations/` 迁出到 `apps/edu/lib/annotations/`
+- 本次进一步彻底删除 `apps/edu/lib/annotations/` 目录
+- 删除 `apps/edu/lib/prd-annotations.ts`、`apps/edu/lib/annotation-edit-context.tsx`
+- 删除 `apps/edu/components/prd-annotation.tsx`
+- 删除 `apps/edu/app/api/annotations/route.ts`、`apps/edu/app/api/comments/route.ts`、`apps/edu/app/api/prd-annotations/route.ts`
+- 从 `apps/edu/app/layout.tsx` 移除 `AnnotationEditProvider`
+- 在引用页面/组件中移除 `PrdAnnotation`/`getAnnotation` 导入并解包标注 wrapper
 - `@zhiyu/ui` barrel 中 annotations 导出已在前一次提交中移除
-- 客户端 bundle 不再包含 `fs`/`path` 依赖，构建成功
 
-**遗留**：Turbopack 仍会对 App Route 中的 `fs`/`path` 使用报 1 条 NFT warning（非阻塞），原因是 `json-file-adapter.ts` 运行时读写文件的路径包含动态 env/option 回退。后续如需完全消除 warning，可改为数据库存储 annotations，或统一使用 `ANNOTATION_SYSTEM_DATA_PATH` 环境变量并避免在代码中拼接默认路径。
+**结果**：客户端 bundle 不再包含任何 annotation 相关代码或 `fs`/`path` 依赖；原 NFT warning 根源已随文件删除而消除。
 
-- [x] 任务完成（核心问题已解决，warning 非阻塞）
+- [x] 任务完成（系统已整体删除）
 
 ---
 
@@ -387,7 +391,10 @@ export { AuthProvider as PortalAuthProvider, useAuth as usePortalAuth } from "@/
 
 **问题**：`apps/marketplace/lib/prd-annotations.ts` 是通过 `../../edu/lib/` 跨 app 引用的 re-export 文件，且无任何导入方。
 
-**处理**：已删除 `apps/marketplace/lib/prd-annotations.ts`。`apps/marketplace/lib/annotation-edit-context.tsx` 仍被 root layout 使用，保留为跨 app re-export；长期应移入共享包。
+**处理**：
+- 已删除 `apps/marketplace/lib/prd-annotations.ts`（marketplace 前端源码已整体移除）
+- `apps/edu/lib/annotation-edit-context.tsx` 已随 PRD 标注系统删除
+- `apps/edu/app/layout.tsx` 已移除 `AnnotationEditProvider`
 
 - [x] 任务完成
 
@@ -510,7 +517,7 @@ export { AuthProvider as PortalAuthProvider, useAuth as usePortalAuth } from "@/
 | # | 问题 | 文件 | 改动 |
 |---|---|---|---|
 | F1 | `useState(new Date())` 非惰性初始化可能导致 hydration 不匹配 | `apps/edu/app/portal/workspace/_components/schedule-grid.tsx`, `teacher-dashboard-tab.tsx` | 改为 `useState(() => new Date())` |
-| F2 | `packages/ui` barrel export 不完整 | `packages/ui/src/index.ts` | 补充 `PlatformSideNav` 及类型、`annotations` 公开 API |
+| F2 | `packages/ui` barrel export 不完整 | `packages/ui/src/index.ts` | 补充 `PlatformSideNav` 及类型；后续 annotation 相关 API 随系统删除已移除 |
 | F3 | `PlatformShell` 深路径导入 `cn` | `apps/edu/components/platform-shell/PlatformShell.tsx` | 改为从 `@zhiyu/ui` 导入 |
 | F4 | `packages/api-client` 根索引未导出类型/工厂 | `packages/api-client/src/index.ts` | 补充 `api-helpers`、`api-factory`、`types` 导出 |
 | B1 | `coalesceStringSlice` 定义在业务 handler 中 | `backend/internal/handler/position_handler.go` → `common.go` | 迁移到通用位置 |
@@ -594,7 +601,7 @@ export { AuthProvider as PortalAuthProvider, useAuth as usePortalAuth } from "@/
 │   │   ├── platform-shell/  ← 已从 packages/ui 统一导入，本地仅保留组合层
 │   │   ├── providers/    ← data-provider 共享核心在 packages/ui，edu 保留 743 行 app-specific 数据模型
 │   │   ├── hooks/        ← use-mobile/use-toast 薄 re-export 已删除
-│   │   └── lib/          ← annotations 薄 re-export 已删除； dead data-context.tsx 已清理
+│   │   └── lib/          ← annotations/prd-annotations/annotation-edit-context 已删除； dead data-context.tsx 已清理
 │   └── marketplace/
 │       └── 前端源码已移除（git 不再跟踪）
 └── backend/
