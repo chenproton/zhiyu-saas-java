@@ -34,9 +34,11 @@ import {
 import { Search, Eye, CheckCircle, XCircle, Power } from "lucide-react"
 import { institutionApi, resourceApi, orderApi, type Institution, type InstitutionStatus } from "@/lib/api"
 import { useAuth } from "@/components/auth-provider"
+import { useToast } from "@/hooks/use-toast"
 
 export default function AdminInstitutionsPage() {
   const { hasPermission } = useAuth()
+  const { toast } = useToast()
   const [institutions, setInstitutions] = useState<Institution[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -127,7 +129,11 @@ export default function AdminInstitutionsPage() {
       await fetchInstitutions()
       setDetailsOpen(false)
     } catch (err) {
-      alert(err instanceof Error ? err.message : "审核通过失败")
+      toast({
+        variant: "destructive",
+        title: "提示",
+        description: err instanceof Error ? err.message : "审核通过失败",
+      })
     } finally {
       setActionLoading(false)
     }
@@ -146,7 +152,11 @@ export default function AdminInstitutionsPage() {
       await fetchInstitutions()
       setDetailsOpen(false)
     } catch (err) {
-      alert(err instanceof Error ? err.message : "状态切换失败")
+      toast({
+        variant: "destructive",
+        title: "提示",
+        description: err instanceof Error ? err.message : "状态切换失败",
+      })
     } finally {
       setActionLoading(false)
     }
@@ -163,7 +173,11 @@ export default function AdminInstitutionsPage() {
       setDetailsOpen(false)
       await fetchInstitutions()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "驳回失败")
+      toast({
+        variant: "destructive",
+        title: "提示",
+        description: err instanceof Error ? err.message : "驳回失败",
+      })
     } finally {
       setActionLoading(false)
     }

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 import { DashboardLayout, useRole } from "@/components/dashboard-layout"
+import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -67,6 +68,7 @@ export default function ResourceDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { role, institutionId } = useRole()
+  const { toast } = useToast()
   const [institutionOpen, setInstitutionOpen] = useState(false)
 
   const [resource, setResource] = useState<Resource | null>(null)
@@ -169,7 +171,11 @@ export default function ResourceDetailPage() {
 
   const handleDownload = () => {
     if (!resource.attachment || resource.attachment === "#") {
-      alert("暂无附件下载链接")
+      toast({
+        variant: "destructive",
+        title: "提示",
+        description: "暂无附件下载链接",
+      })
       return
     }
     window.open(resource.attachment, "_blank")
