@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"errors"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/jackc/pgx/v5"

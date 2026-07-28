@@ -137,14 +137,14 @@ func (h *CourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"created":        result.Created,
-		"failed":         result.Failed,
-		"skipped":        result.Skipped,
-		"entity":         "体系课",
-		"courseCreated":  result.CourseCreated,
-		"nodeCreated":    result.NodeCreated,
-		"errors":         result.Errors,
-		"sheets":         sheets,
+		"created":       result.Created,
+		"failed":        result.Failed,
+		"skipped":       result.Skipped,
+		"entity":        "体系课",
+		"courseCreated": result.CourseCreated,
+		"nodeCreated":   result.NodeCreated,
+		"errors":        result.Errors,
+		"sheets":        sheets,
 	})
 }
 
@@ -642,4 +642,3 @@ func mapCourseEvalMethod(t string) string {
 		return ""
 	}
 }
-

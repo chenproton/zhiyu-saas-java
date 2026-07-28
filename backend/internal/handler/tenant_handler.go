@@ -52,8 +52,8 @@ type UpdateTenantStatusRequest struct {
 }
 
 type CreateTenantResponse struct {
-	Tenant    domain.Tenant   `json:"tenant"`
-	AdminUser *adminUserInfo  `json:"adminUser,omitempty"`
+	Tenant    domain.Tenant  `json:"tenant"`
+	AdminUser *adminUserInfo `json:"adminUser,omitempty"`
 }
 
 type adminUserInfo struct {
@@ -180,11 +180,11 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 		INSERT INTO subscription_packages (tenant_id, name, valid_until, modules, status)
 		VALUES ($1, '默认全功能套餐', NULL, $2, 'active')
 	`, id, domain.JSONMap{
-		"system":  true,
-		"career":  true,
-		"course":  true,
-		"scene":   true,
-		"ability": true,
+		"system":   true,
+		"career":   true,
+		"course":   true,
+		"scene":    true,
+		"ability":  true,
 		"resource": true,
 		"alliance": true,
 		"affairs":  true,

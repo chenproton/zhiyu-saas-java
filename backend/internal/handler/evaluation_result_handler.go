@@ -1,10 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"log/slog"
 	"net/http"
 	"time"
@@ -27,17 +26,17 @@ type EvaluationResultListResponse struct {
 }
 
 type SubmitResultRequest struct {
-	TaskID             string          `json:"taskId"`
-	SceneID            *string         `json:"sceneId,omitempty"`
-	MethodKey          string          `json:"methodKey"`
-	EvaluateeID        string          `json:"evaluateeId"`
-	EvaluatorID        *string         `json:"evaluatorId,omitempty"`
-	EvaluatorType      *string         `json:"evaluatorType,omitempty"`
-	MaxScore           float64         `json:"maxScore"`
-	ObjectiveAnswers   json.RawMessage `json:"objectiveAnswers,omitempty"`
-	SubjectiveContent  json.RawMessage `json:"subjectiveContent,omitempty"`
-	DrawnQuestions     json.RawMessage `json:"drawnQuestions,omitempty"`
-	EvalPointScores    json.RawMessage `json:"evalPointScores,omitempty"`
+	TaskID            string          `json:"taskId"`
+	SceneID           *string         `json:"sceneId,omitempty"`
+	MethodKey         string          `json:"methodKey"`
+	EvaluateeID       string          `json:"evaluateeId"`
+	EvaluatorID       *string         `json:"evaluatorId,omitempty"`
+	EvaluatorType     *string         `json:"evaluatorType,omitempty"`
+	MaxScore          float64         `json:"maxScore"`
+	ObjectiveAnswers  json.RawMessage `json:"objectiveAnswers,omitempty"`
+	SubjectiveContent json.RawMessage `json:"subjectiveContent,omitempty"`
+	DrawnQuestions    json.RawMessage `json:"drawnQuestions,omitempty"`
+	EvalPointScores   json.RawMessage `json:"evalPointScores,omitempty"`
 }
 
 type GradeResultRequest struct {
@@ -94,7 +93,7 @@ func (h *EvaluationResultHandler) List(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		slog.Info(fmt.Sprintf("List evaluation results error: %v", err))
+		slog.Error("List evaluation results error", "error", err)
 		respondError(w, http.StatusInternalServerError, "查询评价结果失败")
 		return
 	}
@@ -315,11 +314,17 @@ func (h *EvaluationResultHandler) fetchResult(ctx context.Context, id string) (d
 	if err != nil {
 		return res, err
 	}
-	if sceneID.Valid { res.SceneID = &sceneID.String }
+	if sceneID.Valid {
+		res.SceneID = &sceneID.String
+	}
 	res.EvaluatorID = evaluatorID.String
 	res.EvaluatorType = evaluatorType.String
-	if comment.Valid { res.Comment = &comment.String }
-	if gradedBy.Valid { res.GradedBy = &gradedBy.String }
+	if comment.Valid {
+		res.Comment = &comment.String
+	}
+	if gradedBy.Valid {
+		res.GradedBy = &gradedBy.String
+	}
 	res.TotalScore = totalScore
 	res.GradedAt = gradedAt
 	res.EvalPointScores = evalPointScores
@@ -344,11 +349,17 @@ func (h *EvaluationResultHandler) scanResultRows(rows pgx.Rows) ([]domain.SceneE
 		); err != nil {
 			return nil, err
 		}
-		if sceneID.Valid { res.SceneID = &sceneID.String }
+		if sceneID.Valid {
+			res.SceneID = &sceneID.String
+		}
 		res.EvaluatorID = evaluatorID.String
 		res.EvaluatorType = evaluatorType.String
-		if comment.Valid { res.Comment = &comment.String }
-		if gradedBy.Valid { res.GradedBy = &gradedBy.String }
+		if comment.Valid {
+			res.Comment = &comment.String
+		}
+		if gradedBy.Valid {
+			res.GradedBy = &gradedBy.String
+		}
 		res.TotalScore = totalScore
 		res.GradedAt = gradedAt
 		res.EvalPointScores = evalPointScores

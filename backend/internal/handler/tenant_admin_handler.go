@@ -26,16 +26,16 @@ type UpdateTenantAdminRequest struct {
 // TenantAdminResponse returns school admin user info. PlainPassword is only
 // populated on creation or when explicitly previewed.
 type TenantAdminResponse struct {
-	ID            string     `json:"id"`
-	TenantID      string     `json:"tenantId"`
-	Username      string     `json:"username"`
-	LoginName     string     `json:"loginName"`
-	Name          string     `json:"name"`
-	Status        string     `json:"status"`
-	NewPassword   string     `json:"newPassword,omitempty"`
-	CreatedAt     time.Time  `json:"createdAt"`
-	UpdatedAt     time.Time  `json:"updatedAt"`
-	LastLoginAt   *time.Time `json:"lastLoginAt,omitempty"`
+	ID          string     `json:"id"`
+	TenantID    string     `json:"tenantId"`
+	Username    string     `json:"username"`
+	LoginName   string     `json:"loginName"`
+	Name        string     `json:"name"`
+	Status      string     `json:"status"`
+	NewPassword string     `json:"newPassword,omitempty"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   time.Time  `json:"updatedAt"`
+	LastLoginAt *time.Time `json:"lastLoginAt,omitempty"`
 }
 
 // AdminListAdmins lists all school_admin users for a tenant.

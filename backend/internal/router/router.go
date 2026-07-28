@@ -7,8 +7,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
-	authmw "github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/handler"
+	authmw "github.com/zhiyu-saas/backend/internal/middleware"
 )
 
 type contentRoutes interface {

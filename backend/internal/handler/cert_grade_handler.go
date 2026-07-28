@@ -34,10 +34,10 @@ type LeaderboardEntryDTO struct {
 }
 
 type GradeDataDTO struct {
-	TotalPoints int                  `json:"totalPoints"`
-	AvgRate     float64              `json:"avgRate"`
-	LastUpdated string               `json:"lastUpdated"`
-	CompData    []CompGroupDTO       `json:"compData"`
+	TotalPoints int                   `json:"totalPoints"`
+	AvgRate     float64               `json:"avgRate"`
+	LastUpdated string                `json:"lastUpdated"`
+	CompData    []CompGroupDTO        `json:"compData"`
 	Leaderboard []LeaderboardEntryDTO `json:"leaderboard"`
 }
 
@@ -179,7 +179,9 @@ func (h *CertGradeHandler) ListGrades(w http.ResponseWriter, r *http.Request) {
 		dutyMap := make(map[string][]CompItemDTO)
 		dutyOrder := []string{}
 		for _, c := range allComps {
-			if c.GradeDataID != g.ID { continue }
+			if c.GradeDataID != g.ID {
+				continue
+			}
 			if _, ok := dutyMap[c.DutyName]; !ok {
 				dutyOrder = append(dutyOrder, c.DutyName)
 			}
@@ -192,7 +194,9 @@ func (h *CertGradeHandler) ListGrades(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, l := range allLB {
-			if l.GradeDataID != g.ID { continue }
+			if l.GradeDataID != g.ID {
+				continue
+			}
 			dto.Leaderboard = append(dto.Leaderboard, LeaderboardEntryDTO{
 				ID: l.UserID, StudentName: l.StudentName, ClassName: l.ClassName,
 				Major: l.MajorName, AchievementRate: l.AchievementRate, Grade: l.GradeLabel,

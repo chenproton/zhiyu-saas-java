@@ -24,8 +24,8 @@ func NewEvaluationBatchHandler(db *pgxpool.Pool) *EvaluationBatchHandler {
 			SearchColumns:      []string{"name"},
 			TenantScoped:       true,
 			TenantFilterColumn: "eb.tenant_id",
-			ScanRow:       scanEvaluationBatchRow,
-			ScanRows:      scanEvaluationBatchRows,
+			ScanRow:            scanEvaluationBatchRow,
+			ScanRows:           scanEvaluationBatchRows,
 		}),
 	}
 }

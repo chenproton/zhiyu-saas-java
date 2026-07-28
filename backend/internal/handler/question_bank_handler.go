@@ -157,7 +157,10 @@ func (h *QuestionBankHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenantID, ok := requireTenant(w, r); if !ok { return }
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	id := uuid.NewString()
 	code, err := generateUniqueEntityCode(r.Context(), h.DB, "TK", "question_banks", tenantID)

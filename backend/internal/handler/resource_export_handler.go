@@ -208,12 +208,12 @@ func (h *ResourceExportHandler) fillUsers(ctx context.Context, f *excelize.File,
 	defer rows.Close()
 
 	type userRow struct {
-		id         string
-		username   string
-		name       string
-		status     string
-		orgNodeID  *string
-		titleIDs   []string
+		id        string
+		username  string
+		name      string
+		status    string
+		orgNodeID *string
+		titleIDs  []string
 	}
 	var users []userRow
 	for rows.Next() {

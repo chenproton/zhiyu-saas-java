@@ -3,11 +3,11 @@ package domain
 import "time"
 
 type WorkspaceDashboard struct {
-	Role          string                    `json:"role"`
-	Announcements []WorkspaceAnnouncement   `json:"announcements"`
-	Todos         []WorkspaceTodo           `json:"todos"`
-	Schedule      []WorkspaceScheduleEvent  `json:"schedule"`
-	Stats         *WorkspaceStats           `json:"stats,omitempty"`
+	Role          string                   `json:"role"`
+	Announcements []WorkspaceAnnouncement  `json:"announcements"`
+	Todos         []WorkspaceTodo          `json:"todos"`
+	Schedule      []WorkspaceScheduleEvent `json:"schedule"`
+	Stats         *WorkspaceStats          `json:"stats,omitempty"`
 
 	// Student workspace data
 	Courses      []WorkspaceCourse       `json:"courses"`
@@ -22,11 +22,11 @@ type WorkspaceDashboard struct {
 }
 
 type WorkspaceAnnouncement struct {
-	ID     string    `json:"id"`
-	Title  string    `json:"title"`
-	Type   string    `json:"type"`
-	IsNew  bool      `json:"isNew"`
-	Date   string    `json:"date"`
+	ID        string    `json:"id"`
+	Title     string    `json:"title"`
+	Type      string    `json:"type"`
+	IsNew     bool      `json:"isNew"`
+	Date      string    `json:"date"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
@@ -122,13 +122,13 @@ type WorkspaceTeacherCourse struct {
 }
 
 type WorkspaceClassPlan struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Course  string `json:"course"`
-	Term    string `json:"term"`
-	Students int   `json:"students"`
-	Teacher string `json:"teacher"`
-	Status  string `json:"status"`
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Course   string `json:"course"`
+	Term     string `json:"term"`
+	Students int    `json:"students"`
+	Teacher  string `json:"teacher"`
+	Status   string `json:"status"`
 }
 
 type WorkspaceClassSession struct {

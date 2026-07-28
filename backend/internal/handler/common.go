@@ -23,6 +23,17 @@ import (
 // Handlers should check for this error with errors.Is and respond 403.
 var ErrMissingTenant = errors.New("missing tenant")
 
+// sanitizeIdentifier validates that identifier is one of the allowed values.
+// It returns the identifier unchanged if valid, otherwise an error.
+func sanitizeIdentifier(identifier string, allowed []string) (string, error) {
+	for _, a := range allowed {
+		if identifier == a {
+			return identifier, nil
+		}
+	}
+	return "", fmt.Errorf("invalid identifier: %s", identifier)
+}
+
 // coalesceStringSlice 将 nil 切片转为空切片，避免 SQL 参数中写入 NULL。
 func coalesceStringSlice(s []string) []string {
 	if s == nil {
@@ -274,6 +285,9 @@ func generateEntityCode(prefix string) string {
 func generateUniqueEntityCode(ctx context.Context, db interface {
 	QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row
 }, prefix, table, tenantID string) (string, error) {
+	if _, err := sanitizeIdentifier(table, allowedUniqueCodeTables); err != nil {
+		return "", err
+	}
 	for i := 0; i < 10; i++ {
 		code := generateEntityCode(prefix)
 		var exists bool
@@ -286,6 +300,16 @@ func generateUniqueEntityCode(ctx context.Context, db interface {
 		}
 	}
 	return "", fmt.Errorf("生成唯一%s编码失败", prefix)
+}
+
+// allowedUniqueCodeTables lists the tables that may be passed to generateUniqueEntityCode.
+var allowedUniqueCodeTables = []string{
+	"career_positions",
+	"courses",
+	"exams",
+	"question_banks",
+	"questions",
+	"scenarios",
 }
 
 // listQueryBuilder accumulates WHERE conditions and positional arguments for
@@ -345,6 +369,162 @@ type listQueryDB interface {
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 }
 
+// Allowed identifiers for executeListQuery configuration. These are hardcoded by
+// callers; the whitelist prevents accidental SQL identifier injection if any
+// value becomes dynamic in the future.
+var (
+	allowedListQueryTables = []string{
+		"ability_domains",
+		"ability_points",
+		"appeal_records",
+		"approval_records",
+		"banner_configs",
+		"career_positions cp",
+		"cert_issuance_records",
+		"certificate_library",
+		"certification_rules",
+		"courses c LEFT JOIN majors m ON m.id = c.major_id LEFT JOIN industries i ON i.id = c.industry_id LEFT JOIN lesson_batches lb ON lb.id = c.batch_id",
+		"evaluation_methods",
+		"exam_results er LEFT JOIN majors m ON m.id = er.major_id",
+		"exam_usages",
+		"exams e",
+		"graduation_project_topics",
+		"hybrid_node_modules",
+		"industries",
+		"knowledge_points",
+		"learn_roads",
+		"majors",
+		"micro_cert_templates",
+		"node_homeworks",
+		"node_quizzes",
+		"on_site_question_library",
+		"org_types",
+		"organizations",
+		"platform_links",
+		"position_ability_bindings",
+		"position_favorites pf JOIN career_positions cp ON cp.id = pf.career_position_id",
+		"position_recommendations pr LEFT JOIN majors m ON m.id = pr.major_id",
+		"position_responsibilities",
+		"questions",
+		"random_draw_questions rdq LEFT JOIN majors m ON m.id = rdq.major_id",
+		"resource_codes",
+		"roles",
+		"rubric_templates",
+		"scenario_grade_mappings",
+		"scenario_tasks",
+		"scenario_weight_configs",
+		"scenarios s",
+		"scene_evaluation_results",
+		"staff_titles",
+		"student_ability_archives",
+		"student_ability_portraits",
+		"system_course_nodes n",
+		"tenants",
+		"users",
+		"workflows",
+	}
+
+	allowedListQuerySelectColumns = []string{
+		"b.id, b.name, b.code, b.org_node_id, b.major_id, COALESCE(m.name, '') AS major_name, b.workflow_id, b.status, b.position_count, b.published_count, b.pending_count, b.created_at, b.updated_at",
+		"eb.id, eb.name, eb.code, eb.org_node_id, eb.major_id, COALESCE(m.name, '') AS major_name, eb.workflow_id, eb.status, eb.created_at, eb.updated_at",
+		"er.id, er.exam_usage_id, er.user_id, er.student_name, er.class_name, er.grade, er.major_id, COALESCE(m.name, '') AS major_name, er.score, er.total_score, er.is_pass, er.answers, er.submit_time, er.created_at",
+		"id, career_position_id, name, description, binding_ids, sort_order",
+		"id, career_position_id, name, description, sort_order",
+		"id, career_position_id, responsibility_id, ability_point_id, source, domain, required_level, rubric_description, attributes, weight",
+		"id, career_position_id, status, rule_source, created_at, updated_at",
+		"id, category_id, name, enabled, sub_category_name, description, doc_link",
+		"id, code, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status, created_at",
+		"id, name, career_position_id, college, source, status, capacity, applied_count, advisor_id, enterprise_mentor_id, start_date, end_date, description, created_at",
+		"id, name, code, description, category, attributes, is_public, creator_id, created_at",
+		"id, name, code, description, linked, granular_lesson_ids::text[] AS granular_lesson_ids, creator_id, created_at, updated_at",
+		"id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, admin_ids, status, created_at, updated_at",
+		"id, name, description, position_ids, steps, created_at, updated_at",
+		"id, node_id, module_key, mode, data",
+		"id, node_id, title, requirement, need_attachment, deadline",
+		"id, node_id, title, type, time_limit",
+		"id, platform, url, enabled",
+		"id, scenario_id, task_id, level, min_score, max_score, description, color",
+		"id, scenario_id, task_id, weight",
+		"id, task_id, scene_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status, total_score, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions, comment, graded_at, graded_by",
+		"id, template_id, user_id, cert_number, issue_date, expire_date, status, revoked_at, revoke_reason",
+		"id, tenant_id, code, name, alias, enabled, created_at, updated_at",
+		"id, tenant_id, code, name, description, permissions, user_count, status, created_at",
+		"id, tenant_id, code, name, description, type, created_at",
+		"id, tenant_id, code, name, description, user_count, status, created_at",
+		"id, tenant_id, code, name, parent_id, enabled, sort_order, created_at, updated_at",
+		"id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id, created_at, updated_at",
+		"id, tenant_id, name, category, description, is_default, created_at",
+		"id, tenant_id, name, mode, types, description, data, is_deleted, created_at, updated_at",
+		"id, tenant_id, name, scene, description, steps, major_ids, usage_count, status, created_at",
+		"id, tenant_id, name, type_id, parent_id, sort_order, member_count, created_at, updated_at",
+		"id, tenant_id, name, url, description, image_url, creator_id, created_at",
+		"id, tenant_id, question_text, answer, question_type, score, difficulty, knowledge_point_ids, tags, creator_id, created_at, updated_at",
+		"id, tenant_id, target_type, target_id, workflow_id, current_step_idx, status, submitter_id, history, created_at, updated_at",
+		"id, title, cert_type_id, cert_type_name, content, cover_image, created_at, updated_at",
+		"id, title, image_url, link_url, sort_order, is_enabled, created_at, updated_at",
+		"id, user_id, type, reason, status, created_at",
+		"lb.id, lb.name, lb.code, lb.org_node_id, lb.major_id, COALESCE(m.name, '') AS major_name, lb.workflow_id, lb.status, lb.course_count, lb.created_at, lb.updated_at",
+		"n.id, n.course_id, n.parent_id, n.name, n.code, n.sort_order, n.ref_type, n.source_id, n.source_name, n.teaching_goals, n.detailed_description, n.description_pdf, n.background, n.estimated_hours, n.duration, n.difficulty, n.knowledge_point_ids::text[], n.resource_ids::text[], n.eval_data, n.status",
+		"pr.id, pr.major_id, COALESCE(m.name, '') AS major_name, pr.career_position_id, pr.position_type, pr.reason, pr.sort_order, pr.is_enabled, pr.created_by, pr.created_at, pr.updated_at",
+		"rdq.id, rdq.name, rdq.description, rdq.answer, rdq.major_id, m.name AS major_name, rdq.created_at, rdq.updated_at",
+		"sb.id, sb.name, sb.code, sb.org_node_id, sb.major_id, COALESCE(m.name, '') AS major_name, sb.workflow_id, sb.status, sb.scenario_count, sb.created_at, sb.updated_at",
+	}
+
+	allowedListQueryOrderBy = []string{
+		"c.created_at DESC",
+		"cp.created_at DESC",
+		"e.created_at DESC",
+		"er.score DESC, er.submit_time ASC",
+		"id DESC",
+		"issue_date DESC",
+		"min_score ASC",
+		"module_key ASC",
+		"n.sort_order ASC, n.id ASC",
+		"name",
+		"pf.created_at DESC",
+		"platform ASC",
+		"pr.sort_order ASC, pr.created_at DESC",
+		"s.created_at DESC",
+		"sort_order",
+		"sort_order ASC",
+		"sort_order ASC, created_at ASC",
+		"sort_order ASC, created_at DESC",
+		"sort_order ASC, id ASC",
+		"updated_at DESC",
+	}
+
+	allowedListQueryTenantColumns = []string{
+		"",
+		"c.tenant_id",
+		"cp.tenant_id",
+		"e.tenant_id",
+		"id",
+		"pr.tenant_id",
+		"s.tenant_id",
+	}
+
+	allowedListQuerySearchColumns = []string{
+		"c.code",
+		"c.name",
+		"code",
+		"content",
+		"cp.name",
+		"description",
+		"e.description",
+		"e.name",
+		"email",
+		"m.name",
+		"name",
+		"question_text",
+		"rdq.description",
+		"rdq.name",
+		"s.code",
+		"s.name",
+		"title",
+		"username",
+	}
+)
+
 // executeListQuery builds and runs a paginated, tenant-scoped list query with
 // optional search and extra filters. It returns the scanned items, total count
 // and an error. A "missing tenant" error means the caller has no tenant and
@@ -356,6 +536,24 @@ func executeListQuery[T any](ctx context.Context, db listQueryDB, r *http.Reques
 	}
 	if scanner == nil {
 		return nil, 0, errors.New("scanRows not configured")
+	}
+
+	if _, err := sanitizeIdentifier(cfg.Table, allowedListQueryTables); err != nil {
+		return nil, 0, err
+	}
+	if _, err := sanitizeIdentifier(cfg.SelectColumns, allowedListQuerySelectColumns); err != nil {
+		return nil, 0, err
+	}
+	if _, err := sanitizeIdentifier(cfg.OrderBy, allowedListQueryOrderBy); err != nil {
+		return nil, 0, err
+	}
+	if _, err := sanitizeIdentifier(cfg.TenantColumn, allowedListQueryTenantColumns); err != nil {
+		return nil, 0, err
+	}
+	for _, col := range cfg.SearchColumns {
+		if _, err := sanitizeIdentifier(col, allowedListQuerySearchColumns); err != nil {
+			return nil, 0, err
+		}
 	}
 
 	qb := &listQueryBuilder{idx: 1}

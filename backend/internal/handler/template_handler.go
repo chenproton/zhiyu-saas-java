@@ -614,8 +614,8 @@ func colName(n int) string {
 
 func makeHeaderStyle(f *excelize.File) int {
 	style, _ := f.NewStyle(&excelize.Style{
-		Font: &excelize.Font{Bold: true, Size: 11, Color: "FFFFFF"},
-		Fill: excelize.Fill{Type: "pattern", Color: []string{"4472C4"}, Pattern: 1},
+		Font:      &excelize.Font{Bold: true, Size: 11, Color: "FFFFFF"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"4472C4"}, Pattern: 1},
 		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center", WrapText: true},
 		Border: []excelize.Border{
 			{Type: "left", Color: "D9D9D9", Style: 1},

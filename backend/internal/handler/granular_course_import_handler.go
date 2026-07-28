@@ -18,10 +18,10 @@ type GranularCourseImportHandler struct {
 }
 
 type granularCourseImportResult struct {
-	Created       int
-	Failed        int
-	Skipped       int
-	Errors        []string
+	Created        int
+	Failed         int
+	Skipped        int
+	Errors         []string
 	DuplicateItems []ImportPreviewItem
 }
 

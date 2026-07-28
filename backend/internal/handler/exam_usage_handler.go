@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -101,7 +101,10 @@ func (h *ExamUsageHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenantID, ok := requireTenant(w, r); if !ok { return }
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	id := uuid.NewString()
 	_, err := h.DB.Exec(r.Context(), `

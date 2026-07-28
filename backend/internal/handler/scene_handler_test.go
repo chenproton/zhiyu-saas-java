@@ -488,10 +488,10 @@ func TestRubricTemplateCRUD(t *testing.T) {
 
 	// Create rubric template
 	w := env.Do("POST", "/api/v1/scene/rubric-templates", map[string]interface{}{
-		"name":    "Test Rubric",
-		"mode":    "rubric",
-		"types":   []string{"knowledge_mastery"},
-		"data":    map[string]interface{}{"points": []interface{}{}},
+		"name":  "Test Rubric",
+		"mode":  "rubric",
+		"types": []string{"knowledge_mastery"},
+		"data":  map[string]interface{}{"points": []interface{}{}},
 	})
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create template: expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
@@ -810,7 +810,6 @@ func TestTaskBindKnowledgeWithInvalidId(t *testing.T) {
 		t.Fatalf("expected 200 for bind with arbitrary knowledgePointId, got %d", w.Code)
 	}
 }
-
 
 func TestScenario_Clone(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)

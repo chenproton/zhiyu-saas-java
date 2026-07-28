@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -81,18 +81,18 @@ func (n *NullableStringSlice) UnmarshalJSON(data []byte) error {
 }
 
 type UpdateScenarioRequest struct {
-	Name             string                `json:"name"`
-	Code             string                `json:"code"`
-	CoverImage       NullableString        `json:"coverImage"`
-	CareerPositionID NullableString        `json:"careerPositionId"`
-	IndustryIDs      NullableStringSlice   `json:"industryIds"`
-	ProfessionIDs    NullableStringSlice   `json:"professionIds"`
-	BatchID          NullableString        `json:"batchId"`
-	Difficulty       int                   `json:"difficulty"`
-	Version          string                `json:"version"`
-	Background       NullableString        `json:"background"`
-	DeliveryGoal     NullableString        `json:"deliveryGoal"`
-	CoBuilderIDs     []string              `json:"coBuilderIds"`
+	Name             string              `json:"name"`
+	Code             string              `json:"code"`
+	CoverImage       NullableString      `json:"coverImage"`
+	CareerPositionID NullableString      `json:"careerPositionId"`
+	IndustryIDs      NullableStringSlice `json:"industryIds"`
+	ProfessionIDs    NullableStringSlice `json:"professionIds"`
+	BatchID          NullableString      `json:"batchId"`
+	Difficulty       int                 `json:"difficulty"`
+	Version          string              `json:"version"`
+	Background       NullableString      `json:"background"`
+	DeliveryGoal     NullableString      `json:"deliveryGoal"`
+	CoBuilderIDs     []string            `json:"coBuilderIds"`
 }
 
 func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {

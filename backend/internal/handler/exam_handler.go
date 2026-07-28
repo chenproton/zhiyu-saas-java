@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -122,7 +122,10 @@ func (h *ExamHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenantID, ok := requireTenant(w, r); if !ok { return }
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	id := uuid.NewString()
 	code, err := generateUniqueEntityCode(r.Context(), h.DB, "SJ", "exams", tenantID)
@@ -328,7 +331,10 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 	optionsJSON, _ := json.Marshal(q.Options)
 	answerJSON, _ := json.Marshal(q.Answer)
 
-	tenantID, ok := requireTenant(w, r); if !ok { return }
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	_, err = h.DB.Exec(r.Context(), `
 		INSERT INTO exam_questions (id, tenant_id, exam_id, question_id, type, content, options, answer, analysis, score, sort_order)

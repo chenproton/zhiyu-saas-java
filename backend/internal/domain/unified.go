@@ -92,38 +92,38 @@ type OrgType struct {
 }
 
 type Organization struct {
-	ID           string    `json:"id"`
-	TenantID     string    `json:"tenantId"`
-	Name         string    `json:"name"`
-	TypeID       string    `json:"typeId"`
-	ParentID     *string   `json:"parentId,omitempty"`
-	SortOrder    int       `json:"sortOrder"`
-	MemberCount  int       `json:"memberCount"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	ID          string    `json:"id"`
+	TenantID    string    `json:"tenantId"`
+	Name        string    `json:"name"`
+	TypeID      string    `json:"typeId"`
+	ParentID    *string   `json:"parentId,omitempty"`
+	SortOrder   int       `json:"sortOrder"`
+	MemberCount int       `json:"memberCount"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
 type Major struct {
-	ID         string    `json:"id"`
-	TenantID   string    `json:"tenantId"`
-	Code       string    `json:"code"`
-	Name       string    `json:"name"`
-	Alias      *string   `json:"alias,omitempty"`
-	Enabled    bool      `json:"enabled"`
-	CreatedAt  time.Time `json:"createdAt"`
-	UpdatedAt  time.Time `json:"updatedAt"`
+	ID        string    `json:"id"`
+	TenantID  string    `json:"tenantId"`
+	Code      string    `json:"code"`
+	Name      string    `json:"name"`
+	Alias     *string   `json:"alias,omitempty"`
+	Enabled   bool      `json:"enabled"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type Industry struct {
-	ID         string    `json:"id"`
-	TenantID   string    `json:"tenantId"`
-	Code       string    `json:"code"`
-	Name       string    `json:"name"`
-	ParentID   *string   `json:"parentId,omitempty"`
-	Enabled    bool      `json:"enabled"`
-	SortOrder  int       `json:"sortOrder"`
-	CreatedAt  time.Time `json:"createdAt"`
-	UpdatedAt  time.Time `json:"updatedAt"`
+	ID        string    `json:"id"`
+	TenantID  string    `json:"tenantId"`
+	Code      string    `json:"code"`
+	Name      string    `json:"name"`
+	ParentID  *string   `json:"parentId,omitempty"`
+	Enabled   bool      `json:"enabled"`
+	SortOrder int       `json:"sortOrder"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type ResourceCode struct {
@@ -148,28 +148,28 @@ type SubscriptionPackage struct {
 }
 
 type UserExtensionField struct {
-	ID                          string    `json:"id"`
-	TenantID                    string    `json:"tenantId"`
-	FieldKey                    string    `json:"fieldKey"`
-	FieldName                   string    `json:"fieldName"`
-	FieldType                   string    `json:"fieldType"`
-	IsEnabled                   bool      `json:"isEnabled"`
-	IsRequired                  bool      `json:"isRequired"`
-	ApplicableRoleCodes         []string  `json:"applicableRoleCodes"`
-	SlotNumber                  int       `json:"slotNumber"`
-	CreatedAt                   time.Time `json:"createdAt"`
+	ID                  string    `json:"id"`
+	TenantID            string    `json:"tenantId"`
+	FieldKey            string    `json:"fieldKey"`
+	FieldName           string    `json:"fieldName"`
+	FieldType           string    `json:"fieldType"`
+	IsEnabled           bool      `json:"isEnabled"`
+	IsRequired          bool      `json:"isRequired"`
+	ApplicableRoleCodes []string  `json:"applicableRoleCodes"`
+	SlotNumber          int       `json:"slotNumber"`
+	CreatedAt           time.Time `json:"createdAt"`
 }
 
 type UserRelation struct {
-	ID                   string    `json:"id"`
-	TenantID             string    `json:"tenantId"`
-	InitiatorID          string    `json:"initiatorId"`
-	InitiatorOrgNodeID   *string   `json:"initiatorOrgNodeId,omitempty"`
-	TargetID             string    `json:"targetId"`
-	TargetOrgNodeID      *string   `json:"targetOrgNodeId,omitempty"`
-	RelationType         string    `json:"relationType"`
-	Description          *string   `json:"description,omitempty"`
-	CreatedAt            time.Time `json:"createdAt"`
+	ID                 string    `json:"id"`
+	TenantID           string    `json:"tenantId"`
+	InitiatorID        string    `json:"initiatorId"`
+	InitiatorOrgNodeID *string   `json:"initiatorOrgNodeId,omitempty"`
+	TargetID           string    `json:"targetId"`
+	TargetOrgNodeID    *string   `json:"targetOrgNodeId,omitempty"`
+	RelationType       string    `json:"relationType"`
+	Description        *string   `json:"description,omitempty"`
+	CreatedAt          time.Time `json:"createdAt"`
 }
 
 type StaffTitle struct {

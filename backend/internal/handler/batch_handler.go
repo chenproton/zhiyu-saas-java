@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -37,12 +37,12 @@ type BatchUpdateStatusRequest struct {
 }
 
 type BatchTableConfig struct {
-	TableName     string
+	TableName      string
 	WriteTableName string
-	SelectColumns string
-	EntityName    string
-	StatusOpen    string
-	StatusClosed  string
+	SelectColumns  string
+	EntityName     string
+	StatusOpen     string
+	StatusClosed   string
 
 	SearchColumns []string
 
@@ -51,7 +51,7 @@ type BatchTableConfig struct {
 	CreateExtraCols []string
 	CreateExtraVals []any
 
-	TenantScoped     bool
+	TenantScoped       bool
 	TenantFilterColumn string
 
 	CreateWithStatus bool

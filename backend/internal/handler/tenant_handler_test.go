@@ -11,7 +11,7 @@ import (
 )
 
 type createTenantResp struct {
-	Tenant    domain.Tenant `json:"tenant"`
+	Tenant domain.Tenant `json:"tenant"`
 }
 
 func cleanupTenant(ctx context.Context, t *testing.T, env *testhelper.TestEnv, tenantID string) {
@@ -275,14 +275,13 @@ func TestTenant_AdminCreate_CreatesSubscription(t *testing.T) {
 	}
 }
 
-
 type tenantAdminResp struct {
-	ID            string `json:"id"`
-	TenantID      string `json:"tenantId"`
-	Username      string `json:"username"`
-	LoginName     string `json:"loginName"`
-	Name          string `json:"name"`
-	Status        string `json:"status"`
+	ID          string `json:"id"`
+	TenantID    string `json:"tenantId"`
+	Username    string `json:"username"`
+	LoginName   string `json:"loginName"`
+	Name        string `json:"name"`
+	Status      string `json:"status"`
 	NewPassword string `json:"newPassword"`
 }
 
@@ -324,7 +323,7 @@ func TestTenantAdmin_CRUD(t *testing.T) {
 		t.Fatalf("preview password: %d %s", wp.Code, testhelper.ErrMsg(wp))
 	}
 	var preview struct {
-		ID            string `json:"id"`
+		ID          string `json:"id"`
 		NewPassword string `json:"newPassword"`
 	}
 	if err := json.Unmarshal(wp.Body.Bytes(), &preview); err != nil {
@@ -346,7 +345,7 @@ func TestTenantAdmin_CRUD(t *testing.T) {
 	// Create a new school admin.
 	wc2 := env.DoNoAuth("POST", "/api/v1/admin/tenants/"+created.ID+"/admins", map[string]string{
 		"username": "extra-admin",
-		"name":    "额外管理员",
+		"name":     "额外管理员",
 	})
 	if wc2.Code != http.StatusCreated {
 		t.Fatalf("create admin: %d %s", wc2.Code, testhelper.ErrMsg(wc2))
@@ -359,7 +358,7 @@ func TestTenantAdmin_CRUD(t *testing.T) {
 	// Update the new admin.
 	wu := env.DoNoAuth("PUT", "/api/v1/admin/tenants/"+created.ID+"/admins/"+newAdmin.ID, map[string]string{
 		"username": "extra-admin-renamed",
-		"name":    "已重命名管理员",
+		"name":     "已重命名管理员",
 	})
 	if wu.Code != http.StatusOK {
 		t.Fatalf("update admin: %d %s", wu.Code, testhelper.ErrMsg(wu))

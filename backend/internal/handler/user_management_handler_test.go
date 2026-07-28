@@ -41,11 +41,11 @@ func TestUser_Create(t *testing.T) {
 	roleID := createTestRole(t, env)
 
 	w := do("POST", "/api/v1/users", map[string]interface{}{
-		"tenantId":       testhelper.TestTenantID,
-		"username":       "newtestuser",
-		"password":       "testpass",
-		"name":           "Test User",
-		"roleId": roleID,
+		"tenantId": testhelper.TestTenantID,
+		"username": "newtestuser",
+		"password": "testpass",
+		"name":     "Test User",
+		"roleId":   roleID,
 	})
 	if w.Code != http.StatusCreated {
 		t.Fatalf("expected 201, got %d: %s", w.Code, testhelper.ErrMsg(w))
@@ -72,11 +72,11 @@ func TestUser_List(t *testing.T) {
 	roleID := createTestRole(t, env)
 
 	wc := do("POST", "/api/v1/users", map[string]interface{}{
-		"tenantId":       testhelper.TestTenantID,
-		"username":       "listuser",
-		"password":       "testpass",
-		"name":           "List User",
-		"roleId": roleID,
+		"tenantId": testhelper.TestTenantID,
+		"username": "listuser",
+		"password": "testpass",
+		"name":     "List User",
+		"roleId":   roleID,
 	})
 	if wc.Code != http.StatusCreated {
 		t.Fatalf("create: %d %s", wc.Code, testhelper.ErrMsg(wc))
@@ -109,11 +109,11 @@ func TestUser_Get(t *testing.T) {
 	roleID := createTestRole(t, env)
 
 	wc := do("POST", "/api/v1/users", map[string]interface{}{
-		"tenantId":       testhelper.TestTenantID,
-		"username":       "getuser",
-		"password":       "testpass",
-		"name":           "Get User",
-		"roleId": roleID,
+		"tenantId": testhelper.TestTenantID,
+		"username": "getuser",
+		"password": "testpass",
+		"name":     "Get User",
+		"roleId":   roleID,
 	})
 	if wc.Code != http.StatusCreated {
 		t.Fatalf("create: %d %s", wc.Code, testhelper.ErrMsg(wc))
@@ -146,11 +146,11 @@ func TestUser_Update(t *testing.T) {
 	roleID := createTestRole(t, env)
 
 	wc := do("POST", "/api/v1/users", map[string]interface{}{
-		"tenantId":       testhelper.TestTenantID,
-		"username":       "updateuser",
-		"password":       "testpass",
-		"name":           "Old Name",
-		"roleId": roleID,
+		"tenantId": testhelper.TestTenantID,
+		"username": "updateuser",
+		"password": "testpass",
+		"name":     "Old Name",
+		"roleId":   roleID,
 	})
 	if wc.Code != http.StatusCreated {
 		t.Fatalf("create: %d %s", wc.Code, testhelper.ErrMsg(wc))
@@ -186,11 +186,11 @@ func TestUser_Delete(t *testing.T) {
 	roleID := createTestRole(t, env)
 
 	wc := do("POST", "/api/v1/users", map[string]interface{}{
-		"tenantId":       testhelper.TestTenantID,
-		"username":       "deleteuser",
-		"password":       "testpass",
-		"name":           "Delete User",
-		"roleId": roleID,
+		"tenantId": testhelper.TestTenantID,
+		"username": "deleteuser",
+		"password": "testpass",
+		"name":     "Delete User",
+		"roleId":   roleID,
 	})
 	if wc.Code != http.StatusCreated {
 		t.Fatalf("create: %d %s", wc.Code, testhelper.ErrMsg(wc))
@@ -222,11 +222,11 @@ func TestUser_UpdateStatus(t *testing.T) {
 	roleID := createTestRole(t, env)
 
 	wc := do("POST", "/api/v1/users", map[string]interface{}{
-		"tenantId":       testhelper.TestTenantID,
-		"username":       "statususer",
-		"password":       "testpass",
-		"name":           "Status User",
-		"roleId": roleID,
+		"tenantId": testhelper.TestTenantID,
+		"username": "statususer",
+		"password": "testpass",
+		"name":     "Status User",
+		"roleId":   roleID,
 	})
 	if wc.Code != http.StatusCreated {
 		t.Fatalf("create: %d %s", wc.Code, testhelper.ErrMsg(wc))
@@ -263,18 +263,18 @@ func TestUser_BatchCreate(t *testing.T) {
 	w := do("POST", "/api/v1/users/batch", map[string]interface{}{
 		"users": []map[string]interface{}{
 			{
-				"tenantId":       testhelper.TestTenantID,
-				"username":       "batchuser1",
-				"password":       "testpass",
-				"name":           "Batch User 1",
-				"roleId": roleID,
+				"tenantId": testhelper.TestTenantID,
+				"username": "batchuser1",
+				"password": "testpass",
+				"name":     "Batch User 1",
+				"roleId":   roleID,
 			},
 			{
-				"tenantId":       testhelper.TestTenantID,
-				"username":       "batchuser2",
-				"password":       "testpass",
-				"name":           "Batch User 2",
-				"roleId": roleID,
+				"tenantId": testhelper.TestTenantID,
+				"username": "batchuser2",
+				"password": "testpass",
+				"name":     "Batch User 2",
+				"roleId":   roleID,
 			},
 		},
 	})

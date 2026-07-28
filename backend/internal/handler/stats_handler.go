@@ -34,9 +34,9 @@ func (h *StatsHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 
 func (h *StatsHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]float64{
-		"platformFeeRate":    0.15,
+		"platformFeeRate":     0.15,
 		"minWithdrawalAmount": 100,
-		"creditHoursRatio":   16,
+		"creditHoursRatio":    16,
 	})
 }
 

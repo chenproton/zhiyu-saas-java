@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -23,24 +23,24 @@ type ScenarioTaskListResponse struct {
 }
 
 type CreateScenarioTaskRequest struct {
-	ScenarioID          string           `json:"scenarioId"`
-	Name                string           `json:"name"`
-	Code                string           `json:"code"`
-	SortOrder           int              `json:"sortOrder"`
-	Description         *string          `json:"description"`
-	DetailedDescription *string          `json:"detailedDescription"`
-	DescriptionPdf      *string          `json:"descriptionPdf"`
-	EstimatedHours      float64          `json:"estimatedHours"`
-	TaskType            string           `json:"taskType"`
-	Difficulty          int              `json:"difficulty"`
-	Background          *string          `json:"background"`
-	DependencyIDs       []string         `json:"dependencyIds"`
-	IsReferenced        bool             `json:"isReferenced"`
-	SourceScenarioID    *string          `json:"sourceScenarioId"`
-	KnowledgePointIDs   []string         `json:"knowledgePointIds"`
-	AbilityPointIDs     []string         `json:"abilityPointIds"`
-	ResourceIDs         []string         `json:"resourceIds"`
-	EvalData            domain.JSONMap   `json:"evalData"`
+	ScenarioID          string         `json:"scenarioId"`
+	Name                string         `json:"name"`
+	Code                string         `json:"code"`
+	SortOrder           int            `json:"sortOrder"`
+	Description         *string        `json:"description"`
+	DetailedDescription *string        `json:"detailedDescription"`
+	DescriptionPdf      *string        `json:"descriptionPdf"`
+	EstimatedHours      float64        `json:"estimatedHours"`
+	TaskType            string         `json:"taskType"`
+	Difficulty          int            `json:"difficulty"`
+	Background          *string        `json:"background"`
+	DependencyIDs       []string       `json:"dependencyIds"`
+	IsReferenced        bool           `json:"isReferenced"`
+	SourceScenarioID    *string        `json:"sourceScenarioId"`
+	KnowledgePointIDs   []string       `json:"knowledgePointIds"`
+	AbilityPointIDs     []string       `json:"abilityPointIds"`
+	ResourceIDs         []string       `json:"resourceIds"`
+	EvalData            domain.JSONMap `json:"evalData"`
 }
 
 type ReorderScenarioTasksRequest struct {

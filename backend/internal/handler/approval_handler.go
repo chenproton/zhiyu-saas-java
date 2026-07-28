@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -158,7 +158,7 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !h.isUserApproverForStep(&record, user.UserID) {
+	if !h.isUserApproverForStep(r.Context(), &record, user.UserID) {
 		respondError(w, http.StatusForbidden, "无权评审此步骤")
 		return
 	}
@@ -244,11 +244,11 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, record)
 }
 
-func (h *ApprovalHandler) isUserApproverForStep(record *domain.ApprovalRecord, userID string) bool {
+func (h *ApprovalHandler) isUserApproverForStep(ctx context.Context, record *domain.ApprovalRecord, userID string) bool {
 	if record.WorkflowID == nil {
 		return true
 	}
-	wf, err := h.fetchWorkflow(context.Background(), *record.WorkflowID)
+	wf, err := h.fetchWorkflow(ctx, *record.WorkflowID)
 	if err != nil || len(wf.Steps) == 0 || record.CurrentStepIdx >= len(wf.Steps) {
 		return true
 	}

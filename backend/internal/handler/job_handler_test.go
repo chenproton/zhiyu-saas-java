@@ -234,17 +234,17 @@ func TestPosition_SaveFull(t *testing.T) {
 
 	t.Run("SaveFull", func(t *testing.T) {
 		body := map[string]interface{}{
-			"batchId":      "",
-			"name":         "Updated Full Position",
-			"shortName":    "Updated",
-			"industry":     "",
-			"majors":       []string{},
-			"positionType": "enterprise",
-			"salaryRange":  [2]int{5000, 10000},
-			"description":  "updated description",
-			"requirements": []string{"req1", "req2"},
-			"careerPath":   "updated path",
-			"version":      "v1.0",
+			"batchId":       "",
+			"name":          "Updated Full Position",
+			"shortName":     "Updated",
+			"industry":      "",
+			"majors":        []string{},
+			"positionType":  "enterprise",
+			"salaryRange":   [2]int{5000, 10000},
+			"description":   "updated description",
+			"requirements":  []string{"req1", "req2"},
+			"careerPath":    "updated path",
+			"version":       "v1.0",
 			"collaborators": []string{},
 			"responsibilities": []map[string]interface{}{
 				{"id": "resp-1", "name": "Responsibility 1", "description": "desc 1"},
@@ -933,7 +933,6 @@ func TestLearnRoad_CRUD(t *testing.T) {
 		roadID = ""
 	})
 }
-
 
 func TestPosition_Clone(t *testing.T) {
 	env := testhelper.SetupTestEnv(t)

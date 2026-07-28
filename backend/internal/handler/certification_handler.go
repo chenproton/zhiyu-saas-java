@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -116,7 +116,10 @@ func (h *CertificationHandler) CreateRule(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	tenantID, ok := requireTenant(w, r); if !ok { return }
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	id := uuid.NewString()
 	_, err := h.DB.Exec(r.Context(), `
@@ -213,7 +216,10 @@ func (h *CertificationHandler) ConfigItems(w http.ResponseWriter, r *http.Reques
 			return
 		}
 
-		tenantID, ok := requireTenant(w, r); if !ok { return }
+		tenantID, ok := requireTenant(w, r)
+		if !ok {
+			return
+		}
 
 		id := uuid.NewString()
 		_, err := h.DB.Exec(r.Context(), `
@@ -276,7 +282,10 @@ func (h *CertificationHandler) ConfigPoints(w http.ResponseWriter, r *http.Reque
 			return
 		}
 
-		tenantID, ok := requireTenant(w, r); if !ok { return }
+		tenantID, ok := requireTenant(w, r)
+		if !ok {
+			return
+		}
 
 		id := uuid.NewString()
 		if req.CustomLevelMapping == nil {
@@ -389,21 +398,21 @@ func (h *CertificationHandler) scanRuleRows(rows pgx.Rows) ([]domain.Certificati
 }
 
 type CertificationFullItem struct {
-	ID          string                    `json:"id"`
-	Name        string                    `json:"name"`
-	SortOrder   int                       `json:"sortOrder"`
-	AbilityName string                    `json:"abilityName,omitempty"`
-	Points      []CertificationFullPoint  `json:"points"`
+	ID          string                   `json:"id"`
+	Name        string                   `json:"name"`
+	SortOrder   int                      `json:"sortOrder"`
+	AbilityName string                   `json:"abilityName,omitempty"`
+	Points      []CertificationFullPoint `json:"points"`
 }
 
 type CertificationFullPoint struct {
-	ID                 string                      `json:"id"`
-	Name               string                      `json:"name"`
-	Description        string                      `json:"description"`
-	MappingType        string                      `json:"mappingType"`
-	CustomLevelMapping domain.JSONSlice            `json:"customLevelMapping,omitempty"`
-	RequiredLevel      string                      `json:"requiredLevel"`
-	Weight             float64                     `json:"weight"`
+	ID                 string                            `json:"id"`
+	Name               string                            `json:"name"`
+	Description        string                            `json:"description"`
+	MappingType        string                            `json:"mappingType"`
+	CustomLevelMapping domain.JSONSlice                  `json:"customLevelMapping,omitempty"`
+	RequiredLevel      string                            `json:"requiredLevel"`
+	Weight             float64                           `json:"weight"`
 	Tasks              []domain.CertificationRelatedTask `json:"tasks,omitempty"`
 }
 

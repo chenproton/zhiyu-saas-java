@@ -14,10 +14,10 @@ const testSecret = "test-jwt-secret-auth-test"
 
 func TestGenerateToken(t *testing.T) {
 	user := &domain.User{
-		ID:        "user-001",
-		Username:  "testuser",
-		Role:      domain.UserRoleOperator,
-		TenantID:  strPtr("tenant-001"),
+		ID:       "user-001",
+		Username: "testuser",
+		Role:     domain.UserRoleOperator,
+		TenantID: strPtr("tenant-001"),
 	}
 
 	token, err := middleware.GenerateToken(testSecret, middleware.TokenInput{User: user})
@@ -54,10 +54,10 @@ func TestGenerateToken(t *testing.T) {
 
 func TestJWT_ValidToken(t *testing.T) {
 	user := &domain.User{
-		ID:        "user-002",
-		Username:  "validuser",
-		Role:      domain.UserRoleOperator,
-		TenantID:  strPtr("tenant-002"),
+		ID:       "user-002",
+		Username: "validuser",
+		Role:     domain.UserRoleOperator,
+		TenantID: strPtr("tenant-002"),
 	}
 
 	tokenStr, err := middleware.GenerateToken(testSecret, middleware.TokenInput{User: user})

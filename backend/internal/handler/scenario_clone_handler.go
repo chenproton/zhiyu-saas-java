@@ -103,20 +103,20 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	taskIDMap := make(map[string]string)
 
 	type taskRow struct {
-		oldID, name, code           string
-		sortOrder                   int
-		description                 *string
-		detailedDescription         *string
-		descriptionPdf              *string
-		estimatedHours              float64
-		taskType                    string
-		difficulty                  int
-		background                  *string
-		dependencyIDs               []string
-		knowledgePointIDs           []string
-		abilityPointIDs             []string
-		resourceIDs                 []string
-		evalData                    []byte
+		oldID, name, code   string
+		sortOrder           int
+		description         *string
+		detailedDescription *string
+		descriptionPdf      *string
+		estimatedHours      float64
+		taskType            string
+		difficulty          int
+		background          *string
+		dependencyIDs       []string
+		knowledgePointIDs   []string
+		abilityPointIDs     []string
+		resourceIDs         []string
+		evalData            []byte
 	}
 
 	var taskData []taskRow
@@ -286,10 +286,10 @@ func (h *ScenarioCloneHandler) cloneTaskDeliverables(ctx context.Context, tx pgx
 	}
 
 	type deliverableRow struct {
-		typ, name       string
-		description     *string
-		evalPoints      []byte
-		sortOrder       int
+		typ, name   string
+		description *string
+		evalPoints  []byte
+		sortOrder   int
 	}
 	var data []deliverableRow
 	for rows.Next() {
@@ -384,13 +384,13 @@ func (h *ScenarioCloneHandler) cloneTaskEvalPoints(ctx context.Context, tx pgx.T
 	}
 
 	type pointRow struct {
-		name, scoringMethod          string
-		description, subType         *string
-		types                        []string
-		weight                       float64
-		gradeMapping                 []byte
+		name, scoringMethod                string
+		description, subType               *string
+		types                              []string
+		weight                             float64
+		gradeMapping                       []byte
 		knowledgePointIDs, abilityPointIDs []string
-		sortOrder                    int
+		sortOrder                          int
 	}
 	var data []pointRow
 	for rows.Next() {

@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -20,7 +20,7 @@ type CertificateLibraryHandler struct {
 
 type CertificateLibraryListResponse struct {
 	Items []domain.CertificateLibraryItem `json:"items"`
-	Total int                              `json:"total"`
+	Total int                             `json:"total"`
 }
 
 type CreateCertificateLibraryRequest struct {

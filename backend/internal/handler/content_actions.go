@@ -36,6 +36,32 @@ type contentActions struct {
 	fetch      func(ctx context.Context, id string) (interface{}, error)
 }
 
+// allowedContentTables lists the tables that may be used by contentActions.
+var allowedContentTables = []string{"career_positions", "courses", "exams", "question_banks", "scenarios"}
+
+// allowedInviteColumns lists the columns that may be updated by invite().
+var allowedInviteColumns = []string{"collaborator_ids", "co_builder_ids", "co_creator_ids", "collaborators"}
+
+// tableFor returns the sanitized table name for contentActions queries.
+func (c contentActions) tableFor(w http.ResponseWriter) (string, bool) {
+	table, err := sanitizeIdentifier(c.table, allowedContentTables)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "invalid table configuration")
+		return "", false
+	}
+	return table, true
+}
+
+// inviteColFor returns the sanitized invite column name for invite().
+func (c contentActions) inviteColFor(w http.ResponseWriter) (string, bool) {
+	col, err := sanitizeIdentifier(c.inviteCol, allowedInviteColumns)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "invalid invite column configuration")
+		return "", false
+	}
+	return col, true
+}
+
 // allowedStatusTransitions 定义内容实体允许的状态流转。
 // key 为当前状态，value 为可进入的目标状态集合。
 var allowedStatusTransitions = map[domain.ContentStatus][]domain.ContentStatus{
@@ -61,8 +87,12 @@ func (c contentActions) checkTenantAccess(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusNotFound, c.entityName+"不存在")
 		return false
 	}
+	table, ok := c.tableFor(w)
+	if !ok {
+		return false
+	}
 	var entityTenantID string
-	err := c.db.QueryRow(r.Context(), `SELECT tenant_id FROM `+c.table+` WHERE id = $1`, id).Scan(&entityTenantID)
+	err := c.db.QueryRow(r.Context(), `SELECT tenant_id FROM `+table+` WHERE id = $1`, id).Scan(&entityTenantID)
 	if err == pgx.ErrNoRows {
 		respondError(w, http.StatusNotFound, c.entityName+"不存在")
 		return false
@@ -87,9 +117,13 @@ func (c contentActions) transition(w http.ResponseWriter, r *http.Request, statu
 	if !c.checkTenantAccess(w, r, id) {
 		return
 	}
+	table, ok := c.tableFor(w)
+	if !ok {
+		return
+	}
 
 	var current domain.ContentStatus
-	err := c.db.QueryRow(r.Context(), `SELECT status FROM `+c.table+` WHERE id = $1`, id).Scan(&current)
+	err := c.db.QueryRow(r.Context(), `SELECT status FROM `+table+` WHERE id = $1`, id).Scan(&current)
 	if err == pgx.ErrNoRows {
 		respondError(w, http.StatusNotFound, c.entityName+"不存在")
 		return
@@ -111,7 +145,7 @@ func (c contentActions) transition(w http.ResponseWriter, r *http.Request, statu
 	}
 	defer tx.Rollback(r.Context())
 
-	if _, err := tx.Exec(r.Context(), `UPDATE `+c.table+` SET status = $1, updated_at = NOW() WHERE id = $2`, status, id); err != nil {
+	if _, err := tx.Exec(r.Context(), `UPDATE `+table+` SET status = $1, updated_at = NOW() WHERE id = $2`, status, id); err != nil {
 		respondError(w, http.StatusInternalServerError, "更新status失败")
 		return
 	}
@@ -167,8 +201,12 @@ func (c contentActions) review(w http.ResponseWriter, r *http.Request) {
 	if !c.checkTenantAccess(w, r, id) {
 		return
 	}
+	table, ok := c.tableFor(w)
+	if !ok {
+		return
+	}
 
-	tag, err := c.db.Exec(r.Context(), `UPDATE `+c.table+` SET status = $1, updated_at = NOW() WHERE id = $2 AND status = $3`, status, id, domain.StatusPending)
+	tag, err := c.db.Exec(r.Context(), `UPDATE `+table+` SET status = $1, updated_at = NOW() WHERE id = $2 AND status = $3`, status, id, domain.StatusPending)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "审核"+c.entityName+"失败")
 		return
@@ -191,14 +229,22 @@ func (c contentActions) invite(w http.ResponseWriter, r *http.Request) {
 	if !c.checkTenantAccess(w, r, id) {
 		return
 	}
+	table, ok := c.tableFor(w)
+	if !ok {
+		return
+	}
+	inviteCol, ok := c.inviteColFor(w)
+	if !ok {
+		return
+	}
 	var req InviteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == "" {
 		respondError(w, http.StatusBadRequest, "缺少用户ID")
 		return
 	}
 	if _, err := c.db.Exec(r.Context(), `
-		UPDATE `+c.table+` SET `+c.inviteCol+` = array_append(`+c.inviteCol+`, $1), updated_at = NOW()
-		WHERE id = $2 AND NOT (`+c.inviteCol+` @> ARRAY[$1]::uuid[])
+		UPDATE `+table+` SET `+inviteCol+` = array_append(`+inviteCol+`, $1), updated_at = NOW()
+		WHERE id = $2 AND NOT (`+inviteCol+` @> ARRAY[$1]::uuid[])
 	`, req.UserID, id); err != nil {
 		respondError(w, http.StatusInternalServerError, "邀请协作者失败")
 		return

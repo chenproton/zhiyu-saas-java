@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -191,8 +191,7 @@ func (h *UserManagementHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.createSingleUser(r.Context(), req)
 	if err != nil {
-		slog.Info(fmt.Sprintf("ERROR createSingleUser: %v, req: tenantId=%s roleId=%v username=%s platform=%s",
-			err, req.TenantID, req.RoleID, req.Username, req.Platform))
+		slog.Error("createSingleUser failed", "error", err, "tenantId", req.TenantID, "roleId", req.RoleID, "username", req.Username, "platform", req.Platform)
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
 			return
@@ -752,7 +751,7 @@ func (h *UserManagementHandler) createSingleUserInTx(ctx context.Context, tx pgx
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		slog.Info(fmt.Sprintf("ERROR bcrypt in createSingleUserInTx: %v", err))
+		slog.Error("bcrypt in createSingleUserInTx failed", "error", err)
 		return domain.User{}, err
 	}
 
@@ -777,8 +776,7 @@ func (h *UserManagementHandler) createSingleUserInTx(ctx context.Context, tx pgx
 		role, platform, globalLoginName, rawLoginName, string(hash), req.Name, req.Email, req.Phone, req.AvatarURL,
 		req.StudentNo, req.WorkID, req.IDCard, coalesceStringSlice(req.TitleIDs), domain.JSONMap{})
 	if err != nil {
-		slog.Info(fmt.Sprintf("ERROR INSERT users in createSingleUserInTx: %v, tenantId=%s roleId=%v username=%s",
-			err, req.TenantID, req.RoleID, req.Username))
+		slog.Error("INSERT users in createSingleUserInTx failed", "error", err, "tenantId", req.TenantID, "roleId", req.RoleID, "username", req.Username)
 		return domain.User{}, err
 	}
 

@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -25,28 +25,28 @@ type CourseNodeListResponse struct {
 
 // SystemCourseNodeResponse 是前端编辑页需要的完整节点模型。
 type SystemCourseNodeResponse struct {
-	ID                 string                           `json:"id"`
-	CourseID           string                           `json:"courseId"`
-	ParentID           *string                          `json:"parentId,omitempty"`
-	Name               string                           `json:"name"`
-	Code               *string                          `json:"code,omitempty"`
-	Order              int                              `json:"order"`
-	Type               string                           `json:"type"`
-	SourceID           *string                          `json:"sourceId,omitempty"`
-	SourceName         *string                          `json:"sourceName,omitempty"`
-	TeachingGoals      *string                          `json:"teachingGoals,omitempty"`
-	DetailedDescription *string                         `json:"detailedDescription,omitempty"`
-	DescriptionPdf     *string                          `json:"descriptionPdf,omitempty"`
-	Background         *string                          `json:"background,omitempty"`
-	EstimatedHours     *float64                         `json:"estimatedHours,omitempty"`
-	Duration           *float64                         `json:"duration,omitempty"`
-	Difficulty         *int                             `json:"difficulty,omitempty"`
-	KnowledgePoints    []SystemCourseNodeKnowledgePoint `json:"knowledgePoints,omitempty"`
-	Resources          []SystemCourseNodeResource       `json:"resources,omitempty"`
-	Quizzes            []domain.NodeQuiz                `json:"quizzes,omitempty"`
-	Homeworks          []domain.NodeHomework            `json:"homeworks,omitempty"`
-	EvalData           domain.JSONMap                   `json:"evalData,omitempty"`
-	Status             string                           `json:"status"`
+	ID                  string                           `json:"id"`
+	CourseID            string                           `json:"courseId"`
+	ParentID            *string                          `json:"parentId,omitempty"`
+	Name                string                           `json:"name"`
+	Code                *string                          `json:"code,omitempty"`
+	Order               int                              `json:"order"`
+	Type                string                           `json:"type"`
+	SourceID            *string                          `json:"sourceId,omitempty"`
+	SourceName          *string                          `json:"sourceName,omitempty"`
+	TeachingGoals       *string                          `json:"teachingGoals,omitempty"`
+	DetailedDescription *string                          `json:"detailedDescription,omitempty"`
+	DescriptionPdf      *string                          `json:"descriptionPdf,omitempty"`
+	Background          *string                          `json:"background,omitempty"`
+	EstimatedHours      *float64                         `json:"estimatedHours,omitempty"`
+	Duration            *float64                         `json:"duration,omitempty"`
+	Difficulty          *int                             `json:"difficulty,omitempty"`
+	KnowledgePoints     []SystemCourseNodeKnowledgePoint `json:"knowledgePoints,omitempty"`
+	Resources           []SystemCourseNodeResource       `json:"resources,omitempty"`
+	Quizzes             []domain.NodeQuiz                `json:"quizzes,omitempty"`
+	Homeworks           []domain.NodeHomework            `json:"homeworks,omitempty"`
+	EvalData            domain.JSONMap                   `json:"evalData,omitempty"`
+	Status              string                           `json:"status"`
 }
 
 type SystemCourseNodeKnowledgePoint struct {
@@ -66,45 +66,45 @@ type SystemCourseNodeResource struct {
 }
 
 type CreateCourseNodeRequest struct {
-	CourseID           string           `json:"courseId"`
-	ParentID           *string          `json:"parentId"`
-	Name               string           `json:"name"`
-	Code               *string          `json:"code"`
-	SortOrder          int              `json:"sortOrder"`
-	RefType            string           `json:"refType"`
-	SourceID           *string          `json:"sourceId"`
-	SourceName         *string          `json:"sourceName"`
-	TeachingGoals      *string          `json:"teachingGoals"`
-	DetailedDescription *string         `json:"detailedDescription"`
-	DescriptionPdf     *string          `json:"descriptionPdf"`
-	Background         *string          `json:"background"`
-	EstimatedHours     *float64         `json:"estimatedHours"`
-	Duration           *float64         `json:"duration"`
-	Difficulty         *int             `json:"difficulty"`
-	KnowledgePointIds  domain.JSONSlice `json:"knowledgePointIds"`
-	ResourceIds        domain.JSONSlice `json:"resourceIds"`
-	EvalData           domain.JSONMap   `json:"evalData"`
-	Status             string           `json:"status"`
+	CourseID            string           `json:"courseId"`
+	ParentID            *string          `json:"parentId"`
+	Name                string           `json:"name"`
+	Code                *string          `json:"code"`
+	SortOrder           int              `json:"sortOrder"`
+	RefType             string           `json:"refType"`
+	SourceID            *string          `json:"sourceId"`
+	SourceName          *string          `json:"sourceName"`
+	TeachingGoals       *string          `json:"teachingGoals"`
+	DetailedDescription *string          `json:"detailedDescription"`
+	DescriptionPdf      *string          `json:"descriptionPdf"`
+	Background          *string          `json:"background"`
+	EstimatedHours      *float64         `json:"estimatedHours"`
+	Duration            *float64         `json:"duration"`
+	Difficulty          *int             `json:"difficulty"`
+	KnowledgePointIds   domain.JSONSlice `json:"knowledgePointIds"`
+	ResourceIds         domain.JSONSlice `json:"resourceIds"`
+	EvalData            domain.JSONMap   `json:"evalData"`
+	Status              string           `json:"status"`
 }
 
 type UpdateCourseNodeRequest struct {
-	Name               string           `json:"name"`
-	Code               *string          `json:"code"`
-	SortOrder          int              `json:"sortOrder"`
-	RefType            string           `json:"refType"`
-	SourceID           *string          `json:"sourceId"`
-	SourceName         *string          `json:"sourceName"`
-	TeachingGoals      *string          `json:"teachingGoals"`
-	DetailedDescription *string         `json:"detailedDescription"`
-	DescriptionPdf     *string          `json:"descriptionPdf"`
-	Background         *string          `json:"background"`
-	EstimatedHours     *float64         `json:"estimatedHours"`
-	Duration           *float64         `json:"duration"`
-	Difficulty         *int             `json:"difficulty"`
-	KnowledgePointIds  domain.JSONSlice `json:"knowledgePointIds"`
-	ResourceIds        domain.JSONSlice `json:"resourceIds"`
-	EvalData           domain.JSONMap   `json:"evalData"`
-	Status             string           `json:"status"`
+	Name                string           `json:"name"`
+	Code                *string          `json:"code"`
+	SortOrder           int              `json:"sortOrder"`
+	RefType             string           `json:"refType"`
+	SourceID            *string          `json:"sourceId"`
+	SourceName          *string          `json:"sourceName"`
+	TeachingGoals       *string          `json:"teachingGoals"`
+	DetailedDescription *string          `json:"detailedDescription"`
+	DescriptionPdf      *string          `json:"descriptionPdf"`
+	Background          *string          `json:"background"`
+	EstimatedHours      *float64         `json:"estimatedHours"`
+	Duration            *float64         `json:"duration"`
+	Difficulty          *int             `json:"difficulty"`
+	KnowledgePointIds   domain.JSONSlice `json:"knowledgePointIds"`
+	ResourceIds         domain.JSONSlice `json:"resourceIds"`
+	EvalData            domain.JSONMap   `json:"evalData"`
+	Status              string           `json:"status"`
 }
 
 type ReorderCourseNodesRequest struct {
@@ -113,26 +113,26 @@ type ReorderCourseNodesRequest struct {
 }
 
 type courseNodeBase struct {
-	ID                 string
-	CourseID           string
-	ParentID           *string
-	Name               string
-	Code               *string
-	SortOrder          int
-	RefType            string
-	SourceID           *string
-	SourceName         *string
-	TeachingGoals      *string
+	ID                  string
+	CourseID            string
+	ParentID            *string
+	Name                string
+	Code                *string
+	SortOrder           int
+	RefType             string
+	SourceID            *string
+	SourceName          *string
+	TeachingGoals       *string
 	DetailedDescription *string
-	DescriptionPdf     *string
-	Background         *string
-	EstimatedHours     *float64
-	Duration           *float64
-	Difficulty         *int
-	KnowledgePointIds  []string
-	ResourceIds        []string
-	EvalData           domain.JSONMap
-	Status             string
+	DescriptionPdf      *string
+	Background          *string
+	EstimatedHours      *float64
+	Duration            *float64
+	Difficulty          *int
+	KnowledgePointIds   []string
+	ResourceIds         []string
+	EvalData            domain.JSONMap
+	Status              string
 }
 
 func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -436,24 +436,24 @@ func (h *CourseNodeHandler) enrichCourseNodes(ctx context.Context, bases []cours
 	nodeIDs := make([]string, 0, len(bases))
 	for i, b := range bases {
 		items[i] = SystemCourseNodeResponse{
-			ID:                 b.ID,
-			CourseID:           b.CourseID,
-			ParentID:           b.ParentID,
-			Name:               b.Name,
-			Code:               b.Code,
-			Order:              b.SortOrder,
-			Type:               b.RefType,
-			SourceID:           b.SourceID,
-			SourceName:         b.SourceName,
-			TeachingGoals:      b.TeachingGoals,
+			ID:                  b.ID,
+			CourseID:            b.CourseID,
+			ParentID:            b.ParentID,
+			Name:                b.Name,
+			Code:                b.Code,
+			Order:               b.SortOrder,
+			Type:                b.RefType,
+			SourceID:            b.SourceID,
+			SourceName:          b.SourceName,
+			TeachingGoals:       b.TeachingGoals,
 			DetailedDescription: b.DetailedDescription,
-			DescriptionPdf:     b.DescriptionPdf,
-			Background:         b.Background,
-			EstimatedHours:     b.EstimatedHours,
-			Duration:           b.Duration,
-			Difficulty:         b.Difficulty,
-			EvalData:           b.EvalData,
-			Status:             b.Status,
+			DescriptionPdf:      b.DescriptionPdf,
+			Background:          b.Background,
+			EstimatedHours:      b.EstimatedHours,
+			Duration:            b.Duration,
+			Difficulty:          b.Difficulty,
+			EvalData:            b.EvalData,
+			Status:              b.Status,
 		}
 		nodeIndex[b.ID] = i
 		nodeIDs = append(nodeIDs, b.ID)

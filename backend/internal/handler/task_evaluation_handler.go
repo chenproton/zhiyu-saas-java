@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -33,16 +33,16 @@ type SaveTaskEvaluationMethodsRequest struct {
 }
 
 type TaskEvaluationMethodInput struct {
-	MethodKey        string          `json:"methodKey"`
-	Weight           float64         `json:"weight"`
-	EvalObject       string          `json:"evalObject"`
-	ScoreType        *string         `json:"scoreType,omitempty"`
-	EvalSubjects     json.RawMessage `json:"evalSubjects"`
-	RubricTemplateID *string         `json:"rubricTemplateId,omitempty"`
-	ResourceConfig   json.RawMessage `json:"resourceConfig,omitempty"`
-	Version          int             `json:"version"`
-	IsEnabled        bool            `json:"isEnabled"`
-	EvalPoints       []EvalPointInput `json:"evalPoints,omitempty"`
+	MethodKey        string            `json:"methodKey"`
+	Weight           float64           `json:"weight"`
+	EvalObject       string            `json:"evalObject"`
+	ScoreType        *string           `json:"scoreType,omitempty"`
+	EvalSubjects     json.RawMessage   `json:"evalSubjects"`
+	RubricTemplateID *string           `json:"rubricTemplateId,omitempty"`
+	ResourceConfig   json.RawMessage   `json:"resourceConfig,omitempty"`
+	Version          int               `json:"version"`
+	IsEnabled        bool              `json:"isEnabled"`
+	EvalPoints       []EvalPointInput  `json:"evalPoints,omitempty"`
 	ReviewSteps      []ReviewStepInput `json:"reviewSteps,omitempty"`
 }
 
@@ -251,7 +251,7 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 
 type RubricTemplateListResponse struct {
 	Items []domain.RubricTemplate `json:"items"`
-	Total int                      `json:"total"`
+	Total int                     `json:"total"`
 }
 
 type RubricTemplateInput struct {
@@ -658,13 +658,13 @@ func (h *TaskEvaluationHandler) ensureExamQuestions(ctx context.Context, tx pgx.
 	defer rows.Close()
 
 	type q struct {
-		id      string
-		qType   string
-		content string
-		options []byte
-		answer  []byte
+		id       string
+		qType    string
+		content  string
+		options  []byte
+		answer   []byte
 		analysis *string
-		score   float64
+		score    float64
 	}
 	var questions []q
 	for rows.Next() {

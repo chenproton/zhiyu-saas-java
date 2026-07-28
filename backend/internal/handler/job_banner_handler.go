@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -20,7 +20,7 @@ type JobBannerHandler struct {
 
 type JobBannerListResponse struct {
 	Items []domain.JobBannerConfig `json:"items"`
-	Total int               `json:"total"`
+	Total int                      `json:"total"`
 }
 
 type CreateJobBannerRequest struct {
@@ -28,7 +28,7 @@ type CreateJobBannerRequest struct {
 	ImageURL  string  `json:"imageUrl"`
 	LinkURL   *string `json:"linkUrl"`
 	SortOrder int     `json:"sortOrder"`
-	IsEnabled  bool    `json:"isEnabled"`
+	IsEnabled bool    `json:"isEnabled"`
 }
 
 type UpdateJobBannerRequest struct {
@@ -36,7 +36,7 @@ type UpdateJobBannerRequest struct {
 	ImageURL  string  `json:"imageUrl"`
 	LinkURL   *string `json:"linkUrl"`
 	SortOrder int     `json:"sortOrder"`
-	IsEnabled  bool    `json:"isEnabled"`
+	IsEnabled bool    `json:"isEnabled"`
 }
 
 func (h *JobBannerHandler) List(w http.ResponseWriter, r *http.Request) {

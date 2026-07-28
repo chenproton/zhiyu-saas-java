@@ -16,12 +16,12 @@ const (
 type ResourceStatus string
 
 const (
-	ResourceStatusDraft         ResourceStatus = "draft"
-	ResourceStatusReviewing     ResourceStatus = "reviewing"
-	ResourceStatusRejected      ResourceStatus = "rejected"
+	ResourceStatusDraft          ResourceStatus = "draft"
+	ResourceStatusReviewing      ResourceStatus = "reviewing"
+	ResourceStatusRejected       ResourceStatus = "rejected"
 	ResourceStatusPendingPublish ResourceStatus = "pending_publish"
-	ResourceStatusPublished     ResourceStatus = "published"
-	ResourceStatusOfflined      ResourceStatus = "offlined"
+	ResourceStatusPublished      ResourceStatus = "published"
+	ResourceStatusOfflined       ResourceStatus = "offlined"
 )
 
 type OrderStatus string
@@ -58,54 +58,54 @@ const (
 )
 
 type User struct {
-	ID             string       `json:"id"`
-	TenantID       *string      `json:"tenantId,omitempty"`
-	InstitutionID  *string      `json:"institutionId,omitempty"`
-	OrgNodeID      *string      `json:"orgNodeId,omitempty"`
-	MajorID        *string      `json:"majorId,omitempty"`
-	Role           UserRole     `json:"role"`
-	Platform       UserPlatform `json:"platform"`
-	RoleIDs        []string     `json:"roleIds,omitempty"`
-	RoleCodes      []string     `json:"roleCodes,omitempty"`
-	RoleNames      []string     `json:"roleNames,omitempty"`
-	LoginName      *string    `json:"loginName,omitempty"`
-	Username       string     `json:"username"`
-	PasswordHash   string     `json:"-"`
-	Name           string     `json:"name"`
-	Email          *string    `json:"email,omitempty"`
-	Phone          *string    `json:"phone,omitempty"`
-	AvatarURL      *string    `json:"avatarUrl,omitempty"`
-	StudentNo      *string    `json:"studentNo,omitempty"`
-	WorkID         *string    `json:"workId,omitempty"`
-	IDCard         *string    `json:"idCard,omitempty"`
-	TitleIDs       []string   `json:"titleIds,omitempty"`
-	Oauth          JSONMap    `json:"oauth,omitempty"`
-	Status         string     `json:"status"`
-	GraduateYear  *int       `json:"graduateYear,omitempty"`
-	LastLoginAt    *time.Time `json:"lastLoginAt,omitempty"`
-	CreatedAt      time.Time  `json:"createdAt"`
-	UpdatedAt      time.Time  `json:"updatedAt"`
+	ID            string       `json:"id"`
+	TenantID      *string      `json:"tenantId,omitempty"`
+	InstitutionID *string      `json:"institutionId,omitempty"`
+	OrgNodeID     *string      `json:"orgNodeId,omitempty"`
+	MajorID       *string      `json:"majorId,omitempty"`
+	Role          UserRole     `json:"role"`
+	Platform      UserPlatform `json:"platform"`
+	RoleIDs       []string     `json:"roleIds,omitempty"`
+	RoleCodes     []string     `json:"roleCodes,omitempty"`
+	RoleNames     []string     `json:"roleNames,omitempty"`
+	LoginName     *string      `json:"loginName,omitempty"`
+	Username      string       `json:"username"`
+	PasswordHash  string       `json:"-"`
+	Name          string       `json:"name"`
+	Email         *string      `json:"email,omitempty"`
+	Phone         *string      `json:"phone,omitempty"`
+	AvatarURL     *string      `json:"avatarUrl,omitempty"`
+	StudentNo     *string      `json:"studentNo,omitempty"`
+	WorkID        *string      `json:"workId,omitempty"`
+	IDCard        *string      `json:"idCard,omitempty"`
+	TitleIDs      []string     `json:"titleIds,omitempty"`
+	Oauth         JSONMap      `json:"oauth,omitempty"`
+	Status        string       `json:"status"`
+	GraduateYear  *int         `json:"graduateYear,omitempty"`
+	LastLoginAt   *time.Time   `json:"lastLoginAt,omitempty"`
+	CreatedAt     time.Time    `json:"createdAt"`
+	UpdatedAt     time.Time    `json:"updatedAt"`
 }
 
 type Institution struct {
-	ID              string            `json:"id"`
-	Type            InstitutionType   `json:"type"`
-	Name            string            `json:"name"`
-	CreditCode      string            `json:"creditCode"`
-	Logo            *string           `json:"logo,omitempty"`
-	Intro           string            `json:"intro"`
-	ContactName     string            `json:"contactName"`
-	ContactPhone    string            `json:"contactPhone"`
-	ContactEmail    string            `json:"contactEmail"`
-	QualificationFile *string         `json:"qualificationFile,omitempty"`
-	ExpertiseTags   []string          `json:"expertiseTags"`
-	Status          InstitutionStatus `json:"status"`
-	OrgCode         string            `json:"orgCode"`
-	Balance         float64           `json:"balance"`
-	TotalSpent      float64           `json:"totalSpent"`
-	TotalIncome     float64           `json:"totalIncome"`
-	CreatedAt       time.Time         `json:"createdAt"`
-	UpdatedAt       time.Time         `json:"updatedAt"`
+	ID                string            `json:"id"`
+	Type              InstitutionType   `json:"type"`
+	Name              string            `json:"name"`
+	CreditCode        string            `json:"creditCode"`
+	Logo              *string           `json:"logo,omitempty"`
+	Intro             string            `json:"intro"`
+	ContactName       string            `json:"contactName"`
+	ContactPhone      string            `json:"contactPhone"`
+	ContactEmail      string            `json:"contactEmail"`
+	QualificationFile *string           `json:"qualificationFile,omitempty"`
+	ExpertiseTags     []string          `json:"expertiseTags"`
+	Status            InstitutionStatus `json:"status"`
+	OrgCode           string            `json:"orgCode"`
+	Balance           float64           `json:"balance"`
+	TotalSpent        float64           `json:"totalSpent"`
+	TotalIncome       float64           `json:"totalIncome"`
+	CreatedAt         time.Time         `json:"createdAt"`
+	UpdatedAt         time.Time         `json:"updatedAt"`
 }
 
 type Resource struct {
@@ -129,10 +129,10 @@ type Resource struct {
 }
 
 type ResourceTag struct {
-	ID         string    `json:"id"`
-	ResourceID string    `json:"resourceId"`
-	TagType    string    `json:"tagType"`
-	TagValue   string    `json:"tagValue"`
+	ID         string `json:"id"`
+	ResourceID string `json:"resourceId"`
+	TagType    string `json:"tagType"`
+	TagValue   string `json:"tagValue"`
 }
 
 type Order struct {

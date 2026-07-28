@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -503,23 +503,23 @@ type FullPositionAbilityDomain struct {
 }
 
 type SaveFullPositionRequest struct {
-	BatchID        string                        `json:"batchId"`
-	Name           string                        `json:"name"`
-	ShortName      string                        `json:"shortName"`
-	Industry       string                        `json:"industry"`
-	Majors         []string                      `json:"majors"`
-	PositionType   string                        `json:"positionType"`
-	SalaryRange    [2]int                        `json:"salaryRange"`
-	CoverImage     *string                       `json:"coverImage"`
-	Description    *string                       `json:"description"`
-	Requirements   []string                      `json:"requirements"`
-	CareerPath     *string                       `json:"careerPath"`
-	Version        string                        `json:"version"`
-	Collaborators  []string                      `json:"collaborators"`
+	BatchID          string                       `json:"batchId"`
+	Name             string                       `json:"name"`
+	ShortName        string                       `json:"shortName"`
+	Industry         string                       `json:"industry"`
+	Majors           []string                     `json:"majors"`
+	PositionType     string                       `json:"positionType"`
+	SalaryRange      [2]int                       `json:"salaryRange"`
+	CoverImage       *string                      `json:"coverImage"`
+	Description      *string                      `json:"description"`
+	Requirements     []string                     `json:"requirements"`
+	CareerPath       *string                      `json:"careerPath"`
+	Version          string                       `json:"version"`
+	Collaborators    []string                     `json:"collaborators"`
 	Responsibilities []FullPositionResponsibility `json:"responsibilities"`
-	Certificates   []FullPositionCertificate     `json:"certificates"`
-	AbilityBindings []FullPositionAbilityBinding `json:"abilityBindings"`
-	AbilityDomains []FullPositionAbilityDomain   `json:"abilityDomains"`
+	Certificates     []FullPositionCertificate    `json:"certificates"`
+	AbilityBindings  []FullPositionAbilityBinding `json:"abilityBindings"`
+	AbilityDomains   []FullPositionAbilityDomain  `json:"abilityDomains"`
 }
 
 type SaveFullPositionResponse struct {

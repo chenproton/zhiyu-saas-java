@@ -82,11 +82,14 @@ func (h *ExamResultHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenantID, ok := requireTenant(w, r); if !ok { return }
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	result, err := h.submit(r.Context(), tenantID, claims.UserID, req.ExamUsageID, req.Answers, req.MethodKey)
 	if err != nil {
-		slog.Info(fmt.Sprintf("submit exam result failed: usage=%s user=%s tenant=%s err=%v", req.ExamUsageID, claims.UserID, tenantID, err))
+		slog.Error("submit exam result failed", "usage", req.ExamUsageID, "user", claims.UserID, "tenant", tenantID, "error", err)
 		if err == pgx.ErrNoRows {
 			respondError(w, http.StatusNotFound, "考试安排不存在")
 			return

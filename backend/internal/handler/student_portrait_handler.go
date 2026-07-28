@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -107,7 +107,10 @@ func (h *StudentPortraitHandler) Generate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	tenantID, ok := requireTenant(w, r); if !ok { return }
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	id := uuid.NewString()
 	_, err := h.DB.Exec(r.Context(), `
@@ -193,7 +196,10 @@ func (h *StudentPortraitHandler) CreateArchive(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	tenantID, ok := requireTenant(w, r); if !ok { return }
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	id := uuid.NewString()
 	direction := req.Direction

@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -87,7 +87,10 @@ func (h *MicroCertHandler) CreateTemplate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	tenantID, ok := requireTenant(w, r); if !ok { return }
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	id := uuid.NewString()
 	certTypeUUID, err := uuid.Parse(req.CertTypeID)
@@ -198,7 +201,10 @@ func (h *MicroCertHandler) IssueCerts(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(r.Context())
 
-	tenantID, ok := requireTenant(w, r); if !ok { return }
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	count := 0
 	for _, userID := range req.UserIDs {

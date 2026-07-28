@@ -273,5 +273,3 @@ func (h *ExamImportHandler) lookupEvaluationBatch(ctx context.Context, tenantID,
 	}
 	return &id
 }
-
-

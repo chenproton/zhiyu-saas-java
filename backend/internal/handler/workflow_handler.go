@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -24,20 +24,20 @@ type WorkflowListResponse struct {
 }
 
 type CreateWorkflowRequest struct {
-	Name        string            `json:"name"`
-	Scene       *string           `json:"scene"`
-	Description *string           `json:"description"`
-	Steps       domain.JSONSlice  `json:"steps"`
+	Name        string             `json:"name"`
+	Scene       *string            `json:"scene"`
+	Description *string            `json:"description"`
+	Steps       domain.JSONSlice   `json:"steps"`
 	MajorIds    domain.StringSlice `json:"majorIds"`
 }
 
 type UpdateWorkflowRequest struct {
-	Name        string            `json:"name"`
-	Scene       *string           `json:"scene"`
-	Description *string           `json:"description"`
-	Steps       domain.JSONSlice  `json:"steps"`
+	Name        string             `json:"name"`
+	Scene       *string            `json:"scene"`
+	Description *string            `json:"description"`
+	Steps       domain.JSONSlice   `json:"steps"`
 	MajorIds    domain.StringSlice `json:"majorIds"`
-	Status      string            `json:"status"`
+	Status      string             `json:"status"`
 }
 
 func (h *WorkflowHandler) List(w http.ResponseWriter, r *http.Request) {

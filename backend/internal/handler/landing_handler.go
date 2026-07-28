@@ -135,8 +135,12 @@ func computeExamStatus(start, end interface{}, now time.Time) string {
 func joinStrings(parts []string, sep string) string {
 	result := ""
 	for i, p := range parts {
-		if p == "" { continue }
-		if i > 0 { result += sep }
+		if p == "" {
+			continue
+		}
+		if i > 0 {
+			result += sep
+		}
 		result += p
 	}
 	return result

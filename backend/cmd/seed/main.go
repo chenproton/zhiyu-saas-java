@@ -309,7 +309,7 @@ func seedInstitutions(ctx context.Context, tx pgx.Tx) error {
 		{
 			ID: "inst-001", Type: "enterprise", Name: "网络安全科技股份有限公司",
 			CreditCode: "91110108MA01ABCD1X", Logo: str("/placeholder-logo.png"),
-			Intro: "专注于网络安全人才培养与教学资源开发的高新技术企业。",
+			Intro:       "专注于网络安全人才培养与教学资源开发的高新技术企业。",
 			ContactName: "张明", ContactPhone: "138****1234", ContactEmail: "zhangming@cybersec.com",
 			QualificationFile: str("营业执照.pdf"), ExpertiseTags: []string{"信息安全", "网络安全"},
 			Status: "approved", OrgCode: "ORG-ENT001", Balance: 12850, TotalIncome: 23500,
@@ -318,7 +318,7 @@ func seedInstitutions(ctx context.Context, tx pgx.Tx) error {
 		{
 			ID: "inst-002", Type: "school", Name: "北京信息职业技术学院",
 			CreditCode: "12110000400999999X", Logo: str("/placeholder-logo.png"),
-			Intro: "北京市示范性高等职业院校，重点建设信息技术类专业群。",
+			Intro:       "北京市示范性高等职业院校，重点建设信息技术类专业群。",
 			ContactName: "李华", ContactPhone: "139****5678", ContactEmail: "lihua@bitc.edu.cn",
 			QualificationFile: str("办学许可证.pdf"), ExpertiseTags: []string{"计算机网络", "软件技术"},
 			Status: "approved", OrgCode: "ORG-SCH001", TotalSpent: 15800,
@@ -327,7 +327,7 @@ func seedInstitutions(ctx context.Context, tx pgx.Tx) error {
 		{
 			ID: "inst-003", Type: "enterprise", Name: "云智教育科技（深圳）有限公司",
 			CreditCode: "91440300MA5E6789CD", Logo: str("/placeholder-logo.png"),
-			Intro: "聚焦云计算与大数据领域的职业教育内容服务商。",
+			Intro:       "聚焦云计算与大数据领域的职业教育内容服务商。",
 			ContactName: "王芳", ContactPhone: "137****9012", ContactEmail: "wangfang@yunzhi.com",
 			QualificationFile: str("营业执照.pdf"), ExpertiseTags: []string{"云计算", "大数据技术"},
 			Status: "approved", OrgCode: "ORG-ENT002", Balance: 5200, TotalIncome: 9800,
@@ -336,7 +336,7 @@ func seedInstitutions(ctx context.Context, tx pgx.Tx) error {
 		{
 			ID: "inst-004", Type: "school", Name: "上海电子信息职业技术学院",
 			CreditCode: "12110000400998888X", Logo: str("/placeholder-logo.png"),
-			Intro: "上海市特色高职院校，电子信息类专业优势明显。",
+			Intro:       "上海市特色高职院校，电子信息类专业优势明显。",
 			ContactName: "陈伟", ContactPhone: "136****3456", ContactEmail: "chenwei@shie.edu.cn",
 			QualificationFile: str("办学许可证.pdf"), ExpertiseTags: []string{"物联网", "人工智能"},
 			Status: "approved", OrgCode: "ORG-SCH002", TotalSpent: 7600,
@@ -345,7 +345,7 @@ func seedInstitutions(ctx context.Context, tx pgx.Tx) error {
 		{
 			ID: "inst-005", Type: "school", Name: "杭州职业技术学院",
 			CreditCode: "12330000470088888X", Logo: str("/placeholder-logo.png"),
-			Intro: "浙江省示范性高职院校，数字媒体专业为省级特色专业。",
+			Intro:       "浙江省示范性高职院校，数字媒体专业为省级特色专业。",
 			ContactName: "刘洋", ContactPhone: "135****7890", ContactEmail: "liuyang@hzvtc.edu.cn",
 			QualificationFile: str("办学许可证.pdf"), ExpertiseTags: []string{"数字媒体", "电子商务"},
 			Status: "pending", OrgCode: "ORG-SCH003",
@@ -354,7 +354,7 @@ func seedInstitutions(ctx context.Context, tx pgx.Tx) error {
 		{
 			ID: "inst-006", Type: "enterprise", Name: "智能制造解决方案有限公司",
 			CreditCode: "91330106MA2B3456EF", Logo: str("/placeholder-logo.png"),
-			Intro: "面向职业院校提供智能制造实训资源与课程服务。",
+			Intro:       "面向职业院校提供智能制造实训资源与课程服务。",
 			ContactName: "赵静", ContactPhone: "158****2345", ContactEmail: "zhaojing@imfg.com",
 			QualificationFile: str("营业执照.pdf"), ExpertiseTags: []string{"智能制造", "物联网"},
 			Status: "approved", OrgCode: "ORG-ENT003", Balance: 3200, TotalIncome: 5600,
@@ -397,7 +397,7 @@ func seedResources(ctx context.Context, tx pgx.Tx) error {
 	resources := []Resource{
 		{
 			ID: "res-001", InstitutionID: "inst-001", Name: "网络安全运维岗位能力包",
-			Intro: "本资源包面向高职信息安全专业，包含网络安全运维岗位能力模型、胜任标准、典型工作任务及评价量规。配套课件、实训指导书及考核题库，支持院校开展岗位导向教学。",
+			Intro:    "本资源包面向高职信息安全专业，包含网络安全运维岗位能力模型、胜任标准、典型工作任务及评价量规。配套课件、实训指导书及考核题库，支持院校开展岗位导向教学。",
 			Category: "post", CoverImage: str("https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800&q=80&auto=format&fit=crop"), Attachment: str("#"),
 			AttachmentName: str("网络安全运维岗位能力包_v1.0.zip"), Price: 5800, Version: "v1.0",
 			Status: "published", SalesCount: 12, ViewCount: 356,
@@ -411,7 +411,7 @@ func seedResources(ctx context.Context, tx pgx.Tx) error {
 		},
 		{
 			ID: "res-002", InstitutionID: "inst-003", Name: "云计算平台搭建与运维课程包",
-			Intro: "涵盖 OpenStack、Docker、Kubernetes 等主流云平台的搭建与运维内容。包含完整课程大纲、PPT课件、实验手册、视频微课及期末试卷，适合高职云计算专业核心课程使用。",
+			Intro:    "涵盖 OpenStack、Docker、Kubernetes 等主流云平台的搭建与运维内容。包含完整课程大纲、PPT课件、实验手册、视频微课及期末试卷，适合高职云计算专业核心课程使用。",
 			Category: "course", CoverImage: str("https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&q=80&auto=format&fit=crop"), Attachment: str("#"),
 			AttachmentName: str("云计算课程包_v1.0.zip"), Price: 4200, Version: "v1.0",
 			Status: "published", SalesCount: 8, ViewCount: 218,
@@ -425,7 +425,7 @@ func seedResources(ctx context.Context, tx pgx.Tx) error {
 		},
 		{
 			ID: "res-003", InstitutionID: "inst-001", Name: "渗透测试实战场景包",
-			Intro: "基于真实企业网络安全事件改编的渗透测试实战场景，包含任务链、漏洞利用说明、防御方案及评价标准。适用于信息安全专业高年级学生综合实训。",
+			Intro:    "基于真实企业网络安全事件改编的渗透测试实战场景，包含任务链、漏洞利用说明、防御方案及评价标准。适用于信息安全专业高年级学生综合实训。",
 			Category: "scene", CoverImage: str("https://images.unsplash.com/photo-1563986768609-322da13575f3?w=800&q=80&auto=format&fit=crop"), Attachment: str("#"),
 			AttachmentName: str("渗透测试场景包_v1.0.zip"), Price: 3600, Version: "v1.0",
 			Status: "published", SalesCount: 5, ViewCount: 189,
@@ -439,7 +439,7 @@ func seedResources(ctx context.Context, tx pgx.Tx) error {
 		},
 		{
 			ID: "res-004", InstitutionID: "inst-006", Name: "工业互联网安全测评包",
-			Intro: "针对工业互联网安全领域的测评资源包，包含风险评估量规、测试用例库、安全检查表及报告模板。可用于课程考核、技能竞赛训练等场景。",
+			Intro:    "针对工业互联网安全领域的测评资源包，包含风险评估量规、测试用例库、安全检查表及报告模板。可用于课程考核、技能竞赛训练等场景。",
 			Category: "assessment", CoverImage: str("https://images.unsplash.com/photo-1581092919535-7146ff1a590b?w=800&q=80&auto=format&fit=crop"), Attachment: str("#"),
 			AttachmentName: str("工控安全测评包_v1.0.zip"), Price: 2800, Version: "v1.0",
 			Status: "published", SalesCount: 3, ViewCount: 96,
@@ -453,7 +453,7 @@ func seedResources(ctx context.Context, tx pgx.Tx) error {
 		},
 		{
 			ID: "res-005", InstitutionID: "inst-003", Name: "Python 数据分析素材包",
-			Intro: "包含数据分析典型案例数据集、Jupyter Notebook 源码、可视化模板及教学视频。适用于大数据技术专业课程辅助教学。",
+			Intro:    "包含数据分析典型案例数据集、Jupyter Notebook 源码、可视化模板及教学视频。适用于大数据技术专业课程辅助教学。",
 			Category: "material", CoverImage: str("https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80&auto=format&fit=crop"), Attachment: str("#"),
 			AttachmentName: str("Python数据分析素材包_v1.0.zip"), Price: 1500, Version: "v1.0",
 			Status: "published", SalesCount: 15, ViewCount: 412,
@@ -467,10 +467,10 @@ func seedResources(ctx context.Context, tx pgx.Tx) error {
 		},
 		{
 			ID: "res-006", InstitutionID: "inst-001", Name: "Web 应用安全开发课程包",
-			Intro: "覆盖 OWASP Top 10、安全编码规范、代码审计方法等内容。包含课程课件、案例源码、实验环境配置指南及考核试卷。",
+			Intro:    "覆盖 OWASP Top 10、安全编码规范、代码审计方法等内容。包含课程课件、案例源码、实验环境配置指南及考核试卷。",
 			Category: "course", CoverImage: str("https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&q=80&auto=format&fit=crop"), Attachment: str("#"),
 			AttachmentName: str("Web安全开发课程包_v1.0.zip"), Price: 4800, Version: "v1.0",
-			Status: "reviewing",
+			Status:    "reviewing",
 			CreatedAt: "2024-03-25", UpdatedAt: "2024-03-25",
 			Tags: []ResourceTag{
 				{ID: "rt-021", TagType: "major", TagValue: "信息安全"},
@@ -481,10 +481,10 @@ func seedResources(ctx context.Context, tx pgx.Tx) error {
 		},
 		{
 			ID: "res-007", InstitutionID: "inst-006", Name: "智能制造数字孪生场景包",
-			Intro: "基于数字孪生技术的智能制造实训场景，包含产线建模、虚拟调试、数据分析等任务模块及评价标准。",
+			Intro:    "基于数字孪生技术的智能制造实训场景，包含产线建模、虚拟调试、数据分析等任务模块及评价标准。",
 			Category: "scene", CoverImage: str("https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=800&q=80&auto=format&fit=crop"), Attachment: str("#"),
 			AttachmentName: str("数字孪生场景包_v1.0.zip"), Price: 6500, Version: "v1.0",
-			Status: "pending_publish",
+			Status:    "pending_publish",
 			CreatedAt: "2024-03-20", UpdatedAt: "2024-03-28",
 			Tags: []ResourceTag{
 				{ID: "rt-025", TagType: "major", TagValue: "智能制造"},
@@ -495,10 +495,10 @@ func seedResources(ctx context.Context, tx pgx.Tx) error {
 		},
 		{
 			ID: "res-008", InstitutionID: "inst-003", Name: "人工智能基础岗位包",
-			Intro: "面向人工智能应用开发岗位的能力模型与教学资源，包含机器学习基础、深度学习入门、模型部署等内容。",
+			Intro:    "面向人工智能应用开发岗位的能力模型与教学资源，包含机器学习基础、深度学习入门、模型部署等内容。",
 			Category: "post", CoverImage: str("https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80&auto=format&fit=crop"), Attachment: str("#"),
 			AttachmentName: str("AI基础岗位包_v1.0.zip"), Price: 5200, Version: "v1.0",
-			Status: "draft",
+			Status:    "draft",
 			CreatedAt: "2024-03-28", UpdatedAt: "2024-03-28",
 			Tags: []ResourceTag{
 				{ID: "rt-029", TagType: "major", TagValue: "人工智能"},
@@ -1127,12 +1127,12 @@ func seedJobData(ctx context.Context, tx pgx.Tx) error {
 	}
 
 	recommendations := []struct {
-		id      uuid.UUID
-		major   string
+		id       uuid.UUID
+		major    string
 		position uuid.UUID
-		posType string
-		reason  string
-		sort    int
+		posType  string
+		reason   string
+		sort     int
 	}{
 		{uuid.MustParse("a8888888-8888-8888-8888-888888888881"), "信息安全技术应用", uuid.MustParse("a4444444-4444-4444-4444-444444444441"), "enterprise", "契合信息安全专业核心能力，岗位需求量大", 1},
 		{uuid.MustParse("a8888888-8888-8888-8888-888888888882"), "信息安全技术应用", uuid.MustParse("a4444444-4444-4444-4444-444444444442"), "enterprise", "适合具备渗透测试兴趣的学生发展方向", 2},
@@ -1296,11 +1296,11 @@ func seedSceneData(ctx context.Context, tx pgx.Tx) error {
 	}
 
 	scenarios := []struct {
-		id       uuid.UUID
-		batchID  uuid.UUID
-		name     string
-		code     string
-		status   string
+		id         uuid.UUID
+		batchID    uuid.UUID
+		name       string
+		code       string
+		status     string
 		difficulty int
 	}{
 		{
@@ -1407,13 +1407,13 @@ func seedLessonData(ctx context.Context, tx pgx.Tx) error {
 	}
 
 	courses := []struct {
-		id       uuid.UUID
-		name     string
-		code     string
+		id         uuid.UUID
+		name       string
+		code       string
 		courseType string
-		category string
-		status   string
-		batchID uuid.UUID
+		category   string
+		status     string
+		batchID    uuid.UUID
 	}{
 		{
 			uuid.MustParse("c3333333-3333-3333-3333-333333333331"),
@@ -1522,10 +1522,10 @@ func seedEvaluationData(ctx context.Context, tx pgx.Tx) error {
 	}
 
 	banks := []struct {
-		id     uuid.UUID
+		id      uuid.UUID
 		batchID uuid.UUID
-		name   string
-		status string
+		name    string
+		status  string
 	}{
 		{
 			uuid.MustParse("d3333333-3333-3333-3333-333333333331"),

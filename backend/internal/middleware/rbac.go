@@ -136,10 +136,10 @@ func IsSchoolAdmin(claims *Claims) bool {
 
 // HasSystemPermission reports whether the user is allowed to access portal
 // system management routes. It mirrors the frontend menu permission model:
-// - no permissions object, or no "menus" key, means no menu restriction
-//   (backward compatible with the default school_admin role).
-// - admin flag grants all permissions.
-// - a granted menu path under /portal/apps/system allows system access.
+//   - no permissions object, or no "menus" key, means no menu restriction
+//     (backward compatible with the default school_admin role).
+//   - admin flag grants all permissions.
+//   - a granted menu path under /portal/apps/system allows system access.
 func HasSystemPermission(claims *Claims) bool {
 	if claims == nil {
 		return false
