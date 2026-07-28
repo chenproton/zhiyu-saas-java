@@ -1,21 +1,19 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
-	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type AbilityDomainHandler struct {
-	DB *pgxpool.Pool
+	DB    *pgxpool.Pool
+	Store *store.AbilityDomainsStore
 }
 
 type AbilityDomainListResponse struct {
@@ -40,24 +38,12 @@ type UpdateAbilityDomainRequest struct {
 }
 
 func (h *AbilityDomainHandler) List(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	careerPositionID := r.URL.Query().Get("careerPositionId")
-
-	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.AbilityDomain]{
+	items, total, err := executeListQuery[domain.AbilityDomain](r.Context(), h.DB, r, listQueryConfig[domain.AbilityDomain]{
 		Table:         "ability_domains",
 		SelectColumns: "id, career_position_id, name, description, binding_ids, sort_order",
 		TenantScoped:  true,
-		OrderBy:       "sort_order ASC",
-		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if careerPositionID != "" {
-				qb.addCondition("career_position_id = " + qb.nextArg(careerPositionID))
-			}
-		},
-		ScanRows: h.scanDomainRows,
+		SearchColumns: []string{"name"},
+		ScanRows:      h.Store.ScanRows,
 	})
 	if err != nil {
 		if errors.Is(err, ErrMissingTenant) {
@@ -67,13 +53,22 @@ func (h *AbilityDomainHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "查询能力域失败")
 		return
 	}
-
 	respondJSON(w, http.StatusOK, AbilityDomainListResponse{Items: items, Total: total})
 }
 
+func (h *AbilityDomainHandler) Get(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	item, err := h.Store.GetByID(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "能力域不存在")
+		return
+	}
+	respondJSON(w, http.StatusOK, item)
+}
+
 func (h *AbilityDomainHandler) Create(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
 		return
 	}
 
@@ -82,39 +77,31 @@ func (h *AbilityDomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
-
-	if req.CareerPositionID == "" || req.Name == "" {
+	if req.Name == "" || req.CareerPositionID == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	id := uuid.NewString()
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO ability_domains (id, tenant_id, career_position_id, name, description, binding_ids, sort_order)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`, id, tenantID, req.CareerPositionID, req.Name, req.Description, coalesceStringSlice(req.BindingIDs), req.SortOrder)
+	id, err := h.Store.Create(r.Context(), store.AbilityDomainCreateParams{
+		TenantID:         tenantID,
+		CareerPositionID: req.CareerPositionID,
+		Name:             req.Name,
+		Description:      req.Description,
+		BindingIDs:       req.BindingIDs,
+		SortOrder:        req.SortOrder,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "创建能力域失败")
 		return
 	}
 
-	d, _ := h.fetchDomain(r.Context(), id)
-	respondJSON(w, http.StatusCreated, d)
+	item, _ := h.Store.GetByID(r.Context(), id)
+	respondJSON(w, http.StatusCreated, item)
 }
 
 func (h *AbilityDomainHandler) Update(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchDomain(r.Context(), id); err != nil {
+	if _, err := h.Store.GetByID(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "能力域不存在")
 		return
 	}
@@ -124,79 +111,36 @@ func (h *AbilityDomainHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
-
-	if req.CareerPositionID == "" || req.Name == "" {
+	if req.Name == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE ability_domains SET
-			career_position_id = $1, name = $2, description = $3, binding_ids = $4, sort_order = $5
-		WHERE id = $6
-	`, req.CareerPositionID, req.Name, req.Description, coalesceStringSlice(req.BindingIDs), req.SortOrder, id)
-	if err != nil {
+	if err := h.Store.Update(r.Context(), id, store.AbilityDomainUpdateParams{
+		CareerPositionID: req.CareerPositionID,
+		Name:             req.Name,
+		Description:      req.Description,
+		BindingIDs:       req.BindingIDs,
+		SortOrder:        req.SortOrder,
+	}); err != nil {
 		respondError(w, http.StatusInternalServerError, "更新能力域失败")
 		return
 	}
 
-	d, _ := h.fetchDomain(r.Context(), id)
-	respondJSON(w, http.StatusOK, d)
+	item, _ := h.Store.GetByID(r.Context(), id)
+	respondJSON(w, http.StatusOK, item)
 }
 
 func (h *AbilityDomainHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchDomain(r.Context(), id); err != nil {
+	if _, err := h.Store.GetByID(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "能力域不存在")
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM ability_domains WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Store.Delete(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除能力域失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
-}
-
-func (h *AbilityDomainHandler) fetchDomain(ctx context.Context, id string) (domain.AbilityDomain, error) {
-	var d domain.AbilityDomain
-	var description *string
-	var bindingIDs []string
-
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, career_position_id, name, description, binding_ids, sort_order
-		FROM ability_domains WHERE id = $1
-	`, id).Scan(
-		&d.ID, &d.CareerPositionID, &d.Name, &description, &bindingIDs, &d.SortOrder,
-	)
-	if err != nil {
-		return d, err
-	}
-	d.Description = description
-	d.BindingIDs = bindingIDs
-	return d, nil
-}
-
-func (h *AbilityDomainHandler) scanDomainRows(rows pgx.Rows) ([]domain.AbilityDomain, error) {
-	items := make([]domain.AbilityDomain, 0)
-	for rows.Next() {
-		var d domain.AbilityDomain
-		var description *string
-		var bindingIDs []string
-		if err := rows.Scan(
-			&d.ID, &d.CareerPositionID, &d.Name, &description, &bindingIDs, &d.SortOrder,
-		); err != nil {
-			return nil, err
-		}
-		d.Description = description
-		d.BindingIDs = bindingIDs
-		items = append(items, d)
-	}
-	return items, nil
 }
