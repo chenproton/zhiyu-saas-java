@@ -149,7 +149,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		jobBatchHandler:               handler.NewJobBatchHandler(db),
 		recommendHandler:              &handler.RecommendHandler{DB: db},
 		learnRoadHandler:              &handler.LearnRoadHandler{DB: db},
-		jobBannerHandler:              &handler.JobBannerHandler{DB: db},
+		jobBannerHandler:              &handler.JobBannerHandler{DB: db, Store: store.NewJobBannersStore(db)},
 		scenarioHandler:               &handler.ScenarioHandler{DB: db},
 		scenarioCloneHandler:          &handler.ScenarioCloneHandler{DB: db},
 		scenarioTaskHandler:           &handler.ScenarioTaskHandler{DB: db},
