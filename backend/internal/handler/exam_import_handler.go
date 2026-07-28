@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -118,7 +118,7 @@ func (h *ExamImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) 
 func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool, examMap map[string]string, result *examImportResult) {
 	rows, err := xlsx.GetRows("试卷基本信息")
 	if err != nil {
-		log.Printf("[import/exams] sheet '试卷基本信息' not found: %v", err)
+		slog.Info(fmt.Sprintf("[import/exams] sheet '试卷基本信息' not found: %v", err))
 		return
 	}
 
@@ -177,7 +177,7 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 					result.Failed++
 					msg := fmt.Sprintf("试卷[%s]更新失败: %v", name, err)
 					result.Errors = append(result.Errors, msg)
-					log.Printf("[import/exams] %s", msg)
+					slog.Info(fmt.Sprintf("[import/exams] %s", msg))
 					continue
 				}
 				// 覆盖时清空原有题目关联，随后根据新文件内容重新写入
@@ -186,7 +186,7 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 					examMap[name] = existingID
 				}
 				result.Created++
-				log.Printf("[import/exams] updated exam %s (id=%s)", name, existingID)
+				slog.Info(fmt.Sprintf("[import/exams] updated exam %s (id=%s)", name, existingID))
 			} else {
 				result.Skipped++
 			}
@@ -204,7 +204,7 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 			result.Failed++
 			msg := fmt.Sprintf("试卷[%s]创建失败: %v", name, err)
 			result.Errors = append(result.Errors, msg)
-			log.Printf("[import/exams] %s", msg)
+			slog.Info(fmt.Sprintf("[import/exams] %s", msg))
 			continue
 		}
 
@@ -212,7 +212,7 @@ func (h *ExamImportHandler) importExams(ctx context.Context, xlsx *excelize.File
 			examMap[name] = examID
 		}
 		result.Created++
-		log.Printf("[import/exams] created exam %s (id=%s)", name, examID)
+		slog.Info(fmt.Sprintf("[import/exams] created exam %s (id=%s)", name, examID))
 	}
 }
 

@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -110,19 +110,19 @@ func (h *ResourceImportHandler) importExcel(w http.ResponseWriter, r *http.Reque
 	previewRes, execRes := fn(r.Context(), xlsx, tenantID, userID, preview, overwrite)
 
 	if preview {
-		log.Printf("[import/preview/%s] result: created=%d duplicates=%d failed=%d duplicateItems=%d errors=%d",
-			entity, previewRes.Created, previewRes.Duplicates, previewRes.Failed, len(previewRes.DuplicateItems), len(previewRes.Errors))
+		slog.Info(fmt.Sprintf("[import/preview/%s] result: created=%d duplicates=%d failed=%d duplicateItems=%d errors=%d",
+			entity, previewRes.Created, previewRes.Duplicates, previewRes.Failed, len(previewRes.DuplicateItems), len(previewRes.Errors)))
 		for _, e := range previewRes.Errors {
-			log.Printf("[import/preview/%s] error: %s", entity, e)
+			slog.Info(fmt.Sprintf("[import/preview/%s] error: %s", entity, e))
 		}
 		respondJSON(w, http.StatusOK, previewRes)
 		return
 	}
 
-	log.Printf("[import/%s] result: created=%d failed=%d skipped=%d errors=%d",
-		entity, execRes.Created, execRes.Failed, execRes.Skipped, len(execRes.Errors))
+	slog.Info(fmt.Sprintf("[import/%s] result: created=%d failed=%d skipped=%d errors=%d",
+		entity, execRes.Created, execRes.Failed, execRes.Skipped, len(execRes.Errors)))
 	for _, e := range execRes.Errors {
-		log.Printf("[import/%s] error: %s", entity, e)
+		slog.Info(fmt.Sprintf("[import/%s] error: %s", entity, e))
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{

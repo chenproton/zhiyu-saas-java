@@ -3,7 +3,8 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -123,7 +124,7 @@ func (h *AbilityHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "能力点名称已存在，请使用其他名称")
 			return
 		}
-		log.Printf("[AbilityHandler.Create] insert ability_points failed: %v", err)
+		slog.Info(fmt.Sprintf("[AbilityHandler.Create] insert ability_points failed: %v", err))
 		respondError(w, http.StatusInternalServerError, "创建能力点失败")
 		return
 	}

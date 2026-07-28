@@ -3,7 +3,8 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -92,7 +93,7 @@ func (h *EvaluationResultHandler) List(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		log.Printf("List evaluation results error: %v", err)
+		slog.Info(fmt.Sprintf("List evaluation results error: %v", err))
 		respondError(w, http.StatusInternalServerError, "查询评价结果失败")
 		return
 	}

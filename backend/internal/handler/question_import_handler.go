@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -125,7 +125,7 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 
 	rows, err := xlsx.GetRows("题目明细")
 	if err != nil {
-		log.Printf("[import/questions] sheet '题目明细' not found: %v", err)
+		slog.Info(fmt.Sprintf("[import/questions] sheet '题目明细' not found: %v", err))
 		return previewRes, execRes
 	}
 
@@ -167,7 +167,7 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 				execRes.Failed++
 				execRes.Errors = append(execRes.Errors, msg)
 			}
-			log.Printf("[import/questions] %s", msg)
+			slog.Info(fmt.Sprintf("[import/questions] %s", msg))
 			continue
 		}
 
@@ -222,7 +222,7 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 					execRes.Failed++
 					msg := fmt.Sprintf("第%d行题目更新失败: %v", i+1, err)
 					execRes.Errors = append(execRes.Errors, msg)
-					log.Printf("[import/questions] %s", msg)
+					slog.Info(fmt.Sprintf("[import/questions] %s", msg))
 					continue
 				}
 				execRes.Created++
@@ -243,7 +243,7 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 			execRes.Failed++
 			msg := fmt.Sprintf("第%d行题目创建失败: %v", i+1, err)
 			execRes.Errors = append(execRes.Errors, msg)
-			log.Printf("[import/questions] %s", msg)
+			slog.Info(fmt.Sprintf("[import/questions] %s", msg))
 			continue
 		}
 
@@ -269,7 +269,7 @@ func (h *QuestionImportHandler) findOrCreateKnowledgePoints(ctx context.Context,
 		id = uuid.NewString()
 		_, err = h.DB.Exec(ctx, `INSERT INTO knowledge_points (id, tenant_id, name) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, id, tenantID, name)
 		if err != nil {
-			log.Printf("[import/questions] create knowledge point %s failed: %v", name, err)
+			slog.Info(fmt.Sprintf("[import/questions] create knowledge point %s failed: %v", name, err))
 		}
 		var existing string
 		err = h.DB.QueryRow(ctx, `SELECT id FROM knowledge_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)

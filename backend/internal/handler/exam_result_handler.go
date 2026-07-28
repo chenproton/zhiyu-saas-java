@@ -3,7 +3,8 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -85,7 +86,7 @@ func (h *ExamResultHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.submit(r.Context(), tenantID, claims.UserID, req.ExamUsageID, req.Answers, req.MethodKey)
 	if err != nil {
-		log.Printf("submit exam result failed: usage=%s user=%s tenant=%s err=%v", req.ExamUsageID, claims.UserID, tenantID, err)
+		slog.Info(fmt.Sprintf("submit exam result failed: usage=%s user=%s tenant=%s err=%v", req.ExamUsageID, claims.UserID, tenantID, err))
 		if err == pgx.ErrNoRows {
 			respondError(w, http.StatusNotFound, "考试安排不存在")
 			return
@@ -282,7 +283,7 @@ func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenan
 		WHERE eu.id = $1 AND tem.method_key = $2 AND tem.tenant_id = $3
 	`, usageID, methodKey, tenantID)
 	if err != nil {
-		log.Printf("syncSceneEvaluationResult query failed: usage=%s err=%v", usageID, err)
+		slog.Info(fmt.Sprintf("syncSceneEvaluationResult query failed: usage=%s err=%v", usageID, err))
 		return
 	}
 	defer rows.Close()
@@ -295,7 +296,7 @@ func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenan
 	for rows.Next() {
 		var methodKey, taskID string
 		if err := rows.Scan(&methodKey, &taskID); err != nil {
-			log.Printf("syncSceneEvaluationResult scan failed: usage=%s err=%v", usageID, err)
+			slog.Info(fmt.Sprintf("syncSceneEvaluationResult scan failed: usage=%s err=%v", usageID, err))
 			continue
 		}
 
@@ -320,7 +321,7 @@ func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenan
 				updated_at = NOW()
 		`, tenantID, taskID, sceneID, methodKey, userID, status, score, maxScore, objectiveAnswers)
 		if err != nil {
-			log.Printf("syncSceneEvaluationResult upsert failed: usage=%s task=%s method=%s user=%s err=%v", usageID, taskID, methodKey, userID, err)
+			slog.Info(fmt.Sprintf("syncSceneEvaluationResult upsert failed: usage=%s task=%s method=%s user=%s err=%v", usageID, taskID, methodKey, userID, err))
 		}
 	}
 }
