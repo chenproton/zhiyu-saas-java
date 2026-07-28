@@ -26,7 +26,7 @@ type BindTaskAbilityRequest struct {
 
 func (h *TaskKnowledgeAbilityHandler) BindKnowledge(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
@@ -53,7 +53,7 @@ func (h *TaskKnowledgeAbilityHandler) BindKnowledge(w http.ResponseWriter, r *ht
 		RETURNING id
 	`, tenantID, req.TaskID, req.KnowledgePointID).Scan(&id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to bind knowledge")
+		respondError(w, http.StatusInternalServerError, "绑定知识失败")
 		return
 	}
 
@@ -66,14 +66,14 @@ func (h *TaskKnowledgeAbilityHandler) BindKnowledge(w http.ResponseWriter, r *ht
 
 func (h *TaskKnowledgeAbilityHandler) UnbindKnowledge(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM task_knowledge_bindings WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to unbind knowledge")
+		respondError(w, http.StatusInternalServerError, "解绑知识失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -81,7 +81,7 @@ func (h *TaskKnowledgeAbilityHandler) UnbindKnowledge(w http.ResponseWriter, r *
 
 func (h *TaskKnowledgeAbilityHandler) BindAbility(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
@@ -108,7 +108,7 @@ func (h *TaskKnowledgeAbilityHandler) BindAbility(w http.ResponseWriter, r *http
 		RETURNING id
 	`, tenantID, req.TaskID, req.AbilityPointID).Scan(&id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to bind ability")
+		respondError(w, http.StatusInternalServerError, "绑定能力点失败")
 		return
 	}
 
@@ -121,14 +121,14 @@ func (h *TaskKnowledgeAbilityHandler) BindAbility(w http.ResponseWriter, r *http
 
 func (h *TaskKnowledgeAbilityHandler) UnbindAbility(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM task_ability_bindings WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to unbind ability")
+		respondError(w, http.StatusInternalServerError, "解绑能力点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

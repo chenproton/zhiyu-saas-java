@@ -68,7 +68,7 @@ func (c contentActions) checkTenantAccess(w http.ResponseWriter, r *http.Request
 		return false
 	}
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to verify "+c.entityName+" ownership")
+		respondError(w, http.StatusInternalServerError, "验证"+c.entityName+"所有权失败")
 		return false
 	}
 	return verifyTenantOwnership(w, r, entityTenantID)
@@ -95,7 +95,7 @@ func (c contentActions) transition(w http.ResponseWriter, r *http.Request, statu
 		return
 	}
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to fetch current status")
+		respondError(w, http.StatusInternalServerError, "获取current status失败")
 		return
 	}
 
@@ -106,13 +106,13 @@ func (c contentActions) transition(w http.ResponseWriter, r *http.Request, statu
 
 	tx, err := c.db.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
 
 	if _, err := tx.Exec(r.Context(), `UPDATE `+c.table+` SET status = $1, updated_at = NOW() WHERE id = $2`, status, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update status")
+		respondError(w, http.StatusInternalServerError, "更新status失败")
 		return
 	}
 
@@ -122,13 +122,13 @@ func (c contentActions) transition(w http.ResponseWriter, r *http.Request, statu
 			DELETE FROM approval_records
 			WHERE target_type = $1 AND target_id = $2 AND status = $3
 		`, c.targetType, id, string(domain.ApprovalStatusPending)); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to delete approval record")
+			respondError(w, http.StatusInternalServerError, "删除审批记录失败")
 			return
 		}
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -160,7 +160,7 @@ func (c contentActions) review(w http.ResponseWriter, r *http.Request) {
 	case "rejected":
 		status = domain.StatusRejected
 	default:
-		respondError(w, http.StatusBadRequest, "invalid review status")
+		respondError(w, http.StatusBadRequest, "无效的审核状态")
 		return
 	}
 
@@ -170,7 +170,7 @@ func (c contentActions) review(w http.ResponseWriter, r *http.Request) {
 
 	tag, err := c.db.Exec(r.Context(), `UPDATE `+c.table+` SET status = $1, updated_at = NOW() WHERE id = $2 AND status = $3`, status, id, domain.StatusPending)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to review "+c.entityName)
+		respondError(w, http.StatusInternalServerError, "审核"+c.entityName+"失败")
 		return
 	}
 	if tag.RowsAffected() == 0 {
@@ -193,14 +193,14 @@ func (c contentActions) invite(w http.ResponseWriter, r *http.Request) {
 	}
 	var req InviteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == "" {
-		respondError(w, http.StatusBadRequest, "userId is required")
+		respondError(w, http.StatusBadRequest, "缺少用户ID")
 		return
 	}
 	if _, err := c.db.Exec(r.Context(), `
 		UPDATE `+c.table+` SET `+c.inviteCol+` = array_append(`+c.inviteCol+`, $1), updated_at = NOW()
 		WHERE id = $2 AND NOT (`+c.inviteCol+` @> ARRAY[$1]::uuid[])
 	`, req.UserID, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to invite collaborator")
+		respondError(w, http.StatusInternalServerError, "邀请协作者失败")
 		return
 	}
 	entity, err := c.fetch(r.Context(), id)

@@ -48,7 +48,7 @@ func (h *BannerHandler) List(w http.ResponseWriter, r *http.Request) {
 		SELECT id, title, image, link, sort, enabled FROM banners ORDER BY sort, id LIMIT $1 OFFSET $2
 	`, limit, offset)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list banners")
+		respondError(w, http.StatusInternalServerError, "查询轮播图失败")
 		return
 	}
 	defer rows.Close()
@@ -57,7 +57,7 @@ func (h *BannerHandler) List(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var b domain.Banner
 		if err := rows.Scan(&b.ID, &b.Title, &b.Image, &b.Link, &b.Sort, &b.Enabled); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to scan banners")
+			respondError(w, http.StatusInternalServerError, "读取轮播图失败")
 			return
 		}
 		items = append(items, b)
@@ -83,7 +83,7 @@ func (h *BannerHandler) Create(w http.ResponseWriter, r *http.Request) {
 		INSERT INTO banners (id, title, image, link, sort, enabled) VALUES ($1, $2, $3, $4, $5, $6)
 	`, id, req.Title, req.Image, req.Link, req.Sort, req.Enabled)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create banner")
+		respondError(w, http.StatusInternalServerError, "创建轮播图失败")
 		return
 	}
 
@@ -107,7 +107,7 @@ func (h *BannerHandler) Update(w http.ResponseWriter, r *http.Request) {
 		UPDATE banners SET title = $1, image = $2, link = $3, sort = $4, enabled = $5 WHERE id = $6
 	`, req.Title, req.Image, req.Link, req.Sort, req.Enabled, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update banner")
+		respondError(w, http.StatusInternalServerError, "更新轮播图失败")
 		return
 	}
 
@@ -123,7 +123,7 @@ func (h *BannerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM banners WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete banner")
+		respondError(w, http.StatusInternalServerError, "删除轮播图失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

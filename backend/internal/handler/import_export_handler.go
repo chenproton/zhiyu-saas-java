@@ -90,14 +90,14 @@ func (h *ImportExportHandler) Export(w http.ResponseWriter, r *http.Request) {
 	entity := chi.URLParam(r, "entity")
 	meta, ok := importExportEntities[entity]
 	if !ok {
-		respondError(w, http.StatusBadRequest, "unsupported entity")
+		respondError(w, http.StatusBadRequest, "不支持的实体")
 		return
 	}
 
 	cols := strings.Join(meta.defaultCols, ", ")
 	rows, err := h.DB.Query(r.Context(), fmt.Sprintf(`SELECT %s FROM %s ORDER BY created_at DESC LIMIT 1000`, cols, entity))
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to export")
+		respondError(w, http.StatusInternalServerError, "导出失败")
 		return
 	}
 	defer rows.Close()
@@ -205,7 +205,7 @@ func (h *ImportExportHandler) Preview(w http.ResponseWriter, r *http.Request) {
 	entity := chi.URLParam(r, "entity")
 	meta, ok := importExportEntities[entity]
 	if !ok {
-		respondError(w, http.StatusBadRequest, "unsupported entity")
+		respondError(w, http.StatusBadRequest, "不支持的实体")
 		return
 	}
 
@@ -215,12 +215,12 @@ func (h *ImportExportHandler) Preview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid form")
+		respondError(w, http.StatusBadRequest, "表单无效")
 		return
 	}
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "missing file")
+		respondError(w, http.StatusBadRequest, "缺少文件")
 		return
 	}
 	defer file.Close()
@@ -267,7 +267,7 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 	entity := chi.URLParam(r, "entity")
 	meta, ok := importExportEntities[entity]
 	if !ok {
-		respondError(w, http.StatusBadRequest, "unsupported entity")
+		respondError(w, http.StatusBadRequest, "不支持的实体")
 		return
 	}
 
@@ -279,12 +279,12 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 	overwrite := importOverwriteParam(r)
 
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid form")
+		respondError(w, http.StatusBadRequest, "表单无效")
 		return
 	}
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "missing file")
+		respondError(w, http.StatusBadRequest, "缺少文件")
 		return
 	}
 	defer file.Close()

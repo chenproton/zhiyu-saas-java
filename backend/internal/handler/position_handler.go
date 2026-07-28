@@ -154,14 +154,14 @@ func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list positions")
+		respondError(w, http.StatusInternalServerError, "查询岗位失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanPositionRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan positions")
+		respondError(w, http.StatusInternalServerError, "读取岗位失败")
 		return
 	}
 
@@ -176,11 +176,11 @@ func (h *PositionHandler) Get(w http.ResponseWriter, r *http.Request) {
 	_ = h.incrementViewCount(r, id)
 	pos, err := h.fetchPosition(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "position not found")
+		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
 	}
 	if publicOnly && pos.Status != domain.StatusPublished {
-		respondError(w, http.StatusNotFound, "position not found")
+		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, pos)
@@ -262,14 +262,14 @@ func (h *PositionHandler) PublicList(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list positions")
+		respondError(w, http.StatusInternalServerError, "查询岗位失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanPositionRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan positions")
+		respondError(w, http.StatusInternalServerError, "读取岗位失败")
 		return
 	}
 
@@ -296,7 +296,7 @@ func (h *PositionHandler) PublicGet(w http.ResponseWriter, r *http.Request) {
 		var posTenantID string
 		err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM career_positions WHERE id = $1`, id).Scan(&posTenantID)
 		if err != nil || posTenantID != tenantID {
-			respondError(w, http.StatusNotFound, "position not found")
+			respondError(w, http.StatusNotFound, "岗位不存在")
 			return
 		}
 	}
@@ -305,7 +305,7 @@ func (h *PositionHandler) PublicGet(w http.ResponseWriter, r *http.Request) {
 
 	pos, err := h.fetchPosition(r.Context(), id)
 	if err != nil || pos.Status != domain.StatusPublished {
-		respondError(w, http.StatusNotFound, "position not found")
+		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, pos)
@@ -340,14 +340,14 @@ func (h *PositionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	id := uuid.NewString()
 	code, err := generateUniqueEntityCode(r.Context(), h.DB, "GW", "career_positions", tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to generate position code")
+		respondError(w, http.StatusInternalServerError, "生成position code失败")
 		return
 	}
 	status := domain.CareerPositionStatusDraft
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to start transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -367,7 +367,7 @@ func (h *PositionHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "岗位名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create position")
+		respondError(w, http.StatusInternalServerError, "创建岗位失败")
 		return
 	}
 
@@ -376,13 +376,13 @@ func (h *PositionHandler) Create(w http.ResponseWriter, r *http.Request) {
 			INSERT INTO career_position_majors (career_position_id, major_id) VALUES ($1, $2)
 		`, id, majorID)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to insert position majors")
+			respondError(w, http.StatusInternalServerError, "插入岗位专业失败")
 			return
 		}
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -400,7 +400,7 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	existing, err := h.fetchPosition(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "position not found")
+		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
 	}
 
@@ -464,7 +464,7 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to start transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -484,13 +484,13 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "岗位名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update position")
+		respondError(w, http.StatusInternalServerError, "更新岗位失败")
 		return
 	}
 
 	_, err = tx.Exec(r.Context(), `DELETE FROM career_position_majors WHERE career_position_id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update position majors")
+		respondError(w, http.StatusInternalServerError, "更新岗位专业失败")
 		return
 	}
 
@@ -499,13 +499,13 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 			INSERT INTO career_position_majors (career_position_id, major_id) VALUES ($1, $2)
 		`, id, majorID)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to insert position majors")
+			respondError(w, http.StatusInternalServerError, "插入岗位专业失败")
 			return
 		}
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -521,13 +521,13 @@ func (h *PositionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchPosition(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "position not found")
+		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM career_positions WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete position")
+		respondError(w, http.StatusInternalServerError, "删除岗位失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -701,7 +701,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchPosition(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "position not found")
+		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
 	}
 
@@ -745,20 +745,20 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 	abilityPointMap, err := h.prepareAbilityPoints(r.Context(), tenantID, req.AbilityBindings)
 	if err != nil {
 		log.Printf("[SaveFull] prepare ability points failed: %v", err)
-		respondError(w, http.StatusInternalServerError, "failed to prepare ability points")
+		respondError(w, http.StatusInternalServerError, "准备能力点失败")
 		return
 	}
 	certificateMap, err := h.prepareCertificates(r.Context(), tenantID, req.Certificates)
 	if err != nil {
 		log.Printf("[SaveFull] prepare certificates failed: %v", err)
-		respondError(w, http.StatusInternalServerError, "failed to prepare certificates")
+		respondError(w, http.StatusInternalServerError, "准备证书失败")
 		return
 	}
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
 		log.Printf("[SaveFull] begin tx failed: %v", err)
-		respondError(w, http.StatusInternalServerError, "failed to start transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -776,14 +776,14 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		coalesceStringSlice(req.Collaborators), id)
 	if err != nil {
 		log.Printf("[SaveFull] update career_positions failed: %v", err)
-		respondError(w, http.StatusInternalServerError, "failed to update position")
+		respondError(w, http.StatusInternalServerError, "更新岗位失败")
 		return
 	}
 
 	_, err = tx.Exec(r.Context(), `DELETE FROM career_position_majors WHERE career_position_id = $1`, id)
 	if err != nil {
 		log.Printf("[SaveFull] delete career_position_majors failed: %v", err)
-		respondError(w, http.StatusInternalServerError, "failed to update position majors")
+		respondError(w, http.StatusInternalServerError, "更新岗位专业失败")
 		return
 	}
 	for _, majorID := range req.Majors {
@@ -792,7 +792,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		`, id, majorID)
 		if err != nil {
 			log.Printf("[SaveFull] insert career_position_majors failed majorID=%s: %v", majorID, err)
-			respondError(w, http.StatusInternalServerError, "failed to insert position majors")
+			respondError(w, http.StatusInternalServerError, "插入岗位专业失败")
 			return
 		}
 	}
@@ -800,25 +800,25 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 	_, err = tx.Exec(r.Context(), `DELETE FROM position_certificates WHERE career_position_id = $1`, id)
 	if err != nil {
 		log.Printf("[SaveFull] delete position_certificates failed: %v", err)
-		respondError(w, http.StatusInternalServerError, "failed to clear certificates")
+		respondError(w, http.StatusInternalServerError, "清空证书失败")
 		return
 	}
 	_, err = tx.Exec(r.Context(), `DELETE FROM ability_domains WHERE career_position_id = $1`, id)
 	if err != nil {
 		log.Printf("[SaveFull] delete ability_domains failed: %v", err)
-		respondError(w, http.StatusInternalServerError, "failed to clear ability domains")
+		respondError(w, http.StatusInternalServerError, "清空能力域失败")
 		return
 	}
 	_, err = tx.Exec(r.Context(), `DELETE FROM position_ability_bindings WHERE career_position_id = $1`, id)
 	if err != nil {
 		log.Printf("[SaveFull] delete position_ability_bindings failed: %v", err)
-		respondError(w, http.StatusInternalServerError, "failed to clear ability bindings")
+		respondError(w, http.StatusInternalServerError, "清空能力绑定失败")
 		return
 	}
 	_, err = tx.Exec(r.Context(), `DELETE FROM position_responsibilities WHERE career_position_id = $1`, id)
 	if err != nil {
 		log.Printf("[SaveFull] delete position_responsibilities failed: %v", err)
-		respondError(w, http.StatusInternalServerError, "failed to clear responsibilities")
+		respondError(w, http.StatusInternalServerError, "清空职责失败")
 		return
 	}
 
@@ -838,7 +838,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		`, respID, claims.TenantID, id, resp.Name, desc, idx)
 		if err != nil {
 			log.Printf("[SaveFull] insert position_responsibilities failed: %v", err)
-			respondError(w, http.StatusInternalServerError, "failed to create responsibility")
+			respondError(w, http.StatusInternalServerError, "创建职责失败")
 			return
 		}
 		respIDMap[resp.ID] = respID
@@ -881,7 +881,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 			domainField, binding.Level, rubricDesc, coalesceStringSlice(binding.Attributes), 0)
 		if err != nil {
 			log.Printf("[SaveFull] insert position_ability_bindings failed: %v", err)
-			respondError(w, http.StatusInternalServerError, "failed to create ability binding")
+			respondError(w, http.StatusInternalServerError, "创建能力绑定失败")
 			return
 		}
 		bindingIDMap[binding.ID] = bindingID
@@ -907,7 +907,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		`, uuid.NewString(), claims.TenantID, id, d.Name, desc, coalesceStringSlice(bindingIDs), idx)
 		if err != nil {
 			log.Printf("[SaveFull] insert ability_domains failed: %v", err)
-			respondError(w, http.StatusInternalServerError, "failed to create ability domain")
+			respondError(w, http.StatusInternalServerError, "创建能力域失败")
 			return
 		}
 	}
@@ -926,14 +926,14 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		`, uuid.NewString(), claims.TenantID, id, libraryID)
 		if err != nil {
 			log.Printf("[SaveFull] insert position_certificates failed: %v", err)
-			respondError(w, http.StatusInternalServerError, "failed to create certificate")
+			respondError(w, http.StatusInternalServerError, "创建证书失败")
 			return
 		}
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
 		log.Printf("[SaveFull] commit failed: %v", err)
-		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -957,7 +957,7 @@ func (h *PositionHandler) GetFavorite(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchPosition(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "position not found")
+		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
 	}
 
@@ -981,7 +981,7 @@ func (h *PositionHandler) ToggleFavorite(w http.ResponseWriter, r *http.Request)
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchPosition(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "position not found")
+		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
 	}
 
@@ -993,7 +993,7 @@ func (h *PositionHandler) ToggleFavorite(w http.ResponseWriter, r *http.Request)
 
 	tx, err := h.DB.Begin(ctx)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to start transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(ctx)
@@ -1008,12 +1008,12 @@ func (h *PositionHandler) ToggleFavorite(w http.ResponseWriter, r *http.Request)
 		`, claims.UserID, id)
 	}
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to toggle favorite")
+		respondError(w, http.StatusInternalServerError, "切换favorite失败")
 		return
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -1090,14 +1090,14 @@ func (h *PositionHandler) ListFavorites(w http.ResponseWriter, r *http.Request) 
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list favorite positions")
+		respondError(w, http.StatusInternalServerError, "查询收藏岗位失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanPositionRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan favorite positions")
+		respondError(w, http.StatusInternalServerError, "读取收藏岗位失败")
 		return
 	}
 

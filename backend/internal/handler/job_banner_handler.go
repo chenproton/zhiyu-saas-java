@@ -104,14 +104,14 @@ func (h *JobBannerHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list banners")
+		respondError(w, http.StatusInternalServerError, "查询轮播图失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanBannerRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan banners")
+		respondError(w, http.StatusInternalServerError, "读取轮播图失败")
 		return
 	}
 
@@ -127,7 +127,7 @@ func (h *JobBannerHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	banner, err := h.fetchBanner(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "banner not found")
+		respondError(w, http.StatusNotFound, "轮播图不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, banner)
@@ -162,7 +162,7 @@ func (h *JobBannerHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`, id, *claims.TenantID, req.Title, req.ImageURL, req.LinkURL, req.SortOrder, req.IsEnabled)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create banner")
+		respondError(w, http.StatusInternalServerError, "创建轮播图失败")
 		return
 	}
 
@@ -178,7 +178,7 @@ func (h *JobBannerHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchBanner(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "banner not found")
+		respondError(w, http.StatusNotFound, "轮播图不存在")
 		return
 	}
 
@@ -199,7 +199,7 @@ func (h *JobBannerHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $6
 	`, req.Title, req.ImageURL, req.LinkURL, req.SortOrder, req.IsEnabled, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update banner")
+		respondError(w, http.StatusInternalServerError, "更新轮播图失败")
 		return
 	}
 
@@ -215,13 +215,13 @@ func (h *JobBannerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchBanner(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "banner not found")
+		respondError(w, http.StatusNotFound, "轮播图不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM banner_configs WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete banner")
+		respondError(w, http.StatusInternalServerError, "删除轮播图失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

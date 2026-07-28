@@ -93,14 +93,14 @@ func (h *AbilityDomainHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list ability domains")
+		respondError(w, http.StatusInternalServerError, "查询能力域失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanDomainRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan ability domains")
+		respondError(w, http.StatusInternalServerError, "读取能力域失败")
 		return
 	}
 
@@ -135,7 +135,7 @@ func (h *AbilityDomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`, id, tenantID, req.CareerPositionID, req.Name, req.Description, coalesceStringSlice(req.BindingIDs), req.SortOrder)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create ability domain")
+		respondError(w, http.StatusInternalServerError, "创建能力域失败")
 		return
 	}
 
@@ -151,7 +151,7 @@ func (h *AbilityDomainHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchDomain(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "ability domain not found")
+		respondError(w, http.StatusNotFound, "能力域不存在")
 		return
 	}
 
@@ -172,7 +172,7 @@ func (h *AbilityDomainHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $6
 	`, req.CareerPositionID, req.Name, req.Description, coalesceStringSlice(req.BindingIDs), req.SortOrder, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update ability domain")
+		respondError(w, http.StatusInternalServerError, "更新能力域失败")
 		return
 	}
 
@@ -188,13 +188,13 @@ func (h *AbilityDomainHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchDomain(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "ability domain not found")
+		respondError(w, http.StatusNotFound, "能力域不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM ability_domains WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete ability domain")
+		respondError(w, http.StatusInternalServerError, "删除能力域失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

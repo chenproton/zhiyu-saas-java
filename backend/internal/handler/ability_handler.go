@@ -106,14 +106,14 @@ func (h *AbilityHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list abilities")
+		respondError(w, http.StatusInternalServerError, "查询能力点失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanAbilityRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan abilities")
+		respondError(w, http.StatusInternalServerError, "读取能力点失败")
 		return
 	}
 
@@ -129,7 +129,7 @@ func (h *AbilityHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	ability, err := h.fetchAbility(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "ability point not found")
+		respondError(w, http.StatusNotFound, "能力点不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, ability)
@@ -170,7 +170,7 @@ func (h *AbilityHandler) Create(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("[AbilityHandler.Create] insert ability_points failed: %v", err)
-		respondError(w, http.StatusInternalServerError, "failed to create ability point")
+		respondError(w, http.StatusInternalServerError, "创建能力点失败")
 		return
 	}
 
@@ -186,7 +186,7 @@ func (h *AbilityHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchAbility(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "ability point not found")
+		respondError(w, http.StatusNotFound, "能力点不存在")
 		return
 	}
 
@@ -210,7 +210,7 @@ func (h *AbilityHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "能力点名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update ability point")
+		respondError(w, http.StatusInternalServerError, "更新能力点失败")
 		return
 	}
 
@@ -226,13 +226,13 @@ func (h *AbilityHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchAbility(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "ability point not found")
+		respondError(w, http.StatusNotFound, "能力点不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM ability_points WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete ability point")
+		respondError(w, http.StatusInternalServerError, "删除能力点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

@@ -108,14 +108,14 @@ func (h *PositionAbilityHandler) ListBindings(w http.ResponseWriter, r *http.Req
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list bindings")
+		respondError(w, http.StatusInternalServerError, "查询绑定失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanBindingRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan bindings")
+		respondError(w, http.StatusInternalServerError, "读取绑定失败")
 		return
 	}
 
@@ -156,7 +156,7 @@ func (h *PositionAbilityHandler) CreateBinding(w http.ResponseWriter, r *http.Re
 	`, id, tenantID, req.CareerPositionID, req.ResponsibilityID, req.AbilityPointID, req.Source,
 		req.Domain, req.RequiredLevel, req.RubricDescription, coalesceStringSlice(req.Attributes), req.Weight)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create binding")
+		respondError(w, http.StatusInternalServerError, "创建绑定失败")
 		return
 	}
 
@@ -172,7 +172,7 @@ func (h *PositionAbilityHandler) UpdateBinding(w http.ResponseWriter, r *http.Re
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchBinding(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "binding not found")
+		respondError(w, http.StatusNotFound, "绑定不存在")
 		return
 	}
 
@@ -195,7 +195,7 @@ func (h *PositionAbilityHandler) UpdateBinding(w http.ResponseWriter, r *http.Re
 	`, req.CareerPositionID, req.ResponsibilityID, req.AbilityPointID, req.Source,
 		req.Domain, req.RequiredLevel, req.RubricDescription, coalesceStringSlice(req.Attributes), req.Weight, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update binding")
+		respondError(w, http.StatusInternalServerError, "更新绑定失败")
 		return
 	}
 
@@ -211,13 +211,13 @@ func (h *PositionAbilityHandler) DeleteBinding(w http.ResponseWriter, r *http.Re
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchBinding(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "binding not found")
+		respondError(w, http.StatusNotFound, "绑定不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM position_ability_bindings WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete binding")
+		respondError(w, http.StatusInternalServerError, "删除绑定失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

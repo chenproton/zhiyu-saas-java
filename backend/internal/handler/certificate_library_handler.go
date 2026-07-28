@@ -85,7 +85,7 @@ func (h *CertificateLibraryHandler) List(w http.ResponseWriter, r *http.Request)
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list certificate library")
+		respondError(w, http.StatusInternalServerError, "查询证书库失败")
 		return
 	}
 	defer rows.Close()
@@ -97,7 +97,7 @@ func (h *CertificateLibraryHandler) List(w http.ResponseWriter, r *http.Request)
 		if err := rows.Scan(
 			&item.ID, &item.TenantID, &item.Name, &url, &description, &imageURL, &creatorID, &item.CreatedAt,
 		); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to scan certificate library")
+			respondError(w, http.StatusInternalServerError, "读取证书库失败")
 			return
 		}
 		item.URL = url
@@ -119,7 +119,7 @@ func (h *CertificateLibraryHandler) Get(w http.ResponseWriter, r *http.Request) 
 	id := chi.URLParam(r, "id")
 	item, err := h.fetchItem(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "certificate not found")
+		respondError(w, http.StatusNotFound, "证书不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, item)
@@ -150,7 +150,7 @@ func (h *CertificateLibraryHandler) Create(w http.ResponseWriter, r *http.Reques
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`, id, tenantID, req.Name, req.URL, req.Description, req.ImageURL, creatorID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create certificate")
+		respondError(w, http.StatusInternalServerError, "创建证书失败")
 		return
 	}
 
@@ -167,7 +167,7 @@ func (h *CertificateLibraryHandler) Update(w http.ResponseWriter, r *http.Reques
 	id := chi.URLParam(r, "id")
 	existing, err := h.fetchItem(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "certificate not found")
+		respondError(w, http.StatusNotFound, "证书不存在")
 		return
 	}
 
@@ -204,7 +204,7 @@ func (h *CertificateLibraryHandler) Update(w http.ResponseWriter, r *http.Reques
 		WHERE id = $5
 	`, name, url, description, imageURL, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update certificate")
+		respondError(w, http.StatusInternalServerError, "更新证书失败")
 		return
 	}
 
@@ -221,7 +221,7 @@ func (h *CertificateLibraryHandler) Delete(w http.ResponseWriter, r *http.Reques
 	id := chi.URLParam(r, "id")
 	existing, err := h.fetchItem(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "certificate not found")
+		respondError(w, http.StatusNotFound, "证书不存在")
 		return
 	}
 
@@ -231,7 +231,7 @@ func (h *CertificateLibraryHandler) Delete(w http.ResponseWriter, r *http.Reques
 
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM certificate_library WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete certificate")
+		respondError(w, http.StatusInternalServerError, "删除证书失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

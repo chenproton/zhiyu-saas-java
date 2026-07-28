@@ -70,14 +70,14 @@ func (h *HybridModuleHandler) ListModules(w http.ResponseWriter, r *http.Request
 	`
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list hybrid modules")
+		respondError(w, http.StatusInternalServerError, "查询混合模块失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanHybridModuleRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan hybrid modules")
+		respondError(w, http.StatusInternalServerError, "读取混合模块失败")
 		return
 	}
 
@@ -113,7 +113,7 @@ func (h *HybridModuleHandler) UpsertModule(w http.ResponseWriter, r *http.Reques
 			VALUES ($1, $2, $3, $4, $5, $6)
 		`, id, tenantID, req.NodeID, req.ModuleKey, req.Mode, req.Data)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to create hybrid module")
+			respondError(w, http.StatusInternalServerError, "创建混合模块失败")
 			return
 		}
 	} else {
@@ -122,7 +122,7 @@ func (h *HybridModuleHandler) UpsertModule(w http.ResponseWriter, r *http.Reques
 			WHERE id = $5
 		`, req.NodeID, req.ModuleKey, req.Mode, req.Data, id)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to update hybrid module")
+			respondError(w, http.StatusInternalServerError, "更新混合模块失败")
 			return
 		}
 	}
@@ -139,13 +139,13 @@ func (h *HybridModuleHandler) DeleteModule(w http.ResponseWriter, r *http.Reques
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchHybridModule(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "hybrid module not found")
+		respondError(w, http.StatusNotFound, "混合模块不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM hybrid_node_modules WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete hybrid module")
+		respondError(w, http.StatusInternalServerError, "删除混合模块失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

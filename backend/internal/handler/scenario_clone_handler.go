@@ -28,7 +28,7 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			slog.Error("[CloneScenario] panic recovered", "panic", rec, "stack", string(debug.Stack()))
-			respondError(w, http.StatusInternalServerError, "internal server error")
+			respondError(w, http.StatusInternalServerError, "服务器内部错误")
 		}
 	}()
 
@@ -44,7 +44,7 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	src, err := h.fetchSourceScenario(r.Context(), id)
 	if err != nil {
 		slog.Error("[CloneScenario] fetch source scenario failed", "scenario_id", id, "error", err)
-		respondError(w, http.StatusNotFound, "scenario not found")
+		respondError(w, http.StatusNotFound, "场景方案不存在")
 		return
 	}
 
@@ -54,7 +54,7 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	}
 	if src.TenantID != nil && *src.TenantID != tenantID {
 		slog.Error("[CloneScenario] tenant mismatch", "scenario_tenant", *src.TenantID, "user_tenant", tenantID)
-		respondError(w, http.StatusForbidden, "access denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -70,7 +70,7 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	tx, err := h.DB.Begin(ctx)
 	if err != nil {
 		slog.Error("[CloneScenario] begin transaction failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to start transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(ctx)
@@ -96,7 +96,7 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "场景方案代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to clone scenario")
+		respondError(w, http.StatusInternalServerError, "克隆场景方案失败")
 		return
 	}
 
@@ -152,33 +152,33 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 			tr.knowledgePointIDs, tr.abilityPointIDs, tr.resourceIDs, tr.evalData, tenantID)
 		if err != nil {
 			slog.Error("[CloneScenario] insert task failed", "old_task_id", tr.oldID, "new_task_id", newTaskID, "error", err)
-			respondError(w, http.StatusInternalServerError, "failed to clone task")
+			respondError(w, http.StatusInternalServerError, "克隆任务失败")
 			return
 		}
 
 		if err := h.cloneTaskDeliverables(ctx, tx, tr.oldID, newTaskID, tenantID); err != nil {
 			slog.Error("[CloneScenario] clone deliverables failed", "old_task_id", tr.oldID, "new_task_id", newTaskID, "error", err)
-			respondError(w, http.StatusInternalServerError, "failed to clone deliverables")
+			respondError(w, http.StatusInternalServerError, "克隆交付物失败")
 			return
 		}
 		if err := h.cloneTaskEvaluationMethods(ctx, tx, tr.oldID, newTaskID, tenantID); err != nil {
 			slog.Error("[CloneScenario] clone evaluation methods failed", "old_task_id", tr.oldID, "new_task_id", newTaskID, "error", err)
-			respondError(w, http.StatusInternalServerError, "failed to clone evaluation methods")
+			respondError(w, http.StatusInternalServerError, "克隆测评方法失败")
 			return
 		}
 		if err := h.cloneTaskResourceBindings(ctx, tx, tr.oldID, newTaskID, tenantID); err != nil {
 			slog.Error("[CloneScenario] clone resource bindings failed", "old_task_id", tr.oldID, "new_task_id", newTaskID, "error", err)
-			respondError(w, http.StatusInternalServerError, "failed to clone resource bindings")
+			respondError(w, http.StatusInternalServerError, "克隆资源绑定失败")
 			return
 		}
 		if err := h.cloneTaskKnowledgeBindings(ctx, tx, tr.oldID, newTaskID, tenantID); err != nil {
 			slog.Error("[CloneScenario] clone knowledge bindings failed", "old_task_id", tr.oldID, "new_task_id", newTaskID, "error", err)
-			respondError(w, http.StatusInternalServerError, "failed to clone knowledge bindings")
+			respondError(w, http.StatusInternalServerError, "克隆knowledge bindings失败")
 			return
 		}
 		if err := h.cloneTaskAbilityBindings(ctx, tx, tr.oldID, newTaskID, tenantID); err != nil {
 			slog.Error("[CloneScenario] clone ability bindings failed", "old_task_id", tr.oldID, "new_task_id", newTaskID, "error", err)
-			respondError(w, http.StatusInternalServerError, "failed to clone ability bindings")
+			respondError(w, http.StatusInternalServerError, "克隆能力绑定失败")
 			return
 		}
 	}
@@ -186,25 +186,25 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	for _, newTaskID := range taskIDMap {
 		if err := h.remapTaskDependencyIDs(ctx, tx, newTaskID, taskIDMap); err != nil {
 			slog.Error("[CloneScenario] remap dependencies failed", "new_task_id", newTaskID, "error", err)
-			respondError(w, http.StatusInternalServerError, "failed to remap task dependencies")
+			respondError(w, http.StatusInternalServerError, "重新映射任务依赖失败")
 			return
 		}
 	}
 
 	if err := h.cloneScenarioWeights(ctx, tx, id, newID, taskIDMap, tenantID); err != nil {
 		slog.Error("[CloneScenario] clone weights failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to clone weights")
+		respondError(w, http.StatusInternalServerError, "克隆权重失败")
 		return
 	}
 	if err := h.cloneScenarioGradeMappings(ctx, tx, id, newID, taskIDMap, tenantID); err != nil {
 		slog.Error("[CloneScenario] clone grade mappings failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to clone grade mappings")
+		respondError(w, http.StatusInternalServerError, "克隆成绩映射失败")
 		return
 	}
 
 	if err := tx.Commit(ctx); err != nil {
 		slog.Error("[CloneScenario] commit failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -212,7 +212,7 @@ func (h *ScenarioCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	scenario, err := handler.fetchScenario(ctx, newID)
 	if err != nil {
 		slog.Error("[CloneScenario] fetch cloned scenario failed", "new_id", newID, "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to fetch cloned scenario")
+		respondError(w, http.StatusInternalServerError, "获取cloned scenario失败")
 		return
 	}
 	slog.Info("[CloneScenario] success", "new_scenario_id", newID, "code", newCode)

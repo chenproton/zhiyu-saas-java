@@ -32,7 +32,7 @@ func (h *PositionExportHandler) ExportExcel(w http.ResponseWriter, r *http.Reque
 		IDs []string `json:"ids"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.IDs) == 0 {
-		respondError(w, http.StatusBadRequest, "missing position ids")
+		respondError(w, http.StatusBadRequest, "缺少岗位ID")
 		return
 	}
 
@@ -41,7 +41,7 @@ func (h *PositionExportHandler) ExportExcel(w http.ResponseWriter, r *http.Reque
 	f := th.generatePositionTemplate(ctx, tenantID)
 
 	if err := h.fillPositionsData(ctx, f, tenantID, req.IDs); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to fill export data")
+		respondError(w, http.StatusInternalServerError, "填充export data失败")
 		return
 	}
 

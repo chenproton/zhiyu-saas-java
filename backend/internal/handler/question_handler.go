@@ -114,14 +114,14 @@ func (h *QuestionHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list questions")
+		respondError(w, http.StatusInternalServerError, "查询题目失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanQuestionRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan questions")
+		respondError(w, http.StatusInternalServerError, "读取题目失败")
 		return
 	}
 
@@ -138,7 +138,7 @@ func (h *QuestionHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	q, err := h.fetchQuestion(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "question not found")
+		respondError(w, http.StatusNotFound, "题目不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, q)
@@ -166,7 +166,7 @@ func (h *QuestionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	id := uuid.NewString()
 	code, err := generateUniqueEntityCode(r.Context(), h.DB, "TM", "questions", tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to generate question code")
+		respondError(w, http.StatusInternalServerError, "生成题目编码失败")
 		return
 	}
 	if req.Answer == nil {
@@ -179,7 +179,7 @@ func (h *QuestionHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'draft')
 	`, id, tenantID, code, req.BankID, req.Type, req.Content, string(optionsJSON), string(answerJSON), req.Analysis, req.Score, req.Difficulty, coalesceStringSlice(req.KnowledgePoints), claims.UserID, req.Source)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create question")
+		respondError(w, http.StatusInternalServerError, "创建题目失败")
 		return
 	}
 
@@ -196,7 +196,7 @@ func (h *QuestionHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchQuestion(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "question not found")
+		respondError(w, http.StatusNotFound, "题目不存在")
 		return
 	}
 
@@ -241,7 +241,7 @@ func (h *QuestionHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $`+itoa(argIdx)+`
 	`, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update question")
+		respondError(w, http.StatusInternalServerError, "更新题目失败")
 		return
 	}
 
@@ -258,13 +258,13 @@ func (h *QuestionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchQuestion(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "question not found")
+		respondError(w, http.StatusNotFound, "题目不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM questions WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete question")
+		respondError(w, http.StatusInternalServerError, "删除题目失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -283,13 +283,13 @@ func (h *QuestionHandler) BatchCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.BankID == "" {
-		respondError(w, http.StatusBadRequest, "missing bank id")
+		respondError(w, http.StatusBadRequest, "缺少题库ID")
 		return
 	}
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -313,14 +313,14 @@ func (h *QuestionHandler) BatchCreate(w http.ResponseWriter, r *http.Request) {
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'draft')
 		`, id, tenantID, code, req.BankID, item.Type, item.Content, string(optionsJSON), string(answerJSON), item.Analysis, item.Score, item.Difficulty, coalesceStringSlice(item.KnowledgePoints), claims.UserID, item.Source)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to batch create questions")
+			respondError(w, http.StatusInternalServerError, "批量创建题目失败")
 			return
 		}
 		count++
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 

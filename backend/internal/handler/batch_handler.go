@@ -152,14 +152,14 @@ func (h *BatchHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list "+h.Config.EntityName+"es")
+		respondError(w, http.StatusInternalServerError, "查询"+h.Config.EntityName+"es失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.Config.ScanRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan "+h.Config.EntityName+"es")
+		respondError(w, http.StatusInternalServerError, "读取"+h.Config.EntityName+"es失败")
 		return
 	}
 
@@ -244,7 +244,7 @@ func (h *BatchHandler) Create(w http.ResponseWriter, r *http.Request) {
 	query := "INSERT INTO " + h.Config.WriteTableName + " (" + strings.Join(cols, ", ") + ") VALUES (" + strings.Join(placeholders, ", ") + ")"
 	_, err := h.DB.Exec(r.Context(), query, vals...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create "+h.Config.EntityName)
+		respondError(w, http.StatusInternalServerError, "创建"+h.Config.EntityName+"失败")
 		return
 	}
 
@@ -296,7 +296,7 @@ func (h *BatchHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	_, err := h.DB.Exec(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update "+h.Config.EntityName)
+		respondError(w, http.StatusInternalServerError, "更新"+h.Config.EntityName+"失败")
 		return
 	}
 
@@ -321,7 +321,7 @@ func (h *BatchHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	_, err := h.DB.Exec(r.Context(), "DELETE FROM "+h.Config.WriteTableName+" WHERE id = $1", id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete "+h.Config.EntityName)
+		respondError(w, http.StatusInternalServerError, "删除"+h.Config.EntityName+"失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -349,13 +349,13 @@ func (h *BatchHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Status != h.Config.StatusOpen && req.Status != h.Config.StatusClosed {
-		respondError(w, http.StatusBadRequest, "invalid status")
+		respondError(w, http.StatusBadRequest, "无效状态")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), "UPDATE "+h.Config.WriteTableName+" SET status = $1, updated_at = NOW() WHERE id = $2", req.Status, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update "+h.Config.EntityName+" status")
+		respondError(w, http.StatusInternalServerError, "更新"+h.Config.EntityName+"状态失败")
 		return
 	}
 

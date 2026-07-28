@@ -97,14 +97,14 @@ func (h *OrgTypeHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list org types")
+		respondError(w, http.StatusInternalServerError, "查询组织类型失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanOrgTypeRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan org types")
+		respondError(w, http.StatusInternalServerError, "读取组织类型失败")
 		return
 	}
 
@@ -115,7 +115,7 @@ func (h *OrgTypeHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	orgType, err := h.fetchOrgType(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "org type not found")
+		respondError(w, http.StatusNotFound, "组织类型不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, orgType.TenantID) {
@@ -160,7 +160,7 @@ func (h *OrgTypeHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "组织类型名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create org type")
+		respondError(w, http.StatusInternalServerError, "创建组织类型失败")
 		return
 	}
 
@@ -178,7 +178,7 @@ func (h *OrgTypeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	orgType, err := h.fetchOrgType(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "org type not found")
+		respondError(w, http.StatusNotFound, "组织类型不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, orgType.TenantID) {
@@ -197,7 +197,7 @@ func (h *OrgTypeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Category != domain.OrgTypeCategoryInternal && req.Category != domain.OrgTypeCategoryBusiness && req.Category != domain.OrgTypeCategoryExternal {
-		respondError(w, http.StatusBadRequest, "invalid category")
+		respondError(w, http.StatusBadRequest, "无效分类")
 		return
 	}
 
@@ -210,7 +210,7 @@ func (h *OrgTypeHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "组织类型名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update org type")
+		respondError(w, http.StatusInternalServerError, "更新组织类型失败")
 		return
 	}
 
@@ -228,7 +228,7 @@ func (h *OrgTypeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	orgType, err := h.fetchOrgType(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "org type not found")
+		respondError(w, http.StatusNotFound, "组织类型不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, orgType.TenantID) {
@@ -242,7 +242,7 @@ func (h *OrgTypeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	var refCount int
 	if err := h.DB.QueryRow(r.Context(), `SELECT COUNT(*) FROM organizations WHERE type_id = $1`, id).Scan(&refCount); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to check org type references")
+		respondError(w, http.StatusInternalServerError, "检查org type references失败")
 		return
 	}
 	if refCount > 0 {
@@ -252,7 +252,7 @@ func (h *OrgTypeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM org_types WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete org type")
+		respondError(w, http.StatusInternalServerError, "删除组织类型失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

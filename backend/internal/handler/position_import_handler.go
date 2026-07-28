@@ -99,7 +99,7 @@ func (h *PositionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 
 	h.importPositions(ctx, xlsx, tenantID, userID, false, overwrite, positionMap, result)
 	if len(positionMap) == 0 && result.Failed == 0 {
-		respondError(w, http.StatusBadRequest, "no valid position data found in Sheet1")
+		respondError(w, http.StatusBadRequest, "Sheet1中未找到有效岗位数据")
 		return
 	}
 

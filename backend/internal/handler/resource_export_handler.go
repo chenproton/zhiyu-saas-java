@@ -64,12 +64,12 @@ func (h *ResourceExportHandler) exportExcel(w http.ResponseWriter, r *http.Reque
 	case "teachers":
 		f = th.generateTeacherTemplate(ctx, tenantID)
 	default:
-		respondError(w, http.StatusBadRequest, "unsupported entity")
+		respondError(w, http.StatusBadRequest, "不支持的实体")
 		return
 	}
 
 	if err := fill(ctx, f, tenantID, req.IDs); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to fill export data")
+		respondError(w, http.StatusInternalServerError, "填充export data失败")
 		return
 	}
 

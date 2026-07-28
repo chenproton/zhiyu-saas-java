@@ -261,5 +261,5 @@ func generateUniqueEntityCode(ctx context.Context, db interface {
 			return code, nil
 		}
 	}
-	return "", fmt.Errorf("failed to generate unique %s code", prefix)
+	return "", fmt.Errorf("生成唯一%s编码失败", prefix)
 }

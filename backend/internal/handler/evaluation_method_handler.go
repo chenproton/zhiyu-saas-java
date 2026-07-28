@@ -42,7 +42,7 @@ func (h *EvaluationMethodHandler) ListCategories(w http.ResponseWriter, r *http.
 		SELECT id, name, sort_order FROM evaluation_method_categories ORDER BY sort_order
 	`)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list categories")
+		respondError(w, http.StatusInternalServerError, "查询分类失败")
 		return
 	}
 	defer rows.Close()
@@ -51,7 +51,7 @@ func (h *EvaluationMethodHandler) ListCategories(w http.ResponseWriter, r *http.
 	for rows.Next() {
 		var c domain.EvaluationMethodCategory
 		if err := rows.Scan(&c.ID, &c.Name, &c.Order); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to scan categories")
+			respondError(w, http.StatusInternalServerError, "读取分类失败")
 			return
 		}
 		items = append(items, c)
@@ -113,14 +113,14 @@ func (h *EvaluationMethodHandler) ListMethods(w http.ResponseWriter, r *http.Req
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list methods")
+		respondError(w, http.StatusInternalServerError, "查询方法失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanMethodRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan methods")
+		respondError(w, http.StatusInternalServerError, "读取方法失败")
 		return
 	}
 
@@ -142,7 +142,7 @@ func (h *EvaluationMethodHandler) Toggle(w http.ResponseWriter, r *http.Request)
 	}
 
 	if _, err := h.fetchMethod(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "method not found")
+		respondError(w, http.StatusNotFound, "方法不存在")
 		return
 	}
 
@@ -150,7 +150,7 @@ func (h *EvaluationMethodHandler) Toggle(w http.ResponseWriter, r *http.Request)
 		UPDATE evaluation_methods SET enabled = $1 WHERE id = $2
 	`, req.Enabled, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to toggle method")
+		respondError(w, http.StatusInternalServerError, "切换方法失败")
 		return
 	}
 

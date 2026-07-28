@@ -98,14 +98,14 @@ func (h *NodeQuizHandler) ListQuizzes(w http.ResponseWriter, r *http.Request) {
 	`
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list quizzes")
+		respondError(w, http.StatusInternalServerError, "查询测验失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanNodeQuizRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan quizzes")
+		respondError(w, http.StatusInternalServerError, "读取测验失败")
 		return
 	}
 
@@ -139,7 +139,7 @@ func (h *NodeQuizHandler) CreateQuiz(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`, id, tenantID, req.NodeID, req.Title, req.Type, req.TimeLimit)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create quiz")
+		respondError(w, http.StatusInternalServerError, "创建测验失败")
 		return
 	}
 
@@ -155,7 +155,7 @@ func (h *NodeQuizHandler) UpdateQuiz(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchNodeQuiz(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "quiz not found")
+		respondError(w, http.StatusNotFound, "测验不存在")
 		return
 	}
 
@@ -174,7 +174,7 @@ func (h *NodeQuizHandler) UpdateQuiz(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $4
 	`, req.Title, req.Type, req.TimeLimit, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update quiz")
+		respondError(w, http.StatusInternalServerError, "更新测验失败")
 		return
 	}
 
@@ -190,29 +190,29 @@ func (h *NodeQuizHandler) DeleteQuiz(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchNodeQuiz(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "quiz not found")
+		respondError(w, http.StatusNotFound, "测验不存在")
 		return
 	}
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
 
 	_, err = tx.Exec(r.Context(), `DELETE FROM node_quiz_questions WHERE quiz_id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete quiz questions")
+		respondError(w, http.StatusInternalServerError, "删除测验题目失败")
 		return
 	}
 	_, err = tx.Exec(r.Context(), `DELETE FROM node_quizzes WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete quiz")
+		respondError(w, http.StatusInternalServerError, "删除测验失败")
 		return
 	}
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -227,7 +227,7 @@ func (h *NodeQuizHandler) ListQuestions(w http.ResponseWriter, r *http.Request) 
 
 	quizID := chi.URLParam(r, "id")
 	if _, err := h.fetchNodeQuiz(r.Context(), quizID); err != nil {
-		respondError(w, http.StatusNotFound, "quiz not found")
+		respondError(w, http.StatusNotFound, "测验不存在")
 		return
 	}
 
@@ -243,14 +243,14 @@ func (h *NodeQuizHandler) ListQuestions(w http.ResponseWriter, r *http.Request) 
 	`
 	rows, err := h.DB.Query(r.Context(), query, quizID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list questions")
+		respondError(w, http.StatusInternalServerError, "查询题目失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanNodeQuizQuestionRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan questions")
+		respondError(w, http.StatusInternalServerError, "读取题目失败")
 		return
 	}
 
@@ -265,7 +265,7 @@ func (h *NodeQuizHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 
 	quizID := chi.URLParam(r, "id")
 	if _, err := h.fetchNodeQuiz(r.Context(), quizID); err != nil {
-		respondError(w, http.StatusNotFound, "quiz not found")
+		respondError(w, http.StatusNotFound, "测验不存在")
 		return
 	}
 
@@ -290,7 +290,7 @@ func (h *NodeQuizHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`, id, tenantID, quizID, req.Type, req.Question, req.Options, req.Answer, req.Score, req.SortOrder)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to add question")
+		respondError(w, http.StatusInternalServerError, "添加题目失败")
 		return
 	}
 
@@ -306,7 +306,7 @@ func (h *NodeQuizHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request)
 
 	questionID := chi.URLParam(r, "questionId")
 	if _, err := h.fetchNodeQuizQuestion(r.Context(), questionID); err != nil {
-		respondError(w, http.StatusNotFound, "question not found")
+		respondError(w, http.StatusNotFound, "题目不存在")
 		return
 	}
 
@@ -326,7 +326,7 @@ func (h *NodeQuizHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request)
 		WHERE id = $7
 	`, req.Type, req.Question, req.Options, req.Answer, req.Score, req.SortOrder, questionID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update question")
+		respondError(w, http.StatusInternalServerError, "更新题目失败")
 		return
 	}
 
@@ -342,13 +342,13 @@ func (h *NodeQuizHandler) DeleteQuestion(w http.ResponseWriter, r *http.Request)
 
 	questionID := chi.URLParam(r, "questionId")
 	if _, err := h.fetchNodeQuizQuestion(r.Context(), questionID); err != nil {
-		respondError(w, http.StatusNotFound, "question not found")
+		respondError(w, http.StatusNotFound, "题目不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM node_quiz_questions WHERE id = $1`, questionID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete question")
+		respondError(w, http.StatusInternalServerError, "删除题目失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": questionID})

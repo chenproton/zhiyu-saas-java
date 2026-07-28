@@ -99,14 +99,14 @@ func (h *MajorHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list majors")
+		respondError(w, http.StatusInternalServerError, "查询专业失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanMajorRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan majors")
+		respondError(w, http.StatusInternalServerError, "读取专业失败")
 		return
 	}
 
@@ -117,7 +117,7 @@ func (h *MajorHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	major, err := h.fetchMajor(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "major not found")
+		respondError(w, http.StatusNotFound, "专业不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, major.TenantID) {
@@ -158,7 +158,7 @@ func (h *MajorHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "专业代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create major")
+		respondError(w, http.StatusInternalServerError, "创建专业失败")
 		return
 	}
 
@@ -176,7 +176,7 @@ func (h *MajorHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	major, err := h.fetchMajor(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "major not found")
+		respondError(w, http.StatusNotFound, "专业不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, major.TenantID) {
@@ -203,7 +203,7 @@ func (h *MajorHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "专业代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update major")
+		respondError(w, http.StatusInternalServerError, "更新专业失败")
 		return
 	}
 
@@ -221,7 +221,7 @@ func (h *MajorHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	major, err := h.fetchMajor(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "major not found")
+		respondError(w, http.StatusNotFound, "专业不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, major.TenantID) {
@@ -233,7 +233,7 @@ func (h *MajorHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		`SELECT COUNT(*) FROM users WHERE major_id = $1`,
 		id,
 	).Scan(&userCount); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to check major references")
+		respondError(w, http.StatusInternalServerError, "检查major references失败")
 		return
 	}
 	if userCount > 0 {
@@ -243,7 +243,7 @@ func (h *MajorHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM majors WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete major")
+		respondError(w, http.StatusInternalServerError, "删除专业失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

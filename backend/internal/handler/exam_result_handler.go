@@ -38,7 +38,7 @@ func (h *ExamResultHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	usageID := r.URL.Query().Get("usageId")
 	if usageID == "" {
-		respondError(w, http.StatusBadRequest, "usageId is required")
+		respondError(w, http.StatusBadRequest, "缺少使用记录ID")
 		return
 	}
 
@@ -55,13 +55,13 @@ func (h *ExamResultHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	total, err := h.countByUsage(r.Context(), usageID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to count exam results")
+		respondError(w, http.StatusInternalServerError, "统计考试结果失败")
 		return
 	}
 
 	items, err := h.listByUsage(r.Context(), usageID, limit, offset)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list exam results")
+		respondError(w, http.StatusInternalServerError, "查询考试结果失败")
 		return
 	}
 
@@ -85,7 +85,7 @@ func (h *ExamResultHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.ExamUsageID == "" {
-		respondError(w, http.StatusBadRequest, "examUsageId is required")
+		respondError(w, http.StatusBadRequest, "缺少考试使用记录ID")
 		return
 	}
 
@@ -95,10 +95,10 @@ func (h *ExamResultHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("submit exam result failed: usage=%s user=%s tenant=%s err=%v", req.ExamUsageID, claims.UserID, tenantID, err)
 		if err == pgx.ErrNoRows {
-			respondError(w, http.StatusNotFound, "exam usage not found")
+			respondError(w, http.StatusNotFound, "考试安排不存在")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to submit exam result")
+		respondError(w, http.StatusInternalServerError, "提交考试结果失败")
 		return
 	}
 

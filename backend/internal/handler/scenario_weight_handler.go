@@ -29,7 +29,7 @@ type UpsertScenarioWeightRequest struct {
 
 func (h *ScenarioWeightHandler) ListWeights(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
@@ -87,14 +87,14 @@ func (h *ScenarioWeightHandler) ListWeights(w http.ResponseWriter, r *http.Reque
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list weights")
+		respondError(w, http.StatusInternalServerError, "查询权重失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanWeightRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan weights")
+		respondError(w, http.StatusInternalServerError, "读取权重失败")
 		return
 	}
 
@@ -103,7 +103,7 @@ func (h *ScenarioWeightHandler) ListWeights(w http.ResponseWriter, r *http.Reque
 
 func (h *ScenarioWeightHandler) UpsertWeight(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
@@ -128,7 +128,7 @@ func (h *ScenarioWeightHandler) UpsertWeight(w http.ResponseWriter, r *http.Requ
 			UPDATE scenario_weight_configs SET scenario_id = $1, task_id = $2, weight = $3 WHERE id = $4
 		`, req.ScenarioID, req.TaskID, req.Weight, req.ID)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to update weight")
+			respondError(w, http.StatusInternalServerError, "更新权重失败")
 			return
 		}
 		id = req.ID
@@ -140,7 +140,7 @@ func (h *ScenarioWeightHandler) UpsertWeight(w http.ResponseWriter, r *http.Requ
 			RETURNING id
 		`, tenantID, req.ScenarioID, req.TaskID, req.Weight).Scan(&id)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to upsert weight")
+			respondError(w, http.StatusInternalServerError, "更新或创建权重失败")
 			return
 		}
 	}

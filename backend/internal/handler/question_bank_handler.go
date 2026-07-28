@@ -110,14 +110,14 @@ func (h *QuestionBankHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list question banks")
+		respondError(w, http.StatusInternalServerError, "查询题库失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanQuestionBankRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan question banks")
+		respondError(w, http.StatusInternalServerError, "读取题库失败")
 		return
 	}
 
@@ -134,7 +134,7 @@ func (h *QuestionBankHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	bank, err := h.fetchQuestionBank(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "question bank not found")
+		respondError(w, http.StatusNotFound, "题库不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, bank)
@@ -162,13 +162,13 @@ func (h *QuestionBankHandler) Create(w http.ResponseWriter, r *http.Request) {
 	id := uuid.NewString()
 	code, err := generateUniqueEntityCode(r.Context(), h.DB, "TK", "question_banks", tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to generate question bank code")
+		respondError(w, http.StatusInternalServerError, "生成question bank code失败")
 		return
 	}
 	creatorID := claims.UserID
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -183,7 +183,7 @@ func (h *QuestionBankHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "题库名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create question bank")
+		respondError(w, http.StatusInternalServerError, "创建题库失败")
 		return
 	}
 
@@ -196,13 +196,13 @@ func (h *QuestionBankHandler) Create(w http.ResponseWriter, r *http.Request) {
 			VALUES ($1, $2)
 		`, id, kpID)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to insert knowledge point binding")
+			respondError(w, http.StatusInternalServerError, "插入知识点绑定失败")
 			return
 		}
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -220,7 +220,7 @@ func (h *QuestionBankHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	existing, err := h.fetchQuestionBank(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "question bank not found")
+		respondError(w, http.StatusNotFound, "题库不存在")
 		return
 	}
 	if existing.IsDraftPool {
@@ -255,7 +255,7 @@ func (h *QuestionBankHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -270,13 +270,13 @@ func (h *QuestionBankHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "题库名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update question bank")
+		respondError(w, http.StatusInternalServerError, "更新题库失败")
 		return
 	}
 
 	_, err = tx.Exec(r.Context(), `DELETE FROM question_bank_knowledge_points WHERE question_bank_id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to clear knowledge point bindings")
+		respondError(w, http.StatusInternalServerError, "清空知识点绑定失败")
 		return
 	}
 	for _, kpID := range req.KnowledgePointIds {
@@ -288,13 +288,13 @@ func (h *QuestionBankHandler) Update(w http.ResponseWriter, r *http.Request) {
 			VALUES ($1, $2)
 		`, id, kpID)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to insert knowledge point binding")
+			respondError(w, http.StatusInternalServerError, "插入知识点绑定失败")
 			return
 		}
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -312,7 +312,7 @@ func (h *QuestionBankHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	bank, err := h.fetchQuestionBank(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "question bank not found")
+		respondError(w, http.StatusNotFound, "题库不存在")
 		return
 	}
 	if bank.IsDraftPool {
@@ -322,7 +322,7 @@ func (h *QuestionBankHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM question_banks WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete question bank")
+		respondError(w, http.StatusInternalServerError, "删除题库失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

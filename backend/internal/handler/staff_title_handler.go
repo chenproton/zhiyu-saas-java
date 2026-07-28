@@ -87,14 +87,14 @@ func (h *StaffTitleHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list staff titles")
+		respondError(w, http.StatusInternalServerError, "查询职称失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanStaffTitleRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan staff titles")
+		respondError(w, http.StatusInternalServerError, "读取职称失败")
 		return
 	}
 
@@ -112,7 +112,7 @@ func (h *StaffTitleHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	title, err := h.fetchStaffTitle(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "staff title not found")
+		respondError(w, http.StatusNotFound, "职称不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, title.TenantID) {
@@ -146,7 +146,7 @@ func (h *StaffTitleHandler) Create(w http.ResponseWriter, r *http.Request) {
 		req.Status = "active"
 	}
 	if req.Status != "active" && req.Status != "inactive" {
-		respondError(w, http.StatusBadRequest, "invalid status")
+		respondError(w, http.StatusBadRequest, "无效状态")
 		return
 	}
 
@@ -165,7 +165,7 @@ func (h *StaffTitleHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "职称代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create staff title")
+		respondError(w, http.StatusInternalServerError, "创建职称失败")
 		return
 	}
 
@@ -182,7 +182,7 @@ func (h *StaffTitleHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	title, err := h.fetchStaffTitle(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "staff title not found")
+		respondError(w, http.StatusNotFound, "职称不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, title.TenantID) {
@@ -201,7 +201,7 @@ func (h *StaffTitleHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Status != "" && req.Status != "active" && req.Status != "inactive" {
-		respondError(w, http.StatusBadRequest, "invalid status")
+		respondError(w, http.StatusBadRequest, "无效状态")
 		return
 	}
 
@@ -210,7 +210,7 @@ func (h *StaffTitleHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $4
 	`, req.Name, req.Description, req.Status, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update staff title")
+		respondError(w, http.StatusInternalServerError, "更新职称失败")
 		return
 	}
 
@@ -228,7 +228,7 @@ func (h *StaffTitleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	title, err := h.fetchStaffTitle(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "staff title not found")
+		respondError(w, http.StatusNotFound, "职称不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, title.TenantID) {
@@ -240,7 +240,7 @@ func (h *StaffTitleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		`SELECT COUNT(*) FROM users WHERE tenant_id = $1 AND $2 = ANY(title_ids)`,
 		title.TenantID, id,
 	).Scan(&userCount); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to check title references")
+		respondError(w, http.StatusInternalServerError, "检查title references失败")
 		return
 	}
 	if userCount > 0 {
@@ -250,7 +250,7 @@ func (h *StaffTitleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM staff_titles WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete staff title")
+		respondError(w, http.StatusInternalServerError, "删除职称失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -265,7 +265,7 @@ func (h *StaffTitleHandler) ToggleStatus(w http.ResponseWriter, r *http.Request)
 	id := chi.URLParam(r, "id")
 	title, err := h.fetchStaffTitle(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "staff title not found")
+		respondError(w, http.StatusNotFound, "职称不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, title.TenantID) {
@@ -279,13 +279,13 @@ func (h *StaffTitleHandler) ToggleStatus(w http.ResponseWriter, r *http.Request)
 	}
 
 	if req.Status != "active" && req.Status != "inactive" {
-		respondError(w, http.StatusBadRequest, "invalid status")
+		respondError(w, http.StatusBadRequest, "无效状态")
 		return
 	}
 
 	_, err = h.DB.Exec(r.Context(), `UPDATE staff_titles SET status = $1, updated_at = NOW() WHERE id = $2`, req.Status, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update status")
+		respondError(w, http.StatusInternalServerError, "更新status失败")
 		return
 	}
 

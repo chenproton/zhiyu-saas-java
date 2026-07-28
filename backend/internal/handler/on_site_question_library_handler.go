@@ -104,14 +104,14 @@ func (h *OnSiteQuestionLibraryHandler) List(w http.ResponseWriter, r *http.Reque
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list questions")
+		respondError(w, http.StatusInternalServerError, "查询题目失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanQuestionRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan questions")
+		respondError(w, http.StatusInternalServerError, "读取题目失败")
 		return
 	}
 
@@ -127,7 +127,7 @@ func (h *OnSiteQuestionLibraryHandler) Get(w http.ResponseWriter, r *http.Reques
 	id := chi.URLParam(r, "id")
 	item, err := h.fetchItem(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "question not found")
+		respondError(w, http.StatusNotFound, "题目不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, item)
@@ -147,7 +147,7 @@ func (h *OnSiteQuestionLibraryHandler) Create(w http.ResponseWriter, r *http.Req
 	}
 
 	if req.QuestionText == "" {
-		respondError(w, http.StatusBadRequest, "questionText is required")
+		respondError(w, http.StatusBadRequest, "缺少题目内容")
 		return
 	}
 	if req.QuestionType == "" {
@@ -167,7 +167,7 @@ func (h *OnSiteQuestionLibraryHandler) Create(w http.ResponseWriter, r *http.Req
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	`, id, tenantID, req.QuestionText, req.Answer, req.QuestionType, req.Score, req.Difficulty, req.KnowledgePointIDs, req.Tags, creatorID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create question")
+		respondError(w, http.StatusInternalServerError, "创建题目失败")
 		return
 	}
 
@@ -184,7 +184,7 @@ func (h *OnSiteQuestionLibraryHandler) Update(w http.ResponseWriter, r *http.Req
 	id := chi.URLParam(r, "id")
 	existing, err := h.fetchItem(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "question not found")
+		respondError(w, http.StatusNotFound, "题目不存在")
 		return
 	}
 
@@ -235,7 +235,7 @@ func (h *OnSiteQuestionLibraryHandler) Update(w http.ResponseWriter, r *http.Req
 		WHERE id = $8
 	`, questionText, answer, questionType, score, difficulty, knowledgePointIDs, tags, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update question")
+		respondError(w, http.StatusInternalServerError, "更新题目失败")
 		return
 	}
 
@@ -252,7 +252,7 @@ func (h *OnSiteQuestionLibraryHandler) Delete(w http.ResponseWriter, r *http.Req
 	id := chi.URLParam(r, "id")
 	existing, err := h.fetchItem(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "question not found")
+		respondError(w, http.StatusNotFound, "题目不存在")
 		return
 	}
 
@@ -262,7 +262,7 @@ func (h *OnSiteQuestionLibraryHandler) Delete(w http.ResponseWriter, r *http.Req
 
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM on_site_question_library WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete question")
+		respondError(w, http.StatusInternalServerError, "删除题目失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

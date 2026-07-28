@@ -187,20 +187,20 @@ func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list course nodes")
+		respondError(w, http.StatusInternalServerError, "查询课程节点失败")
 		return
 	}
 	defer rows.Close()
 
 	bases, err := h.scanCourseNodeBaseRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan course nodes")
+		respondError(w, http.StatusInternalServerError, "读取课程节点失败")
 		return
 	}
 
 	items, err := h.enrichCourseNodes(r.Context(), bases)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to enrich course nodes")
+		respondError(w, http.StatusInternalServerError, "丰富课程节点失败")
 		return
 	}
 
@@ -216,7 +216,7 @@ func (h *CourseNodeHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	node, err := h.fetchCourseNode(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "course node not found")
+		respondError(w, http.StatusNotFound, "课程节点不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, node)
@@ -246,7 +246,7 @@ func (h *CourseNodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 	id := uuid.NewString()
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -266,7 +266,7 @@ func (h *CourseNodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		req.TeachingGoals, req.DetailedDescription, req.DescriptionPdf, req.Background, req.EstimatedHours,
 		req.Duration, req.Difficulty, kpIDs, resIDs, req.EvalData, req.Status)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create course node")
+		respondError(w, http.StatusInternalServerError, "创建课程节点失败")
 		return
 	}
 
@@ -278,7 +278,7 @@ func (h *CourseNodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -294,7 +294,7 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchCourseNode(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "course node not found")
+		respondError(w, http.StatusNotFound, "课程节点不存在")
 		return
 	}
 
@@ -320,7 +320,7 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -335,7 +335,7 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		req.DetailedDescription, req.DescriptionPdf, req.Background, req.EstimatedHours,
 		req.Duration, req.Difficulty, kpIDs, resIDs, req.EvalData, req.Status, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update course node")
+		respondError(w, http.StatusInternalServerError, "更新课程节点失败")
 		return
 	}
 
@@ -349,7 +349,7 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -365,13 +365,13 @@ func (h *CourseNodeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchCourseNode(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "course node not found")
+		respondError(w, http.StatusNotFound, "课程节点不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM system_course_nodes WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete course node")
+		respondError(w, http.StatusInternalServerError, "删除课程节点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -395,7 +395,7 @@ func (h *CourseNodeHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -406,13 +406,13 @@ func (h *CourseNodeHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 			WHERE id = $2 AND course_id = $3
 		`, i, nodeID, req.CourseID)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to reorder nodes")
+			respondError(w, http.StatusInternalServerError, "重新排序nodes失败")
 			return
 		}
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 

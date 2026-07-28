@@ -77,7 +77,7 @@ func (h *WithdrawalHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list withdrawals")
+		respondError(w, http.StatusInternalServerError, "查询提现失败")
 		return
 	}
 	defer rows.Close()
@@ -86,7 +86,7 @@ func (h *WithdrawalHandler) List(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var wd domain.Withdrawal
 		if err := rows.Scan(&wd.ID, &wd.InstitutionID, &wd.Amount, &wd.AccountType, &wd.AccountInfo, &wd.Status, &wd.HandledAt, &wd.CreatedAt); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to scan withdrawals")
+			respondError(w, http.StatusInternalServerError, "读取提现失败")
 			return
 		}
 		items = append(items, wd)
@@ -98,7 +98,7 @@ func (h *WithdrawalHandler) List(w http.ResponseWriter, r *http.Request) {
 func (h *WithdrawalHandler) Create(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims.InstitutionID == nil {
-		respondError(w, http.StatusForbidden, "user not associated with an institution")
+		respondError(w, http.StatusForbidden, "用户未关联机构")
 		return
 	}
 
@@ -116,7 +116,7 @@ func (h *WithdrawalHandler) Create(w http.ResponseWriter, r *http.Request) {
 	minAmount := 100.0
 	_ = h.DB.QueryRow(r.Context(), `SELECT value::float FROM platform_configs WHERE key = 'min_withdrawal_amount'`).Scan(&minAmount)
 	if req.Amount < minAmount {
-		respondError(w, http.StatusBadRequest, "amount below minimum")
+		respondError(w, http.StatusBadRequest, "金额低于最低限额")
 		return
 	}
 
@@ -124,13 +124,13 @@ func (h *WithdrawalHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var balance float64
 	_ = h.DB.QueryRow(r.Context(), `SELECT balance FROM institutions WHERE id = $1`, *claims.InstitutionID).Scan(&balance)
 	if balance < req.Amount {
-		respondError(w, http.StatusBadRequest, "insufficient balance")
+		respondError(w, http.StatusBadRequest, "余额不足")
 		return
 	}
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -141,18 +141,18 @@ func (h *WithdrawalHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, 'pending', NOW())
 	`, id, *claims.InstitutionID, req.Amount, req.AccountType, req.AccountInfo)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create withdrawal")
+		respondError(w, http.StatusInternalServerError, "创建提现失败")
 		return
 	}
 
 	_, err = tx.Exec(r.Context(), `UPDATE institutions SET balance = balance - $1 WHERE id = $2`, req.Amount, *claims.InstitutionID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to deduct balance")
+		respondError(w, http.StatusInternalServerError, "扣减余额失败")
 		return
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -176,7 +176,7 @@ func (h *WithdrawalHandler) UpdateStatus(w http.ResponseWriter, r *http.Request)
 	}
 
 	if req.Status != "approved" && req.Status != "paid" && req.Status != "rejected" {
-		respondError(w, http.StatusBadRequest, "invalid status")
+		respondError(w, http.StatusBadRequest, "无效状态")
 		return
 	}
 
@@ -185,7 +185,7 @@ func (h *WithdrawalHandler) UpdateStatus(w http.ResponseWriter, r *http.Request)
 		UPDATE withdrawals SET status = $1, handled_at = $2 WHERE id = $3
 	`, req.Status, handledAt, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update withdrawal")
+		respondError(w, http.StatusInternalServerError, "更新提现失败")
 		return
 	}
 

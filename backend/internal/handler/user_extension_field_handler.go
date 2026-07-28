@@ -38,7 +38,7 @@ func (h *UserExtensionFieldHandler) List(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.ensureDefaultSlots(r.Context(), tenantID); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to ensure default extension fields")
+		respondError(w, http.StatusInternalServerError, "确保default extension fields失败")
 		return
 	}
 
@@ -50,14 +50,14 @@ func (h *UserExtensionFieldHandler) List(w http.ResponseWriter, r *http.Request)
 		ORDER BY slot_number ASC
 	`, tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list extension fields")
+		respondError(w, http.StatusInternalServerError, "查询扩展字段失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanUserExtensionFieldRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan extension fields")
+		respondError(w, http.StatusInternalServerError, "读取扩展字段失败")
 		return
 	}
 
@@ -83,7 +83,7 @@ func (h *UserExtensionFieldHandler) Update(w http.ResponseWriter, r *http.Reques
 		&existing.IsEnabled, &existing.IsRequired, &applicableCodes, &existing.SlotNumber, &existing.CreatedAt,
 	)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "extension field not found")
+		respondError(w, http.StatusNotFound, "扩展字段不存在")
 		return
 	}
 	existing.ApplicableRoleCodes = applicableCodes
@@ -110,7 +110,7 @@ func (h *UserExtensionFieldHandler) Update(w http.ResponseWriter, r *http.Reques
 		WHERE id = $5
 	`, req.FieldName, req.IsEnabled, req.IsRequired, roleCodes, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update extension field")
+		respondError(w, http.StatusInternalServerError, "更新扩展字段失败")
 		return
 	}
 

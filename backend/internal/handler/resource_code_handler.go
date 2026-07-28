@@ -98,14 +98,14 @@ func (h *ResourceCodeHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list resource codes")
+		respondError(w, http.StatusInternalServerError, "查询资源编码失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanResourceCodeRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan resource codes")
+		respondError(w, http.StatusInternalServerError, "读取资源编码失败")
 		return
 	}
 
@@ -116,7 +116,7 @@ func (h *ResourceCodeHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	resourceCode, err := h.fetchResourceCode(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "resource code not found")
+		respondError(w, http.StatusNotFound, "资源编码不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, resourceCode.TenantID) {
@@ -156,7 +156,7 @@ func (h *ResourceCodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "资源编码代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create resource code")
+		respondError(w, http.StatusInternalServerError, "创建资源编码失败")
 		return
 	}
 
@@ -174,7 +174,7 @@ func (h *ResourceCodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	resourceCode, err := h.fetchResourceCode(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "resource code not found")
+		respondError(w, http.StatusNotFound, "资源编码不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, resourceCode.TenantID) {
@@ -197,7 +197,7 @@ func (h *ResourceCodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $4
 	`, req.Name, req.Description, req.Type, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update resource code")
+		respondError(w, http.StatusInternalServerError, "更新资源编码失败")
 		return
 	}
 
@@ -215,7 +215,7 @@ func (h *ResourceCodeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	resourceCode, err := h.fetchResourceCode(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "resource code not found")
+		respondError(w, http.StatusNotFound, "资源编码不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, resourceCode.TenantID) {
@@ -224,7 +224,7 @@ func (h *ResourceCodeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM resource_codes WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete resource code")
+		respondError(w, http.StatusInternalServerError, "删除资源编码失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

@@ -102,14 +102,14 @@ func (h *ExamUsageHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list exam usages")
+		respondError(w, http.StatusInternalServerError, "查询考试安排失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanExamUsageRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan exam usages")
+		respondError(w, http.StatusInternalServerError, "读取考试安排失败")
 		return
 	}
 
@@ -120,7 +120,7 @@ func (h *ExamUsageHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	usage, err := h.fetchExamUsage(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "exam usage not found")
+		respondError(w, http.StatusNotFound, "考试安排不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, usage.TenantID) {
@@ -154,7 +154,7 @@ func (h *ExamUsageHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'draft', $11)
 	`, id, tenantID, req.ExamID, req.Name, req.Description, req.StartTime, req.EndTime, req.Duration, req.TargetType, coalesceStringSlice(req.TargetIDs), claims.UserID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create exam usage")
+		respondError(w, http.StatusInternalServerError, "创建考试安排失败")
 		return
 	}
 
@@ -166,7 +166,7 @@ func (h *ExamUsageHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	usage, err := h.fetchExamUsage(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "exam usage not found")
+		respondError(w, http.StatusNotFound, "考试安排不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, usage.TenantID) {
@@ -189,7 +189,7 @@ func (h *ExamUsageHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $8
 	`, req.Name, req.Description, req.StartTime, req.EndTime, req.Duration, req.TargetType, coalesceStringSlice(req.TargetIDs), id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update exam usage")
+		respondError(w, http.StatusInternalServerError, "更新考试安排失败")
 		return
 	}
 
@@ -201,7 +201,7 @@ func (h *ExamUsageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	usage, err := h.fetchExamUsage(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "exam usage not found")
+		respondError(w, http.StatusNotFound, "考试安排不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, usage.TenantID) {
@@ -210,7 +210,7 @@ func (h *ExamUsageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM exam_usages WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete exam usage")
+		respondError(w, http.StatusInternalServerError, "删除考试安排失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -220,7 +220,7 @@ func (h *ExamUsageHandler) Start(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	usage, err := h.fetchExamUsage(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "exam usage not found")
+		respondError(w, http.StatusNotFound, "考试安排不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, usage.TenantID) {
@@ -229,7 +229,7 @@ func (h *ExamUsageHandler) Start(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.DB.Exec(r.Context(), `UPDATE exam_usages SET status = 'in_progress', updated_at = NOW() WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to start exam usage")
+		respondError(w, http.StatusInternalServerError, "开始考试安排失败")
 		return
 	}
 	usage, _ = h.fetchExamUsage(r.Context(), id)
@@ -240,7 +240,7 @@ func (h *ExamUsageHandler) Finish(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	usage, err := h.fetchExamUsage(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "exam usage not found")
+		respondError(w, http.StatusNotFound, "考试安排不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, usage.TenantID) {
@@ -249,7 +249,7 @@ func (h *ExamUsageHandler) Finish(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.DB.Exec(r.Context(), `UPDATE exam_usages SET status = 'finished', updated_at = NOW() WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to finish exam usage")
+		respondError(w, http.StatusInternalServerError, "完成考试安排失败")
 		return
 	}
 	usage, _ = h.fetchExamUsage(r.Context(), id)

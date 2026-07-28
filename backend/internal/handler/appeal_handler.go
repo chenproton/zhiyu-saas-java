@@ -95,14 +95,14 @@ func (h *AppealHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list appeals")
+		respondError(w, http.StatusInternalServerError, "查询申诉失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanAppealRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan appeals")
+		respondError(w, http.StatusInternalServerError, "读取申诉失败")
 		return
 	}
 
@@ -119,7 +119,7 @@ func (h *AppealHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	appeal, err := h.fetchAppeal(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "appeal not found")
+		respondError(w, http.StatusNotFound, "申诉不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, appeal)
@@ -150,7 +150,7 @@ func (h *AppealHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, 'pending')
 	`, id, tenantID, req.UserID, req.Type, req.Reason)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create appeal")
+		respondError(w, http.StatusInternalServerError, "创建申诉失败")
 		return
 	}
 
@@ -172,7 +172,7 @@ func (h *AppealHandler) Process(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Status == "" {
-		respondError(w, http.StatusBadRequest, "missing status")
+		respondError(w, http.StatusBadRequest, "缺少状态")
 		return
 	}
 
@@ -180,7 +180,7 @@ func (h *AppealHandler) Process(w http.ResponseWriter, r *http.Request) {
 		UPDATE appeal_records SET status = $1 WHERE id = $2
 	`, req.Status, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to process appeal")
+		respondError(w, http.StatusInternalServerError, "处理申诉失败")
 		return
 	}
 

@@ -104,14 +104,14 @@ func (h *RecommendHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list recommendations")
+		respondError(w, http.StatusInternalServerError, "查询推荐失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanRecommendRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan recommendations")
+		respondError(w, http.StatusInternalServerError, "读取推荐失败")
 		return
 	}
 
@@ -148,7 +148,7 @@ func (h *RecommendHandler) Create(w http.ResponseWriter, r *http.Request) {
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`, id, tenantID, req.MajorID, req.CareerPositionID, req.PositionType, req.Reason, req.SortOrder, req.IsEnabled, claims.UserID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create recommendation")
+		respondError(w, http.StatusInternalServerError, "创建推荐失败")
 		return
 	}
 
@@ -164,7 +164,7 @@ func (h *RecommendHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchRecommend(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "recommendation not found")
+		respondError(w, http.StatusNotFound, "推荐不存在")
 		return
 	}
 
@@ -186,7 +186,7 @@ func (h *RecommendHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $7
 	`, req.MajorID, req.CareerPositionID, req.PositionType, req.Reason, req.SortOrder, req.IsEnabled, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update recommendation")
+		respondError(w, http.StatusInternalServerError, "更新推荐失败")
 		return
 	}
 
@@ -202,13 +202,13 @@ func (h *RecommendHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchRecommend(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "recommendation not found")
+		respondError(w, http.StatusNotFound, "推荐不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM position_recommendations WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete recommendation")
+		respondError(w, http.StatusInternalServerError, "删除推荐失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

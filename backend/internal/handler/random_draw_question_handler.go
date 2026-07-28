@@ -87,14 +87,14 @@ func (h *RandomDrawQuestionHandler) List(w http.ResponseWriter, r *http.Request)
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list random draw questions")
+		respondError(w, http.StatusInternalServerError, "查询随机抽题失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan random draw questions")
+		respondError(w, http.StatusInternalServerError, "读取随机抽题失败")
 		return
 	}
 
@@ -110,7 +110,7 @@ func (h *RandomDrawQuestionHandler) Get(w http.ResponseWriter, r *http.Request) 
 	id := chi.URLParam(r, "id")
 	q, err := h.fetchQuestion(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "random draw question not found")
+		respondError(w, http.StatusNotFound, "随机抽题不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, q)
@@ -148,7 +148,7 @@ func (h *RandomDrawQuestionHandler) Create(w http.ResponseWriter, r *http.Reques
 			respondError(w, http.StatusConflict, "现场问答题名称已存在")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create random draw question")
+		respondError(w, http.StatusInternalServerError, "创建随机抽题失败")
 		return
 	}
 
@@ -164,7 +164,7 @@ func (h *RandomDrawQuestionHandler) Update(w http.ResponseWriter, r *http.Reques
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchQuestion(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "random draw question not found")
+		respondError(w, http.StatusNotFound, "随机抽题不存在")
 		return
 	}
 
@@ -188,7 +188,7 @@ func (h *RandomDrawQuestionHandler) Update(w http.ResponseWriter, r *http.Reques
 			respondError(w, http.StatusConflict, "现场问答题名称已存在")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update random draw question")
+		respondError(w, http.StatusInternalServerError, "更新随机抽题失败")
 		return
 	}
 
@@ -204,13 +204,13 @@ func (h *RandomDrawQuestionHandler) Delete(w http.ResponseWriter, r *http.Reques
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchQuestion(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "random draw question not found")
+		respondError(w, http.StatusNotFound, "随机抽题不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM random_draw_questions WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete random draw question")
+		respondError(w, http.StatusInternalServerError, "删除随机抽题失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

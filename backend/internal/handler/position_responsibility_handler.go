@@ -80,14 +80,14 @@ func (h *PositionResponsibilityHandler) List(w http.ResponseWriter, r *http.Requ
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list responsibilities")
+		respondError(w, http.StatusInternalServerError, "查询职责失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanResponsibilityRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan responsibilities")
+		respondError(w, http.StatusInternalServerError, "读取职责失败")
 		return
 	}
 
@@ -103,7 +103,7 @@ func (h *PositionResponsibilityHandler) Get(w http.ResponseWriter, r *http.Reque
 	id := chi.URLParam(r, "id")
 	item, err := h.fetchResponsibility(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "responsibility not found")
+		respondError(w, http.StatusNotFound, "职责不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, item)
@@ -132,7 +132,7 @@ func (h *PositionResponsibilityHandler) Create(w http.ResponseWriter, r *http.Re
 		VALUES ($1, $2, $3, $4, $5)
 	`, id, req.CareerPositionID, req.Name, req.Description, req.SortOrder)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create responsibility")
+		respondError(w, http.StatusInternalServerError, "创建职责失败")
 		return
 	}
 
@@ -148,7 +148,7 @@ func (h *PositionResponsibilityHandler) Update(w http.ResponseWriter, r *http.Re
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchResponsibility(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "responsibility not found")
+		respondError(w, http.StatusNotFound, "职责不存在")
 		return
 	}
 
@@ -169,7 +169,7 @@ func (h *PositionResponsibilityHandler) Update(w http.ResponseWriter, r *http.Re
 		WHERE id = $5
 	`, req.CareerPositionID, req.Name, req.Description, req.SortOrder, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update responsibility")
+		respondError(w, http.StatusInternalServerError, "更新职责失败")
 		return
 	}
 
@@ -185,13 +185,13 @@ func (h *PositionResponsibilityHandler) Delete(w http.ResponseWriter, r *http.Re
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchResponsibility(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "responsibility not found")
+		respondError(w, http.StatusNotFound, "职责不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM position_responsibilities WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete responsibility")
+		respondError(w, http.StatusInternalServerError, "删除职责失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

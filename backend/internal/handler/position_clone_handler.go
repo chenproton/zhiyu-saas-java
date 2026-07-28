@@ -27,7 +27,7 @@ func (h *PositionCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			slog.Error("[ClonePosition] panic recovered", "panic", rec, "stack", string(debug.Stack()))
-			respondError(w, http.StatusInternalServerError, "internal server error")
+			respondError(w, http.StatusInternalServerError, "服务器内部错误")
 		}
 	}()
 
@@ -43,7 +43,7 @@ func (h *PositionCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	src, err := h.fetchSourcePosition(r.Context(), id)
 	if err != nil {
 		slog.Error("[ClonePosition] fetch source failed", "position_id", id, "error", err)
-		respondError(w, http.StatusNotFound, "position not found")
+		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
 	}
 
@@ -52,7 +52,7 @@ func (h *PositionCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if src.TenantID != nil && *src.TenantID != tenantID {
-		respondError(w, http.StatusForbidden, "access denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -67,7 +67,7 @@ func (h *PositionCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	tx, err := h.DB.Begin(ctx)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to start transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(ctx)
@@ -76,7 +76,7 @@ func (h *PositionCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	code, err := generateUniqueEntityCode(ctx, tx, "GW", "career_positions", tenantID)
 	if err != nil {
 		slog.Error("[ClonePosition] generate code failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to generate position code")
+		respondError(w, http.StatusInternalServerError, "生成position code失败")
 		return
 	}
 	_, err = tx.Exec(ctx, `
@@ -93,45 +93,45 @@ func (h *PositionCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		slog.Error("[ClonePosition] insert position failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to clone position")
+		respondError(w, http.StatusInternalServerError, "克隆岗位失败")
 		return
 	}
 
 	if err := h.clonePositionMajors(ctx, tx, id, newID); err != nil {
 		slog.Error("[ClonePosition] clone majors failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to clone position majors")
+		respondError(w, http.StatusInternalServerError, "克隆岗位专业失败")
 		return
 	}
 
 	respIDMap := make(map[string]string)
 	if err := h.clonePositionResponsibilities(ctx, tx, id, newID, tenantID, respIDMap); err != nil {
 		slog.Error("[ClonePosition] clone responsibilities failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to clone responsibilities")
+		respondError(w, http.StatusInternalServerError, "克隆职责失败")
 		return
 	}
 
 	bindingIDMap := make(map[string]string)
 	if err := h.clonePositionAbilityBindings(ctx, tx, id, newID, tenantID, respIDMap, bindingIDMap); err != nil {
 		slog.Error("[ClonePosition] clone ability bindings failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to clone ability bindings")
+		respondError(w, http.StatusInternalServerError, "克隆能力绑定失败")
 		return
 	}
 
 	if err := h.cloneAbilityDomains(ctx, tx, id, newID, tenantID, bindingIDMap); err != nil {
 		slog.Error("[ClonePosition] clone ability domains failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to clone ability domains")
+		respondError(w, http.StatusInternalServerError, "克隆能力域失败")
 		return
 	}
 
 	if err := h.clonePositionCertificates(ctx, tx, id, newID, tenantID); err != nil {
 		slog.Error("[ClonePosition] clone certificates failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to clone certificates")
+		respondError(w, http.StatusInternalServerError, "克隆证书失败")
 		return
 	}
 
 	if err := tx.Commit(ctx); err != nil {
 		slog.Error("[ClonePosition] commit failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -139,7 +139,7 @@ func (h *PositionCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	pos, err := handler.fetchPosition(ctx, newID)
 	if err != nil {
 		slog.Error("[ClonePosition] fetch cloned position failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to fetch cloned position")
+		respondError(w, http.StatusInternalServerError, "获取cloned position失败")
 		return
 	}
 	slog.Info("[ClonePosition] success", "new_position_id", newID)
