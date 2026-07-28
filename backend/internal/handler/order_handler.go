@@ -57,67 +57,42 @@ func generateAuthCode() string {
 }
 
 func (h *OrderHandler) List(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
 	status := r.URL.Query().Get("status")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
 
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-
-	// Filter by institution membership unless operator
-	if !platformAdminOnly(claims) && claims.InstitutionID != nil {
-		where = append(where, "(buyer_id = $"+itoa(argIdx)+" OR seller_id = $"+itoa(argIdx)+")")
-		args = append(args, *claims.InstitutionID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM orders WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, order_no, buyer_id, seller_id, resource_id, price, platform_fee, seller_income, status, paid_at, created_at
-		FROM orders
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.Order]{
+		Table:         "orders",
+		SelectColumns: "id, order_no, buyer_id, seller_id, resource_id, price, platform_fee, seller_income, status, paid_at, created_at",
+		TenantScoped:  false,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if status != "" {
+				qb.addCondition("status = " + qb.nextArg(status))
+			}
+			claims := middleware.CurrentUser(r)
+			if claims != nil && !platformAdminOnly(claims) && claims.InstitutionID != nil {
+				ph := qb.nextArg(*claims.InstitutionID)
+				qb.addCondition("(buyer_id = " + ph + " OR seller_id = " + ph + ")")
+			}
+		},
+		ScanRows: h.scanOrderRows,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询订单失败")
 		return
 	}
-	defer rows.Close()
 
+	respondJSON(w, http.StatusOK, OrderListResponse{Items: items, Total: total})
+}
+
+func (h *OrderHandler) scanOrderRows(rows pgx.Rows) ([]domain.Order, error) {
 	items := make([]domain.Order, 0)
 	for rows.Next() {
 		var o domain.Order
 		if err := rows.Scan(&o.ID, &o.OrderNo, &o.BuyerID, &o.SellerID, &o.ResourceID, &o.Price, &o.PlatformFee, &o.SellerIncome, &o.Status, &o.PaidAt, &o.CreatedAt); err != nil {
-			respondError(w, http.StatusInternalServerError, "读取订单失败")
-			return
+			return nil, err
 		}
 		items = append(items, o)
 	}
-
-	respondJSON(w, http.StatusOK, OrderListResponse{Items: items, Total: total})
+	return items, nil
 }
 
 func (h *OrderHandler) Get(w http.ResponseWriter, r *http.Request) {

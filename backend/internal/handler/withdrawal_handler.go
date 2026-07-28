@@ -3,11 +3,11 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
@@ -33,66 +33,41 @@ type UpdateWithdrawalRequest struct {
 }
 
 func (h *WithdrawalHandler) List(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
 	status := r.URL.Query().Get("status")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
 
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-
-	if !platformAdminOnly(claims) && claims.InstitutionID != nil {
-		where = append(where, "institution_id = $"+itoa(argIdx))
-		args = append(args, *claims.InstitutionID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM withdrawals WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, institution_id, amount, account_type, account_info, status, handled_at, created_at
-		FROM withdrawals
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.Withdrawal]{
+		Table:         "withdrawals",
+		SelectColumns: "id, institution_id, amount, account_type, account_info, status, handled_at, created_at",
+		TenantScoped:  false,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if status != "" {
+				qb.addCondition("status = " + qb.nextArg(status))
+			}
+			claims := middleware.CurrentUser(r)
+			if claims != nil && !platformAdminOnly(claims) && claims.InstitutionID != nil {
+				qb.addCondition("institution_id = " + qb.nextArg(*claims.InstitutionID))
+			}
+		},
+		ScanRows: h.scanWithdrawalRows,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询提现失败")
 		return
 	}
-	defer rows.Close()
 
+	respondJSON(w, http.StatusOK, WithdrawalListResponse{Items: items, Total: total})
+}
+
+func (h *WithdrawalHandler) scanWithdrawalRows(rows pgx.Rows) ([]domain.Withdrawal, error) {
 	items := make([]domain.Withdrawal, 0)
 	for rows.Next() {
 		var wd domain.Withdrawal
 		if err := rows.Scan(&wd.ID, &wd.InstitutionID, &wd.Amount, &wd.AccountType, &wd.AccountInfo, &wd.Status, &wd.HandledAt, &wd.CreatedAt); err != nil {
-			respondError(w, http.StatusInternalServerError, "读取提现失败")
-			return
+			return nil, err
 		}
 		items = append(items, wd)
 	}
-
-	respondJSON(w, http.StatusOK, WithdrawalListResponse{Items: items, Total: total})
+	return items, nil
 }
 
 func (h *WithdrawalHandler) Create(w http.ResponseWriter, r *http.Request) {
