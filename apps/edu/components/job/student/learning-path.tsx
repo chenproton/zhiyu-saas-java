@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { Route, ChevronLeft, ChevronRight, Flag, ShoppingCart, Smartphone, LineChart, GitBranch, Users, Trophy, Layers, Play } from "lucide-react"
 import type { LearnRoad } from "@/lib/types"
 import type { Scenario, ScenarioTask } from "@/lib/types/scene"
@@ -199,12 +200,12 @@ export function LearningPath({ roads, scenarios = [], tasks = [] }: LearningPath
                   )}
                   {scenario.coverImage ? (
                     <div
-                      className={`w-[72px] h-[72px] rounded-full flex items-center justify-center overflow-hidden mb-4 transition-all shadow-lg ${
+                      className={`relative w-[72px] h-[72px] rounded-full flex items-center justify-center overflow-hidden mb-4 transition-all shadow-lg ${
                         isActive ? "scale-110" : ""
                       }`}
                       style={{ boxShadow: isActive ? "0 6px 24px rgba(245,158,11,0.35)" : "0 4px 16px rgba(0,0,0,0.2)" }}
                     >
-                      <img src={scenario.coverImage} alt={scenario.name} className="w-full h-full object-cover" />
+                      <Image src={scenario.coverImage} alt={scenario.name} fill className="object-cover" />
                     </div>
                   ) : (
                     <div

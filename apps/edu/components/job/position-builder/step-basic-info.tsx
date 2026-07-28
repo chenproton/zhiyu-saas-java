@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import Image from 'next/image'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -564,8 +565,8 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                     <X className="h-3.5 w-3.5" />
                   </Button>
                   {isValidImageUrl(cert.image) ? (
-                    <div className="aspect-video w-full overflow-hidden bg-gray-50">
-                      <img src={cert.image} alt={cert.name} className="w-full h-full object-cover" />
+                    <div className="relative aspect-video w-full overflow-hidden bg-gray-50">
+                      <Image src={cert.image || ""} alt={cert.name} fill className="object-cover" />
                     </div>
                   ) : (
                     <div className="aspect-video w-full bg-primary/10 flex items-center justify-center">
@@ -642,8 +643,8 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                           className="absolute top-3 right-3 z-10"
                         />
                         {isValidImageUrl(cert.image) ? (
-                          <div className="aspect-video w-full overflow-hidden bg-gray-50">
-                            <img src={cert.image} alt={cert.name} className="w-full h-full object-cover" />
+                          <div className="relative aspect-video w-full overflow-hidden bg-gray-50">
+                            <Image src={cert.image || ""} alt={cert.name} fill className="object-cover" />
                           </div>
                         ) : (
                           <div className={`aspect-video w-full flex items-center justify-center ${isSelected ? 'bg-primary/10' : 'bg-gray-100'}`}>
@@ -729,7 +730,7 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
             <div className="grid gap-2">
               <Label>证书图片</Label>
               <div
-                className="flex h-24 w-full cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-input bg-background text-muted-foreground transition-colors hover:bg-accent"
+                className="relative flex h-24 w-full cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-input bg-background text-muted-foreground transition-colors hover:bg-accent"
                 onClick={() => {
                   const input = document.createElement('input')
                   input.type = 'file'
@@ -745,10 +746,11 @@ export function StepBasicInfo({ position, onUpdate, aiMode = false, variant = 'd
                 }}
               >
                 {newCert.image ? (
-                  <img
+                  <Image
                     src={newCert.image}
                     alt="证书预览"
-                    className="h-full w-full rounded-lg object-contain"
+                    fill
+                    className="rounded-lg object-contain"
                   />
                 ) : (
                   <>

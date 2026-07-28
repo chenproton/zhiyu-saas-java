@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import Image from "next/image"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -314,14 +315,15 @@ function EditView({
                       {scene.coverImage ? (
                         <div
                           className={cn(
-                            'mt-2 flex h-14 w-14 items-center justify-center rounded-full overflow-hidden shadow-lg transition-transform bg-white',
+                            'relative mt-2 flex h-14 w-14 items-center justify-center rounded-full overflow-hidden shadow-lg transition-transform bg-white',
                             isSelected && 'ring-4 ring-white scale-110'
                           )}
                         >
-                          <img
+                          <Image
                             src={scene.coverImage}
                             alt={scene.name}
-                            className="h-full w-full object-cover"
+                            fill
+                            className="object-cover"
                           />
                         </div>
                       ) : (
@@ -395,10 +397,12 @@ function EditView({
                       <GripVertical className="h-5 w-5" />
                     </span>
                     {scene.coverImage ? (
-                      <img
+                      <Image
                         src={scene.coverImage}
                         alt={scene.name}
-                        className="h-8 w-8 rounded-full object-cover border border-slate-200"
+                        width={32}
+                        height={32}
+                        className="rounded-full object-cover border border-slate-200"
                       />
                     ) : (
                       <span

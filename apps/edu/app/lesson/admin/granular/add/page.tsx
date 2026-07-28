@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useEffect, useState, useRef, Suspense, useMemo } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import {
@@ -353,7 +354,7 @@ function AddGranularPageInner() {
                     <div className="flex items-start gap-4">
                       {coverImage ? (
                         <div className="relative w-[200px] h-[120px] rounded-lg overflow-hidden border border-gray-200">
-                          <img src={coverImage} alt="封面预览" className="w-full h-full object-cover" />
+                          <Image src={coverImage} alt="封面预览" fill className="object-cover" />
                           <button
                             onClick={() => setCoverImage("")}
                             className="absolute top-1 right-1 w-6 h-6 bg-black/50 text-white rounded-full text-xs flex items-center justify-center hover:bg-black/70"

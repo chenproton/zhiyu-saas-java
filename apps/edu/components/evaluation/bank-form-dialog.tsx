@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { X, Upload, ImageIcon } from "lucide-react"
+import Image from "next/image"
 import type { QuestionBank, QuestionBankFormData } from "@/lib/types"
 import { evaluationBatchApi, fileApi } from "@/lib/api"
 import { UserSelector } from "@/components/shared/user-selector"
@@ -182,11 +183,12 @@ export function BankFormDialog({
                 className="hidden"
               />
               {coverUrl ? (
-                <div className="relative mt-2 w-full overflow-hidden rounded-lg border">
-                  <img
+                <div className="relative mt-2 h-32 w-full overflow-hidden rounded-lg border">
+                  <Image
                     src={coverUrl}
                     alt="封面预览"
-                    className="h-32 w-full object-cover"
+                    fill
+                    className="object-cover"
                   />
                   <Button
                     type="button"

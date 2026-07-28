@@ -45,7 +45,7 @@ const toolbarItems = [
   [{ icon: <AlignLeft className="h-4 w-4" />, label: "左对齐" }, { icon: <AlignCenter className="h-4 w-4" />, label: "居中" }, { icon: <AlignRight className="h-4 w-4" />, label: "右对齐" }],
   [{ icon: <List className="h-4 w-4" />, label: "无序列表" }, { icon: <ListOrdered className="h-4 w-4" />, label: "有序列表" }],
   [{ icon: <Quote className="h-4 w-4" />, label: "引用" }, { icon: <Code className="h-4 w-4" />, label: "代码" }],
-  [{ icon: <LinkIcon className="h-4 w-4" />, label: "链接" }, { icon: <Image className="h-4 w-4" />, label: "图片" }, { icon: <Video className="h-4 w-4" />, label: "视频" }],
+  [{ icon: <LinkIcon className="h-4 w-4" />, label: "链接" }, { icon: <Image className="h-4 w-4" aria-label="图片" />, label: "图片" }, { icon: <Video className="h-4 w-4" />, label: "视频" }],
   [{ icon: <Table className="h-4 w-4" />, label: "表格" }, { icon: <Minus className="h-4 w-4" />, label: "分割线" }],
   [{ icon: <Palette className="h-4 w-4" />, label: "字体颜色" }, { icon: <Sparkles className="h-4 w-4" />, label: "背景色" }],
 ]
@@ -162,7 +162,7 @@ export function TaskDescriptionCard({ description, onDescriptionChange, descript
           </div>
           {description.includes("<img") || description.includes("<video") ? (
             <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm text-blue-700 flex items-center gap-2 mt-2">
-              <Image className="h-4 w-4" />
+              <Image className="h-4 w-4" aria-label="图片" />
               检测到已插入多媒体内容
             </div>
           ) : null}

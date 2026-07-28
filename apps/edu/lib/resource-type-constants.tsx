@@ -6,7 +6,7 @@ import {
 
 export const TYPE_ICONS: Record<string, React.ReactNode> = {
   document: <FileText className="size-4" />, spreadsheet: <Table className="size-4" />,
-  image: <Image className="size-4" />, link: <Link className="size-4" />,
+  image: <Image className="size-4" aria-label="图片" />, link: <Link className="size-4" />,
   audio: <Music className="size-4" />, video: <Video className="size-4" />,
   archive: <Archive className="size-4" />, venue: <Building className="size-4" />,
   facility: <Wrench className="size-4" />, software: <AppWindow className="size-4" />,

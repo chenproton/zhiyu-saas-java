@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { ChevronDown, ChevronRight, ImagePlus, List, ListOrdered, Loader2, Star, X } from "lucide-react"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
@@ -340,10 +341,11 @@ export default function ScenarioEditPage() {
                     />
                     {coverImage ? (
                       <>
-                        <img
+                        <Image
                           src={coverImage}
                           alt="场景封面"
-                          className="w-full h-full object-cover"
+                          fill
+                          className="object-cover"
                         />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                           <Button

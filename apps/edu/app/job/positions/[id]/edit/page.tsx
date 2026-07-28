@@ -2,6 +2,7 @@
 
 import { Suspense, useState, useEffect, use, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -332,10 +333,11 @@ function PositionEditPageContent({ params }: PageProps) {
                     />
                     {position.coverImage ? (
                       <>
-                        <img
+                        <Image
                           src={position.coverImage}
                           alt="岗位封面"
-                          className="w-full h-full object-cover"
+                          fill
+                          className="object-cover"
                         />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                           <Button

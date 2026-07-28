@@ -99,6 +99,7 @@ export function CertCards({ certificates }: CertCardsProps) {
           >
             <X className="w-5 h-5" />
           </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={selectedImage}
             alt="证书放大图"

@@ -23,7 +23,7 @@ const RESOURCE_KINDS: ResourceKind[] = ["document", "spreadsheet", "image", "lin
 const RESOURCE_ICONS: Record<ResourceKind, React.ReactNode> = {
   document: <FileText className="size-4" />,
   spreadsheet: <Table className="size-4" />,
-  image: <Image className="size-4" />,
+  image: <Image className="size-4" aria-label="图片" />,
   link: <Link className="size-4" />,
   audio: <Music className="size-4" />,
   video: <Video className="size-4" />,

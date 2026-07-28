@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Home, Briefcase, LayoutGrid, ChevronDown, User, Settings, LogOut, LogIn, Link2, Check, UserCog } from "lucide-react"
@@ -65,7 +66,7 @@ export function TopNav() {
       <header className="h-14 bg-white/70 backdrop-blur-xl border-b border-white/20 flex items-center justify-between px-3 md:px-6 shrink-0 fixed top-0 left-0 right-0 z-50 shadow-sm">
         <div className="flex items-center gap-4 md:gap-8">
           <Link href="/portal" className="flex items-center gap-2">
-            <img src="/logo.png" alt="知育" className="h-8 w-auto object-contain" />
+            <Image src="/logo.png" alt="知育" width={369} height={139} className="h-8 w-auto object-contain" />
             <span className="hidden sm:inline font-semibold text-foreground text-base whitespace-nowrap">场景化数智教学服务平台</span>
           </Link>
 

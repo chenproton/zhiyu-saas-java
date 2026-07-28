@@ -24,6 +24,7 @@ import {
   Users,
 } from "lucide-react"
 import { useState, useRef, useEffect, useCallback, useMemo } from "react"
+import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { fileApi, nodeResourceApi, courseResourceApi, resourceLibraryApi } from "@/lib/api"
 import { toast } from "sonner"
@@ -472,7 +473,7 @@ export function ResourceSelector({ pool: externalPool, selectedIds, onChange, on
                           >
                             <div className="relative h-20 bg-gray-50 border-b border-gray-100 overflow-hidden">
                               {r.thumbnail && r.type === "image" ? (
-                                <img src={r.thumbnail} alt={r.name} className="w-full h-full object-cover" />
+                                <Image src={r.thumbnail} alt={r.name} fill className="object-cover" />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">
                                   <div className={cn("p-2 rounded-lg border", resourceTypeColors[r.type] || "bg-gray-50 border-gray-200")}>

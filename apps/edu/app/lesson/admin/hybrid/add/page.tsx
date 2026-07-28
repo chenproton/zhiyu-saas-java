@@ -2,6 +2,7 @@
 
 import { Suspense, useState, useRef, useCallback, useMemo, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
+import NextImage from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -698,7 +699,7 @@ function HybridCourseAddForm() {
                   <div className="flex items-start gap-4">
                     {rootForm.coverImage ? (
                       <div className="relative w-[200px] h-[120px] rounded-lg overflow-hidden border border-gray-200">
-                        <img src={rootForm.coverImage} alt="封面预览" className="w-full h-full object-cover" />
+                        <NextImage src={rootForm.coverImage} alt="封面预览" fill className="object-cover" sizes="200px" />
                         <button
                           onClick={() => updateRootForm({ coverImage: "" })}
                           className="absolute top-1 right-1 w-6 h-6 bg-black/50 text-white rounded-full text-xs flex items-center justify-center hover:bg-black/70"

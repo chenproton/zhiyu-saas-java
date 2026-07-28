@@ -66,7 +66,7 @@ type ResourceType = "document" | "spreadsheet" | "image" | "link" | "audio" | "v
 const resourceTypeIcons: Record<string, React.ReactNode> = {
   document: <FileText className="h-4 w-4 text-blue-500" />,
   spreadsheet: <Table className="h-4 w-4 text-teal-500" />,
-  image: <Image className="h-4 w-4 text-green-500" />,
+  image: <Image className="h-4 w-4 text-green-500" aria-label="图片" />,
   link: <Link2 className="h-4 w-4 text-cyan-500" />,
   audio: <Headphones className="h-4 w-4 text-violet-500" />,
   video: <Video className="h-4 w-4 text-red-500" />,

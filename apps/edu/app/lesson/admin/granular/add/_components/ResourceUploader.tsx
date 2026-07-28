@@ -15,7 +15,7 @@ interface ResourceItem {
 const TYPE_ICONS: Record<ResourceItem["type"], React.ReactNode> = {
   pdf: <FileText className="w-4 h-4 text-red-500" />,
   video: <Video className="w-4 h-4 text-blue-500" />,
-  image: <Image className="w-4 h-4 text-green-500" />,
+  image: <Image className="w-4 h-4 text-green-500" aria-label="图片" />,
   audio: <Music className="w-4 h-4 text-purple-500" />,
   doc: <FileText className="w-4 h-4 text-orange-500" />,
 }
