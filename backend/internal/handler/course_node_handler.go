@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -144,57 +143,30 @@ func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
 	courseID := r.URL.Query().Get("courseId")
 	parentID := r.URL.Query().Get("parentId")
 
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if courseID != "" {
-		where = append(where, "course_id = $"+itoa(argIdx))
-		args = append(args, courseID)
-		argIdx++
-	}
-	if parentID != "" {
-		where = append(where, "parent_id = $"+itoa(argIdx))
-		args = append(args, parentID)
-		argIdx++
-	} else if r.URL.Query().Get("rootOnly") == "true" {
-		where = append(where, "parent_id IS NULL")
-	}
-
-	countQuery := "SELECT COUNT(*) FROM system_course_nodes WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT n.id, n.course_id, n.parent_id, n.name, n.code, n.sort_order, n.ref_type, n.source_id, n.source_name,
-			n.teaching_goals, n.detailed_description, n.description_pdf, n.background, n.estimated_hours,
-			n.duration, n.difficulty, n.knowledge_point_ids::text[], n.resource_ids::text[], n.eval_data, n.status
-		FROM system_course_nodes n
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY n.sort_order ASC, n.id ASC
-	`
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	bases, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[courseNodeBase]{
+		Table:         "system_course_nodes n",
+		SelectColumns: "n.id, n.course_id, n.parent_id, n.name, n.code, n.sort_order, n.ref_type, n.source_id, n.source_name, n.teaching_goals, n.detailed_description, n.description_pdf, n.background, n.estimated_hours, n.duration, n.difficulty, n.knowledge_point_ids::text[], n.resource_ids::text[], n.eval_data, n.status",
+		TenantScoped:  true,
+		OrderBy:       "n.sort_order ASC, n.id ASC",
+		NoPagination:  true,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if courseID != "" {
+				qb.addCondition("n.course_id = " + qb.nextArg(courseID))
+			}
+			if parentID != "" {
+				qb.addCondition("n.parent_id = " + qb.nextArg(parentID))
+			} else if r.URL.Query().Get("rootOnly") == "true" {
+				qb.addCondition("n.parent_id IS NULL")
+			}
+		},
+		ScanRows: h.scanCourseNodeBaseRows,
+	})
 	if err != nil {
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "查询课程节点失败")
-		return
-	}
-	defer rows.Close()
-
-	bases, err := h.scanCourseNodeBaseRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取课程节点失败")
 		return
 	}
 

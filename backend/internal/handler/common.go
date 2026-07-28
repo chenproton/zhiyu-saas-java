@@ -311,6 +311,7 @@ type listQueryConfig[T any] struct {
 	SearchColumns []string
 	SearchParam   string // query parameter name for search; defaults to "search"
 	OrderBy       string
+	NoPagination  bool // when true, no LIMIT/OFFSET is appended (full list)
 	ExtraFilter   listQueryFilter
 	ScanRows      func(pgx.Rows) ([]T, error)
 }
@@ -389,9 +390,12 @@ func executeListQuery[T any](ctx context.Context, db listQueryDB, r *http.Reques
 		orderBy = "created_at DESC"
 	}
 
-	limPh := qb.nextArg(limit)
-	offPh := qb.nextArg(offset)
-	query := "SELECT " + cfg.SelectColumns + " FROM " + cfg.Table + " WHERE " + where + " ORDER BY " + orderBy + " LIMIT " + limPh + " OFFSET " + offPh
+	query := "SELECT " + cfg.SelectColumns + " FROM " + cfg.Table + " WHERE " + where + " ORDER BY " + orderBy
+	if !cfg.NoPagination {
+		limPh := qb.nextArg(limit)
+		offPh := qb.nextArg(offset)
+		query += " LIMIT " + limPh + " OFFSET " + offPh
+	}
 
 	rows, err := db.Query(ctx, query, qb.args...)
 	if err != nil {

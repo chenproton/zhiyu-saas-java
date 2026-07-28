@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -46,46 +45,26 @@ func (h *NodeHomeworkHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	nodeID := r.URL.Query().Get("nodeId")
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-	if nodeID != "" {
-		where = append(where, "node_id = $"+itoa(argIdx))
-		args = append(args, nodeID)
-		argIdx++
-	}
 
-	countQuery := "SELECT COUNT(*) FROM node_homeworks WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, node_id, title, requirement, need_attachment, deadline
-		FROM node_homeworks
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY id DESC
-	`
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.NodeHomework]{
+		Table:         "node_homeworks",
+		SelectColumns: "id, node_id, title, requirement, need_attachment, deadline",
+		TenantScoped:  true,
+		OrderBy:       "id DESC",
+		NoPagination:  true,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if nodeID != "" {
+				qb.addCondition("node_id = " + qb.nextArg(nodeID))
+			}
+		},
+		ScanRows: h.scanNodeHomeworkRows,
+	})
 	if err != nil {
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "查询作业失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanNodeHomeworkRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取作业失败")
 		return
 	}
 
