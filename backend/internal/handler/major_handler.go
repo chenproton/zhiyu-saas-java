@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -38,7 +39,6 @@ type UpdateMajorRequest struct {
 }
 
 func (h *MajorHandler) List(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.URL.Query().Get("tenantId")
 	enabledStr := r.URL.Query().Get("enabled")
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.Major]{
@@ -47,9 +47,6 @@ func (h *MajorHandler) List(w http.ResponseWriter, r *http.Request) {
 		TenantScoped:  true,
 		SearchColumns: []string{"name", "code"},
 		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if tenantID != "" {
-				qb.addCondition("tenant_id = " + qb.nextArg(tenantID))
-			}
 			if enabledStr != "" {
 				qb.addCondition("enabled = " + qb.nextArg(enabledStr == "true"))
 			}
@@ -61,6 +58,7 @@ func (h *MajorHandler) List(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
+		slog.Error("查询专业失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "查询专业失败")
 		return
 	}

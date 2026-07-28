@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -61,6 +62,7 @@ func (h *LearnRoadHandler) List(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
+		slog.Error("查询学习路径失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "查询学习路径失败")
 		return
 	}

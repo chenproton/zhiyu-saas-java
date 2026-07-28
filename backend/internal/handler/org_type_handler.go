@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -49,12 +50,14 @@ func (h *OrgTypeHandler) List(w http.ResponseWriter, r *http.Request) {
 				qb.addCondition("category = " + qb.nextArg(category))
 			}
 		},
-	}, h.Store.ScanRows)
+		ScanRows: h.Store.ScanRows,
+	})
 	if err != nil {
 		if errors.Is(err, ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
+		slog.Error("查询组织类型失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "查询组织类型失败")
 		return
 	}

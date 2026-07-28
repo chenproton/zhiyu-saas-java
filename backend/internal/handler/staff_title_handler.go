@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 	"unicode"
@@ -57,6 +58,7 @@ func (h *StaffTitleHandler) List(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
+		slog.Error("查询职称失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "查询职称失败")
 		return
 	}

@@ -41,7 +41,6 @@ type UpdateIndustryRequest struct {
 }
 
 func (h *IndustryHandler) List(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.URL.Query().Get("tenantId")
 	parentID := r.URL.Query().Get("parentId")
 	enabledStr := r.URL.Query().Get("enabled")
 
@@ -52,9 +51,6 @@ func (h *IndustryHandler) List(w http.ResponseWriter, r *http.Request) {
 		SearchColumns: []string{"name", "code"},
 		OrderBy:       "sort_order ASC, created_at DESC",
 		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
-			if tenantID != "" {
-				qb.addCondition("tenant_id = " + qb.nextArg(tenantID))
-			}
 			if parentID != "" {
 				qb.addCondition("parent_id = " + qb.nextArg(parentID))
 			}

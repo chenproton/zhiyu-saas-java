@@ -88,14 +88,6 @@ func (s *RolesStore) Assign(ctx context.Context, tenantID, roleID, userID string
 	return err
 }
 
-func (s *RolesStore) RemoveUser(ctx context.Context, tenantID, roleID, userID string) error {
-	_, err := s.DB.Exec(ctx,
-		`DELETE FROM user_roles WHERE role_id=$1 AND user_id=$2 AND tenant_id=$3`,
-		roleID, userID, tenantID,
-	)
-	return err
-}
-
 func (s *RolesStore) ScanRows(rows pgx.Rows) ([]domain.Role, error) {
 	items := make([]domain.Role, 0)
 	for rows.Next() {
