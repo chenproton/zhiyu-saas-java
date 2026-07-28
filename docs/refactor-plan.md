@@ -90,7 +90,7 @@
 **处理**：
 - 删除 `apps/edu/lib/annotations/adapter.ts`、`json-file-adapter.ts`、`types.ts`
 - 删除 `apps/marketplace/lib/annotations/adapter.ts`、`json-file-adapter.ts`、`types.ts`
-- 所有 consumer 改为直接从 `@zhiyu/ui/lib/annotations/*` 导入
+- 所有 consumer 改为直接从 `@zhiyu/ui/lib/annotations/*` 导入 → 后续已全部迁出 `@zhiyu/ui`，API Route 改为从 `apps/edu/lib/annotations/*` 导入
 
 **遗留**：`prd-annotations.ts` 和 `annotation-edit-context.tsx` 是领域代码，已移回 `apps/edu/lib/`；`apps/marketplace/lib/annotation-edit-context.tsx` 仍作为跨 app re-export 保留（被 root layout 依赖），长期应移入共享包。
 
@@ -317,13 +317,19 @@ export { AuthProvider as PortalAuthProvider, useAuth as usePortalAuth } from "@/
 
 ### 19. `packages/ui/src/lib/` 领域代码清理
 
-**问题**：`prd-annotations.ts` (1345 行) 和 `annotation-edit-context.tsx` 是领域功能代码，不应在共享 UI 包中。
+**问题**：`prd-annotations.ts` (1345 行) 和 `annotation-edit-context.tsx` 是领域功能代码，不应在共享 UI 包中。`packages/ui/src/lib/annotations/json-file-adapter.ts` 进一步使用了 Node.js `fs`/`path`，被 Turbopack 拉入客户端 bundle 导致构建失败。
 
-**方案**：移入 `apps/edu/data/` 或 `apps/edu/lib/annotations/`。
+**方案**：将 `packages/ui/src/lib/annotations/` 整个目录（adapter、types、json-file-adapter）迁出到 `apps/edu/lib/annotations/`，API Route 改为从 `@/lib/annotations/json-file-adapter` 导入；`@zhiyu/ui` barrel 不再导出 annotations 相关 API。
 
-**预估**：0.5 小时
+**实际结果**：
+- `packages/ui/src/lib/annotations/` 已整体迁移到 `apps/edu/lib/annotations/`
+- `apps/edu/app/api/annotations/route.ts`、`apps/edu/app/api/comments/route.ts` 已更新导入路径
+- `@zhiyu/ui` barrel 中 annotations 导出已在前一次提交中移除
+- 客户端 bundle 不再包含 `fs`/`path` 依赖，构建成功
 
-- [ ] 任务完成
+**遗留**：Turbopack 仍会对 App Route 中的 `fs`/`path` 使用报 1 条 NFT warning（非阻塞），原因是 `json-file-adapter.ts` 运行时读写文件的路径包含动态 env/option 回退。后续如需完全消除 warning，可改为数据库存储 annotations，或统一使用 `ANNOTATION_SYSTEM_DATA_PATH` 环境变量并避免在代码中拼接默认路径。
+
+- [x] 任务完成（核心问题已解决，warning 非阻塞）
 
 ---
 
