@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { ArrowLeft, GripVertical, Trash2, Eye, FileText, Wand2, Hand, Plus, Edit, FileUp, Rocket, ImageIcon, Users, Building2, SlidersHorizontal, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -62,16 +63,8 @@ export default function ExamComposerPage() {
   const triedReload = useRef(false)
 
   useEffect(() => {
-    if (getExam(examId)) {
-      setLoadingExam(false)
-      return
-    }
-    if (triedReload.current) {
-      setLoadingExam(false)
-      return
-    }
+    if (getExam(examId) || triedReload.current) return
     triedReload.current = true
-    setLoadingExam(true)
     loadExams?.().finally(() => setLoadingExam(false))
   }, [examId, getExam, loadExams])
 
@@ -305,11 +298,12 @@ export default function ExamComposerPage() {
             <div className="flex items-start justify-between">
               <div className="flex gap-4">
                 {exam.coverImage ? (
-                  <div className="shrink-0 overflow-hidden rounded-lg">
-                    <img
+                  <div className="relative shrink-0 size-24 overflow-hidden rounded-lg">
+                    <Image
                       src={exam.coverImage}
                       alt={exam.name}
-                      className="size-24 object-cover"
+                      fill
+                      className="object-cover"
                     />
                   </div>
                 ) : (

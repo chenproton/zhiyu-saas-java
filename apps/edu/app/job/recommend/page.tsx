@@ -205,7 +205,7 @@ export default function PostRecommendPage() {
             岗位目标推荐管理
           </h1>
           <p className="text-muted-foreground mt-1">
-            配置前台"为你推荐"模块展示的岗位及顺序，支持企业岗位与教学岗位混合推荐
+            配置前台&quot;为你推荐&quot;模块展示的岗位及顺序，支持企业岗位与教学岗位混合推荐
           </p>
         </div>
       </div>
@@ -352,7 +352,7 @@ export default function PostRecommendPage() {
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <Sparkles className="h-10 w-10 mb-2" />
                         <p>暂无配置的推荐岗位</p>
-                        <p className="text-xs mt-1">添加后将在前台"为你推荐"按顺序展示</p>
+                        <p className="text-xs mt-1">添加后将在前台&quot;为你推荐&quot;按顺序展示</p>
                       </div>
                     </TableCell>
                   </TableRow>

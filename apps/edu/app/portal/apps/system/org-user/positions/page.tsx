@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -31,7 +31,7 @@ export default function PositionsPage() {
   const [titleUsers, setTitleUsers] = useState<User[]>([])
   const [loadingUsers, setLoadingUsers] = useState(false)
 
-  const fetchPositions = async () => {
+  const fetchPositions = useCallback(async () => {
     if (!tenantId) return
     setLoading(true)
     setError(undefined)
@@ -43,11 +43,11 @@ export default function PositionsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenantId])
 
   useEffect(() => {
     fetchPositions()
-  }, [tenantId])
+  }, [fetchPositions])
 
   const filteredPositions = useMemo(() =>
     positions.filter((pos) => pos.name.includes(searchTerm) || (pos.description && pos.description.includes(searchTerm))),

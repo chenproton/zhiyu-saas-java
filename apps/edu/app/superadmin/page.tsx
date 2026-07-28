@@ -270,7 +270,7 @@ export default function SuperAdminPage() {
     if (!authenticated) return
     const timer = setTimeout(() => fetchTenants(), 300)
     return () => clearTimeout(timer)
-  }, [searchTerm, authenticated])
+  }, [searchTerm, authenticated, fetchTenants])
 
   const openAdminModal = (t: AdminTenant) => {
     setAdminModalTenant(t)

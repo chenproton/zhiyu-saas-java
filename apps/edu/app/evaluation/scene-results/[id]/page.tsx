@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import {
   ArrowLeft,
   CheckCircle2,
@@ -298,10 +299,6 @@ function QuestionGradingCard({
   const [localScore, setLocalScore] = useState(score.toString())
   const [expanded, setExpanded] = useState(!isAutoQuestion(question))
 
-  useEffect(() => {
-    setLocalScore(score.toString())
-  }, [score])
-
   const handleBlur = () => {
     const num = parseFloat(localScore)
     const max = question.score || 0
@@ -504,10 +501,6 @@ function EvalPointGradingCard({
   const [localScore, setLocalScore] = useState(score.toString())
   const [localComment, setLocalComment] = useState(comment)
 
-  useEffect(() => {
-    setLocalScore(score.toString())
-  }, [score])
-
   const handleScoreBlur = () => {
     const num = parseFloat(localScore)
     const max = evalPoint.weight || 0
@@ -581,10 +574,6 @@ function DrawnQuestionCard({
   onOralAnswerChange: (questionId: string, oralAnswer: string) => void
 }) {
   const [value, setValue] = useState(oralAnswer)
-
-  useEffect(() => {
-    setValue(oralAnswer)
-  }, [oralAnswer])
 
   const isSimpleQuestion = !question.content && !!question.name
   const questionContent = question.content || question.name || ""
@@ -686,6 +675,8 @@ function AttachmentPreview({
         </DialogHeader>
         <div className="flex-1 overflow-auto p-4 bg-gray-50 min-h-[300px] max-h-[calc(90vh-120px)]">
           {attachment.type?.startsWith("image") ? (
+            // 附件弹窗中的图片需要展示原始尺寸，无法预先确定宽高，故保留 img
+            // eslint-disable-next-line @next/next/no-img-element
             <img src={attachment.url} alt={attachment.name} className="max-w-full max-h-[70vh] rounded-lg shadow-sm border" />
           ) : attachment.type?.startsWith("video") ? (
             <video src={attachment.url} controls className="max-w-full max-h-[70vh] rounded-lg shadow-sm border" />
@@ -738,6 +729,34 @@ export default function GradingDetailPage() {
         setResult(res)
         setComment(res.comment || "")
 
+        const eps = (res.evalPointScores as Record<string, any>) || {}
+        const scores: Record<string, number> = {}
+        const comments: Record<string, string> = {}
+        Object.entries(eps).forEach(([k, v]) => {
+          if (typeof v === "number") {
+            scores[k] = v
+          } else if (v && typeof v === "object") {
+            scores[k] = typeof v.score === "number" ? v.score : 0
+            comments[k] = v.comment || ""
+          }
+        })
+        setPointScores(scores)
+        setPointComments(comments)
+
+        const dq = (res.drawnQuestions as Record<string, any>) || {}
+        const oral: Record<string, string> = {}
+        Object.entries(dq).forEach(([k, v]) => {
+          oral[k] = typeof v === "string" ? v : v?.oralAnswer || ""
+        })
+        setOralAnswers(oral)
+
+        const completedSteps = (res.subjectiveContent as Record<string, any>)?.reviewSteps || []
+        const stepSelected: Record<string, boolean> = {}
+        completedSteps.forEach((s: any) => { if (s.stepId) stepSelected[s.stepId] = true })
+        setSelectedReviewSteps(stepSelected)
+
+        if (res.status === "evaluated") setSaved(true)
+
         const [taskData, mRes] = await Promise.all([
           taskApi.get(res.taskId).catch(() => null),
           taskEvaluationApi.listMethods(res.taskId).catch(() => ({ methods: [] })),
@@ -788,11 +807,6 @@ export default function GradingDetailPage() {
               : all
             ).filter(Boolean) as any[]
             setRdQuestions(selected)
-            const oral: Record<string, string> = {}
-            Object.entries(drawnMap).forEach(([k, v]) => {
-              oral[k] = typeof v === "string" ? v : v?.oralAnswer || ""
-            })
-            setOralAnswers(oral)
           } catch { /* ignore */ }
         }
 
@@ -805,36 +819,7 @@ export default function GradingDetailPage() {
     load()
   }, [id])
 
-  useEffect(() => {
-    if (!result) return
-    const eps = (result.evalPointScores as Record<string, any>) || {}
-    const scores: Record<string, number> = {}
-    const comments: Record<string, string> = {}
-    Object.entries(eps).forEach(([k, v]) => {
-      if (typeof v === "number") {
-        scores[k] = v
-      } else if (v && typeof v === "object") {
-        scores[k] = typeof v.score === "number" ? v.score : 0
-        comments[k] = v.comment || ""
-      }
-    })
-    setPointScores(scores)
-    setPointComments(comments)
 
-    const dq = (result.drawnQuestions as Record<string, any>) || {}
-    const oral: Record<string, string> = {}
-    Object.entries(dq).forEach(([k, v]) => {
-      oral[k] = typeof v === "string" ? v : v?.oralAnswer || ""
-    })
-    setOralAnswers(oral)
-
-    const completedSteps = (result.subjectiveContent as Record<string, any>)?.reviewSteps || []
-    const stepSelected: Record<string, boolean> = {}
-    completedSteps.forEach((s: any) => { if (s.stepId) stepSelected[s.stepId] = true })
-    setSelectedReviewSteps(stepSelected)
-
-    if (result.status === "evaluated") setSaved(true)
-  }, [result])
 
   const methodKey = result?.methodKey || ""
   const methodName = evalMethodLabels[methodKey] || methodKey
@@ -994,7 +979,7 @@ export default function GradingDetailPage() {
             )}
             {rdQuestions.map((q, idx) => (
               <DrawnQuestionCard
-                key={q.id}
+                key={`${q.id}-${oralAnswers[q.id] || ""}`}
                 question={q}
                 index={idx}
                 oralAnswer={oralAnswers[q.id] || ""}
@@ -1182,7 +1167,7 @@ export default function GradingDetailPage() {
           {evalPoints.length > 0 ? (
             evalPoints.map((ep) => (
               <EvalPointGradingCard
-                key={ep.id}
+                key={`${ep.id}-${pointScores[ep.id] ?? 0}`}
                 evalPoint={ep}
                 score={pointScores[ep.id] ?? 0}
                 comment={pointComments[ep.id] ?? ""}
@@ -1318,7 +1303,7 @@ export default function GradingDetailPage() {
               <div className="space-y-2">
                 {displayedQuestions.map((q: any, idx: number) => (
                   <QuestionGradingCard
-                    key={q.id}
+                    key={`${q.id}-${pointScores[q.id] ?? 0}`}
                     question={q}
                     index={questionFilter === "all" ? idx : examQuestions.indexOf(q)}
                     answer={objectiveAnswers[q.id]}

@@ -130,7 +130,7 @@ export function TeacherPortraitsTab() {
         return next
       })
     })
-  }, [])
+  }, [groupedMajors])
 
   if (selectedStudent) {
     return (

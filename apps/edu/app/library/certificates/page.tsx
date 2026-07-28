@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Pencil, Plus, Search, Trash2, Award, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -35,15 +35,15 @@ export default function CertificatesPage() {
   const [imageUrl, setImageUrl] = useState("")
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
-  const loadItems = async () => {
+  const loadItems = useCallback(async () => {
     setLoading(true)
     try {
       const params: any = { limit: 500 }; if (searchQuery) params.search = searchQuery
       const res = await certificateLibraryApi.list(params); setItems(res.items)
     } catch (err: any) { toast({ variant: "destructive", title: "加载失败", description: err.message }) }
     finally { setLoading(false) }
-  }
-  useEffect(() => { loadItems() }, [searchQuery])
+  }, [searchQuery, toast])
+  useEffect(() => { loadItems() }, [loadItems])
 
   const handleOpenAdd = () => { setEditingItem(null); setName(""); setUrl(""); setDescription(""); setImageUrl(""); setIsDialogOpen(true) }
   const handleOpenEdit = (item: CertificateLibraryItem) => { setEditingItem(item); setName(item.name); setUrl(item.url || ""); setDescription(item.description || ""); setImageUrl(item.imageUrl || ""); setIsDialogOpen(true) }

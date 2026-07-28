@@ -234,7 +234,7 @@ export default function SceneLearnPage() {
     evaluationResultApi.list({ taskId: activeTaskId, evaluateeId: user?.id, limit: 50 })
       .then((res) => setMyResults(res.items || []))
       .catch(() => {})
-  }, [activeTaskId])
+  }, [activeTaskId, user?.id])
 
   const activeTask = useMemo(() => tasks.find((t) => t.id === activeTaskId), [tasks, activeTaskId])
   const totalHours = useMemo(() => tasks.reduce((s, t) => s + (t.estimatedHours || 0), 0), [tasks])

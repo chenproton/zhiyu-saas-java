@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useState, useCallback, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import {
   Check,
@@ -256,7 +256,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     }
   }, [importFlow.importPreview, hasExcel])
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
       const [itemsResp, batchesResp] = await Promise.all([
@@ -321,9 +321,9 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [tenantId, listParams, currentUserId, afterLoad, mapBatch, mapItem, approvalTargetType, approvalApi, batchApi, itemApi])
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { loadData() }, [loadData])
 
   const refresh = async () => { await loadData() }
 
@@ -1179,7 +1179,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
                     <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
                       <li>点击下方按钮下载最新的导入模板（含系统字典数据）</li>
                       <li>参照模板中各 Sheet 的填写说明，填入{entityLabel}数据</li>
-                      <li>完成后点击"下一步"上传文件</li>
+                      <li>完成后点击&quot;下一步&quot;上传文件</li>
                     </ol>
                   </div>
                   <Button

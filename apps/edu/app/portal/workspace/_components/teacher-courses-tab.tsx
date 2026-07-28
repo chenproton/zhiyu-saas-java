@@ -526,9 +526,9 @@ export function TeacherCoursesTab({ prepAssociations = {}, onAssociate }: Teache
       .catch(() => setDashboard(null))
   }, [])
 
-  const teacherCourses = dashboard?.teacherCourses || []
-  const classPlans = dashboard?.classPlans || []
-  const classSessions = dashboard?.classSessions || []
+  const teacherCourses = useMemo(() => dashboard?.teacherCourses || [], [dashboard?.teacherCourses])
+  const classPlans = useMemo(() => dashboard?.classPlans || [], [dashboard?.classPlans])
+  const classSessions = useMemo(() => dashboard?.classSessions || [], [dashboard?.classSessions])
 
   const semesters = useMemo(() => {
     const terms = new Set(classPlans.map((p) => p.term).filter(Boolean))
@@ -557,7 +557,7 @@ export function TeacherCoursesTab({ prepAssociations = {}, onAssociate }: Teache
     } else {
       setSelectedPlanId(null)
     }
-  }, [selectedTerm])
+  }, [selectedTerm, termPlans])
 
   const openCourseDialog = (course: WorkspaceTeacherCourse, tab: string) => {
     setSelectedCourse({

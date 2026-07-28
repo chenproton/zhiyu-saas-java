@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -23,7 +23,7 @@ export default function LoginLogsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [page, setPage] = useState(1)
 
-  const loadLogs = async (targetPage = page) => {
+  const loadLogs = useCallback(async (targetPage = page) => {
     if (!tenantId) return
     setLoading(true)
     setError(null)
@@ -40,11 +40,11 @@ export default function LoginLogsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenantId, page])
 
   useEffect(() => {
     loadLogs()
-  }, [tenantId, page])
+  }, [loadLogs])
 
   const handleRefresh = () => loadLogs()
 

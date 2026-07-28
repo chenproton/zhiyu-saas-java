@@ -84,7 +84,16 @@ export default function ExamUsagePage() {
   }
 
   useEffect(() => {
-    loadUsages()
+    // 初始加载：loading 初始值已为 true，无需在此同步设置
+    const load = async () => {
+      try {
+        const res = await examUsageApi.list()
+        setUsages(res.items)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
   }, [])
 
   const examMap = useMemo(() => {

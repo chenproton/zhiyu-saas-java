@@ -494,11 +494,12 @@ export default function LearnRoadsPage() {
   )
 
   const EditView = () => {
-    if (!editingPosition) return null
-    const batch = batches.find((b) => b.id === editingPosition.batchId)
     const timelineRef = useRef<HTMLDivElement>(null)
     const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+
+    if (!editingPosition) return null
+    const batch = batches.find((b) => b.id === editingPosition.batchId)
 
     const scrollTimeline = (direction: -1 | 1) => {
       timelineRef.current?.scrollBy({ left: direction * 200, behavior: 'smooth' })

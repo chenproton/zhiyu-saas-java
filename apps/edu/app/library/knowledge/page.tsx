@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Pencil, Plus, Search, Trash2, BookOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -30,7 +30,7 @@ export default function KnowledgePointsPage() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [navigateCourseId, setNavigateCourseId] = useState<string | null>(null)
 
-  const loadItems = async () => {
+  const loadItems = useCallback(async () => {
     setLoading(true)
     try {
       const params: any = { limit: 500 }
@@ -40,7 +40,7 @@ export default function KnowledgePointsPage() {
     } catch (err: any) {
       toast({ variant: "destructive", title: "加载失败", description: err.message })
     } finally { setLoading(false) }
-  }
+  }, [searchQuery, toast])
 
   const loadGranularCourses = async () => {
     try {
@@ -58,7 +58,7 @@ export default function KnowledgePointsPage() {
     }
   }
 
-  useEffect(() => { loadItems() }, [searchQuery])
+  useEffect(() => { loadItems() }, [loadItems])
   useEffect(() => { loadGranularCourses() }, [])
 
   const handleOpenAdd = () => {

@@ -35,11 +35,18 @@ export default function ExamListPage() {
   const [majorFilter, setMajorFilter] = useState("全部")
 
   useEffect(() => {
-    setLoading(true)
-    landingApi.listExams()
-      .then((res) => setExams(res.items))
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    const fetchData = async () => {
+      setLoading(true)
+      try {
+        const res = await landingApi.listExams()
+        setExams(res.items)
+      } catch {
+        // ignore
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
   }, [])
 
   const collegeOptions = useMemo(() => {

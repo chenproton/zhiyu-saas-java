@@ -89,16 +89,26 @@ export default function LandingHomePage() {
   const [selectedBatch, setSelectedBatch] = useState("全部")
 
   useEffect(() => {
-    setLoading(true)
-    Promise.all([
-      questionBankApi.list({ status: "published", limit: 1000 } as any).then((res) => setBanks(res.items || [])),
-      examApi.list({ status: "published", limit: 1000 } as any).then((res) => setExams(res.items || [])),
-      evaluationBatchApi.list({ limit: 1000 }).then((res) => {
+    const fetchData = async () => {
+      setLoading(true)
+      try {
+        const [banksRes, examsRes, batchesRes] = await Promise.all([
+          questionBankApi.list({ status: "published", limit: 1000 } as any),
+          examApi.list({ status: "published", limit: 1000 } as any),
+          evaluationBatchApi.list({ limit: 1000 }),
+        ])
+        setBanks(banksRes.items || [])
+        setExams(examsRes.items || [])
         const map = new Map<string, string>()
-        ;(res.items || []).forEach((b: any) => { if (b.id && b.name) map.set(b.id, b.name) })
+        ;(batchesRes.items || []).forEach((b: any) => { if (b.id && b.name) map.set(b.id, b.name) })
         setBatchNames(map)
-      }).catch(() => {}),
-    ]).catch(() => {}).finally(() => setLoading(false))
+      } catch {
+        // ignore
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
   }, [])
 
   const batches = useMemo(() => {
@@ -135,9 +145,26 @@ export default function LandingHomePage() {
 
   const totalPages = Math.max(1, Math.ceil(filteredBanks.length / CARDS_PER_PAGE))
   const pageBanks = useMemo(() => { const start = (currentPage - 1) * CARDS_PER_PAGE; return filteredBanks.slice(start, start + CARDS_PER_PAGE) }, [filteredBanks, currentPage])
-  useEffect(() => { setCurrentPage(1) }, [keyword, sort, selectedBatch])
   const totalQuestions = banks.reduce((sum, b) => sum + (b.questionCount || 0), 0)
   const executeSearch = () => { setCurrentPage(1); setTimeout(() => listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50) }
+
+  const handleKeywordChange = (value: string) => {
+    setKeyword(value)
+    setCurrentPage(1)
+  }
+  const handleSortChange = (value: string) => {
+    setSort(value)
+    setCurrentPage(1)
+  }
+  const handleBatchChange = (value: string) => {
+    setSelectedBatch(value)
+    setCurrentPage(1)
+  }
+  const clearFilters = () => {
+    setKeyword("")
+    setSelectedBatch("全部")
+    setCurrentPage(1)
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-[#faf5ff]">
@@ -200,14 +227,14 @@ export default function LandingHomePage() {
         <div className="bg-white rounded-2xl border border-[#e7e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6 mb-6">
           <div className="flex items-center gap-2.5 text-[16px] font-bold text-[#0f172a] mb-5"><div className="w-1 h-5 rounded-full bg-gradient-to-b from-purple-400 to-purple-600" /><Filter className="w-4 h-4 text-purple-500" />资源筛选</div>
           <div className="space-y-0">
-            {batches.length > 1 && <LandingFilterRow label="批次" items={batches} selected={selectedBatch} onSelect={setSelectedBatch} showBorder={false} accentColor="purple" />}
+            {batches.length > 1 && <LandingFilterRow label="批次" items={batches} selected={selectedBatch} onSelect={handleBatchChange} showBorder={false} accentColor="purple" />}
           </div>
           {(keyword.trim() || selectedBatch !== "全部") && (
             <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-dashed border-[#cbd5e1]">
               <span className="text-[13px] text-[#64748b]">已选条件：</span>
-              {keyword.trim() && <span className="inline-flex items-center gap-1.5 bg-[#faf5ff] text-purple-600 text-xs px-2.5 py-1 rounded-full border border-purple-100">关键词：{keyword.trim()}<X className="w-3 h-3 cursor-pointer hover:text-red-500 transition-colors" onClick={() => setKeyword("")} /></span>}
-              {selectedBatch !== "全部" && <span className="inline-flex items-center gap-1.5 bg-[#faf5ff] text-purple-600 text-xs px-2.5 py-1 rounded-full border border-purple-100">批次：{selectedBatch}<X className="w-3 h-3 cursor-pointer hover:text-red-500 transition-colors" onClick={() => setSelectedBatch("全部")} /></span>}
-              <button onClick={() => { setKeyword(""); setSelectedBatch("全部") }} className="text-[13px] text-purple-600 hover:text-purple-700 font-medium">清空筛选</button>
+              {keyword.trim() && <span className="inline-flex items-center gap-1.5 bg-[#faf5ff] text-purple-600 text-xs px-2.5 py-1 rounded-full border border-purple-100">关键词：{keyword.trim()}<X className="w-3 h-3 cursor-pointer hover:text-red-500 transition-colors" onClick={() => handleKeywordChange("")} /></span>}
+              {selectedBatch !== "全部" && <span className="inline-flex items-center gap-1.5 bg-[#faf5ff] text-purple-600 text-xs px-2.5 py-1 rounded-full border border-purple-100">批次：{selectedBatch}<X className="w-3 h-3 cursor-pointer hover:text-red-500 transition-colors" onClick={() => handleBatchChange("全部")} /></span>}
+              <button onClick={clearFilters} className="text-[13px] text-purple-600 hover:text-purple-700 font-medium">清空筛选</button>
             </div>
           )}
         </div>
@@ -216,12 +243,12 @@ export default function LandingHomePage() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
           <div className="flex items-center gap-0.5 bg-white p-1 rounded-xl border border-[#e7e5e4] shadow-sm">
             {SORT_OPTIONS.map((s) => (
-              <button key={s.value} onClick={() => setSort(s.value)} className={`px-5 py-2 rounded-[10px] text-[13px] transition-all font-medium ${sort === s.value ? "bg-purple-500 text-white shadow-md" : "text-[#475569] hover:text-purple-600 hover:bg-[#faf5ff]"}`}>{s.label}</button>
+              <button key={s.value} onClick={() => handleSortChange(s.value)} className={`px-5 py-2 rounded-[10px] text-[13px] transition-all font-medium ${sort === s.value ? "bg-purple-500 text-white shadow-md" : "text-[#475569] hover:text-purple-600 hover:bg-[#faf5ff]"}`}>{s.label}</button>
             ))}
           </div>
           <div className="relative w-full sm:w-[360px]">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94a3b8]" />
-            <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") executeSearch() }} placeholder="搜索题库、试卷名称" className="pl-10 pr-[72px] h-11 bg-[#f8fafc] border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-purple-300 focus:ring-2 focus:ring-purple-100 focus:bg-white transition-all" />
+            <Input value={keyword} onChange={(e) => handleKeywordChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") executeSearch() }} placeholder="搜索题库、试卷名称" className="pl-10 pr-[72px] h-11 bg-[#f8fafc] border-[#e7e5e4] rounded-xl text-sm shadow-sm focus:border-purple-300 focus:ring-2 focus:ring-purple-100 focus:bg-white transition-all" />
             <Button className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-[10px] px-5 h-8 bg-gradient-to-r from-purple-500 to-purple-400 hover:from-purple-600 hover:to-purple-500 text-white text-xs font-medium shadow-sm hover:shadow-md transition-all" onClick={executeSearch}>搜索</Button>
           </div>
         </div>

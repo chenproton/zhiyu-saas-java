@@ -97,6 +97,7 @@ export default function MyResourcesPage() {
       const kind = activeTab.replace("resource:", "") as ResourceKind
       if (resourceItemsMap[kind].length === 0) loadResourceKind(kind)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load functions and item lengths are intentionally excluded to avoid infinite loops: the effect only triggers initial fetch when item list is empty
   }, [activeTab, userId])
 
   const loadKnowledge = async () => {

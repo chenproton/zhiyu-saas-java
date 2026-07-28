@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useCallback } from "react"
 
 import { scenarioApi, sceneBatchApi } from "@/lib/api"
 import type { Scenario, SceneBatch } from "@/lib/types/scene"
@@ -20,7 +20,7 @@ export default function SceneArchivePage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
   const [batchDeleteTarget, setBatchDeleteTarget] = useState<string[] | null>(null)
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     try {
       const [scenarioRes, batchRes] = await Promise.all([
@@ -38,11 +38,11 @@ export default function SceneArchivePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [loadData])
 
   const professions = useMemo(() => {
     const set = new Set<string>()

@@ -51,22 +51,20 @@ function ExamResultsContent() {
   const usageId = searchParams.get("usageId") || ""
   const [usage, setUsage] = useState<ExamUsage | null>(null)
   const [results, setResults] = useState<ExamStudentResult[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!!usageId)
   const [search, setSearch] = useState("")
   const [passFilter, setPassFilter] = useState<string>("all")
   const majorMap = useMajorMap()
 
   useEffect(() => {
-    if (!usageId) {
-      setLoading(false)
-      return
-    }
-    setLoading(true)
-    Promise.all([
-      examUsageApi.get(usageId).catch(() => null),
-      examResultApi.list({ usageId }).catch(() => ({ items: [], total: 0 })),
-    ])
-      .then(([usageRes, resultRes]) => {
+    if (!usageId) return
+    const fetchData = async () => {
+      setLoading(true)
+      try {
+        const [usageRes, resultRes] = await Promise.all([
+          examUsageApi.get(usageId).catch(() => null),
+          examResultApi.list({ usageId }).catch(() => ({ items: [], total: 0 })),
+        ])
         setUsage(usageRes)
         const items = resultRes.items || []
         setResults(
@@ -84,8 +82,11 @@ function ExamResultsContent() {
             rank: idx + 1,
           }))
         )
-      })
-      .finally(() => setLoading(false))
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
   }, [usageId])
 
   const filteredResults = results.filter((r) => {

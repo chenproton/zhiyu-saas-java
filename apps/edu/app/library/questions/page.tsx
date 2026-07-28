@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Pencil, Plus, Search, Trash2, MessageSquare } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -42,7 +42,7 @@ export default function OnSiteQuestionsPage() {
   const [tags, setTags] = useState("")
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
-  const loadItems = async () => {
+  const loadItems = useCallback(async () => {
     setLoading(true)
     try {
       const params: any = { limit: 500 }
@@ -53,8 +53,8 @@ export default function OnSiteQuestionsPage() {
       setItems(res.items)
     } catch (err: any) { toast({ variant: "destructive", title: "加载失败", description: err.message }) }
     finally { setLoading(false) }
-  }
-  useEffect(() => { loadItems() }, [searchQuery, typeFilter, difficultyFilter])
+  }, [searchQuery, typeFilter, difficultyFilter, toast])
+  useEffect(() => { loadItems() }, [loadItems])
 
   const handleOpenAdd = () => { setEditingItem(null); setQuestionText(""); setAnswer(""); setQuestionType("short_answer"); setScore("0"); setDifficulty("medium"); setTags(""); setIsDialogOpen(true) }
   const handleOpenEdit = (item: OnSiteQuestionLibraryItem) => { setEditingItem(item); setQuestionText(item.questionText); setAnswer(item.answer || ""); setQuestionType(item.questionType); setScore(String(item.score)); setDifficulty(item.difficulty || "medium"); setTags(item.tags?.join(", ") || ""); setIsDialogOpen(true) }

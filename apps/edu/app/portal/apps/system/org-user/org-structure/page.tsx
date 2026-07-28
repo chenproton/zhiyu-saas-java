@@ -740,7 +740,7 @@ export default function OrgStructurePage() {
                   <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
                     <li>点击下方按钮下载最新的导入模板（含系统字典数据）</li>
                     <li>参照模板中各 Sheet 的填写说明，填入组织架构数据</li>
-                    <li>完成后点击"下一步"上传文件</li>
+                    <li>完成后点击&quot;下一步&quot;上传文件</li>
                   </ol>
                 </div>
                 <Button

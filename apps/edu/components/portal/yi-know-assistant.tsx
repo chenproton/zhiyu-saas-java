@@ -410,10 +410,10 @@ export function YiKnowAssistant() {
     }
   }, [chatMessages, isTyping])
 
-  const isOfficialAgent = (resource: Resource) =>
-    resource.category === "agent" && resource.tags?.includes("官方")
-
   const filteredResources = useMemo(() => {
+    const isOfficialAgent = (resource: Resource) =>
+      resource.category === "agent" && resource.tags?.includes("官方")
+
     const query = inputValue.trim().toLowerCase()
     const list = RESOURCES.filter((resource) => {
       const matchesCategory = activeTab === "all" || resource.category === activeTab
@@ -432,7 +432,6 @@ export function YiKnowAssistant() {
       const bOfficial = isOfficialAgent(b) ? 1 : 0
       if (aOfficial !== bOfficial) return bOfficial - aOfficial
       if (!aOfficial) return 0
-      // 官方智能体中，岗位 > 场景 > 其他
       const aName = a.title.toLowerCase()
       const bName = b.title.toLowerCase()
       const aIsPosition = aName.includes("岗位")
@@ -445,7 +444,7 @@ export function YiKnowAssistant() {
       if (!aIsScene && bIsScene && !aIsPosition) return 1
       return 0
     })
-  }, [activeTab, inputValue, isOfficialAgent])
+  }, [activeTab, inputValue])
 
   const isChatMode = chatMessages.length > 0 || isTyping
 

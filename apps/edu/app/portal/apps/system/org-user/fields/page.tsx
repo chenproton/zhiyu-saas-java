@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
@@ -44,7 +44,7 @@ export default function UserFieldsPage() {
     return map
   }, [roles])
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!tenantId) return
     setLoading(true)
     setError(undefined)
@@ -69,11 +69,11 @@ export default function UserFieldsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenantId])
 
   useEffect(() => {
     fetchData()
-  }, [tenantId])
+  }, [fetchData])
 
   const handleToggle = async (field: ExtendField) => {
     const original = rawFields.find((f) => f.id === field.id)

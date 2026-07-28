@@ -109,12 +109,7 @@ export function UserSelector({
   const [userCache, setUserCache] = useState<Record<string, User>>({})
   const fetchedIdsRef = useRef<Set<string>>(new Set())
 
-  // Parent components often pass a fresh array literal on every render (e.g.
-  // `excludeUserIds={bank?.creatorId ? [bank.creatorId] : undefined}`). Without
-  // stabilizing the value, the loadUsers callback is recreated continuously,
-  // which triggers the user list effect in a loop.
-  const excludeIdsKey = useMemo(() => JSON.stringify(excludeUserIds), [excludeUserIds])
-  const stableExcludeUserIds = useMemo(() => excludeUserIds, [excludeIdsKey])
+  const stableExcludeUserIds = useMemo(() => excludeUserIds, [excludeUserIds])
 
   const orgTypeMap = useMemo(() => {
     const map = new Map<string, OrgType>()

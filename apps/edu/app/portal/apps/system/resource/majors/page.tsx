@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useCallback } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -22,7 +22,7 @@ export default function MajorsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchMajors = async () => {
+  const fetchMajors = useCallback(async () => {
     if (!tenantId) return
     setLoading(true)
     setError(null)
@@ -34,12 +34,12 @@ export default function MajorsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenantId])
 
   useEffect(() => {
     if (authLoading || !tenantId) return
     fetchMajors()
-  }, [tenantId, authLoading])
+  }, [tenantId, authLoading, fetchMajors])
 
   return (
     <PortalCrudPage

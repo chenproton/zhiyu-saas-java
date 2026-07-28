@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { positionApi, batchApi } from "@/lib/api"
 import type { Position, Batch } from "@/lib/types/job-source"
@@ -25,7 +25,7 @@ export default function PositionArchivePage() {
   const industryMap = useIndustryMap()
   const majorMap = useMajorMap()
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     try {
       const [posRes, batchRes] = await Promise.all([
@@ -43,11 +43,11 @@ export default function PositionArchivePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [loadData])
 
   const majors = useMemo(() => {
     const set = new Set<string>()

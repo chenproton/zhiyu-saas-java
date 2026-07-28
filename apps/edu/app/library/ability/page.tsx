@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Pencil, Plus, Search, Trash2, Lightbulb } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -36,7 +36,7 @@ export default function AbilityPointsPage() {
   const [attributes, setAttributes] = useState("")
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
-  const loadItems = async () => {
+  const loadItems = useCallback(async () => {
     setLoading(true)
     try {
       const params: any = { limit: 500 }
@@ -46,9 +46,9 @@ export default function AbilityPointsPage() {
       setItems(res.items)
     } catch (err: any) { toast({ variant: "destructive", title: "加载失败", description: err.message }) }
     finally { setLoading(false) }
-  }
+  }, [searchQuery, categoryFilter, toast])
 
-  useEffect(() => { loadItems() }, [searchQuery, categoryFilter])
+  useEffect(() => { loadItems() }, [loadItems])
 
   const handleOpenAdd = () => { setEditingItem(null); setName(""); setDescription(""); setCategory("knowledge"); setIsPublic(false); setAttributes(""); setIsDialogOpen(true) }
   const handleOpenEdit = (item: AbilityPoint) => { setEditingItem(item); setName(item.name); setDescription(item.description || ""); setCategory(item.category); setIsPublic(item.isPublic); setAttributes(item.attributes?.join(", ") || ""); setIsDialogOpen(true) }

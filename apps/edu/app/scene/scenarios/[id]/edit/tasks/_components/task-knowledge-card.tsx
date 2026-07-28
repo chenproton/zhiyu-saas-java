@@ -225,7 +225,7 @@ export function TaskKnowledgeCard({
             )}
             {kpSearch && !hasResults && (
               <div className="p-6 text-center text-gray-500 text-sm border border-dashed rounded-lg">
-                <p className="mb-2">未找到 "{kpSearch}" 相关的知识点</p>
+                <p className="mb-2">未找到 &quot;{kpSearch}&quot; 相关的知识点</p>
                 <Button variant="outline" size="sm" onClick={openAddKp}>
                   <Plus className="h-3 w-3 mr-1" />新增此知识点
                 </Button>

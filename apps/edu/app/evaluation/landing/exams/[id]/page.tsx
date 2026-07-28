@@ -76,7 +76,8 @@ export default function ExamDetailPage() {
   const { toast } = useToast()
 
   const cachedExam = getExam ? getExam(examId) : exams.find((e) => e.id === examId)
-  const [exam, setExam] = useState<Exam | null>(cachedExam || null)
+  const [fetchedExam, setFetchedExam] = useState<Exam | null>(null)
+  const exam = cachedExam || fetchedExam
   const [examLoading, setExamLoading] = useState(!cachedExam)
 
   const [started, setStarted] = useState(false)
@@ -110,18 +111,19 @@ export default function ExamDetailPage() {
   const isSceneTask = !!taskId && !!methodKey
 
   useEffect(() => {
-    if (!examId) return
-    if (cachedExam) {
-      setExam(cachedExam)
-      setExamLoading(false)
-      return
+    if (!examId || cachedExam) return
+    const fetchExam = async () => {
+      setExamLoading(true)
+      try {
+        const data = await examApi.get(examId)
+        setFetchedExam(data)
+      } catch {
+        setFetchedExam(null)
+      } finally {
+        setExamLoading(false)
+      }
     }
-    setExamLoading(true)
-    examApi
-      .get(examId)
-      .then((data) => setExam(data))
-      .catch(() => setExam(null))
-      .finally(() => setExamLoading(false))
+    fetchExam()
   }, [examId, cachedExam])
 
   useEffect(() => {
@@ -156,14 +158,22 @@ export default function ExamDetailPage() {
     } finally {
       setSubmitting(false)
     }
-  }, [currentUsage, answers, methodKey])
+  }, [currentUsage, answers, methodKey, toast])
 
   const handleSubmitRef = useRef(handleSubmit)
-  handleSubmitRef.current = handleSubmit
+  useEffect(() => {
+    handleSubmitRef.current = handleSubmit
+  }, [handleSubmit])
+
+  const handleStart = () => {
+    setStarted(true)
+    if (exam) {
+      setTimeLeft(exam.duration * 60)
+    }
+  }
 
   useEffect(() => {
     if (started && exam && !submitted) {
-      setTimeLeft(exam.duration * 60)
       let submittedByTimer = false
       const timer = setInterval(() => {
         setTimeLeft((prev) => {
@@ -538,7 +548,7 @@ export default function ExamDetailPage() {
           <div style={{ marginTop: 24, display: "flex", justifyContent: "center" }}>
             <PrdAnnotation data={getAnnotation("le-start-btn")}>
               {canStart ? (
-                <Button size="lg" style={{ gap: 8, background: "#3370ff" }} onClick={() => setStarted(true)}>
+                <Button size="lg" style={{ gap: 8, background: "#3370ff" }} onClick={handleStart}>
                   <PlayCircle style={{ width: 20, height: 20 }} /> 开始考试
                 </Button>
               ) : (

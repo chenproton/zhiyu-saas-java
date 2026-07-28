@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect, useLayoutEffect } from "react"
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react"
 import {
   ChevronLeft, Plus, RotateCcw, Trash2, Target, CheckCircle2, Info,
   Search, FileText, Pencil, Scale,
@@ -153,7 +153,7 @@ function MixedTagEditor({
     cursorOffsetRef.current = offset
   }
 
-  const createTagSpan = (type: 'kp' | 'ab', id: string): HTMLSpanElement | null => {
+  const createTagSpan = useCallback((type: 'kp' | 'ab', id: string): HTMLSpanElement | null => {
     if (type === 'kp') {
       const kp = knowledgePoints.find(k => k.id === id)
       if (!kp) return null
@@ -179,7 +179,7 @@ function MixedTagEditor({
       if (span) span.title = ab.name
       return span
     }
-  }
+  }, [knowledgePoints, abilityPoints])
 
   useLayoutEffect(() => {
     const el = ref.current
@@ -269,7 +269,7 @@ function MixedTagEditor({
       })
     }
     prevTags.current = { kp: [...knowledgePointIds], ab: [...abilityPointIds] }
-  }, [knowledgePointIds, abilityPointIds, text])
+  }, [knowledgePointIds, abilityPointIds, text, createTagSpan])
 
   const handleBlur = () => {
     if (isComposing.current) return

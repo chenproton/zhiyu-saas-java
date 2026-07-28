@@ -867,12 +867,16 @@ export function CourseEvaluationRulesDialog({
     )
   }
 
-  const EvalResourceOnlyPanel = ({ methodKey }: { methodKey: string }) => {
+   const EvalResourceOnlyPanel = ({ methodKey }: { methodKey: string }) => {
+    const [rdqMajorTab, setRdqMajorTab] = useState("全部")
+    const [rdqDrawMode, setRdqDrawMode] = useState<"random" | "manual">("random")
+    const [rdqDrawCount, setRdqDrawCount] = useState(5)
+    const [paperEndTime, setPaperEndTime] = useState("")
+    const [qbDrawMode, setQbDrawMode] = useState<"all" | "practice">("all")
+    const [qbPassRate, setQbPassRate] = useState(60)
+
     if (methodKey === "random_draw") {
       const rdqMajorOptions = ["全部", "经济学", "物流管理", "机械工程", "计算机科学", "电子信息", "工商管理", "会计学", "市场营销", "土木工程", "英语", "法学"]
-      const [rdqMajorTab, setRdqMajorTab] = useState("全部")
-      const [rdqDrawMode, setRdqDrawMode] = useState<"random" | "manual">("random")
-      const [rdqDrawCount, setRdqDrawCount] = useState(5)
       const filteredRdq = config.randomDrawCustomQuestions.filter(q => {
         const matchMajor = rdqMajorTab === "全部" || q.majorId === rdqMajorTab
         const matchSearch = !rdqSearch || q.name.includes(rdqSearch) || q.description.includes(rdqSearch) || q.majorId.includes(rdqSearch)
@@ -1128,7 +1132,6 @@ export function CourseEvaluationRulesDialog({
       )
     }
     if (methodKey === "paper") {
-      const [paperEndTime, setPaperEndTime] = useState("")
       const selectPaper = (paperId: string) => { updateConfig({ paperIds: [paperId], paperWeights: { [paperId]: 100 } }) }
       return (
         <div className="space-y-4">
@@ -1201,8 +1204,6 @@ export function CourseEvaluationRulesDialog({
       )
     }
     if (methodKey === "question_bank") {
-      const [qbDrawMode, setQbDrawMode] = useState<"all" | "practice">("all")
-      const [qbPassRate, setQbPassRate] = useState(60)
       return (
         <div className="space-y-4">
           <QuestionSelectorPanel field="questionBankQuestions" selectedIds={config.questionBankQuestions} showAutoSelect={true} />

@@ -937,7 +937,7 @@ export default function TasksEditPage() {
       }
     }
     load()
-  }, [scenarioId])
+  }, [scenarioId, user?.id])
 
   const [editingCard, setEditingCard] = useState<{ taskId: string; type: CardType } | null>(null)
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false)
@@ -966,8 +966,9 @@ export default function TasksEditPage() {
     [existingScenario?.positionId]
   )
 
-  const allTasks = useMemo(() =>
-    (scenarios as any[]).flatMap((s: any) =>
+  const allTasks = useMemo(() => {
+    void cloneDataVersion
+    return (scenarios as any[]).flatMap((s: any) =>
       (s.tasks || []).map((t: any) => ({
         ...t,
         scenarioName: s.name,
@@ -975,8 +976,9 @@ export default function TasksEditPage() {
         scenarioCoBuilderIds: t.scenarioCoBuilderIds || s.coBuilderIds || [],
         scenarioStatus: t.scenarioStatus || s.status || "",
       }))
-    ),
-    [scenarioId, cloneDataVersion]
+    )
+  },
+    [cloneDataVersion]
   )
 
   const totalWeight = Object.values(taskStates).reduce((sum, s) => sum + s.weight, 0)
@@ -2744,19 +2746,20 @@ function EvalRulesPanel({
         }
 
         // Resource-only panel (no eval points)
-        // Kept as a plain render function inside renderContent so it can close over
-        // local state without becoming a new component type on every parent render.
-        const renderEvalResourceOnlyPanel = (methodKey: string, majors: any[]) => {
+        const EvalResourceOnlyPanel = ({ methodKey, majors: majorsParam }: { methodKey: string; majors: any[] }) => {
+          const majorOptions = useMemo(() => [{ id: "全部", name: "全部" }, ...majorsParam.map((m: any) => ({ id: m.id, name: m.name }))], [majorsParam])
+          const majorNameMap = useMemo(() => {
+            const map: Record<string, string> = {}
+            majorsParam.forEach((m: any) => { map[m.id] = m.name })
+            return map
+          }, [majorsParam])
+          const [rdqMajorTab, setRdqMajorTab] = useState("全部")
+          const [rdqDrawMode, setRdqDrawMode] = useState<"random" | "manual">("random")
+          const [rdqDrawCount, setRdqDrawCount] = useState(5)
+          const [qbDrawMode, setQbDrawMode] = useState<"all" | "practice">("all")
+          const [qbPassRate, setQbPassRate] = useState(60)
+
           if (methodKey === "random_draw") {
-            const majorOptions = useMemo(() => [{ id: "全部", name: "全部" }, ...majors.map((m: any) => ({ id: m.id, name: m.name }))], [majors])
-            const majorNameMap = useMemo(() => {
-              const map: Record<string, string> = {}
-              majors.forEach((m: any) => { map[m.id] = m.name })
-              return map
-            }, [majors])
-            const [rdqMajorTab, setRdqMajorTab] = useState("全部")
-            const [rdqDrawMode, setRdqDrawMode] = useState<"random" | "manual">("random")
-            const [rdqDrawCount, setRdqDrawCount] = useState(5)
             const filteredRdq = state.randomDrawCustomQuestions.filter(q => {
               const matchMajor = rdqMajorTab === "全部" || q.majorId === rdqMajorTab
               const matchSearch = !rdqSearch || q.name.includes(rdqSearch) || q.description.includes(rdqSearch) || (majorNameMap[q.majorId] || "").includes(rdqSearch)
@@ -3265,8 +3268,6 @@ function EvalRulesPanel({
           if (methodKey === "question_bank") {
             const qbCfg = state.methodResourceConfigs.question_bank || {}
             const setQbCfg = (patch: any) => updateState({ methodResourceConfigs: { ...state.methodResourceConfigs, question_bank: { ...qbCfg, ...patch } } })
-            const [qbDrawMode, setQbDrawMode] = useState<"all" | "practice">((qbCfg.drawMode as "all" | "practice") ?? "all")
-            const [qbPassRate, setQbPassRate] = useState(qbCfg.passRate ?? 60)
 
             return (
               <div className="space-y-4">
@@ -4369,7 +4370,7 @@ function EvalRulesPanel({
                     setSelectedRdqForDetail={setSelectedRdqForDetail}
                   />
                 ) : erDialogMethod ? (
-                  renderEvalResourceOnlyPanel(erDialogMethod, majors)
+                  <EvalResourceOnlyPanel methodKey={erDialogMethod} majors={majors} />
                 ) : null}
                 </div>
               </DialogContent>

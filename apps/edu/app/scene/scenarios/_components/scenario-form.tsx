@@ -74,7 +74,7 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
       }
     }
     loadOptions()
-  }, [])
+  }, [toast])
 
   useEffect(() => {
     if (!scenarioId) return
@@ -97,7 +97,7 @@ export function ScenarioForm({ scenarioId, defaultBatchId, defaultPositionId }: 
         toast({ variant: "destructive", title: "加载场景失败", description: err.message || "请稍后重试" })
       })
       .finally(() => setLoading(false))
-  }, [scenarioId])
+  }, [scenarioId, toast])
 
   const selectedPosition = useMemo(
     () => positions.find((p) => p.id === careerPositionId),

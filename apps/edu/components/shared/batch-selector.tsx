@@ -31,7 +31,7 @@ export function BatchSelector({
 
   useEffect(() => {
     batchApi.list({ limit: 1000 }).then((res) => setBatches(res.items)).catch(() => {})
-  }, [])
+  }, [batchApi])
 
   return (
     <div className="space-y-1.5">

@@ -194,7 +194,7 @@ function AddGranularPageInner() {
       homeworks: [],
       evalData: evalData || undefined,
     }
-  }, [editId, courseName, code, hours, learningGoal, detailedDescription, background, estimatedHours, knowledgePoints, selectedResourceIds, resourcePool])
+  }, [editId, courseName, code, hours, learningGoal, detailedDescription, background, estimatedHours, knowledgePoints, selectedResourceIds, resourcePool, evalData])
 
   const handleSave = async () => {
     if (!courseName) {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { courseApi, lessonBatchApi } from "@/lib/api"
 import type { Course, LessonBatch } from "@/lib/types/lesson"
@@ -22,7 +22,7 @@ export default function LessonArchivePage() {
   const [search, setSearch] = useState("")
   const [selectedMajor, setSelectedMajor] = useState<string | null>(null)
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     try {
       const [courseRes, batchRes] = await Promise.all([
@@ -40,11 +40,11 @@ export default function LessonArchivePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [loadData])
 
   const majors = useMemo(() => {
     const set = new Set<string>()

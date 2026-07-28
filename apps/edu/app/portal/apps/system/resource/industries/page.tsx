@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useCallback } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -23,7 +23,7 @@ export default function IndustriesPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchIndustries = async () => {
+  const fetchIndustries = useCallback(async () => {
     if (!tenantId) return
     setLoading(true)
     setError(null)
@@ -35,12 +35,12 @@ export default function IndustriesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenantId])
 
   useEffect(() => {
     if (authLoading || !tenantId) return
     fetchIndustries()
-  }, [tenantId, authLoading])
+  }, [tenantId, authLoading, fetchIndustries])
 
   const parentMap = useMemo(() => {
     const map = new Map<string, string>()

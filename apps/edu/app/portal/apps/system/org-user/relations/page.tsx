@@ -67,7 +67,7 @@ export default function RelationsPage() {
     } finally {
       setLoading(false)
     }
-  }, [searchText])
+  }, [searchText, toast])
 
   useEffect(() => {
     loadRelations()

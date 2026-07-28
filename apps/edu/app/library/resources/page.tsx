@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo, useRef } from "react"
+import { useCallback, useEffect, useState, useMemo, useRef } from "react"
 import {
   FileText, Table, Image, Link, Music, Video, Archive,
   Building, Wrench, AppWindow, HelpCircle, Pencil, Plus, Search, Trash2, ExternalLink, X,
@@ -57,7 +57,7 @@ export default function ResourcesPage() {
 
   const isFileType = fileTypesWithUpload.includes(resourceType)
 
-  const loadItems = async () => {
+  const loadItems = useCallback(async () => {
     setLoading(true)
     try {
       const res = await resourceLibraryApi.list({ limit: 500 })
@@ -65,9 +65,9 @@ export default function ResourcesPage() {
     } catch (err: any) {
       toast({ variant: "destructive", title: "加载失败", description: err.message || "无法获取资源列表" })
     } finally { setLoading(false) }
-  }
+  }, [toast])
 
-  useEffect(() => { loadItems() }, [])
+  useEffect(() => { loadItems() }, [loadItems])
 
   const items = useMemo(() => {
     let list = allItems

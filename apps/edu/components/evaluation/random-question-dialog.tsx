@@ -157,7 +157,7 @@ export function RandomQuestionDialog({
       case 'difficulty': return difficulties
       case 'knowledge': return selectedKnowledgePoints.length > 0 ? selectedKnowledgePoints : knowledgePoints.map(k => k.id)
     }
-  }, [weightDimension, selectedBankIds, selectedTypes, selectedDifficulties, selectedKnowledgePoints, publishedBanks, knowledgePoints])
+  }, [weightDimension, selectedBankIds, selectedKnowledgePoints, publishedBanks, knowledgePoints])
 
   // 可用的权重维度（排除仅 1 个选项的维度）
   const availableDimensions = useMemo((): WeightDimension[] => {

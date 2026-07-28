@@ -117,10 +117,10 @@ export default function GradingPage() {
       setLoading(false)
     }
     load()
-  }, [])
+  }, [selectedScenarioId])
 
   useEffect(() => {
-    if (!selectedScenarioId) { setResults([]); return }
+    if (!selectedScenarioId) return
     evaluationResultApi.list({ sceneId: selectedScenarioId, limit: 500 })
       .then((res) => setResults(res.items || []))
       .catch(() => setResults([]))

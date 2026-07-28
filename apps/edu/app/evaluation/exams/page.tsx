@@ -70,7 +70,7 @@ export default function ExamsPage() {
       console.error("审批操作失败", err)
       toast({ variant: "destructive", title: "审批操作失败" })
     }
-  }, [])
+  }, [toast])
 
   return (
     <ContentListPage<ExamItem>

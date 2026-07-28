@@ -642,7 +642,7 @@ function AddSystemPageInner() {
       if (n.type !== "original") newModes[n.id] = "upload"
     })
     setNodeModes((prev) => ({ ...prev, ...newModes }))
-  }, [resourcePool, setNodes, setNodeModes])
+  }, [resourcePool, setNodes, setNodeModes, contentCode])
 
   const handleSave = useCallback(async () => {
     setSaving(true)

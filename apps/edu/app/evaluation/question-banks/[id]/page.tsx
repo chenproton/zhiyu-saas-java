@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload, Copy, Users, Building2, ImageIcon, List, LayoutGrid, FolderInput, ChevronDown, FileDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -348,11 +349,12 @@ export default function QuestionBankDetailPage() {
             <div className="flex gap-4">
               {/* 封面 */}
               {bank.coverImage ? (
-                <div className="shrink-0 overflow-hidden rounded-lg">
-                  <img
+                <div className="relative shrink-0 size-24 overflow-hidden rounded-lg">
+                  <Image
                     src={bank.coverImage}
                     alt={bank.name}
-                    className="size-24 object-cover"
+                    fill
+                    className="object-cover"
                   />
                 </div>
               ) : (
@@ -702,7 +704,7 @@ export default function QuestionBankDetailPage() {
                   <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
                     <li>点击下方按钮下载最新的导入模板（含系统字典数据）</li>
                     <li>参照模板中各 Sheet 的填写说明，填入题目数据</li>
-                    <li>完成后点击"下一步"上传文件</li>
+                    <li>完成后点击&quot;下一步&quot;上传文件</li>
                   </ol>
                 </div>
                 <Button

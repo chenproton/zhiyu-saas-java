@@ -89,7 +89,7 @@ export default function BankDetailPage() {
 
   const [bank, setBank] = useState<QuestionBank | null>(null)
   const [questions, setQuestions] = useState<Question[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!!id)
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState("全部")
   const [showAllAnswers, setShowAllAnswers] = useState(false)
@@ -97,18 +97,25 @@ export default function BankDetailPage() {
 
   useEffect(() => {
     if (!id) return
-    setLoading(true)
-    Promise.all([
-      questionBankApi.get(id).then(setBank).catch(() => setBank(null)),
-      questionApi.list({ bankId: id, limit: 10000 } as any)
-        .then((res) => setQuestions(res.items || []))
-        .catch(() => setQuestions([])),
-      knowledgeApi.list({ limit: 1000 }).then((res: { items: KnowledgePoint[] }) => {
-        const map: Record<string, string> = {}
-        res.items.forEach((kp) => { map[kp.id] = kp.name })
-        setKnowledgePointMap(map)
-      }).catch(() => {}),
-    ]).finally(() => setLoading(false))
+    const fetchData = async () => {
+      setLoading(true)
+      try {
+        await Promise.all([
+          questionBankApi.get(id).then(setBank).catch(() => setBank(null)),
+          questionApi.list({ bankId: id, limit: 10000 } as any)
+            .then((res) => setQuestions(res.items || []))
+            .catch(() => setQuestions([])),
+          knowledgeApi.list({ limit: 1000 }).then((res: { items: KnowledgePoint[] }) => {
+            const map: Record<string, string> = {}
+            res.items.forEach((kp) => { map[kp.id] = kp.name })
+            setKnowledgePointMap(map)
+          }).catch(() => {}),
+        ])
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
   }, [id])
 
   const questionTypes = useMemo(() => {

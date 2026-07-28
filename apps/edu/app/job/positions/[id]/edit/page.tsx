@@ -84,7 +84,7 @@ function PositionEditPageContent({ params }: PageProps) {
         if (!cancelled) setLoading(false)
       })
     return () => { cancelled = true }
-  }, [toast])
+  }, [])
 
   useEffect(() => {
     const found = positions.find((p) => p.id === id)
@@ -147,7 +147,7 @@ function PositionEditPageContent({ params }: PageProps) {
         }
       })
     return () => { cancelled = true }
-  }, [position, detailsLoaded, toast])
+  }, [position, detailsLoaded])
 
   useEffect(() => {
     const stepParam = searchParams.get('step')

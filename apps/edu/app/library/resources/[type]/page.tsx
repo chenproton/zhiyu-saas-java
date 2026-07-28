@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useCallback, useEffect, useState, useRef } from "react"
 import { useParams } from "next/navigation"
 import {
   Pencil, Plus, Search, Trash2, ExternalLink,
@@ -61,7 +61,7 @@ export default function ResourceTypePage() {
   const icon = TYPE_ICONS[resourceKind] || TYPE_ICONS.other
   const isFileType = fileTypesWithUpload.includes(resourceKind)
 
-  const loadItems = async () => {
+  const loadItems = useCallback(async () => {
     setLoading(true)
     try {
       const res = await resourceLibraryApi.list({ resourceType: resourceKind, limit: 500 })
@@ -69,9 +69,9 @@ export default function ResourceTypePage() {
     } catch (err: any) {
       toast({ variant: "destructive", title: "加载失败", description: err.message || "无法获取资源列表" })
     } finally { setLoading(false) }
-  }
+  }, [resourceKind, toast])
 
-  useEffect(() => { loadItems() }, [resourceKind])
+  useEffect(() => { loadItems() }, [loadItems])
 
   const filtered = searchQuery
     ? items.filter(r => {
