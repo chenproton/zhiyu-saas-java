@@ -635,9 +635,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       if (record) return record
       return {
         id: `cir-${Date.now()}`,
-        ...data,
+        templateId: data.templateId,
+        templateTitle: data.templateTitle,
+        certTypeName: data.certTypeName,
+        studentName: data.studentName,
+        studentId: data.studentId,
+        className: data.className,
+        issueDate: data.issueDate,
+        expireDate: data.expireDate,
         certNumber: `MC-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`,
-        status: 'issued',
+        status: 'issued' as const,
       }
     },
     issueBatchCerts: async (records): Promise<CertIssuanceRecord[]> => {
