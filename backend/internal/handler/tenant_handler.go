@@ -1,11 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -423,14 +421,6 @@ func (h *TenantHandler) updateTenantStatus(w http.ResponseWriter, r *http.Reques
 
 	tenant, _ := h.fetchTenant(r.Context(), id)
 	respondJSON(w, http.StatusOK, tenant)
-}
-
-func generateSecurePassword(length int) (string, error) {
-	b := make([]byte, length)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
 }
 
 func (h *TenantHandler) fetchTenant(ctx context.Context, id string) (domain.Tenant, error) {

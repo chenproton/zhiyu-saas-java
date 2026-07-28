@@ -1147,10 +1147,3 @@ func (h *PositionHandler) scanPositionRows(rows pgx.Rows) ([]domain.CareerPositi
 func (h *PositionHandler) incrementViewCount(r *http.Request, id string) error {
 	return recordView(r.Context(), h.DB, "career_position", id, middleware.CurrentUser(r))
 }
-
-func coalesceStringSlice(s []string) []string {
-	if s == nil {
-		return []string{}
-	}
-	return s
-}

@@ -11,6 +11,30 @@ export { StatusBadge, EmptyState, LoadingView } from "./components/shared/status
 export { TableRowActions } from "./components/shared/table-row-actions"
 export { HoverActionBar } from "./components/shared/hover-action-bar"
 
+export { PlatformSideNav } from "./components/platform-shell"
+export type {
+  PlatformNavigationConfig,
+  PlatformCatalogItem,
+  SideNavItem,
+  SideNavChild,
+  TopNavItem,
+  UserMenuItem,
+  PlatformIcon,
+  PlatformIconKey,
+} from "./components/platform-shell"
+
+export { createJsonFileAdapter } from "./lib/annotations"
+export type {
+  AnnotationAdapter,
+  Annotation,
+  Comment,
+  AnnotationMode,
+  AnnotationStore,
+  AnnotationTheme,
+  AnnotationSystemProps,
+  UseAnnotationsConfig,
+} from "./lib/annotations"
+
 export {
   parseDate,
   parseOptDate,

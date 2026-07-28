@@ -237,11 +237,8 @@ func (h *TemplateHandler) generateScenarioTemplate(ctx context.Context, tenantID
 	industries, majors, _, positions, knowledgePoints, abilityPoints, resources := h.queryDicts(ctx, tenantID)
 
 	hdrStyle := makeHeaderStyle(f)
-	dataStyle := makeDataStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
-	_ = hdrStyle
-	_ = dataStyle
 
 	setHdr := func(sheet string, row int, headers []string, widths []float64) {
 		for ci, h := range headers {
@@ -252,19 +249,6 @@ func (h *TemplateHandler) generateScenarioTemplate(ctx context.Context, tenantID
 		}
 		f.SetRowHeight(sheet, row, 28)
 	}
-	setRows := func(sheet string, startRow int, data [][]string) {
-		for ri, row := range data {
-			r := startRow + ri
-			for ci, v := range row {
-				cell, _ := excelize.CoordinatesToCellName(ci+1, r)
-				f.SetCellValue(sheet, cell, v)
-				f.SetCellStyle(sheet, cell, cell, dataStyle)
-				f.SetCellStyle(sheet, cell, cell, wrapAlign)
-			}
-			f.SetRowHeight(sheet, r, 24)
-		}
-	}
-	_ = setRows
 
 	setA1 := func(sheet string, cols int, text string) {
 		start, _ := excelize.CoordinatesToCellName(1, 1)
@@ -372,10 +356,8 @@ func (h *TemplateHandler) generateGranularCourseTemplate(ctx context.Context, te
 	lessonBatches := h.queryLessonBatches(ctx, tenantID)
 
 	hdrStyle := makeHeaderStyle(f)
-	dataStyle := makeDataStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
-	_ = dataStyle
 
 	setHdr := func(sheet string, row int, headers []string, widths []float64) {
 		for ci, h := range headers {
@@ -386,19 +368,6 @@ func (h *TemplateHandler) generateGranularCourseTemplate(ctx context.Context, te
 		}
 		f.SetRowHeight(sheet, row, 28)
 	}
-	setRows := func(sheet string, startRow int, data [][]string) {
-		for ri, row := range data {
-			r := startRow + ri
-			for ci, v := range row {
-				cell, _ := excelize.CoordinatesToCellName(ci+1, r)
-				f.SetCellValue(sheet, cell, v)
-				f.SetCellStyle(sheet, cell, cell, dataStyle)
-				f.SetCellStyle(sheet, cell, cell, wrapAlign)
-			}
-			f.SetRowHeight(sheet, r, 24)
-		}
-	}
-	_ = setRows
 
 	setA1 := func(sheet string, cols int, text string) {
 		start, _ := excelize.CoordinatesToCellName(1, 1)
@@ -506,10 +475,8 @@ func (h *TemplateHandler) generateSystemCourseTemplate(ctx context.Context, tena
 	lessonBatches := h.queryLessonBatches(ctx, tenantID)
 
 	hdrStyle := makeHeaderStyle(f)
-	dataStyle := makeDataStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
-	_ = dataStyle
 
 	setHdr := func(sheet string, row int, headers []string, widths []float64) {
 		for ci, h := range headers {
@@ -520,19 +487,6 @@ func (h *TemplateHandler) generateSystemCourseTemplate(ctx context.Context, tena
 		}
 		f.SetRowHeight(sheet, row, 28)
 	}
-	setRows := func(sheet string, startRow int, data [][]string) {
-		for ri, row := range data {
-			r := startRow + ri
-			for ci, v := range row {
-				cell, _ := excelize.CoordinatesToCellName(ci+1, r)
-				f.SetCellValue(sheet, cell, v)
-				f.SetCellStyle(sheet, cell, cell, dataStyle)
-				f.SetCellStyle(sheet, cell, cell, wrapAlign)
-			}
-			f.SetRowHeight(sheet, r, 24)
-		}
-	}
-	_ = setRows
 
 	setA1 := func(sheet string, cols int, text string) {
 		start, _ := excelize.CoordinatesToCellName(1, 1)

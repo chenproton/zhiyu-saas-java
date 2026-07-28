@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,6 +22,23 @@ import (
 // ErrMissingTenant is returned by executeListQuery when the caller has no tenant.
 // Handlers should check for this error with errors.Is and respond 403.
 var ErrMissingTenant = errors.New("missing tenant")
+
+// coalesceStringSlice 将 nil 切片转为空切片，避免 SQL 参数中写入 NULL。
+func coalesceStringSlice(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
+}
+
+// generateSecurePassword 生成指定长度的随机十六进制密码。
+func generateSecurePassword(length int) (string, error) {
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
 
 // isStrongPassword requires at least 8 characters and at least one letter and one digit.
 func isStrongPassword(password string) bool {

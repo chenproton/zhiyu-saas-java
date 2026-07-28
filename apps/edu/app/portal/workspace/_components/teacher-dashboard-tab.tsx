@@ -296,7 +296,7 @@ function CourseScheduleTable({ events = [], classPlans = [], classSessions = [],
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedCourse, setSelectedCourse] = useState<DashboardSelectedCourse | null>(null)
   const [dialogTab, setDialogTab] = useState("tracking")
-  const [currentDate, setCurrentDate] = useState(new Date())
+  const [currentDate, setCurrentDate] = useState(() => new Date())
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth() + 1

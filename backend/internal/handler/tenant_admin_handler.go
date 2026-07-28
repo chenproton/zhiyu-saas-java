@@ -124,8 +124,7 @@ func (h *TenantHandler) AdminUpdateAdmin(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	existing, err := h.fetchTenantAdmin(r.Context(), tenantID, adminID)
-	if err != nil {
+	if _, err := h.fetchTenantAdmin(r.Context(), tenantID, adminID); err != nil {
 		respondError(w, http.StatusNotFound, "管理员不存在")
 		return
 	}
@@ -141,7 +140,7 @@ func (h *TenantHandler) AdminUpdateAdmin(w http.ResponseWriter, r *http.Request)
 	}
 
 	newLoginName := tenantID + "_" + req.Username
-	_, err = h.DB.Exec(r.Context(), `
+	_, err := h.DB.Exec(r.Context(), `
 		UPDATE users SET username = $1, login_name = $2, name = $3, updated_at = NOW()
 		WHERE id = $4 AND tenant_id = $5
 	`, req.Username, newLoginName, req.Name, adminID, tenantID)
@@ -155,7 +154,6 @@ func (h *TenantHandler) AdminUpdateAdmin(w http.ResponseWriter, r *http.Request)
 	}
 
 	updated, _ := h.fetchTenantAdmin(r.Context(), tenantID, adminID)
-	_ = existing
 	respondJSON(w, http.StatusOK, updated)
 }
 

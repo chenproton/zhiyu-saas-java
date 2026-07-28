@@ -453,28 +453,6 @@ type importResult struct {
 	DuplicateItems  []ImportPreviewItem
 }
 
-func col(row []string, idx int) string {
-	if idx < len(row) {
-		return strings.TrimSpace(row[idx])
-	}
-	return ""
-}
-
-func splitTrim(s, sep string) []string {
-	if s == "" {
-		return nil
-	}
-	parts := strings.Split(s, sep)
-	var result []string
-	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		if p != "" {
-			result = append(result, p)
-		}
-	}
-	return result
-}
-
 func parseRequirements(s string) []string {
 	if s == "" {
 		return []string{}
@@ -522,38 +500,6 @@ func inferAbilityCategory(attrs []string) string {
 		}
 	}
 	return "skill"
-}
-
-func parseNullableInt(s string) *int {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return nil
-	}
-	v, err := strconv.Atoi(s)
-	if err != nil {
-		return nil
-	}
-	return &v
-}
-
-func parseNullableFloat(s string) *float64 {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return nil
-	}
-	v, err := strconv.ParseFloat(s, 64)
-	if err != nil {
-		return nil
-	}
-	return &v
-}
-
-func nullableStr(s string) *string {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return nil
-	}
-	return &s
 }
 
 func mapRequiredLevel(l string) string {

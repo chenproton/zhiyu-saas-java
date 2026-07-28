@@ -2,6 +2,8 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
+	"strings"
 )
 
 // ImportPreviewItem 单条重复记录预览信息。
@@ -32,4 +34,76 @@ type ImportExecuteResult struct {
 // importOverwriteParam 从请求中获取是否覆盖已存在数据的标识。
 func importOverwriteParam(r *http.Request) bool {
 	return r.URL.Query().Get("overwrite") == "true"
+}
+
+// col 安全读取 Excel 行中的列值，越界时返回空字符串。
+func col(row []string, idx int) string {
+	if idx < len(row) {
+		return strings.TrimSpace(row[idx])
+	}
+	return ""
+}
+
+// splitTrim 按分隔符拆分字符串并去除空白，空项被忽略。
+func splitTrim(s, sep string) []string {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, sep)
+	var result []string
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			result = append(result, p)
+		}
+	}
+	return result
+}
+
+// parseNullableInt 将字符串解析为整数，空或无效时返回 nil。
+func parseNullableInt(s string) *int {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	v, err := strconv.Atoi(s)
+	if err != nil {
+		return nil
+	}
+	return &v
+}
+
+// parseNullableFloat 将字符串解析为浮点数，空或无效时返回 nil。
+func parseNullableFloat(s string) *float64 {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	v, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return nil
+	}
+	return &v
+}
+
+// nullableStr 去除空白后，空字符串返回 nil。
+func nullableStr(s string) *string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+// parseIntDefault 将字符串解析为整数，空或无效时返回默认值。
+func parseIntDefault(s string, defaultVal int) int {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return defaultVal
+	}
+	v, err := strconv.Atoi(s)
+	if err != nil {
+		return defaultVal
+	}
+	return v
 }

@@ -90,7 +90,7 @@ function getWeeksInMonth(year: number, month: number) {
 
 export function ScheduleGrid({ events }: ScheduleGridProps) {
   const [view, setView] = useState<ViewType>("week")
-  const [currentDate, setCurrentDate] = useState(new Date())
+  const [currentDate, setCurrentDate] = useState(() => new Date())
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth() + 1

@@ -95,12 +95,12 @@ func (c contentActions) transition(w http.ResponseWriter, r *http.Request, statu
 		return
 	}
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "获取current status失败")
+		respondError(w, http.StatusInternalServerError, "获取当前状态失败")
 		return
 	}
 
 	if !c.canTransition(current, status) {
-		respondError(w, http.StatusBadRequest, fmt.Sprintf("invalid status transition from %s to %s", current, status))
+		respondError(w, http.StatusBadRequest, fmt.Sprintf("无效的状态流转：%s -> %s", current, status))
 		return
 	}
 

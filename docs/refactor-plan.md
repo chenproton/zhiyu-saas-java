@@ -274,19 +274,19 @@
 
 ---
 
-### 16. `portal-auth-context.tsx` 与 `components/auth-provider.tsx` 重复
+### 16. `portal-auth-context.tsx` 与 `components/auth-provider.tsx` 重复 ✅
 
-**问题**：两者实现几乎相同的 portal 认证逻辑。
+**状态**：已完成（本次复核）
 
-**文件**：
-- `apps/edu/contexts/portal-auth-context.tsx`
-- `apps/edu/components/auth-provider.tsx`
+**复核结果**：`apps/edu/contexts/portal-auth-context.tsx` 已改为薄 re-export，仅导出 `PortalAuthProvider` / `usePortalAuth` 别名：
 
-**方案**：删除 `portal-auth-context.tsx`，统一使用 `auth-provider.tsx`，调整引用。
+```tsx
+export { AuthProvider as PortalAuthProvider, useAuth as usePortalAuth } from "@/components/auth-provider"
+```
 
-**预估**：1 小时
+已无重复实现，可保留该别名入口以兼容现有引用。
 
-- [ ] 任务完成
+- [x] 任务完成
 
 ---
 
@@ -305,21 +305,13 @@
 
 ---
 
-### 18. Library 平台使用原生 `<table>` 标签
+### 18. Library 平台使用原生 `<table>` 标签 ✅
 
-**问题**：4 个 Library CRUD 页面使用原始 HTML `<table>` 而非 shadcn `<Table>` 组件。
+**状态**：已完成（本次复核）
 
-**文件**：
-- `apps/edu/app/library/knowledge/page.tsx`
-- `apps/edu/app/library/ability/page.tsx`
-- `apps/edu/app/library/questions/page.tsx`
-- `apps/edu/app/library/resources/page.tsx`
+**复核结果**：全量搜索 `apps/edu/app/library/**` 未发现原生 `<table>/<tbody>/<thead>/<tr>/<td>/<th>` 标签，library 页面已改用 shadcn `<Table>` 组件。
 
-**方案**：替换为 `<Table>` / `<TableHeader>` / `<TableBody>` / `<TableRow>` / `<TableHead>` / `<TableCell>`。
-
-**预估**：1 小时
-
-- [ ] 任务完成
+- [x] 任务完成
 
 ---
 
@@ -431,11 +423,17 @@
 
 | # | 问题 | 位置 | 建议方案 | 预估 |
 |---|------|------|---------|------|
-| A1 | migration 版本号冲突 | `backend/migrations/006_*`、`064_*` 各有两个文件 | 重命名冲突文件，确保版本号唯一 | 0.5 小时 |
+| A1 | migration 版本号冲突 | `backend/migrations/006_*`、`064_*`、`067_*` 各有两个文件 | 重命名冲突文件，确保版本号唯一；需同步更新 `schema_migrations` | 0.5 小时 |
 | A2 | `AuthHandler` goroutine 未优雅关闭 | `backend/cmd/server/main.go` | `router.New` 返回可关闭对象，main 中 `defer r.Shutdown()` | 0.5 小时 |
 | A3 | `view_logs` 写入逻辑分散 | `position/scenario/resource handler` | 已抽象 `recordView` helper；后续可扩展为独立 service | 0.5 天 |
 | A4 | Update 字段合并/Nullability 模式不一致 | `position/scenario/course handler` | 统一使用 patch helper 或 `NullableString` | 1 天 |
 | A5 | 导入/导出/模板缺少通用 pipeline | `*_import_handler.go`、`template_handler.go` | 抽象 Excel/CSV 行 → DTO → 校验 → upsert → 重复处理 | 2-3 天 |
+| A6 | 英文错误消息大量残留 | 全 handler 约 2000+ 处 | 统一翻译为中文 | 2 小时 |
+| A7 | `parseUploadedExcel` 重复实现 | `position/scenario/course/granular_course_import_handler.go` | 提取到 `import_common.go` | 0.5 小时 |
+| A8 | 事务 begin/rollback/commit 样板重复 | 多数 Create/Update handler | 提取 `withTx(ctx, db, fn)` helper | 0.5 天 |
+| A9 | tenant admin CRUD 双份实现 | `tenant_admin_handler.go` vs `tenant_internal_admin_handler.go` | 提取共用方法到 `TenantHandler` | 0.5 天 |
+| A10 | 认证状态码不一致 | `node_resource_handler.go:46`、`scenario_grade_handler.go:36` 返回 401，其余多返回 403 | 统一状态码 | 0.5 小时 |
+| A11 | SQL scan 错误静默跳过 | `scenario_grade_handler.go:116`、`tenant_admin_handler.go:68` | 统一返回 500 或记录日志 | 0.5 小时 |
 
 ### B. 前端 edu
 
@@ -445,8 +443,14 @@
 | B2 | library / exam-usage / recommend / superadmin 未接入共享抽象 | `app/library/*`、`app/evaluation/exam-usage`、`app/job/recommend`、`app/superadmin` | 评估接入 `PortalCrudPage` / `ContentListPage` 或新增轻量抽象 | 2-3 天 |
 | B3 | 状态抽象分裂 | `content-status.ts` vs `status.ts` | 统一标签、职责分离 | 0.5 天 |
 | B4 | 共享组件自身未完全遵守规范 | `approval-list-page.tsx`、`archive-list-page.tsx`、`portal-crud-page.tsx` | 已改用 `TableRowActions` / `ConfirmDialog` | 已完成 |
+| B5 | Landing detail 页面高度重复 | `app/scene/landing/[id]/page.tsx`、`app/lesson/landing/[id]/page.tsx` | 提取 `LandingDetailShell` 共享组件 | 0.5 天 |
+| B6 | Empty state 硬编码重复 | 约 80 处散落各页面 | 统一使用 `EmptyState` / `EmptyPlaceholder` | 0.5 天 |
+| B7 | `generateId` 重复实现 | `lib/evaluation-rule-store.ts`、`lib/stores/data-context.tsx`、`app/scene/page.tsx` 等 | 提取到 `lib/utils.ts` 的 `generateId(prefix)` | 0.5 小时 |
+| B8 | 手动 status badge 未收敛 | `app/lesson/landing/[id]/page.tsx`、`app/library/ability/page.tsx` 等 | 统一使用 `StatusBadge` + `getStatusConfig()` | 0.5 天 |
 
-### C. 前端 marketplace
+### C. 前端 marketplace（已删除，仅作存档）
+
+> `apps/marketplace` 前端源码已于 commit `25d0586` 彻底移除，当前工作树无相关代码。以下问题来自历史版本，若后续恢复 marketplace 可参考。
 
 | # | 问题 | 位置 | 建议方案 | 预估 |
 |---|------|------|---------|------|
@@ -464,25 +468,46 @@
 
 ---
 
+## 本次审查修复记录（2026-07-28 后续）
+
+### 已直接修复的简单问题
+
+| # | 问题 | 文件 | 改动 |
+|---|---|---|---|
+| F1 | `useState(new Date())` 非惰性初始化可能导致 hydration 不匹配 | `apps/edu/app/portal/workspace/_components/schedule-grid.tsx`, `teacher-dashboard-tab.tsx` | 改为 `useState(() => new Date())` |
+| F2 | `packages/ui` barrel export 不完整 | `packages/ui/src/index.ts` | 补充 `PlatformSideNav` 及类型、`annotations` 公开 API |
+| F3 | `PlatformShell` 深路径导入 `cn` | `apps/edu/components/platform-shell/PlatformShell.tsx` | 改为从 `@zhiyu/ui` 导入 |
+| F4 | `packages/api-client` 根索引未导出类型/工厂 | `packages/api-client/src/index.ts` | 补充 `api-helpers`、`api-factory`、`types` 导出 |
+| B1 | `coalesceStringSlice` 定义在业务 handler 中 | `backend/internal/handler/position_handler.go` → `common.go` | 迁移到通用位置 |
+| B2 | Import helper 函数多处重复定义 | `backend/internal/handler/import_common.go` | 统一 `col`、`splitTrim`、`parseNullableInt`、`parseNullableFloat`、`nullableStr`、`parseIntDefault` |
+| B3 | `generateSecurePassword` 定义在业务 handler 中 | `backend/internal/handler/tenant_handler.go` → `common.go` | 迁移到通用位置 |
+| B4 | 后端错误消息中英混用/英文 | `backend/internal/handler/content_actions.go` | 翻译 `invalid status transition` / `current status` |
+| B5 | `template_handler.go` 中 dead code | `backend/internal/handler/template_handler.go` | 删除未使用的 `setRows`、多余的 blank assignment |
+| B6 | `tenant_admin_handler.go` 中 dead assignment | `backend/internal/handler/tenant_admin_handler.go` | 删除未使用的 `existing` 变量 |
+
+验证结果：
+- `apps/edu`: `pnpm lint` ✅ 0 errors / 0 warnings；`pnpm typecheck` ✅ 通过
+- `backend`: `go vet ./...` ✅；`go test ./...` ✅ 通过
+
+---
+
 ## 执行顺序建议
 
 ```
 已完成:
   ✅ P0 全部 (platform-shell, data-provider, hooks, annotations, barrel export)
   ✅ P1 大部分 (evaluation 拆分, draftSuffix, typeMetaFor, window.confirm, alert,
-              router 拆分, executeListQuery, parsePageLimit)
-  ✅ P2 大部分 (api.ts 拆分, ai.ts 导出, Oplog 确认)
+              router 拆分, executeListQuery, parsePageLimit, portal-auth-context)
+  ✅ P2 大部分 (api.ts 拆分, ai.ts 导出, Oplog 确认, Library 原生 table)
   ✅ #24 marketplace dead re-export 清理
   ✅ #25 手写 group-hover 替换为 HoverActionBar
 
 剩余待执行:
-  1 → #21 后端错误消息统一中文（P2, 2h）
+  1 → #21 后端错误消息统一中文（P2, 2h，剩余大量中英混用）
   2 → #15 testhelper 与 router 同步（P1, 1.5d）
-  3 → #16 portal-auth-context 去重（P1, 1h）
-  4 → #18 Library 原生 table 替换（P2, 1h）
-  5 → #19 packages/ui 领域代码清理（P2, 0.5h）
-  6 → #26 tasks/page.tsx 拆分（P2, 2d，高优先级但成本高）
-  7 → #6 双份类型系统清理（P1, 2d，涉及引用面广，低优先级）
+  3 → #19 packages/ui 领域代码清理（P2, 0.5h）
+  4 → #26 tasks/page.tsx 拆分（P2, 2d，高优先级但成本高）
+  5 → #6 双份类型系统清理（P1, 2d，涉及引用面广，低优先级）
 
 不执行:
   ⏭️ #23 Repository 层（成本过高，暂缓）

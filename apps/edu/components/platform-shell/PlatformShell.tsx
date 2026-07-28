@@ -1,8 +1,7 @@
 "use client"
 
-import type { PlatformNavigationConfig } from "@zhiyu/ui/components/platform-shell"
-import { PlatformSideNav } from "@zhiyu/ui/components/platform-shell"
-import { cn } from "@zhiyu/ui/components/platform-shell/utils"
+import type { PlatformNavigationConfig } from "@zhiyu/ui"
+import { PlatformSideNav, cn } from "@zhiyu/ui"
 import { useAuth } from "@/components/auth-provider"
 import { TopNav } from "@/components/portal/top-nav"
 

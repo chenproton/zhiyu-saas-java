@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -275,14 +274,4 @@ func (h *ExamImportHandler) lookupEvaluationBatch(ctx context.Context, tenantID,
 	return &id
 }
 
-func parseIntDefault(s string, defaultVal int) int {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return defaultVal
-	}
-	v, err := strconv.Atoi(s)
-	if err != nil {
-		return defaultVal
-	}
-	return v
-}
+
