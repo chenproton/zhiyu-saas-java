@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createJsonFileAdapter } from "@zhiyu/ui/lib/annotations/json-file-adapter"
+import { createJsonFileAdapter } from "@/lib/annotations/json-file-adapter"
 
 const adapter = createJsonFileAdapter()
 

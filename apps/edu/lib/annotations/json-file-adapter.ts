@@ -10,10 +10,7 @@ export interface JsonFileAdapterOptions {
 export function createJsonFileAdapter(
   options: JsonFileAdapterOptions = {}
 ): AnnotationAdapter {
-  const DATA_PATH =
-    options.filePath ||
-    process.env.ANNOTATION_SYSTEM_DATA_PATH ||
-    path.join(process.cwd(), 'data/annotations.json')
+  const DATA_PATH = options.filePath || process.env.ANNOTATION_SYSTEM_DATA_PATH || 'data/annotations.json'
 
   let store: AnnotationStore | null = null
 
@@ -45,7 +42,7 @@ export function createJsonFileAdapter(
 
   return {
     async getAnnotationsByPage(page: string, context?: string): Promise<Annotation[]> {
-      const s = loadStore()
+      const s = await loadStore()
       const ctx = context || 'default'
       return s.annotations.filter(
         (a) => a.page === page && (a.context || 'default') === ctx
@@ -53,21 +50,21 @@ export function createJsonFileAdapter(
     },
 
     async getAnnotationById(id: string): Promise<Annotation | undefined> {
-      const s = loadStore()
+      const s = await loadStore()
       return s.annotations.find((a) => a.id === id)
     },
 
     async createAnnotation(
       annotation: Omit<Annotation, 'id' | 'createdAt'>
     ): Promise<Annotation> {
-      const s = loadStore()
+      const s = await loadStore()
       const newAnnotation: Annotation = {
         ...annotation,
         id: crypto.randomUUID(),
         createdAt: Date.now(),
       }
       s.annotations.push(newAnnotation)
-      saveStore()
+      await saveStore()
       return newAnnotation
     },
 
@@ -75,27 +72,27 @@ export function createJsonFileAdapter(
       id: string,
       updates: Partial<Pick<Annotation, 'x' | 'y' | 'content' | 'imageUrl' | 'closed'>>
     ): Promise<Annotation | undefined> {
-      const s = loadStore()
+      const s = await loadStore()
       const index = s.annotations.findIndex((a) => a.id === id)
       if (index === -1) return undefined
       s.annotations[index] = { ...s.annotations[index], ...updates }
-      saveStore()
+      await saveStore()
       return s.annotations[index]
     },
 
     async deleteAnnotation(id: string): Promise<boolean> {
-      const s = loadStore()
+      const s = await loadStore()
       const initialLength = s.annotations.length
       s.annotations = s.annotations.filter((a) => a.id !== id)
       s.comments = s.comments.filter((c) => c.annotationId !== id)
-      saveStore()
+      await saveStore()
       return s.annotations.length !== initialLength
     },
 
     async getCommentsByAnnotationId(
       annotationId: string
     ): Promise<Comment[]> {
-      const s = loadStore()
+      const s = await loadStore()
       return s.comments
         .filter((c) => c.annotationId === annotationId)
         .sort((a, b) => a.createdAt - b.createdAt)
@@ -104,19 +101,19 @@ export function createJsonFileAdapter(
     async createComment(
       comment: Omit<Comment, 'id' | 'createdAt'>
     ): Promise<Comment> {
-      const s = loadStore()
+      const s = await loadStore()
       const newComment: Comment = {
         ...comment,
         id: crypto.randomUUID(),
         createdAt: Date.now(),
       }
       s.comments.push(newComment)
-      saveStore()
+      await saveStore()
       return newComment
     },
 
     async deleteComment(id: string): Promise<boolean> {
-      const s = loadStore()
+      const s = await loadStore()
       const idsToDelete = new Set<string>()
       const queue = [id]
 
@@ -134,7 +131,7 @@ export function createJsonFileAdapter(
 
       const initialLength = s.comments.length
       s.comments = s.comments.filter((c) => !idsToDelete.has(c.id))
-      saveStore()
+      await saveStore()
       return s.comments.length !== initialLength
     },
   }
