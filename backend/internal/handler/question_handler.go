@@ -48,80 +48,32 @@ func (h *QuestionHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bankID := r.URL.Query().Get("bankId")
-	qType := r.URL.Query().Get("type")
-	status := r.URL.Query().Get("status")
-	search := r.URL.Query().Get("search")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
+	cfg := listQueryConfig[domain.Question]{
+		Table:         "questions",
+		SelectColumns: "id, code, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status, created_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"content"},
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if bankID := r.URL.Query().Get("bankId"); bankID != "" {
+				qb.addCondition("bank_id = " + qb.nextArg(bankID))
+			}
+			if qType := r.URL.Query().Get("type"); qType != "" {
+				qb.addCondition("type = " + qb.nextArg(qType))
+			}
+			if status := r.URL.Query().Get("status"); status != "" {
+				qb.addCondition("status = " + qb.nextArg(status))
+			}
+		},
+		ScanRows: h.scanQuestionRows,
 	}
 
-	if bankID != "" {
-		where = append(where, "bank_id = $"+itoa(argIdx))
-		args = append(args, bankID)
-		argIdx++
-	}
-	if qType != "" {
-		where = append(where, "type = $"+itoa(argIdx))
-		args = append(args, qType)
-		argIdx++
-	}
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "content ILIKE $"+itoa(argIdx))
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM questions WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, code, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status, created_at
-		FROM questions
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询题目失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanQuestionRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取题目失败")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 

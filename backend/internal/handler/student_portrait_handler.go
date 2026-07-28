@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -133,67 +132,39 @@ func (h *StudentPortraitHandler) ListArchives(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	userID := r.URL.Query().Get("userId")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-	if userID != "" {
-		where = append(where, "user_id = $"+itoa(argIdx))
-		args = append(args, userID)
-		argIdx++
+	cfg := listQueryConfig[domain.StudentAbilityArchive]{
+		Table:         "student_ability_archives",
+		SelectColumns: `id, user_id, material_type, material_name, issuing_org, obtain_date, level, audit_status, audit_remark, converted_credit, direction, is_enabled, created_at`,
+		TenantScoped:  true,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if userID := r.URL.Query().Get("userId"); userID != "" {
+				qb.addCondition("user_id = " + qb.nextArg(userID))
+			}
+		},
+		ScanRows: h.scanArchiveRows,
 	}
 
-	countQuery := "SELECT COUNT(*) FROM student_ability_archives WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, user_id, material_type, material_name, issuing_org, obtain_date,
-			level, audit_status, audit_remark, converted_credit, direction, is_enabled, created_at
-		FROM student_ability_archives
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list student archives")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	defer rows.Close()
 
+	respondJSON(w, http.StatusOK, StudentArchiveListResponse{Items: items, Total: total})
+}
+
+func (h *StudentPortraitHandler) scanArchiveRows(rows pgx.Rows) ([]domain.StudentAbilityArchive, error) {
 	items := make([]domain.StudentAbilityArchive, 0)
 	for rows.Next() {
 		var a domain.StudentAbilityArchive
 		var issuingOrg, obtainDate, level, remark *string
 		if err := rows.Scan(&a.ID, &a.UserID, &a.MaterialType, &a.MaterialName, &issuingOrg, &obtainDate,
 			&level, &a.AuditStatus, &remark, &a.ConvertedCredit, &a.Direction, &a.IsEnabled, &a.CreatedAt); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to scan student archives")
-			return
+			return nil, err
 		}
 		a.IssuingOrg = issuingOrg
 		a.ObtainDate = obtainDate
@@ -201,7 +172,7 @@ func (h *StudentPortraitHandler) ListArchives(w http.ResponseWriter, r *http.Req
 		a.AuditRemark = remark
 		items = append(items, a)
 	}
-	respondJSON(w, http.StatusOK, StudentArchiveListResponse{Items: items, Total: total})
+	return items, nil
 }
 
 func (h *StudentPortraitHandler) CreateArchive(w http.ResponseWriter, r *http.Request) {

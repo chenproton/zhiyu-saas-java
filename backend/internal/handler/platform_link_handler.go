@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -35,57 +34,29 @@ type UpdatePlatformLinkRequest struct {
 }
 
 func (h *PlatformLinkHandler) List(w http.ResponseWriter, r *http.Request) {
-	platform := r.URL.Query().Get("platform")
-	enabledStr := r.URL.Query().Get("enabled")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-
-	if platform != "" {
-		where = append(where, "platform = $"+itoa(argIdx))
-		args = append(args, platform)
-		argIdx++
-	}
-	if enabledStr != "" {
-		where = append(where, "enabled = $"+itoa(argIdx))
-		args = append(args, enabledStr == "true")
-		argIdx++
+	cfg := listQueryConfig[domain.PlatformLink]{
+		Table:         "platform_links",
+		SelectColumns: "id, platform, url, enabled",
+		TenantScoped:  false,
+		OrderBy:       "platform ASC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if platform := r.URL.Query().Get("platform"); platform != "" {
+				qb.addCondition("platform = " + qb.nextArg(platform))
+			}
+			if enabledStr := r.URL.Query().Get("enabled"); enabledStr != "" {
+				qb.addCondition("enabled = " + qb.nextArg(enabledStr == "true"))
+			}
+		},
+		ScanRows: h.scanPlatformLinkRows,
 	}
 
-	countQuery := "SELECT COUNT(*) FROM platform_links WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, platform, url, enabled
-		FROM platform_links
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY platform ASC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询平台链接失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanPlatformLinkRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取平台链接失败")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 

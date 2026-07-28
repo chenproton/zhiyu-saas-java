@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -46,74 +45,29 @@ func (h *AbilityHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	category := r.URL.Query().Get("category")
-	search := r.URL.Query().Get("search")
-	creatorID := r.URL.Query().Get("creatorId")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
+	cfg := listQueryConfig[domain.AbilityPoint]{
+		Table:         "ability_points",
+		SelectColumns: "id, name, code, description, category, attributes, is_public, creator_id, created_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if category := r.URL.Query().Get("category"); category != "" {
+				qb.addCondition("category = " + qb.nextArg(category))
+			}
+			if creatorID := r.URL.Query().Get("creatorId"); creatorID != "" {
+				qb.addCondition("creator_id = " + qb.nextArg(creatorID))
+			}
+		},
+		ScanRows: h.scanAbilityRows,
 	}
 
-	if category != "" {
-		where = append(where, "category = $"+itoa(argIdx))
-		args = append(args, category)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "name ILIKE $"+itoa(argIdx))
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-	if creatorID != "" {
-		where = append(where, "creator_id = $"+itoa(argIdx))
-		args = append(args, creatorID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM ability_points WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, name, code, description, category, attributes, is_public, creator_id, created_at
-		FROM ability_points
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询能力点失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanAbilityRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取能力点失败")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 

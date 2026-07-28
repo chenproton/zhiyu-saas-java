@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -58,62 +57,25 @@ func (h *CertificationHandler) ListRules(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	status := r.URL.Query().Get("status")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
+	cfg := listQueryConfig[domain.CertificationRule]{
+		Table:         "certification_rules",
+		SelectColumns: "id, career_position_id, status, rule_source, created_at, updated_at",
+		TenantScoped:  true,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if status := r.URL.Query().Get("status"); status != "" {
+				qb.addCondition("status = " + qb.nextArg(status))
+			}
+		},
+		ScanRows: h.scanRuleRows,
 	}
 
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM certification_rules WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, career_position_id, status, rule_source, created_at, updated_at
-		FROM certification_rules
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询认证规则失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanRuleRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取认证规则失败")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 

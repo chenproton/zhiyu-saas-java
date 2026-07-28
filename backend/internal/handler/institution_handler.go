@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -51,67 +50,35 @@ type UpdateInstitutionRequest struct {
 func (h *InstitutionHandler) List(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
 	instType := r.URL.Query().Get("type")
-	search := r.URL.Query().Get("search")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
 
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	institutionClaims := middleware.CurrentUser(r)
-	filterInstitutionID, ok := institutionFilter(institutionClaims)
+	filterInstitutionID, ok := institutionFilter(middleware.CurrentUser(r))
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少机构")
 		return
 	}
-	if filterInstitutionID != "" {
-		where = append(where, "id = $"+itoa(argIdx))
-		args = append(args, filterInstitutionID)
-		argIdx++
-	}
 
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-	if instType != "" {
-		where = append(where, "type = $"+itoa(argIdx))
-		args = append(args, instType)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "(name ILIKE $"+itoa(argIdx)+" OR org_code ILIKE $"+itoa(argIdx)+")")
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM institutions WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := "SELECT id, type, name, credit_code, logo, intro, contact_name, contact_phone, contact_email, qualification_file, status, org_code, balance, total_spent, total_income, created_at, updated_at FROM institutions WHERE " + strings.Join(where, " AND ") + " ORDER BY created_at DESC LIMIT $" + itoa(argIdx) + " OFFSET $" + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.Institution]{
+		Table:         "institutions",
+		SelectColumns: "id, type, name, credit_code, logo, intro, contact_name, contact_phone, contact_email, qualification_file, status, org_code, balance, total_spent, total_income, created_at, updated_at",
+		TenantScoped:  false,
+		SearchColumns: []string{"name", "org_code"},
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if filterInstitutionID != "" {
+				qb.addCondition("id = " + qb.nextArg(filterInstitutionID))
+			}
+			if status != "" {
+				qb.addCondition("status = " + qb.nextArg(status))
+			}
+			if instType != "" {
+				qb.addCondition("type = " + qb.nextArg(instType))
+			}
+		},
+		ScanRows: func(rows pgx.Rows) ([]domain.Institution, error) {
+			return h.scanInstitutionRows(r.Context(), rows)
+		},
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询机构失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanInstitutionRows(r.Context(), rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取机构失败")
 		return
 	}
 

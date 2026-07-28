@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
@@ -29,41 +30,37 @@ type CreateBannerRequest struct {
 }
 
 func (h *BannerHandler) List(w http.ResponseWriter, r *http.Request) {
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
+	cfg := listQueryConfig[domain.Banner]{
+		Table:         "banners",
+		SelectColumns: "id, title, image, link, sort, enabled",
+		TenantScoped:  false,
+		OrderBy:       "sort, id",
+		ScanRows:      h.scanBannerRows,
 	}
 
-	var total int
-	_ = h.DB.QueryRow(r.Context(), `SELECT COUNT(*) FROM banners`).Scan(&total)
-
-	rows, err := h.DB.Query(r.Context(), `
-		SELECT id, title, image, link, sort, enabled FROM banners ORDER BY sort, id LIMIT $1 OFFSET $2
-	`, limit, offset)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询轮播图失败")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	defer rows.Close()
 
+	respondJSON(w, http.StatusOK, BannerListResponse{Items: items, Total: total})
+}
+
+func (h *BannerHandler) scanBannerRows(rows pgx.Rows) ([]domain.Banner, error) {
 	items := make([]domain.Banner, 0)
 	for rows.Next() {
 		var b domain.Banner
 		if err := rows.Scan(&b.ID, &b.Title, &b.Image, &b.Link, &b.Sort, &b.Enabled); err != nil {
-			respondError(w, http.StatusInternalServerError, "读取轮播图失败")
-			return
+			return nil, err
 		}
 		items = append(items, b)
 	}
-
-	respondJSON(w, http.StatusOK, BannerListResponse{Items: items, Total: total})
+	return items, nil
 }
 
 func (h *BannerHandler) Create(w http.ResponseWriter, r *http.Request) {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -43,67 +42,25 @@ type AssignRoleRequest struct {
 
 func (h *RoleHandler) List(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
-	search := r.URL.Query().Get("search")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
 
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "(name ILIKE $"+itoa(argIdx)+" OR code ILIKE $"+itoa(argIdx)+")")
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM roles WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, tenant_id, code, name, description, permissions, user_count, status, created_at
-		FROM roles
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery[domain.Role](r.Context(), h.DB, r, listQueryConfig[domain.Role]{
+		Table:         "roles",
+		SelectColumns: "id, tenant_id, code, name, description, permissions, user_count, status, created_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name", "code"},
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if status != "" {
+				qb.addCondition("status = " + qb.nextArg(status))
+			}
+		},
+		ScanRows: h.scanRoleRows,
+	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询角色列表失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanRoleRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "角色数据读取失败")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 

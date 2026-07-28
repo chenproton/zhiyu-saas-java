@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -38,68 +37,29 @@ func (h *ScenarioGradeHandler) ListGradeMappings(w http.ResponseWriter, r *http.
 		return
 	}
 
-	scenarioID := r.URL.Query().Get("scenarioId")
-	taskID := r.URL.Query().Get("taskId")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
+	cfg := listQueryConfig[domain.ScenarioGradeMapping]{
+		Table:         "scenario_grade_mappings",
+		SelectColumns: "id, scenario_id, task_id, level, min_score, max_score, description, color",
+		TenantScoped:  true,
+		OrderBy:       "min_score ASC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if scenarioID := r.URL.Query().Get("scenarioId"); scenarioID != "" {
+				qb.addCondition("scenario_id = " + qb.nextArg(scenarioID))
+			}
+			if taskID := r.URL.Query().Get("taskId"); taskID != "" {
+				qb.addCondition("task_id = " + qb.nextArg(taskID))
+			}
+		},
+		ScanRows: h.scanGradeMappingRows,
 	}
 
-	if scenarioID != "" {
-		where = append(where, "scenario_id = $"+itoa(argIdx))
-		args = append(args, scenarioID)
-		argIdx++
-	}
-	if taskID != "" {
-		where = append(where, "task_id = $"+itoa(argIdx))
-		args = append(args, taskID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM scenario_grade_mappings WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, scenario_id, task_id, level, min_score, max_score, description, color
-		FROM scenario_grade_mappings
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY min_score ASC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询成绩映射失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanGradeMappingRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取成绩映射失败")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -44,74 +43,32 @@ type UpdateOnSiteQuestionLibraryRequest struct {
 }
 
 func (h *OnSiteQuestionLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
+	cfg := listQueryConfig[domain.OnSiteQuestionLibraryItem]{
+		Table:         "on_site_question_library",
+		SelectColumns: "id, tenant_id, question_text, answer, question_type, score, difficulty, knowledge_point_ids, tags, creator_id, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"question_text"},
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if questionType := r.URL.Query().Get("questionType"); questionType != "" {
+				qb.addCondition("question_type = " + qb.nextArg(questionType))
+			}
+			if difficulty := r.URL.Query().Get("difficulty"); difficulty != "" {
+				qb.addCondition("difficulty = " + qb.nextArg(difficulty))
+			}
+			if creatorID := r.URL.Query().Get("creatorId"); creatorID != "" {
+				qb.addCondition("creator_id = " + qb.nextArg(creatorID))
+			}
+		},
+		ScanRows: h.scanQuestionRows,
 	}
 
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-	search := r.URL.Query().Get("search")
-	questionType := r.URL.Query().Get("questionType")
-	difficulty := r.URL.Query().Get("difficulty")
-	creatorID := r.URL.Query().Get("creatorId")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"tenant_id = $1"}
-	args := []interface{}{tenantID}
-	argIdx := 2
-
-	if search != "" {
-		where = append(where, "(question_text ILIKE $"+itoa(argIdx)+")")
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-	if questionType != "" {
-		where = append(where, "question_type = $"+itoa(argIdx))
-		args = append(args, questionType)
-		argIdx++
-	}
-	if difficulty != "" {
-		where = append(where, "difficulty = $"+itoa(argIdx))
-		args = append(args, difficulty)
-		argIdx++
-	}
-	if creatorID != "" {
-		where = append(where, "creator_id = $"+itoa(argIdx))
-		args = append(args, creatorID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM on_site_question_library WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, tenant_id, question_text, answer, question_type, score, difficulty, knowledge_point_ids, tags, creator_id, created_at, updated_at
-		FROM on_site_question_library
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询题目失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanQuestionRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取题目失败")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 

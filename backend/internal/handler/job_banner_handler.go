@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -56,62 +55,26 @@ func (h *JobBannerHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isActiveStr := r.URL.Query().Get("isEnabled")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
+	isEnabledStr := r.URL.Query().Get("isEnabled")
 
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if isActiveStr != "" {
-		where = append(where, "is_enabled = $"+itoa(argIdx))
-		args = append(args, isActiveStr == "true")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM banner_configs WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, title, image_url, link_url, sort_order, is_enabled, created_at, updated_at
-		FROM banner_configs
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY sort_order ASC, created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery[JobBannerConfig](r.Context(), h.DB, r, listQueryConfig[JobBannerConfig]{
+		Table:         "banner_configs",
+		SelectColumns: "id, title, image_url, link_url, sort_order, is_enabled, created_at, updated_at",
+		TenantScoped:  true,
+		OrderBy:       "sort_order ASC, created_at DESC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if isEnabledStr != "" {
+				qb.addCondition("is_enabled = " + qb.nextArg(isEnabledStr == "true"))
+			}
+		},
+		ScanRows: h.scanBannerRows,
+	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询轮播图失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanBannerRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取轮播图失败")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
