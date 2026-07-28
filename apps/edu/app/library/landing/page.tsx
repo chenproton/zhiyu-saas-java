@@ -11,6 +11,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { resourceLibraryApi, knowledgeApi, abilityApi, certificateLibraryApi, onSiteQuestionLibraryApi } from "@/lib/api"
 import type { ResourceLibraryItem } from "@/lib/types/library"
 import { useToast } from "@zhiyu/ui"
+import { formatSize } from "@/lib/resource-type-constants"
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
@@ -65,13 +66,6 @@ const TIME_RANGES = [
   { value: "month", label: "近一月" },
   { value: "year", label: "近一年" },
 ]
-
-function formatSize(bytes?: number) {
-  if (!bytes) return ""
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
 
 function buildKkFileViewUrl(fileUrl: string): string {
   if (typeof window === "undefined") return ""

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@zhiyu/ui"
 import {
   Table,
   TableBody,
@@ -659,9 +660,7 @@ export default function SuperAdminPage() {
                     <TableCell>{t.contact || "-"}</TableCell>
                     <TableCell className="text-muted-foreground">{t.phone || "-"}</TableCell>
                     <TableCell>
-                      <Badge variant={t.status === "active" ? "default" : "secondary"}>
-                        {t.status === "active" ? "启用" : "停用"}
-                      </Badge>
+                      <StatusBadge status={t.status} />
                     </TableCell>
                     <TableCell className="text-muted-foreground whitespace-nowrap">{new Date(t.createdAt).toLocaleDateString("zh-CN")}</TableCell>
                     <TableRowActions>
@@ -993,9 +992,7 @@ export default function SuperAdminPage() {
                                 />
                               </TableCell>
                               <TableCell>
-                                <Badge variant={a.status === "active" ? "default" : "secondary"}>
-                                  {a.status === "active" ? "启用" : "停用"}
-                                </Badge>
+                                <StatusBadge status={a.status} />
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex items-center justify-end gap-1">
@@ -1013,9 +1010,7 @@ export default function SuperAdminPage() {
                               <TableCell className="font-mono text-sm">{a.username}</TableCell>
                               <TableCell>{a.name}</TableCell>
                               <TableCell>
-                                <Badge variant={a.status === "active" ? "default" : "secondary"}>
-                                  {a.status === "active" ? "启用" : "停用"}
-                                </Badge>
+                                <StatusBadge status={a.status} />
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex items-center justify-end gap-1">

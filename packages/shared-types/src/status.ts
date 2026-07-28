@@ -21,6 +21,7 @@ const STATUS_MAP: Record<string, StatusConfig> = {
   none:          { label: "无规则",  color: "#8f959e", bg: "#f5f6f7" },
   disabled:      { label: "已禁用",  color: "#8f959e", bg: "#f5f6f7" },
   active:        { label: "正常",    color: "#16a34a", bg: "#dcfce7" },
+  inactive:      { label: "已停用",  color: "#8f959e", bg: "#f5f6f7" },
   graduated:     { label: "毕业",    color: "#8f959e", bg: "#f5f6f7" },
   in_progress:   { label: "进行中",  color: "#16a34a", bg: "#dcfce7" },
   finished:      { label: "已结束",  color: "#8f959e", bg: "#f5f6f7" },

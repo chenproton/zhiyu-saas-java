@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -64,7 +65,8 @@ func (h *ExamUsageHandler) List(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, err.Error())
+		slog.Error("查询考试安排列表失败", "error", err)
+		respondError(w, http.StatusInternalServerError, "查询考试安排列表失败")
 		return
 	}
 

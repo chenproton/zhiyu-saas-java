@@ -1,0 +1,89 @@
+package store
+
+import (
+	"context"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/zhiyu-saas/backend/internal/domain"
+)
+
+type OrgTypesStore struct {
+	DB *pgxpool.Pool
+}
+
+func NewOrgTypesStore(db *pgxpool.Pool) *OrgTypesStore {
+	return &OrgTypesStore{DB: db}
+}
+
+type OrgTypeCreateParams struct {
+	TenantID    string
+	Name        string
+	Category    string
+	Description *string
+}
+
+type OrgTypeUpdateParams struct {
+	Name        string
+	Category    string
+	Description *string
+}
+
+func (s *OrgTypesStore) GetByID(ctx context.Context, id string) (domain.OrgType, error) {
+	var o domain.OrgType
+	var desc *string
+	err := s.DB.QueryRow(ctx,
+		`SELECT id, tenant_id, name, category, description, is_default, created_at FROM org_types WHERE id = $1`, id,
+	).Scan(&o.ID, &o.TenantID, &o.Name, &o.Category, &desc, &o.IsDefault, &o.CreatedAt)
+	if err != nil {
+		return o, err
+	}
+	o.Description = desc
+	return o, nil
+}
+
+func (s *OrgTypesStore) Create(ctx context.Context, p OrgTypeCreateParams) (string, error) {
+	id := uuid.NewString()
+	_, err := s.DB.Exec(ctx,
+		`INSERT INTO org_types (id, tenant_id, name, category, description) VALUES ($1,$2,$3,$4,$5)`,
+		id, p.TenantID, p.Name, p.Category, p.Description,
+	)
+	if err != nil {
+		return "", err
+	}
+	return id, nil
+}
+
+func (s *OrgTypesStore) Update(ctx context.Context, id string, p OrgTypeUpdateParams) error {
+	_, err := s.DB.Exec(ctx,
+		`UPDATE org_types SET name=$1, category=$2, description=$3 WHERE id=$4`,
+		p.Name, p.Category, p.Description, id,
+	)
+	return err
+}
+
+func (s *OrgTypesStore) Delete(ctx context.Context, id string) error {
+	_, err := s.DB.Exec(ctx, `DELETE FROM org_types WHERE id = $1`, id)
+	return err
+}
+
+func (s *OrgTypesStore) CountOrgRefs(ctx context.Context, orgTypeID string) (int, error) {
+	var count int
+	err := s.DB.QueryRow(ctx, `SELECT COUNT(*) FROM organizations WHERE type_id = $1`, orgTypeID).Scan(&count)
+	return count, err
+}
+
+func (s *OrgTypesStore) ScanRows(rows pgx.Rows) ([]domain.OrgType, error) {
+	items := make([]domain.OrgType, 0)
+	for rows.Next() {
+		var o domain.OrgType
+		var desc *string
+		if err := rows.Scan(&o.ID, &o.TenantID, &o.Name, &o.Category, &desc, &o.IsDefault, &o.CreatedAt); err != nil {
+			return nil, err
+		}
+		o.Description = desc
+		items = append(items, o)
+	}
+	return items, nil
+}

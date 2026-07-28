@@ -1,21 +1,20 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type MajorHandler struct {
-	DB *pgxpool.Pool
+	DB    *pgxpool.Pool
+	Store *store.MajorsStore
 }
 
 type MajorListResponse struct {
@@ -55,7 +54,7 @@ func (h *MajorHandler) List(w http.ResponseWriter, r *http.Request) {
 				qb.addCondition("enabled = " + qb.nextArg(enabledStr == "true"))
 			}
 		},
-		ScanRows: h.scanMajorRows,
+		ScanRows: h.Store.ScanRows,
 	})
 	if err != nil {
 		if errors.Is(err, ErrMissingTenant) {
@@ -71,7 +70,7 @@ func (h *MajorHandler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *MajorHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	major, err := h.fetchMajor(r.Context(), id)
+	major, err := h.Store.GetByID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "专业不存在")
 		return
@@ -103,12 +102,13 @@ func (h *MajorHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := uuid.NewString()
-
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO majors (id, tenant_id, code, name, alias, enabled)
-		VALUES ($1, $2, $3, normalize($4, NFKC), normalize($5, NFKC), $6)
-	`, id, req.TenantID, req.Code, req.Name, req.Alias, req.Enabled)
+	id, err := h.Store.Create(r.Context(), store.MajorCreateParams{
+		TenantID: req.TenantID,
+		Code:     req.Code,
+		Name:     req.Name,
+		Alias:    req.Alias,
+		Enabled:  req.Enabled,
+	})
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "专业代码已存在，请使用其他代码")
@@ -118,7 +118,7 @@ func (h *MajorHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	major, _ := h.fetchMajor(r.Context(), id)
+	major, _ := h.Store.GetByID(r.Context(), id)
 	respondJSON(w, http.StatusCreated, major)
 }
 
@@ -130,7 +130,7 @@ func (h *MajorHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	major, err := h.fetchMajor(r.Context(), id)
+	major, err := h.Store.GetByID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "专业不存在")
 		return
@@ -150,10 +150,12 @@ func (h *MajorHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.DB.Exec(r.Context(), `
-		UPDATE majors SET code = $1, name = normalize($2, NFKC), alias = normalize($3, NFKC), enabled = $4, updated_at = NOW()
-		WHERE id = $5
-	`, req.Code, req.Name, req.Alias, req.Enabled, id)
+	err = h.Store.Update(r.Context(), id, store.MajorUpdateParams{
+		Code:    req.Code,
+		Name:    req.Name,
+		Alias:   req.Alias,
+		Enabled: req.Enabled,
+	})
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "专业代码已存在，请使用其他代码")
@@ -163,7 +165,7 @@ func (h *MajorHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	major, _ = h.fetchMajor(r.Context(), id)
+	major, _ = h.Store.GetByID(r.Context(), id)
 	respondJSON(w, http.StatusOK, major)
 }
 
@@ -175,7 +177,7 @@ func (h *MajorHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	major, err := h.fetchMajor(r.Context(), id)
+	major, err := h.Store.GetByID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "专业不存在")
 		return
@@ -184,12 +186,9 @@ func (h *MajorHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var userCount int
-	if err := h.DB.QueryRow(r.Context(),
-		`SELECT COUNT(*) FROM users WHERE major_id = $1`,
-		id,
-	).Scan(&userCount); err != nil {
-		respondError(w, http.StatusInternalServerError, "检查major references失败")
+	userCount, err := h.Store.CountUserRefs(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "检查专业引用失败")
 		return
 	}
 	if userCount > 0 {
@@ -197,43 +196,9 @@ func (h *MajorHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.DB.Exec(r.Context(), `DELETE FROM majors WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Store.Delete(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除专业失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
-}
-
-func (h *MajorHandler) fetchMajor(ctx context.Context, id string) (domain.Major, error) {
-	var m domain.Major
-	var alias *string
-
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, tenant_id, code, name, alias, enabled, created_at, updated_at
-		FROM majors WHERE id = $1
-	`, id).Scan(
-		&m.ID, &m.TenantID, &m.Code, &m.Name, &alias, &m.Enabled, &m.CreatedAt, &m.UpdatedAt,
-	)
-	if err != nil {
-		return m, err
-	}
-	m.Alias = alias
-	return m, nil
-}
-
-func (h *MajorHandler) scanMajorRows(rows pgx.Rows) ([]domain.Major, error) {
-	items := make([]domain.Major, 0)
-	for rows.Next() {
-		var m domain.Major
-		var alias *string
-		if err := rows.Scan(
-			&m.ID, &m.TenantID, &m.Code, &m.Name, &alias, &m.Enabled, &m.CreatedAt, &m.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		m.Alias = alias
-		items = append(items, m)
-	}
-	return items, nil
 }

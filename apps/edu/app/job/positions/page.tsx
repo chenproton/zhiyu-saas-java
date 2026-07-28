@@ -7,7 +7,7 @@ import {
   convertCareerPositionToPosition,
   convertJobBatchToBatch,
   positionToCreateRequest,
-} from "@/lib/stores/job-converters"
+} from "@/lib/converters/job-converters"
 import type { Position } from "@/lib/types/job-source"
 import { useAuth } from "@/components/auth-provider"
 import {

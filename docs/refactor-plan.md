@@ -1,7 +1,6 @@
 # 代码质量收敛计划
 
-> 基于 `2026-07-28` 全量代码审查，梳理问题清单与修复计划。
-> 按优先级 P0 → P1 → P2 排列，完成一项勾一项。
+> 基于 `2026-07-28` 全量代码审查（前后端 + 共享包），持续更新。
 
 ---
 
@@ -9,646 +8,188 @@
 
 | 维度 | 评分 | 状态 |
 |------|------|------|
-| 组件抽象 | 7.0/10 | 跨 app 重复已大幅消除，但 `@zhiyu/ui` 仍混有 edu 领域代码，页面级组件未完全下沉 |
-| 代码结构 | 6.5/10 | router/api-client 已拆分，但后端缺少 repository 层，超大文件（5,000+ 行）和重复 SQL/事务模式仍较多 |
-| 可迭代性 | 6.5/10 | 核心架构稳定，但类型安全薄弱（大量 `any`）、双份类型未清理、测试覆盖率低 |
-| 可读性 | 7.0/10 | alert/confirm 已清零，group-hover 大部分收敛，但中英混用、超大文件、局部状态样式影响阅读 |
+| 组件抽象 | 7.0/10 | 跨 app 重复已消除；Library 6 个 CRUD 页仍用内联按钮模式；Landing 列表/详情页重复 |
+| 代码结构 | 7.0/10 | router/api-client 已拆分；核心 handler 已迁移 executeListQuery；DataProvider 743 行单体待拆分 |
+| 可迭代性 | 7.0/10 | 核心架构稳定；24 个文件仍引用 deprecated 类型；超大文件（tasks 5620行、mock-data 3611行）阻塞迭代 |
+| 可读性 | 7.5/10 | 死代码/占位已清理；library/landing 508 行纯行内 style 影响阅读；auth-context 含误导性空 shim |
 
 ---
 
-## P0 — 消除跨 App 重复代码
+## 后端
 
-### 1. `platform-shell/` 完全重复
+### 类型与领域
 
-**问题**：`config.ts`、`icons.ts`、`utils.ts` 在 edu 和 marketplace 中字节级相同，`PlatformSideNav` 几乎一致。
+| # | 问题 | 难度 | 收益 | 评估与路径 |
+|---|------|------|------|-----------|
+| B1 | 认证状态码 401/403 混用 | 低 | 低 | `claims == nil` 全局返回 403；部分端点应返回 401。统一 `requireAuth`/`requireTenant` helper。 |
+| B2 | Update 字段合并/Nullability 模式不一致 | 高 | 中 | `position_handler.go:326` 手动 nil coalescing 14 字段，`scenario_handler.go` 用 `NullableString`。建议 Repository 层统一。 |
+| B3 | `respondJSON` 静默丢弃 Encode 错误 | 低 | 低 | `common.go:81` — `_ = json.NewEncoder(w).Encode(payload)`。加 `json.Marshal` 前置检查。 |
 
-**文件**：
-- `apps/edu/components/platform-shell/config.ts` (68 行)
-- `apps/marketplace/components/platform-shell/config.ts` (68 行，完全相同)
-- `apps/edu/components/platform-shell/icons.ts` (66 行)
-- `apps/marketplace/components/platform-shell/icons.ts` (66 行，完全相同)
-- `apps/edu/components/platform-shell/utils.ts` (19 行)
-- `apps/marketplace/components/platform-shell/utils.ts` (19 行，完全相同)
-- `apps/edu/components/platform-shell/index.ts` (20 行)
-- `apps/marketplace/components/platform-shell/index.ts` (20 行，完全相同)
-- `apps/edu/components/platform-shell/PlatformShell.tsx` (196 行，PlatformSideNav 与 marketplace 几乎相同)
-- `apps/marketplace/components/platform-shell/PlatformShell.tsx` (405 行)
+### 安全性
 
-**方案**：
-- 将 `config.ts`、`icons.ts`、`utils.ts`、`PlatformSideNav` 移入 `packages/ui/src/components/platform-shell/`
-- 各 app 保留自己的 `PlatformTopNav` 和组合层
-- 添加 `packages/ui/src/index.ts` barrel export
+| # | 问题 | 难度 | 收益 | 评估与路径 |
+|---|------|------|------|-----------|
+| B4 | SQL scan 错误静默跳过 — ~60+ 处 | 中 | 中 | `template_handler.go` 的 `queryDicts`(7 处) + `queryLessonBatches` + import handler 系列。逐个 propagate 或至少 `slog.Error`。之前估算 44 处偏少。 |
 
-**预估**：1 天
-**实际结果**：已从 packages/ui 统一导入，edu 保留 31 行 PlatformShell 组合层，marketplace 无需本地 PlatformShell。
+### 重构
 
-- [x] 任务完成
+| # | 问题 | 难度 | 收益 | 评估与路径 |
+|---|------|------|------|-----------|
+| B5 | 后端缺少 Repository/Service 层 | 极高 | 高 | 95+ handler，分批试点。先选 1-2 个独立领域（job/scene）抽象 interface。 |
+| B6 | 超大 handler 文件 | 中 | 中 | `template_handler.go`(1219)、`position_handler.go`(1149)、`resource_import_handler.go`(894)。 |
+| B7 | tenant admin CRUD 双份实现 | 中 | 中 | `tenant_internal_admin_handler.go` vs `tenant_admin_handler.go`，提取共用 private method。 |
+| B8 | 导入/导出缺少通用 pipeline | 高 | 高 | 8 个 import handler。`parseUploadedExcel` 已统一到 `import_common.go`。下一步抽象 row→DTO→validate→upsert→dedup。 |
+| B9 | `lookupBatch`/`findOrCreateKnowledgePoints` 等在多个 import handler 间重复 | 中 | 中 | `findOrCreateKnowledgePoints` 在 4 个 handler 中重复，`findOrCreateResources` 在 3 个 handler 中重复。统一到 `import_common.go`。 |
+| B10 | 45+ 处 `SELECT id FROM <table> WHERE tenant_id=$1 AND name=$2` 相同模式 | 低 | 中 | 出现在 8 个文件中（position_import、scenario_import、course_import 等）。加 `lookupIDByName()` 到 `import_common.go`，表名白名单。 |
+| B11 | Template handler `setHdr`/`setA1` 闭包在 12 个方法中各重复一次 | 低 | 中 | `template_handler.go:151` 起每个 `generate*Template` 都定义相同的两个闭包（~200 行重复）。提取为 `templateSheetBuilder` struct。 |
+| B12 | `queryDicts()` 每次查 7 张表但各模板仅用 2-5 个结果 | 低 | 低 | `template_handler.go:58` — 可选拆为按需懒加载单条查询，减少不必要 DB 往返。 |
+| B13 | `contentActions` 仅覆盖 5 种实体（career_positions/courses/exams/question_banks/scenarios） | 中 | 低 | 其余 45+ handler 类型各自手写 List/Create/Update/Delete。与 B5 一起在 Repository 层重构。 |
 
----
+### 运维与稳定性
 
-### 2. `data-provider.tsx` 90% 重复
-
-**问题**：edu (911 行) 和 marketplace (845 行) 各有一份 data-provider，结构 90% 相同。
-
-**文件**：
-- `apps/edu/components/providers/data-provider.tsx`
-- `apps/marketplace/components/providers/data-provider.tsx`
-
-**方案**：
-- 提取共享核心（接口定义、日期解析、通用 CRUD 操作）到 `packages/ui/src/providers/` 或新建 `packages/data-provider/`
-- 各 app 提供差异化的初始化数据和特定操作
-
-**预估**：1.5 天
-**实际结果**：marketplace 版本已删除；共享核心 231 行在 `packages/ui/src/providers/data-provider.tsx`；edu 保留 743 行 app-specific 数据模型（场景任务、毕业设计、证书颁发等仅 edu 拥有的领域）。
-
-- [x] 任务完成
+| # | 问题 | 难度 | 收益 | 评估与路径 |
+|---|------|------|------|-----------|
+| B14 | migration 版本号冲突 | 低 | 低 | `006_*`/`064_*`/`067_*` 各有两个文件。需同步 `schema_migrations` 表。 |
+| B15 | testhelper/setup.go 与 router 不同步 | 中 | 中 | 658 行测试 setup 独立维护。分离 handler 实例化与路由注册后可复用。 |
+| B16 | `view_logs` 写入逻辑分散 | 低 | 低 | 已有 `recordView` helper，可扩展为独立 service。 |
+| B17 | `config.go` .env 加载忽略错误 | 极低 | 极低 | 加 `slog.Warn` 在文件存在但不可读时提示。 |
+| B18 | `oplog.go` 路径匹配用 `strings.Contains` | 极低 | 极低 | 改为 `strings.HasPrefix` + 精确匹配。 |
+| B19 | `resource_handler.go` 全部 10 个方法为占位 stub | 低 | 低 | 连接实际 resource 数据表后实现，或从路由中暂时移除避免混淆。 |
 
 ---
 
-### 3. Hooks 薄 re-export 已删除 ✅
+## 前端
 
-**状态**：已完成（2026-07-28 修复）
+### 大型重构
 
-**原问题**：`use-mobile.ts`、`use-toast.ts`、`use-platform-links.ts` 在 edu 和 marketplace 中都是薄 re-export，从 `@zhiyu/ui` 再导一次。
+| # | 问题 | 难度 | 收益 | 评估与路径 |
+|---|------|------|------|-----------|
+| F1 | `tasks/page.tsx` 5620 行超大文件 | 极高 | 高 | 分批：①提取 `useTaskList`/`useTaskEditor` hooks → ②任务卡片独立组件 → ③评测逻辑拆分。文件亦从 `@/lib/mock-data` import `Task`/`PositionAbility`/`GradeMapping` 类型，类型迁出后可解除依赖。 |
+| F2 | 前端 `any` ~485 处 | 极高 | 高 | 渐进式。优先 API 返回值/共享组件泛型，其次表单/内部状态。每轮 50 处。 |
+| F3 | 共享组件类型安全薄弱 | 高 | 中 | `ContentListPage`/`BatchGroupPage`/`ApprovalListPage` 引入泛型 `<T>`。 |
+| F4 | `DataProvider` 领域混杂 (743行) | 中-高 | 中 | 按 graduation/cert/portrait/scene 拆分为独立 hooks。当前 30+ edu 类型和 10 个 parser 存在于通用 `@zhiyu/ui` 包中。 |
+| F5 | `auth-context.tsx` 包含死代码 `login()` / `switchRole()` 空操作 | 低 | 低 | `login()` 始终返回 `false`；`switchRole()` 为 no-op。portal 页面依赖全局登录流程 —— 移除这些 shim 并清理 `AuthContextType` 接口。 |
 
-**处理**：
-- 删除 `apps/edu/hooks/use-mobile.ts`、`use-toast.ts`、`use-platform-links.ts`
-- 删除 `apps/marketplace/hooks/use-mobile.ts`、`use-toast.ts`、`use-platform-links.ts`
-- 所有 consumer 改为直接从 `@zhiyu/ui` 导入
-- 在 `apps/edu/tsconfig.json` 和 `apps/marketplace/tsconfig.json` 中显式映射 `@/hooks/use-toast` 和 `@/hooks/use-mobile` 到 `packages/ui/src/hooks/*`，确保 `packages/ui` 内部组件被编译时仍可解析
+### 共享抽象收敛
 
-- [x] 任务完成
+| # | 问题 | 难度 | 收益 | 评估与路径 |
+|---|------|------|------|-----------|
+| F6 | library 页面未用 `TableRowActions` | 低 | 低 | knowledge/questions/ability/certificates/resources/resources[type] 共 6 个 CRUD 页使用内联 `<Button variant="ghost"><Pencil/><Trash2/></Button>`。始终可见可能 UX 更好，先评估。 |
+| F7 | Library CRUD 6 页含 ~500 行相同的 StatCard + 搜索栏 + Table + 编辑 Dialog 结构 | 中 | 中 | 提取 `LibraryCrudPage<T>` 组件，消除 6 页间的样板重复。 |
+| F8 | `EmptyState` 未推广 | 中 | 中 | 80+ 处需替换。先试单页，确认模板后批量迁移。 |
+| F9 | Landing detail 页面重复 | 中 | 中 | `scene/landing/[id]/page.tsx`(852行) 和 `lesson/landing/[id]/page.tsx`(522行) 共享相同的封面头、Tab 导航、面包屑、骨架屏、PlatformFooter 布局。提取 `LandingDetailShell`。 |
+| F10 | Landing 列表页重复 | 中 | 中 | `lesson/landing/page.tsx`(418行) 和 `evaluation/landing/page.tsx`(281行) 共享相同的横幅、统计栏、筛选区、工具栏、卡片网格、分页、Footer 布局。提取 `LandingListShell`。 |
+| F11 | Portal 系统页面未接入 `PortalCrudPage` | 中 | 中 | 7 个目标页面：industries + majors + teachers + students 已接入 ✓。accounts/roles/graduates/fields 仍手动实现表+搜索+分页+对话框。 |
+| F12 | `ContentListPage` 导入逻辑 → `useImportFlow` | 低 | 中 | 大部分已迁移。~~F11（question-banks 导入）已通过 ContentListPage 解决~~ → resolved。 |
+| F13 | `useEntityWithRelations` hook | 低 | 中 | hook 包装 `Promise.all([list, get])`，消除 ~5 个页面样板。 |
+| F14 | CoverImage 上传 UI 重复 | 低 | 中 | `scene/scenarios/[id]/edit/page.tsx:319` 和 `job/positions/[id]/edit/page.tsx:319` 有相同 60 行封面图上传 UI。提取 `<CoverImageUpload>`。 |
+| F15 | Resource 上传区 UI 重复 | 低 | 中 | `resources/page.tsx:244` 和 `resources/[type]/page.tsx:132` 有相同 100 行拖拽上传 UI。提取 `<ResourceUploadZone>`。 |
+| F16 | Archive 页面 ConfirmDialog 模式重复 | 低 | 低 | `job/archive/page.tsx:235` 和 `scene/archive/page.tsx:230` 手动渲染单一/批量删除两个 `ConfirmDialog`。纳入 `ArchiveListPage` 内部。 |
 
----
+### 代码清理
 
-### 4. `lib/annotations/` 薄 re-export 已删除 ✅
-
-**状态**：已完成（2026-07-28 修复）
-
-**原问题**：`adapter.ts`、`json-file-adapter.ts`、`types.ts` 在 edu/marketplace 中都是薄 re-export，从 `packages/ui` 再导一次。
-
-**处理**：
-- 删除 `apps/edu/lib/annotations/adapter.ts`、`json-file-adapter.ts`、`types.ts`
-- 删除 `apps/marketplace/lib/annotations/adapter.ts`、`json-file-adapter.ts`、`types.ts`
-- 所有 consumer 改为直接从 `@zhiyu/ui/lib/annotations/*` 导入 → 后续已全部迁出 `@zhiyu/ui`，API Route 改为从 `apps/edu/lib/annotations/*` 导入
-
-**后续**：随着 PRD 标注系统整体下线，`apps/edu/lib/prd-annotations.ts`、`apps/edu/lib/annotation-edit-context.tsx` 及 `apps/edu/components/prd-annotation.tsx` 已在本次清理中删除；相关 API Route 与 `apps/edu/lib/annotations/` 一并移除。
-
-- [x] 任务完成（annotation 相关代码已整体删除）
-
----
-
-### 5. `packages.ui/` barrel export 已存在 ✅
-
-**状态**：已完成（2026-07-28 复核）
-
-**当前状态**：`packages/ui/src/index.ts` 已存在，导出 `useToast`、`useIsMobile`、`usePlatformLinks`、`ConfirmDialog`、`StatusBadge`、`TableRowActions`、`HoverActionBar` 等公开 API。
-
-- [x] 任务完成
-
----
-
-## P1 — 消除包内重复代码
-
-### 6. 共享类型包双份类型系统
-
-**问题**：
-- `job.ts` (150 行) 定义 `CareerPosition`、`AbilityPoint`
-- `job-source.ts` (321 行) 定义另一套 `Position`、`Ability`，字段不完全兼容
-- `lesson.ts` (256 行) vs `lesson-source.ts` (268 行) 同样有冲突的 `Course` 定义
-- `scene.ts` (183 行) vs `scene-mock.ts` (215 行) 不兼容的 `Scenario` 定义
-
-**方案**：
-1. 确认哪些类型是当前实际使用的"规范类型"
-2. 将废弃的类型标记 `@deprecated`，添加 JSDoc 注释
-3. 逐步将废弃类型的使用迁移到规范类型
-4. 最终删除 `-source.ts` 和 `scene-mock.ts`
-
-**预估**：2 天（涉及前后端多处引用，需要逐个排查）
-**当前状态**：步骤 2 已完成——旧类型文件已标记 `@deprecated`。步骤 3-4 待执行，在下一次迭代中逐步迁移引用并删除。
-
-- [ ] 任务完成
+| # | 问题 | 难度 | 收益 | 评估与路径 |
+|---|------|------|------|-----------|
+| F17 | `content-status.ts` vs `status.ts` 标签分裂 | 低-中 | 低 | 两者职责不同（状态机 vs 展示 lookup），仅 ~2 处标签微小差异。 |
+| F18 | 废弃类型系统迁移 | 高 | 中 | `job-source.ts`/`lesson-source.ts`/`scene-mock.ts` 已标记 `@deprecated`。24 个文件（含 core: tasks/page.tsx）仍从这些模块 import。迁移调用方后删除。 |
+| F19 | `shared-types` 含运行时逻辑 | 低 | 低 | `uid()`/`clone()` 移入 `packages/ui/src/lib/`。 |
+| F20 | `mock-data.ts` 在 production lib (3611行) | 中 | 中 | 移至 `test/fixtures/`。`method-config-dialog.tsx` 对 `GradeMapping` 的 import 已修复（→ `@/lib/types/lesson`），`tasks/page.tsx` 仍 import `Task`/`PositionAbility`/`GradeMapping`。 |
+| F21 | `use-subscription-modules` 返回值不透明 | 低 | 低 | 返回 `Record<string, boolean> \| null` — 无 `loading`/`error` 暴露。`null` vs `{}` 含义不同但消费者无法区分。 |
+| F22 | `library/landing` 纯行内样式 | 中 | 低 | 508 行 `style={{...}}` 无 Tailwind，可能是 intentional 视觉差异。 |
+| F23 | 部分页面未接入共享抽象 | 中-高 | 低-中 | `library/exam-usage/recommend/superadmin` 各有独特 UI，逐个评估。 |
+| F24 | `method-config-dialog.tsx` `evalSubTypeLabels`/`evalSubTypeColors` 内联定义 | 低 | 低 | 30 行内联配置，应移至共享常量或 `getStatusConfig()` 模式。 |
+| F25 | `dom-utils.ts` 命令式 DOM 操作（`createTagElement` 用 `document.createElement`） | 低 | 低 | 反 React 模式，替代为 JSX 组件。 |
+| F26 | `menu-permissions.ts` `buildMenuTree()` 缓存永不过期 | 低 | 低 | 模块级 `Set` 缓存 — 若订阅变化导致菜单项变更，缓存不刷新。需在模块被更新时失效。 |
+| F27 | `menu-permissions.ts` `getPermissionModuleConfigForRole` 忽略参数 | 低 | 低 | 接收 `permissions: unknown` 但直接返回静态配置。若绑定权限，需要实现动态过滤。 |
+| F28 | `navigation-config.ts` `PLATFORM_CARD_DESCRIPTIONS` 与 nav config 分离 | 低 | 低 | 新增模块需两处同步更新。考虑将描述字段 co-locate 到 nav config item 上。 |
 
 ---
 
-### 7. `evaluation.ts` 1438 行超大文件
+## 共享包
 
-**问题**：混合了评价规则、毕业设计、学生档案、微证书、场景评价 5 种领域类型。
-
-**方案**：拆分为：
-- `evaluation-rules.ts` — `EvalRuleConfig`、`EvalRuleMethodInput` 及相关转换函数
-- `graduation.ts` — 毕业设计类型
-- `certification.ts` — 证书类型
-- `portrait.ts` — 学生画像类型
-- 删除 `evaluation.ts` 中的运行时工具函数 `clone()`、`uid()`，移入 `packages/ui/src/lib/`
-
-**预估**：1 天
-**实际结果**：`evaluation.ts` 已缩减为 8 行 barrel export，实际类型分布在 6 个按领域拆分的文件中。
-
-- [x] 任务完成
+| # | 问题 | 难度 | 收益 | 评估与路径 |
+|---|------|------|------|-----------|
+| S1 | API client 错误处理不一致 | 中 | 中 | `request()`/`authedFetch()` 双 pipeline 合并为单一 `apiFetch<T>()` + typed `ApiError`。 |
+| S2 | 页面级组件未下沉到 packages | 高 | 中 | `ContentListPage`/`PortalCrudPage` 当前仅 edu 使用，marketplace 已删除。等有第二个 app 再做。 |
+| S3 | edu 领域代码泄漏到 `@zhiyu/ui` | 中 | 中 | `useImportFlow`/`usePlatformLinks`/`data-provider` 迁出到 `apps/edu/lib/`。DataProvider 含 30+ edu 类型。 |
+| S4 | `api-client/types/` 9 文件多为 `shared-types` 的 pass-through 导出 | 低 | 低 | 合并或删除重复类型定义，统一从一个包导入。 |
+| S5 | `certification.ts` 含死代码 | 低 | 低 | 标记未使用的导出并从 barrel 中移除。 |
 
 ---
 
-### 8. 前端重复定义 `draftSuffix()`（4 处）
+## Marketplace（存档参考）
 
-**问题**：完全相同的函数在 4 个文件中各自定义。
+> `apps/marketplace` 前端源码已移除，Marketplace 恢复时参考。
 
-**文件**：
-- `apps/edu/app/evaluation/exams/page.tsx:28`
-- `apps/edu/app/evaluation/question-banks/page.tsx:26`
-- `apps/edu/app/job/positions/page.tsx:18`
-- `apps/edu/app/scene/page.tsx:11`
-
-**方案**：提取到 `apps/edu/lib/` 或 `packages/ui/src/lib/` 作为共享工具函数。
-
-**预估**：0.5 小时
-**实际结果**：单一定义在 `apps/edu/lib/format-utils.ts`，5 处引用全部通过 import 使用。
-
-- [x] 任务完成
+| # | 问题 | 难度 | 收益 |
+|---|------|------|------|
+| M1 | 无服务器分页 | 中 | 中 |
+| M2 | 自定义 status badge | 低 | 低 |
+| M3 | 表单手写 | 中 | 中 |
+| M4 | 未复用 edu 组件 | 高 | 中 |
 
 ---
 
-### 9. `typeMetaFor()` 三处重复
+## 部署与运维
 
-**问题**：org 类型图标映射函数在三个文件中逐字重复。
-
-**文件**：
-- `apps/edu/components/shared/org-node-picker.tsx:33-41`
-- `apps/edu/components/shared/user-selector.tsx:37-46`
-- `apps/edu/components/shared/_components/org-filter-tree.tsx:17-26`
-
-**方案**：提取到 `apps/edu/lib/org-type-icons.ts` 或整合进 `use-org-tree.ts`。
-
-**预估**：0.5 小时
-**实际结果**：单一定义在 `apps/edu/lib/org-type-icons.ts`，4 处引用全部通过 import 使用。
-
-- [x] 任务完成
+| # | 问题 | 难度 | 收益 | 评估与路径 |
+|---|------|------|------|-----------|
+| D1 | `deploy.sh` 依赖检查遗漏 | 极低 | 极低 | 补充 `curl`/`rsync` 等检查。 |
+| D2 | 前端健康检查 URL 脆弱 | 低 | 低 | 增加 `/api/health` 端点。 |
 
 ---
-
-### 10. 前端 `window.confirm()` 已不存在 ✅
-
-**状态**：已完成（2026-07-28 复核）
-
-**说明**：全项目搜索未在 `.ts/.tsx` 文件中发现 `window.confirm()` 或原生 `confirm()` 调用。相关文件（`workflow-config-page.tsx`、`batch-group-page.tsx`）已使用 `<ConfirmDialog>`。
-
-- [x] 任务完成
-
----
-
-### 11. 前端 `alert()` 在 TS/TSX 中已不存在 ✅
-
-**状态**：已完成（2026-07-28 复核）
-
-**说明**：全项目搜索未在 `.ts/.tsx` 文件中发现原生 `alert()` 调用。`apps/edu/public/` 下的静态 HTML 原型文件中仍有 `alert()`，不影响生产代码。
-
-- [x] 任务完成
-
----
-
-### 12. 后端 `router.go` 已拆分
-
-**状态**：✅ 已完成（2026-07-28 复核）
-
-**原问题**：一个 `New()` 函数实例化所有 70+ handler 并注册全部路由。
-
-**当前状态**：
-- `router.go` 仅剩 106 行，只保留核心框架、CORS、文件上传、健康检查。
-- handler 实例化已抽到 `handlers.go`。
-- 路由注册已按领域拆分：
-  - `routes.go` — 公共路由 + 认证组框架
-  - `routes_job.go` — 岗位平台路由
-  - `routes_lesson.go` — 课程平台路由
-  - `routes_scene.go` — 场景平台路由
-  - `routes_evaluation.go` — 评价平台路由
-  - `routes_library.go` — 资源库路由
-
-**遗留**：`routes.go` 仍包含 `registerSuperAdminRoutes`、`registerPortalRoutes`、`registerImportExportRoutes` 等 300 行左右，可视情况继续拆出 `routes_portal.go`、`routes_import.go`，但不是必须。
-
-- [x] 任务完成
-
----
-
-### 13. 后端核心 handler 已迁移 `executeListQuery`
-
-**状态**：✅ 已完成（2026-07-28 修改）
-
-**原问题**：`scenario_handler.go`、`position_handler.go`、`course_handler.go`、`exam_handler.go` 等核心 handler 仍手写完整 SQL 分页逻辑。
-
-**当前状态**：
-- `scenario_handler.go` 的 `List` 已改用 `executeListQuery[domain.Scenario]`。
-- `exam_handler.go` 的 `List` 已改用 `executeListQuery[domain.Exam]`。
-- `course_handler.go` 的 `List` 已改用 `executeListQuery[domain.Course]`。
-- `position_handler.go` 的 `List`、`PublicList`、`ListFavorites` 已改用 `executeListQuery[domain.CareerPosition]`。
-
-**遗留**：少数非核心 handler 仍可逐步迁移，但核心 handler 的样板代码已消除。
-
-- [x] 任务完成
-
----
-
-### 14. 后端 `parseInt` vs `parsePageLimit` 已一致
-
-**状态**：✅ 已完成（2026-07-28 复核）
-
-**原问题**：`common.go` 提供了 `parsePageLimit()`（带 200 上限），担心大多数 handler 使用 `parseInt()`（无上限）。
-
-**当前状态**：
-- 所有 List handler 的 `limit` 参数已统一使用 `parsePageLimit()`。
-- `offset` 参数使用 `parseInt()` 是合理且 intentional 的（offset 不需要上限，且 `executeListQuery` 内部也是这个组合）。
-- 全局搜索未发现有 handler 仍用 `parseInt()` 读取 `limit`。
-
-- [x] 任务完成
-
----
-
-### 15. 后端 testhelper/setup.go 与 router.go 不同步
-
-**问题**：测试路由独立维护（658 行），新增 handler 不会自动进入测试。
-
-**方案**：重构 `New()` 使得 handler 实例化和路由注册分离，测试复用 handler 实例化逻辑。
-
-**预估**：1.5 天
-
-- [ ] 任务完成
-
----
-
-### 16. `portal-auth-context.tsx` 与 `components/auth-provider.tsx` 重复 ✅
-
-**状态**：已完成（本次复核）
-
-**复核结果**：`apps/edu/contexts/portal-auth-context.tsx` 已改为薄 re-export，仅导出 `PortalAuthProvider` / `usePortalAuth` 别名：
-
-```tsx
-export { AuthProvider as PortalAuthProvider, useAuth as usePortalAuth } from "@/components/auth-provider"
-```
-
-已无重复实现，可保留该别名入口以兼容现有引用。
-
-- [x] 任务完成
-
----
-
-## P2 — 代码质量改善
-
-### 17. `api.ts` 1338 行按 domain 拆分
-
-**问题**：单个 API 文件过大，所有端点混在一起。
-
-**方案**：拆分为 `auth.ts`、`users.ts`、`job.ts`、`scene.ts`、`lesson.ts`、`evaluation.ts`、`library.ts`、`import-export.ts`，通过 `index.ts` re-export。
-
-**预估**：1 天
-**实际结果**：已拆分为 10 个领域模块（auth/job/scene/lesson/evaluation/library/import-export/portal/marketplace/system），通过 11 行 barrel export 聚合。总 944 行，最大模块 evaluation.ts 248 行。
-
-- [x] 任务完成
-
----
-
-### 18. Library 平台使用原生 `<table>` 标签 ✅
-
-**状态**：已完成（本次复核）
-
-**复核结果**：全量搜索 `apps/edu/app/library/**` 未发现原生 `<table>/<tbody>/<thead>/<tr>/<td>/<th>` 标签，library 页面已改用 shadcn `<Table>` 组件。
-
-- [x] 任务完成
-
----
-
-### 19. `packages/ui/src/lib/` 领域代码清理 / PRD 标注系统已删除
-
-**状态**：已下线删除（本次清理）
-
-**原问题**：`prd-annotations.ts` (1345 行) 和 `annotation-edit-context.tsx` 是领域功能代码，不应在共享 UI 包中。`packages/ui/src/lib/annotations/json-file-adapter.ts` 进一步使用了 Node.js `fs`/`path`，被 Turbopack 拉入客户端 bundle 导致构建失败。
-
-**已执行**：
-- 早期已将 `packages/ui/src/lib/annotations/` 迁出到 `apps/edu/lib/annotations/`
-- 本次进一步彻底删除 `apps/edu/lib/annotations/` 目录
-- 删除 `apps/edu/lib/prd-annotations.ts`、`apps/edu/lib/annotation-edit-context.tsx`
-- 删除 `apps/edu/components/prd-annotation.tsx`
-- 删除 `apps/edu/app/api/annotations/route.ts`、`apps/edu/app/api/comments/route.ts`、`apps/edu/app/api/prd-annotations/route.ts`
-- 从 `apps/edu/app/layout.tsx` 移除 `AnnotationEditProvider`
-- 在引用页面/组件中移除 `PrdAnnotation`/`getAnnotation` 导入并解包标注 wrapper
-- `@zhiyu/ui` barrel 中 annotations 导出已在前一次提交中移除
-
-**结果**：客户端 bundle 不再包含任何 annotation 相关代码或 `fs`/`path` 依赖；原 NFT warning 根源已随文件删除而消除。
-
-- [x] 任务完成（系统已整体删除）
-
----
-
-### 20. `shared-types/src/index.ts` 已导出 `ai.ts` ✅
-
-**状态**：已完成（2026-07-28 复核）
-
-**说明**：`packages/shared-types/src/index.ts` 第一行即为 `export * from "./ai"`，AI 类型已可通过 barrel import 使用。
-
-- [x] 任务完成
-
----
-
-### 21. 后端中英文错误消息混用
-
-**问题**：handler 中错误消息有的是英文（`"missing required fields"`），有的是中文（`"租户标识已存在"`），同一文件内也混用。
-
-**方案**：统一为中文（当前项目面向中国用户），逐个文件修改。
-
-**预估**：2 小时
-
-- [ ] 任务完成
-
----
-
-### 22. 后端 Oplog 中间件重复应用（不成立）❌
-
-**状态**：已复核，问题描述不准确，**无需修复**
-
-**复核结果**：
-- `router.go:92` 的文件上传组只保护 `/api/v1/files/upload` 和 `/api/v1/files/preview`。
-- `routes.go:45` 的全局认证组保护所有 `/api/v1/*` 下的其他路由。
-- Chi 路由前缀树决定 `/api/v1/files/upload` 直接命中 `router.go` 注册的 handler，**不会同时进入** `routes.go` 的 `/api/v1` 子路由。
-- 因此文件上传不会记录两条日志，该条描述有误，无需修改代码。
-
-**建议**：直接删除此条，避免后续误解。
-
-- [x] 无需修复
-
----
-
-### 23. 后端无 Repository 层
-
-**问题**：所有 handler 直接执行 SQL，无抽象层，无法进行单元测试（当前全为集成测试依赖 PostgreSQL）。
-
-**方案**：可选。引入 Repository 接口的成本较高（影响 50+ handler），建议在后续大重构中考虑。暂不排入本次计划。
-
-**预估**：暂不执行
-
-- [ ] 跳过
-
----
-
-### 24. Marketplace 遗留 dead re-export 文件
-
-**问题**：`apps/marketplace/lib/prd-annotations.ts` 是通过 `../../edu/lib/` 跨 app 引用的 re-export 文件，且无任何导入方。
-
-**处理**：
-- 已删除 `apps/marketplace/lib/prd-annotations.ts`（marketplace 前端源码已整体移除）
-- `apps/edu/lib/annotation-edit-context.tsx` 已随 PRD 标注系统删除
-- `apps/edu/app/layout.tsx` 已移除 `AnnotationEditProvider`
-
-- [x] 任务完成
-
----
-
-### 25. 手写 `group-hover:opacity` 替换为 `HoverActionBar`
-
-**问题**：12 处手写 `group-hover:opacity-*` 模式，其中标准 hover 操作按钮场景应使用 `HoverActionBar` 替代。其余为图片浮层、装饰渐变、模态框 chrome 等非操作按钮场景，不需要替换。
-
-**已修复**：
-- `apps/edu/components/job/position-builder/step-ability-modeling.tsx` — 能力绑定卡片的删除按钮 → `HoverActionBar`
-
-**遗留（非标准操作按钮场景，保留手写）**：
-- `apps/edu/app/job/positions/[id]/edit/page.tsx:342` — 封面图 overlay（更换/移除封面）
-- `apps/edu/app/scene/scenarios/[id]/edit/page.tsx:350` — 封面图 overlay
-- `apps/edu/components/job/student/stats-bar.tsx:44` — 统计图标装饰渐变
-- `apps/edu/components/job/student/job-home.tsx:509` — 统计图标装饰渐变
-- `apps/edu/app/portal/apps/page.tsx:96` — 导航指示器 chevron
-- `apps/edu/components/portal/yi-know-assistant.tsx:390, 728` — 快捷操作 chip / 机器人关闭按钮
-- `apps/edu/components/shared/resource-preview-modal.tsx:200, 234` — 模态框 header / 拖拽手柄
-
-- [x] 任务完成（标准操作按钮场景已收敛，剩余为合理非表格场景）
-
----
-
-### 26. `tasks/page.tsx` 5,646 行超大文件
-
-**问题**：任务编辑器页面（`apps/edu/app/scene/scenarios/[id]/edit/tasks/page.tsx`）将所有任务编辑逻辑塞入一个文件，是全项目最大的单文件，修改风险极高。
-
-**方案**：
-1. 将任务列表渲染提取为独立组件
-2. 将各类任务配置（信息卡片、知识点、权重等）移至 `_components/` 已有的子组件
-3. 将数据处理逻辑提取为自定义 hooks
-
-**预估**：2 天（涉及重构大量内部状态逻辑，需谨慎执行）
-
-- [ ] 任务完成
-
----
-
-## 新增问题清单（本次审查发现，待后续排期）
-
-以下问题在本次全量复核中确认存在，但改动面较大或需要跨模块协调，建议后续单独排期，不混入当前迭代。
-
-### A. 后端稳定性
-
-| # | 问题 | 位置 | 建议方案 | 预估 |
-|---|------|------|---------|------|
-| A1 | migration 版本号冲突 | `backend/migrations/006_*`、`064_*`、`067_*` 各有两个文件 | 重命名冲突文件，确保版本号唯一；需同步更新 `schema_migrations` | 0.5 小时 |
-| A2 | `AuthHandler` goroutine 未优雅关闭 | `backend/cmd/server/main.go` | `router.New` 返回可关闭对象，main 中 `defer r.Shutdown()` | 0.5 小时 |
-| A3 | `view_logs` 写入逻辑分散 | `position/scenario/resource handler` | 已抽象 `recordView` helper；后续可扩展为独立 service | 0.5 天 |
-| A4 | Update 字段合并/Nullability 模式不一致 | `position/scenario/course handler` | 统一使用 patch helper 或 `NullableString` | 1 天 |
-| A5 | 导入/导出/模板缺少通用 pipeline | `*_import_handler.go`、`template_handler.go` | 抽象 Excel/CSV 行 → DTO → 校验 → upsert → 重复处理 | 2-3 天 |
-| A6 | 英文错误消息残留 | 全 handler 约 20+ 处 respondError/return fmt.Errorf 使用英文 | 统一翻译为中文；本次已修复导入 handler 与部分核心消息 | 1 小时 |
-| A7 | `parseUploadedExcel` 重复实现 | `scenario_import_handler.go`、`course_import_handler.go`、`granular_course_import_handler.go`、`position_import_handler.go` | 提取到 `import_common.go` | 0.5 小时 |
-| A8 | 事务 begin/rollback/commit 样板重复 | 22 个 handler、33 个事务作用域 | 提取 `withTx(ctx, db, fn)` helper | 0.5 天 |
-| A9 | tenant admin CRUD 双份实现 | `tenant_admin_handler.go` vs `tenant_internal_admin_handler.go` | 提取共用方法到 `TenantHandler` | 0.5 天 |
-| A10 | 认证状态码不一致 | 多处 `claims == nil` 返回 401，多数返回 403 | 统一约定：未认证 401，越权 403；提取 `requireAuth` / `requireTenant` helper | 0.5 小时 |
-| A11 | SQL scan 错误静默跳过 | 44 处 `_ = Scan(...)`、多处 `rows.Scan` 仅 `continue`、大量循环缺少 `rows.Err()` | 所有 scan 必须处理错误，循环结束检查 `rows.Err()` | 0.5 天 |
-| A12 | SQL 标识符拼接风险 | `import_export_handler.go`、`content_actions.go`、`common.go` | 新增 `sanitizeIdentifier` 白名单校验；已修复 ✅ | 0.5 小时 |
-| A13 | 导出功能缺少租户过滤 | `import_export_handler.go` | `Export` 增加 `WHERE tenant_id = $1`；已修复 ✅ | 0.5 小时 |
-| A14 | `context.Background()` 进入请求路径 | `approval_handler.go:251` | `isUserApproverForStep` 使用 `r.Context()`；已修复 ✅ | 0.5 小时 |
-| A15 | 错误日志级别错误 | `auth_handler.go`、`user_management_handler.go`、`evaluation_result_handler.go`、`exam_result_handler.go` | `slog.Info("ERROR ...")` 改为 `slog.Error`；已修复 ✅ | 0.5 小时 |
-| A16 | 后端缺少 Repository/Service 层 | `internal/handler/*.go` 共 95+ 个 handler | 引入 `internal/store/<domain>`，handler 只负责 HTTP 编排 | 1-2 周 |
-| A17 | 导入/导出工具函数重复 | `lookupBatch`、`findOrCreateKnowledgePoints`、`findOrCreateResources` 在多个 import handler 重复 | 抽到 `import_common.go` 或新建 `internal/importutil` | 0.5 天 |
-| A18 | `respondError(err.Error())` 暴露底层错误 | `scenario_grade_handler.go:63`、`question_handler.go:77`、`org_handler.go:198,270`、`user_management_handler.go:235` 等 | 用户响应使用中文业务语义，原始错误写入 `slog.Error` | 0.5 天 |
-| A19 | batch_handler 表名拼接未校验 | `batch_handler.go:124` 字符串拼接 `SELECT tenant_id FROM `+h.Config.WriteTableName | 使用 `sanitizeIdentifier` 或固定表名映射 | 0.5 小时 |
-| A20 | 超大 handler 文件 | `template_handler.go` (1219 行)、`position_handler.go` (1149 行)、`resource_import_handler.go` (894 行) | 按功能拆分为多个文件 | 1-2 天 |
-| A21 | import_export_handler `cols` 未逐列校验 | `import_export_handler.go:124` 的 `cols` 由 `meta.defaultCols` 代码生成 | 对 `cols` 也使用白名单或固定列映射 | 0.5 小时 |
-
-### B. 前端 edu
-
-| # | 问题 | 位置 | 建议方案 | 预估 |
-|---|------|------|---------|------|
-| B1 | 超大文件 | `app/scene/scenarios/[id]/edit/tasks/page.tsx` (5646 行) 等 | 按功能拆分为多个子组件 | 2-3 天 |
-| B2 | library / exam-usage / recommend / superadmin 未接入共享抽象 | `app/library/*`、`app/evaluation/exam-usage`、`app/job/recommend`、`app/superadmin` | 评估接入 `PortalCrudPage` / `ContentListPage` 或新增轻量抽象 | 2-3 天 |
-| B3 | 状态抽象分裂 | `content-status.ts` vs `status.ts` | 统一标签、职责分离 | 0.5 天 |
-| B4 | 共享组件自身未完全遵守规范 | `approval-list-page.tsx`、`archive-list-page.tsx`、`portal-crud-page.tsx` | 已改用 `TableRowActions` / `ConfirmDialog` | 已完成 |
-| B5 | Landing detail 页面高度重复 | `app/scene/landing/[id]/page.tsx`、`app/lesson/landing/[id]/page.tsx` | 提取 `LandingDetailShell` 共享组件 | 0.5 天 |
-| B6 | Empty state 硬编码重复 | 约 80 处散落各页面 | 统一使用 `EmptyState` / `EmptyPlaceholder` | 0.5 天 |
-| B7 | `generateId` 重复实现 | `app/lesson/admin/_components/eval/course-eval-config.tsx` 等 | 提取到 `packages/ui/src/lib/utils.ts` 的 `generateId(prefix)`；已修复 ✅ | 0.5 小时 |
-| B8 | 手动 status badge 未收敛 | `accounts`、`students`、`course-list`、`archive`、`GrainCourseModal`、`exam landing` 等 | 统一使用 `StatusBadge` + `getStatusConfig()`；已修复 ✅ | 0.5 天 |
-| B9 | 共享组件类型安全薄弱 | `content-list-page.tsx`、`batch-group-page.tsx`、`approval-list-page.tsx` 等 | 为公共 API 引入泛型，清除 `any[]`/`any` | 2-3 天 |
-| B10 | 导入流程未统一 | `app/evaluation/question-banks/[id]/page.tsx` | 改用 `useImportFlow` hook | 0.5 天 |
-| B11 | `ContentListPage` 导入逻辑重复 | `components/shared/content-list-page.tsx` | 将手动 CSV 导入路径完全收敛到 `useImportFlow` | 0.5 天 |
-| B12 | `DataProvider` 领域混杂 | `components/providers/data-provider.tsx` (743 行) | 按领域拆分或转为针对性 hooks | 1-2 天 |
-| B13 | 前端 `any` 大量残留 | 全项目 `.tsx` 约 485 处 | 补全 DTO 类型，替换 `as any` | 1-2 周 |
-| B14 | `EmptyState` 已导出但未被使用 | `components/shared/status-badge.tsx:3` 重新导出，但 library/approval 等页面仍用硬编码空状态 | 在 library、approval-list-page 等页面推广 `EmptyState` | 0.5 天 |
-| B15 | library 页面未使用 `TableRowActions` | `library/certificates`、`library/knowledge`、`library/questions`、`library/resources`、`library/ability` | 替换内联 Button 为 `TableRowActions` / `HoverActionBar` | 0.5 天 |
-| B16 | Portal 系统资源/组织用户页面未接入 `PortalCrudPage` | `resource/codes`、`resource/package`、`org-user/org-types`、`org-user/positions`、`org-user/fields`、`org-user/relations`、`org-user/graduates` | 评估迁移到 `PortalCrudPage` 或提取 `usePortalCrudList` hook | 1-2 天 |
-| B17 | 详情页加载多个关联资源模式重复 | `scene/scenarios/[id]/edit/page.tsx`、`scene/scenarios/[id]/edit/tasks/page.tsx` 均手写 `Promise.all([...api.list({limit:1000}), api.get(id)])` | 提供 `useEntityWithRelations` hook 或 react-query wrapper | 0.5 天 |
-| B18 | 状态展示手写 Badge 未收敛 | `portal/apps/system/resource/package/page.tsx`、`portal/workspace/_components/*-tab.tsx` 等 | 统一使用 `StatusBadge` + `getStatusConfig()` | 0.5 天 |
-
-### C. 前端 marketplace（已删除，仅作存档）
-
-> `apps/marketplace` 前端源码已彻底移除（git 不再跟踪），当前工作树无相关源码。若本地磁盘仍残留 `apps/marketplace/node_modules` 等被 `.gitignore` 忽略的文件，可手动清理。以下问题来自历史版本，若后续恢复 marketplace 可参考。
-
-| # | 问题 | 位置 | 建议方案 | 预估 |
-|---|------|------|---------|------|
-| C1 | 完全没有服务器分页 | 几乎所有列表页使用 `limit: 1000/10000` | 接入 `ListResponse<T>` + 分页组件 | 2-3 天 |
-| C2 | 自定义 status badge 重复 | `admin/institutions`、`admin/tenants`、`admin/withdrawals`、`wallet` 等 | 统一使用 `getStatusConfig()` + `StatusBadge` | 0.5 天 |
-| C3 | 表单全部手搓 | `my-resources/new`、`institution/apply`、`admin/banners` 等 | 引入 `react-hook-form + zod` | 2-3 天 |
-| C4 | 未复用 edu 页面级组件 | 所有列表/CRUD 页面从零实现 | 将 `ContentListPage`/`PortalCrudPage` 等下沉到 packages 后接入 | 3-5 天 |
-
-### D. 共享包
-
-| # | 问题 | 位置 | 建议方案 | 预估 |
-|---|------|------|---------|------|
-| D1 | API client 错误处理不一致 | `packages/api-client/src/api-helpers.ts` | 统一 `request`/`authedFetch` 为单一 pipeline，导出 typed `ApiError` | 1-2 天 |
-| D2 | 页面级组件未下沉 | `apps/edu/components/shared/*` | 迁移到 `packages/ui` 或新建 `@zhiyu/page-kit` | 3-5 天 |
-| D3 | 应用专属代码泄漏到 `@zhiyu/ui` | `use-import-flow.ts`、`use-platform-links.ts`、`providers/data-provider.tsx` | 迁移到 `apps/edu/lib/` 或新建 `@zhiyu/edu-kit` | 2-3 天 |
-| D4 | `shared-types` 包含运行时逻辑 | `packages/shared-types/src/evaluation-rules.ts` | 将 `uid()`/`clone()`/转换函数迁到 utils 包，types 包只保留类型 | 0.5 天 |
-| D5 | 废弃类型系统仍在使用 | `job-source.ts`、`lesson-source.ts`、`scene-mock.ts` | 迁移调用方到规范类型后删除这三个文件 | 2 天 |
-| D6 | `@zhiyu/ui` 依赖声明不全 | `packages/ui/package.json` | 补充运行时依赖及 `next` peerDependency；已修复 ✅ | 0.5 小时 |
-
-### E. 部署与文档
-
-| # | 问题 | 位置 | 建议方案 | 预估 |
-|---|------|------|---------|------|
-| E1 | `deploy.sh` 依赖检查遗漏 | `deploy.sh:223-231` | 补充 `flock`、`lsof`、`rsync`、`systemd-run`、`curl`、`docker` 检查或降级 | 0.5 小时 |
-| E2 | 前端健康检查 URL 脆弱 | `deploy.sh:716` | 在 `apps/edu` 增加 `/api/health` 等专用端点并更新检查 | 0.5 小时 |
-| E3 | `ecosystem.config.js` 与 `deploy.sh` 生成配置不一致 | 根目录 `ecosystem.config.js` | 删除仓库中的文件（`deploy.sh` 自己生成）或改为一致模板 | 0.5 小时 |
-
----
-
-## 本次审查修复记录（2026-07-28 后续）
-
-### 已直接修复的简单问题
-
-| # | 问题 | 文件 | 改动 |
-|---|---|---|---|
-| F1 | `useState(new Date())` 非惰性初始化可能导致 hydration 不匹配 | `apps/edu/app/portal/workspace/_components/schedule-grid.tsx`, `teacher-dashboard-tab.tsx` | 改为 `useState(() => new Date())` |
-| F2 | `packages/ui` barrel export 不完整 | `packages/ui/src/index.ts` | 补充 `PlatformSideNav` 及类型；后续 annotation 相关 API 随系统删除已移除 |
-| F3 | `PlatformShell` 深路径导入 `cn` | `apps/edu/components/platform-shell/PlatformShell.tsx` | 改为从 `@zhiyu/ui` 导入 |
-| F4 | `packages/api-client` 根索引未导出类型/工厂 | `packages/api-client/src/index.ts` | 补充 `api-helpers`、`api-factory`、`types` 导出 |
-| B1 | `coalesceStringSlice` 定义在业务 handler 中 | `backend/internal/handler/position_handler.go` → `common.go` | 迁移到通用位置 |
-| B2 | Import helper 函数多处重复定义 | `backend/internal/handler/import_common.go` | 统一 `col`、`splitTrim`、`parseNullableInt`、`parseNullableFloat`、`nullableStr`、`parseIntDefault` |
-| B3 | `generateSecurePassword` 定义在业务 handler 中 | `backend/internal/handler/tenant_handler.go` → `common.go` | 迁移到通用位置 |
-| B4 | 后端错误消息中英混用/英文 | `backend/internal/handler/content_actions.go` | 翻译 `invalid status transition` / `current status` |
-| B5 | `template_handler.go` 中 dead code | `backend/internal/handler/template_handler.go` | 删除未使用的 `setRows`、多余的 blank assignment |
-| B6 | `tenant_admin_handler.go` 中 dead assignment | `backend/internal/handler/tenant_admin_handler.go` | 删除未使用的 `existing` 变量 |
-| F7 | `AGENTS.md` 暴露生产服务器密码 | `AGENTS.md:66` | 移除明文密码，改为引用安全凭证存储 |
-| F8 | `docs/components.md` 组件位置描述过期 | `docs/components.md:3` | 更新为 `packages/ui/src/components/shared/`，并说明页面级组件位置 |
-| F9 | `.env.example` 不完整 | `.env.example` | 补全 `BACKEND_PORT_ENV`、`EDU_PORT`、`UPLOAD_DIR`、`DEPLOY_DIR`、`ROLLBACK_KEEP`、`BUILD_CPU_QUOTA`、`NGINX_CONTAINER`、`ENABLE_DEBUG_AUTH`、`DEBUG_AUTH_TOKEN`、`TEST_DATABASE_URL` |
-| F10 | `apps/edu` build 脚本与 `deploy.sh` 冲突 | `apps/edu/package.json:7` | 移除 `next build --webpack` 中的 `--webpack`，避免与 `deploy.sh` 追加的 `--turbopack` 冲突 |
-| F11 | 根 workspace 递归脚本引用缺失脚本 | `package.json:10-12` | 将 `lint`/`test` 限定到实际拥有脚本的包（`@zhiyu/edu`、`@zhiyu/api-client`） |
-| F12 | `@zhiyu/ui` package.json 依赖声明不全 | `packages/ui/package.json` | 补充所有运行时依赖（radix、lucide-react、sonner 等）及 `next` peerDependency |
-| F13 | 废弃的全局状态模块 | `apps/edu/lib/stores/data-context.tsx` | 确认无引用后删除 |
-| F14 | `cn()` 重复定义 | `packages/ui/src/components/platform-shell/utils.ts` | 改为从 `@/lib/utils` 导入 |
-| F15 | `uid()`/`clone()` 重复且 `object-utils.ts` 无用 | `packages/ui/src/lib/object-utils.ts`、`packages/shared-types/src/evaluation-rules.ts` | 删除未使用的 `object-utils.ts`；`shared-types` 中的实现保留（避免循环依赖） |
-| F16 | `generateId()` 重复实现 | `apps/edu/app/lesson/admin/_components/eval/course-eval-config.tsx` | 提取到 `packages/ui/src/lib/utils.ts` 并复用 |
-| F17 | `Empty*` 组件未从 `@zhiyu/ui` barrel 导出 | `packages/ui/src/index.ts` | 导出 `Empty`、`EmptyHeader`、`EmptyTitle`、`EmptyDescription`、`EmptyContent`、`EmptyMedia` |
-| F18 | 本地状态样式未使用 `StatusBadge` | `accounts`、`students`、`course-list`、`archive`、`GrainCourseModal`、`exam landing` 等页面 | 删除本地 `STATUS_CONFIG`，改用 `<StatusBadge status={...} />`；在 `STATUS_MAP` 补充 `active`、`graduated` |
-| F19 | 标准 hover 操作按钮未用 `HoverActionBar` | `apps/edu/components/job/position-builder/step-ability-modeling.tsx` | 替换手写 `group-hover` 为 `<HoverActionBar>` |
-| F20 | 后端 `context.Background()` 进入请求路径 | `backend/internal/handler/approval_handler.go:251` | `isUserApproverForStep` 接收 `ctx` 并使用 `r.Context()` |
-| F21 | 导出功能缺少租户过滤 | `backend/internal/handler/import_export_handler.go` | `Export` 增加 `WHERE tenant_id = $1` |
-| F22 | SQL 标识符拼接风险 | `import_export_handler.go`、`content_actions.go`、`common.go` | 新增 `sanitizeIdentifier` 白名单校验，替换所有表名/列名拼接点 |
-| F23 | 错误日志级别错误 | `auth_handler.go`、`user_management_handler.go`、`evaluation_result_handler.go`、`exam_result_handler.go` | `slog.Info("ERROR ...")` 改为 `slog.Error("...", "error", err, ...)` |
-| F24 | 后端全量 `gofmt` | `backend/**/*.go` | 运行 `gofmt -w .` 统一格式 |
-| F25 | annotation 系统残留属性 | `packages/ui/src/components/ui/dialog.tsx` | 删除未使用的 `annotationContext` / `annotationContainerRef` 属性 |
-| F26 | 静态 HTML 原型中残留 annotation 数据属性 | `apps/edu/public/student_2.html`、`apps/edu/public/student_3.html` | 删除两个无人引用的 dead 原型 HTML 文件 |
-| F27 | 部署脚本重复 typecheck | `deploy.sh` | 默认跳过独立的 `tsc --noEmit`，由 Next.js 构建内部类型检查覆盖；保留 `--typecheck` 选项手动开启 |
-| F28 | 部署脚本删除 Turbopack cache | `deploy.sh` | 构建前由 `rm -rf "$EDU_DIR/.next"` 改为仅清理 `standalone/server/static`，保留 `.next/cache` 复用增量缓存 |
-| F29 | 后端导入 handler 英文错误消息 | `scenario_import_handler.go`、`position_import_handler.go`、`course_import_handler.go`、`granular_course_import_handler.go` | 翻译 "invalid form" / "missing file" / "failed to parse Excel file" 为中文 |
-| F30 | 后端其他英文错误消息 | `content_actions.go`、`import_export_handler.go`、`question_bank_handler.go`、`course_import_handler.go`、`org_handler.go`、`user_management_handler.go` | 翻译内部/用户可见英文错误消息为中文 |
-
-验证结果（2026-07-28 后续全量修复后）：
-- `apps/edu`: `pnpm lint` ✅ 0 errors / 0 warnings；`pnpm typecheck` ✅ 通过
-- `packages/ui`: `pnpm typecheck` ✅ 通过
-- `packages/shared-types`: `pnpm typecheck` ✅ 通过
-- `packages/api-client`: `pnpm typecheck` ✅ 通过；`pnpm test` ✅ 通过
-- `backend`: `gofmt -w .` ✅；`go vet ./...` ✅；`go test ./...` ✅ 通过
-
----
-
-## 执行顺序建议
-
-```
-已完成（本次全量审查后）：
-  ✅ P0 全部 (platform-shell, data-provider, hooks, annotations, barrel export)
-  ✅ P1 大部分 (evaluation 拆分, draftSuffix, typeMetaFor, window.confirm, alert,
-              router 拆分, executeListQuery, parsePageLimit, portal-auth-context,
-              B7 generateId 去重)
-  ✅ P2 大部分 (api.ts 拆分, ai.ts 导出, Oplog 确认, Library 原生 table)
-  ✅ #24 marketplace dead re-export 清理
-  ✅ #25 手写 group-hover 替换为 HoverActionBar（标准操作按钮场景已收敛，剩余为合理非表格场景）
-  ✅ F7-F24 本次直接修复的简单问题（密码、文档、构建脚本、依赖、死代码、工具函数去重、
-           StatusBadge、HoverActionBar、Empty 导出、后端 context/租户过滤/SQL 拼接/日志级别/gofmt）
-
-剩余待执行（复杂问题，建议排入后续迭代）：
-  1 → 后端引入 Repository/Service 层（高优先级，成本高，替代 #23）
-  2 → 前端超大文件拆分（tasks/page.tsx、course-evaluation-rules-dialog、atomic-modules、
-       scene-results、content-list-page、data-provider 等）
-  3 → 前端 `any` 清理与共享组件泛型化（ContentListPage、BatchGroupPage、tasks page）
-  4 → `@zhiyu/ui` 应用专属代码迁出（useImportFlow、usePlatformLinks、data-provider）
-  5 → `shared-types` 运行时函数迁出与废弃类型系统清理（job-source/lesson-source/scene-mock）
-  6 → API client 错误处理统一（request/authedFetch 合并为单一 pipeline + typed ApiError）
-  7 → `library/**` CRUD 页面统一接入共享 shell
-  8 → migration 版本号冲突修复（006/064/067）与 019→021 缺口
-  9 → 后端测试覆盖提升（handler/middleware 当前 31.4%/12.6%）
-  10 → #15 testhelper 与 router 同步（P1, 1.5d）
-  11 → 后端错误消息统一中文（P2，本次已修复导入 handler 与部分核心消息，仍有 ~20+ 处 respondError 英文及日志英文待处理）
-  12 → #26 tasks/page.tsx 拆分（P2, 2d）
-  13 → 后端事务样板抽象为 `withTx(ctx, db, fn)` helper（22 个文件、33 个事务作用域）
-  14 → 后端 SQL scan 错误统一处理（44 处 `_ = Scan` 静默跳过、`rows.Err()` 缺失等）
-  15 → 后端认证状态码统一（401/403 混用）
-  16 → 后端导入/导出工具函数去重（parseUploadedExcel、lookupBatch、findOrCreateKnowledgePoints/Resources）
-  17 → 前端 EmptyState 推广与 library 页面 TableRowActions 收敛
-  18 → 前端 Portal 系统资源/组织用户页面接入 PortalCrudPage
-
-暂缓/不执行:
-  ⏭️ 旧的 #23 "Repository 层" 已升级为更高优先级的"后端引入 Repository/Service 层"，不再暂缓
-```
 
 ## 架构目标
 
 ```
 当前:
 ├── packages/
-│   ├── shared-types/     ← 类型包（双份类型已标记 deprecated；含运行时函数 uid/clone 待迁出）
-│   ├── api-client/       ← API 客户端（已按 domain 拆分；request/authedFetch 错误处理不一致）
-│   └── ui/               ← UI 组件（已有 barrel export；仍混有 edu 领域代码 useImportFlow/usePlatformLinks/data-provider）
-├── apps/
-│   ├── edu/
-│   │   ├── shared/*      ← 页面级共享抽象，类型安全薄弱（大量 any），部分可继续下沉
-│   │   ├── platform-shell/  ← 已从 packages/ui 统一导入，本地仅保留组合层
-│   │   ├── providers/    ← data-provider 共享核心在 packages/ui，edu 保留 743 行 app-specific 数据模型
-│   │   ├── hooks/        ← use-mobile/use-toast 薄 re-export 已删除
-│   │   └── lib/          ← annotations/prd-annotations/annotation-edit-context 已删除； dead data-context.tsx 已清理
-│   └── marketplace/
-│       └── 前端源码已移除（git 不再跟踪）
+│   ├── shared-types/     ← 类型包（双份类型已标记 deprecated；含运行时 uid/clone）
+│   ├── api-client/       ← 按 domain 拆分；request/authedFetch 双 pipeline；types/ 多余 pass-through
+│   └── ui/               ← 通用 UI 组件 + platform-shell；DataProvider 混有 30+ edu 领域类型
+├── apps/edu/
+│   ├── shared/*          ← 页面级共享抽象（类型安全薄弱；Library 6 页未使用）
+│   ├── platform-shell/   ← 已从 packages/ui 导入，本地仅组合层
+│   ├── providers/        ← data-provider 共享核心在 packages/ui
+│   ├── lib/converters/   ← 仅 job-converters，其他领域缺失
+│   ├── lib/mock-data.ts  ← 3611 行，含生产代码依赖的类型定义
+│   └── contexts/auth-context.tsx ← login/switchRole 为空操作 shim
+├── apps/marketplace/     ← 前端源码已移除
 └── backend/
     └── internal/
-        ├── handler/      ← 95+ handler 直接内联 SQL/事务/权限；已收敛 executeListQuery、view_log、部分安全修复
-        └── router/       ← 已按领域拆分，支持 graceful shutdown
+        ├── handler/      ← parseUploadedExcel/withTx 已统一；setHdr/setA1 闭包 12x 重复；contentActions 仅覆盖 5 种实体；resource_handler 10 方法全为 stub
+        ├── domain/       ← ScenarioStatus 已别名化 ContentStatus
+        └── router/       ← 已按领域拆分
 
 目标:
 ├── packages/
-│   ├── shared-types/     ← 纯类型包，清理重复类型，拆分超大文件
-│   ├── api-client/       ← 按 domain 拆分；统一错误处理 pipeline + typed ApiError
+│   ├── shared-types/     ← 纯类型包，清理重复类型和 mock-only 类型
+│   ├── api-client/       ← 统一错误处理 pipeline + typed ApiError
 │   └── ui/
-│       ├── components/   ← 通用 UI 组件（status-badge、confirm-dialog、table-row-actions、hover-action-bar、empty 等）
+│       ├── components/   ← 通用 UI 组件（无 edu 领域代码）
 │       ├── platform-shell/
-│       ├── hooks/        ← 通用 hooks（use-mobile、use-toast）
+│       ├── hooks/        ← 通用 hooks
 │       └── lib/          ← 通用工具（cn、generateId）
-├── apps/
-│   ├── edu/
-│   │   ├── shared/*      ← 页面级 edu 组件，类型完整
-│   │   ├── lib/          ← edu 领域 hooks/utils（useImportFlow、usePlatformLinks、data-provider 核心）
-│   │   └── ...           ← 只保留 edu 独有的页面和组件
-│   └── marketplace/      ← 若恢复，从 packages/ui 复用通用组件
+├── apps/edu/
+│   ├── shared/*          ← 页面级组件，类型完整，Library 接入共享抽象
+│   ├── lib/              ← edu 领域 hooks/utils（DataProvider 拆分、converters 补齐）
+│   ├── test/             ← mock-data.ts 迁入测试目录
+│   └── ...               ← edu 独有页面和组件
 └── backend/
     └── internal/
         ├── store/        ← 按领域 repository/service 层
-        ├── handler/      ← 只负责 HTTP 编排、参数校验、响应封装
+        ├── handler/      ← HTTP 编排、参数校验、响应封装
         └── router/       ← 按平台拆分
 ```
+
+---
+
+## 修复记录
+
+### 2026-07-28（本次审查）
+
+| 修复 | 文件 | 说明 |
+|------|------|------|
+| `method-config-dialog.tsx` | `app/scene/.../method-config-dialog.tsx:25` | `GradeMapping` import 从 `@/lib/mock-data` 改为 `@/lib/types/lesson`（shared-types），消除生产代码对 mock-data 的类型依赖 |
+| `use-submitter-names.ts` | `hooks/use-submitter-names.ts` | 新增 `error` state 暴露 fetch 失败信息，catch 中设置 `setError` |
+| `resource_handler.go` | `backend/internal/handler/resource_handler.go` | 添加 TODO 注释说明当前为占位实现，10 个方法待对接实际数据表 |

@@ -44,7 +44,7 @@ import {
 import { cn } from '@/lib/utils'
 import { positionApi, batchApi, learnRoadApi, scenarioApi, taskApi } from '@/lib/api'
 
-import { convertCareerPositionToPosition, convertJobBatchToBatch } from '@/lib/stores/job-converters'
+import { convertCareerPositionToPosition, convertJobBatchToBatch } from '@/lib/converters/job-converters'
 import { useToast } from "@zhiyu/ui"
 import type { Position, PositionStatus, Batch } from '@/lib/types/job-source'
 import type { LearnRoad, LearnRoadStep } from '@/lib/types/job'

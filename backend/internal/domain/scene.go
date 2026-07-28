@@ -2,17 +2,6 @@ package domain
 
 import "time"
 
-type ScenarioStatus string
-
-const (
-	ScenarioStatusDraft     ScenarioStatus = "draft"
-	ScenarioStatusPending   ScenarioStatus = "pending"
-	ScenarioStatusApproved  ScenarioStatus = "approved"
-	ScenarioStatusRejected  ScenarioStatus = "rejected"
-	ScenarioStatusPublished ScenarioStatus = "published"
-	ScenarioStatusArchived  ScenarioStatus = "archived"
-)
-
 type Scenario struct {
 	ID               string         `json:"id"`
 	Name             string         `json:"name"`

@@ -16,7 +16,6 @@ var moduleNames = map[string]string{
 	"tenants":               "租户管理",
 	"organizations":         "组织架构",
 	"org-types":             "组织类型",
-	"identity-types":        "身份类型",
 	"users":                 "用户管理",
 	"staff-titles":          "教职工职称",
 	"user-extension-fields": "用户扩展字段",
@@ -122,7 +121,9 @@ func OperationLog(db *pgxpool.Pool) func(http.Handler) http.Handler {
 			detail := r.Method + " " + r.URL.Path
 
 			userName := claims.Username
-			_ = db.QueryRow(r.Context(), `SELECT COALESCE(NULLIF(name, ''), username) FROM users WHERE id = $1`, claims.UserID).Scan(&userName)
+			if err := db.QueryRow(r.Context(), `SELECT COALESCE(NULLIF(name, ''), username) FROM users WHERE id = $1`, claims.UserID).Scan(&userName); err != nil {
+				slog.Warn("oplog: failed to resolve user name", "userId", claims.UserID, "error", err)
+			}
 
 			_, err := db.Exec(r.Context(), `
 				INSERT INTO operation_logs (tenant_id, user_id, user_name, module, action, target_type, target_id, detail, ip, status)

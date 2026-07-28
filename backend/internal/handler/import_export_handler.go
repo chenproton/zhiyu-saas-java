@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"log/slog"
 	"io"
 	"net/http"
 	"strings"
@@ -253,7 +254,8 @@ func (h *ImportExportHandler) Preview(w http.ResponseWriter, r *http.Request) {
 
 	rows, parseErrors, err := parseImportCSV(r)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, err.Error())
+		slog.Error("解析导入文件失败", "error", err)
+		respondError(w, http.StatusBadRequest, "解析导入文件失败")
 		return
 	}
 
@@ -317,7 +319,8 @@ func (h *ImportExportHandler) Import(w http.ResponseWriter, r *http.Request) {
 
 	rows, parseErrors, err := parseImportCSV(r)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, err.Error())
+		slog.Error("解析导入文件失败", "error", err)
+		respondError(w, http.StatusBadRequest, "解析导入文件失败")
 		return
 	}
 

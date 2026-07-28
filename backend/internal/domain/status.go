@@ -32,6 +32,7 @@ type (
 	ExamStatus           = ContentStatus
 	CareerPositionStatus = ContentStatus
 	CourseStatus         = ContentStatus
+	ScenarioStatus       = ContentStatus
 	BatchStatus          = ContentStatus
 	LessonBatchStatus    = ContentStatus
 	SceneBatchStatus     = ContentStatus
@@ -69,6 +70,13 @@ const (
 	CourseStatusRejected  = StatusRejected
 	CourseStatusPublished = StatusPublished
 	CourseStatusArchived  = StatusArchived
+
+	ScenarioStatusDraft     = StatusDraft
+	ScenarioStatusPending   = StatusPending
+	ScenarioStatusApproved  = StatusApproved
+	ScenarioStatusRejected  = StatusRejected
+	ScenarioStatusPublished = StatusPublished
+	ScenarioStatusArchived  = StatusArchived
 
 	BatchStatusOpen   = StatusOpen
 	BatchStatusClosed = StatusClosed

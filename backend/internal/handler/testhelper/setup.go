@@ -19,6 +19,7 @@ import (
 	"github.com/zhiyu-saas/backend/internal/handler"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/router"
+	"github.com/zhiyu-saas/backend/internal/store"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -150,7 +151,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/organizations/{id}", orgHandler.Update)
 			r.Delete("/organizations/{id}", orgHandler.Delete)
 
-			orgTypeHandler := &handler.OrgTypeHandler{DB: pool}
+			orgTypeHandler := &handler.OrgTypeHandler{DB: pool, Store: store.NewOrgTypesStore(pool)}
 			r.Get("/org-types", orgTypeHandler.List)
 			r.Get("/org-types/{id}", orgTypeHandler.Get)
 			r.Post("/org-types", orgTypeHandler.Create)
@@ -174,14 +175,14 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Delete("/roles/{id}", roleHandler.Delete)
 			r.Post("/roles/{id}/assign", roleHandler.Assign)
 
-			majorHandler := &handler.MajorHandler{DB: pool}
+			majorHandler := &handler.MajorHandler{DB: pool, Store: store.NewMajorsStore(pool)}
 			r.Get("/majors", majorHandler.List)
 			r.Get("/majors/{id}", majorHandler.Get)
 			r.Post("/majors", majorHandler.Create)
 			r.Put("/majors/{id}", majorHandler.Update)
 			r.Delete("/majors/{id}", majorHandler.Delete)
 
-			industryHandler := &handler.IndustryHandler{DB: pool}
+			industryHandler := &handler.IndustryHandler{DB: pool, Store: store.NewIndustriesStore(pool)}
 			r.Get("/industries", industryHandler.List)
 			r.Get("/industries/{id}", industryHandler.Get)
 			r.Post("/industries", industryHandler.Create)

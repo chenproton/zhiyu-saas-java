@@ -57,7 +57,10 @@ func (h *PositionCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req ClonePositionRequest
-	_ = json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err.Error() != "EOF" {
+		respondError(w, http.StatusBadRequest, "无效请求体")
+		return
+	}
 
 	newName := req.Name
 	if newName == "" {

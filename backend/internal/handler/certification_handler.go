@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -76,7 +77,8 @@ func (h *CertificationHandler) ListRules(w http.ResponseWriter, r *http.Request)
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, err.Error())
+		slog.Error("查询认证规则列表失败", "error", err)
+		respondError(w, http.StatusInternalServerError, "查询认证规则列表失败")
 		return
 	}
 

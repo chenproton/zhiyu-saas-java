@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -66,7 +67,18 @@ type BatchHandler struct {
 	Config BatchTableConfig
 }
 
+var allowedBatchWriteTables = []string{
+	"batches",
+	"scene_batches",
+	"evaluation_batches",
+	"lesson_batches",
+}
+
 func NewBatchHandler(db *pgxpool.Pool, config BatchTableConfig) *BatchHandler {
+	_, err := sanitizeIdentifier(config.WriteTableName, allowedBatchWriteTables)
+	if err != nil {
+		slog.Error("NewBatchHandler: invalid WriteTableName", "table", config.WriteTableName, "error", err)
+	}
 	return &BatchHandler{DB: db, Config: config}
 }
 
@@ -197,7 +209,11 @@ func (h *BatchHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	batch, _ := h.Config.ScanRow(r.Context(), h.DB, id)
+	batch, err2 := h.Config.ScanRow(r.Context(), h.DB, id)
+	if err2 != nil {
+		respondError(w, http.StatusInternalServerError, "创建"+h.Config.EntityName+"失败")
+		return
+	}
 	respondJSON(w, http.StatusCreated, batch)
 }
 
@@ -249,7 +265,11 @@ func (h *BatchHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	batch, _ := h.Config.ScanRow(r.Context(), h.DB, id)
+	batch, err2 := h.Config.ScanRow(r.Context(), h.DB, id)
+	if err2 != nil {
+		respondError(w, http.StatusInternalServerError, "更新"+h.Config.EntityName+"失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, batch)
 }
 
@@ -308,6 +328,10 @@ func (h *BatchHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	batch, _ := h.Config.ScanRow(r.Context(), h.DB, id)
+	batch, err2 := h.Config.ScanRow(r.Context(), h.DB, id)
+	if err2 != nil {
+		respondError(w, http.StatusInternalServerError, "更新"+h.Config.EntityName+"状态失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, batch)
 }

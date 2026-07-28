@@ -1,7 +1,6 @@
 "use client"
 
-import Image from "next/image"
-import { ChevronDown, ChevronRight, ImagePlus, List, ListOrdered, Loader2, Star, X } from "lucide-react"
+import { ChevronDown, ChevronRight, List, ListOrdered, Star, X } from "lucide-react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useState, useMemo, useRef, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { CoverImageUpload } from "@/components/shared/cover-image-upload"
 import {
   Select,
   SelectContent,
@@ -315,69 +315,14 @@ export default function ScenarioEditPage() {
             <div className="space-y-6">
               <Card>
                 <CardContent className="pt-6">
-                  <Label className="block mb-3">场景封面</Label>
-                  <div
-                    className="aspect-video bg-gray-100 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors overflow-hidden relative group"
-                    onClick={triggerCoverUpload}
-                  >
-                    <input
-                      ref={coverInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) handleCoverUpload(file)
-                        e.target.value = ""
-                      }}
-                    />
-                    {coverImage ? (
-                      <>
-                        <Image
-                          src={coverImage}
-                          alt="场景封面"
-                          fill
-                          className="object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="bg-white/90 text-gray-800 border-white hover:bg-white"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              triggerCoverUpload()
-                            }}
-                            disabled={coverUploading}
-                          >
-                            {coverUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : "更换封面"}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="bg-white/90 text-gray-800 border-white hover:bg-white"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setCoverImage("")
-                            }}
-                            disabled={coverUploading}
-                          >
-                            移除封面
-                          </Button>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex flex-col items-center">
-                        {coverUploading ? (
-                          <Loader2 className="h-8 w-8 text-gray-400 mb-2 animate-spin" />
-                        ) : (
-                          <ImagePlus className="h-8 w-8 text-gray-400 mb-2" />
-                        )}
-                        <p className="text-sm text-gray-500">{coverUploading ? "上传中..." : "点击上传封面图片"}</p>
-                        <p className="text-xs text-gray-400 mt-1">建议尺寸 320x200，支持 jpg/png/webp</p>
-                      </div>
-                    )}
-                  </div>
+                  <CoverImageUpload
+                    imageUrl={coverImage}
+                    uploading={coverUploading}
+                    label="场景封面"
+                    alt="场景封面"
+                    onUpload={handleCoverUpload}
+                    onRemove={() => setCoverImage("")}
+                  />
                 </CardContent>
               </Card>
 

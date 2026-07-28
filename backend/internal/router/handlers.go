@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/handler"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type Handlers struct {
@@ -122,17 +123,17 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		positionExportHandler:         &handler.PositionExportHandler{DB: db},
 		tenantHandler:                 &handler.TenantHandler{DB: db},
 		orgHandler:                    &handler.OrgHandler{DB: db},
-		orgTypeHandler:                &handler.OrgTypeHandler{DB: db},
+		orgTypeHandler:                &handler.OrgTypeHandler{DB: db, Store: store.NewOrgTypesStore(db)},
 		userManagementHandler:         &handler.UserManagementHandler{DB: db},
 		roleHandler:                   &handler.RoleHandler{DB: db},
-		majorHandler:                  &handler.MajorHandler{DB: db},
-		industryHandler:               &handler.IndustryHandler{DB: db},
+		majorHandler:                  &handler.MajorHandler{DB: db, Store: store.NewMajorsStore(db)},
+		industryHandler:               &handler.IndustryHandler{DB: db, Store: store.NewIndustriesStore(db)},
 		resourceCodeHandler:           &handler.ResourceCodeHandler{DB: db},
 		logHandler:                    &handler.LogHandler{DB: db},
 		subscriptionHandler:           &handler.SubscriptionHandler{DB: db},
 		platformLinkHandler:           &handler.PlatformLinkHandler{DB: db},
 		appModuleHandler:              &handler.AppModuleHandler{DB: db},
-		staffTitleHandler:             &handler.StaffTitleHandler{DB: db},
+		staffTitleHandler:             &handler.StaffTitleHandler{DB: db, Store: store.NewStaffTitlesStore(db)},
 		userExtensionFieldHandler:     &handler.UserExtensionFieldHandler{DB: db},
 		userRelationHandler:           &handler.UserRelationHandler{DB: db},
 		workflowHandler:               &handler.WorkflowHandler{DB: db},

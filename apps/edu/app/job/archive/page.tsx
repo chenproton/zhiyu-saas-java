@@ -7,7 +7,7 @@ import type { Position, Batch } from "@/lib/types/job-source"
 import {
   convertCareerPositionToPosition,
   convertJobBatchToBatch,
-} from "@/lib/stores/job-converters"
+} from "@/lib/converters/job-converters"
 import { useToast } from "@zhiyu/ui"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { useIndustryMap, useMajorMap } from "@/lib/use-resource-maps"

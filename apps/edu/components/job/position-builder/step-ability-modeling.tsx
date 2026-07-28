@@ -48,7 +48,7 @@ import {
   ChevronsUpDown,
 } from 'lucide-react'
 import { abilityApi, positionApi } from '@/lib/api'
-import { convertApiAbilityToLocal } from '@/lib/stores/job-converters'
+import { convertApiAbilityToLocal } from '@/lib/converters/job-converters'
 import type { Position, PositionAbilityBinding, CompetencyLevel, Ability } from '@/lib/types/job-source'
 import { toast } from 'sonner'
 

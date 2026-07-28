@@ -22,7 +22,7 @@ import {
 import { cn } from "@/lib/utils"
 import { createTagElement } from "@/lib/dom-utils"
 import { taskEvaluationApi } from "@/lib/api"
-import type { GradeMapping } from "@/lib/mock-data"
+import type { GradeMapping } from "@/lib/types/lesson"
 
 type EvalSubType = "knowledge_mastery" | "operation_standard" | "task_completion" | "result_quality" | "communication" | "collaboration" | "professionalism" | "innovation" | "adaptability"
 

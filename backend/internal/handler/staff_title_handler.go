@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -9,15 +8,15 @@ import (
 	"unicode"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type StaffTitleHandler struct {
-	DB *pgxpool.Pool
+	DB    *pgxpool.Pool
+	Store *store.StaffTitlesStore
 }
 
 type StaffTitleListResponse struct {
@@ -49,7 +48,7 @@ func (h *StaffTitleHandler) List(w http.ResponseWriter, r *http.Request) {
 		SelectColumns: "id, tenant_id, code, name, description, user_count, status, created_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name", "code"},
-		ScanRows:      h.scanStaffTitleRows,
+		ScanRows:      h.Store.ScanRows,
 	}
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
@@ -63,9 +62,12 @@ func (h *StaffTitleHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(items) > 0 {
-		// batchCountUsersByTitle needs the tenant ID from the current request.
 		if tenantID, ok := tenantFilter(middleware.CurrentUser(r)); ok {
-			counts := h.batchCountUsersByTitle(r.Context(), tenantID, items)
+			ids := make([]string, len(items))
+			for i := range items {
+				ids[i] = items[i].ID
+			}
+			counts, _ := h.Store.BatchCountUsersByTitle(r.Context(), tenantID, ids)
 			for i := range items {
 				items[i].UserCount = counts[items[i].ID]
 			}
@@ -77,7 +79,7 @@ func (h *StaffTitleHandler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *StaffTitleHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	title, err := h.fetchStaffTitle(r.Context(), id)
+	title, err := h.Store.GetByID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "职称不存在")
 		return
@@ -85,7 +87,8 @@ func (h *StaffTitleHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if !verifyTenantOwnership(w, r, title.TenantID) {
 		return
 	}
-	title.UserCount = h.countUsersByTitle(r.Context(), id, title.TenantID)
+	count, _ := h.Store.CountUserRefs(r.Context(), title.TenantID, id)
+	title.UserCount = count
 	respondJSON(w, http.StatusOK, title)
 }
 
@@ -122,11 +125,13 @@ func (h *StaffTitleHandler) Create(w http.ResponseWriter, r *http.Request) {
 		code = generateCodeFromName(req.Name)
 	}
 
-	id := uuid.NewString()
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO staff_titles (id, tenant_id, code, name, description, user_count, status)
-		VALUES ($1, $2, $3, $4, $5, 0, $6)
-	`, id, req.TenantID, code, req.Name, req.Description, req.Status)
+	id, err := h.Store.Create(r.Context(), store.StaffTitleCreateParams{
+		TenantID:    req.TenantID,
+		Code:        code,
+		Name:        req.Name,
+		Description: req.Description,
+		Status:      req.Status,
+	})
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "职称代码已存在，请使用其他代码")
@@ -136,7 +141,7 @@ func (h *StaffTitleHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	title, _ := h.fetchStaffTitle(r.Context(), id)
+	title, _ := h.Store.GetByID(r.Context(), id)
 	respondJSON(w, http.StatusCreated, title)
 }
 
@@ -147,7 +152,7 @@ func (h *StaffTitleHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	title, err := h.fetchStaffTitle(r.Context(), id)
+	title, err := h.Store.GetByID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "职称不存在")
 		return
@@ -172,17 +177,19 @@ func (h *StaffTitleHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.DB.Exec(r.Context(), `
-		UPDATE staff_titles SET name = $1, description = $2, status = COALESCE(NULLIF($3, ''), status), updated_at = NOW()
-		WHERE id = $4
-	`, req.Name, req.Description, req.Status, id)
+	err = h.Store.Update(r.Context(), id, store.StaffTitleUpdateParams{
+		Name:        req.Name,
+		Description: req.Description,
+		Status:      req.Status,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "更新职称失败")
 		return
 	}
 
-	title, _ = h.fetchStaffTitle(r.Context(), id)
-	title.UserCount = h.countUsersByTitle(r.Context(), id, title.TenantID)
+	title, _ = h.Store.GetByID(r.Context(), id)
+	count, _ := h.Store.CountUserRefs(r.Context(), title.TenantID, id)
+	title.UserCount = count
 	respondJSON(w, http.StatusOK, title)
 }
 
@@ -193,7 +200,7 @@ func (h *StaffTitleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	title, err := h.fetchStaffTitle(r.Context(), id)
+	title, err := h.Store.GetByID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "职称不存在")
 		return
@@ -202,11 +209,8 @@ func (h *StaffTitleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var userCount int
-	if err := h.DB.QueryRow(r.Context(),
-		`SELECT COUNT(*) FROM users WHERE tenant_id = $1 AND $2 = ANY(title_ids)`,
-		title.TenantID, id,
-	).Scan(&userCount); err != nil {
+	userCount, err := h.Store.CountUserRefs(r.Context(), title.TenantID, id)
+	if err != nil {
 		respondError(w, http.StatusInternalServerError, "检查职称引用失败")
 		return
 	}
@@ -215,8 +219,7 @@ func (h *StaffTitleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.DB.Exec(r.Context(), `DELETE FROM staff_titles WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Store.Delete(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除职称失败")
 		return
 	}
@@ -230,7 +233,7 @@ func (h *StaffTitleHandler) ToggleStatus(w http.ResponseWriter, r *http.Request)
 	}
 
 	id := chi.URLParam(r, "id")
-	title, err := h.fetchStaffTitle(r.Context(), id)
+	title, err := h.Store.GetByID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "职称不存在")
 		return
@@ -250,14 +253,14 @@ func (h *StaffTitleHandler) ToggleStatus(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	_, err = h.DB.Exec(r.Context(), `UPDATE staff_titles SET status = $1, updated_at = NOW() WHERE id = $2`, req.Status, id)
-	if err != nil {
+	if err := h.Store.UpdateStatus(r.Context(), id, req.Status); err != nil {
 		respondError(w, http.StatusInternalServerError, "更新状态失败")
 		return
 	}
 
-	title, _ = h.fetchStaffTitle(r.Context(), id)
-	title.UserCount = h.countUsersByTitle(r.Context(), id, title.TenantID)
+	title, _ = h.Store.GetByID(r.Context(), id)
+	count, _ := h.Store.CountUserRefs(r.Context(), title.TenantID, id)
+	title.UserCount = count
 	respondJSON(w, http.StatusOK, title)
 }
 
@@ -267,73 +270,6 @@ func (h *StaffTitleHandler) canManageUsers(r *http.Request) bool {
 		return false
 	}
 	return canManagePortal(claims)
-}
-
-func (h *StaffTitleHandler) fetchStaffTitle(ctx context.Context, id string) (domain.StaffTitle, error) {
-	var title domain.StaffTitle
-	var description *string
-
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, tenant_id, code, name, description, user_count, status, created_at
-		FROM staff_titles WHERE id = $1
-	`, id).Scan(
-		&title.ID, &title.TenantID, &title.Code, &title.Name, &description, &title.UserCount, &title.Status, &title.CreatedAt,
-	)
-	if err != nil {
-		return title, err
-	}
-	title.Description = description
-	return title, nil
-}
-
-func (h *StaffTitleHandler) scanStaffTitleRows(rows pgx.Rows) ([]domain.StaffTitle, error) {
-	items := make([]domain.StaffTitle, 0)
-	for rows.Next() {
-		var title domain.StaffTitle
-		var description *string
-		if err := rows.Scan(
-			&title.ID, &title.TenantID, &title.Code, &title.Name, &description, &title.UserCount, &title.Status, &title.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		title.Description = description
-		items = append(items, title)
-	}
-	return items, nil
-}
-
-func (h *StaffTitleHandler) batchCountUsersByTitle(ctx context.Context, tenantID string, titles []domain.StaffTitle) map[string]int {
-	ids := make([]string, len(titles))
-	for i, t := range titles {
-		ids[i] = t.ID
-	}
-	rows, err := h.DB.Query(ctx, `
-		SELECT title_id, COUNT(*) FROM users, unnest(title_ids) AS title_id
-		WHERE tenant_id = $1 AND title_id = ANY($2::uuid[])
-		GROUP BY title_id
-	`, tenantID, ids)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-	counts := make(map[string]int)
-	for rows.Next() {
-		var id string
-		var count int
-		if err := rows.Scan(&id, &count); err != nil {
-			continue
-		}
-		counts[id] = count
-	}
-	return counts
-}
-
-func (h *StaffTitleHandler) countUsersByTitle(ctx context.Context, titleID, tenantID string) int {
-	var count int
-	_ = h.DB.QueryRow(ctx, `
-		SELECT COUNT(*) FROM users WHERE tenant_id = $1 AND $2 = ANY(title_ids)
-	`, tenantID, titleID).Scan(&count)
-	return count
 }
 
 func generateCodeFromName(name string) string {

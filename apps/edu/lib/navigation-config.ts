@@ -524,48 +524,6 @@ export const platformModuleDefs: Record<string, PlatformModuleDef> = {
     href: firstHrefFromNavConfig(libraryNavigationConfig),
     subModules: subModulesFromNavConfig(libraryNavigationConfig),
   },
-  alliance: {
-    id: "alliance",
-    label: "产教协同与人才品牌运营平台",
-    icon: "users",
-    href: "#",
-    subModules: [{ id: "alliance-entry", label: "产教协同平台", href: "#" }],
-  },
-  affairs: {
-    id: "affairs",
-    label: "教务服务平台",
-    icon: Calendar,
-    href: "#",
-    subModules: [{ id: "affairs-entry", label: "教务服务", href: "#" }],
-  },
-  ai: {
-    id: "ai",
-    label: "AI 智能服务平台",
-    icon: "sparkles",
-    href: "#",
-    subModules: [{ id: "ai-entry", label: "AI 服务", href: "#" }],
-  },
-  opc: {
-    id: "opc",
-    label: "OPC专区",
-    icon: Rocket,
-    href: "#",
-    subModules: [{ id: "opc-entry", label: "OPC 专区", href: "#" }],
-  },
-  decision: {
-    id: "decision",
-    label: "敏捷决策中心",
-    icon: "barChart",
-    href: "#",
-    subModules: [{ id: "decision-entry", label: "决策中心", href: "#" }],
-  },
-  research: {
-    id: "research",
-    label: "教科研服务中心",
-    icon: "graduationCap",
-    href: "#",
-    subModules: [{ id: "research-entry", label: "教科研服务", href: "#" }],
-  },
 }
 
 const PLATFORM_CARD_DESCRIPTIONS: Record<string, string> = {
@@ -586,12 +544,6 @@ const PLATFORM_CARD_DESCRIPTIONS: Record<string, string> = {
   "ability-result-center": "查看场景任务评价与认证结果",
   "resource-my-resource-center": "管理个人教学资源",
   "resource-resource-center": "管理知识点、能力点与教学资源",
-  "alliance-alliance-entry": "暂未开放",
-  "affairs-affairs-entry": "暂未开放",
-  "ai-ai-entry": "暂未开放",
-  "opc-opc-entry": "暂未开放",
-  "decision-decision-entry": "暂未开放",
-  "research-research-entry": "暂未开放",
 }
 
 export function getPlatformCardModules(platformId: string): PlatformCardModule[] {

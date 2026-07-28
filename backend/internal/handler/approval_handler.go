@@ -175,7 +175,15 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 
 	if req.Action == string(domain.ApprovalStatusRejected) {
 		record.Status = string(domain.ApprovalStatusRejected)
-		tag, err := h.DB.Exec(r.Context(), `
+
+		tx, err := h.DB.Begin(r.Context())
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, "开启事务失败")
+			return
+		}
+		defer tx.Rollback(r.Context())
+
+		tag, err := tx.Exec(r.Context(), `
 			UPDATE approval_records SET status = $1, history = $2, updated_at = NOW()
 			WHERE id = $3 AND status = $4
 		`, record.Status, record.History, id, string(domain.ApprovalStatusPending))
@@ -187,7 +195,21 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusBadRequest, "审批记录不在待处理状态")
 			return
 		}
-		h.syncEntityStatusQuiet(r.Context(), record.TargetType, record.TargetID, string(domain.ApprovalStatusRejected))
+
+		if tableName, ok := entityTableMap[record.TargetType]; ok {
+			if _, err := tx.Exec(r.Context(),
+				fmt.Sprintf("UPDATE %s SET status = $1, updated_at = NOW() WHERE id = $2", tableName),
+				string(domain.ApprovalStatusRejected), record.TargetID,
+			); err != nil {
+				slog.Error("同步实体状态失败", "targetType", record.TargetType, "targetId", record.TargetID, "error", err)
+			}
+		}
+
+		if err := tx.Commit(r.Context()); err != nil {
+			respondError(w, http.StatusInternalServerError, "提交事务失败")
+			return
+		}
+
 		record, _ = h.fetchApproval(r.Context(), id)
 		respondJSON(w, http.StatusOK, record)
 		return
@@ -223,7 +245,14 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 	}
 	newStepIdx := stepIdx + 1
 
-	tag, err := h.DB.Exec(r.Context(), `
+	tx, err := h.DB.Begin(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	tag, err := tx.Exec(r.Context(), `
 		UPDATE approval_records SET status = $1, current_step_idx = $2, history = $3, updated_at = NOW()
 		WHERE id = $4 AND status = $5
 	`, newStatus, newStepIdx, record.History, id, string(domain.ApprovalStatusPending))
@@ -237,7 +266,19 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if newStatus == string(domain.ApprovalStatusApproved) {
-		h.syncEntityStatusQuiet(r.Context(), record.TargetType, record.TargetID, string(domain.ApprovalStatusApproved))
+		if tableName, ok := entityTableMap[record.TargetType]; ok {
+			if _, err := tx.Exec(r.Context(),
+				fmt.Sprintf("UPDATE %s SET status = $1, updated_at = NOW() WHERE id = $2", tableName),
+				string(domain.ApprovalStatusApproved), record.TargetID,
+			); err != nil {
+				slog.Error("同步实体状态失败", "targetType", record.TargetType, "targetId", record.TargetID, "error", err)
+			}
+		}
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
+		return
 	}
 
 	record, _ = h.fetchApproval(r.Context(), id)

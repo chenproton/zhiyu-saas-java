@@ -114,19 +114,52 @@ func parsePageLimit(s string, defaultVal int) (int, error) {
 	return v, nil
 }
 
-func executeCountQuery(ctx context.Context, db interface {
-	QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row
-}, query string, args []interface{}) int {
-	var total int
-	if err := db.QueryRow(ctx, query, args...).Scan(&total); err != nil {
-		slog.Error("count query failed", "error", err, "query", query)
-		return 0
-	}
-	return total
-}
-
 func itoa(i int) string {
 	return strconv.Itoa(i)
+}
+
+// withTx 创建事务、执行 fn，根据 fn 返回值决定 commit 或 rollback。
+// fn 返回 error 时自动 rollback，否则 commit。
+func withTx(ctx context.Context, db *pgxpool.Pool, fn func(tx pgx.Tx) error) error {
+	tx, err := db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("开启事务失败: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	if err := fn(tx); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// lookupIDByNameTables 是 lookupIDByName 允许查询的表名白名单。
+var lookupIDByNameTables = []string{
+	"ability_points", "ability_domains", "career_positions", "certificate_library",
+	"courses", "evaluation_batches", "exams", "industries", "institutions",
+	"knowledge_points", "majors", "organizations", "question_banks", "questions",
+	"resource_library", "roles", "scenarios", "staff_titles", "subscription_packages", "users",
+}
+
+// lookupIDByName 按表名+租户+名称查询记录 ID，不存在时返回空字符串。
+func lookupIDByName(ctx context.Context, db *pgxpool.Pool, tableName, tenantID, name string) (string, error) {
+	table, err := sanitizeIdentifier(tableName, lookupIDByNameTables)
+	if err != nil {
+		return "", fmt.Errorf("不支持的表名: %s", tableName)
+	}
+	var id string
+	err = db.QueryRow(ctx,
+		fmt.Sprintf("SELECT id FROM %s WHERE tenant_id=$1 AND name=$2 LIMIT 1", table),
+		tenantID, name,
+	).Scan(&id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", nil
+		}
+		slog.Error("lookupIDByName查询失败", "table", tableName, "error", err)
+		return "", err
+	}
+	return id, nil
 }
 
 func parseFloat(s string, defaultVal float64) (float64, error) {

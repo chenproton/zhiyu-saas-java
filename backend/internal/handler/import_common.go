@@ -1,9 +1,12 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/xuri/excelize/v2"
 )
 
 // ImportPreviewItem 单条重复记录预览信息。
@@ -106,4 +109,23 @@ func parseIntDefault(s string, defaultVal int) int {
 		return defaultVal
 	}
 	return v
+}
+
+// parseUploadedExcel parses the multipart form and opens the uploaded Excel file.
+func parseUploadedExcel(r *http.Request) (*excelize.File, []string, error) {
+	if err := r.ParseMultipartForm(50 << 20); err != nil {
+		return nil, nil, fmt.Errorf("表单数据无效")
+	}
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		return nil, nil, fmt.Errorf("缺少上传文件")
+	}
+	defer file.Close()
+
+	xlsx, err := excelize.OpenReader(file)
+	if err != nil {
+		return nil, nil, fmt.Errorf("解析 Excel 文件失败")
+	}
+	sheets := xlsx.GetSheetList()
+	return xlsx, sheets, nil
 }

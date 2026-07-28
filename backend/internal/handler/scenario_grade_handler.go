@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -60,7 +61,8 @@ func (h *ScenarioGradeHandler) ListGradeMappings(w http.ResponseWriter, r *http.
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, err.Error())
+		slog.Error("查询场景等级映射列表失败", "error", err)
+		respondError(w, http.StatusInternalServerError, "查询场景等级映射列表失败")
 		return
 	}
 

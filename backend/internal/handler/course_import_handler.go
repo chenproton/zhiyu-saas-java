@@ -45,24 +45,6 @@ type nodeRow struct {
 	courseID            string
 }
 
-func (h *CourseImportHandler) parseUploadedExcel(r *http.Request) (*excelize.File, []string, error) {
-	if err := r.ParseMultipartForm(50 << 20); err != nil {
-		return nil, nil, fmt.Errorf("表单数据无效")
-	}
-	file, _, err := r.FormFile("file")
-	if err != nil {
-		return nil, nil, fmt.Errorf("缺少上传文件")
-	}
-	defer file.Close()
-
-	xlsx, err := excelize.OpenReader(file)
-	if err != nil {
-		return nil, nil, fmt.Errorf("解析 Excel 文件失败")
-	}
-	sheets := xlsx.GetSheetList()
-	return xlsx, sheets, nil
-}
-
 func (h *CourseImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
@@ -75,7 +57,7 @@ func (h *CourseImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	xlsx, _, err := h.parseUploadedExcel(r)
+	xlsx, _, err := parseUploadedExcel(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
@@ -110,7 +92,7 @@ func (h *CourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request
 	userID := claims.UserID
 	overwrite := importOverwriteParam(r)
 
-	xlsx, sheets, err := h.parseUploadedExcel(r)
+	xlsx, sheets, err := parseUploadedExcel(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, err.Error())
 		return

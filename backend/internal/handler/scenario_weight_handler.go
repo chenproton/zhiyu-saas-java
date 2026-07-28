@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/jackc/pgx/v5"
@@ -56,7 +57,8 @@ func (h *ScenarioWeightHandler) ListWeights(w http.ResponseWriter, r *http.Reque
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, err.Error())
+		slog.Error("查询场景权重配置列表失败", "error", err)
+		respondError(w, http.StatusInternalServerError, "查询场景权重配置列表失败")
 		return
 	}
 

@@ -153,7 +153,11 @@ func (h *TenantHandler) AdminUpdateAdmin(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	updated, _ := h.fetchTenantAdmin(r.Context(), tenantID, adminID)
+	updated, err2 := h.fetchTenantAdmin(r.Context(), tenantID, adminID)
+	if err2 != nil {
+		respondError(w, http.StatusInternalServerError, "获取更新后的管理员失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, updated)
 }
 

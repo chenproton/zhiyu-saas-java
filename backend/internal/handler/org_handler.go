@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"fmt"
 	"net/http"
 	"sort"
@@ -195,6 +196,7 @@ func (h *OrgHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.validateOrgRefs(r.Context(), req.TenantID, req.TypeID, req.ParentID); err != nil {
+		slog.Error("组织校验失败", "error", err)
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -267,6 +269,7 @@ func (h *OrgHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.validateOrgRefs(r.Context(), org.TenantID, req.TypeID, req.ParentID); err != nil {
+		slog.Error("组织校验失败", "error", err)
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}

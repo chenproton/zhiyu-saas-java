@@ -1,21 +1,21 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type IndustryHandler struct {
-	DB *pgxpool.Pool
+	DB    *pgxpool.Pool
+	Store *store.IndustriesStore
 }
 
 type IndustryListResponse struct {
@@ -62,14 +62,15 @@ func (h *IndustryHandler) List(w http.ResponseWriter, r *http.Request) {
 				qb.addCondition("enabled = " + qb.nextArg(enabledStr == "true"))
 			}
 		},
-		ScanRows: h.scanIndustryRows,
+		ScanRows: h.Store.ScanRows,
 	})
 	if err != nil {
 		if errors.Is(err, ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, err.Error())
+		slog.Error("查询行业列表失败", "error", err)
+		respondError(w, http.StatusInternalServerError, "查询行业列表失败")
 		return
 	}
 
@@ -78,7 +79,7 @@ func (h *IndustryHandler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *IndustryHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	industry, err := h.fetchIndustry(r.Context(), id)
+	industry, err := h.Store.GetByID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "行业不存在")
 		return
@@ -110,12 +111,14 @@ func (h *IndustryHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := uuid.NewString()
-
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO industries (id, tenant_id, code, name, parent_id, enabled, sort_order)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`, id, req.TenantID, req.Code, req.Name, req.ParentID, req.Enabled, req.SortOrder)
+	id, err := h.Store.Create(r.Context(), store.IndustryCreateParams{
+		TenantID:  req.TenantID,
+		Code:      req.Code,
+		Name:      req.Name,
+		ParentID:  req.ParentID,
+		Enabled:   req.Enabled,
+		SortOrder: req.SortOrder,
+	})
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "行业代码已存在，请使用其他代码")
@@ -125,7 +128,7 @@ func (h *IndustryHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	industry, _ := h.fetchIndustry(r.Context(), id)
+	industry, _ := h.Store.GetByID(r.Context(), id)
 	respondJSON(w, http.StatusCreated, industry)
 }
 
@@ -137,7 +140,7 @@ func (h *IndustryHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	industry, err := h.fetchIndustry(r.Context(), id)
+	industry, err := h.Store.GetByID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "行业不存在")
 		return
@@ -157,10 +160,13 @@ func (h *IndustryHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.DB.Exec(r.Context(), `
-		UPDATE industries SET code = $1, name = $2, parent_id = $3, enabled = $4, sort_order = $5, updated_at = NOW()
-		WHERE id = $6
-	`, req.Code, req.Name, req.ParentID, req.Enabled, req.SortOrder, id)
+	err = h.Store.Update(r.Context(), id, store.IndustryUpdateParams{
+		Code:      req.Code,
+		Name:      req.Name,
+		ParentID:  req.ParentID,
+		Enabled:   req.Enabled,
+		SortOrder: req.SortOrder,
+	})
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "行业代码已存在，请使用其他代码")
@@ -170,7 +176,7 @@ func (h *IndustryHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	industry, _ = h.fetchIndustry(r.Context(), id)
+	industry, _ = h.Store.GetByID(r.Context(), id)
 	respondJSON(w, http.StatusOK, industry)
 }
 
@@ -182,7 +188,7 @@ func (h *IndustryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	industry, err := h.fetchIndustry(r.Context(), id)
+	industry, err := h.Store.GetByID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "行业不存在")
 		return
@@ -191,12 +197,9 @@ func (h *IndustryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var childCount int
-	if err := h.DB.QueryRow(r.Context(),
-		`SELECT COUNT(*) FROM industries WHERE parent_id = $1`,
-		id,
-	).Scan(&childCount); err != nil {
-		respondError(w, http.StatusInternalServerError, "检查child industries失败")
+	childCount, err := h.Store.CountChildren(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "检查子行业失败")
 		return
 	}
 	if childCount > 0 {
@@ -204,43 +207,9 @@ func (h *IndustryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.DB.Exec(r.Context(), `DELETE FROM industries WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Store.Delete(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除行业失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
-}
-
-func (h *IndustryHandler) fetchIndustry(ctx context.Context, id string) (domain.Industry, error) {
-	var i domain.Industry
-	var parentID *string
-
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, tenant_id, code, name, parent_id, enabled, sort_order, created_at, updated_at
-		FROM industries WHERE id = $1
-	`, id).Scan(
-		&i.ID, &i.TenantID, &i.Code, &i.Name, &parentID, &i.Enabled, &i.SortOrder, &i.CreatedAt, &i.UpdatedAt,
-	)
-	if err != nil {
-		return i, err
-	}
-	i.ParentID = parentID
-	return i, nil
-}
-
-func (h *IndustryHandler) scanIndustryRows(rows pgx.Rows) ([]domain.Industry, error) {
-	items := make([]domain.Industry, 0)
-	for rows.Next() {
-		var i domain.Industry
-		var parentID *string
-		if err := rows.Scan(
-			&i.ID, &i.TenantID, &i.Code, &i.Name, &parentID, &i.Enabled, &i.SortOrder, &i.CreatedAt, &i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		i.ParentID = parentID
-		items = append(items, i)
-	}
-	return items, nil
 }

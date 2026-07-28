@@ -59,9 +59,10 @@ import {
   convertCareerPositionToPosition,
   convertJobBatchToBatch,
   convertApiRecommendationToLocal,
-} from '@/lib/stores/job-converters'
+} from '@/lib/converters/job-converters'
 import type { PositionRecommendation as ApiPositionRecommendation } from '@/lib/types/job'
 import { useToast } from "@zhiyu/ui"
+import { ConfirmDialog } from "@zhiyu/ui"
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return '-'
@@ -82,6 +83,7 @@ export default function PostRecommendPage() {
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [selectedPositionId, setSelectedPositionId] = useState<string>('')
   const [positionSearchOpen, setPositionSearchOpen] = useState(false)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -161,6 +163,8 @@ export default function PostRecommendPage() {
       await loadData()
     } catch (err: any) {
       toast({ variant: 'destructive', title: '删除失败', description: err?.message || '请稍后重试' })
+    } finally {
+      setDeleteTargetId(null)
     }
   }
 
@@ -413,7 +417,7 @@ export default function PostRecommendPage() {
                               variant="ghost"
                               size="icon"
                               className="text-destructive hover:text-destructive"
-                              onClick={() => handleDelete(rec.id)}
+                              onClick={() => setDeleteTargetId(rec.id)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -428,6 +432,14 @@ export default function PostRecommendPage() {
           </CardContent>
         </Card>
       </div>
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTargetId(null) }}
+        title="确认删除"
+        description="确定要删除该推荐吗？此操作不可撤销。"
+        variant="destructive"
+        onConfirm={() => { if (deleteTargetId) handleDelete(deleteTargetId) }}
+      />
     </div>
   )
 }
