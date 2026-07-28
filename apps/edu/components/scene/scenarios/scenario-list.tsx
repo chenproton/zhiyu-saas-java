@@ -4,8 +4,6 @@ import { Copy, Eye, GitBranch, Pencil, Rocket, Send, Trash2, Undo2, CheckCircle,
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { PrdAnnotation } from "@/components/prd-annotation"
-import { getAnnotation } from "@/lib/prd-annotations"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { HoverActionBar } from "@/components/shared/hover-action-bar"
 import { cn } from "@/lib/utils"
@@ -80,30 +78,14 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
             aria-label="全选"
           />
         </div>
-        <PrdAnnotation data={getAnnotation("list-header-name")} className="col-span-2 block">
-          <div>场景名称</div>
-        </PrdAnnotation>
-        <PrdAnnotation data={getAnnotation("list-header-code")} className="col-span-1 block">
-          <div>场景编码</div>
-        </PrdAnnotation>
-        <PrdAnnotation data={getAnnotation("list-header-version")} className="col-span-1 block text-center">
-          <div>版本</div>
-        </PrdAnnotation>
-        <PrdAnnotation data={getAnnotation("list-header-position")} className="col-span-1 block">
-          <div>所属岗位</div>
-        </PrdAnnotation>
-        <PrdAnnotation data={getAnnotation("list-header-batch")} className="col-span-2 block">
-          <div>所属批次分组</div>
-        </PrdAnnotation>
-        <PrdAnnotation data={getAnnotation("list-header-creator")} className="col-span-1 block">
-          <div>创建人</div>
-        </PrdAnnotation>
-        <PrdAnnotation data={getAnnotation("list-header-publish-time")} className="col-span-1 block">
-          <div>发布时间</div>
-        </PrdAnnotation>
-        <PrdAnnotation data={getAnnotation("list-header-task-count")} className="col-span-1 block text-center">
-          <div>场景任务数量</div>
-        </PrdAnnotation>
+        <div className="col-span-2 block">场景名称</div>
+        <div className="col-span-1 block">场景编码</div>
+        <div className="col-span-1 block text-center">版本</div>
+        <div className="col-span-1 block">所属岗位</div>
+        <div className="col-span-2 block">所属批次分组</div>
+        <div className="col-span-1 block">创建人</div>
+        <div className="col-span-1 block">发布时间</div>
+        <div className="col-span-1 block text-center">场景任务数量</div>
         <div className="col-span-1 text-right">操作</div>
       </div>
 
@@ -128,11 +110,9 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                 />
               </div>
               <div className="col-span-2">
-                <PrdAnnotation data={getAnnotation("list-link-name")} className="block">
-                  <Link href={`${basePath}/${scenario.id}/edit`} className="block">
+                <Link href={`${basePath}/${scenario.id}/edit`} className="block">
                     <p className="text-sm font-medium text-slate-900 line-clamp-1 hover:text-primary">{scenario.name}</p>
                   </Link>
-                </PrdAnnotation>
                 <StatusBadge status={scenario.status} />
               </div>
               <div className="col-span-1 text-sm text-slate-600 truncate">{scenario.code}</div>
@@ -142,43 +122,34 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
               <div className="col-span-1 text-xs text-slate-500 truncate">{scenario.creatorName}</div>
               <div className="col-span-1 text-xs text-slate-500 truncate">{scenario.publishTime || "-"}</div>
               <div className="col-span-1 text-center">
-                <PrdAnnotation data={getAnnotation("list-link-tasks")}>
-                  <Link
+                <Link
                     href={`${basePath}/${scenario.id}/edit/tasks`}
                     className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
                   >
                     {scenario.taskCount ?? scenario.tasks?.length ?? 0}
                   </Link>
-                </PrdAnnotation>
               </div>
               <div className="col-span-1 text-right relative">
                 <HoverActionBar>
-                  <PrdAnnotation data={getAnnotation("row-action-view")}>
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
                       <Link href={`/scene/landing/${scenario.id}`}>
                         <Eye className="mr-1 h-3 w-3" />
                         查看详情
                       </Link>
                     </Button>
-                  </PrdAnnotation>
-                  <PrdAnnotation data={getAnnotation("row-action-edit")}>
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
                       <Link href={`${basePath}/${scenario.id}/edit`}>
                         <Pencil className="mr-1 h-3 w-3" />
                         编辑
                       </Link>
                     </Button>
-                  </PrdAnnotation>
-                  <PrdAnnotation data={getAnnotation("row-action-tasks")}>
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
                       <Link href={`${basePath}/${scenario.id}/edit/tasks`}>
                         <GitBranch className="mr-1 h-3 w-3" />
                         编排任务
                       </Link>
                     </Button>
-                  </PrdAnnotation>
-                  <PrdAnnotation data={getAnnotation("row-action-clone")}>
-                    <Button
+                  <Button
                       variant="ghost"
                       size="sm"
                       className="h-7 px-2 text-xs"
@@ -190,9 +161,7 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                       <Copy className="mr-1 h-3 w-3" />
                       克隆场景
                     </Button>
-                  </PrdAnnotation>
-                  <PrdAnnotation data={getAnnotation("row-action-invite")}>
-                    <Button
+                  <Button
                       variant="ghost"
                       size="sm"
                       className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
@@ -204,10 +173,8 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                       <UserPlus className="mr-1 h-3 w-3" />
                       邀请共建
                     </Button>
-                  </PrdAnnotation>
                   {(scenario.status === "draft" || scenario.status === "rejected") && onSubmitApproval && (
-                    <PrdAnnotation data={getAnnotation("row-action-submit")}>
-                      <Button
+                    <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
@@ -219,11 +186,9 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                         <Send className="mr-1 h-3 w-3" />
                         提交审批
                       </Button>
-                    </PrdAnnotation>
                   )}
                   {scenario.status === "pending" && onWithdrawApproval && (
-                    <PrdAnnotation data={getAnnotation("row-action-withdraw")}>
-                      <Button
+                    <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs text-amber-600 hover:text-amber-700"
@@ -235,11 +200,9 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                         <Undo2 className="mr-1 h-3 w-3" />
                         撤回审批
                       </Button>
-                    </PrdAnnotation>
                   )}
                   {scenario.status === "pending" && onApprove && (
-                    <PrdAnnotation data={getAnnotation("row-action-approve")}>
-                      <Button
+                    <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
@@ -251,11 +214,9 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                         <CheckCircle className="mr-1 h-3 w-3" />
                         通过
                       </Button>
-                    </PrdAnnotation>
                   )}
                   {scenario.status === "pending" && onReject && (
-                    <PrdAnnotation data={getAnnotation("row-action-reject")}>
-                      <Button
+                    <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
@@ -267,11 +228,9 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                         <XCircle className="mr-1 h-3 w-3" />
                         驳回
                       </Button>
-                    </PrdAnnotation>
                   )}
                   {scenario.status === "approved" && onPublish && (
-                    <PrdAnnotation data={getAnnotation("row-action-publish")}>
-                      <Button
+                    <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700"
@@ -283,11 +242,9 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                         <Rocket className="mr-1 h-3 w-3" />
                         发布
                       </Button>
-                    </PrdAnnotation>
                   )}
                   {scenario.status === "published" && onUnpublish && (
-                    <PrdAnnotation data={getAnnotation("row-action-unpublish")}>
-                      <Button
+                    <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
@@ -299,11 +256,9 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                         <ArrowDownFromLine className="mr-1 h-3 w-3" />
                         取消发布
                       </Button>
-                    </PrdAnnotation>
                   )}
                   {scenario.status !== "pending" && scenario.status !== "archived" && onArchive && (
-                    <PrdAnnotation data={getAnnotation("row-action-archive")}>
-                      <Button
+                    <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs text-purple-600 hover:text-purple-700"
@@ -315,11 +270,9 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                         <Archive className="mr-1 h-3 w-3" />
                         归档
                       </Button>
-                    </PrdAnnotation>
                   )}
                   {scenario.status === "rejected" && onViewRejectReason && (
-                    <PrdAnnotation data={getAnnotation("row-action-reject-reason")}>
-                      <Button
+                    <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
@@ -331,11 +284,9 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                         <MessageSquare className="mr-1 h-3 w-3" />
                         查看驳回原因
                       </Button>
-                    </PrdAnnotation>
                   )}
                   {onDelete && (
-                    <PrdAnnotation data={getAnnotation("row-action-delete")}>
-                      <Button
+                    <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
@@ -347,7 +298,6 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                         <Trash2 className="mr-1 h-3 w-3" />
                         删除
                       </Button>
-                    </PrdAnnotation>
                   )}
                 </HoverActionBar>
               </div>

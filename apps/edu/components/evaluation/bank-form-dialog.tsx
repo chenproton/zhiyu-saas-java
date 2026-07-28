@@ -29,9 +29,6 @@ import { evaluationBatchApi, fileApi } from "@/lib/api"
 import { UserSelector } from "@/components/shared/user-selector"
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@zhiyu/ui"
-import { PrdAnnotation } from "@/components/prd-annotation"
-import { getAnnotation } from "@/lib/prd-annotations"
-
 interface BankFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -53,8 +50,6 @@ export function BankFormDialog({
   const [collaboratorIds, setCollaboratorIds] = useState<string[]>([])
   const [batchId, setBatchId] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const fieldGroupRef = useRef<HTMLDivElement>(null)
-
   const [batches, setBatches] = useState<{ id: string; name: string }[]>([])
   const [loadingBatches, setLoadingBatches] = useState(false)
 
@@ -137,7 +132,7 @@ export function BankFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent annotationContext="bank-form" annotationContainerRef={fieldGroupRef}>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{bank ? "编辑题库" : "新建题库"}</DialogTitle>
           <DialogDescription>
@@ -145,10 +140,10 @@ export function BankFormDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <FieldGroup ref={fieldGroupRef} className="max-h-[60vh] overflow-y-auto py-4">
+          <FieldGroup className="max-h-[60vh] overflow-y-auto py-4">
             <Field>
               <FieldLabel htmlFor="name">
-                <PrdAnnotation data={getAnnotation("bf-name")}>题库名称</PrdAnnotation>
+                题库名称
               </FieldLabel>
               <Input
                 id="name"
@@ -160,7 +155,7 @@ export function BankFormDialog({
             </Field>
             <Field>
               <FieldLabel htmlFor="description">
-                <PrdAnnotation data={getAnnotation("bf-description")}>题库简介</PrdAnnotation>
+                题库简介
               </FieldLabel>
               <Textarea
                 id="description"
@@ -172,7 +167,7 @@ export function BankFormDialog({
             </Field>
             <Field>
               <FieldLabel>
-                <PrdAnnotation data={getAnnotation("bf-cover")}>封面</PrdAnnotation>
+                封面
               </FieldLabel>
               <FieldDescription>支持上传 5MB 以内的图片文件</FieldDescription>
               <input
@@ -212,7 +207,7 @@ export function BankFormDialog({
             </Field>
             <Field>
               <FieldLabel>
-                <PrdAnnotation data={getAnnotation("bf-collaborators")}>共建人</PrdAnnotation>
+                共建人
               </FieldLabel>
               <FieldDescription>选择可以共同维护此题库的用户</FieldDescription>
               <div className="mt-2">
@@ -228,7 +223,7 @@ export function BankFormDialog({
             </Field>
             <Field>
               <FieldLabel>
-                <PrdAnnotation data={getAnnotation("bf-batch")}>所属批次</PrdAnnotation>
+                所属批次
               </FieldLabel>
               <Select value={batchId || "none"} onValueChange={(v) => setBatchId(v === "none" ? "" : v)} disabled={loadingBatches}>
                 <SelectTrigger>
@@ -249,7 +244,7 @@ export function BankFormDialog({
             {bank && (
               <Field>
                 <FieldLabel>
-                  <PrdAnnotation data={getAnnotation("bf-version")}>当前版本号</PrdAnnotation>
+                  当前版本号
                 </FieldLabel>
                 <div className="flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm">
                   {bank.version}

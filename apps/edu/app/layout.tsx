@@ -4,7 +4,6 @@ import { AuthProvider } from '@/components/auth-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import { ChunkErrorHandler } from '@/components/chunk-error-handler'
 import { DataProvider as EvaluationDataProvider } from '@/components/providers/data-provider'
-import { AnnotationEditProvider } from '@/lib/annotation-edit-context'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -31,10 +30,8 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
               <EvaluationDataProvider>
-                <AnnotationEditProvider>
-                  <ChunkErrorHandler />
-                  {children}
-                </AnnotationEditProvider>
+                <ChunkErrorHandler />
+                {children}
               </EvaluationDataProvider>
           </AuthProvider>
         </ThemeProvider>

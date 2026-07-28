@@ -31,10 +31,6 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recha
 import type { Exam, ExamUsage } from "@/lib/types"
 import { examApi, examUsageApi, examResultApi } from "@/lib/api"
 import { useToast, StatusBadge } from "@zhiyu/ui"
-
-import { PrdAnnotation } from "@/components/prd-annotation"
-import { getAnnotation } from "@/lib/prd-annotations"
-
 /* ─── 题型标签映射 ─── */
 const typeLabelMap: Record<string, string> = {
   single: "单选题",
@@ -232,7 +228,6 @@ export default function ExamDetailPage() {
   /* ─── 提交成功 ─── */
   if (submitted) {
     return (
-      <PrdAnnotation data={getAnnotation("le-page")}>
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: 24 }}>
         <div style={{ marginBottom: 24 }}>
           <Link href="/evaluation/landing/exams">
@@ -257,14 +252,12 @@ export default function ExamDetailPage() {
           </div>
         </div>
       </div>
-      </PrdAnnotation>
     )
   }
 
   /* ─── 答题中 ─── */
   if (started) {
     return (
-      <PrdAnnotation data={getAnnotation("le-page")}>
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: 24 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
           <h1 style={{ fontSize: 18, fontWeight: 700 }}>{exam.name}</h1>
@@ -384,13 +377,11 @@ export default function ExamDetailPage() {
           </div>
         </div>
       </div>
-      </PrdAnnotation>
     )
   }
 
   /* ─── 概览页 ─── */
   return (
-    <PrdAnnotation data={getAnnotation("le-page")}>
     <div style={{ maxWidth: 1400, margin: "0 auto", padding: 24 }}>
       <div style={{ marginBottom: 24 }}>
         <Link href="/evaluation/landing/exams">
@@ -404,19 +395,11 @@ export default function ExamDetailPage() {
       <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e5e6eb", overflow: "hidden", marginBottom: 24 }}>
         <div style={{ padding: "24px 32px", background: "linear-gradient(135deg, #3370ff, #7c3aed)", color: "white", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <PrdAnnotation data={getAnnotation("le-title")}>
-              <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>{exam.name}</h1>
-            </PrdAnnotation>
-            <PrdAnnotation data={getAnnotation("le-desc")}>
-              <p style={{ fontSize: 14, opacity: 0.9 }}>{exam.description}</p>
-            </PrdAnnotation>
+            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>{exam.name}</h1>
+            <p style={{ fontSize: 14, opacity: 0.9 }}>{exam.description}</p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <PrdAnnotation data={getAnnotation("le-status")}>
-              <PrdAnnotation data={getAnnotation("le-time-status")}>
-                <StatusBadge status={exam.status} />
-              </PrdAnnotation>
-            </PrdAnnotation>
+            <StatusBadge status={exam.status} />
           </div>
         </div>
         <div style={{ padding: "24px 32px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24 }}>
@@ -426,8 +409,7 @@ export default function ExamDetailPage() {
             { icon: <BarChart3 style={{ width: 18, height: 18 }} />, label: "总分", value: `${totalScore} 分` },
             { icon: <Users style={{ width: 18, height: 18 }} />, label: "考试对象", value: `${targetAudience.type}（${targetAudience.detail}）`, clickable: examAccessState === 'not-in-range', key: 'audience' }
           ].map((item, i) => (
-            <PrdAnnotation key={i} data={getAnnotation(["le-duration", "le-question-count", "le-total-score", "le-target"][i])}>
-              <div
+            <div
                 style={{
                   textAlign: "center",
                   padding: "16px 0",
@@ -440,7 +422,7 @@ export default function ExamDetailPage() {
                 onClick={() => item.clickable && setShowAudienceDialog(true)}
                 onMouseEnter={(e) => { if (item.clickable) { e.currentTarget.style.background = "#ffedd5" } }}
                 onMouseLeave={(e) => { if (item.clickable) { e.currentTarget.style.background = "#fff7ed" } }}
-              >
+               key={i}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, color: item.clickable ? "#f97316" : "#3370ff", marginBottom: 6 }}>
                   {item.icon} <span style={{ fontSize: 13, fontWeight: 500 }}>{item.label}</span>
                 </div>
@@ -452,7 +434,6 @@ export default function ExamDetailPage() {
                   <div style={{ fontSize: 11, color: "#f97316", marginTop: 4 }}>点击查看范围详情</div>
                 )}
               </div>
-            </PrdAnnotation>
           ))}
         </div>
       </div>
@@ -489,8 +470,7 @@ export default function ExamDetailPage() {
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <PrdAnnotation data={getAnnotation("le-question-list")}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     {questionTypeStats.map((stat: typeof questionTypeStats[0]) => (
                       <div key={stat.name} style={{ display: "flex", alignItems: "center", gap: 8, padding: 10, background: "#f5f6f7", borderRadius: 8 }}>
                         <span style={{ width: 10, height: 10, borderRadius: "50%", background: stat.color, flexShrink: 0 }} />
@@ -499,7 +479,6 @@ export default function ExamDetailPage() {
                       </div>
                     ))}
                   </div>
-                </PrdAnnotation>
               </>
             ) : (
               <div style={{ textAlign: "center", fontSize: 13, color: "#8f959e", padding: 20 }}>暂无题目数据</div>
@@ -531,7 +510,7 @@ export default function ExamDetailPage() {
             <p>5. 考试期间系统将自动保存答题进度。</p>
           </div>
           <div style={{ marginTop: 24, display: "flex", justifyContent: "center" }}>
-            <PrdAnnotation data={getAnnotation("le-start-btn")}>
+            
               {canStart ? (
                 <Button size="lg" style={{ gap: 8, background: "#3370ff" }} onClick={handleStart}>
                   <PlayCircle style={{ width: 20, height: 20 }} /> 开始考试
@@ -542,7 +521,7 @@ export default function ExamDetailPage() {
                   {!currentUsage ? '暂无考试安排' : examAccessState === 'not-in-range' ? '您不在本次考试范围内' : examAccessState === 'not-started' ? '考试尚未开始' : !isSceneTask && (exam.status === "draft" || exam.status === "pending" || exam.status === "rejected" || exam.status === "approved") ? "考试未发布" : "考试已结束"}
                 </Button>
               )}
-            </PrdAnnotation>
+            
           </div>
         </div>
       </div>
@@ -562,6 +541,5 @@ export default function ExamDetailPage() {
         </DialogContent>
       </Dialog>
     </div>
-    </PrdAnnotation>
   )
 }

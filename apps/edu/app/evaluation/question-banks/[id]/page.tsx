@@ -61,9 +61,6 @@ const TYPE_COLORS: Record<QuestionType, string> = {
   essay: "bg-rose-500",
   short_answer: "bg-teal-500",
 }
-
-import { PrdAnnotation } from "@/components/prd-annotation"
-import { getAnnotation } from "@/lib/prd-annotations"
 import { TableRowActions } from "@/components/shared/table-row-actions"
 
 export default function QuestionBankDetailPage() {
@@ -460,14 +457,11 @@ export default function QuestionBankDetailPage() {
           </Tabs>
         </div>
         <div className="flex items-center gap-2">
-          <PrdAnnotation data={getAnnotation("qbd-btn-import")}>
-            <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
               <Upload className="mr-1 size-3.5" />
               导入题目
             </Button>
-          </PrdAnnotation>
-          <PrdAnnotation data={getAnnotation("qbd-btn-add-question")}>
-            <DropdownMenu>
+          <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm">
                   <Plus className="mr-1 size-3.5" />
@@ -490,7 +484,6 @@ export default function QuestionBankDetailPage() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-          </PrdAnnotation>
         </div>
       </div>
 
@@ -560,20 +553,20 @@ export default function QuestionBankDetailPage() {
                 </TableHead>
               )}
               <TableHead className="w-[40%]">
-                <PrdAnnotation data={getAnnotation("qbd-col-content")}>题目内容</PrdAnnotation>
+                题目内容
               </TableHead>
               <TableHead className="w-[100px]">
-                <PrdAnnotation data={getAnnotation("qbd-col-type")}>题型</PrdAnnotation>
+                题型
               </TableHead>
               <TableHead className="w-[80px]">
-                <PrdAnnotation data={getAnnotation("qbd-col-difficulty")}>难度</PrdAnnotation>
+                难度
               </TableHead>
               <TableHead className="w-[100px]">
-                <PrdAnnotation data={getAnnotation("qbd-col-source")}>添加来源</PrdAnnotation>
+                添加来源
               </TableHead>
               <TableHead className="w-[120px]">创建时间</TableHead>
               <TableHead className="w-[120px] text-right">
-                <PrdAnnotation data={getAnnotation("qbd-col-actions")}>操作</PrdAnnotation>
+                操作
               </TableHead>
             </TableRow>
           </TableHeader>

@@ -21,8 +21,6 @@ import {
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { createTagElement } from "@/lib/dom-utils"
-import { PrdAnnotation } from "@/components/prd-annotation"
-import { getAnnotation } from "@/lib/prd-annotations"
 import { taskEvaluationApi } from "@/lib/api"
 import type { GradeMapping } from "@/lib/mock-data"
 
@@ -674,8 +672,7 @@ export function MethodDialogContent({
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-medium">评价量规配置表</p>
               <div className="flex items-center gap-2">
-                <PrdAnnotation data={getAnnotation("eval-rule-onekey-split")}>
-                  <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
+                <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
                     const count = info.points.length
                     if (count === 0) return
                     const base = Math.floor(100 / count)
@@ -685,12 +682,9 @@ export function MethodDialogContent({
                   }}>
                     <RotateCcw className="h-3.5 w-3.5 mr-1" />一键均分
                   </Button>
-                </PrdAnnotation>
-                <PrdAnnotation data={getAnnotation("eval-rule-add-dimension")}>
-                  <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => addEvalPoint(info.field, { name: "", types: draftScheme.types.length ? draftScheme.types : undefined })}>
+                <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => addEvalPoint(info.field, { name: "", types: draftScheme.types.length ? draftScheme.types : undefined })}>
                     <Plus className="h-3.5 w-3.5 mr-1" />添加评价维度
                   </Button>
-                </PrdAnnotation>
               </div>
             </div>
             <div className="overflow-x-auto max-w-full">
@@ -778,8 +772,7 @@ export function MethodDialogContent({
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-medium">评分规则配置表</p>
               <div className="flex items-center gap-2">
-                <PrdAnnotation data={getAnnotation("eval-rule-onekey-split")}>
-                  <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
+                <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
                     const items = draftScheme.scoreRuleItems || []
                     const count = items.length
                     if (count === 0) return
@@ -794,9 +787,7 @@ export function MethodDialogContent({
                   }}>
                     <RotateCcw className="h-3.5 w-3.5 mr-1" />一键均分
                   </Button>
-                </PrdAnnotation>
-                <PrdAnnotation data={getAnnotation("eval-rule-add-item")}>
-                  <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
+                <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
                     const newItem: ScoreRuleItem = { id: `sr-${Date.now()}`, name: "", desc: "", rule: "", weight: 0 }
                     if (editingRubricId) {
                       setRubricLibrary(prev => prev.map(s => s.id === editingRubricId ? { ...s, scoreRuleItems: [...(s.scoreRuleItems || []), newItem] } : s))
@@ -806,7 +797,6 @@ export function MethodDialogContent({
                   }}>
                     <Plus className="h-3.5 w-3.5 mr-1" />添加评价项
                   </Button>
-                </PrdAnnotation>
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -958,7 +948,7 @@ export function MethodDialogContent({
         <Dialog open={saveTemplateDialogOpen} onOpenChange={setSaveTemplateDialogOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <PrdAnnotation data={getAnnotation("dialog-save-template")}><DialogTitle>保存到模板</DialogTitle></PrdAnnotation>
+              <DialogTitle>保存到模板</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2">
               <div className="flex items-center gap-2">
@@ -1063,7 +1053,7 @@ export function MethodDialogContent({
         <Dialog open={gradeMappingDialogOpen} onOpenChange={v => !v && setGradeMappingDialogOpen(false)}>
           <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <PrdAnnotation data={getAnnotation("dialog-edit-grade-level")}><DialogTitle>编辑评分等级</DialogTitle></PrdAnnotation>
+              <DialogTitle>编辑评分等级</DialogTitle>
             </DialogHeader>
             {(() => {
               const ep = info.points.find(p => p.id === editingGradeMappingPointId)

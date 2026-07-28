@@ -26,8 +26,6 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { PrdAnnotation } from "@/components/prd-annotation"
-import { getAnnotation } from "@/lib/prd-annotations"
 import { examUsageApi, examResultApi } from "@/lib/api"
 import { useMajorMap } from "@/lib/use-resource-maps"
 import type { ExamUsage } from "@/lib/types"
@@ -160,12 +158,10 @@ function ExamResultsContent() {
               在线考试
             </Badge>
           </div>
-          <PrdAnnotation data={getAnnotation("eur-btn-export")}>
-            <Button variant="outline" disabled>
+          <Button variant="outline" disabled>
               <Download className="mr-2 size-4" />
               导出数据
             </Button>
-          </PrdAnnotation>
         </div>
       </div>
 
@@ -266,41 +262,37 @@ function ExamResultsContent() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[120px]">
-                  <PrdAnnotation data={getAnnotation("eur-col-student")}>
-                    <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1">
                       <User className="size-3.5" />
                       学生名称
                     </div>
-                  </PrdAnnotation>
                 </TableHead>
                 <TableHead className="w-[120px]">
-                  <PrdAnnotation data={getAnnotation("eur-col-student-id")}>学号</PrdAnnotation>
+                  学号
                 </TableHead>
                 <TableHead className="w-[120px]">
-                  <PrdAnnotation data={getAnnotation("eur-col-class")}>班级</PrdAnnotation>
+                  班级
                 </TableHead>
                 <TableHead className="w-[100px]">
-                  <PrdAnnotation data={getAnnotation("eur-col-grade")}>年级</PrdAnnotation>
+                  年级
                 </TableHead>
                 <TableHead className="w-[140px]">
-                  <PrdAnnotation data={getAnnotation("eur-col-major")}>专业</PrdAnnotation>
+                  专业
                 </TableHead>
                 <TableHead className="w-[160px]">
-                  <PrdAnnotation data={getAnnotation("eur-col-submit-time")}>考试时间</PrdAnnotation>
+                  考试时间
                 </TableHead>
                 <TableHead className="w-[100px]">
-                  <PrdAnnotation data={getAnnotation("eur-col-score")}>
-                    <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1">
                       <Award className="size-3.5" />
                       考试得分
                     </div>
-                  </PrdAnnotation>
                 </TableHead>
                 <TableHead className="w-[100px]">
-                  <PrdAnnotation data={getAnnotation("eur-col-pass")}>是否及格</PrdAnnotation>
+                  是否及格
                 </TableHead>
                 <TableHead className="sticky right-0 w-[100px] bg-white text-right">
-                  <PrdAnnotation data={getAnnotation("eur-col-actions")}>操作</PrdAnnotation>
+                  操作
                 </TableHead>
               </TableRow>
             </TableHeader>

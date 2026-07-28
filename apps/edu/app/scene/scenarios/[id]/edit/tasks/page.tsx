@@ -116,8 +116,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { createTagElement } from "@/lib/dom-utils"
-import { PrdAnnotation } from "@/components/prd-annotation"
-import { getAnnotation } from "@/lib/prd-annotations"
 import { ScoreConfigDialog } from "@/components/evaluation/score-config-dialog"
 import { ExamFormDialog } from "@/components/evaluation/exam-form-dialog"
 import { ResourcePreviewModal, usePreviewResources } from "@/components/shared/resource-preview-modal"
@@ -1384,8 +1382,7 @@ export default function TasksEditPage() {
       contentMaxWidth="max-w-[1400px]"
     >
         {/* Scenario Info */}
-        <PrdAnnotation data={getAnnotation("editor-scenario-summary")} className="block">
-          <Card>
+        <Card className="block">
             <CardHeader className="pb-3">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
               <div className="min-w-0 flex-1">
@@ -1430,44 +1427,33 @@ export default function TasksEditPage() {
             <p className="text-sm text-gray-600 pt-3">{existingScenario?.background || "暂无介绍"}</p>
           </CardContent>
         </Card>
-        </PrdAnnotation>
 
         {/* Tasks Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mt-6">
           <div className="flex flex-wrap items-center gap-3">
-            <PrdAnnotation data={getAnnotation("editor-task-list-title")}>
-              <h2 className="font-semibold text-lg">任务列表</h2>
-            </PrdAnnotation>
+            <h2 className="font-semibold text-lg">任务列表</h2>
             <Badge variant="secondary">{tasks.length} 个任务</Badge>
-            <PrdAnnotation data={getAnnotation("editor-task-weight-hint")}>
-              <div className={cn(
+            <div className={cn(
                 "flex items-center gap-1 text-sm px-2 py-1 rounded",
                 totalWeight === 100 ? "bg-green-50 text-green-600" : "bg-amber-50 text-amber-600"
               )}>
                 <Scale className="h-3.5 w-3.5" />
                 权重: {totalWeight}%
               </div>
-            </PrdAnnotation>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <PrdAnnotation data={getAnnotation("editor-add-task")}>
-              <Button size="sm" onClick={() => setIsAddTaskOpen(true)}>
+            <Button size="sm" onClick={() => setIsAddTaskOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 添加任务
               </Button>
-            </PrdAnnotation>
-            <PrdAnnotation data={getAnnotation("editor-clone-task")}>
-              <Button variant="outline" size="sm" onClick={() => setIsCloneOpen(true)}>
+            <Button variant="outline" size="sm" onClick={() => setIsCloneOpen(true)}>
                 <Copy className="mr-2 h-4 w-4" />
                 克隆/引用
               </Button>
-            </PrdAnnotation>
-            <PrdAnnotation data={getAnnotation("editor-config-weight")}>
-              <Button variant="outline" size="sm" onClick={() => setIsWeightConfigOpen(true)}>
+            <Button variant="outline" size="sm" onClick={() => setIsWeightConfigOpen(true)}>
                 <PieChartIcon className="mr-2 h-4 w-4" />
                 配置任务权重
               </Button>
-            </PrdAnnotation>
           </div>
         </div>
 
@@ -1477,11 +1463,9 @@ export default function TasksEditPage() {
           <div className="flex items-start gap-3 min-w-max pr-2">
             <div className="w-8 shrink-0" />
             {cardConfigs.map(c => (
-              <PrdAnnotation key={c.type} data={getAnnotation(`editor-card-${c.type}`)} className="w-52 shrink-0">
-                <div className="w-52 shrink-0 text-xs text-gray-500 text-center whitespace-pre-line leading-tight py-2">
+              <div className="w-52 shrink-0 text-xs text-gray-500 text-center whitespace-pre-line leading-tight py-2" key={c.type}>
                   {c.title}
                 </div>
-              </PrdAnnotation>
             ))}
             <div className="w-8 shrink-0" />
           </div>
@@ -1593,9 +1577,7 @@ export default function TasksEditPage() {
       <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <PrdAnnotation data={getAnnotation("editor-add-task")}>
-              <DialogTitle>添加任务</DialogTitle>
-            </PrdAnnotation>
+            <DialogTitle>添加任务</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
@@ -1647,9 +1629,7 @@ export default function TasksEditPage() {
       <Dialog open={isCloneOpen} onOpenChange={setIsCloneOpen}>
         <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <PrdAnnotation data={getAnnotation("editor-clone-task")}>
-              <DialogTitle>克隆/引用任务</DialogTitle>
-            </PrdAnnotation>
+            <DialogTitle>克隆/引用任务</DialogTitle>
             <DialogDescription>从其他场景选择任务进行克隆或引用</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 flex-1 overflow-hidden flex flex-col">
@@ -1751,9 +1731,7 @@ export default function TasksEditPage() {
       <Dialog open={!!deleteConfirmTask} onOpenChange={(open) => !open && setDeleteConfirmTask(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <PrdAnnotation data={getAnnotation("row-action-delete")}>
-              <DialogTitle>确认删除</DialogTitle>
-            </PrdAnnotation>
+            <DialogTitle>确认删除</DialogTitle>
             <DialogDescription>
               确定要删除任务「{deleteConfirmTask?.name}」吗？删除后不可恢复。
             </DialogDescription>
@@ -1833,7 +1811,7 @@ function PaperDetailWrapper({ paperId, open, onOpenChange }: { paperId: string |
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <PrdAnnotation data={getAnnotation("dialog-paper-detail")}><DialogTitle>试卷详情</DialogTitle></PrdAnnotation>
+          <DialogTitle>试卷详情</DialogTitle>
         </DialogHeader>
         {loading ? (
           <div className="text-center py-8 text-gray-400">
@@ -2241,7 +2219,7 @@ function EvalRulesPanel({
                     <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary">+ 添加能力点</Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-2xl">
-                    <DialogHeader><PrdAnnotation data={getAnnotation("dialog-link-ability")}><DialogTitle>关联能力点</DialogTitle></PrdAnnotation></DialogHeader>
+                    <DialogHeader><DialogTitle>关联能力点</DialogTitle></DialogHeader>
                     <div className="relative mb-3">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input value={abSearchForEval} onChange={e => setAbSearchForEval(e.target.value)} placeholder="搜索能力点..." className="pl-9" />
@@ -2283,7 +2261,7 @@ function EvalRulesPanel({
                     <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-gray-400 hover:text-primary">+ 添加知识点</Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-2xl">
-                    <DialogHeader><PrdAnnotation data={getAnnotation("dialog-link-knowledge")}><DialogTitle>关联知识点</DialogTitle></PrdAnnotation></DialogHeader>
+                    <DialogHeader><DialogTitle>关联知识点</DialogTitle></DialogHeader>
                     <div className="relative mb-3">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input value={kpSearchForEval} onChange={e => setKpSearchForEval(e.target.value)} placeholder="搜索知识点..." className="pl-9" />
@@ -2520,7 +2498,7 @@ function EvalRulesPanel({
                               </Button>
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-md">
-                              <DialogHeader><PrdAnnotation data={getAnnotation("dialog-eval-from-ability")}><DialogTitle>从能力点创建 — {evalSubTypeLabels[st]}</DialogTitle></PrdAnnotation></DialogHeader>
+                              <DialogHeader><DialogTitle>从能力点创建 — {evalSubTypeLabels[st]}</DialogTitle></DialogHeader>
                               <div className="space-y-2 max-h-80 overflow-y-auto mt-2">
                                 {abilityPoints.map(a => (
                                   <div key={a.id} onClick={() => addEvalPointFromAbility(field, a.id, st)} className="p-2.5 rounded-lg border cursor-pointer hover:border-gray-300 text-sm">
@@ -2541,7 +2519,7 @@ function EvalRulesPanel({
                               </Button>
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-md">
-                              <DialogHeader><PrdAnnotation data={getAnnotation("dialog-eval-from-knowledge")}><DialogTitle>从知识点创建 — {evalSubTypeLabels[st]}</DialogTitle></PrdAnnotation></DialogHeader>
+                              <DialogHeader><DialogTitle>从知识点创建 — {evalSubTypeLabels[st]}</DialogTitle></DialogHeader>
                               <div className="space-y-2 max-h-80 overflow-y-auto mt-2">
                                 {knowledgePoints.map(k => (
                                   <div key={k.id} onClick={() => addEvalPointFromKnowledge(field, k.id, st)} className="p-2.5 rounded-lg border cursor-pointer hover:border-gray-300 text-sm">
@@ -2672,23 +2650,17 @@ function EvalRulesPanel({
                               </td>
                               <td className="px-3 py-2">
                                 <div className="flex items-center justify-end gap-1">
-                                  <PrdAnnotation data={getAnnotation("dialog-question-detail")}>
-                                    <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary" onClick={e => { e.stopPropagation(); setSelectedQuestionForDetail(q.id); setQuestionDetailOpen(true) }}>
+                                  <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary" onClick={e => { e.stopPropagation(); setSelectedQuestionForDetail(q.id); setQuestionDetailOpen(true) }}>
                                       查看详情
                                     </Button>
-                                  </PrdAnnotation>
                                   {isSelected ? (
-                                    <PrdAnnotation data={getAnnotation("qb-action-cancel")}>
-                                      <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); toggleQuestion(q.id, field) }}>
+                                    <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); toggleQuestion(q.id, field) }}>
                                         取消
                                       </Button>
-                                    </PrdAnnotation>
                                   ) : (
-                                    <PrdAnnotation data={getAnnotation("qb-action-select")}>
-                                      <Button size="sm" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); toggleQuestion(q.id, field) }}>
+                                    <Button size="sm" className="h-6 text-[11px] px-2" onClick={e => { e.stopPropagation(); toggleQuestion(q.id, field) }}>
                                         使用
                                       </Button>
-                                    </PrdAnnotation>
                                   )}
                                 </div>
                               </td>
@@ -4150,7 +4122,7 @@ function EvalRulesPanel({
                 <Dialog open={isOrderConfigOpen} onOpenChange={setIsOrderConfigOpen}>
                   <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
-                      <PrdAnnotation data={getAnnotation("dialog-eval-order")}><DialogTitle>评价方式顺序配置</DialogTitle></PrdAnnotation>
+                      <DialogTitle>评价方式顺序配置</DialogTitle>
                       <DialogDescription>点击箭头调整评价方式的执行顺序</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-1.5 py-4">
@@ -4200,7 +4172,7 @@ function EvalRulesPanel({
                 <Dialog open={isWeightConfigOpen} onOpenChange={setIsWeightConfigOpen}>
                   <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
-                      <PrdAnnotation data={getAnnotation("dialog-eval-weight")}><DialogTitle>评价方式权重配置</DialogTitle></PrdAnnotation>
+                      <DialogTitle>评价方式权重配置</DialogTitle>
                       <DialogDescription>
                         配置各评价方式的权重占比，合计需等于 100%
                       </DialogDescription>
@@ -4310,7 +4282,7 @@ function EvalRulesPanel({
             <Dialog open={erDialogOpen === "object"} onOpenChange={v => !v && setErDialogOpen(null)}>
               <DialogContent className="sm:max-w-[63vw] max-w-[63vw] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <PrdAnnotation data={getAnnotation("dialog-test-object")}><DialogTitle>测评对象配置</DialogTitle></PrdAnnotation>
+                  <DialogTitle>测评对象配置</DialogTitle>
                   <DialogDescription>
                     配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的测评对象
                   </DialogDescription>
@@ -4322,7 +4294,7 @@ function EvalRulesPanel({
             <Dialog open={erDialogOpen === "subject"} onOpenChange={v => !v && setErDialogOpen(null)}>
               <DialogContent className="sm:max-w-[72vw] max-w-[72vw] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <PrdAnnotation data={getAnnotation("dialog-eval-subject")}><DialogTitle>评价主体配置</DialogTitle></PrdAnnotation>
+                  <DialogTitle>评价主体配置</DialogTitle>
                   <DialogDescription>
                     配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的评价主体
                   </DialogDescription>
@@ -4334,7 +4306,7 @@ function EvalRulesPanel({
             <Dialog open={erDialogOpen === "resource"} onOpenChange={v => !v && setErDialogOpen(null)}>
               <DialogContent className="sm:max-w-[72vw] max-w-[72vw] max-h-[90vh] flex flex-col overflow-hidden">
                 <DialogHeader className="shrink-0">
-                  <PrdAnnotation data={getAnnotation("dialog-test-resource")}><DialogTitle>测评资源配置</DialogTitle></PrdAnnotation>
+                  <DialogTitle>测评资源配置</DialogTitle>
                   <DialogDescription>
                     配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的测评资源
                   </DialogDescription>
@@ -4389,7 +4361,7 @@ function EvalRulesPanel({
             <Dialog open={erDialogOpen === "method"} onOpenChange={v => !v && setErDialogOpen(null)}>
               <DialogContent className="sm:max-w-[85vw] max-w-[85vw] max-h-[90vh] overflow-x-hidden overflow-y-auto">
                 <DialogHeader>
-                  <PrdAnnotation data={getAnnotation("dialog-eval-standard")}><DialogTitle>评价标准配置</DialogTitle></PrdAnnotation>
+                  <DialogTitle>评价标准配置</DialogTitle>
                   <DialogDescription>
                     配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的评价点与评分规则
                   </DialogDescription>
@@ -4401,7 +4373,7 @@ function EvalRulesPanel({
             <Dialog open={questionDetailOpen} onOpenChange={setQuestionDetailOpen}>
               <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
-                  <PrdAnnotation data={getAnnotation("dialog-question-detail")}><DialogTitle>题目详情</DialogTitle></PrdAnnotation>
+                  <DialogTitle>题目详情</DialogTitle>
                 </DialogHeader>
                 {(() => {
                   const q = allQuestions.find(aq => aq.id === selectedQuestionForDetail) as any
@@ -4526,7 +4498,7 @@ function EvalRulesPanel({
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
                 <DialogHeader>
-                  <PrdAnnotation data={getAnnotation("dialog-link-knowledge-eval")}><DialogTitle>关联考查知识点</DialogTitle></PrdAnnotation>
+                  <DialogTitle>关联考查知识点</DialogTitle>
                   <DialogDescription>此处仅可选择任务关联的知识点/能力点，请先在任务中配置后选择。</DialogDescription>
                 </DialogHeader>
                 {(() => {
@@ -4604,9 +4576,7 @@ function EvalRulesPanel({
                               <div key={kpId} className="p-2 rounded-lg border border-primary/20 bg-primary/5">
                                 <div className="flex items-center gap-2">
                                   <span className="text-xs font-medium flex-1 truncate">{kp.name}</span>
-                                  <PrdAnnotation data={getAnnotation("kp-right-delete")}>
-                                    <Button variant="ghost" size="icon" className="h-5 w-5 text-gray-400" onClick={() => toggleKp(kpId)}><X className="h-3 w-3" /></Button>
-                                  </PrdAnnotation>
+                                  <Button variant="ghost" size="icon" className="h-5 w-5 text-gray-400" onClick={() => toggleKp(kpId)}><X className="h-3 w-3" /></Button>
                                 </div>
                                 <p className="text-[10px] text-gray-500 line-clamp-1">{kp.description}</p>
                               </div>
@@ -4627,7 +4597,7 @@ function EvalRulesPanel({
             <Dialog open={rubricAbDialogOpen} onOpenChange={v => { if (!v) setRubricAbDialogOpen(false) }}>
               <DialogContent className="sm:max-w-[85vw] max-h-[90vh] flex flex-col">
                 <DialogHeader>
-                  <PrdAnnotation data={getAnnotation("dialog-link-ability-eval")}><DialogTitle>关联考查能力点</DialogTitle></PrdAnnotation>
+                  <DialogTitle>关联考查能力点</DialogTitle>
                   <DialogDescription>此处仅可选择任务关联的知识点/能力点，请先在任务中配置后选择。</DialogDescription>
                 </DialogHeader>
                 {(() => {
@@ -4705,9 +4675,7 @@ function EvalRulesPanel({
                               <div key={abId} className="p-2 rounded-lg border border-primary/20 bg-primary/5">
                                 <div className="flex items-center gap-2">
                                   <span className="text-xs font-medium flex-1 truncate">{ab.name}</span>
-                                  <PrdAnnotation data={getAnnotation("ability-action-cancel")}>
-                                    <Button variant="ghost" size="icon" className="h-5 w-5 text-gray-400" onClick={() => toggleAb(abId)}><X className="h-3 w-3" /></Button>
-                                  </PrdAnnotation>
+                                  <Button variant="ghost" size="icon" className="h-5 w-5 text-gray-400" onClick={() => toggleAb(abId)}><X className="h-3 w-3" /></Button>
                                 </div>
                                 <p className="text-[10px] text-gray-500 line-clamp-1">{ab.description}</p>
                               </div>
@@ -5362,9 +5330,7 @@ function EditCardDialog({
             <Dialog open={abilityDetailOpen} onOpenChange={setAbilityDetailOpen}>
               <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
-                  <PrdAnnotation data={getAnnotation("dialog-ability-detail")}>
-                    <DialogTitle>能力点详情</DialogTitle>
-                  </PrdAnnotation>
+                  <DialogTitle>能力点详情</DialogTitle>
                 </DialogHeader>
                 {detailAb && (
                   <div className="space-y-4 py-2">
@@ -5486,12 +5452,10 @@ function EditCardDialog({
         dialogSizeClass
       )}>
         <DialogHeader>
-          <PrdAnnotation data={getAnnotation(`editor-card-${config.type}`)}>
-            <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2">
               <div className="p-1.5 bg-primary/10 rounded">{config.icon}</div>
               {config.title}
             </DialogTitle>
-          </PrdAnnotation>
           <DialogDescription>任务：{task.name}</DialogDescription>
         </DialogHeader>
         <div className={cn("flex-1 py-4", isFullScreen ? "overflow-hidden" : "overflow-y-auto")}>{renderContent()}</div>
@@ -5557,12 +5521,10 @@ function WeightConfigDialog({
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <PrdAnnotation data={getAnnotation("editor-config-weight")}>
-            <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2">
               <PieChartIcon className="h-5 w-5" />
               配置任务权重
             </DialogTitle>
-          </PrdAnnotation>
           <DialogDescription>调整所有任务的权重分配，总权重应为 100%</DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto py-4 space-y-6">

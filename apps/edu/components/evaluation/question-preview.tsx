@@ -39,7 +39,7 @@ export function QuestionPreview({ open, onOpenChange, question }: QuestionPrevie
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="lg" annotationContext="question-preview">
+      <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             题目预览

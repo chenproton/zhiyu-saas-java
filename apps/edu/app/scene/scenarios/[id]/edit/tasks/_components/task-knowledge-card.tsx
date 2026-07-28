@@ -13,8 +13,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-import { PrdAnnotation } from "@/components/prd-annotation"
-import { getAnnotation } from "@/lib/prd-annotations"
 import { KnowledgePointFormDialog } from "@/components/shared/knowledge-point-form-dialog"
 import { GranularLessonSelectDialog } from "@/components/shared/granular-lesson-select-dialog"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
@@ -263,17 +261,13 @@ export function TaskKnowledgeCard({
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex items-center justify-end gap-1">
-                            <PrdAnnotation data={getAnnotation("kp-action-detail")}>
-                              <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary" onClick={() => { setSelectedKpForDetail(kp.id); setKpDetailOpen(true) }}>
+                            <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary" onClick={() => { setSelectedKpForDetail(kp.id); setKpDetailOpen(true) }}>
                                 详情
                               </Button>
-                            </PrdAnnotation>
                             {isSelected ? (
-                              <PrdAnnotation data={getAnnotation("kp-action-cancel")}>
-                                <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => handleRemoveKp(kp.id)}>
+                              <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => handleRemoveKp(kp.id)}>
                                   取消
                                 </Button>
-                              </PrdAnnotation>
                             ) : (
                               <>
                                 <Button size="sm" className="h-6 text-[11px] px-2" onClick={() => handleReferenceKp(kp.id)}>
@@ -379,9 +373,7 @@ export function TaskKnowledgeCard({
       <Dialog open={kpDetailOpen} onOpenChange={setKpDetailOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <PrdAnnotation data={getAnnotation("dialog-knowledge-detail")}>
-              <DialogTitle>知识点详情</DialogTitle>
-            </PrdAnnotation>
+            <DialogTitle>知识点详情</DialogTitle>
           </DialogHeader>
           {detailKp && (
             <div className="space-y-4 py-2">

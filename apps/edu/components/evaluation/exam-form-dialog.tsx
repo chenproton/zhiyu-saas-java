@@ -28,9 +28,6 @@ import { evaluationBatchApi, fileApi } from "@/lib/api"
 import { UserSelector } from "@/components/shared/user-selector"
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@zhiyu/ui"
-import { PrdAnnotation } from "@/components/prd-annotation"
-import { getAnnotation } from "@/lib/prd-annotations"
-
 interface ExamFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -52,8 +49,6 @@ export function ExamFormDialog({
   const [collaboratorIds, setCollaboratorIds] = useState<string[]>([])
   const [batchId, setBatchId] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const fieldGroupRef = useRef<HTMLDivElement>(null)
-
   const [batches, setBatches] = useState<{ id: string; name: string }[]>([])
   const [loadingBatches, setLoadingBatches] = useState(false)
 
@@ -136,7 +131,7 @@ export function ExamFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent annotationContext="exam-form" annotationContainerRef={fieldGroupRef}>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{exam ? "编辑试卷" : "新建试卷"}</DialogTitle>
           <DialogDescription>
@@ -144,10 +139,10 @@ export function ExamFormDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <FieldGroup ref={fieldGroupRef} className="max-h-[60vh] overflow-y-auto py-4">
+          <FieldGroup className="max-h-[60vh] overflow-y-auto py-4">
             <Field>
               <FieldLabel htmlFor="name">
-                <PrdAnnotation data={getAnnotation("ef-name")}>试卷名称</PrdAnnotation>
+                试卷名称
               </FieldLabel>
               <Input
                 id="name"
@@ -159,7 +154,7 @@ export function ExamFormDialog({
             </Field>
             <Field>
               <FieldLabel htmlFor="description">
-                <PrdAnnotation data={getAnnotation("ef-description")}>试卷简介</PrdAnnotation>
+                试卷简介
               </FieldLabel>
               <Textarea
                 id="description"
@@ -171,7 +166,7 @@ export function ExamFormDialog({
             </Field>
             <Field>
               <FieldLabel>
-                <PrdAnnotation data={getAnnotation("ef-cover")}>封面</PrdAnnotation>
+                封面
               </FieldLabel>
               <FieldDescription>支持上传 5MB 以内的图片文件</FieldDescription>
               <input
@@ -211,7 +206,7 @@ export function ExamFormDialog({
             </Field>
             <Field>
               <FieldLabel>
-                <PrdAnnotation data={getAnnotation("ef-collaborators")}>共建人</PrdAnnotation>
+                共建人
               </FieldLabel>
               <FieldDescription>选择可以共同维护此试卷的用户</FieldDescription>
               <div className="mt-2">
@@ -227,7 +222,7 @@ export function ExamFormDialog({
             </Field>
             <Field>
               <FieldLabel>
-                <PrdAnnotation data={getAnnotation("ef-batch")}>所属批次</PrdAnnotation>
+                所属批次
               </FieldLabel>
               <Select value={batchId || "none"} onValueChange={(v) => setBatchId(v === "none" ? "" : v)} disabled={loadingBatches}>
                 <SelectTrigger>
@@ -248,7 +243,7 @@ export function ExamFormDialog({
             {exam && (
               <Field>
                 <FieldLabel>
-                  <PrdAnnotation data={getAnnotation("ef-version")}>当前版本号</PrdAnnotation>
+                  当前版本号
                 </FieldLabel>
                 <div className="flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm">
                   {exam.version}

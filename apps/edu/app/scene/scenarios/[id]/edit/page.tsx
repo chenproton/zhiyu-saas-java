@@ -2,8 +2,6 @@
 
 import Image from "next/image"
 import { ChevronDown, ChevronRight, ImagePlus, List, ListOrdered, Loader2, Star, X } from "lucide-react"
-import { PrdAnnotation } from "@/components/prd-annotation"
-import { getAnnotation } from "@/lib/prd-annotations"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useState, useMemo, useRef, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
@@ -226,9 +224,7 @@ export default function ScenarioEditPage() {
               <Card>
                 <CardContent className="pt-6 space-y-5">
                   <div className="grid gap-2">
-                    <PrdAnnotation data={getAnnotation("editor-field-name")} className="block">
-                      <Label htmlFor="name">场景名称 <span className="text-red-500">*</span></Label>
-                    </PrdAnnotation>
+                    <Label htmlFor="name" className="block">场景名称 <span className="text-red-500">*</span></Label>
                     <Input
                       id="name"
                       value={scenarioName}
@@ -289,9 +285,7 @@ export default function ScenarioEditPage() {
                   </div>
 
                   <div className="grid gap-2">
-                    <PrdAnnotation data={getAnnotation("editor-field-intro")} className="block">
-                      <Label htmlFor="background">场景介绍</Label>
-                    </PrdAnnotation>
+                    <Label htmlFor="background" className="block">场景介绍</Label>
                     <div className="border rounded-lg">
                       <div className="bg-gray-50 border-b px-3 py-2 flex gap-1 items-center">
                         <Button variant="ghost" size="sm" className="h-7 px-2 text-xs font-bold">B</Button>
@@ -321,9 +315,7 @@ export default function ScenarioEditPage() {
             <div className="space-y-6">
               <Card>
                 <CardContent className="pt-6">
-                  <PrdAnnotation data={getAnnotation("editor-sidebar-cover")} className="block">
-                    <Label className="mb-3 block">场景封面</Label>
-                  </PrdAnnotation>
+                  <Label className="block mb-3">场景封面</Label>
                   <div
                     className="aspect-video bg-gray-100 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors overflow-hidden relative group"
                     onClick={triggerCoverUpload}
@@ -392,9 +384,7 @@ export default function ScenarioEditPage() {
               <Card>
                 <CardContent className="pt-6 space-y-4">
                   <div className="grid gap-2">
-                    <PrdAnnotation data={getAnnotation("editor-field-position")} className="block">
-                      <Label htmlFor="position">目标岗位</Label>
-                    </PrdAnnotation>
+                    <Label htmlFor="position" className="block">目标岗位</Label>
                     <div className="relative">
                       <Select value={positionId} onValueChange={setPositionId}>
                         <SelectTrigger id="position" className={positionId ? "pr-8" : ""}>
@@ -423,9 +413,7 @@ export default function ScenarioEditPage() {
                     </div>
                   </div>
                   <div className="grid gap-2">
-                    <PrdAnnotation data={getAnnotation("editor-field-batch")} className="block">
-                      <Label htmlFor="batch">所属批次</Label>
-                    </PrdAnnotation>
+                    <Label htmlFor="batch" className="block">所属批次</Label>
                     <div className="relative">
                       <Select value={batchId} onValueChange={setBatchId}>
                         <SelectTrigger id="batch" className={batchId ? "pr-8" : ""}>
@@ -454,16 +442,12 @@ export default function ScenarioEditPage() {
               <Card>
                 <CardContent className="pt-6 space-y-4">
                   <div>
-                    <PrdAnnotation data={getAnnotation("editor-sidebar-creator")} className="block">
-                      <Label className="text-gray-500 text-xs">创建人</Label>
-                    </PrdAnnotation>
+                    <Label className="block text-gray-500 text-xs">创建人</Label>
                     <p className="font-medium text-gray-800 mt-1">{creatorName}</p>
                   </div>
 
                   <div>
-                    <PrdAnnotation data={getAnnotation("editor-sidebar-cobuilders")} className="block">
-                      <Label className="mb-2 block">共建人/共建部门</Label>
-                    </PrdAnnotation>
+                    <Label className="block mb-2">共建人/共建部门</Label>
                     <UserSelector
                       value={coBuilderIds}
                       onChange={(ids) => setCoBuilderIds(ids.filter((id) => id !== creatorId))}
@@ -475,9 +459,7 @@ export default function ScenarioEditPage() {
                   </div>
 
                   <div className="pt-3 border-t border-gray-100">
-                    <PrdAnnotation data={getAnnotation("editor-sidebar-version")} className="block">
-                      <Label className="text-gray-500 text-xs">当前版本号</Label>
-                    </PrdAnnotation>
+                    <Label className="block text-gray-500 text-xs">当前版本号</Label>
                     <p className="font-medium text-gray-800 mt-1">{version}</p>
                   </div>
                 </CardContent>

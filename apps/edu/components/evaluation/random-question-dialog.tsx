@@ -343,7 +343,7 @@ export function RandomQuestionDialog({
   if (previewQuestions) {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent size="lg" annotationContext="random-question">
+        <DialogContent size="lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Shuffle className="size-5" />
@@ -409,7 +409,7 @@ export function RandomQuestionDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent size="lg" annotationContext="random-question">
+      <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shuffle className="size-5" />

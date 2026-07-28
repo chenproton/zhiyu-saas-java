@@ -807,7 +807,6 @@ export function QuestionFormDialog({
         size="xl"
         showCloseButton={false}
         className="flex !h-[94vh] !max-h-[94vh] !w-[98vw] !max-w-[98vw] flex-col overflow-hidden border border-border/50 p-0 shadow-2xl"
-        annotationContext="question-form"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b bg-gradient-to-r from-background via-background to-muted/30 px-6 py-4">

@@ -15,8 +15,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-import { PrdAnnotation } from "@/components/prd-annotation"
-import { getAnnotation } from "@/lib/prd-annotations"
 import { examApi } from "@/lib/api"
 import { loadedExams } from "./shared-defs"
 
@@ -63,11 +61,9 @@ export function PaperConfigPanel({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input value={pSearch} onChange={e => setPSearch(e.target.value)} placeholder="搜索试卷..." className="pl-9" />
           </div>
-          <PrdAnnotation data={getAnnotation("paper-action-create")}>
-            <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => { setShowCreatePaper(true); }}>
+          <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => { setShowCreatePaper(true); }}>
               <Plus className="h-3.5 w-3.5 mr-1" />新建试卷
             </Button>
-          </PrdAnnotation>
         </div>
         <div className="space-y-2">
           {loadedExams.filter((p: any) => !pSearch || p.name.includes(pSearch)).map((paper: any) => {

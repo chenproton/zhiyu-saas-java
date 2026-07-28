@@ -36,9 +36,6 @@ const TYPE_COLORS: Record<QuestionType, string> = {
   short_answer: "bg-teal-500",
 }
 import { cn } from "@/lib/utils"
-import { PrdAnnotation } from "@/components/prd-annotation"
-import { getAnnotation } from "@/lib/prd-annotations"
-
 export default function ExamComposerPage() {
   const params = useParams()
   const router = useRouter()
@@ -324,12 +321,10 @@ export default function ExamComposerPage() {
               {!isPreview && (
                 <div className="flex items-start gap-2">
                   {canEdit && (
-                    <PrdAnnotation {...getAnnotation("ec-btn-edit-info")}>
-                      <Button variant="outline" size="sm" onClick={() => setFormOpen(true)}>
+                    <Button variant="outline" size="sm" onClick={() => setFormOpen(true)}>
                         <Edit className="mr-1 size-4" />
                         编辑信息
                       </Button>
-                    </PrdAnnotation>
                   )}
                   {canPublish && (
                     <Button variant="outline" size="sm" className="text-indigo-600 hover:text-indigo-700" onClick={() => updateExamStatus(examId, 'publish')}>
@@ -444,8 +439,7 @@ export default function ExamComposerPage() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <PrdAnnotation {...getAnnotation("ec-btn-random")}>
-                <Button
+              <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setRandomDialogOpen(true)}
@@ -453,9 +447,7 @@ export default function ExamComposerPage() {
                   <Wand2 className="mr-1 size-4" />
                   自动抽题
                 </Button>
-              </PrdAnnotation>
-              <PrdAnnotation {...getAnnotation("ec-btn-manual")}>
-                <Button
+              <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setManualDialogOpen(true)}
@@ -463,9 +455,7 @@ export default function ExamComposerPage() {
                   <Hand className="mr-1 size-4" />
                   手动抽题
                 </Button>
-              </PrdAnnotation>
-              <PrdAnnotation {...getAnnotation("ec-btn-add-question")}>
-                <DropdownMenu>
+              <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm">
                       <Plus className="mr-1 size-4" />
@@ -487,9 +477,7 @@ export default function ExamComposerPage() {
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </PrdAnnotation>
-              <PrdAnnotation {...getAnnotation("ec-btn-batch-import")}>
-                <Button
+              <Button
                   variant="outline"
                   size="sm"
                   disabled
@@ -498,7 +486,6 @@ export default function ExamComposerPage() {
                   <FileUp className="mr-1 size-4" />
                   批量导入题目
                 </Button>
-              </PrdAnnotation>
             </div>
           )}
         </div>
