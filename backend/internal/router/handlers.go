@@ -186,6 +186,6 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		landingHandler:                &handler.LandingHandler{DB: db},
 		certGradeHandler:              &handler.CertGradeHandler{DB: db},
 		resourceLibraryHandler:        &handler.ResourceLibraryHandler{DB: db},
-		onSiteQuestionLibraryHandler:  &handler.OnSiteQuestionLibraryHandler{DB: db},
+		onSiteQuestionLibraryHandler:  &handler.OnSiteQuestionLibraryHandler{DB: db, Store: store.NewOnSiteQuestionLibraryStore(db)},
 	}
 }
