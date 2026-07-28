@@ -32,7 +32,8 @@ func (h *PositionImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Requ
 
 	xlsx, _, err := parseUploadedExcel(r)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, err.Error())
+		slog.Error("导入文件解析失败", "error", err)
+		respondError(w, http.StatusBadRequest, "导入文件解析失败")
 		return
 	}
 	defer xlsx.Close()
@@ -69,7 +70,8 @@ func (h *PositionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 
 	xlsx, sheets, err := parseUploadedExcel(r)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, err.Error())
+		slog.Error("导入文件解析失败", "error", err)
+		respondError(w, http.StatusBadRequest, "导入文件解析失败")
 		return
 	}
 	defer xlsx.Close()

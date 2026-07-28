@@ -233,6 +233,7 @@ func (h *UserManagementHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if oldUser.TenantID != nil {
 		if err := h.validateUserOrgMajor(r.Context(), *oldUser.TenantID, req.OrgNodeID, req.MajorID); err != nil {
 			slog.Error("用户校验失败", "error", err)
+			slog.Error("用户校验失败", "error", err)
 			respondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
