@@ -34,7 +34,8 @@ func (h *TenantHandler) ListSchoolAdmins(w http.ResponseWriter, r *http.Request)
 		var a TenantAdminResponse
 		var loginName *string
 		if err := rows.Scan(&a.ID, &a.TenantID, &a.Username, &loginName, &a.Name, &a.Status, &a.LastLoginAt, &a.CreatedAt, &a.UpdatedAt); err != nil {
-			continue
+			respondError(w, http.StatusInternalServerError, "解析管理员数据失败")
+			return
 		}
 		if loginName != nil {
 			a.LoginName = *loginName
@@ -90,8 +91,7 @@ func (h *TenantHandler) UpdateSchoolAdmin(w http.ResponseWriter, r *http.Request
 	}
 	adminID := chi.URLParam(r, "id")
 
-	existing, err := h.fetchTenantAdmin(r.Context(), tenantID, adminID)
-	if err != nil {
+	if _, err := h.fetchTenantAdmin(r.Context(), tenantID, adminID); err != nil {
 		respondError(w, http.StatusNotFound, "管理员不存在")
 		return
 	}
@@ -107,7 +107,7 @@ func (h *TenantHandler) UpdateSchoolAdmin(w http.ResponseWriter, r *http.Request
 	}
 
 	newLoginName := tenantID + "_" + req.Username
-	_, err = h.DB.Exec(r.Context(), `
+	_, err := h.DB.Exec(r.Context(), `
 		UPDATE users SET username = $1, login_name = $2, name = $3, updated_at = NOW()
 		WHERE id = $4 AND tenant_id = $5
 	`, req.Username, newLoginName, req.Name, adminID, tenantID)
@@ -121,7 +121,6 @@ func (h *TenantHandler) UpdateSchoolAdmin(w http.ResponseWriter, r *http.Request
 	}
 
 	updated, _ := h.fetchTenantAdmin(r.Context(), tenantID, adminID)
-	_ = existing
 	respondJSON(w, http.StatusOK, updated)
 }
 
@@ -215,38 +214,7 @@ func (h *TenantHandler) ResetSchoolAdminPassword(w http.ResponseWriter, r *http.
 	respondJSON(w, http.StatusOK, map[string]string{"id": adminID, "newPassword": newPassword})
 }
 
-// PreviewSchoolAdminPassword resets a school admin's password and returns the new one.
+// PreviewSchoolAdminPassword is an alias for ResetSchoolAdminPassword.
 func (h *TenantHandler) PreviewSchoolAdminPassword(w http.ResponseWriter, r *http.Request) {
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	adminID := chi.URLParam(r, "id")
-
-	if _, err := h.fetchTenantAdmin(r.Context(), tenantID, adminID); err != nil {
-		respondError(w, http.StatusNotFound, "管理员不存在")
-		return
-	}
-
-	newPassword, err := generateSecurePassword(12)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "生成password失败")
-		return
-	}
-
-	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "哈希password失败")
-		return
-	}
-
-	if _, err := h.DB.Exec(r.Context(), `
-		UPDATE users SET password_hash = $1, updated_at = NOW()
-		WHERE id = $2
-	`, string(hash), adminID); err != nil {
-		respondError(w, http.StatusInternalServerError, "保存password失败")
-		return
-	}
-
-	respondJSON(w, http.StatusOK, map[string]string{"id": adminID, "newPassword": newPassword})
+	h.ResetSchoolAdminPassword(w, r)
 }

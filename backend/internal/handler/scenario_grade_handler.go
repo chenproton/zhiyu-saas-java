@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"encoding/json"
 	"net/http"
 
@@ -55,7 +56,7 @@ func (h *ScenarioGradeHandler) ListGradeMappings(w http.ResponseWriter, r *http.
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if err.Error() == "missing tenant" {
+		if errors.Is(err, ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

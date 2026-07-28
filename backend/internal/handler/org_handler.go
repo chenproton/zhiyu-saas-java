@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -72,7 +73,7 @@ func (h *OrgHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg, h.scanOrgRows)
 	if err != nil {
-		if err.Error() == "missing tenant" {
+		if errors.Is(err, ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 		} else {
 			respondError(w, http.StatusInternalServerError, "查询组织失败")

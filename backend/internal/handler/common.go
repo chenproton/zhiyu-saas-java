@@ -17,6 +17,10 @@ import (
 	"github.com/zhiyu-saas/backend/internal/middleware"
 )
 
+// ErrMissingTenant is returned by executeListQuery when the caller has no tenant.
+// Handlers should check for this error with errors.Is and respond 403.
+var ErrMissingTenant = errors.New("missing tenant")
+
 // isStrongPassword requires at least 8 characters and at least one letter and one digit.
 func isStrongPassword(password string) bool {
 	if len(password) < 8 {
@@ -340,7 +344,7 @@ func executeListQuery[T any](ctx context.Context, db listQueryDB, r *http.Reques
 	if cfg.TenantScoped {
 		tenantID, ok := tenantFilter(middleware.CurrentUser(r))
 		if !ok {
-			return nil, 0, errors.New("missing tenant")
+			return nil, 0, ErrMissingTenant
 		}
 		col := cfg.TenantColumn
 		if col == "" {
@@ -371,8 +375,7 @@ func executeListQuery[T any](ctx context.Context, db listQueryDB, r *http.Reques
 	countQuery := "SELECT COUNT(*) FROM " + cfg.Table + " WHERE " + where
 	var total int
 	if err := db.QueryRow(ctx, countQuery, qb.args...).Scan(&total); err != nil {
-		slog.Error("count query failed", "error", err, "query", countQuery)
-		total = 0
+		return nil, 0, fmt.Errorf("count query failed: %w", err)
 	}
 
 	limitStr := r.URL.Query().Get("limit")

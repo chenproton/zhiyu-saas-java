@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"encoding/json"
 	"net/http"
 
@@ -51,7 +52,7 @@ func (h *ScenarioWeightHandler) ListWeights(w http.ResponseWriter, r *http.Reque
 		ScanRows: h.scanWeightRows,
 	})
 	if err != nil {
-		if err.Error() == "missing tenant" {
+		if errors.Is(err, ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -52,7 +53,7 @@ func (h *HybridModuleHandler) ListModules(w http.ResponseWriter, r *http.Request
 		ScanRows: h.scanHybridModuleRows,
 	})
 	if err != nil {
-		if err.Error() == "missing tenant" {
+		if errors.Is(err, ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

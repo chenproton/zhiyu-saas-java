@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -58,7 +59,7 @@ func (h *MicroCertHandler) ListTemplates(w http.ResponseWriter, r *http.Request)
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if err.Error() == "missing tenant" {
+		if errors.Is(err, ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
@@ -243,7 +244,7 @@ func (h *MicroCertHandler) ListHistory(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		if err.Error() == "missing tenant" {
+		if errors.Is(err, ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}

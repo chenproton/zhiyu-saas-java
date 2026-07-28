@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -61,7 +62,7 @@ func (h *KnowledgePointHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg, h.scanKnowledgePointRows)
 	if err != nil {
-		if err.Error() == "missing tenant" {
+		if errors.Is(err, ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 		} else {
 			respondError(w, http.StatusInternalServerError, "查询知识点失败")

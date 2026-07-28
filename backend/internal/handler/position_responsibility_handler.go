@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -56,7 +57,7 @@ func (h *PositionResponsibilityHandler) List(w http.ResponseWriter, r *http.Requ
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg, h.scanResponsibilityRows)
 	if err != nil {
-		if err.Error() == "missing tenant" {
+		if errors.Is(err, ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 		} else {
 			respondError(w, http.StatusInternalServerError, "查询岗位职责失败")

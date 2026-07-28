@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -61,7 +62,7 @@ func (h *ApprovalHandler) List(w http.ResponseWriter, r *http.Request) {
 		},
 	}, h.scanApprovalRows)
 	if err != nil {
-		if err.Error() == "missing tenant" {
+		if errors.Is(err, ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
