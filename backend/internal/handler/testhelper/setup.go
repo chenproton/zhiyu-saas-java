@@ -167,7 +167,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/users/{id}/status", userManagementHandler.UpdateStatus)
 			r.Post("/users/batch", userManagementHandler.BatchCreate)
 
-			roleHandler := &handler.RoleHandler{DB: pool}
+			roleHandler := &handler.RoleHandler{DB: pool, Store: store.NewRolesStore(pool)}
 			r.Get("/roles", roleHandler.List)
 			r.Get("/roles/{id}", roleHandler.Get)
 			r.Post("/roles", roleHandler.Create)

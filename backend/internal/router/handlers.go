@@ -125,7 +125,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		orgHandler:                    &handler.OrgHandler{DB: db},
 		orgTypeHandler:                &handler.OrgTypeHandler{DB: db, Store: store.NewOrgTypesStore(db)},
 		userManagementHandler:         &handler.UserManagementHandler{DB: db},
-		roleHandler:                   &handler.RoleHandler{DB: db},
+		roleHandler:                   &handler.RoleHandler{DB: db, Store: store.NewRolesStore(db)},
 		majorHandler:                  &handler.MajorHandler{DB: db, Store: store.NewMajorsStore(db)},
 		industryHandler:               &handler.IndustryHandler{DB: db, Store: store.NewIndustriesStore(db)},
 		resourceCodeHandler:           &handler.ResourceCodeHandler{DB: db},
