@@ -253,6 +253,9 @@ func (h *CourseNodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	kpIDs := jsonSliceToUUIDSlice(req.KnowledgePointIds)
 	resIDs := jsonSliceToUUIDSlice(req.ResourceIds)
+	if req.EvalData == nil {
+		req.EvalData = domain.JSONMap{}
+	}
 
 	_, err = tx.Exec(r.Context(), `
 		INSERT INTO system_course_nodes (id, tenant_id, course_id, parent_id, name, code, sort_order, ref_type, source_id, source_name,
@@ -307,6 +310,9 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	kpIDs := jsonSliceToUUIDSlice(req.KnowledgePointIds)
 	resIDs := jsonSliceToUUIDSlice(req.ResourceIds)
+	if req.EvalData == nil {
+		req.EvalData = domain.JSONMap{}
+	}
 	if req.RefType == "original" {
 		kpIDs = []string{}
 		resIDs = []string{}

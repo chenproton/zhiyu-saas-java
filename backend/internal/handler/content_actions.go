@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -55,6 +56,24 @@ func (c contentActions) canTransition(from, to domain.ContentStatus) bool {
 	return false
 }
 
+func (c contentActions) checkTenantAccess(w http.ResponseWriter, r *http.Request, id string) bool {
+	if _, err := uuid.Parse(id); err != nil {
+		respondError(w, http.StatusNotFound, c.entityName+" not found")
+		return false
+	}
+	var entityTenantID string
+	err := c.db.QueryRow(r.Context(), `SELECT tenant_id FROM `+c.table+` WHERE id = $1`, id).Scan(&entityTenantID)
+	if err == pgx.ErrNoRows {
+		respondError(w, http.StatusNotFound, c.entityName+" not found")
+		return false
+	}
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to verify "+c.entityName+" ownership")
+		return false
+	}
+	return verifyTenantOwnership(w, r, entityTenantID)
+}
+
 func (c contentActions) saveDraft(w http.ResponseWriter, r *http.Request) {
 	c.transition(w, r, domain.StatusDraft)
 }
@@ -65,6 +84,9 @@ func (c contentActions) transition(w http.ResponseWriter, r *http.Request, statu
 		return
 	}
 	id := chi.URLParam(r, "id")
+	if !c.checkTenantAccess(w, r, id) {
+		return
+	}
 
 	var current domain.ContentStatus
 	err := c.db.QueryRow(r.Context(), `SELECT status FROM `+c.table+` WHERE id = $1`, id).Scan(&current)
@@ -124,6 +146,7 @@ func (c contentActions) review(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
+
 	var req ContentReviewRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "无效请求体")
@@ -138,6 +161,10 @@ func (c contentActions) review(w http.ResponseWriter, r *http.Request) {
 		status = domain.StatusRejected
 	default:
 		respondError(w, http.StatusBadRequest, "invalid review status")
+		return
+	}
+
+	if !c.checkTenantAccess(w, r, id) {
 		return
 	}
 
@@ -161,6 +188,9 @@ func (c contentActions) invite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
+	if !c.checkTenantAccess(w, r, id) {
+		return
+	}
 	var req InviteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == "" {
 		respondError(w, http.StatusBadRequest, "userId is required")

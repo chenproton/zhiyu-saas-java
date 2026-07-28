@@ -171,13 +171,8 @@ func (h *BatchHandler) checkTenantAccess(w http.ResponseWriter, r *http.Request,
 		return true
 	}
 
-	tc := h.Config.TenantFilterColumn
-	if tc == "" {
-		tc = "tenant_id"
-	}
-
 	var entityTenantID string
-	err := h.DB.QueryRow(r.Context(), "SELECT "+tc+" FROM "+h.Config.WriteTableName+" WHERE id = $1", id).Scan(&entityTenantID)
+	err := h.DB.QueryRow(r.Context(), "SELECT tenant_id FROM "+h.Config.WriteTableName+" WHERE id = $1", id).Scan(&entityTenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, h.Config.EntityName+" not found")
 		return false
