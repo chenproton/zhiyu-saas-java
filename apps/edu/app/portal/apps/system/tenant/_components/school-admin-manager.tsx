@@ -61,7 +61,7 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
     setLoading(true)
     setError(null)
     try {
-      const res = await fetcher<ListResponse<TenantAdmin>>(`/admin/tenants/${tenantId}/admins`)
+      const res = await fetcher<ListResponse<TenantAdmin>>("/admins")
       setAdmins(res.items)
     } catch (err) {
       setError(err instanceof Error ? err.message : "加载管理员列表失败")
@@ -101,13 +101,13 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
     setError(null)
     try {
       if (inline.id) {
-        await fetcher(`/${tenantId}/admins/${inline.id}`, {
+        await fetcher(`/admins/${inline.id}`, {
           method: "PUT",
           body: JSON.stringify({ username: inline.username, name: inline.name }),
         })
         toast({ title: "保存成功" })
       } else {
-        const created = await fetcher<TenantAdmin>(`/${tenantId}/admins`, {
+        const created = await fetcher<TenantAdmin>("/admins", {
           method: "POST",
           body: JSON.stringify({ username: inline.username, name: inline.name }),
         })
@@ -125,7 +125,7 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
   const handleDelete = async () => {
     if (!deleteTarget) return
     try {
-      await fetcher(`/${tenantId}/admins/${deleteTarget.id}`, { method: "DELETE" })
+      await fetcher(`/admins/${deleteTarget.id}`, { method: "DELETE" })
       toast({ title: "删除成功" })
       await fetchAdmins()
     } catch (err) {
@@ -137,10 +137,10 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
 
   const handleViewPassword = async (a: TenantAdmin) => {
     try {
-      const res = await fetcher<{ id: string; plainPassword: string }>(`/${tenantId}/admins/${a.id}/preview-password`, {
+      const res = await fetcher<{ id: string; newPassword: string }>(`/admins/${a.id}/preview-password`, {
         method: "POST",
       })
-      setViewPassword({ admin: a, password: res.plainPassword })
+      setViewPassword({ admin: a, password: res.newPassword })
     } catch (err) {
       toast({ variant: "destructive", title: "获取密码失败", description: err instanceof Error ? err.message : "未知错误" })
     }

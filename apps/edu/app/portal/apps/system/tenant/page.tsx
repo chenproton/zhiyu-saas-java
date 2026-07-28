@@ -154,8 +154,7 @@ export default function TenantPage() {
   }
 
   const adminFetcher = async <T,>(path: string, options?: RequestInit): Promise<T> => {
-    const fullPath = path.startsWith("/admin/tenants") ? path : `/admin/tenants${path}`
-    return portalRequest<T>(fullPath, options)
+    return portalRequest<T>(path, options)
   }
 
   if (authLoading || loading) {

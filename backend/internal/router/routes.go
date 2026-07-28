@@ -219,6 +219,13 @@ func registerPortalRoutes(r chi.Router, h *Handlers) {
 	r.Get("/tenants/{id}", h.tenantHandler.Get)
 	r.Put("/tenants/{id}", h.tenantHandler.Update)
 
+	r.Get("/admins", h.tenantHandler.ListSchoolAdmins)
+	r.Post("/admins", h.tenantHandler.CreateSchoolAdmin)
+	r.Put("/admins/{id}", h.tenantHandler.UpdateSchoolAdmin)
+	r.Delete("/admins/{id}", h.tenantHandler.DeleteSchoolAdmin)
+	r.Post("/admins/{id}/reset-password", h.tenantHandler.ResetSchoolAdminPassword)
+	r.Post("/admins/{id}/preview-password", h.tenantHandler.PreviewSchoolAdminPassword)
+
 	r.Get("/organizations", h.orgHandler.List)
 	r.Get("/organizations/tree", h.orgHandler.Tree)
 	r.Get("/organizations/{id}", h.orgHandler.Get)
