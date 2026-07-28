@@ -61,7 +61,16 @@ func registerBatchRoutes(r chi.Router, base string, h batchRoutes) {
 	r.Post(base+"/{id}/status", h.UpdateStatus)
 }
 
-func New(db *pgxpool.Pool, jwtSecret string) http.Handler {
+type Router struct {
+	http.Handler
+	handlers *Handlers
+}
+
+func (r *Router) Shutdown() {
+	r.handlers.authHandler.Shutdown()
+}
+
+func New(db *pgxpool.Pool, jwtSecret string) *Router {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -102,5 +111,5 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {
 
 	RegisterAPIRoutes(r, jwtSecret, db, h)
 
-	return r
+	return &Router{Handler: r, handlers: h}
 }
