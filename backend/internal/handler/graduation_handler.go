@@ -78,7 +78,7 @@ func (h *GraduationHandler) ListTopics(w http.ResponseWriter, r *http.Request) {
 
 	cfg := listQueryConfig[domain.GraduationProjectTopic]{
 		Table:         "graduation_project_topics",
-		SelectColumns: "id, name, career_position_id, college, source, status, capacity, applied_count, advisor_id, enterprise_mentor_id, start_date, end_date, description, created_at",
+		SelectColumns: "id, tenant_id, name, career_position_id, college, source, status, capacity, applied_count, advisor_id, enterprise_mentor_id, start_date, end_date, description, created_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
 		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
@@ -112,6 +112,9 @@ func (h *GraduationHandler) GetTopic(w http.ResponseWriter, r *http.Request) {
 	topic, err := h.fetchTopic(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "毕业设计课题不存在")
+		return
+	}
+	if topic.TenantID != nil && !verifyTenantOwnership(w, r, *topic.TenantID) {
 		return
 	}
 	respondJSON(w, http.StatusOK, topic)
@@ -169,8 +172,12 @@ func (h *GraduationHandler) UpdateTopic(w http.ResponseWriter, r *http.Request) 
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchTopic(r.Context(), id); err != nil {
+	topic, err := h.fetchTopic(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "毕业设计课题不存在")
+		return
+	}
+	if topic.TenantID != nil && !verifyTenantOwnership(w, r, *topic.TenantID) {
 		return
 	}
 
@@ -213,8 +220,12 @@ func (h *GraduationHandler) DeleteTopic(w http.ResponseWriter, r *http.Request) 
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchTopic(r.Context(), id); err != nil {
+	topic, err := h.fetchTopic(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "毕业设计课题不存在")
+		return
+	}
+	if topic.TenantID != nil && !verifyTenantOwnership(w, r, *topic.TenantID) {
 		return
 	}
 
@@ -256,6 +267,19 @@ func (h *GraduationHandler) ApplyTopic(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
+	topic, err := h.fetchTopic(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "毕业设计课题不存在")
+		return
+	}
+	if topic.TenantID != nil && !verifyTenantOwnership(w, r, *topic.TenantID) {
+		return
+	}
+	if topic.AppliedCount >= topic.Capacity {
+		respondError(w, http.StatusBadRequest, "课题已满员")
+		return
+	}
+
 	tag, err := h.DB.Exec(r.Context(), `
 		UPDATE graduation_project_topics SET applied_count = applied_count + 1 
 		WHERE id = $1 AND applied_count < capacity
@@ -269,7 +293,7 @@ func (h *GraduationHandler) ApplyTopic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	topic, _ := h.fetchTopic(r.Context(), id)
+	topic, _ = h.fetchTopic(r.Context(), id)
 	respondJSON(w, http.StatusOK, topic)
 }
 
@@ -525,19 +549,20 @@ func (h *GraduationHandler) QueryResults(w http.ResponseWriter, r *http.Request)
 
 func (h *GraduationHandler) fetchTopic(ctx context.Context, id string) (domain.GraduationProjectTopic, error) {
 	var t domain.GraduationProjectTopic
-	var college, advisorID, enterpriseMentorID, description *string
+	var tenantID, college, advisorID, enterpriseMentorID, description *string
 	var startDate, endDate *time.Time
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, career_position_id, college, source, status, capacity, applied_count,
+		SELECT id, tenant_id, name, career_position_id, college, source, status, capacity, applied_count,
 			advisor_id, enterprise_mentor_id, start_date, end_date, description, created_at
 		FROM graduation_project_topics WHERE id = $1
 	`, id).Scan(
-		&t.ID, &t.Name, &t.CareerPositionID, &college, &t.Source, &t.Status, &t.Capacity, &t.AppliedCount,
+		&t.ID, &tenantID, &t.Name, &t.CareerPositionID, &college, &t.Source, &t.Status, &t.Capacity, &t.AppliedCount,
 		&advisorID, &enterpriseMentorID, &startDate, &endDate, &description, &t.CreatedAt,
 	)
 	if err != nil {
 		return t, err
 	}
+	t.TenantID = tenantID
 	t.College = college
 	t.AdvisorID = advisorID
 	t.EnterpriseMentorID = enterpriseMentorID
@@ -557,14 +582,15 @@ func (h *GraduationHandler) scanTopicRows(rows pgx.Rows) ([]domain.GraduationPro
 	items := make([]domain.GraduationProjectTopic, 0)
 	for rows.Next() {
 		var t domain.GraduationProjectTopic
-		var college, advisorID, enterpriseMentorID, description *string
+		var tenantID, college, advisorID, enterpriseMentorID, description *string
 		var startDate, endDate *time.Time
 		if err := rows.Scan(
-			&t.ID, &t.Name, &t.CareerPositionID, &college, &t.Source, &t.Status, &t.Capacity, &t.AppliedCount,
+			&t.ID, &tenantID, &t.Name, &t.CareerPositionID, &college, &t.Source, &t.Status, &t.Capacity, &t.AppliedCount,
 			&advisorID, &enterpriseMentorID, &startDate, &endDate, &description, &t.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
+		t.TenantID = tenantID
 		t.College = college
 		t.AdvisorID = advisorID
 		t.EnterpriseMentorID = enterpriseMentorID

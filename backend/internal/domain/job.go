@@ -112,6 +112,7 @@ type PositionAbilityBinding struct {
 
 type AbilityDomain struct {
 	ID               string   `json:"id"`
+	TenantID         *string  `json:"tenantId,omitempty"`
 	CareerPositionID string   `json:"careerPositionId"`
 	Name             string   `json:"name"`
 	Description      *string  `json:"description,omitempty"`

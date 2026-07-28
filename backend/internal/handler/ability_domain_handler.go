@@ -49,7 +49,7 @@ func (h *AbilityDomainHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.AbilityDomain]{
 		Table:         "ability_domains",
-		SelectColumns: "id, career_position_id, name, description, binding_ids, sort_order",
+		SelectColumns: "id, tenant_id, career_position_id, name, description, binding_ids, sort_order",
 		TenantScoped:  true,
 		OrderBy:       "sort_order ASC",
 		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
@@ -107,6 +107,24 @@ func (h *AbilityDomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusCreated, d)
 }
 
+func (h *AbilityDomainHandler) Get(w http.ResponseWriter, r *http.Request) {
+	if middleware.CurrentUser(r) == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	d, err := h.fetchDomain(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "能力域不存在")
+		return
+	}
+	if d.TenantID != nil && !verifyTenantOwnership(w, r, *d.TenantID) {
+		return
+	}
+	respondJSON(w, http.StatusOK, d)
+}
+
 func (h *AbilityDomainHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "权限不足")
@@ -114,8 +132,12 @@ func (h *AbilityDomainHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchDomain(r.Context(), id); err != nil {
+	d, err := h.fetchDomain(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "能力域不存在")
+		return
+	}
+	if d.TenantID != nil && !verifyTenantOwnership(w, r, *d.TenantID) {
 		return
 	}
 
@@ -151,12 +173,16 @@ func (h *AbilityDomainHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchDomain(r.Context(), id); err != nil {
+	d, err := h.fetchDomain(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "能力域不存在")
 		return
 	}
+	if d.TenantID != nil && !verifyTenantOwnership(w, r, *d.TenantID) {
+		return
+	}
 
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM ability_domains WHERE id = $1`, id)
+	_, err = h.DB.Exec(r.Context(), `DELETE FROM ability_domains WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "删除能力域失败")
 		return
@@ -166,18 +192,19 @@ func (h *AbilityDomainHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 func (h *AbilityDomainHandler) fetchDomain(ctx context.Context, id string) (domain.AbilityDomain, error) {
 	var d domain.AbilityDomain
-	var description *string
+	var tenantID, description *string
 	var bindingIDs []string
 
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, career_position_id, name, description, binding_ids, sort_order
+		SELECT id, tenant_id, career_position_id, name, description, binding_ids, sort_order
 		FROM ability_domains WHERE id = $1
 	`, id).Scan(
-		&d.ID, &d.CareerPositionID, &d.Name, &description, &bindingIDs, &d.SortOrder,
+		&d.ID, &tenantID, &d.CareerPositionID, &d.Name, &description, &bindingIDs, &d.SortOrder,
 	)
 	if err != nil {
 		return d, err
 	}
+	d.TenantID = tenantID
 	d.Description = description
 	d.BindingIDs = bindingIDs
 	return d, nil
@@ -187,13 +214,14 @@ func (h *AbilityDomainHandler) scanDomainRows(rows pgx.Rows) ([]domain.AbilityDo
 	items := make([]domain.AbilityDomain, 0)
 	for rows.Next() {
 		var d domain.AbilityDomain
-		var description *string
+		var tenantID, description *string
 		var bindingIDs []string
 		if err := rows.Scan(
-			&d.ID, &d.CareerPositionID, &d.Name, &description, &bindingIDs, &d.SortOrder,
+			&d.ID, &tenantID, &d.CareerPositionID, &d.Name, &description, &bindingIDs, &d.SortOrder,
 		); err != nil {
 			return nil, err
 		}
+		d.TenantID = tenantID
 		d.Description = description
 		d.BindingIDs = bindingIDs
 		items = append(items, d)

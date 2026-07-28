@@ -41,6 +41,7 @@ func registerJobRoutes(r chi.Router, h *Handlers) {
 
 	r.Get("/job/ability-domains", h.abilityDomainHandler.List)
 	r.Post("/job/ability-domains", h.abilityDomainHandler.Create)
+	r.Get("/job/ability-domains/{id}", h.abilityDomainHandler.Get)
 	r.Put("/job/ability-domains/{id}", h.abilityDomainHandler.Update)
 	r.Delete("/job/ability-domains/{id}", h.abilityDomainHandler.Delete)
 

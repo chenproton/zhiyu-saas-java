@@ -46,7 +46,8 @@ func (h *ExamResultHandler) List(w http.ResponseWriter, r *http.Request) {
 	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.ExamResult]{
 		Table:         "exam_results er LEFT JOIN majors m ON m.id = er.major_id",
 		SelectColumns: "er.id, er.exam_usage_id, er.user_id, er.student_name, er.class_name, er.grade, er.major_id, COALESCE(m.name, '') AS major_name, er.score, er.total_score, er.is_pass, er.answers, er.submit_time, er.created_at",
-		TenantScoped:  false,
+		TenantScoped:  true,
+		TenantColumn:  "er.tenant_id",
 		OrderBy:       "er.score DESC, er.submit_time ASC",
 		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
 			qb.addCondition("er.exam_usage_id = " + qb.nextArg(usageID))

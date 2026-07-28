@@ -24,10 +24,6 @@ func RegisterPublicRoutes(r chi.Router, h *Handlers) {
 	r.Post("/auth/portal/login", h.authHandler.PortalLogin)
 	r.Post("/auth/select-tenant", h.authHandler.SelectTenant)
 	r.Post("/auth/debug/token", h.authHandler.DebugToken)
-	r.Get("/banners", h.bannerHandler.List)
-	r.Get("/resources", h.resourceHandler.List)
-	r.Get("/resources/{id}", h.resourceHandler.Get)
-	r.Post("/resources/{id}/view", h.resourceHandler.IncrementView)
 	r.Get("/platform-links", h.platformLinkHandler.List)
 	r.Get("/app-modules", h.appModuleHandler.List)
 }
@@ -46,7 +42,6 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 
 		registerAuthRoutes(r, h)
 		registerImportExportRoutes(r, h)
-		registerMarketplaceRoutes(r, h)
 		registerLandingRoutes(r, h)
 
 		r.Group(func(r chi.Router) {
@@ -108,13 +103,6 @@ func registerSuperAdminRoutes(r chi.Router, h *Handlers) {
 	r.Get("/admin/tenants/{tenantId}/subscription", h.subscriptionHandler.AdminGet)
 	r.Put("/admin/tenants/{tenantId}/subscription", h.subscriptionHandler.AdminUpdate)
 
-	r.Get("/stats/dashboard", h.statsHandler.Dashboard)
-	r.Get("/config", h.statsHandler.GetConfig)
-	r.Put("/config", h.statsHandler.UpdateConfig)
-
-	r.Post("/banners", h.bannerHandler.Create)
-	r.Put("/banners/{id}", h.bannerHandler.Update)
-	r.Delete("/banners/{id}", h.bannerHandler.Delete)
 }
 
 func registerWorkflowRoutes(r chi.Router, h *Handlers) {
@@ -179,34 +167,6 @@ func registerImportExportRoutes(r chi.Router, h *Handlers) {
 	r.Post("/export/organizations/excel", h.resourceExportHandler.ExportOrganizations)
 	r.Post("/export/students/excel", h.resourceExportHandler.ExportStudents)
 	r.Post("/export/teachers/excel", h.resourceExportHandler.ExportTeachers)
-}
-
-func registerMarketplaceRoutes(r chi.Router, h *Handlers) {
-	r.Get("/institutions", h.institutionHandler.List)
-	r.Get("/institutions/{id}", h.institutionHandler.Get)
-	r.Post("/institutions", h.institutionHandler.Create)
-	r.Put("/institutions/{id}", h.institutionHandler.Update)
-	r.Post("/institutions/{id}/approve", h.institutionHandler.Approve)
-	r.Post("/institutions/{id}/disable", h.institutionHandler.Disable)
-
-	r.Post("/resources", h.resourceHandler.Create)
-	r.Put("/resources/{id}", h.resourceHandler.Update)
-	r.Delete("/resources/{id}", h.resourceHandler.Delete)
-	r.Post("/resources/{id}/submit", h.resourceHandler.SubmitForReview)
-	r.Post("/resources/{id}/review", h.resourceHandler.Review)
-	r.Post("/resources/{id}/publish", h.resourceHandler.Publish)
-	r.Post("/resources/{id}/offline", h.resourceHandler.Offline)
-
-	r.Get("/orders", h.orderHandler.List)
-	r.Get("/orders/{id}", h.orderHandler.Get)
-	r.Post("/orders", h.orderHandler.Create)
-	r.Post("/orders/{id}/pay", h.orderHandler.Pay)
-	r.Get("/authorizations", h.orderHandler.ListAuthorizations)
-	r.Get("/authorizations/{code}", h.orderHandler.VerifyAuthorization)
-
-	r.Get("/withdrawals", h.withdrawalHandler.List)
-	r.Post("/withdrawals", h.withdrawalHandler.Create)
-	r.Post("/withdrawals/{id}/status", h.withdrawalHandler.UpdateStatus)
 }
 
 func registerLandingRoutes(r chi.Router, h *Handlers) {

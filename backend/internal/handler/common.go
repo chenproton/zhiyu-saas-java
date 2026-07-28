@@ -628,6 +628,7 @@ func executeListQuery[T any](ctx context.Context, db listQueryDB, r *http.Reques
 	countQuery := "SELECT COUNT(*) FROM " + cfg.Table + " WHERE " + where
 	var total int
 	if err := db.QueryRow(ctx, countQuery, qb.args...).Scan(&total); err != nil {
+		slog.Error("count query failed", "query", countQuery, "error", err)
 		return nil, 0, fmt.Errorf("count query failed: %w", err)
 	}
 

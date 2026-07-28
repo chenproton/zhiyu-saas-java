@@ -72,7 +72,12 @@ func (h *MicroCertHandler) ListHistory(w http.ResponseWriter, r *http.Request) {
 		Table:         "cert_issuance_records",
 		SelectColumns: "id, template_id, user_id, cert_number, issue_date, expire_date, status, revoked_at, revoke_reason",
 		TenantScoped:  true,
-		ScanRows:      h.Store.ScanIssuanceRows,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if templateID := r.URL.Query().Get("templateId"); templateID != "" {
+				qb.addCondition("template_id = " + qb.nextArg(templateID))
+			}
+		},
+		ScanRows: h.Store.ScanIssuanceRows,
 	})
 	if err != nil {
 		if errors.Is(err, ErrMissingTenant) {

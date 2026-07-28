@@ -268,6 +268,7 @@ type StudentAbilityArchive struct {
 // GraduationProjectTopic represents a graduation project topic.
 type GraduationProjectTopic struct {
 	ID                 string    `json:"id"`
+	TenantID           *string   `json:"tenantId,omitempty"`
 	Name               string    `json:"name"`
 	CareerPositionID   string    `json:"careerPositionId"`
 	College            *string   `json:"college,omitempty"`

@@ -51,7 +51,7 @@ func (h *AbilityHandler) List(w http.ResponseWriter, r *http.Request) {
 		Table:         "ability_points",
 		SelectColumns: "id, name, code, description, category, attributes, is_public, creator_id, created_at",
 		TenantScoped:  true,
-		SearchColumns: []string{"name"},
+		SearchColumns: []string{"name", "description"},
 		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
 			if category := r.URL.Query().Get("category"); category != "" {
 				qb.addCondition("category = " + qb.nextArg(category))
