@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -46,61 +45,25 @@ func (h *AbilityDomainHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	careerPositionID := r.URL.Query().Get("careerPositionId")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
 
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if careerPositionID != "" {
-		where = append(where, "career_position_id = $"+itoa(argIdx))
-		args = append(args, careerPositionID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM ability_domains WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, career_position_id, name, description, binding_ids, sort_order
-		FROM ability_domains
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY sort_order ASC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.AbilityDomain]{
+		Table:         "ability_domains",
+		SelectColumns: "id, career_position_id, name, description, binding_ids, sort_order",
+		TenantScoped:  true,
+		OrderBy:       "sort_order ASC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if careerPositionID != "" {
+				qb.addCondition("career_position_id = " + qb.nextArg(careerPositionID))
+			}
+		},
+		ScanRows: h.scanDomainRows,
+	})
 	if err != nil {
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "查询能力域失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanDomainRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取能力域失败")
 		return
 	}
 
