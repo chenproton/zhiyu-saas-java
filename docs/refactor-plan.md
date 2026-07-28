@@ -448,17 +448,22 @@ export { AuthProvider as PortalAuthProvider, useAuth as usePortalAuth } from "@/
 | A3 | `view_logs` 写入逻辑分散 | `position/scenario/resource handler` | 已抽象 `recordView` helper；后续可扩展为独立 service | 0.5 天 |
 | A4 | Update 字段合并/Nullability 模式不一致 | `position/scenario/course handler` | 统一使用 patch helper 或 `NullableString` | 1 天 |
 | A5 | 导入/导出/模板缺少通用 pipeline | `*_import_handler.go`、`template_handler.go` | 抽象 Excel/CSV 行 → DTO → 校验 → upsert → 重复处理 | 2-3 天 |
-| A6 | 英文错误消息大量残留 | 全 handler 约 2000+ 处 | 统一翻译为中文 | 2 小时 |
-| A7 | `parseUploadedExcel` 重复实现 | `position/scenario/course/granular_course_import_handler.go` | 提取到 `import_common.go` | 0.5 小时 |
-| A8 | 事务 begin/rollback/commit 样板重复 | 多数 Create/Update handler | 提取 `withTx(ctx, db, fn)` helper | 0.5 天 |
+| A6 | 英文错误消息残留 | 全 handler 约 20+ 处 respondError/return fmt.Errorf 使用英文 | 统一翻译为中文；本次已修复导入 handler 与部分核心消息 | 1 小时 |
+| A7 | `parseUploadedExcel` 重复实现 | `scenario_import_handler.go`、`course_import_handler.go`、`granular_course_import_handler.go`、`position_import_handler.go` | 提取到 `import_common.go` | 0.5 小时 |
+| A8 | 事务 begin/rollback/commit 样板重复 | 22 个 handler、33 个事务作用域 | 提取 `withTx(ctx, db, fn)` helper | 0.5 天 |
 | A9 | tenant admin CRUD 双份实现 | `tenant_admin_handler.go` vs `tenant_internal_admin_handler.go` | 提取共用方法到 `TenantHandler` | 0.5 天 |
-| A10 | 认证状态码不一致 | `node_resource_handler.go:46`、`scenario_grade_handler.go:36` 返回 401，其余多返回 403 | 统一状态码 | 0.5 小时 |
-| A11 | SQL scan 错误静默跳过 | `scenario_grade_handler.go:116`、`tenant_admin_handler.go:68` | 统一返回 500 或记录日志 | 0.5 小时 |
+| A10 | 认证状态码不一致 | 多处 `claims == nil` 返回 401，多数返回 403 | 统一约定：未认证 401，越权 403；提取 `requireAuth` / `requireTenant` helper | 0.5 小时 |
+| A11 | SQL scan 错误静默跳过 | 44 处 `_ = Scan(...)`、多处 `rows.Scan` 仅 `continue`、大量循环缺少 `rows.Err()` | 所有 scan 必须处理错误，循环结束检查 `rows.Err()` | 0.5 天 |
 | A12 | SQL 标识符拼接风险 | `import_export_handler.go`、`content_actions.go`、`common.go` | 新增 `sanitizeIdentifier` 白名单校验；已修复 ✅ | 0.5 小时 |
 | A13 | 导出功能缺少租户过滤 | `import_export_handler.go` | `Export` 增加 `WHERE tenant_id = $1`；已修复 ✅ | 0.5 小时 |
 | A14 | `context.Background()` 进入请求路径 | `approval_handler.go:251` | `isUserApproverForStep` 使用 `r.Context()`；已修复 ✅ | 0.5 小时 |
 | A15 | 错误日志级别错误 | `auth_handler.go`、`user_management_handler.go`、`evaluation_result_handler.go`、`exam_result_handler.go` | `slog.Info("ERROR ...")` 改为 `slog.Error`；已修复 ✅ | 0.5 小时 |
 | A16 | 后端缺少 Repository/Service 层 | `internal/handler/*.go` 共 95+ 个 handler | 引入 `internal/store/<domain>`，handler 只负责 HTTP 编排 | 1-2 周 |
+| A17 | 导入/导出工具函数重复 | `lookupBatch`、`findOrCreateKnowledgePoints`、`findOrCreateResources` 在多个 import handler 重复 | 抽到 `import_common.go` 或新建 `internal/importutil` | 0.5 天 |
+| A18 | `respondError(err.Error())` 暴露底层错误 | `scenario_grade_handler.go:63`、`question_handler.go:77`、`org_handler.go:198,270`、`user_management_handler.go:235` 等 | 用户响应使用中文业务语义，原始错误写入 `slog.Error` | 0.5 天 |
+| A19 | batch_handler 表名拼接未校验 | `batch_handler.go:124` 字符串拼接 `SELECT tenant_id FROM `+h.Config.WriteTableName | 使用 `sanitizeIdentifier` 或固定表名映射 | 0.5 小时 |
+| A20 | 超大 handler 文件 | `template_handler.go` (1219 行)、`position_handler.go` (1149 行)、`resource_import_handler.go` (894 行) | 按功能拆分为多个文件 | 1-2 天 |
+| A21 | import_export_handler `cols` 未逐列校验 | `import_export_handler.go:124` 的 `cols` 由 `meta.defaultCols` 代码生成 | 对 `cols` 也使用白名单或固定列映射 | 0.5 小时 |
 
 ### B. 前端 edu
 
@@ -476,7 +481,12 @@ export { AuthProvider as PortalAuthProvider, useAuth as usePortalAuth } from "@/
 | B10 | 导入流程未统一 | `app/evaluation/question-banks/[id]/page.tsx` | 改用 `useImportFlow` hook | 0.5 天 |
 | B11 | `ContentListPage` 导入逻辑重复 | `components/shared/content-list-page.tsx` | 将手动 CSV 导入路径完全收敛到 `useImportFlow` | 0.5 天 |
 | B12 | `DataProvider` 领域混杂 | `components/providers/data-provider.tsx` (743 行) | 按领域拆分或转为针对性 hooks | 1-2 天 |
-| B13 | 前端 `any` 大量残留 | 全项目 `.tsx` 约 544 处 | 补全 DTO 类型，替换 `as any` | 1-2 周 |
+| B13 | 前端 `any` 大量残留 | 全项目 `.tsx` 约 485 处 | 补全 DTO 类型，替换 `as any` | 1-2 周 |
+| B14 | `EmptyState` 已导出但未被使用 | `components/shared/status-badge.tsx:3` 重新导出，但 library/approval 等页面仍用硬编码空状态 | 在 library、approval-list-page 等页面推广 `EmptyState` | 0.5 天 |
+| B15 | library 页面未使用 `TableRowActions` | `library/certificates`、`library/knowledge`、`library/questions`、`library/resources`、`library/ability` | 替换内联 Button 为 `TableRowActions` / `HoverActionBar` | 0.5 天 |
+| B16 | Portal 系统资源/组织用户页面未接入 `PortalCrudPage` | `resource/codes`、`resource/package`、`org-user/org-types`、`org-user/positions`、`org-user/fields`、`org-user/relations`、`org-user/graduates` | 评估迁移到 `PortalCrudPage` 或提取 `usePortalCrudList` hook | 1-2 天 |
+| B17 | 详情页加载多个关联资源模式重复 | `scene/scenarios/[id]/edit/page.tsx`、`scene/scenarios/[id]/edit/tasks/page.tsx` 均手写 `Promise.all([...api.list({limit:1000}), api.get(id)])` | 提供 `useEntityWithRelations` hook 或 react-query wrapper | 0.5 天 |
+| B18 | 状态展示手写 Badge 未收敛 | `portal/apps/system/resource/package/page.tsx`、`portal/workspace/_components/*-tab.tsx` 等 | 统一使用 `StatusBadge` + `getStatusConfig()` | 0.5 天 |
 
 ### C. 前端 marketplace（已删除，仅作存档）
 
@@ -544,6 +554,12 @@ export { AuthProvider as PortalAuthProvider, useAuth as usePortalAuth } from "@/
 | F22 | SQL 标识符拼接风险 | `import_export_handler.go`、`content_actions.go`、`common.go` | 新增 `sanitizeIdentifier` 白名单校验，替换所有表名/列名拼接点 |
 | F23 | 错误日志级别错误 | `auth_handler.go`、`user_management_handler.go`、`evaluation_result_handler.go`、`exam_result_handler.go` | `slog.Info("ERROR ...")` 改为 `slog.Error("...", "error", err, ...)` |
 | F24 | 后端全量 `gofmt` | `backend/**/*.go` | 运行 `gofmt -w .` 统一格式 |
+| F25 | annotation 系统残留属性 | `packages/ui/src/components/ui/dialog.tsx` | 删除未使用的 `annotationContext` / `annotationContainerRef` 属性 |
+| F26 | 静态 HTML 原型中残留 annotation 数据属性 | `apps/edu/public/student_2.html`、`apps/edu/public/student_3.html` | 删除两个无人引用的 dead 原型 HTML 文件 |
+| F27 | 部署脚本重复 typecheck | `deploy.sh` | 默认跳过独立的 `tsc --noEmit`，由 Next.js 构建内部类型检查覆盖；保留 `--typecheck` 选项手动开启 |
+| F28 | 部署脚本删除 Turbopack cache | `deploy.sh` | 构建前由 `rm -rf "$EDU_DIR/.next"` 改为仅清理 `standalone/server/static`，保留 `.next/cache` 复用增量缓存 |
+| F29 | 后端导入 handler 英文错误消息 | `scenario_import_handler.go`、`position_import_handler.go`、`course_import_handler.go`、`granular_course_import_handler.go` | 翻译 "invalid form" / "missing file" / "failed to parse Excel file" 为中文 |
+| F30 | 后端其他英文错误消息 | `content_actions.go`、`import_export_handler.go`、`question_bank_handler.go`、`course_import_handler.go`、`org_handler.go`、`user_management_handler.go` | 翻译内部/用户可见英文错误消息为中文 |
 
 验证结果（2026-07-28 后续全量修复后）：
 - `apps/edu`: `pnpm lint` ✅ 0 errors / 0 warnings；`pnpm typecheck` ✅ 通过
@@ -580,8 +596,14 @@ export { AuthProvider as PortalAuthProvider, useAuth as usePortalAuth } from "@/
   8 → migration 版本号冲突修复（006/064/067）与 019→021 缺口
   9 → 后端测试覆盖提升（handler/middleware 当前 31.4%/12.6%）
   10 → #15 testhelper 与 router 同步（P1, 1.5d）
-  11 → #21 后端错误消息统一中文（P2, 2h，本次仅修复了日志级别，中英混用仍大量存在）
+  11 → 后端错误消息统一中文（P2，本次已修复导入 handler 与部分核心消息，仍有 ~20+ 处 respondError 英文及日志英文待处理）
   12 → #26 tasks/page.tsx 拆分（P2, 2d）
+  13 → 后端事务样板抽象为 `withTx(ctx, db, fn)` helper（22 个文件、33 个事务作用域）
+  14 → 后端 SQL scan 错误统一处理（44 处 `_ = Scan` 静默跳过、`rows.Err()` 缺失等）
+  15 → 后端认证状态码统一（401/403 混用）
+  16 → 后端导入/导出工具函数去重（parseUploadedExcel、lookupBatch、findOrCreateKnowledgePoints/Resources）
+  17 → 前端 EmptyState 推广与 library 页面 TableRowActions 收敛
+  18 → 前端 Portal 系统资源/组织用户页面接入 PortalCrudPage
 
 暂缓/不执行:
   ⏭️ 旧的 #23 "Repository 层" 已升级为更高优先级的"后端引入 Repository/Service 层"，不再暂缓
