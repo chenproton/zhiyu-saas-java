@@ -33,6 +33,7 @@ func main() {
 	defer database.Close()
 
 	r := router.New(database.Pool, cfg.JWTSecret)
+	defer r.Shutdown()
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.Port),

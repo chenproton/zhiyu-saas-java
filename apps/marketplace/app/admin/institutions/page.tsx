@@ -34,7 +34,7 @@ import {
 import { Search, Eye, CheckCircle, XCircle, Power } from "lucide-react"
 import { institutionApi, resourceApi, orderApi, type Institution, type InstitutionStatus } from "@/lib/api"
 import { useAuth } from "@/components/auth-provider"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 
 export default function AdminInstitutionsPage() {
   const { hasPermission } = useAuth()

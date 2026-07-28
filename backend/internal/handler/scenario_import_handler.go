@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -298,7 +298,7 @@ func (h *ScenarioImportHandler) importTasks(ctx context.Context, xlsx *excelize.
 				if err != nil {
 					msg := fmt.Sprintf("任务[%s/%s]测评方式[%s]写入失败: %v", scenarioName, taskName, evalName, err)
 					result.Errors = append(result.Errors, msg)
-					log.Printf("[import/scenarios] %s", msg)
+					slog.Info(fmt.Sprintf("[import/scenarios] %s", msg))
 				}
 			}
 		}

@@ -23,7 +23,7 @@ import { resourceLibraryApi, fileApi } from "@/lib/api"
 import { RESOURCE_TYPE_LABELS, type ResourceLibraryItem, type ResourceKind } from "@/lib/types/library"
 import { ResourcePreviewModal, usePreviewResources } from "@/components/shared/resource-preview-modal"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { cn } from "@/lib/utils"
 import {
   TYPE_ICONS, TYPE_COLORS, TYPE_BG,

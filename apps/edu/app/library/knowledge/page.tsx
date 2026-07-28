@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch"
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { knowledgeApi, courseApi } from "@/lib/api"
 import type { KnowledgePoint } from "@/lib/types/lesson"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import {
   KnowledgePointFormDialog,

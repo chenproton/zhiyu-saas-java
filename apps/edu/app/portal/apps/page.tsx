@@ -20,7 +20,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { useAppModules } from "@/hooks/use-platform-links"
+import { useAppModules } from "@zhiyu/ui"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { getPlatformCardModules } from "@/lib/navigation-config"
 

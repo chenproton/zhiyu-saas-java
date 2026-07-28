@@ -23,7 +23,7 @@ import type { CareerPosition } from "@/lib/types/job"
 import type { Industry } from "@/lib/types/backend"
 import type { SceneBatch } from "@/lib/types/scene"
 import type { User } from "@/lib/api"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 
 interface ScenarioFormProps {
   scenarioId?: string

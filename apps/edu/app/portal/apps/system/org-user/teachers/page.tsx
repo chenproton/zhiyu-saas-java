@@ -15,7 +15,7 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { portalUserManagementApi, portalStaffTitleApi, importExportApi } from "@/lib/api"
 import type { StaffTitle } from "@/lib/types/backend"
 import { MultiSelectSearch } from "@/components/ui/multi-select-search"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { PortalSidebarCrudPage } from "@/components/shared/portal-sidebar-crud-page"
 import { Pencil, Trash2, Key, UserCheck, Ban, Users, Loader2 } from "lucide-react"
 

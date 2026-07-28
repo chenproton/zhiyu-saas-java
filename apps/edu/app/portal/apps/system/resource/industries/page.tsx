@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Pencil, Trash2 } from "lucide-react"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest, buildQuery, type ListResponse } from "@/lib/api"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { TableRowActions } from "@/components/shared/table-row-actions"
 import { PortalCrudPage } from "@/components/shared/portal-crud-page"
 import type { Industry } from "@/lib/types/backend"

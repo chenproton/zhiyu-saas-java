@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -140,7 +139,7 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 		WHERE u.username = $1 AND u.platform = $2
 	`, req.Username, platform)
 	if err != nil {
-		log.Printf("ERROR login query: %v", err)
+		slog.Info(fmt.Sprintf("ERROR login query: %v", err))
 		respondError(w, http.StatusInternalServerError, "登录失败")
 		return
 	}
@@ -160,7 +159,7 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 			&phone, &avatarURL, &studentNo, &workID, &idCard, &titleIDs, &oauth, &u.user.Status,
 			&u.user.CreatedAt, &u.user.UpdatedAt, &u.tenant.Name,
 		); err != nil {
-			log.Printf("ERROR login scan: %v", err)
+			slog.Info(fmt.Sprintf("ERROR login scan: %v", err))
 			continue
 		}
 		u.user.TenantID = tenantID
@@ -215,7 +214,7 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 	}
 	preAuthToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, preAuthClaims).SignedString([]byte(h.JWTSecret))
 	if err != nil {
-		log.Printf("ERROR generating preAuthToken: %v", err)
+		slog.Info(fmt.Sprintf("ERROR generating preAuthToken: %v", err))
 		respondError(w, http.StatusInternalServerError, "登录失败")
 		return
 	}

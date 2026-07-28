@@ -14,7 +14,7 @@ import { TableRowActions } from "@/components/shared/table-row-actions"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { portalUserManagementApi, importExportApi } from "@/lib/api"
 import type { Organization } from "@/lib/types/backend"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { PortalSidebarCrudPage } from "@/components/shared/portal-sidebar-crud-page"
 import { Pencil, Power, Trash2, Key, Award, Users, Loader2 } from "lucide-react"
 

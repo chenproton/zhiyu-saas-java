@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table"
 import { workflowApi, majorApi } from "@/lib/api"
 import type { Workflow } from "@/lib/types/backend"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { useAuth } from "@/components/auth-provider"
 import { WorkflowEditor, buildWorkflowSteps, WorkflowStepEditor } from "@/components/shared/_components/workflow-editor"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"

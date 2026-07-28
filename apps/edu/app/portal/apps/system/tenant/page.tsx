@@ -27,7 +27,7 @@ import {
   Calendar,
   Shield,
 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
 import type { Tenant as BackendTenant } from "@/lib/types/backend"

@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { onSiteQuestionLibraryApi } from "@/lib/api"
 import type { OnSiteQuestionLibraryItem } from "@/lib/types/library"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 
 const QUESTION_TYPE_LABELS: Record<string, string> = { short_answer: "简答", essay: "论述", oral: "口答", practice: "实操" }

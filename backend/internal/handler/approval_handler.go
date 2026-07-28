@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -316,8 +317,8 @@ func (h *ApprovalHandler) isLastStep(workflow *domain.Workflow, stepIdx int) boo
 
 func (h *ApprovalHandler) syncEntityStatusQuiet(ctx context.Context, targetType, targetID, status string) {
 	if err := h.syncEntityStatus(ctx, targetType, targetID, status); err != nil {
-		fmt.Printf("warn: sync entity status failed targetType=%s targetId=%s status=%s err=%v\n",
-			targetType, targetID, status, err)
+		slog.Info(fmt.Sprintf("warn: sync entity status failed targetType=%s targetId=%s status=%s err=%v\n",
+			targetType, targetID, status, err))
 	}
 }
 

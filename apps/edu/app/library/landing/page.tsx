@@ -10,7 +10,7 @@ import {
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { resourceLibraryApi, knowledgeApi, abilityApi, certificateLibraryApi, onSiteQuestionLibraryApi } from "@/lib/api"
 import type { ResourceLibraryItem } from "@/lib/types/library"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (

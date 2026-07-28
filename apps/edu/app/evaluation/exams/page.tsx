@@ -6,7 +6,7 @@ import { EvaluationListTable } from "@/components/evaluation/evaluation-list-tab
 import { examApi, evaluationBatchApi, approvalApi, importExportApi } from "@/lib/api"
 import type { ContentBatch } from "@/components/shared/content-list-page"
 import { useAuth } from "@/components/auth-provider"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { draftSuffix } from "@/lib/format-utils"
 
 interface ExamItem {

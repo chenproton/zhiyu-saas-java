@@ -368,19 +368,7 @@ func (h *ResourceHandler) transitionStatus(w http.ResponseWriter, r *http.Reques
 
 func (h *ResourceHandler) IncrementView(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	claims := middleware.CurrentUser(r)
-
-	var userID, tenantID any
-	if claims != nil {
-		userID = claims.UserID
-		tenantID = claims.TenantID
-	} else {
-		userID = nil
-		tenantID = nil
-	}
-
-	_, err := h.DB.Exec(r.Context(), `INSERT INTO view_logs (target_type, target_id, user_id, tenant_id) VALUES ('resource', $1, $2, $3)`, id, userID, tenantID)
-	if err != nil {
+	if err := recordView(r.Context(), h.DB, "resource", id, middleware.CurrentUser(r)); err != nil {
 		respondError(w, http.StatusInternalServerError, "增加view失败")
 		return
 	}

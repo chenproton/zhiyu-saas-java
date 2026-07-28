@@ -16,7 +16,7 @@ import { useOrgTree, findOrgAncestor } from "@/hooks/use-org-tree"
 import { OrgNodePicker } from "@/components/shared/org-node-picker"
 import { TableRowActions } from "@/components/shared/table-row-actions"
 import { portalUserManagementApi } from "@/lib/api"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { Search, Download, RotateCcw, Loader2, Pencil } from "lucide-react"
 import type { Organization } from "@/lib/types/backend"
 

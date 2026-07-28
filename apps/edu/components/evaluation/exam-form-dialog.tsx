@@ -26,7 +26,7 @@ import type { Exam, ExamFormData } from "@/lib/types"
 import { evaluationBatchApi, fileApi } from "@/lib/api"
 import { UserSelector } from "@/components/shared/user-selector"
 import { useAuth } from "@/components/auth-provider"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 

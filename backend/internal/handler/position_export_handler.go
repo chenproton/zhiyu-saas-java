@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -72,7 +72,7 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 			FROM career_positions WHERE id=$1
 		`, pid).Scan(&name, &shortName, &positionType, &desc, &careerPath, &salaryMin, &salaryMax, &industryID, &requirements, &batchID)
 		if err != nil {
-			log.Printf("[export/positions] scan position %s: %v", pid, err)
+			slog.Info(fmt.Sprintf("[export/positions] scan position %s: %v", pid, err))
 			continue
 		}
 
@@ -122,7 +122,7 @@ func (h *PositionExportHandler) fillPositionsData(ctx context.Context, f *exceli
 		})
 	}
 
-	log.Printf("[export/positions] collected %d basic info rows for %d position IDs", len(posRows), len(positionIDs))
+	slog.Info(fmt.Sprintf("[export/positions] collected %d basic info rows for %d position IDs", len(posRows), len(positionIDs)))
 
 	for ri, row := range posRows {
 		r := 3 + ri

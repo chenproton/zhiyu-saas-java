@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Download, Percent, DollarSign, Loader2 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { configApi, orderApi, type Order, type PlatformConfig } from "@/lib/api"
 
 interface MonthlyRow {

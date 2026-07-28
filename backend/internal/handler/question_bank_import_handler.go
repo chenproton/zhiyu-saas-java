@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -99,7 +99,7 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 
 	rows, err := xlsx.GetRows("题库基本信息")
 	if err != nil {
-		log.Printf("[import/question-banks] sheet '题库基本信息' not found: %v", err)
+		slog.Info(fmt.Sprintf("[import/question-banks] sheet '题库基本信息' not found: %v", err))
 		return previewRes, execRes
 	}
 
@@ -163,11 +163,11 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 					execRes.Failed++
 					msg := fmt.Sprintf("题库[%s]更新失败: %v", name, err)
 					execRes.Errors = append(execRes.Errors, msg)
-					log.Printf("[import/question-banks] %s", msg)
+					slog.Info(fmt.Sprintf("[import/question-banks] %s", msg))
 					continue
 				}
 				execRes.Created++
-				log.Printf("[import/question-banks] updated bank %s (id=%s)", name, existingID)
+				slog.Info(fmt.Sprintf("[import/question-banks] updated bank %s (id=%s)", name, existingID))
 			} else {
 				execRes.Skipped++
 			}
@@ -185,12 +185,12 @@ func (h *QuestionBankImportHandler) importBanks(ctx context.Context, xlsx *excel
 			execRes.Failed++
 			msg := fmt.Sprintf("题库[%s]创建失败: %v", name, err)
 			execRes.Errors = append(execRes.Errors, msg)
-			log.Printf("[import/question-banks] %s", msg)
+			slog.Info(fmt.Sprintf("[import/question-banks] %s", msg))
 			continue
 		}
 
 		execRes.Created++
-		log.Printf("[import/question-banks] created bank %s (id=%s)", name, bankID)
+		slog.Info(fmt.Sprintf("[import/question-banks] created bank %s (id=%s)", name, bankID))
 	}
 
 	return previewRes, execRes

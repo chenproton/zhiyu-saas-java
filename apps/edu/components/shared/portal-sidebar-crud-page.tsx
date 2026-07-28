@@ -15,7 +15,7 @@ import { OrgNodePicker } from "@/components/shared/org-node-picker"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ResetPasswordDialog } from "@/components/shared/reset-password-dialog"
 import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { useImportFlow, type UseImportFlowOptions } from "@/hooks/use-import-flow"
 import type { Organization, OrgType } from "@/lib/types/backend"
 import {

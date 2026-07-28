@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -172,7 +172,7 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 			updatedConfig, err := h.ensureExamUsageForMethod(r.Context(), tx, tenantID, taskID, taskName, creatorID, m.MethodKey, resourceConfig)
 			if err != nil {
 				// Log but don't fail the whole save; student side will show "not configured".
-				log.Printf("failed to ensure exam usage for task %s method %s: %v", taskID, m.MethodKey, err)
+				slog.Info(fmt.Sprintf("failed to ensure exam usage for task %s method %s: %v", taskID, m.MethodKey, err))
 			} else {
 				resourceConfig = updatedConfig
 			}

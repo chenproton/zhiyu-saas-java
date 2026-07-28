@@ -18,7 +18,7 @@ import {
   type PlatformLinksData,
   type AppModulesData,
   type AppModule,
-} from "@/hooks/use-platform-links"
+} from "@zhiyu/ui"
 
 const platformGroups = [
   {

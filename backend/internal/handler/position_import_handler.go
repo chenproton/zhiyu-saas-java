@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -105,10 +105,10 @@ func (h *PositionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 
 	h.importResponsibilities(ctx, xlsx, tenantID, userID, false, overwrite, positionMap, result)
 
-	log.Printf("[import/positions] result: created=%d failed=%d skipped=%d positions=%d responsibilities=%d bindings=%d errors=%d",
-		result.Created, result.Failed, result.Skipped, result.PositionCreated, result.RespCreated, result.BindingCreated, len(result.Errors))
+	slog.Info(fmt.Sprintf("[import/positions] result: created=%d failed=%d skipped=%d positions=%d responsibilities=%d bindings=%d errors=%d",
+		result.Created, result.Failed, result.Skipped, result.PositionCreated, result.RespCreated, result.BindingCreated, len(result.Errors)))
 	for _, e := range result.Errors {
-		log.Printf("[import/positions] error: %s", e)
+		slog.Info(fmt.Sprintf("[import/positions] error: %s", e))
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
@@ -226,7 +226,7 @@ func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excel
 			result.Errors = append(result.Errors, fmt.Sprintf("岗位[%s]创建失败: %v", name, err))
 			continue
 		}
-		log.Printf("[import/positions] created position %s (id=%s)", name, positionID)
+		slog.Info(fmt.Sprintf("[import/positions] created position %s (id=%s)", name, positionID))
 		if batchID != nil {
 			h.DB.Exec(ctx, `UPDATE career_positions SET batch_id=$1 WHERE id=$2`, *batchID, positionID)
 		}
@@ -257,10 +257,10 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 
 	rows, err := xlsx.GetRows("工作职责与能力点")
 	if err != nil {
-		log.Printf("[import/positions] sheet '工作职责与能力点' not found: %v", err)
+		slog.Info(fmt.Sprintf("[import/positions] sheet '工作职责与能力点' not found: %v", err))
 		return
 	}
-	log.Printf("[import/positions] found %d rows in '工作职责与能力点' sheet", len(rows))
+	slog.Info(fmt.Sprintf("[import/positions] found %d rows in '工作职责与能力点' sheet", len(rows)))
 	sortCounter := make(map[string]int)
 
 	seenResp := make(map[string]string)
@@ -300,7 +300,7 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 			_, err := h.DB.Exec(ctx, `INSERT INTO position_responsibilities (id, tenant_id, career_position_id, name, sort_order) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
 				respID, tenantID, positionID, respName, sortCounter[positionID])
 			if err != nil {
-				log.Printf("[import/positions] 职责[%s/%s]插入失败: %v", positionName, respName, err)
+				slog.Info(fmt.Sprintf("[import/positions] 职责[%s/%s]插入失败: %v", positionName, respName, err))
 				var existingID string
 				h.DB.QueryRow(ctx, `SELECT id FROM position_responsibilities WHERE career_position_id=$1 AND name=$2`, positionID, respName).Scan(&existingID)
 				if existingID != "" {
@@ -311,7 +311,7 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 				result.Failed++
 				msg := fmt.Sprintf("职责[%s/%s]创建后仍未获取到ID,跳过能力绑定", positionName, respName)
 				result.Errors = append(result.Errors, msg)
-				log.Printf("[import/positions] %s", msg)
+				slog.Info(fmt.Sprintf("[import/positions] %s", msg))
 				continue
 			}
 			seenResp[respKey] = respID
@@ -339,7 +339,7 @@ func (h *PositionImportHandler) importResponsibilities(ctx context.Context, xlsx
 			result.Failed++
 			msg := fmt.Sprintf("能力点绑定[%s/%s/%s]失败: %v", positionName, respName, abilityName, err)
 			result.Errors = append(result.Errors, msg)
-			log.Printf("[import/positions] row=%d %s (positionID=%s respID=%s abilityID=%s level=%v attrs=%v)", i+1, msg, positionID, respID, abilityID, requiredLevel, attributes)
+			slog.Info(fmt.Sprintf("[import/positions] row=%d %s (positionID=%s respID=%s abilityID=%s level=%v attrs=%v)", i+1, msg, positionID, respID, abilityID, requiredLevel, attributes))
 			continue
 		}
 		result.BindingCreated++
