@@ -168,7 +168,7 @@ func tenantFilter(claims *middleware.Claims) (tenantID string, ok bool) {
 func requireTenant(w http.ResponseWriter, r *http.Request) (string, bool) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return "", false
 	}
 	return *claims.TenantID, true
@@ -205,11 +205,11 @@ func ptrEqual[T comparable](a, b *T) bool {
 func verifyTenantOwnership(w http.ResponseWriter, r *http.Request, entityTenantID string) bool {
 	claims := middleware.CurrentUser(r)
 	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return false
 	}
 	if entityTenantID != *claims.TenantID {
-		respondError(w, http.StatusForbidden, "access denied: entity does not belong to your tenant")
+		respondError(w, http.StatusForbidden, "无权操作：资源不属于您的租户")
 		return false
 	}
 	return true
@@ -220,11 +220,11 @@ func verifyTenantOwnership(w http.ResponseWriter, r *http.Request, entityTenantI
 func verifyRequestTenant(w http.ResponseWriter, r *http.Request, requestTenantID string) bool {
 	claims := middleware.CurrentUser(r)
 	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return false
 	}
 	if requestTenantID != *claims.TenantID {
-		respondError(w, http.StatusForbidden, "access denied: cannot create entity for another tenant")
+		respondError(w, http.StatusForbidden, "无权操作：不能为其他租户创建资源")
 		return false
 	}
 	return true

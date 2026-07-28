@@ -71,7 +71,7 @@ func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	limit := 50
 	offset := 0
-	if v, err := parseInt(limitStr, 50); err == nil && v > 0 {
+	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
 		limit = v
 	}
 	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
@@ -91,7 +91,7 @@ func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 		tenantClaims := middleware.CurrentUser(r)
 		effectiveTenantID, ok := tenantFilter(tenantClaims)
 		if !ok {
-			respondError(w, http.StatusForbidden, "missing tenant")
+			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
 		if effectiveTenantID != "" {
@@ -196,7 +196,7 @@ func (h *PositionHandler) PublicList(w http.ResponseWriter, r *http.Request) {
 	isPlatformAdmin := platformAdminOnly(claims)
 	tenantID, ok := tenantFilter(claims)
 	if !isPlatformAdmin && !ok {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 
@@ -207,7 +207,7 @@ func (h *PositionHandler) PublicList(w http.ResponseWriter, r *http.Request) {
 
 	limit := 50
 	offset := 0
-	if v, err := parseInt(limitStr, 50); err == nil && v > 0 {
+	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
 		limit = v
 	}
 	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
@@ -286,7 +286,7 @@ func (h *PositionHandler) PublicGet(w http.ResponseWriter, r *http.Request) {
 	isPlatformAdmin := platformAdminOnly(claims)
 	tenantID, ok := tenantFilter(claims)
 	if !isPlatformAdmin && !ok {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 
@@ -314,18 +314,18 @@ func (h *PositionHandler) PublicGet(w http.ResponseWriter, r *http.Request) {
 func (h *PositionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	var req CreatePositionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if req.Name == "" || req.PositionType == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 	if req.Version == "" {
@@ -393,7 +393,7 @@ func (h *PositionHandler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -406,7 +406,7 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	var req UpdatePositionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
@@ -515,7 +515,7 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 func (h *PositionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -695,7 +695,7 @@ func (h *PositionHandler) prepareCertificates(ctx context.Context, tenantID stri
 func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -707,12 +707,12 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 
 	var req SaveFullPositionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if req.Name == "" || req.PositionType == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -951,7 +951,7 @@ type FavoriteStatusResponse struct {
 func (h *PositionHandler) GetFavorite(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -975,7 +975,7 @@ func (h *PositionHandler) GetFavorite(w http.ResponseWriter, r *http.Request) {
 func (h *PositionHandler) ToggleFavorite(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -1028,14 +1028,14 @@ func (h *PositionHandler) ToggleFavorite(w http.ResponseWriter, r *http.Request)
 func (h *PositionHandler) ListFavorites(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	isPlatformAdmin := platformAdminOnly(claims)
 	tenantID, ok := tenantFilter(claims)
 	if !isPlatformAdmin && !ok {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 
@@ -1044,7 +1044,7 @@ func (h *PositionHandler) ListFavorites(w http.ResponseWriter, r *http.Request) 
 
 	limit := 50
 	offset := 0
-	if v, err := parseInt(limitStr, 50); err == nil && v > 0 {
+	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
 		limit = v
 	}
 	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {

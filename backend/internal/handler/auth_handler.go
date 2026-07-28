@@ -120,7 +120,7 @@ func (h *AuthHandler) PortalLogin(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, platform domain.UserPlatform) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
@@ -141,7 +141,7 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 	`, req.Username, platform)
 	if err != nil {
 		log.Printf("ERROR login query: %v", err)
-		respondError(w, http.StatusInternalServerError, "login failed")
+		respondError(w, http.StatusInternalServerError, "登录失败")
 		return
 	}
 	defer rows.Close()
@@ -182,7 +182,7 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 	}
 
 	if len(candidates) == 0 {
-		respondError(w, http.StatusUnauthorized, "invalid username or password")
+		respondError(w, http.StatusUnauthorized, "用户名或密码错误")
 		return
 	}
 
@@ -216,7 +216,7 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 	preAuthToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, preAuthClaims).SignedString([]byte(h.JWTSecret))
 	if err != nil {
 		log.Printf("ERROR generating preAuthToken: %v", err)
-		respondError(w, http.StatusInternalServerError, "login failed")
+		respondError(w, http.StatusInternalServerError, "登录失败")
 		return
 	}
 
@@ -230,7 +230,7 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 func (h *AuthHandler) SelectTenant(w http.ResponseWriter, r *http.Request) {
 	var req SelectTenantRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
@@ -241,20 +241,20 @@ func (h *AuthHandler) SelectTenant(w http.ResponseWriter, r *http.Request) {
 		return []byte(h.JWTSecret), nil
 	})
 	if err != nil || !token.Valid {
-		respondError(w, http.StatusUnauthorized, "invalid or expired pre-auth token")
+		respondError(w, http.StatusUnauthorized, "预授权令牌无效或已过期")
 		return
 	}
 
 	claims, ok := token.Claims.(*preAuthClaims)
 	if !ok {
-		respondError(w, http.StatusUnauthorized, "invalid pre-auth token claims")
+		respondError(w, http.StatusUnauthorized, "预授权令牌信息无效")
 		return
 	}
 
 	if claims.JTI != "" {
 		if v, loaded := h.usedNonces.Load(claims.JTI); loaded {
 			if t, ok := v.(time.Time); ok && time.Since(t) < 2*time.Minute {
-				respondError(w, http.StatusUnauthorized, "pre-auth token already used")
+				respondError(w, http.StatusUnauthorized, "预授权令牌已被使用")
 				return
 			}
 			h.usedNonces.Delete(claims.JTI)
@@ -270,13 +270,13 @@ func (h *AuthHandler) SelectTenant(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if targetUserID == "" {
-		respondError(w, http.StatusBadRequest, "invalid tenant selection")
+		respondError(w, http.StatusBadRequest, "无效租户选择")
 		return
 	}
 
 	user, err := h.fetchUserByID(r.Context(), targetUserID)
 	if err != nil || user.ID == "" {
-		respondError(w, http.StatusInternalServerError, "failed to fetch user")
+		respondError(w, http.StatusInternalServerError, "查询用户信息失败")
 		return
 	}
 	h.issueTokenForUser(w, r, &user)
@@ -297,7 +297,7 @@ func (h *AuthHandler) issueTokenForUser(w http.ResponseWriter, r *http.Request, 
 		Permissions: perms,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to generate token")
+		respondError(w, http.StatusInternalServerError, "生成令牌失败")
 		return
 	}
 
@@ -310,19 +310,19 @@ func (h *AuthHandler) issueTokenForUser(w http.ResponseWriter, r *http.Request, 
 // 生产环境务必保持 ENABLE_DEBUG_AUTH 未设置或为 false。
 func (h *AuthHandler) DebugToken(w http.ResponseWriter, r *http.Request) {
 	if os.Getenv("ENABLE_DEBUG_AUTH") != "true" {
-		respondError(w, http.StatusNotFound, "not found")
+		respondError(w, http.StatusNotFound, "未找到")
 		return
 	}
 	if expected := os.Getenv("DEBUG_AUTH_TOKEN"); expected != "" {
 		if r.Header.Get("X-Debug-Token") != expected {
-			respondError(w, http.StatusForbidden, "invalid debug token")
+			respondError(w, http.StatusForbidden, "无效调试令牌")
 			return
 		}
 	}
 
 	var req DebugTokenRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
@@ -337,11 +337,11 @@ func (h *AuthHandler) DebugToken(w http.ResponseWriter, r *http.Request) {
 		}
 		user, err = h.fetchUserByUsernameAndPlatform(r.Context(), req.Username, platform)
 	} else {
-		respondError(w, http.StatusBadRequest, "user_id or username required")
+		respondError(w, http.StatusBadRequest, "缺少用户ID或用户名")
 		return
 	}
 	if err != nil || user.ID == "" {
-		respondError(w, http.StatusNotFound, "user not found")
+		respondError(w, http.StatusNotFound, "用户不存在")
 		return
 	}
 
@@ -354,7 +354,7 @@ func (h *AuthHandler) DebugToken(w http.ResponseWriter, r *http.Request) {
 		Permissions: perms,
 	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to generate token")
+		respondError(w, http.StatusInternalServerError, "生成令牌失败")
 		return
 	}
 
@@ -386,13 +386,13 @@ func (h *AuthHandler) recordLoginLog(r *http.Request, user *domain.User, status 
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未登录或登录已过期")
 		return
 	}
 
 	user, err := h.fetchUserByID(r.Context(), claims.UserID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to fetch user")
+		respondError(w, http.StatusInternalServerError, "查询用户信息失败")
 		return
 	}
 
@@ -429,12 +429,12 @@ func (h *AuthHandler) PortalMe(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) meWithPlatform(w http.ResponseWriter, r *http.Request, platform domain.UserPlatform) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未登录或登录已过期")
 		return
 	}
 
 	if claims.Platform != platform {
-		respondError(w, http.StatusForbidden, "invalid platform")
+		respondError(w, http.StatusForbidden, "无效平台")
 		return
 	}
 

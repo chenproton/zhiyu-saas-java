@@ -48,6 +48,7 @@ import { QuestionFormDialog } from "@/components/evaluation/question-form-dialog
 import { QuestionPreview } from "@/components/evaluation/question-preview"
 import { useData } from "@/components/providers/data-provider"
 import { importExportApi } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 import type { Question, QuestionType, QuestionFormData, QuestionBankFormData } from "@/lib/types"
 import { QUESTION_TYPE_LABELS, DIFFICULTY_LABELS } from "@/lib/types"
 
@@ -68,6 +69,7 @@ export default function QuestionBankDetailPage() {
   const params = useParams()
   const router = useRouter()
   const bankId = params.id as string
+  const { toast } = useToast()
 
   const {
     getQuestionBank,
@@ -170,7 +172,7 @@ export default function QuestionBankDetailPage() {
     try {
       const result = await importExportApi.importExcel(`question-banks/${bankId}/questions`, importFile, overwrite)
       const errorHint = result.errors && result.errors.length > 0 ? `，错误：${result.errors.slice(0, 3).join(";")}` : ""
-      alert(`导入完成：成功 ${result.created} 条，失败 ${result.failed || 0} 条，跳过 ${result.skipped || 0} 条${errorHint}`)
+      toast({ title: "导入完成", description: `成功 ${result.created} 条，失败 ${result.failed || 0} 条，跳过 ${result.skipped || 0} 条${errorHint}` })
       setImportFile(null)
       setIsImportDialogOpen(false)
       setImportStep("download")
@@ -178,7 +180,7 @@ export default function QuestionBankDetailPage() {
       setImportPreview(null)
       await loadBankQuestions(bankId)
     } catch (err: any) {
-      alert(err.message || "导入失败")
+      toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
     } finally {
       setIsImporting(false)
     }
@@ -197,7 +199,7 @@ export default function QuestionBankDetailPage() {
       }
       await executeImport(false)
     } catch (err: any) {
-      alert(err.message || "导入失败")
+      toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
       setIsImporting(false)
     }
   }
@@ -216,7 +218,7 @@ export default function QuestionBankDetailPage() {
       a.remove()
       window.URL.revokeObjectURL(url)
     } catch (err: any) {
-      alert(err.message || "下载模板失败")
+      toast({ variant: "destructive", title: "下载模板失败", description: err.message || "下载模板失败" })
     } finally {
       setIsDownloading(false)
     }

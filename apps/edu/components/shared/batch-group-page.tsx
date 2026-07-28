@@ -38,6 +38,7 @@ import { workflowApi, majorApi } from "@/lib/api"
 import type { Workflow, Major } from "@/lib/types/backend"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { TableRowActions } from "@/components/shared/table-row-actions"
 
 export interface BatchGroupItem {
@@ -83,6 +84,7 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
   const [newBatchName, setNewBatchName] = useState("")
   const [newBatchWorkflow, setNewBatchWorkflow] = useState("")
   const [selectedMajorId, setSelectedMajorId] = useState("all")
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!tenantId) {
@@ -204,14 +206,17 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
     }
   }
 
-  const handleDeleteBatch = async (id: string) => {
-    if (!confirm("确定删除该批次吗？")) return
+  const handleDeleteBatch = (id: string) => { setDeleteTargetId(id) }
+  const confirmDeleteBatch = async () => {
+    if (!deleteTargetId) return
     try {
-      await api.delete(id)
+      await api.delete(deleteTargetId)
       await loadData()
       toast({ title: "删除成功" })
     } catch (err: any) {
       toast({ variant: "destructive", title: "删除失败", description: err.message || "请稍后重试" })
+    } finally {
+      setDeleteTargetId(null)
     }
   }
 
@@ -454,6 +459,14 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
           </div>
         </CardContent>
       </Card>
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTargetId(null) }}
+        title="确认删除"
+        description="确定删除该批次吗？"
+        variant="destructive"
+        onConfirm={confirmDeleteBatch}
+      />
     </div>
   )
 }

@@ -34,12 +34,12 @@ type LandingExamListResponse struct {
 func (h *LandingHandler) ListExams(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	effectiveTenantID, ok := tenantFilter(claims)
 	if !ok {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 

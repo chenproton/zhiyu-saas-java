@@ -6,6 +6,8 @@ import { EvaluationListTable } from "@/components/evaluation/evaluation-list-tab
 import { examApi, evaluationBatchApi, approvalApi, importExportApi } from "@/lib/api"
 import type { ContentBatch } from "@/components/shared/content-list-page"
 import { useAuth } from "@/components/auth-provider"
+import { useToast } from "@/hooks/use-toast"
+import { draftSuffix } from "@/lib/format-utils"
 
 interface ExamItem {
   id: string
@@ -23,13 +25,6 @@ interface ExamItem {
   creatorName: string
   updatedAt: string
   questions: any[]
-}
-
-function draftSuffix() {
-  const d = new Date()
-  const ds = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`
-  const c = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-  return `${ds}_${c[Math.floor(Math.random() * 36)]}${c[Math.floor(Math.random() * 36)]}`
 }
 
 function mapExamItem(backend: any, _currentUserId: string): ExamItem {
@@ -60,19 +55,20 @@ export default function ExamsPage() {
   const { user } = useAuth()
   const currentUserId = user?.id ?? ""
   const [refreshKey, setRefreshKey] = useState(0)
+  const { toast } = useToast()
 
   const handleReview = useCallback(async (id: string, status: "approved" | "rejected") => {
     try {
       const records = await approvalApi.list({ targetType: "exam", targetId: id, limit: 1 })
       if (records.items.length === 0) {
-        alert("未找到审批记录")
+        toast({ variant: "destructive", title: "操作失败", description: "未找到审批记录" })
         return
       }
       await approvalApi.review(records.items[0].id, { status })
       setRefreshKey((k) => k + 1)
     } catch (err) {
       console.error("审批操作失败", err)
-      alert("审批操作失败")
+      toast({ variant: "destructive", title: "审批操作失败" })
     }
   }, [])
 

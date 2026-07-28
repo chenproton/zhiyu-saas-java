@@ -137,7 +137,7 @@ type courseNodeBase struct {
 
 func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -150,7 +150,7 @@ func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenantClaims := middleware.CurrentUser(r)
 	effectiveTenantID, ok := tenantFilter(tenantClaims)
 	if !ok {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 	if effectiveTenantID != "" {
@@ -209,7 +209,7 @@ func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *CourseNodeHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -224,17 +224,17 @@ func (h *CourseNodeHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 func (h *CourseNodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	var req CreateCourseNodeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 	if req.CourseID == "" || req.Name == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -285,7 +285,7 @@ func (h *CourseNodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -297,11 +297,11 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	var req UpdateCourseNodeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -353,7 +353,7 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 func (h *CourseNodeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -373,17 +373,17 @@ func (h *CourseNodeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 func (h *CourseNodeHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	var req ReorderCourseNodesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 	if req.CourseID == "" || len(req.NodeIDs) == 0 {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 

@@ -46,7 +46,7 @@ func (h *GranularCourseImportHandler) parseUploadedExcel(r *http.Request) (*exce
 func (h *GranularCourseImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -77,7 +77,7 @@ func (h *GranularCourseImportHandler) PreviewExcel(w http.ResponseWriter, r *htt
 func (h *GranularCourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 

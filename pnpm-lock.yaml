@@ -315,6 +315,9 @@ importers:
       '@zhiyu/api-client':
         specifier: workspace:*
         version: link:../api-client
+      '@zhiyu/shared-types':
+        specifier: workspace:*
+        version: link:../shared-types
       react:
         specifier: ^19
         version: 19.2.7

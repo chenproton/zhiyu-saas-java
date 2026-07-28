@@ -19,7 +19,7 @@ type ScenarioExportHandler struct {
 func (h *ScenarioExportHandler) ExportExcel(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	tenantID, ok := requireTenant(w, r)

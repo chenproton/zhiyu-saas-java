@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
+import { useToast } from "@/hooks/use-toast"
 import { createTagElement } from "@/lib/dom-utils"
 import type { GradeMapping, KnowledgePointItem } from "@/lib/types/lesson"
 import type {
@@ -183,6 +184,7 @@ export function CourseEvaluationRulesDialog({
   knowledgePoints: kpProp,
   abilityPoints: abProp,
 }: CourseEvaluationRulesDialogProps) {
+  const { toast } = useToast()
   const knowledgePoints = useMemo(() => kpProp || [], [kpProp])
   const abilityPoints = useMemo(() => abProp || DEFAULT_ABILITY_POINTS, [abProp])
 
@@ -1950,7 +1952,7 @@ export function CourseEvaluationRulesDialog({
           <Button variant="outline" onClick={() => onOpenChange?.(false)}>取消</Button>
           <Button onClick={() => {
             if (methodWeightTotal !== 100) {
-              window.alert(`评价方式权重合计需等于 100%，当前为 ${methodWeightTotal}%`)
+              toast({ variant: "destructive", title: "权重校验失败", description: `评价方式权重合计需等于 100%，当前为 ${methodWeightTotal}%` })
               return
             }
             onOpenChange?.(false)

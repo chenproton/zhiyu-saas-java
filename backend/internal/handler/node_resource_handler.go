@@ -56,7 +56,7 @@ func (h *NodeResourceHandler) ListResources(w http.ResponseWriter, r *http.Reque
 
 	limit := 200
 	offset := 0
-	if v, err := parseInt(limitStr, 200); err == nil && v > 0 {
+	if v, err := parsePageLimit(limitStr, 200); err == nil && v > 0 {
 		limit = v
 	}
 	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
@@ -70,7 +70,7 @@ func (h *NodeResourceHandler) ListResources(w http.ResponseWriter, r *http.Reque
 	tenantClaims := middleware.CurrentUser(r)
 	effectiveTenantID, ok := tenantFilter(tenantClaims)
 	if !ok {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 	where = append(where, "EXISTS (SELECT 1 FROM system_course_nodes n WHERE n.id = nrb.node_id AND n.tenant_id = $"+itoa(argIdx)+")")
@@ -135,11 +135,11 @@ func (h *NodeResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	var req CreateNodeResourceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 	if req.NodeID == "" || req.Name == "" || req.Type == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -186,11 +186,11 @@ func (h *NodeResourceHandler) BindResource(w http.ResponseWriter, r *http.Reques
 
 	var req BindNodeResourceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 	if req.NodeID == "" || req.ResourceID == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 

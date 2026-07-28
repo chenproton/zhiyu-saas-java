@@ -1,9 +1,7 @@
-export { PlatformShell, PlatformSideNav, PlatformTopNav } from "./PlatformShell"
+export { PlatformShell, PlatformTopNav } from "./PlatformShell"
 
-export {
-  platformIconMap,
-  resolvePlatformIcon,
-} from "./icons"
+export { PlatformSideNav } from "@zhiyu/ui/components/platform-shell"
+export { platformIconMap, resolvePlatformIcon } from "@zhiyu/ui/components/platform-shell"
 
 export type {
   PlatformCatalogItem,
@@ -12,9 +10,6 @@ export type {
   SideNavItem,
   TopNavItem,
   UserMenuItem,
-} from "./config"
+} from "@zhiyu/ui/components/platform-shell"
 
-export type {
-  PlatformIcon,
-  PlatformIconKey,
-} from "./icons"
+export type { PlatformIcon, PlatformIconKey } from "@zhiyu/ui/components/platform-shell"

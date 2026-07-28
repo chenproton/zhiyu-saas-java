@@ -32,6 +32,7 @@ interface AuthContextType {
   logout: () => void
   hasPermission: (module: string, page?: string, action?: string) => boolean
   hasMenuPermission: (path: string) => boolean
+  subscriptionModules: Record<string, boolean> | null
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -41,6 +42,7 @@ const AuthContext = createContext<AuthContextType>({
   setActiveRole: () => {},
   hasPermission: () => false,
   hasMenuPermission: () => true,
+  subscriptionModules: null,
 })
 
 export function useAuth() {
@@ -178,6 +180,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         hasPermission,
         hasMenuPermission,
+        subscriptionModules,
       }}
     >
       {children}

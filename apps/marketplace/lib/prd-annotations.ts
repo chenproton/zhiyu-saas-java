@@ -1,1 +1,1 @@
-export * from "../../../packages/ui/src/lib/prd-annotations"
+export * from "../../edu/lib/prd-annotations"

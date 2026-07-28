@@ -40,7 +40,7 @@ func (h *PositionImportHandler) parseUploadedExcel(r *http.Request) (*excelize.F
 func (h *PositionImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -75,7 +75,7 @@ func (h *PositionImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Requ
 func (h *PositionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 

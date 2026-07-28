@@ -49,7 +49,7 @@ func (h *RoleHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	limit := 50
 	offset := 0
-	if v, err := parseInt(limitStr, 50); err == nil && v > 0 {
+	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
 		limit = v
 	}
 	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
@@ -62,7 +62,7 @@ func (h *RoleHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenantClaims := middleware.CurrentUser(r)
 	effectiveTenantID, ok := tenantFilter(tenantClaims)
 	if !ok {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 	if effectiveTenantID != "" {
@@ -96,14 +96,14 @@ func (h *RoleHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list roles")
+		respondError(w, http.StatusInternalServerError, "查询角色列表失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanRoleRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan roles")
+		respondError(w, http.StatusInternalServerError, "角色数据读取失败")
 		return
 	}
 
@@ -114,7 +114,7 @@ func (h *RoleHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	role, err := h.fetchRole(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "role not found")
+		respondError(w, http.StatusNotFound, "角色不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, role.TenantID) {
@@ -126,18 +126,18 @@ func (h *RoleHandler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *RoleHandler) Create(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	var req CreateRoleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if req.TenantID == "" || req.Code == "" || req.Name == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 	if !verifyRequestTenant(w, r, req.TenantID) {
@@ -159,7 +159,7 @@ func (h *RoleHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "角色代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create role")
+		respondError(w, http.StatusInternalServerError, "创建角色失败")
 		return
 	}
 
@@ -170,14 +170,14 @@ func (h *RoleHandler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *RoleHandler) Update(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	role, err := h.fetchRole(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "role not found")
+		respondError(w, http.StatusNotFound, "角色不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, role.TenantID) {
@@ -186,12 +186,12 @@ func (h *RoleHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	var req UpdateRoleRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -204,7 +204,7 @@ func (h *RoleHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $4
 	`, req.Name, req.Description, req.Permissions, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update role")
+		respondError(w, http.StatusInternalServerError, "更新角色失败")
 		return
 	}
 
@@ -215,14 +215,14 @@ func (h *RoleHandler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *RoleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	role, err := h.fetchRole(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "role not found")
+		respondError(w, http.StatusNotFound, "角色不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, role.TenantID) {
@@ -231,23 +231,23 @@ func (h *RoleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "启动事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
 
 	if _, err := tx.Exec(r.Context(), `DELETE FROM user_roles WHERE role_id = $1`, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete role bindings")
+		respondError(w, http.StatusInternalServerError, "删除角色绑定失败")
 		return
 	}
 
 	if _, err := tx.Exec(r.Context(), `DELETE FROM roles WHERE id = $1`, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete role")
+		respondError(w, http.StatusInternalServerError, "删除角色失败")
 		return
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -256,14 +256,14 @@ func (h *RoleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 func (h *RoleHandler) Assign(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	role, err := h.fetchRole(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "role not found")
+		respondError(w, http.StatusNotFound, "角色不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, role.TenantID) {
@@ -272,12 +272,12 @@ func (h *RoleHandler) Assign(w http.ResponseWriter, r *http.Request) {
 
 	var req AssignRoleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if req.UserID == "" {
-		respondError(w, http.StatusBadRequest, "missing user id")
+		respondError(w, http.StatusBadRequest, "缺少用户ID")
 		return
 	}
 
@@ -287,7 +287,7 @@ func (h *RoleHandler) Assign(w http.ResponseWriter, r *http.Request) {
 		ON CONFLICT (user_id, role_id) DO NOTHING
 	`, uuid.NewString(), req.UserID, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to assign role")
+		respondError(w, http.StatusInternalServerError, "分配角色失败")
 		return
 	}
 

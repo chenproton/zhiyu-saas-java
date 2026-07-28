@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { onSiteQuestionLibraryApi } from "@/lib/api"
 import type { OnSiteQuestionLibraryItem } from "@/lib/types/library"
 import { useToast } from "@/hooks/use-toast"
@@ -98,33 +99,35 @@ export default function OnSiteQuestionsPage() {
             {(searchQuery || typeFilter || difficultyFilter) && <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(""); setTypeFilter(""); setDifficultyFilter("") }}>清除</Button>}
           </div>
           <div className="rounded-lg border">
-            <table className="w-full">
-              <thead><tr className="border-b bg-slate-50/50">
-                <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">题目</th>
-                <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">题型</th>
-                <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">难度</th>
-                <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">分数</th>
-                <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">标签</th>
-                <th className="text-right p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">操作</th>
-              </tr></thead>
-              <tbody>
-                {loading && <tr><td colSpan={6} className="p-12 text-center text-muted-foreground">加载中...</td></tr>}
-                {!loading && items.length === 0 && <tr><td colSpan={6} className="p-12 text-center text-muted-foreground">暂无数据</td></tr>}
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50/50">
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">题目</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">题型</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">难度</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">分数</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">标签</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading && <TableRow><TableCell colSpan={6} className="p-12 text-center text-muted-foreground">加载中...</TableCell></TableRow>}
+                {!loading && items.length === 0 && <TableRow><TableCell colSpan={6} className="p-12 text-center text-muted-foreground">暂无数据</TableCell></TableRow>}
                 {items.map(item => (
-                  <tr key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
-                    <td className="p-3"><div className="flex items-start gap-2"><MessageSquare className="size-4 text-amber-500 mt-0.5 shrink-0" /><span className="text-sm font-medium text-slate-700 line-clamp-2">{item.questionText}</span></div></td>
-                    <td className="p-3"><Badge variant="outline" className="text-xs">{QUESTION_TYPE_LABELS[item.questionType] || item.questionType}</Badge></td>
-                    <td className="p-3 hidden md:table-cell">{item.difficulty ? <span className={`px-2 py-0.5 rounded text-xs font-medium ${DIFFICULTY[item.difficulty]?.color || ""}`}>{DIFFICULTY[item.difficulty]?.label || item.difficulty}</span> : "-"}</td>
-                    <td className="p-3 text-sm text-slate-400 hidden md:table-cell">{item.score}</td>
-                    <td className="p-3 text-sm hidden lg:table-cell">{item.tags?.map(t => <Badge key={t} variant="secondary" className="mr-1 text-xs">{t}</Badge>)}</td>
-                    <td className="p-3 text-right whitespace-nowrap">
+                  <TableRow key={item.id} className="hover:bg-slate-50/50">
+                    <TableCell className="p-3"><div className="flex items-start gap-2"><MessageSquare className="size-4 text-amber-500 mt-0.5 shrink-0" /><span className="text-sm font-medium text-slate-700 line-clamp-2">{item.questionText}</span></div></TableCell>
+                    <TableCell className="p-3"><Badge variant="outline" className="text-xs">{QUESTION_TYPE_LABELS[item.questionType] || item.questionType}</Badge></TableCell>
+                    <TableCell className="p-3 hidden md:table-cell">{item.difficulty ? <span className={`px-2 py-0.5 rounded text-xs font-medium ${DIFFICULTY[item.difficulty]?.color || ""}`}>{DIFFICULTY[item.difficulty]?.label || item.difficulty}</span> : "-"}</TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400 hidden md:table-cell">{item.score}</TableCell>
+                    <TableCell className="p-3 text-sm hidden lg:table-cell">{item.tags?.map(t => <Badge key={t} variant="secondary" className="mr-1 text-xs">{t}</Badge>)}</TableCell>
+                    <TableCell className="p-3 text-right whitespace-nowrap">
                       <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(item)}><Pencil className="size-4" /></Button>
                       <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)}><Trash2 className="size-4 text-destructive" /></Button>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>

@@ -2686,7 +2686,7 @@ function EvalRulesPanel({
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm font-medium text-gray-700">已选择题目 ({selectedIds.length}{maxCount ? `/${maxCount}` : ""})</p>
                   {showAutoSelect && (
-                    <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => alert("参考测评认证中心-试卷管理-自动抽题功能即可")}>
+                    <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => toast({ title: "提示", description: "参考测评认证中心-试卷管理-自动抽题功能即可" })}>
                       自动选择
                     </Button>
                   )}
@@ -4502,7 +4502,7 @@ function EvalRulesPanel({
                   setConfigPaperId(created.id)
                   setConfigSelectedIds([])
                 } catch (_) {
-                  alert("创建试卷失败")
+                  toast({ variant: "destructive", title: "创建失败", description: "创建试卷失败" })
                 }
               }}
             />

@@ -42,7 +42,7 @@ type AddExamQuestionRequest struct {
 func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -53,7 +53,7 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	limit := 50
 	offset := 0
-	if v, err := parseInt(limitStr, 50); err == nil && v > 0 {
+	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
 		limit = v
 	}
 	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
@@ -66,7 +66,7 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenantClaims := middleware.CurrentUser(r)
 	effectiveTenantID, ok := tenantFilter(tenantClaims)
 	if !ok {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 	if effectiveTenantID != "" {
@@ -126,7 +126,7 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 func (h *ExamHandler) Get(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -142,17 +142,17 @@ func (h *ExamHandler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *ExamHandler) Create(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	var req CreateExamRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -185,7 +185,7 @@ func (h *ExamHandler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -198,7 +198,7 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	var req CreateExamRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
@@ -248,7 +248,7 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *ExamHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -314,7 +314,7 @@ func (h *ExamHandler) Invite(w http.ResponseWriter, r *http.Request) {
 func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -326,7 +326,7 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 
 	var req AddExamQuestionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 	if req.QuestionID == "" {
@@ -381,7 +381,7 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 func (h *ExamHandler) RemoveQuestion(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -410,7 +410,7 @@ type UpdateExamQuestionScoreRequest struct {
 func (h *ExamHandler) UpdateQuestionScore(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -419,7 +419,7 @@ func (h *ExamHandler) UpdateQuestionScore(w http.ResponseWriter, r *http.Request
 
 	var req UpdateExamQuestionScoreRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 	if req.Score <= 0 {
@@ -449,7 +449,7 @@ type BulkUpdateScoresRequest map[string]float64
 func (h *ExamHandler) BulkUpdateScores(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -457,7 +457,7 @@ func (h *ExamHandler) BulkUpdateScores(w http.ResponseWriter, r *http.Request) {
 
 	var req BulkUpdateScoresRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 	if len(req) == 0 {

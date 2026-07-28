@@ -29,7 +29,7 @@ type DashboardStats struct {
 
 func (h *StatsHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	if !requireOperator(r) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -80,13 +80,13 @@ func (h *StatsHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
 
 func (h *StatsHandler) UpdateConfig(w http.ResponseWriter, r *http.Request) {
 	if !requireOperator(r) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	var config domain.PlatformConfig
 	if err := json.NewDecoder(r.Body).Decode(&config); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 

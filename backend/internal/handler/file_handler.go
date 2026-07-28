@@ -32,7 +32,7 @@ type UploadResponse struct {
 
 func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 

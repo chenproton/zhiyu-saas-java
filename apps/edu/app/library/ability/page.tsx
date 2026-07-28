@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { abilityApi } from "@/lib/api"
 import type { AbilityPoint } from "@/lib/types/job"
 import { useToast } from "@/hooks/use-toast"
@@ -95,33 +96,35 @@ export default function AbilityPointsPage() {
             {(searchQuery || categoryFilter) && <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(""); setCategoryFilter("") }}>清除</Button>}
           </div>
           <div className="rounded-lg border">
-            <table className="w-full">
-              <thead><tr className="border-b bg-slate-50/50">
-                <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">名称</th>
-                <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">类别</th>
-                <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">描述</th>
-                <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">属性标签</th>
-                <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">公开</th>
-                <th className="text-right p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">操作</th>
-              </tr></thead>
-              <tbody>
-                {loading && <tr><td colSpan={6} className="p-12 text-center text-muted-foreground">加载中...</td></tr>}
-                {!loading && items.length === 0 && <tr><td colSpan={6} className="p-12 text-center text-muted-foreground">暂无数据</td></tr>}
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50/50">
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">名称</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">类别</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">描述</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">属性标签</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">公开</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading && <TableRow><TableCell colSpan={6} className="p-12 text-center text-muted-foreground">加载中...</TableCell></TableRow>}
+                {!loading && items.length === 0 && <TableRow><TableCell colSpan={6} className="p-12 text-center text-muted-foreground">暂无数据</TableCell></TableRow>}
                 {items.map(item => (
-                  <tr key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
-                    <td className="p-3"><div className="flex items-center gap-2"><Lightbulb className="size-4" style={{ color: CATEGORY_COLORS[item.category] || "#6366f1" }} /><span className="text-sm font-medium text-slate-700">{item.name}</span></div></td>
-                    <td className="p-3"><Badge variant="outline" className="text-xs" style={{ color: CATEGORY_COLORS[item.category], borderColor: CATEGORY_COLORS[item.category] }}>{CATEGORY_LABELS[item.category] || item.category}</Badge></td>
-                    <td className="p-3 text-sm text-slate-400 hidden md:table-cell max-w-[200px] truncate">{item.description || "-"}</td>
-                    <td className="p-3 text-sm hidden lg:table-cell">{item.attributes?.map(a => <Badge key={a} variant="secondary" className="mr-1 text-xs">{a}</Badge>)}</td>
-                    <td className="p-3"><Badge variant={item.isPublic ? "default" : "secondary"} className="text-xs">{item.isPublic ? "公开" : "私有"}</Badge></td>
-                    <td className="p-3 text-right whitespace-nowrap">
+                  <TableRow key={item.id} className="hover:bg-slate-50/50">
+                    <TableCell className="p-3"><div className="flex items-center gap-2"><Lightbulb className="size-4" style={{ color: CATEGORY_COLORS[item.category] || "#6366f1" }} /><span className="text-sm font-medium text-slate-700">{item.name}</span></div></TableCell>
+                    <TableCell className="p-3"><Badge variant="outline" className="text-xs" style={{ color: CATEGORY_COLORS[item.category], borderColor: CATEGORY_COLORS[item.category] }}>{CATEGORY_LABELS[item.category] || item.category}</Badge></TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400 hidden md:table-cell max-w-[200px] truncate">{item.description || "-"}</TableCell>
+                    <TableCell className="p-3 text-sm hidden lg:table-cell">{item.attributes?.map(a => <Badge key={a} variant="secondary" className="mr-1 text-xs">{a}</Badge>)}</TableCell>
+                    <TableCell className="p-3"><Badge variant={item.isPublic ? "default" : "secondary"} className="text-xs">{item.isPublic ? "公开" : "私有"}</Badge></TableCell>
+                    <TableCell className="p-3 text-right whitespace-nowrap">
                       <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(item)}><Pencil className="size-4" /></Button>
                       <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)}><Trash2 className="size-4 text-destructive" /></Button>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>

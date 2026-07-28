@@ -27,7 +27,7 @@ func (h *SubscriptionHandler) Get(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	tenantID, ok := tenantFilter(claims)
 	if !ok {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 
@@ -42,7 +42,7 @@ func (h *SubscriptionHandler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *SubscriptionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if !canManagePlatform(claims) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -54,12 +54,12 @@ func (h *SubscriptionHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	var req UpdateSubscriptionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 	if req.Modules == nil {
@@ -148,11 +148,11 @@ func (h *SubscriptionHandler) AdminUpdate(w http.ResponseWriter, r *http.Request
 
 	var req UpdateSubscriptionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 	if req.Modules == nil {

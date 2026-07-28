@@ -43,7 +43,7 @@ type UpdateRecommendRequest struct {
 
 func (h *RecommendHandler) List(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -54,7 +54,7 @@ func (h *RecommendHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	limit := 50
 	offset := 0
-	if v, err := parseInt(limitStr, 50); err == nil && v > 0 {
+	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
 		limit = v
 	}
 	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
@@ -67,7 +67,7 @@ func (h *RecommendHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenantClaims := middleware.CurrentUser(r)
 	effectiveTenantID, ok := tenantFilter(tenantClaims)
 	if !ok {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 	if effectiveTenantID != "" {
@@ -121,18 +121,18 @@ func (h *RecommendHandler) List(w http.ResponseWriter, r *http.Request) {
 func (h *RecommendHandler) Create(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	var req CreateRecommendRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if req.CareerPositionID == "" || req.PositionType == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -158,7 +158,7 @@ func (h *RecommendHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *RecommendHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -170,12 +170,12 @@ func (h *RecommendHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	var req UpdateRecommendRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if req.CareerPositionID == "" || req.PositionType == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -196,7 +196,7 @@ func (h *RecommendHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 func (h *RecommendHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 

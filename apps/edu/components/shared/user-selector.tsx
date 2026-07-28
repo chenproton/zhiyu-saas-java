@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import {
-  ChevronDown, ChevronRight, School, Building2, BookOpen, Users as UsersIcon, Briefcase, Building,
+  ChevronDown, ChevronRight, Users as UsersIcon, Building,
   Search, X, Check, Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -21,6 +21,7 @@ import {
 } from "@/lib/api"
 import type { User } from "@/lib/api"
 import type { Organization, OrgType } from "@/lib/types/backend"
+import { typeMetaFor } from "@/lib/org-type-icons"
 
 interface UserSelectorProps {
   value: string[]
@@ -32,17 +33,6 @@ interface UserSelectorProps {
   disabled?: boolean
   tenantId?: string
   usePortalApi?: boolean
-}
-
-function typeMetaFor(typeName?: string): { icon: React.ElementType; color: string } {
-  const map: Record<string, { icon: React.ElementType; color: string }> = {
-    "学校": { icon: School, color: "text-blue-600" },
-    "二级学院": { icon: Building2, color: "text-violet-600" },
-    "专业": { icon: BookOpen, color: "text-emerald-600" },
-    "班级": { icon: UsersIcon, color: "text-cyan-600" },
-    "行政职能部门": { icon: Briefcase, color: "text-rose-600" },
-  }
-  return (typeName && map[typeName]) || { icon: Building, color: "text-slate-600" }
 }
 
 function OrgTreeRow({

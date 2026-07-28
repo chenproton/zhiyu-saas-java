@@ -61,7 +61,7 @@ func (c contentActions) saveDraft(w http.ResponseWriter, r *http.Request) {
 
 func (c contentActions) transition(w http.ResponseWriter, r *http.Request, status domain.ContentStatus) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	id := chi.URLParam(r, "id")
@@ -120,13 +120,13 @@ func (c contentActions) transition(w http.ResponseWriter, r *http.Request, statu
 
 func (c contentActions) review(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	id := chi.URLParam(r, "id")
 	var req ContentReviewRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
@@ -157,7 +157,7 @@ func (c contentActions) review(w http.ResponseWriter, r *http.Request) {
 
 func (c contentActions) invite(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	id := chi.URLParam(r, "id")

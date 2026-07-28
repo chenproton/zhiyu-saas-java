@@ -78,7 +78,7 @@ type importFunc func(ctx context.Context, xlsx *excelize.File, tenantID, userID 
 func (h *ResourceImportHandler) importExcel(w http.ResponseWriter, r *http.Request, entity string, fn importFunc, preview bool) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil || !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 

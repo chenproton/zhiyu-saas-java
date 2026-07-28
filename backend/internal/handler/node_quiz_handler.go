@@ -61,7 +61,7 @@ type UpdateNodeQuizQuestionRequest struct {
 
 func (h *NodeQuizHandler) ListQuizzes(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -72,7 +72,7 @@ func (h *NodeQuizHandler) ListQuizzes(w http.ResponseWriter, r *http.Request) {
 	tenantClaims := middleware.CurrentUser(r)
 	effectiveTenantID, ok := tenantFilter(tenantClaims)
 	if !ok {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 	if effectiveTenantID != "" {
@@ -114,17 +114,17 @@ func (h *NodeQuizHandler) ListQuizzes(w http.ResponseWriter, r *http.Request) {
 
 func (h *NodeQuizHandler) CreateQuiz(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	var req CreateNodeQuizRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 	if req.NodeID == "" || req.Title == "" || req.Type == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -149,7 +149,7 @@ func (h *NodeQuizHandler) CreateQuiz(w http.ResponseWriter, r *http.Request) {
 
 func (h *NodeQuizHandler) UpdateQuiz(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -161,11 +161,11 @@ func (h *NodeQuizHandler) UpdateQuiz(w http.ResponseWriter, r *http.Request) {
 
 	var req UpdateNodeQuizRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 	if req.Title == "" || req.Type == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -184,7 +184,7 @@ func (h *NodeQuizHandler) UpdateQuiz(w http.ResponseWriter, r *http.Request) {
 
 func (h *NodeQuizHandler) DeleteQuiz(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -221,7 +221,7 @@ func (h *NodeQuizHandler) DeleteQuiz(w http.ResponseWriter, r *http.Request) {
 
 func (h *NodeQuizHandler) ListQuestions(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -259,7 +259,7 @@ func (h *NodeQuizHandler) ListQuestions(w http.ResponseWriter, r *http.Request) 
 
 func (h *NodeQuizHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -271,11 +271,11 @@ func (h *NodeQuizHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 
 	var req CreateNodeQuizQuestionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 	if req.Type == "" || req.Question == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -300,7 +300,7 @@ func (h *NodeQuizHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 
 func (h *NodeQuizHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -312,11 +312,11 @@ func (h *NodeQuizHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request)
 
 	var req UpdateNodeQuizQuestionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 	if req.Type == "" || req.Question == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -336,7 +336,7 @@ func (h *NodeQuizHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request)
 
 func (h *NodeQuizHandler) DeleteQuestion(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 

@@ -31,6 +31,7 @@ import { useData } from "@/components/providers/data-provider"
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts"
 import type { Exam, ExamUsage } from "@/lib/types"
 import { examApi, examUsageApi, examResultApi } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
@@ -72,6 +73,7 @@ export default function ExamDetailPage() {
   const methodKey = searchParams.get("method") || ""
   const usageIdFromQuery = searchParams.get("usage") || ""
   const { exams, getExam } = useData()
+  const { toast } = useToast()
 
   const cachedExam = getExam ? getExam(examId) : exams.find((e) => e.id === examId)
   const [exam, setExam] = useState<Exam | null>(cachedExam || null)
@@ -150,7 +152,7 @@ export default function ExamDetailPage() {
       await examResultApi.submit({ examUsageId: currentUsage.id, answers, methodKey })
       setSubmitted(true)
     } catch {
-      alert("提交失败，请重试")
+      toast({ variant: "destructive", title: "提交失败", description: "请重试" })
     } finally {
       setSubmitting(false)
     }

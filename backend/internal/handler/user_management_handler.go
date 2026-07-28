@@ -116,7 +116,7 @@ func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	limit := 50
 	offset := 0
-	if v, err := parseInt(limitStr, 50); err == nil && v > 0 {
+	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
 		limit = v
 	}
 	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
@@ -129,7 +129,7 @@ func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenantClaims := middleware.CurrentUser(r)
 	effectiveTenantID, ok := tenantFilter(tenantClaims)
 	if !ok {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 	if effectiveTenantID != "" {
@@ -185,14 +185,14 @@ func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list users")
+		respondError(w, http.StatusInternalServerError, "查询用户列表失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanUserRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan users")
+		respondError(w, http.StatusInternalServerError, "用户数据读取失败")
 		return
 	}
 	h.attachUserRoles(r.Context(), items)
@@ -204,7 +204,7 @@ func (h *UserManagementHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	user, err := h.fetchUser(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "user not found")
+		respondError(w, http.StatusNotFound, "用户不存在")
 		return
 	}
 	if user.TenantID == nil || !verifyTenantOwnership(w, r, *user.TenantID) {
@@ -217,13 +217,13 @@ func (h *UserManagementHandler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *UserManagementHandler) Create(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if !h.canManageUsers(r) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	var req CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
@@ -241,7 +241,7 @@ func (h *UserManagementHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.TenantID == "" || req.Username == "" || req.Password == "" || req.Name == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -253,7 +253,7 @@ func (h *UserManagementHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create user")
+		respondError(w, http.StatusInternalServerError, "创建用户失败")
 		return
 	}
 	user.PasswordHash = ""
@@ -262,14 +262,14 @@ func (h *UserManagementHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserManagementHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !h.canManageUsers(r) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	oldUser, err := h.fetchUser(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "user not found")
+		respondError(w, http.StatusNotFound, "用户不存在")
 		return
 	}
 	if oldUser.TenantID == nil || !verifyTenantOwnership(w, r, *oldUser.TenantID) {
@@ -278,12 +278,12 @@ func (h *UserManagementHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	var req UpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if req.Username == "" || req.Name == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -318,13 +318,13 @@ func (h *UserManagementHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update user")
+		respondError(w, http.StatusInternalServerError, "更新用户失败")
 		return
 	}
 
 	if req.RoleID != nil && *req.RoleID != "" {
 		if err := h.rebindUserRole(r.Context(), id, *req.RoleID, oldUser.TenantID); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to bind role")
+			respondError(w, http.StatusInternalServerError, "绑定角色失败")
 			return
 		}
 	}
@@ -336,14 +336,14 @@ func (h *UserManagementHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserManagementHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if !h.canManageUsers(r) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	user, err := h.fetchUser(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "user not found")
+		respondError(w, http.StatusNotFound, "用户不存在")
 		return
 	}
 	if user.TenantID == nil || !verifyTenantOwnership(w, r, *user.TenantID) {
@@ -354,7 +354,7 @@ func (h *UserManagementHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM users WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete user")
+		respondError(w, http.StatusInternalServerError, "删除用户失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -362,14 +362,14 @@ func (h *UserManagementHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserManagementHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	if !h.canManageUsers(r) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	user, err := h.fetchUser(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "user not found")
+		respondError(w, http.StatusNotFound, "用户不存在")
 		return
 	}
 	if user.TenantID == nil || !verifyTenantOwnership(w, r, *user.TenantID) {
@@ -378,18 +378,18 @@ func (h *UserManagementHandler) UpdateStatus(w http.ResponseWriter, r *http.Requ
 
 	var req UpdateUserStatusRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if req.Status != "active" && req.Status != "disabled" && req.Status != "graduated" {
-		respondError(w, http.StatusBadRequest, "invalid status")
+		respondError(w, http.StatusBadRequest, "无效状态")
 		return
 	}
 
 	_, err = h.DB.Exec(r.Context(), `UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`, req.Status, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update status")
+		respondError(w, http.StatusInternalServerError, "更新状态失败")
 		return
 	}
 
@@ -400,14 +400,14 @@ func (h *UserManagementHandler) UpdateStatus(w http.ResponseWriter, r *http.Requ
 
 func (h *UserManagementHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	if !h.canManageUsers(r) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	user, err := h.fetchUser(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "user not found")
+		respondError(w, http.StatusNotFound, "用户不存在")
 		return
 	}
 	if user.TenantID == nil || !verifyTenantOwnership(w, r, *user.TenantID) {
@@ -416,12 +416,12 @@ func (h *UserManagementHandler) ResetPassword(w http.ResponseWriter, r *http.Req
 
 	var req ResetPasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if req.Password == "" {
-		respondError(w, http.StatusBadRequest, "password is required")
+		respondError(w, http.StatusBadRequest, "密码不能为空")
 		return
 	}
 	if !isStrongPassword(req.Password) {
@@ -431,13 +431,13 @@ func (h *UserManagementHandler) ResetPassword(w http.ResponseWriter, r *http.Req
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to hash password")
+		respondError(w, http.StatusInternalServerError, "密码加密失败")
 		return
 	}
 
 	_, err = h.DB.Exec(r.Context(), `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`, string(hash), id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to reset password")
+		respondError(w, http.StatusInternalServerError, "重置密码失败")
 		return
 	}
 
@@ -447,24 +447,24 @@ func (h *UserManagementHandler) ResetPassword(w http.ResponseWriter, r *http.Req
 func (h *UserManagementHandler) BatchCreate(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if !h.canManageUsers(r) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	var req BatchCreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if len(req.Users) == 0 {
-		respondError(w, http.StatusBadRequest, "empty user list")
+		respondError(w, http.StatusBadRequest, "用户列表不能为空")
 		return
 	}
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "启动事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -495,7 +495,7 @@ func (h *UserManagementHandler) BatchCreate(w http.ResponseWriter, r *http.Reque
 				respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
 				return
 			}
-			respondError(w, http.StatusInternalServerError, "failed to create users")
+			respondError(w, http.StatusInternalServerError, "批量创建用户失败")
 			return
 		}
 		user.PasswordHash = ""
@@ -503,7 +503,7 @@ func (h *UserManagementHandler) BatchCreate(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -512,25 +512,25 @@ func (h *UserManagementHandler) BatchCreate(w http.ResponseWriter, r *http.Reque
 
 func (h *UserManagementHandler) BatchGraduate(w http.ResponseWriter, r *http.Request) {
 	if !h.canManageUsers(r) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	claims := middleware.CurrentUser(r)
 	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 	callerTenantID := *claims.TenantID
 
 	var req BatchGraduateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if len(req.UserIDs) == 0 {
-		respondError(w, http.StatusBadRequest, "userIds is required")
+		respondError(w, http.StatusBadRequest, "缺少用户ID列表")
 		return
 	}
 
@@ -543,7 +543,7 @@ func (h *UserManagementHandler) BatchGraduate(w http.ResponseWriter, r *http.Req
 	for i, id := range req.UserIDs {
 		uid, err := uuid.Parse(id)
 		if err != nil {
-			respondError(w, http.StatusBadRequest, "invalid userId: "+id)
+			respondError(w, http.StatusBadRequest, "无效用户ID: "+id)
 			return
 		}
 		uuids[i] = uid
@@ -554,7 +554,7 @@ func (h *UserManagementHandler) BatchGraduate(w http.ResponseWriter, r *http.Req
 		 WHERE id = ANY($2::uuid[]) AND tenant_id = $3 AND status = 'active'`,
 		graduateYear, uuids, callerTenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to batch graduate")
+		respondError(w, http.StatusInternalServerError, "批量毕业操作失败")
 		return
 	}
 
@@ -563,25 +563,25 @@ func (h *UserManagementHandler) BatchGraduate(w http.ResponseWriter, r *http.Req
 
 func (h *UserManagementHandler) BatchDelete(w http.ResponseWriter, r *http.Request) {
 	if !h.canManageUsers(r) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	claims := middleware.CurrentUser(r)
 	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 	callerTenantID := *claims.TenantID
 
 	var req BatchDeleteUsersRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if len(req.UserIDs) == 0 {
-		respondError(w, http.StatusBadRequest, "userIds is required")
+		respondError(w, http.StatusBadRequest, "缺少用户ID列表")
 		return
 	}
 
@@ -589,7 +589,7 @@ func (h *UserManagementHandler) BatchDelete(w http.ResponseWriter, r *http.Reque
 	for i, id := range req.UserIDs {
 		uid, err := uuid.Parse(id)
 		if err != nil {
-			respondError(w, http.StatusBadRequest, "invalid userId: "+id)
+			respondError(w, http.StatusBadRequest, "无效用户ID: "+id)
 			return
 		}
 		uuids[i] = uid
@@ -600,7 +600,7 @@ func (h *UserManagementHandler) BatchDelete(w http.ResponseWriter, r *http.Reque
 			SELECT id FROM users WHERE tenant_id = $2 AND id = ANY($1::uuid[])
 		)`, uuids, callerTenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete user roles")
+		respondError(w, http.StatusInternalServerError, "删除用户角色失败")
 		return
 	}
 
@@ -608,7 +608,7 @@ func (h *UserManagementHandler) BatchDelete(w http.ResponseWriter, r *http.Reque
 		`DELETE FROM users WHERE id = ANY($1::uuid[]) AND tenant_id = $2`,
 		uuids, callerTenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete users")
+		respondError(w, http.StatusInternalServerError, "批量删除用户失败")
 		return
 	}
 
@@ -619,25 +619,25 @@ func (h *UserManagementHandler) BatchDelete(w http.ResponseWriter, r *http.Reque
 // orgNodeId 为空时，会清空用户的 org_node_id（用于删除节点后解绑）。
 func (h *UserManagementHandler) BatchUpdateOrgNode(w http.ResponseWriter, r *http.Request) {
 	if !h.canManageUsers(r) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	claims := middleware.CurrentUser(r)
 	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 	callerTenantID := *claims.TenantID
 
 	var req BatchUpdateOrgNodeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if len(req.UserIDs) == 0 {
-		respondError(w, http.StatusBadRequest, "userIds is required")
+		respondError(w, http.StatusBadRequest, "缺少用户ID列表")
 		return
 	}
 
@@ -647,7 +647,7 @@ func (h *UserManagementHandler) BatchUpdateOrgNode(w http.ResponseWriter, r *htt
 			`SELECT EXISTS(SELECT 1 FROM organizations WHERE id = $1 AND tenant_id = $2)`,
 			*req.OrgNodeID, callerTenantID,
 		).Scan(&exists); err != nil || !exists {
-			respondError(w, http.StatusBadRequest, "invalid orgNodeId")
+			respondError(w, http.StatusBadRequest, "无效机构节点ID")
 			return
 		}
 	}
@@ -656,7 +656,7 @@ func (h *UserManagementHandler) BatchUpdateOrgNode(w http.ResponseWriter, r *htt
 	for i, id := range req.UserIDs {
 		uid, err := uuid.Parse(id)
 		if err != nil {
-			respondError(w, http.StatusBadRequest, "invalid userId: "+id)
+			respondError(w, http.StatusBadRequest, "无效用户ID: "+id)
 			return
 		}
 		uuids[i] = uid
@@ -667,7 +667,7 @@ func (h *UserManagementHandler) BatchUpdateOrgNode(w http.ResponseWriter, r *htt
 		 WHERE id = ANY($2::uuid[]) AND tenant_id = $3`,
 		req.OrgNodeID, uuids, callerTenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update user organization bindings")
+		respondError(w, http.StatusInternalServerError, "更新用户机构绑定失败")
 		return
 	}
 
@@ -678,14 +678,14 @@ func (h *UserManagementHandler) BatchUpdateOrgNode(w http.ResponseWriter, r *htt
 // all roles must belong to the user's tenant.
 func (h *UserManagementHandler) BindRoles(w http.ResponseWriter, r *http.Request) {
 	if !h.canManageUsers(r) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	user, err := h.fetchUser(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "user not found")
+		respondError(w, http.StatusNotFound, "用户不存在")
 		return
 	}
 	if user.TenantID == nil || !verifyTenantOwnership(w, r, *user.TenantID) {
@@ -694,7 +694,7 @@ func (h *UserManagementHandler) BindRoles(w http.ResponseWriter, r *http.Request
 
 	var req BindUserRolesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
@@ -716,7 +716,7 @@ func (h *UserManagementHandler) BindRoles(w http.ResponseWriter, r *http.Request
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "启动事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -725,11 +725,11 @@ func (h *UserManagementHandler) BindRoles(w http.ResponseWriter, r *http.Request
 		UPDATE roles SET user_count = GREATEST(user_count - 1, 0)
 		WHERE id IN (SELECT role_id FROM user_roles WHERE user_id = $1)
 	`, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to bind roles")
+		respondError(w, http.StatusInternalServerError, "绑定角色失败")
 		return
 	}
 	if _, err := tx.Exec(r.Context(), `DELETE FROM user_roles WHERE user_id = $1`, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to bind roles")
+		respondError(w, http.StatusInternalServerError, "绑定角色失败")
 		return
 	}
 	for _, roleID := range roleIDs {
@@ -738,7 +738,7 @@ func (h *UserManagementHandler) BindRoles(w http.ResponseWriter, r *http.Request
 			VALUES ($1, $2, $3)
 			ON CONFLICT (user_id, role_id) DO NOTHING
 		`, uuid.NewString(), id, roleID); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to bind roles")
+			respondError(w, http.StatusInternalServerError, "绑定角色失败")
 			return
 		}
 	}
@@ -746,12 +746,12 @@ func (h *UserManagementHandler) BindRoles(w http.ResponseWriter, r *http.Request
 		`UPDATE roles SET user_count = user_count + 1 WHERE id = ANY($1::uuid[])`,
 		roleIDs,
 	); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to bind roles")
+		respondError(w, http.StatusInternalServerError, "绑定角色失败")
 		return
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -1044,7 +1044,7 @@ func (h *UserManagementHandler) validateUserOrgMajor(ctx context.Context, tenant
 		var exists bool
 		err := h.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM organizations WHERE id = $1 AND tenant_id = $2)`, *orgNodeID, tenantID).Scan(&exists)
 		if err != nil || !exists {
-			return fmt.Errorf("invalid orgNodeId")
+			return fmt.Errorf("无效机构节点ID")
 		}
 	}
 	if majorID != nil && *majorID != "" {

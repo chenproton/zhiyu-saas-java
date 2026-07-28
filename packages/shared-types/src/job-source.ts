@@ -1,3 +1,17 @@
+/**
+ * @deprecated This file contains legacy/alternative type definitions that duplicate
+ * the canonical types in `job.ts`. The canonical names are:
+ *   Position → CareerPosition
+ *   Ability → AbilityPoint
+ *   Batch → JobBatch
+ *   PositionResponsibility → PositionResponsibility (canonical in job.ts)
+ *   PositionAbilityBinding → PositionAbilityBinding (canonical in job.ts)
+ *   PositionRecommendation → PositionRecommendation (canonical in job.ts)
+ *   AbilityModel/AbilityGraphNode → removed from canonical model
+ *   COMPETENCY_LEVEL_LABELS → use getStatusConfig() from status.ts
+ * When adding new code, import from `job.ts` instead.
+ */
+
 // 用户角色类型
 export type UserRole = 'admin' | 'builder' | 'reviewer' | 'student'
 

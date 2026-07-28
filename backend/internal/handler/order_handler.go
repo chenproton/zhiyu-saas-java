@@ -64,7 +64,7 @@ func (h *OrderHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	limit := 50
 	offset := 0
-	if v, err := parseInt(limitStr, 50); err == nil && v > 0 {
+	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
 		limit = v
 	}
 	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
@@ -132,7 +132,7 @@ func (h *OrderHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	if !platformAdminOnly(claims) && claims.InstitutionID != nil &&
 		order.BuyerID != *claims.InstitutionID && order.SellerID != *claims.InstitutionID {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -148,7 +148,7 @@ func (h *OrderHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	var req CreateOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
@@ -217,7 +217,7 @@ func (h *OrderHandler) Pay(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if claims.InstitutionID == nil || order.BuyerID != *claims.InstitutionID {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	if order.Status != domain.OrderStatusPending {
@@ -296,7 +296,7 @@ func (h *OrderHandler) ListAuthorizations(w http.ResponseWriter, r *http.Request
 
 	limit := 50
 	offset := 0
-	if v, err := parseInt(limitStr, 50); err == nil && v > 0 {
+	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
 		limit = v
 	}
 	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
@@ -371,7 +371,7 @@ func (h *OrderHandler) VerifyAuthorization(w http.ResponseWriter, r *http.Reques
 
 	// Only operator or seller can verify
 	if !platformAdminOnly(claims) && (claims.InstitutionID == nil || *claims.InstitutionID != resourceInstitutionID) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 

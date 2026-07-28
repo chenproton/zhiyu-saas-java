@@ -57,7 +57,7 @@ func (h *InstitutionHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	limit := 50
 	offset := 0
-	if v, err := parseInt(limitStr, 50); err == nil && v > 0 {
+	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
 		limit = v
 	}
 	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
@@ -131,7 +131,7 @@ func (h *InstitutionHandler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *InstitutionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req CreateInstitutionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
@@ -140,7 +140,7 @@ func (h *InstitutionHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Name == "" || req.CreditCode == "" || req.OrgCode == "" || req.ContactName == "" || req.ContactPhone == "" || req.ContactEmail == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -183,13 +183,13 @@ func (h *InstitutionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	if !platformAdminOnly(claims) && (claims.InstitutionID == nil || *claims.InstitutionID != id) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	var req UpdateInstitutionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
@@ -229,7 +229,7 @@ func (h *InstitutionHandler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *InstitutionHandler) UpdateStatus(w http.ResponseWriter, r *http.Request, status domain.InstitutionStatus) {
 	claims := middleware.CurrentUser(r)
 	if !platformAdminOnly(claims) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 

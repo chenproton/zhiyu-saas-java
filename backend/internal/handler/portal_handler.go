@@ -17,7 +17,7 @@ type PortalHandler struct {
 func (h *PortalHandler) WorkspaceDashboard(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 

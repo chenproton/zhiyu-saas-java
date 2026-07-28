@@ -77,7 +77,7 @@ type UpdateCourseRequest struct {
 
 func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -91,7 +91,7 @@ func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	limit := 50
 	offset := 0
-	if v, err := parseInt(limitStr, 50); err == nil && v > 0 {
+	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
 		limit = v
 	}
 	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
@@ -104,7 +104,7 @@ func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenantClaims := middleware.CurrentUser(r)
 	effectiveTenantID, ok := tenantFilter(tenantClaims)
 	if !ok {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 	if effectiveTenantID != "" {
@@ -164,14 +164,14 @@ func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list courses")
+		respondError(w, http.StatusInternalServerError, "查询课程列表失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanCourseRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan courses")
+		respondError(w, http.StatusInternalServerError, "课程数据读取失败")
 		return
 	}
 
@@ -180,14 +180,14 @@ func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *CourseHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	course, err := h.fetchCourse(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "course not found")
+		respondError(w, http.StatusNotFound, "课程不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, course)
@@ -196,17 +196,17 @@ func (h *CourseHandler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	var req CreateCourseRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 	if req.Name == "" || req.Type == "" || req.Category == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -226,7 +226,7 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	code, err := generateUniqueEntityCode(r.Context(), h.DB, prefix, "courses", tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to generate course code")
+		respondError(w, http.StatusInternalServerError, "生成课程代码失败")
 		return
 	}
 
@@ -251,7 +251,7 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "课程代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create course")
+		respondError(w, http.StatusInternalServerError, "创建课程失败")
 		return
 	}
 
@@ -264,20 +264,20 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	existing, err := h.fetchCourse(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "course not found")
+		respondError(w, http.StatusNotFound, "课程不存在")
 		return
 	}
 
 	var req UpdateCourseRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
@@ -372,7 +372,7 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "课程代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update course")
+		respondError(w, http.StatusInternalServerError, "更新课程失败")
 		return
 	}
 
@@ -386,19 +386,19 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 func (h *CourseHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchCourse(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "course not found")
+		respondError(w, http.StatusNotFound, "课程不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM courses WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete course")
+		respondError(w, http.StatusInternalServerError, "删除课程失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

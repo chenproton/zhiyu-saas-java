@@ -56,7 +56,7 @@ func (h *ResourceHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	limit := 50
 	offset := 0
-	if v, err := parseInt(limitStr, 50); err == nil && v > 0 {
+	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
 		limit = v
 	}
 	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
@@ -155,12 +155,12 @@ func (h *ResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	var req CreateResourceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if req.Name == "" || req.Category == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -212,13 +212,13 @@ func (h *ResourceHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !platformAdminOnly(claims) && (claims.InstitutionID == nil || *claims.InstitutionID != existing.InstitutionID) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	var req CreateResourceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
@@ -267,7 +267,7 @@ func (h *ResourceHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !platformAdminOnly(claims) && (claims.InstitutionID == nil || *claims.InstitutionID != existing.InstitutionID) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -298,14 +298,14 @@ func (h *ResourceHandler) SubmitForReview(w http.ResponseWriter, r *http.Request
 func (h *ResourceHandler) Review(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if !platformAdminOnly(claims) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	var req ReviewResourceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
@@ -337,7 +337,7 @@ func (h *ResourceHandler) Review(w http.ResponseWriter, r *http.Request) {
 func (h *ResourceHandler) Publish(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if !platformAdminOnly(claims) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	h.transitionStatus(w, r, "published", "")
@@ -346,7 +346,7 @@ func (h *ResourceHandler) Publish(w http.ResponseWriter, r *http.Request) {
 func (h *ResourceHandler) Offline(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if !platformAdminOnly(claims) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	h.transitionStatus(w, r, "offlined", "")

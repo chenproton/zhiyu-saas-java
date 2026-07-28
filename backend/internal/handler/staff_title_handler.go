@@ -50,13 +50,13 @@ func (h *StaffTitleHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenantClaims := middleware.CurrentUser(r)
 	tenantID, ok := tenantFilter(tenantClaims)
 	if !ok {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 
 	limit := 50
 	offset := 0
-	if v, err := parseInt(limitStr, 50); err == nil && v > 0 {
+	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
 		limit = v
 	}
 	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
@@ -124,18 +124,18 @@ func (h *StaffTitleHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 func (h *StaffTitleHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if !h.canManageUsers(r) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	var req CreateStaffTitleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if req.TenantID == "" || req.Name == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 	if !verifyRequestTenant(w, r, req.TenantID) {
@@ -175,7 +175,7 @@ func (h *StaffTitleHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *StaffTitleHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !h.canManageUsers(r) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -191,12 +191,12 @@ func (h *StaffTitleHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	var req UpdateStaffTitleRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -221,7 +221,7 @@ func (h *StaffTitleHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 func (h *StaffTitleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if !h.canManageUsers(r) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -258,7 +258,7 @@ func (h *StaffTitleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 func (h *StaffTitleHandler) ToggleStatus(w http.ResponseWriter, r *http.Request) {
 	if !h.canManageUsers(r) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -274,7 +274,7 @@ func (h *StaffTitleHandler) ToggleStatus(w http.ResponseWriter, r *http.Request)
 
 	var req ToggleStaffTitleStatusRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 

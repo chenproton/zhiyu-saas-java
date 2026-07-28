@@ -19,7 +19,7 @@ type TemplateHandler struct {
 func (h *TemplateHandler) ServePositionTemplate(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	tenantID, ok := requireTenant(w, r)
@@ -35,7 +35,7 @@ func (h *TemplateHandler) ServePositionTemplate(w http.ResponseWriter, r *http.R
 func (h *TemplateHandler) ServeScenarioTemplate(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	tenantID, ok := requireTenant(w, r)
@@ -472,7 +472,7 @@ func (h *TemplateHandler) generateGranularCourseTemplate(ctx context.Context, te
 func (h *TemplateHandler) ServeGranularCourseTemplate(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	tenantID, ok := requireTenant(w, r)
@@ -487,7 +487,7 @@ func (h *TemplateHandler) ServeGranularCourseTemplate(w http.ResponseWriter, r *
 func (h *TemplateHandler) ServeSystemCourseTemplate(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	tenantID, ok := requireTenant(w, r)
@@ -702,7 +702,7 @@ func makeWrapAlign(f *excelize.File) int {
 func (h *TemplateHandler) ServeQuestionBankTemplate(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	tenantID, ok := requireTenant(w, r)
@@ -717,7 +717,7 @@ func (h *TemplateHandler) ServeQuestionBankTemplate(w http.ResponseWriter, r *ht
 func (h *TemplateHandler) ServeQuestionTemplate(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	tenantID, ok := requireTenant(w, r)
@@ -737,7 +737,7 @@ func (h *TemplateHandler) ServeQuestionTemplate(w http.ResponseWriter, r *http.R
 func (h *TemplateHandler) ServeExamTemplate(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	tenantID, ok := requireTenant(w, r)
@@ -912,7 +912,7 @@ func (h *TemplateHandler) generateExamTemplate(ctx context.Context, tenantID str
 func (h *TemplateHandler) ServeIndustryTemplate(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	tenantID, ok := requireTenant(w, r)
@@ -927,7 +927,7 @@ func (h *TemplateHandler) ServeIndustryTemplate(w http.ResponseWriter, r *http.R
 func (h *TemplateHandler) ServeMajorTemplate(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	tenantID, ok := requireTenant(w, r)
@@ -942,7 +942,7 @@ func (h *TemplateHandler) ServeMajorTemplate(w http.ResponseWriter, r *http.Requ
 func (h *TemplateHandler) ServeOrganizationTemplate(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	tenantID, ok := requireTenant(w, r)
@@ -957,7 +957,7 @@ func (h *TemplateHandler) ServeOrganizationTemplate(w http.ResponseWriter, r *ht
 func (h *TemplateHandler) ServeStudentTemplate(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	tenantID, ok := requireTenant(w, r)
@@ -972,7 +972,7 @@ func (h *TemplateHandler) ServeStudentTemplate(w http.ResponseWriter, r *http.Re
 func (h *TemplateHandler) ServeTeacherTemplate(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	tenantID, ok := requireTenant(w, r)

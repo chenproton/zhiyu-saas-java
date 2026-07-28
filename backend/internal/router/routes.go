@@ -1,0 +1,298 @@
+package router
+
+import (
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5/pgxpool"
+	authmw "github.com/zhiyu-saas/backend/internal/middleware"
+)
+
+func registerApiRoutes(r chi.Router, jwtSecret string, db *pgxpool.Pool, h *Handlers) {
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Use(middleware.Timeout(30 * time.Second))
+
+		registerPublicRoutes(r, h)
+		registerAuthenticatedRoutes(r, jwtSecret, db, h)
+	})
+}
+
+func registerPublicRoutes(r chi.Router, h *Handlers) {
+	r.Post("/auth/login", h.authHandler.Login)
+	r.Post("/auth/saas/login", h.authHandler.SaasLogin)
+	r.Post("/auth/portal/login", h.authHandler.PortalLogin)
+	r.Post("/auth/select-tenant", h.authHandler.SelectTenant)
+	r.Post("/auth/debug/token", h.authHandler.DebugToken)
+	r.Get("/banners", h.bannerHandler.List)
+	r.Get("/resources", h.resourceHandler.List)
+	r.Get("/resources/{id}", h.resourceHandler.Get)
+	r.Post("/resources/{id}/view", h.resourceHandler.IncrementView)
+	r.Get("/platform-links", h.platformLinkHandler.List)
+	r.Get("/app-modules", h.appModuleHandler.List)
+}
+
+func registerAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Pool, h *Handlers) {
+	auth := authmw.JWT(jwtSecret)
+	platformAdmin := authmw.RequireRole("platform_admin")
+	systemAdmin := authmw.RequireSystemPermission()
+	portalWorkspace := authmw.RequireRole("teacher", "student", "school_admin")
+	businessUser := authmw.RequireRole("teacher", "school_admin", "enterprise_mentor", "platform_admin")
+	jobViewer := authmw.RequireRole("teacher", "student", "school_admin", "enterprise_mentor", "platform_admin")
+
+	r.Group(func(r chi.Router) {
+		r.Use(auth)
+		r.Use(authmw.OperationLog(db))
+
+		registerAuthRoutes(r, h)
+		registerImportExportRoutes(r, h)
+		registerMarketplaceRoutes(r, h)
+		registerLandingRoutes(r, h)
+
+		r.Group(func(r chi.Router) {
+			r.Use(platformAdmin)
+			registerSuperAdminRoutes(r, h)
+		})
+
+		r.Group(func(r chi.Router) {
+			r.Use(jobViewer)
+			r.Get("/job/public/positions", h.positionHandler.PublicList)
+			r.Get("/job/public/positions/{id}", h.positionHandler.PublicGet)
+		})
+
+		r.Group(func(r chi.Router) {
+			r.Use(portalWorkspace)
+			r.Get("/portal/workspace/dashboard", h.portalHandler.WorkspaceDashboard)
+		})
+
+		r.Group(func(r chi.Router) {
+			r.Use(systemAdmin)
+			registerPortalRoutes(r, h)
+		})
+
+		registerWorkflowRoutes(r, h)
+
+		r.Group(func(r chi.Router) {
+			r.Use(businessUser)
+			registerJobRoutes(r, h)
+			registerSceneRoutes(r, h)
+			registerLessonRoutes(r, h)
+			registerEvaluationRoutes(r, h)
+			registerLibraryRoutes(r, h)
+		})
+	})
+}
+
+func registerAuthRoutes(r chi.Router, h *Handlers) {
+	r.Get("/auth/me", h.authHandler.SaasMe)
+	r.Get("/auth/saas/me", h.authHandler.SaasMe)
+	r.Get("/auth/portal/me", h.authHandler.PortalMe)
+	r.Get("/stats/me", h.statsHandler.MyStats)
+	r.Get("/subscriptions", h.subscriptionHandler.Get)
+	r.Get("/uploads/{filename}", h.fileHandler.Serve)
+}
+
+func registerSuperAdminRoutes(r chi.Router, h *Handlers) {
+	r.Get("/admin/tenants", h.tenantHandler.AdminList)
+	r.Post("/admin/tenants", h.tenantHandler.AdminCreate)
+	r.Put("/admin/tenants/{id}", h.tenantHandler.AdminUpdate)
+	r.Post("/admin/tenants/{id}/status", h.tenantHandler.AdminUpdateStatus)
+	r.Delete("/admin/tenants/{id}", h.tenantHandler.AdminDelete)
+
+	r.Get("/admin/tenants/{tenantId}/admins", h.tenantHandler.AdminListAdmins)
+	r.Post("/admin/tenants/{tenantId}/admins", h.tenantHandler.AdminCreateAdmin)
+	r.Put("/admin/tenants/{tenantId}/admins/{id}", h.tenantHandler.AdminUpdateAdmin)
+	r.Delete("/admin/tenants/{tenantId}/admins/{id}", h.tenantHandler.AdminDeleteAdmin)
+	r.Post("/admin/tenants/{tenantId}/admins/{id}/reset-password", h.tenantHandler.AdminResetPassword)
+
+	r.Get("/admin/tenants/{tenantId}/subscription", h.subscriptionHandler.AdminGet)
+	r.Put("/admin/tenants/{tenantId}/subscription", h.subscriptionHandler.AdminUpdate)
+
+	r.Get("/stats/dashboard", h.statsHandler.Dashboard)
+	r.Get("/config", h.statsHandler.GetConfig)
+	r.Put("/config", h.statsHandler.UpdateConfig)
+
+	r.Post("/banners", h.bannerHandler.Create)
+	r.Put("/banners/{id}", h.bannerHandler.Update)
+	r.Delete("/banners/{id}", h.bannerHandler.Delete)
+}
+
+func registerWorkflowRoutes(r chi.Router, h *Handlers) {
+	r.Group(func(r chi.Router) {
+		r.Use(authmw.RequireRole("school_admin", "teacher"))
+
+		r.Get("/workflows", h.workflowHandler.List)
+		r.Post("/workflows", h.workflowHandler.Create)
+		r.Get("/workflows/{id}", h.workflowHandler.Get)
+		r.Put("/workflows/{id}", h.workflowHandler.Update)
+		r.Delete("/workflows/{id}", h.workflowHandler.Delete)
+
+		r.Get("/approvals", h.approvalHandler.List)
+		r.Post("/approvals", h.approvalHandler.Create)
+		r.Get("/approvals/{id}", h.approvalHandler.Get)
+		r.Post("/approvals/{id}/review", h.approvalHandler.Review)
+	})
+}
+
+func registerImportExportRoutes(r chi.Router, h *Handlers) {
+	r.Get("/export/{entity}", h.importExportHandler.Export)
+	r.Post("/import/{entity}", h.importExportHandler.Import)
+	r.Post("/import/{entity}/preview", h.importExportHandler.Preview)
+	r.Post("/import/positions/excel", h.positionImportHandler.ImportExcel)
+	r.Post("/import/positions/preview", h.positionImportHandler.PreviewExcel)
+	r.Post("/import/scenarios/excel", h.scenarioImportHandler.ImportExcel)
+	r.Post("/import/scenarios/preview", h.scenarioImportHandler.PreviewExcel)
+	r.Post("/import/question-banks/excel", h.questionBankImportHandler.ImportExcel)
+	r.Post("/import/question-banks/preview", h.questionBankImportHandler.PreviewExcel)
+	r.Post("/import/question-banks/{bankId}/questions/excel", h.questionImportHandler.ImportExcel)
+	r.Post("/import/question-banks/{bankId}/questions/preview", h.questionImportHandler.PreviewExcel)
+	r.Post("/import/exams/excel", h.examImportHandler.ImportExcel)
+	r.Post("/import/exams/preview", h.examImportHandler.PreviewExcel)
+	r.Post("/import/courses/excel", h.courseImportHandler.ImportExcel)
+	r.Post("/import/courses/preview", h.courseImportHandler.PreviewExcel)
+	r.Post("/import/granular-courses/excel", h.granularCourseImportHandler.ImportExcel)
+	r.Post("/import/granular-courses/preview", h.granularCourseImportHandler.PreviewExcel)
+	r.Post("/import/industries/excel", h.resourceImportHandler.ImportIndustries)
+	r.Post("/import/industries/preview", h.resourceImportHandler.PreviewIndustries)
+	r.Post("/import/majors/excel", h.resourceImportHandler.ImportMajors)
+	r.Post("/import/majors/preview", h.resourceImportHandler.PreviewMajors)
+	r.Post("/import/organizations/excel", h.resourceImportHandler.ImportOrganizations)
+	r.Post("/import/organizations/preview", h.resourceImportHandler.PreviewOrganizations)
+	r.Post("/import/students/excel", h.resourceImportHandler.ImportStudents)
+	r.Post("/import/students/preview", h.resourceImportHandler.PreviewStudents)
+	r.Post("/import/teachers/excel", h.resourceImportHandler.ImportTeachers)
+	r.Post("/import/teachers/preview", h.resourceImportHandler.PreviewTeachers)
+	r.Get("/templates/positions", h.templateHandler.ServePositionTemplate)
+	r.Get("/templates/scenarios", h.templateHandler.ServeScenarioTemplate)
+	r.Get("/templates/courses", h.templateHandler.ServeSystemCourseTemplate)
+	r.Get("/templates/granular-courses", h.templateHandler.ServeGranularCourseTemplate)
+	r.Get("/templates/question-banks", h.templateHandler.ServeQuestionBankTemplate)
+	r.Get("/templates/question-banks/{bankId}/questions", h.templateHandler.ServeQuestionTemplate)
+	r.Get("/templates/exams", h.templateHandler.ServeExamTemplate)
+	r.Get("/templates/industries", h.templateHandler.ServeIndustryTemplate)
+	r.Get("/templates/majors", h.templateHandler.ServeMajorTemplate)
+	r.Get("/templates/organizations", h.templateHandler.ServeOrganizationTemplate)
+	r.Get("/templates/students", h.templateHandler.ServeStudentTemplate)
+	r.Get("/templates/teachers", h.templateHandler.ServeTeacherTemplate)
+	r.Post("/export/scenarios/excel", h.scenarioExportHandler.ExportExcel)
+	r.Post("/export/positions/excel", h.positionExportHandler.ExportExcel)
+	r.Post("/export/organizations/excel", h.resourceExportHandler.ExportOrganizations)
+	r.Post("/export/students/excel", h.resourceExportHandler.ExportStudents)
+	r.Post("/export/teachers/excel", h.resourceExportHandler.ExportTeachers)
+}
+
+func registerMarketplaceRoutes(r chi.Router, h *Handlers) {
+	r.Get("/institutions", h.institutionHandler.List)
+	r.Get("/institutions/{id}", h.institutionHandler.Get)
+	r.Post("/institutions", h.institutionHandler.Create)
+	r.Put("/institutions/{id}", h.institutionHandler.Update)
+	r.Post("/institutions/{id}/approve", h.institutionHandler.Approve)
+	r.Post("/institutions/{id}/disable", h.institutionHandler.Disable)
+
+	r.Post("/resources", h.resourceHandler.Create)
+	r.Put("/resources/{id}", h.resourceHandler.Update)
+	r.Delete("/resources/{id}", h.resourceHandler.Delete)
+	r.Post("/resources/{id}/submit", h.resourceHandler.SubmitForReview)
+	r.Post("/resources/{id}/review", h.resourceHandler.Review)
+	r.Post("/resources/{id}/publish", h.resourceHandler.Publish)
+	r.Post("/resources/{id}/offline", h.resourceHandler.Offline)
+
+	r.Get("/orders", h.orderHandler.List)
+	r.Get("/orders/{id}", h.orderHandler.Get)
+	r.Post("/orders", h.orderHandler.Create)
+	r.Post("/orders/{id}/pay", h.orderHandler.Pay)
+	r.Get("/authorizations", h.orderHandler.ListAuthorizations)
+	r.Get("/authorizations/{code}", h.orderHandler.VerifyAuthorization)
+
+	r.Get("/withdrawals", h.withdrawalHandler.List)
+	r.Post("/withdrawals", h.withdrawalHandler.Create)
+	r.Post("/withdrawals/{id}/status", h.withdrawalHandler.UpdateStatus)
+}
+
+func registerLandingRoutes(r chi.Router, h *Handlers) {
+	r.Get("/evaluation/landing/exams", h.landingHandler.ListExams)
+	r.Get("/evaluation/landing/certifications/{id}/grades", h.certGradeHandler.ListGrades)
+}
+
+func registerPortalRoutes(r chi.Router, h *Handlers) {
+	r.Get("/tenants", h.tenantHandler.List)
+	r.Get("/tenants/{id}", h.tenantHandler.Get)
+	r.Put("/tenants/{id}", h.tenantHandler.Update)
+
+	r.Get("/organizations", h.orgHandler.List)
+	r.Get("/organizations/tree", h.orgHandler.Tree)
+	r.Get("/organizations/{id}", h.orgHandler.Get)
+	r.Post("/organizations", h.orgHandler.Create)
+	r.Put("/organizations/{id}", h.orgHandler.Update)
+	r.Delete("/organizations/{id}", h.orgHandler.Delete)
+
+	r.Get("/org-types", h.orgTypeHandler.List)
+	r.Get("/org-types/{id}", h.orgTypeHandler.Get)
+	r.Post("/org-types", h.orgTypeHandler.Create)
+	r.Put("/org-types/{id}", h.orgTypeHandler.Update)
+	r.Delete("/org-types/{id}", h.orgTypeHandler.Delete)
+
+	r.Get("/users", h.userManagementHandler.List)
+	r.Get("/users/{id}", h.userManagementHandler.Get)
+	r.Post("/users", h.userManagementHandler.Create)
+	r.Put("/users/{id}", h.userManagementHandler.Update)
+	r.Delete("/users/{id}", h.userManagementHandler.Delete)
+	r.Post("/users/{id}/status", h.userManagementHandler.UpdateStatus)
+	r.Post("/users/{id}/reset-password", h.userManagementHandler.ResetPassword)
+	r.Post("/users/{id}/roles", h.userManagementHandler.BindRoles)
+	r.Post("/users/batch", h.userManagementHandler.BatchCreate)
+	r.Post("/users/batch-graduate", h.userManagementHandler.BatchGraduate)
+	r.Post("/users/batch-delete", h.userManagementHandler.BatchDelete)
+	r.Post("/users/batch-org-node", h.userManagementHandler.BatchUpdateOrgNode)
+
+	r.Route("/staff-titles", func(r chi.Router) {
+		r.Get("/", h.staffTitleHandler.List)
+		r.Post("/", h.staffTitleHandler.Create)
+		r.Get("/{id}", h.staffTitleHandler.Get)
+		r.Put("/{id}", h.staffTitleHandler.Update)
+		r.Delete("/{id}", h.staffTitleHandler.Delete)
+		r.Post("/{id}/status", h.staffTitleHandler.ToggleStatus)
+	})
+
+	r.Route("/user-extension-fields", func(r chi.Router) {
+		r.Get("/", h.userExtensionFieldHandler.List)
+		r.Put("/{id}", h.userExtensionFieldHandler.Update)
+	})
+
+	r.Route("/user-relations", func(r chi.Router) {
+		r.Get("/", h.userRelationHandler.List)
+		r.Post("/", h.userRelationHandler.Create)
+		r.Delete("/{id}", h.userRelationHandler.Delete)
+	})
+
+	r.Get("/roles", h.roleHandler.List)
+	r.Get("/roles/{id}", h.roleHandler.Get)
+	r.Post("/roles", h.roleHandler.Create)
+	r.Put("/roles/{id}", h.roleHandler.Update)
+	r.Delete("/roles/{id}", h.roleHandler.Delete)
+	r.Post("/roles/{id}/assign", h.roleHandler.Assign)
+
+	r.Get("/majors", h.majorHandler.List)
+	r.Get("/majors/{id}", h.majorHandler.Get)
+	r.Post("/majors", h.majorHandler.Create)
+	r.Put("/majors/{id}", h.majorHandler.Update)
+	r.Delete("/majors/{id}", h.majorHandler.Delete)
+
+	r.Get("/industries", h.industryHandler.List)
+	r.Get("/industries/{id}", h.industryHandler.Get)
+	r.Post("/industries", h.industryHandler.Create)
+	r.Put("/industries/{id}", h.industryHandler.Update)
+	r.Delete("/industries/{id}", h.industryHandler.Delete)
+
+	r.Get("/resource-codes", h.resourceCodeHandler.List)
+	r.Get("/resource-codes/{id}", h.resourceCodeHandler.Get)
+	r.Post("/resource-codes", h.resourceCodeHandler.Create)
+	r.Put("/resource-codes/{id}", h.resourceCodeHandler.Update)
+	r.Delete("/resource-codes/{id}", h.resourceCodeHandler.Delete)
+
+	r.Get("/logs/login", h.logHandler.LoginLogs)
+	r.Get("/logs/operation", h.logHandler.OperationLogs)
+
+	r.Get("/platform-links/{id}", h.platformLinkHandler.Get)
+	r.Get("/app-modules/{id}", h.appModuleHandler.Get)
+}

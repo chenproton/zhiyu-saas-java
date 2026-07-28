@@ -32,11 +32,11 @@ func (h *TaskKnowledgeAbilityHandler) BindKnowledge(w http.ResponseWriter, r *ht
 
 	var req BindTaskKnowledgeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 	if req.TaskID == "" || req.KnowledgePointID == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -87,11 +87,11 @@ func (h *TaskKnowledgeAbilityHandler) BindAbility(w http.ResponseWriter, r *http
 
 	var req BindTaskAbilityRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 	if req.TaskID == "" || req.AbilityPointID == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 

@@ -18,6 +18,7 @@ import type { Workflow } from "@/lib/types/backend"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/components/auth-provider"
 import { WorkflowEditor, buildWorkflowSteps, WorkflowStepEditor } from "@/components/shared/_components/workflow-editor"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { TableRowActions } from "@/components/shared/table-row-actions"
 
 const DEFAULT_STEP: WorkflowStepEditor = { name: "", approverIds: [], approvalMode: "any" }
@@ -36,6 +37,7 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
@@ -98,10 +100,12 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
     } catch (err: any) { toast({ variant: "destructive", title: "保存失败", description: err.message }) }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("确定删除该审批流程吗？")) return
-    try { await workflowApi.delete(id); await loadWorkflows(); toast({ title: "删除成功" }) }
+  const handleDelete = (id: string) => { setDeleteTargetId(id) }
+  const confirmDelete = async () => {
+    if (!deleteTargetId) return
+    try { await workflowApi.delete(deleteTargetId); await loadWorkflows(); toast({ title: "删除成功" }) }
     catch (err: any) { toast({ variant: "destructive", title: "删除失败", description: err.message }) }
+    finally { setDeleteTargetId(null) }
   }
 
   const renderDialog = (isEdit: boolean) => (
@@ -202,6 +206,14 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
           </div>
         </CardContent>
       </Card>
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTargetId(null) }}
+        title="确认删除"
+        description="确定删除该审批流程吗？"
+        variant="destructive"
+        onConfirm={confirmDelete}
+      />
     </div>
   )
 }

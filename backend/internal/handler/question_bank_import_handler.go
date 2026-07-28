@@ -20,7 +20,7 @@ type QuestionBankImportHandler struct {
 func (h *QuestionBankImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	tenantID, ok := requireTenant(w, r)
@@ -54,7 +54,7 @@ func (h *QuestionBankImportHandler) PreviewExcel(w http.ResponseWriter, r *http.
 func (h *QuestionBankImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	tenantID, ok := requireTenant(w, r)

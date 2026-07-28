@@ -1,3 +1,12 @@
+/**
+ * @deprecated This file contains legacy/alternative type definitions that duplicate
+ * the canonical types in `lesson.ts`. The canonical `Course` in lesson.ts has
+ * richer fields (majorId, teacherId, industryId, semester, className, etc.).
+ * Other types like KnowledgePoint, SystemCourseNode, NodeResource, NodeQuiz
+ * also have canonical versions in `lesson.ts`.
+ * When adding new code, import from `lesson.ts` instead.
+ */
+
 export type CourseStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'published' | 'archived'
 export type CourseType = 'system' | 'granular' | 'hybrid'
 

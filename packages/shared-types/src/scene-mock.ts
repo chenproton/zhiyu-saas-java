@@ -1,7 +1,13 @@
 /**
+ * @deprecated This file contains component-local mock data types that conflict
+ * with the canonical types in `scene.ts`. The canonical `Scenario` type in
+ * scene.ts has different fields (careerPositionId, industryIds, batchId, etc.)
+ * and should be used for all new code.
+ *
  * Component-local type shapes originally from `lib/scene-mock-data`.
  * These types are used by scene builder / simulation UI components and do
  * not necessarily match the backend API schema in `lib/types/scene.ts`.
+ * When adding new code, import from `scene.ts` instead.
  */
 
 export interface Profession {

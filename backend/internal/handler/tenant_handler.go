@@ -73,7 +73,7 @@ func (h *TenantHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	limit := 50
 	offset := 0
-	if v, err := parseInt(limitStr, 50); err == nil && v > 0 {
+	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
 		limit = v
 	}
 	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
@@ -86,7 +86,7 @@ func (h *TenantHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenantClaims := middleware.CurrentUser(r)
 	effectiveTenantID, ok := tenantFilter(tenantClaims)
 	if !ok {
-		respondError(w, http.StatusForbidden, "missing tenant")
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
 	if effectiveTenantID != "" {
@@ -120,14 +120,14 @@ func (h *TenantHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list tenants")
+		respondError(w, http.StatusInternalServerError, "查询租户列表失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanTenantRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan tenants")
+		respondError(w, http.StatusInternalServerError, "租户数据读取失败")
 		return
 	}
 
@@ -138,13 +138,13 @@ func (h *TenantHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	tenant, err := h.fetchTenant(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "tenant not found")
+		respondError(w, http.StatusNotFound, "租户不存在")
 		return
 	}
 	claims := middleware.CurrentUser(r)
 	if !canManagePlatform(claims) {
 		if claims == nil || claims.TenantID == nil || *claims.TenantID != tenant.ID {
-			respondError(w, http.StatusForbidden, "can only view own tenant")
+			respondError(w, http.StatusForbidden, "只能查看自己的租户")
 			return
 		}
 	}
@@ -154,7 +154,7 @@ func (h *TenantHandler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *TenantHandler) Create(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if !canManagePlatform(claims) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -164,12 +164,12 @@ func (h *TenantHandler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 	var req CreateTenantRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if req.Name == "" || req.Code == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -177,13 +177,13 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 	adminUsername := "admin-" + req.Code
 	adminPassword, pwdErr := generateSecurePassword(12)
 	if pwdErr != nil {
-		respondError(w, http.StatusInternalServerError, "failed to generate admin password")
+		respondError(w, http.StatusInternalServerError, "生成管理员密码失败")
 		return
 	}
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to start transaction")
+		respondError(w, http.StatusInternalServerError, "启动事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -192,7 +192,7 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 	if err := tx.QueryRow(r.Context(),
 		`SELECT EXISTS(SELECT 1 FROM tenants WHERE code = $1)`, req.Code,
 	).Scan(&codeExists); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to check tenant code")
+		respondError(w, http.StatusInternalServerError, "检查租户代码失败")
 		return
 	}
 	if codeExists {
@@ -204,7 +204,7 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 	if err := tx.QueryRow(r.Context(),
 		`SELECT EXISTS(SELECT 1 FROM users WHERE login_name = $1)`, adminUsername,
 	).Scan(&loginNameExists); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to check admin username")
+		respondError(w, http.StatusInternalServerError, "检查管理员用户名失败")
 		return
 	}
 	if loginNameExists {
@@ -216,7 +216,7 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 		INSERT INTO tenants (id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, status)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active')
 	`, id, req.Name, req.Code, req.LogoURL, req.Domain, req.EnterpriseCode, req.Contact, req.Phone, req.Address, req.Description); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create tenant")
+		respondError(w, http.StatusInternalServerError, "创建租户失败")
 		return
 	}
 
@@ -239,7 +239,7 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 		"decision": true,
 		"research": true,
 	}); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create default subscription package")
+		respondError(w, http.StatusInternalServerError, "创建默认订阅套餐失败")
 		return
 	}
 
@@ -254,7 +254,7 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 			($1, '行政职能部门', 'internal', '行政职能部门', TRUE)
 		ON CONFLICT DO NOTHING
 	`, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create default org types")
+		respondError(w, http.StatusInternalServerError, "创建默认机构类型失败")
 		return
 	}
 
@@ -318,7 +318,7 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 			INSERT INTO roles (id, tenant_id, code, name, description, permissions, user_count, status, created_at)
 			VALUES ($1, $2, $3, $4, '', $5, 0, 'active', NOW())
 		`, uuid.NewString(), id, role.code, role.name, role.permissions); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to create default roles")
+			respondError(w, http.StatusInternalServerError, "创建默认角色失败")
 			return
 		}
 	}
@@ -328,7 +328,7 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 	adminID := uuid.NewString()
 	hash, hashErr := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
 	if hashErr != nil {
-		respondError(w, http.StatusInternalServerError, "failed to hash admin password")
+		respondError(w, http.StatusInternalServerError, "管理员密码加密失败")
 		return
 	}
 
@@ -338,7 +338,7 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 			student_no, work_id, id_card, title_ids, oauth, status)
 		VALUES ($1, $2, NULL, NULL, NULL, 'school', 'portal', $3, $4, $5, $6, NULL, NULL, NULL, NULL, NULL, NULL, $7, '{}', 'active')
 	`, adminID, id, adminUsername, adminUsername, string(hash), req.Name+"管理员", "{}"); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create admin user")
+		respondError(w, http.StatusInternalServerError, "创建管理员用户失败")
 		return
 	}
 
@@ -346,7 +346,7 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 		`INSERT INTO user_roles (id, user_id, role_id)
 		 SELECT $1, $2, id FROM roles WHERE tenant_id = $3 AND code = 'school_admin' LIMIT 1`,
 		uuid.NewString(), adminID, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to bind admin role")
+		respondError(w, http.StatusInternalServerError, "绑定管理员角色失败")
 		return
 	}
 
@@ -354,19 +354,19 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 		`UPDATE roles SET user_count = user_count + 1
 		 WHERE tenant_id = $1 AND code = 'school_admin'`,
 		id); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update role user count")
+		respondError(w, http.StatusInternalServerError, "更新角色用户数失败")
 		return
 	}
 
 	if _, err := tx.Exec(r.Context(),
 		`UPDATE tenants SET admin_ids = ARRAY[$1::UUID] WHERE id = $2`,
 		adminID, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update tenant admin ids")
+		respondError(w, http.StatusInternalServerError, "更新租户管理员ID失败")
 		return
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -384,14 +384,14 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 func (h *TenantHandler) Update(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if !canManagePortal(claims) && !canManagePlatform(claims) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
 	if !canManagePlatform(claims) {
 		id := chi.URLParam(r, "id")
 		if claims.TenantID == nil || *claims.TenantID != id {
-			respondError(w, http.StatusForbidden, "can only update own tenant")
+			respondError(w, http.StatusForbidden, "只能更新自己的租户")
 			return
 		}
 	}
@@ -402,18 +402,18 @@ func (h *TenantHandler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *TenantHandler) updateTenant(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchTenant(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "tenant not found")
+		respondError(w, http.StatusNotFound, "租户不存在")
 		return
 	}
 
 	var req UpdateTenantRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields")
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
@@ -423,7 +423,7 @@ func (h *TenantHandler) updateTenant(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $9
 	`, req.Name, req.LogoURL, req.Domain, req.EnterpriseCode, req.Contact, req.Phone, req.Address, req.Description, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update tenant")
+		respondError(w, http.StatusInternalServerError, "更新租户失败")
 		return
 	}
 
@@ -434,7 +434,7 @@ func (h *TenantHandler) updateTenant(w http.ResponseWriter, r *http.Request) {
 func (h *TenantHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if !canManagePlatform(claims) {
-		respondError(w, http.StatusForbidden, "permission denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -444,24 +444,24 @@ func (h *TenantHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 func (h *TenantHandler) updateTenantStatus(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchTenant(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "tenant not found")
+		respondError(w, http.StatusNotFound, "租户不存在")
 		return
 	}
 
 	var req UpdateTenantStatusRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body")
+		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
 
 	if req.Status != domain.TenantStatusActive && req.Status != domain.TenantStatusInactive {
-		respondError(w, http.StatusBadRequest, "invalid status")
+		respondError(w, http.StatusBadRequest, "无效状态")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `UPDATE tenants SET status = $1, updated_at = NOW() WHERE id = $2`, req.Status, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update status")
+		respondError(w, http.StatusInternalServerError, "更新状态失败")
 		return
 	}
 

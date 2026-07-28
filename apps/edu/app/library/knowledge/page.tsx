@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { knowledgeApi, courseApi } from "@/lib/api"
 import type { KnowledgePoint } from "@/lib/types/lesson"
 import { useToast } from "@/hooks/use-toast"
@@ -27,6 +28,7 @@ export default function KnowledgePointsPage() {
   const [linked, setLinked] = useState(false)
   const [granularCourses, setGranularCourses] = useState<GranularLessonOption[]>([])
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [navigateCourseId, setNavigateCourseId] = useState<string | null>(null)
 
   const loadItems = async () => {
     setLoading(true)
@@ -133,9 +135,7 @@ export default function KnowledgePointsPage() {
         } as any)
         loadItems()
       }
-      if (confirm("占位颗粒课已创建并关联，是否立即前往完善？")) {
-        window.open(`/lesson/admin/granular/add?id=${newCourseId}`, "_blank")
-      }
+      setNavigateCourseId(newCourseId)
       return newCourseId
     } catch (err: any) {
       toast({ variant: "destructive", title: "创建颗粒课失败", description: err.message })
@@ -166,31 +166,33 @@ export default function KnowledgePointsPage() {
             {searchQuery && <Button variant="ghost" size="sm" onClick={() => setSearchQuery("")}>清除</Button>}
           </div>
           <div className="rounded-lg border">
-            <table className="w-full">
-              <thead><tr className="border-b bg-slate-50/50">
-                <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">名称</th>
-                <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">编码</th>
-                <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">描述</th>
-                <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">关联课程</th>
-                <th className="text-right p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">操作</th>
-              </tr></thead>
-              <tbody>
-                {loading && <tr><td colSpan={5} className="p-12 text-center text-muted-foreground">加载中...</td></tr>}
-                {!loading && items.length === 0 && <tr><td colSpan={5} className="p-12 text-center text-muted-foreground">暂无数据</td></tr>}
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50/50">
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">名称</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">编码</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">描述</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">关联课程</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading && <TableRow><TableCell colSpan={5} className="p-12 text-center text-muted-foreground">加载中...</TableCell></TableRow>}
+                {!loading && items.length === 0 && <TableRow><TableCell colSpan={5} className="p-12 text-center text-muted-foreground">暂无数据</TableCell></TableRow>}
                 {items.map(item => (
-                  <tr key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
-                    <td className="p-3"><div className="flex items-center gap-2"><BookOpen className="size-4 text-blue-500" /><span className="text-sm font-medium text-slate-700">{item.name}</span></div></td>
-                    <td className="p-3 text-sm text-slate-400">{item.code || "-"}</td>
-                    <td className="p-3 text-sm text-slate-400 hidden md:table-cell max-w-[300px] truncate">{item.description || "-"}</td>
-                    <td className="p-3 text-sm text-slate-400 hidden md:table-cell">{item.granularLessonIds?.length || 0} 门</td>
-                    <td className="p-3 text-right whitespace-nowrap">
+                  <TableRow key={item.id} className="hover:bg-slate-50/50">
+                    <TableCell className="p-3"><div className="flex items-center gap-2"><BookOpen className="size-4 text-blue-500" /><span className="text-sm font-medium text-slate-700">{item.name}</span></div></TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400">{item.code || "-"}</TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400 hidden md:table-cell max-w-[300px] truncate">{item.description || "-"}</TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400 hidden md:table-cell">{item.granularLessonIds?.length || 0} 门</TableCell>
+                    <TableCell className="p-3 text-right whitespace-nowrap">
                       <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(item)}><Pencil className="size-4" /></Button>
                       <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)}><Trash2 className="size-4 text-destructive" /></Button>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
@@ -203,6 +205,19 @@ export default function KnowledgePointsPage() {
         confirmText="删除"
         variant="destructive"
         onConfirm={confirmDelete}
+      />
+      <ConfirmDialog
+        open={navigateCourseId !== null}
+        onOpenChange={(open) => { if (!open) setNavigateCourseId(null) }}
+        title="前往完善"
+        description="占位颗粒课已创建并关联，是否立即前往完善？"
+        confirmText="前往"
+        onConfirm={() => {
+          if (navigateCourseId) {
+            window.open(`/lesson/admin/granular/add?id=${navigateCourseId}`, "_blank")
+            setNavigateCourseId(null)
+          }
+        }}
       />
       <KnowledgePointFormDialog
         open={isDialogOpen}

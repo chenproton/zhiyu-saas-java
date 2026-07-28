@@ -18,6 +18,7 @@ import (
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/handler"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/router"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -68,6 +69,8 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 	}
 
 	runTestMigrations(t, pool)
+
+	_ = router.NewHandlers(pool, TestJWTSecret, &handler.FileHandler{UploadDir: ""})
 
 	r := chi.NewRouter()
 	r.Route("/api/v1", func(r chi.Router) {

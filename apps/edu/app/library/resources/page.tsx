@@ -18,6 +18,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { Table as TableComponent, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { resourceLibraryApi, fileApi } from "@/lib/api"
 import { RESOURCE_TYPE_LABELS, type ResourceLibraryItem, type ResourceKind } from "@/lib/types/library"
 import { ResourcePreviewModal, usePreviewResources } from "@/components/shared/resource-preview-modal"
@@ -247,56 +248,56 @@ export default function ResourcesPage() {
           </div>
 
           <div className="rounded-lg border">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-slate-50/50">
-                  <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">资源</th>
-                  <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">类型</th>
-                  <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">链接</th>
-                  <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">大小</th>
-                  <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">描述</th>
-                  <th className="text-right p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading && <tr><td colSpan={6} className="p-12 text-center text-muted-foreground">加载中...</td></tr>}
+            <TableComponent>
+              <TableHeader>
+                <TableRow className="bg-slate-50/50">
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">资源</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">类型</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">链接</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">大小</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">描述</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading && <TableRow><TableCell colSpan={6} className="p-12 text-center text-muted-foreground">加载中...</TableCell></TableRow>}
                 {!loading && items.length === 0 && (
-                  <tr><td colSpan={6} className="p-12 text-center">
+                  <TableRow><TableCell colSpan={6} className="p-12 text-center">
                     <div className="text-muted-foreground">暂无数据</div>
                     <Button variant="outline" size="sm" className="mt-3" onClick={handleOpenAdd}><Plus className="size-3 mr-1" />新增第一条资源</Button>
-                  </td></tr>
+                  </TableCell></TableRow>
                 )}
                 {items.map(item => {
                   const color = TYPE_COLORS[item.resourceType] || "#78716c"
                   const isItemFileType = fileTypesWithUpload.includes(item.resourceType)
                   return (
-                    <tr key={item.id} className="border-b last:border-0 hover:bg-slate-50/50 transition-colors">
-                      <td className="p-3">
+                    <TableRow key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                      <TableCell className="p-3">
                         <div className="flex items-center gap-3">
                           <div className={`w-9 h-9 rounded-lg ${TYPE_BG[item.resourceType] || "bg-slate-50"} flex items-center justify-center shrink-0`}>
                             <span style={{ color }}>{TYPE_ICONS[item.resourceType] || TYPE_ICONS.other}</span>
                           </div>
                           <span className="text-sm font-medium text-slate-700 truncate max-w-[180px]">{item.name}</span>
                         </div>
-                      </td>
-                      <td className="p-3">
+                      </TableCell>
+                      <TableCell className="p-3">
                         <Badge variant="outline" className="text-xs" style={{ color, borderColor: color }}>{TYPE_LABEL_MAP[item.resourceType] || item.resourceType}</Badge>
-                      </td>
-                      <td className="p-3 hidden md:table-cell">{item.url ? <a href={item.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"><ExternalLink className="size-3" />访问</a> : "-"}</td>
-                      <td className="p-3 text-xs text-slate-400 hidden md:table-cell">{formatSize(item.fileSize)}</td>
-                      <td className="p-3 text-xs text-slate-400 hidden lg:table-cell max-w-[200px] truncate">{item.description || "-"}</td>
-                      <td className="p-3 text-right whitespace-nowrap">
+                      </TableCell>
+                      <TableCell className="p-3 hidden md:table-cell">{item.url ? <a href={item.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"><ExternalLink className="size-3" />访问</a> : "-"}</TableCell>
+                      <TableCell className="p-3 text-xs text-slate-400 hidden md:table-cell">{formatSize(item.fileSize)}</TableCell>
+                      <TableCell className="p-3 text-xs text-slate-400 hidden lg:table-cell max-w-[200px] truncate">{item.description || "-"}</TableCell>
+                      <TableCell className="p-3 text-right whitespace-nowrap">
                         {item.url && isItemFileType && (
                           <Button variant="ghost" size="sm" onClick={() => addPreviewResource(item as any)}><Eye className="size-4" /></Button>
                         )}
                         <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(item)}><Pencil className="size-4" /></Button>
                         <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)}><Trash2 className="size-4 text-destructive" /></Button>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   )
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </TableComponent>
           </div>
         </CardContent>
       </Card>

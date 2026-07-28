@@ -1,1 +1,1 @@
-export * from "../../../packages/ui/src/lib/annotation-edit-context"
+export * from "../../edu/lib/annotation-edit-context"
