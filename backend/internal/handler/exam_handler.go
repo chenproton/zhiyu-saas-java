@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -46,53 +45,10 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status := r.URL.Query().Get("status")
-	search := r.URL.Query().Get("search")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1", "e.is_temp = FALSE"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "(name ILIKE $"+itoa(argIdx)+" OR description ILIKE $"+itoa(argIdx)+")")
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM exams e WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT e.id, e.code, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image,
-		e.is_temp,
+	cfg := listQueryConfig[domain.Exam]{
+		Table: "exams e",
+		SelectColumns: `e.id, e.code, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image,
+			e.is_temp,
 			e.collaborator_ids,
 			COALESCE((SELECT u.name FROM users u WHERE u.id = e.creator_id), e.creator_id::text) AS creator_name,
 			COALESCE((
@@ -100,23 +56,32 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 				FROM unnest(e.collaborator_ids) WITH ORDINALITY AS c(id, ord)
 				JOIN users u ON u.id = c.id
 			), '{}') AS collaborator_names,
-			e.collaborator_dept_ids, e.batch_id, e.version, e.owner_type, e.creator_id, e.created_at, e.updated_at
-		FROM exams e
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY e.created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询考试失败")
-		return
+			e.collaborator_dept_ids, e.batch_id, e.version, e.owner_type, e.creator_id, e.created_at, e.updated_at`,
+		TenantScoped:  true,
+		TenantColumn:  "e.tenant_id",
+		SearchColumns: []string{"e.name", "e.description"},
+		SearchParam:   "search",
+		OrderBy:       "e.created_at DESC",
+		DefaultLimit:  50,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			qb.addCondition("e.is_temp = FALSE")
+			status := r.URL.Query().Get("status")
+			if status != "" {
+				qb.addCondition("e.status = " + qb.nextArg(status))
+			}
+		},
+		ScanRows: func(rows pgx.Rows) ([]domain.Exam, error) {
+			return h.scanExamRows(r.Context(), rows)
+		},
 	}
-	defer rows.Close()
 
-	items, err := h.scanExamRows(r.Context(), rows)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取考试失败")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "查询考试失败")
 		return
 	}
 

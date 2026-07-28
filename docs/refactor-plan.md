@@ -220,48 +220,59 @@
 
 ---
 
-### 12. 后端 `router.go` 730 行单体文件
+### 12. 后端 `router.go` 已拆分
 
-**问题**：一个 `New()` 函数实例化所有 70+ handler 并注册全部路由。
+**状态**：✅ 已完成（2026-07-28 复核）
 
-**方案**：按平台拆分为：
-- `router.go` — 核心框架 + 公共路由
-- `router_job.go` — 岗位平台路由
-- `router_lesson.go` — 课程平台路由
-- `router_scene.go` — 场景平台路由
-- `router_evaluation.go` — 评价平台路由
-- `router_portal.go` — Portal 系统 + 租户管理路由
-- `router_library.go` — 资源库路由
+**原问题**：一个 `New()` 函数实例化所有 70+ handler 并注册全部路由。
 
-**预估**：1 天
+**当前状态**：
+- `router.go` 仅剩 106 行，只保留核心框架、CORS、文件上传、健康检查。
+- handler 实例化已抽到 `handlers.go`。
+- 路由注册已按领域拆分：
+  - `routes.go` — 公共路由 + 认证组框架
+  - `routes_job.go` — 岗位平台路由
+  - `routes_lesson.go` — 课程平台路由
+  - `routes_scene.go` — 场景平台路由
+  - `routes_evaluation.go` — 评价平台路由
+  - `routes_library.go` — 资源库路由
 
-- [ ] 任务完成
+**遗留**：`routes.go` 仍包含 `registerSuperAdminRoutes`、`registerPortalRoutes`、`registerImportExportRoutes` 等 300 行左右，可视情况继续拆出 `routes_portal.go`、`routes_import.go`，但不是必须。
 
----
-
-### 13. 后端 List handler 分页样板重复（20+ 处）
-
-**问题**：20+ 个 handler 中重复 `parseInt` / `COUNT` / `SELECT` / `scanRows` 模式。
-
-**文件**：涉及 `tenant_handler.go`、`role_handler.go`、`course_handler.go`、`position_ability_handler.go` 等绝大多数 handler。
-
-**方案**：提取泛型 `executeListQuery[T]` 函数到 `common.go`，接受 `queryBuilder` + `rowScanner` 参数。
-
-**预估**：1.5 天
-
-- [ ] 任务完成
+- [x] 任务完成
 
 ---
 
-### 14. 后端 `parseInt` vs `parsePageLimit` 不一致
+### 13. 后端核心 handler 已迁移 `executeListQuery`
 
-**问题**：`common.go` 提供了 `parsePageLimit()`（带 200 上限），但大多数 handler 使用 `parseInt()`（无上限）。
+**状态**：✅ 已完成（2026-07-28 修改）
 
-**方案**：将所有 List handler 中的 `parseInt` 替换为 `parsePageLimit`。约 20 个文件。
+**原问题**：`scenario_handler.go`、`position_handler.go`、`course_handler.go`、`exam_handler.go` 等核心 handler 仍手写完整 SQL 分页逻辑。
 
-**预估**：2 小时
+**当前状态**：
+- `scenario_handler.go` 的 `List` 已改用 `executeListQuery[domain.Scenario]`。
+- `exam_handler.go` 的 `List` 已改用 `executeListQuery[domain.Exam]`。
+- `course_handler.go` 的 `List` 已改用 `executeListQuery[domain.Course]`。
+- `position_handler.go` 的 `List`、`PublicList`、`ListFavorites` 已改用 `executeListQuery[domain.CareerPosition]`。
 
-- [ ] 任务完成
+**遗留**：少数非核心 handler 仍可逐步迁移，但核心 handler 的样板代码已消除。
+
+- [x] 任务完成
+
+---
+
+### 14. 后端 `parseInt` vs `parsePageLimit` 已一致
+
+**状态**：✅ 已完成（2026-07-28 复核）
+
+**原问题**：`common.go` 提供了 `parsePageLimit()`（带 200 上限），担心大多数 handler 使用 `parseInt()`（无上限）。
+
+**当前状态**：
+- 所有 List handler 的 `limit` 参数已统一使用 `parsePageLimit()`。
+- `offset` 参数使用 `parseInt()` 是合理且 intentional 的（offset 不需要上限，且 `executeListQuery` 内部也是这个组合）。
+- 全局搜索未发现有 handler 仍用 `parseInt()` 读取 `limit`。
+
+- [x] 任务完成
 
 ---
 

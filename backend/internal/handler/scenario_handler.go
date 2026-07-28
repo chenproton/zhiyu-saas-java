@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -101,89 +100,46 @@ func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status := r.URL.Query().Get("status")
-	batchID := r.URL.Query().Get("batchId")
-	search := r.URL.Query().Get("search")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "s.tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	} else {
-		where = append(where, "status != $"+itoa(argIdx))
-		args = append(args, "archived")
-		argIdx++
-	}
-	if batchID != "" {
-		where = append(where, "batch_id = $"+itoa(argIdx))
-		args = append(args, batchID)
-		argIdx++
-	}
-	careerPositionID := r.URL.Query().Get("careerPositionId")
-	if careerPositionID != "" {
-		where = append(where, "s.career_position_id = $"+itoa(argIdx))
-		args = append(args, careerPositionID)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "(name ILIKE $"+itoa(argIdx)+" OR code ILIKE $"+itoa(argIdx)+")")
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM scenarios s WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT s.id, s.name, s.code, s.cover_image, s.career_position_id,
+	cfg := listQueryConfig[domain.Scenario]{
+		Table: "scenarios s",
+		SelectColumns: `s.id, s.name, s.code, s.cover_image, s.career_position_id,
 			s.industry_ids, COALESCE((SELECT array_agg(i.name) FROM industries i WHERE i.id::text = ANY(s.industry_ids)), '{}') AS industry_names,
 			s.profession_ids, COALESCE((SELECT array_agg(m.name) FROM majors m WHERE m.id = ANY(s.profession_ids)), '{}') AS profession_names,
 			s.batch_id, s.difficulty, s.version, s.status, s.background,
 			s.delivery_goal, s.creator_id, s.co_builder_ids, s.tenant_id, s.created_at, s.updated_at, s.publish_time,
-			(SELECT COUNT(*) FROM view_logs WHERE target_type = 'scenario' AND target_id = s.id) AS view_count
-		FROM scenarios s
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY s.created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询场景方案失败")
-		return
+			(SELECT COUNT(*) FROM view_logs WHERE target_type = 'scenario' AND target_id = s.id) AS view_count`,
+		TenantScoped:  true,
+		TenantColumn:  "s.tenant_id",
+		SearchColumns: []string{"s.name", "s.code"},
+		SearchParam:   "search",
+		OrderBy:       "s.created_at DESC",
+		DefaultLimit:  50,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			status := r.URL.Query().Get("status")
+			batchID := r.URL.Query().Get("batchId")
+			careerPositionID := r.URL.Query().Get("careerPositionId")
+			if status != "" {
+				qb.addCondition("s.status = " + qb.nextArg(status))
+			} else {
+				qb.addCondition("s.status != " + qb.nextArg("archived"))
+			}
+			if batchID != "" {
+				qb.addCondition("s.batch_id = " + qb.nextArg(batchID))
+			}
+			if careerPositionID != "" {
+				qb.addCondition("s.career_position_id = " + qb.nextArg(careerPositionID))
+			}
+		},
+		ScanRows: h.scanScenarioRows,
 	}
-	defer rows.Close()
 
-	items, err := h.scanScenarioRows(rows)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取场景方案失败")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "查询场景方案失败")
 		return
 	}
 

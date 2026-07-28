@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -62,76 +61,9 @@ func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	publicOnly := claims == nil
 
-	batchID := r.URL.Query().Get("batchId")
-	status := r.URL.Query().Get("status")
-	positionType := r.URL.Query().Get("positionType")
-	search := r.URL.Query().Get("search")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-
-	if publicOnly {
-		// Anonymous public view only sees published positions across all tenants.
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, string(domain.StatusPublished))
-		argIdx++
-	} else {
-		tenantClaims := middleware.CurrentUser(r)
-		effectiveTenantID, ok := tenantFilter(tenantClaims)
-		if !ok {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
-		if effectiveTenantID != "" {
-			where = append(where, "tenant_id = $"+itoa(argIdx))
-			args = append(args, effectiveTenantID)
-			argIdx++
-		}
-
-		if batchID != "" {
-			where = append(where, "batch_id = $"+itoa(argIdx))
-			args = append(args, batchID)
-			argIdx++
-		}
-		if status != "" {
-			where = append(where, "status = $"+itoa(argIdx))
-			args = append(args, status)
-			argIdx++
-		} else {
-			where = append(where, "status != $"+itoa(argIdx))
-			args = append(args, "archived")
-			argIdx++
-		}
-	}
-	if positionType != "" {
-		where = append(where, "position_type = $"+itoa(argIdx))
-		args = append(args, positionType)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "name ILIKE $"+itoa(argIdx))
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM career_positions WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id,
+	baseCfg := listQueryConfig[domain.CareerPosition]{
+		Table: "career_positions cp",
+		SelectColumns: `cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id,
 			COALESCE((SELECT array_agg(cpm.major_id) FROM career_position_majors cpm WHERE cpm.career_position_id = cp.id), '{}') AS major_ids,
 			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
 			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
@@ -145,23 +77,54 @@ func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 			), '{}') AS collaborator_names,
 			(SELECT COUNT(*) FROM position_favorites pf WHERE pf.career_position_id = cp.id) AS favorite_count,
 			(SELECT COUNT(*) FROM view_logs vl WHERE vl.target_type = 'career_position' AND vl.target_id = cp.id) AS view_count,
-			cp.created_at, cp.updated_at
-		FROM career_positions cp
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY cp.created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询岗位失败")
-		return
+			cp.created_at, cp.updated_at`,
+		SearchColumns: []string{"cp.name"},
+		SearchParam:   "search",
+		OrderBy:       "cp.created_at DESC",
+		DefaultLimit:  50,
+		ScanRows:      h.scanPositionRows,
 	}
-	defer rows.Close()
 
-	items, err := h.scanPositionRows(rows)
+	var cfg listQueryConfig[domain.CareerPosition]
+	if publicOnly {
+		cfg = baseCfg
+		cfg.TenantScoped = false
+		cfg.ExtraFilter = func(r *http.Request, qb *listQueryBuilder) {
+			qb.addCondition("cp.status = " + qb.nextArg(string(domain.StatusPublished)))
+			positionType := r.URL.Query().Get("positionType")
+			if positionType != "" {
+				qb.addCondition("cp.position_type = " + qb.nextArg(positionType))
+			}
+		}
+	} else {
+		cfg = baseCfg
+		cfg.TenantScoped = true
+		cfg.TenantColumn = "cp.tenant_id"
+		cfg.ExtraFilter = func(r *http.Request, qb *listQueryBuilder) {
+			batchID := r.URL.Query().Get("batchId")
+			status := r.URL.Query().Get("status")
+			positionType := r.URL.Query().Get("positionType")
+			if batchID != "" {
+				qb.addCondition("cp.batch_id = " + qb.nextArg(batchID))
+			}
+			if status != "" {
+				qb.addCondition("cp.status = " + qb.nextArg(status))
+			} else {
+				qb.addCondition("cp.status != " + qb.nextArg("archived"))
+			}
+			if positionType != "" {
+				qb.addCondition("cp.position_type = " + qb.nextArg(positionType))
+			}
+		}
+	}
+
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取岗位失败")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "查询岗位失败")
 		return
 	}
 
@@ -200,46 +163,9 @@ func (h *PositionHandler) PublicList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	positionType := r.URL.Query().Get("positionType")
-	search := r.URL.Query().Get("search")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"cp.status = $1"}
-	args := []interface{}{string(domain.StatusPublished)}
-	argIdx := 2
-	if !isPlatformAdmin {
-		where = append(where, "cp.tenant_id = $"+itoa(argIdx))
-		args = append(args, tenantID)
-		argIdx++
-	}
-
-	if positionType != "" {
-		where = append(where, "cp.position_type = $"+itoa(argIdx))
-		args = append(args, positionType)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "cp.name ILIKE $"+itoa(argIdx))
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM career_positions cp WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id,
+	cfg := listQueryConfig[domain.CareerPosition]{
+		Table: "career_positions cp",
+		SelectColumns: `cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id,
 			COALESCE((SELECT array_agg(cpm.major_id) FROM career_position_majors cpm WHERE cpm.career_position_id = cp.id), '{}') AS major_ids,
 			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
 			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
@@ -253,23 +179,28 @@ func (h *PositionHandler) PublicList(w http.ResponseWriter, r *http.Request) {
 			), '{}') AS collaborator_names,
 			(SELECT COUNT(*) FROM position_favorites pf WHERE pf.career_position_id = cp.id) AS favorite_count,
 			(SELECT COUNT(*) FROM view_logs vl WHERE vl.target_type = 'career_position' AND vl.target_id = cp.id) AS view_count,
-			cp.created_at, cp.updated_at
-		FROM career_positions cp
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY cp.created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
+			cp.created_at, cp.updated_at`,
+		TenantScoped:  false,
+		SearchColumns: []string{"cp.name"},
+		SearchParam:   "search",
+		OrderBy:       "cp.created_at DESC",
+		DefaultLimit:  50,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			qb.addCondition("cp.status = " + qb.nextArg(string(domain.StatusPublished)))
+			if !isPlatformAdmin {
+				qb.addCondition("cp.tenant_id = " + qb.nextArg(tenantID))
+			}
+			positionType := r.URL.Query().Get("positionType")
+			if positionType != "" {
+				qb.addCondition("cp.position_type = " + qb.nextArg(positionType))
+			}
+		},
+		ScanRows: h.scanPositionRows,
+	}
 
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询岗位失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanPositionRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取岗位失败")
 		return
 	}
 
@@ -1039,34 +970,9 @@ func (h *PositionHandler) ListFavorites(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"cp.status = $1", "pf.user_id = $2"}
-	args := []interface{}{string(domain.StatusPublished), claims.UserID}
-	argIdx := 3
-
-	if !isPlatformAdmin {
-		where = append(where, "cp.tenant_id = $"+itoa(argIdx))
-		args = append(args, tenantID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM position_favorites pf JOIN career_positions cp ON cp.id = pf.career_position_id WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id,
+	cfg := listQueryConfig[domain.CareerPosition]{
+		Table: "position_favorites pf JOIN career_positions cp ON cp.id = pf.career_position_id",
+		SelectColumns: `cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id,
 			COALESCE((SELECT array_agg(cpm.major_id) FROM career_position_majors cpm WHERE cpm.career_position_id = cp.id), '{}') AS major_ids,
 			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
 			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
@@ -1080,24 +986,23 @@ func (h *PositionHandler) ListFavorites(w http.ResponseWriter, r *http.Request) 
 			), '{}') AS collaborator_names,
 			(SELECT COUNT(*) FROM position_favorites pf2 WHERE pf2.career_position_id = cp.id) AS favorite_count,
 			(SELECT COUNT(*) FROM view_logs vl WHERE vl.target_type = 'career_position' AND vl.target_id = cp.id) AS view_count,
-			cp.created_at, cp.updated_at
-		FROM position_favorites pf
-		JOIN career_positions cp ON cp.id = pf.career_position_id
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY pf.created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
+			cp.created_at, cp.updated_at`,
+		TenantScoped: false,
+		OrderBy:      "pf.created_at DESC",
+		DefaultLimit: 50,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			qb.addCondition("cp.status = " + qb.nextArg(string(domain.StatusPublished)))
+			qb.addCondition("pf.user_id = " + qb.nextArg(claims.UserID))
+			if !isPlatformAdmin {
+				qb.addCondition("cp.tenant_id = " + qb.nextArg(tenantID))
+			}
+		},
+		ScanRows: h.scanPositionRows,
+	}
 
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询收藏岗位失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanPositionRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取收藏岗位失败")
 		return
 	}
 
