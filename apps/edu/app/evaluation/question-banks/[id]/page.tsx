@@ -89,7 +89,7 @@ export default function QuestionBankDetailPage() {
 
   useEffect(() => {
     if (bankId) {
-      loadBankQuestions(bankId)
+      loadBankQuestions?.(bankId)
     }
   }, [bankId, loadBankQuestions])
 
@@ -178,7 +178,7 @@ export default function QuestionBankDetailPage() {
       setImportStep("download")
       setIsImportConfirmOpen(false)
       setImportPreview(null)
-      await loadBankQuestions(bankId)
+      await loadBankQuestions?.(bankId)
     } catch (err: any) {
       toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
     } finally {

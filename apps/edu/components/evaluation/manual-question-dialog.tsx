@@ -75,7 +75,7 @@ export function ManualQuestionDialog({
   useEffect(() => {
     if (selectedBankId) {
       setLoadingQuestions(true)
-      loadBankQuestions(selectedBankId).finally(() => setLoadingQuestions(false))
+      loadBankQuestions?.(selectedBankId)?.finally(() => setLoadingQuestions(false))
     }
   }, [selectedBankId, loadBankQuestions])
 

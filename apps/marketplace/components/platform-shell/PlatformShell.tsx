@@ -103,7 +103,7 @@ export function PlatformTopNav({ config }: { config: PlatformNavigationConfig })
         </Link>
 
         <nav className="flex items-center gap-1">
-          {config.topNavItems.map((item) => {
+          {config.topNavItems?.map((item) => {
             const Icon = resolvePlatformIcon(item.icon)
             const active = isTopItemActive(pathname, item)
             const itemClassName = cn(

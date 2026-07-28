@@ -72,7 +72,7 @@ export default function ExamComposerPage() {
     }
     triedReload.current = true
     setLoadingExam(true)
-    loadExams().finally(() => setLoadingExam(false))
+    loadExams?.().finally(() => setLoadingExam(false))
   }, [examId, getExam, loadExams])
 
   const exam = getExam(examId)
@@ -228,11 +228,11 @@ export default function ExamComposerPage() {
     qs.forEach((q, i) => {
       scores[q.questionId] = base + (i < remainder ? 1 : 0)
     })
-    updateExamQuestionScores(examId, scores)
+    updateExamQuestionScores?.(examId, scores)
   }
 
   const handleTypeDistribution = (scores: Record<string, number>) => {
-    updateExamQuestionScores(examId, scores)
+    updateExamQuestionScores?.(examId, scores)
   }
 
   const handleProportionalDistribution = () => {
@@ -258,7 +258,7 @@ export default function ExamComposerPage() {
     qs.forEach((q, i) => {
       scores[q.questionId] = floored[i]
     })
-    updateExamQuestionScores(examId, scores)
+    updateExamQuestionScores?.(examId, scores)
   }
 
   const formatDuration = (minutes: number) => {
