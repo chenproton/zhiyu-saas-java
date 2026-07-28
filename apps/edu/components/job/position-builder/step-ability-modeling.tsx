@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
+import { HoverActionBar } from '@/components/shared/hover-action-bar'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
@@ -443,7 +444,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                       }`}>
                         {bindingCount}
                       </span>
-                      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                      <HoverActionBar>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleStartEditResp(resp) }}
                           className="p-1 rounded text-gray-300 hover:text-gray-600 hover:bg-gray-100"
@@ -456,7 +457,7 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>
-                      </div>
+                      </HoverActionBar>
                     </button>
                   )}
                 </div>

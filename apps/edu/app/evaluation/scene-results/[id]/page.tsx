@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { HoverActionBar } from "@/components/shared/hover-action-bar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -1098,15 +1099,15 @@ export default function GradingDetailPage() {
                   {subjectiveContent.files.map((f: any, i: number) => (
                     <div
                       key={i}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg border text-sm group hover:border-primary/30 transition-colors"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg border text-sm group hover:border-primary/30 transition-colors relative"
                     >
                       <Package className="h-4 w-4 text-gray-400 shrink-0" />
                       <span className="text-gray-700 flex-1 min-w-0 truncate">{f.name}</span>
-                      <div className="flex items-center gap-1 shrink-0">
+                      <HoverActionBar>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="h-7 px-2 text-xs"
                           onClick={() => setPreviewAttachment({ name: f.name, url: f.url, type: f.type })}
                         >
                           <Eye className="h-3.5 w-3.5 mr-1" />
@@ -1115,7 +1116,7 @@ export default function GradingDetailPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="h-7 px-2 text-xs"
                           onClick={() => {
                             const a = document.createElement("a")
                             a.href = f.url
@@ -1126,7 +1127,7 @@ export default function GradingDetailPage() {
                           <Download className="h-3.5 w-3.5 mr-1" />
                           下载
                         </Button>
-                      </div>
+                      </HoverActionBar>
                     </div>
                   ))}
                 </CardContent>

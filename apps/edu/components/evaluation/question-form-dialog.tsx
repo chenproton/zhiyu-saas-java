@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { HoverActionBar } from "@/components/shared/hover-action-bar"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -370,7 +371,7 @@ export function QuestionFormDialog({
             return (
               <div
                 key={index}
-                className={`group flex items-center gap-2 rounded-lg border bg-white px-2 py-1.5 shadow-sm transition-all hover:border-primary/30 hover:shadow-md ${
+                className={`group relative flex items-center gap-2 rounded-lg border bg-white px-2 py-1.5 shadow-sm transition-all hover:border-primary/30 hover:shadow-md ${
                   checked ? "border-l-4 border-l-primary bg-primary/[0.03]" : "border-border/60"
                 }`}
               >
@@ -398,7 +399,7 @@ export function QuestionFormDialog({
                   placeholder={`选项 ${String.fromCharCode(65 + index)}`}
                   className="h-7 flex-1 border-transparent bg-transparent px-2 text-[13px] shadow-none focus-visible:bg-background focus-visible:ring-1"
                 />
-                <div className="flex shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
+                <HoverActionBar>
                   <Button type="button" variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-foreground" onClick={() => moveOption(index, -1)} disabled={index === 0}>
                     <ArrowUp className="size-3" />
                   </Button>
@@ -408,7 +409,7 @@ export function QuestionFormDialog({
                   <Button type="button" variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => removeOption(index)} disabled={options.length <= MIN_OPTIONS}>
                     <X className="size-3" />
                   </Button>
-                </div>
+                </HoverActionBar>
               </div>
             )
           })}
