@@ -92,7 +92,7 @@
 - 删除 `apps/marketplace/lib/annotations/adapter.ts`、`json-file-adapter.ts`、`types.ts`
 - 所有 consumer 改为直接从 `@zhiyu/ui/lib/annotations/*` 导入
 
-**遗留**：`prd-annotations.ts` 和 `annotation-edit-context.tsx` 仍是领域代码，保留在 `packages/ui/src/lib/`，后续评估是否移出 UI 包。
+**遗留**：`prd-annotations.ts` 和 `annotation-edit-context.tsx` 是领域代码，已移回 `apps/edu/lib/`；`apps/marketplace/lib/annotation-edit-context.tsx` 仍作为跨 app re-export 保留（被 root layout 依赖），长期应移入共享包。
 
 - [x] 任务完成
 
@@ -385,6 +385,44 @@
 
 ---
 
+### 24. Marketplace 遗留 dead re-export 文件
+
+**问题**：`apps/marketplace/lib/prd-annotations.ts` 是通过 `../../edu/lib/` 跨 app 引用的 re-export 文件，且无任何导入方。
+
+**处理**：已删除 `apps/marketplace/lib/prd-annotations.ts`。`apps/marketplace/lib/annotation-edit-context.tsx` 仍被 root layout 使用，保留为跨 app re-export；长期应移入共享包。
+
+- [x] 任务完成
+
+---
+
+### 25. 手写 `group-hover:opacity` 替换为 `HoverActionBar`
+
+**问题**：12 处手写 `group-hover:opacity-*` 模式，其中 3 处是标准的 hover 操作按钮，应用 `HoverActionBar` 替代。其余 9 处为图片浮层、装饰渐变、模态框 chrome 等非操作按钮场景，不需要替换。
+
+**文件**（已修复 3 处）：
+- `apps/edu/app/evaluation/scene-results/[id]/page.tsx` — 附件列表的预览/下载按钮 → `HoverActionBar`
+- `apps/edu/components/job/position-builder/step-ability-modeling.tsx` — 职责项的编辑/删除按钮 → `HoverActionBar`
+- `apps/edu/components/evaluation/question-form-dialog.tsx` — 选项的排序/删除按钮 → `HoverActionBar`
+
+- [x] 任务完成
+
+---
+
+### 26. `tasks/page.tsx` 5,646 行超大文件
+
+**问题**：任务编辑器页面（`apps/edu/app/scene/scenarios/[id]/edit/tasks/page.tsx`）将所有任务编辑逻辑塞入一个文件，是全项目最大的单文件，修改风险极高。
+
+**方案**：
+1. 将任务列表渲染提取为独立组件
+2. 将各类任务配置（信息卡片、知识点、权重等）移至 `_components/` 已有的子组件
+3. 将数据处理逻辑提取为自定义 hooks
+
+**预估**：2 天（涉及重构大量内部状态逻辑，需谨慎执行）
+
+- [ ] 任务完成
+
+---
+
 ## 新增问题清单（本次审查发现，待后续排期）
 
 以下问题在本次全量复核中确认存在，但改动面较大或需要跨模块协调，建议后续单独排期，不混入当前迭代。
@@ -429,35 +467,25 @@
 ## 执行顺序建议
 
 ```
-Week 1: P0 剩余项
-  1  → platform-shell 移动到 packages/ui
-  2  → data-provider 提取共享核心
-  ✅ 3  → hooks 薄 re-export 已删除
-  ✅ 4  → annotations 薄 re-export 已删除
-  ✅ 5  → packages/ui barrel export 已存在
+已完成:
+  ✅ P0 全部 (platform-shell, data-provider, hooks, annotations, barrel export)
+  ✅ P1 大部分 (evaluation 拆分, draftSuffix, typeMetaFor, window.confirm, alert,
+              router 拆分, executeListQuery, parsePageLimit)
+  ✅ P2 大部分 (api.ts 拆分, ai.ts 导出, Oplog 确认)
+  ✅ #24 marketplace dead re-export 清理
+  ✅ #25 手写 group-hover 替换为 HoverActionBar
 
-Week 2: P1 前半
-  6  → 双份类型系统清理
-  7  → evaluation.ts 拆分
-  8  → draftSuffix 去重
-  9  → typeMetaFor 去重
-  ✅ 10 → window.confirm 已不存在
-  ✅ 11 → alert 在 TS/TSX 中已不存在
+剩余待执行:
+  1 → #21 后端错误消息统一中文（P2, 2h）
+  2 → #15 testhelper 与 router 同步（P1, 1.5d）
+  3 → #16 portal-auth-context 去重（P1, 1h）
+  4 → #18 Library 原生 table 替换（P2, 1h）
+  5 → #19 packages/ui 领域代码清理（P2, 0.5h）
+  6 → #26 tasks/page.tsx 拆分（P2, 2d，高优先级但成本高）
+  7 → #6 双份类型系统清理（P1, 2d，涉及引用面广，低优先级）
 
-Week 3: P1 后半 + P2 前半
-  ✅ 12 → router.go 已拆分
-  ✅ 13 → List handler 已迁移 executeListQuery
-  ✅ 14 → parseInt vs parsePageLimit 已一致
-  15 → api.ts 拆分
-  16 → testhelper 同步
-  17 → portal-auth-context 去重
-
-Week 4: P2 收尾
-  18 → Library 原生 table 替换
-  19 → packages/ui 领域代码清理
-  ✅ 20 → ai.ts 导出已存在
-  21 → 错误消息统一
-  ❌ 22 → Oplog 重复应用（不成立，已删除）
+不执行:
+  ⏭️ #23 Repository 层（成本过高，暂缓）
 ```
 
 ## 架构目标
@@ -465,18 +493,18 @@ Week 4: P2 收尾
 ```
 当前:
 ├── packages/
-│   ├── shared-types/     ← 类型包（有双份类型、ai.ts 已导出）
-│   ├── api-client/       ← API 客户端（1338 行单体文件）
-│   └── ui/               ← UI 组件（已有 barrel export，含领域代码）
+│   ├── shared-types/     ← 类型包（双份类型已标记 deprecated，ai.ts 已导出）
+│   ├── api-client/       ← API 客户端（已按 domain 拆分为 10 个模块）
+│   └── ui/               ← UI 组件（已有 barrel export，含少量待清理的领域代码）
 ├── apps/
 │   ├── edu/
-│   │   ├── shared/*      ← 很好，但部分应移入 packages/ui/
-│   │   ├── platform-shell/  ← 与 marketplace 完全重复
-│   │   ├── providers/    ← data-provider 90% 重复
+│   │   ├── shared/*      ← 页面级共享抽象，部分可继续下沉到 packages/ui/
+│   │   ├── platform-shell/  ← 已从 packages/ui 统一导入，本地仅保留组合层
+│   │   ├── providers/    ← data-provider 共享核心已下沉 packages/ui
 │   │   ├── hooks/        ← use-mobile/use-toast 薄 re-export 已删除
 │   │   └── lib/          ← annotations 薄 re-export 已删除
 │   └── marketplace/
-│       └── (同上重复，死代码已清理)
+│       └── 死代码已清理，仅保留 marketplace 独有组件和页面
 └── backend/
     └── internal/
         ├── handler/      ← 分页样板已收敛，日志已统一为 slog，view_log 已抽象
