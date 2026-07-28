@@ -20,10 +20,10 @@ export function PlatformLayout({ navigationConfig, landingPath, children }: Plat
   const isLanding = pathname.startsWith(landingPath)
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && !isLanding) {
       router.replace("/portal/login")
     }
-  }, [loading, user, router])
+  }, [loading, user, router, isLanding])
 
   const allowed = !loading && !!user && hasMenuPermission(pathname)
 

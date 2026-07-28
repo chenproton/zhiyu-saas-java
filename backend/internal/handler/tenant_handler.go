@@ -60,7 +60,6 @@ type adminUserInfo struct {
 	ID        string `json:"id"`
 	Username  string `json:"username"`
 	LoginName string `json:"loginName"`
-	Password  string `json:"password"`
 }
 
 func (h *TenantHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -328,7 +327,6 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 		ID:        adminID,
 		Username:  adminUsername,
 		LoginName: adminUsername,
-		Password:  adminPassword,
 	}
 
 	tenant, _ := h.fetchTenant(r.Context(), id)
