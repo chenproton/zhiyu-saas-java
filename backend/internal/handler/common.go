@@ -14,6 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 )
 
@@ -413,4 +414,20 @@ func executeListQuery[T any](ctx context.Context, db listQueryDB, r *http.Reques
 		return nil, total, err
 	}
 	return items, total, nil
+}
+
+// recordView inserts a view log entry for the given target.
+func recordView(ctx context.Context, db *pgxpool.Pool, targetType, targetID string, claims *middleware.Claims) error {
+	var userID, tenantID any
+	if claims != nil {
+		userID = claims.UserID
+		if claims.TenantID != nil {
+			tenantID = *claims.TenantID
+		}
+	}
+	_, err := db.Exec(ctx, `
+		INSERT INTO view_logs (target_type, target_id, user_id, tenant_id)
+		VALUES ($1, $2, $3, $4)
+	`, targetType, targetID, userID, tenantID)
+	return err
 }

@@ -402,18 +402,6 @@ func (h *ScenarioHandler) scanScenarioRows(rows pgx.Rows) ([]domain.Scenario, er
 }
 
 func (h *ScenarioHandler) incrementScenarioView(r *http.Request) error {
-	claims := middleware.CurrentUser(r)
 	id := chi.URLParam(r, "id")
-
-	var userID, tenantID any
-	if claims != nil {
-		userID = claims.UserID
-		tenantID = claims.TenantID
-	} else {
-		userID = nil
-		tenantID = nil
-	}
-
-	_, err := h.DB.Exec(r.Context(), `INSERT INTO view_logs (target_type, target_id, user_id, tenant_id) VALUES ('scenario', $1, $2, $3)`, id, userID, tenantID)
-	return err
+	return recordView(r.Context(), h.DB, "scenario", id, middleware.CurrentUser(r))
 }

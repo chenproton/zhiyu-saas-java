@@ -3,7 +3,8 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -671,24 +672,24 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 	if claims.TenantID != nil {
 		tenantID = *claims.TenantID
 	}
-	log.Printf("[SaveFull] id=%s tenant=%s req=%s", id, tenantID, string(reqBody))
+	slog.Info(fmt.Sprintf("[SaveFull] id=%s tenant=%s req=%s", id, tenantID, string(reqBody)))
 
 	abilityPointMap, err := h.prepareAbilityPoints(r.Context(), tenantID, req.AbilityBindings)
 	if err != nil {
-		log.Printf("[SaveFull] prepare ability points failed: %v", err)
+		slog.Info(fmt.Sprintf("[SaveFull] prepare ability points failed: %v", err))
 		respondError(w, http.StatusInternalServerError, "准备能力点失败")
 		return
 	}
 	certificateMap, err := h.prepareCertificates(r.Context(), tenantID, req.Certificates)
 	if err != nil {
-		log.Printf("[SaveFull] prepare certificates failed: %v", err)
+		slog.Info(fmt.Sprintf("[SaveFull] prepare certificates failed: %v", err))
 		respondError(w, http.StatusInternalServerError, "准备证书失败")
 		return
 	}
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		log.Printf("[SaveFull] begin tx failed: %v", err)
+		slog.Info(fmt.Sprintf("[SaveFull] begin tx failed: %v", err))
 		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
@@ -706,14 +707,14 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		coalesceStringSlice(req.Requirements), careerPath, req.Version,
 		coalesceStringSlice(req.Collaborators), id)
 	if err != nil {
-		log.Printf("[SaveFull] update career_positions failed: %v", err)
+		slog.Info(fmt.Sprintf("[SaveFull] update career_positions failed: %v", err))
 		respondError(w, http.StatusInternalServerError, "更新岗位失败")
 		return
 	}
 
 	_, err = tx.Exec(r.Context(), `DELETE FROM career_position_majors WHERE career_position_id = $1`, id)
 	if err != nil {
-		log.Printf("[SaveFull] delete career_position_majors failed: %v", err)
+		slog.Info(fmt.Sprintf("[SaveFull] delete career_position_majors failed: %v", err))
 		respondError(w, http.StatusInternalServerError, "更新岗位专业失败")
 		return
 	}
@@ -722,7 +723,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 			INSERT INTO career_position_majors (career_position_id, major_id) VALUES ($1, $2)
 		`, id, majorID)
 		if err != nil {
-			log.Printf("[SaveFull] insert career_position_majors failed majorID=%s: %v", majorID, err)
+			slog.Info(fmt.Sprintf("[SaveFull] insert career_position_majors failed majorID=%s: %v", majorID, err))
 			respondError(w, http.StatusInternalServerError, "插入岗位专业失败")
 			return
 		}
@@ -730,25 +731,25 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 
 	_, err = tx.Exec(r.Context(), `DELETE FROM position_certificates WHERE career_position_id = $1`, id)
 	if err != nil {
-		log.Printf("[SaveFull] delete position_certificates failed: %v", err)
+		slog.Info(fmt.Sprintf("[SaveFull] delete position_certificates failed: %v", err))
 		respondError(w, http.StatusInternalServerError, "清空证书失败")
 		return
 	}
 	_, err = tx.Exec(r.Context(), `DELETE FROM ability_domains WHERE career_position_id = $1`, id)
 	if err != nil {
-		log.Printf("[SaveFull] delete ability_domains failed: %v", err)
+		slog.Info(fmt.Sprintf("[SaveFull] delete ability_domains failed: %v", err))
 		respondError(w, http.StatusInternalServerError, "清空能力域失败")
 		return
 	}
 	_, err = tx.Exec(r.Context(), `DELETE FROM position_ability_bindings WHERE career_position_id = $1`, id)
 	if err != nil {
-		log.Printf("[SaveFull] delete position_ability_bindings failed: %v", err)
+		slog.Info(fmt.Sprintf("[SaveFull] delete position_ability_bindings failed: %v", err))
 		respondError(w, http.StatusInternalServerError, "清空能力绑定失败")
 		return
 	}
 	_, err = tx.Exec(r.Context(), `DELETE FROM position_responsibilities WHERE career_position_id = $1`, id)
 	if err != nil {
-		log.Printf("[SaveFull] delete position_responsibilities failed: %v", err)
+		slog.Info(fmt.Sprintf("[SaveFull] delete position_responsibilities failed: %v", err))
 		respondError(w, http.StatusInternalServerError, "清空职责失败")
 		return
 	}
@@ -768,7 +769,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 			VALUES ($1, $2, $3, $4, $5, $6)
 		`, respID, claims.TenantID, id, resp.Name, desc, idx)
 		if err != nil {
-			log.Printf("[SaveFull] insert position_responsibilities failed: %v", err)
+			slog.Info(fmt.Sprintf("[SaveFull] insert position_responsibilities failed: %v", err))
 			respondError(w, http.StatusInternalServerError, "创建职责失败")
 			return
 		}
@@ -811,7 +812,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		`, bindingID, claims.TenantID, id, respBackendID, abilityPointID, binding.Source,
 			domainField, binding.Level, rubricDesc, coalesceStringSlice(binding.Attributes), 0)
 		if err != nil {
-			log.Printf("[SaveFull] insert position_ability_bindings failed: %v", err)
+			slog.Info(fmt.Sprintf("[SaveFull] insert position_ability_bindings failed: %v", err))
 			respondError(w, http.StatusInternalServerError, "创建能力绑定失败")
 			return
 		}
@@ -837,7 +838,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 			VALUES ($1, $2, $3, $4, $5, $6, $7)
 		`, uuid.NewString(), claims.TenantID, id, d.Name, desc, coalesceStringSlice(bindingIDs), idx)
 		if err != nil {
-			log.Printf("[SaveFull] insert ability_domains failed: %v", err)
+			slog.Info(fmt.Sprintf("[SaveFull] insert ability_domains failed: %v", err))
 			respondError(w, http.StatusInternalServerError, "创建能力域失败")
 			return
 		}
@@ -856,19 +857,19 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 			VALUES ($1, $2, $3, $4)
 		`, uuid.NewString(), claims.TenantID, id, libraryID)
 		if err != nil {
-			log.Printf("[SaveFull] insert position_certificates failed: %v", err)
+			slog.Info(fmt.Sprintf("[SaveFull] insert position_certificates failed: %v", err))
 			respondError(w, http.StatusInternalServerError, "创建证书失败")
 			return
 		}
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		log.Printf("[SaveFull] commit failed: %v", err)
+		slog.Info(fmt.Sprintf("[SaveFull] commit failed: %v", err))
 		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
-	log.Printf("[SaveFull] id=%s saved successfully", id)
+	slog.Info(fmt.Sprintf("[SaveFull] id=%s saved successfully", id))
 
 	pos, _ := h.fetchPosition(r.Context(), id)
 	respondJSON(w, http.StatusOK, SaveFullPositionResponse{Position: pos})
@@ -1143,19 +1144,7 @@ func (h *PositionHandler) scanPositionRows(rows pgx.Rows) ([]domain.CareerPositi
 }
 
 func (h *PositionHandler) incrementViewCount(r *http.Request, id string) error {
-	claims := middleware.CurrentUser(r)
-	var userID, tenantID any
-	if claims != nil {
-		userID = claims.UserID
-		if claims.TenantID != nil {
-			tenantID = *claims.TenantID
-		}
-	}
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO view_logs (target_type, target_id, user_id, tenant_id)
-		VALUES ('career_position', $1, $2, $3)
-	`, id, userID, tenantID)
-	return err
+	return recordView(r.Context(), h.DB, "career_position", id, middleware.CurrentUser(r))
 }
 
 func coalesceStringSlice(s []string) []string {
