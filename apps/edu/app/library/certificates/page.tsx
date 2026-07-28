@@ -19,7 +19,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { certificateLibraryApi } from "@/lib/api"
 import type { CertificateLibraryItem } from "@/lib/types/job"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 
 export default function CertificatesPage() {

@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog"
 import { Search, Eye, ShoppingCart, Loader2, AlertCircle } from "lucide-react"
 import { orderApi, resourceApi, institutionApi, type Order, type Resource, type Institution } from "@/lib/api"
-import { toast } from "@/hooks/use-toast"
+import { toast } from "@zhiyu/ui"
 
 export default function OrdersPage() {
   const { role, institutionId } = useRole()

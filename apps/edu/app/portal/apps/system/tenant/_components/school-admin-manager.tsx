@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Plus, Pencil, Trash2, Loader2, Eye } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 
 interface TenantAdmin {

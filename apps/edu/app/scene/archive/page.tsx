@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from "react"
 
 import { scenarioApi, sceneBatchApi } from "@/lib/api"
 import type { Scenario, SceneBatch } from "@/lib/types/scene"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ArchiveListPage, type ArchiveColumn } from "@/components/shared/archive-list-page"
 

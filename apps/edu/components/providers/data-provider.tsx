@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from "@zhiyu/ui"
 import type {
   QuestionBank,
   Question,

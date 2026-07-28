@@ -8,7 +8,7 @@ import {
   COURSE_STATUS_LABELS,
   COURSE_STATUS_COLORS,
 } from "@/lib/types/lesson-source"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import {
   ArchiveListPage,
   type ArchiveColumn,

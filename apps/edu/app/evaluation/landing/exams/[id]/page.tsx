@@ -31,7 +31,7 @@ import { useData } from "@/components/providers/data-provider"
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts"
 import type { Exam, ExamUsage } from "@/lib/types"
 import { examApi, examUsageApi, examResultApi } from "@/lib/api"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"

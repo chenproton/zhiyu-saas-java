@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react"
 import Link from "next/link"
-import { usePlatformLinks } from "@/hooks/use-platform-links"
+import { usePlatformLinks } from "@zhiyu/ui"
 import { Footer } from "@/components/portal/footer"
 
 const features = [

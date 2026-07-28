@@ -45,7 +45,7 @@ import {
   Shield,
 } from "lucide-react"
 import { platformModuleDefs } from "@/lib/navigation-config"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { TableRowActions } from "@/components/shared/table-row-actions"
 import { getToken, setToken, removeToken } from "@zhiyu/api-client"

@@ -17,7 +17,7 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { TableRowActions } from "@/components/shared/table-row-actions"
 import type { OrgType } from "@/lib/types/backend"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 
 const categoryLabels = { internal: "内部组织", business: "业务组织", external: "外部协作组织" }
 const categoryColors = { internal: "bg-blue-100 text-blue-700", business: "bg-green-100 text-green-700", external: "bg-orange-100 text-orange-700" }

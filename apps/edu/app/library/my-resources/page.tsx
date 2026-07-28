@@ -16,7 +16,7 @@ import { knowledgeApi, abilityApi, certificateLibraryApi, onSiteQuestionLibraryA
 import type { KnowledgePoint, AbilityPoint, CertificateLibraryItem, ResourceLibraryItem, OnSiteQuestionLibraryItem } from "@/lib/types"
 import { RESOURCE_TYPE_LABELS, type ResourceKind } from "@/lib/types/library"
 import { useAuth } from "@/components/auth-provider"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 
 const RESOURCE_KINDS: ResourceKind[] = ["document", "spreadsheet", "image", "link", "audio", "video", "archive", "venue", "facility", "software", "other"]
 

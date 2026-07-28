@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch"
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { abilityApi } from "@/lib/api"
 import type { AbilityPoint } from "@/lib/types/job"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 
 const CATEGORY_LABELS: Record<string, string> = { knowledge: "知识", skill: "技能", quality: "素质" }

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Heart, ArrowLeft, Share2, User, Users, Calendar, Edit3, PlayCircle, Briefcase, GraduationCap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/auth-provider"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { positionApi } from "@/lib/api"
 import type { CareerPosition } from "@/lib/types"
 

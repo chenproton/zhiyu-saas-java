@@ -40,7 +40,7 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
 import type { Organization, OrgType } from "@/lib/types/backend"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { useImportFlow } from "@/hooks/use-import-flow"
 import { typeMetaFor } from "@/lib/org-type-icons"
 

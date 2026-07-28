@@ -8,7 +8,7 @@ import {
   convertCareerPositionToPosition,
   convertJobBatchToBatch,
 } from "@/lib/stores/job-converters"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { useIndustryMap, useMajorMap } from "@/lib/use-resource-maps"
 import { ArchiveListPage, type ArchiveColumn } from "@/components/shared/archive-list-page"

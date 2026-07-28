@@ -61,7 +61,7 @@ import {
   convertApiRecommendationToLocal,
 } from '@/lib/stores/job-converters'
 import type { PositionRecommendation as ApiPositionRecommendation } from '@/lib/types/job'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from "@zhiyu/ui"
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return '-'

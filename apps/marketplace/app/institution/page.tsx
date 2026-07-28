@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Building2, Lock, Save, Loader2 } from "lucide-react"
 import { institutionApi, type Institution } from "@/lib/api"
 import { MAJOR_TAGS } from "@/lib/resource-constants"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 
 export default function InstitutionSettingsPage() {
   const { institutionId } = useRole()

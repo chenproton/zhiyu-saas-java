@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select"
 import { Plus, Trash2, Search, Loader2 } from "lucide-react"
 import { portalUserRelationApi } from "@/lib/api"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { UserSelector } from "@/components/shared/user-selector"
 import { TableRowActions } from "@/components/shared/table-row-actions"

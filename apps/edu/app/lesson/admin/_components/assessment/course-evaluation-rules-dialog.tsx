@@ -50,7 +50,7 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import { createTagElement } from "@/lib/dom-utils"
 import type { GradeMapping, KnowledgePointItem } from "@/lib/types/lesson"
 import type {

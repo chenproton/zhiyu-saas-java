@@ -49,7 +49,7 @@ import { QuestionFormDialog } from "@/components/evaluation/question-form-dialog
 import { QuestionPreview } from "@/components/evaluation/question-preview"
 import { useData } from "@/components/providers/data-provider"
 import { importExportApi } from "@/lib/api"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@zhiyu/ui"
 import type { Question, QuestionType, QuestionFormData, QuestionBankFormData } from "@/lib/types"
 import { QUESTION_TYPE_LABELS, DIFFICULTY_LABELS } from "@/lib/types"
 
