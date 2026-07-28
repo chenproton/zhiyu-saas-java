@@ -63,50 +63,46 @@
 
 ---
 
-### 3. Hooks 完全重复（3 个）
+### 3. Hooks 薄 re-export 已删除 ✅
 
-**问题**：`use-mobile.ts`、`use-toast.ts`、`use-platform-links.ts` 在 edu 和 marketplace 中各有一份完整副本。
+**状态**：已完成（2026-07-28 修复）
 
-**文件**：
-- `apps/edu/hooks/use-mobile.ts` ↔ `apps/marketplace/hooks/use-mobile.ts`
-- `apps/edu/hooks/use-toast.ts` ↔ `apps/marketplace/hooks/use-toast.ts`
-- `apps/edu/hooks/use-platform-links.ts` ↔ `apps/marketplace/hooks/use-platform-links.ts`
+**原问题**：`use-mobile.ts`、`use-toast.ts`、`use-platform-links.ts` 在 edu 和 marketplace 中都是薄 re-export，从 `@zhiyu/ui` 再导一次。
 
-**方案**：移入 `packages/ui/src/hooks/`，各 app 从 `@zhiyu/ui` 导入。
+**处理**：
+- 删除 `apps/edu/hooks/use-mobile.ts`、`use-toast.ts`、`use-platform-links.ts`
+- 删除 `apps/marketplace/hooks/use-mobile.ts`、`use-toast.ts`、`use-platform-links.ts`
+- 所有 consumer 改为直接从 `@zhiyu/ui` 导入
+- 在 `apps/edu/tsconfig.json` 和 `apps/marketplace/tsconfig.json` 中显式映射 `@/hooks/use-toast` 和 `@/hooks/use-mobile` 到 `packages/ui/src/hooks/*`，确保 `packages/ui` 内部组件被编译时仍可解析
 
-**预估**：0.5 天
-
-- [ ] 任务完成
-
----
-
-### 4. `lib/annotations/` 完全重复
-
-**问题**：annotation 相关文件（`adapter.ts`、`json-file-adapter.ts`、`types.ts`、`prd-annotations.ts`、`annotation-edit-context.tsx`）在 edu/marketplace 和 packages/ui 中都有。
-
-**文件**：
-- `apps/edu/lib/annotations/adapter.ts` ↔ `apps/marketplace/lib/annotations/adapter.ts` ↔ `packages/ui/src/lib/annotations/adapter.ts`
-- `apps/edu/lib/annotations/json-file-adapter.ts` ↔ `apps/marketplace/lib/annotations/json-file-adapter.ts` ↔ `packages/ui/src/lib/annotations/json-file-adapter.ts`
-- `apps/edu/lib/annotations/types.ts` ↔ `apps/marketplace/lib/annotations/types.ts` ↔ `packages/ui/src/lib/annotations/types.ts`
-- `apps/edu/lib/prd-annotations.ts` ↔ `apps/marketplace/lib/prd-annotations.ts` ↔ `packages/ui/src/lib/prd-annotations.ts`
-
-**方案**：删除 edu 和 marketplace 中的副本，统一从 `packages/ui/src/lib/` 导入。
-
-**预估**：0.5 天
-
-- [ ] 任务完成
+- [x] 任务完成
 
 ---
 
-### 5. `packages/ui/` 缺少 barrel export
+### 4. `lib/annotations/` 薄 re-export 已删除 ✅
 
-**问题**：`packages/ui/src/` 没有 `index.ts`，消费者无法统一导入。
+**状态**：已完成（2026-07-28 修复）
 
-**方案**：创建 `packages/ui/src/index.ts`，导出所有公开组件、hooks、工具函数。
+**原问题**：`adapter.ts`、`json-file-adapter.ts`、`types.ts` 在 edu/marketplace 中都是薄 re-export，从 `packages/ui` 再导一次。
 
-**预估**：0.5 小时
+**处理**：
+- 删除 `apps/edu/lib/annotations/adapter.ts`、`json-file-adapter.ts`、`types.ts`
+- 删除 `apps/marketplace/lib/annotations/adapter.ts`、`json-file-adapter.ts`、`types.ts`
+- 所有 consumer 改为直接从 `@zhiyu/ui/lib/annotations/*` 导入
 
-- [ ] 任务完成
+**遗留**：`prd-annotations.ts` 和 `annotation-edit-context.tsx` 仍是领域代码，保留在 `packages/ui/src/lib/`，后续评估是否移出 UI 包。
+
+- [x] 任务完成
+
+---
+
+### 5. `packages.ui/` barrel export 已存在 ✅
+
+**状态**：已完成（2026-07-28 复核）
+
+**当前状态**：`packages/ui/src/index.ts` 已存在，导出 `useToast`、`useIsMobile`、`usePlatformLinks`、`ConfirmDialog`、`StatusBadge`、`TableRowActions`、`HoverActionBar` 等公开 API。
+
+- [x] 任务完成
 
 ---
 
@@ -184,39 +180,23 @@
 
 ---
 
-### 10. 前端 `window.confirm()` 残留（2 处）
+### 10. 前端 `window.confirm()` 已不存在 ✅
 
-**问题**：AGENTS.md 规定用 `<ConfirmDialog>`，但仍有 2 处使用原生 `confirm()`。
+**状态**：已完成（2026-07-28 复核）
 
-**文件**：
-- `apps/edu/components/shared/workflow-config-page.tsx:102` — `if (!confirm("确定删除该审批流程吗？")) return`
-- `apps/edu/components/shared/batch-group-page.tsx:208` — `if (!confirm("确定删除该批次吗？")) return`
+**说明**：全项目搜索未在 `.ts/.tsx` 文件中发现 `window.confirm()` 或原生 `confirm()` 调用。相关文件（`workflow-config-page.tsx`、`batch-group-page.tsx`）已使用 `<ConfirmDialog>`。
 
-**方案**：替换为 `<ConfirmDialog>` + 状态管理。
-
-**预估**：1 小时
-
-- [ ] 任务完成
+- [x] 任务完成
 
 ---
 
-### 11. 前端 `alert()` 调用（10+ 处）
+### 11. 前端 `alert()` 在 TS/TSX 中已不存在 ✅
 
-**问题**：应使用 `toast()` (sonner)，但多处使用浏览器原生 `alert()`。
+**状态**：已完成（2026-07-28 复核）
 
-**文件**：
-- `apps/edu/app/evaluation/question-banks/[id]/page.tsx` (4 处: lines 173, 181, 200, 219)
-- `apps/edu/app/evaluation/exams/page.tsx` (2 处: lines 68, 75)
-- `apps/edu/app/evaluation/landing/exams/[id]/page.tsx` (line 153)
-- `apps/edu/app/scene/scenarios/[id]/edit/tasks/page.tsx` (2 处: lines 2689, 4505)
-- `apps/edu/app/lesson/admin/_components/assessment/course-evaluation-rules-dialog.tsx` (line 1953)
-- `apps/edu/app/library/knowledge/page.tsx` (line 136) — 此处是 `confirm()`
+**说明**：全项目搜索未在 `.ts/.tsx` 文件中发现原生 `alert()` 调用。`apps/edu/public/` 下的静态 HTML 原型文件中仍有 `alert()`，不影响生产代码。
 
-**方案**：逐文件替换为 `toast()` (import from `@/hooks/use-toast`)。
-
-**预估**：1.5 小时
-
-- [ ] 任务完成
+- [x] 任务完成
 
 ---
 
@@ -348,15 +328,13 @@
 
 ---
 
-### 20. `shared-types/src/index.ts` 未导出 `ai.ts`
+### 20. `shared-types/src/index.ts` 已导出 `ai.ts` ✅
 
-**问题**：AI 类型无法通过 barrel import 使用。
+**状态**：已完成（2026-07-28 复核）
 
-**方案**：在 `index.ts` 添加 `export * from "./ai"`。
+**说明**：`packages/shared-types/src/index.ts` 第一行即为 `export * from "./ai"`，AI 类型已可通过 barrel import 使用。
 
-**预估**：5 分钟
-
-- [ ] 任务完成
+- [x] 任务完成
 
 ---
 
@@ -372,15 +350,19 @@
 
 ---
 
-### 22. 后端 Oplog 中间件重复应用
+### 22. 后端 Oplog 中间件重复应用（不成立）❌
 
-**问题**：`router.go` 全局认证组和文件上传组都添加了 `OperationLog` 中间件，导致文件上传请求记录两条日志。
+**状态**：已复核，问题描述不准确，**无需修复**
 
-**方案**：从文件上传组移除重复的 `OperationLog`，仅依赖全局中间件。
+**复核结果**：
+- `router.go:92` 的文件上传组只保护 `/api/v1/files/upload` 和 `/api/v1/files/preview`。
+- `routes.go:45` 的全局认证组保护所有 `/api/v1/*` 下的其他路由。
+- Chi 路由前缀树决定 `/api/v1/files/upload` 直接命中 `router.go` 注册的 handler，**不会同时进入** `routes.go` 的 `/api/v1` 子路由。
+- 因此文件上传不会记录两条日志，该条描述有误，无需修改代码。
 
-**预估**：5 分钟
+**建议**：直接删除此条，避免后续误解。
 
-- [ ] 任务完成
+- [x] 无需修复
 
 ---
 
@@ -396,28 +378,69 @@
 
 ---
 
+## 新增问题清单（本次审查发现，待后续排期）
+
+以下问题在本次全量复核中确认存在，但改动面较大或需要跨模块协调，建议后续单独排期，不混入当前迭代。
+
+### A. 后端稳定性
+
+| # | 问题 | 位置 | 建议方案 | 预估 |
+|---|------|------|---------|------|
+| A1 | migration 版本号冲突 | `backend/migrations/006_*`、`064_*` 各有两个文件 | 重命名冲突文件，确保版本号唯一 | 0.5 小时 |
+| A2 | `AuthHandler` goroutine 未优雅关闭 | `backend/cmd/server/main.go` | `router.New` 返回可关闭对象，main 中 `defer r.Shutdown()` | 0.5 小时 |
+| A3 | `view_logs` 写入逻辑分散 | `position/scenario/resource handler` | 已抽象 `recordView` helper；后续可扩展为独立 service | 0.5 天 |
+| A4 | Update 字段合并/Nullability 模式不一致 | `position/scenario/course handler` | 统一使用 patch helper 或 `NullableString` | 1 天 |
+| A5 | 导入/导出/模板缺少通用 pipeline | `*_import_handler.go`、`template_handler.go` | 抽象 Excel/CSV 行 → DTO → 校验 → upsert → 重复处理 | 2-3 天 |
+
+### B. 前端 edu
+
+| # | 问题 | 位置 | 建议方案 | 预估 |
+|---|------|------|---------|------|
+| B1 | 超大文件 | `app/scene/scenarios/[id]/edit/tasks/page.tsx` (5646 行) 等 | 按功能拆分为多个子组件 | 2-3 天 |
+| B2 | library / exam-usage / recommend / superadmin 未接入共享抽象 | `app/library/*`、`app/evaluation/exam-usage`、`app/job/recommend`、`app/superadmin` | 评估接入 `PortalCrudPage` / `ContentListPage` 或新增轻量抽象 | 2-3 天 |
+| B3 | 状态抽象分裂 | `content-status.ts` vs `status.ts` | 统一标签、职责分离 | 0.5 天 |
+| B4 | 共享组件自身未完全遵守规范 | `approval-list-page.tsx`、`archive-list-page.tsx`、`portal-crud-page.tsx` | 已改用 `TableRowActions` / `ConfirmDialog` | 已完成 |
+
+### C. 前端 marketplace
+
+| # | 问题 | 位置 | 建议方案 | 预估 |
+|---|------|------|---------|------|
+| C1 | 完全没有服务器分页 | 几乎所有列表页使用 `limit: 1000/10000` | 接入 `ListResponse<T>` + 分页组件 | 2-3 天 |
+| C2 | 自定义 status badge 重复 | `admin/institutions`、`admin/tenants`、`admin/withdrawals`、`wallet` 等 | 统一使用 `getStatusConfig()` + `StatusBadge` | 0.5 天 |
+| C3 | 表单全部手搓 | `my-resources/new`、`institution/apply`、`admin/banners` 等 | 引入 `react-hook-form + zod` | 2-3 天 |
+| C4 | 未复用 edu 页面级组件 | 所有列表/CRUD 页面从零实现 | 将 `ContentListPage`/`PortalCrudPage` 等下沉到 packages 后接入 | 3-5 天 |
+
+### D. 共享包
+
+| # | 问题 | 位置 | 建议方案 | 预估 |
+|---|------|------|---------|------|
+| D1 | API client 缺少高级能力 | `packages/api-client/src/api-helpers.ts` | 增加 typed `ApiError`、interceptor、retry、`useListQuery` | 2-3 天 |
+| D2 | 页面级组件未下沉 | `apps/edu/components/shared/*` | 迁移到 `packages/ui` 或新建 `@zhiyu/page-kit` | 3-5 天 |
+
+---
+
 ## 执行顺序建议
 
 ```
-Week 1: P0 全部 (消除跨 app 重复)
-  1  → packages/ui barrel export
-  2  → platform-shell 移动到 packages/ui
-  3  → 3 个 hooks 移到 packages/ui
-  4  → annotations 去重
-  5  → data-provider 提取共享核心
+Week 1: P0 剩余项
+  1  → platform-shell 移动到 packages/ui
+  2  → data-provider 提取共享核心
+  ✅ 3  → hooks 薄 re-export 已删除
+  ✅ 4  → annotations 薄 re-export 已删除
+  ✅ 5  → packages/ui barrel export 已存在
 
 Week 2: P1 前半
   6  → 双份类型系统清理
   7  → evaluation.ts 拆分
   8  → draftSuffix 去重
   9  → typeMetaFor 去重
-  10 → window.confirm 修复
-  11 → alert 修复
+  ✅ 10 → window.confirm 已不存在
+  ✅ 11 → alert 在 TS/TSX 中已不存在
 
 Week 3: P1 后半 + P2 前半
-  12 → router.go 拆分
-  13 → List handler 泛型抽取
-  14 → parseInt → parsePageLimit
+  ✅ 12 → router.go 已拆分
+  ✅ 13 → List handler 已迁移 executeListQuery
+  ✅ 14 → parseInt vs parsePageLimit 已一致
   15 → api.ts 拆分
   16 → testhelper 同步
   17 → portal-auth-context 去重
@@ -425,9 +448,9 @@ Week 3: P1 后半 + P2 前半
 Week 4: P2 收尾
   18 → Library 原生 table 替换
   19 → packages/ui 领域代码清理
-  20 → ai.ts 导出
+  ✅ 20 → ai.ts 导出已存在
   21 → 错误消息统一
-  22 → Oplog 去重
+  ❌ 22 → Oplog 重复应用（不成立，已删除）
 ```
 
 ## 架构目标
@@ -435,22 +458,22 @@ Week 4: P2 收尾
 ```
 当前:
 ├── packages/
-│   ├── shared-types/     ← 类型包（有双份类型、无 ai.ts 导出）
+│   ├── shared-types/     ← 类型包（有双份类型、ai.ts 已导出）
 │   ├── api-client/       ← API 客户端（1338 行单体文件）
-│   └── ui/               ← UI 组件（缺 barrel export，含领域代码）
+│   └── ui/               ← UI 组件（已有 barrel export，含领域代码）
 ├── apps/
 │   ├── edu/
 │   │   ├── shared/*      ← 很好，但部分应移入 packages/ui/
 │   │   ├── platform-shell/  ← 与 marketplace 完全重复
 │   │   ├── providers/    ← data-provider 90% 重复
-│   │   ├── hooks/        ← use-mobile/use-toast 重复
-│   │   └── lib/          ← annotations 重复
+│   │   ├── hooks/        ← use-mobile/use-toast 薄 re-export 已删除
+│   │   └── lib/          ← annotations 薄 re-export 已删除
 │   └── marketplace/
-│       └── (同上重复)
+│       └── (同上重复，死代码已清理)
 └── backend/
     └── internal/
-        ├── handler/      ← 分页样板重复 20+，中英混用
-        └── router/       ← 730 行单体文件
+        ├── handler/      ← 分页样板已收敛，日志已统一为 slog，view_log 已抽象
+        └── router/       ← 已按领域拆分，支持 graceful shutdown
 
 目标:
 ├── packages/
