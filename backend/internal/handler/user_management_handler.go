@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -105,98 +104,42 @@ func (h *UserManagementHandler) canManageUsers(r *http.Request) bool {
 }
 
 func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
-	institutionID := r.URL.Query().Get("institutionId")
-	roleID := r.URL.Query().Get("roleId")
-	roleCode := r.URL.Query().Get("roleCode")
-	orgNodeID := r.URL.Query().Get("orgNodeId")
-	status := r.URL.Query().Get("status")
-	search := r.URL.Query().Get("search")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
+	cfg := listQueryConfig[domain.User]{
+		Table:         "users",
+		SelectColumns: `id, tenant_id, institution_id, org_node_id, major_id, role, platform, login_name, username, name, email, phone, avatar_url, student_no, work_id, id_card, title_ids, oauth, status, graduate_year, last_login_at, created_at, updated_at`,
+		TenantScoped:  true,
+		SearchColumns: []string{"username", "name", "email"},
+		ScanRows:      h.scanUserRows,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if institutionID := r.URL.Query().Get("institutionId"); institutionID != "" {
+				qb.addCondition("institution_id = " + qb.nextArg(institutionID))
+			}
+			if roleID := r.URL.Query().Get("roleId"); roleID != "" {
+				qb.addCondition("EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = users.id AND ur.role_id = " + qb.nextArg(roleID) + ")")
+			}
+			if roleCode := r.URL.Query().Get("roleCode"); roleCode != "" {
+				qb.addCondition("EXISTS (SELECT 1 FROM user_roles ur JOIN roles r2 ON r2.id = ur.role_id WHERE ur.user_id = users.id AND r2.code = " + qb.nextArg(roleCode) + ")")
+			}
+			if orgNodeID := r.URL.Query().Get("orgNodeId"); orgNodeID != "" {
+				qb.addCondition("org_node_id = " + qb.nextArg(orgNodeID))
+			}
+			if status := r.URL.Query().Get("status"); status != "" {
+				qb.addCondition("status = " + qb.nextArg(status))
+			}
+		},
 	}
 
-	if institutionID != "" {
-		where = append(where, "institution_id = $"+itoa(argIdx))
-		args = append(args, institutionID)
-		argIdx++
-	}
-	if roleID != "" {
-		where = append(where, "EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = users.id AND ur.role_id = $"+itoa(argIdx)+")")
-		args = append(args, roleID)
-		argIdx++
-	}
-	if roleCode != "" {
-		where = append(where, "EXISTS (SELECT 1 FROM user_roles ur JOIN roles r2 ON r2.id = ur.role_id WHERE ur.user_id = users.id AND r2.code = $"+itoa(argIdx)+")")
-		args = append(args, roleCode)
-		argIdx++
-	}
-	if orgNodeID != "" {
-		where = append(where, "org_node_id = $"+itoa(argIdx))
-		args = append(args, orgNodeID)
-		argIdx++
-	}
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "(username ILIKE $"+itoa(argIdx)+" OR name ILIKE $"+itoa(argIdx)+" OR email ILIKE $"+itoa(argIdx)+")")
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM users WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, tenant_id, institution_id, org_node_id, major_id,
-			role, platform, login_name, username, name, email, phone, avatar_url,
-			student_no, work_id, id_card, title_ids, oauth, status, graduate_year, last_login_at, created_at, updated_at
-		FROM users
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "查询用户列表失败")
 		return
 	}
-	defer rows.Close()
 
-	items, err := h.scanUserRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "用户数据读取失败")
-		return
-	}
 	h.attachUserRoles(r.Context(), items)
-
 	respondJSON(w, http.StatusOK, UserListResponse{Items: items, Total: total})
 }
 

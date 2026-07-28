@@ -49,61 +49,21 @@ func (h *MicroCertHandler) ListTemplates(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	search := r.URL.Query().Get("search")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
+	cfg := listQueryConfig[domain.MicroCertTemplate]{
+		Table:         "micro_cert_templates",
+		SelectColumns: "id, title, cert_type_id, cert_type_name, content, cover_image, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"title"},
+		ScanRows:      h.scanTemplateRows,
 	}
 
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "title ILIKE $"+itoa(argIdx))
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM micro_cert_templates WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, title, cert_type_id, cert_type_name, content, cover_image, created_at, updated_at
-		FROM micro_cert_templates
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询微证书模板失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanTemplateRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取微证书模板失败")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "failed to list micro cert templates")
 		return
 	}
 
@@ -139,7 +99,7 @@ func (h *MicroCertHandler) CreateTemplate(w http.ResponseWriter, r *http.Request
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`, id, tenantID, req.Title, certTypeUUID.String(), req.CertTypeName, req.Content, req.CoverImage)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建微证书模板失败")
+		respondError(w, http.StatusInternalServerError, "failed to create micro cert template")
 		return
 	}
 
@@ -156,7 +116,7 @@ func (h *MicroCertHandler) UpdateTemplate(w http.ResponseWriter, r *http.Request
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchTemplate(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "微证书模板不存在")
+		respondError(w, http.StatusNotFound, "micro cert template not found")
 		return
 	}
 
@@ -180,7 +140,7 @@ func (h *MicroCertHandler) UpdateTemplate(w http.ResponseWriter, r *http.Request
 		WHERE id = $6
 	`, req.Title, certTypeUUID.String(), req.CertTypeName, req.Content, req.CoverImage, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新微证书模板失败")
+		respondError(w, http.StatusInternalServerError, "failed to update micro cert template")
 		return
 	}
 
@@ -197,18 +157,18 @@ func (h *MicroCertHandler) DeleteTemplate(w http.ResponseWriter, r *http.Request
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchTemplate(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "微证书模板不存在")
+		respondError(w, http.StatusNotFound, "micro cert template not found")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM cert_issuance_records WHERE template_id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "删除相关发放记录失败")
+		respondError(w, http.StatusInternalServerError, "failed to delete related issuance records")
 		return
 	}
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM micro_cert_templates WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "删除微证书模板失败")
+		respondError(w, http.StatusInternalServerError, "failed to delete micro cert template")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -233,7 +193,7 @@ func (h *MicroCertHandler) IssueCerts(w http.ResponseWriter, r *http.Request) {
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "开启事务失败")
+		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -248,14 +208,14 @@ func (h *MicroCertHandler) IssueCerts(w http.ResponseWriter, r *http.Request) {
 			VALUES ($1, $2, $3, $4, $5, 'issued', $6)
 		`, recordID, tenantID, req.TemplateID, userID, time.Now(), uuid.NewString())
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "发放certs失败")
+			respondError(w, http.StatusInternalServerError, "failed to issue certs")
 			return
 		}
 		count++
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "提交事务失败")
+		respondError(w, http.StatusInternalServerError, "failed to commit")
 		return
 	}
 
@@ -306,7 +266,7 @@ func (h *MicroCertHandler) ListHistory(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询证书发放记录失败")
+		respondError(w, http.StatusInternalServerError, "failed to list cert issuance history")
 		return
 	}
 	defer rows.Close()
@@ -318,7 +278,7 @@ func (h *MicroCertHandler) ListHistory(w http.ResponseWriter, r *http.Request) {
 		var revokeReason *string
 		if err := rows.Scan(&record.ID, &record.TemplateID, &record.UserID, &record.CertNumber, &record.IssueDate,
 			&expireDate, &record.Status, &revokedAt, &revokeReason); err != nil {
-			respondError(w, http.StatusInternalServerError, "读取证书发放记录失败")
+			respondError(w, http.StatusInternalServerError, "failed to scan cert issuance history")
 			return
 		}
 		record.ExpireDate = expireDate

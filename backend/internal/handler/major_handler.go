@@ -41,24 +41,21 @@ func (h *MajorHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
 	enabledStr := r.URL.Query().Get("enabled")
 
-	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig{
+	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.Major]{
 		Table:         "majors",
 		SelectColumns: "id, tenant_id, code, name, alias, enabled, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name", "code"},
-		ExtraFilter: func(r *http.Request, argIdx int) (clauses []string, args []any) {
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
 			if tenantID != "" {
-				clauses = append(clauses, "tenant_id = $"+itoa(argIdx))
-				args = append(args, tenantID)
-				argIdx++
+				qb.addCondition("tenant_id = " + qb.nextArg(tenantID))
 			}
 			if enabledStr != "" {
-				clauses = append(clauses, "enabled = $"+itoa(argIdx))
-				args = append(args, enabledStr == "true")
+				qb.addCondition("enabled = " + qb.nextArg(enabledStr == "true"))
 			}
-			return
 		},
-	}, h.scanMajorRows)
+		ScanRows: h.scanMajorRows,
+	})
 	if err != nil {
 		if err.Error() == "missing tenant" {
 			respondError(w, http.StatusForbidden, "缺少租户信息")

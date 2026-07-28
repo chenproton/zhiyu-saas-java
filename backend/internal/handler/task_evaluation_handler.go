@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -70,13 +69,13 @@ type ReviewStepInput struct {
 
 func (h *TaskEvaluationHandler) ListMethods(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "未授权")
+		respondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	taskID := chi.URLParam(r, "taskId")
 	if taskID == "" {
-		respondError(w, http.StatusBadRequest, "缺少任务ID")
+		respondError(w, http.StatusBadRequest, "missing taskId")
 		return
 	}
 
@@ -87,7 +86,7 @@ func (h *TaskEvaluationHandler) ListMethods(w http.ResponseWriter, r *http.Reque
 
 	configs, err := h.fetchTaskMethods(r.Context(), taskID, tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询测评方法失败")
+		respondError(w, http.StatusInternalServerError, "failed to list evaluation methods")
 		return
 	}
 
@@ -96,13 +95,13 @@ func (h *TaskEvaluationHandler) ListMethods(w http.ResponseWriter, r *http.Reque
 
 func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "未授权")
+		respondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	taskID := chi.URLParam(r, "taskId")
 	if taskID == "" {
-		respondError(w, http.StatusBadRequest, "缺少任务ID")
+		respondError(w, http.StatusBadRequest, "missing taskId")
 		return
 	}
 
@@ -124,18 +123,18 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 			SELECT COALESCE(MAX(version), 0) FROM task_evaluation_methods WHERE task_id = $1 AND tenant_id = $2
 		`, taskID, tenantID).Scan(&currentVersion)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "检查evaluation method version失败")
+			respondError(w, http.StatusInternalServerError, "failed to check evaluation method version")
 			return
 		}
 		if currentVersion > req.Version {
-			respondError(w, http.StatusConflict, "评价规则已被其他会话修改")
+			respondError(w, http.StatusConflict, "evaluation rules have been modified by another session")
 			return
 		}
 	}
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "开启事务失败")
+		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -146,7 +145,7 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 		WHERE task_id = $1 AND tenant_id = $2
 	`, taskID, tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "禁用existing methods失败")
+		respondError(w, http.StatusInternalServerError, "failed to disable existing methods")
 		return
 	}
 
@@ -194,7 +193,7 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 			RETURNING id
 		`, tenantID, taskID, m.MethodKey, m.Weight, m.EvalObject, m.ScoreType, evalSubjects, m.RubricTemplateID, resourceConfig, newVersion, m.IsEnabled).Scan(&configID)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "更新或创建测评方法失败")
+			respondError(w, http.StatusInternalServerError, "failed to upsert evaluation method")
 			return
 		}
 
@@ -203,7 +202,7 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 		if m.IsEnabled {
 			_, err = tx.Exec(r.Context(), `DELETE FROM task_eval_points WHERE config_id = $1`, configID)
 			if err != nil {
-				respondError(w, http.StatusInternalServerError, "清空eval points失败")
+				respondError(w, http.StatusInternalServerError, "failed to clear eval points")
 				return
 			}
 			for _, ep := range m.EvalPoints {
@@ -215,14 +214,14 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 					ep.Weight, ep.ScoringMethod, gradeMapping,
 					coalesceStringSlice(ep.KnowledgePointIDs), coalesceStringSlice(ep.AbilityPointIDs), ep.SortOrder)
 				if err != nil {
-					respondError(w, http.StatusInternalServerError, "插入评价点失败")
+					respondError(w, http.StatusInternalServerError, "failed to insert eval point")
 					return
 				}
 			}
 
 			_, err = tx.Exec(r.Context(), `DELETE FROM task_review_steps WHERE config_id = $1`, configID)
 			if err != nil {
-				respondError(w, http.StatusInternalServerError, "清空review steps失败")
+				respondError(w, http.StatusInternalServerError, "failed to clear review steps")
 				return
 			}
 			for _, rs := range m.ReviewSteps {
@@ -231,7 +230,7 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 					VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 				`, tenantID, configID, rs.Label, rs.Description, rs.Enabled, rs.SubjectType, rs.Weight, rs.SortOrder)
 				if err != nil {
-					respondError(w, http.StatusInternalServerError, "插入审核步骤失败")
+					respondError(w, http.StatusInternalServerError, "failed to insert review step")
 					return
 				}
 			}
@@ -239,7 +238,7 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "提交事务失败")
+		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
 		return
 	}
 
@@ -264,64 +263,27 @@ type RubricTemplateInput struct {
 
 func (h *TaskEvaluationHandler) ListTemplates(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "未授权")
+		respondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-	keyword := r.URL.Query().Get("keyword")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	where = append(where, "tenant_id = $"+itoa(argIdx))
-	args = append(args, tenantID)
-	argIdx++
-
-	if keyword != "" {
-		where = append(where, "name ILIKE $"+itoa(argIdx))
-		args = append(args, "%"+keyword+"%")
-		argIdx++
-	}
-
-	where = append(where, "is_deleted = false")
-
-	countQuery := "SELECT COUNT(*) FROM rubric_templates WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, tenant_id, name, mode, types, description, data, is_deleted, created_at, updated_at
-		FROM rubric_templates
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY updated_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery[domain.RubricTemplate](r.Context(), h.DB, r, listQueryConfig[domain.RubricTemplate]{
+		Table:         "rubric_templates",
+		SelectColumns: "id, tenant_id, name, mode, types, description, data, is_deleted, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
+		SearchParam:   "keyword",
+		OrderBy:       "updated_at DESC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			qb.addCondition("is_deleted = false")
+		},
+	}, scanRubricTemplates)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询评分模板失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := scanRubricTemplates(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取评分模板失败")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "failed to list rubric templates")
 		return
 	}
 
@@ -330,14 +292,14 @@ func (h *TaskEvaluationHandler) ListTemplates(w http.ResponseWriter, r *http.Req
 
 func (h *TaskEvaluationHandler) GetTemplate(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "未授权")
+		respondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	t, err := h.fetchRubricTemplate(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "评分模板不存在")
+		respondError(w, http.StatusNotFound, "rubric template not found")
 		return
 	}
 
@@ -346,7 +308,7 @@ func (h *TaskEvaluationHandler) GetTemplate(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if t.TenantID != tenantID {
-		respondError(w, http.StatusForbidden, "权限不足")
+		respondError(w, http.StatusForbidden, "access denied")
 		return
 	}
 
@@ -355,7 +317,7 @@ func (h *TaskEvaluationHandler) GetTemplate(w http.ResponseWriter, r *http.Reque
 
 func (h *TaskEvaluationHandler) CreateTemplate(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "未授权")
+		respondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
@@ -383,7 +345,7 @@ func (h *TaskEvaluationHandler) CreateTemplate(w http.ResponseWriter, r *http.Re
 		RETURNING id
 	`, tenantID, req.Name, req.Mode, types, req.Description, req.Data, now, now).Scan(&id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "创建评分模板失败")
+		respondError(w, http.StatusInternalServerError, "failed to create rubric template")
 		return
 	}
 
@@ -393,7 +355,7 @@ func (h *TaskEvaluationHandler) CreateTemplate(w http.ResponseWriter, r *http.Re
 
 func (h *TaskEvaluationHandler) UpdateTemplate(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "未授权")
+		respondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
@@ -416,11 +378,11 @@ func (h *TaskEvaluationHandler) UpdateTemplate(w http.ResponseWriter, r *http.Re
 
 	existing, err := h.fetchRubricTemplate(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "评分模板不存在")
+		respondError(w, http.StatusNotFound, "rubric template not found")
 		return
 	}
 	if existing.TenantID != tenantID {
-		respondError(w, http.StatusForbidden, "权限不足")
+		respondError(w, http.StatusForbidden, "access denied")
 		return
 	}
 
@@ -431,7 +393,7 @@ func (h *TaskEvaluationHandler) UpdateTemplate(w http.ResponseWriter, r *http.Re
 		WHERE id = $7
 	`, req.Name, req.Mode, types, req.Description, req.Data, now, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新评分模板失败")
+		respondError(w, http.StatusInternalServerError, "failed to update rubric template")
 		return
 	}
 
@@ -441,7 +403,7 @@ func (h *TaskEvaluationHandler) UpdateTemplate(w http.ResponseWriter, r *http.Re
 
 func (h *TaskEvaluationHandler) DeleteTemplate(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "未授权")
+		respondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
@@ -454,11 +416,11 @@ func (h *TaskEvaluationHandler) DeleteTemplate(w http.ResponseWriter, r *http.Re
 
 	existing, err := h.fetchRubricTemplate(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "评分模板不存在")
+		respondError(w, http.StatusNotFound, "rubric template not found")
 		return
 	}
 	if existing.TenantID != tenantID {
-		respondError(w, http.StatusForbidden, "权限不足")
+		respondError(w, http.StatusForbidden, "access denied")
 		return
 	}
 
@@ -467,7 +429,7 @@ func (h *TaskEvaluationHandler) DeleteTemplate(w http.ResponseWriter, r *http.Re
 		WHERE id = $1
 	`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "删除评分模板失败")
+		respondError(w, http.StatusInternalServerError, "failed to delete rubric template")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -668,7 +630,7 @@ func (h *TaskEvaluationHandler) createTempExam(ctx context.Context, tx pgx.Tx, t
 	id := uuid.NewString()
 	code, err := generateUniqueEntityCode(ctx, tx, "SJ", "exams", tenantID)
 	if err != nil {
-		return "", fmt.Errorf("生成考试编码失败：%w", err)
+		return "", fmt.Errorf("generate exam code: %w", err)
 	}
 	_, err = tx.Exec(ctx, `
 		INSERT INTO exams (id, tenant_id, code, name, description, status, total_score, duration, cover_image,
@@ -676,7 +638,7 @@ func (h *TaskEvaluationHandler) createTempExam(ctx context.Context, tx pgx.Tx, t
 		VALUES ($1, $2, $3, $4, '', 'draft', 0, $5, NULL, '{}', '{}', NULL, 'v1.0', 'mine', $6, TRUE)
 	`, id, tenantID, code, name, duration, creatorID)
 	if err != nil {
-		return "", fmt.Errorf("创建临时考试失败：%w", err)
+		return "", fmt.Errorf("create temp exam: %w", err)
 	}
 	return id, nil
 }
@@ -690,7 +652,7 @@ func (h *TaskEvaluationHandler) ensureExamQuestions(ctx context.Context, tx pgx.
 		ORDER BY array_position($1, id)
 	`, questionIDs, tenantID)
 	if err != nil {
-		return fmt.Errorf("获取题目失败：%w", err)
+		return fmt.Errorf("fetch questions: %w", err)
 	}
 	defer rows.Close()
 
@@ -732,7 +694,7 @@ func (h *TaskEvaluationHandler) ensureExamQuestions(ctx context.Context, tx pgx.
 				WHERE id = $8
 			`, qq.qType, qq.content, string(qq.options), string(qq.answer), qq.analysis, qq.score, i+1, existingID)
 			if err != nil {
-				return fmt.Errorf("更新考试题目 %s 失败：%w", qq.id, err)
+				return fmt.Errorf("update exam question %s: %w", qq.id, err)
 			}
 		} else {
 			_, err := tx.Exec(ctx, `
@@ -740,7 +702,7 @@ func (h *TaskEvaluationHandler) ensureExamQuestions(ctx context.Context, tx pgx.
 				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 			`, uuid.NewString(), tenantID, examID, qq.id, qq.qType, qq.content, string(qq.options), string(qq.answer), qq.analysis, qq.score, i+1)
 			if err != nil {
-				return fmt.Errorf("插入考试题目 %s 失败：%w", qq.id, err)
+				return fmt.Errorf("insert exam question %s: %w", qq.id, err)
 			}
 		}
 	}
@@ -751,7 +713,7 @@ func (h *TaskEvaluationHandler) ensureExamQuestions(ctx context.Context, tx pgx.
 		WHERE id = $1
 	`, examID)
 	if err != nil {
-		return fmt.Errorf("重新计算考试总分失败：%w", err)
+		return fmt.Errorf("recalc exam total: %w", err)
 	}
 	return nil
 }
@@ -767,7 +729,7 @@ func (h *TaskEvaluationHandler) createTempExamUsage(ctx context.Context, tx pgx.
 		VALUES ($1, $2, $3, $4, NULL, NULL, NULL, NULL, 'task', $5, 'draft', $6)
 	`, id, tenantID, examID, fmt.Sprintf("场景任务-%s", taskID), []string{taskID}, creator)
 	if err != nil {
-		return "", fmt.Errorf("创建临时考试安排失败：%w", err)
+		return "", fmt.Errorf("create temp exam usage: %w", err)
 	}
 	return id, nil
 }

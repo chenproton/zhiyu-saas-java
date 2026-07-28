@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -37,74 +36,26 @@ type UpdateOrgTypeRequest struct {
 }
 
 func (h *OrgTypeHandler) List(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.URL.Query().Get("tenantId")
-	category := r.URL.Query().Get("category")
-	search := r.URL.Query().Get("search")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if tenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, tenantID)
-		argIdx++
-	}
-	if category != "" {
-		where = append(where, "category = $"+itoa(argIdx))
-		args = append(args, category)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "name ILIKE $"+itoa(argIdx))
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM org_types WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, tenant_id, name, category, description, is_default, created_at
-		FROM org_types
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery[domain.OrgType](r.Context(), h.DB, r, listQueryConfig[domain.OrgType]{
+		Table:         "org_types",
+		SelectColumns: "id, tenant_id, name, category, description, is_default, created_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if tenantID := r.URL.Query().Get("tenantId"); tenantID != "" {
+				qb.addCondition("tenant_id = " + qb.nextArg(tenantID))
+			}
+			if category := r.URL.Query().Get("category"); category != "" {
+				qb.addCondition("category = " + qb.nextArg(category))
+			}
+		},
+	}, h.scanOrgTypeRows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询组织类型失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanOrgTypeRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取组织类型失败")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "failed to list org types")
 		return
 	}
 
@@ -115,7 +66,7 @@ func (h *OrgTypeHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	orgType, err := h.fetchOrgType(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "组织类型不存在")
+		respondError(w, http.StatusNotFound, "org type not found")
 		return
 	}
 	if !verifyTenantOwnership(w, r, orgType.TenantID) {
@@ -160,7 +111,7 @@ func (h *OrgTypeHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "组织类型名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建组织类型失败")
+		respondError(w, http.StatusInternalServerError, "failed to create org type")
 		return
 	}
 
@@ -178,7 +129,7 @@ func (h *OrgTypeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	orgType, err := h.fetchOrgType(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "组织类型不存在")
+		respondError(w, http.StatusNotFound, "org type not found")
 		return
 	}
 	if !verifyTenantOwnership(w, r, orgType.TenantID) {
@@ -197,7 +148,7 @@ func (h *OrgTypeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Category != domain.OrgTypeCategoryInternal && req.Category != domain.OrgTypeCategoryBusiness && req.Category != domain.OrgTypeCategoryExternal {
-		respondError(w, http.StatusBadRequest, "无效分类")
+		respondError(w, http.StatusBadRequest, "invalid category")
 		return
 	}
 
@@ -210,7 +161,7 @@ func (h *OrgTypeHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "组织类型名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "更新组织类型失败")
+		respondError(w, http.StatusInternalServerError, "failed to update org type")
 		return
 	}
 
@@ -228,7 +179,7 @@ func (h *OrgTypeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	orgType, err := h.fetchOrgType(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "组织类型不存在")
+		respondError(w, http.StatusNotFound, "org type not found")
 		return
 	}
 	if !verifyTenantOwnership(w, r, orgType.TenantID) {
@@ -242,7 +193,7 @@ func (h *OrgTypeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	var refCount int
 	if err := h.DB.QueryRow(r.Context(), `SELECT COUNT(*) FROM organizations WHERE type_id = $1`, id).Scan(&refCount); err != nil {
-		respondError(w, http.StatusInternalServerError, "检查org type references失败")
+		respondError(w, http.StatusInternalServerError, "failed to check org type references")
 		return
 	}
 	if refCount > 0 {
@@ -252,7 +203,7 @@ func (h *OrgTypeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM org_types WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "删除组织类型失败")
+		respondError(w, http.StatusInternalServerError, "failed to delete org type")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

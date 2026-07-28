@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -46,74 +45,26 @@ func (h *WorkflowHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scene := r.URL.Query().Get("scene")
-	status := r.URL.Query().Get("status")
-	search := r.URL.Query().Get("search")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if scene != "" {
-		where = append(where, "scene = $"+itoa(argIdx))
-		args = append(args, scene)
-		argIdx++
-	}
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "name ILIKE $"+itoa(argIdx))
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM workflows WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, tenant_id, name, scene, description, steps, major_ids, usage_count, status, created_at
-		FROM workflows
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery[domain.Workflow](r.Context(), h.DB, r, listQueryConfig[domain.Workflow]{
+		Table:         "workflows",
+		SelectColumns: "id, tenant_id, name, scene, description, steps, major_ids, usage_count, status, created_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if scene := r.URL.Query().Get("scene"); scene != "" {
+				qb.addCondition("scene = " + qb.nextArg(scene))
+			}
+			if status := r.URL.Query().Get("status"); status != "" {
+				qb.addCondition("status = " + qb.nextArg(status))
+			}
+		},
+	}, h.scanWorkflowRows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询工作流失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanWorkflowRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取工作流失败")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "failed to list workflows")
 		return
 	}
 
@@ -129,7 +80,7 @@ func (h *WorkflowHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	workflow, err := h.fetchWorkflow(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "工作流不存在")
+		respondError(w, http.StatusNotFound, "workflow not found")
 		return
 	}
 	if workflow.TenantID != nil && !verifyTenantOwnership(w, r, *workflow.TenantID) {
@@ -175,7 +126,7 @@ func (h *WorkflowHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "工作流名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "创建工作流失败")
+		respondError(w, http.StatusInternalServerError, "failed to create workflow")
 		return
 	}
 
@@ -192,7 +143,7 @@ func (h *WorkflowHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	existing, err := h.fetchWorkflow(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "工作流不存在")
+		respondError(w, http.StatusNotFound, "workflow not found")
 		return
 	}
 	if existing.TenantID != nil && !verifyTenantOwnership(w, r, *existing.TenantID) {
@@ -214,7 +165,7 @@ func (h *WorkflowHandler) Update(w http.ResponseWriter, r *http.Request) {
 		req.Status = string(existing.Status)
 	}
 	if req.Status != string(domain.WorkflowStatusActive) && req.Status != string(domain.WorkflowStatusInactive) {
-		respondError(w, http.StatusBadRequest, "无效状态")
+		respondError(w, http.StatusBadRequest, "invalid status")
 		return
 	}
 
@@ -235,7 +186,7 @@ func (h *WorkflowHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "工作流名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "更新工作流失败")
+		respondError(w, http.StatusInternalServerError, "failed to update workflow")
 		return
 	}
 
@@ -252,7 +203,7 @@ func (h *WorkflowHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	workflow, err := h.fetchWorkflow(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "工作流不存在")
+		respondError(w, http.StatusNotFound, "workflow not found")
 		return
 	}
 	if workflow.TenantID != nil && !verifyTenantOwnership(w, r, *workflow.TenantID) {
@@ -261,7 +212,7 @@ func (h *WorkflowHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM workflows WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "删除工作流失败")
+		respondError(w, http.StatusInternalServerError, "failed to delete workflow")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
