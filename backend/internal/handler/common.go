@@ -9,10 +9,12 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"unicode"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 )
 
@@ -88,6 +90,100 @@ func executeCountQuery(ctx context.Context, db interface {
 		return 0
 	}
 	return total
+}
+
+// listQueryFilter lets callers append extra WHERE clauses and bound arguments for list queries.
+type listQueryFilter func(r *http.Request, argIdx int) (clauses []string, args []any)
+
+// listQueryConfig configures executeListQuery for a standard tenant-scoped list endpoint.
+type listQueryConfig struct {
+	Table         string
+	SelectColumns string
+	OrderBy       string
+	TenantScoped  bool
+	TenantColumn  string
+	SearchColumns []string
+	ExtraFilter   listQueryFilter
+}
+
+// executeListQuery runs a COUNT + SELECT list query with tenant filter, optional keyword search,
+// caller-supplied extra filters, and pagination. It returns the scanned items and total count.
+func executeListQuery[T any](
+	ctx context.Context,
+	db *pgxpool.Pool,
+	r *http.Request,
+	cfg listQueryConfig,
+	scanRows func(rows pgx.Rows) ([]T, error),
+) ([]T, int, error) {
+	limit, _ := parsePageLimit(r.URL.Query().Get("limit"), 50)
+	offset, _ := parseInt(r.URL.Query().Get("offset"), 0)
+	search := r.URL.Query().Get("search")
+
+	where := []string{"1=1"}
+	args := []any{}
+	argIdx := 1
+
+	if cfg.TenantScoped {
+		tenantID, ok := tenantFilter(middleware.CurrentUser(r))
+		if !ok {
+			return nil, 0, fmt.Errorf("missing tenant")
+		}
+		if tenantID != "" {
+			col := cfg.TenantColumn
+			if col == "" {
+				col = "tenant_id"
+			}
+			where = append(where, col+" = $"+itoa(argIdx))
+			args = append(args, tenantID)
+			argIdx++
+		}
+	}
+
+	if cfg.ExtraFilter != nil {
+		clauses, extraArgs := cfg.ExtraFilter(r, argIdx)
+		where = append(where, clauses...)
+		args = append(args, extraArgs...)
+		argIdx += len(extraArgs)
+	}
+
+	if search != "" && len(cfg.SearchColumns) > 0 {
+		if len(cfg.SearchColumns) == 1 {
+			where = append(where, cfg.SearchColumns[0]+" ILIKE $"+itoa(argIdx))
+		} else {
+			parts := make([]string, len(cfg.SearchColumns))
+			for i, col := range cfg.SearchColumns {
+				parts[i] = col + " ILIKE $" + itoa(argIdx)
+			}
+			where = append(where, "("+strings.Join(parts, " OR ")+")")
+		}
+		args = append(args, "%"+search+"%")
+		argIdx++
+	}
+
+	countQuery := "SELECT COUNT(*) FROM " + cfg.Table + " WHERE " + strings.Join(where, " AND ")
+	total := executeCountQuery(ctx, db, countQuery, args)
+
+	orderBy := cfg.OrderBy
+	if orderBy == "" {
+		orderBy = "created_at DESC"
+	}
+	query := "SELECT " + cfg.SelectColumns + " FROM " + cfg.Table +
+		" WHERE " + strings.Join(where, " AND ") +
+		" ORDER BY " + orderBy +
+		" LIMIT $" + itoa(argIdx) + " OFFSET $" + itoa(argIdx+1)
+	args = append(args, limit, offset)
+
+	rows, err := db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	items, err := scanRows(rows)
+	if err != nil {
+		return nil, 0, err
+	}
+	return items, total, nil
 }
 
 func itoa(i int) string {
