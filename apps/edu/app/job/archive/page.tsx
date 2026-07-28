@@ -20,7 +20,6 @@ export default function PositionArchivePage() {
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState("")
   const [selectedMajor, setSelectedMajor] = useState<string | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
   const [batchDeleteTarget, setBatchDeleteTarget] = useState<string[] | null>(null)
   const industryMap = useIndustryMap()
   const majorMap = useMajorMap()
@@ -109,13 +108,8 @@ export default function PositionArchivePage() {
   }
 
   const handleDelete = async (position: Position) => {
-    setDeleteTarget({ id: position.id, name: position.name })
-  }
-
-  const confirmDelete = async () => {
-    if (!deleteTarget) return
     try {
-      await positionApi.delete(deleteTarget.id)
+      await positionApi.delete(position.id)
       await loadData()
       toast({ title: "已删除" })
     } catch (err: any) {
@@ -124,8 +118,6 @@ export default function PositionArchivePage() {
         title: "删除失败",
         description: err.message || "请稍后重试",
       })
-    } finally {
-      setDeleteTarget(null)
     }
   }
 
@@ -251,14 +243,6 @@ export default function PositionArchivePage() {
         searchValue={search}
         onSearchChange={setSearch}
         columns={columns}
-      />
-      <ConfirmDialog
-        open={deleteTarget !== null}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
-        title="确认删除"
-        description={`确定删除岗位「${deleteTarget?.name}」吗？删除后不可恢复。`}
-        variant="destructive"
-        onConfirm={confirmDelete}
       />
       <ConfirmDialog
         open={batchDeleteTarget !== null}

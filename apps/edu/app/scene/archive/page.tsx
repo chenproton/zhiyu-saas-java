@@ -17,7 +17,6 @@ export default function SceneArchivePage() {
   const [selectedProfession, setSelectedProfession] = useState<string | null>(
     null
   )
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
   const [batchDeleteTarget, setBatchDeleteTarget] = useState<string[] | null>(null)
 
   const loadData = useCallback(async () => {
@@ -102,13 +101,8 @@ export default function SceneArchivePage() {
   }
 
   const handleDelete = async (scenario: Scenario) => {
-    setDeleteTarget({ id: scenario.id, name: scenario.name })
-  }
-
-  const confirmDelete = async () => {
-    if (!deleteTarget) return
     try {
-      await scenarioApi.delete(deleteTarget.id)
+      await scenarioApi.delete(scenario.id)
       await loadData()
       toast({ title: "已删除" })
     } catch (err: any) {
@@ -117,8 +111,6 @@ export default function SceneArchivePage() {
         title: "删除失败",
         description: err.message || "请稍后重试",
       })
-    } finally {
-      setDeleteTarget(null)
     }
   }
 
@@ -247,14 +239,6 @@ export default function SceneArchivePage() {
         searchValue={search}
         onSearchChange={setSearch}
         columns={columns}
-      />
-      <ConfirmDialog
-        open={deleteTarget !== null}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
-        title="确认删除"
-        description={`确定删除场景「${deleteTarget?.name}」吗？删除后不可恢复。`}
-        variant="destructive"
-        onConfirm={confirmDelete}
       />
       <ConfirmDialog
         open={batchDeleteTarget !== null}
