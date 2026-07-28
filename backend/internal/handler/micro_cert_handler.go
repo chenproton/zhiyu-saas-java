@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
@@ -72,6 +73,7 @@ func (h *MicroCertHandler) ListHistory(w http.ResponseWriter, r *http.Request) {
 		Table:         "cert_issuance_records",
 		SelectColumns: "id, template_id, user_id, cert_number, issue_date, expire_date, status, revoked_at, revoke_reason",
 		TenantScoped:  true,
+		OrderBy:       "issue_date DESC",
 		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
 			if templateID := r.URL.Query().Get("templateId"); templateID != "" {
 				qb.addCondition("template_id = " + qb.nextArg(templateID))
@@ -89,6 +91,16 @@ func (h *MicroCertHandler) ListHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, http.StatusOK, CertIssuanceListResponse{Items: items, Total: total})
+}
+
+func normalizeCertTypeID(id string) string {
+	if id == "" {
+		return ""
+	}
+	if u, err := uuid.Parse(id); err == nil {
+		return u.String()
+	}
+	return uuid.NewSHA1(uuid.NameSpaceDNS, []byte(id)).String()
 }
 
 func (h *MicroCertHandler) GetTemplate(w http.ResponseWriter, r *http.Request) {
@@ -130,7 +142,7 @@ func (h *MicroCertHandler) CreateTemplate(w http.ResponseWriter, r *http.Request
 	id, err := h.Store.CreateTemplate(r.Context(), store.MicroCertTemplateCreateParams{
 		TenantID:     tenantID,
 		Title:        req.Title,
-		CertTypeID:   req.CertTypeID,
+		CertTypeID:   normalizeCertTypeID(req.CertTypeID),
 		CertTypeName: req.CertTypeName,
 		Content:      req.Content,
 		CoverImage:   req.CoverImage,
@@ -169,7 +181,7 @@ func (h *MicroCertHandler) UpdateTemplate(w http.ResponseWriter, r *http.Request
 
 	if err := h.Store.UpdateTemplate(r.Context(), id, store.MicroCertTemplateUpdateParams{
 		Title:        req.Title,
-		CertTypeID:   req.CertTypeID,
+		CertTypeID:   normalizeCertTypeID(req.CertTypeID),
 		CertTypeName: req.CertTypeName,
 		Content:      req.Content,
 		CoverImage:   req.CoverImage,

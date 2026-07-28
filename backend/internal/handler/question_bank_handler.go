@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -68,23 +69,23 @@ func (h *QuestionBankHandler) List(w http.ResponseWriter, r *http.Request) {
 	args := []interface{}{}
 	argIdx := 1
 	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
+		where = append(where, "qb.tenant_id = $"+itoa(argIdx))
 		args = append(args, effectiveTenantID)
 		argIdx++
 	}
 
 	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
+		where = append(where, "qb.status = $"+itoa(argIdx))
 		args = append(args, status)
 		argIdx++
 	}
 	if search != "" {
-		where = append(where, "(name ILIKE $"+itoa(argIdx)+" OR description ILIKE $"+itoa(argIdx)+")")
+		where = append(where, "(qb.name ILIKE $"+itoa(argIdx)+" OR qb.description ILIKE $"+itoa(argIdx)+")")
 		args = append(args, "%"+search+"%")
 		argIdx++
 	}
 
-	countQuery := "SELECT COUNT(*) FROM question_banks WHERE " + strings.Join(where, " AND ")
+	countQuery := "SELECT COUNT(*) FROM question_banks qb WHERE " + strings.Join(where, " AND ")
 	var total int
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 	query := `
@@ -113,6 +114,7 @@ func (h *QuestionBankHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
+		slog.Error("list question banks query failed", "err", err)
 		respondError(w, http.StatusInternalServerError, "查询题库失败")
 		return
 	}
@@ -120,6 +122,7 @@ func (h *QuestionBankHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, err := h.scanQuestionBankRows(rows)
 	if err != nil {
+		slog.Error("scan question banks failed", "err", err)
 		respondError(w, http.StatusInternalServerError, "读取题库失败")
 		return
 	}

@@ -412,11 +412,15 @@ var (
 		"appeal_records",
 		"approval_records",
 		"banner_configs",
+		"batches",
+		"batches b LEFT JOIN majors m ON m.id = b.major_id",
 		"career_positions cp LEFT JOIN LATERAL (SELECT COALESCE(array_agg(cpm.major_id), '{}') AS major_ids, COALESCE(array_agg(m.name), '{}') AS major_names FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id) maj ON true LEFT JOIN users cr_u ON cr_u.id = cp.created_by",
 		"cert_issuance_records",
 		"certificate_library",
 		"certification_rules",
 		"courses c LEFT JOIN majors m ON m.id = c.major_id LEFT JOIN industries i ON i.id = c.industry_id LEFT JOIN lesson_batches lb ON lb.id = c.batch_id LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM view_logs WHERE target_type = 'course' AND target_id = c.id) vlc ON true",
+		"evaluation_batches",
+		"evaluation_batches eb LEFT JOIN majors m ON m.id = eb.major_id",
 		"evaluation_methods",
 		"exam_results er LEFT JOIN majors m ON m.id = er.major_id",
 		"exam_usages",
@@ -426,6 +430,8 @@ var (
 		"industries",
 		"knowledge_points",
 		"learn_roads",
+		"lesson_batches",
+		"lesson_batches lb LEFT JOIN majors m ON m.id = lb.major_id",
 		"majors",
 		"micro_cert_templates",
 		"node_homeworks",
@@ -446,6 +452,8 @@ var (
 		"scenario_grade_mappings",
 		"scenario_tasks",
 		"scenario_weight_configs",
+		"scene_batches",
+		"scene_batches sb LEFT JOIN majors m ON m.id = sb.major_id",
 		"scenarios s LEFT JOIN LATERAL (SELECT COALESCE(array_agg(i.name), '{}') AS names FROM industries i WHERE i.id::text = ANY(s.industry_ids)) ind ON true LEFT JOIN LATERAL (SELECT COALESCE(array_agg(m2.name), '{}') AS names FROM majors m2 WHERE m2.id = ANY(s.profession_ids)) prof ON true LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM view_logs WHERE target_type = 'scenario' AND target_id = s.id) vlc ON true LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM scenario_tasks t WHERE t.scenario_id = s.id) tcnt ON true",
 		"scene_evaluation_results",
 		"staff_titles",
@@ -472,6 +480,7 @@ var (
 		"id, name, code, description, linked, granular_lesson_ids::text[] AS granular_lesson_ids, creator_id, created_at, updated_at",
 		"id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, admin_ids, status, created_at, updated_at",
 		"id, name, description, position_ids, steps, created_at, updated_at",
+		"id, tenant_id, code, name, description, user_count, status, created_at",
 		"id, node_id, module_key, mode, data",
 		"id, node_id, title, requirement, need_attachment, deadline",
 		"id, node_id, title, type, time_limit",
@@ -496,6 +505,9 @@ var (
 		"id, title, cert_type_id, cert_type_name, content, cover_image, created_at, updated_at",
 		"id, title, image_url, link_url, sort_order, is_enabled, created_at, updated_at",
 		"id, user_id, type, reason, status, created_at",
+		"id, user_id, career_position_id, overall_grade, domain_scores, class_rank, class_total, major_rank, major_total, recommend_positions, updated_at, completed_courses, completed_scenes, total_credits, archive_count, course_records, graduation_qualified, attendance_rate, diploma_badge, dual_badge",
+		"id, user_id, material_type, material_name, issuing_org, obtain_date, level, audit_status, audit_remark, converted_credit, direction, is_enabled, created_at",
+		"id, tenant_id, institution_id, org_node_id, major_id, role, platform, login_name, username, name, email, phone, avatar_url, student_no, work_id, id_card, title_ids, oauth, status, graduate_year, last_login_at, created_at, updated_at",
 		"lb.id, lb.name, lb.code, lb.org_node_id, lb.major_id, COALESCE(m.name, '') AS major_name, lb.workflow_id, lb.status, lb.course_count, lb.created_at, lb.updated_at",
 		"n.id, n.course_id, n.parent_id, n.name, n.code, n.sort_order, n.ref_type, n.source_id, n.source_name, n.teaching_goals, n.detailed_description, n.description_pdf, n.background, n.estimated_hours, n.duration, n.difficulty, n.knowledge_point_ids::text[], n.resource_ids::text[], n.eval_data, n.status",
 		"pr.id, pr.major_id, COALESCE(m.name, '') AS major_name, pr.career_position_id, pr.position_type, pr.reason, pr.sort_order, pr.is_enabled, pr.created_by, pr.created_at, pr.updated_at",
@@ -504,6 +516,10 @@ var (
 		"c.id, c.code, c.name, c.type, c.category, c.major_id, m.name AS major_name, c.teacher_id, c.industry_id, i.name AS industry_name, c.version, c.online_hours, c.offline_hours, c.online_weight, c.offline_weight, c.semester, c.class_name, c.status, c.cover_color, c.cover_image, c.course_tag, c.difficulty, c.description, c.knowledge_point_ids::text[] AS knowledge_point_ids, c.resource_ids::text[] AS resource_ids, c.creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name, c.node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count, COALESCE(vlc.cnt, 0) AS view_count, c.study_count, c.created_at, c.updated_at",
 		"cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id, COALESCE(maj.major_ids, '{}') AS major_ids, COALESCE(maj.major_names, '{}') AS major_names, cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description, cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by, COALESCE(cr_u.name, cp.created_by::text) AS created_by_name, cp.collaborators, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, (SELECT COUNT(*) FROM position_favorites pf WHERE pf.career_position_id = cp.id) AS favorite_count, (SELECT COUNT(*) FROM view_logs vl WHERE vl.target_type = 'career_position' AND vl.target_id = cp.id) AS view_count, cp.created_at, cp.updated_at",
 		"s.id, s.name, s.code, s.cover_image, s.career_position_id, s.industry_ids, COALESCE(ind.names, '{}') AS industry_names, s.profession_ids, COALESCE(prof.names, '{}') AS profession_names, s.batch_id, s.difficulty, s.version, s.status, s.background, s.delivery_goal, s.creator_id, s.co_builder_ids, s.tenant_id, s.created_at, s.updated_at, s.publish_time, COALESCE(vlc.cnt, 0) AS view_count, COALESCE(tcnt.cnt, 0) AS task_count",
+		"e.id, e.code, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image, e.is_temp, e.collaborator_ids, COALESCE((SELECT u.name FROM users u WHERE u.id = e.creator_id), e.creator_id::text) AS creator_name, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(e.collaborator_ids) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, e.collaborator_dept_ids, e.batch_id, e.version, e.owner_type, e.creator_id, e.created_at, e.updated_at",
+		`id, scenario_id, name, code, sort_order, description, detailed_description, description_pdf,
+	estimated_hours, task_type, difficulty, background, dependency_ids, is_referenced, source_scenario_id,
+	knowledge_point_ids, ability_point_ids, resource_ids, eval_data, tenant_id`,
 	}
 
 	allowedListQueryOrderBy = []string{
@@ -531,12 +547,16 @@ var (
 
 	allowedListQueryTenantColumns = []string{
 		"",
+		"b.tenant_id",
 		"c.tenant_id",
 		"cp.tenant_id",
 		"e.tenant_id",
+		"eb.tenant_id",
 		"id",
+		"lb.tenant_id",
 		"pr.tenant_id",
 		"s.tenant_id",
+		"sb.tenant_id",
 	}
 
 	allowedListQuerySearchColumns = []string{
@@ -663,12 +683,14 @@ func executeListQuery[T any](ctx context.Context, db listQueryDB, r *http.Reques
 
 	rows, err := db.Query(ctx, query, qb.args...)
 	if err != nil {
+		slog.Error("list query failed", "query", query, "error", err)
 		return nil, total, err
 	}
 	defer rows.Close()
 
 	items, err := scanner(rows)
 	if err != nil {
+		slog.Error("scan rows failed", "query", query, "error", err)
 		return nil, total, err
 	}
 	return items, total, nil

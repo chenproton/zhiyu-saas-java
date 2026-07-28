@@ -214,6 +214,7 @@ func (h *RoleHandler) Assign(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Store.Assign(r.Context(), role.TenantID, id, req.UserID); err != nil {
+		slog.Error("assign role failed", "error", err)
 		respondError(w, http.StatusInternalServerError, "分配角色失败")
 		return
 	}

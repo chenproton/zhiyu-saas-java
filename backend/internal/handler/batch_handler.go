@@ -116,6 +116,7 @@ func (h *BatchHandler) List(w http.ResponseWriter, r *http.Request) {
 		ScanRows: h.Config.ScanRows,
 	})
 	if err != nil {
+		slog.Error("batch list failed", "entity", h.Config.EntityName, "error", err)
 		if errors.Is(err, ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return

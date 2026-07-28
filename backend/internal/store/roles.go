@@ -88,8 +88,8 @@ func (s *RolesStore) Assign(ctx context.Context, tenantID, roleID, userID string
 	defer tx.Rollback(ctx)
 
 	if _, err := tx.Exec(ctx,
-		`INSERT INTO user_roles (role_id, user_id, tenant_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
-		roleID, userID, tenantID,
+		`INSERT INTO user_roles (role_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
+		roleID, userID,
 	); err != nil {
 		return err
 	}

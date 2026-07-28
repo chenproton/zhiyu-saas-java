@@ -95,14 +95,24 @@ func (h *LearnRoadHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
+	if req.Steps == nil {
+		req.Steps = domain.JSONSlice{}
+	}
+
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	id, err := h.Store.Create(r.Context(), store.LearnRoadCreateParams{
+		TenantID:    tenantID,
 		Name:        req.Name,
 		Description: req.Description,
 		PositionIDs: req.PositionIDs,
 		Steps:       req.Steps,
 	})
 	if err != nil {
+		slog.Error("create learn road failed", "error", err)
 		respondError(w, http.StatusInternalServerError, "创建学习路径失败")
 		return
 	}

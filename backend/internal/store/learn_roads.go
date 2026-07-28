@@ -18,6 +18,7 @@ func NewLearnRoadsStore(db *pgxpool.Pool) *LearnRoadsStore {
 }
 
 type LearnRoadCreateParams struct {
+	TenantID    string
 	Name        string
 	Description *string
 	PositionIDs []string
@@ -48,11 +49,23 @@ func (s *LearnRoadsStore) GetByID(ctx context.Context, id string) (domain.LearnR
 	return r, nil
 }
 
+func normalizePositionIDs(ids []string) []string {
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		if u, err := uuid.Parse(id); err == nil {
+			out[i] = u.String()
+		} else {
+			out[i] = uuid.NewSHA1(uuid.NameSpaceDNS, []byte(id)).String()
+		}
+	}
+	return out
+}
+
 func (s *LearnRoadsStore) Create(ctx context.Context, p LearnRoadCreateParams) (string, error) {
 	id := uuid.NewString()
 	_, err := s.DB.Exec(ctx,
-		`INSERT INTO learn_roads (id, name, description, position_ids, steps) VALUES ($1,$2,$3,$4,$5)`,
-		id, p.Name, p.Description, p.PositionIDs, p.Steps,
+		`INSERT INTO learn_roads (id, tenant_id, name, description, position_ids, steps) VALUES ($1,$2,$3,$4,$5,$6)`,
+		id, p.TenantID, p.Name, p.Description, normalizePositionIDs(p.PositionIDs), p.Steps,
 	)
 	if err != nil {
 		return "", err
@@ -63,7 +76,7 @@ func (s *LearnRoadsStore) Create(ctx context.Context, p LearnRoadCreateParams) (
 func (s *LearnRoadsStore) Update(ctx context.Context, id string, p LearnRoadUpdateParams) error {
 	_, err := s.DB.Exec(ctx,
 		`UPDATE learn_roads SET name=$1, description=$2, position_ids=$3, steps=$4, updated_at=NOW() WHERE id=$5`,
-		p.Name, p.Description, p.PositionIDs, p.Steps, id,
+		p.Name, p.Description, normalizePositionIDs(p.PositionIDs), p.Steps, id,
 	)
 	return err
 }
