@@ -824,7 +824,7 @@ func (h *UserManagementHandler) rebindUserRole(ctx context.Context, userID, role
 	var validRole bool
 	_ = h.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM roles WHERE id = $1 AND tenant_id = $2)`, roleID, tenantID).Scan(&validRole)
 	if !validRole {
-		return fmt.Errorf("invalid roleId: role not in tenant")
+		return fmt.Errorf("角色 ID 无效：该角色不属于当前租户")
 	}
 	h.decRoleCountsForUser(ctx, userID)
 	if _, err := h.DB.Exec(ctx, `DELETE FROM user_roles WHERE user_id = $1`, userID); err != nil {
@@ -993,7 +993,7 @@ func (h *UserManagementHandler) validateUserOrgMajor(ctx context.Context, tenant
 		var exists bool
 		err := h.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM majors WHERE id = $1 AND tenant_id = $2)`, *majorID, tenantID).Scan(&exists)
 		if err != nil || !exists {
-			return fmt.Errorf("invalid majorId")
+			return fmt.Errorf("专业 ID 无效")
 		}
 	}
 	return nil

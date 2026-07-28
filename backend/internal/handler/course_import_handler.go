@@ -47,17 +47,17 @@ type nodeRow struct {
 
 func (h *CourseImportHandler) parseUploadedExcel(r *http.Request) (*excelize.File, []string, error) {
 	if err := r.ParseMultipartForm(50 << 20); err != nil {
-		return nil, nil, fmt.Errorf("invalid form")
+		return nil, nil, fmt.Errorf("表单数据无效")
 	}
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		return nil, nil, fmt.Errorf("missing file")
+		return nil, nil, fmt.Errorf("缺少上传文件")
 	}
 	defer file.Close()
 
 	xlsx, err := excelize.OpenReader(file)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to parse Excel file")
+		return nil, nil, fmt.Errorf("解析 Excel 文件失败")
 	}
 	sheets := xlsx.GetSheetList()
 	return xlsx, sheets, nil
@@ -328,7 +328,7 @@ func (h *CourseImportHandler) createSystemCourseNode(ctx context.Context, tenant
 		if g == nil {
 			result.Skipped++
 			result.Errors = append(result.Errors, fmt.Sprintf("节点[%s/%s]未找到同名颗粒课,已跳过", nr.courseName, nr.nodeName))
-			return fmt.Errorf("granular course not found")
+			return fmt.Errorf("未找到颗粒课")
 		}
 		sourceID = &g.ID
 		sn := g.Name

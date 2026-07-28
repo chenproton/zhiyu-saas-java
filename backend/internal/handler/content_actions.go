@@ -46,7 +46,7 @@ var allowedInviteColumns = []string{"collaborator_ids", "co_builder_ids", "co_cr
 func (c contentActions) tableFor(w http.ResponseWriter) (string, bool) {
 	table, err := sanitizeIdentifier(c.table, allowedContentTables)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "invalid table configuration")
+		respondError(w, http.StatusInternalServerError, "表配置无效")
 		return "", false
 	}
 	return table, true
@@ -56,7 +56,7 @@ func (c contentActions) tableFor(w http.ResponseWriter) (string, bool) {
 func (c contentActions) inviteColFor(w http.ResponseWriter) (string, bool) {
 	col, err := sanitizeIdentifier(c.inviteCol, allowedInviteColumns)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "invalid invite column configuration")
+		respondError(w, http.StatusInternalServerError, "邀请列配置无效")
 		return "", false
 	}
 	return col, true

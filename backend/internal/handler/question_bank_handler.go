@@ -416,7 +416,7 @@ func (h *QuestionBankHandler) rejectDraftPool(r *http.Request) error {
 		return err
 	}
 	if isDraftPool {
-		return fmt.Errorf("draft pool")
+		return fmt.Errorf("不能对草稿池执行此操作")
 	}
 	return nil
 }

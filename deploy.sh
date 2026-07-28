@@ -21,7 +21,7 @@ SKIP_BACKUP=false
 SKIP_CHECKS=false
 SKIP_MERGE=false
 FORCE_INSTALL=0
-SKIP_TYPECHECK=false
+RUN_TYPECHECK=false
 USE_TURBOPACK=true
 BRANCH_NAME=""
 BUILD_TREE=""
@@ -37,7 +37,8 @@ while [[ $# -gt 0 ]]; do
     --skip-checks) SKIP_CHECKS=true; shift ;;
     --skip-merge) SKIP_MERGE=true; shift ;;
     --force-install) FORCE_INSTALL=1; shift ;;
-    --skip-typecheck) SKIP_TYPECHECK=true; shift ;;
+    --typecheck) RUN_TYPECHECK=true; shift ;;
+    --skip-typecheck) echo "警告：--skip-typecheck 已废弃，类型检查默认不再单独执行，使用 --typecheck 强制开启" >&2; shift ;;
     --turbopack) USE_TURBOPACK=true; shift ;;
     --branch) BRANCH_NAME="$2"; shift 2 ;;
     --demo) DEMO_MODE=true; shift ;;
@@ -53,7 +54,8 @@ while [[ $# -gt 0 ]]; do
       echo "  --skip-backup        跳过数据库备份"
       echo "  --skip-checks        跳过代码检查"
       echo "  --force-install      强制重装依赖"
-      echo "  --skip-typecheck     跳过前端类型检查"
+      echo "  --typecheck          部署前单独执行 tsc --noEmit（Next.js 构建内部仍会检查类型）"
+      echo "  --skip-typecheck     已废弃（类型检查默认不再单独执行）"
       echo "  --turbopack          使用 Turbopack 构建"
       echo "  --skip-merge         跳过自动合并到 master（仅分支模式）"
       echo "  --skip-pull          跳过 git pull（仅 demo 模式）"
@@ -457,15 +459,11 @@ find "$DEPLOY_ROLLBACK_DIR" -maxdepth 1 -type d -name '2*' 2>/dev/null | sort | 
 # 注意：Go 编译和 Next.js 构建已在后续步骤中执行，无需重复检查
 if [[ "$SKIP_CHECKS" != "true" ]]; then
   echo "==> 运行代码检查..."
-  if [[ "$BACKEND_ONLY" != "true" ]]; then
-    if [[ "$SKIP_TYPECHECK" == "true" ]]; then
-      echo "  跳过前端类型检查（--skip-typecheck）"
-    else
-      echo "  前端类型检查..."
-      (cd "$PROJECT_ROOT" && pnpm --filter @zhiyu/edu typecheck) || {
-        echo "错误：TypeScript 类型检查未通过" >&2; exit 1
-      }
-    fi
+  if [[ "$BACKEND_ONLY" != "true" && "$RUN_TYPECHECK" == "true" ]]; then
+    echo "  前端类型检查..."
+    (cd "$PROJECT_ROOT" && pnpm --filter @zhiyu/edu typecheck) || {
+      echo "错误：TypeScript 类型检查未通过" >&2; exit 1
+    }
   fi
 else
   echo "==> 跳过代码检查（--skip-checks）"
@@ -577,7 +575,8 @@ if [[ "$BACKEND_ONLY" != "true" ]]; then
 
   if [[ "$BUILD_EDU" == "true" ]]; then
     echo "==> 构建教育管理前端（CPU 限制: $BUILD_CPU_QUOTA）..."
-    rm -rf "$EDU_DIR/.next"
+    # 保留 .next/cache 以复用 Turbopack 增量缓存，仅清理上一次构建产物
+    rm -rf "$EDU_DIR/.next/standalone" "$EDU_DIR/.next/server" "$EDU_DIR/.next/static"
     NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
       systemd-run --scope --quiet -p CPUQuota="$BUILD_CPU_QUOTA" -- \
         pnpm --filter @zhiyu/edu build $BUILD_ARGS || {

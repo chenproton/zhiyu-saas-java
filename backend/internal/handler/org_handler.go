@@ -450,7 +450,7 @@ func (h *OrgHandler) validateOrgRefs(ctx context.Context, tenantID, typeID strin
 		`SELECT EXISTS(SELECT 1 FROM org_types WHERE id = $1 AND tenant_id = $2)`,
 		typeID, tenantID,
 	).Scan(&typeExists); err != nil || !typeExists {
-		return fmt.Errorf("invalid typeId")
+		return fmt.Errorf("组织类型 ID 无效")
 	}
 	if parentID != nil && *parentID != "" {
 		var parentExists bool
@@ -458,7 +458,7 @@ func (h *OrgHandler) validateOrgRefs(ctx context.Context, tenantID, typeID strin
 			`SELECT EXISTS(SELECT 1 FROM organizations WHERE id = $1 AND tenant_id = $2)`,
 			*parentID, tenantID,
 		).Scan(&parentExists); err != nil || !parentExists {
-			return fmt.Errorf("invalid parentId")
+			return fmt.Errorf("上级组织 ID 无效")
 		}
 	}
 	return nil

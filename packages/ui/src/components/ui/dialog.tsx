@@ -55,8 +55,6 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
   size?: 'sm' | 'default' | 'lg' | 'xl' | 'full'
-  annotationContext?: string
-  annotationContainerRef?: React.RefObject<HTMLDivElement | null>
 }) {
   const contentRef = React.useRef<HTMLDivElement>(null)
 

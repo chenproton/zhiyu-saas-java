@@ -163,7 +163,7 @@ func parseImportCSV(r *http.Request) ([]importRow, []string, error) {
 	reader.FieldsPerRecord = -1
 	header, err := reader.Read()
 	if err != nil {
-		return nil, nil, fmt.Errorf("empty or invalid csv")
+		return nil, nil, fmt.Errorf("CSV 为空或格式无效")
 	}
 
 	colIdx := make(map[string]int)
