@@ -58,6 +58,7 @@ import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/hooks/use-toast"
 import { UserSelector } from "@/components/shared/user-selector"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
 import { useImportFlow } from "@/hooks/use-import-flow"
 import { majorApi, workflowApi } from "@/lib/api"
@@ -230,6 +231,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
   const [inviteTarget, setInviteTarget] = useState<T | null>(null)
   const [inviteSelectedIds, setInviteSelectedIds] = useState<string[]>([])
+  const [confirmAction, setConfirmAction] = useState<{ type: "archive" | "delete"; item: T } | null>(null)
   const [importStep, setImportStep] = useState<"download" | "upload">("download")
   const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
   const [csvImporting, setCsvImporting] = useState(false)
@@ -505,8 +507,23 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   }
 
   const handleArchive = async (item: T) => {
-    if (!confirm(`确定要归档${entityLabel}「${item.name}」吗？`)) return
-    try { await itemApi.archive(item.id); await refresh() } catch (_) {}
+    setConfirmAction({ type: "archive", item })
+  }
+
+  const handleConfirmAction = async () => {
+    if (!confirmAction) return
+    const { type, item } = confirmAction
+    try {
+      if (type === "archive") {
+        await itemApi.archive(item.id)
+      } else {
+        await itemApi.delete(item.id)
+      }
+      await refresh()
+    } catch (_) {
+    } finally {
+      setConfirmAction(null)
+    }
   }
 
   const handleBatchArchive = async () => {
@@ -633,8 +650,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   }
 
   const handleDelete = async (item: T) => {
-    if (!confirm(`确定要删除${entityLabel}「${item.name}」吗？`)) return
-    try { await itemApi.delete(item.id); await refresh() } catch (_) {}
+    setConfirmAction({ type: "delete", item })
   }
 
   const handleSubmitApproval = async (item: T) => {
@@ -647,7 +663,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     }
     const batch = batches.find((b) => b.id === item.batchId)
     if (!batch) {
-      alert(`该${entityLabel}未关联批次，无法提交审批`)
+      toast({ variant: "destructive", title: "提示", description: `该${entityLabel}未关联批次，无法提交审批` })
       return
     }
     try {
@@ -655,7 +671,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       await approvalApi.create({ targetType: approvalTargetType, targetId: item.id, workflowId: batch.workflowId })
       await refresh()
     } catch (err) {
-      alert("提交审批失败，请稍后重试")
+      toast({ variant: "destructive", title: "提交失败", description: "提交审批失败，请稍后重试" })
     }
   }
 
@@ -673,7 +689,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       setSubmitSelectedMajorId("all")
       await refresh()
     } catch (err) {
-      alert("提交审批失败，请稍后重试")
+      toast({ variant: "destructive", title: "提交失败", description: "提交审批失败，请稍后重试" })
     }
   }
 
@@ -703,7 +719,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       setInviteTarget(null)
       await refresh()
     } catch (_) {
-      alert("调整共建人失败，请稍后重试")
+      toast({ variant: "destructive", title: "保存失败", description: "调整共建人失败，请稍后重试" })
     }
   }
 
@@ -740,7 +756,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       }
       await doExecuteImport(false)
     } catch (err: any) {
-      alert(err.message || "导入失败")
+      toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
       setCsvImporting(false)
     }
   }
@@ -760,7 +776,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
         result = await importExportApi.import(importEntityName, importFlow.importFile, overwrite)
       }
       const skippedMsg = result.skipped != null ? `，跳过 ${result.skipped} 条` : ""
-      alert(`导入完成：成功 ${result.created} 条，失败 ${result.failed} 条${skippedMsg}`)
+      toast({ title: "导入完成", description: `成功 ${result.created} 条，失败 ${result.failed} 条${skippedMsg}` })
       importFlow.setImportFile(null)
       importFlow.setImportPreview(null)
       setImportStep("download")
@@ -768,7 +784,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       setIsImportConfirmOpen(false)
       await refresh()
     } catch (err: any) {
-      alert(err.message || "导入失败")
+      toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
     } finally {
       setCsvImporting(false)
     }
@@ -782,7 +798,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
         : `${addHref}?id=${newItem.id}&new=true`
       router.push(url)
     } catch (err: any) {
-      alert(err.message || "创建失败")
+      toast({ variant: "destructive", title: "创建失败", description: err.message || "创建失败" })
     }
   }
 
@@ -1049,7 +1065,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
                   a.click()
                   URL.revokeObjectURL(url)
                 } catch (err: any) {
-                  alert(err.message || "导出失败")
+                  toast({ variant: "destructive", title: "导出失败", description: err.message || "导出失败" })
                 }
               } else {
                 handleBatchExport()
@@ -1243,6 +1259,22 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
           duplicateItems={importFlow.importPreview.duplicateItems}
           onConfirmOverwrite={() => doExecuteImport(true)}
           onConfirmSkip={() => doExecuteImport(false)}
+        />
+      )}
+
+      {/* Confirm Dialog */}
+      {confirmAction && (
+        <ConfirmDialog
+          open={!!confirmAction}
+          onOpenChange={(open) => !open && setConfirmAction(null)}
+          title={confirmAction.type === "archive" ? "确认归档" : "确认删除"}
+          description={
+            confirmAction.type === "archive"
+              ? `确定要归档${entityLabel}「${confirmAction.item.name}」吗？`
+              : `确定要删除${entityLabel}「${confirmAction.item.name}」吗？`
+          }
+          variant={confirmAction.type === "delete" ? "destructive" : "default"}
+          onConfirm={handleConfirmAction}
         />
       )}
 

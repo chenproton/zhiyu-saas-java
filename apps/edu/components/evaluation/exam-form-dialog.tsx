@@ -26,6 +26,7 @@ import type { Exam, ExamFormData } from "@/lib/types"
 import { evaluationBatchApi, fileApi } from "@/lib/api"
 import { UserSelector } from "@/components/shared/user-selector"
 import { useAuth } from "@/components/auth-provider"
+import { useToast } from "@/hooks/use-toast"
 import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 
@@ -43,6 +44,7 @@ export function ExamFormDialog({
   onSubmit,
 }: ExamFormDialogProps) {
   const { tenantId } = useAuth()
+  const { toast } = useToast()
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [coverUrl, setCoverUrl] = useState<string>("")
@@ -105,12 +107,12 @@ export function ExamFormDialog({
     if (!file) return
 
     if (file.size > 5 * 1024 * 1024) {
-      alert("文件大小不能超过 5MB")
+      toast({ variant: "destructive", title: "提示", description: "文件大小不能超过 5MB" })
       return
     }
 
     if (!file.type.startsWith("image/")) {
-      alert("请上传图片文件")
+      toast({ variant: "destructive", title: "提示", description: "请上传图片文件" })
       return
     }
 
@@ -118,7 +120,7 @@ export function ExamFormDialog({
       const res = await fileApi.upload(file)
       setCoverUrl(res.url)
     } catch (err: any) {
-      alert(err?.message || "封面上传失败")
+      toast({ variant: "destructive", title: "上传失败", description: err?.message || "封面上传失败" })
     }
   }
 
