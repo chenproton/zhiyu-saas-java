@@ -79,14 +79,14 @@ func (h *LogHandler) LoginLogs(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list login logs")
+		respondError(w, http.StatusInternalServerError, "查询登录日志失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanLoginLogRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan login logs")
+		respondError(w, http.StatusInternalServerError, "读取登录日志失败")
 		return
 	}
 
@@ -154,14 +154,14 @@ func (h *LogHandler) OperationLogs(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list operation logs")
+		respondError(w, http.StatusInternalServerError, "查询操作日志失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanOperationLogRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan operation logs")
+		respondError(w, http.StatusInternalServerError, "读取操作日志失败")
 		return
 	}
 

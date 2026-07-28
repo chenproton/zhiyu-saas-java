@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { AuthProvider } from '@/components/auth-provider'
 import { ThemeProvider } from '@/components/theme-provider'
-import { DataProvider as EvaluationDataProvider } from '@/components/providers/data-provider'
 import { AnnotationEditProvider } from '@/lib/annotation-edit-context'
 import './globals.css'
 
@@ -29,11 +28,9 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
-              <EvaluationDataProvider>
-                <AnnotationEditProvider>
-                  {children}
-                </AnnotationEditProvider>
-              </EvaluationDataProvider>
+            <AnnotationEditProvider>
+              {children}
+            </AnnotationEditProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

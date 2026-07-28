@@ -100,7 +100,7 @@ func New(db *pgxpool.Pool, jwtSecret string) http.Handler {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 
-	registerApiRoutes(r, jwtSecret, db, h)
+	RegisterAPIRoutes(r, jwtSecret, db, h)
 
 	return r
 }

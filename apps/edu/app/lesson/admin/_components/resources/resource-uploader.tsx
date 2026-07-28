@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import type { Resource } from "@/lib/types/lesson"
-import { formatFileSize } from "@/lib/resource-constants"
+import { formatFileSize } from "@/lib/utils"
 
 interface ResourceUploaderProps {
   resources: Resource[]

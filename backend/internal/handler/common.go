@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"unicode"
 
 	"github.com/jackc/pgx/v5"
@@ -261,5 +262,155 @@ func generateUniqueEntityCode(ctx context.Context, db interface {
 			return code, nil
 		}
 	}
-	return "", fmt.Errorf("failed to generate unique %s code", prefix)
+	return "", fmt.Errorf("生成唯一%s编码失败", prefix)
+}
+
+// listQueryBuilder accumulates WHERE conditions and positional arguments for
+// the generic list query helper. Use nextArg to reserve the next placeholder(s)
+// and addCondition to append a condition using those placeholders.
+type listQueryBuilder struct {
+	where []string
+	args  []any
+	idx   int
+}
+
+func (qb *listQueryBuilder) nextArg(args ...any) string {
+	out := make([]string, len(args))
+	for i, a := range args {
+		out[i] = "$" + itoa(qb.idx)
+		qb.args = append(qb.args, a)
+		qb.idx++
+	}
+	if len(out) == 1 {
+		return out[0]
+	}
+	return strings.Join(out, ", ")
+}
+
+func (qb *listQueryBuilder) addCondition(cond string) {
+	qb.where = append(qb.where, cond)
+}
+
+func (qb *listQueryBuilder) whereClause() string {
+	if len(qb.where) == 0 {
+		return "1=1"
+	}
+	return strings.Join(qb.where, " AND ")
+}
+
+// listQueryFilter adds extra WHERE conditions to a list query. Callers should
+// use qb.nextArg to obtain the correct placeholder and addCondition to append.
+type listQueryFilter func(r *http.Request, qb *listQueryBuilder)
+
+// listQueryConfig configures executeListQuery for a specific entity type.
+type listQueryConfig[T any] struct {
+	Table         string
+	SelectColumns string
+	TenantScoped  bool
+	TenantColumn  string
+	SearchColumns []string
+	SearchParam   string // query parameter name for search; defaults to "search"
+	OrderBy       string
+	NoPagination  bool // when true, no LIMIT/OFFSET is appended (full list)
+	DefaultLimit  int  // fallback page size when limit param is missing; defaults to 50
+	ExtraFilter   listQueryFilter
+	ScanRows      func(pgx.Rows) ([]T, error)
+}
+
+type listQueryDB interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+}
+
+// executeListQuery builds and runs a paginated, tenant-scoped list query with
+// optional search and extra filters. It returns the scanned items, total count
+// and an error. A "missing tenant" error means the caller has no tenant and
+// should respond with 403.
+func executeListQuery[T any](ctx context.Context, db listQueryDB, r *http.Request, cfg listQueryConfig[T], scanRows ...func(pgx.Rows) ([]T, error)) ([]T, int, error) {
+	scanner := cfg.ScanRows
+	if len(scanRows) > 0 {
+		scanner = scanRows[0]
+	}
+	if scanner == nil {
+		return nil, 0, errors.New("scanRows not configured")
+	}
+
+	qb := &listQueryBuilder{idx: 1}
+
+	if cfg.TenantScoped {
+		tenantID, ok := tenantFilter(middleware.CurrentUser(r))
+		if !ok {
+			return nil, 0, errors.New("missing tenant")
+		}
+		col := cfg.TenantColumn
+		if col == "" {
+			col = "tenant_id"
+		}
+		qb.addCondition(col + " = " + qb.nextArg(tenantID))
+	}
+
+	searchParam := cfg.SearchParam
+	if searchParam == "" {
+		searchParam = "search"
+	}
+	search := r.URL.Query().Get(searchParam)
+	if search != "" && len(cfg.SearchColumns) > 0 {
+		ph := qb.nextArg("%" + search + "%")
+		conds := make([]string, len(cfg.SearchColumns))
+		for i, col := range cfg.SearchColumns {
+			conds[i] = col + " ILIKE " + ph
+		}
+		qb.addCondition("(" + strings.Join(conds, " OR ") + ")")
+	}
+
+	if cfg.ExtraFilter != nil {
+		cfg.ExtraFilter(r, qb)
+	}
+
+	where := qb.whereClause()
+	countQuery := "SELECT COUNT(*) FROM " + cfg.Table + " WHERE " + where
+	var total int
+	if err := db.QueryRow(ctx, countQuery, qb.args...).Scan(&total); err != nil {
+		slog.Error("count query failed", "error", err, "query", countQuery)
+		total = 0
+	}
+
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+	defaultLimit := cfg.DefaultLimit
+	if defaultLimit <= 0 {
+		defaultLimit = 50
+	}
+	limit := defaultLimit
+	offset := 0
+	if v, err := parsePageLimit(limitStr, defaultLimit); err == nil && v > 0 {
+		limit = v
+	}
+	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
+		offset = v
+	}
+
+	orderBy := cfg.OrderBy
+	if orderBy == "" {
+		orderBy = "created_at DESC"
+	}
+
+	query := "SELECT " + cfg.SelectColumns + " FROM " + cfg.Table + " WHERE " + where + " ORDER BY " + orderBy
+	if !cfg.NoPagination {
+		limPh := qb.nextArg(limit)
+		offPh := qb.nextArg(offset)
+		query += " LIMIT " + limPh + " OFFSET " + offPh
+	}
+
+	rows, err := db.Query(ctx, query, qb.args...)
+	if err != nil {
+		return nil, total, err
+	}
+	defer rows.Close()
+
+	items, err := scanner(rows)
+	if err != nil {
+		return nil, total, err
+	}
+	return items, total, nil
 }

@@ -33,7 +33,7 @@ func (h *SubscriptionHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	sub, err := h.fetchSubscriptionByTenant(r.Context(), tenantID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "subscription not found")
+		respondError(w, http.StatusNotFound, "订阅不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, sub)
@@ -48,7 +48,7 @@ func (h *SubscriptionHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchSubscription(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "subscription not found")
+		respondError(w, http.StatusNotFound, "订阅不存在")
 		return
 	}
 
@@ -71,7 +71,7 @@ func (h *SubscriptionHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $5
 	`, req.Name, req.ValidUntil, req.Modules, req.Status, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update subscription")
+		respondError(w, http.StatusInternalServerError, "更新订阅失败")
 		return
 	}
 
@@ -122,7 +122,7 @@ func (h *SubscriptionHandler) fetchSubscriptionByTenant(ctx context.Context, ten
 func (h *SubscriptionHandler) AdminGet(w http.ResponseWriter, r *http.Request) {
 	tenantID := chi.URLParam(r, "tenantId")
 	if tenantID == "" {
-		respondError(w, http.StatusBadRequest, "missing tenant id")
+		respondError(w, http.StatusBadRequest, "缺少租户ID")
 		return
 	}
 
@@ -142,7 +142,7 @@ func (h *SubscriptionHandler) AdminGet(w http.ResponseWriter, r *http.Request) {
 func (h *SubscriptionHandler) AdminUpdate(w http.ResponseWriter, r *http.Request) {
 	tenantID := chi.URLParam(r, "tenantId")
 	if tenantID == "" {
-		respondError(w, http.StatusBadRequest, "missing tenant id")
+		respondError(w, http.StatusBadRequest, "缺少租户ID")
 		return
 	}
 
@@ -167,7 +167,7 @@ func (h *SubscriptionHandler) AdminUpdate(w http.ResponseWriter, r *http.Request
 			WHERE id = $5
 		`, req.Name, req.ValidUntil, req.Modules, req.Status, existing.ID)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to update subscription")
+			respondError(w, http.StatusInternalServerError, "更新订阅失败")
 			return
 		}
 		existing.Name = req.Name
@@ -184,7 +184,7 @@ func (h *SubscriptionHandler) AdminUpdate(w http.ResponseWriter, r *http.Request
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`, id, tenantID, req.Name, req.ValidUntil, req.Modules, req.Status)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create subscription")
+		respondError(w, http.StatusInternalServerError, "创建订阅失败")
 		return
 	}
 

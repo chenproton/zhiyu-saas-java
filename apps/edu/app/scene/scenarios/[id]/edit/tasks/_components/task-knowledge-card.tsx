@@ -17,6 +17,7 @@ import { PrdAnnotation } from "@/components/prd-annotation"
 import { getAnnotation } from "@/lib/prd-annotations"
 import { KnowledgePointFormDialog } from "@/components/shared/knowledge-point-form-dialog"
 import { GranularLessonSelectDialog } from "@/components/shared/granular-lesson-select-dialog"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { courseApi } from "@/lib/api"
 
 const knowledgePoints: any[] = []
@@ -85,6 +86,8 @@ export function TaskKnowledgeCard({
   glSelectTargetKp,
   setGlSelectTargetKp,
 }: TaskKnowledgeCardProps) {
+  const [granularConfirm, setGranularConfirm] = useState<{ open: boolean; courseId: string }>({ open: false, courseId: "" })
+
   const filteredKp = knowledgePoints.filter(k => !kpSearch || (k.name || "").includes(kpSearch) || (k.description || "").includes(kpSearch) || (k.code || "").includes(kpSearch))
   const hasResults = kpSearch ? filteredKp.length > 0 : false
 
@@ -165,9 +168,7 @@ export function TaskKnowledgeCard({
           updateState({ knowledgePoints: [...state.knowledgePoints] })
         }
       }
-      if (confirm("占位颗粒课已创建并关联，是否立即前往完善？")) {
-        window.open(`/lesson/admin/granular/add?id=${newCourseId}`, "_blank")
-      }
+      setGranularConfirm({ open: true, courseId: newCourseId })
       return newCourseId
     } catch (err: any) {
       return undefined
@@ -424,9 +425,7 @@ export function TaskKnowledgeCard({
                             kp.granularLessons = [...(kp.granularLessons || []), newCourseId]
                             updateState({ knowledgePoints: [...state.knowledgePoints] })
                           }
-                          if (confirm("占位颗粒课已创建并关联，是否立即前往完善？")) {
-                            window.open(`/lesson/admin/granular/add?id=${newCourseId}`, "_blank")
-                          }
+                          setGranularConfirm({ open: true, courseId: newCourseId })
                         } catch (err: any) {
                         }
                       }}>
@@ -445,6 +444,17 @@ export function TaskKnowledgeCard({
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={granularConfirm.open}
+        onOpenChange={(open) => setGranularConfirm(prev => ({ ...prev, open }))}
+        title="前往完善颗粒课"
+        description="占位颗粒课已创建并关联，是否立即前往完善？"
+        onConfirm={() => {
+          window.open(`/lesson/admin/granular/add?id=${granularConfirm.courseId}`, "_blank")
+          setGranularConfirm(prev => ({ ...prev, open: false }))
+        }}
+      />
     </div>
   )
 }

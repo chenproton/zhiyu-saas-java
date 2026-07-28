@@ -10,6 +10,7 @@ import {
   type ContentListItem,
   type ContentBatch,
 } from "@/components/shared/content-list-page"
+import { draftSuffix } from "@/lib/format-utils"
 
 interface CourseAdminPageProps {
   title: string
@@ -17,13 +18,6 @@ interface CourseAdminPageProps {
   courseType: CourseType
   addHref: string
   importExcelEntity?: string
-}
-
-function draftSuffix() {
-  const d = new Date()
-  const ds = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
-  const c = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  return `${ds}_${c[Math.floor(Math.random() * 36)]}${c[Math.floor(Math.random() * 36)]}`
 }
 
 function mapCourse(backend: BackendCourse, currentUserId: string): Course {

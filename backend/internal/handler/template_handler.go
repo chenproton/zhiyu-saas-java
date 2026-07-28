@@ -51,7 +51,7 @@ func writeExcel(w http.ResponseWriter, f *excelize.File, filename string) {
 	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 	if err := f.Write(w); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to write file")
+		respondError(w, http.StatusInternalServerError, "写入文件失败")
 	}
 }
 
@@ -726,7 +726,7 @@ func (h *TemplateHandler) ServeQuestionTemplate(w http.ResponseWriter, r *http.R
 	}
 	bankID := chi.URLParam(r, "bankId")
 	if bankID == "" {
-		respondError(w, http.StatusBadRequest, "missing bank id")
+		respondError(w, http.StatusBadRequest, "缺少题库ID")
 		return
 	}
 	ctx := r.Context()

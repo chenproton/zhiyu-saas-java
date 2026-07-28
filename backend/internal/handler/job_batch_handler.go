@@ -53,8 +53,8 @@ func scanJobBatchRow(ctx context.Context, db *pgxpool.Pool, id string) (any, err
 	return b, nil
 }
 
-func scanJobBatchRows(rows pgx.Rows) (any, error) {
-	items := make([]domain.JobBatch, 0)
+func scanJobBatchRows(rows pgx.Rows) ([]any, error) {
+	items := make([]any, 0)
 	for rows.Next() {
 		var b domain.JobBatch
 		var code, orgNodeID, majorID, majorName, workflowID *string

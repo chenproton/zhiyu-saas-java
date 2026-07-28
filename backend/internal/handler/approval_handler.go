@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -42,81 +41,31 @@ func (h *ApprovalHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	targetType := r.URL.Query().Get("targetType")
-	targetID := r.URL.Query().Get("targetId")
-	status := r.URL.Query().Get("status")
-	submitterID := r.URL.Query().Get("submitterId")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if targetType != "" {
-		where = append(where, "target_type = $"+itoa(argIdx))
-		args = append(args, targetType)
-		argIdx++
-	}
-	if targetID != "" {
-		where = append(where, "target_id = $"+itoa(argIdx))
-		args = append(args, targetID)
-		argIdx++
-	}
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-	if submitterID != "" {
-		where = append(where, "submitter_id = $"+itoa(argIdx))
-		args = append(args, submitterID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM approval_records WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, tenant_id, target_type, target_id, workflow_id, current_step_idx, status,
-			submitter_id, history, created_at, updated_at
-		FROM approval_records
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery[domain.ApprovalRecord](r.Context(), h.DB, r, listQueryConfig[domain.ApprovalRecord]{
+		Table:         "approval_records",
+		SelectColumns: "id, tenant_id, target_type, target_id, workflow_id, current_step_idx, status, submitter_id, history, created_at, updated_at",
+		TenantScoped:  true,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if targetType := r.URL.Query().Get("targetType"); targetType != "" {
+				qb.addCondition("target_type = " + qb.nextArg(targetType))
+			}
+			if targetID := r.URL.Query().Get("targetId"); targetID != "" {
+				qb.addCondition("target_id = " + qb.nextArg(targetID))
+			}
+			if status := r.URL.Query().Get("status"); status != "" {
+				qb.addCondition("status = " + qb.nextArg(status))
+			}
+			if submitterID := r.URL.Query().Get("submitterId"); submitterID != "" {
+				qb.addCondition("submitter_id = " + qb.nextArg(submitterID))
+			}
+		},
+	}, h.scanApprovalRows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list approval records")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanApprovalRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan approval records")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "查询审批记录失败")
 		return
 	}
 
@@ -132,7 +81,7 @@ func (h *ApprovalHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	record, err := h.fetchApproval(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "approval record not found")
+		respondError(w, http.StatusNotFound, "审批记录不存在")
 		return
 	}
 	if record.TenantID != nil && !verifyTenantOwnership(w, r, *record.TenantID) {
@@ -169,7 +118,7 @@ func (h *ApprovalHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`, id, user.TenantID, req.TargetType, req.TargetID, req.WorkflowID, 0, status, user.UserID, history)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create approval record")
+		respondError(w, http.StatusInternalServerError, "创建审批记录失败")
 		return
 	}
 
@@ -187,12 +136,12 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	record, err := h.fetchApproval(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "approval record not found")
+		respondError(w, http.StatusNotFound, "审批记录不存在")
 		return
 	}
 
 	if record.Status != string(domain.ApprovalStatusPending) {
-		respondError(w, http.StatusBadRequest, "approval record is not pending")
+		respondError(w, http.StatusBadRequest, "审批记录不在待处理状态")
 		return
 	}
 
@@ -203,12 +152,12 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Action != string(domain.ApprovalStatusApproved) && req.Action != string(domain.ApprovalStatusRejected) {
-		respondError(w, http.StatusBadRequest, "invalid action")
+		respondError(w, http.StatusBadRequest, "无效操作")
 		return
 	}
 
 	if !h.isUserApproverForStep(&record, user.UserID) {
-		respondError(w, http.StatusForbidden, "not authorized to review this step")
+		respondError(w, http.StatusForbidden, "无权评审此步骤")
 		return
 	}
 
@@ -229,11 +178,11 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 			WHERE id = $3 AND status = $4
 		`, record.Status, record.History, id, string(domain.ApprovalStatusPending))
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to review approval record")
+			respondError(w, http.StatusInternalServerError, "评审审批记录失败")
 			return
 		}
 		if tag.RowsAffected() == 0 {
-			respondError(w, http.StatusBadRequest, "approval record is not pending")
+			respondError(w, http.StatusBadRequest, "审批记录不在待处理状态")
 			return
 		}
 		h.syncEntityStatusQuiet(r.Context(), record.TargetType, record.TargetID, string(domain.ApprovalStatusRejected))
@@ -258,7 +207,7 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 			WHERE id = $2 AND status = $3
 		`, record.History, id, string(domain.ApprovalStatusPending))
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to update approval record")
+			respondError(w, http.StatusInternalServerError, "更新审批记录失败")
 			return
 		}
 		record, _ = h.fetchApproval(r.Context(), id)
@@ -277,11 +226,11 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $4 AND status = $5
 	`, newStatus, newStepIdx, record.History, id, string(domain.ApprovalStatusPending))
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to review approval record")
+		respondError(w, http.StatusInternalServerError, "评审审批记录失败")
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		respondError(w, http.StatusBadRequest, "approval record is not pending")
+		respondError(w, http.StatusBadRequest, "审批记录不在待处理状态")
 		return
 	}
 

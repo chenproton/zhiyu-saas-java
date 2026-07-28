@@ -67,7 +67,7 @@ func (h *LandingHandler) ListExams(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list landing exams")
+		respondError(w, http.StatusInternalServerError, "查询落地考试失败")
 		return
 	}
 	defer rows.Close()

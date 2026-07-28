@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -40,73 +39,29 @@ type UpdateMajorRequest struct {
 
 func (h *MajorHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
-	search := r.URL.Query().Get("search")
 	enabledStr := r.URL.Query().Get("enabled")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
 
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if tenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, tenantID)
-		argIdx++
-	}
-	if enabledStr != "" {
-		where = append(where, "enabled = $"+itoa(argIdx))
-		args = append(args, enabledStr == "true")
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "(name ILIKE $"+itoa(argIdx)+" OR code ILIKE $"+itoa(argIdx)+")")
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM majors WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, tenant_id, code, name, alias, enabled, created_at, updated_at
-		FROM majors
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.Major]{
+		Table:         "majors",
+		SelectColumns: "id, tenant_id, code, name, alias, enabled, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name", "code"},
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if tenantID != "" {
+				qb.addCondition("tenant_id = " + qb.nextArg(tenantID))
+			}
+			if enabledStr != "" {
+				qb.addCondition("enabled = " + qb.nextArg(enabledStr == "true"))
+			}
+		},
+		ScanRows: h.scanMajorRows,
+	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list majors")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanMajorRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan majors")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "查询专业失败")
 		return
 	}
 
@@ -117,7 +72,7 @@ func (h *MajorHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	major, err := h.fetchMajor(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "major not found")
+		respondError(w, http.StatusNotFound, "专业不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, major.TenantID) {
@@ -158,7 +113,7 @@ func (h *MajorHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "专业代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create major")
+		respondError(w, http.StatusInternalServerError, "创建专业失败")
 		return
 	}
 
@@ -176,7 +131,7 @@ func (h *MajorHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	major, err := h.fetchMajor(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "major not found")
+		respondError(w, http.StatusNotFound, "专业不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, major.TenantID) {
@@ -203,7 +158,7 @@ func (h *MajorHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "专业代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update major")
+		respondError(w, http.StatusInternalServerError, "更新专业失败")
 		return
 	}
 
@@ -221,7 +176,7 @@ func (h *MajorHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	major, err := h.fetchMajor(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "major not found")
+		respondError(w, http.StatusNotFound, "专业不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, major.TenantID) {
@@ -233,7 +188,7 @@ func (h *MajorHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		`SELECT COUNT(*) FROM users WHERE major_id = $1`,
 		id,
 	).Scan(&userCount); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to check major references")
+		respondError(w, http.StatusInternalServerError, "检查major references失败")
 		return
 	}
 	if userCount > 0 {
@@ -243,7 +198,7 @@ func (h *MajorHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM majors WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete major")
+		respondError(w, http.StatusInternalServerError, "删除专业失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

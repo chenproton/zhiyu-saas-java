@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -35,57 +34,29 @@ type UpdatePlatformLinkRequest struct {
 }
 
 func (h *PlatformLinkHandler) List(w http.ResponseWriter, r *http.Request) {
-	platform := r.URL.Query().Get("platform")
-	enabledStr := r.URL.Query().Get("enabled")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-
-	if platform != "" {
-		where = append(where, "platform = $"+itoa(argIdx))
-		args = append(args, platform)
-		argIdx++
-	}
-	if enabledStr != "" {
-		where = append(where, "enabled = $"+itoa(argIdx))
-		args = append(args, enabledStr == "true")
-		argIdx++
+	cfg := listQueryConfig[domain.PlatformLink]{
+		Table:         "platform_links",
+		SelectColumns: "id, platform, url, enabled",
+		TenantScoped:  false,
+		OrderBy:       "platform ASC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if platform := r.URL.Query().Get("platform"); platform != "" {
+				qb.addCondition("platform = " + qb.nextArg(platform))
+			}
+			if enabledStr := r.URL.Query().Get("enabled"); enabledStr != "" {
+				qb.addCondition("enabled = " + qb.nextArg(enabledStr == "true"))
+			}
+		},
+		ScanRows: h.scanPlatformLinkRows,
 	}
 
-	countQuery := "SELECT COUNT(*) FROM platform_links WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, platform, url, enabled
-		FROM platform_links
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY platform ASC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list platform links")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanPlatformLinkRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan platform links")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -96,7 +67,7 @@ func (h *PlatformLinkHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	link, err := h.fetchPlatformLink(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "platform link not found")
+		respondError(w, http.StatusNotFound, "平台链接不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, link)
@@ -128,7 +99,7 @@ func (h *PlatformLinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 		ON CONFLICT (platform) DO UPDATE SET url = EXCLUDED.url, enabled = EXCLUDED.enabled
 	`, id, req.Platform, req.URL, req.Enabled)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create platform link")
+		respondError(w, http.StatusInternalServerError, "创建平台链接失败")
 		return
 	}
 
@@ -145,7 +116,7 @@ func (h *PlatformLinkHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchPlatformLink(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "platform link not found")
+		respondError(w, http.StatusNotFound, "平台链接不存在")
 		return
 	}
 
@@ -160,7 +131,7 @@ func (h *PlatformLinkHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $3
 	`, req.URL, req.Enabled, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update platform link")
+		respondError(w, http.StatusInternalServerError, "更新平台链接失败")
 		return
 	}
 
@@ -177,13 +148,13 @@ func (h *PlatformLinkHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchPlatformLink(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "platform link not found")
+		respondError(w, http.StatusNotFound, "平台链接不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM platform_links WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete platform link")
+		respondError(w, http.StatusInternalServerError, "删除平台链接失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

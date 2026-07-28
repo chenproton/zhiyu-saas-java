@@ -39,7 +39,7 @@ type BindCourseResourceRequest struct {
 
 func (h *CourseResourceHandler) ListResources(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
@@ -111,14 +111,14 @@ func (h *CourseResourceHandler) ListResources(w http.ResponseWriter, r *http.Req
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list course resources")
+		respondError(w, http.StatusInternalServerError, "查询课程资源失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanResourceRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan course resources")
+		respondError(w, http.StatusInternalServerError, "读取课程资源失败")
 		return
 	}
 
@@ -128,7 +128,7 @@ func (h *CourseResourceHandler) ListResources(w http.ResponseWriter, r *http.Req
 func (h *CourseResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
@@ -158,7 +158,7 @@ func (h *CourseResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4::resource_type, $5, $6, $7, $8)
 	`, id, tenantID, req.Name, req.Type, req.URL, req.Description, fileSize, claims.UserID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create course resource")
+		respondError(w, http.StatusInternalServerError, "创建课程资源失败")
 		return
 	}
 
@@ -187,7 +187,7 @@ func (h *CourseResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *CourseResourceHandler) BindResource(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
@@ -214,7 +214,7 @@ func (h *CourseResourceHandler) BindResource(w http.ResponseWriter, r *http.Requ
 		RETURNING id
 	`, tenantID, req.CourseID, req.ResourceID).Scan(&id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to bind course resource")
+		respondError(w, http.StatusInternalServerError, "绑定课程资源失败")
 		return
 	}
 	_, _ = h.DB.Exec(r.Context(), `
@@ -230,7 +230,7 @@ func (h *CourseResourceHandler) BindResource(w http.ResponseWriter, r *http.Requ
 
 func (h *CourseResourceHandler) UnbindResource(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
@@ -238,13 +238,13 @@ func (h *CourseResourceHandler) UnbindResource(w http.ResponseWriter, r *http.Re
 	var courseID, resourceID string
 	err := h.DB.QueryRow(r.Context(), `SELECT course_id, resource_id FROM course_resource_bindings WHERE id = $1`, id).Scan(&courseID, &resourceID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "binding not found")
+		respondError(w, http.StatusNotFound, "绑定不存在")
 		return
 	}
 
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM course_resource_bindings WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to unbind course resource")
+		respondError(w, http.StatusInternalServerError, "解绑课程资源失败")
 		return
 	}
 	_, _ = h.DB.Exec(r.Context(), `

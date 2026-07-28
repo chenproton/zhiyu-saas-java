@@ -176,14 +176,14 @@ func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list scenarios")
+		respondError(w, http.StatusInternalServerError, "查询场景方案失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanScenarioRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan scenarios")
+		respondError(w, http.StatusInternalServerError, "读取场景方案失败")
 		return
 	}
 
@@ -200,7 +200,7 @@ func (h *ScenarioHandler) Get(w http.ResponseWriter, r *http.Request) {
 	_ = h.incrementScenarioView(r)
 	scenario, err := h.fetchScenario(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "scenario not found")
+		respondError(w, http.StatusNotFound, "场景方案不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, scenario)
@@ -239,7 +239,7 @@ func (h *ScenarioHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	code, err := generateUniqueEntityCode(r.Context(), h.DB, "CJ", "scenarios", *tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to generate scenario code")
+		respondError(w, http.StatusInternalServerError, "生成scenario code失败")
 		return
 	}
 
@@ -256,7 +256,7 @@ func (h *ScenarioHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "场景方案代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create scenario")
+		respondError(w, http.StatusInternalServerError, "创建场景方案失败")
 		return
 	}
 
@@ -273,7 +273,7 @@ func (h *ScenarioHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	existing, err := h.fetchScenario(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "scenario not found")
+		respondError(w, http.StatusNotFound, "场景方案不存在")
 		return
 	}
 
@@ -334,7 +334,7 @@ func (h *ScenarioHandler) Update(w http.ResponseWriter, r *http.Request) {
 		professionIDs, batchID, difficulty, version, background,
 		deliveryGoal, coBuilderIDs, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update scenario")
+		respondError(w, http.StatusInternalServerError, "更新场景方案失败")
 		return
 	}
 
@@ -350,13 +350,13 @@ func (h *ScenarioHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchScenario(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "scenario not found")
+		respondError(w, http.StatusNotFound, "场景方案不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM scenarios WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete scenario")
+		respondError(w, http.StatusInternalServerError, "删除场景方案失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

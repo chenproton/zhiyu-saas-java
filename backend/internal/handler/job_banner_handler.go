@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -56,62 +55,26 @@ func (h *JobBannerHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isActiveStr := r.URL.Query().Get("isEnabled")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
+	isEnabledStr := r.URL.Query().Get("isEnabled")
 
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if isActiveStr != "" {
-		where = append(where, "is_enabled = $"+itoa(argIdx))
-		args = append(args, isActiveStr == "true")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM banner_configs WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, title, image_url, link_url, sort_order, is_enabled, created_at, updated_at
-		FROM banner_configs
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY sort_order ASC, created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery[JobBannerConfig](r.Context(), h.DB, r, listQueryConfig[JobBannerConfig]{
+		Table:         "banner_configs",
+		SelectColumns: "id, title, image_url, link_url, sort_order, is_enabled, created_at, updated_at",
+		TenantScoped:  true,
+		OrderBy:       "sort_order ASC, created_at DESC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if isEnabledStr != "" {
+				qb.addCondition("is_enabled = " + qb.nextArg(isEnabledStr == "true"))
+			}
+		},
+		ScanRows: h.scanBannerRows,
+	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list banners")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanBannerRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan banners")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -127,7 +90,7 @@ func (h *JobBannerHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	banner, err := h.fetchBanner(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "banner not found")
+		respondError(w, http.StatusNotFound, "轮播图不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, banner)
@@ -162,7 +125,7 @@ func (h *JobBannerHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`, id, *claims.TenantID, req.Title, req.ImageURL, req.LinkURL, req.SortOrder, req.IsEnabled)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create banner")
+		respondError(w, http.StatusInternalServerError, "创建轮播图失败")
 		return
 	}
 
@@ -178,7 +141,7 @@ func (h *JobBannerHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchBanner(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "banner not found")
+		respondError(w, http.StatusNotFound, "轮播图不存在")
 		return
 	}
 
@@ -199,7 +162,7 @@ func (h *JobBannerHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $6
 	`, req.Title, req.ImageURL, req.LinkURL, req.SortOrder, req.IsEnabled, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update banner")
+		respondError(w, http.StatusInternalServerError, "更新轮播图失败")
 		return
 	}
 
@@ -215,13 +178,13 @@ func (h *JobBannerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchBanner(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "banner not found")
+		respondError(w, http.StatusNotFound, "轮播图不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM banner_configs WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete banner")
+		respondError(w, http.StatusInternalServerError, "删除轮播图失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

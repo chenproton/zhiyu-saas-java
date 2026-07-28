@@ -45,7 +45,7 @@ type BatchTableConfig struct {
 
 	SearchColumns []string
 
-	ExtraListFilters func(r *http.Request, argIdx int) (clauses []string, args []any)
+	ExtraListFilters listQueryFilter
 
 	CreateExtraCols []string
 	CreateExtraVals []any
@@ -57,7 +57,7 @@ type BatchTableConfig struct {
 	UpdateWithStatus bool
 
 	ScanRow  func(ctx context.Context, db *pgxpool.Pool, id string) (any, error)
-	ScanRows func(rows pgx.Rows) (any, error)
+	ScanRows func(rows pgx.Rows) ([]any, error)
 }
 
 type BatchHandler struct {
@@ -77,89 +77,37 @@ func (h *BatchHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	orgNodeID := r.URL.Query().Get("orgNodeId")
 	status := r.URL.Query().Get("status")
-	search := r.URL.Query().Get("search")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
 
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
+	tenantColumn := h.Config.TenantFilterColumn
+	if tenantColumn == "" {
+		tenantColumn = "tenant_id"
 	}
 
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if h.Config.TenantScoped && effectiveTenantID != "" {
-		tc := h.Config.TenantFilterColumn
-		if tc == "" {
-			tc = "tenant_id"
-		}
-		where = append(where, tc+" = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if orgNodeID != "" {
-		where = append(where, "org_node_id = $"+itoa(argIdx))
-		args = append(args, orgNodeID)
-		argIdx++
-	}
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-	if h.Config.ExtraListFilters != nil {
-		clauses, extraArgs := h.Config.ExtraListFilters(r, argIdx)
-		for _, c := range clauses {
-			where = append(where, c)
-		}
-		args = append(args, extraArgs...)
-		argIdx += len(extraArgs)
-	}
-	if search != "" {
-		if len(h.Config.SearchColumns) == 1 {
-			where = append(where, h.Config.SearchColumns[0]+" ILIKE $"+itoa(argIdx))
-		} else {
-			parts := make([]string, len(h.Config.SearchColumns))
-			for i, col := range h.Config.SearchColumns {
-				parts[i] = col + " ILIKE $" + itoa(argIdx)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[any]{
+		Table:         h.Config.TableName,
+		SelectColumns: h.Config.SelectColumns,
+		TenantScoped:  h.Config.TenantScoped,
+		TenantColumn:  tenantColumn,
+		SearchColumns: h.Config.SearchColumns,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if orgNodeID != "" {
+				qb.addCondition("org_node_id = " + qb.nextArg(orgNodeID))
 			}
-			where = append(where, "("+strings.Join(parts, " OR ")+")")
+			if status != "" {
+				qb.addCondition("status = " + qb.nextArg(status))
+			}
+			if h.Config.ExtraListFilters != nil {
+				h.Config.ExtraListFilters(r, qb)
+			}
+		},
+		ScanRows: h.Config.ScanRows,
+	})
+	if err != nil {
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
 		}
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM " + h.Config.TableName + " WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := "SELECT " + h.Config.SelectColumns + " FROM " + h.Config.TableName +
-		" WHERE " + strings.Join(where, " AND ") +
-		" ORDER BY created_at DESC LIMIT $" + itoa(argIdx) + " OFFSET $" + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list "+h.Config.EntityName+"es")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.Config.ScanRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan "+h.Config.EntityName+"es")
+		respondError(w, http.StatusInternalServerError, "查询"+h.Config.EntityName+"es失败")
 		return
 	}
 
@@ -171,15 +119,10 @@ func (h *BatchHandler) checkTenantAccess(w http.ResponseWriter, r *http.Request,
 		return true
 	}
 
-	tc := h.Config.TenantFilterColumn
-	if tc == "" {
-		tc = "tenant_id"
-	}
-
 	var entityTenantID string
-	err := h.DB.QueryRow(r.Context(), "SELECT "+tc+" FROM "+h.Config.WriteTableName+" WHERE id = $1", id).Scan(&entityTenantID)
+	err := h.DB.QueryRow(r.Context(), "SELECT tenant_id FROM "+h.Config.WriteTableName+" WHERE id = $1", id).Scan(&entityTenantID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, h.Config.EntityName+" not found")
+		respondError(w, http.StatusNotFound, h.Config.EntityName+"不存在")
 		return false
 	}
 
@@ -198,7 +141,7 @@ func (h *BatchHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	batch, err := h.Config.ScanRow(r.Context(), h.DB, id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, h.Config.EntityName+" not found")
+		respondError(w, http.StatusNotFound, h.Config.EntityName+"不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, batch)
@@ -249,7 +192,7 @@ func (h *BatchHandler) Create(w http.ResponseWriter, r *http.Request) {
 	query := "INSERT INTO " + h.Config.WriteTableName + " (" + strings.Join(cols, ", ") + ") VALUES (" + strings.Join(placeholders, ", ") + ")"
 	_, err := h.DB.Exec(r.Context(), query, vals...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create "+h.Config.EntityName)
+		respondError(w, http.StatusInternalServerError, "创建"+h.Config.EntityName+"失败")
 		return
 	}
 
@@ -268,7 +211,7 @@ func (h *BatchHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := h.Config.ScanRow(r.Context(), h.DB, id); err != nil {
-		respondError(w, http.StatusNotFound, h.Config.EntityName+" not found")
+		respondError(w, http.StatusNotFound, h.Config.EntityName+"不存在")
 		return
 	}
 
@@ -301,7 +244,7 @@ func (h *BatchHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	_, err := h.DB.Exec(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update "+h.Config.EntityName)
+		respondError(w, http.StatusInternalServerError, "更新"+h.Config.EntityName+"失败")
 		return
 	}
 
@@ -320,13 +263,13 @@ func (h *BatchHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := h.Config.ScanRow(r.Context(), h.DB, id); err != nil {
-		respondError(w, http.StatusNotFound, h.Config.EntityName+" not found")
+		respondError(w, http.StatusNotFound, h.Config.EntityName+"不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), "DELETE FROM "+h.Config.WriteTableName+" WHERE id = $1", id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete "+h.Config.EntityName)
+		respondError(w, http.StatusInternalServerError, "删除"+h.Config.EntityName+"失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -343,7 +286,7 @@ func (h *BatchHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := h.Config.ScanRow(r.Context(), h.DB, id); err != nil {
-		respondError(w, http.StatusNotFound, h.Config.EntityName+" not found")
+		respondError(w, http.StatusNotFound, h.Config.EntityName+"不存在")
 		return
 	}
 
@@ -354,13 +297,13 @@ func (h *BatchHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Status != h.Config.StatusOpen && req.Status != h.Config.StatusClosed {
-		respondError(w, http.StatusBadRequest, "invalid status")
+		respondError(w, http.StatusBadRequest, "无效状态")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), "UPDATE "+h.Config.WriteTableName+" SET status = $1, updated_at = NOW() WHERE id = $2", req.Status, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update "+h.Config.EntityName+" status")
+		respondError(w, http.StatusInternalServerError, "更新"+h.Config.EntityName+"状态失败")
 		return
 	}
 

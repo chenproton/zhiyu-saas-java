@@ -1,0 +1,111 @@
+// ==================== 测评方式与场景任务 ====================
+
+// 一级测评分类
+export interface EvaluationMethodCategory {
+  id: string
+  name: string
+  order: number
+}
+
+// 二级测评方式
+export interface EvaluationMethod {
+  id: string
+  categoryId: string
+  name: string
+  enabled: boolean
+  relatedTaskIds: string[]
+  description?: string
+  docLink?: string
+  subCategoryName?: string
+}
+
+// 场景任务
+export interface SceneTask {
+  id: string
+  name: string
+  sceneName: string
+  methodIds: string[]
+}
+
+// 场景任务测评结果
+export interface SceneEvaluationResult {
+  id: string
+  taskId: string
+  sceneId?: string
+  methodKey: string
+  evaluateeId: string
+  evaluatorId?: string
+  evaluatorType?: string
+  status: "pending" | "evaluated"
+  totalScore?: number
+  maxScore: number
+  evalPointScores: Record<string, any>
+  objectiveAnswers: Record<string, any>
+  subjectiveContent: Record<string, any>
+  drawnQuestions: Record<string, any>
+  comment?: string
+  gradedAt?: Date
+  gradedBy?: string
+  createdAt?: Date
+  updatedAt?: Date
+}
+
+// 岗位能力测评结果
+export interface JobAbilityResult {
+  id: string
+  positionId: string
+  positionName: string
+  positionCode: string
+  studentName: string
+  studentId: string
+  className?: string
+  majorId?: string
+  majorName?: string
+  department?: string
+  totalAbilityPoints: number
+  achievedAbilityPoints: number
+  achievementRate: number
+  grade?: string
+  evaluationTime: string | Date
+  createdAt?: string
+  updatedAt?: string
+}
+
+// ==================== 场景任务评价相关（从 zhiyu-scene 迁移）====================
+
+export interface SceneGradingStudent {
+  id: string
+  name: string
+  studentNumber: string
+  class: string
+  department: string
+  enrollmentYear: number
+}
+
+export interface SceneGradingSubmission {
+  id: string
+  studentId: string
+  scenarioId: string
+  scenarioName: string
+  taskId: string
+  taskName: string
+  assessmentForm: string
+  method: '试卷' | '题库' | '评审' | '现场问答'
+  status: 'pending' | 'graded'
+  submittedAt: string
+  maxScore: number
+}
+
+export interface SceneGradingScenario {
+  id: string
+  name: string
+  code: string
+  positionName?: string
+  tasks: {
+    id: string
+    name: string
+    code: string
+    taskType: 'assessment' | 'training'
+    assessmentForm?: string
+  }[]
+}

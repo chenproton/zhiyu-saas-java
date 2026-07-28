@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -29,72 +28,34 @@ type UpsertScenarioWeightRequest struct {
 
 func (h *ScenarioWeightHandler) ListWeights(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
 	scenarioID := r.URL.Query().Get("scenarioId")
 	taskID := r.URL.Query().Get("taskId")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
 
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if scenarioID != "" {
-		where = append(where, "scenario_id = $"+itoa(argIdx))
-		args = append(args, scenarioID)
-		argIdx++
-	}
-	if taskID != "" {
-		where = append(where, "task_id = $"+itoa(argIdx))
-		args = append(args, taskID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM scenario_weight_configs WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, scenario_id, task_id, weight
-		FROM scenario_weight_configs
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY id DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery[domain.ScenarioWeightConfig](r.Context(), h.DB, r, listQueryConfig[domain.ScenarioWeightConfig]{
+		Table:         "scenario_weight_configs",
+		SelectColumns: "id, scenario_id, task_id, weight",
+		TenantScoped:  true,
+		OrderBy:       "id DESC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if scenarioID != "" {
+				qb.addCondition("scenario_id = " + qb.nextArg(scenarioID))
+			}
+			if taskID != "" {
+				qb.addCondition("task_id = " + qb.nextArg(taskID))
+			}
+		},
+		ScanRows: h.scanWeightRows,
+	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list weights")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanWeightRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan weights")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -103,7 +64,7 @@ func (h *ScenarioWeightHandler) ListWeights(w http.ResponseWriter, r *http.Reque
 
 func (h *ScenarioWeightHandler) UpsertWeight(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
@@ -128,7 +89,7 @@ func (h *ScenarioWeightHandler) UpsertWeight(w http.ResponseWriter, r *http.Requ
 			UPDATE scenario_weight_configs SET scenario_id = $1, task_id = $2, weight = $3 WHERE id = $4
 		`, req.ScenarioID, req.TaskID, req.Weight, req.ID)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to update weight")
+			respondError(w, http.StatusInternalServerError, "更新权重失败")
 			return
 		}
 		id = req.ID
@@ -140,7 +101,7 @@ func (h *ScenarioWeightHandler) UpsertWeight(w http.ResponseWriter, r *http.Requ
 			RETURNING id
 		`, tenantID, req.ScenarioID, req.TaskID, req.Weight).Scan(&id)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to upsert weight")
+			respondError(w, http.StatusInternalServerError, "更新或创建权重失败")
 			return
 		}
 	}

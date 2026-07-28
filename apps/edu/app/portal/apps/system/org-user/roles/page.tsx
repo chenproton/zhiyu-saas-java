@@ -21,6 +21,7 @@ import type { Role } from "@/lib/types/backend"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { TableRowActions } from "@/components/shared/table-row-actions"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { buildMenuTree, normalizeMenuPath, permissionModuleConfig } from "@/lib/menu-permissions"
 import type { MenuTreeItem, PermissionModule } from "@/lib/menu-permissions"
 
@@ -326,6 +327,7 @@ export default function RolesPage() {
   const [usersRole, setUsersRole] = useState<Role | null>(null)
   const [roleUsers, setRoleUsers] = useState<User[]>([])
   const [usersLoading, setUsersLoading] = useState(false)
+  const [deleteRoleTarget, setDeleteRoleTarget] = useState<Role | null>(null)
 
   const openUsersDialog = async (role: Role) => {
     setUsersRole(role)
@@ -342,9 +344,14 @@ export default function RolesPage() {
   }
 
   const deleteRole = async (role: Role) => {
-    if (!confirm(`确定要删除角色「${role.name}」吗？`)) return
+    setDeleteRoleTarget(role)
+  }
+
+  const executeDeleteRole = async () => {
+    if (!deleteRoleTarget) return
     try {
-      await roleApi.delete(role.id)
+      await roleApi.delete(deleteRoleTarget.id)
+      setDeleteRoleTarget(null)
       await fetchData()
     } catch (err) {
       setError(err instanceof Error ? err.message : "删除角色失败")
@@ -642,6 +649,15 @@ export default function RolesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteRoleTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteRoleTarget(null) }}
+        title="删除角色"
+        description={deleteRoleTarget ? `确定要删除角色「${deleteRoleTarget.name}」吗？` : ""}
+        variant="destructive"
+        onConfirm={executeDeleteRole}
+      />
     </div>
   )
 }

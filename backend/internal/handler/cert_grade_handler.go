@@ -50,13 +50,13 @@ func (h *CertGradeHandler) ListGrades(w http.ResponseWriter, r *http.Request) {
 
 	positionID := chi.URLParam(r, "id")
 	if positionID == "" {
-		respondError(w, http.StatusBadRequest, "missing position id")
+		respondError(w, http.StatusBadRequest, "缺少岗位ID")
 		return
 	}
 
 	var positionTenantID string
 	if err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM career_positions WHERE id = $1`, positionID).Scan(&positionTenantID); err != nil {
-		respondError(w, http.StatusNotFound, "position not found")
+		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, positionTenantID) {
@@ -70,7 +70,7 @@ func (h *CertGradeHandler) ListGrades(w http.ResponseWriter, r *http.Request) {
 		ORDER BY grade_year DESC
 	`, positionID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to query grade data")
+		respondError(w, http.StatusInternalServerError, "查询grade data失败")
 		return
 	}
 	defer gradeRows.Close()

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -50,82 +49,34 @@ type UpdateOrgRequest struct {
 }
 
 func (h *OrgHandler) List(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.URL.Query().Get("tenantId")
-	typeID := r.URL.Query().Get("typeId")
-	parentID := r.URL.Query().Get("parentId")
-	search := r.URL.Query().Get("search")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
+	cfg := listQueryConfig[domain.Organization]{
+		Table:         "organizations",
+		SelectColumns: "id, tenant_id, name, type_id, parent_id, sort_order, member_count, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
+		OrderBy:       "sort_order ASC, created_at ASC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if tenantID := r.URL.Query().Get("tenantId"); tenantID != "" {
+				qb.addCondition("tenant_id = " + qb.nextArg(tenantID))
+			}
+			if typeID := r.URL.Query().Get("typeId"); typeID != "" {
+				qb.addCondition("type_id = " + qb.nextArg(typeID))
+			}
+			if parentID := r.URL.Query().Get("parentId"); parentID != "" {
+				qb.addCondition("parent_id = " + qb.nextArg(parentID))
+			} else if r.URL.Query().Get("rootOnly") == "true" {
+				qb.addCondition("parent_id IS NULL")
+			}
+		},
 	}
 
-	if tenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, tenantID)
-		argIdx++
-	}
-	if typeID != "" {
-		where = append(where, "type_id = $"+itoa(argIdx))
-		args = append(args, typeID)
-		argIdx++
-	}
-	if parentID != "" {
-		where = append(where, "parent_id = $"+itoa(argIdx))
-		args = append(args, parentID)
-		argIdx++
-	} else if r.URL.Query().Get("rootOnly") == "true" {
-		where = append(where, "parent_id IS NULL")
-	}
-	if search != "" {
-		where = append(where, "name ILIKE $"+itoa(argIdx))
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM organizations WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, tenant_id, name, type_id, parent_id, sort_order, member_count, created_at, updated_at
-		FROM organizations
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY sort_order ASC, created_at ASC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg, h.scanOrgRows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list organizations")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanOrgRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan organizations")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+		} else {
+			respondError(w, http.StatusInternalServerError, "查询组织失败")
+		}
 		return
 	}
 
@@ -158,20 +109,20 @@ func (h *OrgHandler) Tree(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list organizations")
+		respondError(w, http.StatusInternalServerError, "查询组织失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanOrgRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan organizations")
+		respondError(w, http.StatusInternalServerError, "读取组织失败")
 		return
 	}
 
 	counts, err := h.fetchOrgMemberCounts(r.Context(), effectiveTenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to count organization members")
+		respondError(w, http.StatusInternalServerError, "统计组织成员失败")
 		return
 	}
 	for i := range items {
@@ -213,7 +164,7 @@ func (h *OrgHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	org, err := h.fetchOrg(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "organization not found")
+		respondError(w, http.StatusNotFound, "组织不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, org.TenantID) {
@@ -254,7 +205,7 @@ func (h *OrgHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, 0)
 	`, id, req.TenantID, req.Name, req.TypeID, req.ParentID, req.SortOrder)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create organization")
+		respondError(w, http.StatusInternalServerError, "创建组织失败")
 		return
 	}
 
@@ -272,7 +223,7 @@ func (h *OrgHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	org, err := h.fetchOrg(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "organization not found")
+		respondError(w, http.StatusNotFound, "组织不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, org.TenantID) {
@@ -292,7 +243,7 @@ func (h *OrgHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	if req.ParentID != nil && *req.ParentID != "" {
 		if *req.ParentID == id {
-			respondError(w, http.StatusBadRequest, "cannot set parent to itself")
+			respondError(w, http.StatusBadRequest, "不能将父节点设置为自己")
 			return
 		}
 		var descendantOfSelf bool
@@ -305,11 +256,11 @@ func (h *OrgHandler) Update(w http.ResponseWriter, r *http.Request) {
 				)
 				SELECT 1 FROM subtree WHERE id = $2
 			)`, id, *req.ParentID).Scan(&descendantOfSelf); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to check parent")
+			respondError(w, http.StatusInternalServerError, "检查父节点失败")
 			return
 		}
 		if descendantOfSelf {
-			respondError(w, http.StatusBadRequest, "cannot set a descendant node as parent")
+			respondError(w, http.StatusBadRequest, "不能将子节点设置为父节点")
 			return
 		}
 	}
@@ -324,7 +275,7 @@ func (h *OrgHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $5
 	`, req.Name, req.TypeID, req.ParentID, req.SortOrder, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update organization")
+		respondError(w, http.StatusInternalServerError, "更新组织失败")
 		return
 	}
 
@@ -342,7 +293,7 @@ func (h *OrgHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	org, err := h.fetchOrg(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "organization not found")
+		respondError(w, http.StatusNotFound, "组织不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, org.TenantID) {
@@ -362,13 +313,13 @@ func (h *OrgHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		SELECT id FROM subtree
 	`, id, org.TenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to collect subtree organizations")
+		respondError(w, http.StatusInternalServerError, "收集子组织失败")
 		return
 	}
 	for rows.Next() {
 		var subID string
 		if err := rows.Scan(&subID); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to scan subtree organizations")
+			respondError(w, http.StatusInternalServerError, "读取子组织失败")
 			return
 		}
 		subtreeIDs = append(subtreeIDs, subID)
@@ -379,7 +330,7 @@ func (h *OrgHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	for _, sid := range subtreeIDs {
 		uid, err := uuid.Parse(sid)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "invalid organization id")
+			respondError(w, http.StatusInternalServerError, "无效的组织ID")
 			return
 		}
 		uuidIDs = append(uuidIDs, uid)
@@ -387,7 +338,7 @@ func (h *OrgHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -396,19 +347,19 @@ func (h *OrgHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		UPDATE users SET org_node_id = NULL, updated_at = NOW()
 		WHERE org_node_id = ANY($1::uuid[]) AND tenant_id = $2
 	`, uuidIDs, org.TenantID); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to clear user organization bindings")
+		respondError(w, http.StatusInternalServerError, "清空用户组织绑定失败")
 		return
 	}
 
 	if _, err := tx.Exec(r.Context(), `
 		DELETE FROM organizations WHERE id = ANY($1::uuid[]) AND tenant_id = $2
 	`, uuidIDs, org.TenantID); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete organizations")
+		respondError(w, http.StatusInternalServerError, "删除组织失败")
 		return
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 

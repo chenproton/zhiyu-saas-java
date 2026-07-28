@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Heart, ArrowLeft, Share2, User, Users, Calendar, Edit3, PlayCircle, Briefcase, GraduationCap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/auth-provider"
+import { useToast } from "@/hooks/use-toast"
 import { positionApi } from "@/lib/api"
 import type { CareerPosition } from "@/lib/types"
 
@@ -31,6 +32,7 @@ function formatDate(dateStr?: string) {
 export function PositionHeader({ position, industryName, onStartLearning }: PositionHeaderProps) {
   const { user } = useAuth()
   const router = useRouter()
+  const { toast } = useToast()
   const [isHeart, setIsHeart] = useState(false)
   const [favoriteCount, setFavoriteCount] = useState(position.favoriteCount ?? 0)
   const [loading, setLoading] = useState(false)
@@ -50,7 +52,7 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
 
   const toggleHeart = async () => {
     if (!user) {
-      alert("请先登录后再收藏岗位")
+      toast({ title: "提示", description: "请先登录后再收藏岗位" })
       return
     }
     if (loading) return
@@ -60,7 +62,7 @@ export function PositionHeader({ position, industryName, onStartLearning }: Posi
       setIsHeart(res.isFavorite)
       setFavoriteCount(res.favoriteCount)
     } catch {
-      alert("操作失败，请稍后再试")
+      toast({ variant: "destructive", title: "操作失败", description: "操作失败，请稍后再试" })
     } finally {
       setLoading(false)
     }

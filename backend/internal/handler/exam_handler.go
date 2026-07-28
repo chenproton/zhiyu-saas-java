@@ -109,14 +109,14 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list exams")
+		respondError(w, http.StatusInternalServerError, "查询考试失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanExamRows(r.Context(), rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan exams")
+		respondError(w, http.StatusInternalServerError, "读取考试失败")
 		return
 	}
 
@@ -133,7 +133,7 @@ func (h *ExamHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	exam, err := h.fetchExam(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "exam not found")
+		respondError(w, http.StatusNotFound, "考试不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, exam)
@@ -161,7 +161,7 @@ func (h *ExamHandler) Create(w http.ResponseWriter, r *http.Request) {
 	id := uuid.NewString()
 	code, err := generateUniqueEntityCode(r.Context(), h.DB, "SJ", "exams", tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to generate exam code")
+		respondError(w, http.StatusInternalServerError, "生成考试编码失败")
 		return
 	}
 	_, err = h.DB.Exec(r.Context(), `
@@ -174,7 +174,7 @@ func (h *ExamHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "考试名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create exam")
+		respondError(w, http.StatusInternalServerError, "创建考试失败")
 		return
 	}
 
@@ -192,7 +192,7 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	existing, err := h.fetchExam(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "exam not found")
+		respondError(w, http.StatusNotFound, "考试不存在")
 		return
 	}
 
@@ -237,7 +237,7 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "考试名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update exam")
+		respondError(w, http.StatusInternalServerError, "更新考试失败")
 		return
 	}
 
@@ -254,13 +254,13 @@ func (h *ExamHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchExam(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "exam not found")
+		respondError(w, http.StatusNotFound, "考试不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM exams WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete exam")
+		respondError(w, http.StatusInternalServerError, "删除考试失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -320,7 +320,7 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchExam(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "exam not found")
+		respondError(w, http.StatusNotFound, "考试不存在")
 		return
 	}
 
@@ -330,7 +330,7 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.QuestionID == "" {
-		respondError(w, http.StatusBadRequest, "missing question id")
+		respondError(w, http.StatusBadRequest, "缺少题目ID")
 		return
 	}
 
@@ -340,7 +340,7 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 		SELECT id, type, content, options, answer, analysis, score FROM questions WHERE id = $1
 	`, req.QuestionID).Scan(&q.ID, &q.Type, &q.Content, &optionsStr, &answerStr, &analysis, &q.Score)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "question not found")
+		respondError(w, http.StatusNotFound, "题目不存在")
 		return
 	}
 	q.Analysis = analysis
@@ -369,7 +369,7 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM exam_questions WHERE exam_id = $3))
 	`, uuid.NewString(), tenantID, id, q.ID, q.Type, q.Content, string(optionsJSON), string(answerJSON), q.Analysis, score)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to add question")
+		respondError(w, http.StatusInternalServerError, "添加题目失败")
 		return
 	}
 
@@ -388,13 +388,13 @@ func (h *ExamHandler) RemoveQuestion(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	questionID := chi.URLParam(r, "questionId")
 	if _, err := h.fetchExam(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "exam not found")
+		respondError(w, http.StatusNotFound, "考试不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM exam_questions WHERE exam_id = $1 AND question_id = $2`, id, questionID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to remove question")
+		respondError(w, http.StatusInternalServerError, "移除题目失败")
 		return
 	}
 
@@ -423,7 +423,7 @@ func (h *ExamHandler) UpdateQuestionScore(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if req.Score <= 0 {
-		respondError(w, http.StatusBadRequest, "score must be positive")
+		respondError(w, http.StatusBadRequest, "分数必须为正数")
 		return
 	}
 
@@ -431,11 +431,11 @@ func (h *ExamHandler) UpdateQuestionScore(w http.ResponseWriter, r *http.Request
 		UPDATE exam_questions SET score = $1 WHERE exam_id = $2 AND question_id = $3
 	`, req.Score, examID, questionID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update question score")
+		respondError(w, http.StatusInternalServerError, "更新question score失败")
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		respondError(w, http.StatusNotFound, "question not found in exam")
+		respondError(w, http.StatusNotFound, "考试中未找到该题目")
 		return
 	}
 
@@ -461,31 +461,31 @@ func (h *ExamHandler) BulkUpdateScores(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(req) == 0 {
-		respondError(w, http.StatusBadRequest, "scores map must not be empty")
+		respondError(w, http.StatusBadRequest, "分数映射不能为空")
 		return
 	}
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
 
 	for questionID, score := range req {
 		if score <= 0 {
-			respondError(w, http.StatusBadRequest, "score must be positive")
+			respondError(w, http.StatusBadRequest, "分数必须为正数")
 			return
 		}
 		tag, err := tx.Exec(r.Context(), `
 			UPDATE exam_questions SET score = $1 WHERE exam_id = $2 AND question_id = $3
 		`, score, examID, questionID)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to update question score")
+			respondError(w, http.StatusInternalServerError, "更新question score失败")
 			return
 		}
 		if tag.RowsAffected() == 0 {
-			respondError(w, http.StatusNotFound, "question not found in exam: "+questionID)
+			respondError(w, http.StatusNotFound, "考试中未找到题目："+questionID)
 			return
 		}
 	}
@@ -494,12 +494,12 @@ func (h *ExamHandler) BulkUpdateScores(w http.ResponseWriter, r *http.Request) {
 		UPDATE exams SET total_score = COALESCE((SELECT SUM(score) FROM exam_questions WHERE exam_id = $1), 0), updated_at = NOW()
 		WHERE id = $1
 	`, examID); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to recalc exam total")
+		respondError(w, http.StatusInternalServerError, "重新计算exam total失败")
 		return
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 

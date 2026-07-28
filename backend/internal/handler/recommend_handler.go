@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -49,69 +48,29 @@ func (h *RecommendHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	majorID := r.URL.Query().Get("majorId")
 	careerPositionID := r.URL.Query().Get("careerPositionId")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
 
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "pr.tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if majorID != "" {
-		where = append(where, "pr.major_id = $"+itoa(argIdx))
-		args = append(args, majorID)
-		argIdx++
-	}
-	if careerPositionID != "" {
-		where = append(where, "pr.career_position_id = $"+itoa(argIdx))
-		args = append(args, careerPositionID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM position_recommendations pr WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT pr.id, pr.major_id, COALESCE(m.name, '') AS major_name,
-			pr.career_position_id, pr.position_type, pr.reason, pr.sort_order,
-			pr.is_enabled, pr.created_by, pr.created_at, pr.updated_at
-		FROM position_recommendations pr
-		LEFT JOIN majors m ON m.id = pr.major_id
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY pr.sort_order ASC, pr.created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.PositionRecommendation]{
+		Table:         "position_recommendations pr LEFT JOIN majors m ON m.id = pr.major_id",
+		SelectColumns: "pr.id, pr.major_id, COALESCE(m.name, '') AS major_name, pr.career_position_id, pr.position_type, pr.reason, pr.sort_order, pr.is_enabled, pr.created_by, pr.created_at, pr.updated_at",
+		TenantScoped:  true,
+		TenantColumn:  "pr.tenant_id",
+		OrderBy:       "pr.sort_order ASC, pr.created_at DESC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if majorID != "" {
+				qb.addCondition("pr.major_id = " + qb.nextArg(majorID))
+			}
+			if careerPositionID != "" {
+				qb.addCondition("pr.career_position_id = " + qb.nextArg(careerPositionID))
+			}
+		},
+		ScanRows: h.scanRecommendRows,
+	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list recommendations")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanRecommendRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan recommendations")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "查询推荐失败")
 		return
 	}
 
@@ -148,7 +107,7 @@ func (h *RecommendHandler) Create(w http.ResponseWriter, r *http.Request) {
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`, id, tenantID, req.MajorID, req.CareerPositionID, req.PositionType, req.Reason, req.SortOrder, req.IsEnabled, claims.UserID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create recommendation")
+		respondError(w, http.StatusInternalServerError, "创建推荐失败")
 		return
 	}
 
@@ -164,7 +123,7 @@ func (h *RecommendHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchRecommend(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "recommendation not found")
+		respondError(w, http.StatusNotFound, "推荐不存在")
 		return
 	}
 
@@ -186,7 +145,7 @@ func (h *RecommendHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $7
 	`, req.MajorID, req.CareerPositionID, req.PositionType, req.Reason, req.SortOrder, req.IsEnabled, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update recommendation")
+		respondError(w, http.StatusInternalServerError, "更新推荐失败")
 		return
 	}
 
@@ -202,13 +161,13 @@ func (h *RecommendHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchRecommend(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "recommendation not found")
+		respondError(w, http.StatusNotFound, "推荐不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM position_recommendations WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete recommendation")
+		respondError(w, http.StatusInternalServerError, "删除推荐失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

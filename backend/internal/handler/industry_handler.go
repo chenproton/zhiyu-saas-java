@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -43,78 +42,33 @@ type UpdateIndustryRequest struct {
 func (h *IndustryHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.URL.Query().Get("tenantId")
 	parentID := r.URL.Query().Get("parentId")
-	search := r.URL.Query().Get("search")
 	enabledStr := r.URL.Query().Get("enabled")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
 
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if tenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, tenantID)
-		argIdx++
-	}
-	if parentID != "" {
-		where = append(where, "parent_id = $"+itoa(argIdx))
-		args = append(args, parentID)
-		argIdx++
-	}
-	if enabledStr != "" {
-		where = append(where, "enabled = $"+itoa(argIdx))
-		args = append(args, enabledStr == "true")
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "(name ILIKE $"+itoa(argIdx)+" OR code ILIKE $"+itoa(argIdx)+")")
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM industries WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, tenant_id, code, name, parent_id, enabled, sort_order, created_at, updated_at
-		FROM industries
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY sort_order ASC, created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery[domain.Industry](r.Context(), h.DB, r, listQueryConfig[domain.Industry]{
+		Table:         "industries",
+		SelectColumns: "id, tenant_id, code, name, parent_id, enabled, sort_order, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name", "code"},
+		OrderBy:       "sort_order ASC, created_at DESC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if tenantID != "" {
+				qb.addCondition("tenant_id = " + qb.nextArg(tenantID))
+			}
+			if parentID != "" {
+				qb.addCondition("parent_id = " + qb.nextArg(parentID))
+			}
+			if enabledStr != "" {
+				qb.addCondition("enabled = " + qb.nextArg(enabledStr == "true"))
+			}
+		},
+		ScanRows: h.scanIndustryRows,
+	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list industries")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanIndustryRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan industries")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -125,7 +79,7 @@ func (h *IndustryHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	industry, err := h.fetchIndustry(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "industry not found")
+		respondError(w, http.StatusNotFound, "行业不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, industry.TenantID) {
@@ -166,7 +120,7 @@ func (h *IndustryHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "行业代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create industry")
+		respondError(w, http.StatusInternalServerError, "创建行业失败")
 		return
 	}
 
@@ -184,7 +138,7 @@ func (h *IndustryHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	industry, err := h.fetchIndustry(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "industry not found")
+		respondError(w, http.StatusNotFound, "行业不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, industry.TenantID) {
@@ -211,7 +165,7 @@ func (h *IndustryHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "行业代码已存在，请使用其他代码")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update industry")
+		respondError(w, http.StatusInternalServerError, "更新行业失败")
 		return
 	}
 
@@ -229,7 +183,7 @@ func (h *IndustryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	industry, err := h.fetchIndustry(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "industry not found")
+		respondError(w, http.StatusNotFound, "行业不存在")
 		return
 	}
 	if !verifyTenantOwnership(w, r, industry.TenantID) {
@@ -241,7 +195,7 @@ func (h *IndustryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		`SELECT COUNT(*) FROM industries WHERE parent_id = $1`,
 		id,
 	).Scan(&childCount); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to check child industries")
+		respondError(w, http.StatusInternalServerError, "检查child industries失败")
 		return
 	}
 	if childCount > 0 {
@@ -251,7 +205,7 @@ func (h *IndustryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM industries WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete industry")
+		respondError(w, http.StatusInternalServerError, "删除行业失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

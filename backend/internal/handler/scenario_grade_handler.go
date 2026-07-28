@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -34,72 +33,33 @@ type UpsertScenarioGradeMappingRequest struct {
 
 func (h *ScenarioGradeHandler) ListGradeMappings(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
-	scenarioID := r.URL.Query().Get("scenarioId")
-	taskID := r.URL.Query().Get("taskId")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
+	cfg := listQueryConfig[domain.ScenarioGradeMapping]{
+		Table:         "scenario_grade_mappings",
+		SelectColumns: "id, scenario_id, task_id, level, min_score, max_score, description, color",
+		TenantScoped:  true,
+		OrderBy:       "min_score ASC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if scenarioID := r.URL.Query().Get("scenarioId"); scenarioID != "" {
+				qb.addCondition("scenario_id = " + qb.nextArg(scenarioID))
+			}
+			if taskID := r.URL.Query().Get("taskId"); taskID != "" {
+				qb.addCondition("task_id = " + qb.nextArg(taskID))
+			}
+		},
+		ScanRows: h.scanGradeMappingRows,
 	}
 
-	if scenarioID != "" {
-		where = append(where, "scenario_id = $"+itoa(argIdx))
-		args = append(args, scenarioID)
-		argIdx++
-	}
-	if taskID != "" {
-		where = append(where, "task_id = $"+itoa(argIdx))
-		args = append(args, taskID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM scenario_grade_mappings WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, scenario_id, task_id, level, min_score, max_score, description, color
-		FROM scenario_grade_mappings
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY min_score ASC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list grade mappings")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanGradeMappingRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan grade mappings")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -108,7 +68,7 @@ func (h *ScenarioGradeHandler) ListGradeMappings(w http.ResponseWriter, r *http.
 
 func (h *ScenarioGradeHandler) UpsertGradeMapping(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
@@ -135,7 +95,7 @@ func (h *ScenarioGradeHandler) UpsertGradeMapping(w http.ResponseWriter, r *http
 			WHERE id = $8
 		`, req.ScenarioID, req.TaskID, req.Level, req.MinScore, req.MaxScore, req.Description, req.Color, req.ID)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to update grade mapping")
+			respondError(w, http.StatusInternalServerError, "更新成绩映射失败")
 			return
 		}
 		id = req.ID
@@ -146,7 +106,7 @@ func (h *ScenarioGradeHandler) UpsertGradeMapping(w http.ResponseWriter, r *http
 			RETURNING id
 		`, tenantID, req.ScenarioID, req.TaskID, req.Level, req.MinScore, req.MaxScore, req.Description, req.Color).Scan(&id)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to create grade mapping")
+			respondError(w, http.StatusInternalServerError, "创建成绩映射失败")
 			return
 		}
 	}
@@ -161,14 +121,14 @@ func (h *ScenarioGradeHandler) UpsertGradeMapping(w http.ResponseWriter, r *http
 
 func (h *ScenarioGradeHandler) DeleteGradeMapping(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM scenario_grade_mappings WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete grade mapping")
+		respondError(w, http.StatusInternalServerError, "删除成绩映射失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

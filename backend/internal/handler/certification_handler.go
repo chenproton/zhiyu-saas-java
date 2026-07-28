@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -58,62 +57,25 @@ func (h *CertificationHandler) ListRules(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	status := r.URL.Query().Get("status")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
+	cfg := listQueryConfig[domain.CertificationRule]{
+		Table:         "certification_rules",
+		SelectColumns: "id, career_position_id, status, rule_source, created_at, updated_at",
+		TenantScoped:  true,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if status := r.URL.Query().Get("status"); status != "" {
+				qb.addCondition("status = " + qb.nextArg(status))
+			}
+		},
+		ScanRows: h.scanRuleRows,
 	}
 
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM certification_rules WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, career_position_id, status, rule_source, created_at, updated_at
-		FROM certification_rules
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list certification rules")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanRuleRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan certification rules")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -130,7 +92,7 @@ func (h *CertificationHandler) GetRule(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	rule, err := h.fetchRule(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "certification rule not found")
+		respondError(w, http.StatusNotFound, "认证规则不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, rule)
@@ -161,7 +123,7 @@ func (h *CertificationHandler) CreateRule(w http.ResponseWriter, r *http.Request
 		VALUES ($1, $2, $3, 'draft', $4)
 	`, id, tenantID, req.CareerPositionID, req.RuleSource)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create certification rule")
+		respondError(w, http.StatusInternalServerError, "创建认证规则失败")
 		return
 	}
 
@@ -178,7 +140,7 @@ func (h *CertificationHandler) UpdateRule(w http.ResponseWriter, r *http.Request
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchRule(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "certification rule not found")
+		respondError(w, http.StatusNotFound, "认证规则不存在")
 		return
 	}
 
@@ -197,7 +159,7 @@ func (h *CertificationHandler) UpdateRule(w http.ResponseWriter, r *http.Request
 		WHERE id = $3
 	`, req.CareerPositionID, req.RuleSource, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update certification rule")
+		respondError(w, http.StatusInternalServerError, "更新认证规则失败")
 		return
 	}
 
@@ -214,13 +176,13 @@ func (h *CertificationHandler) DeleteRule(w http.ResponseWriter, r *http.Request
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchRule(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "certification rule not found")
+		respondError(w, http.StatusNotFound, "认证规则不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM certification_rules WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete certification rule")
+		respondError(w, http.StatusInternalServerError, "删除认证规则失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -235,7 +197,7 @@ func (h *CertificationHandler) ConfigItems(w http.ResponseWriter, r *http.Reques
 
 	ruleID := chi.URLParam(r, "ruleId")
 	if _, err := h.fetchRule(r.Context(), ruleID); err != nil {
-		respondError(w, http.StatusNotFound, "certification rule not found")
+		respondError(w, http.StatusNotFound, "认证规则不存在")
 		return
 	}
 
@@ -258,7 +220,7 @@ func (h *CertificationHandler) ConfigItems(w http.ResponseWriter, r *http.Reques
 			VALUES ($1, $2, $3, $4, $5)
 		`, id, tenantID, ruleID, req.Name, req.SortOrder)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to create certification item")
+			respondError(w, http.StatusInternalServerError, "创建认证项失败")
 			return
 		}
 
@@ -272,7 +234,7 @@ func (h *CertificationHandler) ConfigItems(w http.ResponseWriter, r *http.Reques
 		FROM certification_ability_items WHERE rule_id = $1 ORDER BY sort_order
 	`, ruleID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list certification items")
+		respondError(w, http.StatusInternalServerError, "查询认证项失败")
 		return
 	}
 	defer rows.Close()
@@ -281,7 +243,7 @@ func (h *CertificationHandler) ConfigItems(w http.ResponseWriter, r *http.Reques
 	for rows.Next() {
 		var item domain.CertificationAbilityItem
 		if err := rows.Scan(&item.ID, &item.RuleID, &item.Name, &item.SortOrder); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to scan certification items")
+			respondError(w, http.StatusInternalServerError, "读取认证项失败")
 			return
 		}
 		items = append(items, item)
@@ -298,7 +260,7 @@ func (h *CertificationHandler) ConfigPoints(w http.ResponseWriter, r *http.Reque
 
 	itemID := chi.URLParam(r, "itemId")
 	if _, err := h.fetchItem(r.Context(), itemID); err != nil {
-		respondError(w, http.StatusNotFound, "certification item not found")
+		respondError(w, http.StatusNotFound, "认证项不存在")
 		return
 	}
 
@@ -328,7 +290,7 @@ func (h *CertificationHandler) ConfigPoints(w http.ResponseWriter, r *http.Reque
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		`, id, tenantID, itemID, abilityPointUUID.String(), req.MappingType, req.CustomLevelMapping, req.RequiredLevel, req.Weight)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to create certification point")
+			respondError(w, http.StatusInternalServerError, "创建认证点失败")
 			return
 		}
 
@@ -342,7 +304,7 @@ func (h *CertificationHandler) ConfigPoints(w http.ResponseWriter, r *http.Reque
 		FROM certification_ability_points WHERE item_id = $1 ORDER BY id
 	`, itemID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list certification points")
+		respondError(w, http.StatusInternalServerError, "查询认证点失败")
 		return
 	}
 	defer rows.Close()
@@ -351,7 +313,7 @@ func (h *CertificationHandler) ConfigPoints(w http.ResponseWriter, r *http.Reque
 	for rows.Next() {
 		var point domain.CertificationAbilityPoint
 		if err := rows.Scan(&point.ID, &point.ItemID, &point.AbilityPointID, &point.MappingType, &point.CustomLevelMapping, &point.RequiredLevel, &point.Weight); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to scan certification points")
+			respondError(w, http.StatusInternalServerError, "读取认证点失败")
 			return
 		}
 		items = append(items, point)
@@ -368,13 +330,13 @@ func (h *CertificationHandler) DeleteItem(w http.ResponseWriter, r *http.Request
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchItem(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "certification item not found")
+		respondError(w, http.StatusNotFound, "认证项不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM certification_ability_items WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete certification item")
+		respondError(w, http.StatusInternalServerError, "删除认证项失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -389,13 +351,13 @@ func (h *CertificationHandler) DeletePoint(w http.ResponseWriter, r *http.Reques
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchPoint(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "certification point not found")
+		respondError(w, http.StatusNotFound, "认证点不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM certification_ability_points WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete certification point")
+		respondError(w, http.StatusInternalServerError, "删除认证点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -454,7 +416,7 @@ func (h *CertificationHandler) GetFullRule(w http.ResponseWriter, r *http.Reques
 	ruleID := chi.URLParam(r, "id")
 	rule, err := h.fetchRule(r.Context(), ruleID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "certification rule not found")
+		respondError(w, http.StatusNotFound, "认证规则不存在")
 		return
 	}
 
@@ -468,7 +430,7 @@ func (h *CertificationHandler) GetFullRule(w http.ResponseWriter, r *http.Reques
 		ORDER BY i.sort_order
 	`, ruleID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list items")
+		respondError(w, http.StatusInternalServerError, "查询项失败")
 		return
 	}
 	defer itemRows.Close()

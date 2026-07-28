@@ -52,8 +52,8 @@ func scanEvaluationBatchRow(ctx context.Context, db *pgxpool.Pool, id string) (a
 	return b, nil
 }
 
-func scanEvaluationBatchRows(rows pgx.Rows) (any, error) {
-	items := make([]domain.EvaluationBatch, 0)
+func scanEvaluationBatchRows(rows pgx.Rows) ([]any, error) {
+	items := make([]any, 0)
 	for rows.Next() {
 		var b domain.EvaluationBatch
 		var code, orgNodeID, majorID, majorName, workflowID *string

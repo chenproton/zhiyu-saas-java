@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -43,58 +42,23 @@ func (h *RandomDrawQuestionHandler) List(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	search := r.URL.Query().Get("search")
 	majorID := r.URL.Query().Get("majorId")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
 
-	limit := 200
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 200); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-
-	if majorID != "" {
-		where = append(where, "rdq.major_id = $"+itoa(argIdx))
-		args = append(args, majorID)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "(rdq.name ILIKE $"+itoa(argIdx)+" OR rdq.description ILIKE $"+itoa(argIdx)+" OR m.name ILIKE $"+itoa(argIdx)+")")
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM random_draw_questions rdq LEFT JOIN majors m ON m.id = rdq.major_id WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT rdq.id, rdq.name, rdq.description, rdq.answer, rdq.major_id, m.name AS major_name, rdq.created_at, rdq.updated_at
-		FROM random_draw_questions rdq
-		LEFT JOIN majors m ON m.id = rdq.major_id
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY rdq.created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.RandomDrawQuestion]{
+		Table:         "random_draw_questions rdq LEFT JOIN majors m ON m.id = rdq.major_id",
+		SelectColumns: "rdq.id, rdq.name, rdq.description, rdq.answer, rdq.major_id, m.name AS major_name, rdq.created_at, rdq.updated_at",
+		TenantScoped:  false,
+		SearchColumns: []string{"rdq.name", "rdq.description", "m.name"},
+		DefaultLimit:  200,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if majorID != "" {
+				qb.addCondition("rdq.major_id = " + qb.nextArg(majorID))
+			}
+		},
+		ScanRows: h.scanRows,
+	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list random draw questions")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan random draw questions")
+		respondError(w, http.StatusInternalServerError, "查询随机抽题失败")
 		return
 	}
 
@@ -110,7 +74,7 @@ func (h *RandomDrawQuestionHandler) Get(w http.ResponseWriter, r *http.Request) 
 	id := chi.URLParam(r, "id")
 	q, err := h.fetchQuestion(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "random draw question not found")
+		respondError(w, http.StatusNotFound, "随机抽题不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, q)
@@ -148,7 +112,7 @@ func (h *RandomDrawQuestionHandler) Create(w http.ResponseWriter, r *http.Reques
 			respondError(w, http.StatusConflict, "现场问答题名称已存在")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create random draw question")
+		respondError(w, http.StatusInternalServerError, "创建随机抽题失败")
 		return
 	}
 
@@ -164,7 +128,7 @@ func (h *RandomDrawQuestionHandler) Update(w http.ResponseWriter, r *http.Reques
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchQuestion(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "random draw question not found")
+		respondError(w, http.StatusNotFound, "随机抽题不存在")
 		return
 	}
 
@@ -188,7 +152,7 @@ func (h *RandomDrawQuestionHandler) Update(w http.ResponseWriter, r *http.Reques
 			respondError(w, http.StatusConflict, "现场问答题名称已存在")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update random draw question")
+		respondError(w, http.StatusInternalServerError, "更新随机抽题失败")
 		return
 	}
 
@@ -204,13 +168,13 @@ func (h *RandomDrawQuestionHandler) Delete(w http.ResponseWriter, r *http.Reques
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchQuestion(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "random draw question not found")
+		respondError(w, http.StatusNotFound, "随机抽题不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM random_draw_questions WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete random draw question")
+		respondError(w, http.StatusInternalServerError, "删除随机抽题失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

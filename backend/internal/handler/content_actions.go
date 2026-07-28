@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
@@ -55,6 +56,24 @@ func (c contentActions) canTransition(from, to domain.ContentStatus) bool {
 	return false
 }
 
+func (c contentActions) checkTenantAccess(w http.ResponseWriter, r *http.Request, id string) bool {
+	if _, err := uuid.Parse(id); err != nil {
+		respondError(w, http.StatusNotFound, c.entityName+"不存在")
+		return false
+	}
+	var entityTenantID string
+	err := c.db.QueryRow(r.Context(), `SELECT tenant_id FROM `+c.table+` WHERE id = $1`, id).Scan(&entityTenantID)
+	if err == pgx.ErrNoRows {
+		respondError(w, http.StatusNotFound, c.entityName+"不存在")
+		return false
+	}
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "验证"+c.entityName+"所有权失败")
+		return false
+	}
+	return verifyTenantOwnership(w, r, entityTenantID)
+}
+
 func (c contentActions) saveDraft(w http.ResponseWriter, r *http.Request) {
 	c.transition(w, r, domain.StatusDraft)
 }
@@ -65,15 +84,18 @@ func (c contentActions) transition(w http.ResponseWriter, r *http.Request, statu
 		return
 	}
 	id := chi.URLParam(r, "id")
+	if !c.checkTenantAccess(w, r, id) {
+		return
+	}
 
 	var current domain.ContentStatus
 	err := c.db.QueryRow(r.Context(), `SELECT status FROM `+c.table+` WHERE id = $1`, id).Scan(&current)
 	if err == pgx.ErrNoRows {
-		respondError(w, http.StatusNotFound, c.entityName+" not found")
+		respondError(w, http.StatusNotFound, c.entityName+"不存在")
 		return
 	}
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to fetch current status")
+		respondError(w, http.StatusInternalServerError, "获取current status失败")
 		return
 	}
 
@@ -84,13 +106,13 @@ func (c contentActions) transition(w http.ResponseWriter, r *http.Request, statu
 
 	tx, err := c.db.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
 
 	if _, err := tx.Exec(r.Context(), `UPDATE `+c.table+` SET status = $1, updated_at = NOW() WHERE id = $2`, status, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update status")
+		respondError(w, http.StatusInternalServerError, "更新status失败")
 		return
 	}
 
@@ -100,19 +122,19 @@ func (c contentActions) transition(w http.ResponseWriter, r *http.Request, statu
 			DELETE FROM approval_records
 			WHERE target_type = $1 AND target_id = $2 AND status = $3
 		`, c.targetType, id, string(domain.ApprovalStatusPending)); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to delete approval record")
+			respondError(w, http.StatusInternalServerError, "删除审批记录失败")
 			return
 		}
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
 	entity, err := c.fetch(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, c.entityName+" not found")
+		respondError(w, http.StatusNotFound, c.entityName+"不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, entity)
@@ -124,6 +146,7 @@ func (c contentActions) review(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
+
 	var req ContentReviewRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "无效请求体")
@@ -137,17 +160,21 @@ func (c contentActions) review(w http.ResponseWriter, r *http.Request) {
 	case "rejected":
 		status = domain.StatusRejected
 	default:
-		respondError(w, http.StatusBadRequest, "invalid review status")
+		respondError(w, http.StatusBadRequest, "无效的审核状态")
+		return
+	}
+
+	if !c.checkTenantAccess(w, r, id) {
 		return
 	}
 
 	tag, err := c.db.Exec(r.Context(), `UPDATE `+c.table+` SET status = $1, updated_at = NOW() WHERE id = $2 AND status = $3`, status, id, domain.StatusPending)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to review "+c.entityName)
+		respondError(w, http.StatusInternalServerError, "审核"+c.entityName+"失败")
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		respondError(w, http.StatusBadRequest, c.entityName+" not found or not in pending status")
+		respondError(w, http.StatusBadRequest, c.entityName+"不存在或不在待处理状态")
 		return
 	}
 
@@ -161,21 +188,24 @@ func (c contentActions) invite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
+	if !c.checkTenantAccess(w, r, id) {
+		return
+	}
 	var req InviteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == "" {
-		respondError(w, http.StatusBadRequest, "userId is required")
+		respondError(w, http.StatusBadRequest, "缺少用户ID")
 		return
 	}
 	if _, err := c.db.Exec(r.Context(), `
 		UPDATE `+c.table+` SET `+c.inviteCol+` = array_append(`+c.inviteCol+`, $1), updated_at = NOW()
 		WHERE id = $2 AND NOT (`+c.inviteCol+` @> ARRAY[$1]::uuid[])
 	`, req.UserID, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to invite collaborator")
+		respondError(w, http.StatusInternalServerError, "邀请协作者失败")
 		return
 	}
 	entity, err := c.fetch(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, c.entityName+" not found")
+		respondError(w, http.StatusNotFound, c.entityName+"不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, entity)

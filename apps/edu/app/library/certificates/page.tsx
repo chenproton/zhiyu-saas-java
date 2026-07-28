@@ -8,6 +8,14 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Label } from "@/components/ui/label"
 import { certificateLibraryApi } from "@/lib/api"
 import type { CertificateLibraryItem } from "@/lib/types/job"
@@ -71,31 +79,33 @@ export default function CertificatesPage() {
             {searchQuery && <Button variant="ghost" size="sm" onClick={() => setSearchQuery("")}>清除</Button>}
           </div>
           <div className="rounded-lg border">
-            <table className="w-full">
-              <thead><tr className="border-b bg-slate-50/50">
-                <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">名称</th>
-                <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">链接</th>
-                <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">描述</th>
-                <th className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">创建时间</th>
-                <th className="text-right p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">操作</th>
-              </tr></thead>
-              <tbody>
-                {loading && <tr><td colSpan={5} className="p-12 text-center text-muted-foreground">加载中...</td></tr>}
-                {!loading && items.length === 0 && <tr><td colSpan={5} className="p-12 text-center text-muted-foreground">暂无数据</td></tr>}
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+                  <TableHead className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">名称</TableHead>
+                  <TableHead className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">链接</TableHead>
+                  <TableHead className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">描述</TableHead>
+                  <TableHead className="text-left p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">创建时间</TableHead>
+                  <TableHead className="text-right p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading && <TableRow><TableCell colSpan={5} className="p-12 text-center text-muted-foreground">加载中...</TableCell></TableRow>}
+                {!loading && items.length === 0 && <TableRow><TableCell colSpan={5} className="p-12 text-center text-muted-foreground">暂无数据</TableCell></TableRow>}
                 {items.map(item => (
-                  <tr key={item.id} className="border-b last:border-0 hover:bg-slate-50/50">
-                    <td className="p-3"><div className="flex items-center gap-2"><Award className="size-4 text-rose-500" /><span className="text-sm font-medium text-slate-700">{item.name}</span></div></td>
-                    <td className="p-3 hidden md:table-cell">{item.url ? <a href={item.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"><ExternalLink className="size-3" />访问</a> : "-"}</td>
-                    <td className="p-3 text-sm text-slate-400 hidden lg:table-cell max-w-[300px] truncate">{item.description || "-"}</td>
-                    <td className="p-3 text-sm text-slate-400">{new Date(item.createdAt).toLocaleDateString("zh-CN")}</td>
-                    <td className="p-3 text-right whitespace-nowrap">
+                  <TableRow key={item.id}>
+                    <TableCell className="p-3"><div className="flex items-center gap-2"><Award className="size-4 text-rose-500" /><span className="text-sm font-medium text-slate-700">{item.name}</span></div></TableCell>
+                    <TableCell className="p-3 hidden md:table-cell">{item.url ? <a href={item.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"><ExternalLink className="size-3" />访问</a> : "-"}</TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400 hidden lg:table-cell max-w-[300px] truncate">{item.description || "-"}</TableCell>
+                    <TableCell className="p-3 text-sm text-slate-400">{new Date(item.createdAt).toLocaleDateString("zh-CN")}</TableCell>
+                    <TableCell className="p-3 text-right whitespace-nowrap">
                       <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(item)}><Pencil className="size-4" /></Button>
                       <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)}><Trash2 className="size-4 text-destructive" /></Button>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>

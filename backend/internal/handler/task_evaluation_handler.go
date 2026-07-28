@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -70,13 +69,13 @@ type ReviewStepInput struct {
 
 func (h *TaskEvaluationHandler) ListMethods(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
 	taskID := chi.URLParam(r, "taskId")
 	if taskID == "" {
-		respondError(w, http.StatusBadRequest, "missing taskId")
+		respondError(w, http.StatusBadRequest, "缺少任务ID")
 		return
 	}
 
@@ -87,7 +86,7 @@ func (h *TaskEvaluationHandler) ListMethods(w http.ResponseWriter, r *http.Reque
 
 	configs, err := h.fetchTaskMethods(r.Context(), taskID, tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list evaluation methods")
+		respondError(w, http.StatusInternalServerError, "查询测评方式失败")
 		return
 	}
 
@@ -96,13 +95,13 @@ func (h *TaskEvaluationHandler) ListMethods(w http.ResponseWriter, r *http.Reque
 
 func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
 	taskID := chi.URLParam(r, "taskId")
 	if taskID == "" {
-		respondError(w, http.StatusBadRequest, "missing taskId")
+		respondError(w, http.StatusBadRequest, "缺少任务ID")
 		return
 	}
 
@@ -124,18 +123,18 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 			SELECT COALESCE(MAX(version), 0) FROM task_evaluation_methods WHERE task_id = $1 AND tenant_id = $2
 		`, taskID, tenantID).Scan(&currentVersion)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to check evaluation method version")
+			respondError(w, http.StatusInternalServerError, "检查测评方式版本失败")
 			return
 		}
 		if currentVersion > req.Version {
-			respondError(w, http.StatusConflict, "evaluation rules have been modified by another session")
+			respondError(w, http.StatusConflict, "评价规则已被其他会话修改")
 			return
 		}
 	}
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -146,7 +145,7 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 		WHERE task_id = $1 AND tenant_id = $2
 	`, taskID, tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to disable existing methods")
+		respondError(w, http.StatusInternalServerError, "禁用已有测评方式失败")
 		return
 	}
 
@@ -194,7 +193,7 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 			RETURNING id
 		`, tenantID, taskID, m.MethodKey, m.Weight, m.EvalObject, m.ScoreType, evalSubjects, m.RubricTemplateID, resourceConfig, newVersion, m.IsEnabled).Scan(&configID)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to upsert evaluation method")
+			respondError(w, http.StatusInternalServerError, "保存测评方式失败")
 			return
 		}
 
@@ -203,7 +202,7 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 		if m.IsEnabled {
 			_, err = tx.Exec(r.Context(), `DELETE FROM task_eval_points WHERE config_id = $1`, configID)
 			if err != nil {
-				respondError(w, http.StatusInternalServerError, "failed to clear eval points")
+				respondError(w, http.StatusInternalServerError, "清空评价要点失败")
 				return
 			}
 			for _, ep := range m.EvalPoints {
@@ -215,14 +214,14 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 					ep.Weight, ep.ScoringMethod, gradeMapping,
 					coalesceStringSlice(ep.KnowledgePointIDs), coalesceStringSlice(ep.AbilityPointIDs), ep.SortOrder)
 				if err != nil {
-					respondError(w, http.StatusInternalServerError, "failed to insert eval point")
+					respondError(w, http.StatusInternalServerError, "插入评价要点失败")
 					return
 				}
 			}
 
 			_, err = tx.Exec(r.Context(), `DELETE FROM task_review_steps WHERE config_id = $1`, configID)
 			if err != nil {
-				respondError(w, http.StatusInternalServerError, "failed to clear review steps")
+				respondError(w, http.StatusInternalServerError, "清空评审步骤失败")
 				return
 			}
 			for _, rs := range m.ReviewSteps {
@@ -231,7 +230,7 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 					VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 				`, tenantID, configID, rs.Label, rs.Description, rs.Enabled, rs.SubjectType, rs.Weight, rs.SortOrder)
 				if err != nil {
-					respondError(w, http.StatusInternalServerError, "failed to insert review step")
+					respondError(w, http.StatusInternalServerError, "插入评审步骤失败")
 					return
 				}
 			}
@@ -239,7 +238,7 @@ func (h *TaskEvaluationHandler) SaveMethods(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -264,64 +263,27 @@ type RubricTemplateInput struct {
 
 func (h *TaskEvaluationHandler) ListTemplates(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-	keyword := r.URL.Query().Get("keyword")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	where = append(where, "tenant_id = $"+itoa(argIdx))
-	args = append(args, tenantID)
-	argIdx++
-
-	if keyword != "" {
-		where = append(where, "name ILIKE $"+itoa(argIdx))
-		args = append(args, "%"+keyword+"%")
-		argIdx++
-	}
-
-	where = append(where, "is_deleted = false")
-
-	countQuery := "SELECT COUNT(*) FROM rubric_templates WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, tenant_id, name, mode, types, description, data, is_deleted, created_at, updated_at
-		FROM rubric_templates
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY updated_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery[domain.RubricTemplate](r.Context(), h.DB, r, listQueryConfig[domain.RubricTemplate]{
+		Table:         "rubric_templates",
+		SelectColumns: "id, tenant_id, name, mode, types, description, data, is_deleted, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
+		SearchParam:   "keyword",
+		OrderBy:       "updated_at DESC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			qb.addCondition("is_deleted = false")
+		},
+	}, scanRubricTemplates)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list rubric templates")
-		return
-	}
-	defer rows.Close()
-
-	items, err := scanRubricTemplates(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan rubric templates")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "查询评分模板失败")
 		return
 	}
 
@@ -330,14 +292,14 @@ func (h *TaskEvaluationHandler) ListTemplates(w http.ResponseWriter, r *http.Req
 
 func (h *TaskEvaluationHandler) GetTemplate(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	t, err := h.fetchRubricTemplate(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "rubric template not found")
+		respondError(w, http.StatusNotFound, "评分模板不存在")
 		return
 	}
 
@@ -346,7 +308,7 @@ func (h *TaskEvaluationHandler) GetTemplate(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if t.TenantID != tenantID {
-		respondError(w, http.StatusForbidden, "access denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -355,7 +317,7 @@ func (h *TaskEvaluationHandler) GetTemplate(w http.ResponseWriter, r *http.Reque
 
 func (h *TaskEvaluationHandler) CreateTemplate(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
@@ -383,7 +345,7 @@ func (h *TaskEvaluationHandler) CreateTemplate(w http.ResponseWriter, r *http.Re
 		RETURNING id
 	`, tenantID, req.Name, req.Mode, types, req.Description, req.Data, now, now).Scan(&id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create rubric template")
+		respondError(w, http.StatusInternalServerError, "创建评分模板失败")
 		return
 	}
 
@@ -393,7 +355,7 @@ func (h *TaskEvaluationHandler) CreateTemplate(w http.ResponseWriter, r *http.Re
 
 func (h *TaskEvaluationHandler) UpdateTemplate(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
@@ -416,11 +378,11 @@ func (h *TaskEvaluationHandler) UpdateTemplate(w http.ResponseWriter, r *http.Re
 
 	existing, err := h.fetchRubricTemplate(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "rubric template not found")
+		respondError(w, http.StatusNotFound, "评分模板不存在")
 		return
 	}
 	if existing.TenantID != tenantID {
-		respondError(w, http.StatusForbidden, "access denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -431,7 +393,7 @@ func (h *TaskEvaluationHandler) UpdateTemplate(w http.ResponseWriter, r *http.Re
 		WHERE id = $7
 	`, req.Name, req.Mode, types, req.Description, req.Data, now, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update rubric template")
+		respondError(w, http.StatusInternalServerError, "更新评分模板失败")
 		return
 	}
 
@@ -441,7 +403,7 @@ func (h *TaskEvaluationHandler) UpdateTemplate(w http.ResponseWriter, r *http.Re
 
 func (h *TaskEvaluationHandler) DeleteTemplate(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
@@ -454,11 +416,11 @@ func (h *TaskEvaluationHandler) DeleteTemplate(w http.ResponseWriter, r *http.Re
 
 	existing, err := h.fetchRubricTemplate(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "rubric template not found")
+		respondError(w, http.StatusNotFound, "评分模板不存在")
 		return
 	}
 	if existing.TenantID != tenantID {
-		respondError(w, http.StatusForbidden, "access denied")
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 
@@ -467,7 +429,7 @@ func (h *TaskEvaluationHandler) DeleteTemplate(w http.ResponseWriter, r *http.Re
 		WHERE id = $1
 	`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete rubric template")
+		respondError(w, http.StatusInternalServerError, "删除评分模板失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react"
 import Image from "next/image"
 import { DashboardLayout } from "@/components/dashboard-layout"
+import { ConfirmDialog } from "@zhiyu/ui"
+import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,6 +28,7 @@ import {
 import { bannerApi, type Banner } from "@/lib/api"
 
 export default function AdminBannersPage() {
+  const { toast } = useToast()
   const [banners, setBanners] = useState<Banner[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -39,6 +42,7 @@ export default function AdminBannersPage() {
   })
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string }>({ open: false, id: "" })
 
   const fetchBanners = async () => {
     setLoading(true)
@@ -100,7 +104,11 @@ export default function AdminBannersPage() {
     const image = imagePreview || "/placeholder.jpg"
 
     if (!title) {
-      alert("请输入标题")
+      toast({
+        variant: "destructive",
+        title: "提示",
+        description: "请输入标题",
+      })
       return
     }
 
@@ -127,7 +135,11 @@ export default function AdminBannersPage() {
       resetForm()
       await fetchBanners()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "保存失败")
+      toast({
+        variant: "destructive",
+        title: "提示",
+        description: err instanceof Error ? err.message : "保存失败",
+      })
     } finally {
       setSaving(false)
     }
@@ -141,17 +153,35 @@ export default function AdminBannersPage() {
       })
       await fetchBanners()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "状态切换失败")
+      toast({
+        variant: "destructive",
+        title: "提示",
+        description: err instanceof Error ? err.message : "状态切换失败",
+      })
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("确定删除该轮播图吗？")) return
+  const handleDelete = (id: string) => {
+    setDeleteConfirm({ open: true, id })
+  }
+
+  const closeDeleteConfirm = () => {
+    setDeleteConfirm((prev) => ({ ...prev, open: false }))
+  }
+
+  const executeDelete = async () => {
+    const { id } = deleteConfirm
+    if (!id) return
+    closeDeleteConfirm()
     try {
       await bannerApi.delete(id)
       await fetchBanners()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "删除失败")
+      toast({
+        variant: "destructive",
+        title: "提示",
+        description: err instanceof Error ? err.message : "删除失败",
+      })
     }
   }
 
@@ -331,6 +361,17 @@ export default function AdminBannersPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        onOpenChange={(open) => {
+          if (!open) closeDeleteConfirm()
+        }}
+        title="确认删除"
+        description="确定删除该轮播图吗？"
+        variant="destructive"
+        onConfirm={executeDelete}
+      />
     </DashboardLayout>
   )
 }

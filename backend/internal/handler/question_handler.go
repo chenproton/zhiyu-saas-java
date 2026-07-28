@@ -48,80 +48,32 @@ func (h *QuestionHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bankID := r.URL.Query().Get("bankId")
-	qType := r.URL.Query().Get("type")
-	status := r.URL.Query().Get("status")
-	search := r.URL.Query().Get("search")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
+	cfg := listQueryConfig[domain.Question]{
+		Table:         "questions",
+		SelectColumns: "id, code, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status, created_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"content"},
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if bankID := r.URL.Query().Get("bankId"); bankID != "" {
+				qb.addCondition("bank_id = " + qb.nextArg(bankID))
+			}
+			if qType := r.URL.Query().Get("type"); qType != "" {
+				qb.addCondition("type = " + qb.nextArg(qType))
+			}
+			if status := r.URL.Query().Get("status"); status != "" {
+				qb.addCondition("status = " + qb.nextArg(status))
+			}
+		},
+		ScanRows: h.scanQuestionRows,
 	}
 
-	if bankID != "" {
-		where = append(where, "bank_id = $"+itoa(argIdx))
-		args = append(args, bankID)
-		argIdx++
-	}
-	if qType != "" {
-		where = append(where, "type = $"+itoa(argIdx))
-		args = append(args, qType)
-		argIdx++
-	}
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "content ILIKE $"+itoa(argIdx))
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM questions WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, code, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status, created_at
-		FROM questions
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list questions")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanQuestionRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan questions")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -138,7 +90,7 @@ func (h *QuestionHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	q, err := h.fetchQuestion(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "question not found")
+		respondError(w, http.StatusNotFound, "题目不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, q)
@@ -166,7 +118,7 @@ func (h *QuestionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	id := uuid.NewString()
 	code, err := generateUniqueEntityCode(r.Context(), h.DB, "TM", "questions", tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to generate question code")
+		respondError(w, http.StatusInternalServerError, "生成题目编码失败")
 		return
 	}
 	if req.Answer == nil {
@@ -179,7 +131,7 @@ func (h *QuestionHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'draft')
 	`, id, tenantID, code, req.BankID, req.Type, req.Content, string(optionsJSON), string(answerJSON), req.Analysis, req.Score, req.Difficulty, coalesceStringSlice(req.KnowledgePoints), claims.UserID, req.Source)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create question")
+		respondError(w, http.StatusInternalServerError, "创建题目失败")
 		return
 	}
 
@@ -196,7 +148,7 @@ func (h *QuestionHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchQuestion(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "question not found")
+		respondError(w, http.StatusNotFound, "题目不存在")
 		return
 	}
 
@@ -241,7 +193,7 @@ func (h *QuestionHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $`+itoa(argIdx)+`
 	`, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update question")
+		respondError(w, http.StatusInternalServerError, "更新题目失败")
 		return
 	}
 
@@ -258,13 +210,13 @@ func (h *QuestionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchQuestion(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "question not found")
+		respondError(w, http.StatusNotFound, "题目不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM questions WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete question")
+		respondError(w, http.StatusInternalServerError, "删除题目失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -283,13 +235,13 @@ func (h *QuestionHandler) BatchCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.BankID == "" {
-		respondError(w, http.StatusBadRequest, "missing bank id")
+		respondError(w, http.StatusBadRequest, "缺少题库ID")
 		return
 	}
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -313,14 +265,14 @@ func (h *QuestionHandler) BatchCreate(w http.ResponseWriter, r *http.Request) {
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'draft')
 		`, id, tenantID, code, req.BankID, item.Type, item.Content, string(optionsJSON), string(answerJSON), item.Analysis, item.Score, item.Difficulty, coalesceStringSlice(item.KnowledgePoints), claims.UserID, item.Source)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to batch create questions")
+			respondError(w, http.StatusInternalServerError, "批量创建题目失败")
 			return
 		}
 		count++
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 

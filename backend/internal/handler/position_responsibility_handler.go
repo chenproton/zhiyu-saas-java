@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -43,51 +42,25 @@ func (h *PositionResponsibilityHandler) List(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	careerPositionID := r.URL.Query().Get("careerPositionId")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-
-	if careerPositionID != "" {
-		where = append(where, "career_position_id = $"+itoa(argIdx))
-		args = append(args, careerPositionID)
-		argIdx++
+	cfg := listQueryConfig[domain.PositionResponsibility]{
+		Table:         "position_responsibilities",
+		SelectColumns: "id, career_position_id, name, description, sort_order",
+		TenantScoped:  false,
+		OrderBy:       "sort_order ASC, id ASC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if careerPositionID := r.URL.Query().Get("careerPositionId"); careerPositionID != "" {
+				qb.addCondition("career_position_id = " + qb.nextArg(careerPositionID))
+			}
+		},
 	}
 
-	countQuery := "SELECT COUNT(*) FROM position_responsibilities WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, career_position_id, name, description, sort_order
-		FROM position_responsibilities
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY sort_order ASC, id ASC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg, h.scanResponsibilityRows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list responsibilities")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanResponsibilityRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan responsibilities")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+		} else {
+			respondError(w, http.StatusInternalServerError, "查询岗位职责失败")
+		}
 		return
 	}
 
@@ -103,7 +76,7 @@ func (h *PositionResponsibilityHandler) Get(w http.ResponseWriter, r *http.Reque
 	id := chi.URLParam(r, "id")
 	item, err := h.fetchResponsibility(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "responsibility not found")
+		respondError(w, http.StatusNotFound, "岗位职责不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, item)
@@ -132,7 +105,7 @@ func (h *PositionResponsibilityHandler) Create(w http.ResponseWriter, r *http.Re
 		VALUES ($1, $2, $3, $4, $5)
 	`, id, req.CareerPositionID, req.Name, req.Description, req.SortOrder)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create responsibility")
+		respondError(w, http.StatusInternalServerError, "创建岗位职责失败")
 		return
 	}
 
@@ -148,7 +121,7 @@ func (h *PositionResponsibilityHandler) Update(w http.ResponseWriter, r *http.Re
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchResponsibility(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "responsibility not found")
+		respondError(w, http.StatusNotFound, "岗位职责不存在")
 		return
 	}
 
@@ -169,7 +142,7 @@ func (h *PositionResponsibilityHandler) Update(w http.ResponseWriter, r *http.Re
 		WHERE id = $5
 	`, req.CareerPositionID, req.Name, req.Description, req.SortOrder, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update responsibility")
+		respondError(w, http.StatusInternalServerError, "更新岗位职责失败")
 		return
 	}
 
@@ -185,13 +158,13 @@ func (h *PositionResponsibilityHandler) Delete(w http.ResponseWriter, r *http.Re
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchResponsibility(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "responsibility not found")
+		respondError(w, http.StatusNotFound, "岗位职责不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM position_responsibilities WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete responsibility")
+		respondError(w, http.StatusInternalServerError, "删除岗位职责失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Download, Percent, DollarSign, Loader2 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 import { configApi, orderApi, type Order, type PlatformConfig } from "@/lib/api"
 
 interface MonthlyRow {
@@ -26,6 +27,7 @@ interface MonthlyRow {
 }
 
 export default function AdminSettlementPage() {
+  const { toast } = useToast()
   const [config, setConfig] = useState<PlatformConfig | null>(null)
   const [feeRate, setFeeRate] = useState<number>(15)
   const [orders, setOrders] = useState<Order[]>([])
@@ -64,9 +66,16 @@ export default function AdminSettlementPage() {
         minWithdrawalAmount: config.minWithdrawalAmount,
       })
       setConfig(updated)
-      alert(`平台抽成比例已保存为 ${Math.round(updated.platformFeeRate * 100)}%`)
+      toast({
+        title: "提示",
+        description: `平台抽成比例已保存为 ${Math.round(updated.platformFeeRate * 100)}%`,
+      })
     } catch (err) {
-      alert("保存失败：" + (err instanceof Error ? err.message : "未知错误"))
+      toast({
+        variant: "destructive",
+        title: "提示",
+        description: "保存失败：" + (err instanceof Error ? err.message : "未知错误"),
+      })
     } finally {
       setSaving(false)
     }

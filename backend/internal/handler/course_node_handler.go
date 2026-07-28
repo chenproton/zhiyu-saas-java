@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -144,63 +143,36 @@ func (h *CourseNodeHandler) List(w http.ResponseWriter, r *http.Request) {
 	courseID := r.URL.Query().Get("courseId")
 	parentID := r.URL.Query().Get("parentId")
 
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if courseID != "" {
-		where = append(where, "course_id = $"+itoa(argIdx))
-		args = append(args, courseID)
-		argIdx++
-	}
-	if parentID != "" {
-		where = append(where, "parent_id = $"+itoa(argIdx))
-		args = append(args, parentID)
-		argIdx++
-	} else if r.URL.Query().Get("rootOnly") == "true" {
-		where = append(where, "parent_id IS NULL")
-	}
-
-	countQuery := "SELECT COUNT(*) FROM system_course_nodes WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT n.id, n.course_id, n.parent_id, n.name, n.code, n.sort_order, n.ref_type, n.source_id, n.source_name,
-			n.teaching_goals, n.detailed_description, n.description_pdf, n.background, n.estimated_hours,
-			n.duration, n.difficulty, n.knowledge_point_ids::text[], n.resource_ids::text[], n.eval_data, n.status
-		FROM system_course_nodes n
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY n.sort_order ASC, n.id ASC
-	`
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	bases, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[courseNodeBase]{
+		Table:         "system_course_nodes n",
+		SelectColumns: "n.id, n.course_id, n.parent_id, n.name, n.code, n.sort_order, n.ref_type, n.source_id, n.source_name, n.teaching_goals, n.detailed_description, n.description_pdf, n.background, n.estimated_hours, n.duration, n.difficulty, n.knowledge_point_ids::text[], n.resource_ids::text[], n.eval_data, n.status",
+		TenantScoped:  true,
+		OrderBy:       "n.sort_order ASC, n.id ASC",
+		NoPagination:  true,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if courseID != "" {
+				qb.addCondition("n.course_id = " + qb.nextArg(courseID))
+			}
+			if parentID != "" {
+				qb.addCondition("n.parent_id = " + qb.nextArg(parentID))
+			} else if r.URL.Query().Get("rootOnly") == "true" {
+				qb.addCondition("n.parent_id IS NULL")
+			}
+		},
+		ScanRows: h.scanCourseNodeBaseRows,
+	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list course nodes")
-		return
-	}
-	defer rows.Close()
-
-	bases, err := h.scanCourseNodeBaseRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan course nodes")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "查询课程节点失败")
 		return
 	}
 
 	items, err := h.enrichCourseNodes(r.Context(), bases)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to enrich course nodes")
+		respondError(w, http.StatusInternalServerError, "丰富课程节点失败")
 		return
 	}
 
@@ -216,7 +188,7 @@ func (h *CourseNodeHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	node, err := h.fetchCourseNode(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "course node not found")
+		respondError(w, http.StatusNotFound, "课程节点不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, node)
@@ -246,13 +218,16 @@ func (h *CourseNodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 	id := uuid.NewString()
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
 
 	kpIDs := jsonSliceToUUIDSlice(req.KnowledgePointIds)
 	resIDs := jsonSliceToUUIDSlice(req.ResourceIds)
+	if req.EvalData == nil {
+		req.EvalData = domain.JSONMap{}
+	}
 
 	_, err = tx.Exec(r.Context(), `
 		INSERT INTO system_course_nodes (id, tenant_id, course_id, parent_id, name, code, sort_order, ref_type, source_id, source_name,
@@ -263,7 +238,7 @@ func (h *CourseNodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		req.TeachingGoals, req.DetailedDescription, req.DescriptionPdf, req.Background, req.EstimatedHours,
 		req.Duration, req.Difficulty, kpIDs, resIDs, req.EvalData, req.Status)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create course node")
+		respondError(w, http.StatusInternalServerError, "创建课程节点失败")
 		return
 	}
 
@@ -275,7 +250,7 @@ func (h *CourseNodeHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -291,7 +266,7 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchCourseNode(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "course node not found")
+		respondError(w, http.StatusNotFound, "课程节点不存在")
 		return
 	}
 
@@ -307,6 +282,9 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	kpIDs := jsonSliceToUUIDSlice(req.KnowledgePointIds)
 	resIDs := jsonSliceToUUIDSlice(req.ResourceIds)
+	if req.EvalData == nil {
+		req.EvalData = domain.JSONMap{}
+	}
 	if req.RefType == "original" {
 		kpIDs = []string{}
 		resIDs = []string{}
@@ -314,7 +292,7 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -329,7 +307,7 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		req.DetailedDescription, req.DescriptionPdf, req.Background, req.EstimatedHours,
 		req.Duration, req.Difficulty, kpIDs, resIDs, req.EvalData, req.Status, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update course node")
+		respondError(w, http.StatusInternalServerError, "更新课程节点失败")
 		return
 	}
 
@@ -343,7 +321,7 @@ func (h *CourseNodeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -359,13 +337,13 @@ func (h *CourseNodeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchCourseNode(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "course node not found")
+		respondError(w, http.StatusNotFound, "课程节点不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM system_course_nodes WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete course node")
+		respondError(w, http.StatusInternalServerError, "删除课程节点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -389,7 +367,7 @@ func (h *CourseNodeHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -400,13 +378,13 @@ func (h *CourseNodeHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 			WHERE id = $2 AND course_id = $3
 		`, i, nodeID, req.CourseID)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to reorder nodes")
+			respondError(w, http.StatusInternalServerError, "重新排序nodes失败")
 			return
 		}
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 

@@ -67,14 +67,14 @@ func (h *AppModuleHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list app modules")
+		respondError(w, http.StatusInternalServerError, "查询应用模块失败")
 		return
 	}
 	defer rows.Close()
 
 	modules, err := h.scanAppModuleRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan app modules")
+		respondError(w, http.StatusInternalServerError, "读取应用模块失败")
 		return
 	}
 
@@ -86,7 +86,7 @@ func (h *AppModuleHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	module, err := h.fetchAppModule(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "app module not found")
+		respondError(w, http.StatusNotFound, "应用模块不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, module)
@@ -117,7 +117,7 @@ func (h *AppModuleHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`, id, req.Platform, req.Title, req.Description, req.Href, req.SortOrder)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create app module")
+		respondError(w, http.StatusInternalServerError, "创建应用模块失败")
 		return
 	}
 
@@ -134,7 +134,7 @@ func (h *AppModuleHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchAppModule(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "app module not found")
+		respondError(w, http.StatusNotFound, "应用模块不存在")
 		return
 	}
 
@@ -154,7 +154,7 @@ func (h *AppModuleHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $6
 	`, req.Platform, req.Title, req.Description, req.Href, req.SortOrder, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update app module")
+		respondError(w, http.StatusInternalServerError, "更新应用模块失败")
 		return
 	}
 
@@ -171,13 +171,13 @@ func (h *AppModuleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchAppModule(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "app module not found")
+		respondError(w, http.StatusNotFound, "应用模块不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM app_modules WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete app module")
+		respondError(w, http.StatusInternalServerError, "删除应用模块失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

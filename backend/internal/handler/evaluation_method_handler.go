@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -42,7 +41,7 @@ func (h *EvaluationMethodHandler) ListCategories(w http.ResponseWriter, r *http.
 		SELECT id, name, sort_order FROM evaluation_method_categories ORDER BY sort_order
 	`)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list categories")
+		respondError(w, http.StatusInternalServerError, "查询分类失败")
 		return
 	}
 	defer rows.Close()
@@ -51,7 +50,7 @@ func (h *EvaluationMethodHandler) ListCategories(w http.ResponseWriter, r *http.
 	for rows.Next() {
 		var c domain.EvaluationMethodCategory
 		if err := rows.Scan(&c.ID, &c.Name, &c.Order); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to scan categories")
+			respondError(w, http.StatusInternalServerError, "读取分类失败")
 			return
 		}
 		items = append(items, c)
@@ -66,61 +65,25 @@ func (h *EvaluationMethodHandler) ListMethods(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	categoryID := r.URL.Query().Get("categoryId")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-	if categoryID != "" {
-		where = append(where, "category_id = $"+itoa(argIdx))
-		args = append(args, categoryID)
-		argIdx++
+	cfg := listQueryConfig[domain.EvaluationMethod]{
+		Table:         "evaluation_methods",
+		SelectColumns: "id, category_id, name, enabled, sub_category_name, description, doc_link",
+		TenantScoped:  true,
+		OrderBy:       "name",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if categoryID := r.URL.Query().Get("categoryId"); categoryID != "" {
+				qb.addCondition("category_id = " + qb.nextArg(categoryID))
+			}
+		},
 	}
 
-	countQuery := "SELECT COUNT(*) FROM evaluation_methods WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, category_id, name, enabled, sub_category_name, description, doc_link
-		FROM evaluation_methods
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY name
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg, h.scanMethodRows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list methods")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanMethodRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan methods")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+		} else {
+			respondError(w, http.StatusInternalServerError, "查询测评方式失败")
+		}
 		return
 	}
 
@@ -142,7 +105,7 @@ func (h *EvaluationMethodHandler) Toggle(w http.ResponseWriter, r *http.Request)
 	}
 
 	if _, err := h.fetchMethod(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "method not found")
+		respondError(w, http.StatusNotFound, "测评方式不存在")
 		return
 	}
 
@@ -150,7 +113,7 @@ func (h *EvaluationMethodHandler) Toggle(w http.ResponseWriter, r *http.Request)
 		UPDATE evaluation_methods SET enabled = $1 WHERE id = $2
 	`, req.Enabled, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to toggle method")
+		respondError(w, http.StatusInternalServerError, "切换测评方式失败")
 		return
 	}
 

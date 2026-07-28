@@ -98,7 +98,7 @@ func (h *UserRelationHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list user relations")
+		respondError(w, http.StatusInternalServerError, "查询用户关系失败")
 		return
 	}
 	defer rows.Close()
@@ -110,7 +110,7 @@ func (h *UserRelationHandler) List(w http.ResponseWriter, r *http.Request) {
 		if err := rows.Scan(&item.ID, &item.InitiatorID, &item.InitiatorName, &item.InitiatorDept,
 			&item.TargetID, &item.TargetName, &item.TargetDept,
 			&item.RelationType, &createdAt); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to scan user relation")
+			respondError(w, http.StatusInternalServerError, "读取用户关系失败")
 			return
 		}
 		item.CreatedAt = fmtTime(createdAt)
@@ -142,7 +142,7 @@ func (h *UserRelationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.InitiatorID == req.TargetID {
-		respondError(w, http.StatusBadRequest, "initiator and target cannot be the same user")
+		respondError(w, http.StatusBadRequest, "发起者和目标不能是同一用户")
 		return
 	}
 
@@ -151,7 +151,7 @@ func (h *UserRelationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		SELECT COUNT(*) FROM users WHERE tenant_id = $1 AND id = ANY($2::uuid[])
 	`, effectiveTenantID, []string{req.InitiatorID, req.TargetID}).Scan(&validUsers)
 	if validUsers != 2 {
-		respondError(w, http.StatusBadRequest, "initiator or target not found in tenant")
+		respondError(w, http.StatusBadRequest, "发起者或目标不在租户中")
 		return
 	}
 
@@ -165,7 +165,7 @@ func (h *UserRelationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`, id, effectiveTenantID, req.InitiatorID, req.TargetID, req.RelationType, description)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create user relation")
+		respondError(w, http.StatusInternalServerError, "创建用户关系失败")
 		return
 	}
 
@@ -189,11 +189,11 @@ func (h *UserRelationHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		`DELETE FROM user_relations WHERE id = $1 AND tenant_id = $2`,
 		id, effectiveTenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete user relation")
+		respondError(w, http.StatusInternalServerError, "删除用户关系失败")
 		return
 	}
 	if result.RowsAffected() == 0 {
-		respondError(w, http.StatusNotFound, "user relation not found")
+		respondError(w, http.StatusNotFound, "用户关系不存在")
 		return
 	}
 

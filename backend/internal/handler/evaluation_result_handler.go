@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -65,90 +64,36 @@ func (h *EvaluationResultHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	taskID := r.URL.Query().Get("taskId")
-	sceneID := r.URL.Query().Get("sceneId")
-	methodKey := r.URL.Query().Get("methodKey")
-	evaluateeID := r.URL.Query().Get("evaluateeId")
-	status := r.URL.Query().Get("status")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if taskID != "" {
-		where = append(where, "task_id = $"+itoa(argIdx))
-		args = append(args, taskID)
-		argIdx++
-	}
-	if sceneID != "" {
-		where = append(where, "scene_id = $"+itoa(argIdx))
-		args = append(args, sceneID)
-		argIdx++
-	}
-	if methodKey != "" {
-		where = append(where, "method_key = $"+itoa(argIdx))
-		args = append(args, methodKey)
-		argIdx++
-	}
-	if evaluateeID != "" {
-		where = append(where, "evaluatee_id = $"+itoa(argIdx))
-		args = append(args, evaluateeID)
-		argIdx++
-	}
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM scene_evaluation_results WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, task_id, scene_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status,
-			total_score, max_score, eval_point_scores, objective_answers, subjective_content,
-			drawn_questions, comment, graded_at, graded_by
-		FROM scene_evaluation_results
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY id DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery[domain.SceneEvaluationResult](r.Context(), h.DB, r, listQueryConfig[domain.SceneEvaluationResult]{
+		Table:         "scene_evaluation_results",
+		SelectColumns: "id, task_id, scene_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status, total_score, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions, comment, graded_at, graded_by",
+		TenantScoped:  true,
+		OrderBy:       "id DESC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if taskID := r.URL.Query().Get("taskId"); taskID != "" {
+				qb.addCondition("task_id = " + qb.nextArg(taskID))
+			}
+			if sceneID := r.URL.Query().Get("sceneId"); sceneID != "" {
+				qb.addCondition("scene_id = " + qb.nextArg(sceneID))
+			}
+			if methodKey := r.URL.Query().Get("methodKey"); methodKey != "" {
+				qb.addCondition("method_key = " + qb.nextArg(methodKey))
+			}
+			if evaluateeID := r.URL.Query().Get("evaluateeId"); evaluateeID != "" {
+				qb.addCondition("evaluatee_id = " + qb.nextArg(evaluateeID))
+			}
+			if status := r.URL.Query().Get("status"); status != "" {
+				qb.addCondition("status = " + qb.nextArg(status))
+			}
+		},
+	}, h.scanResultRows)
 	if err != nil {
-		log.Printf("List evaluation results query error: %v", err)
-		respondError(w, http.StatusInternalServerError, "failed to list evaluation results")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanResultRows(rows)
-	if err != nil {
-		log.Printf("List evaluation results scan error: %v", err)
-		respondError(w, http.StatusInternalServerError, "failed to scan evaluation results")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		log.Printf("List evaluation results error: %v", err)
+		respondError(w, http.StatusInternalServerError, "查询评价结果失败")
 		return
 	}
 
@@ -165,7 +110,7 @@ func (h *EvaluationResultHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	res, err := h.fetchResult(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "evaluation result not found")
+		respondError(w, http.StatusNotFound, "评价结果不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, res)
@@ -184,7 +129,7 @@ func (h *EvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if req.TaskID == "" || req.MethodKey == "" || req.EvaluateeID == "" {
-		respondError(w, http.StatusBadRequest, "missing required fields (taskId, methodKey, evaluateeId)")
+		respondError(w, http.StatusBadRequest, "缺少必填字段（taskId、methodKey、evaluateeId）")
 		return
 	}
 
@@ -219,7 +164,7 @@ func (h *EvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Request)
 		req.EvaluatorID, req.EvaluatorType, req.MaxScore,
 		evalPointScores, objectiveAnswers, subjectiveContent, drawnQuestions, now, now).Scan(&id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to submit evaluation result")
+		respondError(w, http.StatusInternalServerError, "提交评价结果失败")
 		return
 	}
 
@@ -243,7 +188,7 @@ func (h *EvaluationResultHandler) Grade(w http.ResponseWriter, r *http.Request) 
 
 	res, err := h.fetchResult(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "evaluation result not found")
+		respondError(w, http.StatusNotFound, "评价结果不存在")
 		return
 	}
 
@@ -255,7 +200,7 @@ func (h *EvaluationResultHandler) Grade(w http.ResponseWriter, r *http.Request) 
 		WHERE id = $7
 	`, req.Score, req.Comment, evalPointScores, drawnQuestions, subjectiveContent, claims.UserID, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to grade result")
+		respondError(w, http.StatusInternalServerError, "评分失败")
 		return
 	}
 
@@ -280,7 +225,7 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -297,7 +242,7 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 	for _, item := range req.Items {
 		res, err := h.fetchResult(r.Context(), item.ID)
 		if err != nil {
-			respondError(w, http.StatusNotFound, "evaluation result not found")
+			respondError(w, http.StatusNotFound, "评价结果不存在")
 			return
 		}
 
@@ -307,7 +252,7 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 			WHERE id = $5
 		`, item.Score, item.Comment, evalPointScores, claims.UserID, item.ID)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to batch grade")
+			respondError(w, http.StatusInternalServerError, "批量评分失败")
 			return
 		}
 
@@ -316,7 +261,7 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 

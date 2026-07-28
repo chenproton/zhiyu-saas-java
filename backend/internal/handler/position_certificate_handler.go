@@ -84,14 +84,14 @@ func (h *PositionCertificateHandler) List(w http.ResponseWriter, r *http.Request
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list certificates")
+		respondError(w, http.StatusInternalServerError, "查询证书失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanCertificateRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan certificates")
+		respondError(w, http.StatusInternalServerError, "读取证书失败")
 		return
 	}
 
@@ -111,7 +111,7 @@ func (h *PositionCertificateHandler) Get(w http.ResponseWriter, r *http.Request)
 	id := chi.URLParam(r, "id")
 	item, err := h.fetchCertificate(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "certificate not found")
+		respondError(w, http.StatusNotFound, "证书不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, item)
@@ -152,7 +152,7 @@ func (h *PositionCertificateHandler) Create(w http.ResponseWriter, r *http.Reque
 			VALUES ($1, $2, $3, $4, $5, $6)
 		`, libraryID, tenantID, req.Name, req.URL, req.Description, req.ImageURL)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to create certificate in library")
+			respondError(w, http.StatusInternalServerError, "创建certificate in library失败")
 			return
 		}
 	}
@@ -163,7 +163,7 @@ func (h *PositionCertificateHandler) Create(w http.ResponseWriter, r *http.Reque
 		VALUES ($1, $2, $3, $4)
 	`, id, tenantID, req.CareerPositionID, libraryID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create certificate")
+		respondError(w, http.StatusInternalServerError, "创建证书失败")
 		return
 	}
 
@@ -179,7 +179,7 @@ func (h *PositionCertificateHandler) Update(w http.ResponseWriter, r *http.Reque
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchCertificate(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "certificate not found")
+		respondError(w, http.StatusNotFound, "证书不存在")
 		return
 	}
 
@@ -214,7 +214,7 @@ func (h *PositionCertificateHandler) Update(w http.ResponseWriter, r *http.Reque
 				VALUES ($1, $2, $3, $4, $5, $6)
 			`, libraryID, tenantID, req.Name, req.URL, req.Description, req.ImageURL)
 			if err != nil {
-				respondError(w, http.StatusInternalServerError, "failed to create certificate in library")
+				respondError(w, http.StatusInternalServerError, "创建certificate in library失败")
 				return
 			}
 		}
@@ -230,7 +230,7 @@ func (h *PositionCertificateHandler) Update(w http.ResponseWriter, r *http.Reque
 		`, req.CareerPositionID, id)
 	}
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update certificate")
+		respondError(w, http.StatusInternalServerError, "更新证书失败")
 		return
 	}
 
@@ -246,13 +246,13 @@ func (h *PositionCertificateHandler) Delete(w http.ResponseWriter, r *http.Reque
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchCertificate(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "certificate not found")
+		respondError(w, http.StatusNotFound, "证书不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM position_certificates WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete certificate")
+		respondError(w, http.StatusInternalServerError, "删除证书失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

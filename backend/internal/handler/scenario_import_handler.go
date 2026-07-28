@@ -110,7 +110,7 @@ func (h *ScenarioImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 
 	h.importScenarios(ctx, xlsx, tenantID, userID, false, overwrite, scenarioMap, result)
 	if len(scenarioMap) == 0 && result.Failed == 0 {
-		respondError(w, http.StatusBadRequest, "no valid scenario data found in Sheet1")
+		respondError(w, http.StatusBadRequest, "Sheet1中未找到有效场景方案数据")
 		return
 	}
 

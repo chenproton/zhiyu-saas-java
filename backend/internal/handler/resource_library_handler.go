@@ -124,14 +124,14 @@ func (h *ResourceLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list resources")
+		respondError(w, http.StatusInternalServerError, "查询资源失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanResourceRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan resources")
+		respondError(w, http.StatusInternalServerError, "读取资源失败")
 		return
 	}
 
@@ -147,7 +147,7 @@ func (h *ResourceLibraryHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	item, err := h.fetchItem(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "resource not found")
+		respondError(w, http.StatusNotFound, "资源不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, item)
@@ -166,7 +166,7 @@ func (h *ResourceLibraryHandler) Create(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if req.Name == "" || req.ResourceType == "" {
-		respondError(w, http.StatusBadRequest, "name and resourceType are required")
+		respondError(w, http.StatusBadRequest, "缺少名称或资源类型")
 		return
 	}
 
@@ -182,7 +182,7 @@ func (h *ResourceLibraryHandler) Create(w http.ResponseWriter, r *http.Request) 
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	`, id, tenantID, req.Name, req.ResourceType, req.URL, req.Description, req.Thumbnail, req.FileSize, req.Metadata, uploadedBy)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create resource")
+		respondError(w, http.StatusInternalServerError, "创建资源失败")
 		return
 	}
 
@@ -199,7 +199,7 @@ func (h *ResourceLibraryHandler) Update(w http.ResponseWriter, r *http.Request) 
 	id := chi.URLParam(r, "id")
 	existing, err := h.fetchItem(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "resource not found")
+		respondError(w, http.StatusNotFound, "资源不存在")
 		return
 	}
 
@@ -250,7 +250,7 @@ func (h *ResourceLibraryHandler) Update(w http.ResponseWriter, r *http.Request) 
 		WHERE id = $8
 	`, name, resourceType, url, description, thumbnail, fileSize, metadata, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update resource")
+		respondError(w, http.StatusInternalServerError, "更新资源失败")
 		return
 	}
 
@@ -267,7 +267,7 @@ func (h *ResourceLibraryHandler) Delete(w http.ResponseWriter, r *http.Request) 
 	id := chi.URLParam(r, "id")
 	existing, err := h.fetchItem(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "resource not found")
+		respondError(w, http.StatusNotFound, "资源不存在")
 		return
 	}
 
@@ -277,7 +277,7 @@ func (h *ResourceLibraryHandler) Delete(w http.ResponseWriter, r *http.Request) 
 
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM resource_library WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete resource")
+		respondError(w, http.StatusInternalServerError, "删除资源失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

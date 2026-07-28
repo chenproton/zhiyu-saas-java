@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -46,74 +45,29 @@ func (h *AbilityHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	category := r.URL.Query().Get("category")
-	search := r.URL.Query().Get("search")
-	creatorID := r.URL.Query().Get("creatorId")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
+	cfg := listQueryConfig[domain.AbilityPoint]{
+		Table:         "ability_points",
+		SelectColumns: "id, name, code, description, category, attributes, is_public, creator_id, created_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if category := r.URL.Query().Get("category"); category != "" {
+				qb.addCondition("category = " + qb.nextArg(category))
+			}
+			if creatorID := r.URL.Query().Get("creatorId"); creatorID != "" {
+				qb.addCondition("creator_id = " + qb.nextArg(creatorID))
+			}
+		},
+		ScanRows: h.scanAbilityRows,
 	}
 
-	if category != "" {
-		where = append(where, "category = $"+itoa(argIdx))
-		args = append(args, category)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "name ILIKE $"+itoa(argIdx))
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-	if creatorID != "" {
-		where = append(where, "creator_id = $"+itoa(argIdx))
-		args = append(args, creatorID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM ability_points WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, name, code, description, category, attributes, is_public, creator_id, created_at
-		FROM ability_points
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list abilities")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanAbilityRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan abilities")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -129,7 +83,7 @@ func (h *AbilityHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	ability, err := h.fetchAbility(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "ability point not found")
+		respondError(w, http.StatusNotFound, "能力点不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, ability)
@@ -170,7 +124,7 @@ func (h *AbilityHandler) Create(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("[AbilityHandler.Create] insert ability_points failed: %v", err)
-		respondError(w, http.StatusInternalServerError, "failed to create ability point")
+		respondError(w, http.StatusInternalServerError, "创建能力点失败")
 		return
 	}
 
@@ -186,7 +140,7 @@ func (h *AbilityHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchAbility(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "ability point not found")
+		respondError(w, http.StatusNotFound, "能力点不存在")
 		return
 	}
 
@@ -210,7 +164,7 @@ func (h *AbilityHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "能力点名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update ability point")
+		respondError(w, http.StatusInternalServerError, "更新能力点失败")
 		return
 	}
 
@@ -226,13 +180,13 @@ func (h *AbilityHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchAbility(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "ability point not found")
+		respondError(w, http.StatusNotFound, "能力点不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM ability_points WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete ability point")
+		respondError(w, http.StatusInternalServerError, "删除能力点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

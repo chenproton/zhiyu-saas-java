@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import {
   Plus,
   MoreHorizontal,
@@ -89,6 +90,7 @@ export default function CourseNodeTree({
   const [editNodeName, setEditNodeName] = useState("")
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
+  const [deleteNodeId, setDeleteNodeId] = useState<string | null>(null)
 
   const tree = useMemo(() => buildTree(nodes), [nodes])
 
@@ -130,8 +132,13 @@ export default function CourseNodeTree({
   }
 
   const handleDelete = (nodeId: string) => {
-    if (confirm("确定删除该节点吗？删除后其所有子节点也将被删除。")) {
-      onDeleteNode(nodeId)
+    setDeleteNodeId(nodeId)
+  }
+
+  const executeDelete = () => {
+    if (deleteNodeId) {
+      onDeleteNode(deleteNodeId)
+      setDeleteNodeId(null)
     }
   }
 
@@ -325,6 +332,15 @@ export default function CourseNodeTree({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteNodeId !== null}
+        onOpenChange={(open) => { if (!open) setDeleteNodeId(null) }}
+        title="删除节点"
+        description="确定删除该节点吗？删除后其所有子节点也将被删除。"
+        variant="destructive"
+        onConfirm={executeDelete}
+      />
     </aside>
   )
 }

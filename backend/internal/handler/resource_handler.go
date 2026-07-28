@@ -118,14 +118,14 @@ func (h *ResourceHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list resources")
+		respondError(w, http.StatusInternalServerError, "查询资源失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanResourceRows(r.Context(), rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan resources")
+		respondError(w, http.StatusInternalServerError, "读取资源失败")
 		return
 	}
 
@@ -136,7 +136,7 @@ func (h *ResourceHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	res, err := h.fetchResource(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "resource not found")
+		respondError(w, http.StatusNotFound, "资源不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, res)
@@ -145,11 +145,11 @@ func (h *ResourceHandler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *ResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if platformAdminOnly(claims) {
-		respondError(w, http.StatusForbidden, "operator cannot create resources")
+		respondError(w, http.StatusForbidden, "操作员不能创建资源")
 		return
 	}
 	if claims.InstitutionID == nil {
-		respondError(w, http.StatusForbidden, "user not associated with an institution")
+		respondError(w, http.StatusForbidden, "用户未关联机构")
 		return
 	}
 
@@ -171,7 +171,7 @@ func (h *ResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -183,17 +183,17 @@ func (h *ResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 	`, id, *claims.InstitutionID, req.Name, req.Intro, req.Category, req.CoverImage, req.Attachment, req.AttachmentName,
 		req.Price, req.Version)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create resource")
+		respondError(w, http.StatusInternalServerError, "创建资源失败")
 		return
 	}
 
 	if err := h.replaceResourceTags(r.Context(), tx, id, req.Tags); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to save tags")
+		respondError(w, http.StatusInternalServerError, "保存标签失败")
 		return
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -207,7 +207,7 @@ func (h *ResourceHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	existing, err := h.fetchResource(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "resource not found")
+		respondError(w, http.StatusNotFound, "资源不存在")
 		return
 	}
 
@@ -224,7 +224,7 @@ func (h *ResourceHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -236,19 +236,19 @@ func (h *ResourceHandler) Update(w http.ResponseWriter, r *http.Request) {
 	`, req.Name, req.Intro, req.Category, req.CoverImage, req.Attachment, req.AttachmentName,
 		req.Price, req.Version, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update resource")
+		respondError(w, http.StatusInternalServerError, "更新资源失败")
 		return
 	}
 
 	if req.Tags != nil {
 		if err := h.replaceResourceTags(r.Context(), tx, id, req.Tags); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to save tags")
+			respondError(w, http.StatusInternalServerError, "保存标签失败")
 			return
 		}
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -262,7 +262,7 @@ func (h *ResourceHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	existing, err := h.fetchResource(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "resource not found")
+		respondError(w, http.StatusNotFound, "资源不存在")
 		return
 	}
 
@@ -275,7 +275,7 @@ func (h *ResourceHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if err := h.DB.QueryRow(r.Context(), `
 		SELECT (SELECT COUNT(*) FROM orders WHERE resource_id = $1)
 		     + (SELECT COUNT(*) FROM authorizations WHERE resource_id = $1)`, id).Scan(&refCount); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to check resource references")
+		respondError(w, http.StatusInternalServerError, "检查resource references失败")
 		return
 	}
 	if refCount > 0 {
@@ -285,7 +285,7 @@ func (h *ResourceHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM resources WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete resource")
+		respondError(w, http.StatusInternalServerError, "删除资源失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -318,7 +318,7 @@ func (h *ResourceHandler) Review(w http.ResponseWriter, r *http.Request) {
 		status = domain.ResourceStatusRejected
 		rejectReason = req.RejectReason
 	default:
-		respondError(w, http.StatusBadRequest, "invalid review status")
+		respondError(w, http.StatusBadRequest, "无效的审核状态")
 		return
 	}
 
@@ -326,7 +326,7 @@ func (h *ResourceHandler) Review(w http.ResponseWriter, r *http.Request) {
 		UPDATE resources SET status = $1, reject_reason = $2, updated_at = NOW() WHERE id = $3
 	`, status, rejectReason, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to review resource")
+		respondError(w, http.StatusInternalServerError, "审核资源失败")
 		return
 	}
 
@@ -358,7 +358,7 @@ func (h *ResourceHandler) transitionStatus(w http.ResponseWriter, r *http.Reques
 		UPDATE resources SET status = $1, reject_reason = $2, updated_at = NOW() WHERE id = $3
 	`, status, rejectReason, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update status")
+		respondError(w, http.StatusInternalServerError, "更新status失败")
 		return
 	}
 
@@ -381,7 +381,7 @@ func (h *ResourceHandler) IncrementView(w http.ResponseWriter, r *http.Request) 
 
 	_, err := h.DB.Exec(r.Context(), `INSERT INTO view_logs (target_type, target_id, user_id, tenant_id) VALUES ('resource', $1, $2, $3)`, id, userID, tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to increment view")
+		respondError(w, http.StatusInternalServerError, "增加view失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

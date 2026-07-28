@@ -42,7 +42,7 @@ type TenantAdminResponse struct {
 func (h *TenantHandler) AdminListAdmins(w http.ResponseWriter, r *http.Request) {
 	tenantID := chi.URLParam(r, "tenantId")
 	if _, err := h.fetchTenant(r.Context(), tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "tenant not found")
+		respondError(w, http.StatusNotFound, "租户不存在")
 		return
 	}
 
@@ -55,7 +55,7 @@ func (h *TenantHandler) AdminListAdmins(w http.ResponseWriter, r *http.Request) 
 		ORDER BY u.created_at DESC
 	`, tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list admins")
+		respondError(w, http.StatusInternalServerError, "查询管理员失败")
 		return
 	}
 	defer rows.Close()
@@ -80,7 +80,7 @@ func (h *TenantHandler) AdminListAdmins(w http.ResponseWriter, r *http.Request) 
 func (h *TenantHandler) AdminCreateAdmin(w http.ResponseWriter, r *http.Request) {
 	tenantID := chi.URLParam(r, "tenantId")
 	if _, err := h.fetchTenant(r.Context(), tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "tenant not found")
+		respondError(w, http.StatusNotFound, "租户不存在")
 		return
 	}
 
@@ -96,7 +96,7 @@ func (h *TenantHandler) AdminCreateAdmin(w http.ResponseWriter, r *http.Request)
 
 	plainPassword, err := generateSecurePassword(12)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to generate password")
+		respondError(w, http.StatusInternalServerError, "生成password失败")
 		return
 	}
 
@@ -106,7 +106,7 @@ func (h *TenantHandler) AdminCreateAdmin(w http.ResponseWriter, r *http.Request)
 			respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create admin")
+		respondError(w, http.StatusInternalServerError, "创建管理员失败")
 		return
 	}
 
@@ -120,13 +120,13 @@ func (h *TenantHandler) AdminUpdateAdmin(w http.ResponseWriter, r *http.Request)
 	adminID := chi.URLParam(r, "id")
 
 	if _, err := h.fetchTenant(r.Context(), tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "tenant not found")
+		respondError(w, http.StatusNotFound, "租户不存在")
 		return
 	}
 
 	existing, err := h.fetchTenantAdmin(r.Context(), tenantID, adminID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "admin not found")
+		respondError(w, http.StatusNotFound, "管理员不存在")
 		return
 	}
 
@@ -150,7 +150,7 @@ func (h *TenantHandler) AdminUpdateAdmin(w http.ResponseWriter, r *http.Request)
 			respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update admin")
+		respondError(w, http.StatusInternalServerError, "更新管理员失败")
 		return
 	}
 
@@ -165,18 +165,18 @@ func (h *TenantHandler) AdminDeleteAdmin(w http.ResponseWriter, r *http.Request)
 	adminID := chi.URLParam(r, "id")
 
 	if _, err := h.fetchTenant(r.Context(), tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "tenant not found")
+		respondError(w, http.StatusNotFound, "租户不存在")
 		return
 	}
 
 	if _, err := h.fetchTenantAdmin(r.Context(), tenantID, adminID); err != nil {
-		respondError(w, http.StatusNotFound, "admin not found")
+		respondError(w, http.StatusNotFound, "管理员不存在")
 		return
 	}
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -185,12 +185,12 @@ func (h *TenantHandler) AdminDeleteAdmin(w http.ResponseWriter, r *http.Request)
 		UPDATE roles SET user_count = GREATEST(user_count - 1, 0)
 		WHERE id IN (SELECT role_id FROM user_roles WHERE user_id = $1)
 	`, adminID); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update role count")
+		respondError(w, http.StatusInternalServerError, "更新角色数量失败")
 		return
 	}
 
 	if _, err := tx.Exec(r.Context(), `DELETE FROM user_roles WHERE user_id = $1`, adminID); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete user roles")
+		respondError(w, http.StatusInternalServerError, "删除用户角色失败")
 		return
 	}
 
@@ -198,17 +198,17 @@ func (h *TenantHandler) AdminDeleteAdmin(w http.ResponseWriter, r *http.Request)
 		UPDATE tenants SET admin_ids = array_remove(admin_ids, $1::UUID)
 		WHERE id = $2
 	`, adminID, tenantID); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update tenant admins")
+		respondError(w, http.StatusInternalServerError, "更新租户管理员失败")
 		return
 	}
 
 	if _, err := tx.Exec(r.Context(), `DELETE FROM users WHERE id = $1 AND tenant_id = $2`, adminID, tenantID); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete admin")
+		respondError(w, http.StatusInternalServerError, "删除管理员失败")
 		return
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit transaction")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -222,24 +222,24 @@ func (h *TenantHandler) AdminResetPassword(w http.ResponseWriter, r *http.Reques
 	adminID := chi.URLParam(r, "id")
 
 	if _, err := h.fetchTenant(r.Context(), tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "tenant not found")
+		respondError(w, http.StatusNotFound, "租户不存在")
 		return
 	}
 
 	if _, err := h.fetchTenantAdmin(r.Context(), tenantID, adminID); err != nil {
-		respondError(w, http.StatusNotFound, "admin not found")
+		respondError(w, http.StatusNotFound, "管理员不存在")
 		return
 	}
 
 	newPassword, err := generateSecurePassword(12)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to generate password")
+		respondError(w, http.StatusInternalServerError, "生成password失败")
 		return
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to hash password")
+		respondError(w, http.StatusInternalServerError, "哈希password失败")
 		return
 	}
 
@@ -247,7 +247,7 @@ func (h *TenantHandler) AdminResetPassword(w http.ResponseWriter, r *http.Reques
 		UPDATE users SET password_hash = $1, updated_at = NOW()
 		WHERE id = $2
 	`, string(hash), adminID); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to save password")
+		respondError(w, http.StatusInternalServerError, "保存password失败")
 		return
 	}
 

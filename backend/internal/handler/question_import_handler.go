@@ -32,17 +32,17 @@ func (h *QuestionImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Requ
 	userID := claims.UserID
 	bankID := chi.URLParam(r, "bankId")
 	if bankID == "" {
-		respondError(w, http.StatusBadRequest, "missing bank id")
+		respondError(w, http.StatusBadRequest, "缺少题库ID")
 		return
 	}
 
 	if err := r.ParseMultipartForm(50 << 20); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid form")
+		respondError(w, http.StatusBadRequest, "表单无效")
 		return
 	}
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "missing file")
+		respondError(w, http.StatusBadRequest, "缺少文件")
 		return
 	}
 	defer file.Close()
@@ -56,7 +56,7 @@ func (h *QuestionImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Requ
 
 	xlsx, err := excelize.OpenReader(file)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "failed to parse Excel file")
+		respondError(w, http.StatusBadRequest, "解析Excel文件失败")
 		return
 	}
 	defer xlsx.Close()
@@ -78,17 +78,17 @@ func (h *QuestionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 	userID := claims.UserID
 	bankID := chi.URLParam(r, "bankId")
 	if bankID == "" {
-		respondError(w, http.StatusBadRequest, "missing bank id")
+		respondError(w, http.StatusBadRequest, "缺少题库ID")
 		return
 	}
 
 	if err := r.ParseMultipartForm(50 << 20); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid form")
+		respondError(w, http.StatusBadRequest, "表单无效")
 		return
 	}
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "missing file")
+		respondError(w, http.StatusBadRequest, "缺少文件")
 		return
 	}
 	defer file.Close()
@@ -102,7 +102,7 @@ func (h *QuestionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 
 	xlsx, err := excelize.OpenReader(file)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "failed to parse Excel file")
+		respondError(w, http.StatusBadRequest, "解析Excel文件失败")
 		return
 	}
 	defer xlsx.Close()

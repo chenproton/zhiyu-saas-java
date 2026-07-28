@@ -12,9 +12,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Building2, Lock, Save, Loader2 } from "lucide-react"
 import { institutionApi, type Institution } from "@/lib/api"
 import { MAJOR_TAGS } from "@/lib/resource-constants"
+import { useToast } from "@/hooks/use-toast"
 
 export default function InstitutionSettingsPage() {
   const { institutionId } = useRole()
+  const { toast } = useToast()
   const [institution, setInstitution] = useState<Institution | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -97,7 +99,10 @@ export default function InstitutionSettingsPage() {
         expertiseTags: formData.expertiseTags,
       })
       setInstitution(updated)
-      alert("机构信息保存成功")
+      toast({
+        title: "提示",
+        description: "机构信息保存成功",
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : "保存失败")
     } finally {

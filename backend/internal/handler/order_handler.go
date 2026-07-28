@@ -57,67 +57,42 @@ func generateAuthCode() string {
 }
 
 func (h *OrderHandler) List(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
 	status := r.URL.Query().Get("status")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
 
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-
-	// Filter by institution membership unless operator
-	if !platformAdminOnly(claims) && claims.InstitutionID != nil {
-		where = append(where, "(buyer_id = $"+itoa(argIdx)+" OR seller_id = $"+itoa(argIdx)+")")
-		args = append(args, *claims.InstitutionID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM orders WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, order_no, buyer_id, seller_id, resource_id, price, platform_fee, seller_income, status, paid_at, created_at
-		FROM orders
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.Order]{
+		Table:         "orders",
+		SelectColumns: "id, order_no, buyer_id, seller_id, resource_id, price, platform_fee, seller_income, status, paid_at, created_at",
+		TenantScoped:  false,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if status != "" {
+				qb.addCondition("status = " + qb.nextArg(status))
+			}
+			claims := middleware.CurrentUser(r)
+			if claims != nil && !platformAdminOnly(claims) && claims.InstitutionID != nil {
+				ph := qb.nextArg(*claims.InstitutionID)
+				qb.addCondition("(buyer_id = " + ph + " OR seller_id = " + ph + ")")
+			}
+		},
+		ScanRows: h.scanOrderRows,
+	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list orders")
+		respondError(w, http.StatusInternalServerError, "查询订单失败")
 		return
 	}
-	defer rows.Close()
 
+	respondJSON(w, http.StatusOK, OrderListResponse{Items: items, Total: total})
+}
+
+func (h *OrderHandler) scanOrderRows(rows pgx.Rows) ([]domain.Order, error) {
 	items := make([]domain.Order, 0)
 	for rows.Next() {
 		var o domain.Order
 		if err := rows.Scan(&o.ID, &o.OrderNo, &o.BuyerID, &o.SellerID, &o.ResourceID, &o.Price, &o.PlatformFee, &o.SellerIncome, &o.Status, &o.PaidAt, &o.CreatedAt); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to scan orders")
-			return
+			return nil, err
 		}
 		items = append(items, o)
 	}
-
-	respondJSON(w, http.StatusOK, OrderListResponse{Items: items, Total: total})
+	return items, nil
 }
 
 func (h *OrderHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -126,7 +101,7 @@ func (h *OrderHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	order, detail, err := h.fetchOrderDetail(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "order not found")
+		respondError(w, http.StatusNotFound, "订单不存在")
 		return
 	}
 
@@ -142,7 +117,7 @@ func (h *OrderHandler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *OrderHandler) Create(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims.InstitutionID == nil {
-		respondError(w, http.StatusForbidden, "user not associated with an institution")
+		respondError(w, http.StatusForbidden, "用户未关联机构")
 		return
 	}
 
@@ -161,15 +136,15 @@ func (h *OrderHandler) Create(w http.ResponseWriter, r *http.Request) {
 	err := h.DB.QueryRow(r.Context(), `SELECT institution_id, price, status FROM resources WHERE id = $1`, req.ResourceID).Scan(
 		&res.InstitutionID, &res.Price, &res.Status)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "resource not found")
+		respondError(w, http.StatusNotFound, "资源不存在")
 		return
 	}
 	if res.Status != string(domain.ResourceStatusPublished) {
-		respondError(w, http.StatusBadRequest, "resource not available for purchase")
+		respondError(w, http.StatusBadRequest, "资源不可购买")
 		return
 	}
 	if res.InstitutionID == *claims.InstitutionID {
-		respondError(w, http.StatusBadRequest, "cannot purchase own resource")
+		respondError(w, http.StatusBadRequest, "不能购买自己的资源")
 		return
 	}
 
@@ -179,7 +154,7 @@ func (h *OrderHandler) Create(w http.ResponseWriter, r *http.Request) {
 		SELECT COUNT(*) FROM authorizations WHERE buyer_id = $1 AND resource_id = $2
 	`, *claims.InstitutionID, req.ResourceID).Scan(&existing)
 	if existing > 0 {
-		respondError(w, http.StatusBadRequest, "already purchased")
+		respondError(w, http.StatusBadRequest, "已购买")
 		return
 	}
 
@@ -198,7 +173,7 @@ func (h *OrderHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW())
 	`, id, orderNo, *claims.InstitutionID, res.InstitutionID, req.ResourceID, res.Price, platformFee, sellerIncome)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create order")
+		respondError(w, http.StatusInternalServerError, "创建订单失败")
 		return
 	}
 
@@ -212,7 +187,7 @@ func (h *OrderHandler) Pay(w http.ResponseWriter, r *http.Request) {
 
 	order, _, err := h.fetchOrderDetail(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "order not found")
+		respondError(w, http.StatusNotFound, "订单不存在")
 		return
 	}
 
@@ -221,13 +196,13 @@ func (h *OrderHandler) Pay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if order.Status != domain.OrderStatusPending {
-		respondError(w, http.StatusBadRequest, "order cannot be paid")
+		respondError(w, http.StatusBadRequest, "订单无法支付")
 		return
 	}
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -237,7 +212,7 @@ func (h *OrderHandler) Pay(w http.ResponseWriter, r *http.Request) {
 		UPDATE orders SET status = 'paid', paid_at = $1 WHERE id = $2
 	`, paidAt, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update order")
+		respondError(w, http.StatusInternalServerError, "更新订单失败")
 		return
 	}
 
@@ -246,7 +221,7 @@ func (h *OrderHandler) Pay(w http.ResponseWriter, r *http.Request) {
 		UPDATE institutions SET balance = balance + $1, total_income = total_income + $1 WHERE id = $2
 	`, order.SellerIncome, order.SellerID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update seller")
+		respondError(w, http.StatusInternalServerError, "更新卖家失败")
 		return
 	}
 
@@ -255,7 +230,7 @@ func (h *OrderHandler) Pay(w http.ResponseWriter, r *http.Request) {
 		UPDATE institutions SET total_spent = total_spent + $1 WHERE id = $2
 	`, order.Price, order.BuyerID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update buyer")
+		respondError(w, http.StatusInternalServerError, "更新买家失败")
 		return
 	}
 
@@ -264,7 +239,7 @@ func (h *OrderHandler) Pay(w http.ResponseWriter, r *http.Request) {
 		UPDATE resources SET sales_count = sales_count + 1 WHERE id = $1
 	`, order.ResourceID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update resource sales")
+		respondError(w, http.StatusInternalServerError, "更新资源销售失败")
 		return
 	}
 
@@ -276,12 +251,12 @@ func (h *OrderHandler) Pay(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, 1, NOW())
 	`, authID, id, order.BuyerID, order.ResourceID, authCode)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create authorization")
+		respondError(w, http.StatusInternalServerError, "创建授权失败")
 		return
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 
@@ -333,7 +308,7 @@ func (h *OrderHandler) ListAuthorizations(w http.ResponseWriter, r *http.Request
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list authorizations")
+		respondError(w, http.StatusInternalServerError, "查询授权记录失败")
 		return
 	}
 	defer rows.Close()
@@ -343,7 +318,7 @@ func (h *OrderHandler) ListAuthorizations(w http.ResponseWriter, r *http.Request
 		var d AuthorizationDetail
 		if err := rows.Scan(&d.ID, &d.OrderID, &d.BuyerID, &d.ResourceID, &d.AuthCode, &d.Status, &d.CreatedAt,
 			&d.ResourceName, &d.SellerName); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to scan authorizations")
+			respondError(w, http.StatusInternalServerError, "读取授权记录失败")
 			return
 		}
 		items = append(items, d)
@@ -365,7 +340,7 @@ func (h *OrderHandler) VerifyAuthorization(w http.ResponseWriter, r *http.Reques
 		WHERE a.auth_code = $1
 	`, code).Scan(&auth.ID, &auth.OrderID, &auth.BuyerID, &auth.ResourceID, &auth.AuthCode, &auth.Status, &auth.CreatedAt, &resourceInstitutionID)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "invalid authorization code")
+		respondError(w, http.StatusNotFound, "无效授权码")
 		return
 	}
 

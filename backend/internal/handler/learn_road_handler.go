@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -43,62 +42,20 @@ func (h *LearnRoadHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	search := r.URL.Query().Get("search")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
+	cfg := listQueryConfig[domain.LearnRoad]{
+		Table:         "learn_roads",
+		SelectColumns: "id, name, description, position_ids, steps, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name"},
 	}
 
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if search != "" {
-		where = append(where, "name ILIKE $"+itoa(argIdx))
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM learn_roads WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, name, description, position_ids, steps, created_at, updated_at
-		FROM learn_roads
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg, h.scanLearnRoadRows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list learn roads")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanLearnRoadRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan learn roads")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+		} else {
+			respondError(w, http.StatusInternalServerError, "查询学习路径失败")
+		}
 		return
 	}
 
@@ -114,7 +71,7 @@ func (h *LearnRoadHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	road, err := h.fetchLearnRoad(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "learn road not found")
+		respondError(w, http.StatusNotFound, "学习路径不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, road)
@@ -164,7 +121,7 @@ func (h *LearnRoadHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "学习路线名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create learn road")
+		respondError(w, http.StatusInternalServerError, "创建学习路径失败")
 		return
 	}
 
@@ -181,7 +138,7 @@ func (h *LearnRoadHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	existing, err := h.fetchLearnRoad(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "learn road not found")
+		respondError(w, http.StatusNotFound, "学习路径不存在")
 		return
 	}
 
@@ -224,7 +181,7 @@ func (h *LearnRoadHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "学习路线名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update learn road")
+		respondError(w, http.StatusInternalServerError, "更新学习路径失败")
 		return
 	}
 
@@ -240,13 +197,13 @@ func (h *LearnRoadHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchLearnRoad(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "learn road not found")
+		respondError(w, http.StatusNotFound, "学习路径不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM learn_roads WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete learn road")
+		respondError(w, http.StatusInternalServerError, "删除学习路径失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

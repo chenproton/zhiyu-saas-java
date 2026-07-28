@@ -38,30 +38,22 @@ func (h *ExamResultHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	usageID := r.URL.Query().Get("usageId")
 	if usageID == "" {
-		respondError(w, http.StatusBadRequest, "usageId is required")
+		respondError(w, http.StatusBadRequest, "缺少使用记录ID")
 		return
 	}
 
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	total, err := h.countByUsage(r.Context(), usageID)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.ExamResult]{
+		Table:         "exam_results er LEFT JOIN majors m ON m.id = er.major_id",
+		SelectColumns: "er.id, er.exam_usage_id, er.user_id, er.student_name, er.class_name, er.grade, er.major_id, COALESCE(m.name, '') AS major_name, er.score, er.total_score, er.is_pass, er.answers, er.submit_time, er.created_at",
+		TenantScoped:  false,
+		OrderBy:       "er.score DESC, er.submit_time ASC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			qb.addCondition("er.exam_usage_id = " + qb.nextArg(usageID))
+		},
+		ScanRows: h.scanExamResultRows,
+	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to count exam results")
-		return
-	}
-
-	items, err := h.listByUsage(r.Context(), usageID, limit, offset)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list exam results")
+		respondError(w, http.StatusInternalServerError, "查询考试结果失败")
 		return
 	}
 
@@ -85,7 +77,7 @@ func (h *ExamResultHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.ExamUsageID == "" {
-		respondError(w, http.StatusBadRequest, "examUsageId is required")
+		respondError(w, http.StatusBadRequest, "缺少考试使用记录ID")
 		return
 	}
 
@@ -95,10 +87,10 @@ func (h *ExamResultHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("submit exam result failed: usage=%s user=%s tenant=%s err=%v", req.ExamUsageID, claims.UserID, tenantID, err)
 		if err == pgx.ErrNoRows {
-			respondError(w, http.StatusNotFound, "exam usage not found")
+			respondError(w, http.StatusNotFound, "考试安排不存在")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to submit exam result")
+		respondError(w, http.StatusInternalServerError, "提交考试结果失败")
 		return
 	}
 
@@ -223,26 +215,7 @@ func (h *ExamResultHandler) submit(ctx context.Context, tenantID, userID, usageI
 	}, nil
 }
 
-func (h *ExamResultHandler) countByUsage(ctx context.Context, usageID string) (int, error) {
-	var total int
-	err := h.DB.QueryRow(ctx, `SELECT COUNT(*) FROM exam_results WHERE exam_usage_id = $1`, usageID).Scan(&total)
-	return total, err
-}
-
-func (h *ExamResultHandler) listByUsage(ctx context.Context, usageID string, limit, offset int) ([]domain.ExamResult, error) {
-	rows, err := h.DB.Query(ctx, `
-		SELECT er.id, er.exam_usage_id, er.user_id, er.student_name, er.class_name, er.grade, er.major_id, COALESCE(m.name, '') AS major_name, er.score, er.total_score, er.is_pass, er.answers, er.submit_time, er.created_at
-		FROM exam_results er
-		LEFT JOIN majors m ON m.id = er.major_id
-		WHERE er.exam_usage_id = $1
-		ORDER BY er.score DESC, er.submit_time ASC
-		LIMIT $2 OFFSET $3
-	`, usageID, limit, offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
+func (h *ExamResultHandler) scanExamResultRows(rows pgx.Rows) ([]domain.ExamResult, error) {
 	var items []domain.ExamResult
 	for rows.Next() {
 		var r domain.ExamResult

@@ -9,16 +9,16 @@ import (
 	authmw "github.com/zhiyu-saas/backend/internal/middleware"
 )
 
-func registerApiRoutes(r chi.Router, jwtSecret string, db *pgxpool.Pool, h *Handlers) {
+func RegisterAPIRoutes(r chi.Router, jwtSecret string, db *pgxpool.Pool, h *Handlers) {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(middleware.Timeout(30 * time.Second))
 
-		registerPublicRoutes(r, h)
-		registerAuthenticatedRoutes(r, jwtSecret, db, h)
+		RegisterPublicRoutes(r, h)
+		RegisterAuthenticatedRoutes(r, jwtSecret, db, h)
 	})
 }
 
-func registerPublicRoutes(r chi.Router, h *Handlers) {
+func RegisterPublicRoutes(r chi.Router, h *Handlers) {
 	r.Post("/auth/login", h.authHandler.Login)
 	r.Post("/auth/saas/login", h.authHandler.SaasLogin)
 	r.Post("/auth/portal/login", h.authHandler.PortalLogin)
@@ -32,7 +32,7 @@ func registerPublicRoutes(r chi.Router, h *Handlers) {
 	r.Get("/app-modules", h.appModuleHandler.List)
 }
 
-func registerAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Pool, h *Handlers) {
+func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Pool, h *Handlers) {
 	auth := authmw.JWT(jwtSecret)
 	platformAdmin := authmw.RequireRole("platform_admin")
 	systemAdmin := authmw.RequireSystemPermission()

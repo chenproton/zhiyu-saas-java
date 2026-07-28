@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
@@ -29,41 +30,37 @@ type CreateBannerRequest struct {
 }
 
 func (h *BannerHandler) List(w http.ResponseWriter, r *http.Request) {
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
+	cfg := listQueryConfig[domain.Banner]{
+		Table:         "banners",
+		SelectColumns: "id, title, image, link, sort, enabled",
+		TenantScoped:  false,
+		OrderBy:       "sort, id",
+		ScanRows:      h.scanBannerRows,
 	}
 
-	var total int
-	_ = h.DB.QueryRow(r.Context(), `SELECT COUNT(*) FROM banners`).Scan(&total)
-
-	rows, err := h.DB.Query(r.Context(), `
-		SELECT id, title, image, link, sort, enabled FROM banners ORDER BY sort, id LIMIT $1 OFFSET $2
-	`, limit, offset)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list banners")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	defer rows.Close()
 
+	respondJSON(w, http.StatusOK, BannerListResponse{Items: items, Total: total})
+}
+
+func (h *BannerHandler) scanBannerRows(rows pgx.Rows) ([]domain.Banner, error) {
 	items := make([]domain.Banner, 0)
 	for rows.Next() {
 		var b domain.Banner
 		if err := rows.Scan(&b.ID, &b.Title, &b.Image, &b.Link, &b.Sort, &b.Enabled); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to scan banners")
-			return
+			return nil, err
 		}
 		items = append(items, b)
 	}
-
-	respondJSON(w, http.StatusOK, BannerListResponse{Items: items, Total: total})
+	return items, nil
 }
 
 func (h *BannerHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -83,7 +80,7 @@ func (h *BannerHandler) Create(w http.ResponseWriter, r *http.Request) {
 		INSERT INTO banners (id, title, image, link, sort, enabled) VALUES ($1, $2, $3, $4, $5, $6)
 	`, id, req.Title, req.Image, req.Link, req.Sort, req.Enabled)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create banner")
+		respondError(w, http.StatusInternalServerError, "创建轮播图失败")
 		return
 	}
 
@@ -107,7 +104,7 @@ func (h *BannerHandler) Update(w http.ResponseWriter, r *http.Request) {
 		UPDATE banners SET title = $1, image = $2, link = $3, sort = $4, enabled = $5 WHERE id = $6
 	`, req.Title, req.Image, req.Link, req.Sort, req.Enabled, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update banner")
+		respondError(w, http.StatusInternalServerError, "更新轮播图失败")
 		return
 	}
 
@@ -123,7 +120,7 @@ func (h *BannerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM banners WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete banner")
+		respondError(w, http.StatusInternalServerError, "删除轮播图失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

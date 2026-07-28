@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { DashboardLayout, useRole } from "@/components/dashboard-layout"
+import { ConfirmDialog } from "@zhiyu/ui"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -71,6 +72,11 @@ export default function MyResourcesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; action: string; resourceId: string }>({
+    open: false,
+    action: "",
+    resourceId: "",
+  })
 
   const fetchResources = async () => {
     if (!institutionId) {
@@ -105,9 +111,18 @@ export default function MyResourcesPage() {
     return matchesSearch && matchesCategory && matchesStatus
   })
 
-  const handleAction = async (action: string, resourceId: string) => {
-    if (!confirm(`确定要${action}该资源吗？`)) return
+  const openActionConfirm = (action: string, resourceId: string) => {
+    setConfirmDialog({ open: true, action, resourceId })
+  }
 
+  const closeActionConfirm = () => {
+    setConfirmDialog((prev) => ({ ...prev, open: false }))
+  }
+
+  const executeAction = async () => {
+    const { action, resourceId } = confirmDialog
+    if (!resourceId) return
+    closeActionConfirm()
     setActionLoading(resourceId)
     try {
       switch (action) {
@@ -327,24 +342,24 @@ export default function MyResourcesPage() {
                                 </DropdownMenuItem>
                               )}
                               {resource.status === "draft" && (
-                                <DropdownMenuItem onClick={() => handleAction("提交审核", resource.id)}>
+                                <DropdownMenuItem onClick={() => openActionConfirm("提交审核", resource.id)}>
                                   提交审核
                                 </DropdownMenuItem>
                               )}
                               {resource.status === "pending_publish" && (
-                                <DropdownMenuItem onClick={() => handleAction("上架", resource.id)}>
+                                <DropdownMenuItem onClick={() => openActionConfirm("上架", resource.id)}>
                                   上架
                                 </DropdownMenuItem>
                               )}
                               {resource.status === "published" && (
-                                <DropdownMenuItem onClick={() => handleAction("下架", resource.id)}>
+                                <DropdownMenuItem onClick={() => openActionConfirm("下架", resource.id)}>
                                   下架
                                 </DropdownMenuItem>
                               )}
                               {(resource.status === "draft" || resource.status === "rejected" || resource.status === "offlined") && (
                                 <DropdownMenuItem
                                   className="text-destructive"
-                                  onClick={() => handleAction("删除", resource.id)}
+                                  onClick={() => openActionConfirm("删除", resource.id)}
                                 >
                                   删除
                                 </DropdownMenuItem>
@@ -364,6 +379,16 @@ export default function MyResourcesPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => {
+          if (!open) closeActionConfirm()
+        }}
+        title="确认操作"
+        description={`确定要${confirmDialog.action}该资源吗？`}
+        onConfirm={executeAction}
+      />
     </DashboardLayout>
   )
 }

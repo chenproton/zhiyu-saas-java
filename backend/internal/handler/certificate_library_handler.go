@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
@@ -37,74 +37,27 @@ type UpdateCertificateLibraryRequest struct {
 }
 
 func (h *CertificateLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-	search := r.URL.Query().Get("search")
 	creatorID := r.URL.Query().Get("creatorId")
 
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"tenant_id = $1"}
-	args := []interface{}{tenantID}
-	argIdx := 2
-
-	if search != "" {
-		where = append(where, "(name ILIKE $"+itoa(argIdx)+" OR description ILIKE $"+itoa(argIdx)+")")
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-	if creatorID != "" {
-		where = append(where, "creator_id = $"+itoa(argIdx))
-		args = append(args, creatorID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM certificate_library WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, tenant_id, name, url, description, image_url, creator_id, created_at
-		FROM certificate_library
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery[domain.CertificateLibraryItem](r.Context(), h.DB, r, listQueryConfig[domain.CertificateLibraryItem]{
+		Table:         "certificate_library",
+		SelectColumns: "id, tenant_id, name, url, description, image_url, creator_id, created_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name", "description"},
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if creatorID != "" {
+				qb.addCondition("creator_id = " + qb.nextArg(creatorID))
+			}
+		},
+		ScanRows: h.scanCertificateLibraryRows,
+	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list certificate library")
-		return
-	}
-	defer rows.Close()
-
-	items := make([]domain.CertificateLibraryItem, 0)
-	for rows.Next() {
-		var item domain.CertificateLibraryItem
-		var url, description, imageURL, creatorID *string
-		if err := rows.Scan(
-			&item.ID, &item.TenantID, &item.Name, &url, &description, &imageURL, &creatorID, &item.CreatedAt,
-		); err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to scan certificate library")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
 			return
 		}
-		item.URL = url
-		item.Description = description
-		item.ImageURL = imageURL
-		item.CreatorID = creatorID
-		items = append(items, item)
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 
 	respondJSON(w, http.StatusOK, CertificateLibraryListResponse{Items: items, Total: total})
@@ -119,7 +72,7 @@ func (h *CertificateLibraryHandler) Get(w http.ResponseWriter, r *http.Request) 
 	id := chi.URLParam(r, "id")
 	item, err := h.fetchItem(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "certificate not found")
+		respondError(w, http.StatusNotFound, "证书不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, item)
@@ -150,7 +103,7 @@ func (h *CertificateLibraryHandler) Create(w http.ResponseWriter, r *http.Reques
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`, id, tenantID, req.Name, req.URL, req.Description, req.ImageURL, creatorID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create certificate")
+		respondError(w, http.StatusInternalServerError, "创建证书失败")
 		return
 	}
 
@@ -167,7 +120,7 @@ func (h *CertificateLibraryHandler) Update(w http.ResponseWriter, r *http.Reques
 	id := chi.URLParam(r, "id")
 	existing, err := h.fetchItem(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "certificate not found")
+		respondError(w, http.StatusNotFound, "证书不存在")
 		return
 	}
 
@@ -204,7 +157,7 @@ func (h *CertificateLibraryHandler) Update(w http.ResponseWriter, r *http.Reques
 		WHERE id = $5
 	`, name, url, description, imageURL, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update certificate")
+		respondError(w, http.StatusInternalServerError, "更新证书失败")
 		return
 	}
 
@@ -221,7 +174,7 @@ func (h *CertificateLibraryHandler) Delete(w http.ResponseWriter, r *http.Reques
 	id := chi.URLParam(r, "id")
 	existing, err := h.fetchItem(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "certificate not found")
+		respondError(w, http.StatusNotFound, "证书不存在")
 		return
 	}
 
@@ -231,7 +184,7 @@ func (h *CertificateLibraryHandler) Delete(w http.ResponseWriter, r *http.Reques
 
 	_, err = h.DB.Exec(r.Context(), `DELETE FROM certificate_library WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete certificate")
+		respondError(w, http.StatusInternalServerError, "删除证书失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -255,4 +208,23 @@ func (h *CertificateLibraryHandler) fetchItem(ctx context.Context, id string) (d
 	item.ImageURL = imageURL
 	item.CreatorID = creatorID
 	return item, nil
+}
+
+func (h *CertificateLibraryHandler) scanCertificateLibraryRows(rows pgx.Rows) ([]domain.CertificateLibraryItem, error) {
+	items := make([]domain.CertificateLibraryItem, 0)
+	for rows.Next() {
+		var item domain.CertificateLibraryItem
+		var url, description, imageURL, creatorID *string
+		if err := rows.Scan(
+			&item.ID, &item.TenantID, &item.Name, &url, &description, &imageURL, &creatorID, &item.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		item.URL = url
+		item.Description = description
+		item.ImageURL = imageURL
+		item.CreatorID = creatorID
+		items = append(items, item)
+	}
+	return items, nil
 }

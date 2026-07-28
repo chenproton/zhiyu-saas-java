@@ -46,7 +46,7 @@ type BindTaskResourceRequest struct {
 
 func (h *TaskResourceHandler) ListResources(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
@@ -112,14 +112,14 @@ func (h *TaskResourceHandler) ListResources(w http.ResponseWriter, r *http.Reque
 
 	rows, err := h.DB.Query(r.Context(), query, args...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list resources")
+		respondError(w, http.StatusInternalServerError, "查询资源失败")
 		return
 	}
 	defer rows.Close()
 
 	items, err := h.scanResourceRows(rows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan resources")
+		respondError(w, http.StatusInternalServerError, "读取资源失败")
 		return
 	}
 
@@ -129,7 +129,7 @@ func (h *TaskResourceHandler) ListResources(w http.ResponseWriter, r *http.Reque
 func (h *TaskResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
@@ -171,7 +171,7 @@ func (h *TaskResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4::resource_type, $5, $6, $7, $8, $9, $10)
 	`, id, tenantID, req.Name, req.Type, req.URL, req.Description, req.Thumbnail, fileSize, jsonMapBytes(metadata), uploadedBy)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create resource")
+		respondError(w, http.StatusInternalServerError, "创建资源失败")
 		return
 	}
 
@@ -182,7 +182,7 @@ func (h *TaskResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *TaskResourceHandler) BindResource(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
@@ -209,7 +209,7 @@ func (h *TaskResourceHandler) BindResource(w http.ResponseWriter, r *http.Reques
 		RETURNING id
 	`, tenantID, req.TaskID, req.ResourceID).Scan(&id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to bind resource")
+		respondError(w, http.StatusInternalServerError, "绑定资源失败")
 		return
 	}
 
@@ -219,14 +219,14 @@ func (h *TaskResourceHandler) BindResource(w http.ResponseWriter, r *http.Reques
 
 func (h *TaskResourceHandler) UnbindResource(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM task_resource_bindings WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to unbind resource")
+		respondError(w, http.StatusInternalServerError, "解绑资源失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -46,46 +45,26 @@ func (h *NodeHomeworkHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	nodeID := r.URL.Query().Get("nodeId")
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-	if nodeID != "" {
-		where = append(where, "node_id = $"+itoa(argIdx))
-		args = append(args, nodeID)
-		argIdx++
-	}
 
-	countQuery := "SELECT COUNT(*) FROM node_homeworks WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, node_id, title, requirement, need_attachment, deadline
-		FROM node_homeworks
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY id DESC
-	`
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.NodeHomework]{
+		Table:         "node_homeworks",
+		SelectColumns: "id, node_id, title, requirement, need_attachment, deadline",
+		TenantScoped:  true,
+		OrderBy:       "id DESC",
+		NoPagination:  true,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if nodeID != "" {
+				qb.addCondition("node_id = " + qb.nextArg(nodeID))
+			}
+		},
+		ScanRows: h.scanNodeHomeworkRows,
+	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list homeworks")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanNodeHomeworkRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan homeworks")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "查询作业失败")
 		return
 	}
 
@@ -101,7 +80,7 @@ func (h *NodeHomeworkHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	hw, err := h.fetchNodeHomework(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "homework not found")
+		respondError(w, http.StatusNotFound, "作业不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, hw)
@@ -134,7 +113,7 @@ func (h *NodeHomeworkHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`, id, tenantID, req.NodeID, req.Title, req.Requirement, req.NeedAttachment, req.Deadline)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create homework")
+		respondError(w, http.StatusInternalServerError, "创建作业失败")
 		return
 	}
 
@@ -150,7 +129,7 @@ func (h *NodeHomeworkHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchNodeHomework(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "homework not found")
+		respondError(w, http.StatusNotFound, "作业不存在")
 		return
 	}
 
@@ -169,7 +148,7 @@ func (h *NodeHomeworkHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $5
 	`, req.Title, req.Requirement, req.NeedAttachment, req.Deadline, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update homework")
+		respondError(w, http.StatusInternalServerError, "更新作业失败")
 		return
 	}
 
@@ -185,13 +164,13 @@ func (h *NodeHomeworkHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchNodeHomework(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "homework not found")
+		respondError(w, http.StatusNotFound, "作业不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM node_homeworks WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete homework")
+		respondError(w, http.StatusInternalServerError, "删除作业失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

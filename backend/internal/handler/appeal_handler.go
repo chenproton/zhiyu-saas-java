@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -43,66 +42,27 @@ func (h *AppealHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	appealType := r.URL.Query().Get("type")
 	status := r.URL.Query().Get("status")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
 
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if appealType != "" {
-		where = append(where, "type = $"+itoa(argIdx))
-		args = append(args, appealType)
-		argIdx++
-	}
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM appeal_records WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, user_id, type, reason, status, created_at
-		FROM appeal_records
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.AppealRecord]{
+		Table:         "appeal_records",
+		SelectColumns: "id, user_id, type, reason, status, created_at",
+		TenantScoped:  true,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if appealType != "" {
+				qb.addCondition("type = " + qb.nextArg(appealType))
+			}
+			if status != "" {
+				qb.addCondition("status = " + qb.nextArg(status))
+			}
+		},
+		ScanRows: h.scanAppealRows,
+	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list appeals")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanAppealRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan appeals")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "查询申诉失败")
 		return
 	}
 
@@ -119,7 +79,7 @@ func (h *AppealHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	appeal, err := h.fetchAppeal(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "appeal not found")
+		respondError(w, http.StatusNotFound, "申诉不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, appeal)
@@ -150,7 +110,7 @@ func (h *AppealHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, 'pending')
 	`, id, tenantID, req.UserID, req.Type, req.Reason)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create appeal")
+		respondError(w, http.StatusInternalServerError, "创建申诉失败")
 		return
 	}
 
@@ -172,7 +132,7 @@ func (h *AppealHandler) Process(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Status == "" {
-		respondError(w, http.StatusBadRequest, "missing status")
+		respondError(w, http.StatusBadRequest, "缺少状态")
 		return
 	}
 
@@ -180,7 +140,7 @@ func (h *AppealHandler) Process(w http.ResponseWriter, r *http.Request) {
 		UPDATE appeal_records SET status = $1 WHERE id = $2
 	`, req.Status, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to process appeal")
+		respondError(w, http.StatusInternalServerError, "处理申诉失败")
 		return
 	}
 

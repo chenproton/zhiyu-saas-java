@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -58,68 +57,31 @@ const taskInsertColumns = `scenario_id, name, code, sort_order, description, det
 
 func (h *ScenarioTaskHandler) List(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
-	scenarioID := r.URL.Query().Get("scenarioId")
-	search := r.URL.Query().Get("search")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
+	cfg := listQueryConfig[domain.ScenarioTask]{
+		Table:         "scenario_tasks",
+		SelectColumns: taskSelectColumns,
+		TenantScoped:  true,
+		SearchColumns: []string{"name", "code"},
+		OrderBy:       "sort_order",
+		ScanRows:      h.scanTaskRows,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if scenarioID := r.URL.Query().Get("scenarioId"); scenarioID != "" {
+				qb.addCondition("scenario_id = " + qb.nextArg(scenarioID))
+			}
+		},
 	}
 
-	if scenarioID != "" {
-		where = append(where, "scenario_id = $"+itoa(argIdx))
-		args = append(args, scenarioID)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "(name ILIKE $"+itoa(argIdx)+" OR code ILIKE $"+itoa(argIdx)+")")
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM scenario_tasks WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `SELECT ` + taskSelectColumns + ` FROM scenario_tasks WHERE ` +
-		strings.Join(where, " AND ") + ` ORDER BY sort_order LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list tasks")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanTaskRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan tasks")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "查询任务失败")
 		return
 	}
 
@@ -132,14 +94,14 @@ func (h *ScenarioTaskHandler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *ScenarioTaskHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	task, err := h.fetchTask(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "task not found")
+		respondError(w, http.StatusNotFound, "任务不存在")
 		return
 	}
 	h.populateEvalData(r.Context(), []domain.ScenarioTask{*task})
@@ -148,7 +110,7 @@ func (h *ScenarioTaskHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 func (h *ScenarioTaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
@@ -173,7 +135,7 @@ func (h *ScenarioTaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		coalesceStringSlice(req.KnowledgePointIDs), coalesceStringSlice(req.AbilityPointIDs),
 		coalesceStringSlice(req.ResourceIDs), jsonMapBytes(req.EvalData), tenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create task")
+		respondError(w, http.StatusInternalServerError, "创建任务失败")
 		return
 	}
 
@@ -183,13 +145,13 @@ func (h *ScenarioTaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *ScenarioTaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchTask(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "task not found")
+		respondError(w, http.StatusNotFound, "任务不存在")
 		return
 	}
 
@@ -212,7 +174,7 @@ func (h *ScenarioTaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 		coalesceStringSlice(req.KnowledgePointIDs), coalesceStringSlice(req.AbilityPointIDs),
 		coalesceStringSlice(req.ResourceIDs), jsonMapBytes(req.EvalData), id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update task")
+		respondError(w, http.StatusInternalServerError, "更新任务失败")
 		return
 	}
 
@@ -222,19 +184,19 @@ func (h *ScenarioTaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 func (h *ScenarioTaskHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchTask(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "task not found")
+		respondError(w, http.StatusNotFound, "任务不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM scenario_tasks WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete task")
+		respondError(w, http.StatusInternalServerError, "删除任务失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
@@ -242,7 +204,7 @@ func (h *ScenarioTaskHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 func (h *ScenarioTaskHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
-		respondError(w, http.StatusUnauthorized, "unauthorized")
+		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
 
@@ -252,13 +214,13 @@ func (h *ScenarioTaskHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.ScenarioID == "" {
-		respondError(w, http.StatusBadRequest, "missing scenarioId")
+		respondError(w, http.StatusBadRequest, "缺少场景ID")
 		return
 	}
 
 	tx, err := h.DB.Begin(r.Context())
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to begin transaction")
+		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return
 	}
 	defer tx.Rollback(r.Context())
@@ -268,13 +230,13 @@ func (h *ScenarioTaskHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 			UPDATE scenario_tasks SET sort_order = $1 WHERE id = $2 AND scenario_id = $3
 		`, i, taskID, req.ScenarioID)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to reorder tasks")
+			respondError(w, http.StatusInternalServerError, "重新排序任务失败")
 			return
 		}
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to commit")
+		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]bool{"ok": true})

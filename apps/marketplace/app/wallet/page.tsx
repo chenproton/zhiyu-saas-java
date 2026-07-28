@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { DashboardLayout, useRole } from "@/components/dashboard-layout"
+import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -40,6 +41,7 @@ type WithdrawalStatus = Withdrawal["status"]
 
 export default function WalletPage() {
   const { role, institutionId } = useRole()
+  const { toast } = useToast()
 
   const [stats, setStats] = useState<{ balance: number; totalIncome: number; totalSpent: number } | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
@@ -109,17 +111,28 @@ export default function WalletPage() {
     if (!config) return
     const amount = Number(withdrawAmount)
     if (!amount || amount < config.minWithdrawalAmount) {
-      alert(`提现金额必须大于等于 ${config.minWithdrawalAmount} 元`)
+      toast({
+        variant: "destructive",
+        title: "提示",
+        description: `提现金额必须大于等于 ${config.minWithdrawalAmount} 元`,
+      })
       return
     }
     if (!accountInfo.trim()) {
-      alert("请填写账户信息")
+      toast({
+        variant: "destructive",
+        title: "提示",
+        description: "请填写账户信息",
+      })
       return
     }
     setSubmitting(true)
     try {
       await withdrawalApi.create({ amount, accountType, accountInfo: accountInfo.trim() })
-      alert("提现申请已提交，等待平台审核")
+      toast({
+        title: "提示",
+        description: "提现申请已提交，等待平台审核",
+      })
       setWithdrawAmount("")
       setAccountInfo("")
       const list = await withdrawalApi.list({ limit: 1000 })
@@ -127,7 +140,11 @@ export default function WalletPage() {
       const s = await statsApi.me()
       setStats(s)
     } catch (err) {
-      alert(err instanceof Error ? err.message : "提交提现申请失败")
+      toast({
+        variant: "destructive",
+        title: "提示",
+        description: err instanceof Error ? err.message : "提交提现申请失败",
+      })
     } finally {
       setSubmitting(false)
     }

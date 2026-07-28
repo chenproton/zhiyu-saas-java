@@ -236,7 +236,7 @@ func (h *AuthHandler) SelectTenant(w http.ResponseWriter, r *http.Request) {
 
 	token, err := jwt.ParseWithClaims(req.PreAuthToken, &preAuthClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+			return nil, fmt.Errorf("意外的签名方法：%v", t.Header["alg"])
 		}
 		return []byte(h.JWTSecret), nil
 	})

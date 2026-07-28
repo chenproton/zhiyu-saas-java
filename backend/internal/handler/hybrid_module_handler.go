@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -38,46 +37,26 @@ func (h *HybridModuleHandler) ListModules(w http.ResponseWriter, r *http.Request
 	}
 
 	nodeID := r.URL.Query().Get("nodeId")
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-	if nodeID != "" {
-		where = append(where, "node_id = $"+itoa(argIdx))
-		args = append(args, nodeID)
-		argIdx++
-	}
 
-	countQuery := "SELECT COUNT(*) FROM hybrid_node_modules WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, node_id, module_key, mode, data
-		FROM hybrid_node_modules
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY module_key ASC
-	`
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.HybridNodeModule]{
+		Table:         "hybrid_node_modules",
+		SelectColumns: "id, node_id, module_key, mode, data",
+		TenantScoped:  true,
+		OrderBy:       "module_key ASC",
+		NoPagination:  true,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if nodeID != "" {
+				qb.addCondition("node_id = " + qb.nextArg(nodeID))
+			}
+		},
+		ScanRows: h.scanHybridModuleRows,
+	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list hybrid modules")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanHybridModuleRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan hybrid modules")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "查询混合模块失败")
 		return
 	}
 
@@ -113,7 +92,7 @@ func (h *HybridModuleHandler) UpsertModule(w http.ResponseWriter, r *http.Reques
 			VALUES ($1, $2, $3, $4, $5, $6)
 		`, id, tenantID, req.NodeID, req.ModuleKey, req.Mode, req.Data)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to create hybrid module")
+			respondError(w, http.StatusInternalServerError, "创建混合模块失败")
 			return
 		}
 	} else {
@@ -122,7 +101,7 @@ func (h *HybridModuleHandler) UpsertModule(w http.ResponseWriter, r *http.Reques
 			WHERE id = $5
 		`, req.NodeID, req.ModuleKey, req.Mode, req.Data, id)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "failed to update hybrid module")
+			respondError(w, http.StatusInternalServerError, "更新混合模块失败")
 			return
 		}
 	}
@@ -139,13 +118,13 @@ func (h *HybridModuleHandler) DeleteModule(w http.ResponseWriter, r *http.Reques
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchHybridModule(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "hybrid module not found")
+		respondError(w, http.StatusNotFound, "混合模块不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM hybrid_node_modules WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete hybrid module")
+		respondError(w, http.StatusInternalServerError, "删除混合模块失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

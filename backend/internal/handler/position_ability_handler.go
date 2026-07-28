@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -53,69 +52,28 @@ func (h *PositionAbilityHandler) ListBindings(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	careerPositionID := r.URL.Query().Get("careerPositionId")
-	responsibilityID := r.URL.Query().Get("responsibilityId")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
+	cfg := listQueryConfig[domain.PositionAbilityBinding]{
+		Table:         "position_ability_bindings",
+		SelectColumns: "id, career_position_id, responsibility_id, ability_point_id, source, domain, required_level, rubric_description, attributes, weight",
+		TenantScoped:  true,
+		OrderBy:       "id DESC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if careerPositionID := r.URL.Query().Get("careerPositionId"); careerPositionID != "" {
+				qb.addCondition("career_position_id = " + qb.nextArg(careerPositionID))
+			}
+			if responsibilityID := r.URL.Query().Get("responsibilityId"); responsibilityID != "" {
+				qb.addCondition("responsibility_id = " + qb.nextArg(responsibilityID))
+			}
+		},
 	}
 
-	if careerPositionID != "" {
-		where = append(where, "career_position_id = $"+itoa(argIdx))
-		args = append(args, careerPositionID)
-		argIdx++
-	}
-	if responsibilityID != "" {
-		where = append(where, "responsibility_id = $"+itoa(argIdx))
-		args = append(args, responsibilityID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM position_ability_bindings WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, career_position_id, responsibility_id, ability_point_id, source,
-			domain, required_level, rubric_description, attributes, weight
-		FROM position_ability_bindings
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY id DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg, h.scanBindingRows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list bindings")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanBindingRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan bindings")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+		} else {
+			respondError(w, http.StatusInternalServerError, "查询绑定失败")
+		}
 		return
 	}
 
@@ -156,7 +114,7 @@ func (h *PositionAbilityHandler) CreateBinding(w http.ResponseWriter, r *http.Re
 	`, id, tenantID, req.CareerPositionID, req.ResponsibilityID, req.AbilityPointID, req.Source,
 		req.Domain, req.RequiredLevel, req.RubricDescription, coalesceStringSlice(req.Attributes), req.Weight)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create binding")
+		respondError(w, http.StatusInternalServerError, "创建绑定失败")
 		return
 	}
 
@@ -172,7 +130,7 @@ func (h *PositionAbilityHandler) UpdateBinding(w http.ResponseWriter, r *http.Re
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchBinding(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "binding not found")
+		respondError(w, http.StatusNotFound, "绑定不存在")
 		return
 	}
 
@@ -195,7 +153,7 @@ func (h *PositionAbilityHandler) UpdateBinding(w http.ResponseWriter, r *http.Re
 	`, req.CareerPositionID, req.ResponsibilityID, req.AbilityPointID, req.Source,
 		req.Domain, req.RequiredLevel, req.RubricDescription, coalesceStringSlice(req.Attributes), req.Weight, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update binding")
+		respondError(w, http.StatusInternalServerError, "更新绑定失败")
 		return
 	}
 
@@ -211,13 +169,13 @@ func (h *PositionAbilityHandler) DeleteBinding(w http.ResponseWriter, r *http.Re
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchBinding(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "binding not found")
+		respondError(w, http.StatusNotFound, "绑定不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM position_ability_bindings WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete binding")
+		respondError(w, http.StatusInternalServerError, "删除绑定失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

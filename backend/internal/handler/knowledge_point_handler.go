@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -45,74 +44,28 @@ func (h *KnowledgePointHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	search := r.URL.Query().Get("search")
-	linkedStr := r.URL.Query().Get("linked")
-	creatorID := r.URL.Query().Get("creatorId")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
+	cfg := listQueryConfig[domain.KnowledgePoint]{
+		Table:         "knowledge_points",
+		SelectColumns: "id, name, code, description, linked, granular_lesson_ids::text[] AS granular_lesson_ids, creator_id, created_at, updated_at",
+		TenantScoped:  true,
+		SearchColumns: []string{"name", "code"},
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if linkedStr := r.URL.Query().Get("linked"); linkedStr != "" {
+				qb.addCondition("linked = " + qb.nextArg(linkedStr == "true"))
+			}
+			if creatorID := r.URL.Query().Get("creatorId"); creatorID != "" {
+				qb.addCondition("creator_id = " + qb.nextArg(creatorID))
+			}
+		},
 	}
 
-	if search != "" {
-		where = append(where, "(name ILIKE $"+itoa(argIdx)+" OR code ILIKE $"+itoa(argIdx)+")")
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-	if linkedStr != "" {
-		where = append(where, "linked = $"+itoa(argIdx))
-		args = append(args, linkedStr == "true")
-		argIdx++
-	}
-	if creatorID != "" {
-		where = append(where, "creator_id = $"+itoa(argIdx))
-		args = append(args, creatorID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM knowledge_points WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, name, code, description, linked, granular_lesson_ids::text[] AS granular_lesson_ids, creator_id, created_at, updated_at
-		FROM knowledge_points
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg, h.scanKnowledgePointRows)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list knowledge points")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanKnowledgePointRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan knowledge points")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+		} else {
+			respondError(w, http.StatusInternalServerError, "查询知识点失败")
+		}
 		return
 	}
 
@@ -128,7 +81,7 @@ func (h *KnowledgePointHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	kp, err := h.fetchKnowledgePoint(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "knowledge point not found")
+		respondError(w, http.StatusNotFound, "知识点不存在")
 		return
 	}
 	respondJSON(w, http.StatusOK, kp)
@@ -170,7 +123,7 @@ func (h *KnowledgePointHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "知识点名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to create knowledge point")
+		respondError(w, http.StatusInternalServerError, "创建知识点失败")
 		return
 	}
 
@@ -188,7 +141,7 @@ func (h *KnowledgePointHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchKnowledgePoint(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "knowledge point not found")
+		respondError(w, http.StatusNotFound, "知识点不存在")
 		return
 	}
 
@@ -221,7 +174,7 @@ func (h *KnowledgePointHandler) Update(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "知识点名称已存在，请使用其他名称")
 			return
 		}
-		respondError(w, http.StatusInternalServerError, "failed to update knowledge point")
+		respondError(w, http.StatusInternalServerError, "更新知识点失败")
 		return
 	}
 
@@ -239,13 +192,13 @@ func (h *KnowledgePointHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchKnowledgePoint(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "knowledge point not found")
+		respondError(w, http.StatusNotFound, "知识点不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM knowledge_points WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete knowledge point")
+		respondError(w, http.StatusInternalServerError, "删除知识点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})

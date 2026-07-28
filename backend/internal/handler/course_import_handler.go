@@ -122,7 +122,7 @@ func (h *CourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request
 
 	h.importCourses(ctx, xlsx, tenantID, userID, false, overwrite, courseMap, result)
 	if len(courseMap) == 0 && result.Failed == 0 {
-		respondError(w, http.StatusBadRequest, "no valid course data found in 课程基本信息")
+		respondError(w, http.StatusBadRequest, "课程基本信息中未找到有效课程数据")
 		return
 	}
 

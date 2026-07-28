@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -46,61 +45,25 @@ func (h *AbilityDomainHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	careerPositionID := r.URL.Query().Get("careerPositionId")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
 
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if careerPositionID != "" {
-		where = append(where, "career_position_id = $"+itoa(argIdx))
-		args = append(args, careerPositionID)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM ability_domains WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, career_position_id, name, description, binding_ids, sort_order
-		FROM ability_domains
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY sort_order ASC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery(r.Context(), h.DB, r, listQueryConfig[domain.AbilityDomain]{
+		Table:         "ability_domains",
+		SelectColumns: "id, career_position_id, name, description, binding_ids, sort_order",
+		TenantScoped:  true,
+		OrderBy:       "sort_order ASC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if careerPositionID != "" {
+				qb.addCondition("career_position_id = " + qb.nextArg(careerPositionID))
+			}
+		},
+		ScanRows: h.scanDomainRows,
+	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to list ability domains")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanDomainRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to scan ability domains")
+		if err.Error() == "missing tenant" {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "查询能力域失败")
 		return
 	}
 
@@ -135,7 +98,7 @@ func (h *AbilityDomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`, id, tenantID, req.CareerPositionID, req.Name, req.Description, coalesceStringSlice(req.BindingIDs), req.SortOrder)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to create ability domain")
+		respondError(w, http.StatusInternalServerError, "创建能力域失败")
 		return
 	}
 
@@ -151,7 +114,7 @@ func (h *AbilityDomainHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchDomain(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "ability domain not found")
+		respondError(w, http.StatusNotFound, "能力域不存在")
 		return
 	}
 
@@ -172,7 +135,7 @@ func (h *AbilityDomainHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $6
 	`, req.CareerPositionID, req.Name, req.Description, coalesceStringSlice(req.BindingIDs), req.SortOrder, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update ability domain")
+		respondError(w, http.StatusInternalServerError, "更新能力域失败")
 		return
 	}
 
@@ -188,13 +151,13 @@ func (h *AbilityDomainHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if _, err := h.fetchDomain(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "ability domain not found")
+		respondError(w, http.StatusNotFound, "能力域不存在")
 		return
 	}
 
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM ability_domains WHERE id = $1`, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to delete ability domain")
+		respondError(w, http.StatusInternalServerError, "删除能力域失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
