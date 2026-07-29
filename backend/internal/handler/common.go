@@ -266,16 +266,6 @@ func institutionFilter(claims *middleware.Claims) (institutionID string, ok bool
 	return *claims.InstitutionID, true
 }
 
-func ptrEqual[T comparable](a, b *T) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return *a == *b
-}
-
 // verifyTenantOwnership checks that the entity's tenantID matches the caller's tenant.
 // Writes a 403 response and returns false when they don't match.
 func verifyTenantOwnership(w http.ResponseWriter, r *http.Request, entityTenantID string) bool {

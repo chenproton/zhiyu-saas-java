@@ -22,6 +22,7 @@ import { PrepAssociateDialog } from "./prep-associate-dialog"
 import { GradingIframeDialog } from "./grading-iframe-dialog"
 import { HybridGradingDialog } from "./hybrid-grading-dialog"
 import { portalApi } from "@/lib/api"
+import { COURSE_LEARN_URL, SCENE_PLATFORM_URL } from "@/lib/external-links"
 import type { WorkspaceDashboard, WorkspaceScheduleEvent } from "@/lib/types"
 import type { WorkspaceClassPlan, WorkspaceClassSession } from "@/lib/types"
 import {
@@ -272,13 +273,13 @@ function getCourseUrls(event: TeacherScheduleEvent) {
     return {
       isHybrid: true,
       prepUrl: "/lesson/admin/hybrid/add?id=hybrid-1",
-      learnUrl: "http://111.170.170.202:3006/learn/courses/hybrid/hybrid-1/teacherlearn",
+      learnUrl: `${COURSE_LEARN_URL}/learn/courses/hybrid/hybrid-1/teacherlearn`,
     }
   }
   return {
     isHybrid: false,
-    prepUrl: "http://111.170.170.202:3003/student_teacher.html?task=task-1-1",
-    learnUrl: "http://111.170.170.202:3003/student_teacher.html?task=task-1-1",
+    prepUrl: `${SCENE_PLATFORM_URL}/student_teacher.html?task=task-1-1`,
+    learnUrl: `${SCENE_PLATFORM_URL}/student_teacher.html?task=task-1-1`,
   }
 }
 

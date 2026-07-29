@@ -296,6 +296,8 @@ export const portraitApi = {
     request<ListResponse<StudentAbilityArchive>>(`/evaluation/portraits/archives${buildQuery(params || {})}`),
   upsertArchive: (req: Partial<StudentAbilityArchive>) =>
     request<StudentAbilityArchive>("/evaluation/portraits/archives", { method: "POST", body: JSON.stringify(req) }),
+  deleteArchive: (id: string) =>
+    request<{ id: string }>(`/evaluation/portraits/archives/${id}`, { method: "DELETE" }),
 }
 
 export const microCertApi = {

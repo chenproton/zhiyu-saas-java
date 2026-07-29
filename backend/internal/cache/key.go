@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -11,8 +10,6 @@ import (
 const (
 	KeyPlatformLinks = "zhiyu:public:platform-links"
 	KeyAppModules    = "zhiyu:public:app-modules"
-
-	fmtDashboard = "zhiyu:%s:dashboard:%s"
 )
 
 func tenantFromRequest(r *http.Request) string {
@@ -25,18 +22,6 @@ func tenantFromRequest(r *http.Request) string {
 
 func StaticKey(key string) KeyFunc {
 	return func(r *http.Request) string { return key }
-}
-
-func DashboardKey() KeyFunc {
-	return func(r *http.Request) string {
-		tenant := tenantFromRequest(r)
-		claims := authmw.CurrentUser(r)
-		role := "default"
-		if claims != nil {
-			role = string(claims.Role)
-		}
-		return fmt.Sprintf(fmtDashboard, tenant, role)
-	}
 }
 
 func PublicPositionsKey() KeyFunc {

@@ -106,7 +106,8 @@ export type EvalRuleAction =
   | { type: "SET_SELECTED_QUESTION_IDS"; ids: string[] }
 
 function reducer(state: EvalRuleState, action: EvalRuleAction): EvalRuleState {
-  const next = clone(state)
+  // 浅拷贝顶层状态，各分支按需 spread 嵌套层级，避免每次 action 全量 JSON 序列化
+  const next: EvalRuleState = { ...state }
 
   switch (action.type) {
     case "SET_CONFIG": {
@@ -311,11 +312,15 @@ export function useEvalRuleStore(options: UseEvalRuleStoreOptions) {
   }, [normalizedMethods])
 
   // 同步 initialConfig 变化（仅在挂载后首次变化或外部强制更新时）
+  // 用 ref 记录首次序列化值作比较，避免把 JSON.stringify(initialConfig) 直接当依赖
+  const lastInitialConfigRef = useRef<string>(JSON.stringify(initialConfig ?? null))
   useEffect(() => {
     if (!initialConfig) return
+    const serialized = JSON.stringify(initialConfig)
+    if (lastInitialConfigRef.current === serialized) return
+    lastInitialConfigRef.current = serialized
     dispatch({ type: "SET_CONFIG", payload: initialConfig })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(initialConfig)])
+  }, [initialConfig])
 
   // 通知外部变化
   useEffect(() => {

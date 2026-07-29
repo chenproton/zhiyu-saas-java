@@ -121,11 +121,6 @@ func OperationLog(db *pgxpool.Pool, buffer *OpLogBuffer) func(http.Handler) http
 			detail := r.Method + " " + r.URL.Path
 
 			userName := claims.Username
-			if db != nil {
-				if err := db.QueryRow(r.Context(), `SELECT COALESCE(NULLIF(name, ''), username) FROM users WHERE id = $1`, claims.UserID).Scan(&userName); err != nil {
-					slog.Warn("oplog: failed to resolve user name", "userId", claims.UserID, "error", err)
-				}
-			}
 
 			if buffer != nil {
 				buffer.Enqueue(OpLogEntry{

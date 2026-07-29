@@ -303,18 +303,15 @@ BUILD_FRONTEND=true
   [[ "$FRONTEND_HASH" == "$(cat "$BUILD_CACHE/frontend-hash")" ]] && \
   [[ -n "$(docker images -q "zhiyu-edu:$FRONTEND_HASH" 2>/dev/null)" ]] && BUILD_FRONTEND=false
 
+# 依赖版本变化时，即使源码文件没动也要重新安装依赖并构建前端
+NEED_INSTALL=false
+[[ ! -d "$BUILD_ROOT/node_modules" ]] && NEED_INSTALL=true
+LOCK_HASH=$(lock_hash "$BUILD_ROOT")
+CACHED_LOCK=""; [[ -f "$BUILD_CACHE/lock-hash" ]] && CACHED_LOCK=$(cat "$BUILD_CACHE/lock-hash")
+[[ "$LOCK_HASH" != "$CACHED_LOCK" ]] && { NEED_INSTALL=true; BUILD_FRONTEND=true; }
+
 if $BUILD_FRONTEND; then
   log "构建前端"
-
-  NEED_INSTALL=false
-  [[ ! -d "$BUILD_ROOT/node_modules" ]] && NEED_INSTALL=true
-  LOCK_HASH=$(lock_hash "$BUILD_ROOT")
-  CACHED_LOCK=""; [[ -f "$BUILD_CACHE/lock-hash" ]] && CACHED_LOCK=$(cat "$BUILD_CACHE/lock-hash")
-  LOCK_CHANGED=false
-  [[ "$LOCK_HASH" != "$CACHED_LOCK" ]] && { NEED_INSTALL=true; LOCK_CHANGED=true; }
-
-  # 依赖版本变化时，即使源码文件没动也要重新构建前端
-  [[ "$LOCK_CHANGED" == "true" ]] && BUILD_FRONTEND=true
 
   if $NEED_INSTALL; then
     log "  安装依赖..."
@@ -361,17 +358,25 @@ done
 log "数据库迁移..."
 for i in $(seq 1 15); do psql "$MIGRATE_URL" -c "SELECT 1" >/dev/null 2>&1 && break; sleep 1; done
 
+# 迁移前备份（失败仅警告，不阻断部署）
+BACKUP_FILE="$DEPLOY_DIR/backups/zhiyu-saas-$(date +%Y%m%d-%H%M%S).sql"
+compose exec -T postgres pg_dump -U "$DB_USER" "$DB_NAME" > "$BACKUP_FILE" 2>/dev/null \
+  || { warn "数据库备份失败，已跳过"; rm -f "$BACKUP_FILE"; }
+
 if [[ ! -f "$DEPLOY_DIR/.migration-done" ]]; then
   psql "$MIGRATE_URL" -c "CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(255) PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());" 2>/dev/null || true
   psql "$MIGRATE_URL" -f "$BACKEND_DIR/migrations/001_baseline.up.sql" 2>&1 | tail -3
   psql "$MIGRATE_URL" -c "INSERT INTO schema_migrations (version) VALUES ('001_baseline') ON CONFLICT DO NOTHING;" 2>/dev/null || true
   touch "$DEPLOY_DIR/.migration-done"
 
+  # baseline 之后补齐后续增量迁移（migrate 自动跳过 schema_migrations 已记录版本）
+  (cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" go run ./cmd/migrate/main.go up) || die "数据库迁移失败"
+
   log "初始化种子数据..."
   (cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" go run ./cmd/seed/main.go) || warn "种子初始化失败"
   log "  运营方租户: platform / 管理员: admin / admin123"
 else
-  (cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" go run ./cmd/migrate/main.go up 2>/dev/null) || true
+  (cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" go run ./cmd/migrate/main.go up) || die "数据库迁移失败"
 fi
 
 # 健康检查
@@ -388,10 +393,14 @@ for svc in backend frontend; do
 done
 
 if ! $OK; then
+  if [[ -z "$PREV_BACKEND" || -z "$PREV_FRONTEND" ]]; then
+    compose logs backend --tail 30
+    die "部署失败，且没有旧镜像可回滚（首次部署），请排查后重试"
+  fi
   log "部署失败，回滚旧镜像..."
-  { [[ -n "$PREV_BACKEND" ]] && docker tag "$PREV_BACKEND" "zhiyu-backend:rollback" 2>/dev/null; } || true
-  { [[ -n "$PREV_FRONTEND" ]] && docker tag "$PREV_FRONTEND" "zhiyu-edu:rollback" 2>/dev/null; } || true
-  IMAGE_TAG=rollback compose up -d --no-deps 2>&1 | tail -3
+  docker tag "$PREV_BACKEND" "zhiyu-backend:rollback" 2>/dev/null || true
+  docker tag "$PREV_FRONTEND" "zhiyu-edu:rollback" 2>/dev/null || true
+  IMAGE_TAG=rollback compose up -d --no-deps backend frontend 2>&1 | tail -3
   compose logs backend --tail 30
   die "部署失败，已回滚"
 fi

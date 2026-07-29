@@ -2,7 +2,6 @@ package cache
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -111,59 +110,4 @@ func RateLimit(client *redis.Client, limit int, window time.Duration) func(http.
 			next.ServeHTTP(w, r)
 		})
 	}
-}
-
-func NewRateLimiter(client *redis.Client) *RateLimiter {
-	return &RateLimiter{client: client}
-}
-
-type RateLimiter struct {
-	client *redis.Client
-}
-
-func (rl *RateLimiter) For(target string, limit int, window time.Duration) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if rl.client == nil {
-				next.ServeHTTP(w, r)
-				return
-			}
-
-			key := fmt.Sprintf("zhiyu:ratelimit:%s:%s", target, clientIP(r))
-			ctx := r.Context()
-
-			current, err := rl.client.Incr(ctx, key).Result()
-			if err != nil {
-				next.ServeHTTP(w, r)
-				return
-			}
-			if current == 1 {
-				rl.client.Expire(ctx, key, window)
-			}
-
-			if current > int64(limit) {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusTooManyRequests)
-				w.Write([]byte(`{"error":"too many requests","code":429}`))
-				return
-			}
-
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-func RunInterval(ctx context.Context, interval time.Duration, fn func(context.Context)) {
-	go func() {
-		ticker := time.NewTicker(interval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				fn(ctx)
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
 }

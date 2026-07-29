@@ -233,7 +233,7 @@ export function KnowledgeGraphD3View({ nodes, edges, title, description, compact
     svg.call(zoom as any).on("dblclick.zoom", null)
     zoomRef.current = zoom
 
-    setTimeout(() => {
+    const fitTimer = setTimeout(() => {
       if (!gRef.current) return
       const bounds = (gRef.current as SVGGElement).getBBox()
       const w = Math.max(bounds.width, 200), h = Math.max(bounds.height, 200)
@@ -243,7 +243,7 @@ export function KnowledgeGraphD3View({ nodes, edges, title, description, compact
       svg.transition().duration(600).call(zoom.transform as any, d3.zoomIdentity.translate(tx, ty).scale(scale))
     }, 800)
 
-    return () => { simulation.stop(); svg.on(".zoom", null) }
+    return () => { clearTimeout(fitTimer); simulation.stop(); svg.on(".zoom", null) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredNodes, filteredEdges, dims])
 

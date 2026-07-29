@@ -84,6 +84,7 @@ func registerEvaluationRoutes(r chi.Router, h *Handlers) {
 	r.Post("/evaluation/portraits/generate", h.studentPortraitHandler.Generate)
 	r.Get("/evaluation/portraits/archives", h.studentPortraitHandler.ListArchives)
 	r.Post("/evaluation/portraits/archives", h.studentPortraitHandler.CreateArchive)
+	r.Delete("/evaluation/portraits/archives/{id}", h.studentPortraitHandler.DeleteArchive)
 
 	r.Get("/evaluation/certificates/templates", h.microCertHandler.ListTemplates)
 	r.Post("/evaluation/certificates/templates", h.microCertHandler.CreateTemplate)

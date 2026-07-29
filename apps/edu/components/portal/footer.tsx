@@ -1,5 +1,7 @@
 "use client"
 
+import { MALL_URL } from "@/lib/external-links"
+
 export function Footer() {
   return (
     <footer className="relative mt-20 bg-[#141a2e]">
@@ -31,7 +33,7 @@ export function Footer() {
               岗位标准、实践场景、企业导师
             </p>
             <a
-              href="http://111.170.170.202:3010/login"
+              href={`${MALL_URL}/login`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-[13px] text-cyan-400 hover:text-cyan-300 transition-colors"

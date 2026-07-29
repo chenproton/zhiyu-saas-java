@@ -49,9 +49,9 @@ import { platformModuleDefs } from "@/lib/navigation-config"
 import { useToast } from "@zhiyu/ui"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { TableRowActions } from "@/components/shared/table-row-actions"
-import { getToken, setToken, removeToken } from "@zhiyu/api-client"
+import { getToken, setToken, removeToken, request, type ListResponse } from "@zhiyu/api-client"
 
-const API_BASE = "/api/v1/admin/tenants"
+const TENANTS_API = "/admin/tenants"
 const LOGIN_URL = "/api/v1/auth/saas/login"
 
 interface AdminTenant {
@@ -84,31 +84,9 @@ interface TenantAdmin {
   lastLoginAt?: string
 }
 
-interface ListResponse<T> {
-  items: T[]
-  total: number
-}
-
-async function adminFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken("saas")
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
-  }
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`
-  }
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers })
-  if (res.status === 401 && typeof window !== "undefined") {
-    removeToken("saas")
-    window.location.reload()
-    throw new Error("会话已过期，请重新登录")
-  }
-  const data = await res.json().catch(() => ({ error: "请求失败" }))
-  if (!res.ok) {
-    throw new Error(data.error || `HTTP ${res.status}`)
-  }
-  return data
+// 复用 api-client 的 request（同源 token 管理 + 401 处理），仅补上租户管理 API 前缀
+function adminFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  return request<T>(`${TENANTS_API}${path}`, options)
 }
 
 export default function SuperAdminPage() {

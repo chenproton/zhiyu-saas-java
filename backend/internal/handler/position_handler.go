@@ -640,12 +640,10 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		careerPath = req.CareerPath
 	}
 
-	reqBody, _ := json.Marshal(req)
 	tenantID := ""
 	if claims.TenantID != nil {
 		tenantID = *claims.TenantID
 	}
-	slog.Info(fmt.Sprintf("[SaveFull] id=%s tenant=%s req=%s", id, tenantID, string(reqBody)))
 
 	abilityPointMap, err := h.prepareAbilityPoints(r.Context(), tenantID, req.AbilityBindings)
 	if err != nil {

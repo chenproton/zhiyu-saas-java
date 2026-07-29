@@ -30,9 +30,8 @@ export function TopNav() {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    ;(async () => {
-      setMounted(true)
-    })()
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mounted 标志用于避免 hydration 不一致，需在挂载后置位
+    setMounted(true)
     const updateTime = () => {
       const now = new Date()
       const weekDays = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"]

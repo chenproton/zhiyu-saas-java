@@ -703,6 +703,9 @@ export default function TasksEditPage() {
   const [positionAbilityBindings, setPositionAbilityBindings] = useState<any[]>([])
   const [rubricLibrary, setRubricLibrary] = useState<RubricScheme[]>([])
   const [cloneDataVersion, setCloneDataVersion] = useState(0)
+  // 懒加载数据集就绪后 bump 一次以触发重渲染（module 级数组非响应式）
+  const [lazyDataVersion, setLazyDataVersion] = useState(0)
+  void lazyDataVersion
 
   const userNameMap = useMemo(() => {
     const map: Record<string, string> = {}
@@ -710,41 +713,164 @@ export default function TasksEditPage() {
     return map
   }, [users])
 
-  // Load all data from APIs on mount
+  // 已加载的数据集标记：知识/能力/资源/测评/用户/克隆候选按需首用时才请求
+  const loadedDatasetsRef = useRef<Set<string>>(new Set())
+  const scenarioDataRef = useRef<any>(null)
+  const taskStatesRef = useRef(taskStates)
+  useEffect(() => {
+    taskStatesRef.current = taskStates
+  })
+
+  const ensureDatasets = useCallback(async (keys: string[]) => {
+    const pending = keys.filter((k) => !loadedDatasetsRef.current.has(k))
+    if (pending.length === 0) return
+    pending.forEach((k) => loadedDatasetsRef.current.add(k))
+
+    const jobs = pending.map(async (key) => {
+      try {
+        if (key === "knowledge") {
+          const [kpRes, glRes] = await Promise.all([
+            knowledgeApi.list({ limit: 1000 }),
+            courseApi.list({ type: "granular", limit: 1000 }),
+          ])
+          knowledgePoints.length = 0
+          customKnowledgePointIds.clear()
+          kpRes.items.forEach((kp: any) => {
+            knowledgePoints.push({ ...kp, granularLessons: kp.granularLessonIds || [] })
+            if (kp.creatorId && kp.creatorId === user?.id) {
+              customKnowledgePointIds.add(kp.id)
+            }
+          })
+          granularLessons.length = 0
+          glRes.items.forEach((gl: any) => granularLessons.push(gl))
+        } else if (key === "ability") {
+          const apRes = await abilityApi.list({ limit: 1000 })
+          abilityPoints.length = 0
+          apRes.items.forEach((ap: any) => abilityPoints.push(ap))
+          const positionId = scenarioDataRef.current?.careerPositionId
+          if (positionId) {
+            try {
+              const bindingsRes = await abilityApi.listBindings({ careerPositionId: positionId })
+              setPositionAbilityBindings(bindingsRes.items)
+            } catch {
+              setPositionAbilityBindings([])
+            }
+          }
+        } else if (key === "resources") {
+          const resRes = await resourceLibraryApi.list({ limit: 1000 })
+          learningResources.length = 0
+          resRes.items.forEach((res: any) => {
+            learningResources.push({
+              ...res,
+              type: res.resourceType || res.type,
+              size: res.fileSize !== undefined ? String(res.fileSize) : res.size,
+            })
+          })
+        } else if (key === "evaluation") {
+          const [examRes, rubricRes] = await Promise.all([
+            examApi.list({ limit: 1000 }),
+            taskEvaluationApi.listTemplates({ limit: 200 }).catch(() => ({ items: [] as any[], total: 0 })),
+          ])
+          loadedExams.length = 0
+          ;(examRes.items || []).forEach((e: any) => loadedExams.push(e))
+          const mapTemplate = (rt: any): RubricScheme => ({
+            id: rt.id,
+            name: rt.name,
+            types: (rt.types || []) as EvalSubType[],
+            desc: rt.description || "",
+            points: rt.mode === "rubric" ? (rt.data?.points || []).map((p: any) => ({
+              ...p,
+              id: p.id || `ep-${Math.random().toString(36).slice(2, 9)}`,
+              desc: p.description || "",
+            })) : [],
+            mode: (rt.mode || "rubric") as "rubric" | "score_rule",
+            scoreRuleItems: rt.mode === "score_rule" ? (rt.data?.scoreRuleItems || []) : undefined,
+            isDeleted: rt.isDeleted || false,
+          })
+          setRubricLibrary((rubricRes.items || []).map(mapTemplate))
+          // 补齐任务引用但已从库中删除的量规模板
+          const referencedTemplateIds = new Set<string>()
+          Object.values(taskStatesRef.current).forEach((ts) => {
+            if (ts.randomDrawRubricId) referencedTemplateIds.add(ts.randomDrawRubricId)
+            if (ts.reviewRubricId) referencedTemplateIds.add(ts.reviewRubricId)
+            if (ts.outcomeRubricId) referencedTemplateIds.add(ts.outcomeRubricId)
+            if (ts.homeworkRubricId) referencedTemplateIds.add(ts.homeworkRubricId)
+          })
+          const existingIds = new Set((rubricRes.items || []).map((rt: any) => rt.id))
+          const missingIds = Array.from(referencedTemplateIds).filter((id) => id && !existingIds.has(id))
+          if (missingIds.length > 0) {
+            const fetched = await Promise.all(missingIds.map((id) => taskEvaluationApi.getTemplate(id).catch(() => null)))
+            const newTemplates = fetched.filter(Boolean).map(mapTemplate)
+            if (newTemplates.length > 0) {
+              setRubricLibrary((prev) => [...prev, ...newTemplates])
+            }
+          }
+        } else if (key === "users") {
+          const userRes = await userManagementApi.list({ limit: 1000 })
+          setUsers(userRes.items)
+          // 补齐头部共建人姓名（初始挂载时以 id 占位）
+          const nameMap = new Map((userRes.items || []).map((u: any) => [u.id, u.name]))
+          setExistingScenario((prev: any) =>
+            prev
+              ? { ...prev, coBuilders: (prev.coBuilders || []).map((cb: { id: string; name: string }) => ({ ...cb, name: nameMap.get(cb.id) || cb.id })) }
+              : prev
+          )
+        } else if (key === "clone") {
+          // 克隆对话框候选：全部场景及其任务
+          try {
+            const allScenariosRes = await scenarioApi.list({ limit: 1000 })
+            const allTasksRes = await taskApi.list({ limit: 1000 })
+            const scenarioNameMap = new Map<string, string>()
+            const scenarioMetaMap = new Map<string, { creatorId: string; coBuilderIds: string[]; status: string }>()
+            for (const s of allScenariosRes.items) {
+              scenarioNameMap.set(s.id, s.name)
+              scenarioMetaMap.set(s.id, { creatorId: s.creatorId, coBuilderIds: s.coBuilderIds || [], status: s.status })
+            }
+            const tasksByScenarioId = new Map<string, any[]>()
+            for (const t of allTasksRes.items) {
+              const sName = scenarioNameMap.get(t.scenarioId) || "未知场景"
+              const sMeta = scenarioMetaMap.get(t.scenarioId) || { creatorId: "", coBuilderIds: [], status: "" }
+              const enhanced = { ...t, scenarioName: sName, scenarioCreatorId: sMeta.creatorId, scenarioCoBuilderIds: sMeta.coBuilderIds, scenarioStatus: sMeta.status }
+              if (!tasksByScenarioId.has(t.scenarioId)) tasksByScenarioId.set(t.scenarioId, [])
+              tasksByScenarioId.get(t.scenarioId)!.push(enhanced)
+            }
+            scenarios.length = 0
+            if (scenarioDataRef.current) scenarios.push(scenarioDataRef.current as any)
+            for (const s of allScenariosRes.items) {
+              const tasksForScenario = tasksByScenarioId.get(s.id) || []
+              if (tasksForScenario.length > 0) {
+                scenarios.push({ ...s, tasks: tasksForScenario })
+              }
+            }
+            setCloneDataVersion((v) => v + 1)
+          } catch {
+            // 克隆候选加载失败不影响主流程
+          }
+        }
+      } catch (err) {
+        console.error(`加载数据集 ${key} 失败`, err)
+      }
+    })
+    await Promise.all(jobs)
+    setLazyDataVersion((v) => v + 1)
+  }, [user?.id])
+
+  // Load core data on mount (其余数据集按卡片/对话框首次激活时懒加载)
   useEffect(() => {
     const load = async () => {
       try {
-        const [scenarioData, tasksRes, kpRes, apRes, resRes, posRes, indRes, majRes, userRes, examRes, glRes] = await Promise.all([
+        const [scenarioData, tasksRes, posRes, indRes, majRes] = await Promise.all([
           scenarioApi.get(scenarioId),
           taskApi.list({ scenarioId, limit: 1000 }),
-          knowledgeApi.list({ limit: 1000 }),
-          abilityApi.list({ limit: 1000 }),
-          resourceLibraryApi.list({ limit: 1000 }),
           positionApi.list({ limit: 1000 }),
           industryApi.list({ limit: 1000 }),
           majorApi.list({ limit: 1000 }),
-          userManagementApi.list({ limit: 1000 }),
-          examApi.list({ limit: 1000 }),
-          courseApi.list({ type: "granular", limit: 1000 }),
         ])
+        scenarioDataRef.current = scenarioData
 
-        // Populate module-level arrays with API data (scenarios array populated below with clone candidates)
         setPositions(posRes.items)
         setIndustries(indRes.items)
         setMajors(majRes.items)
-        setUsers(userRes.items)
-
-        // Load position-ability bindings for the target position
-        if (scenarioData.careerPositionId) {
-          try {
-            const bindingsRes = await abilityApi.listBindings({ careerPositionId: scenarioData.careerPositionId })
-            setPositionAbilityBindings(bindingsRes.items)
-          } catch (err) {
-            setPositionAbilityBindings([])
-          }
-        } else {
-          setPositionAbilityBindings([])
-        }
 
         const positionName = posRes.items.find((p: any) => p.id === scenarioData.careerPositionId)?.name || scenarioData.careerPositionId
         const industryName = (scenarioData.industryNames || []).join("、") ||
@@ -753,38 +879,14 @@ export default function TasksEditPage() {
         const professionName = (scenarioData.professionNames || []).join("、") ||
           (scenarioData.professionIds || []).map((id: string) => majRes.items.find((m: any) => m.id === id)?.name).filter(Boolean).join("、") ||
           (scenarioData.professionIds || []).join("、")
-        const coBuilderMap = new Map((userRes.items || []).map((u: any) => [u.id, u.name]))
         setExistingScenario({
           ...scenarioData,
           positionId: scenarioData.careerPositionId,
           positionName,
           industryName,
           professionName,
-          coBuilders: (scenarioData.coBuilderIds || []).map((id: string) => ({ id, name: coBuilderMap.get(id) || id })),
-        })
-
-        knowledgePoints.length = 0
-        customKnowledgePointIds.clear()
-        kpRes.items.forEach((kp: any) => {
-          knowledgePoints.push({ ...kp, granularLessons: kp.granularLessonIds || [] })
-          if (kp.creatorId && kp.creatorId === user?.id) {
-            customKnowledgePointIds.add(kp.id)
-          }
-        })
-
-        granularLessons.length = 0
-        glRes.items.forEach((gl: any) => granularLessons.push(gl))
-
-        abilityPoints.length = 0
-        apRes.items.forEach((ap: any) => abilityPoints.push(ap))
-
-        learningResources.length = 0
-        resRes.items.forEach((res: any) => {
-          learningResources.push({
-            ...res,
-            type: res.resourceType || res.type,
-            size: res.fileSize !== undefined ? String(res.fileSize) : res.size,
-          })
+          // 共建人姓名在 users 数据集懒加载后补齐，先以 id 占位
+          coBuilders: (scenarioData.coBuilderIds || []).map((id: string) => ({ id, name: id })),
         })
 
         professions.length = 0
@@ -796,11 +898,6 @@ export default function TasksEditPage() {
             professions.push({ id: `prof-${professions.length + 1}`, name: p.industryName || "其他", positions: [{ id: p.id, name: p.name, professionId: `prof-${professions.length + 1}` }] })
           }
         })
-
-        // Question bank data stays from mock for now (evaluation module not yet migrated)
-
-        loadedExams.length = 0
-        ;(examRes.items || []).forEach((e: any) => loadedExams.push(e))
 
         // Convert API tasks to mock Task format
         const apiTasks = tasksRes.items
@@ -830,28 +927,10 @@ export default function TasksEditPage() {
 
         setTasks(mockTasks)
 
-        // Fetch evaluation methods for all tasks + rubric templates
-        const methodsPromises = mockTasks.map(t => taskEvaluationApi.listMethods(t.id).catch(() => ({ methods: [] })))
-        const [allMethods, rubricRes] = await Promise.all([
-          Promise.all(methodsPromises),
-          taskEvaluationApi.listTemplates({ limit: 200 }).catch(() => ({ items: [], total: 0 })),
-        ])
-
-        // Populate rubric library from API
-        setRubricLibrary((rubricRes.items || []).map((rt: any) => ({
-          id: rt.id,
-          name: rt.name,
-          types: (rt.types || []) as EvalSubType[],
-          desc: rt.description || "",
-          points: rt.mode === "rubric" ? (rt.data?.points || []).map((p: any) => ({
-            ...p,
-            id: p.id || `ep-${Math.random().toString(36).slice(2, 9)}`,
-            desc: p.description || "",
-          })) : [],
-          mode: (rt.mode || "rubric") as "rubric" | "score_rule",
-          scoreRuleItems: rt.mode === "score_rule" ? (rt.data?.scoreRuleItems || []) : undefined,
-          isDeleted: rt.isDeleted || false,
-        })))
+        // Fetch evaluation methods for all tasks
+        const allMethods = await Promise.all(
+          mockTasks.map(t => taskEvaluationApi.listMethods(t.id).catch(() => ({ methods: [] })))
+        )
 
         // Initialize taskStates from API method data
         const count = mockTasks.length
@@ -870,67 +949,6 @@ export default function TasksEditPage() {
         })
         setTaskStates(states)
 
-        // Fetch any rubric templates that are referenced by tasks but deleted from the library
-        const referencedTemplateIds = new Set<string>()
-        Object.values(states).forEach(ts => {
-          if (ts.randomDrawRubricId) referencedTemplateIds.add(ts.randomDrawRubricId)
-          if (ts.reviewRubricId) referencedTemplateIds.add(ts.reviewRubricId)
-          if (ts.outcomeRubricId) referencedTemplateIds.add(ts.outcomeRubricId)
-          if (ts.homeworkRubricId) referencedTemplateIds.add(ts.homeworkRubricId)
-        })
-        const existingIds = new Set((rubricRes.items || []).map((rt: any) => rt.id))
-        const missingIds = Array.from(referencedTemplateIds).filter(id => id && !existingIds.has(id))
-        if (missingIds.length > 0) {
-          const fetched = await Promise.all(missingIds.map(id => taskEvaluationApi.getTemplate(id).catch(() => null)))
-          const newTemplates = fetched.filter(Boolean).map((rt: any) => ({
-            id: rt.id,
-            name: rt.name,
-            types: (rt.types || []) as EvalSubType[],
-            desc: rt.description || "",
-            points: rt.mode === "rubric" ? (rt.data?.points || []).map((p: any) => ({
-              ...p,
-              id: p.id || `ep-${Math.random().toString(36).slice(2, 9)}`,
-              desc: p.description || "",
-            })) : [],
-            mode: (rt.mode || "rubric") as "rubric" | "score_rule",
-            scoreRuleItems: rt.mode === "score_rule" ? (rt.data?.scoreRuleItems || []) : undefined,
-            isDeleted: rt.isDeleted || false,
-          }))
-          if (newTemplates.length > 0) {
-            setRubricLibrary(prev => [...prev, ...newTemplates])
-          }
-        }
-
-        // Fetch all scenarios and their tasks for the clone dialog
-        try {
-          const allScenariosRes = await scenarioApi.list({ limit: 1000 })
-          const allTasksRes = await taskApi.list({ limit: 1000 })
-          const scenarioNameMap = new Map<string, string>()
-          const scenarioMetaMap = new Map<string, { creatorId: string; coBuilderIds: string[]; status: string }>()
-          for (const s of allScenariosRes.items) {
-            scenarioNameMap.set(s.id, s.name)
-            scenarioMetaMap.set(s.id, { creatorId: s.creatorId, coBuilderIds: s.coBuilderIds || [], status: s.status })
-          }
-          const tasksByScenarioId = new Map<string, any[]>()
-          for (const t of allTasksRes.items) {
-            const sName = scenarioNameMap.get(t.scenarioId) || "未知场景"
-            const sMeta = scenarioMetaMap.get(t.scenarioId) || { creatorId: "", coBuilderIds: [], status: "" }
-            const enhanced = { ...t, scenarioName: sName, scenarioCreatorId: sMeta.creatorId, scenarioCoBuilderIds: sMeta.coBuilderIds, scenarioStatus: sMeta.status }
-            if (!tasksByScenarioId.has(t.scenarioId)) tasksByScenarioId.set(t.scenarioId, [])
-            tasksByScenarioId.get(t.scenarioId)!.push(enhanced)
-          }
-          scenarios.length = 0
-          scenarios.push(scenarioData as any)
-          for (const s of allScenariosRes.items) {
-            const tasksForScenario = tasksByScenarioId.get(s.id) || []
-            if (tasksForScenario.length > 0) {
-              scenarios.push({ ...s, tasks: tasksForScenario })
-            }
-          }
-        } catch (cloneLoadErr) {
-        }
-        setCloneDataVersion(v => v + 1)
-
         setDataLoaded(true)
       } catch (err) {
       }
@@ -941,6 +959,24 @@ export default function TasksEditPage() {
   const [editingCard, setEditingCard] = useState<{ taskId: string; type: CardType } | null>(null)
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false)
   const [isCloneOpen, setIsCloneOpen] = useState(false)
+
+  // 编辑卡片/克隆对话框首次激活时按需懒加载对应数据集
+  useEffect(() => {
+    if (!editingCard) return
+    const datasetByCard: Partial<Record<CardType, string[]>> = {
+      knowledge: ["knowledge"],
+      ability: ["ability"],
+      resources: ["resources"],
+      evaluation: ["evaluation", "users"],
+      evaluationRules: ["evaluation", "users"],
+    }
+    const keys = datasetByCard[editingCard.type]
+    if (keys) void ensureDatasets(keys)
+  }, [editingCard, ensureDatasets])
+
+  useEffect(() => {
+    if (isCloneOpen) void ensureDatasets(["clone"])
+  }, [isCloneOpen, ensureDatasets])
 
   const [newTask, setNewTask] = useState({
     name: "",

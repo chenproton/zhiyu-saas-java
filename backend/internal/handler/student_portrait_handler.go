@@ -257,6 +257,33 @@ func (h *StudentPortraitHandler) CreateArchive(w http.ResponseWriter, r *http.Re
 	respondJSON(w, http.StatusCreated, archive)
 }
 
+func (h *StudentPortraitHandler) DeleteArchive(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	tag, err := h.DB.Exec(r.Context(), `
+		DELETE FROM student_ability_archives WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "删除学生档案失败")
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		respondError(w, http.StatusNotFound, "学生档案不存在")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+}
+
 func (h *StudentPortraitHandler) fetchPortrait(ctx context.Context, id string) (domain.StudentAbilityPortrait, error) {
 	return h.scanPortrait(h.DB.QueryRow(ctx, `
 		SELECT id, user_id, career_position_id, overall_grade, domain_scores,

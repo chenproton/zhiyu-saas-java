@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, useCallback, type ReactNode } from "react"
+import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import {
   Check,
@@ -63,7 +63,7 @@ import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
 import { useImportFlow } from "@/hooks/use-import-flow"
 import { majorApi, workflowApi } from "@/lib/api"
 import type { Major, Workflow } from "@/lib/types/backend"
-import type { ImportPreviewResult } from "@/lib/api"
+import type { ImportPreviewResult, ListResponse } from "@/lib/api"
 
 // ─── Types ───────────────────────────────────────────────────────────────
 
@@ -83,28 +83,33 @@ export interface ContentBatch {
   workflowId?: string
 }
 
-export interface ContentApi {
-  list: (params?: Record<string, any>) => Promise<{ items: any[] }>
-  create: (req: any) => Promise<any>
-  submit: (id: string) => Promise<any>
-  withdraw: (id: string) => Promise<any>
-  publish: (id: string) => Promise<any>
-  unpublish: (id: string) => Promise<any>
-  archive: (id: string) => Promise<any>
-  delete: (id: string) => Promise<any>
-  invite: (id: string, userId: string) => Promise<any>
-  update: (id: string, req: any) => Promise<any>
-  clone?: (id: string, body?: { name?: string; code?: string }) => Promise<any>
+export interface ContentApi<T = any> {
+  list: (params?: Record<string, any>) => Promise<ListResponse<T>>
+  create: (req: Partial<T>) => Promise<T>
+  submit: (id: string) => Promise<unknown>
+  withdraw: (id: string) => Promise<unknown>
+  publish: (id: string) => Promise<unknown>
+  unpublish: (id: string) => Promise<unknown>
+  archive: (id: string) => Promise<unknown>
+  delete: (id: string) => Promise<unknown>
+  invite: (id: string, userId: string) => Promise<unknown>
+  update: (id: string, req: Partial<T>) => Promise<T>
+  clone?: (id: string, body?: { name?: string; code?: string }) => Promise<T>
 }
 
-export interface ContentBatchApi {
-  list: (params?: Record<string, any>) => Promise<{ items: any[] }>
+export interface ContentBatchApi<T = any> {
+  list: (params?: Record<string, any>) => Promise<ListResponse<T>>
 }
 
-export interface ContentApprovalApi {
-  list: (params?: Record<string, any>) => Promise<{ items: any[] }>
-  create: (req: { targetType: string; targetId: string; workflowId?: string }) => Promise<any>
-  review: (id: string, req: { status: "approved" | "rejected"; comment?: string; stepIdx?: number }) => Promise<any>
+export interface ContentApprovalRecord {
+  targetId: string
+  history?: { action?: string; status?: string; remark?: string; comment?: string }[]
+}
+
+export interface ContentApprovalApi<T extends ContentApprovalRecord = ContentApprovalRecord> {
+  list: (params?: Record<string, any>) => Promise<ListResponse<T>>
+  create: (req: { targetType: string; targetId: string; workflowId?: string }) => Promise<unknown>
+  review: (id: string, req: { status: "approved" | "rejected"; comment?: string; stepIdx?: number }) => Promise<unknown>
 }
 
 export interface ContentImportExportApi {
@@ -204,6 +209,8 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const [majors, setMajors] = useState<Major[]>([])
   const [workflows, setWorkflows] = useState<Workflow[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
 
   const [activeTab, setActiveTab] = useState<TabType>("my")
   const [viewMode, setViewMode] = useState<ViewMode>("list")
@@ -240,6 +247,20 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
 
   const hasExcel = !!(importExcelEntity)
 
+  // 回调/mapItem 等由调用方内联传入，引用每次渲染都会变化；
+  // 用 ref 持有最新值，避免 loadData 因引用变化被重复触发
+  const mapItemRef = useRef(mapItem)
+  const mapBatchRef = useRef(mapBatch)
+  const afterLoadRef = useRef(afterLoad)
+  const listParamsRef = useRef(listParams)
+  useEffect(() => {
+    mapItemRef.current = mapItem
+    mapBatchRef.current = mapBatch
+    afterLoadRef.current = afterLoad
+    listParamsRef.current = listParams
+  })
+  const listParamsKey = JSON.stringify(listParams || {})
+
   const {
     fileInputRef,
     importFile,
@@ -272,13 +293,14 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
 
   const loadData = useCallback(async () => {
     setIsLoading(true)
+    setLoadError(null)
     try {
       const [itemsResp, batchesResp] = await Promise.all([
-        itemApi.list({ limit: 1000, ...(listParams || {}) }),
+        itemApi.list({ limit: 1000, ...(listParamsRef.current || {}) }),
         batchApi.list({ limit: 1000 }),
       ])
       setItems(itemsResp.items)
-      const mappedBatches = batchesResp.items.map(mapBatch)
+      const mappedBatches = batchesResp.items.map(mapBatchRef.current)
       setBatches(mappedBatches)
       setExpandedBatches(mappedBatches.map((b) => b.id))
 
@@ -294,8 +316,8 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
           console.error(err)
         }
       }
-      let front = itemsResp.items.map((i: any) => mapItem(i, currentUserId))
-      if (afterLoad) front = await afterLoad(front, mappedBatches)
+      let front = itemsResp.items.map((i: any) => mapItemRef.current(i, currentUserId))
+      if (afterLoadRef.current) front = await afterLoadRef.current(front, mappedBatches)
 
       const rejectedItems = front.filter((item) => item.status === "rejected")
       if (rejectedItems.length > 0) {
@@ -332,14 +354,20 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
 
       setFrontItems(front)
     } catch (err) {
+      console.error(err)
+      setLoadError(err instanceof Error ? err.message : `加载${entityLabel}列表失败`)
     } finally {
       setIsLoading(false)
     }
-  }, [tenantId, listParams, currentUserId, afterLoad, mapBatch, mapItem, approvalTargetType, approvalApi, batchApi, itemApi])
+    // listParamsKey 变化代表 listParams 内容变化，需要重新加载
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantId, listParamsKey, currentUserId, approvalTargetType, approvalApi, batchApi, itemApi, entityLabel])
 
-  useEffect(() => { (async () => { await loadData() })() }, [loadData])
+  useEffect(() => { (async () => { await loadData() })() }, [loadData, reloadKey])
 
-  const refresh = async () => { await loadData() }
+  // 通过 bump reloadKey 间接触发重新加载，避免事件回调闭包直接引用 loadData
+  // （loadData 内部读取 latest-ref，直接引用会形成渲染期 ref 引用链）
+  const refresh = async () => { setReloadKey((k) => k + 1) }
 
   const toggleBatch = (batchId: string) => {
     setExpandedBatches((prev) =>
@@ -1157,7 +1185,20 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
         </div>
       )}
 
-      {!isLoading && filtered.length === 0 && (
+      {!isLoading && loadError && (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-red-200 bg-white py-20 shadow-sm">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
+            <X className="h-8 w-8 text-red-400" />
+          </div>
+          <h3 className="mb-2 text-lg font-medium text-slate-700">{entityLabel}加载失败</h3>
+          <p className="mb-4 text-sm text-slate-500">{loadError}</p>
+          <Button size="sm" variant="outline" onClick={() => refresh()}>
+            重试
+          </Button>
+        </div>
+      )}
+
+      {!isLoading && !loadError && filtered.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white py-20 shadow-sm">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
             <Search className="h-8 w-8 text-slate-400" />

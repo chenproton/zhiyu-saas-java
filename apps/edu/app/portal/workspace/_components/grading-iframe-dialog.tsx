@@ -10,7 +10,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 
-const GRADING_URL = "http://111.170.170.202:3003/approvals/grading"
+import { SCENE_PLATFORM_URL } from "@/lib/external-links"
+
+const GRADING_URL = `${SCENE_PLATFORM_URL}/approvals/grading`
 
 interface GradingIframeDialogProps {
   open: boolean

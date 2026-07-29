@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"os"
 
@@ -65,7 +67,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
+	adminPassword := os.Getenv("SEED_ADMIN_PASSWORD")
+	if adminPassword == "" {
+		// 未显式指定时生成随机密码，避免硬编码弱口令
+		buf := make([]byte, 18)
+		if _, err := rand.Read(buf); err != nil {
+			fmt.Println("generate random password error:", err)
+			os.Exit(1)
+		}
+		adminPassword = base64.RawURLEncoding.EncodeToString(buf)
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
 	if err != nil {
 		fmt.Println("bcrypt error:", err)
 		os.Exit(1)
@@ -161,5 +174,5 @@ func main() {
 
 	fmt.Println("种子数据初始化完成")
 	fmt.Println("  运营方租户: platform (ID: 00000000-0000-0000-0000-000000000001)")
-	fmt.Println("  平台管理员: admin / admin123")
+	fmt.Printf("  平台管理员: admin / %s （仅首次初始化时显示一次，请妥善保存）\n", adminPassword)
 }

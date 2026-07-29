@@ -20,6 +20,13 @@ import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
+import {
+  ABILITY_PLATFORM_URL,
+  AI_ASSISTANT_URL,
+  ALLIANCE_PLATFORM_URL,
+  CAREER_PLATFORM_URL,
+  SCENE_PLATFORM_URL,
+} from "@/lib/external-links"
 interface AppModule {
   id: string
   title: string
@@ -100,7 +107,7 @@ const RESOURCES: Resource[] = [
     color: "bg-indigo-50 text-indigo-600 border-indigo-100",
     originalId: 5,
     originalType: "bot",
-    href: "http://demo2.zhiyu.com.cn:5000/job_ai",
+    href: `${AI_ASSISTANT_URL}/job_ai`,
   },
   {
     id: "scene-agent",
@@ -112,7 +119,7 @@ const RESOURCES: Resource[] = [
     color: "bg-cyan-50 text-cyan-600 border-cyan-100",
     originalId: 6,
     originalType: "bot",
-    href: "http://demo2.zhiyu.com.cn:5000/scene_ai",
+    href: `${AI_ASSISTANT_URL}/scene_ai`,
   },
   {
     id: "qa-robot",
@@ -179,47 +186,47 @@ const QUICK_ACTIONS: QuickAction[] = [
     id: "create-position",
     label: "我要建岗位",
     icon: "plus",
-    href: "http://111.170.170.202:3002/positions",
+    href: `${CAREER_PLATFORM_URL}/positions`,
     color: "bg-purple-50 text-purple-600 border-purple-100 hover:bg-purple-100",
   },
   {
     id: "create-scene",
     label: "我要建场景",
     icon: "plus",
-    href: "http://111.170.170.202:3003/",
+    href: `${SCENE_PLATFORM_URL}/`,
     color: "bg-cyan-50 text-cyan-600 border-cyan-100 hover:bg-cyan-100",
   },
   {
     id: "ai-create-position",
     label: "我要 AI 帮我建岗位",
     icon: "sparkles",
-    href: "http://demo2.zhiyu.com.cn:5000/job_ai",
+    href: `${AI_ASSISTANT_URL}/job_ai`,
     color: "bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100",
   },
 ]
 
 const APP_MODULES: Record<string, { id: string; title: string; desc: string; href: string }[]> = {
   alliance: [
-    { id: "alliance-1", title: "产教融合管理", desc: "产教资源协同对接中枢", href: "http://111.170.170.202:3004/admin" },
-    { id: "alliance-2", title: "品牌运营管理", desc: "品牌资产配置与发布管理", href: "http://111.170.170.202:3004/admin/brands" },
-    { id: "alliance-3", title: "就业服务管理", desc: "就业项目与岗位推荐管理", href: "http://111.170.170.202:3004/admin/employment" },
-    { id: "alliance-4", title: "【企业端】服务平台", desc: "企业合作伙伴登录入口", href: "http://111.170.170.202:3004/partner/login" },
+    { id: "alliance-1", title: "产教融合管理", desc: "产教资源协同对接中枢", href: `${ALLIANCE_PLATFORM_URL}/admin` },
+    { id: "alliance-2", title: "品牌运营管理", desc: "品牌资产配置与发布管理", href: `${ALLIANCE_PLATFORM_URL}/admin/brands` },
+    { id: "alliance-3", title: "就业服务管理", desc: "就业项目与岗位推荐管理", href: `${ALLIANCE_PLATFORM_URL}/admin/employment` },
+    { id: "alliance-4", title: "【企业端】服务平台", desc: "企业合作伙伴登录入口", href: `${ALLIANCE_PLATFORM_URL}/partner/login` },
   ],
   career: [
-    { id: "career-1", title: "岗位资源管理", desc: "职业岗位资源与能力模型管理", href: "http://111.170.170.202:3002/positions" },
-    { id: "career-2", title: "批次分组管理", desc: "批次分组与审批关联管理", href: "http://111.170.170.202:3002/batches" },
-    { id: "career-3", title: "审批流程管理", desc: "审批流模板预设与配置", href: "http://111.170.170.202:3002/workflows" },
+    { id: "career-1", title: "岗位资源管理", desc: "职业岗位资源与能力模型管理", href: `${CAREER_PLATFORM_URL}/positions` },
+    { id: "career-2", title: "批次分组管理", desc: "批次分组与审批关联管理", href: `${CAREER_PLATFORM_URL}/batches` },
+    { id: "career-3", title: "审批流程管理", desc: "审批流模板预设与配置", href: `${CAREER_PLATFORM_URL}/workflows` },
   ],
   scene: [
-    { id: "scene-1", title: "场景资源管理", desc: "实践场景资源总览与管理", href: "http://111.170.170.202:3003/" },
-    { id: "scene-2", title: "批次分组管理", desc: "批次分组与审批关联管理", href: "http://111.170.170.202:3003/batches" },
-    { id: "scene-3", title: "审批流程管理", desc: "审批流模板预设配置", href: "http://111.170.170.202:3003/workflows" },
+    { id: "scene-1", title: "场景资源管理", desc: "实践场景资源总览与管理", href: `${SCENE_PLATFORM_URL}/` },
+    { id: "scene-2", title: "批次分组管理", desc: "批次分组与审批关联管理", href: `${SCENE_PLATFORM_URL}/batches` },
+    { id: "scene-3", title: "审批流程管理", desc: "审批流模板预设配置", href: `${SCENE_PLATFORM_URL}/workflows` },
   ],
   ability: [
-    { id: "ability-1", title: "通用测评管理", desc: "测评题库与通用测评管理", href: "http://111.170.170.202:3005/question-banks" },
-    { id: "ability-3", title: "测评方式库", desc: "能力测评方法与量规配置", href: "http://111.170.170.202:3005/evaluation-methods" },
-    { id: "ability-4", title: "毕业设计管理", desc: "毕业设计选题与评审管理", href: "http://111.170.170.202:3005/graduation-project/topics" },
-    { id: "ability-5", title: "学生画像管理", desc: "学生能力画像与成长档案", href: "http://111.170.170.202:3005/student-portrait/portraits" },
+    { id: "ability-1", title: "通用测评管理", desc: "测评题库与通用测评管理", href: `${ABILITY_PLATFORM_URL}/question-banks` },
+    { id: "ability-3", title: "测评方式库", desc: "能力测评方法与量规配置", href: `${ABILITY_PLATFORM_URL}/evaluation-methods` },
+    { id: "ability-4", title: "毕业设计管理", desc: "毕业设计选题与评审管理", href: `${ABILITY_PLATFORM_URL}/graduation-project/topics` },
+    { id: "ability-5", title: "学生画像管理", desc: "学生能力画像与成长档案", href: `${ABILITY_PLATFORM_URL}/student-portrait/portraits` },
   ],
 }
 

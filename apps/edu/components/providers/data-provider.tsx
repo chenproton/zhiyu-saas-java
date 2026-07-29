@@ -40,6 +40,7 @@ import {
   evaluationBatchApi,
   evaluationMethodApi,
   evaluationResultApi,
+  jobAbilityResultApi,
   approvalApi,
   graduationApi,
   portraitApi,
@@ -151,20 +152,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const loadJobAbilityResults = useCallback(async () => {
-    const res = await evaluationResultApi.list()
+    const res = await jobAbilityResultApi.list({ limit: 1000 })
     setJobAbilityResults(
       res.items.map((r) => ({
-        id: r.id,
-        positionId: r.methodKey,
-        positionName: r.methodKey,
-        positionCode: r.methodKey,
-        studentName: r.evaluateeId,
-        studentId: r.evaluateeId,
-        totalAbilityPoints: r.maxScore,
-        achievedAbilityPoints: r.totalScore || 0,
-        achievementRate:
-          r.maxScore > 0 ? Math.round(((r.totalScore || 0) / r.maxScore) * 100) : 0,
-        evaluationTime: parseDate((r.gradedAt || r.createdAt) as unknown as string | Date),
+        ...r,
+        evaluationTime: parseDate(r.evaluationTime),
       }))
     )
   }, [])
@@ -211,16 +203,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const loadCertIssuanceRecords = useCallback(async () => {
     const res = await microCertApi.listHistory()
-    setCertIssuanceRecords(res.items.map(parseCertRecord))
+    const parsed = res.items.map(parseCertRecord)
+    setCertIssuanceRecords(parsed)
+    return parsed
   }, [])
 
+  const isPortal = pathname.startsWith('/portal')
   const shouldLoadEvaluation = pathname.startsWith('/evaluation')
   const shouldLoadScene = pathname.startsWith('/scene')
   const shouldLoadGraduation = pathname.startsWith('/graduation')
   const shouldLoadPortrait = pathname.startsWith('/portrait') || pathname.startsWith('/student-ability')
 
   useEffect(() => {
-    if (pathname.startsWith("/portal")) return
+    if (isPortal) return
 
     const tasks: (() => Promise<void>)[] = []
     if (shouldLoadEvaluation || shouldLoadScene) {
@@ -253,9 +248,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false
     const loadAll = async () => {
       try {
-        await Promise.all(tasks.slice(0, 4).map((fn) => fn()))
-        if (cancelled) return
-        await Promise.all(tasks.slice(4).map((fn) => fn()))
+        await Promise.all(tasks.map((fn) => fn()))
       } catch (err) {
         if (!cancelled) {
           console.error('Failed to load evaluation data', err)
@@ -265,7 +258,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     loadAll()
     return () => { cancelled = true }
   }, [
-    pathname,
+    isPortal,
     shouldLoadEvaluation,
     shouldLoadScene,
     shouldLoadGraduation,
@@ -682,7 +675,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       await loadStudentAbilityArchives()
     },
     deleteStudentAbilityArchive: async (id: string) => {
-      setStudentAbilityArchives((prev) => prev.filter((a) => a.id !== id))
+      await portraitApi.deleteArchive(id)
+      await loadStudentAbilityArchives()
     },
     updateCreditConversionRules: (rules: CreditConversionRule[]) => {
       setCreditConversionRules(rules)
@@ -691,17 +685,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     certIssuanceRecords,
     issueCert: async (data): Promise<CertIssuanceRecord> => {
       await microCertApi.issue(data.templateId, [data.studentId])
-      await loadCertIssuanceRecords()
-      const record = certIssuanceRecords.find(
+      const records = await loadCertIssuanceRecords()
+      const record = records.find(
         (r) => r.templateId === data.templateId && r.studentId === data.studentId
       )
-      if (record) return record
-      return {
-        id: `cir-${Date.now()}`,
-        ...data,
-        certNumber: `MC-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`,
-        status: 'issued',
+      if (!record) {
+        throw new Error('证书签发成功，但未能在签发记录中找到对应记录')
       }
+      return record
     },
     issueBatchCerts: async (records): Promise<CertIssuanceRecord[]> => {
       const groups = new Map<string, string[]>()
@@ -715,8 +706,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           microCertApi.issue(templateId, userIds)
         )
       )
-      await loadCertIssuanceRecords()
-      return certIssuanceRecords.filter((r) =>
+      const allRecords = await loadCertIssuanceRecords()
+      return allRecords.filter((r) =>
         records.some((req) => req.templateId === r.templateId && req.studentId === r.studentId)
       )
     },

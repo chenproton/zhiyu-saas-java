@@ -82,7 +82,7 @@ services:
     container_name: zhiyu-backend
     restart: unless-stopped
     ports:
-      - "${BACKEND_PORT:-8080}:8080"
+      - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
     logging:
       driver: json-file
       options:
@@ -119,7 +119,7 @@ services:
     container_name: zhiyu-edu
     restart: unless-stopped
     ports:
-      - "${EDU_PORT:-3020}:3020"
+      - "127.0.0.1:${EDU_PORT:-3020}:3020"
     logging:
       driver: json-file
       options:

@@ -27,7 +27,6 @@ func RegisterPublicRoutes(r chi.Router, h *Handlers, redisClient *redis.Client) 
 	r.With(loginLimiter).Post("/auth/saas/login", h.authHandler.SaasLogin)
 	r.With(loginLimiter).Post("/auth/portal/login", h.authHandler.PortalLogin)
 	r.Post("/auth/select-tenant", h.authHandler.SelectTenant)
-	r.Post("/auth/debug/token", h.authHandler.DebugToken)
 	r.Group(func(r chi.Router) {
 		r.Use(cache.Cached(redisClient, 10*time.Minute, cache.StaticKey(cache.KeyPlatformLinks)))
 		r.Get("/platform-links", h.platformLinkHandler.List)
@@ -48,15 +47,19 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 
 	cachedLandingExams := cache.Cached(redisClient, 2*time.Minute, cache.LandingExamsKey())
 	cachedPublicPositions := cache.Cached(redisClient, 2*time.Minute, cache.PublicPositionsKey())
-	cachedDashboard := cache.Cached(redisClient, 1*time.Minute, cache.DashboardKey())
 
 	r.Group(func(r chi.Router) {
 		r.Use(auth)
 		r.Use(authmw.OperationLog(db, oplogBuffer))
 
 		registerAuthRoutes(r, h)
-		registerImportExportRoutes(r, h)
 		registerLandingRoutes(r, h, cachedLandingExams)
+
+		// 导入/导出涉及批量数据读写，统一限制为业务角色，学生不可访问
+		r.Group(func(r chi.Router) {
+			r.Use(businessUser)
+			registerImportExportRoutes(r, h)
+		})
 
 		r.Group(func(r chi.Router) {
 			r.Use(platformAdmin)
@@ -71,7 +74,8 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 
 		r.Group(func(r chi.Router) {
 			r.Use(portalWorkspace)
-			r.With(cachedDashboard).Get("/portal/workspace/dashboard", h.portalHandler.WorkspaceDashboard)
+			// dashboard 内容按 userID 查询，缓存键只含 tenant+role 会串数据，故不缓存
+			r.Get("/portal/workspace/dashboard", h.portalHandler.WorkspaceDashboard)
 		})
 
 		// 学生画像查询对全部业务角色开放（含学生本人），generate/archives 仍限业务用户

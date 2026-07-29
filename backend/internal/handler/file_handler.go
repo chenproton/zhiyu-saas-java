@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -192,25 +191,4 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"html": string(outBytes)})
-}
-
-func (h *FileHandler) absUploadDir(projectRoot string) string {
-	if h.UploadDir != "" {
-		return h.UploadDir
-	}
-	return filepath.Join(projectRoot, "public", "uploads")
-}
-
-// FormatSize returns a human readable size string.
-func FormatSize(size int64) string {
-	const unit = 1024
-	if size < unit {
-		return fmt.Sprintf("%d B", size)
-	}
-	div, exp := int64(unit), 0
-	for n := size / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB", float64(size)/float64(div), "KMGTPE"[exp])
 }

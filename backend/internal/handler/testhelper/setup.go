@@ -128,10 +128,6 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Get("/orders/{id}", orderHandler.Get)
 			r.Post("/orders", orderHandler.Create)
 
-			withdrawalHandler := &handler.WithdrawalHandler{DB: pool}
-			r.Get("/withdrawals", withdrawalHandler.List)
-			r.Post("/withdrawals", withdrawalHandler.Create)
-
 			r.Post("/banners", bannerHandler.Create)
 			r.Put("/banners/{id}", bannerHandler.Update)
 			r.Delete("/banners/{id}", bannerHandler.Delete)

@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+import { COURSE_LEARN_URL, SCENE_PLATFORM_URL } from "@/lib/external-links"
 import { allPeriods, days, type ScheduleEvent } from "../_data/mock-student-data"
 
 interface ScheduleGridProps {
@@ -50,13 +51,13 @@ const typeStyles: Record<ScheduleEvent["type"], { bg: string; border: string; ba
 function getStudentActionUrls(event: ScheduleEvent) {
   if (event.type === "scene") {
     return {
-      learnUrl: "http://111.170.170.202:3003/student.html?task=task-1-1",
+      learnUrl: `${SCENE_PLATFORM_URL}/student.html?task=task-1-1`,
       isActionable: true,
     }
   }
   if (event.type === "course") {
     return {
-      learnUrl: "http://111.170.170.202:3006/learn/courses/system/1/learn",
+      learnUrl: `${COURSE_LEARN_URL}/learn/courses/system/1/learn`,
       isActionable: true,
     }
   }
