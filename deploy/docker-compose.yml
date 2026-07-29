@@ -157,7 +157,7 @@ services:
       KK_OFFICE_PREVIEW_TYPE: pdf
       KK_OFFICE_PREVIEW_SWITCH_DISABLED: "true"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8012/kkfileview >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8012/kkfileview/onlinePreview >/dev/null || exit 1"]
       interval: 10s
       timeout: 10s
       retries: 5

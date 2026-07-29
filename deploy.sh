@@ -33,7 +33,7 @@ done
 # ── 常量 ──
 BACKEND_PORT=8080; EDU_PORT=3020
 DEPLOY_DIR="/opt/zhiyu-saas"
-NGINX_DST="/opt/1panel/www/conf.d/zhiyu-saas.conf"
+NGINX_DST="/etc/nginx/conf.d/zhiyu-saas.conf"
 
 # ── 工具函数 ──
 log()   { echo "==> $*"; }
@@ -122,6 +122,16 @@ fi
 DOCKER_COMPOSE=$(detect_docker_compose)
 [[ -z "$DOCKER_COMPOSE" ]] && die "未找到可用的 docker compose"
 compose() { $DOCKER_COMPOSE -f "$DEPLOY_COMPOSE" "$@"; }
+
+# Nginx（宿主标准 nginx，作为统一网关）
+if ! command -v nginx >/dev/null 2>&1; then
+  log "安装 Nginx..."
+  is_root || die "需要 root 安装 Nginx"
+  pkg_install nginx
+fi
+systemctl enable --now nginx 2>/dev/null || true
+# 禁用 Ubuntu/Debian 默认站点，避免 default_server 冲突
+rm -f /etc/nginx/sites-enabled/default
 
 # Go
 if ! command -v go >/dev/null 2>&1; then
@@ -414,7 +424,7 @@ fi
 
 # 等待 kkfileview 就绪（非核心服务，仅避免 nginx 重载到未就绪端口）
 for i in $(seq 1 60); do
-  wget -qO- http://127.0.0.1:8012/kkfileview/index >/dev/null 2>&1 && { log "  kkfileview ready"; break; }
+  wget -qO- http://127.0.0.1:8012/kkfileview/onlinePreview >/dev/null 2>&1 && { log "  kkfileview ready"; break; }
   sleep 2
 done
 
@@ -430,13 +440,8 @@ prune_old_images "zhiyu-edu" 5
 # ════════════════════════════════════════════
 NGINX_CONF="$BUILD_ROOT/deploy/nginx/conf.d/zhiyu-saas.conf"
 if [[ -f "$NGINX_CONF" ]]; then
-  # OpenResty (1Panel)
-  if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx openresty; then
-    cp -f "$NGINX_CONF" "$NGINX_DST"
-    docker exec openresty nginx -t 2>/dev/null && docker exec openresty nginx -s reload 2>/dev/null && log "OpenResty 重载成功" || warn "OpenResty 重载失败"
-  elif [[ -n "${NGINX_CONTAINER:-}" ]]; then
-    docker exec "$NGINX_CONTAINER" nginx -t 2>/dev/null && docker exec "$NGINX_CONTAINER" nginx -s reload 2>/dev/null && log "Nginx 重载成功"
-  fi
+  cp -f "$NGINX_CONF" "$NGINX_DST"
+  nginx -t 2>/dev/null && systemctl reload nginx 2>/dev/null && log "Nginx 重载成功" || die "Nginx 配置测试或重载失败"
 fi
 
 if [[ -n "$BRANCH_NAME" && "$SKIP_MERGE" != "true" ]]; then
