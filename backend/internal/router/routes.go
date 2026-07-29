@@ -47,7 +47,6 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 	jobViewer := authmw.RequireRole("teacher", "student", "school_admin", "enterprise_mentor", "platform_admin")
 
 	cachedLandingExams := cache.Cached(redisClient, 2*time.Minute, cache.LandingExamsKey())
-	cachedDropdown := cache.Cached(redisClient, 5*time.Minute, cache.DropdownKey())
 	cachedPublicPositions := cache.Cached(redisClient, 2*time.Minute, cache.PublicPositionsKey())
 	cachedDashboard := cache.Cached(redisClient, 1*time.Minute, cache.DashboardKey())
 
@@ -84,7 +83,7 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 
 		r.Group(func(r chi.Router) {
 			r.Use(systemAdmin)
-			registerPortalRoutes(r, h, cachedDropdown)
+			registerPortalRoutes(r, h)
 		})
 
 		registerWorkflowRoutes(r, h)
@@ -196,7 +195,7 @@ func registerLandingRoutes(r chi.Router, h *Handlers, cachedLandingExams func(ht
 	r.Get("/evaluation/landing/certifications/{id}/grades", h.certGradeHandler.ListGrades)
 }
 
-func registerPortalRoutes(r chi.Router, h *Handlers, cachedDropdown func(http.Handler) http.Handler) {
+func registerPortalRoutes(r chi.Router, h *Handlers) {
 	r.Get("/tenants", h.tenantHandler.List)
 	r.Get("/tenants/{id}", h.tenantHandler.Get)
 	r.Put("/tenants/{id}", h.tenantHandler.Update)
@@ -215,7 +214,7 @@ func registerPortalRoutes(r chi.Router, h *Handlers, cachedDropdown func(http.Ha
 	r.Put("/organizations/{id}", h.orgHandler.Update)
 	r.Delete("/organizations/{id}", h.orgHandler.Delete)
 
-	r.With(cachedDropdown).Get("/org-types", h.orgTypeHandler.List)
+	r.Get("/org-types", h.orgTypeHandler.List)
 	r.Get("/org-types/{id}", h.orgTypeHandler.Get)
 	r.Post("/org-types", h.orgTypeHandler.Create)
 	r.Put("/org-types/{id}", h.orgTypeHandler.Update)
@@ -235,7 +234,7 @@ func registerPortalRoutes(r chi.Router, h *Handlers, cachedDropdown func(http.Ha
 	r.Post("/users/batch-org-node", h.userManagementHandler.BatchUpdateOrgNode)
 
 	r.Route("/staff-titles", func(r chi.Router) {
-		r.With(cachedDropdown).Get("/", h.staffTitleHandler.List)
+		r.Get("/", h.staffTitleHandler.List)
 		r.Post("/", h.staffTitleHandler.Create)
 		r.Get("/{id}", h.staffTitleHandler.Get)
 		r.Put("/{id}", h.staffTitleHandler.Update)
@@ -254,26 +253,26 @@ func registerPortalRoutes(r chi.Router, h *Handlers, cachedDropdown func(http.Ha
 		r.Delete("/{id}", h.userRelationHandler.Delete)
 	})
 
-	r.With(cachedDropdown).Get("/roles", h.roleHandler.List)
+	r.Get("/roles", h.roleHandler.List)
 	r.Get("/roles/{id}", h.roleHandler.Get)
 	r.Post("/roles", h.roleHandler.Create)
 	r.Put("/roles/{id}", h.roleHandler.Update)
 	r.Delete("/roles/{id}", h.roleHandler.Delete)
 	r.Post("/roles/{id}/assign", h.roleHandler.Assign)
 
-	r.With(cachedDropdown).Get("/majors", h.majorHandler.List)
+	r.Get("/majors", h.majorHandler.List)
 	r.Get("/majors/{id}", h.majorHandler.Get)
 	r.Post("/majors", h.majorHandler.Create)
 	r.Put("/majors/{id}", h.majorHandler.Update)
 	r.Delete("/majors/{id}", h.majorHandler.Delete)
 
-	r.With(cachedDropdown).Get("/industries", h.industryHandler.List)
+	r.Get("/industries", h.industryHandler.List)
 	r.Get("/industries/{id}", h.industryHandler.Get)
 	r.Post("/industries", h.industryHandler.Create)
 	r.Put("/industries/{id}", h.industryHandler.Update)
 	r.Delete("/industries/{id}", h.industryHandler.Delete)
 
-	r.With(cachedDropdown).Get("/resource-codes", h.resourceCodeHandler.List)
+	r.Get("/resource-codes", h.resourceCodeHandler.List)
 	r.Get("/resource-codes/{id}", h.resourceCodeHandler.Get)
 	r.Post("/resource-codes", h.resourceCodeHandler.Create)
 	r.Put("/resource-codes/{id}", h.resourceCodeHandler.Update)
