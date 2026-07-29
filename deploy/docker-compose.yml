@@ -138,6 +138,33 @@ services:
     networks:
       - zhiyu
 
+  kkfileview:
+    env_file:
+      - .env
+    image: fangzhengjin/kkfileview:4.4.0
+    container_name: zhiyu-kkfileview
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8012:8012"
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+    environment:
+      KK_BASE_URL: ${KK_BASE_URL:-http://ai.zhiyu.com.cn/kkfileview}
+      KK_CONTEXT_PATH: /kkfileview
+      KK_OFFICE_PREVIEW_TYPE: pdf
+      KK_OFFICE_PREVIEW_SWITCH_DISABLED: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8012/kkfileview/index || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - zhiyu
+
 volumes:
   postgres_data:
   redis_data:

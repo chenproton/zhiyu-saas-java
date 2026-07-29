@@ -346,6 +346,13 @@ cp "$BUILD_ROOT/deploy/docker-compose.yml" "$DEPLOY_COMPOSE"
 cp -f "$BUILD_ROOT/.env" "$DEPLOY_DIR/.env" 2>/dev/null || cp -f "$PROJECT_ROOT/.env" "$DEPLOY_DIR/.env"
 chmod 600 "$DEPLOY_DIR/.env"
 
+# 收养旧版独立 kkfileview 容器：若存在非 compose 管理的同名容器，先停掉移除，避免端口/名称冲突
+if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx '^kkfileview$'; then
+  log "发现旧版独立 kkfileview 容器，正在接管..."
+  docker stop kkfileview >/dev/null 2>&1 || true
+  docker rm kkfileview >/dev/null 2>&1 || true
+fi
+
 compose up -d --remove-orphans 2>&1 | tail -5
 
 # 等待 PG
@@ -404,6 +411,12 @@ if ! $OK; then
   compose logs backend --tail 30
   die "部署失败，已回滚"
 fi
+
+# 等待 kkfileview 就绪（非核心服务，仅避免 nginx 重载到未就绪端口）
+for i in $(seq 1 60); do
+  wget -qO- http://127.0.0.1:8012/kkfileview/index >/dev/null 2>&1 && { log "  kkfileview ready"; break; }
+  sleep 2
+done
 
 compose ps
 [[ "$CLEAN_BUILD" == "true" ]] && docker builder prune --all --force >/dev/null 2>&1 || true
