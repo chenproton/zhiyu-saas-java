@@ -766,7 +766,12 @@ if [[ "$DOCKER_MODE" == "true" && "$FRONTEND_ONLY" != "true" && -f "$BACKEND_BIN
   fi
 
   echo "  数据库迁移..."
-  (cd "$BACKEND_DIR" && DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@127.0.0.1:5432/${DB_NAME}?sslmode=disable" go run ./cmd/migrate/main.go up) || {
+  MIGRATE_URL="postgres://${DB_USER}:${DB_PASSWORD}@127.0.0.1:5433/${DB_NAME}?sslmode=disable"
+  for i in $(seq 1 15); do
+    psql "$MIGRATE_URL" -c "SELECT 1" >/dev/null 2>&1 && break
+    sleep 1
+  done
+  (cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" go run ./cmd/migrate/main.go up) || {
     echo "  警告：迁移未完成，可能已是最新" >&2
   }
 
