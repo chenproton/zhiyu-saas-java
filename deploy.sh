@@ -278,7 +278,6 @@ BUILD_FRONTEND=true
 FRONTEND_HASH=$(frontend_hash "$BUILD_ROOT")
 [[ "$CLEAN_BUILD" != "true" ]] && [[ -f "$BUILD_CACHE/frontend-hash" ]] && \
   [[ "$FRONTEND_HASH" == "$(cat "$BUILD_CACHE/frontend-hash")" ]] && \
-  [[ -d "$EDU_DIR/.next/standalone" ]] && \
   docker images -q "zhiyu-edu:$IMAGE_TAG" >/dev/null 2>&1 && BUILD_FRONTEND=false
 
 if $BUILD_FRONTEND; then
