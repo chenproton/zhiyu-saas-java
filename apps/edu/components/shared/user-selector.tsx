@@ -109,7 +109,8 @@ export function UserSelector({
   const [userCache, setUserCache] = useState<Record<string, User>>({})
   const fetchedIdsRef = useRef<Set<string>>(new Set())
 
-  const stableExcludeUserIds = useMemo(() => excludeUserIds, [excludeUserIds])
+  const excludeUserIdsRef = useRef(excludeUserIds)
+  excludeUserIdsRef.current = excludeUserIds
 
   const orgTypeMap = useMemo(() => {
     const map = new Map<string, OrgType>()
@@ -163,15 +164,15 @@ export function UserSelector({
       if (excludeStudent) {
         filtered = filtered.filter((u) => !(u.roleCodes || []).includes("student"))
       }
-      if (stableExcludeUserIds.length > 0) {
-        const excludeSet = new Set(stableExcludeUserIds)
+      if (excludeUserIdsRef.current.length > 0) {
+        const excludeSet = new Set(excludeUserIdsRef.current)
         filtered = filtered.filter((u) => !excludeSet.has(u.id))
       }
       setUsers(filtered)
       mergeUserCache(res.items)
     } catch { /* ignore */ }
     finally { setUsersLoading(false) }
-  }, [selectedOrgId, userSearch, tenantId, usePortalApi, excludeStudent, stableExcludeUserIds, orgMap, mergeUserCache])
+  }, [selectedOrgId, userSearch, tenantId, usePortalApi, excludeStudent, orgMap, mergeUserCache])
 
   useEffect(() => {
     let cancelled = false
