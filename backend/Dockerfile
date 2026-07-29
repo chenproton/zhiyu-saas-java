@@ -1,10 +1,8 @@
-FROM debian:bookworm-slim
+FROM alpine:3.21
 
-RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends \
-    ca-certificates wget \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache ca-certificates
 
-RUN adduser --disabled-password --gecos "" --uid 1000 appuser
+RUN adduser -D -u 1000 appuser
 
 COPY bin/server /app/server
 COPY migrations/ /app/migrations/
@@ -15,8 +13,5 @@ USER appuser
 WORKDIR /app
 
 EXPOSE 8080
-
-HEALTHCHECK --interval=10s --timeout=5s --retries=5 --start-period=10s \
-    CMD wget -qO- http://localhost:8080/health || exit 1
 
 ENTRYPOINT ["./server"]

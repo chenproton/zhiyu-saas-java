@@ -585,7 +585,7 @@ GO_BUILD_PID=""
 if [[ "$FRONTEND_ONLY" != "true" ]]; then
   echo "==> 启动 Go 后端构建（后台）..."
   mkdir -p "$BACKEND_DIR/bin"
-  nice -n 19 go build -C "$BACKEND_DIR" -ldflags="-s -w" -o "$BACKEND_BIN_NEW" ./cmd/server/main.go &
+  CGO_ENABLED=0 nice -n 19 go build -C "$BACKEND_DIR" -ldflags="-s -w" -o "$BACKEND_BIN_NEW" ./cmd/server/main.go &
   GO_BUILD_PID=$!
   echo "  Go 构建 PID: $GO_BUILD_PID"
 fi
