@@ -176,7 +176,7 @@ if [[ "$BACKEND_ONLY" != "true" ]]; then
     (cd "$BUILD_ROOT" && pnpm install --no-frozen-lockfile) || { echo "错误：pnpm install 失败" >&2; exit 1; }
 
     echo "  构建 Next.js..."
-    rm -rf "$EDU_DIR/.next/standalone" "$EDU_DIR/.next/server" "$EDU_DIR/.next/static"
+    rm -rf "$EDU_DIR/.next"
     NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
       pnpm --filter @zhiyu/edu build || { echo "错误：前端构建失败" >&2; exit 1; }
 
