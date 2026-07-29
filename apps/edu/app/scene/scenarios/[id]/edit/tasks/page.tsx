@@ -5392,7 +5392,7 @@ function EditCardDialog({
             pool={rPool}
             selectedIds={state.resources || []}
             onChange={(ids: string[]) => updateState({ resources: ids })}
-            onUpload={(r: ResourceItem) => { learningResources.push(r); }}
+            onUpload={(r: ResourceItem) => { customResourceIds.add(r.id); learningResources.push(r); }}
           />
         )
       }
