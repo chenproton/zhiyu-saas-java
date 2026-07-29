@@ -104,6 +104,7 @@ if [[ -n "$BRANCH_NAME" ]]; then
   if [[ -e "$BUILD_TREE/.git" ]]; then
     echo "  复用缓存"
     git -C "$BUILD_TREE" checkout --detach --force origin/master 2>/dev/null || true
+    rm -rf "$BUILD_TREE/apps/edu/.next" "$BUILD_TREE/backend/bin" 2>/dev/null || true
   else
     [[ -d "$BUILD_TREE" ]] && rm -rf "$BUILD_TREE"
     git -C "$ORIGINAL_PROJECT_ROOT" worktree add --detach "$BUILD_TREE" origin/master || {
@@ -175,16 +176,12 @@ if [[ "$BACKEND_ONLY" != "true" ]]; then
     (cd "$BUILD_ROOT" && pnpm install --no-frozen-lockfile) || { echo "错误：pnpm install 失败" >&2; exit 1; }
 
     echo "  构建 Next.js..."
+    rm -rf "$EDU_DIR/.next/standalone" "$EDU_DIR/.next/server" "$EDU_DIR/.next/static"
     NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
       pnpm --filter @zhiyu/edu build || { echo "错误：前端构建失败" >&2; exit 1; }
 
-    echo "  组装 standalone + Docker 镜像..."
+    echo "  构建 Docker 镜像..."
     SD="$EDU_DIR/.next/standalone/apps/edu"
-    mkdir -p "$SD/.next" "$SD/public"
-    rsync -a --delete --exclude="*.map" "$EDU_DIR/.next/server/" "$SD/.next/server/"
-    [[ -d "$EDU_DIR/.next/static" ]] && rsync -a --delete --exclude="*.map" "$EDU_DIR/.next/static/" "$SD/.next/static/"
-    [[ -d "$EDU_DIR/public" ]] && rsync -a --delete --exclude="*.map" "$EDU_DIR/public/" "$SD/public/"
-
     docker build -t "zhiyu-edu:$IMAGE_TAG" -f "$EDU_DIR/Dockerfile" "$SD" 2>&1 | tail -3
   else
     echo "  = 跳过 (无变更)"
