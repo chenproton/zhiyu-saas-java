@@ -5115,6 +5115,7 @@ function EditCardDialog({
         )
         return (
           <KnowledgeSelector
+            standalone={false}
             selected={selected}
             pool={pool}
             onChange={(items) => {
@@ -5387,6 +5388,7 @@ function EditCardDialog({
         }))
         return (
           <ResourceSelector
+            standalone={false}
             pool={rPool}
             selectedIds={state.resources || []}
             onChange={(ids: string[]) => updateState({ resources: ids })}

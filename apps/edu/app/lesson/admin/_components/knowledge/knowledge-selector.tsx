@@ -36,6 +36,7 @@ interface KnowledgeSelectorProps {
   pool: KnowledgePointItem[]
   onChange?: (selected: KnowledgePointItem[]) => void
   onAddCustom?: (name: string, description?: string) => void
+  standalone?: boolean
 }
 
 const SCENES = [
@@ -84,7 +85,7 @@ const TASK_SCENE_MAP: Record<string, string[]> = {
   "task-component": ["dev-standard"],
 }
 
-export function KnowledgeSelector({ selected, pool, onChange, onAddCustom }: KnowledgeSelectorProps) {
+export function KnowledgeSelector({ selected, pool, onChange, onAddCustom, standalone = true }: KnowledgeSelectorProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [kpSearch, setKpSearch] = useState("")
   const [sceneFilter, setSceneFilter] = useState("all")
@@ -217,273 +218,234 @@ export function KnowledgeSelector({ selected, pool, onChange, onAddCustom }: Kno
   const glSelectedIds =
     glSelectTargetKp === "new-kp" ? newKpForm.granularLessons : glTargetKp?.granularLessons || []
 
-  return (
-    <div className="space-y-4">
-      {/* Selected tags */}
-      {selected.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {selected.map((kp) => (
-            <Badge
-              key={kp.id}
-              variant="secondary"
-              className={cn(
-                "px-2.5 py-1 text-xs font-normal hover:cursor-pointer",
-                isReferenceKp(kp.id) ? "bg-gray-100 text-gray-600 hover:bg-gray-200" : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
-              )}
-            >
-              {kp.name}
-              <button className="ml-1 text-indigo-400 hover:text-indigo-700" onClick={() => handleRemoveKp(kp.id)}>
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          ))}
-        </div>
-      )}
-
-      {/* Add button + dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogTrigger asChild>
-          <Button variant="outline" size="sm" className="w-full border-dashed">
-            <Plus className="mr-2 h-4 w-4" />
-            添加知识点
+  const selectionPanels = (
+    <div className={cn("flex gap-4", standalone ? "h-[480px]" : "h-full min-h-0")}>
+      {/* Left: Search Results */}
+      <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              value={kpSearch}
+              onChange={(e) => setKpSearch(e.target.value)}
+              placeholder="搜索知识点名称、描述或编码..."
+              className="pl-9"
+            />
+          </div>
+          <Button onClick={openAddKp}>
+            <Plus className="h-4 w-4 mr-1" />
+            新增知识点
           </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[1075px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>添加知识点</DialogTitle>
-            <DialogDescription>从知识库中选择或新建知识点</DialogDescription>
-          </DialogHeader>
-
-          <div className="flex gap-4 h-[480px]">
-            {/* Left: Search Results */}
-            <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    value={kpSearch}
-                    onChange={(e) => setKpSearch(e.target.value)}
-                    placeholder="搜索知识点名称、描述或编码..."
-                    className="pl-9"
-                  />
-                </div>
-                <Button onClick={openAddKp}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  新增知识点
-                </Button>
-              </div>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs text-gray-500 shrink-0">场景/任务筛选</span>
-                <Select value={sceneFilter} onValueChange={(v) => {
-                  setSceneFilter(v)
-                  if (taskFilter !== "all" && v !== "all" && TASK_SCENE_MAP[taskFilter] && !TASK_SCENE_MAP[taskFilter].includes(v)) {
-                    setTaskFilter("all")
-                  }
-                }}>
-                  <SelectTrigger className="h-8 text-xs w-[120px]">
-                    <SelectValue placeholder="选择场景" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SCENES.map((scene) => (
-                      <SelectItem key={scene.id} value={scene.id} className="text-xs">{scene.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <span className="text-[10px] text-gray-300 shrink-0">▸</span>
-                <Select
-                  value={taskFilter}
-                  onValueChange={(v) => {
-                    setTaskFilter(v)
-                    if (v !== "all" && TASK_SCENE_MAP[v] && !TASK_SCENE_MAP[v].includes(sceneFilter)) {
-                      setSceneFilter(TASK_SCENE_MAP[v][0] || "all")
-                    }
-                  }}
-                >
-                  <SelectTrigger className="h-8 text-xs w-[120px]">
-                    <SelectValue placeholder="选择任务" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TASKS.filter(
-                      (t) =>
-                        t.id === "all" ||
-                        sceneFilter === "all" ||
-                        (TASK_SCENE_MAP[t.id] && TASK_SCENE_MAP[t.id].includes(sceneFilter))
-                    ).map((task) => (
-                      <SelectItem key={task.id} value={task.id} className="text-xs">{task.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs text-gray-500 shrink-0">岗位筛选</span>
-                <Select value={positionFilter} onValueChange={setPositionFilter}>
-                  <SelectTrigger className="h-8 text-xs flex-1">
-                    <SelectValue placeholder="选择岗位" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {POSITIONS.map((pos) => (
-                      <SelectItem key={pos.id} value={pos.id} className="text-xs">{pos.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex-1 overflow-y-auto pr-1">
-                {!kpSearch && filtered.length === 0 && (
-                  <div className="text-center text-gray-400 py-8">
-                    <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">请输入关键词搜索知识点</p>
-                  </div>
-                )}
-                {kpSearch && !hasResults && (
-                  <div className="p-6 text-center text-gray-500 text-sm border border-dashed rounded-lg">
-                    <p className="mb-2">未找到 &quot;{kpSearch}&quot; 相关的知识点</p>
-                    <Button variant="outline" size="sm" onClick={openAddKp}>
-                      <Plus className="h-3 w-3 mr-1" />
-                      新增此知识点
-                    </Button>
-                  </div>
-                )}
-                {filtered.length > 0 && (
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 sticky top-0 z-10">
-                      <tr>
-                        <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[28%]">知识点名称</th>
-                        <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[18%]">知识点编码</th>
-                        <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[34%]">知识点描述</th>
-                        <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">操作</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {filtered.map((kp) => {
-                        const isSelected = selected.some((s) => s.id === kp.id)
-                        return (
-                          <tr
-                            key={kp.id}
-                            className={cn("hover:bg-gray-50 transition-colors", isSelected ? "bg-primary/[0.03]" : "")}
-                          >
-                            <td className="px-3 py-2">
-                              <span className="text-sm font-medium text-gray-800">{kp.name}</span>
-                            </td>
-                            <td className="px-3 py-2">
-                              {kp.code ? (
-                                <Badge variant="outline" className="text-[10px] h-5 px-1.5">{kp.code}</Badge>
-                              ) : (
-                                <span className="text-xs text-gray-400">-</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2">
-                              <p className="text-xs text-gray-500 line-clamp-1" title={kp.description}>{kp.description}</p>
-                            </td>
-                            <td className="px-3 py-2">
-                              <div className="flex items-center justify-end gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary"
-                                  onClick={() => { setSelectedKpForDetail(kp.id); setKpDetailOpen(true) }}
-                                >
-                                  详情
-                                </Button>
-                                {isSelected ? (
-                                  <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => handleRemoveKp(kp.id)}>
-                                    取消
-                                  </Button>
-                                ) : (
-                                  <>
-                                    <Button size="sm" className="h-6 text-[11px] px-2" onClick={() => handleReferenceKp(kp)}>
-                                      引用
-                                    </Button>
-                                    <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => openCloneKp(kp)}>
-                                      克隆
-                                    </Button>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
+        </div>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-xs text-gray-500 shrink-0">场景/任务筛选</span>
+          <Select value={sceneFilter} onValueChange={(v) => {
+            setSceneFilter(v)
+            if (taskFilter !== "all" && v !== "all" && TASK_SCENE_MAP[taskFilter] && !TASK_SCENE_MAP[taskFilter].includes(v)) {
+              setTaskFilter("all")
+            }
+          }}>
+            <SelectTrigger className="h-8 text-xs w-[120px]">
+              <SelectValue placeholder="选择场景" />
+            </SelectTrigger>
+            <SelectContent>
+              {SCENES.map((scene) => (
+                <SelectItem key={scene.id} value={scene.id} className="text-xs">{scene.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-[10px] text-gray-300 shrink-0">▸</span>
+          <Select
+            value={taskFilter}
+            onValueChange={(v) => {
+              setTaskFilter(v)
+              if (v !== "all" && TASK_SCENE_MAP[v] && !TASK_SCENE_MAP[v].includes(sceneFilter)) {
+                setSceneFilter(TASK_SCENE_MAP[v][0] || "all")
+              }
+            }}
+          >
+            <SelectTrigger className="h-8 text-xs w-[120px]">
+              <SelectValue placeholder="选择任务" />
+            </SelectTrigger>
+            <SelectContent>
+              {TASKS.filter(
+                (t) =>
+                  t.id === "all" ||
+                  sceneFilter === "all" ||
+                  (TASK_SCENE_MAP[t.id] && TASK_SCENE_MAP[t.id].includes(sceneFilter))
+              ).map((task) => (
+                <SelectItem key={task.id} value={task.id} className="text-xs">{task.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-xs text-gray-500 shrink-0">岗位筛选</span>
+          <Select value={positionFilter} onValueChange={setPositionFilter}>
+            <SelectTrigger className="h-8 text-xs flex-1">
+              <SelectValue placeholder="选择岗位" />
+            </SelectTrigger>
+            <SelectContent>
+              {POSITIONS.map((pos) => (
+                <SelectItem key={pos.id} value={pos.id} className="text-xs">{pos.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex-1 overflow-y-auto pr-1">
+          {!kpSearch && filtered.length === 0 && (
+            <div className="text-center text-gray-400 py-8">
+              <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">请输入关键词搜索知识点</p>
             </div>
-
-            {/* Right: Selected Knowledge Points */}
-            <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
-              <p className="text-sm font-medium mb-3 text-gray-700">已选择知识点 ({selected.length})</p>
-              <div className="flex-1 overflow-y-auto">
-                {selected.length === 0 ? (
-                  <div className="text-center text-gray-400 py-8">
-                    <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-xs">从左侧搜索并选择知识点</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2">
-                    {selected.map((kp) => {
-                      const isReference = isReferenceKp(kp.id)
-                      const kpGlNames =
-                        kp.granularLessons
-                          ?.map((gid) => granularCourses.find((g) => g.id === gid)?.name)
-                          .filter(Boolean) || []
-                      return (
-                        <div
-                          key={kp.id}
-                          className={cn(
-                            "p-2 rounded-lg border cursor-pointer transition-colors relative overflow-hidden",
-                            isReference
-                              ? "border-gray-200 bg-gray-50 hover:bg-gray-100"
-                              : "border-primary/20 bg-primary/5 hover:bg-primary/10"
-                          )}
-                          onClick={() => {
-                            if (isReference) {
-                              setSelectedKpForDetail(kp.id)
-                              setKpDetailOpen(true)
-                            } else {
-                              openEditKp(kp)
-                            }
-                          }}
-                        >
-                          <div className="flex items-center gap-1 mb-1">
-                            <span className="text-xs font-medium flex-1 truncate">{kp.name}</span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-5 w-5 text-gray-400 -mr-1 -mt-1"
-                              onClick={(e) => { e.stopPropagation(); handleRemoveKp(kp.id) }}
-                            >
-                              <X className="h-3 w-3" />
+          )}
+          {kpSearch && !hasResults && (
+            <div className="p-6 text-center text-gray-500 text-sm border border-dashed rounded-lg">
+              <p className="mb-2">未找到 &quot;{kpSearch}&quot; 相关的知识点</p>
+              <Button variant="outline" size="sm" onClick={openAddKp}>
+                <Plus className="h-3 w-3 mr-1" />
+                新增此知识点
+              </Button>
+            </div>
+          )}
+          {filtered.length > 0 && (
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 sticky top-0 z-10">
+                <tr>
+                  <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[28%]">知识点名称</th>
+                  <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[18%]">知识点编码</th>
+                  <th className="text-left text-xs font-medium text-gray-500 px-3 py-2 w-[34%]">知识点描述</th>
+                  <th className="text-right text-xs font-medium text-gray-500 px-3 py-2 w-[20%]">操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map((kp) => {
+                  const isSelected = selected.some((s) => s.id === kp.id)
+                  return (
+                    <tr
+                      key={kp.id}
+                      className={cn("hover:bg-gray-50 transition-colors", isSelected ? "bg-primary/[0.03]" : "")}
+                    >
+                      <td className="px-3 py-2">
+                        <span className="text-sm font-medium text-gray-800">{kp.name}</span>
+                      </td>
+                      <td className="px-3 py-2">
+                        {kp.code ? (
+                          <Badge variant="outline" className="text-[10px] h-5 px-1.5">{kp.code}</Badge>
+                        ) : (
+                          <span className="text-xs text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        <p className="text-xs text-gray-500 line-clamp-1" title={kp.description}>{kp.description}</p>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary"
+                            onClick={() => { setSelectedKpForDetail(kp.id); setKpDetailOpen(true) }}
+                          >
+                            详情
+                          </Button>
+                          {isSelected ? (
+                            <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => handleRemoveKp(kp.id)}>
+                              取消
                             </Button>
-                          </div>
-                          <p className="text-[11px] text-gray-500 line-clamp-1 mb-1">{kp.description}</p>
-                          {kpGlNames.length > 0 && (
-                            <div className="flex items-center gap-0.5 flex-wrap">
-                              {kpGlNames.slice(0, 2).map((name, i) => (
-                                <Badge key={i} variant="outline" className="text-[9px] font-normal px-1 py-0 h-4">{name}</Badge>
-                              ))}
-                              {kpGlNames.length > 2 && <span className="text-[9px] text-gray-400">+{kpGlNames.length - 2}</span>}
-                            </div>
-                          )}
-                          {isReference && (
-                            <div className="absolute bottom-0 right-0">
-                              <div className="bg-gray-200 text-gray-600 text-[9px] px-1.5 py-0.5 rounded-tl-md border-t border-l border-white/80">引用</div>
-                            </div>
+                          ) : (
+                            <>
+                              <Button size="sm" className="h-6 text-[11px] px-2" onClick={() => handleReferenceKp(kp)}>
+                                引用
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => openCloneKp(kp)}>
+                                克隆
+                              </Button>
+                            </>
                           )}
                         </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Right: Selected Knowledge Points */}
+      <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
+        <p className="text-sm font-medium mb-3 text-gray-700">已选择知识点 ({selected.length})</p>
+        <div className="flex-1 overflow-y-auto">
+          {selected.length === 0 ? (
+            <div className="text-center text-gray-400 py-8">
+              <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-xs">从左侧搜索并选择知识点</p>
             </div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {selected.map((kp) => {
+                const isReference = isReferenceKp(kp.id)
+                const kpGlNames =
+                  kp.granularLessons
+                    ?.map((gid) => granularCourses.find((g) => g.id === gid)?.name)
+                    .filter(Boolean) || []
+                return (
+                  <div
+                    key={kp.id}
+                    className={cn(
+                      "p-2 rounded-lg border cursor-pointer transition-colors relative overflow-hidden",
+                      isReference
+                        ? "border-gray-200 bg-gray-50 hover:bg-gray-100"
+                        : "border-primary/20 bg-primary/5 hover:bg-primary/10"
+                    )}
+                    onClick={() => {
+                      if (isReference) {
+                        setSelectedKpForDetail(kp.id)
+                        setKpDetailOpen(true)
+                      } else {
+                        openEditKp(kp)
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="text-xs font-medium flex-1 truncate">{kp.name}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 text-gray-400 -mr-1 -mt-1"
+                        onClick={(e) => { e.stopPropagation(); handleRemoveKp(kp.id) }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-gray-500 line-clamp-1 mb-1">{kp.description}</p>
+                    {kpGlNames.length > 0 && (
+                      <div className="flex items-center gap-0.5 flex-wrap">
+                        {kpGlNames.slice(0, 2).map((name, i) => (
+                          <Badge key={i} variant="outline" className="text-[9px] font-normal px-1 py-0 h-4">{name}</Badge>
+                        ))}
+                        {kpGlNames.length > 2 && <span className="text-[9px] text-gray-400">+{kpGlNames.length - 2}</span>}
+                      </div>
+                    )}
+                    {isReference && (
+                      <div className="absolute bottom-0 right-0">
+                        <div className="bg-gray-200 text-gray-600 text-[9px] px-1.5 py-0.5 rounded-tl-md border-t border-l border-white/80">引用</div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>关闭</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
+  const subDialogs = (
+    <>
       {/* Add / Clone / Edit Knowledge Dialog */}
       <Dialog open={kpActionOpen} onOpenChange={setKpActionOpen}>
         <DialogContent className="sm:max-w-lg">
@@ -670,6 +632,63 @@ export function KnowledgeSelector({ selected, pool, onChange, onAddCustom }: Kno
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </>
+  )
+
+  if (!standalone) {
+    return (
+      <>
+        {selectionPanels}
+        {subDialogs}
+      </>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Selected tags */}
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {selected.map((kp) => (
+            <Badge
+              key={kp.id}
+              variant="secondary"
+              className={cn(
+                "px-2.5 py-1 text-xs font-normal hover:cursor-pointer",
+                isReferenceKp(kp.id) ? "bg-gray-100 text-gray-600 hover:bg-gray-200" : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+              )}
+            >
+              {kp.name}
+              <button className="ml-1 text-indigo-400 hover:text-indigo-700" onClick={() => handleRemoveKp(kp.id)}>
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      {/* Add button + dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm" className="w-full border-dashed">
+            <Plus className="mr-2 h-4 w-4" />
+            添加知识点
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[1075px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>添加知识点</DialogTitle>
+            <DialogDescription>从知识库中选择或新建知识点</DialogDescription>
+          </DialogHeader>
+
+          {selectionPanels}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>关闭</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {subDialogs}
     </div>
   )
 }
