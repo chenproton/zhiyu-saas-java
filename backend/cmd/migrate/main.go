@@ -189,17 +189,21 @@ func execMultiSQL(tx pgx.Tx, sql string) error {
 		sql += ";"
 	}
 	stmts := strings.Split(sql, ";\n")
-	for _, stmt := range stmts {
-		stmt = strings.TrimSpace(stmt)
-		if stmt == "" {
-			continue
+		for j, stmt := range stmts {
+			stmt = strings.TrimSpace(stmt)
+			if stmt == "" || strings.HasPrefix(stmt, "--") {
+				continue
+			}
+			if !strings.HasSuffix(stmt, ";") {
+				stmt += ";"
+			}
+			if _, err := tx.Exec(ctx(), stmt); err != nil {
+				preview := stmt
+				if len(preview) > 120 {
+					preview = preview[:120]
+				}
+				return fmt.Errorf("statement %d: %w\n  sql: %s", j, err, preview)
+			}
 		}
-		if !strings.HasSuffix(stmt, ";") {
-			stmt += ";"
-		}
-		if _, err := tx.Exec(context.Background(), stmt); err != nil {
-			return err
-		}
-	}
 	return nil
 }
