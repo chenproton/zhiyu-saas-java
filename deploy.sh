@@ -213,7 +213,15 @@ fi
 echo "  数据库迁移..."
 MIGRATE_URL="postgres://${DB_USER}:${DB_PASSWORD}@127.0.0.1:5433/${DB_NAME}?sslmode=disable"
 for i in $(seq 1 15); do psql "$MIGRATE_URL" -c "SELECT 1" >/dev/null 2>&1 && break; sleep 1; done
-(cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" go run ./cmd/migrate/main.go up) || echo "  警告：迁移可能已是最新"
+
+if [[ ! -f "$DEPLOY_DIR/.migration-baseline-done" ]]; then
+  psql "$MIGRATE_URL" -c "CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(255) PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());" 2>/dev/null
+  psql "$MIGRATE_URL" -f "$BACKEND_DIR/migrations/001_baseline.up.sql" 2>&1 | tail -3
+  psql "$MIGRATE_URL" -c "INSERT INTO schema_migrations (version) VALUES ('001_baseline') ON CONFLICT DO NOTHING;" 2>/dev/null
+  touch "$DEPLOY_DIR/.migration-baseline-done"
+else
+  (cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" go run ./cmd/migrate/main.go up) || echo "  警告：增量迁移可能已是最新"
+fi
 
 echo "  启动服务..."
 docker compose -f "$DEPLOY_COMPOSE" up -d --remove-orphans 2>&1 | tail -5
@@ -227,10 +235,10 @@ for svc in backend frontend; do
     sleep 2
   done
   [[ "$(docker compose -f "$DEPLOY_COMPOSE" ps "$svc" --format '{{.Health}}' 2>/dev/null)" != "healthy" ]] && {
-    echo "  $svc 未就绪" >&2; OK=false; docker compose -f "$DEPLOY_COMPOSE" logs "$svc" --tail 20; }
+    echo "  $svc 未就绪" >&2; OK=false; }
 done
 
-[[ "$OK" != "true" ]] && { echo "部署失败" >&2; exit 1; }
+[[ "$OK" != "true" ]] && { echo "部署失败" >&2; docker compose -f "$DEPLOY_COMPOSE" logs backend --tail 30; exit 1; }
 
 docker compose -f "$DEPLOY_COMPOSE" ps
 docker builder prune --all --force >/dev/null 2>&1 || true
