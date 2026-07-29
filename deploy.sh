@@ -194,6 +194,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
     jwt_secret=$(rand_str 64)
     sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgresql://zhiyu_saas:${db_pass}@127.0.0.1:5433/zhiyu-saas?sslmode=disable|" "$ENV_FILE"
     sed -i "s|^JWT_SECRET=.*|JWT_SECRET=${jwt_secret}|" "$ENV_FILE"
+    sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${db_pass}|" "$ENV_FILE"
     chmod 600 "$ENV_FILE"
     log "已生成 .env（管理员: admin / admin123）"
   fi
