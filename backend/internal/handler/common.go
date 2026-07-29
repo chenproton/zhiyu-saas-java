@@ -719,4 +719,3 @@ func recordView(ctx context.Context, db *pgxpool.Pool, targetType, targetID stri
 	`, targetType, targetID)
 	return nil
 }
-// test
