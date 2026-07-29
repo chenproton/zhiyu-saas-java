@@ -40,20 +40,20 @@ const PAGE_SIZE = 20
 const AGGREGATE_POLL_INTERVAL_MS = 3000
 const AGGREGATE_POLL_MAX_ATTEMPTS = 15
 
-const GRADE_OPTIONS = ["未达标", "达标", "良好", "优秀", "卓越"] as const
+const GRADE_OPTIONS = ["了解", "理解", "掌握", "熟练", "精通"] as const
 
 function gradeBadgeClass(grade?: string): string {
   switch (grade) {
-    case "卓越":
+    case "精通":
       return "bg-purple-50 text-purple-600 border-purple-200"
-    case "优秀":
+    case "熟练":
       return "bg-green-50 text-green-600 border-green-200"
-    case "良好":
+    case "掌握":
       return "bg-blue-50 text-blue-600 border-blue-200"
-    case "达标":
+    case "理解":
       return "bg-amber-50 text-amber-600 border-amber-200"
-    case "未达标":
-      return "bg-red-50 text-red-600 border-red-200"
+    case "了解":
+      return "bg-gray-50 text-gray-500 border-gray-200"
     default:
       return "bg-gray-50 text-gray-500 border-gray-200"
   }

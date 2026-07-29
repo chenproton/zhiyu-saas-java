@@ -12,6 +12,8 @@ import type {
   CertificationAbilityItem,
   CertificationAbilityPoint,
   CertificationRelatedTask,
+  CertificationPositionModel,
+  CertificationWeightsPayload,
   CustomLevelMapping,
   LevelMapping,
   StudentAbilityPortrait,
@@ -193,6 +195,12 @@ export const certApi = {
   getFullRule: (id: string) => request<CertificationFullRuleResponse>(`/evaluation/certifications/${id}/full`),
   putFullRule: (id: string, req: CertificationFullRulePayload) =>
     request<CertificationRule>(`/evaluation/certifications/${id}/full`, { method: "PUT", body: JSON.stringify(req) }),
+  /** 岗位能力模型（只读组装：岗位→能力域→能力点→关联任务，weight 缺省时后端给均分默认） */
+  getPositionModel: (positionId: string) =>
+    request<CertificationPositionModel>(`/evaluation/certifications/positions/${positionId}/model`),
+  /** 保存两级权重：能力点占岗位总评（合计 100）、任务占能力点（点内合计 100） */
+  putPositionWeights: (positionId: string, payload: CertificationWeightsPayload) =>
+    request<CertificationRule>(`/evaluation/certifications/positions/${positionId}/weights`, { method: "PUT", body: JSON.stringify(payload) }),
 }
 
 export interface LandingExamItem {

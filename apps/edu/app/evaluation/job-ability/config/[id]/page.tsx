@@ -1,4 +1,4 @@
-import { CertificationRuleConfig } from "./_components/certification-rule-config"
+import { PositionWeightConfig } from "./_components/position-weight-config"
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -6,5 +6,5 @@ interface PageProps {
 
 export default async function JobAbilityConfigPage({ params }: PageProps) {
   const { id } = await params
-  return <CertificationRuleConfig positionId={id} />
+  return <PositionWeightConfig positionId={id} />
 }

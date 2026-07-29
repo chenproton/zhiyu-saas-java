@@ -16,6 +16,8 @@ export interface WeightConfigItem {
   id: string
   name: string
   weight: number
+  /** 可选分组名（相邻同组项只显示一次分组标题） */
+  group?: string
 }
 
 interface WeightConfigDialogProps {
@@ -89,26 +91,28 @@ function WeightConfigForm({
 
   return (
     <>
-      <div className="py-4 space-y-3">
+      <div className="py-4 space-y-3 max-h-[60vh] overflow-y-auto">
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">暂无可配置项</p>
         ) : (
-          items.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center gap-3 p-3 rounded-md bg-secondary/50 border border-border"
-            >
-              <span className="flex-1 text-sm font-medium truncate">{item.name}</span>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={localWeights[item.id] ?? item.weight}
-                  onChange={(e) => handleChange(item.id, e.target.value)}
-                  className="w-20 h-8 text-center"
-                />
-                <span className="text-muted-foreground text-sm">%</span>
+          items.map((item, index) => (
+            <div key={item.id} className="space-y-3">
+              {item.group && (index === 0 || items[index - 1].group !== item.group) && (
+                <p className="text-xs font-medium text-muted-foreground">{item.group}</p>
+              )}
+              <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/50 border border-border">
+                <span className="flex-1 text-sm font-medium truncate">{item.name}</span>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={localWeights[item.id] ?? item.weight}
+                    onChange={(e) => handleChange(item.id, e.target.value)}
+                    className="w-20 h-8 text-center"
+                  />
+                  <span className="text-muted-foreground text-sm">%</span>
+                </div>
               </div>
             </div>
           ))

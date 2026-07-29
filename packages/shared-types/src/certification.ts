@@ -1,5 +1,7 @@
 // ==================== 岗位认证规则管理 ====================
 
+import type { CompetencyLevel } from "./job-source"
+
 export type RuleStatus =
   | 'draft' // 草稿
   | 'not_submitted' // 未提交
@@ -116,4 +118,47 @@ export interface CertificationRelatedTask {
   taskId: string
   maxScore: number
   weight: number
+}
+
+// ==================== 岗位能力模型（只读组装）与权重配置 ====================
+
+/** 能力点下关联的场景任务（来自场景编辑页的关联，只读） */
+export interface CertificationModelTask {
+  taskId: string
+  taskName: string
+  scenarioName: string
+  /** 任务得分占能力点得分的权重（点内合计 100，后端缺省时给均分默认） */
+  weight: number
+}
+
+/** 岗位能力点（来自岗位编辑页的能力模型，只读） */
+export interface CertificationModelPoint {
+  abilityPointId: string
+  name: string
+  description: string
+  requiredLevel: CompetencyLevel
+  rubricDescription: string
+  /** 能力点得分占岗位总评的权重（岗位内合计 100，后端缺省时给均分默认） */
+  weight: number
+  tasks: CertificationModelTask[]
+}
+
+/** 能力域分组 */
+export interface CertificationModelDomain {
+  name: string
+  points: CertificationModelPoint[]
+}
+
+/** GET /evaluation/certifications/positions/{positionId}/model 响应 */
+export interface CertificationPositionModel {
+  /** 已保存的权重规则；null 表示尚未保存过权重 */
+  rule: { id: string; status: RuleStatus } | null
+  positionId: string
+  domains: CertificationModelDomain[]
+}
+
+/** PUT /evaluation/certifications/positions/{positionId}/weights 请求体 */
+export interface CertificationWeightsPayload {
+  pointWeights: { abilityPointId: string; weight: number }[]
+  taskWeights: { abilityPointId: string; taskId: string; weight: number }[]
 }

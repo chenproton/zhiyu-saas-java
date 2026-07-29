@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
-	"sort"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -22,22 +21,14 @@ func NewJobAbilityAggregator(db *pgxpool.Pool) *JobAbilityAggregator {
 	return &JobAbilityAggregator{DB: db}
 }
 
-type levelMapping struct {
-	Level string  `json:"level"`
-	Min   float64 `json:"min"`
-	Max   float64 `json:"max"`
-}
-
+// aggPoint 汇聚用能力点：关联链来自 position_ability_bindings + 场景评分点关联。
 type aggPoint struct {
-	id                 string
-	itemID             string
-	itemName           string
-	abilityPointID     string
-	name               string
-	requiredLevel      string
-	weight             float64
-	customLevelMapping []levelMapping
-	tasks              []aggTask
+	abilityPointID string
+	name           string
+	domain         string // 能力域名（position_ability_bindings.domain）
+	requiredLevel  string // 掌握程度代码（understand/comprehend/master/proficient/expert）
+	weight         float64
+	tasks          []aggTask
 }
 
 type aggTask struct {
@@ -146,14 +137,13 @@ type portraitRecommendPosition struct {
 
 // aggregate 为单租户单岗位计算并 upsert 所有学生的岗位能力结果。
 func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPositionID string, userIDs []string) (int, int, error) {
-	// 1. 加载 published 规则全量配置（items → points → tasks）
+	// 1. 加载 published 规则 + 组装能力模型（绑定链/任务链全量自动带出，权重缺省均分兜底）
 	var ruleID string
-	var ruleMappingJSON []byte
 	err := a.DB.QueryRow(ctx, `
-		SELECT id, level_mapping FROM certification_rules
+		SELECT id FROM certification_rules
 		WHERE career_position_id = $1 AND tenant_id = $2 AND status = 'published'
 		ORDER BY updated_at DESC LIMIT 1
-	`, careerPositionID, tenantID).Scan(&ruleID, &ruleMappingJSON)
+	`, careerPositionID, tenantID).Scan(&ruleID)
 	if err == pgx.ErrNoRows {
 		return 0, 0, nil // 无规则直接返回
 	}
@@ -161,66 +151,30 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 		return 0, 0, err
 	}
 
-	pointRows, err := a.DB.Query(ctx, `
-		SELECT p.id, i.id, COALESCE(i.name, ''), p.ability_point_id, COALESCE(ap.name, ''), p.required_level, p.weight, p.custom_level_mapping
-		FROM certification_ability_points p
-		JOIN certification_ability_items i ON i.id = p.item_id
-		LEFT JOIN ability_points ap ON ap.id = p.ability_point_id
-		WHERE i.rule_id = $1
-		ORDER BY i.sort_order, p.id
-	`, ruleID)
+	domains, err := LoadCertificationModel(ctx, a.DB, tenantID, careerPositionID, ruleID)
 	if err != nil {
 		return 0, 0, err
 	}
-	defer pointRows.Close()
-
-	var points []aggPoint
-	for pointRows.Next() {
-		var p aggPoint
-		var mappingJSON []byte
-		if err := pointRows.Scan(&p.id, &p.itemID, &p.itemName, &p.abilityPointID, &p.name, &p.requiredLevel, &p.weight, &mappingJSON); err != nil {
-			return 0, 0, err
+	points := make([]aggPoint, 0)
+	taskIDSet := map[string]bool{}
+	for _, d := range domains {
+		for _, p := range d.Points {
+			ap := aggPoint{
+				abilityPointID: p.AbilityPointID,
+				name:           p.Name,
+				domain:         d.Name,
+				requiredLevel:  p.RequiredLevel,
+				weight:         p.Weight,
+			}
+			for _, t := range p.Tasks {
+				ap.tasks = append(ap.tasks, aggTask{taskID: t.TaskID, weight: t.Weight})
+				taskIDSet[t.TaskID] = true
+			}
+			points = append(points, ap)
 		}
-		if len(mappingJSON) > 0 {
-			_ = json.Unmarshal(mappingJSON, &p.customLevelMapping)
-		}
-		points = append(points, p)
-	}
-	if err := pointRows.Err(); err != nil {
-		return 0, 0, err
 	}
 	if len(points) == 0 {
 		return 0, 0, nil
-	}
-
-	pointIDs := make([]string, len(points))
-	pointIdx := make(map[string]int, len(points))
-	for i, p := range points {
-		pointIDs[i] = p.id
-		pointIdx[p.id] = i
-	}
-	taskRows, err := a.DB.Query(ctx, `
-		SELECT cert_point_id, task_id, weight FROM certification_related_tasks
-		WHERE cert_point_id = ANY($1)
-	`, pointIDs)
-	if err != nil {
-		return 0, 0, err
-	}
-	defer taskRows.Close()
-	taskIDSet := map[string]bool{}
-	for taskRows.Next() {
-		var pointID string
-		var t aggTask
-		if err := taskRows.Scan(&pointID, &t.taskID, &t.weight); err != nil {
-			return 0, 0, err
-		}
-		if i, ok := pointIdx[pointID]; ok {
-			points[i].tasks = append(points[i].tasks, t)
-			taskIDSet[t.taskID] = true
-		}
-	}
-	if err := taskRows.Err(); err != nil {
-		return 0, 0, err
 	}
 
 	taskIDs := make([]string, 0, len(taskIDSet))
@@ -322,30 +276,17 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 		return 0, 0, err
 	}
 
-	// 岗位等级映射优先级：规则级 level_mapping → 第一个非空的能力点 custom_level_mapping → 默认区间
-	var mappings []levelMapping
-	if len(ruleMappingJSON) > 0 {
-		_ = json.Unmarshal(ruleMappingJSON, &mappings)
-	}
-	for _, p := range points {
-		if len(mappings) > 0 {
-			break
-		}
-		if len(p.customLevelMapping) > 0 {
-			mappings = p.customLevelMapping
-		}
-	}
-
-	// 3. 逐学生计算并 upsert
+	// 3. 逐学生计算并 upsert（评级固定为掌握程度五档，不再有可配置等级映射）
 	updated := 0
 	for _, studentID := range studentIDs {
 		type pointDetail struct {
-			AbilityPointID string  `json:"abilityPointId"`
-			Name           string  `json:"abilityPointName"`
-			Score          float64 `json:"score"`
-			Weight         float64 `json:"weight"`
-			RequiredLevel  string  `json:"requiredLevel"`
-			Achieved       bool    `json:"achieved"`
+			AbilityPointID     string  `json:"abilityPointId"`
+			Name               string  `json:"abilityPointName"`
+			Score              float64 `json:"score"`
+			Weight             float64 `json:"weight"`
+			RequiredLevel      string  `json:"requiredLevel"`
+			RequiredLevelLabel string  `json:"requiredLevelLabel,omitempty"`
+			Achieved           bool    `json:"achieved"`
 		}
 		details := make([]pointDetail, 0, len(points))
 		pointValid := make([]bool, 0, len(points))
@@ -367,17 +308,12 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 				posWeightSum += p.weight
 			}
 			pointValid = append(pointValid, valid)
-			// 达成判定：优先按映射等级与 requiredLevel 的档位比较，无法解析时回退 60 分线
+			// 达成判定：能力点定级档位 >= binding.required_level 档位；requiredLevel 无法解析时回退 60 分线
 			pointAchieved := false
 			if valid {
-				effective := mappings
-				if len(effective) == 0 {
-					effective = defaultLevelMappings()
-				}
-				pointRank := levelRank(resolveGrade(pointScore, effective), effective)
-				requiredRank := levelRank(p.requiredLevel, effective)
-				if pointRank >= 0 && requiredRank >= 0 {
-					pointAchieved = pointRank >= requiredRank
+				requiredRank := masteryCodeRank(p.requiredLevel)
+				if requiredRank >= 0 {
+					pointAchieved = masteryScoreRank(pointScore) >= requiredRank
 				} else {
 					pointAchieved = pointScore >= 60
 				}
@@ -386,12 +322,13 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 				achieved++
 			}
 			details = append(details, pointDetail{
-				AbilityPointID: p.abilityPointID,
-				Name:           p.name,
-				Score:          math.Round(pointScore*100) / 100,
-				Weight:         p.weight,
-				RequiredLevel:  p.requiredLevel,
-				Achieved:       pointAchieved,
+				AbilityPointID:     p.abilityPointID,
+				Name:               p.name,
+				Score:              math.Round(pointScore*100) / 100,
+				Weight:             p.weight,
+				RequiredLevel:      p.requiredLevel,
+				RequiredLevelLabel: masteryCodeLabel(p.requiredLevel),
+				Achieved:           pointAchieved,
 			})
 		}
 		if posWeightSum == 0 {
@@ -400,13 +337,12 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 
 		positionScore := posWeightedSum / posWeightSum
 		rate := math.Round(positionScore*100) / 100
-		grade := resolveGrade(positionScore, mappings)
+		grade := masteryGrade(positionScore)
 
-		// 按能力域（certification_ability_items）汇总域内能力点加权平均分
+		// 按能力域（position_ability_bindings.domain）汇总域内能力点加权平均分
 		domainScores := make([]portraitDomainScore, 0)
 		{
 			type domainAcc struct {
-				label                  string
 				weightedSum, weightSum float64
 			}
 			accs := map[string]*domainAcc{}
@@ -416,26 +352,26 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 					continue
 				}
 				d := details[i]
-				acc, ok := accs[p.itemID]
+				acc, ok := accs[p.domain]
 				if !ok {
-					acc = &domainAcc{label: p.itemName}
-					accs[p.itemID] = acc
-					order = append(order, p.itemID)
+					acc = &domainAcc{}
+					accs[p.domain] = acc
+					order = append(order, p.domain)
 				}
 				acc.weightedSum += d.Score * p.weight
 				acc.weightSum += p.weight
 			}
-			for _, itemID := range order {
-				acc := accs[itemID]
+			for _, domainName := range order {
+				acc := accs[domainName]
 				if acc.weightSum == 0 {
 					continue
 				}
 				score := math.Round(acc.weightedSum/acc.weightSum*100) / 100
 				domainScores = append(domainScores, portraitDomainScore{
-					Domain:      itemID,
-					DomainLabel: acc.label,
+					Domain:      domainName,
+					DomainLabel: domainName,
 					Score:       score,
-					Level:       resolveGrade(score, mappings),
+					Level:       masteryGrade(score),
 				})
 			}
 		}
@@ -560,53 +496,49 @@ func (a *JobAbilityAggregator) fetchRecommendPositions(ctx context.Context, user
 	return items, rows.Err()
 }
 
-// defaultLevelMappings 默认等级区间（未配置任何映射时使用）。
-func defaultLevelMappings() []levelMapping {
-	return []levelMapping{
-		{Level: "未达标", Min: 0, Max: 59},
-		{Level: "达标", Min: 60, Max: 69},
-		{Level: "良好", Min: 70, Max: 79},
-		{Level: "优秀", Min: 80, Max: 89},
-		{Level: "卓越", Min: 90, Max: 100},
-	}
+// masteryLevels 掌握程度五档（分数→等级固定映射，不再支持自定义等级映射）。
+var masteryLevels = []struct {
+	code  string
+	label string
+	min   float64
+}{
+	{"understand", "了解", 0},
+	{"comprehend", "理解", 60},
+	{"master", "掌握", 70},
+	{"proficient", "熟练", 80},
+	{"expert", "精通", 90},
 }
 
-// levelRank 返回等级在映射中的档位（按分值区间升序），未命中返回 -1。
-func levelRank(level string, mappings []levelMapping) int {
-	if level == "" {
-		return -1
+// masteryScoreRank 分数对应的掌握程度档位（0-4）。
+func masteryScoreRank(score float64) int {
+	rank := 0
+	for i, l := range masteryLevels {
+		if score >= l.min {
+			rank = i
+		}
 	}
-	sorted := make([]levelMapping, len(mappings))
-	copy(sorted, mappings)
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Min < sorted[j].Min })
-	for i, m := range sorted {
-		if m.Level == level {
+	return rank
+}
+
+// masteryGrade 分数→掌握程度中文标签（0-59 了解/60-69 理解/70-79 掌握/80-89 熟练/90-100 精通）。
+func masteryGrade(score float64) string {
+	return masteryLevels[masteryScoreRank(score)].label
+}
+
+// masteryCodeRank 掌握程度代码→档位，无法解析返回 -1。
+func masteryCodeRank(code string) int {
+	for i, l := range masteryLevels {
+		if l.code == code {
 			return i
 		}
 	}
 	return -1
 }
 
-// resolveGrade 按映射区间取等级；映射为空时用默认区间。
-func resolveGrade(score float64, mappings []levelMapping) string {
-	if len(mappings) == 0 {
-		mappings = defaultLevelMappings()
+// masteryCodeLabel 掌握程度代码→中文标签，无法解析返回空串。
+func masteryCodeLabel(code string) string {
+	if i := masteryCodeRank(code); i >= 0 {
+		return masteryLevels[i].label
 	}
-	sorted := make([]levelMapping, len(mappings))
-	copy(sorted, mappings)
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Min < sorted[j].Min })
-
-	for _, m := range sorted {
-		if score >= m.Min && score <= m.Max {
-			return m.Level
-		}
-	}
-	// 区间存在空隙时取 min 不大于 score 的最高档
-	level := sorted[0].Level
-	for _, m := range sorted {
-		if score >= m.Min {
-			level = m.Level
-		}
-	}
-	return level
+	return ""
 }
