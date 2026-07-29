@@ -19,6 +19,34 @@
 
 ## 记录
 
+### 2026-07-29 全量审计文档同步：对齐最新代码状态
+
+- 审计文档：
+  - 重写：`docs/audits/backend/migrations.md`
+  - 更新：`docs/audits/backend/deploy.md`
+  - 更新：`docs/audits/backend/evaluation-platform.md`
+  - 更新：`docs/audits/backend/lesson-platform.md`
+  - 更新：`docs/audits/backend/scene-platform.md`
+  - 更新：`docs/audits/backend/data-infra.md`
+  - 更新：`docs/audits/frontend/marketplace-app.md`
+  - 更新：`docs/audits/frontend/platform-shell.md`
+  - 更新：`docs/audits/frontend/infra.md`
+  - 更新：`docs/audits/frontend/edu-app.md`
+  - 更新：`docs/audits/frontend/landing-pages.md`
+  - 更新：`docs/audits/frontend/shared-components.md`
+  - 索引：`docs/audits/AUDIT_RECORDS.md`
+- 审查人：Agent
+- 结论：收敛
+- PASS 检查点数量：— / 总检查点数量：—
+- 备注：
+  - **迁移合并基准线**：001-090 已合并为单个 `001_baseline.up.sql`（2184 行，109 张表），仅保留 091 作为增量迁移。重写 `migrations.md` 反映新结构。
+  - **部署切换 Docker Compose**：`deploy.md` 全文从 PM2 切换为 Docker Compose 四容器部署（backend/postgres/redis/frontend）；修正 IMAGE_TAG 来源（git commit hash）、健康检查范围（backend+frontend）、环境变量列表（BACKEND_PORT/DB_USER 等）、补充 Nginx 重载逻辑。
+  - **商城源码已移除**：`marketplace-app.md` 标记为已废弃；`platform-shell.md` 与 `infra.md` 移除 marketplace 引用，更新为单应用结构。
+  - **补充缺失审计覆盖**：`edu-app.md` 新增教学资源库（/library）第 7 子平台、评测组件库（11 个）、知识图谱组件（4 个）；`landing-pages.md` 补充 lesson/landing/[id]、evaluation/landing/exams、evaluation/landing/banks/[id] 三个缺失页面。
+  - **补充缺失 handler 覆盖**：`evaluation-platform.md` 补充 `CertificationModelHandler`（证书权重）与 `JobAbilityResultHandler`/`CertGradeHandler` 完善；`lesson-platform.md` 补充 `CourseResourceHandler`；`scene-platform.md` 完善 `ScenarioGradeHandler`；`data-infra.md` 补充 `TemplateHandler` 审计。
+  - **handler 覆盖验证**：97 个 handler 文件（不含测试）中 96 个已覆盖，仅导出基础设施文件 `import_common.go` 未独立命名（其类型在 `handler-infra.md` 中审计）。
+  - 同步更新 `AGENTS.md`（pm2→docker compose、`pnpm exec tsc --noEmit`→`pnpm typecheck`）、`docs/components.md`（组件路径修正至 `apps/edu/components/shared/`）。
+
 ### 2026-07-27 审查文档同步：代码安全修复后的审计状态更新
 
 - 审计文档：

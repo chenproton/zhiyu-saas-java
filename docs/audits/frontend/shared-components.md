@@ -8,6 +8,8 @@
 - **useImportFlow**：统一的 Excel 导入流程 hook，封装文件选择、模板下载、预览与执行导入三步流程。
 - **LogTableShell**：泛型日志/列表表格组件，内置 loading/empty/pagination 状态。
 - **LandingFilterRow / LandingPagination**：落地页筛选与分页组件，支持 purple/emerald/blue 三色主题。
+- **评测专用组件**：11 个组件位于 `apps/edu/components/evaluation/`，覆盖题库/试卷/题目/评分/选题/等级映射全流程（详见 `edu-app.md`）。
+- **知识图谱组件**：4 个组件位于 `apps/edu/components/knowledge-graph/`，基于 D3 力导向图实现知识体系可视化（详见 `edu-app.md`）。
 
 ## 检查点
 

@@ -16,10 +16,12 @@
 - **学生画像**：领域得分、排名、毕业资格、出勤率、徽章。支持画像档案管理（`ListArchives`/`CreateArchive`），按学生维度归档历史画像。
 - **微证书**：模板管理 + 批量发放，唯一证书编号，删除级联。支持发放历史查询（`ListHistory`）。
 - **申诉管理**：CRUD + 处理，`pending → approved/rejected`。
-- **岗位能力评价**：`job_ability_results` 能力达成率计算。
+- **岗位能力评价**：`JobAbilityResultHandler` 管理 `job_ability_results` 表，实现能力达成率计算与结果查询，支持按岗位 ID + 学生 ID 维度存储评价数据。
+- **认证等级**：`CertGradeHandler` 提供认证等级查询（`GET /evaluation/landing/certifications/{id}/grades`），含能力项统计、排行榜数据聚合，供学生端落地页展示。
 - **学生端落地页**：`LandingHandler` 提供无需登录的考试列表（`GET /evaluation/landing/exams`）；`CertGradeHandler` 提供认证等级查询（`GET /evaluation/landing/certifications/{id}/grades`）。
 - **评价批次**：`EvaluationBatchHandler` 继承通用 `BatchHandler`，实现评测批次（`evaluation_batches`）的 CRUD。配置驱动租户隔离（`TenantScoped: true`）。
 - **考试成绩**：`ExamResultHandler` 管理考试结果提交与查询。提交答案后自动评分（单选/多选/判断自动评分，填空/问答需人工批改），使用 UPSERT 保证幂等性，支持重复提交覆盖。
+- **证书权重模型**：`CertificationModelHandler` 管理岗位能力认定模型的两级权重配置（能力点权重 + 关联任务权重）。`GetModel` 只读组装认定模型（绑定链 + 任务关联链自动带出，权重缺省时给均分默认值）；`PutWeights` 在事务内整删整插 `certification_weights` 表，无规则时自动创建草稿规则。支持前端仅配置权重、其余由系统自动计算的工作流。
 
 ## 检查点
 
@@ -40,13 +42,16 @@
 | 学生画像 | PASS | 默认画像生成；档案管理（归档/列表） |
 | 微证书 | PASS | 批量发放；唯一编号；级联删除；发放历史查询 |
 | 申诉管理 | PASS | CRUD + 处理 |
-| 岗位能力评价 | PASS | 能力达成率计算 |
+| 岗位能力评价 | PASS | `JobAbilityResultHandler` 管理能力达成率计算与结果查询 |
+| 认证等级 | PASS | `CertGradeHandler` 提供等级查询、统计与排行榜聚合 |
 | 学生端落地页 | PASS | 考试列表 + 认证等级查询；无需登录 |
 | 评价批次 | PASS | 继承通用 BatchHandler；配置驱动租户隔离 |
 | 考试成绩 | PASS | 自动评分；UPSERT 幂等性；支持重复提交覆盖 |
+| 证书权重模型 | PASS | GetModel 只读组装认定模型；PutWeights 事务内整删整插 certification_weights；无规则时自动创建草稿 |
 
 ## 风险与约束
 
 - **申诉 remark 已解析但未持久化**：`appeal_handler.go` 的 `Process` 接口解析了 `remark` 字段，但实际 SQL UPDATE 仅写入 `status`，`remark` 被丢弃。`AppealRecord` 结构体也不包含 `remark` 字段。—— **低风险，按需修复。**
 - **毕业选题无竞争保护**：`ApplyTopic` 仅递增 `applied_count`，无事务级容量检查，并发申请可能超出容量。—— **核心业务防重复，建议加乐观锁。**
 - **现场问答题删除无引用检查**：`RandomDrawQuestionHandler.Delete` 直接删除记录，未检查该题是否被场景任务评价规则或混合课课后模块引用。删除后可能导致已有配置中的题目 ID 失效。—— **低危，当前按简单优先原则接受；若后续出现配置失效反馈，可补充引用检查或软删除。**
+- **证书权重无并发保护**：`PutWeights` 使用整删整插策略（DELETE + INSERT），无悲观锁或乐观锁保护并发写入。并发提交可能导致后者覆盖前者的数据。—— **低危，权重配置为低频操作，实际并发冲突概率极低；若未来出现数据竞争反馈，可对 rule_id 加行级锁。**

@@ -12,7 +12,11 @@
   - `apps/edu/app/job/student/page.tsx`：复用 `JobHome` 组件，岗位列表视图。
   - `apps/edu/app/job/student/[id]/page.tsx`：岗位详情页，展示 7 个 tab（概况/职责/证书/能力模型/胜任标准/知识图谱/实践场景），调用 `positionApi.get`、`scenarioApi.list`、`taskApi.list` 等。
   - `apps/edu/app/evaluation/landing/page.tsx`：测评资源平台，展示题库列表和试卷列表，使用 `LandingFilterRow`、`LandingPagination` 共享组件。
+  - `apps/edu/app/evaluation/landing/exams/page.tsx`：公开考试列表页，展示所有已发布考试场次。
+  - `apps/edu/app/evaluation/landing/exams/[id]/page.tsx`：考试答题页，承载题库/试卷/随堂测的答题与提交。
+  - `apps/edu/app/evaluation/landing/banks/[id]/page.tsx`：题库详情公开展示页。
   - `apps/edu/app/lesson/landing/page.tsx`：课程教学平台，展示体系课和颗粒课列表，使用 `LandingFilterRow`、`LandingPagination` 共享组件。
+  - `apps/edu/app/lesson/landing/[id]/page.tsx`：课程详情展示页。
   - `apps/edu/app/library/landing/page.tsx`：教学资产共享中心，展示教学资源库，含类型/时间/组织/专业多维度筛选。
 - **共享组件复用**：`LandingFilterRow`（筛选条件行）、`LandingPagination`（分页控制）、`PlatformFooter`（统一页脚）、`JobHome`（岗位/场景列表共用）、`PositionHeader`/`StatsBox`/`OverviewTab` 等岗位详情子组件。
 

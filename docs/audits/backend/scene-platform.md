@@ -7,7 +7,7 @@
 - **评价配置**：三级结构——评价配置（按方法分组）→ 评价点（含满分、等级映射）→ 评审步骤（含主体类型、权重）。使用统一 upsert 模式。
 - **任务资源绑定**：`task_resources` + `task_resource_bindings` 多对多关联。
 - **权重配置**：`scenario_weight_configs` 按任务设置场景权重。
-- **等级映射**：`scenario_grade_mappings` 定义 S/A/B/C 等级。
+- **等级映射**：`ScenarioGradeHandler` 管理 `scenario_grade_mappings` 表，定义 S/A/B/C 等级及其分数区间映射。
 - **场景归档**：`scene_archives` 存储版本快照（JSONB）。
 - **评价方法配置与量规模板**：`TaskEvaluationHandler` 提供任务评价方法的统一 upsert，自动为 paper/question_bank/quiz 方法生成临时考试与场次；同时提供 `rubric_templates` 的完整 CRUD，供评价点引用。
 - **批量导入/导出与克隆**：
@@ -28,7 +28,7 @@
 | 资源绑定 | PASS | 支持绑定/解绑 |
 | 知识/能力绑定 | PASS | `TaskKnowledgeAbilityHandler` 支持绑定/解绑 |
 | 权重配置 | PASS | 按任务设置场景权重 |
-| 等级映射 | PASS | S/A/B/C 等级定义 |
+| 等级映射 | PASS | `ScenarioGradeHandler` 管理 S/A/B/C 等级定义及分数区间 |
 | 量规模板 CRUD | PASS | `TaskEvaluationHandler` 提供 rubric templates 完整 CRUD |
 | 评价方法统一 upsert | PASS | 任务评价方法软删除 + 重写；自动确保考试与场次 |
 | Excel 批量导入 | PASS | `ScenarioImportHandler` 解析场景与任务 sheet |
