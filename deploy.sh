@@ -79,9 +79,9 @@ fi
 # ==================== 工作区洁净校验 ====================
 if [[ -n "$BRANCH_NAME" ]]; then
   echo "==> 校验本地工作区..."
-  if [[ -n "$(git -C "$PROJECT_ROOT" status --porcelain 2>/dev/null)" ]]; then
+  if [[ -n "$(git -C "$ORIGINAL_PROJECT_ROOT" status --porcelain 2>/dev/null)" ]]; then
     echo "错误：本地工作区不干净，请先提交或清理" >&2
-    git -C "$PROJECT_ROOT" status --short
+    git -C "$ORIGINAL_PROJECT_ROOT" status --short
     exit 1
   fi
 fi
