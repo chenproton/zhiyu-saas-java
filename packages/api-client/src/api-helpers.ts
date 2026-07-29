@@ -269,6 +269,10 @@ export async function portalRequest<T>(path: string, options: RequestInit = {}):
   return requestWithPlatform<T>("portal", path, options)
 }
 
+export async function saasRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  return requestWithPlatform<T>("saas", path, options)
+}
+
 async function requestWithPlatform<T>(platform: AuthPlatform, path: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${path}`
   const token = getToken(platform)

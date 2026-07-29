@@ -49,7 +49,7 @@ import { platformModuleDefs } from "@/lib/navigation-config"
 import { useToast } from "@zhiyu/ui"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { TableRowActions } from "@/components/shared/table-row-actions"
-import { getToken, setToken, removeToken, request, type ListResponse } from "@zhiyu/api-client"
+import { getToken, setToken, removeToken, saasRequest, type ListResponse } from "@zhiyu/api-client"
 
 const TENANTS_API = "/admin/tenants"
 const LOGIN_URL = "/api/v1/auth/saas/login"
@@ -84,9 +84,9 @@ interface TenantAdmin {
   lastLoginAt?: string
 }
 
-// 复用 api-client 的 request（同源 token 管理 + 401 处理），仅补上租户管理 API 前缀
+// 复用 api-client 的 saasRequest（显式走 SaaS token），仅补上租户管理 API 前缀
 function adminFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  return request<T>(`${TENANTS_API}${path}`, options)
+  return saasRequest<T>(`${TENANTS_API}${path}`, options)
 }
 
 export default function SuperAdminPage() {
