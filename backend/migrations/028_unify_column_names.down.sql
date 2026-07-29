@@ -1,9 +1,0 @@
-ALTER TABLE banner_configs RENAME COLUMN is_enabled TO is_active;
-ALTER TABLE learn_roads RENAME COLUMN is_enabled TO is_active;
-ALTER TABLE student_ability_archives RENAME COLUMN is_enabled TO is_visible;
-ALTER TABLE credit_conversion_rules RENAME COLUMN is_enabled TO is_visible;
-ALTER TABLE position_recommendations RENAME COLUMN is_enabled TO is_visible;
-ALTER TABLE micro_cert_templates RENAME COLUMN cover_image TO cover_url;
-ALTER TABLE question_banks RENAME COLUMN cover_image TO cover_url;
-ALTER TABLE exams RENAME COLUMN cover_image TO cover_url;
-ALTER TABLE resources RENAME COLUMN cover_image TO cover_url;

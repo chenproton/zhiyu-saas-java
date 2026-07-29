@@ -1,2 +1,0 @@
--- Revert is lossy: we cannot distinguish previously-merged 'resource' rows from original 'normal' rows.
--- This down migration only documents the limitation; no data change is performed.

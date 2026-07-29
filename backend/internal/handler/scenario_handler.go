@@ -102,8 +102,8 @@ func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cfg := listQueryConfig[domain.Scenario]{
-		Table: "scenarios s LEFT JOIN LATERAL (SELECT COALESCE(array_agg(i.name), '{}') AS names FROM industries i WHERE i.id::text = ANY(s.industry_ids)) ind ON true LEFT JOIN LATERAL (SELECT COALESCE(array_agg(m2.name), '{}') AS names FROM majors m2 WHERE m2.id = ANY(s.profession_ids)) prof ON true LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM view_logs WHERE target_type = 'scenario' AND target_id = s.id) vlc ON true LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM scenario_tasks t WHERE t.scenario_id = s.id) tcnt ON true",
-		SelectColumns: `s.id, s.name, s.code, s.cover_image, s.career_position_id, s.industry_ids, COALESCE(ind.names, '{}') AS industry_names, s.profession_ids, COALESCE(prof.names, '{}') AS profession_names, s.batch_id, s.difficulty, s.version, s.status, s.background, s.delivery_goal, s.creator_id, s.co_builder_ids, s.tenant_id, s.created_at, s.updated_at, s.publish_time, COALESCE(vlc.cnt, 0) AS view_count, COALESCE(tcnt.cnt, 0) AS task_count`,
+		Table: "scenarios s LEFT JOIN LATERAL (SELECT COALESCE(array_agg(i.name), '{}') AS names FROM industries i WHERE i.id::text = ANY(s.industry_ids)) ind ON true LEFT JOIN LATERAL (SELECT COALESCE(array_agg(m2.name), '{}') AS names FROM majors m2 WHERE m2.id = ANY(s.profession_ids)) prof ON true LEFT JOIN view_counters vc ON vc.target_type = 'scenario' AND vc.target_id = s.id LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM scenario_tasks t WHERE t.scenario_id = s.id) tcnt ON true",
+		SelectColumns: `s.id, s.name, s.code, s.cover_image, s.career_position_id, s.industry_ids, COALESCE(ind.names, '{}') AS industry_names, s.profession_ids, COALESCE(prof.names, '{}') AS profession_names, s.batch_id, s.difficulty, s.version, s.status, s.background, s.delivery_goal, s.creator_id, s.co_builder_ids, s.tenant_id, s.created_at, s.updated_at, s.publish_time, COALESCE(vc.cnt, 0) AS view_count, COALESCE(tcnt.cnt, 0) AS task_count`,
 		TenantScoped:  true,
 		TenantColumn:  "s.tenant_id",
 		SearchColumns: []string{"s.name", "s.code"},
@@ -367,8 +367,9 @@ func (h *ScenarioHandler) fetchScenario(ctx context.Context, id string) (*domain
 			s.profession_ids, COALESCE((SELECT array_agg(m.name) FROM majors m WHERE m.id = ANY(s.profession_ids)), '{}') AS profession_names,
 			s.batch_id, s.difficulty, s.version, s.status, s.background,
 			s.delivery_goal, s.creator_id, s.co_builder_ids, s.tenant_id, s.created_at, s.updated_at, s.publish_time,
-			(SELECT COUNT(*) FROM view_logs WHERE target_type = 'scenario' AND target_id = s.id) AS view_count
+			COALESCE(vc.cnt, 0) AS view_count
 		FROM scenarios s
+		LEFT JOIN view_counters vc ON vc.target_type = 'scenario' AND vc.target_id = s.id
 		WHERE s.id = $1
 	`, id).Scan(
 		&s.ID, &s.Name, &s.Code, &s.CoverImage, &s.CareerPositionID, &s.IndustryIDs, &s.IndustryNames,

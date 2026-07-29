@@ -1,3 +1,0 @@
-ALTER TABLE courses ADD COLUMN IF NOT EXISTS batch_group VARCHAR(128);
-ALTER TABLE courses DROP COLUMN IF EXISTS batch_id;
-DROP INDEX IF EXISTS idx_courses_batch_id;

@@ -1,34 +1,44 @@
 package router
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
+	"github.com/zhiyu-saas/backend/internal/cache"
 	authmw "github.com/zhiyu-saas/backend/internal/middleware"
 )
 
-func RegisterAPIRoutes(r chi.Router, jwtSecret string, db *pgxpool.Pool, h *Handlers) {
+func RegisterAPIRoutes(r chi.Router, jwtSecret string, db *pgxpool.Pool, h *Handlers, redisClient *redis.Client, oplogBuffer *authmw.OpLogBuffer) {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(middleware.Timeout(30 * time.Second))
 
-		RegisterPublicRoutes(r, h)
-		RegisterAuthenticatedRoutes(r, jwtSecret, db, h)
+		RegisterPublicRoutes(r, h, redisClient)
+		RegisterAuthenticatedRoutes(r, jwtSecret, db, h, redisClient, oplogBuffer)
 	})
 }
 
-func RegisterPublicRoutes(r chi.Router, h *Handlers) {
-	r.Post("/auth/login", h.authHandler.Login)
-	r.Post("/auth/saas/login", h.authHandler.SaasLogin)
-	r.Post("/auth/portal/login", h.authHandler.PortalLogin)
+func RegisterPublicRoutes(r chi.Router, h *Handlers, redisClient *redis.Client) {
+	loginLimiter := cache.RateLimit(redisClient, 30, time.Minute)
+	r.With(loginLimiter).Post("/auth/login", h.authHandler.Login)
+	r.With(loginLimiter).Post("/auth/saas/login", h.authHandler.SaasLogin)
+	r.With(loginLimiter).Post("/auth/portal/login", h.authHandler.PortalLogin)
 	r.Post("/auth/select-tenant", h.authHandler.SelectTenant)
 	r.Post("/auth/debug/token", h.authHandler.DebugToken)
-	r.Get("/platform-links", h.platformLinkHandler.List)
-	r.Get("/app-modules", h.appModuleHandler.List)
+	r.Group(func(r chi.Router) {
+		r.Use(cache.Cached(redisClient, 10*time.Minute, cache.StaticKey(cache.KeyPlatformLinks)))
+		r.Get("/platform-links", h.platformLinkHandler.List)
+	})
+	r.Group(func(r chi.Router) {
+		r.Use(cache.Cached(redisClient, 10*time.Minute, cache.StaticKey(cache.KeyAppModules)))
+		r.Get("/app-modules", h.appModuleHandler.List)
+	})
 }
 
-func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Pool, h *Handlers) {
+func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Pool, h *Handlers, redisClient *redis.Client, oplogBuffer *authmw.OpLogBuffer) {
 	auth := authmw.JWT(jwtSecret)
 	platformAdmin := authmw.RequireRole("platform_admin")
 	systemAdmin := authmw.RequireSystemPermission()
@@ -36,13 +46,18 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 	businessUser := authmw.RequireRole("teacher", "school_admin", "enterprise_mentor", "platform_admin")
 	jobViewer := authmw.RequireRole("teacher", "student", "school_admin", "enterprise_mentor", "platform_admin")
 
+	cachedLandingExams := cache.Cached(redisClient, 2*time.Minute, cache.LandingExamsKey())
+	cachedDropdown := cache.Cached(redisClient, 5*time.Minute, cache.DropdownKey())
+	cachedPublicPositions := cache.Cached(redisClient, 2*time.Minute, cache.PublicPositionsKey())
+	cachedDashboard := cache.Cached(redisClient, 1*time.Minute, cache.DashboardKey())
+
 	r.Group(func(r chi.Router) {
 		r.Use(auth)
-		r.Use(authmw.OperationLog(db))
+		r.Use(authmw.OperationLog(db, oplogBuffer))
 
 		registerAuthRoutes(r, h)
 		registerImportExportRoutes(r, h)
-		registerLandingRoutes(r, h)
+		registerLandingRoutes(r, h, cachedLandingExams)
 
 		r.Group(func(r chi.Router) {
 			r.Use(platformAdmin)
@@ -51,13 +66,13 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 
 		r.Group(func(r chi.Router) {
 			r.Use(jobViewer)
-			r.Get("/job/public/positions", h.positionHandler.PublicList)
+			r.With(cachedPublicPositions).Get("/job/public/positions", h.positionHandler.PublicList)
 			r.Get("/job/public/positions/{id}", h.positionHandler.PublicGet)
 		})
 
 		r.Group(func(r chi.Router) {
 			r.Use(portalWorkspace)
-			r.Get("/portal/workspace/dashboard", h.portalHandler.WorkspaceDashboard)
+			r.With(cachedDashboard).Get("/portal/workspace/dashboard", h.portalHandler.WorkspaceDashboard)
 		})
 
 		// 学生画像查询对全部业务角色开放（含学生本人），generate/archives 仍限业务用户
@@ -69,7 +84,7 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 
 		r.Group(func(r chi.Router) {
 			r.Use(systemAdmin)
-			registerPortalRoutes(r, h)
+			registerPortalRoutes(r, h, cachedDropdown)
 		})
 
 		registerWorkflowRoutes(r, h)
@@ -176,12 +191,12 @@ func registerImportExportRoutes(r chi.Router, h *Handlers) {
 	r.Post("/export/teachers/excel", h.resourceExportHandler.ExportTeachers)
 }
 
-func registerLandingRoutes(r chi.Router, h *Handlers) {
-	r.Get("/evaluation/landing/exams", h.landingHandler.ListExams)
+func registerLandingRoutes(r chi.Router, h *Handlers, cachedLandingExams func(http.Handler) http.Handler) {
+	r.With(cachedLandingExams).Get("/evaluation/landing/exams", h.landingHandler.ListExams)
 	r.Get("/evaluation/landing/certifications/{id}/grades", h.certGradeHandler.ListGrades)
 }
 
-func registerPortalRoutes(r chi.Router, h *Handlers) {
+func registerPortalRoutes(r chi.Router, h *Handlers, cachedDropdown func(http.Handler) http.Handler) {
 	r.Get("/tenants", h.tenantHandler.List)
 	r.Get("/tenants/{id}", h.tenantHandler.Get)
 	r.Put("/tenants/{id}", h.tenantHandler.Update)
@@ -200,7 +215,7 @@ func registerPortalRoutes(r chi.Router, h *Handlers) {
 	r.Put("/organizations/{id}", h.orgHandler.Update)
 	r.Delete("/organizations/{id}", h.orgHandler.Delete)
 
-	r.Get("/org-types", h.orgTypeHandler.List)
+	r.With(cachedDropdown).Get("/org-types", h.orgTypeHandler.List)
 	r.Get("/org-types/{id}", h.orgTypeHandler.Get)
 	r.Post("/org-types", h.orgTypeHandler.Create)
 	r.Put("/org-types/{id}", h.orgTypeHandler.Update)
@@ -220,7 +235,7 @@ func registerPortalRoutes(r chi.Router, h *Handlers) {
 	r.Post("/users/batch-org-node", h.userManagementHandler.BatchUpdateOrgNode)
 
 	r.Route("/staff-titles", func(r chi.Router) {
-		r.Get("/", h.staffTitleHandler.List)
+		r.With(cachedDropdown).Get("/", h.staffTitleHandler.List)
 		r.Post("/", h.staffTitleHandler.Create)
 		r.Get("/{id}", h.staffTitleHandler.Get)
 		r.Put("/{id}", h.staffTitleHandler.Update)
@@ -239,26 +254,26 @@ func registerPortalRoutes(r chi.Router, h *Handlers) {
 		r.Delete("/{id}", h.userRelationHandler.Delete)
 	})
 
-	r.Get("/roles", h.roleHandler.List)
+	r.With(cachedDropdown).Get("/roles", h.roleHandler.List)
 	r.Get("/roles/{id}", h.roleHandler.Get)
 	r.Post("/roles", h.roleHandler.Create)
 	r.Put("/roles/{id}", h.roleHandler.Update)
 	r.Delete("/roles/{id}", h.roleHandler.Delete)
 	r.Post("/roles/{id}/assign", h.roleHandler.Assign)
 
-	r.Get("/majors", h.majorHandler.List)
+	r.With(cachedDropdown).Get("/majors", h.majorHandler.List)
 	r.Get("/majors/{id}", h.majorHandler.Get)
 	r.Post("/majors", h.majorHandler.Create)
 	r.Put("/majors/{id}", h.majorHandler.Update)
 	r.Delete("/majors/{id}", h.majorHandler.Delete)
 
-	r.Get("/industries", h.industryHandler.List)
+	r.With(cachedDropdown).Get("/industries", h.industryHandler.List)
 	r.Get("/industries/{id}", h.industryHandler.Get)
 	r.Post("/industries", h.industryHandler.Create)
 	r.Put("/industries/{id}", h.industryHandler.Update)
 	r.Delete("/industries/{id}", h.industryHandler.Delete)
 
-	r.Get("/resource-codes", h.resourceCodeHandler.List)
+	r.With(cachedDropdown).Get("/resource-codes", h.resourceCodeHandler.List)
 	r.Get("/resource-codes/{id}", h.resourceCodeHandler.Get)
 	r.Post("/resource-codes", h.resourceCodeHandler.Create)
 	r.Put("/resource-codes/{id}", h.resourceCodeHandler.Update)

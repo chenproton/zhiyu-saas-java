@@ -105,21 +105,31 @@ func migrateUp(conn *pgx.Conn, dir string) error {
 			return fmt.Errorf("read migration %s: %w", name, err)
 		}
 
-		tx, err := conn.Begin(ctx())
-		if err != nil {
-			return fmt.Errorf("begin migration %s: %w", name, err)
-		}
+		sqlStr := string(sql)
 
-		if _, err := tx.Exec(ctx(), string(sql)); err != nil {
-			tx.Rollback(ctx())
-			return fmt.Errorf("execute migration %s: %w", name, err)
-		}
-		if _, err := tx.Exec(ctx(), `INSERT INTO schema_migrations (version) VALUES ($1)`, version); err != nil {
-			tx.Rollback(ctx())
-			return fmt.Errorf("record migration %s: %w", name, err)
-		}
-		if err := tx.Commit(ctx()); err != nil {
-			return fmt.Errorf("commit migration %s: %w", name, err)
+		if isMultiStatement(sqlStr) {
+			if err := execMultiSQL(conn, sqlStr); err != nil {
+				return fmt.Errorf("execute migration %s: %w", name, err)
+			}
+			if _, err := conn.Exec(ctx(), `INSERT INTO schema_migrations (version) VALUES ($1)`, version); err != nil {
+				return fmt.Errorf("record migration %s: %w", name, err)
+			}
+		} else {
+			tx, err := conn.Begin(ctx())
+			if err != nil {
+				return fmt.Errorf("begin migration %s: %w", name, err)
+			}
+			if _, err := tx.Exec(ctx(), sqlStr); err != nil {
+				tx.Rollback(ctx())
+				return fmt.Errorf("execute migration %s: %w", name, err)
+			}
+			if _, err := tx.Exec(ctx(), `INSERT INTO schema_migrations (version) VALUES ($1)`, version); err != nil {
+				tx.Rollback(ctx())
+				return fmt.Errorf("record migration %s: %w", name, err)
+			}
+			if err := tx.Commit(ctx()); err != nil {
+				return fmt.Errorf("commit migration %s: %w", name, err)
+			}
 		}
 		fmt.Println("applied:", name)
 	}
@@ -155,21 +165,31 @@ func migrateDown(conn *pgx.Conn, dir string) error {
 			return fmt.Errorf("read migration %s: %w", name, err)
 		}
 
-		tx, err := conn.Begin(ctx())
-		if err != nil {
-			return fmt.Errorf("begin rollback %s: %w", name, err)
-		}
+		sqlStr := string(sql)
 
-		if _, err := tx.Exec(ctx(), string(sql)); err != nil {
-			tx.Rollback(ctx())
-			return fmt.Errorf("execute migration %s: %w", name, err)
-		}
-		if _, err := tx.Exec(ctx(), `DELETE FROM schema_migrations WHERE version = $1`, version); err != nil {
-			tx.Rollback(ctx())
-			return fmt.Errorf("record migration %s: %w", name, err)
-		}
-		if err := tx.Commit(ctx()); err != nil {
-			return fmt.Errorf("commit rollback %s: %w", name, err)
+		if isMultiStatement(sqlStr) {
+			if err := execMultiSQL(conn, sqlStr); err != nil {
+				return fmt.Errorf("execute rollback %s: %w", name, err)
+			}
+			if _, err := conn.Exec(ctx(), `DELETE FROM schema_migrations WHERE version = $1`, version); err != nil {
+				return fmt.Errorf("record rollback %s: %w", name, err)
+			}
+		} else {
+			tx, err := conn.Begin(ctx())
+			if err != nil {
+				return fmt.Errorf("begin rollback %s: %w", name, err)
+			}
+			if _, err := tx.Exec(ctx(), sqlStr); err != nil {
+				tx.Rollback(ctx())
+				return fmt.Errorf("execute rollback %s: %w", name, err)
+			}
+			if _, err := tx.Exec(ctx(), `DELETE FROM schema_migrations WHERE version = $1`, version); err != nil {
+				tx.Rollback(ctx())
+				return fmt.Errorf("record rollback %s: %w", name, err)
+			}
+			if err := tx.Commit(ctx()); err != nil {
+				return fmt.Errorf("commit rollback %s: %w", name, err)
+			}
 		}
 		fmt.Println("rolled back:", name)
 	}
@@ -178,4 +198,36 @@ func migrateDown(conn *pgx.Conn, dir string) error {
 
 func ctx() context.Context {
 	return context.Background()
+}
+
+func isMultiStatement(sql string) bool {
+	return strings.Count(sql, ";\n") > 1
+}
+
+func execMultiSQL(conn *pgx.Conn, sql string) error {
+	sql = strings.TrimSpace(sql)
+	if sql == "" {
+		return nil
+	}
+	if !strings.HasSuffix(sql, ";") {
+		sql += ";"
+	}
+	stmts := strings.Split(sql, ";\n")
+	for j, stmt := range stmts {
+		stmt = strings.TrimSpace(stmt)
+		if stmt == "" || strings.HasPrefix(stmt, "--") {
+			continue
+		}
+		if !strings.HasSuffix(stmt, ";") {
+			stmt += ";"
+		}
+		if _, err := conn.Exec(ctx(), stmt); err != nil {
+			preview := stmt
+			if len(preview) > 120 {
+				preview = preview[:120]
+			}
+			return fmt.Errorf("statement %d: %w\n  sql: %s", j, err, preview)
+		}
+	}
+	return nil
 }
