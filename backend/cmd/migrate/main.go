@@ -110,9 +110,15 @@ func migrateUp(conn *pgx.Conn, dir string) error {
 			return fmt.Errorf("begin migration %s: %w", name, err)
 		}
 
-		if err := execMultiSQL(tx, string(sql)); err != nil {
-			tx.Rollback(ctx())
-			return fmt.Errorf("execute migration %s: %w", name, err)
+		if isMultiStatement(sql) {
+			if err := execMultiSQL(conn, sql); err != nil {
+				return fmt.Errorf("execute migration %s: %w", name, err)
+			}
+		} else {
+			if _, err := tx.Exec(ctx(), sql); err != nil {
+				tx.Rollback(ctx())
+				return fmt.Errorf("execute migration %s: %w", name, err)
+			}
 		}
 		if _, err := tx.Exec(ctx(), `INSERT INTO schema_migrations (version) VALUES ($1)`, version); err != nil {
 			tx.Rollback(ctx())
@@ -180,7 +186,11 @@ func ctx() context.Context {
 	return context.Background()
 }
 
-func execMultiSQL(tx pgx.Tx, sql string) error {
+func isMultiStatement(sql string) bool {
+	return strings.Count(sql, ";\n") > 1
+}
+
+func execMultiSQL(conn *pgx.Conn, sql string) error {
 	sql = strings.TrimSpace(sql)
 	if sql == "" {
 		return nil
@@ -189,21 +199,21 @@ func execMultiSQL(tx pgx.Tx, sql string) error {
 		sql += ";"
 	}
 	stmts := strings.Split(sql, ";\n")
-		for j, stmt := range stmts {
-			stmt = strings.TrimSpace(stmt)
-			if stmt == "" || strings.HasPrefix(stmt, "--") {
-				continue
-			}
-			if !strings.HasSuffix(stmt, ";") {
-				stmt += ";"
-			}
-			if _, err := tx.Exec(ctx(), stmt); err != nil {
-				preview := stmt
-				if len(preview) > 120 {
-					preview = preview[:120]
-				}
-				return fmt.Errorf("statement %d: %w\n  sql: %s", j, err, preview)
-			}
+	for j, stmt := range stmts {
+		stmt = strings.TrimSpace(stmt)
+		if stmt == "" || strings.HasPrefix(stmt, "--") {
+			continue
 		}
+		if !strings.HasSuffix(stmt, ";") {
+			stmt += ";"
+		}
+		if _, err := conn.Exec(ctx(), stmt); err != nil {
+			preview := stmt
+			if len(preview) > 120 {
+				preview = preview[:120]
+			}
+			return fmt.Errorf("statement %d: %w\n  sql: %s", j, err, preview)
+		}
+	}
 	return nil
 }
