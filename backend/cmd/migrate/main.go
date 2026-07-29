@@ -105,27 +105,31 @@ func migrateUp(conn *pgx.Conn, dir string) error {
 			return fmt.Errorf("read migration %s: %w", name, err)
 		}
 
-		tx, err := conn.Begin(ctx())
-		if err != nil {
-			return fmt.Errorf("begin migration %s: %w", name, err)
-		}
+		sqlStr := string(sql)
 
-		if isMultiStatement(sql) {
-			if err := execMultiSQL(conn, sql); err != nil {
+		if isMultiStatement(sqlStr) {
+			if err := execMultiSQL(conn, sqlStr); err != nil {
 				return fmt.Errorf("execute migration %s: %w", name, err)
 			}
+			if _, err := conn.Exec(ctx(), `INSERT INTO schema_migrations (version) VALUES ($1)`, version); err != nil {
+				return fmt.Errorf("record migration %s: %w", name, err)
+			}
 		} else {
-			if _, err := tx.Exec(ctx(), sql); err != nil {
+			tx, err := conn.Begin(ctx())
+			if err != nil {
+				return fmt.Errorf("begin migration %s: %w", name, err)
+			}
+			if _, err := tx.Exec(ctx(), sqlStr); err != nil {
 				tx.Rollback(ctx())
 				return fmt.Errorf("execute migration %s: %w", name, err)
 			}
-		}
-		if _, err := tx.Exec(ctx(), `INSERT INTO schema_migrations (version) VALUES ($1)`, version); err != nil {
-			tx.Rollback(ctx())
-			return fmt.Errorf("record migration %s: %w", name, err)
-		}
-		if err := tx.Commit(ctx()); err != nil {
-			return fmt.Errorf("commit migration %s: %w", name, err)
+			if _, err := tx.Exec(ctx(), `INSERT INTO schema_migrations (version) VALUES ($1)`, version); err != nil {
+				tx.Rollback(ctx())
+				return fmt.Errorf("record migration %s: %w", name, err)
+			}
+			if err := tx.Commit(ctx()); err != nil {
+				return fmt.Errorf("commit migration %s: %w", name, err)
+			}
 		}
 		fmt.Println("applied:", name)
 	}
@@ -161,21 +165,31 @@ func migrateDown(conn *pgx.Conn, dir string) error {
 			return fmt.Errorf("read migration %s: %w", name, err)
 		}
 
-		tx, err := conn.Begin(ctx())
-		if err != nil {
-			return fmt.Errorf("begin rollback %s: %w", name, err)
-		}
+		sqlStr := string(sql)
 
-		if err := execMultiSQL(tx, string(sql)); err != nil {
-			tx.Rollback(ctx())
-			return fmt.Errorf("execute migration %s: %w", name, err)
-		}
-		if _, err := tx.Exec(ctx(), `DELETE FROM schema_migrations WHERE version = $1`, version); err != nil {
-			tx.Rollback(ctx())
-			return fmt.Errorf("record migration %s: %w", name, err)
-		}
-		if err := tx.Commit(ctx()); err != nil {
-			return fmt.Errorf("commit rollback %s: %w", name, err)
+		if isMultiStatement(sqlStr) {
+			if err := execMultiSQL(conn, sqlStr); err != nil {
+				return fmt.Errorf("execute rollback %s: %w", name, err)
+			}
+			if _, err := conn.Exec(ctx(), `DELETE FROM schema_migrations WHERE version = $1`, version); err != nil {
+				return fmt.Errorf("record rollback %s: %w", name, err)
+			}
+		} else {
+			tx, err := conn.Begin(ctx())
+			if err != nil {
+				return fmt.Errorf("begin rollback %s: %w", name, err)
+			}
+			if _, err := tx.Exec(ctx(), sqlStr); err != nil {
+				tx.Rollback(ctx())
+				return fmt.Errorf("execute rollback %s: %w", name, err)
+			}
+			if _, err := tx.Exec(ctx(), `DELETE FROM schema_migrations WHERE version = $1`, version); err != nil {
+				tx.Rollback(ctx())
+				return fmt.Errorf("record rollback %s: %w", name, err)
+			}
+			if err := tx.Commit(ctx()); err != nil {
+				return fmt.Errorf("commit rollback %s: %w", name, err)
+			}
 		}
 		fmt.Println("rolled back:", name)
 	}

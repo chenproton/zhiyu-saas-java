@@ -15,40 +15,26 @@ services:
       POSTGRES_DB: ${DB_NAME:-zhiyu-saas}
     command:
       - "postgres"
-      - "-c"
-      - "max_connections=200"
-      - "-c"
-      - "shared_buffers=512MB"
-      - "-c"
-      - "effective_cache_size=1536MB"
-      - "-c"
-      - "work_mem=4MB"
-      - "-c"
-      - "maintenance_work_mem=128MB"
-      - "-c"
-      - "random_page_cost=1.1"
-      - "-c"
-      - "log_min_duration_statement=1000"
+      - "-c" "max_connections=200"
+      - "-c" "shared_buffers=512MB"
+      - "-c" "effective_cache_size=1536MB"
+      - "-c" "work_mem=4MB"
+      - "-c" "maintenance_work_mem=128MB"
+      - "-c" "random_page_cost=1.1"
+      - "-c" "log_min_duration_statement=1000"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./migrations:/migrations:ro
     ports:
       - "127.0.0.1:5433:5432"
     healthcheck:
-      test:
-        - CMD-SHELL
-        - "pg_isready -U ${DB_USER:-zhiyu_saas} -d ${DB_NAME:-zhiyu-saas}"
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-zhiyu_saas} -d ${DB_NAME:-zhiyu-saas}"]
       interval: 5s
       timeout: 5s
       retries: 5
     deploy:
       resources:
-        limits:
-          cpus: "1.0"
-          memory: 1G
-        reservations:
-          cpus: "0.25"
-          memory: 256M
+        limits: { cpus: "1.0", memory: 1G }
+        reservations: { cpus: "0.25", memory: 256M }
     networks:
       - zhiyu
 
@@ -63,30 +49,20 @@ services:
         max-file: "3"
     command:
       - "redis-server"
-      - "--maxmemory"
-      - "256mb"
-      - "--maxmemory-policy"
-      - "allkeys-lru"
-      - "--save"
-      - "900"
-      - "1"
+      - "--maxmemory" "256mb"
+      - "--maxmemory-policy" "allkeys-lru"
+      - "--save" "900" "1"
     volumes:
       - redis_data:/data
     healthcheck:
-      test:
-        - CMD-SHELL
-        - "redis-cli ping | grep PONG"
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
       interval: 5s
       timeout: 5s
       retries: 5
     deploy:
       resources:
-        limits:
-          cpus: "0.5"
-          memory: 384M
-        reservations:
-          cpus: "0.1"
-          memory: 64M
+        limits: { cpus: "0.5", memory: 384M }
+        reservations: { cpus: "0.1", memory: 64M }
     networks:
       - zhiyu
 
@@ -110,33 +86,54 @@ services:
     volumes:
       - uploads_data:/opt/zhiyu-saas/uploads
     healthcheck:
-      test:
-        - CMD-SHELL
-        - "wget -qO- http://localhost:8080/health || exit 1"
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
     deploy:
       resources:
-        limits:
-          cpus: "1.0"
-          memory: 512M
-        reservations:
-          cpus: "0.25"
-          memory: 128M
+        limits: { cpus: "1.0", memory: 512M }
+        reservations: { cpus: "0.25", memory: 128M }
     read_only: true
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    tmpfs:
-      - /tmp:noexec,nosuid,size=100m
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    tmpfs: ["/tmp:noexec,nosuid,size=100m"]
+    networks:
+      - zhiyu
+
+  frontend:
+    image: zhiyu-edu:${IMAGE_TAG:-latest}
+    container_name: zhiyu-edu
+    restart: unless-stopped
+    ports:
+      - "${EDU_PORT:-3020}:3020"
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+    environment:
+      NODE_ENV: production
+      PORT: "3020"
+      HOSTNAME: 0.0.0.0
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3020/portal/login || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 1G }
+        reservations: { cpus: "0.25", memory: 256M }
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    tmpfs: ["/tmp:noexec,nosuid,size=100m"]
     networks:
       - zhiyu
 
