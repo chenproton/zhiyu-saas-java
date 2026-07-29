@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Search, Briefcase, CheckCircle2, FileEdit, AlertCircle, Settings2, Eye } from "lucide-react"
+import { Search, Briefcase, CheckCircle2, FileEdit, AlertCircle, Settings2, Eye, Upload, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -17,6 +17,7 @@ import { useToast } from "@zhiyu/ui"
 import { PageHeaderCard } from "@/components/shared/page-header-card"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { TableRowActions } from "@/components/shared/table-row-actions"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { certApi, positionApi } from "@/lib/api"
 import type { CareerPosition, CertificationRule } from "@/lib/types"
 
@@ -29,6 +30,8 @@ export default function JobAbilityPage() {
   const [pointCounts, setPointCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const [statusTarget, setStatusTarget] = useState<CertificationRule | null>(null)
+  const [statusSaving, setStatusSaving] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -83,6 +86,27 @@ export default function JobAbilityPage() {
         (position.code || "").toLowerCase().includes(keyword),
     )
   }, [positions, search])
+
+  // 发布/下线规则：汇聚计算只处理 published 状态的规则
+  const handleToggleStatus = async () => {
+    if (!statusTarget) return
+    const nextStatus = statusTarget.status === "published" ? "draft" : "published"
+    setStatusSaving(true)
+    try {
+      const updated = await certApi.updateRuleStatus(statusTarget.id, nextStatus)
+      setRules((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+      toast({ title: nextStatus === "published" ? "规则已发布" : "规则已下线" })
+    } catch (err) {
+      toast({
+        title: "操作失败",
+        description: err instanceof Error ? err.message : "更新规则状态失败",
+        variant: "destructive",
+      })
+    } finally {
+      setStatusSaving(false)
+      setStatusTarget(null)
+    }
+  }
 
   const stats = useMemo(() => {
     const ruleStatuses = positions.map((p) => ruleMap.get(p.id)?.status ?? "none")
@@ -232,6 +256,26 @@ export default function JobAbilityPage() {
                           <Eye className="mr-1 h-3 w-3" />
                           查看结果
                         </Button>
+                        {rule && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => setStatusTarget(rule)}
+                          >
+                            {rule.status === "published" ? (
+                              <>
+                                <Undo2 className="mr-1 h-3 w-3" />
+                                下线
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="mr-1 h-3 w-3" />
+                                发布
+                              </>
+                            )}
+                          </Button>
+                        )}
                       </TableRowActions>
                     </TableRow>
                   )
@@ -241,6 +285,21 @@ export default function JobAbilityPage() {
           </Table>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={statusTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setStatusTarget(null)
+        }}
+        title={statusTarget?.status === "published" ? "下线认证规则" : "发布认证规则"}
+        description={
+          statusTarget?.status === "published"
+            ? "下线后该岗位的认证规则不再参与能力汇聚计算，已生成的汇聚结果会保留。确认下线？"
+            : "发布后该岗位的认证规则将参与每日定时能力汇聚，也可在结果页手动触发汇聚。确认发布？"
+        }
+        confirmText={statusSaving ? "处理中..." : "确认"}
+        onConfirm={handleToggleStatus}
+      />
     </div>
   )
 }

@@ -168,6 +168,8 @@ export const certApi = {
     request<CertificationRule>("/evaluation/certifications", { method: "POST", body: JSON.stringify(req) }),
   updateRule: (id: string, req: { careerPositionId: string; ruleSource: string }) =>
     request<CertificationRule>(`/evaluation/certifications/${id}`, { method: "PUT", body: JSON.stringify(req) }),
+  updateRuleStatus: (id: string, status: "draft" | "published") =>
+    request<CertificationRule>(`/evaluation/certifications/${id}/status`, { method: "POST", body: JSON.stringify({ status }) }),
   deleteRule: (id: string) => request<{ id: string }>(`/evaluation/certifications/${id}`, { method: "DELETE" }),
   listItems: (ruleId: string) => request<ListResponse<CertificationAbilityItem>>(`/evaluation/certifications/${ruleId}/items`),
   upsertItem: (ruleId: string, req: Partial<CertificationAbilityItem>) =>

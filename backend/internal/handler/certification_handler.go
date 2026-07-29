@@ -179,6 +179,45 @@ func (h *CertificationHandler) CreateRule(w http.ResponseWriter, r *http.Request
 	respondJSON(w, http.StatusCreated, rule)
 }
 
+// UpdateRuleStatus POST /evaluation/certifications/{id}/status — 规则状态流转（发布/下线）。
+// 汇聚计算只加载 status='published' 的规则，草稿规则不参与汇聚。
+func (h *CertificationHandler) UpdateRuleStatus(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	if _, err := h.fetchTenantRule(r.Context(), id, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "认证规则不存在")
+		return
+	}
+
+	var req struct {
+		Status string `json:"status"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "无效请求体")
+		return
+	}
+	if req.Status != "draft" && req.Status != "published" {
+		respondError(w, http.StatusBadRequest, "状态仅支持 draft/published")
+		return
+	}
+
+	_, err := h.DB.Exec(r.Context(), `
+		UPDATE certification_rules SET status = $1, updated_at = NOW()
+		WHERE id = $2 AND tenant_id = $3
+	`, req.Status, id, tenantID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "更新规则状态失败")
+		return
+	}
+
+	rule, _ := h.fetchRule(r.Context(), id)
+	respondJSON(w, http.StatusOK, rule)
+}
+
 func (h *CertificationHandler) UpdateRule(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
@@ -243,7 +282,7 @@ func (h *CertificationHandler) ConfigItems(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	ruleID := chi.URLParam(r, "ruleId")
+	ruleID := chi.URLParam(r, "id")
 	if _, err := h.fetchRule(r.Context(), ruleID); err != nil {
 		respondError(w, http.StatusNotFound, "认证规则不存在")
 		return
@@ -309,7 +348,7 @@ func (h *CertificationHandler) ConfigPoints(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	itemID := chi.URLParam(r, "itemId")
+	itemID := chi.URLParam(r, "id")
 	if _, err := h.fetchItem(r.Context(), itemID); err != nil {
 		respondError(w, http.StatusNotFound, "认证项不存在")
 		return

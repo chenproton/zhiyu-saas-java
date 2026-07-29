@@ -51,6 +51,7 @@ func registerEvaluationRoutes(r chi.Router, h *Handlers) {
 	r.Get("/evaluation/certifications/{id}", h.certificationHandler.GetRule)
 	r.Post("/evaluation/certifications", h.certificationHandler.CreateRule)
 	r.Put("/evaluation/certifications/{id}", h.certificationHandler.UpdateRule)
+	r.Post("/evaluation/certifications/{id}/status", h.certificationHandler.UpdateRuleStatus)
 	r.Delete("/evaluation/certifications/{id}", h.certificationHandler.DeleteRule)
 	r.Get("/evaluation/certifications/{id}/items", h.certificationHandler.ConfigItems)
 	r.Post("/evaluation/certifications/{id}/items", h.certificationHandler.ConfigItems)
@@ -78,8 +79,6 @@ func registerEvaluationRoutes(r chi.Router, h *Handlers) {
 	r.Post("/evaluation/graduation/evaluations", h.graduationHandler.EvaluationsCRUD)
 	r.Get("/evaluation/graduation/query", h.graduationHandler.QueryResults)
 
-	r.Get("/evaluation/portraits", h.studentPortraitHandler.List)
-	r.Get("/evaluation/portraits/{id}", h.studentPortraitHandler.Get)
 	r.Post("/evaluation/portraits/generate", h.studentPortraitHandler.Generate)
 	r.Get("/evaluation/portraits/archives", h.studentPortraitHandler.ListArchives)
 	r.Post("/evaluation/portraits/archives", h.studentPortraitHandler.CreateArchive)

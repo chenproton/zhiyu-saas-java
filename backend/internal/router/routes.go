@@ -60,6 +60,13 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 			r.Get("/portal/workspace/dashboard", h.portalHandler.WorkspaceDashboard)
 		})
 
+		// 学生画像查询对全部业务角色开放（含学生本人），generate/archives 仍限业务用户
+		r.Group(func(r chi.Router) {
+			r.Use(jobViewer)
+			r.Get("/evaluation/portraits", h.studentPortraitHandler.List)
+			r.Get("/evaluation/portraits/{id}", h.studentPortraitHandler.Get)
+		})
+
 		r.Group(func(r chi.Router) {
 			r.Use(systemAdmin)
 			registerPortalRoutes(r, h)

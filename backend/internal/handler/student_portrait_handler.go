@@ -59,9 +59,14 @@ func (h *StudentPortraitHandler) List(w http.ResponseWriter, r *http.Request) {
 	cfg := listQueryConfig[domain.StudentAbilityPortrait]{
 		Table:         "student_ability_portraits",
 		SelectColumns: `id, user_id, career_position_id, overall_grade, domain_scores, class_rank, class_total, major_rank, major_total, recommend_positions, updated_at, completed_courses, completed_scenes, total_credits, archive_count, course_records, graduation_qualified, attendance_rate, diploma_badge, dual_badge`,
-		TenantScoped:  false,
+		TenantScoped:  true,
 		OrderBy:       "updated_at DESC",
 		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			// 学生只能查看本人画像
+			if middleware.HasRole(claims, "student") {
+				qb.addCondition("user_id = " + qb.nextArg(claims.UserID))
+				return
+			}
 			if userID := r.URL.Query().Get("userId"); userID != "" {
 				qb.addCondition("user_id = " + qb.nextArg(userID))
 			}
@@ -96,6 +101,11 @@ func (h *StudentPortraitHandler) Get(w http.ResponseWriter, r *http.Request) {
 	portrait, err := h.fetchPortrait(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "学生画像不存在")
+		return
+	}
+	// 学生只能查看本人画像
+	if middleware.HasRole(claims, "student") && portrait.UserID != claims.UserID {
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
 	respondJSON(w, http.StatusOK, portrait)
