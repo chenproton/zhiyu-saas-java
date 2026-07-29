@@ -2,7 +2,7 @@
 -- task_id 为 NULL 表示"能力点占岗位总分"的权重行，否则为"任务占能力点得分"的权重行
 CREATE TABLE IF NOT EXISTS certification_weights (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    rule_id UUID NOT NULL REFERENCES certification_rules(id) ON DELETE CASCADE,
+    rule_id UUID NOT NULL,
     ability_point_id UUID NOT NULL,
     task_id UUID,
     weight NUMERIC(5,2) NOT NULL DEFAULT 0,
