@@ -472,7 +472,7 @@ var (
 		"id, tenant_id, career_position_id, name, description, binding_ids, sort_order",
 		"id, career_position_id, name, description, sort_order",
 		"id, career_position_id, responsibility_id, ability_point_id, source, domain, required_level, rubric_description, attributes, weight",
-		"id, career_position_id, status, rule_source, created_at, updated_at",
+		"id, career_position_id, status, rule_source, level_mapping, created_at, updated_at",
 		"id, category_id, name, enabled, sub_category_name, description, doc_link",
 		"id, code, bank_id, type, content, options, answer, analysis, score, difficulty, knowledge_point_ids, creator_id, source, status, created_at",
 		"id, tenant_id, name, career_position_id, college, source, status, capacity, applied_count, advisor_id, enterprise_mentor_id, start_date, end_date, description, created_at",
