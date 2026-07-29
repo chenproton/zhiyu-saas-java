@@ -29,6 +29,7 @@ ORIGINAL_PROJECT_ROOT=""
 DEMO_MODE=false
 SKIP_PULL=false
 CLEAN_BUILD=false
+DOCKER_MODE=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -45,6 +46,7 @@ while [[ $# -gt 0 ]]; do
     --demo) DEMO_MODE=true; shift ;;
     --skip-pull) SKIP_PULL=true; shift ;;
     --clean) CLEAN_BUILD=true; shift ;;
+    --docker) DOCKER_MODE=true; shift ;;
     --help|-h)
       echo "用法："
       echo "  开发环境: $0 --branch <分支名> [选项]"
@@ -60,6 +62,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --skip-typecheck     已废弃（类型检查默认不再单独执行）"
       echo "  --turbopack          使用 Turbopack 构建"
       echo "  --clean              强制清理构建缓存，从 master 全新构建"
+      echo "  --docker             使用 Docker Compose 替代 PM2 管理后端"
       echo "  --skip-merge         跳过自动合并到 master（仅分支模式）"
       echo "  --skip-pull          跳过 git pull（仅 demo 模式）"
       exit 0
@@ -701,8 +704,95 @@ elif [[ "$SKIP_BACKUP" != "true" && "$FRONTEND_ONLY" != "true" ]]; then
   echo "==> 跳过数据库备份（--skip-backup）"
 fi
 
-# ==================== 停止旧服务 ====================
-echo "==> 停止旧服务..."
+# ==================== Docker 容器化部署 ====================
+if [[ "$DOCKER_MODE" == "true" && "$FRONTEND_ONLY" != "true" && -f "$BACKEND_BIN_NEW" ]]; then
+  DOCKER_COMPOSE_FILE="$PROJECT_ROOT/deploy/docker-compose.yml"
+  DEPLOY_COMPOSE_FILE="$DEPLOY_DIR/docker-compose.yml"
+  DOCKER_ENV_FILE="$DEPLOY_DIR/docker.env"
+
+  if [[ ! -f "$DOCKER_COMPOSE_FILE" ]]; then
+    echo "错误：$DOCKER_COMPOSE_FILE 不存在" >&2; exit 1
+  fi
+
+  IMAGE_TAG="$(git -C "$PROJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo "latest")"
+  echo "==> Docker 模式：构建镜像 zhiyu-backend:$IMAGE_TAG..."
+
+  cp "$DOCKER_COMPOSE_FILE" "$DEPLOY_COMPOSE_FILE"
+
+  DB_USER="zhiyu_saas"
+  DB_NAME="zhiyu-saas"
+  if [[ -f "$PROJECT_ROOT/.env" ]]; then
+    set -a; source "$PROJECT_ROOT/.env"; set +a
+  fi
+  DB_PASSWORD=$(echo "$DATABASE_URL" | sed 's|.*://[^:]*:\([^@]*\)@.*|\1|' | python3 -c 'import urllib.parse,sys; print(urllib.parse.unquote(sys.stdin.read().strip()))' 2>/dev/null || echo "")
+
+  if [[ -z "$DB_PASSWORD" ]]; then
+    echo "错误：无法解析 DB_PASSWORD，请检查 DATABASE_URL" >&2; exit 1
+  fi
+
+  export DB_USER DB_PASSWORD DB_NAME JWT_SECRET IMAGE_TAG
+
+  mkdir -p "$BACKEND_DIR/bin"
+  cp "$BACKEND_BIN_NEW" "$BACKEND_DIR/bin/server"
+
+  docker build -t "zhiyu-backend:$IMAGE_TAG" -f "$BACKEND_DIR/Dockerfile" "$BACKEND_DIR" 2>&1 | tail -5 || {
+    echo "错误：Docker 镜像构建失败" >&2; exit 1
+  }
+
+  stop_pm2_backend() {
+    pm2 stop "$PM2_BACKEND_NAME" &>/dev/null || true
+    pm2 delete "$PM2_BACKEND_NAME" &>/dev/null || true
+    wait_for_port_release "$BACKEND_PORT" 10 || true
+  }
+  stop_pm2_backend
+
+  echo "  同步 migrations..."
+  mkdir -p "$DEPLOY_DIR/migrations"
+  rsync -a --delete "$BACKEND_DIR/migrations/" "$DEPLOY_DIR/migrations/"
+
+  EXISTING=$(docker compose -f "$DEPLOY_COMPOSE_FILE" ps -q 2>/dev/null | wc -l || echo "0")
+  if [[ "$EXISTING" -eq 0 ]]; then
+    echo "  首次启动 PostgreSQL + Redis..."
+    docker compose -f "$DEPLOY_COMPOSE_FILE" up -d postgres redis
+    for i in $(seq 1 30); do
+      docker compose -f "$DEPLOY_COMPOSE_FILE" exec -T postgres pg_isready -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1 && break
+      sleep 2
+    done
+    for i in $(seq 1 10); do
+      docker compose -f "$DEPLOY_COMPOSE_FILE" exec -T redis redis-cli ping 2>/dev/null | grep -q PONG && break
+      sleep 1
+    done
+  fi
+
+  echo "  数据库迁移..."
+  (cd "$BACKEND_DIR" && DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@127.0.0.1:5432/${DB_NAME}?sslmode=disable" go run ./cmd/migrate/main.go up) || {
+    echo "  警告：迁移未完成，可能已是最新" >&2
+  }
+
+  echo "  启动后端容器..."
+  docker compose -f "$DEPLOY_COMPOSE_FILE" up -d --remove-orphans 2>&1
+
+  echo ""
+  echo "==> 等待 Docker 服务就绪..."
+  for i in $(seq 1 30); do
+    STATUS=$(docker compose -f "$DEPLOY_COMPOSE_FILE" ps backend --format '{{.Health}}' 2>/dev/null || echo "starting")
+    if [[ "$STATUS" == "healthy" ]]; then
+      echo "  后端健康检查通过"; break
+    fi
+    sleep 2
+  done
+
+  if [[ "$(docker compose -f "$DEPLOY_COMPOSE_FILE" ps backend --format '{{.Health}}' 2>/dev/null)" != "healthy" ]]; then
+    echo "  错误：后端未能在 60s 内变为 healthy" >&2
+    docker compose -f "$DEPLOY_COMPOSE_FILE" logs backend --tail 30
+    restore_rollback "$SNAPSHOT_DIR"; exit 1
+  fi
+
+  docker compose -f "$DEPLOY_COMPOSE_FILE" ps
+  docker builder prune --all --force >/dev/null 2>&1 || true
+
+  echo "  ✨ Docker 容器全部就绪"
+fi
 
 if [[ "$FRONTEND_ONLY" != "true" ]]; then
   pm2 stop "$PM2_BACKEND_NAME" &>/dev/null || true
@@ -730,6 +820,7 @@ fi
 sleep 1
 
 # ==================== 部署产物到目标目录 ====================
+if [[ "$DOCKER_MODE" != "true" ]]; then
 echo "==> 切换到新版本..."
 
 if [[ "$FRONTEND_ONLY" != "true" && -f "$BACKEND_BIN_NEW" ]]; then
@@ -743,6 +834,7 @@ if [[ "$FRONTEND_ONLY" != "true" && -f "$BACKEND_BIN_NEW" ]]; then
   fi
   echo "  后端已切换"
 fi
+fi  # end DOCKER_MODE check for backend deploy
 
 if [[ "$BACKEND_ONLY" != "true" && "$BUILD_EDU" == "true" && -d "$EDU_STANDALONE_ROOT" ]]; then
   echo "  复制教育管理 standalone 到部署目录..."
@@ -755,11 +847,15 @@ if [[ "$BACKEND_ONLY" != "true" && "$BUILD_EDU" == "true" && -d "$EDU_STANDALONE
   echo "  教育管理前端已切换"
 fi
 
-# ==================== 生成 PM2 配置 ====================
+# ==================== 生成 PM2 配置 / Docker 模式跳过 ====================
+if [[ "$DOCKER_MODE" != "true" ]]; then
 generate_ecosystem_config
+else
+  echo "==> Docker 模式：跳过 PM2 配置生成"
+fi
 
 # ==================== 数据库迁移 ====================
-if [[ "$FRONTEND_ONLY" != "true" ]]; then
+if [[ "$FRONTEND_ONLY" != "true" && "$DOCKER_MODE" != "true" ]]; then
   echo "==> 执行数据库迁移..."
   PRE_MIGRATION_VERSION=$(psql "$DATABASE_URL" -t -A -c "SELECT COALESCE(MAX(version), '') FROM schema_migrations;" 2>/dev/null || echo "")
   echo "  迁移前最新版本: ${PRE_MIGRATION_VERSION:-无}"
@@ -775,7 +871,8 @@ if [[ "$FRONTEND_ONLY" != "true" ]]; then
   fi
 fi
 
-# ==================== PM2 启动 ====================
+# ==================== PM2 启动 / Docker 模式跳过 ====================
+if [[ "$DOCKER_MODE" != "true" ]]; then
 echo ""
 echo "==> PM2 启动服务..."
 
@@ -794,8 +891,10 @@ else
 fi
 
 pm2 save > /dev/null
+fi  # end DOCKER_MODE check for PM2 start
 
 # ==================== 健康检查 ====================
+if [[ "$DOCKER_MODE" != "true" ]]; then
 echo ""
 echo "==> 等待服务就绪..."
 
@@ -820,6 +919,7 @@ fi
 if [[ "$HEALTH_OK" != "true" ]]; then
   restore_rollback "$SNAPSHOT_DIR"; exit 1
 fi
+fi  # end DOCKER_MODE check for health check
 
 # ==================== 记录部署 commit（演示模式增量构建用） ====================
 if [[ "$DEMO_MODE" == "true" ]]; then
