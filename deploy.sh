@@ -214,10 +214,11 @@ EDU_DIR="$BUILD_ROOT/apps/edu"
 if [[ "$FRONTEND_ONLY" != "true" ]]; then
   echo ""; echo "==> 构建后端"
 
-  BIN_HASH=$(md5sum "$BACKEND_DIR/cmd/server/main.go" 2>/dev/null | awk '{print $1}')
+  # 检测后端变更：哈希所有 .go 文件
+  BIN_HASH=$(find "$BACKEND_DIR" -name '*.go' -exec md5sum {} + 2>/dev/null | sort | md5sum | awk '{print $1}')
   CACHED_HASH=""; [[ -f "$BUILD_CACHE/backend-bin-hash" ]] && CACHED_HASH=$(cat "$BUILD_CACHE/backend-bin-hash")
 
-  if [[ -n "$CACHED_HASH" && "$BIN_HASH" == "$CACHED_HASH" && -n "$(docker images -q zhiyu-backend:$IMAGE_TAG 2>/dev/null)" ]]; then
+  if [[ -n "$CACHED_HASH" && "$BIN_HASH" == "$CACHED_HASH" && -n "$(docker images -q zhiyu-backend:$IMAGE_TAG 2>/dev/null)" && "$FORCE_INSTALL" != "1" ]]; then
     echo "  = 跳过 (无变更)"
   else
     echo "  编译..."
