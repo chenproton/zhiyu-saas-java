@@ -76,7 +76,7 @@ detect_docker_compose() {
 # ── 哈希计算 ──
 # 基于文件内容哈希，避免构建路径不同导致缓存失效
 source_hash() {
-  find "$@" -type f \( -name '*.go' -o -name 'go.mod' -o -name 'go.sum' -o -name '*.sql' \) \
+  find "$@" -type f \( -name '*.go' -o -name 'go.mod' -o -name 'go.sum' -o -name '*.sql' -o -name 'Dockerfile' \) \
     -not -path '*/bin/*' -print0 2>/dev/null | sort -z | xargs -0 -r md5sum | \
     awk '{print $1}' | sort | md5sum | awk '{print $1}'
 }
@@ -296,7 +296,11 @@ if $BUILD_FRONTEND; then
   [[ ! -d "$BUILD_ROOT/node_modules" ]] && NEED_INSTALL=true
   LOCK_HASH=$(lock_hash "$BUILD_ROOT")
   CACHED_LOCK=""; [[ -f "$BUILD_CACHE/lock-hash" ]] && CACHED_LOCK=$(cat "$BUILD_CACHE/lock-hash")
-  [[ "$LOCK_HASH" != "$CACHED_LOCK" ]] && NEED_INSTALL=true
+  LOCK_CHANGED=false
+  [[ "$LOCK_HASH" != "$CACHED_LOCK" ]] && { NEED_INSTALL=true; LOCK_CHANGED=true; }
+
+  # 依赖版本变化时，即使源码文件没动也要重新构建前端
+  [[ "$LOCK_CHANGED" == "true" ]] && BUILD_FRONTEND=true
 
   if $NEED_INSTALL; then
     log "  安装依赖..."
