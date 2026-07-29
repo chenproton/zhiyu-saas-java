@@ -28,6 +28,7 @@ BUILD_TREE=""
 ORIGINAL_PROJECT_ROOT=""
 DEMO_MODE=false
 SKIP_PULL=false
+CLEAN_BUILD=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -43,6 +44,7 @@ while [[ $# -gt 0 ]]; do
     --branch) BRANCH_NAME="$2"; shift 2 ;;
     --demo) DEMO_MODE=true; shift ;;
     --skip-pull) SKIP_PULL=true; shift ;;
+    --clean) CLEAN_BUILD=true; shift ;;
     --help|-h)
       echo "用法："
       echo "  开发环境: $0 --branch <分支名> [选项]"
@@ -57,6 +59,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --typecheck          部署前单独执行 tsc --noEmit（Next.js 构建内部仍会检查类型）"
       echo "  --skip-typecheck     已废弃（类型检查默认不再单独执行）"
       echo "  --turbopack          使用 Turbopack 构建"
+      echo "  --clean              强制清理构建缓存，从 master 全新构建"
       echo "  --skip-merge         跳过自动合并到 master（仅分支模式）"
       echo "  --skip-pull          跳过 git pull（仅 demo 模式）"
       exit 0
@@ -71,6 +74,35 @@ fi
 
 if [[ "$DEMO_MODE" == "true" && -n "$BRANCH_NAME" ]]; then
   echo "错误：--demo 和 --branch 不能同时使用" >&2; exit 1
+fi
+
+# ==================== 工作区洁净校验 ====================
+if [[ -n "$BRANCH_NAME" ]]; then
+  echo "==> 校验本地工作区..."
+  if [[ -n "$(git -C "$PROJECT_ROOT" status --porcelain 2>/dev/null)" ]]; then
+    echo "错误：本地工作区不干净，请先提交或清理" >&2
+    git -C "$PROJECT_ROOT" status --short
+    exit 1
+  fi
+fi
+
+# ==================== 分支一致性校验 ====================
+if [[ -n "$BRANCH_NAME" ]]; then
+  echo "==> 校验分支一致性..."
+  git -C "$ORIGINAL_PROJECT_ROOT" fetch origin master "$BRANCH_NAME" 2>/dev/null || true
+
+  local_commit=$(git -C "$ORIGINAL_PROJECT_ROOT" rev-parse "$BRANCH_NAME" 2>/dev/null || true)
+  origin_commit=$(git -C "$ORIGINAL_PROJECT_ROOT" rev-parse "origin/$BRANCH_NAME" 2>/dev/null || true)
+
+  if [[ -z "$origin_commit" ]]; then
+    echo "错误：origin/$BRANCH_NAME 不存在，请先 git push" >&2
+    exit 1
+  fi
+  if [[ "$local_commit" != "$origin_commit" ]]; then
+    echo "错误：本地 $BRANCH_NAME 与 origin/$BRANCH_NAME 不一致，请先 git push" >&2
+    exit 1
+  fi
+  echo "  分支一致性校验通过"
 fi
 
 # ==================== Go 加速 ====================
@@ -136,6 +168,12 @@ if [[ -n "$BRANCH_NAME" ]]; then
 
   git -C "$ORIGINAL_PROJECT_ROOT" fetch origin master "$BRANCH_NAME" 2>/dev/null || true
   git -C "$ORIGINAL_PROJECT_ROOT" worktree prune 2>/dev/null || true
+
+  if [[ "$CLEAN_BUILD" == "true" ]]; then
+    echo "  强制清理构建缓存（--clean）..."
+    git -C "$ORIGINAL_PROJECT_ROOT" worktree remove --force "$BUILD_TREE" 2>/dev/null || true
+    rm -rf "$BUILD_TREE"
+  fi
 
   if [[ -e "$BUILD_TREE/.git" ]] && git -C "$BUILD_TREE" rev-parse --git-dir >/dev/null 2>&1; then
     echo "  复用构建缓存: $BUILD_TREE"
@@ -496,9 +534,20 @@ echo "  快照已保存: $SNAPSHOT_DIR"
 find "$DEPLOY_ROLLBACK_DIR" -maxdepth 1 -type d -name '2*' 2>/dev/null | sort | head -n -"$ROLLBACK_KEEP" | xargs -r rm -rf || true
 
 # ==================== 代码检查 ====================
-# 注意：Go 编译和 Next.js 构建已在后续步骤中执行，无需重复检查
 if [[ "$SKIP_CHECKS" != "true" ]]; then
   echo "==> 运行代码检查..."
+
+  if [[ "$BACKEND_ONLY" != "true" || "$FRONTEND_ONLY" != "true" ]]; then
+    if command -v golangci-lint >/dev/null 2>&1; then
+      echo "  Go lint..."
+      golangci-lint run "$PROJECT_ROOT/backend/..." || {
+        echo "错误：golangci-lint 检查未通过，拒绝部署" >&2; exit 1
+      }
+    else
+      echo "  提示：安装 golangci-lint 可启用更严格的代码检查（当前跳过）"
+    fi
+  fi
+
   if [[ "$BACKEND_ONLY" != "true" && "$RUN_TYPECHECK" == "true" ]]; then
     echo "  前端类型检查..."
     (cd "$PROJECT_ROOT" && pnpm --filter @zhiyu/edu typecheck) || {
@@ -712,9 +761,18 @@ generate_ecosystem_config
 # ==================== 数据库迁移 ====================
 if [[ "$FRONTEND_ONLY" != "true" ]]; then
   echo "==> 执行数据库迁移..."
-  (cd "$BACKEND_DIR" && go run ./cmd/migrate/main.go up) || {
-    echo "错误：数据库迁移失败" >&2; restore_rollback "$SNAPSHOT_DIR"; exit 1
-  }
+  PRE_MIGRATION_VERSION=$(psql "$DATABASE_URL" -t -A -c "SELECT COALESCE(MAX(version), '') FROM schema_migrations;" 2>/dev/null || echo "")
+  echo "  迁移前最新版本: ${PRE_MIGRATION_VERSION:-无}"
+
+  if ! (cd "$BACKEND_DIR" && go run ./cmd/migrate/main.go up); then
+    echo "" >&2
+    echo "错误：数据库迁移失败" >&2
+    if [[ -n "$PRE_MIGRATION_VERSION" ]]; then
+      echo "  迁移前版本: $PRE_MIGRATION_VERSION" >&2
+      echo "  回滚命令: cd $BACKEND_DIR && go run ./cmd/migrate/main.go down" >&2
+    fi
+    restore_rollback "$SNAPSHOT_DIR"; exit 1
+  fi
 fi
 
 # ==================== PM2 启动 ====================
