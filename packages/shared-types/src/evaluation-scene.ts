@@ -66,6 +66,7 @@ export interface JobAbilityResult {
   positionId: string
   positionName: string
   positionCode: string
+  userId?: string
   studentName: string
   studentId: string
   className?: string
