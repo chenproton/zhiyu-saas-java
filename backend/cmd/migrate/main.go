@@ -181,13 +181,22 @@ func ctx() context.Context {
 }
 
 func execMultiSQL(tx pgx.Tx, sql string) error {
+	sql = strings.TrimSpace(sql)
+	if sql == "" {
+		return nil
+	}
+	if !strings.HasSuffix(sql, ";") {
+		sql += ";"
+	}
 	stmts := strings.Split(sql, ";\n")
 	for _, stmt := range stmts {
 		stmt = strings.TrimSpace(stmt)
 		if stmt == "" {
 			continue
 		}
-		stmt += ";"
+		if !strings.HasSuffix(stmt, ";") {
+			stmt += ";"
+		}
 		if _, err := tx.Exec(context.Background(), stmt); err != nil {
 			return err
 		}
