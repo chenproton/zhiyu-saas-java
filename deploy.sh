@@ -74,6 +74,14 @@ detect_docker_compose() {
 }
 
 # ── 哈希计算 ──
+source_hash() {
+  find "$@" -type f \( -name '*.go' -o -name 'go.mod' -o -name 'go.sum' -o -name '*.sql' \) \
+    -not -path '*/bin/*' 2>/dev/null | sort | md5sum | awk '{print $1}'
+}
+frontend_hash() {
+  find "$1/apps/edu" "$1/packages" -type f \
+    -not -path '*/node_modules/*' -not -path '*/.next/*' 2>/dev/null | sort | md5sum | awk '{print $1}'
+}
 lock_hash() { md5sum "$1/pnpm-lock.yaml" 2>/dev/null | awk '{print $1}'; }
 
 # ════════════════════════════════════════════
@@ -240,56 +248,75 @@ PREV_BACKEND="$(docker inspect --format='{{.Config.Image}}' zhiyu-backend 2>/dev
 PREV_FRONTEND="$(docker inspect --format='{{.Config.Image}}' zhiyu-edu 2>/dev/null || true)"
 
 # ════════════════════════════════════════════
-# 4. 构建后端（go build + 二进制比对，跳过无变更的镜像构建）
+# 4. 构建后端（变更自动检测）
 # ════════════════════════════════════════════
-log "构建后端..."
-mkdir -p "$BUILD_CACHE/go-cache"
-CGO_ENABLED=0 GOCACHE="$BUILD_CACHE/go-cache" \
-  go build -C "$BACKEND_DIR" -ldflags="-s -w" -o "$BACKEND_DIR/bin/server" ./cmd/server/main.go
+BACKEND_HASH=$(source_hash "$BACKEND_DIR")
+BUILD_BACKEND=true
+[[ "$CLEAN_BUILD" != "true" ]] && [[ -f "$BUILD_CACHE/backend-hash" ]] && \
+  [[ "$BACKEND_HASH" == "$(cat "$BUILD_CACHE/backend-hash")" ]] && \
+  [[ -n "$(docker images -q "zhiyu-backend:$BACKEND_HASH" 2>/dev/null)" ]] && BUILD_BACKEND=false
 
-BIN_HASH=$(md5sum "$BACKEND_DIR/bin/server" | awk '{print $1}')
-CACHED_BIN=$(cat "$BUILD_CACHE/backend-bin-hash" 2>/dev/null || true)
-if [[ "$BIN_HASH" != "$CACHED_BIN" ]] || [[ "$CLEAN_BUILD" == "true" ]]; then
+if $BUILD_BACKEND; then
+  log "构建后端"
+  mkdir -p "$BUILD_CACHE/go-cache"
+  CGO_ENABLED=0 GOCACHE="$BUILD_CACHE/go-cache" \
+    go build -C "$BACKEND_DIR" -ldflags="-s -w" -o "$BACKEND_DIR/bin/server" ./cmd/server/main.go
+
   TMPCTX=$(mktemp -d)
   cp "$BACKEND_DIR/bin/server" "$TMPCTX/server"
   mkdir -p "$TMPCTX/migrations"
   rsync -a --delete "$BACKEND_DIR/migrations/" "$TMPCTX/migrations/"
   docker build -t "zhiyu-backend:$IMAGE_TAG" -f "$BACKEND_DIR/Dockerfile" "$TMPCTX" 2>&1 | tail -3
+  docker tag "zhiyu-backend:$IMAGE_TAG" "zhiyu-backend:$BACKEND_HASH"
   rm -rf "$TMPCTX"
-  echo "$BIN_HASH" > "$BUILD_CACHE/backend-bin-hash"
+  echo "$BACKEND_HASH" > "$BUILD_CACHE/backend-hash"
 else
-  log "  二进制未变，跳过镜像构建"
+  log "后端: 无变更，跳过"
+  # 当前 commit 标签也要指向同一镜像，compose 才能正常拉起
+  docker tag "zhiyu-backend:$BACKEND_HASH" "zhiyu-backend:$IMAGE_TAG" 2>/dev/null || true
 fi
 
 # ════════════════════════════════════════════
-# 5. 构建前端（pnpm + Next.js 构建，依赖变更时自动重装）
+# 5. 构建前端（变更自动检测）
 # ════════════════════════════════════════════
-log "构建前端..."
+FRONTEND_HASH=$(frontend_hash "$BUILD_ROOT")
+BUILD_FRONTEND=true
+[[ "$CLEAN_BUILD" != "true" ]] && [[ -f "$BUILD_CACHE/frontend-hash" ]] && \
+  [[ "$FRONTEND_HASH" == "$(cat "$BUILD_CACHE/frontend-hash")" ]] && \
+  [[ -n "$(docker images -q "zhiyu-edu:$FRONTEND_HASH" 2>/dev/null)" ]] && BUILD_FRONTEND=false
 
-NEED_INSTALL=false
-[[ ! -d "$BUILD_ROOT/node_modules" ]] && NEED_INSTALL=true
-LOCK_HASH=$(lock_hash "$BUILD_ROOT")
-CACHED_LOCK=""; [[ -f "$BUILD_CACHE/lock-hash" ]] && CACHED_LOCK=$(cat "$BUILD_CACHE/lock-hash")
-[[ "$LOCK_HASH" != "$CACHED_LOCK" ]] && NEED_INSTALL=true
+if $BUILD_FRONTEND; then
+  log "构建前端"
 
-if $NEED_INSTALL; then
-  log "  安装依赖..."
-  (cd "$BUILD_ROOT" && pnpm install --frozen-lockfile 2>/dev/null) || \
-  (cd "$BUILD_ROOT" && pnpm install --no-frozen-lockfile) || die "pnpm install 失败"
-  echo "$LOCK_HASH" > "$BUILD_CACHE/lock-hash"
+  NEED_INSTALL=false
+  [[ ! -d "$BUILD_ROOT/node_modules" ]] && NEED_INSTALL=true
+  LOCK_HASH=$(lock_hash "$BUILD_ROOT")
+  CACHED_LOCK=""; [[ -f "$BUILD_CACHE/lock-hash" ]] && CACHED_LOCK=$(cat "$BUILD_CACHE/lock-hash")
+  [[ "$LOCK_HASH" != "$CACHED_LOCK" ]] && NEED_INSTALL=true
+
+  if $NEED_INSTALL; then
+    log "  安装依赖..."
+    (cd "$BUILD_ROOT" && pnpm install --frozen-lockfile 2>/dev/null) || \
+    (cd "$BUILD_ROOT" && pnpm install --no-frozen-lockfile) || die "pnpm install 失败"
+    echo "$LOCK_HASH" > "$BUILD_CACHE/lock-hash"
+  fi
+
+  [[ "$CLEAN_BUILD" == "true" ]] && rm -rf "$EDU_DIR/.next"
+  (cd "$BUILD_ROOT" && NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
+    pnpm --filter @zhiyu/edu build) || die "前端构建失败"
+
+  SD="$EDU_DIR/.next/standalone/apps/edu"
+  [[ -d "$EDU_DIR/.next/server" ]] && { mkdir -p "$SD/.next/server"; rsync -a --delete --exclude="*.map" "$EDU_DIR/.next/server/" "$SD/.next/server/"; }
+  [[ -d "$EDU_DIR/.next/static" ]] && { mkdir -p "$SD/.next/static"; rsync -a --delete --exclude="*.map" "$EDU_DIR/.next/static/" "$SD/.next/static/"; }
+  [[ -d "$EDU_DIR/public" ]] && { mkdir -p "$SD/public"; rsync -a --delete "$EDU_DIR/public/" "$SD/public/"; }
+
+  docker build -t "zhiyu-edu:$IMAGE_TAG" -f "$EDU_DIR/Dockerfile" "$EDU_DIR/.next/standalone" 2>&1 | tail -3
+  docker tag "zhiyu-edu:$IMAGE_TAG" "zhiyu-edu:$FRONTEND_HASH"
+  echo "$FRONTEND_HASH" > "$BUILD_CACHE/frontend-hash"
+else
+  log "前端: 无变更，跳过"
+  docker tag "zhiyu-edu:$FRONTEND_HASH" "zhiyu-edu:$IMAGE_TAG" 2>/dev/null || true
 fi
-
-[[ "$CLEAN_BUILD" == "true" ]] && rm -rf "$EDU_DIR/.next"
-
-cd "$BUILD_ROOT" && NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
-  pnpm --filter @zhiyu/edu build || die "前端构建失败"
-
-SD="$EDU_DIR/.next/standalone/apps/edu"
-[[ -d "$EDU_DIR/.next/server" ]] && { mkdir -p "$SD/.next/server"; rsync -a --delete --exclude="*.map" "$EDU_DIR/.next/server/" "$SD/.next/server/"; }
-[[ -d "$EDU_DIR/.next/static" ]] && { mkdir -p "$SD/.next/static"; rsync -a --delete --exclude="*.map" "$EDU_DIR/.next/static/" "$SD/.next/static/"; }
-[[ -d "$EDU_DIR/public" ]] && { mkdir -p "$SD/public"; rsync -a --delete "$EDU_DIR/public/" "$SD/public/"; }
-
-docker build -t "zhiyu-edu:$IMAGE_TAG" -f "$EDU_DIR/Dockerfile" "$EDU_DIR/.next/standalone" 2>&1 | tail -3
 
 # ════════════════════════════════════════════
 # 6. Docker 部署
@@ -348,7 +375,7 @@ if ! $OK; then
 fi
 
 compose ps
-docker builder prune --all --force >/dev/null 2>&1 || true
+[[ "$CLEAN_BUILD" == "true" ]] && docker builder prune --all --force >/dev/null 2>&1 || true
 
 # ════════════════════════════════════════════
 # 7. Nginx + 合并
