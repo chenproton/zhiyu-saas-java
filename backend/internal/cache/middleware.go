@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -68,6 +69,14 @@ func (w *cachedResponseWriter) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
+func clientIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
 func RateLimit(client *redis.Client, limit int, window time.Duration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -76,8 +85,7 @@ func RateLimit(client *redis.Client, limit int, window time.Duration) func(http.
 				return
 			}
 
-			ip := r.RemoteAddr
-			key := fmt.Sprintf("zhiyu:ratelimit:%s", ip)
+			key := fmt.Sprintf("zhiyu:ratelimit:%s", clientIP(r))
 			ctx := r.Context()
 
 			current, err := client.Incr(ctx, key).Result()
@@ -121,7 +129,7 @@ func (rl *RateLimiter) For(target string, limit int, window time.Duration) func(
 				return
 			}
 
-			key := fmt.Sprintf("zhiyu:ratelimit:%s:%s", target, r.RemoteAddr)
+			key := fmt.Sprintf("zhiyu:ratelimit:%s:%s", target, clientIP(r))
 			ctx := r.Context()
 
 			current, err := rl.client.Incr(ctx, key).Result()
