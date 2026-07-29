@@ -1,10 +1,8 @@
 FROM node:22-alpine
 
-RUN addgroup -g 1000 appuser && adduser -u 1000 -G appuser -D appuser
+COPY --chown=node:node . /app
 
-COPY --chown=appuser:appuser . /app
-
-USER appuser
+USER node
 WORKDIR /app
 EXPOSE 3020
 ENV NODE_ENV=production
