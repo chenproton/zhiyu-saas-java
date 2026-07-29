@@ -92,6 +92,13 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 
 		registerWorkflowRoutes(r, h)
 
+		// 用户列表/详情对业务用户开放读取，写操作仍限系统管理员
+		r.Group(func(r chi.Router) {
+			r.Use(authmw.RequireUserRead())
+			r.Get("/users", h.userManagementHandler.List)
+			r.Get("/users/{id}", h.userManagementHandler.Get)
+		})
+
 		r.Group(func(r chi.Router) {
 			r.Use(businessUser)
 			registerJobRoutes(r, h)
@@ -223,9 +230,7 @@ func registerPortalRoutes(r chi.Router, h *Handlers) {
 	r.Put("/org-types/{id}", h.orgTypeHandler.Update)
 	r.Delete("/org-types/{id}", h.orgTypeHandler.Delete)
 
-	r.Get("/users", h.userManagementHandler.List)
-	r.Get("/users/{id}", h.userManagementHandler.Get)
-	r.Post("/users", h.userManagementHandler.Create)
+	r.Get("/users", h.userManagementHandler.Create)
 	r.Put("/users/{id}", h.userManagementHandler.Update)
 	r.Delete("/users/{id}", h.userManagementHandler.Delete)
 	r.Post("/users/{id}/status", h.userManagementHandler.UpdateStatus)

@@ -104,3 +104,30 @@ func RequireSystemPermission() func(http.Handler) http.Handler {
 		})
 	}
 }
+
+// RequireUserRead returns a middleware that allows reading user lists/details
+// for business users (teacher, school_admin, enterprise_mentor, platform_admin)
+// and users with system management permissions. Write operations still require
+// system admin access.
+func RequireUserRead() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims := CurrentUser(r)
+			if claims == nil {
+				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+			if HasSystemPermission(claims) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			for _, code := range []string{"teacher", "school_admin", "enterprise_mentor", "platform_admin"} {
+				if HasRole(claims, code) {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+			http.Error(w, `{"error":"permission denied"}`, http.StatusForbidden)
+		})
+	}
+}

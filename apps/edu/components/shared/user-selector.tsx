@@ -104,13 +104,16 @@ export function UserSelector({
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const [users, setUsers] = useState<User[]>([])
   const [usersLoading, setUsersLoading] = useState(false)
+  const [usersError, setUsersError] = useState<string | null>(null)
   const [userSearch, setUserSearch] = useState("")
   const [selectedIds, setSelectedIds] = useState<string[]>(value)
   const [userCache, setUserCache] = useState<Record<string, User>>({})
   const fetchedIdsRef = useRef<Set<string>>(new Set())
 
   const excludeUserIdsRef = useRef(excludeUserIds)
-  excludeUserIdsRef.current = excludeUserIds
+  useEffect(() => {
+    excludeUserIdsRef.current = excludeUserIds
+  }, [excludeUserIds])
 
   const orgTypeMap = useMemo(() => {
     const map = new Map<string, OrgType>()
@@ -151,6 +154,7 @@ export function UserSelector({
 
   const loadUsers = useCallback(async () => {
     setUsersLoading(true)
+    setUsersError(null)
     try {
       const params: any = { limit: 200, search: userSearch || undefined }
       if (selectedOrgId) {
@@ -170,8 +174,11 @@ export function UserSelector({
       }
       setUsers(filtered)
       mergeUserCache(res.items)
-    } catch { /* ignore */ }
-    finally { setUsersLoading(false) }
+    } catch (err) {
+      setUsersError(err instanceof Error ? err.message : "加载用户失败")
+    } finally {
+      setUsersLoading(false)
+    }
   }, [selectedOrgId, userSearch, tenantId, usePortalApi, excludeStudent, orgMap, mergeUserCache])
 
   useEffect(() => {
@@ -323,6 +330,11 @@ export function UserSelector({
               <div className="flex-1 overflow-y-auto min-h-0">
                 {usersLoading ? (
                   <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                ) : usersError ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-red-500">
+                    <p className="text-sm">{usersError}</p>
+                    <p className="text-xs text-muted-foreground mt-1">请检查网络或权限后重试</p>
+                  </div>
                 ) : users.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                     <UsersIcon className="h-10 w-10 mb-2 opacity-30" />
