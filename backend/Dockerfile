@@ -1,14 +1,15 @@
-FROM alpine:3.21
+FROM debian:bookworm-slim
 
-RUN apk add --no-cache ca-certificates tzdata busybox-extras
-ENV TZ=Asia/Shanghai
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends \
+    ca-certificates wget \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN adduser -D -u 1000 appuser
+RUN adduser --disabled-password --gecos "" --uid 1000 appuser
 
 COPY bin/server /app/server
-
-RUN mkdir -p /app/migrations && chown -R appuser:appuser /app
 COPY migrations/ /app/migrations/
+
+RUN chown -R appuser:appuser /app
 
 USER appuser
 WORKDIR /app
