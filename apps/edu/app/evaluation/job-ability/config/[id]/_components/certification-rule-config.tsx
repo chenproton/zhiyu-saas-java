@@ -67,6 +67,12 @@ export function CertificationRuleConfig({ positionId }: CertificationRuleConfigP
         }
 
         const full = await certApi.getFullRule(existingRule.id)
+        if (cancelled) return
+        setGlobalMapping(
+          full.rule.levelMapping && full.rule.levelMapping.length > 0
+            ? full.rule.levelMapping
+            : defaultLevelMapping,
+        )
         // full 响应的能力点不含 abilityPointId，需逐能力域查询认证点补齐
         const abilityPointIdMap: Record<string, string> = {}
         await Promise.all(
@@ -165,6 +171,7 @@ export function CertificationRuleConfig({ positionId }: CertificationRuleConfigP
       await certApi.putFullRule(targetRule.id, {
         careerPositionId: positionId,
         ruleSource: targetRule.ruleSource ?? "custom",
+        levelMapping: globalMapping,
         items: items.map((item, index) => ({
           name: item.name,
           sortOrder: index + 1,
@@ -255,7 +262,7 @@ export function CertificationRuleConfig({ positionId }: CertificationRuleConfigP
         open={globalMappingOpen}
         onOpenChange={setGlobalMappingOpen}
         title="配置全局等级映射"
-        description="继承类能力点默认使用此映射（仅当前页面生效，不写入后端）"
+        description="继承类能力点默认使用此映射，保存规则后作为该岗位的默认评级区间"
         mapping={globalMapping}
         onSave={setGlobalMapping}
       />

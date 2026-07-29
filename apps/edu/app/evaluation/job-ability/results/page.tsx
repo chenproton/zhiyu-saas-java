@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { ChevronLeft, ChevronRight, Eye, RefreshCw, Search } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -36,6 +36,9 @@ import type { JobAbilityResult, JobAbilitySummaryItem } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 const PAGE_SIZE = 20
+
+const AGGREGATE_POLL_INTERVAL_MS = 3000
+const AGGREGATE_POLL_MAX_ATTEMPTS = 15
 
 const GRADE_OPTIONS = ["未达标", "达标", "良好", "优秀", "卓越"] as const
 
@@ -88,6 +91,15 @@ function JobAbilityResultsContent() {
   const [gradeFilter, setGradeFilter] = useState<string>("all")
 
   const [aggregating, setAggregating] = useState(false)
+  const aggregateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [listReloadKey, setListReloadKey] = useState(0)
+
+  // 组件卸载时清理汇聚轮询定时器
+  useEffect(() => {
+    return () => {
+      if (aggregateTimerRef.current) clearTimeout(aggregateTimerRef.current)
+    }
+  }, [])
 
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -166,7 +178,7 @@ function JobAbilityResultsContent() {
     return () => {
       cancelled = true
     }
-  }, [selectedPositionId, debouncedSearch, gradeFilter, page, toast])
+  }, [selectedPositionId, debouncedSearch, gradeFilter, page, listReloadKey, toast])
 
   const selectedPosition = useMemo(
     () => summary.find((s) => s.positionId === selectedPositionId),
@@ -175,24 +187,80 @@ function JobAbilityResultsContent() {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
+  // 汇聚成功后刷新左侧岗位汇总（首次加载逻辑保留在挂载 effect 中）
+  const refreshSummary = async () => {
+    try {
+      const items = await jobAbilityResultApi.summary()
+      setSummary(items || [])
+    } catch {
+      // 汇总刷新失败不影响主流程
+    }
+  }
+
   const handleAggregate = async () => {
     if (!selectedPositionId) return
+    const careerPositionId = selectedPositionId
     setAggregating(true)
     try {
-      await jobAbilityResultApi.aggregate({ careerPositionId: selectedPositionId })
-      toast({
-        title: "已触发汇聚",
-        description: "汇聚任务已提交，完成后可刷新查看最新结果",
-      })
+      await jobAbilityResultApi.aggregate({ careerPositionId })
     } catch (err) {
       toast({
         title: "触发失败",
         description: err instanceof Error ? err.message : "汇聚任务提交失败",
         variant: "destructive",
       })
-    } finally {
       setAggregating(false)
+      return
     }
+
+    let attempts = 0
+    const poll = async () => {
+      attempts += 1
+      try {
+        const status = await jobAbilityResultApi.aggregateStatus(careerPositionId)
+        if (status?.status === "success") {
+          setAggregating(false)
+          const updatedCount = status.updatedCount ?? 0
+          toast({
+            title: "汇聚完成",
+            description:
+              updatedCount > 0
+                ? `汇聚完成，更新 ${updatedCount} 名学生`
+                : "更新 0 条，请确认规则已发布且学生已有评分",
+          })
+          setLoading(true)
+          setListReloadKey((k) => k + 1)
+          refreshSummary()
+          return
+        }
+        if (status?.status === "failed") {
+          setAggregating(false)
+          toast({
+            title: "汇聚失败",
+            description: status.errorMessage || "汇聚任务执行失败",
+            variant: "destructive",
+          })
+          return
+        }
+        if (attempts >= AGGREGATE_POLL_MAX_ATTEMPTS) {
+          setAggregating(false)
+          toast({
+            title: "汇聚仍在进行",
+            description: "汇聚仍在进行，稍后请手动刷新",
+          })
+          return
+        }
+        aggregateTimerRef.current = setTimeout(poll, AGGREGATE_POLL_INTERVAL_MS)
+      } catch (err) {
+        setAggregating(false)
+        toast({
+          title: "查询汇聚状态失败",
+          description: err instanceof Error ? err.message : "获取汇聚状态失败",
+          variant: "destructive",
+        })
+      }
+    }
+    aggregateTimerRef.current = setTimeout(poll, AGGREGATE_POLL_INTERVAL_MS)
   }
 
   const openDetail = async (id: string) => {

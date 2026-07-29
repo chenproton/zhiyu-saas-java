@@ -194,6 +194,7 @@ type CertificationRule struct {
 	CareerPositionID string    `json:"careerPositionId"`
 	Status           string    `json:"status"`
 	RuleSource       string    `json:"ruleSource"`
+	LevelMapping     JSONSlice `json:"levelMapping,omitempty"`
 	CreatedAt        time.Time `json:"createdAt"`
 	UpdatedAt        time.Time `json:"updatedAt"`
 }

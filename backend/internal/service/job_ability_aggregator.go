@@ -148,11 +148,12 @@ type portraitRecommendPosition struct {
 func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPositionID string, userIDs []string) (int, int, error) {
 	// 1. 加载 published 规则全量配置（items → points → tasks）
 	var ruleID string
+	var ruleMappingJSON []byte
 	err := a.DB.QueryRow(ctx, `
-		SELECT id FROM certification_rules
+		SELECT id, level_mapping FROM certification_rules
 		WHERE career_position_id = $1 AND tenant_id = $2 AND status = 'published'
 		ORDER BY updated_at DESC LIMIT 1
-	`, careerPositionID, tenantID).Scan(&ruleID)
+	`, careerPositionID, tenantID).Scan(&ruleID, &ruleMappingJSON)
 	if err == pgx.ErrNoRows {
 		return 0, 0, nil // 无规则直接返回
 	}
@@ -239,7 +240,7 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 	} else {
 		stRows, err := a.DB.Query(ctx, `
 			SELECT DISTINCT evaluatee_id FROM scene_evaluation_results
-			WHERE tenant_id = $1 AND task_id = ANY($2)
+			WHERE tenant_id = $1 AND task_id = ANY($2) AND status = 'evaluated'
 		`, tenantID, taskIDs)
 		if err != nil {
 			return 0, 0, err
@@ -272,7 +273,7 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 	scoreRows, err := a.DB.Query(ctx, `
 		SELECT evaluatee_id, task_id, MAX(total_score / NULLIF(max_score, 0) * 100)
 		FROM scene_evaluation_results
-		WHERE tenant_id = $1 AND task_id = ANY($2) AND evaluatee_id = ANY($3) AND total_score IS NOT NULL
+		WHERE tenant_id = $1 AND task_id = ANY($2) AND evaluatee_id = ANY($3) AND total_score IS NOT NULL AND status = 'evaluated'
 		GROUP BY evaluatee_id, task_id
 	`, tenantID, taskIDs, studentIDs)
 	if err != nil {
@@ -321,12 +322,17 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 		return 0, 0, err
 	}
 
-	// 岗位等级映射：取第一个非空的 custom_level_mapping，否则用默认区间
+	// 岗位等级映射优先级：规则级 level_mapping → 第一个非空的能力点 custom_level_mapping → 默认区间
 	var mappings []levelMapping
+	if len(ruleMappingJSON) > 0 {
+		_ = json.Unmarshal(ruleMappingJSON, &mappings)
+	}
 	for _, p := range points {
+		if len(mappings) > 0 {
+			break
+		}
 		if len(p.customLevelMapping) > 0 {
 			mappings = p.customLevelMapping
-			break
 		}
 	}
 
@@ -361,7 +367,21 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 				posWeightSum += p.weight
 			}
 			pointValid = append(pointValid, valid)
-			pointAchieved := valid && pointScore >= 60
+			// 达成判定：优先按映射等级与 requiredLevel 的档位比较，无法解析时回退 60 分线
+			pointAchieved := false
+			if valid {
+				effective := mappings
+				if len(effective) == 0 {
+					effective = defaultLevelMappings()
+				}
+				pointRank := levelRank(resolveGrade(pointScore, effective), effective)
+				requiredRank := levelRank(p.requiredLevel, effective)
+				if pointRank >= 0 && requiredRank >= 0 {
+					pointAchieved = pointRank >= requiredRank
+				} else {
+					pointAchieved = pointScore >= 60
+				}
+			}
 			if pointAchieved {
 				achieved++
 			}
@@ -540,16 +560,37 @@ func (a *JobAbilityAggregator) fetchRecommendPositions(ctx context.Context, user
 	return items, rows.Err()
 }
 
+// defaultLevelMappings 默认等级区间（未配置任何映射时使用）。
+func defaultLevelMappings() []levelMapping {
+	return []levelMapping{
+		{Level: "未达标", Min: 0, Max: 59},
+		{Level: "达标", Min: 60, Max: 69},
+		{Level: "良好", Min: 70, Max: 79},
+		{Level: "优秀", Min: 80, Max: 89},
+		{Level: "卓越", Min: 90, Max: 100},
+	}
+}
+
+// levelRank 返回等级在映射中的档位（按分值区间升序），未命中返回 -1。
+func levelRank(level string, mappings []levelMapping) int {
+	if level == "" {
+		return -1
+	}
+	sorted := make([]levelMapping, len(mappings))
+	copy(sorted, mappings)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Min < sorted[j].Min })
+	for i, m := range sorted {
+		if m.Level == level {
+			return i
+		}
+	}
+	return -1
+}
+
 // resolveGrade 按映射区间取等级；映射为空时用默认区间。
 func resolveGrade(score float64, mappings []levelMapping) string {
 	if len(mappings) == 0 {
-		mappings = []levelMapping{
-			{Level: "未达标", Min: 0, Max: 59},
-			{Level: "达标", Min: 60, Max: 69},
-			{Level: "良好", Min: 70, Max: 79},
-			{Level: "优秀", Min: 80, Max: 89},
-			{Level: "卓越", Min: 90, Max: 100},
-		}
+		mappings = defaultLevelMappings()
 	}
 	sorted := make([]levelMapping, len(mappings))
 	copy(sorted, mappings)

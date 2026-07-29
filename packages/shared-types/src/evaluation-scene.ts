@@ -92,9 +92,13 @@ export interface JobAbilitySummaryItem {
 
 // 汇聚任务状态
 export interface JobAbilityAggregateStatus {
+  id?: string
   careerPositionId?: string
   status: string
   message?: string
+  studentCount?: number
+  updatedCount?: number
+  errorMessage?: string
   startedAt?: string
   finishedAt?: string
 }

@@ -44,6 +44,8 @@ export interface CertificationRule {
   careerPositionId: string
   status: RuleStatus
   ruleSource: 'inherit' | 'custom'
+  /** 规则级全局等级映射（继承类能力点的默认评级区间），空数组表示未配置 */
+  levelMapping?: LevelMapping[]
   createdAt?: string
   updatedAt?: string
   /** 演示系统兼容字段（聚合展示用），后端列表/详情接口不返回 */

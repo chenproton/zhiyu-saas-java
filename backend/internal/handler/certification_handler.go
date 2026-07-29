@@ -91,6 +91,7 @@ type CertificationFullItemRequest struct {
 type PutFullCertificationRuleRequest struct {
 	CareerPositionID string                        `json:"careerPositionId"`
 	RuleSource       string                        `json:"ruleSource"`
+	LevelMapping     domain.JSONSlice              `json:"levelMapping"`
 	Items            []CertificationFullItemRequest `json:"items"`
 }
 
@@ -103,11 +104,14 @@ func (h *CertificationHandler) ListRules(w http.ResponseWriter, r *http.Request)
 
 	cfg := listQueryConfig[domain.CertificationRule]{
 		Table:         "certification_rules",
-		SelectColumns: "id, career_position_id, status, rule_source, created_at, updated_at",
+		SelectColumns: "id, career_position_id, status, rule_source, level_mapping, created_at, updated_at",
 		TenantScoped:  true,
 		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
 			if status := r.URL.Query().Get("status"); status != "" {
 				qb.addCondition("status = " + qb.nextArg(status))
+			}
+			if positionID := r.URL.Query().Get("careerPositionId"); positionID != "" {
+				qb.addCondition("career_position_id = " + qb.nextArg(positionID))
 			}
 		},
 		ScanRows: h.scanRuleRows,
@@ -162,6 +166,16 @@ func (h *CertificationHandler) CreateRule(w http.ResponseWriter, r *http.Request
 
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
+		return
+	}
+
+	// 同一租户同一岗位只允许一条规则：已存在时直接返回现有规则，避免重复创建
+	var existingID string
+	if err := h.DB.QueryRow(r.Context(), `
+		SELECT id FROM certification_rules WHERE tenant_id = $1 AND career_position_id = $2 LIMIT 1
+	`, tenantID, req.CareerPositionID).Scan(&existingID); err == nil {
+		rule, _ := h.fetchRule(r.Context(), existingID)
+		respondJSON(w, http.StatusOK, rule)
 		return
 	}
 
@@ -519,10 +533,16 @@ func (h *CertificationHandler) PutFullRule(w http.ResponseWriter, r *http.Reques
 	}
 	defer tx.Rollback(r.Context())
 
+	// level_mapping 列为 NOT NULL：未传时写入空数组
+	levelMapping := req.LevelMapping
+	if levelMapping == nil {
+		levelMapping = domain.JSONSlice{}
+	}
+
 	if _, err := tx.Exec(r.Context(), `
-		UPDATE certification_rules SET career_position_id = $1, rule_source = $2, updated_at = NOW()
-		WHERE id = $3 AND tenant_id = $4
-	`, req.CareerPositionID, req.RuleSource, id, tenantID); err != nil {
+		UPDATE certification_rules SET career_position_id = $1, rule_source = $2, level_mapping = $3, updated_at = NOW()
+		WHERE id = $4 AND tenant_id = $5
+	`, req.CareerPositionID, req.RuleSource, levelMapping, id, tenantID); err != nil {
 		respondError(w, http.StatusInternalServerError, "更新认证规则失败")
 		return
 	}
@@ -815,9 +835,9 @@ func (h *CertificationHandler) DeleteTask(w http.ResponseWriter, r *http.Request
 func (h *CertificationHandler) fetchRule(ctx context.Context, id string) (domain.CertificationRule, error) {
 	var rule domain.CertificationRule
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, career_position_id, status, rule_source, created_at, updated_at
+		SELECT id, career_position_id, status, rule_source, level_mapping, created_at, updated_at
 		FROM certification_rules WHERE id = $1
-	`, id).Scan(&rule.ID, &rule.CareerPositionID, &rule.Status, &rule.RuleSource, &rule.CreatedAt, &rule.UpdatedAt)
+	`, id).Scan(&rule.ID, &rule.CareerPositionID, &rule.Status, &rule.RuleSource, &rule.LevelMapping, &rule.CreatedAt, &rule.UpdatedAt)
 	if err != nil {
 		return rule, err
 	}
@@ -827,9 +847,9 @@ func (h *CertificationHandler) fetchRule(ctx context.Context, id string) (domain
 func (h *CertificationHandler) fetchTenantRule(ctx context.Context, id, tenantID string) (domain.CertificationRule, error) {
 	var rule domain.CertificationRule
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, career_position_id, status, rule_source, created_at, updated_at
+		SELECT id, career_position_id, status, rule_source, level_mapping, created_at, updated_at
 		FROM certification_rules WHERE id = $1 AND tenant_id = $2
-	`, id, tenantID).Scan(&rule.ID, &rule.CareerPositionID, &rule.Status, &rule.RuleSource, &rule.CreatedAt, &rule.UpdatedAt)
+	`, id, tenantID).Scan(&rule.ID, &rule.CareerPositionID, &rule.Status, &rule.RuleSource, &rule.LevelMapping, &rule.CreatedAt, &rule.UpdatedAt)
 	return rule, err
 }
 
@@ -870,7 +890,7 @@ func (h *CertificationHandler) scanRuleRows(rows pgx.Rows) ([]domain.Certificati
 	items := make([]domain.CertificationRule, 0)
 	for rows.Next() {
 		var rule domain.CertificationRule
-		if err := rows.Scan(&rule.ID, &rule.CareerPositionID, &rule.Status, &rule.RuleSource, &rule.CreatedAt, &rule.UpdatedAt); err != nil {
+		if err := rows.Scan(&rule.ID, &rule.CareerPositionID, &rule.Status, &rule.RuleSource, &rule.LevelMapping, &rule.CreatedAt, &rule.UpdatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, rule)

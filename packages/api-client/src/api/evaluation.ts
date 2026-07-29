@@ -13,6 +13,7 @@ import type {
   CertificationAbilityPoint,
   CertificationRelatedTask,
   CustomLevelMapping,
+  LevelMapping,
   StudentAbilityPortrait,
   StudentAbilityArchive,
   GraduationProjectTopic,
@@ -147,6 +148,8 @@ export interface CertificationFullItemPayload {
 export interface CertificationFullRulePayload {
   careerPositionId: string
   ruleSource: string
+  /** 规则级全局等级映射，持久化到 certification_rules.level_mapping */
+  levelMapping?: LevelMapping[]
   items: CertificationFullItemPayload[]
 }
 
@@ -270,7 +273,7 @@ export const jobAbilityResultApi = {
   get: (id: string) => request<JobAbilityResult>(`/evaluation/job-ability/results/${id}`),
   summary: () => request<JobAbilitySummaryItem[]>("/evaluation/job-ability/results/summary"),
   aggregate: (data: { careerPositionId: string; userIds?: string[] }) =>
-    request<JobAbilityAggregateStatus>("/evaluation/job-ability/aggregate", { method: "POST", body: JSON.stringify(data) }),
+    request<{ logId: string; status: string }>("/evaluation/job-ability/aggregate", { method: "POST", body: JSON.stringify(data) }),
   aggregateStatus: (careerPositionId?: string) =>
     request<JobAbilityAggregateStatus | null>(`/evaluation/job-ability/aggregate/status${buildQuery({ careerPositionId })}`),
 }
