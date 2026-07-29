@@ -5117,11 +5117,17 @@ function EditCardDialog({
           <KnowledgeSelector
             selected={selected}
             pool={pool}
-            onChange={(items) => updateState({ knowledgePoints: items.map(i => i.id) })}
+            onChange={(items) => {
+              const ids = items.map(i => i.id)
+              for (const item of items) {
+                if (item.id.startsWith("kp-custom-") && !customKnowledgePointIds.has(item.id)) {
+                  customKnowledgePointIds.add(item.id)
+                  knowledgePoints.push({ id: item.id, name: item.name, description: item.description || "", code: item.code || "", linked: false, granularLessons: (item as any).granularLessons || [] })
+                }
+              }
+              updateState({ knowledgePoints: ids })
+            }}
             onAddCustom={(name, description) => {
-              const newId = `kp-custom-${Date.now()}`
-              knowledgePoints.push({ id: newId, name, description, code: "", linked: false })
-              updateState({ knowledgePoints: [...state.knowledgePoints, newId] })
             }}
           />
         )
