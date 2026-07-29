@@ -92,9 +92,6 @@ services:
 
   backend:
     image: zhiyu-backend:${IMAGE_TAG:-latest}
-    build:
-      context: ./src/backend
-      dockerfile: Dockerfile
     container_name: zhiyu-backend
     restart: unless-stopped
     ports:

@@ -1,1 +1,0 @@
-ALTER TABLE ability_points ADD COLUMN IF NOT EXISTS attributes TEXT[] NOT NULL DEFAULT '{}';
