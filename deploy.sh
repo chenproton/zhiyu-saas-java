@@ -146,10 +146,14 @@ if [[ "$FRONTEND_ONLY" != "true" ]]; then
     echo "$BIN_HASH" > "$BUILD_CACHE/backend-bin-hash"
   fi
 
-  # 数据库备份
-  if [[ -n "${DATABASE_URL:-}" ]] && pg_isready -d "$DATABASE_URL" >/dev/null 2>&1; then
+  # 数据库备份 (优先 Docker PG，不可用时回退到宿主机 PG)
+  BACKUP_URL="postgres://${DB_USER:-zhiyu_saas}:${DB_PASSWORD}@127.0.0.1:5433/${DB_NAME:-zhiyu-saas}?sslmode=disable"
+  if ! pg_isready -d "$BACKUP_URL" >/dev/null 2>&1; then
+    BACKUP_URL="${DATABASE_URL:-}"
+  fi
+  if [[ -n "$BACKUP_URL" ]] && pg_isready -d "$BACKUP_URL" >/dev/null 2>&1; then
     BT=$(date +%Y%m%d-%H%M%S)
-    pg_dump -d "$DATABASE_URL" -Fc -Z 6 > "$DEPLOY_DIR/backups/backup-$BT.dump" 2>/dev/null && \
+    pg_dump -d "$BACKUP_URL" -Fc -Z 6 > "$DEPLOY_DIR/backups/backup-$BT.dump" 2>/dev/null && \
       echo "  备份: backup-$BT.dump" || true
     find "$DEPLOY_DIR/backups" -name "backup-*.dump" -mtime +14 -delete 2>/dev/null || true
   fi
@@ -196,7 +200,12 @@ cp "$BUILD_ROOT/deploy/docker-compose.yml" "$DEPLOY_COMPOSE"
 
 DB_USER="zhiyu_saas"; DB_NAME="zhiyu-saas"
 DB_PASSWORD=$(echo "${DATABASE_URL:-}" | sed 's|.*://[^:]*:\([^@]*\)@.*|\1|' | python3 -c 'import urllib.parse,sys; print(urllib.parse.unquote(sys.stdin.read().strip()))' 2>/dev/null || echo "")
+MIGRATE_URL="postgres://${DB_USER}:${DB_PASSWORD}@127.0.0.1:5433/${DB_NAME}?sslmode=disable"
 export DB_USER DB_PASSWORD DB_NAME JWT_SECRET
+
+echo "  停止宿主机 PostgreSQL/Redis（端口由 Docker 接管）..."
+systemctl stop postgresql 2>/dev/null || true
+systemctl stop redis-server 2>/dev/null || redis-cli shutdown 2>/dev/null || true
 
 EXISTING=$(docker compose -f "$DEPLOY_COMPOSE" ps -q 2>/dev/null | wc -l | tr -d ' ')
 
@@ -210,15 +219,31 @@ if [[ "$EXISTING" -eq 0 ]]; then
 fi
 
 echo "  数据库迁移..."
-MIGRATE_URL="postgres://${DB_USER}:${DB_PASSWORD}@127.0.0.1:5433/${DB_NAME}?sslmode=disable"
 for i in $(seq 1 15); do psql "$MIGRATE_URL" -c "SELECT 1" >/dev/null 2>&1 && break; sleep 1; done
 
 if [[ ! -f "$DEPLOY_DIR/.migration-baseline-done" ]]; then
+  echo "  应用 baseline schema..."
   psql "$MIGRATE_URL" -c "CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(255) PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());" 2>/dev/null
   psql "$MIGRATE_URL" -f "$BACKEND_DIR/migrations/001_baseline.up.sql" 2>&1 | tail -3
   psql "$MIGRATE_URL" -c "INSERT INTO schema_migrations (version) VALUES ('001_baseline') ON CONFLICT DO NOTHING;" 2>/dev/null
   touch "$DEPLOY_DIR/.migration-baseline-done"
+
+  echo "  检测种子数据..."
+  DOCKER_USER_COUNT=$(psql "$MIGRATE_URL" -t -A -c "SELECT COUNT(*) FROM users;" 2>/dev/null || echo "0")
+  if [[ "$DOCKER_USER_COUNT" == "0" ]]; then
+    SYS_DB_URL="${DATABASE_URL:-}"
+    if [[ -n "$SYS_DB_URL" ]] && pg_isready -d "$SYS_DB_URL" >/dev/null 2>&1; then
+      echo "  首次部署：从宿主机 PG 迁移数据到 Docker PG..."
+      pg_dump "$SYS_DB_URL" --data-only --no-owner --inserts 2>/dev/null > "$DEPLOY_DIR/.seed_data.sql"
+      if [[ -s "$DEPLOY_DIR/.seed_data.sql" ]]; then
+        psql "$MIGRATE_URL" -f "$DEPLOY_DIR/.seed_data.sql" 2>&1 | tail -3
+        echo "  数据迁移完成 ($(wc -l < "$DEPLOY_DIR/.seed_data.sql") 行)"
+      fi
+      rm -f "$DEPLOY_DIR/.seed_data.sql"
+    fi
+  fi
 else
+  echo "  增量迁移..."
   (cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" go run ./cmd/migrate/main.go up) || echo "  警告：增量迁移可能已是最新"
 fi
 
