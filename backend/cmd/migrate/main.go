@@ -181,11 +181,13 @@ func ctx() context.Context {
 }
 
 func execMultiSQL(tx pgx.Tx, sql string) error {
-	for _, stmt := range strings.Split(sql, ";") {
+	stmts := strings.Split(sql, ";\n")
+	for _, stmt := range stmts {
 		stmt = strings.TrimSpace(stmt)
 		if stmt == "" {
 			continue
 		}
+		stmt += ";"
 		if _, err := tx.Exec(context.Background(), stmt); err != nil {
 			return err
 		}
