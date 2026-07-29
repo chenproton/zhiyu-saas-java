@@ -1229,7 +1229,7 @@ export default function TasksEditPage() {
           url: res.url,
           description: res.description,
           thumbnail: res.thumbnail,
-          size: res.size,
+          size: res.size != null ? String(res.size) : undefined,
           knowledgePointIds: res.knowledgePoints || res.knowledgePointIds || [],
           extraData: res.extraData,
           uploadedBy: res.uploadedBy,
