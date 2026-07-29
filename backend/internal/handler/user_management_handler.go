@@ -122,7 +122,7 @@ func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
 				qb.addCondition("EXISTS (SELECT 1 FROM user_roles ur JOIN roles r2 ON r2.id = ur.role_id WHERE ur.user_id = users.id AND r2.code = " + qb.nextArg(roleCode) + ")")
 			}
 			if orgNodeID := r.URL.Query().Get("orgNodeId"); orgNodeID != "" {
-				qb.addCondition("org_node_id = " + qb.nextArg(orgNodeID))
+				qb.addCondition("org_node_id IN (WITH RECURSIVE org_subtree AS (SELECT id FROM organizations WHERE id = " + qb.nextArg(orgNodeID) + " UNION ALL SELECT o.id FROM organizations o JOIN org_subtree st ON o.parent_id = st.id) SELECT id FROM org_subtree)")
 			}
 			if status := r.URL.Query().Get("status"); status != "" {
 				qb.addCondition("status = " + qb.nextArg(status))
