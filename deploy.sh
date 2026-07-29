@@ -108,20 +108,12 @@ DOCKER_COMPOSE=$(detect_docker_compose)
 compose() { $DOCKER_COMPOSE -f "$DEPLOY_COMPOSE" "$@"; }
 
 # Go
-GO_MIN="1.25.0"
-NEED_GO=false
-if command -v go >/dev/null 2>&1; then
-  gv=$(go version | awk '{print $3}' | sed 's/go//')
-  [[ "$gv" != "$GO_MIN" && "$gv" < "$GO_MIN" ]] && NEED_GO=true
-else
-  NEED_GO=true
-fi
-if $NEED_GO; then
+if ! command -v go >/dev/null 2>&1; then
   is_root || die "需要 root 安装 Go"
-  log "安装 Go $GO_MIN..."
+  log "安装 Go..."
   ARCH=$(uname -m); [[ "$ARCH" == "x86_64" ]] && ARCH="amd64"; [[ "$ARCH" == "aarch64" ]] && ARCH="arm64"
-  curl -fsSL "https://go.dev/dl/go${GO_MIN}.linux-${ARCH}.tar.gz" -o /tmp/go.tar.gz || \
-    curl -fsSL "https://goproxy.cn/dl/go${GO_MIN}.linux-${ARCH}.tar.gz" -o /tmp/go.tar.gz
+  curl -fsSL "https://go.dev/dl/go1.25.0.linux-${ARCH}.tar.gz" -o /tmp/go.tar.gz || \
+    curl -fsSL "https://goproxy.cn/dl/go1.25.0.linux-${ARCH}.tar.gz" -o /tmp/go.tar.gz
   rm -rf /usr/local/go && tar -C /usr/local -xzf /tmp/go.tar.gz && rm -f /tmp/go.tar.gz
   export PATH="/usr/local/go/bin:$PATH"
   echo 'export PATH="/usr/local/go/bin:$PATH"' > /etc/profile.d/go.sh
@@ -129,9 +121,9 @@ fi
 export GOPROXY="${GOPROXY:-https://goproxy.cn,direct}"
 
 # Node.js + pnpm
-if ! command -v node >/dev/null 2>&1 || [[ "$(node -v | sed 's/v//;s/\..*//')" -lt 22 ]]; then
+if ! command -v node >/dev/null 2>&1; then
   is_root || die "需要 root 安装 Node.js"
-  log "安装 Node.js 22..."
+  log "安装 Node.js..."
   if command -v apt-get >/dev/null 2>&1; then
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - 2>/dev/null
     pkg_install nodejs
