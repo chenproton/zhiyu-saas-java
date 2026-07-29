@@ -753,7 +753,8 @@ if [[ "$DOCKER_MODE" == "true" && "$FRONTEND_ONLY" != "true" && -f "$BACKEND_BIN
   EXISTING=$(docker compose -f "$DEPLOY_COMPOSE_FILE" ps -q 2>/dev/null | wc -l || echo "0")
   if [[ "$EXISTING" -eq 0 ]]; then
     echo "  首次启动 PostgreSQL + Redis..."
-    docker compose -f "$DEPLOY_COMPOSE_FILE" up -d postgres redis
+    DB_USER="$DB_USER" DB_PASSWORD="$DB_PASSWORD" DB_NAME="$DB_NAME" \
+      docker compose -f "$DEPLOY_COMPOSE_FILE" up -d postgres redis
     for i in $(seq 1 30); do
       docker compose -f "$DEPLOY_COMPOSE_FILE" exec -T postgres pg_isready -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1 && break
       sleep 2
@@ -770,7 +771,9 @@ if [[ "$DOCKER_MODE" == "true" && "$FRONTEND_ONLY" != "true" && -f "$BACKEND_BIN
   }
 
   echo "  启动后端容器..."
-  docker compose -f "$DEPLOY_COMPOSE_FILE" up -d --remove-orphans 2>&1
+  DB_USER="$DB_USER" DB_PASSWORD="$DB_PASSWORD" DB_NAME="$DB_NAME" \
+    JWT_SECRET="${JWT_SECRET:-}" IMAGE_TAG="$IMAGE_TAG" \
+    docker compose -f "$DEPLOY_COMPOSE_FILE" up -d --remove-orphans 2>&1
 
   echo ""
   echo "==> 等待 Docker 服务就绪..."
