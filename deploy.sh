@@ -177,8 +177,8 @@ if [[ "$BACKEND_ONLY" != "true" ]]; then
 
     echo "  构建 Next.js..."
     rm -rf "$EDU_DIR/.next"
-    NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
-      pnpm --filter @zhiyu/edu build || { echo "错误：前端构建失败" >&2; exit 1; }
+    (cd "$BUILD_ROOT" && NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
+      pnpm --filter @zhiyu/edu build) || { echo "错误：前端构建失败" >&2; exit 1; }
 
     echo "  构建 Docker 镜像..."
     SD="$EDU_DIR/.next/standalone/apps/edu"
