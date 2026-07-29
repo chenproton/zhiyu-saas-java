@@ -181,8 +181,7 @@ if [[ "$BACKEND_ONLY" != "true" ]]; then
       pnpm --filter @zhiyu/edu build) || { echo "错误：前端构建失败" >&2; exit 1; }
 
     echo "  构建 Docker 镜像..."
-    SD="$EDU_DIR/.next/standalone/apps/edu"
-    docker build -t "zhiyu-edu:$IMAGE_TAG" -f "$EDU_DIR/Dockerfile" "$SD" 2>&1 | tail -3
+    docker build -t "zhiyu-edu:$IMAGE_TAG" -f "$EDU_DIR/Dockerfile" "$EDU_DIR/.next/standalone" 2>&1 | tail -3
   else
     echo "  = 跳过 (无变更)"
   fi
