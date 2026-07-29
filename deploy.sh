@@ -85,6 +85,40 @@ prune_old_images() {
   done
 }
 
+# 执行数据库迁移；若 migrate 工具失败，使用 psql 兜底逐个执行未应用迁移文件
+run_migrations() {
+  local backend_dir="$1" migrate_url="$2"
+  if (cd "$backend_dir" && DATABASE_URL="$migrate_url" go run ./cmd/migrate/main.go up); then
+    return 0
+  fi
+
+  warn "migrate 工具执行失败，尝试使用 psql 兜底执行未应用迁移..."
+  local applied_versions
+  applied_versions=$(psql "$migrate_url" -Atc "SELECT version FROM schema_migrations;" 2>/dev/null || true)
+
+  local failed=false
+  for f in "$backend_dir"/migrations/*.up.sql; do
+    [[ -f "$f" ]] || continue
+    local version
+    version=$(basename "$f" | sed 's/_.*//')
+    if echo "$applied_versions" | grep -qx "$version"; then
+      continue
+    fi
+    log "  兜底执行: $(basename "$f")"
+    if psql "$migrate_url" -v ON_ERROR_STOP=1 -f "$f" 2>&1 | tail -5; then
+      psql "$migrate_url" -c "INSERT INTO schema_migrations (version) VALUES ('$version') ON CONFLICT DO NOTHING;" >/dev/null || true
+    else
+      failed=true
+      warn "兜底迁移失败: $(basename "$f")"
+    fi
+  done
+
+  if $failed; then
+    return 1
+  fi
+  return 0
+}
+
 # ── 哈希计算 ──
 # 基于文件内容哈希，避免构建路径不同导致缓存失效
 source_hash() {
@@ -117,24 +151,49 @@ if ! docker info >/dev/null 2>&1; then
   systemctl start docker 2>/dev/null || service docker start 2>/dev/null || true; sleep 2
 fi
 
-# 配置国内 Docker Hub 镜像加速（仅在 daemon.json 不存在时写入，避免覆盖用户自定义配置）
+# 配置 Docker Hub 镜像加速（支持 .env 覆盖，每次部署按 .env 刷新，避免旧镜像源过期）
 configure_docker_mirrors() {
+  is_root || return 0
   local daemon_file="/etc/docker/daemon.json"
-  if [[ -f "$daemon_file" ]]; then
+  local mirrors=""
+
+  if [[ -n "${DOCKER_REGISTRY_MIRRORS:-}" ]]; then
+    mirrors=$(python3 -c "import sys; print('\n'.join(x.strip() for x in sys.argv[1].split(',') if x.strip()))" "$DOCKER_REGISTRY_MIRRORS")
+  else
+    # .env 未配置时探测默认 mirror，任意一个可用即采用
+    for url in "https://docker.1panel.live" "https://docker.m.daocloud.io"; do
+      if timeout 10 curl -fsSLI "${url}/v2/" >/dev/null 2>&1; then
+        mirrors="$url"
+        break
+      fi
+    done
+  fi
+
+  mkdir -p /etc/docker
+  local tmp_file
+  tmp_file=$(mktemp)
+  python3 - <<PY
+import json, os
+mirrors = [m.strip() for m in """${mirrors}""".strip().splitlines() if m.strip()]
+config = {"registry-mirrors": mirrors} if mirrors else {}
+with open("$tmp_file", "w") as f:
+    json.dump(config, f, indent=2)
+PY
+
+  if [[ -f "$daemon_file" ]] && diff -q "$tmp_file" "$daemon_file" >/dev/null 2>&1; then
+    rm -f "$tmp_file"
     return 0
   fi
-  is_root || return 0
-  mkdir -p /etc/docker
-  cat > "$daemon_file" <<'EOF'
-{
-  "registry-mirrors": [
-    "https://docker.m.daocloud.io",
-    "https://hub-mirror.c.163.com",
-    "https://docker.mirrors.ustc.edu.cn"
-  ]
-}
-EOF
-  log "已配置 Docker Hub 国内镜像加速，正在重启 Docker..."
+
+  [[ -f "$daemon_file" ]] && cp -f "$daemon_file" "${daemon_file}.bak.$(date +%Y%m%d%H%M%S)" 2>/dev/null || true
+  mv -f "$tmp_file" "$daemon_file"
+
+  if [[ -n "$mirrors" ]]; then
+    log "已配置 Docker Hub 镜像加速：$(echo "$mirrors" | tr '\n' ' ')"
+  else
+    log "未配置 Docker Hub 镜像加速（使用 docker hub 直连）"
+  fi
+
   systemctl restart docker 2>/dev/null || service docker restart 2>/dev/null || true
   sleep 2
 }
@@ -163,8 +222,21 @@ if ! command -v go >/dev/null 2>&1; then
   is_root || die "需要 root 安装 Go"
   log "安装 Go..."
   ARCH=$(uname -m); [[ "$ARCH" == "x86_64" ]] && ARCH="amd64"; [[ "$ARCH" == "aarch64" ]] && ARCH="arm64"
-  curl -fsSL "https://go.dev/dl/go1.25.0.linux-${ARCH}.tar.gz" -o /tmp/go.tar.gz || \
-    curl -fsSL "https://goproxy.cn/dl/go1.25.0.linux-${ARCH}.tar.gz" -o /tmp/go.tar.gz
+  GO_VERSION="${GO_VERSION:-1.23.7}"
+  GO_TARBALL="go${GO_VERSION}.linux-${ARCH}.tar.gz"
+  GO_DOWNLOADED=false
+  for url in \
+    "https://mirrors.aliyun.com/golang/${GO_TARBALL}" \
+    "https://go.dev/dl/${GO_TARBALL}" \
+    "https://goproxy.cn/dl/${GO_TARBALL}"; do
+    if curl -fsSL "$url" -o /tmp/go.tar.gz 2>/dev/null; then
+      log "  下载 Go ${GO_VERSION} 成功: $url"
+      GO_DOWNLOADED=true
+      break
+    fi
+    warn "下载失败: $url"
+  done
+  [[ "$GO_DOWNLOADED" == "true" ]] || die "无法下载 Go ${GO_VERSION}，请检查 GO_VERSION 或网络"
   rm -rf /usr/local/go && tar -C /usr/local -xzf /tmp/go.tar.gz && rm -f /tmp/go.tar.gz
   export PATH="/usr/local/go/bin:$PATH"
   echo 'export PATH="/usr/local/go/bin:$PATH"' > /etc/profile.d/go.sh
@@ -230,6 +302,17 @@ if [[ ! -f "$ENV_FILE" ]]; then
     sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgresql://zhiyu_saas:${db_pass}@127.0.0.1:5433/zhiyu-saas?sslmode=disable|" "$ENV_FILE"
     sed -i "s|^JWT_SECRET=.*|JWT_SECRET=${jwt_secret}|" "$ENV_FILE"
     sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${db_pass}|" "$ENV_FILE"
+    # 写入部署相关默认值，便于用户后续修改
+    {
+      echo ""
+      echo "# 部署配置（由 deploy.sh 首次生成）"
+      echo "GO_VERSION=${GO_VERSION:-1.23.7}"
+      echo "NGINX_SERVER_NAME=${NGINX_SERVER_NAME:-_}"
+      echo "NGINX_DEFAULT_SERVER=${NGINX_DEFAULT_SERVER:-default_server}"
+      echo "ENABLE_KKFILEVIEW=${ENABLE_KKFILEVIEW:-false}"
+      echo "KKFILEVIEW_IMAGE=${KKFILEVIEW_IMAGE:-fangzhengjin/kkfileview:4.4.0}"
+      echo "DOCKER_REGISTRY_MIRRORS=${DOCKER_REGISTRY_MIRRORS:-}"
+    } >> "$ENV_FILE"
     chmod 600 "$ENV_FILE"
     log "已生成 .env（管理员: admin / admin123）"
   fi
@@ -239,6 +322,14 @@ set -a; source "$ENV_FILE"; set +a
 DEPLOY_COMPOSE="$DEPLOY_DIR/docker-compose.yml"
 BUILD_CACHE="$DEPLOY_DIR/.build-cache"
 IMAGE_TAG="$(git -C "$PROJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo "latest")"
+
+# 将 IMAGE_TAG 写回 .env，确保 docker compose 能读取到实际镜像标签
+if grep -q "^IMAGE_TAG=" "$ENV_FILE" 2>/dev/null; then
+  sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" "$ENV_FILE"
+else
+  echo "IMAGE_TAG=${IMAGE_TAG}" >> "$ENV_FILE"
+fi
+set -a; source "$ENV_FILE"; set +a
 
 # 数据库连接
 DB_USER="${DB_USER:-zhiyu_saas}"; DB_NAME="${DB_NAME:-zhiyu-saas}"
@@ -388,7 +479,9 @@ if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx '^kkfileview$'; the
   docker rm kkfileview >/dev/null 2>&1 || true
 fi
 
-compose up -d --remove-orphans 2>&1 | tail -5
+COMPOSE_PROFILES=""
+[[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]] && COMPOSE_PROFILES="--profile kkfileview"
+compose up -d --remove-orphans $COMPOSE_PROFILES 2>&1 | tail -5
 
 # 等待 PG
 for i in $(seq 1 30); do
@@ -412,13 +505,13 @@ if [[ ! -f "$DEPLOY_DIR/.migration-done" ]]; then
   touch "$DEPLOY_DIR/.migration-done"
 
   # baseline 之后补齐后续增量迁移（migrate 自动跳过 schema_migrations 已记录版本）
-  (cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" go run ./cmd/migrate/main.go up) || die "数据库迁移失败"
+  run_migrations "$BACKEND_DIR" "$MIGRATE_URL" || die "数据库迁移失败"
 
   log "初始化种子数据..."
   (cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" go run ./cmd/seed/main.go) || warn "种子初始化失败"
   log "  运营方租户: platform / 管理员: admin / admin123"
 else
-  (cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" go run ./cmd/migrate/main.go up) || die "数据库迁移失败"
+  run_migrations "$BACKEND_DIR" "$MIGRATE_URL" || die "数据库迁移失败"
 fi
 
 # 健康检查
@@ -448,10 +541,12 @@ if ! $OK; then
 fi
 
 # 等待 kkfileview 就绪（非核心服务，仅避免 nginx 重载到未就绪端口）
-for i in $(seq 1 60); do
-  wget -qO- http://127.0.0.1:8012/kkfileview/onlinePreview >/dev/null 2>&1 && { log "  kkfileview ready"; break; }
-  sleep 2
-done
+if [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]]; then
+  for i in $(seq 1 60); do
+    wget -qO- http://127.0.0.1:8012/kkfileview/onlinePreview >/dev/null 2>&1 && { log "  kkfileview ready"; break; }
+    sleep 2
+  done
+fi
 
 compose ps
 [[ "$CLEAN_BUILD" == "true" ]] && docker builder prune --all --force >/dev/null 2>&1 || true
@@ -465,8 +560,20 @@ prune_old_images "zhiyu-edu" 5
 # ════════════════════════════════════════════
 NGINX_CONF="$BUILD_ROOT/deploy/nginx/conf.d/zhiyu-saas.conf"
 if [[ -f "$NGINX_CONF" ]]; then
-  cp -f "$NGINX_CONF" "$NGINX_DST"
-  nginx -t 2>/dev/null && systemctl restart nginx 2>/dev/null && log "Nginx 重启成功" || die "Nginx 配置测试或重启失败"
+  NGINX_SERVER_NAME="${NGINX_SERVER_NAME:-_}"
+  NGINX_DEFAULT_SERVER="${NGINX_DEFAULT_SERVER:-default_server}"
+  sed -e 's/\${NGINX_SERVER_NAME:-_}/'"${NGINX_SERVER_NAME}"'/g' \
+      -e 's/\${NGINX_DEFAULT_SERVER:-default_server}/'"${NGINX_DEFAULT_SERVER}"'/g' \
+      "$NGINX_CONF" > "$NGINX_DST"
+  if nginx -t 2>/dev/null; then
+    if systemctl is-active nginx >/dev/null 2>&1; then
+      systemctl reload nginx 2>/dev/null && log "Nginx 重载成功" || die "Nginx 重载失败"
+    else
+      systemctl start nginx 2>/dev/null && log "Nginx 启动成功" || die "Nginx 启动失败"
+    fi
+  else
+    die "Nginx 配置测试失败"
+  fi
 fi
 
 if [[ -n "$BRANCH_NAME" && "$SKIP_MERGE" != "true" ]]; then

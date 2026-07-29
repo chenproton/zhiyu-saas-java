@@ -7,7 +7,7 @@ services:
     image: postgres:15-alpine
     container_name: zhiyu-postgres
     restart: unless-stopped
-    shm_size: 128m
+    shm_size: 128mb
     logging:
       driver: json-file
       options:
@@ -139,9 +139,10 @@ services:
       - zhiyu
 
   kkfileview:
+    profiles: ["kkfileview"]
     env_file:
       - .env
-    image: fangzhengjin/kkfileview:4.4.0
+    image: ${KKFILEVIEW_IMAGE:-fangzhengjin/kkfileview:4.4.0}
     container_name: zhiyu-kkfileview
     restart: unless-stopped
     ports:

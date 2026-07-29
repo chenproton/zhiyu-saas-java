@@ -214,8 +214,8 @@ func execMultiSQL(conn *pgx.Conn, sql string) error {
 	}
 	stmts := strings.Split(sql, ";\n")
 	for j, stmt := range stmts {
-		stmt = strings.TrimSpace(stmt)
-		if stmt == "" || strings.HasPrefix(stmt, "--") {
+		stmt = stripSQLComments(stmt)
+		if stmt == "" {
 			continue
 		}
 		if !strings.HasSuffix(stmt, ";") {
@@ -230,4 +230,19 @@ func execMultiSQL(conn *pgx.Conn, sql string) error {
 		}
 	}
 	return nil
+}
+
+// stripSQLComments 移除单行注释并trim，返回可执行的 SQL 主体。
+// 仅处理 -- 行注释，保留 SQL 内容；空内容返回空字符串。
+func stripSQLComments(stmt string) string {
+	lines := strings.Split(stmt, "\n")
+	var out []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "--") {
+			continue
+		}
+		out = append(out, line)
+	}
+	return strings.TrimSpace(strings.Join(out, "\n"))
 }
