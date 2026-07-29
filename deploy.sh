@@ -74,13 +74,17 @@ detect_docker_compose() {
 }
 
 # ── 哈希计算 ──
+# 基于文件内容哈希，避免构建路径不同导致缓存失效
 source_hash() {
   find "$@" -type f \( -name '*.go' -o -name 'go.mod' -o -name 'go.sum' -o -name '*.sql' \) \
-    -not -path '*/bin/*' 2>/dev/null | sort | md5sum | awk '{print $1}'
+    -not -path '*/bin/*' -print0 2>/dev/null | sort -z | xargs -0 -r md5sum | \
+    awk '{print $1}' | sort | md5sum | awk '{print $1}'
 }
 frontend_hash() {
   find "$1/apps/edu" "$1/packages" -type f \
-    -not -path '*/node_modules/*' -not -path '*/.next/*' 2>/dev/null | sort | md5sum | awk '{print $1}'
+    -not -path '*/node_modules/*' -not -path '*/.next/*' \
+    -not -name '*.tsbuildinfo' -not -name '*.map' -print0 2>/dev/null | sort -z | xargs -0 -r md5sum | \
+    awk '{print $1}' | sort | md5sum | awk '{print $1}'
 }
 lock_hash() { md5sum "$1/pnpm-lock.yaml" 2>/dev/null | awk '{print $1}'; }
 
