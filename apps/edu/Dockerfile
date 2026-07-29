@@ -1,6 +1,6 @@
 FROM node:22-alpine
 
-RUN adduser -D -u 1000 appuser
+RUN addgroup -g 1000 appuser && adduser -u 1000 -G appuser -D appuser
 
 COPY --chown=appuser:appuser . /app
 
