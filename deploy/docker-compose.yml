@@ -1,5 +1,9 @@
+name: zhiyu-saas
+
 services:
   postgres:
+    env_file:
+      - .env
     image: postgres:15-alpine
     container_name: zhiyu-postgres
     restart: unless-stopped
@@ -42,6 +46,8 @@ services:
       - zhiyu
 
   redis:
+    env_file:
+      - .env
     image: redis:7-alpine
     container_name: zhiyu-redis
     restart: unless-stopped
@@ -70,6 +76,8 @@ services:
       - zhiyu
 
   backend:
+    env_file:
+      - .env
     image: zhiyu-backend:${IMAGE_TAG:-latest}
     container_name: zhiyu-backend
     restart: unless-stopped
@@ -105,6 +113,8 @@ services:
       - zhiyu
 
   frontend:
+    env_file:
+      - .env
     image: zhiyu-edu:${IMAGE_TAG:-latest}
     container_name: zhiyu-edu
     restart: unless-stopped
