@@ -251,6 +251,11 @@ if [[ "$BACKEND_ONLY" != "true" ]]; then
     (cd "$BUILD_ROOT" && NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
       pnpm --filter @zhiyu/edu build) || { echo "错误：前端构建失败" >&2; exit 1; }
 
+    echo "  组装 standalone..."
+    SD="$EDU_DIR/.next/standalone/apps/edu"
+    [[ -d "$EDU_DIR/.next/static" ]] && { mkdir -p "$SD/.next/static"; rsync -a --delete --exclude="*.map" "$EDU_DIR/.next/static/" "$SD/.next/static/"; }
+    [[ -d "$EDU_DIR/public" ]] && { mkdir -p "$SD/public"; rsync -a --delete "$EDU_DIR/public/" "$SD/public/"; }
+
     echo "  Docker 镜像..."
     docker build -t "zhiyu-edu:$IMAGE_TAG" -f "$EDU_DIR/Dockerfile" "$EDU_DIR/.next/standalone" 2>&1 | tail -3
   else
