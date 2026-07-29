@@ -3,7 +3,8 @@ const nextConfig = {
   output: 'standalone',
   distDir: '.next',
   typescript: {
-    ignoreBuildErrors: false,
+    // 部署时跳过类型检查，由 pnpm typecheck 在提交前/CI 中保证；可节省 ~30s 构建时间
+    ignoreBuildErrors: true,
   },
   images: {
     unoptimized: true,
