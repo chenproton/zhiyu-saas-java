@@ -57,7 +57,11 @@ BUILD_CACHE="$DEPLOY_DIR/.build-cache"
 [[ -f "$PROJECT_ROOT/.env" ]] && { set -a; source "$PROJECT_ROOT/.env"; set +a; }
 BACKEND_PORT="${PORT:-$BACKEND_PORT}"
 IMAGE_TAG="$(git -C "$PROJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo "latest")"
-export IMAGE_TAG BACKEND_PORT EDU_PORT
+DB_USER="${DB_USER:-zhiyu_saas}"
+DB_NAME="${DB_NAME:-zhiyu-saas}"
+DB_PASSWORD=$(echo "${DATABASE_URL:-}" | sed 's|.*://[^:]*:\([^@]*\)@.*|\1|' | python3 -c 'import urllib.parse,sys; print(urllib.parse.unquote(sys.stdin.read().strip()))' 2>/dev/null || echo "")
+MIGRATE_URL="postgres://${DB_USER}:${DB_PASSWORD}@127.0.0.1:5433/${DB_NAME}?sslmode=disable"
+export IMAGE_TAG BACKEND_PORT EDU_PORT DB_USER DB_PASSWORD DB_NAME JWT_SECRET
 
 # ─── git 校验 ───
 if [[ -n "$BRANCH_NAME" ]]; then
@@ -198,11 +202,6 @@ echo ""; echo "==> 部署到 Docker"
 
 cp "$BUILD_ROOT/deploy/docker-compose.yml" "$DEPLOY_COMPOSE"
 
-DB_USER="zhiyu_saas"; DB_NAME="zhiyu-saas"
-DB_PASSWORD=$(echo "${DATABASE_URL:-}" | sed 's|.*://[^:]*:\([^@]*\)@.*|\1|' | python3 -c 'import urllib.parse,sys; print(urllib.parse.unquote(sys.stdin.read().strip()))' 2>/dev/null || echo "")
-MIGRATE_URL="postgres://${DB_USER}:${DB_PASSWORD}@127.0.0.1:5433/${DB_NAME}?sslmode=disable"
-export DB_USER DB_PASSWORD DB_NAME JWT_SECRET
-
 echo "  停止宿主机 PostgreSQL/Redis（端口由 Docker 接管）..."
 systemctl stop postgresql 2>/dev/null || true
 systemctl stop redis-server 2>/dev/null || redis-cli shutdown 2>/dev/null || true
@@ -231,15 +230,20 @@ if [[ ! -f "$DEPLOY_DIR/.migration-baseline-done" ]]; then
   echo "  检测种子数据..."
   DOCKER_USER_COUNT=$(psql "$MIGRATE_URL" -t -A -c "SELECT COUNT(*) FROM users;" 2>/dev/null || echo "0")
   if [[ "$DOCKER_USER_COUNT" == "0" ]]; then
-    SYS_DB_URL="${DATABASE_URL:-}"
-    if [[ -n "$SYS_DB_URL" ]] && pg_isready -d "$SYS_DB_URL" >/dev/null 2>&1; then
+    if [[ -n "${DATABASE_URL:-}" ]] && pg_isready -d "${DATABASE_URL:-}" >/dev/null 2>&1; then
       echo "  首次部署：从宿主机 PG 迁移数据到 Docker PG..."
-      pg_dump "$SYS_DB_URL" --data-only --no-owner --inserts 2>/dev/null > "$DEPLOY_DIR/.seed_data.sql"
+      pg_dump "${DATABASE_URL:-}" --data-only --no-owner --inserts 2>/dev/null > "$DEPLOY_DIR/.seed_data.sql"
       if [[ -s "$DEPLOY_DIR/.seed_data.sql" ]]; then
         psql "$MIGRATE_URL" -f "$DEPLOY_DIR/.seed_data.sql" 2>&1 | tail -3
         echo "  数据迁移完成 ($(wc -l < "$DEPLOY_DIR/.seed_data.sql") 行)"
       fi
       rm -f "$DEPLOY_DIR/.seed_data.sql"
+    else
+      echo "  全新环境：运行种子数据初始化..."
+      (cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" go run ./cmd/seed/main.go) || {
+        echo "  警告：种子初始化失败，请手动执行: go run ./cmd/seed/main.go" >&2
+      }
+      echo "  种子数据已初始化 (运营方租户: platform / 管理员: admin / admin123)"
     fi
   fi
 else
