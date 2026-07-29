@@ -60,7 +60,8 @@ IMAGE_TAG="$(git -C "$PROJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo "
 DB_USER="${DB_USER:-zhiyu_saas}"
 DB_NAME="${DB_NAME:-zhiyu-saas}"
 DB_PASSWORD=$(echo "${DATABASE_URL:-}" | sed 's|.*://[^:]*:\([^@]*\)@.*|\1|' | python3 -c 'import urllib.parse,sys; print(urllib.parse.unquote(sys.stdin.read().strip()))' 2>/dev/null || echo "")
-MIGRATE_URL="postgres://${DB_USER}:${DB_PASSWORD}@127.0.0.1:5433/${DB_NAME}?sslmode=disable"
+DB_PASSWORD_ENCODED=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${DB_PASSWORD}', safe=''))" 2>/dev/null || echo "$DB_PASSWORD")
+MIGRATE_URL="postgres://${DB_USER}:${DB_PASSWORD_ENCODED}@127.0.0.1:5433/${DB_NAME}?sslmode=disable"
 export IMAGE_TAG BACKEND_PORT EDU_PORT DB_USER DB_PASSWORD DB_NAME JWT_SECRET
 
 # ─── git 校验 ───
@@ -151,7 +152,7 @@ if [[ "$FRONTEND_ONLY" != "true" ]]; then
   fi
 
   # 数据库备份 (优先 Docker PG，不可用时回退到宿主机 PG)
-  BACKUP_URL="postgres://${DB_USER:-zhiyu_saas}:${DB_PASSWORD}@127.0.0.1:5433/${DB_NAME:-zhiyu-saas}?sslmode=disable"
+  BACKUP_URL="$MIGRATE_URL"
   if ! pg_isready -d "$BACKUP_URL" >/dev/null 2>&1; then
     BACKUP_URL="${DATABASE_URL:-}"
   fi
