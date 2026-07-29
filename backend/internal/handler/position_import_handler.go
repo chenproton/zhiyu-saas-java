@@ -404,7 +404,7 @@ func (h *PositionImportHandler) findOrCreateAbilityPoint(ctx context.Context, te
 		return id
 	}
 	id = uuid.NewString()
-	h.DB.Exec(ctx, `INSERT INTO ability_points (id, tenant_id, name, category, is_public, attributes) VALUES ($1,$2,$3,$4,false,$5) ON CONFLICT DO NOTHING`, id, tenantID, name, category, attributes)
+	h.DB.Exec(ctx, `INSERT INTO ability_points (id, tenant_id, name, category, is_public, attributes) VALUES ($1,$2,$3,$4,true,$5) ON CONFLICT DO NOTHING`, id, tenantID, name, category, attributes)
 	var existing string
 	h.DB.QueryRow(ctx, `SELECT id FROM ability_points WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existing)
 	if existing != "" {

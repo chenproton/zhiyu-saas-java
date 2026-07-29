@@ -47,12 +47,16 @@ func (h *AbilityHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	isPublic := r.URL.Query().Get("isPublic") == "true"
 	cfg := listQueryConfig[domain.AbilityPoint]{
 		Table:         "ability_points",
 		SelectColumns: "id, name, code, description, category, attributes, is_public, creator_id, created_at",
-		TenantScoped:  true,
+		TenantScoped:  !isPublic,
 		SearchColumns: []string{"name", "description"},
 		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if isPublic {
+				qb.addCondition("is_public = " + qb.nextArg(true))
+			}
 			if category := r.URL.Query().Get("category"); category != "" {
 				qb.addCondition("category = " + qb.nextArg(category))
 			}

@@ -549,7 +549,7 @@ func (h *PositionHandler) prepareAbilityPoints(ctx context.Context, tenantID str
 			INSERT INTO ability_points (id, tenant_id, name, description, category, attributes, is_public)
 			VALUES ($1, $2, $3, $4, $5, $6, $7)
 			ON CONFLICT (tenant_id, name) DO NOTHING
-		`, newID, tenantID, binding.Name, binding.Description, category, attrArray, false)
+		`, newID, tenantID, binding.Name, binding.Description, category, attrArray, true)
 
 		_ = h.DB.QueryRow(ctx, `
 			SELECT id FROM ability_points WHERE tenant_id = $1 AND name = $2
