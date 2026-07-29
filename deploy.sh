@@ -116,6 +116,30 @@ fi
 if ! docker info >/dev/null 2>&1; then
   systemctl start docker 2>/dev/null || service docker start 2>/dev/null || true; sleep 2
 fi
+
+# 配置国内 Docker Hub 镜像加速（仅在 daemon.json 不存在时写入，避免覆盖用户自定义配置）
+configure_docker_mirrors() {
+  local daemon_file="/etc/docker/daemon.json"
+  if [[ -f "$daemon_file" ]]; then
+    return 0
+  fi
+  is_root || return 0
+  mkdir -p /etc/docker
+  cat > "$daemon_file" <<'EOF'
+{
+  "registry-mirrors": [
+    "https://docker.m.daocloud.io",
+    "https://hub-mirror.c.163.com",
+    "https://docker.mirrors.ustc.edu.cn"
+  ]
+}
+EOF
+  log "已配置 Docker Hub 国内镜像加速，正在重启 Docker..."
+  systemctl restart docker 2>/dev/null || service docker restart 2>/dev/null || true
+  sleep 2
+}
+configure_docker_mirrors
+
 if [[ -z "$(detect_docker_compose)" ]]; then
   pkg_install docker-compose-plugin || true
 fi
