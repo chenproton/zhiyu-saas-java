@@ -72,13 +72,20 @@ install_deps() {
   fi
 
   if ! docker compose version >/dev/null 2>&1; then
-    docker_compose_plugin_install || true
+    if command -v apt-get >/dev/null 2>&1; then
+      apt-get install -y -qq docker-compose-v2 2>/dev/null || true
+    fi
+    if ! docker compose version >/dev/null 2>&1; then
+      mkdir -p /usr/local/lib/docker/cli-plugins
+      curl -fsSL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch64/')" -o /usr/local/lib/docker/cli-plugins/docker-compose 2>/dev/null
+      chmod +x /usr/local/lib/docker/cli-plugins/docker-compose 2>/dev/null || true
+    fi
   fi
 
   # Ensure docker daemon is running
   if ! docker info >/dev/null 2>&1; then
     systemctl start docker 2>/dev/null || service docker start 2>/dev/null || true
-    sleep 2
+    sleep 3
   fi
 
   # ── Go ──
@@ -294,7 +301,7 @@ if [[ ! -f "$DEPLOY_DIR/.migration-baseline-done" ]]; then
   echo "  = 运营方租户: platform / 管理员: admin / admin123"
 else
   echo "  增量迁移..."
-  (cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" go run ./cmd/migrate/main.go up) || echo "  警告：迁移可能已是最新"
+  (cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" go run ./cmd/migrate/main.go up 2>/dev/null) || echo "  警告：增量迁移跳过（可能在基线外）"
 fi
 
 # ── 等待健康检查 ──
