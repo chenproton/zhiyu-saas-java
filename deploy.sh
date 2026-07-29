@@ -46,6 +46,40 @@ warn()  { echo "  警告：$*" >&2; }
 die()   { echo "  错误：$*" >&2; exit 1; }
 is_root() { [[ "${EUID:-$(id -u)}" -eq 0 ]]; }
 
+# 检查端口是否被占用（包含本机进程与 Docker 容器映射）
+port_in_use() {
+  local port="$1"
+  ss -tlnp 2>/dev/null | awk '{print $4}' | grep -qE ":${port}$" && return 0
+  docker ps --format '{{.Ports}}' 2>/dev/null | grep -qE "0\.0\.0\.0:${port}->|127\.0\.0\.1:${port}->|\*:${port}->" && return 0
+  return 1
+}
+
+# 端口冲突解决：首选端口被占用时依次尝试备用端口及后续 9 个递增端口
+resolve_port() {
+  local name="$1" primary="$2" fallback="$3"
+  local port
+  for port in "$primary" "$fallback" $(seq $((fallback + 1)) $((fallback + 9))); do
+    if ! port_in_use "$port"; then
+      if [[ "$port" != "$primary" ]]; then
+        warn "${name} 端口 ${primary} 已被占用，已自动切换至 ${port}"
+      fi
+      echo "$port"
+      return 0
+    fi
+  done
+  die "${name} 端口 ${primary} 及备用端口 ${fallback}-$((fallback + 9)) 均已被占用，请手动释放或修改 .env 中的 ${name}"
+}
+
+# 更新 .env 中的变量（不存在则追加）
+update_env_var() {
+  local file="$1" key="$2" value="$3"
+  if grep -q "^${key}=" "$file" 2>/dev/null; then
+    sed -i "s|^${key}=.*|${key}=${value}|" "$file"
+  else
+    echo "${key}=${value}" >> "$file"
+  fi
+}
+
 url_decode() {
   command -v python3 >/dev/null 2>&1 && \
     python3 -c "import urllib.parse,sys; print(urllib.parse.unquote(sys.argv[1]))" "$1" || echo "$1"
@@ -360,7 +394,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
     cp "$PROJECT_ROOT/.env.example" "$ENV_FILE"
     db_pass=$(rand_str 24)
     jwt_secret=$(rand_str 64)
-    sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgresql://zhiyu_saas:${db_pass}@127.0.0.1:5433/zhiyu-saas?sslmode=disable|" "$ENV_FILE"
+    sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgresql://zhiyu_saas:${db_pass}@127.0.0.1:${POSTGRES_HOST_PORT:-5433}/zhiyu-saas?sslmode=disable|" "$ENV_FILE"
     sed -i "s|^JWT_SECRET=.*|JWT_SECRET=${jwt_secret}|" "$ENV_FILE"
     sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${db_pass}|" "$ENV_FILE"
     # 写入部署相关默认值，便于用户后续修改
@@ -370,6 +404,11 @@ if [[ ! -f "$ENV_FILE" ]]; then
       echo "GO_VERSION=${GO_VERSION:-1.23.7}"
       echo "NGINX_SERVER_NAME=${NGINX_SERVER_NAME:-_}"
       echo "NGINX_DEFAULT_SERVER=${NGINX_DEFAULT_SERVER:-default_server}"
+      echo "NGINX_PORT=${NGINX_PORT:-80}"
+      echo "BACKEND_PORT=${BACKEND_PORT:-8080}"
+      echo "EDU_PORT=${EDU_PORT:-3020}"
+      echo "POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT:-5433}"
+      echo "KKFILEVIEW_HOST_PORT=${KKFILEVIEW_HOST_PORT:-8012}"
       echo "ENABLE_KKFILEVIEW=${ENABLE_KKFILEVIEW:-false}"
       echo "KKFILEVIEW_IMAGE=${KKFILEVIEW_IMAGE:-fangzhengjin/kkfileview:4.4.0}"
       echo "DOCKER_REGISTRY_MIRRORS=${DOCKER_REGISTRY_MIRRORS:-}"
@@ -380,6 +419,34 @@ if [[ ! -f "$ENV_FILE" ]]; then
   fi
 fi
 set -a; source "$ENV_FILE"; set +a
+
+# ════════════════════════════════════════════
+# 端口冲突检测与自动回退
+# ════════════════════════════════════════════
+NGINX_PORT=$(resolve_port "NGINX_PORT" "${NGINX_PORT:-80}" "2026")
+BACKEND_PORT=$(resolve_port "BACKEND_PORT" "${BACKEND_PORT:-8080}" "8081")
+EDU_PORT=$(resolve_port "EDU_PORT" "${EDU_PORT:-3020}" "3021")
+POSTGRES_HOST_PORT=$(resolve_port "POSTGRES_HOST_PORT" "${POSTGRES_HOST_PORT:-5433}" "5434")
+KKFILEVIEW_HOST_PORT=$(resolve_port "KKFILEVIEW_HOST_PORT" "${KKFILEVIEW_HOST_PORT:-8012}" "8013")
+
+update_env_var "$ENV_FILE" "NGINX_PORT" "$NGINX_PORT"
+update_env_var "$ENV_FILE" "BACKEND_PORT" "$BACKEND_PORT"
+update_env_var "$ENV_FILE" "EDU_PORT" "$EDU_PORT"
+update_env_var "$ENV_FILE" "POSTGRES_HOST_PORT" "$POSTGRES_HOST_PORT"
+update_env_var "$ENV_FILE" "KKFILEVIEW_HOST_PORT" "$KKFILEVIEW_HOST_PORT"
+
+# 如果数据库 host 端口发生变化，同步更新 DATABASE_URL 中的 host 端口
+if [[ "$DATABASE_URL" != *":${POSTGRES_HOST_PORT}/zhiyu-saas"* ]]; then
+  DATABASE_URL=$(echo "$DATABASE_URL" | sed -E "s|@127\.0\.0\.1:[0-9]+/|@127.0.0.1:${POSTGRES_HOST_PORT}/|")
+  update_env_var "$ENV_FILE" "DATABASE_URL" "$DATABASE_URL"
+fi
+
+set -a; source "$ENV_FILE"; set +a
+
+# 输出最终端口信息，方便用户访问
+log "服务端口配置："
+[[ "$NGINX_PORT" != "80" ]] && log "  nginx 监听端口: ${NGINX_PORT}（80 被占用，已自动切换）"
+log "  前端入口: http://<服务器IP>:${NGINX_PORT}/portal/login"
 
 DEPLOY_COMPOSE="$DEPLOY_DIR/docker-compose.yml"
 BUILD_CACHE="$DEPLOY_DIR/.build-cache"
@@ -397,8 +464,8 @@ set -a; source "$ENV_FILE"; set +a
 DB_USER="${DB_USER:-zhiyu_saas}"; DB_NAME="${DB_NAME:-zhiyu-saas}"
 DB_PASSWORD=$(url_decode "$(echo "${DATABASE_URL:-}" | sed -n 's|.*://[^:]*:\([^@]*\)@.*|\1|p')")
 DB_PASSWORD="${DB_PASSWORD:-}"
-MIGRATE_URL="postgres://${DB_USER}:$(url_encode "$DB_PASSWORD")@127.0.0.1:5433/${DB_NAME}?sslmode=disable"
-export IMAGE_TAG BACKEND_PORT EDU_PORT DB_USER DB_PASSWORD DB_NAME JWT_SECRET
+MIGRATE_URL="postgres://${DB_USER}:$(url_encode "$DB_PASSWORD")@127.0.0.1:${POSTGRES_HOST_PORT:-5433}/${DB_NAME}?sslmode=disable"
+export IMAGE_TAG BACKEND_PORT EDU_PORT POSTGRES_HOST_PORT KKFILEVIEW_HOST_PORT NGINX_PORT DB_USER DB_PASSWORD DB_NAME JWT_SECRET
 
 # ── 分支校验 ──
 if [[ -n "$BRANCH_NAME" ]]; then
@@ -608,7 +675,7 @@ fi
 # 等待 kkfileview 就绪（非核心服务，仅避免 nginx 重载到未就绪端口）
 if [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]]; then
   for i in $(seq 1 60); do
-    wget -qO- http://127.0.0.1:8012/kkfileview/onlinePreview >/dev/null 2>&1 && { log "  kkfileview ready"; break; }
+    wget -qO- http://127.0.0.1:${KKFILEVIEW_HOST_PORT}/kkfileview/onlinePreview >/dev/null 2>&1 && { log "  kkfileview ready"; break; }
     sleep 2
   done
 fi
@@ -629,15 +696,33 @@ if [[ -f "$NGINX_CONF" ]]; then
   NGINX_DEFAULT_SERVER="${NGINX_DEFAULT_SERVER:-default_server}"
   sed -e 's/\${NGINX_SERVER_NAME:-_}/'"${NGINX_SERVER_NAME}"'/g' \
       -e 's/\${NGINX_DEFAULT_SERVER:-default_server}/'"${NGINX_DEFAULT_SERVER}"'/g' \
+      -e 's/\${NGINX_PORT:-80}/'"${NGINX_PORT}"'/g' \
+      -e 's/\${BACKEND_PORT:-8080}/'"${BACKEND_PORT}"'/g' \
+      -e 's/\${EDU_PORT:-3020}/'"${EDU_PORT}"'/g' \
+      -e 's/\${KKFILEVIEW_HOST_PORT:-8012}/'"${KKFILEVIEW_HOST_PORT}"'/g' \
       "$NGINX_CONF" > "$NGINX_DST"
-  if nginx -t 2>/dev/null; then
-    if systemctl is-active nginx >/dev/null 2>&1; then
-      systemctl reload nginx 2>/dev/null && log "Nginx 重载成功" || die "Nginx 重载失败"
-    else
-      systemctl start nginx 2>/dev/null && log "Nginx 启动成功" || die "Nginx 启动失败"
-    fi
-  else
+
+  if ! nginx -t 2>/dev/null; then
+    warn "nginx 配置测试失败，常见原因："
+    warn "  1. ${NGINX_PORT} 端口已被其他进程占用"
+    warn "  2. 系统中存在其他 nginx 配置语法冲突"
+    warn "可手动检查：nginx -t"
     die "Nginx 配置测试失败"
+  fi
+
+  if systemctl is-active nginx >/dev/null 2>&1; then
+    systemctl reload nginx 2>/dev/null && log "Nginx 重载成功" || {
+      warn "nginx 重载失败，可能 ${NGINX_PORT} 端口被占用"
+      die "Nginx 重载失败"
+    }
+  else
+    systemctl start nginx 2>/dev/null && log "Nginx 启动成功" || {
+      warn "nginx 启动失败，常见原因："
+      warn "  - ${NGINX_PORT} 端口被占用（如其他 Docker 容器映射了该端口）"
+      warn "  - 可执行 ss -tlnp | grep :${NGINX_PORT} 查看占用进程"
+      warn "  - 或修改 .env 中的 NGINX_PORT 使用其他端口"
+      die "Nginx 启动失败"
+    }
   fi
 fi
 
@@ -650,7 +735,9 @@ if [[ -n "$BRANCH_NAME" && "$SKIP_MERGE" != "true" ]]; then
 fi
 
 log "✨ 部署完成！"
-echo "   后端: http://localhost:$BACKEND_PORT"
-echo "   前端: http://localhost:$EDU_PORT"
+echo "   外部入口: http://<服务器IP>:${NGINX_PORT}/portal/login"
+echo "   nginx 端口: ${NGINX_PORT}"
+echo "   后端容器: http://localhost:${BACKEND_PORT}"
+echo "   前端容器: http://localhost:${EDU_PORT}"
 echo "   管理: admin / admin123  (SaaS 登录)"
 echo "   镜像: zhiyu-backend:$IMAGE_TAG  zhiyu-edu:$IMAGE_TAG"
