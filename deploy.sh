@@ -211,11 +211,51 @@ if [[ "$DEMO_MODE" != "true" && -z "$BRANCH_NAME" ]]; then
   exit 1
 fi
 
+# ==================== Redis 检查与安装 ====================
+if [[ "$FRONTEND_ONLY" != "true" ]]; then
+  if ! command -v redis-server >/dev/null 2>&1; then
+    echo "==> 安装 Redis..."
+    apt-get update -qq && apt-get install -y -qq redis-server 2>/dev/null || {
+      echo "  警告：Redis 安装失败，缓存和限流功能将降级" >&2
+    }
+  fi
+
+  if ! command -v redis-cli >/dev/null 2>&1; then
+    apt-get install -y -qq redis-tools 2>/dev/null || true
+  fi
+
+  if command -v redis-cli >/dev/null 2>&1; then
+    if ! redis-cli ping >/dev/null 2>&1; then
+      echo "==> 启动 Redis..."
+      systemctl enable redis-server >/dev/null 2>&1 || true
+      systemctl start redis-server 2>/dev/null || redis-server --daemonize yes 2>/dev/null || true
+      sleep 1
+    fi
+
+    if redis-cli ping >/dev/null 2>&1; then
+      echo "  Redis 运行正常"
+      total_mem=$(free -m | awk '/^Mem:/ {print $2}')
+      redis_max=$((total_mem / 4))
+      redis-cli CONFIG SET maxmemory "${redis_max}mb" >/dev/null 2>&1 || true
+      redis-cli CONFIG SET maxmemory-policy allkeys-lru >/dev/null 2>&1 || true
+    else
+      echo "  警告：Redis 启动失败，缓存和限流功能将降级" >&2
+      REDIS_URL=""
+    fi
+  else
+    echo "  警告：redis-cli 不可用，缓存和限流功能将降级" >&2
+    REDIS_URL=""
+  fi
+fi
+
 # ==================== 必需变量校验 ====================
 if [[ "$FRONTEND_ONLY" != "true" ]]; then
   for v in DATABASE_URL JWT_SECRET; do
     [[ -z "${!v:-}" ]] && { echo "错误：缺少必需环境变量 ${v}" >&2; exit 1; }
   done
+  if [[ -z "${REDIS_URL:-}" ]]; then
+    echo "  注意：REDIS_URL 未设置，缓存和限流功能将降级"
+  fi
 fi
 
 # ==================== 依赖检查 ====================
