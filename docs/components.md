@@ -1,9 +1,10 @@
 # 前端公共组件速查
 
-> **通用 UI 组件**位于 `packages/ui/src/components/shared/`（通过 `@zhiyu/ui` 使用）。
-> **页面级共享壳**位于 `apps/edu/components/shared/`，长期可视情况下沉到 `packages/ui` 或独立包。
+> **页面级共享壳**与**业务组件**位于 `apps/edu/components/shared/`，长期视情况下沉到 `packages/ui` 或独立包。
+> **通用基础 UI 组件**（4 个）位于 `packages/ui/src/components/shared/`（通过 `@zhiyu/ui` 使用）。
 > **评测配置组件**位于 `apps/edu/app/lesson/admin/_components/eval/`，同时被课程和任务编辑器复用。
 > **任务步骤卡片**位于 `apps/edu/app/scene/scenarios/[id]/edit/tasks/_components/`。
+> **评测专用组件**位于 `apps/edu/components/evaluation/`。
 > **通用 Hooks** 位于 `@/hooks/`（`apps/edu/hooks/`）和 `packages/ui/src/hooks/`。
 
 ## 页面级组件
@@ -35,39 +36,45 @@
 
 ## 表单/交互组件
 
-| 组件 | 适用场景 | 关键 Props |
-|------|---------|-----------|
-| `StatusBadge` | 状态标签（统一颜色体系） | `status` |
-| `ConfirmDialog` | 删除/危险操作二次确认 | `open`, `onOpenChange`, `title`, `description`, `variant`, `onConfirm` |
-| `TableRowActions` | 表格行悬浮操作按钮，替代手写 `group-hover` | 包裹 `<Button>` 子元素 |
-| `HoverActionBar` | 非 Table 场景的 hover 操作栏 | 包裹子元素 |
-| `ResourcePreviewModal` | 文件预览弹窗（kkFileView iframe） | `resource`, `open`, `onOpenChange` |
-| `ImportConfirmDialog` | 导入重复确认对话框 | `open`, `entityLabel`, `created/duplicates/failed`, `onConfirmOverwrite/onConfirmSkip` |
-| `ResetPasswordDialog` | 重置密码对话框 | `open`, `userId`, `userName`, `onSuccess` |
-| `LogTableShell<T>` | 日志表格壳子（表格+分页+加载态） | `items`, `columns`, `total`, `page`, `totalPages` |
-| `CoverImageUpload` | 封面上传（预览/替换/删除） | `imageUrl`, `uploading`, `label`, `alt`, `onUpload`, `onRemove` |
-| `GranularLessonSelectDialog` | 课时多选对话框（搜索+勾选+批量确认） | `open`, `onOpenChange`, `granularCourses`, `selectedIds`, `onChange` |
-| `KnowledgePointFormDialog` | 知识点创建/编辑/克隆表单（内嵌课时选择） | `open`, `onOpenChange`, `onSubmit`, `initialValues`, `title` |
+> 位于 `apps/edu/components/shared/`。
+
+| 组件 | 文件 | 适用场景 | 关键 Props |
+|------|------|---------|-----------|
+| `StatusBadge` | `status-badge.tsx` | 状态标签（统一颜色体系） | `status` |
+| `ConfirmDialog` | `confirm-dialog.tsx` | 删除/危险操作二次确认 | `open`, `onOpenChange`, `title`, `description`, `variant`, `onConfirm` |
+| `TableRowActions` | `table-row-actions.tsx` | 表格行悬浮操作按钮，替代手写 `group-hover` | 包裹 `<Button>` 子元素 |
+| `HoverActionBar` | `hover-action-bar.tsx` | 非 Table 场景的 hover 操作栏 | 包裹子元素 |
+| `ResourcePreviewModal` | `resource-preview-modal.tsx` | 文件预览弹窗 | `resource`, `open`, `onOpenChange` |
+| `ImportConfirmDialog` | `import-confirm-dialog.tsx` | 导入重复确认对话框 | `open`, `entityLabel`, `created/duplicates/failed`, `onConfirmOverwrite/onConfirmSkip` |
+| `ResetPasswordDialog` | `reset-password-dialog.tsx` | 重置密码对话框 | `open`, `userId`, `userName`, `onSuccess` |
+| `CoverImageUpload` | `cover-image-upload.tsx` | 封面上传（预览/替换/删除） | `imageUrl`, `uploading`, `label`, `alt`, `onUpload`, `onRemove` |
+| `GranularLessonSelectDialog` | `granular-lesson-select-dialog.tsx` | 课时多选对话框（搜索+勾选+批量确认） | `open`, `onOpenChange`, `granularCourses`, `selectedIds`, `onChange` |
+| `KnowledgePointFormDialog` | `knowledge-point-form-dialog.tsx` | 知识点创建/编辑/克隆表单 | `open`, `onOpenChange`, `onSubmit`, `initialValues`, `title` |
+| `LogTableShell<T>` | `log-table-shell.tsx` | 日志表格壳子（表格+分页+加载态） | `items`, `columns`, `total`, `page`, `totalPages` |
 
 ## 选择器组件
 
-| 组件 | 用途 | 关键 Props |
-|------|------|-----------|
-| `MajorSelect` | 专业下拉选择器，自动加载列表 | `tenantId?`, `value?`, `onChange`, `placeholder?`, `disabled?` |
-| `BatchSelector` | 批次选择器（下拉选择 + 创建新批次） | `value`, `onChange` |
-| `UserSelector` | 选择用户（多选/单选、组织树筛选、排除学生） | `value`, `onChange`, `multiple`, `excludeStudent`, `tenantId` |
-| `OrgNodePicker` | 组织节点选择器（Popover） | `value`, `onChange` |
+> 位于 `apps/edu/components/shared/`。
+
+| 组件 | 文件 | 用途 | 关键 Props |
+|------|------|------|-----------|
+| `MajorSelect` | `major-select.tsx` | 专业下拉选择器，自动加载列表 | `tenantId?`, `value?`, `onChange`, `placeholder?`, `disabled?` |
+| `BatchSelector` | `batch-selector.tsx` | 批次选择器（下拉选择 + 创建新批次） | `value`, `onChange` |
+| `UserSelector` | `user-selector.tsx` | 选择用户（多选/单选、组织树筛选、排除学生） | `value`, `onChange`, `multiple`, `excludeStudent`, `tenantId` |
+| `OrgNodePicker` | `org-node-picker.tsx` | 组织节点选择器（Popover） | `value`, `onChange` |
 
 ## 布局组件
 
-| 组件 | 用途 | 关键 Props |
-|------|------|-----------|
-| `PlatformShell` | 平台整体布局（侧边栏 + 顶栏 + 内容区） | 包裹页面内容，`config: PlatformNavigationConfig` |
-| `PlatformLayout` | 认证守卫版 PlatformShell（未登录跳转登录页，无权限展示拒绝页） | `navigationConfig`, `landingPath`, `children` |
-| `EditorShell` | 内容编辑器框架（全屏/内嵌、步骤导航、保存/提交） | `mode`, `step`, `onSaveDraft`, `onSubmit` 等回调 |
-| `PageHeaderCard` | 页头统计卡片（标题 + 统计数字 + 操作按钮） | `title`, `stats`, `actions` |
-| `LandingFilterRow` | Landing 页筛选行（标签云+展开收起） | `label`, `items`, `selected`, `onSelect`, `accentColor` |
-| `LandingPagination` | Landing 页分页器（省略号+图标按钮） | `currentPage`, `totalPages`, `onPageChange`, `accentColor` |
+> 位于 `apps/edu/components/shared/` 及 `apps/edu/components/platform-shell/`。
+
+| 组件 | 位置 | 用途 | 关键 Props |
+|------|------|------|-----------|
+| `PlatformShell` | `platform-shell/PlatformShell.tsx` | 平台整体布局（侧边栏 + 顶栏 + 内容区） | 包裹页面内容，`config: PlatformNavigationConfig` |
+| `PlatformLayout` | `shared/platform-layout.tsx` | 认证守卫版 PlatformShell（未登录跳转登录页，无权限展示拒绝页） | `navigationConfig`, `landingPath`, `children` |
+| `EditorShell` | `shared/editor-shell.tsx` | 内容编辑器框架（全屏/内嵌、步骤导航、保存/提交） | `mode`, `step`, `onSaveDraft`, `onSubmit` 等回调 |
+| `PageHeaderCard` | `shared/page-header-card.tsx` | 页头统计卡片（标题 + 统计数字 + 操作按钮） | `title`, `stats`, `actions` |
+| `LandingFilterRow` | `shared/landing-filter-row.tsx` | Landing 页筛选行（标签云+展开收起） | `label`, `items`, `selected`, `onSelect`, `accentColor` |
+| `LandingPagination` | `shared/landing-pagination.tsx` | Landing 页分页器（省略号+图标按钮） | `currentPage`, `totalPages`, `onPageChange`, `accentColor` |
 
 ## Hooks
 
@@ -154,17 +161,19 @@
 
 ## 评测专用组件
 
-| 组件 | 位置 | 用途 |
+> 位于 `apps/edu/components/evaluation/`。
+
+| 组件 | 文件 | 用途 |
 |------|------|------|
-| `EvaluationListTable` | `evaluation/evaluation-list-table.tsx` | 评测列表渲染器 |
-| `EvaluationStatusActions` | `evaluation/evaluation-status-actions.tsx` | 评测资源状态操作按钮行 |
-| `QuestionFormDialog` | `evaluation/question-form-dialog.tsx` | 题目创建/编辑表单 |
-| `QuestionPreview` | `evaluation/question-preview.tsx` | 题目预览 |
-| `BankFormDialog` | `evaluation/bank-form-dialog.tsx` | 题库创建/编辑表单 |
-| `ExamFormDialog` | `evaluation/exam-form-dialog.tsx` | 试卷创建/编辑表单 |
-| `ScoreConfigDialog` | `evaluation/score-config-dialog.tsx` | 评分配置 |
-| `RandomQuestionDialog` | `evaluation/random-question-dialog.tsx` | 随机抽题 |
-| `ManualQuestionDialog` | `evaluation/manual-question-dialog.tsx` | 手动选题 |
+| `EvaluationListTable` | `evaluation-list-table.tsx` | 评测列表渲染器 |
+| `EvaluationStatusActions` | `evaluation-status-actions.tsx` | 评测资源状态操作按钮行 |
+| `QuestionFormDialog` | `question-form-dialog.tsx` | 题目创建/编辑表单 |
+| `QuestionPreview` | `question-preview.tsx` | 题目预览 |
+| `BankFormDialog` | `bank-form-dialog.tsx` | 题库创建/编辑表单 |
+| `ExamFormDialog` | `exam-form-dialog.tsx` | 试卷创建/编辑表单 |
+| `ScoreConfigDialog` | `score-config-dialog.tsx` | 评分配置 |
+| `RandomQuestionDialog` | `random-question-dialog.tsx` | 随机抽题 |
+| `ManualQuestionDialog` | `manual-question-dialog.tsx` | 手动选题 |
 
 ## 注意事项
 
