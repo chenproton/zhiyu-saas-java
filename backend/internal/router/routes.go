@@ -105,7 +105,6 @@ func registerAuthRoutes(r chi.Router, h *Handlers) {
 	r.Get("/auth/portal/me", h.authHandler.PortalMe)
 	r.Get("/stats/me", h.statsHandler.MyStats)
 	r.Get("/subscriptions", h.subscriptionHandler.Get)
-	r.Get("/uploads/{filename}", h.fileHandler.Serve)
 }
 
 func registerSuperAdminRoutes(r chi.Router, h *Handlers) {

@@ -97,6 +97,8 @@ func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuf
 	}
 	fileHandler := &handler.FileHandler{UploadDir: uploadDir}
 
+	r.Get("/uploads/{filename}", fileHandler.Serve)
+
 	r.Group(func(r chi.Router) {
 		r.Use(authmw.JWT(jwtSecret))
 		r.Use(authmw.OperationLog(db, oplogBuffer))
