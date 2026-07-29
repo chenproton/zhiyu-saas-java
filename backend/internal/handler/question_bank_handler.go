@@ -186,7 +186,7 @@ func (h *QuestionBankHandler) Create(w http.ResponseWriter, r *http.Request) {
 		INSERT INTO question_banks (id, tenant_id, code, name, description, cover_image, status, question_count, creator_id,
 			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, is_draft_pool)
 		VALUES ($1, $2, $3, $4, $5, $6, 'draft', 0, $7, $8, $9, $10, 'v1.0', 'mine', false)
-	`, id, tenantID, code, req.Name, req.Description, req.CoverImage, creatorID, coalesceStringSlice(req.CollaboratorIDs), coalesceStringSlice(req.CollaboratorDeptIDs), req.BatchID)
+	`, id, tenantID, code, req.Name, req.Description, req.CoverImage, creatorID, coalesceStringSlice(req.CollaboratorIDs), coalesceStringSlice(req.CollaboratorDeptIDs), emptyStrToNil(req.BatchID))
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "题库名称已存在，请使用其他名称")
@@ -273,7 +273,7 @@ func (h *QuestionBankHandler) Update(w http.ResponseWriter, r *http.Request) {
 		UPDATE question_banks SET name = $1, description = $2, cover_image = $3,
 			collaborator_ids = $4, collaborator_dept_ids = $5, batch_id = $6, updated_at = NOW()
 		WHERE id = $7
-	`, req.Name, req.Description, req.CoverImage, collaboratorIDs, collaboratorDeptIDs, req.BatchID, id)
+	`, req.Name, req.Description, req.CoverImage, collaboratorIDs, collaboratorDeptIDs, emptyStrToNil(req.BatchID), id)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "题库名称已存在，请使用其他名称")

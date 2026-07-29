@@ -201,7 +201,7 @@ func (h *ScenarioHandler) Create(w http.ResponseWriter, r *http.Request) {
 			delivery_goal, creator_id, co_builder_ids, tenant_id)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'draft', $11, $12, $13, $14, $15)
 	`, id, req.Name, code, req.CoverImage, req.CareerPositionID, coalesceStringSlice(req.IndustryIDs),
-		coalesceStringSlice(req.ProfessionIDs), req.BatchID, req.Difficulty, req.Version, req.Background,
+		coalesceStringSlice(req.ProfessionIDs), emptyStrToNil(req.BatchID), req.Difficulty, req.Version, req.Background,
 		req.DeliveryGoal, claims.UserID, coalesceStringSlice(req.CoBuilderIDs), tenantID)
 	if err != nil {
 		if isUniqueViolation(err) {

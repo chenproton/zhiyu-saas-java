@@ -263,7 +263,7 @@ func (h *PositionHandler) Create(w http.ResponseWriter, r *http.Request) {
 			salary_min, salary_max, cover_image, description, requirements, career_path,
 			version, status, created_by, collaborators
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
-	`, id, tenantID, code, req.BatchID, req.Name, req.ShortName, req.IndustryID,
+	`, id, tenantID, code, emptyStrToNil(req.BatchID), req.Name, req.ShortName, req.IndustryID,
 		req.PositionType, req.SalaryMin, req.SalaryMax, req.CoverImage, req.Description,
 		coalesceStringSlice(req.Requirements), req.CareerPath, req.Version, status, claims.UserID,
 		coalesceStringSlice(req.Collaborators))

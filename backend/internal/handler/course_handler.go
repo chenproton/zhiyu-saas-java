@@ -191,7 +191,7 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'draft', $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, 0, 0, 0)
 	`, id, tenantID, code, req.Name, req.Type, req.Category, req.MajorID, req.TeacherID, req.IndustryID, req.Version,
 		req.OnlineHours, req.OfflineHours, req.OnlineWeight, req.OfflineWeight, req.Semester, req.ClassName,
-		req.CoverColor, req.CoverImage, req.CourseTag, req.Difficulty, req.Description, claims.UserID, req.CoCreatorIds, req.BatchID,
+		req.CoverColor, req.CoverImage, req.CourseTag, req.Difficulty, req.Description, claims.UserID, req.CoCreatorIds, emptyStrToNil(req.BatchID),
 		kpIDs, resIDs)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -312,7 +312,7 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $23
 	`, req.Name, req.Type, req.Category, req.MajorID, req.TeacherID, req.IndustryID, req.Version,
 		req.OnlineHours, req.OfflineHours, req.OnlineWeight, req.OfflineWeight, req.Semester, req.ClassName,
-		req.CoverColor, req.CoverImage, req.CourseTag, req.Difficulty, req.Description, req.CoCreatorIds, batchID,
+		req.CoverColor, req.CoverImage, req.CourseTag, req.Difficulty, req.Description, req.CoCreatorIds, emptyStrToNil(batchID),
 		kpIDs, resIDs, id)
 	if err != nil {
 		if isUniqueViolation(err) {

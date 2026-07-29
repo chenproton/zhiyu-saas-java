@@ -34,6 +34,14 @@ func sanitizeIdentifier(identifier string, allowed []string) (string, error) {
 	return "", fmt.Errorf("invalid identifier: %s", identifier)
 }
 
+// emptyStrToNil 将空字符串转为 nil，避免将空字符串写入 UUID 列导致 database error。
+func emptyStrToNil(s *string) *string {
+	if s == nil || *s == "" {
+		return nil
+	}
+	return s
+}
+
 // coalesceStringSlice 将 nil 切片转为空切片，避免 SQL 参数中写入 NULL。
 func coalesceStringSlice(s []string) []string {
 	if s == nil {

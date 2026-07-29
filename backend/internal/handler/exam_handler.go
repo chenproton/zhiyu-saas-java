@@ -130,7 +130,7 @@ func (h *ExamHandler) Create(w http.ResponseWriter, r *http.Request) {
 		INSERT INTO exams (id, tenant_id, code, name, description, status, total_score, duration, cover_image,
 			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, creator_id, is_temp)
 		VALUES ($1, $2, $3, $4, $5, 'draft', 0, $6, $7, $8, $9, $10, 'v1.0', 'mine', $11, $12)
-	`, id, tenantID, code, req.Name, req.Description, req.Duration, req.CoverImage, coalesceStringSlice(req.CollaboratorIDs), coalesceStringSlice(req.CollaboratorDeptIDs), req.BatchID, claims.UserID, req.IsTemp)
+	`, id, tenantID, code, req.Name, req.Description, req.Duration, req.CoverImage, coalesceStringSlice(req.CollaboratorIDs), coalesceStringSlice(req.CollaboratorDeptIDs), emptyStrToNil(req.BatchID), claims.UserID, req.IsTemp)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "考试名称已存在，请使用其他名称")
@@ -193,7 +193,7 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 		UPDATE exams SET name = $1, description = $2, duration = $3, cover_image = $4,
 			collaborator_ids = $5, collaborator_dept_ids = $6, batch_id = $7, updated_at = NOW()
 		WHERE id = $8
-	`, req.Name, req.Description, req.Duration, req.CoverImage, collaboratorIDs, collaboratorDeptIDs, req.BatchID, id)
+	`, req.Name, req.Description, req.Duration, req.CoverImage, collaboratorIDs, collaboratorDeptIDs, emptyStrToNil(req.BatchID), id)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "考试名称已存在，请使用其他名称")
