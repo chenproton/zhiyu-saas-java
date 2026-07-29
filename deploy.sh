@@ -129,9 +129,10 @@ if ! command -v nginx >/dev/null 2>&1; then
   is_root || die "需要 root 安装 Nginx"
   pkg_install nginx
 fi
+systemctl unmask nginx 2>/dev/null || true
 systemctl enable --now nginx 2>/dev/null || true
-# 禁用 Ubuntu/Debian 默认站点，避免 default_server 冲突
-rm -f /etc/nginx/sites-enabled/default
+# 禁用 Ubuntu/Debian 默认站点，并清理可能存在的旧 zhiyu-saas 站点配置，避免 server 块冲突
+rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-enabled/zhiyu-saas /etc/nginx/sites-available/zhiyu-saas
 
 # Go
 if ! command -v go >/dev/null 2>&1; then
@@ -441,7 +442,7 @@ prune_old_images "zhiyu-edu" 5
 NGINX_CONF="$BUILD_ROOT/deploy/nginx/conf.d/zhiyu-saas.conf"
 if [[ -f "$NGINX_CONF" ]]; then
   cp -f "$NGINX_CONF" "$NGINX_DST"
-  nginx -t 2>/dev/null && systemctl reload nginx 2>/dev/null && log "Nginx 重载成功" || die "Nginx 配置测试或重载失败"
+  nginx -t 2>/dev/null && systemctl restart nginx 2>/dev/null && log "Nginx 重启成功" || die "Nginx 配置测试或重启失败"
 fi
 
 if [[ -n "$BRANCH_NAME" && "$SKIP_MERGE" != "true" ]]; then
