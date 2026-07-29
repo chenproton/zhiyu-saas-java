@@ -268,7 +268,7 @@ export const graduationApi = {
 }
 
 export const jobAbilityResultApi = {
-  list: (params?: { careerPositionId?: string; search?: string; grade?: string; page?: number; limit?: number }) =>
+  list: (params?: { careerPositionId?: string; userId?: string; search?: string; grade?: string; page?: number; limit?: number }) =>
     request<ListResponse<JobAbilityResult>>(`/evaluation/job-ability/results${buildQuery(params || {})}`),
   get: (id: string) => request<JobAbilityResult>(`/evaluation/job-ability/results/${id}`),
   summary: () => request<JobAbilitySummaryItem[]>("/evaluation/job-ability/results/summary"),

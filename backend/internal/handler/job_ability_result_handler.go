@@ -100,6 +100,9 @@ func (h *JobAbilityResultHandler) List(w http.ResponseWriter, r *http.Request) {
 	if v := r.URL.Query().Get("careerPositionId"); v != "" {
 		qb.addCondition("r.career_position_id = " + qb.nextArg(v))
 	}
+	if v := r.URL.Query().Get("userId"); v != "" {
+		qb.addCondition("r.user_id = " + qb.nextArg(v))
+	}
 	if v := r.URL.Query().Get("grade"); v != "" {
 		qb.addCondition("r.grade = " + qb.nextArg(v))
 	}
