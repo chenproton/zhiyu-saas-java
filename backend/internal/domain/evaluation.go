@@ -173,17 +173,19 @@ type SceneEvaluationResult struct {
 
 // JobAbilityResult represents a job ability evaluation result.
 type JobAbilityResult struct {
-	ID                    string  `json:"id"`
-	CareerPositionID      string  `json:"careerPositionId"`
-	UserID                string  `json:"userId"`
-	ClassName             *string `json:"className,omitempty"`
-	MajorID               *string `json:"majorId,omitempty"`
-	MajorName             *string `json:"majorName,omitempty"`
-	TotalAbilityPoints    int     `json:"totalAbilityPoints"`
-	AchievedAbilityPoints int     `json:"achievedAbilityPoints"`
-	AchievementRate       float64 `json:"achievementRate"`
-	Grade                 *string `json:"grade,omitempty"`
-	EvaluatedAt           string  `json:"evaluatedAt"`
+	ID                    string    `json:"id"`
+	CareerPositionID      string    `json:"careerPositionId"`
+	UserID                string    `json:"userId"`
+	ClassName             *string   `json:"className,omitempty"`
+	MajorID               *string   `json:"majorId,omitempty"`
+	MajorName             *string   `json:"majorName,omitempty"`
+	TotalAbilityPoints    int       `json:"totalAbilityPoints"`
+	AchievedAbilityPoints int       `json:"achievedAbilityPoints"`
+	AchievementRate       float64   `json:"achievementRate"`
+	Grade                 *string   `json:"grade,omitempty"`
+	AbilityPointDetails   JSONSlice `json:"abilityPointDetails"`
+	GradeHistory          JSONSlice `json:"gradeHistory"`
+	EvaluatedAt           string    `json:"evaluatedAt"`
 }
 
 // CertificationRule represents a position certification rule.

@@ -13,6 +13,7 @@ import (
 	"github.com/zhiyu-saas/backend/internal/config"
 	"github.com/zhiyu-saas/backend/internal/db"
 	"github.com/zhiyu-saas/backend/internal/router"
+	"github.com/zhiyu-saas/backend/internal/scheduler"
 )
 
 func main() {
@@ -34,6 +35,9 @@ func main() {
 
 	r := router.New(database.Pool, cfg.JWTSecret)
 	defer r.Shutdown()
+
+	sched := scheduler.Start(database.Pool)
+	defer sched.Stop()
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.Port),

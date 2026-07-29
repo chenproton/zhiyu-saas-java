@@ -95,6 +95,7 @@ type Handlers struct {
 	certGradeHandler              *handler.CertGradeHandler
 	resourceLibraryHandler        *handler.ResourceLibraryHandler
 	onSiteQuestionLibraryHandler  *handler.OnSiteQuestionLibraryHandler
+	jobAbilityResultHandler       *handler.JobAbilityResultHandler
 }
 
 func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHandler) *Handlers {
@@ -177,7 +178,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		evaluationResultHandler:       &handler.EvaluationResultHandler{DB: db},
 		certificationHandler:          &handler.CertificationHandler{DB: db},
 		graduationHandler:             &handler.GraduationHandler{DB: db},
-		studentPortraitHandler:        &handler.StudentPortraitHandler{DB: db},
+		studentPortraitHandler:        handler.NewStudentPortraitHandler(db),
 		microCertHandler:              &handler.MicroCertHandler{DB: db, Store: store.NewMicroCertStore(db)},
 		appealHandler:                 &handler.AppealHandler{DB: db},
 		evaluationMethodHandler:       &handler.EvaluationMethodHandler{DB: db},
@@ -187,5 +188,6 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		certGradeHandler:              &handler.CertGradeHandler{DB: db},
 		resourceLibraryHandler:        &handler.ResourceLibraryHandler{DB: db},
 		onSiteQuestionLibraryHandler:  &handler.OnSiteQuestionLibraryHandler{DB: db, Store: store.NewOnSiteQuestionLibraryStore(db)},
+		jobAbilityResultHandler:       handler.NewJobAbilityResultHandler(db),
 	}
 }

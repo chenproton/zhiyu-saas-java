@@ -41,6 +41,12 @@ func registerEvaluationRoutes(r chi.Router, h *Handlers) {
 	r.Post("/evaluation/results/{id}/grade", h.evaluationResultHandler.Grade)
 	r.Post("/evaluation/results/batch-grade", h.evaluationResultHandler.BatchGrade)
 
+	r.Get("/evaluation/job-ability/results", h.jobAbilityResultHandler.List)
+	r.Get("/evaluation/job-ability/results/summary", h.jobAbilityResultHandler.Summary)
+	r.Get("/evaluation/job-ability/results/{id}", h.jobAbilityResultHandler.Get)
+	r.Post("/evaluation/job-ability/aggregate", h.jobAbilityResultHandler.Aggregate)
+	r.Get("/evaluation/job-ability/aggregate/status", h.jobAbilityResultHandler.AggregateStatus)
+
 	r.Get("/evaluation/certifications", h.certificationHandler.ListRules)
 	r.Get("/evaluation/certifications/{id}", h.certificationHandler.GetRule)
 	r.Post("/evaluation/certifications", h.certificationHandler.CreateRule)
@@ -51,6 +57,14 @@ func registerEvaluationRoutes(r chi.Router, h *Handlers) {
 	r.Get("/evaluation/certifications/items/{id}/points", h.certificationHandler.ConfigPoints)
 	r.Post("/evaluation/certifications/items/{id}/points", h.certificationHandler.ConfigPoints)
 	r.Get("/evaluation/certifications/{id}/full", h.certificationHandler.GetFullRule)
+	r.Put("/evaluation/certifications/{id}/full", h.certificationHandler.PutFullRule)
+	r.Put("/evaluation/certifications/items/{id}", h.certificationHandler.UpdateItem)
+	r.Delete("/evaluation/certifications/items/{id}", h.certificationHandler.DeleteItem)
+	r.Put("/evaluation/certifications/points/{id}", h.certificationHandler.UpdatePoint)
+	r.Delete("/evaluation/certifications/points/{id}", h.certificationHandler.DeletePoint)
+	r.Post("/evaluation/certifications/points/{pointId}/tasks", h.certificationHandler.CreateTask)
+	r.Put("/evaluation/certifications/tasks/{id}", h.certificationHandler.UpdateTask)
+	r.Delete("/evaluation/certifications/tasks/{id}", h.certificationHandler.DeleteTask)
 
 	r.Get("/evaluation/graduation/topics", h.graduationHandler.ListTopics)
 	r.Get("/evaluation/graduation/topics/{id}", h.graduationHandler.GetTopic)

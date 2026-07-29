@@ -13,10 +13,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 )
 
 type StudentPortraitHandler struct {
-	DB *pgxpool.Pool
+	DB  *pgxpool.Pool
+	Agg *service.JobAbilityAggregator
+}
+
+func NewStudentPortraitHandler(db *pgxpool.Pool) *StudentPortraitHandler {
+	return &StudentPortraitHandler{DB: db, Agg: service.NewJobAbilityAggregator(db)}
 }
 
 type StudentPortraitListResponse struct {
@@ -55,7 +61,15 @@ func (h *StudentPortraitHandler) List(w http.ResponseWriter, r *http.Request) {
 		SelectColumns: `id, user_id, career_position_id, overall_grade, domain_scores, class_rank, class_total, major_rank, major_total, recommend_positions, updated_at, completed_courses, completed_scenes, total_credits, archive_count, course_records, graduation_qualified, attendance_rate, diploma_badge, dual_badge`,
 		TenantScoped:  false,
 		OrderBy:       "updated_at DESC",
-		ScanRows:      h.scanPortraitRows,
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if userID := r.URL.Query().Get("userId"); userID != "" {
+				qb.addCondition("user_id = " + qb.nextArg(userID))
+			}
+			if positionID := r.URL.Query().Get("careerPositionId"); positionID != "" {
+				qb.addCondition("career_position_id = " + qb.nextArg(positionID))
+			}
+		},
+		ScanRows: h.scanPortraitRows,
 	}
 
 	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
@@ -113,21 +127,31 @@ func (h *StudentPortraitHandler) Generate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	id := uuid.NewString()
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO student_ability_portraits (id, tenant_id, user_id, career_position_id, overall_grade,
-			domain_scores, class_rank, class_total, major_rank, major_total, recommend_positions, updated_at,
-			completed_courses, completed_scenes, total_credits, archive_count, course_records,
-			graduation_qualified, attendance_rate, diploma_badge, dual_badge)
-		VALUES ($1, $2, $3, $4, 'D', '[]', NULL, NULL, NULL, NULL, '[]', NOW(), 0, 0, 0, 0, '[]', false, 0, '', '')
-	`, id, tenantID, req.UserID, req.CareerPositionID)
-	if err != nil {
+	// 先对该 (user, careerPosition) 执行岗位能力汇聚，同步生成/更新画像
+	if err := h.Agg.AggregatePosition(r.Context(), tenantID, req.CareerPositionID, []string{req.UserID}); err != nil {
+		slog.Error("生成学生画像失败", "userId", req.UserID, "careerPositionId", req.CareerPositionID, "error", err)
 		respondError(w, http.StatusInternalServerError, "生成画像失败")
 		return
 	}
 
-	portrait, _ := h.fetchPortrait(r.Context(), id)
-	respondJSON(w, http.StatusCreated, portrait)
+	// 汇聚后读取画像；该岗位无认证规则或无测评数据时返回空画像而非占位假数据
+	portrait, err := h.fetchPortraitByUserPosition(r.Context(), req.UserID, req.CareerPositionID)
+	if err == pgx.ErrNoRows {
+		portrait = domain.StudentAbilityPortrait{
+			UserID:             req.UserID,
+			CareerPositionID:   req.CareerPositionID,
+			DomainScores:       domain.JSONSlice{},
+			CourseRecords:      domain.JSONSlice{},
+			RecommendPositions: domain.JSONSlice{},
+		}
+		respondJSON(w, http.StatusOK, portrait)
+		return
+	}
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "查询学生画像失败")
+		return
+	}
+	respondJSON(w, http.StatusOK, portrait)
 }
 
 func (h *StudentPortraitHandler) ListArchives(w http.ResponseWriter, r *http.Request) {
@@ -224,18 +248,32 @@ func (h *StudentPortraitHandler) CreateArchive(w http.ResponseWriter, r *http.Re
 }
 
 func (h *StudentPortraitHandler) fetchPortrait(ctx context.Context, id string) (domain.StudentAbilityPortrait, error) {
-	var p domain.StudentAbilityPortrait
-	var overallGrade *string
-	var classRank, classTotal, majorRank, majorTotal *int
-	var attendanceRate *float64
-	var diplomaBadge, dualBadge *string
-	err := h.DB.QueryRow(ctx, `
+	return h.scanPortrait(h.DB.QueryRow(ctx, `
 		SELECT id, user_id, career_position_id, overall_grade, domain_scores,
 			class_rank, class_total, major_rank, major_total, recommend_positions, updated_at,
 			completed_courses, completed_scenes, total_credits, archive_count, course_records,
 			graduation_qualified, attendance_rate, diploma_badge, dual_badge
 		FROM student_ability_portraits WHERE id = $1
-	`, id).Scan(
+	`, id))
+}
+
+func (h *StudentPortraitHandler) fetchPortraitByUserPosition(ctx context.Context, userID, careerPositionID string) (domain.StudentAbilityPortrait, error) {
+	return h.scanPortrait(h.DB.QueryRow(ctx, `
+		SELECT id, user_id, career_position_id, overall_grade, domain_scores,
+			class_rank, class_total, major_rank, major_total, recommend_positions, updated_at,
+			completed_courses, completed_scenes, total_credits, archive_count, course_records,
+			graduation_qualified, attendance_rate, diploma_badge, dual_badge
+		FROM student_ability_portraits WHERE user_id = $1 AND career_position_id = $2
+	`, userID, careerPositionID))
+}
+
+func (h *StudentPortraitHandler) scanPortrait(row pgx.Row) (domain.StudentAbilityPortrait, error) {
+	var p domain.StudentAbilityPortrait
+	var overallGrade *string
+	var classRank, classTotal, majorRank, majorTotal *int
+	var attendanceRate *float64
+	var diplomaBadge, dualBadge *string
+	err := row.Scan(
 		&p.ID, &p.UserID, &p.CareerPositionID, &overallGrade, &p.DomainScores,
 		&classRank, &classTotal, &majorRank, &majorTotal, &p.RecommendPositions, &p.UpdatedAt,
 		&p.CompletedCourses, &p.CompletedScenes, &p.TotalCredits, &p.ArchiveCount, &p.CourseRecords,
