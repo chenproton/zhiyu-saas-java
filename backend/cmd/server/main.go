@@ -16,8 +16,6 @@ import (
 	authmw "github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/router"
 	"github.com/zhiyu-saas/backend/internal/scheduler"
-
-	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -37,14 +35,13 @@ func main() {
 	}
 	defer database.Close()
 
-	var redisClient *redis.Client
-	redisClient, err = cache.NewClient(cfg.RedisURL)
+	redisClient, err := cache.NewClient(cfg.RedisURL)
 	if err != nil {
 		slog.Error("failed to connect to redis", "error", err)
 		os.Exit(1)
 	}
 	if redisClient == nil {
-		slog.Warn("REDIS_URL not set, caching disabled")
+		slog.Warn("REDIS_URL not set, caching and rate limiting disabled")
 	} else {
 		defer redisClient.Close()
 	}
