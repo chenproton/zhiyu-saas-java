@@ -73,6 +73,18 @@ detect_docker_compose() {
   echo ""
 }
 
+# 保留最近 N 个镜像（按 image 创建时间），清理过旧的镜像及其所有标签
+prune_old_images() {
+  local repo="$1" keep="${2:-5}"
+  local ids
+  ids=$(docker images --format '{{.ID}}|{{.CreatedAt}}' "$repo" 2>/dev/null | \
+         sort -t'|' -k2 -r | tail -n +$((keep + 1)) | cut -d'|' -f1 | sort -u)
+  for id in $ids; do
+    [[ -n "$id" ]] || continue
+    docker rmi "$id" >/dev/null 2>&1 || true
+  done
+}
+
 # ── 哈希计算 ──
 # 基于文件内容哈希，避免构建路径不同导致缓存失效
 source_hash() {
@@ -235,7 +247,8 @@ if [[ -n "$BRANCH_NAME" ]]; then
     git -C "$ORIGINAL_ROOT" worktree add --detach "$BUILD_TREE" origin/master || die "无法创建 worktree"
   fi
 
-  rm -rf "$BUILD_TREE/apps/edu/.next" "$BUILD_TREE/backend/bin" 2>/dev/null || true
+  # 保留 apps/edu/.next 以复用 Next.js 增量产物；仅清理后端编译产物
+  rm -rf "$BUILD_TREE/backend/bin" 2>/dev/null || true
   git -C "$BUILD_TREE" merge "origin/$BRANCH_NAME" --no-edit || { git -C "$BUILD_TREE" merge --abort 2>/dev/null; die "合并冲突，请先 rebase master"; }
   [[ -f "$ORIGINAL_ROOT/.env" ]] && cp "$ORIGINAL_ROOT/.env" "$BUILD_TREE/.env"
   BUILD_ROOT="$BUILD_TREE"
@@ -384,6 +397,10 @@ fi
 
 compose ps
 [[ "$CLEAN_BUILD" == "true" ]] && docker builder prune --all --force >/dev/null 2>&1 || true
+
+# 清理过旧的镜像标签，每侧保留最近 5 个
+prune_old_images "zhiyu-backend" 5
+prune_old_images "zhiyu-edu" 5
 
 # ════════════════════════════════════════════
 # 7. Nginx + 合并
