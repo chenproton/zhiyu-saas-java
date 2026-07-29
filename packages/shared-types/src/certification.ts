@@ -41,10 +41,14 @@ export interface EvalAbilityItem {
 
 export interface CertificationRule {
   id: string
-  positionName: string
+  careerPositionId: string
   status: RuleStatus
   ruleSource: 'inherit' | 'custom'
-  abilityItems: EvalAbilityItem[]
+  createdAt?: string
+  updatedAt?: string
+  /** 演示系统兼容字段（聚合展示用），后端列表/详情接口不返回 */
+  positionName?: string
+  abilityItems?: EvalAbilityItem[]
 }
 
 export interface Position {

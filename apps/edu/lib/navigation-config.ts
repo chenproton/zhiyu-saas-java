@@ -266,6 +266,8 @@ export const evaluationNavigationConfig: PlatformNavigationConfig = {
       icon: "barChart",
       children: [
         { id: "scene-results", label: "场景任务评价", href: "/evaluation/scene-results", matchers: ["/evaluation/scene-results"] },
+        { id: "job-ability", label: "岗位能力认定规则", href: "/evaluation/job-ability", matchers: ["/evaluation/job-ability"] },
+        { id: "job-ability-results", label: "岗位能力认定结果", href: "/evaluation/job-ability/results", matchers: ["/evaluation/job-ability/results"] },
       ],
     },
   ],
