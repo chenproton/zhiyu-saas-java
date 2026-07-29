@@ -73,7 +73,7 @@ func main() {
 
 	_, err = tx.Exec(ctx, `
 		INSERT INTO users (id, tenant_id, login_name, username, name, role, platform, password_hash, status, created_at, updated_at)
-		VALUES ($1, $2, 'admin', 'admin', '平台管理员', 'school', 'portal', $3, 'active', NOW(), NOW())
+		VALUES ($1, $2, 'admin', 'admin', '平台管理员', 'school', 'saas', $3, 'active', NOW(), NOW())
 		ON CONFLICT (id) DO NOTHING
 	`, platformAdminUserID, operatorTenantID, string(hashedPassword))
 	if err != nil {
