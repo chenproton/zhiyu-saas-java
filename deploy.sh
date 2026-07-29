@@ -364,6 +364,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
       echo "ENABLE_KKFILEVIEW=${ENABLE_KKFILEVIEW:-false}"
       echo "KKFILEVIEW_IMAGE=${KKFILEVIEW_IMAGE:-fangzhengjin/kkfileview:4.4.0}"
       echo "DOCKER_REGISTRY_MIRRORS=${DOCKER_REGISTRY_MIRRORS:-}"
+      echo "SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-admin123}"
     } >> "$ENV_FILE"
     chmod 600 "$ENV_FILE"
     log "已生成 .env（管理员: admin / admin123）"
