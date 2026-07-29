@@ -152,6 +152,8 @@ export interface ContentListPageConfig<T extends ContentListItem> {
 
   renderList: (props: ListRenderProps<T>) => ReactNode
 
+  onCreate?: () => void
+
   extraHeaderActions?: ReactNode
   listExtraProps?: Record<string, any>
   children?: ReactNode
@@ -806,6 +808,10 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   }
 
   const handleCreate = async () => {
+    if (config.onCreate) {
+      config.onCreate()
+      return
+    }
     try {
       const newItem = await itemApi.create(createPayload(currentUserId, entityLabel))
       const url = createRedirectUrl
