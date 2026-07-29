@@ -37,6 +37,9 @@ NGINX_DST="/etc/nginx/conf.d/zhiyu-saas.conf"
 OFFLINE_DIR="${OFFLINE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/offline}"
 NODE_VERSION="${NODE_VERSION:-22.12.0}"
 
+# 确保非交互式 shell 也能找到本脚本安装的 Go/Node/pnpm
+export PATH="/usr/local/go/bin:/usr/local/bin:$PATH"
+
 # ── 工具函数 ──
 log()   { echo "==> $*"; }
 warn()  { echo "  警告：$*" >&2; }
@@ -280,24 +283,30 @@ export GOPROXY="${GOPROXY:-https://goproxy.cn,direct}"
 if ! command -v node >/dev/null 2>&1; then
   is_root || die "需要 root 安装 Node.js"
   log "安装 Node.js..."
-  NODE_TARBALL="node-v${NODE_VERSION}-linux-x64.tar.xz"
+  NODE_TARBALL_NAME="node-v${NODE_VERSION}-linux-x64.tar.xz"
+  NODE_TARBALL="/tmp/node.tar.xz"
+  HAVE_NODE_TARBALL=false
   NODE_INSTALLED=false
-  if local_node=$(offline_file "$NODE_TARBALL"); then
+
+  if local_node=$(offline_file "$NODE_TARBALL_NAME"); then
     log "  使用本地 Node.js 安装包: $local_node"
-    cp -f "$local_node" /tmp/node.tar.xz
-    NODE_INSTALLED=true
-  else
-    if command -v apt-get >/dev/null 2>&1; then
-      curl -fsSL https://deb.nodesource.com/setup_22.x | bash - 2>/dev/null
-      pkg_install nodejs
-      command -v node >/dev/null 2>&1 && NODE_INSTALLED=true
-    fi
+    cp -f "$local_node" "$NODE_TARBALL"
+    HAVE_NODE_TARBALL=true
+  elif command -v apt-get >/dev/null 2>&1; then
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - 2>/dev/null
+    pkg_install nodejs
+    command -v node >/dev/null 2>&1 && NODE_INSTALLED=true
   fi
+
+  # apt 安装成功则无需再解压 tarball；否则必须下载/使用本地 tarball 解压
   if [[ "$NODE_INSTALLED" != "true" ]]; then
-    curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/${NODE_TARBALL}" -o /tmp/node.tar.xz 2>/dev/null || \
-      die "无法下载 Node.js ${NODE_VERSION}，请检查 offline/ 目录或网络"
+    if [[ "$HAVE_NODE_TARBALL" != "true" ]]; then
+      curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/${NODE_TARBALL_NAME}" -o "$NODE_TARBALL" 2>/dev/null || \
+        die "无法下载 Node.js ${NODE_VERSION}，请检查 offline/ 目录或网络"
+      HAVE_NODE_TARBALL=true
+    fi
+    tar -C /usr/local --strip-components=1 -xJf "$NODE_TARBALL" && rm -f "$NODE_TARBALL"
   fi
-  tar -C /usr/local --strip-components=1 -xJf /tmp/node.tar.xz && rm -f /tmp/node.tar.xz
 fi
 if ! command -v pnpm >/dev/null 2>&1; then
   local_pnpm_tgz=""
