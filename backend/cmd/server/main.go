@@ -10,10 +10,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/zhiyu-saas/backend/internal/cache"
 	"github.com/zhiyu-saas/backend/internal/config"
 	"github.com/zhiyu-saas/backend/internal/db"
+	authmw "github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/router"
 	"github.com/zhiyu-saas/backend/internal/scheduler"
+
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -33,7 +37,22 @@ func main() {
 	}
 	defer database.Close()
 
-	r := router.New(database.Pool, cfg.JWTSecret)
+	var redisClient *redis.Client
+	redisClient, err = cache.NewClient(cfg.RedisURL)
+	if err != nil {
+		slog.Error("failed to connect to redis", "error", err)
+		os.Exit(1)
+	}
+	if redisClient == nil {
+		slog.Warn("REDIS_URL not set, caching disabled")
+	} else {
+		defer redisClient.Close()
+	}
+
+	oplogBuffer := authmw.NewOpLogBuffer(database.Pool)
+	defer oplogBuffer.Shutdown()
+
+	r := router.New(database.Pool, cfg.JWTSecret, redisClient, oplogBuffer)
 	defer r.Shutdown()
 
 	sched := scheduler.Start(database.Pool)

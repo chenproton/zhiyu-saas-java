@@ -91,7 +91,7 @@ func ClientIP(r *http.Request) string {
 	return host
 }
 
-func OperationLog(db *pgxpool.Pool) func(http.Handler) http.Handler {
+func OperationLog(db *pgxpool.Pool, buffer *OpLogBuffer) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method != http.MethodPost && r.Method != http.MethodPut && r.Method != http.MethodDelete {
@@ -121,16 +121,33 @@ func OperationLog(db *pgxpool.Pool) func(http.Handler) http.Handler {
 			detail := r.Method + " " + r.URL.Path
 
 			userName := claims.Username
-			if err := db.QueryRow(r.Context(), `SELECT COALESCE(NULLIF(name, ''), username) FROM users WHERE id = $1`, claims.UserID).Scan(&userName); err != nil {
-				slog.Warn("oplog: failed to resolve user name", "userId", claims.UserID, "error", err)
+			if db != nil {
+				if err := db.QueryRow(r.Context(), `SELECT COALESCE(NULLIF(name, ''), username) FROM users WHERE id = $1`, claims.UserID).Scan(&userName); err != nil {
+					slog.Warn("oplog: failed to resolve user name", "userId", claims.UserID, "error", err)
+				}
 			}
 
-			_, err := db.Exec(r.Context(), `
+			if buffer != nil {
+				buffer.Enqueue(OpLogEntry{
+					TenantID:   *claims.TenantID,
+					UserID:     claims.UserID,
+					UserName:   userName,
+					Module:     module,
+					Action:     action,
+					TargetType: targetType,
+					TargetID:   targetID,
+					Detail:     detail,
+					IP:         ClientIP(r),
+					Status:     status,
+				})
+			} else {
+				_, err := db.Exec(r.Context(), `
 				INSERT INTO operation_logs (tenant_id, user_id, user_name, module, action, target_type, target_id, detail, ip, status)
 				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 			`, *claims.TenantID, claims.UserID, userName, module, action, targetType, targetID, detail, ClientIP(r), status)
-			if err != nil {
-				slog.Warn("failed to record operation log", "userId", claims.UserID, "error", err)
+				if err != nil {
+					slog.Warn("failed to record operation log", "userId", claims.UserID, "error", err)
+				}
 			}
 		})
 	}

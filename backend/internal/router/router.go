@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	"github.com/zhiyu-saas/backend/internal/handler"
 	authmw "github.com/zhiyu-saas/backend/internal/middleware"
 )
@@ -70,7 +71,7 @@ func (r *Router) Shutdown() {
 	r.handlers.authHandler.Shutdown()
 }
 
-func New(db *pgxpool.Pool, jwtSecret string) *Router {
+func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuffer *authmw.OpLogBuffer) *Router {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -98,7 +99,7 @@ func New(db *pgxpool.Pool, jwtSecret string) *Router {
 
 	r.Group(func(r chi.Router) {
 		r.Use(authmw.JWT(jwtSecret))
-		r.Use(authmw.OperationLog(db))
+		r.Use(authmw.OperationLog(db, oplogBuffer))
 		r.Post("/api/v1/files/upload", fileHandler.Upload)
 		r.Get("/api/v1/files/preview", fileHandler.Preview)
 	})
@@ -109,7 +110,7 @@ func New(db *pgxpool.Pool, jwtSecret string) *Router {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 
-	RegisterAPIRoutes(r, jwtSecret, db, h)
+	RegisterAPIRoutes(r, jwtSecret, db, h, redisClient, oplogBuffer)
 
 	return &Router{Handler: r, handlers: h}
 }
