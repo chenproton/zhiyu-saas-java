@@ -12,8 +12,8 @@ offline/
 │                                 # 下载: https://mirrors.aliyun.com/golang/go1.23.7.linux-amd64.tar.gz
 ├── node-v22.12.0-linux-x64.tar.xz  # Node.js 二进制包（可选）
 │                                    # 下载: https://nodejs.org/dist/v22.12.0/node-v22.12.0-linux-x64.tar.xz
-├── pnpm                         # pnpm standalone 可执行文件（可选）
-│                                 # 下载: https://github.com/pnpm/pnpm/releases
+├── pnpm-11.18.0.tgz             # pnpm npm 包（可选）
+│                                 # 下载: npm pack pnpm@11.18.0
 └── docker-images/               # Docker 镜像离线包（可选）
     ├── postgres-15-alpine.tar   # docker pull postgres:15-alpine && docker save -o postgres-15-alpine.tar postgres:15-alpine
     ├── redis-7-alpine.tar       # docker pull redis:7-alpine && docker save -o redis-7-alpine.tar redis:7-alpine

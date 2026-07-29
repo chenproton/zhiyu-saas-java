@@ -300,9 +300,13 @@ if ! command -v node >/dev/null 2>&1; then
   tar -C /usr/local --strip-components=1 -xJf /tmp/node.tar.xz && rm -f /tmp/node.tar.xz
 fi
 if ! command -v pnpm >/dev/null 2>&1; then
-  if local_pnpm=$(offline_file "pnpm"); then
-    log "  使用本地 pnpm: $local_pnpm"
-    install -m 755 "$local_pnpm" /usr/local/bin/pnpm
+  local_pnpm_tgz=""
+  for f in "$OFFLINE_DIR"/pnpm-*.tgz; do
+    [[ -f "$f" ]] && { local_pnpm_tgz="$f"; break; }
+  done
+  if [[ -n "$local_pnpm_tgz" ]]; then
+    log "  使用本地 pnpm 安装包: $local_pnpm_tgz"
+    npm install -g "$local_pnpm_tgz" 2>/dev/null || die "本地 pnpm 安装失败"
   else
     npm install -g pnpm 2>/dev/null || corepack enable pnpm 2>/dev/null || true
   fi

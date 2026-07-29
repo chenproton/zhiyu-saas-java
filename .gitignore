@@ -35,3 +35,11 @@ backups/
 backend/main
 tsconfig.tsbuildinfo
 *.log
+
+# Offline deployment assets (large binaries, managed manually)
+offline/*.tar.gz
+offline/*.tar.xz
+offline/*.sh
+offline/pnpm
+offline/pnpm-*.tgz
+offline/docker-images/*.tar
