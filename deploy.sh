@@ -199,7 +199,7 @@ DB_USER="zhiyu_saas"; DB_NAME="zhiyu-saas"
 DB_PASSWORD=$(echo "${DATABASE_URL:-}" | sed 's|.*://[^:]*:\([^@]*\)@.*|\1|' | python3 -c 'import urllib.parse,sys; print(urllib.parse.unquote(sys.stdin.read().strip()))' 2>/dev/null || echo "")
 export DB_USER DB_PASSWORD DB_NAME JWT_SECRET
 
-EXISTING=$(docker compose -f "$DEPLOY_COMPOSE" ps -q 2>/dev/null | wc -l || echo "0")
+EXISTING=$(docker compose -f "$DEPLOY_COMPOSE" ps -q 2>/dev/null | wc -l | tr -d ' ')
 
 if [[ "$EXISTING" -eq 0 ]]; then
   echo "  首次启动基础服务..."
