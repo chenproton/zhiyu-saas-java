@@ -34,6 +34,8 @@ done
 BACKEND_PORT=8080; EDU_PORT=3020
 DEPLOY_DIR="/opt/zhiyu-saas"
 NGINX_DST="/etc/nginx/conf.d/zhiyu-saas.conf"
+OFFLINE_DIR="${OFFLINE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/offline}"
+NODE_VERSION="${NODE_VERSION:-22.12.0}"
 
 # ── 工具函数 ──
 log()   { echo "==> $*"; }
@@ -83,6 +85,26 @@ prune_old_images() {
     [[ -n "$id" ]] || continue
     docker rmi "$id" >/dev/null 2>&1 || true
   done
+}
+
+# 检查本地离线资源是否存在
+offline_file() {
+  local path="$OFFLINE_DIR/$1"
+  [[ -f "$path" ]] && echo "$path" && return 0
+  return 1
+}
+
+# 加载 offline/docker-images/ 下的镜像 tar 包
+load_offline_images() {
+  [[ -d "$OFFLINE_DIR/docker-images" ]] || return 0
+  local loaded=false
+  for tar in "$OFFLINE_DIR"/docker-images/*.tar; do
+    [[ -f "$tar" ]] || continue
+    log "加载本地 Docker 镜像: $(basename "$tar")"
+    docker load -i "$tar" 2>&1 | tail -2
+    loaded=true
+  done
+  $loaded && log "本地 Docker 镜像加载完成"
 }
 
 # 执行数据库迁移；若 migrate 工具失败，使用 psql 兜底逐个执行未应用迁移文件
@@ -144,7 +166,12 @@ is_root && pkg_install curl ca-certificates rsync git python3 openssl
 if ! command -v docker >/dev/null 2>&1; then
   log "安装 Docker..."
   is_root || die "需要 root 安装 Docker"
-  curl -fsSL https://get.docker.com | bash 2>/dev/null || pkg_install docker.io
+  if local_docker_script=$(offline_file "get-docker.sh"); then
+    log "  使用本地安装脚本: $local_docker_script"
+    bash "$local_docker_script" 2>/dev/null || pkg_install docker.io
+  else
+    curl -fsSL https://get.docker.com | bash 2>/dev/null || pkg_install docker.io
+  fi
   systemctl enable --now docker 2>/dev/null || true
 fi
 if ! docker info >/dev/null 2>&1; then
@@ -225,18 +252,24 @@ if ! command -v go >/dev/null 2>&1; then
   GO_VERSION="${GO_VERSION:-1.23.7}"
   GO_TARBALL="go${GO_VERSION}.linux-${ARCH}.tar.gz"
   GO_DOWNLOADED=false
-  for url in \
-    "https://mirrors.aliyun.com/golang/${GO_TARBALL}" \
-    "https://go.dev/dl/${GO_TARBALL}" \
-    "https://goproxy.cn/dl/${GO_TARBALL}"; do
-    if curl -fsSL "$url" -o /tmp/go.tar.gz 2>/dev/null; then
-      log "  下载 Go ${GO_VERSION} 成功: $url"
-      GO_DOWNLOADED=true
-      break
-    fi
-    warn "下载失败: $url"
-  done
-  [[ "$GO_DOWNLOADED" == "true" ]] || die "无法下载 Go ${GO_VERSION}，请检查 GO_VERSION 或网络"
+  if local_go=$(offline_file "$GO_TARBALL"); then
+    log "  使用本地 Go 安装包: $local_go"
+    cp -f "$local_go" /tmp/go.tar.gz
+    GO_DOWNLOADED=true
+  else
+    for url in \
+      "https://mirrors.aliyun.com/golang/${GO_TARBALL}" \
+      "https://go.dev/dl/${GO_TARBALL}" \
+      "https://goproxy.cn/dl/${GO_TARBALL}"; do
+      if curl -fsSL "$url" -o /tmp/go.tar.gz 2>/dev/null; then
+        log "  下载 Go ${GO_VERSION} 成功: $url"
+        GO_DOWNLOADED=true
+        break
+      fi
+      warn "下载失败: $url"
+    done
+  fi
+  [[ "$GO_DOWNLOADED" == "true" ]] || die "无法下载 Go ${GO_VERSION}，请检查 GO_VERSION、offline/ 目录或网络"
   rm -rf /usr/local/go && tar -C /usr/local -xzf /tmp/go.tar.gz && rm -f /tmp/go.tar.gz
   export PATH="/usr/local/go/bin:$PATH"
   echo 'export PATH="/usr/local/go/bin:$PATH"' > /etc/profile.d/go.sh
@@ -247,17 +280,32 @@ export GOPROXY="${GOPROXY:-https://goproxy.cn,direct}"
 if ! command -v node >/dev/null 2>&1; then
   is_root || die "需要 root 安装 Node.js"
   log "安装 Node.js..."
-  if command -v apt-get >/dev/null 2>&1; then
-    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - 2>/dev/null
-    pkg_install nodejs
+  NODE_TARBALL="node-v${NODE_VERSION}-linux-x64.tar.xz"
+  NODE_INSTALLED=false
+  if local_node=$(offline_file "$NODE_TARBALL"); then
+    log "  使用本地 Node.js 安装包: $local_node"
+    cp -f "$local_node" /tmp/node.tar.xz
+    NODE_INSTALLED=true
+  else
+    if command -v apt-get >/dev/null 2>&1; then
+      curl -fsSL https://deb.nodesource.com/setup_22.x | bash - 2>/dev/null
+      pkg_install nodejs
+      command -v node >/dev/null 2>&1 && NODE_INSTALLED=true
+    fi
   fi
-  if ! command -v node >/dev/null 2>&1; then
-    curl -fsSL https://nodejs.org/dist/v22.12.0/node-v22.12.0-linux-x64.tar.xz -o /tmp/node.tar.xz
-    tar -C /usr/local --strip-components=1 -xJf /tmp/node.tar.xz && rm -f /tmp/node.tar.xz
+  if [[ "$NODE_INSTALLED" != "true" ]]; then
+    curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/${NODE_TARBALL}" -o /tmp/node.tar.xz 2>/dev/null || \
+      die "无法下载 Node.js ${NODE_VERSION}，请检查 offline/ 目录或网络"
   fi
+  tar -C /usr/local --strip-components=1 -xJf /tmp/node.tar.xz && rm -f /tmp/node.tar.xz
 fi
 if ! command -v pnpm >/dev/null 2>&1; then
-  npm install -g pnpm 2>/dev/null || corepack enable pnpm 2>/dev/null || true
+  if local_pnpm=$(offline_file "pnpm"); then
+    log "  使用本地 pnpm: $local_pnpm"
+    install -m 755 "$local_pnpm" /usr/local/bin/pnpm
+  else
+    npm install -g pnpm 2>/dev/null || corepack enable pnpm 2>/dev/null || true
+  fi
 fi
 
 # PostgreSQL client
@@ -478,6 +526,9 @@ if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx '^kkfileview$'; the
   docker stop kkfileview >/dev/null 2>&1 || true
   docker rm kkfileview >/dev/null 2>&1 || true
 fi
+
+# 优先加载本地 Docker 镜像，避免无法联网时 pull 失败
+load_offline_images
 
 COMPOSE_PROFILES=""
 [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]] && COMPOSE_PROFILES="--profile kkfileview"
