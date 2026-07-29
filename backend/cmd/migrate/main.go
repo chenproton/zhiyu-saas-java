@@ -110,7 +110,7 @@ func migrateUp(conn *pgx.Conn, dir string) error {
 			return fmt.Errorf("begin migration %s: %w", name, err)
 		}
 
-		if _, err := tx.Exec(ctx(), string(sql)); err != nil {
+		if err := execMultiSQL(tx, string(sql)); err != nil {
 			tx.Rollback(ctx())
 			return fmt.Errorf("execute migration %s: %w", name, err)
 		}
@@ -160,7 +160,7 @@ func migrateDown(conn *pgx.Conn, dir string) error {
 			return fmt.Errorf("begin rollback %s: %w", name, err)
 		}
 
-		if _, err := tx.Exec(ctx(), string(sql)); err != nil {
+		if err := execMultiSQL(tx, string(sql)); err != nil {
 			tx.Rollback(ctx())
 			return fmt.Errorf("execute migration %s: %w", name, err)
 		}
@@ -178,4 +178,17 @@ func migrateDown(conn *pgx.Conn, dir string) error {
 
 func ctx() context.Context {
 	return context.Background()
+}
+
+func execMultiSQL(tx pgx.Tx, sql string) error {
+	for _, stmt := range strings.Split(sql, ";") {
+		stmt = strings.TrimSpace(stmt)
+		if stmt == "" {
+			continue
+		}
+		if _, err := tx.Exec(context.Background(), stmt); err != nil {
+			return err
+		}
+	}
+	return nil
 }
