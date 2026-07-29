@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -32,7 +33,7 @@ type CreateScenarioTaskRequest struct {
 	DescriptionPdf      *string        `json:"descriptionPdf"`
 	EstimatedHours      float64        `json:"estimatedHours"`
 	TaskType            string         `json:"taskType"`
-	Difficulty          int            `json:"difficulty"`
+	Difficulty          *int           `json:"difficulty"`
 	Background          *string        `json:"background"`
 	DependencyIDs       []string       `json:"dependencyIds"`
 	IsReferenced        bool           `json:"isReferenced"`
@@ -146,6 +147,7 @@ func (h *ScenarioTaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		coalesceStringSlice(req.KnowledgePointIDs), coalesceStringSlice(req.AbilityPointIDs),
 		coalesceStringSlice(req.ResourceIDs), jsonMapBytes(req.EvalData), scenarioTenantID)
 	if err != nil {
+		slog.Error("创建任务失败", "scenarioId", req.ScenarioID, "error", err)
 		respondError(w, http.StatusInternalServerError, "创建任务失败")
 		return
 	}
@@ -203,6 +205,7 @@ func (h *ScenarioTaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 		coalesceStringSlice(req.KnowledgePointIDs), coalesceStringSlice(req.AbilityPointIDs),
 		coalesceStringSlice(req.ResourceIDs), jsonMapBytes(req.EvalData), id, task.TenantID)
 	if err != nil {
+		slog.Error("更新任务失败", "taskId", id, "error", err)
 		respondError(w, http.StatusInternalServerError, "更新任务失败")
 		return
 	}
