@@ -224,7 +224,9 @@ func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 		"/lesson/teacher/learning-portrait": true, "/lesson/admin/approvals": true, "/lesson/landing": true,
 		"/scene/": true, "/scene/archive": true, "/scene/approvals": true, "/scene/landing": true,
 		"/evaluation/question-banks": true, "/evaluation/exams": true, "/evaluation/exam-usage": true,
-		"/evaluation/approvals": true, "/evaluation/landing": true,
+		"/evaluation/batches": true, "/evaluation/workflows": true, "/evaluation/approvals": true,
+		"/evaluation/scene-results": true, "/evaluation/job-ability": true, "/evaluation/job-ability/results": true,
+		"/evaluation/landing": true,
 	}
 	adminActions := []string{"submit_approval", "withdraw_approval", "publish", "unpublish", "delete", "review", "reject"}
 	modPerms := func(actions []string) domain.JSONMap {
