@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>学生能力画像详情</title>
+<style>
+:root{
+  --pri:#5b76e8;--pri2:#8c6ff0;--cyan:#39b3c8;
+  --grad:linear-gradient(135deg,#5b76e8,#8c6ff0);
+  --ink:#2b3550;--ink2:#5d6883;--ink3:#8a93ab;--ink4:#aab2c6;
+  --line:#edf0f7;--line2:#f4f6fb;
+  /* 三色阶 */
+  --exceed:#27b08a; --exceed2:#5fd3a8;        /* 超过基准 */
+  --meet:#5b76e8;   --meet2:#8c6ff0;          /* 达标 */
+  --below:#e89b3a;  --below2:#f3c069;          /* 未达标 */
+  --g-exceed:linear-gradient(90deg,#27b08a,#54cf9d);
+  --g-meet:linear-gradient(90deg,#5b76e8,#8c6ff0);
+  --g-below:linear-gradient(90deg,#e89b3a,#f3c069);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:"PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  background:transparent;
+  color:var(--ink);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;
+  zoom:0.8;}
+.panel{background:#f7f9fd;overflow:hidden;}
+
+
+.wrap{display:grid;grid-template-columns:352px 1fr 366px;gap:16px;padding:16px;}
+@media(max-width:1560px){.wrap{grid-template-columns:330px 1fr 340px;}}
+@media(max-width:1280px){.wrap{grid-template-columns:1fr;}}
+
+.card{background:#fff;border:1px solid var(--line);border-radius:15px;box-shadow:0 2px 10px -6px rgba(40,52,90,.12);}
+.card + .card{margin-top:14px;}
+.chd{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 11px;}
+.title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.title .mk{width:4px;height:14px;border-radius:3px;background:var(--grad);box-shadow:0 2px 5px rgba(91,118,232,.45);}
+.chd .ex{font-size:11px;color:var(--ink4);font-weight:600;}
+.cbd{padding:0 16px 16px;}
+
+/* ===== LEFT ===== */
+.profile{position:relative;border-radius:15px;overflow:hidden;border:1px solid #dfe6fb;background:linear-gradient(130deg,#e9eeff,#eef1ff 50%,#f3edff);padding:20px 18px;}
+.profile .deco{position:absolute;right:-10px;bottom:-6px;opacity:.55;}
+.p-top{display:flex;align-items:center;gap:14px;position:relative;}
+.p-av{width:62px;height:62px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#5b76e8,#8c6ff0);display:flex;align-items:center;justify-content:center;color:#fff;font-size:25px;font-weight:800;border:3px solid #fff;box-shadow:0 10px 22px -8px rgba(91,118,232,.6);}
+.p-name{font-size:18px;font-weight:800;display:flex;align-items:center;gap:7px;}
+.p-name .sx{font-size:13px;color:var(--pri);}
+.p-id{font-size:11.5px;color:var(--ink3);margin-top:4px;}
+.p-tags{display:flex;gap:7px;margin-top:14px;position:relative;}
+.ptag{font-size:11px;padding:4px 12px;border-radius:30px;font-weight:600;}
+.ptag.a{background:linear-gradient(135deg,#5b76e8,#7b91f2);color:#fff;box-shadow:0 5px 11px -4px rgba(91,118,232,.55);}
+.ptag.b{background:rgba(140,111,240,.13);color:var(--pri2);}
+.il .r{display:flex;justify-content:space-between;align-items:center;padding:9.5px 0;border-bottom:1px solid var(--line2);font-size:12.5px;}
+.il .r:last-child{border:none;}
+.il .k{color:var(--ink3);}
+.il .v{font-weight:600;}
+.pill{font-size:10.5px;padding:3px 10px;border-radius:20px;font-weight:600;}
+.pill.g{background:rgba(39,176,138,.13);color:var(--exceed);}
+.pill.a{background:rgba(232,155,58,.13);color:var(--below);}
+.sg{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+.sc{padding:13px 4px;border-radius:12px;text-align:center;border:1px solid var(--line2);}
+.sc.b{background:linear-gradient(165deg,#eef2ff,#f6f8ff);}
+.sc.o{background:linear-gradient(165deg,#fff5e9,#fffaf2);}
+.sc .n{font-size:20px;font-weight:800;line-height:1;}
+.sc .l{font-size:10.5px;color:var(--ink3);margin-top:6px;}
+.sc.b .n{color:var(--pri);}
+.sc.o .n{color:var(--below);}
+.hg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;}
+.hn .ic{width:46px;height:46px;border-radius:50%;margin:0 auto 7px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;box-shadow:0 8px 15px -6px rgba(0,0,0,.25);}
+.hn .nm{font-size:10.5px;color:var(--ink2);font-weight:500;}
+.h1{background:linear-gradient(135deg,#27b08a,#5fd3a8);}
+.h2{background:linear-gradient(135deg,#e89b3a,#f3c069);}
+.h3{background:linear-gradient(135deg,#8c6ff0,#aa93f3);}
+.h4{background:linear-gradient(135deg,#e8748a,#f29aaa);}
+
+/* ===== CENTER ===== */
+.tabs{display:flex;gap:7px;padding:0 16px 12px;flex-wrap:wrap;}
+.tab{font-size:12.5px;padding:7px 16px;border-radius:9px;cursor:pointer;color:var(--ink2);background:#f4f6fb;font-weight:500;transition:.16s;border:1px solid transparent;}
+.tab:hover{color:var(--pri);}
+.tab.on{background:rgba(91,118,232,.1);color:var(--pri);font-weight:700;border-color:rgba(91,118,232,.28);}
+
+.hero{display:grid;grid-template-columns:0.92fr 1.08fr;gap:18px;padding:0 16px 6px;align-items:stretch;}
+.radar-box{position:relative;border-radius:15px;padding:14px;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(120% 110% at 30% 10%,#eef2ff 0%,#f4f1ff 55%,#fbfcff 100%);border:1px solid #e7ebfb;}
+.radar-box::before{content:"";position:absolute;right:-50px;top:-50px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(140,111,240,.16),transparent 70%);}
+.radar-wrap{position:relative;}
+.radar-center{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;}
+.radar-center .big{font-size:30px;font-weight:900;line-height:1;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.radar-center .sub{font-size:10.5px;color:var(--ink3);margin-top:3px;font-weight:600;letter-spacing:.5px;}
+.legend{display:flex;gap:16px;margin-top:2px;position:relative;}
+.legend span{font-size:11px;color:var(--ink2);display:flex;align-items:center;gap:5px;font-weight:600;}
+.legend i{width:13px;height:5px;border-radius:3px;}
+
+.right-stack{display:flex;flex-direction:column;gap:12px;}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.stat{position:relative;border-radius:13px;padding:15px 12px;overflow:hidden;border:1px solid;}
+.stat .v{font-size:25px;font-weight:900;line-height:1;}
+.stat .l{font-size:10.5px;color:var(--ink2);margin-top:7px;font-weight:500;}
+.stat .glow{position:absolute;right:-14px;top:-14px;width:56px;height:56px;border-radius:50%;opacity:.5;}
+.stat.s1{background:linear-gradient(160deg,#eafaf4,#f4fdf9);border-color:#cdeede;}
+.stat.s1 .v{color:var(--exceed);}.stat.s1 .glow{background:radial-gradient(circle,#7adcb6,transparent 70%);}
+.stat.s2{background:linear-gradient(160deg,#f3f0ff,#f9f7ff);border-color:#e2dbf8;}
+.stat.s2 .v{color:var(--pri2);}.stat.s2 .glow{background:radial-gradient(circle,#b6a3f5,transparent 70%);}
+.stat.s3{background:linear-gradient(160deg,#ecf0ff,#f6f8ff);border-color:#d4ddfb;}
+.stat.s3 .v{color:var(--pri);}.stat.s3 .glow{background:radial-gradient(circle,#9fb2f6,transparent 70%);}
+.stat.s4{background:linear-gradient(160deg,#fff4e6,#fffaf1);border-color:#f4e0c0;}
+.stat.s4 .v{color:var(--below);}.stat.s4 .glow{background:radial-gradient(circle,#f6cf8e,transparent 70%);}
+
+.note{border-radius:13px;padding:14px 15px;background:linear-gradient(120deg,#f6f8ff,#f9f7ff);border:1px solid var(--line);flex:1;}
+.nt{font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:7px;}
+.nt .d{width:17px;height:17px;border-radius:6px;background:var(--grad);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;}
+.note p{font-size:12px;color:var(--ink2);line-height:1.8;margin-top:8px;}
+.adv{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px;}
+.adv .t{font-size:11px;padding:5px 12px;border-radius:8px;background:#fff;border:1px solid var(--line);color:var(--pri);font-weight:500;}
+
+/* ===== EVAL MATRIX ===== */
+.eval{margin:14px 16px 16px;border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  --c1:124px;--c2:minmax(150px,1.25fr);--c3:104px;--c4:minmax(230px,1.55fr);--c5:118px;--c6:96px;}
+.eval-top{display:flex;align-items:center;gap:8px;padding:13px 16px;background:linear-gradient(120deg,#f4f7ff,#f7f4ff);border-bottom:1px solid var(--line);}
+.eval-top .mk{width:4px;height:14px;border-radius:3px;background:var(--grad);}
+.eval-top h3{font-size:13.5px;font-weight:700;}
+.lg{margin-left:auto;display:flex;gap:14px;font-size:10.5px;color:var(--ink2);font-weight:600;align-items:center;}
+.lg span{display:flex;align-items:center;gap:5px;}
+.lg i{width:16px;height:7px;border-radius:4px;display:inline-block;}
+
+.ev-head{display:grid;grid-template-columns:var(--c1) var(--c2) var(--c3) var(--c4) var(--c5) var(--c6);background:#f6f8fc;border-bottom:1px solid var(--line);}
+.ev-head>div{padding:10px 14px;font-size:11px;font-weight:700;color:var(--ink2);}
+.ev-head .c{text-align:center;}
+
+.ev-dom{display:grid;grid-template-columns:var(--c1) 1fr;border-bottom:1px solid var(--line2);}
+.ev-dom:last-child{border-bottom:none;}
+.ev-dname{display:flex;flex-direction:column;justify-content:center;gap:8px;padding:14px;border-right:1px solid var(--line2);position:relative;}
+.ev-dname::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:3px;}
+.ev-dom.d1 .ev-dname{background:linear-gradient(160deg,#f1f5ff,#fbfcff);}.ev-dom.d1 .ev-dname::before{background:linear-gradient(#5b76e8,#8c6ff0);}
+.ev-dom.d2 .ev-dname{background:linear-gradient(160deg,#f4f1ff,#fdfcff);}.ev-dom.d2 .ev-dname::before{background:linear-gradient(#8c6ff0,#a78cf3);}
+.ev-dom.d3 .ev-dname{background:linear-gradient(160deg,#edfaf5,#fbfefd);}.ev-dom.d3 .ev-dname::before{background:linear-gradient(#27b08a,#54cf9d);}
+.ev-dname .dn{font-size:12.5px;font-weight:800;}
+.ev-dname .davg{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:var(--ink3);font-weight:600;}
+.ev-dname .davg b{font-size:15px;font-weight:900;}
+.ev-dom.d1 .davg b{color:var(--pri);}.ev-dom.d2 .davg b{color:var(--pri2);}.ev-dom.d3 .davg b{color:var(--exceed);}
+
+.ev-rows{display:flex;flex-direction:column;}
+.ev-row{display:grid;grid-template-columns:var(--c2) var(--c3) var(--c4) var(--c5) var(--c6);align-items:center;border-bottom:1px solid var(--line2);transition:.15s;}
+.ev-row:last-child{border-bottom:none;}
+.ev-row:hover{background:#fafbff;}
+.ev-pt{padding:12px 14px;font-size:12px;color:var(--ink);font-weight:500;}
+.ev-score-c{display:flex;justify-content:center;}
+.ev-score{font-size:16px;font-weight:900;width:46px;text-align:center;}
+.ev-score.exceed{color:var(--exceed);}.ev-score.meet{color:var(--pri);}.ev-score.below{color:var(--below);}
+
+.ev-comp{padding:11px 18px 11px 8px;}
+.ev-bar{position:relative;height:22px;border-radius:7px;background:#eef1f8;overflow:visible;box-shadow:inset 0 1px 2px rgba(40,52,90,.06);}
+.ev-fill{position:absolute;left:0;top:0;height:100%;border-radius:7px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;
+  font-size:10px;font-weight:700;color:#fff;transition:width 1s cubic-bezier(.22,1,.36,1);box-shadow:0 2px 6px -1px rgba(40,52,90,.25);}
+.ev-fill.exceed{background:var(--g-exceed);}
+.ev-fill.meet{background:var(--g-meet);}
+.ev-fill.below{background:var(--g-below);}
+/* 旗帜（基准） */
+.bench{position:absolute;top:-12px;bottom:-12px;z-index:6;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;pointer-events:none;}
+.bench .line{flex:1;width:0;border-left:1.5px dashed #aab2c8;}
+.bench .flag{filter:drop-shadow(0 3px 4px rgba(40,52,90,.28));margin-bottom:-2px;}
+
+.req{display:flex;justify-content:center;}
+.lv{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px;white-space:nowrap;}
+.lv .dot{width:6px;height:6px;border-radius:50%;}
+.lv.gray{background:#f0f2f8;color:var(--ink2);}
+.lv.gray .dot{background:#aab2c8;}
+
+.res{display:flex;justify-content:center;}
+.rs{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:8px;}
+.rs.pass{background:rgba(39,176,138,.12);color:var(--exceed);}
+.rs.passb{background:rgba(91,118,232,.12);color:var(--pri);}
+.rs.fail{background:rgba(232,155,58,.13);color:var(--below);}
+
+/* ===== RIGHT ===== */
+.rsub{font-size:11.5px;font-weight:700;color:var(--ink3);margin:2px 0 10px;}
+.rsub.mt{margin-top:16px;}
+.jc{border-radius:13px;padding:13px 14px;margin-bottom:10px;border:1px solid var(--line);background:#fff;transition:.18s;}
+.jc:hover{transform:translateY(-2px);box-shadow:0 12px 24px -14px rgba(91,118,232,.4);}
+.jc.acc{background:linear-gradient(120deg,#edfaf4,#f5fcf9);border-color:#cdeede;}
+.jc.acc2{background:linear-gradient(120deg,#f4f1ff,#f8f6ff);border-color:#e3ddf8;}
+.jtp{display:flex;justify-content:space-between;align-items:center;}
+.jn{font-size:13px;font-weight:700;}
+.mt2{font-size:10.5px;padding:3px 10px;border-radius:7px;color:#fff;font-weight:700;}
+.mt2.g{background:linear-gradient(120deg,#27b08a,#54cf9d);}
+.mt2.b{background:var(--grad);}
+.mt2.a{background:linear-gradient(120deg,#e89b3a,#f3c069);}
+.jbar{height:6px;border-radius:6px;background:#eceff6;margin:10px 0 8px;overflow:hidden;}
+.jbar i{display:block;height:100%;border-radius:6px;}
+.jbar i.g{background:linear-gradient(90deg,#27b08a,#54cf9d);}
+.jbar i.b{background:var(--grad);}
+.jdsc{font-size:11px;color:var(--ink3);}
+.jdsc b{font-weight:700;}
+.jpt{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;}
+.jpt .x{font-size:10px;padding:3px 10px;border-radius:7px;background:rgba(91,118,232,.08);color:var(--pri);font-weight:500;}
+.gt table{width:100%;border-collapse:separate;border-spacing:0;}
+.gt th,.gt td{padding:9px 7px;font-size:11px;}
+.gt thead th{background:#f5f7fc;color:var(--ink2);font-weight:700;text-align:left;}
+.gt thead th:first-child{border-radius:8px 0 0 8px;}
+.gt thead th:last-child{border-radius:0 8px 8px 0;}
+.gt tbody td{border-bottom:1px solid var(--line2);}
+.gt .gn{font-weight:500;color:var(--ink2);}
+.gt .gs{font-weight:800;color:var(--pri);}
+.gt .gl{font-size:10px;padding:2px 8px;border-radius:7px;background:rgba(39,176,138,.13);color:var(--exceed);font-weight:600;}
+.gt .gl.b{background:rgba(91,118,232,.1);color:var(--pri);}
+.gt .rk{color:var(--ink3);}
+.gt .at{color:var(--exceed);font-weight:600;}
+
+/* 毕业设计 */
+.gd-wrap{display:flex;gap:8px;justify-content:space-between;}
+.gd-item{flex:1;text-align:center;padding:12px 4px;border-radius:12px;border:1px solid var(--line2);background:#fff;transition:.18s;}
+.gd-item.on{background:linear-gradient(165deg,#eef2ff,#f6f8ff);border-color:#d4ddfb;box-shadow:0 3px 10px -5px rgba(91,118,232,.3);}
+.gd-grade{font-size:18px;font-weight:900;line-height:1.2;}
+.gd-item.on .gd-grade{color:var(--pri);}
+.gd-item:not(.on) .gd-grade{color:var(--ink3);}
+.gd-label{font-size:10px;color:var(--ink3);margin-top:5px;font-weight:500;}
+.gd-item.on .gd-label{color:var(--pri);font-weight:600;}
+</style>
+</head>
+<body>
+<div class="panel">
+  <div class="wrap">
+
+    <!-- ===== LEFT ===== -->
+    <div>
+      <div class="profile">
+        <svg class="deco" width="150" height="110" viewBox="0 0 150 110"><g fill="#ffffff" opacity="0.55"><rect x="8" y="55" width="20" height="55" rx="2"/><rect x="34" y="35" width="22" height="75" rx="2"/><rect x="62" y="65" width="18" height="45" rx="2"/><rect x="86" y="25" width="24" height="85" rx="2"/><rect x="116" y="50" width="22" height="60" rx="2"/></g></svg>
+        <div class="p-top">
+          <div class="p-av">张</div>
+          <div><div class="p-name">张宇辰 <span class="sx">♂</span></div><div class="p-id">学号：2022123456</div></div>
+        </div>
+        <div class="p-tags"><span class="ptag a">信息工程学院</span><span class="ptag b">软件技术</span></div>
+      </div>
+
+      <div class="card">
+        <div class="chd"><span class="title"><span class="mk"></span>基础信息</span></div>
+        <div class="cbd il">
+          <div class="r"><span class="k">所属院系</span><span class="v">信息工程学院</span></div>
+          <div class="r"><span class="k">所属专业</span><span class="v">软件技术</span></div>
+          <div class="r"><span class="k">所属班级</span><span class="v">25301班</span></div>
+          <div class="r"><span class="k">专业排名</span><span class="v" style="color:#e8748a">第 3 名</span></div>
+          <div class="r"><span class="k">违纪记录</span><span class="v">无</span></div>
+          <div class="r"><span class="k">体测情况</span><span class="v"><span class="pill g">合格</span></span></div>
+          <div class="r"><span class="k">党员身份</span><span class="v"><span class="pill a">预备党员</span></span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="chd"><span class="title"><span class="mk"></span>学业概况</span></div>
+        <div class="cbd"><div class="sg">
+          <div class="sc b"><div class="n">54</div><div class="l">毕业学分</div></div>
+          <div class="sc b"><div class="n">4</div><div class="l">奖学金</div></div>
+          <div class="sc b"><div class="n">12</div><div class="l">主修课程</div></div>
+          <div class="sc o"><div class="n">234</div><div class="l">知识点</div></div>
+          <div class="sc o"><div class="n">89</div><div class="l">实践任务</div></div>
+          <div class="sc o"><div class="n">34</div><div class="l">实践场次</div></div>
+        </div></div>
+      </div>
+
+      <div class="card">
+        <div class="chd"><span class="title"><span class="mk"></span>获得荣誉</span><span class="ex">4 项</span></div>
+        <div class="cbd"><div class="hg">
+          <div class="hn"><div class="ic h1">★</div><div class="nm">国家奖学金</div></div>
+          <div class="hn"><div class="ic h2">优</div><div class="nm">三好学生</div></div>
+          <div class="hn"><div class="ic h3">干</div><div class="nm">优秀干部</div></div>
+          <div class="hn"><div class="ic h4">奖</div><div class="nm">竞赛一等奖</div></div>
+        </div></div>
+      </div>
+    </div>
+
+    <!-- ===== CENTER ===== -->
+    <div>
+      <!-- 岗位能力认定（真实汇聚数据，无数据时保持隐藏） -->
+      <div class="card" id="certCard" style="display:none">
+        <div class="chd"><span class="title"><span class="mk"></span>岗位能力认定</span><span class="ex" id="certUpdated"></span></div>
+        <div class="cbd">
+          <div class="il" id="certSummary"></div>
+          <div id="certDomains" style="margin-top:10px"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="chd"><span class="title"><span class="mk"></span>目标岗位能力画像</span><span class="ex">更新于 2025-02</span></div>
+        <div class="tabs">
+          <span class="tab on">前端开发工程师</span><span class="tab">后端开发工程师</span>
+          <span class="tab">产品经理</span><span class="tab">UI 设计师</span>
+        </div>
+
+        <!-- HERO -->
+        <div class="hero">
+          <div class="radar-box">
+            <div class="radar-wrap">
+              <svg id="radar" width="318" height="290" viewBox="0 0 340 320"></svg>
+              <div class="radar-center"><div class="big">86%</div><div class="sub">综合达成率</div></div>
+            </div>
+            <div class="legend">
+              <span><i style="background:linear-gradient(90deg,#5b76e8,#8c6ff0)"></i>学生能力</span>
+              <span><i style="background:#c4cad9"></i>岗位要求</span>
+            </div>
+          </div>
+          <div class="right-stack">
+            <div class="stat-row">
+              <div class="stat s1"><span class="glow"></span><div class="v">86%</div><div class="l">岗位能力达成率</div></div>
+              <div class="stat s2"><span class="glow"></span><div class="v">82%</div><div class="l">岗位胜任度</div></div>
+              <div class="stat s3"><span class="glow"></span><div class="v">87</div><div class="l">能力认知得分</div></div>
+              <div class="stat s4"><span class="glow"></span><div class="v">A+</div><div class="l">认知专业等级</div></div>
+            </div>
+            <div class="note">
+              <div class="nt"><span class="d">i</span>能力说明</div>
+              <p>张宇辰在 <b style="color:var(--pri)">前端开发工程师</b> 岗位综合达成率 <b style="color:var(--exceed)">86%</b>，<b style="color:var(--pri2)">专业技能</b> 与 <b style="color:var(--cyan)">工具应用</b> 显著超过岗位基准；<b style="color:var(--below)">行业规范、性能优化、持续学习</b> 三项尚未达标，建议参与实战项目补强。</p>
+              <div class="nt" style="margin-top:11px;"><span class="d">↑</span>能力提升建议</div>
+              <div class="adv"><span class="t">加强项目实践</span><span class="t">提升工程化能力</span><span class="t">深入框架原理</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EVAL MATRIX -->
+        <div class="eval">
+          <div class="eval-top">
+            <span class="mk"></span><h3>能力域达成分析</h3>
+            <div class="lg">
+              <span><i style="background:var(--g-exceed)"></i>超过基准</span>
+              <span><i style="background:var(--g-meet)"></i>达标</span>
+              <span><i style="background:var(--g-below)"></i>未达标</span>
+              <span style="gap:3px"><svg width="13" height="14" viewBox="0 0 13 14"><line x1="1.5" y1="2" x2="1.5" y2="13" stroke="#aab2c8" stroke-width="1.4" stroke-dasharray="2 2"/><path d="M2.4 2 L11 3.6 L8.6 5.3 L11 7 L2.4 8.6 Z" fill="#94a0be"/></svg>岗位基准</span>
+            </div>
+          </div>
+
+          <div class="ev-head">
+            <div>能力领域</div>
+            <div>能力点</div>
+            <div class="c">认定得分</div>
+            <div>学生能力掌握度（对比岗位基准）</div>
+            <div class="c">岗位所需</div>
+            <div class="c">认定结果</div>
+          </div>
+
+          <!-- 数据由 JS 渲染 -->
+          <div id="evalBody"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== RIGHT ===== -->
+    <div>
+      <div class="card">
+        <div class="chd"><span class="title"><span class="mk"></span>推荐就业方向</span></div>
+        <div class="cbd">
+          <div class="rsub">推荐岗位</div>
+          <div class="jc acc"><div class="jtp"><span class="jn">前端开发工程师</span><span class="mt2 g">匹配 88%</span></div><div class="jbar"><i class="g" style="width:88%"></i></div><div class="jdsc"><b style="color:var(--exceed)">优秀</b> · 适合 Web 应用开发核心岗位</div></div>
+          <div class="jc acc2"><div class="jtp"><span class="jn">Web 全栈工程师</span><span class="mt2 b">匹配 76%</span></div><div class="jbar"><i class="b" style="width:76%"></i></div><div class="jdsc"><b style="color:var(--pri2)">良好</b> · 工程化与数据处理能力突出</div></div>
+          <div class="rsub mt">推荐企业</div>
+          <div class="jc acc"><div class="jtp"><span class="jn">字节跳动</span><span class="mt2 g">匹配 88%</span></div><div class="jpt"><span class="x">前端开发</span><span class="x">全栈开发</span></div></div>
+          <div class="jc"><div class="jtp"><span class="jn">腾讯科技</span><span class="mt2 a">匹配 82%</span></div><div class="jpt"><span class="x">前端开发</span><span class="x">小程序开发</span></div></div>
+          <div class="jc"><div class="jtp"><span class="jn">阿里巴巴</span><span class="mt2 b">匹配 76%</span></div><div class="jpt"><span class="x">前端开发</span><span class="x">Node 开发</span></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="chd"><span class="title"><span class="mk"></span>课程成绩</span></div>
+        <div class="cbd gt">
+          <table>
+            <thead><tr><th>课程名称</th><th>分数</th><th>等级</th><th>排名</th><th>到课率</th></tr></thead>
+            <tbody>
+              <tr><td class="gn">Web 前端开发</td><td class="gs">93</td><td><span class="gl">优秀</span></td><td class="rk">2/45</td><td class="at">98%</td></tr>
+              <tr><td class="gn">JavaScript 程序设计</td><td class="gs">91</td><td><span class="gl">优秀</span></td><td class="rk">3/45</td><td class="at">97%</td></tr>
+              <tr><td class="gn">数据结构与算法</td><td class="gs">86</td><td><span class="gl">优秀</span></td><td class="rk">5/45</td><td class="at">96%</td></tr>
+              <tr><td class="gn">计算机网络</td><td class="gs">88</td><td><span class="gl">优秀</span></td><td class="rk">4/45</td><td class="at">99%</td></tr>
+              <tr><td class="gn">数据库原理</td><td class="gs">84</td><td><span class="gl b">良好</span></td><td class="rk">6/45</td><td class="at">95%</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="chd"><span class="title"><span class="mk"></span>🎓 毕业设计</span></div>
+        <div class="cbd">
+          <div class="gd-wrap">
+            <div class="gd-item on">
+              <div class="gd-grade">A+</div>
+              <div class="gd-label">优秀</div>
+            </div>
+            <div class="gd-item">
+              <div class="gd-grade">A</div>
+              <div class="gd-label">优良</div>
+            </div>
+            <div class="gd-item">
+              <div class="gd-grade">B+</div>
+              <div class="gd-label">良好</div>
+            </div>
+            <div class="gd-item">
+              <div class="gd-grade">B</div>
+              <div class="gd-label">中等</div>
+            </div>
+            <div class="gd-item">
+              <div class="gd-grade">C</div>
+              <div class="gd-label">及格</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const NS='http://www.w3.org/2000/svg';
+const COLOR={exceed:'#27b08a',meet:'#5b76e8',below:'#e89b3a'};
+const resMap={exceed:['pass','✓ 通过'],meet:['passb','✓ 通过'],below:['fail','✗ 不通过']};
+const axes=['岗位认知','工具应用','项目经验','软技能','专业技能'];
+const cx=170,cy=160,R=98,N=axes.length;
+
+function flagSVG(c){return `<svg class="flag" width="17" height="15" viewBox="0 0 17 15"><path d="M2.2 0.5 L14.5 3 L11.6 5 L14.5 7 L2.2 9.5 Z" fill="${c}"/></svg>`;}
+
+/* ---------- 各岗位数据 ---------- */
+const positionData={
+  '前端开发工程师':{
+    stu:[0.78,0.86,0.62,0.82,0.90],need:[0.85,0.80,0.75,0.82,0.88],
+    center:'86%',stats:['86%','82%','87','A+'],
+    desc:'张宇辰在 <b style="color:var(--pri)">前端开发工程师</b> 岗位综合达成率 <b style="color:var(--exceed)">86%</b>，<b style="color:var(--pri2)">专业技能</b> 与 <b style="color:var(--cyan)">工具应用</b> 显著超过岗位基准；<b style="color:var(--below)">行业规范、性能优化、持续学习</b> 三项尚未达标，建议参与实战项目补强。',
+    tags:['加强项目实践','提升工程化能力','深入框架原理'],
+    domains:[
+      {cls:'d1',name:'岗位与行业认知',avg:78,rows:[
+        {pt:'行业发展趋势',score:85,bench:72,stu:'熟练 L5',req:'掌握 L4',st:'exceed'},
+        {pt:'岗位职责流程',score:82,bench:80,stu:'熟练 L5',req:'熟练 L5',st:'meet'},
+        {pt:'行业规范标准',score:68,bench:84,stu:'熟悉 L3',req:'熟练 L5',st:'below'},
+      ]},
+      {cls:'d2',name:'专业技能',avg:78,rows:[
+        {pt:'HTML5/CSS3 核心',score:90,bench:74,stu:'熟练 L5',req:'掌握 L4',st:'exceed'},
+        {pt:'JS/TS 工程开发',score:80,bench:78,stu:'掌握 L4',req:'掌握 L4',st:'meet'},
+        {pt:'前端性能优化',score:64,bench:82,stu:'熟悉 L3',req:'熟练 L5',st:'below'},
+      ]},
+      {cls:'d3',name:'软技能',avg:78,rows:[
+        {pt:'团队协作沟通',score:88,bench:72,stu:'熟练 L5',req:'掌握 L4',st:'exceed'},
+        {pt:'问题分析解决',score:82,bench:79,stu:'掌握 L4',req:'掌握 L4',st:'meet'},
+        {pt:'持续学习能力',score:62,bench:80,stu:'熟悉 L3',req:'熟练 L5',st:'below'},
+      ]},
+    ]
+  },
+  '后端开发工程师':{
+    stu:[0.72,0.74,0.68,0.78,0.82],need:[0.80,0.82,0.78,0.80,0.85],
+    center:'78%',stats:['78%','74%','82','B+'],
+    desc:'张宇辰在 <b style="color:var(--pri)">后端开发工程师</b> 岗位综合达成率 <b style="color:var(--exceed)">78%</b>，<b style="color:var(--pri2)">Java/Go 开发</b> 与 <b style="color:var(--cyan)">数据库设计</b> 表现良好；<b style="color:var(--below)">分布式系统、微服务架构、性能调优</b> 三项未达标，建议加强后端架构实践。',
+    tags:['学习分布式系统','深入微服务架构','多参与高并发项目'],
+    domains:[
+      {cls:'d1',name:'岗位与行业认知',avg:72,rows:[
+        {pt:'后端架构发展趋势',score:72,bench:78,stu:'掌握 L4',req:'熟练 L5',st:'below'},
+        {pt:'分布式系统原理',score:62,bench:82,stu:'熟悉 L3',req:'熟练 L5',st:'below'},
+        {pt:'岗位职责认知',score:82,bench:76,stu:'熟练 L5',req:'掌握 L4',st:'exceed'},
+      ]},
+      {cls:'d2',name:'专业技能',avg:76,rows:[
+        {pt:'Java/Go 语言开发',score:85,bench:78,stu:'熟练 L5',req:'掌握 L4',st:'exceed'},
+        {pt:'数据库设计与优化',score:80,bench:82,stu:'掌握 L4',req:'熟练 L5',st:'meet'},
+        {pt:'微服务架构设计',score:64,bench:80,stu:'熟悉 L3',req:'熟练 L5',st:'below'},
+      ]},
+      {cls:'d3',name:'软技能',avg:76,rows:[
+        {pt:'系统分析与设计',score:82,bench:78,stu:'熟练 L5',req:'掌握 L4',st:'exceed'},
+        {pt:'跨团队协作',score:70,bench:76,stu:'掌握 L4',req:'掌握 L4',st:'meet'},
+        {pt:'代码审查能力',score:74,bench:80,stu:'掌握 L4',req:'熟练 L5',st:'meet'},
+      ]},
+    ]
+  },
+  '产品经理':{
+    stu:[0.85,0.62,0.82,0.75,0.78],need:[0.82,0.70,0.85,0.78,0.80],
+    center:'76%',stats:['76%','80%','78','A'],
+    desc:'张宇辰在 <b style="color:var(--pri)">产品经理</b> 岗位综合达成率 <b style="color:var(--exceed)">76%</b>，<b style="color:var(--pri2)">需求分析</b> 与 <b style="color:var(--cyan)">用户调研</b> 能力突出；<b style="color:var(--below)">原型设计、商业模式理解、数据分析深度</b> 尚未达标，建议加强产品设计工具使用。',
+    tags:['提升原型设计能力','学习商业模式分析','强化数据驱动思维'],
+    domains:[
+      {cls:'d1',name:'岗位与行业认知',avg:82,rows:[
+        {pt:'互联网产品趋势',score:90,bench:80,stu:'熟练 L5',req:'掌握 L4',st:'exceed'},
+        {pt:'竞品分析方法',score:82,bench:78,stu:'熟练 L5',req:'掌握 L4',st:'exceed'},
+        {pt:'商业模式理解',score:65,bench:82,stu:'熟悉 L3',req:'熟练 L5',st:'below'},
+      ]},
+      {cls:'d2',name:'专业技能',avg:72,rows:[
+        {pt:'需求分析与挖掘',score:92,bench:82,stu:'熟练 L5',req:'熟练 L5',st:'exceed'},
+        {pt:'原型设计与交互',score:62,bench:78,stu:'熟悉 L3',req:'掌握 L4',st:'below'},
+        {pt:'数据分析与决策',score:68,bench:80,stu:'掌握 L4',req:'熟练 L5',st:'below'},
+      ]},
+      {cls:'d3',name:'软技能',avg:84,rows:[
+        {pt:'跨部门沟通协调',score:92,bench:82,stu:'熟练 L5',req:'熟练 L5',st:'exceed'},
+        {pt:'用户访谈与调研',score:85,bench:76,stu:'熟练 L5',req:'掌握 L4',st:'exceed'},
+        {pt:'演讲与汇报能力',score:78,bench:74,stu:'掌握 L4',req:'掌握 L4',st:'meet'},
+      ]},
+    ]
+  },
+  'UI 设计师':{
+    stu:[0.80,0.82,0.72,0.78,0.86],need:[0.78,0.85,0.76,0.80,0.84],
+    center:'80%',stats:['80%','78%','84','A'],
+    desc:'张宇辰在 <b style="color:var(--pri)">UI 设计师</b> 岗位综合达成率 <b style="color:var(--exceed)">80%</b>，<b style="color:var(--pri2)">视觉设计</b> 与 <b style="color:var(--cyan)">Figma 工具应用</b> 表现优秀；<b style="color:var(--below)">交互设计原理、设计系统思维、动效设计</b> 三项未达标，建议系统学习交互设计理论。',
+    tags:['学习交互设计原理','构建设计系统思维','掌握动效设计工具'],
+    domains:[
+      {cls:'d1',name:'岗位与行业认知',avg:78,rows:[
+        {pt:'设计趋势洞察',score:88,bench:76,stu:'熟练 L5',req:'掌握 L4',st:'exceed'},
+        {pt:'UI/UX 设计规范',score:85,bench:80,stu:'熟练 L5',req:'熟练 L5',st:'meet'},
+        {pt:'设计系统思维',score:65,bench:82,stu:'熟悉 L3',req:'熟练 L5',st:'below'},
+      ]},
+      {cls:'d2',name:'专业技能',avg:78,rows:[
+        {pt:'Figma/Sketch 设计',score:90,bench:82,stu:'熟练 L5',req:'熟练 L5',st:'exceed'},
+        {pt:'视觉设计规范',score:88,bench:80,stu:'熟练 L5',req:'掌握 L4',st:'exceed'},
+        {pt:'交互设计原理',score:62,bench:78,stu:'熟悉 L3',req:'掌握 L4',st:'below'},
+      ]},
+      {cls:'d3',name:'软技能',avg:80,rows:[
+        {pt:'审美与创意表达',score:92,bench:82,stu:'熟练 L5',req:'熟练 L5',st:'exceed'},
+        {pt:'设计提案表达',score:78,bench:74,stu:'掌握 L4',req:'掌握 L4',st:'meet'},
+        {pt:'设计反馈处理',score:72,bench:76,stu:'掌握 L4',req:'掌握 L4',st:'meet'},
+      ]},
+    ]
+  }
+};
+
+/* ---------- 渲染函数 ---------- */
+function renderRadar(stu,need){
+  const svg=document.getElementById('radar');
+  svg.innerHTML='';
+  const defs=document.createElementNS(NS,'defs');
+  defs.innerHTML=`<linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b76e8"/><stop offset="1" stop-color="#8c6ff0"/></linearGradient>`;
+  svg.appendChild(defs);
+  const pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/N;return[cx+R*r*Math.cos(a),cy+R*r*Math.sin(a)];};
+  const poly=(pts,fill,stroke,sw,op,dash)=>{const p=document.createElementNS(NS,'polygon');
+    p.setAttribute('points',pts.map(d=>d.join(',')).join(' '));p.setAttribute('fill',fill);
+    p.setAttribute('stroke',stroke);p.setAttribute('stroke-width',sw);if(op!=null)p.setAttribute('fill-opacity',op);
+    if(dash)p.setAttribute('stroke-dasharray',dash);svg.appendChild(p);};
+  [0.25,0.5,0.75,1].forEach(l=>poly([...Array(N)].map((_,i)=>pt(i,l)),'none','#e6e9f4',1));
+  for(let i=0;i<N;i++){const[x,y]=pt(i,1);const ln=document.createElementNS(NS,'line');
+    ln.setAttribute('x1',cx);ln.setAttribute('y1',cy);ln.setAttribute('x2',x);ln.setAttribute('y2',y);ln.setAttribute('stroke','#e6e9f4');svg.appendChild(ln);}
+  poly(need.map((v,i)=>pt(i,v)),'rgba(170,178,200,.1)','#c4cad9',1.5,null,'4 4');
+  poly(stu.map((v,i)=>pt(i,v)),'url(#rg)','#5b76e8',2.2,0.26);
+  stu.forEach((v,i)=>{const[x,y]=pt(i,v);const c=document.createElementNS(NS,'circle');
+    c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',3.4);c.setAttribute('fill','#fff');
+    c.setAttribute('stroke','#5b76e8');c.setAttribute('stroke-width',2);svg.appendChild(c);});
+  axes.forEach((t,i)=>{const[x,y]=pt(i,1.25);const tx=document.createElementNS(NS,'text');
+    tx.setAttribute('x',x);tx.setAttribute('y',y+4);tx.setAttribute('font-size','12');tx.setAttribute('font-weight','600');
+    tx.setAttribute('fill','#5d6883');let anc='middle';if(x<cx-8)anc='end';if(x>cx+8)anc='start';
+    tx.setAttribute('text-anchor',anc);tx.textContent=t;svg.appendChild(tx);});
+}
+
+function renderEval(domains){
+  const el=document.getElementById('evalBody');
+  el.innerHTML='';
+  domains.forEach(d=>{
+    let rows='';
+    d.rows.forEach(r=>{
+      rows+=`<div class="ev-row">
+        <div class="ev-pt">${r.pt}</div>
+        <div class="ev-score-c"><div class="ev-score ${r.st}">${r.score}</div></div>
+        <div class="ev-comp"><div class="ev-bar">
+          <div class="ev-fill ${r.st}" data-w="${r.score}" style="width:0">${r.score}</div>
+          <div class="bench" style="left:${r.bench}%">${flagSVG('#94a0be')}<span class="line"></span></div>
+        </div></div>
+        <div class="req"><span class="lv gray"><span class="dot"></span>${r.req}</span></div>
+        <div class="res"><span class="rs ${resMap[r.st][0]}">${resMap[r.st][1]}</span></div>
+      </div>`;
+    });
+    el.insertAdjacentHTML('beforeend',`<div class="ev-dom ${d.cls}">
+      <div class="ev-dname"><span class="dn">${d.name}</span><span class="davg">均分 <b>${d.avg}</b></span></div>
+      <div class="ev-rows">${rows}</div>
+    </div>`);
+  });
+  setTimeout(()=>document.querySelectorAll('.ev-fill').forEach(f=>f.style.width=f.dataset.w+'%'),50);
+}
+
+function renderStats(stats){
+  const els=document.querySelectorAll('.stat .v');
+  if(els.length>=4){els[0].textContent=stats[0];els[1].textContent=stats[1];els[2].textContent=stats[2];els[3].textContent=stats[3];}
+  document.querySelector('.radar-center .big').textContent=stats[0];
+}
+
+function renderDesc(desc,tags){
+  const note=document.querySelector('.note');
+  note.innerHTML=`<div class="nt"><span class="d">i</span>能力说明</div><p>${desc}</p>
+    <div class="nt" style="margin-top:11px;"><span class="d">↑</span>能力提升建议</div>
+    <div class="adv">${tags.map(t=>`<span class="t">${t}</span>`).join('')}</div>`;
+}
+
+/* ---------- 默认渲染 ---------- */
+(function init(){
+  const first=positionData['前端开发工程师'];
+  renderRadar(first.stu,first.need);
+  renderEval(first.domains);
+  renderStats(first.stats);
+  document.querySelector('.radar-center .big').textContent=first.center;
+  renderDesc(first.desc,first.tags);
+})();
+
+/* ---------- Tab 切换 ---------- */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=function(){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  this.classList.add('on');
+  const key=this.textContent.trim();
+  const data=positionData[key];
+  if(!data)return;
+  renderRadar(data.stu,data.need);
+  renderEval(data.domains);
+  renderStats(data.stats);
+  document.querySelector('.radar-center .big').textContent=data.center;
+  renderDesc(data.desc,data.tags);
+});
+</script>
+
+<script>
+/* ---------- 岗位能力认定：同域拉取真实汇聚画像数据 ---------- */
+(function(){
+  const q=new URLSearchParams(location.search);
+  const userId=q.get('userId');
+  if(!userId)return;
+  const token=localStorage.getItem('zhiyu-portal-token')||localStorage.getItem('zhiyu-token');
+  if(!token)return;
+  const levelCls=s=>s>=80?'exceed':s>=60?'meet':'below';
+  fetch('/api/v1/evaluation/portraits?userId='+encodeURIComponent(userId)+'&limit=50',
+    {headers:{'Authorization':'Bearer '+token}})
+    .then(r=>r.ok?r.json():null)
+    .then(data=>{
+      const items=(data&&data.items)||[];
+      if(!items.length)return;
+      const pid=q.get('careerPositionId');
+      const p=items.find(x=>x.careerPositionId===pid)||items[0];
+      const card=document.getElementById('certCard');
+      card.style.display='';
+
+      const updated=p.updatedAt?new Date(p.updatedAt):null;
+      document.getElementById('certUpdated').textContent=updated?
+        '更新于 '+updated.getFullYear()+'-'+String(updated.getMonth()+1).padStart(2,'0'):'';
+
+      const domains=Array.isArray(p.domainScores)?p.domainScores:[];
+      const avg=domains.length?domains.reduce((a,d)=>a+(d.score||0),0)/domains.length:null;
+      const rows=[];
+      rows.push('<div class="r"><span class="k">岗位认定等级</span><span class="v">'+(p.overallGrade||'未认定')+'</span></div>');
+      if(avg!=null)rows.push('<div class="r"><span class="k">综合达标率</span><span class="v">'+avg.toFixed(1)+'%</span></div>');
+      if(p.classRank)rows.push('<div class="r"><span class="k">班级排名</span><span class="v">第 '+p.classRank+' / '+(p.classTotal||'-')+' 名</span></div>');
+      if(p.majorRank)rows.push('<div class="r"><span class="k">专业排名</span><span class="v">第 '+p.majorRank+' / '+(p.majorTotal||'-')+' 名</span></div>');
+      document.getElementById('certSummary').innerHTML=rows.join('');
+
+      const box=document.getElementById('certDomains');
+      if(!domains.length){
+        box.innerHTML='<div style="font-size:12px;color:var(--ink3)">暂无能力域认定数据，请先完成相关场景测评。</div>';
+        return;
+      }
+      box.innerHTML=domains.map(d=>{
+        const cls=levelCls(d.score||0);
+        return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line2)">'
+          +'<span style="flex:0 0 110px;font-size:12px;font-weight:600">'+(d.domainLabel||d.domain||'')+'</span>'
+          +'<div class="ev-bar" style="flex:1"><div class="ev-fill '+cls+'" style="width:'+(d.score||0)+'%">'+(d.score||0)+'</div></div>'
+          +'<span class="lv gray" style="flex:0 0 auto"><span class="dot"></span>'+(d.level||'')+'</span>'
+          +'</div>';
+      }).join('');
+    })
+    .catch(()=>{});
+})();
+</script>
+</body>
+</html>

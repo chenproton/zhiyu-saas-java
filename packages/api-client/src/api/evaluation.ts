@@ -5,10 +5,14 @@ import type {
   ExamUsage,
   ExamResult,
   SceneEvaluationResult,
+  JobAbilityResult,
+  JobAbilitySummaryItem,
+  JobAbilityAggregateStatus,
   CertificationRule,
   CertificationAbilityItem,
   CertificationAbilityPoint,
   CertificationRelatedTask,
+  CustomLevelMapping,
   StudentAbilityPortrait,
   StudentAbilityArchive,
   GraduationProjectTopic,
@@ -106,7 +110,7 @@ export interface CertificationFullPoint {
   name: string
   description: string
   mappingType: string
-  customLevelMapping?: any[]
+  customLevelMapping?: CustomLevelMapping[]
   requiredLevel: string
   weight: number
   tasks?: CertificationRelatedTask[]
@@ -117,20 +121,73 @@ export interface CertificationFullRuleResponse {
   items: CertificationFullRuleItem[]
 }
 
+// ==================== 全量写入 / 细粒度编辑请求体 ====================
+
+export interface CertificationTaskPayload {
+  taskId: string
+  maxScore: number
+  weight: number
+}
+
+export interface CertificationFullPointPayload {
+  abilityPointId: string
+  mappingType: string
+  customLevelMapping?: CustomLevelMapping[]
+  requiredLevel: string
+  weight: number
+  tasks: CertificationTaskPayload[]
+}
+
+export interface CertificationFullItemPayload {
+  name: string
+  sortOrder: number
+  points: CertificationFullPointPayload[]
+}
+
+export interface CertificationFullRulePayload {
+  careerPositionId: string
+  ruleSource: string
+  items: CertificationFullItemPayload[]
+}
+
+export interface CertificationPointPayload {
+  abilityPointId: string
+  mappingType: string
+  customLevelMapping?: CustomLevelMapping[]
+  requiredLevel: string
+  weight: number
+  /** 传入时整体替换该认证点下的关联任务 */
+  tasks?: CertificationTaskPayload[]
+}
+
 export const certApi = {
   listRules: (params?: { careerPositionId?: string; status?: string; limit?: number; offset?: number }) =>
     request<ListResponse<CertificationRule>>(`/evaluation/certifications${buildQuery(params || {})}`),
   getRule: (id: string) => request<CertificationRule>(`/evaluation/certifications/${id}`),
-  createRule: (req: Omit<CertificationRule, "id" | "createdAt" | "updatedAt">) =>
+  createRule: (req: { careerPositionId: string; ruleSource: string }) =>
     request<CertificationRule>("/evaluation/certifications", { method: "POST", body: JSON.stringify(req) }),
-  updateRule: (id: string, req: Partial<Omit<CertificationRule, "id" | "createdAt" | "updatedAt">>) =>
+  updateRule: (id: string, req: { careerPositionId: string; ruleSource: string }) =>
     request<CertificationRule>(`/evaluation/certifications/${id}`, { method: "PUT", body: JSON.stringify(req) }),
   deleteRule: (id: string) => request<{ id: string }>(`/evaluation/certifications/${id}`, { method: "DELETE" }),
   listItems: (ruleId: string) => request<ListResponse<CertificationAbilityItem>>(`/evaluation/certifications/${ruleId}/items`),
   upsertItem: (ruleId: string, req: Partial<CertificationAbilityItem>) =>
     request<CertificationAbilityItem>(`/evaluation/certifications/${ruleId}/items`, { method: "POST", body: JSON.stringify(req) }),
+  updateItem: (id: string, req: { name: string; sortOrder: number }) =>
+    request<CertificationAbilityItem>(`/evaluation/certifications/items/${id}`, { method: "PUT", body: JSON.stringify(req) }),
   deleteItem: (id: string) => request<{ id: string }>(`/evaluation/certifications/items/${id}`, { method: "DELETE" }),
+  listPoints: (itemId: string) =>
+    request<ListResponse<CertificationAbilityPoint>>(`/evaluation/certifications/items/${itemId}/points`),
+  updatePoint: (id: string, req: CertificationPointPayload) =>
+    request<CertificationAbilityPoint>(`/evaluation/certifications/points/${id}`, { method: "PUT", body: JSON.stringify(req) }),
+  deletePoint: (id: string) => request<{ id: string }>(`/evaluation/certifications/points/${id}`, { method: "DELETE" }),
+  createTask: (pointId: string, req: CertificationTaskPayload) =>
+    request<CertificationRelatedTask>(`/evaluation/certifications/points/${pointId}/tasks`, { method: "POST", body: JSON.stringify(req) }),
+  updateTask: (id: string, req: CertificationTaskPayload) =>
+    request<CertificationRelatedTask>(`/evaluation/certifications/tasks/${id}`, { method: "PUT", body: JSON.stringify(req) }),
+  deleteTask: (id: string) => request<{ id: string }>(`/evaluation/certifications/tasks/${id}`, { method: "DELETE" }),
   getFullRule: (id: string) => request<CertificationFullRuleResponse>(`/evaluation/certifications/${id}/full`),
+  putFullRule: (id: string, req: CertificationFullRulePayload) =>
+    request<CertificationRule>(`/evaluation/certifications/${id}/full`, { method: "PUT", body: JSON.stringify(req) }),
 }
 
 export interface LandingExamItem {
@@ -203,6 +260,17 @@ export const graduationApi = {
     request<GraduationProjectEvaluation>("/evaluation/graduation/evaluations", { method: "POST", body: JSON.stringify(req) }),
   queryResults: (params?: { userId?: string; className?: string; majorName?: string; limit?: number; offset?: number }) =>
     request<ListResponse<GraduationQueryResult>>(`/evaluation/graduation/query${buildQuery(params || {})}`),
+}
+
+export const jobAbilityResultApi = {
+  list: (params?: { careerPositionId?: string; search?: string; grade?: string; page?: number; limit?: number }) =>
+    request<ListResponse<JobAbilityResult>>(`/evaluation/job-ability/results${buildQuery(params || {})}`),
+  get: (id: string) => request<JobAbilityResult>(`/evaluation/job-ability/results/${id}`),
+  summary: () => request<JobAbilitySummaryItem[]>("/evaluation/job-ability/results/summary"),
+  aggregate: (data: { careerPositionId: string; userIds?: string[] }) =>
+    request<JobAbilityAggregateStatus>("/evaluation/job-ability/aggregate", { method: "POST", body: JSON.stringify(data) }),
+  aggregateStatus: (careerPositionId?: string) =>
+    request<JobAbilityAggregateStatus | null>(`/evaluation/job-ability/aggregate/status${buildQuery({ careerPositionId })}`),
 }
 
 export const portraitApi = {

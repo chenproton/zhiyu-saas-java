@@ -50,6 +50,16 @@ export interface SceneEvaluationResult {
   updatedAt?: Date
 }
 
+// 岗位能力测评结果-能力点明细
+export interface JobAbilityPointDetail {
+  abilityPointId?: string
+  abilityPointName: string
+  score: number
+  maxScore?: number
+  weight?: number
+  achieved: boolean
+}
+
 // 岗位能力测评结果
 export interface JobAbilityResult {
   id: string
@@ -67,8 +77,26 @@ export interface JobAbilityResult {
   achievementRate: number
   grade?: string
   evaluationTime: string | Date
+  abilityPointDetails?: JobAbilityPointDetail[]
   createdAt?: string
   updatedAt?: string
+}
+
+// 岗位能力认定结果汇总（按岗位分组）
+export interface JobAbilitySummaryItem {
+  positionId: string
+  positionName: string
+  studentCount: number
+  avgRate: number
+}
+
+// 汇聚任务状态
+export interface JobAbilityAggregateStatus {
+  careerPositionId?: string
+  status: string
+  message?: string
+  startedAt?: string
+  finishedAt?: string
 }
 
 // ==================== 场景任务评价相关（从 zhiyu-scene 迁移）====================

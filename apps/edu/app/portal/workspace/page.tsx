@@ -159,7 +159,7 @@ const studentTabs = [
   { id: "profile", label: "个人中心", icon: User },
 ]
 
-function StudentWorkspace() {
+function StudentWorkspace({ userId }: { userId?: string }) {
   const [activeTab, setActiveTab] = useState("dashboard")
 
   const renderTabContent = () => {
@@ -173,7 +173,7 @@ function StudentWorkspace() {
       case "assessment":
         return <AssessmentTab />
       case "portrait":
-        return <PortraitTab />
+        return <PortraitTab userId={userId} />
       case "community":
         return <CommunityTab />
       case "profile":
@@ -314,7 +314,7 @@ export default function WorkspacePage() {
             <span className="text-sm font-medium text-gray-700">当前角色：{activeRole?.name || "学生"}</span>
           </div>
         </div>
-        <StudentWorkspace />
+        <StudentWorkspace userId={user?.id} />
       </div>
     )
   }
