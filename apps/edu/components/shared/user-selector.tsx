@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -271,6 +271,7 @@ export function UserSelector({
         <DialogContent className="sm:max-w-[960px] max-h-[85vh] flex flex-col p-0 gap-0">
           <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
             <DialogTitle>选择用户</DialogTitle>
+            <DialogDescription>从组织架构中选择审批人</DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-1 overflow-hidden min-h-0">

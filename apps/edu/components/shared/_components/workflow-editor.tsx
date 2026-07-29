@@ -140,7 +140,7 @@ export function WorkflowEditor({
                     multiple
                     placeholder="选择审批人"
                     excludeStudent
-                    usePortalApi={false}
+                    usePortalApi={true}
                     tenantId={tenantId}
                   />
                 </div>
