@@ -4,7 +4,7 @@ import { useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { TopNav } from "@/components/portal/top-nav"
-import { PortalAuthProvider, usePortalAuth } from "@/contexts/portal-auth-context"
+import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { YiKnowAssistant } from "@/components/portal/yi-know-assistant"
 
 function PortalAuthGuard({ children }: { children: React.ReactNode }) {
@@ -51,18 +51,16 @@ export default function PortalLayout({
   const isLoginPage = pathname === "/portal/login"
 
   return (
-    <PortalAuthProvider>
-      <PortalAuthGuard>
-        {isLoginPage ? (
+    <PortalAuthGuard>
+      {isLoginPage ? (
+        <main>{children}</main>
+      ) : (
+        <div className="min-h-screen pt-14">
+          <TopNav />
           <main>{children}</main>
-        ) : (
-          <div className="min-h-screen pt-14">
-            <TopNav />
-            <main>{children}</main>
-            <YiKnowAssistant />
-          </div>
-        )}
-      </PortalAuthGuard>
-    </PortalAuthProvider>
+          <YiKnowAssistant />
+        </div>
+      )}
+    </PortalAuthGuard>
   )
 }

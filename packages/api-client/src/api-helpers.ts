@@ -244,7 +244,9 @@ function getDefaultPlatform(): AuthPlatform {
   if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DEFAULT_PLATFORM) {
     return process.env.NEXT_PUBLIC_DEFAULT_PLATFORM as AuthPlatform
   }
-  return "saas"
+  // edu 应用（管理后台）所有页面都面向 portal 用户（学校/教师/学生），
+  // 默认使用 portal token，避免 /portal 登录后跳转到 /job、/scene 等模块时因 token 不一致被踢回登录页。
+  return "portal"
 }
 
 export function getToken(platform?: AuthPlatform): string | null {
