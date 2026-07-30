@@ -2,7 +2,6 @@ package cache
 
 import (
 	"net/http"
-	"strings"
 
 	authmw "github.com/zhiyu-saas/backend/internal/middleware"
 )
@@ -27,27 +26,27 @@ func StaticKey(key string) KeyFunc {
 func PublicPositionsKey() KeyFunc {
 	return func(r *http.Request) string {
 		tenant := tenantFromRequest(r)
-		parts := []string{tenant}
+		key := "zhiyu:" + tenant + ":public:positions"
 		v := r.URL.Query()
 		for _, p := range []string{"page", "pageSize", "search", "industryId", "majorId"} {
 			if val := v.Get(p); val != "" {
-				parts = append(parts, p+":"+val)
+				key += ":" + p + ":" + val
 			}
 		}
-		return "zhiyu:" + strings.Join(parts, ":public:positions")
+		return key
 	}
 }
 
 func LandingExamsKey() KeyFunc {
 	return func(r *http.Request) string {
 		tenant := tenantFromRequest(r)
-		parts := []string{tenant}
+		key := "zhiyu:" + tenant + ":landing:exams"
 		v := r.URL.Query()
 		for _, p := range []string{"search", "batchId", "page", "pageSize"} {
 			if val := v.Get(p); val != "" {
-				parts = append(parts, p+":"+val)
+				key += ":" + p + ":" + val
 			}
 		}
-		return "zhiyu:" + strings.Join(parts, ":landing:exams")
+		return key
 	}
 }
