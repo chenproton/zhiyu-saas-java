@@ -1,13 +1,15 @@
 "use client"
 
 import { useCallback, useState } from "react"
+import { useRouter } from "next/navigation"
 import { ContentListPage } from "@/components/shared/content-list-page"
 import { EvaluationListTable } from "@/components/evaluation/evaluation-list-table"
+import { ExamFormDialog } from "@/components/evaluation/exam-form-dialog"
 import { examApi, evaluationBatchApi, approvalApi, importExportApi } from "@/lib/api"
 import type { ContentBatch } from "@/components/shared/content-list-page"
+import type { ExamFormData } from "@/lib/types"
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@zhiyu/ui"
-import { draftSuffix } from "@/lib/format-utils"
 
 interface ExamItem {
   id: string

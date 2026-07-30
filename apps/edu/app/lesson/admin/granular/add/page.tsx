@@ -46,7 +46,6 @@ function AddGranularPageInner() {
 
   /* module 1: basic info */
   const [courseName, setCourseName] = useState("")
-  const [code, setCode] = useState("")
   const [hours, setHours] = useState("")
   const [learningGoal, setLearningGoal] = useState("")
   const [detailedDescription, setDetailedDescription] = useState("")
@@ -171,7 +170,6 @@ function AddGranularPageInner() {
       courseId: editId || "granular-new",
       parentId: null,
       name: courseName || "未命名",
-      code: code || undefined,
       order: 1,
       type: "normal",
       status: "draft" as const,
@@ -186,7 +184,7 @@ function AddGranularPageInner() {
       homeworks: [],
       evalData: {},
     }
-  }, [editId, courseName, code, hours, learningGoal, detailedDescription, background, estimatedHours, knowledgePoints, selectedResourceIds, resourcePool])
+  }, [editId, courseName, hours, learningGoal, detailedDescription, background, estimatedHours, knowledgePoints, selectedResourceIds, resourcePool])
 
   const handleSave = async () => {
     if (!courseName) {
@@ -213,7 +211,6 @@ function AddGranularPageInner() {
         creatorId: course?.creatorId || undefined,
         coCreatorIds: course?.coCreatorIds ?? [],
         difficulty: difficulty > 0 ? difficulty : undefined,
-        code: code || undefined,
         description,
         detailedDescription: detailedDescription || undefined,
         background: background || undefined,
@@ -289,10 +286,6 @@ function AddGranularPageInner() {
                   <div className="space-y-1.5">
                     <Label className="text-xs">课程名称</Label>
                     <Input value={courseName} onChange={(e) => setCourseName(e.target.value)} placeholder="请输入课程名称" className="h-9 text-sm" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">课程编码</Label>
-                    <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="请输入课程编码" className="h-9 text-sm" />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">所属专业</Label>
