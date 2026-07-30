@@ -336,7 +336,9 @@ if [[ -z "$DOCKER_COMPOSE" ]]; then
   DOCKER_COMPOSE=$(detect_docker_compose)
   [[ -z "$DOCKER_COMPOSE" ]] && die "未找到可用的 docker compose"
 fi
-compose() { $DOCKER_COMPOSE -f "$DEPLOY_COMPOSE" "$@"; }
+COMPOSE_PROFILES_ARG=""
+[[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]] && COMPOSE_PROFILES_ARG="--profile kkfileview"
+compose() { $DOCKER_COMPOSE $COMPOSE_PROFILES_ARG -f "$DEPLOY_COMPOSE" "$@"; }
 
 # Nginx（宿主标准 nginx，作为统一网关）
 if ! command -v nginx >/dev/null 2>&1; then
@@ -708,11 +710,9 @@ if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx '^kkfileview$'; the
   docker rm kkfileview >/dev/null 2>&1 || true
 fi
 
-COMPOSE_PROFILES=""
-[[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]] && COMPOSE_PROFILES="--profile kkfileview"
 COMPOSE_UP_LOG="$DEPLOY_DIR/.compose-up.log"
 rm -f "$COMPOSE_UP_LOG"
-if ! compose up -d --remove-orphans $COMPOSE_PROFILES >"$COMPOSE_UP_LOG" 2>&1; then
+if ! compose up -d --remove-orphans >"$COMPOSE_UP_LOG" 2>&1; then
   echo "docker compose up 失败日志：" >&2
   tail -n 50 "$COMPOSE_UP_LOG" >&2 || true
   compose logs --tail 30 >&2 || true
