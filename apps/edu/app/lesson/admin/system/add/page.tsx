@@ -50,7 +50,7 @@ import type { SystemCourseNode, NodeResource, NodeRefType } from "@/lib/types/le
 
 import { KnowledgeSelector } from "../../_components/knowledge/knowledge-selector"
 import { AbilityPointSelector } from "../../_components/ability/ability-point-selector"
-import { EvalMethodConfigPanel } from "@/components/shared/eval-method-config-panel"
+import { EvalMethodConfigModule } from "@/components/shared/eval-method-config-module"
 import { TaskInfoCard } from "@/app/scene/scenarios/[id]/edit/tasks/_components/task-info-card"
 import type { EvalRuleConfig } from "@/lib/types/evaluation"
 import { ResourceSelector, type ResourceItem } from "../../_components/resources/resource-selector"
@@ -64,7 +64,7 @@ import PublishCheckPanel from "./_components/PublishCheckPanel"
 
 import type { KnowledgePointItem } from "@/lib/types/lesson"
 import type { Major } from "@/lib/types/backend"
-import { courseApi, courseNodeApi, knowledgeApi, abilityApi, majorApi, approvalApi, lessonBatchApi, nodeResourceApi, nodeQuizApi, nodeHomeworkApi } from "@/lib/api"
+import { courseApi, courseNodeApi, knowledgeApi, abilityApi, majorApi, approvalApi, lessonBatchApi, nodeResourceApi, nodeQuizApi, nodeHomeworkApi, resourceLibraryApi } from "@/lib/api"
 
 /* ---------- node editing mode ---------- */
 
@@ -539,6 +539,23 @@ function AddSystemPageInner() {
       )
       const grainResIds = new Set((grainFull.resourceIds || []).filter((id: any) => !!id))
       setSelectedResourceIds(Array.from(grainResIds) as string[])
+      if (grainResIds.size > 0 && !isQuote) {
+        try {
+          const libRes = await resourceLibraryApi.list({ limit: 1000 })
+          const grainResources: ResourceItem[] = ((libRes.items || []) as any[])
+            .filter((r: any) => grainResIds.has(r.id))
+            .map((r: any) => ({
+              id: r.id, name: r.name, type: r.resourceType || r.type,
+              url: r.url, description: r.description,
+              size: r.fileSize !== undefined ? r.fileSize : r.size,
+            }))
+          setResourcePool((prev) => {
+            const existing = new Set(prev.map((x) => x.id))
+            const toAdd = grainResources.filter((r) => !existing.has(r.id))
+            return [...prev, ...toAdd]
+          })
+        } catch {}
+      }
     } catch {
       setKnowledgePoints([])
       setSelectedResourceIds([])
@@ -1142,12 +1159,13 @@ function AddSystemPageInner() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      <EvalMethodConfigPanel
+                      <EvalMethodConfigModule
                         value={nodeEvalRuleConfig}
                         onChange={(config) => setNodeEvalRuleConfig(config)}
                         knowledgePoints={knowledgePoints}
                         abilityPoints={abilityPoints}
-                        title="配置节点评价规则"
+                        methodTitle="配置节点测评方式"
+                        rulesTitle="配置节点评价规则"
                       />
                     </CardContent>
                    </Card>
