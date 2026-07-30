@@ -29,6 +29,7 @@ import type { TeachingPlanDetail, TeachingPlanEntry } from "@/lib/types"
 import { EntryTypeBadge } from "./_components/entry-type-badge"
 
 const TEACHER_TYPE_OPTIONS = ["校本师资", "企业导师"]
+const VENUE_TYPES = ["教室", "机房", "实训室", "实验室", "校外基地"]
 
 function formatDateTime(iso?: string) {
   if (!iso) return "-"
@@ -223,7 +224,13 @@ export default function TeachingPlanDetailPage() {
                           </TableCell>
                           <TableCell>
                             {editing ? (
-                              <Input className="h-8" placeholder="场地类型" value={editVenueType} onChange={(ev) => setEditVenueType(ev.target.value)} />
+                              <Select value={editVenueType || "none"} onValueChange={(v) => setEditVenueType(v === "none" ? "" : v)}>
+                                <SelectTrigger className="h-8"><SelectValue placeholder="选择场地类型" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">未设置</SelectItem>
+                                  {VENUE_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
                             ) : (
                               <span className="text-sm">{e.venueType || "-"}</span>
                             )}
