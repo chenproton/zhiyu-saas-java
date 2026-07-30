@@ -1286,7 +1286,7 @@ export default function TasksEditPage() {
     }
 
     // Replace temporary custom IDs with persisted IDs across all task states
-    const replaceIds = (ids: string[]) => ids.map(id => kpIdMapping[id] || abIdMapping[id] || resourceIdMapping[id] || id)
+    const replaceIds = (ids: string[]) => ids.map(id => kpIdMapping[id] || abIdMapping[id] || resourceIdMapping[id] || id).filter(id => !id.startsWith("kp-custom-") && !id.startsWith("ab-custom-"))
     const replaceEvalPoints = (points: EvalPoint[]) =>
       points.map(p => ({
         ...p,
