@@ -532,7 +532,7 @@ function AddSystemPageInner() {
 
     // Fetch full grain data for KPs and resources
     try {
-      const grainFull = await courseApi.get(grain.id)
+      const grainFull = await courseApi.get(`${grain.id}?_t=${Date.now()}` as any)
       const grainKpIds = new Set((grainFull.knowledgePointIds || []).filter((id: any) => !!id))
       setKnowledgePoints(
         knowledgePool.filter((k: any) => grainKpIds.has(k.id))
@@ -541,7 +541,7 @@ function AddSystemPageInner() {
       setSelectedResourceIds(Array.from(grainResIds) as string[])
       if (grainResIds.size > 0 && !isQuote) {
         try {
-          const libRes = await resourceLibraryApi.list({ limit: 1000 })
+          const libRes = await resourceLibraryApi.list({ limit: 1000, _nocache: Date.now() } as any)
           const grainResources: ResourceItem[] = ((libRes.items || []) as any[])
             .filter((r: any) => grainResIds.has(r.id))
             .map((r: any) => ({

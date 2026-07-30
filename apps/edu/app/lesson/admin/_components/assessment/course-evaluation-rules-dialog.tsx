@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  ArrowRight,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -20,6 +21,9 @@ import {
   Search,
   Target,
   Trash2,
+  User,
+  UserCheck,
+  Users,
   X,
   Award,
   BookOpen,
@@ -1599,11 +1603,51 @@ export function CourseEvaluationRulesDialog({
     )
   })() : null
 
+  const ObjectCard = ({ methodKey, onClick }: { methodKey: string; onClick: () => void }) => {
+    const currentObject = config.methodEvalObjects[methodKey] || config.evalObject
+    const labels: Record<string, string> = { individual: "个人", group: "小组" }
+    const descs: Record<string, string> = { individual: "以个人为单位", group: "以小组为单位" }
+    return (
+      <button onClick={onClick} className="flex-1 min-w-0 p-4 rounded-xl border text-left transition-all hover:border-primary/50 hover:bg-primary/[0.02] bg-white group">
+        <div className="flex items-center gap-2 mb-2">
+          <Users className="h-4 w-4 text-gray-400 group-hover:text-primary" />
+          <span className="text-xs font-medium text-gray-500">测评对象</span>
+        </div>
+        <p className="text-sm font-semibold truncate">{labels[currentObject] || "未选择"}</p>
+        <p className="text-xs text-gray-400 truncate mt-0.5">{descs[currentObject] || "点击配置"}</p>
+      </button>
+    )
+  }
+
+  const SubjectCard = ({ methodKey, onClick }: { methodKey: string; onClick: () => void }) => {
+    const currentSubjects = config.methodEvalSubjects[methodKey] || config.evalSubjects
+    const evalObject = config.methodEvalObjects[methodKey] || config.evalObject
+    const enabledSubjects = currentSubjects.filter(s => s.enabled && !(s.type === "peer" && evalObject !== "group"))
+    const totalWeight = enabledSubjects.reduce((s, sub) => s + (sub.params?.weightPercent || 0), 0)
+    return (
+      <button onClick={onClick} className="flex-1 min-w-0 p-4 rounded-xl border text-left transition-all hover:border-primary/50 hover:bg-primary/[0.02] bg-white group">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <UserCheck className="h-4 w-4 text-gray-400 group-hover:text-primary" />
+            <span className="text-xs font-medium text-gray-500">评价主体</span>
+          </div>
+          {enabledSubjects.length > 0 && <Badge variant="outline" className="text-[10px]">{enabledSubjects.length} 类</Badge>}
+        </div>
+        <p className="text-sm font-semibold truncate">
+          {enabledSubjects.length === 0 ? "未配置" : enabledSubjects.map(s => subjectLabels[s.type]).join("、")}
+        </p>
+        <p className="text-xs text-gray-400 truncate mt-0.5">
+          {enabledSubjects.length === 0 ? "点击配置" : `总权重 ${totalWeight}%`}
+        </p>
+      </button>
+    )
+  }
+
   const ResourceCard = ({ methodKey, onClick }: { methodKey: string; onClick: () => void }) => {
     const summary = getMethodConfigSummary(methodKey)
     return (
       <button onClick={onClick} className="relative p-4 rounded-xl border text-left transition-all hover:border-blue-400 hover:bg-blue-50/30 bg-white group h-full">
-        <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-blue-50 text-blue-600 text-[10px] flex items-center justify-center font-medium border border-blue-100">1</div>
+        <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-blue-50 text-blue-600 text-[10px] flex items-center justify-center font-medium border border-blue-100">3</div>
         <div className="flex items-center gap-2 mb-3">
           <div className="p-1.5 rounded-md bg-blue-50 text-blue-600 group-hover:bg-blue-100 transition-colors">
             <Database className="h-4 w-4" />
@@ -1622,7 +1666,7 @@ export function CourseEvaluationRulesDialog({
     const subTypeCount = Object.entries(info.points.reduce((acc, p) => { if (p.subType) acc[p.subType] = (acc[p.subType] || 0) + 1; return acc; }, {} as Record<string, number>)).map(([k, v]) => `${evalSubTypeLabels[k as EvalSubType]}${v}`)
     return (
       <button onClick={onClick} className="relative p-4 rounded-xl border text-left transition-all hover:border-purple-400 hover:bg-purple-50/30 bg-white group h-full">
-        <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-purple-50 text-purple-600 text-[10px] flex items-center justify-center font-medium border border-purple-100">2</div>
+        <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-purple-50 text-purple-600 text-[10px] flex items-center justify-center font-medium border border-purple-100">4</div>
         <div className="flex items-center gap-2 mb-3">
           <div className="p-1.5 rounded-md bg-purple-50 text-purple-600 group-hover:bg-purple-100 transition-colors">
             <Target className="h-4 w-4" />
