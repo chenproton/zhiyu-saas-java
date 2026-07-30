@@ -606,7 +606,7 @@ func (h *TaskEvaluationHandler) ensureExamUsageForMethod(
 			resourceConfig["examId"] = examID
 		}
 
-		if err := h.ensureExamQuestions(ctx, tx, tenantID, examID, questionIDs); err != nil {
+		if err := h.ensureExamQuestions(ctx, tx, tenantID, examID, questionIDs, resourceConfig); err != nil {
 			return resourceConfig, err
 		}
 	}
@@ -644,8 +644,9 @@ func (h *TaskEvaluationHandler) createTempExam(ctx context.Context, tx pgx.Tx, t
 	return id, nil
 }
 
-func (h *TaskEvaluationHandler) ensureExamQuestions(ctx context.Context, tx pgx.Tx, tenantID, examID string, questionIDs []string) error {
-	// Fetch questions from the question pool.
+func (h *TaskEvaluationHandler) ensureExamQuestions(ctx context.Context, tx pgx.Tx, tenantID, examID string, questionIDs []string, resourceConfig domain.JSONMap) error {
+	questionScores := getFloatMapFromJSONMap(resourceConfig, "questionScores")
+
 	rows, err := tx.Query(ctx, `
 		SELECT id, type, content, options, answer, analysis, score
 		FROM questions
@@ -687,13 +688,17 @@ func (h *TaskEvaluationHandler) ensureExamQuestions(ctx context.Context, tx pgx.
 	}
 
 	for i, qq := range questions {
+		score := qq.score
+		if s, ok := questionScores[qq.id]; ok && s > 0 {
+			score = s
+		}
 		var existingID string
 		_ = tx.QueryRow(ctx, `SELECT id FROM exam_questions WHERE exam_id = $1 AND question_id = $2`, examID, qq.id).Scan(&existingID)
 		if existingID != "" {
 			_, err := tx.Exec(ctx, `
 				UPDATE exam_questions SET type = $1, content = $2, options = $3, answer = $4, analysis = $5, score = $6, sort_order = $7
 				WHERE id = $8
-			`, qq.qType, qq.content, string(qq.options), string(qq.answer), qq.analysis, qq.score, i+1, existingID)
+			`, qq.qType, qq.content, string(qq.options), string(qq.answer), qq.analysis, score, i+1, existingID)
 			if err != nil {
 				return fmt.Errorf("update exam question %s: %w", qq.id, err)
 			}
@@ -701,7 +706,7 @@ func (h *TaskEvaluationHandler) ensureExamQuestions(ctx context.Context, tx pgx.
 			_, err := tx.Exec(ctx, `
 				INSERT INTO exam_questions (id, tenant_id, exam_id, question_id, type, content, options, answer, analysis, score, sort_order)
 				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-			`, uuid.NewString(), tenantID, examID, qq.id, qq.qType, qq.content, string(qq.options), string(qq.answer), qq.analysis, qq.score, i+1)
+			`, uuid.NewString(), tenantID, examID, qq.id, qq.qType, qq.content, string(qq.options), string(qq.answer), qq.analysis, score, i+1)
 			if err != nil {
 				return fmt.Errorf("insert exam question %s: %w", qq.id, err)
 			}
@@ -748,6 +753,26 @@ func getStringSliceFromJSONMap(m domain.JSONMap, key string) []string {
 		for _, x := range v {
 			if s, ok := x.(string); ok {
 				out = append(out, s)
+			}
+		}
+		return out
+	}
+	return nil
+}
+
+func getFloatMapFromJSONMap(m domain.JSONMap, key string) map[string]float64 {
+	raw, ok := m[key]
+	if !ok || raw == nil {
+		return nil
+	}
+	switch v := raw.(type) {
+	case map[string]float64:
+		return v
+	case map[string]interface{}:
+		out := make(map[string]float64, len(v))
+		for k, x := range v {
+			if f, ok := x.(float64); ok {
+				out[k] = f
 			}
 		}
 		return out
