@@ -146,16 +146,27 @@ offline_file() {
 # 加载 offline/docker-images/ 下的镜像 tar 包
 load_offline_images() {
   [[ -d "$OFFLINE_DIR/docker-images" ]] || return 0
-  local loaded=false
+  local to_load=()
   for tar in "$OFFLINE_DIR"/docker-images/*.tar; do
     [[ -f "$tar" ]] || continue
+    local img
+    img=$(tar xfO "$tar" manifest.json 2>/dev/null | python3 -c "
+import json,sys
+for m in json.load(sys.stdin):
+    if 'RepoTags' in m:
+        for t in m['RepoTags']:
+            if t: print(t.split(':')[0])" 2>/dev/null | head -1)
+    if [[ -n "$img" ]] && docker images -q "$img" &>/dev/null; then
+      continue
+    fi
+    to_load+=("$tar")
+  done
+  [[ ${#to_load[@]} -gt 0 ]] || { return 0; }
+  for tar in "${to_load[@]}"; do
     log "加载本地 Docker 镜像: $(basename "$tar")"
     docker load -i "$tar" 2>&1 | tail -2
-    loaded=true
   done
-  $loaded && log "本地 Docker 镜像加载完成"
-  # 必须显式返回 0：无 tar 可加载时上面的 && 列表会使函数返回 1，
-  # 在 set -e 下作为简单命令调用会导致脚本静默退出
+  log "本地 Docker 镜像加载完成"
   return 0
 }
 
@@ -215,16 +226,27 @@ lock_hash() { md5sum "$1/pnpm-lock.yaml" 2>/dev/null | awk '{print $1}'; }
 install_offline_debs() {
   local deb_dir="$OFFLINE_DIR/debs"
   [[ -d "$deb_dir" ]] || return 0
-  local count
-  count=$(find "$deb_dir" -maxdepth 1 -name '*.deb' 2>/dev/null | wc -l)
-  [[ "$count" -gt 0 ]] || return 0
-  log "安装离线 deb 包（$count 个）..."
-  dpkg -i "$deb_dir"/*.deb 2>/dev/null || {
-    # dpkg -i 可能因依赖顺序失败，用 apt-get 修复
-    apt-get install -y -f -qq 2>/dev/null || true
-    dpkg -i "$deb_dir"/*.deb 2>/dev/null || true
-  }
-  log "离线 deb 包安装完成"
+  local marker="$DEPLOY_DIR/.debs-installed"
+  [[ -f "$marker" ]] && return 0
+  local to_install=()
+  for deb in "$deb_dir"/*.deb; do
+    [[ -f "$deb" ]] || continue
+    local pkg
+    pkg=$(dpkg-deb -f "$deb" Package 2>/dev/null || true)
+    if [[ -n "$pkg" ]] && dpkg -s "$pkg" &>/dev/null; then
+      continue
+    fi
+    to_install+=("$deb")
+  done
+  if [[ ${#to_install[@]} -gt 0 ]]; then
+    log "安装离线 deb 包（${#to_install[@]} 个）..."
+    dpkg -i "${to_install[@]}" 2>/dev/null || {
+      apt-get install -y -f -qq 2>/dev/null || true
+      dpkg -i "${to_install[@]}" 2>/dev/null || true
+    }
+    log "离线 deb 包安装完成"
+  fi
+  touch "$marker"
 }
 
 log "检查系统依赖..."
