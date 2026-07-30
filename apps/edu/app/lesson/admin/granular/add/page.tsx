@@ -468,8 +468,8 @@ function AddGranularPageInner() {
                   <DialogContent
                     className="sm:max-w-5xl max-h-[90vh] overflow-y-auto"
                     onInteractOutside={(e) => {
+                      e.preventDefault()
                       if (previewResources.length > 0) {
-                        e.preventDefault()
                         previewResources.forEach((r: any) => removePreviewResource(r.id))
                       }
                     }}
@@ -491,7 +491,7 @@ function AddGranularPageInner() {
                     />
                     <DialogFooter>
                       <DialogClose asChild>
-                        <Button variant="outline">关闭</Button>
+                        <Button>确认</Button>
                       </DialogClose>
                     </DialogFooter>
                   </DialogContent>
