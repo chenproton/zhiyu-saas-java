@@ -131,7 +131,7 @@ import { EditorShell } from "@/components/shared/editor-shell"
 import { MajorSelect } from "@/components/shared/major-select"
 import { KnowledgePointFormDialog } from "@/components/shared/knowledge-point-form-dialog"
 import { GranularLessonSelectDialog } from "@/components/shared/granular-lesson-select-dialog"
-import { CourseEvalConfig, type CourseEvalData } from "@/app/lesson/admin/_components/eval/course-eval-config"
+import { EvalMethodSelector } from "@/components/shared/eval-method-selector"
 import { KnowledgeSelector } from "@/app/lesson/admin/_components/knowledge/knowledge-selector"
 import type { KnowledgePointItem } from "@/lib/types/lesson"
 import { ResourceSelector, type ResourceItem } from "@/app/lesson/admin/_components/resources/resource-selector"
@@ -5436,29 +5436,19 @@ function EditCardDialog({
       }
 
       case "evaluation": {
-        const evalDataForTasks: CourseEvalData = {
-          methods: state.evaluationMethods as any,
-          methodConfigs: state.evalMethodConfigs || {},
-        }
         return (
-          <CourseEvalConfig
-            value={evalDataForTasks}
-            onChange={(data) => {
-              const newMethods = data.methods
-              const newDisabled = (state.disabledEvaluationMethods || []).filter((d: string) => newMethods.includes(d as any))
+          <EvalMethodSelector
+            value={state.evaluationMethods}
+            onChange={(newMethods) => {
+              const newDisabled = (state.disabledEvaluationMethods || []).filter((d: string) => newMethods.includes(d))
               const newWeights = { ...state.methodWeights }
               for (const m of newMethods) {
                 if (!state.evaluationMethods.includes(m)) newWeights[m] = 0
               }
-              for (const m of state.evaluationMethods.filter((sm: string) => !newMethods.includes(sm as any))) {
+              for (const m of state.evaluationMethods.filter((sm: string) => !newMethods.includes(sm))) {
                 newWeights[m] = 0
               }
-              updateState({
-                evaluationMethods: newMethods as string[],
-                methodWeights: newWeights,
-                disabledEvaluationMethods: newDisabled,
-                evalMethodConfigs: data.methodConfigs,
-              })
+              updateState({ evaluationMethods: newMethods, methodWeights: newWeights, disabledEvaluationMethods: newDisabled })
             }}
           />
         )
