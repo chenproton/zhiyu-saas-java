@@ -601,7 +601,9 @@ if $BUILD_BACKEND; then
     DOCKER_BUILD_ARGS+=(--build-arg SKIP_APK_ADD=true)
   fi
 
-  docker build "${DOCKER_BUILD_ARGS[@]}" -t "zhiyu-backend:$IMAGE_TAG" -f "$TMPCTX/Dockerfile" "$TMPCTX" 2>&1 | tail -3
+  BUILD_LOG="$DEPLOY_DIR/.build-backend.log"
+  docker build "${DOCKER_BUILD_ARGS[@]}" -t "zhiyu-backend:$IMAGE_TAG" -f "$TMPCTX/Dockerfile" "$TMPCTX" >"$BUILD_LOG" 2>&1
+  tail -n 5 "$BUILD_LOG"
   docker tag "zhiyu-backend:$IMAGE_TAG" "zhiyu-backend:$BACKEND_HASH"
   rm -rf "$TMPCTX"
   echo "$BACKEND_HASH" > "$BUILD_CACHE/backend-hash"
@@ -648,7 +650,9 @@ if $BUILD_FRONTEND; then
   [[ -d "$EDU_DIR/.next/static" ]] && { mkdir -p "$SD/.next/static"; rsync -a --delete --exclude="*.map" "$EDU_DIR/.next/static/" "$SD/.next/static/"; }
   [[ -d "$EDU_DIR/public" ]] && { mkdir -p "$SD/public"; rsync -a --delete "$EDU_DIR/public/" "$SD/public/"; }
 
-  docker build -t "zhiyu-edu:$IMAGE_TAG" -f "$EDU_DIR/Dockerfile" "$EDU_DIR/.next/standalone" 2>&1 | tail -3
+  BUILD_LOG="$DEPLOY_DIR/.build-frontend.log"
+  docker build -t "zhiyu-edu:$IMAGE_TAG" -f "$EDU_DIR/Dockerfile" "$EDU_DIR/.next/standalone" >"$BUILD_LOG" 2>&1
+  tail -n 5 "$BUILD_LOG"
   docker tag "zhiyu-edu:$IMAGE_TAG" "zhiyu-edu:$FRONTEND_HASH"
   echo "$FRONTEND_HASH" > "$BUILD_CACHE/frontend-hash"
 else
@@ -674,10 +678,15 @@ fi
 
 COMPOSE_PROFILES=""
 [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]] && COMPOSE_PROFILES="--profile kkfileview"
-if ! compose up -d --remove-orphans $COMPOSE_PROFILES 2>&1 | tail -5; then
-  compose logs --tail 30 2>&1 | tail -30 || true
+COMPOSE_UP_LOG="$DEPLOY_DIR/.compose-up.log"
+rm -f "$COMPOSE_UP_LOG"
+if ! compose up -d --remove-orphans $COMPOSE_PROFILES >"$COMPOSE_UP_LOG" 2>&1; then
+  echo "docker compose up 失败日志：" >&2
+  tail -n 50 "$COMPOSE_UP_LOG" >&2 || true
+  compose logs --tail 30 >&2 || true
   die "docker compose up 失败，请检查上方容器日志"
 fi
+tail -n 5 "$COMPOSE_UP_LOG"
 
 # 等待 PG
 for i in $(seq 1 30); do
