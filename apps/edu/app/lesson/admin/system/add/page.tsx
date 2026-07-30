@@ -691,7 +691,7 @@ function AddSystemPageInner() {
     } finally {
       setSaving(false)
     }
-  }, [courseName, major, courseDescription, coverImage, batchId, isEdit, courseId, originalStatus, saveNodes, abilityPoints])
+  }, [courseName, major, courseDescription, courseDescriptionPdf, coverImage, batchId, isEdit, courseId, originalStatus, saveNodes, abilityPoints])
 
   const handleFinish = useCallback(async () => {
     await handleSave()
