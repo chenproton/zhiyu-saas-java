@@ -168,7 +168,7 @@ export function RandomDrawResourcePanel({
   const selectedRdqList = state.randomDrawSelectedIds.map((id: string) => allQuestions.find(q => q.id === id)).filter(Boolean) as typeof allQuestions
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
+    <div className="flex flex-col">
       <div className="flex items-center gap-3 mb-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -179,9 +179,9 @@ export function RandomDrawResourcePanel({
         </Button>
       </div>
 
-      <div className="flex gap-4 flex-1 min-h-0">
+      <div className="flex gap-4">
         {/* Left: All questions */}
-        <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
+        <div className="w-3/5 flex flex-col border rounded-xl p-3">
           <div className="flex items-center gap-1 mb-2 flex-wrap">
             {majorOptions.map(opt => (
               <button
@@ -201,7 +201,7 @@ export function RandomDrawResourcePanel({
           <p className="text-sm font-medium mb-2 text-gray-700">
             {rdqSearch ? `搜索结果 (${filteredRdq.length})` : (rdqMajorTab === "全部" ? "全部现场问答题" : `${majorNameMap[rdqMajorTab] || rdqMajorTab}相关现场问答题`)}
           </p>
-          <div className="flex-1 overflow-y-auto pr-1">
+          <div className="min-h-[400px] overflow-y-auto pr-1">
             {loading ? (
               <div className="text-center text-gray-400 py-8">
                 <p className="text-sm">加载中...</p>
@@ -267,9 +267,9 @@ export function RandomDrawResourcePanel({
         </div>
 
         {/* Right: Selected questions */}
-        <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
+        <div className="w-2/5 border rounded-xl p-3 flex flex-col">
           <p className="text-sm font-medium mb-3 text-gray-700">已配置现场问答题 ({selectedRdqList.length})</p>
-          <div className="flex-1 overflow-y-auto">
+          <div className="min-h-[400px] overflow-y-auto">
             {selectedRdqList.length === 0 ? (
               <div className="text-center text-gray-400 py-8">
                 <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />

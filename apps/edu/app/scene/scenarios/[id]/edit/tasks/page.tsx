@@ -479,6 +479,7 @@ interface TaskState {
   methodEvalObjects: Record<string, EvalObjectType>
   methodEvalSubjects: Record<string, EvalSubjectConfig[]>
   methodWeights: Record<string, number>
+  evalMethodConfigs: Record<string, any>
   reviewSteps: any[]
   methodResourceConfigs: Record<string, any>
   evalMethodVersion: number
@@ -533,6 +534,7 @@ function makeDefaultTaskState(count: number, index: number): TaskState {
     evalSubjects: JSON.parse(JSON.stringify(defaultEvalSubjects)),
     methodEvalObjects: {},
     methodEvalSubjects: {},
+    evalMethodConfigs: {},
     reviewSteps: [],
     methodResourceConfigs: {},
     evalMethodVersion: 0,
@@ -5436,7 +5438,7 @@ function EditCardDialog({
       case "evaluation": {
         const evalDataForTasks: CourseEvalData = {
           methods: state.evaluationMethods as any,
-          methodConfigs: {},
+          methodConfigs: state.evalMethodConfigs || {},
         }
         return (
           <CourseEvalConfig
@@ -5451,7 +5453,12 @@ function EditCardDialog({
               for (const m of state.evaluationMethods.filter((sm: string) => !newMethods.includes(sm as any))) {
                 newWeights[m] = 0
               }
-              updateState({ evaluationMethods: newMethods as string[], methodWeights: newWeights, disabledEvaluationMethods: newDisabled })
+              updateState({
+                evaluationMethods: newMethods as string[],
+                methodWeights: newWeights,
+                disabledEvaluationMethods: newDisabled,
+                evalMethodConfigs: data.methodConfigs,
+              })
             }}
           />
         )
