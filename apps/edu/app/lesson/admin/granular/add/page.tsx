@@ -141,7 +141,8 @@ function AddGranularPageInner() {
             uploadedAt: r.uploadedAt,
           }))
           setResourcePool(resources)
-          setSelectedResourceIds((c.resourceIds || []).filter((id): id is string => !!id))
+          const resIds = (c.resourceIds || []).filter((id): id is string => !!id)
+          setSelectedResourceIds(resIds.length > 0 ? resIds : resources.map((r) => r.id))
         }
       } catch (err: any) {
         toast.error(err.message || "加载失败")
