@@ -49,12 +49,11 @@ import { cn } from "@/lib/utils"
 import type { SystemCourseNode, NodeResource, NodeRefType } from "@/lib/types/lesson-source"
 
 import { KnowledgeSelector } from "../../_components/knowledge/knowledge-selector"
-import { EvalMethodSelector } from "@/components/shared/eval-method-selector"
+import { EvalMethodConfigPanel } from "@/components/shared/eval-method-config-panel"
 import { TaskInfoCard } from "@/app/scene/scenarios/[id]/edit/tasks/_components/task-info-card"
+import type { EvalRuleConfig } from "@/lib/types/evaluation"
 import { TaskDescriptionCard } from "@/app/scene/scenarios/[id]/edit/tasks/_components/task-description-card"
 import { ResourceSelector, type ResourceItem } from "../../_components/resources/resource-selector"
-import { EvaluationMethodSelector } from "../../_components/assessment/evaluation-method-selector"
-import { CourseEvaluationRulesDialog } from "../../_components/assessment/course-evaluation-rules-dialog"
 import { RichTextEditor } from "../../_components/common/rich-text-editor"
 import { EditorShell } from "@/components/shared/editor-shell"
 import { BatchSelector } from "@/components/shared/batch-selector"
@@ -64,7 +63,6 @@ import CourseNodeTree from "./_components/CourseNodeTree"
 import PublishCheckPanel from "./_components/PublishCheckPanel"
 
 import type { KnowledgePointItem } from "@/lib/types/lesson"
-import type { EvalRuleConfig } from "@/lib/types/evaluation"
 import type { Major } from "@/lib/types/backend"
 import { courseApi, courseNodeApi, knowledgeApi, majorApi, approvalApi, lessonBatchApi, nodeResourceApi, nodeQuizApi, nodeHomeworkApi } from "@/lib/api"
 
@@ -82,7 +80,7 @@ interface NodeDraft {
   selectedResourceIds: string[]
   selectedEvalMethods: string[]
   evalRules?: EvalRuleConfig
-  evalData?: { methods: string[] }
+  evalData?: { methods: string[]; evalRuleConfig?: EvalRuleConfig }
   difficulty: number
   coverImage?: string
 }
@@ -379,7 +377,7 @@ function AddSystemPageInner() {
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([])
 
   /* module 4: assessment */
-  const [evalData, setEvalData] = useState<{ methods: string[] } | undefined>()
+  const [evalData, setEvalData] = useState<{ methods: string[]; evalRuleConfig?: EvalRuleConfig } | undefined>()
 
   /* module 5: evaluation rules */
 
@@ -408,7 +406,8 @@ function AddSystemPageInner() {
       }))
     )
     setSelectedResourceIds((node.resources || []).map((r) => r.id))
-    setEvalData(node.evalData as { methods: string[] } | undefined || undefined)
+    const nodeEvalData = (node.evalData || {}) as { methods?: string[]; evalRuleConfig?: EvalRuleConfig }
+    setEvalData(nodeEvalData.methods ? { methods: nodeEvalData.methods, evalRuleConfig: nodeEvalData.evalRuleConfig } : undefined)
     setDifficulty(node.difficulty || 0)
   }, [])
 
@@ -1087,17 +1086,17 @@ function AddSystemPageInner() {
                   </Card>
 
                   {/* Module 4: Assessment & Evaluation Rules */}
-                  <Card className="border-0 shadow-sm">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                        <ClipboardList className="w-4 h-4 text-[#1890ff]" />
-                        配置测评方式与评价标准
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <EvalMethodSelector value={evalData?.methods || []} onChange={(methods) => setEvalData({ methods })} />
-                    </CardContent>
-                  </Card>
+                  <EvalMethodConfigPanel
+                    value={evalData?.evalRuleConfig}
+                    onChange={(config) =>
+                      setEvalData({
+                        methods: config.evaluationMethods,
+                        evalRuleConfig: config,
+                      })
+                    }
+                    knowledgePoints={knowledgePoints}
+                    title="配置节点评价规则"
+                  />
                 </>
               )}
 

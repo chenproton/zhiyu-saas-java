@@ -28,6 +28,7 @@ export interface Course {
   coCreatorIds: string[]
   batchId?: string
   batchName?: string
+  evalData?: Record<string, any>
   nodeCount: number
   resourceCount: number
   studyCount: number

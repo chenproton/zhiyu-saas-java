@@ -48,6 +48,7 @@ type CreateCourseRequest struct {
 	ResourceIds       domain.JSONSlice `json:"resourceIds"`
 	CoCreatorIds      domain.JSONSlice `json:"coCreatorIds"`
 	BatchID           *string          `json:"batchId"`
+	EvalData          domain.JSONMap   `json:"evalData"`
 }
 
 type UpdateCourseRequest struct {
@@ -74,6 +75,7 @@ type UpdateCourseRequest struct {
 	ResourceIds       domain.JSONSlice `json:"resourceIds"`
 	CoCreatorIds      domain.JSONSlice `json:"coCreatorIds"`
 	BatchID           *string          `json:"batchId"`
+	EvalData          domain.JSONMap   `json:"evalData"`
 }
 
 func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -84,7 +86,7 @@ func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	cfg := listQueryConfig[domain.Course]{
 		Table: "courses c LEFT JOIN majors m ON m.id = c.major_id LEFT JOIN industries i ON i.id = c.industry_id LEFT JOIN lesson_batches lb ON lb.id = c.batch_id LEFT JOIN view_counters vc ON vc.target_type = 'course' AND vc.target_id = c.id",
-		SelectColumns: `c.id, c.code, c.name, c.type, c.category, c.major_id, m.name AS major_name, c.teacher_id, c.industry_id, i.name AS industry_name, c.version, c.online_hours, c.offline_hours, c.online_weight, c.offline_weight, c.semester, c.class_name, c.status, c.cover_color, c.cover_image, c.course_tag, c.difficulty, c.description, c.knowledge_point_ids::text[] AS knowledge_point_ids, c.resource_ids::text[] AS resource_ids, c.creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name, c.node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count, COALESCE(vc.cnt, 0) AS view_count, c.study_count, c.created_at, c.updated_at`,
+		SelectColumns: `c.id, c.code, c.name, c.type, c.category, c.major_id, m.name AS major_name, c.teacher_id, c.industry_id, i.name AS industry_name, c.version, c.online_hours, c.offline_hours, c.online_weight, c.offline_weight, c.semester, c.class_name, c.status, c.cover_color, c.cover_image, c.course_tag, c.difficulty, c.description, c.knowledge_point_ids::text[] AS knowledge_point_ids, c.resource_ids::text[] AS resource_ids, c.eval_data, c.creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name, c.node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count, COALESCE(vc.cnt, 0) AS view_count, c.study_count, c.created_at, c.updated_at`,
 		TenantScoped:  true,
 		TenantColumn:  "c.tenant_id",
 		SearchColumns: []string{"c.name", "c.code"},
@@ -183,16 +185,19 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	kpIDs := jsonSliceToUUIDSlice(req.KnowledgePointIds)
 	resIDs := jsonSliceToUUIDSlice(req.ResourceIds)
+	if req.EvalData == nil {
+		req.EvalData = domain.JSONMap{}
+	}
 	_, err = h.DB.Exec(r.Context(), `
 		INSERT INTO courses (id, tenant_id, code, name, type, category, major_id, teacher_id, industry_id, version,
 			online_hours, offline_hours, online_weight, offline_weight, semester, class_name,
 			status, cover_color, cover_image, course_tag, difficulty, description, creator_id, co_creator_ids, batch_id,
-			knowledge_point_ids, resource_ids, node_count, resource_count, study_count)
+			knowledge_point_ids, resource_ids, eval_data, node_count, resource_count, study_count)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'draft', $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, 0, 0, 0)
 	`, id, tenantID, code, req.Name, req.Type, req.Category, req.MajorID, req.TeacherID, req.IndustryID, req.Version,
 		req.OnlineHours, req.OfflineHours, req.OnlineWeight, req.OfflineWeight, req.Semester, req.ClassName,
 		req.CoverColor, req.CoverImage, req.CourseTag, req.Difficulty, req.Description, claims.UserID, req.CoCreatorIds, emptyStrToNil(req.BatchID),
-		kpIDs, resIDs)
+		kpIDs, resIDs, req.EvalData)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "课程代码已存在，请使用其他代码")
@@ -302,18 +307,21 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if req.ResourceIds == nil {
 		resIDs = jsonSliceToUUIDSlice(existing.ResourceIds)
 	}
+	if req.EvalData == nil {
+		req.EvalData = existing.EvalData
+	}
 
 	_, err = h.DB.Exec(r.Context(), `
 		UPDATE courses SET name = $1, type = $2, category = $3, major_id = $4, teacher_id = $5,
 			industry_id = $6, version = $7, online_hours = $8, offline_hours = $9, online_weight = $10,
 			offline_weight = $11, semester = $12, class_name = $13, cover_color = $14, cover_image = $15,
 			course_tag = $16, difficulty = $17, description = $18, co_creator_ids = $19, batch_id = $20,
-			knowledge_point_ids = $21, resource_ids = $22, resource_count = COALESCE(array_length($22::uuid[], 1), 0), updated_at = NOW()
-		WHERE id = $23
+			knowledge_point_ids = $21, resource_ids = $22, eval_data = $23, resource_count = COALESCE(array_length($22::uuid[], 1), 0), updated_at = NOW()
+		WHERE id = $24
 	`, req.Name, req.Type, req.Category, req.MajorID, req.TeacherID, req.IndustryID, req.Version,
 		req.OnlineHours, req.OfflineHours, req.OnlineWeight, req.OfflineWeight, req.Semester, req.ClassName,
 		req.CoverColor, req.CoverImage, req.CourseTag, req.Difficulty, req.Description, req.CoCreatorIds, emptyStrToNil(batchID),
-		kpIDs, resIDs, id)
+		kpIDs, resIDs, req.EvalData, id)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "课程代码已存在，请使用其他代码")
@@ -404,6 +412,7 @@ func (h *CourseHandler) fetchCourse(ctx context.Context, id string) (*domain.Cou
 			c.status, c.cover_color, c.cover_image, c.course_tag, c.difficulty, c.description,
 			c.knowledge_point_ids::text[] AS knowledge_point_ids,
 			c.resource_ids::text[] AS resource_ids,
+			c.eval_data,
 			c.creator_id, c.co_creator_ids, c.batch_id, lb.name AS batch_name,
 			c.node_count, COALESCE(array_length(c.resource_ids, 1), 0) AS resource_count,
 			COALESCE(vc.cnt, 0) AS view_count,
@@ -435,7 +444,7 @@ func (h *CourseHandler) scanCourseRows(rows pgx.Rows) ([]domain.Course, error) {
 			&c.ID, &c.Code, &c.Name, &c.Type, &c.Category, &c.MajorID, &c.MajorName, &c.TeacherID, &c.IndustryID, &c.IndustryName, &c.Version,
 			&c.OnlineHours, &c.OfflineHours, &c.OnlineWeight, &c.OfflineWeight, &c.Semester, &c.ClassName,
 			&c.Status, &c.CoverColor, &c.CoverImage, &c.CourseTag, &c.Difficulty, &c.Description,
-			&c.KnowledgePointIds, &c.ResourceIds, &c.CreatorID, &c.CoCreatorIds, &c.BatchID, &c.BatchName,
+			&c.KnowledgePointIds, &c.ResourceIds, &c.EvalData, &c.CreatorID, &c.CoCreatorIds, &c.BatchID, &c.BatchName,
 			&c.NodeCount, &c.ResourceCount, &c.ViewCount, &c.StudyCount, &c.CreatedAt, &c.UpdatedAt,
 		); err != nil {
 			return nil, err

@@ -22,27 +22,19 @@ import {
 } from "@/components/ui/select"
 
 import type { SystemCourseNode, NodeResource } from "@/lib/types/lesson-source"
-import type { Course, KnowledgePointItem as SharedKnowledgePointItem } from "@/lib/types/lesson"
+import type { Course, KnowledgePointItem } from "@/lib/types/lesson"
 import { courseApi, knowledgeApi, fileApi, approvalApi, majorApi, lessonBatchApi, courseResourceApi } from "@/lib/api"
 
 import { KnowledgeSelector } from "../../_components/knowledge/knowledge-selector"
 import { ResourceSelector, type ResourceItem } from "../../_components/resources/resource-selector"
-import { EvalMethodSelector } from "@/components/shared/eval-method-selector"
+import { EvalMethodConfigPanel } from "@/components/shared/eval-method-config-panel"
 import { TaskInfoCard } from "@/app/scene/scenarios/[id]/edit/tasks/_components/task-info-card"
+import type { EvalRuleConfig } from "@/lib/types/evaluation"
 import { TaskDescriptionCard } from "@/app/scene/scenarios/[id]/edit/tasks/_components/task-description-card"
 import { RichTextEditor } from "../../_components/common/rich-text-editor"
 import PublishCheckPanel from "../../system/add/_components/PublishCheckPanel"
 import { EditorShell } from "@/components/shared/editor-shell"
 import { BatchSelector } from "@/components/shared/batch-selector"
-
-interface KnowledgePointItem {
-  id: string
-  name: string
-  code?: string
-  description?: string
-  linked: boolean
-}
-
 
 function AddGranularPageInner() {
   const router = useRouter()
@@ -80,7 +72,8 @@ function AddGranularPageInner() {
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([])
 
   /* module 4: assessment */
-  const [evalMethods, setEvalMethods] = useState<string[]>([])
+  const [evalRuleConfig, setEvalRuleConfig] = useState<EvalRuleConfig | undefined>(undefined)
+  const evalMethods = useMemo(() => evalRuleConfig?.evaluationMethods || [], [evalRuleConfig?.evaluationMethods])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -134,6 +127,9 @@ function AddGranularPageInner() {
           }))
           setResourcePool(resources)
           setSelectedResourceIds((c.resourceIds || []).filter((id): id is string => !!id))
+
+          const evalData = (c.evalData || {}) as Record<string, any>
+          setEvalRuleConfig(evalData.evalRuleConfig as EvalRuleConfig | undefined)
         }
       } catch (err: any) {
         toast.error(err.message || "加载失败")
@@ -231,6 +227,7 @@ function AddGranularPageInner() {
           learningGoal: learningGoal || undefined,
           knowledgePointIds,
           methods: evalMethods,
+          evalRuleConfig,
         },
         knowledgePointIds,
         resourceIds: selectedResourceIds,
@@ -439,17 +436,11 @@ function AddGranularPageInner() {
             </Card>
 
             {/* Module 4: Assessment & Evaluation */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-[#1890ff]" />
-                  配置测评方式与评价标准
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <EvalMethodSelector value={evalMethods} onChange={setEvalMethods} />
-              </CardContent>
-            </Card>
+            <EvalMethodConfigPanel
+              value={evalRuleConfig}
+              onChange={setEvalRuleConfig}
+              knowledgePoints={knowledgePoints}
+            />
 
             <div className="h-12" />
           </main>
