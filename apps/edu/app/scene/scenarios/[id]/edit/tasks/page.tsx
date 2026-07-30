@@ -881,14 +881,25 @@ export default function TasksEditPage() {
         const professionName = (scenarioData.professionNames || []).join("、") ||
           (scenarioData.professionIds || []).map((id: string) => majRes.items.find((m: any) => m.id === id)?.name).filter(Boolean).join("、") ||
           (scenarioData.professionIds || []).join("、")
-        setExistingScenario({
-          ...scenarioData,
-          positionId: scenarioData.careerPositionId,
-          positionName,
-          industryName,
-          professionName,
-          // 共建人姓名在 users 数据集懒加载后补齐，先以 id 占位
-          coBuilders: (scenarioData.coBuilderIds || []).map((id: string) => ({ id, name: id })),
+        setExistingScenario((prev: any) => {
+          // 保留已解析的共建人姓名（避免 user?.id 变化导致 effect 重跑时覆盖掉已补齐的名称）
+          const prevNameMap: Record<string, string> = {}
+          if (prev?.coBuilders) {
+            prev.coBuilders.forEach((cb: any) => {
+              if (cb.name && cb.name !== cb.id) prevNameMap[cb.id] = cb.name
+            })
+          }
+          return {
+            ...scenarioData,
+            positionId: scenarioData.careerPositionId,
+            positionName,
+            industryName,
+            professionName,
+            coBuilders: (scenarioData.coBuilderIds || []).map((id: string) => ({
+              id,
+              name: prevNameMap[id] || id,
+            })),
+          }
         })
 
         professions.length = 0
@@ -5156,15 +5167,12 @@ function EditCardDialog({
 
       case "knowledge": {
         const pool: KnowledgePointItem[] = knowledgePoints.map((kp: any) => ({
-          id: kp.id, name: kp.name, code: kp.code, description: kp.description, linked: true,
+          id: kp.id, name: kp.name, code: kp.code, description: kp.description,
+          linked: !customKnowledgePointIds.has(kp.id),
         }))
         const selected: KnowledgePointItem[] = (state.knowledgePoints || []).map((id: string) => {
-          const inPool = pool.find(p => p.id === id)
-          if (inPool) {
-            const kp = knowledgePoints.find((k: any) => k.id === id)
-            return { ...inPool, linked: !(kp?.sourceType === "scenario_task" && kp?.sourceId === scenarioId) }
-          }
-          return { id, name: id, linked: false }
+          const found = pool.find(p => p.id === id)
+          return found || { id, name: id, linked: false }
         })
         return (
           <KnowledgeSelector
@@ -5176,7 +5184,7 @@ function EditCardDialog({
               for (const item of items) {
                 if (item.id.startsWith("kp-custom-") && !customKnowledgePointIds.has(item.id)) {
                   customKnowledgePointIds.add(item.id)
-                  knowledgePoints.push({ id: item.id, name: item.name, description: item.description || "", code: item.code || "", linked: false, granularLessons: (item as any).granularLessons || [] })
+                  knowledgePoints.push({ id: item.id, name: item.name, description: item.description || "", code: item.code || "", granularLessons: (item as any).granularLessons || [] })
                 }
               }
               updateState({ knowledgePoints: ids })
