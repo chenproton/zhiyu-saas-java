@@ -115,6 +115,44 @@ func LoadCertificationModel(ctx context.Context, db *pgxpool.Pool, tenantID, pos
 		return nil, err
 	}
 
+	// 2a. 能力点→关联任务：scenario_tasks.ability_point_ids 直接关联
+	taskDirectRows, err := db.Query(ctx, `
+		SELECT DISTINCT u.ap_id, t.id, COALESCE(t.name, ''), COALESCE(s.name, '')
+		FROM scenarios s
+		JOIN scenario_tasks t ON t.scenario_id = s.id
+		CROSS JOIN LATERAL unnest(t.ability_point_ids) AS u(ap_id)
+		WHERE s.career_position_id = $1 AND u.ap_id = ANY($2)
+		ORDER BY u.ap_id, t.id
+	`, positionID, pointIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer taskDirectRows.Close()
+	for taskDirectRows.Next() {
+		var apID string
+		var t CertificationModelTask
+		if err := taskDirectRows.Scan(&apID, &t.TaskID, &t.TaskName, &t.ScenarioName); err != nil {
+			return nil, err
+		}
+		t.TaskType = "scene"
+		if i, ok := pointIdx[apID]; ok {
+			// 去重：同一任务可能同时在 eval_point 和 scenario_tasks 级别关联了同一能力点
+			dup := false
+			for _, exist := range points[i].point.Tasks {
+				if exist.TaskID == t.TaskID && exist.TaskType == "scene" {
+					dup = true
+					break
+				}
+			}
+			if !dup {
+				points[i].point.Tasks = append(points[i].point.Tasks, t)
+			}
+		}
+	}
+	if err := taskDirectRows.Err(); err != nil {
+		return nil, err
+	}
+
 	// 2b. 能力点→关联课程：课程上 ability_point_ids 与岗位能力点匹配。
 	courseRows, err := db.Query(ctx, `
 		SELECT DISTINCT u.ap_id, c.id, COALESCE(c.name, '')
