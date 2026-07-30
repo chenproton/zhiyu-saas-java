@@ -234,7 +234,9 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const [submitSelectedMajorId, setSubmitSelectedMajorId] = useState("all")
   const [isCloneRenameDialogOpen, setIsCloneRenameDialogOpen] = useState(false)
   const [cloneRenameValue, setCloneRenameValue] = useState("")
+  const cloneRenameValueRef = useRef("")
   const [cloneTarget, setCloneTarget] = useState<T | null>(null)
+  const cloneTargetRef = useRef<T | null>(null)
   const [isRejectReasonDialogOpen, setIsRejectReasonDialogOpen] = useState(false)
   const [rejectReasonItem, setRejectReasonItem] = useState<T | null>(null)
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
@@ -667,25 +669,36 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   }
 
   const handleClone = (item: T) => {
+    cloneTargetRef.current = item
     setCloneTarget(item)
-    setCloneRenameValue(`${item.name} (克隆)`)
+    const name = `${item.name} (克隆)`
+    cloneRenameValueRef.current = name
+    setCloneRenameValue(name)
     setIsCloneRenameDialogOpen(true)
   }
 
   const handleConfirmClone = async () => {
-    if (!cloneTarget) return
+    const target = cloneTargetRef.current
+    if (!target) return
+    const name = cloneRenameValueRef.current?.trim()
+    if (!name) {
+      toast({ variant: "destructive", title: "克隆失败", description: "请输入克隆名称" })
+      return
+    }
     try {
       if (itemApi.clone) {
-        await itemApi.clone(cloneTarget.id, { name: cloneRenameValue })
+        await itemApi.clone(target.id, { name })
       } else {
         await itemApi.create({
           ...createPayload(currentUserId, entityLabel),
-          name: cloneRenameValue,
-          batchId: cloneTarget.batchId,
+          name,
+          batchId: target.batchId,
         })
       }
       setIsCloneRenameDialogOpen(false)
+      cloneTargetRef.current = null
       setCloneTarget(null)
+      cloneRenameValueRef.current = ""
       setCloneRenameValue("")
       await refresh()
     } catch (err: any) {
@@ -1409,13 +1422,13 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
           <div className="py-4">
             <Input
               value={cloneRenameValue}
-              onChange={(e) => setCloneRenameValue(e.target.value)}
+              onChange={(e) => { setCloneRenameValue(e.target.value); cloneRenameValueRef.current = e.target.value }}
               placeholder="输入新名称"
             />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCloneRenameDialogOpen(false)}>取消</Button>
-            <Button onClick={handleConfirmClone} disabled={!cloneRenameValue.trim()}>确认克隆</Button>
+            <Button onClick={handleConfirmClone}>确认克隆</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
