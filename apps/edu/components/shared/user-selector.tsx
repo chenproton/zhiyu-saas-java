@@ -199,6 +199,9 @@ export function UserSelector({
 
   // Resolve names for selected ids that are not in cache yet (e.g. echo on edit),
   // so the trigger shows user names instead of raw ids.
+  // Use a stable key derived from the content of value to avoid re-running the
+  // effect when only the array reference changes but the IDs are the same.
+  const valueKey = useMemo(() => [...value].sort().join(","), [value])
   useEffect(() => {
     const missing = value.filter((id) => !userCache[id] && !fetchedIdsRef.current.has(id))
     if (missing.length === 0) return
@@ -213,7 +216,8 @@ export function UserSelector({
       mergeUserCache(fetched)
     })
     return () => { cancelled = true }
-  }, [value, userCache, usePortalApi, mergeUserCache])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valueKey, userCache, usePortalApi, mergeUserCache])
 
   useEffect(() => {
     if (open) queueMicrotask(() => setSelectedIds([...value]))

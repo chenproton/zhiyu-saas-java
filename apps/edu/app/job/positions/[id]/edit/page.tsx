@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState, useEffect, use, useRef } from 'react'
+import { Suspense, useState, useEffect, use, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -64,6 +64,11 @@ function PositionEditPageContent({ params }: PageProps) {
   const coverInputRef = useRef<HTMLInputElement>(null)
   const hasSavedRef = useRef(false)
   const isNewPosition = searchParams.get('new') === 'true'
+
+  const collaboratorIds = useMemo(
+    () => position?.collaborators.filter((id) => id !== position.createdBy) || [],
+    [position],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -342,7 +347,7 @@ function PositionEditPageContent({ params }: PageProps) {
                   <div>
                     <Label className="text-gray-500 text-xs">共建人</Label>
                     <UserSelector
-                      value={position.collaborators.filter((id) => id !== position.createdBy)}
+                      value={collaboratorIds}
                       onChange={(ids) => updatePositionData({ collaborators: ids.filter((id) => id !== position.createdBy) })}
                       multiple
                       placeholder="点击选择共建人"
