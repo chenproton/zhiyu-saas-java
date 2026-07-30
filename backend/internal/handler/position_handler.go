@@ -12,12 +12,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 )
 
 type PositionHandler struct {
-	DB *pgxpool.Pool
+	DB          *pgxpool.Pool
+	RedisClient *redis.Client
 }
 
 type PositionListResponse struct {
@@ -1015,14 +1017,44 @@ func (h *PositionHandler) Review(w http.ResponseWriter, r *http.Request) {
 
 func (h *PositionHandler) Publish(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusPublished)
+	h.clearPublicPositionsCache(r)
 }
 
 func (h *PositionHandler) Archive(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusArchived)
+	h.clearPublicPositionsCache(r)
 }
 
 func (h *PositionHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusDraft)
+	h.clearPublicPositionsCache(r)
+}
+
+func (h *PositionHandler) clearPublicPositionsCache(r *http.Request) {
+	if h.RedisClient == nil {
+		return
+	}
+	id := chi.URLParam(r, "id")
+	var tenantID string
+	err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM career_positions WHERE id = $1`, id).Scan(&tenantID)
+	if err != nil {
+		return
+	}
+	prefix := fmt.Sprintf("zhiyu:%s:", tenantID)
+	var cursor uint64
+	for {
+		keys, nextCursor, err := h.RedisClient.Scan(r.Context(), cursor, prefix+"*", 100).Result()
+		if err != nil {
+			return
+		}
+		if len(keys) > 0 {
+			h.RedisClient.Del(r.Context(), keys...)
+		}
+		cursor = nextCursor
+		if cursor == 0 {
+			break
+		}
+	}
 }
 
 func (h *PositionHandler) SaveDraft(w http.ResponseWriter, r *http.Request) {

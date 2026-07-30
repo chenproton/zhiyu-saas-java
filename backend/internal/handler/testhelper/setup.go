@@ -71,7 +71,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 
 	runTestMigrations(t, pool)
 
-	_ = router.NewHandlers(pool, TestJWTSecret, &handler.FileHandler{UploadDir: ""})
+	_ = router.NewHandlers(pool, TestJWTSecret, &handler.FileHandler{UploadDir: ""}, nil)
 
 	r := chi.NewRouter()
 	r.Route("/api/v1", func(r chi.Router) {

@@ -127,7 +127,7 @@ func New(db *pgxpool.Pool, jwtSecret string, redisClient *redis.Client, oplogBuf
 		r.Get("/api/v1/files/preview", fileHandler.Preview)
 	})
 
-	h := NewHandlers(db, jwtSecret, fileHandler)
+	h := NewHandlers(db, jwtSecret, fileHandler, redisClient)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"status":"ok"}`))

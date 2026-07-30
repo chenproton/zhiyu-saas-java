@@ -2,6 +2,7 @@ package router
 
 import (
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	"github.com/zhiyu-saas/backend/internal/handler"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
@@ -103,7 +104,7 @@ type Handlers struct {
 	scheduleImportHandler         *handler.ScheduleImportHandler
 }
 
-func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHandler) *Handlers {
+func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHandler, redisClient *redis.Client) *Handlers {
 	return &Handlers{
 		authHandler:                   handler.NewAuthHandler(db, jwtSecret),
 		fileHandler:                   fileHandler,
@@ -143,7 +144,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		userRelationHandler:           &handler.UserRelationHandler{DB: db},
 		workflowHandler:               &handler.WorkflowHandler{DB: db},
 		approvalHandler:               &handler.ApprovalHandler{DB: db},
-		positionHandler:               &handler.PositionHandler{DB: db},
+		positionHandler:               &handler.PositionHandler{DB: db, RedisClient: redisClient},
 		positionCloneHandler:          &handler.PositionCloneHandler{DB: db},
 		abilityHandler:                &handler.AbilityHandler{DB: db},
 		positionAbilityHandler:        &handler.PositionAbilityHandler{DB: db},
