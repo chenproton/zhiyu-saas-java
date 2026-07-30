@@ -466,7 +466,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const canBatchWithdraw = selectedFront.some((i) => i.status === "pending")
   const canBatchUnpublish = selectedFront.some((i) => i.status === "published")
   const canBatchPublish = selectedFront.some((i) => i.status === "approved")
-  const canBatchDelete = selectedFront.some((i) => i.status === "draft" || i.status === "rejected")
+  const canBatchDelete = selectedFront.some((i) => i.status === "draft" || i.status === "rejected" || i.status === "archived")
   const canBatchArchive = selectedFront.some((i) => ["draft", "rejected", "approved", "published"].includes(i.status))
 
   // ─── Handlers ──────────────────────────────────────────────────────────

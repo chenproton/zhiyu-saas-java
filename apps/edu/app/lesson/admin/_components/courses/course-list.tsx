@@ -273,7 +273,7 @@ export function CourseList({
                       邀请共建
                     </Button>
                   )}
-                  {onDelete && (
+                  {onDelete && ['draft', 'rejected', 'archived'].includes(course.status) && (
                     <Button
                       variant="ghost"
                       size="sm"

@@ -285,7 +285,7 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                         查看驳回原因
                       </Button>
                   )}
-                  {onDelete && (
+                  {onDelete && ['draft', 'rejected', 'archived'].includes(scenario.status) && (
                     <Button
                         variant="ghost"
                         size="sm"
