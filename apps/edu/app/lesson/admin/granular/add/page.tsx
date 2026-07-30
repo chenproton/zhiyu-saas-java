@@ -102,6 +102,7 @@ function AddGranularPageInner() {
           setCourseName(c.name)
           setHours(String(c.onlineHours ?? c.offlineHours ?? ""))
           setLearningGoal(c.description || "")
+          setLearningGoalPdf(((c as any).evalData?.descriptionPdf) || null)
           setMajor(c.majorName || "")
           setMajorId(c.majorId || "")
           setDifficulty(c.difficulty || 0)
