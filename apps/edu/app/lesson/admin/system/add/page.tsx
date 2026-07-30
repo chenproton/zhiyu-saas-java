@@ -256,7 +256,9 @@ function AddSystemPageInner() {
         }
         const initialModes: Record<string, AddMode> = {}
         loadedNodes.forEach((n) => {
-          if (n.type !== "original") {
+          if (n.type === "original") {
+            initialModes[n.id] = "quote"
+          } else {
             initialModes[n.id] = "upload"
           }
         })
@@ -506,7 +508,7 @@ function AddSystemPageInner() {
     setNodeModes((prev) => ({ ...prev, [selectedNodeId]: "upload" }))
   }, [selectedNodeId, setNodeModes])
 
-  const handleGrainConfirm = useCallback(() => {
+  const handleGrainConfirm = useCallback(async () => {
     if (!grainSelectedId || !selectedNodeId) return
     const grain = grainCourses.find((g) => g.id === grainSelectedId)
     if (!grain) return
@@ -525,11 +527,24 @@ function AddSystemPageInner() {
     setNodeModes((prev) => ({ ...prev, [selectedNodeId]: grainSelectorMode }))
     setHours(String(grain.duration))
     setLearningGoal(grain.description)
-    setSelectedResourceIds([])
-    setNodeEvalRuleConfig(undefined)
     setDifficulty(grain.difficulty)
     setShowGrainSelector(false)
-  }, [grainSelectedId, selectedNodeId, grainSelectorMode, handleUpdateNode, grainCourses, setNodeModes])
+
+    // Fetch full grain data for KPs and resources
+    try {
+      const grainFull = await courseApi.get(grain.id)
+      const grainKpIds = new Set((grainFull.knowledgePointIds || []).filter((id: any) => !!id))
+      setKnowledgePoints(
+        knowledgePool.filter((k: any) => grainKpIds.has(k.id))
+      )
+      const grainResIds = new Set((grainFull.resourceIds || []).filter((id: any) => !!id))
+      setSelectedResourceIds(Array.from(grainResIds) as string[])
+    } catch {
+      setKnowledgePoints([])
+      setSelectedResourceIds([])
+    }
+    setNodeEvalRuleConfig(undefined)
+  }, [grainSelectedId, selectedNodeId, grainSelectorMode, handleUpdateNode, grainCourses, setNodeModes, knowledgePool])
 
   /* ---------- submit: convert complete nodes to grain ---------- */
   const [convertDialogOpen, setConvertDialogOpen] = useState(false)
@@ -583,7 +598,8 @@ function AddSystemPageInner() {
 
       const refType: "normal" | "original" =
         node.type === "original" ? "original" : "normal"
-      const nodePayload = {
+      const isQuoteNode = refType === "original"
+      const nodePayload: any = {
         courseId: effectiveCourseId,
         parentId: realParentId,
         name: node.name,
@@ -592,17 +608,21 @@ function AddSystemPageInner() {
         refType,
         sourceId: node.sourceId,
         sourceName: node.sourceName,
-        teachingGoals: draft?.learningGoal || node.teachingGoals,
-        descriptionPdf: draft?.learningGoalPdf || node.descriptionPdf || undefined,
-        detailedDescription: draft?.detailedDescription || node.detailedDescription,
-        background: draft?.background || node.background,
-        estimatedHours: (draft?.estimatedHours || node.estimatedHours) ? parseFloat(draft?.estimatedHours || String(node.estimatedHours || "")) : undefined,
-        duration: draft?.hours ? parseFloat(draft.hours) : node.duration,
-        difficulty: draft?.difficulty ?? node.difficulty,
-        knowledgePointIds,
-        resourceIds: existingResourceIds,
         evalData: draft?.evalData || node.evalData || {},
         status: node.status || "draft",
+      }
+      if (!isQuoteNode) {
+        Object.assign(nodePayload, {
+          teachingGoals: draft?.learningGoal || node.teachingGoals,
+          descriptionPdf: draft?.learningGoalPdf || node.descriptionPdf || undefined,
+          detailedDescription: draft?.detailedDescription || node.detailedDescription,
+          background: draft?.background || node.background,
+          estimatedHours: (draft?.estimatedHours || node.estimatedHours) ? parseFloat(draft?.estimatedHours || String(node.estimatedHours || "")) : undefined,
+          duration: draft?.hours ? parseFloat(draft.hours) : node.duration,
+          difficulty: draft?.difficulty ?? node.difficulty,
+          knowledgePointIds,
+          resourceIds: existingResourceIds,
+        })
       }
 
       let realNodeId = node.id
@@ -991,15 +1011,20 @@ function AddSystemPageInner() {
 
               {selectedNode && (selectedNode.type === "original" || nodeModes[selectedNode.id]) && (
                 <>
+                  {(() => {
+                    const isQuoteMode = nodeModes[selectedNode?.id || ""] === "quote" || selectedNode?.type === "original"
+                    return (<>
                   {/* Module 1: Basic Info */}
                   <Card className="border-0 shadow-sm">
                     <CardHeader className="pb-3 flex flex-row items-center justify-between">
                       <CardTitle className="text-sm font-semibold flex items-center gap-2">
                         <BookOpen className="w-4 h-4 text-[#1890ff]" />
                         基本信息配置
+                        {isQuoteMode && <span className="text-xs text-gray-400 font-normal ml-2">（引用模式，不可编辑）</span>}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-0">
+                      <fieldset disabled={isQuoteMode} className={isQuoteMode ? "opacity-70" : ""}>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                           <Label className="text-xs">内容名称</Label>
@@ -1039,7 +1064,8 @@ function AddSystemPageInner() {
                           <Label className="text-xs">学习目标</Label>
                           <RichTextEditor value={learningGoal} onChange={setLearningGoal} minHeight={280} pdfUrl={learningGoalPdf} onPdfChange={setLearningGoalPdf} toast={toast} />
                         </div>
-                      </div>
+                        </div>
+                      </fieldset>
                     </CardContent>
                   </Card>
 
@@ -1052,6 +1078,7 @@ function AddSystemPageInner() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-0">
+                      <fieldset disabled={isQuoteMode} className={isQuoteMode ? "opacity-70" : ""}>
                       <KnowledgeSelector
                         selected={knowledgePoints}
                         pool={knowledgePool}
@@ -1068,6 +1095,7 @@ function AddSystemPageInner() {
                           setKnowledgePoints((prev) => [...prev, newKp])
                         }}
                       />
+                      </fieldset>
                     </CardContent>
                   </Card>
 
@@ -1080,6 +1108,7 @@ function AddSystemPageInner() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-0">
+                      <fieldset disabled={isQuoteMode} className={isQuoteMode ? "opacity-70" : ""}>
                       <ResourceSelector
                         pool={resourcePool}
                         selectedIds={selectedResourceIds}
@@ -1090,10 +1119,11 @@ function AddSystemPageInner() {
                         courseId={courseId || editId || undefined}
                         nodeId={selectedNodeId || undefined}
                       />
+                      </fieldset>
                     </CardContent>
                   </Card>
 
-                  {/* Module 4: Node Assessment */}
+                  {/* Module 4: Node Assessment (always editable) */}
                   <Card className="border-0 shadow-sm">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -1110,8 +1140,9 @@ function AddSystemPageInner() {
                         title="配置节点评价规则"
                       />
                     </CardContent>
-                  </Card>
-
+                   </Card>
+                    </>)
+                  })()}
                 </>
               )}
 
