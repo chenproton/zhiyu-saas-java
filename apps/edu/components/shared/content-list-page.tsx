@@ -674,13 +674,18 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
 
   const handleConfirmClone = async () => {
     if (!cloneTarget) return
+    const name = cloneRenameValue?.trim()
+    if (!name) {
+      toast({ variant: "destructive", title: "克隆失败", description: "请输入克隆名称" })
+      return
+    }
     try {
       if (itemApi.clone) {
-        await itemApi.clone(cloneTarget.id, { name: cloneRenameValue })
+        await itemApi.clone(cloneTarget.id, { name })
       } else {
         await itemApi.create({
           ...createPayload(currentUserId, entityLabel),
-          name: cloneRenameValue,
+          name,
           batchId: cloneTarget.batchId,
         })
       }
@@ -1415,7 +1420,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCloneRenameDialogOpen(false)}>取消</Button>
-            <Button onClick={handleConfirmClone} disabled={!cloneRenameValue.trim()}>确认克隆</Button>
+            <Button onClick={handleConfirmClone}>确认克隆</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
