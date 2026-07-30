@@ -708,12 +708,10 @@ function AddSystemPageInner() {
       })
       .filter(Boolean) as NodeResource[]
 
-    // Map quizzes from current node draft eval methods
-    const draft = nodeDraftsRef.current[selectedNodeId]
-    const nodeEvalData = draft?.evalData || node.evalData || {}
-    const nodeEvalMethods = (nodeEvalData as { methods?: string[] }).methods || []
-    const quizzesForCheck = nodeEvalMethods.length > 0
-      ? nodeEvalMethods.map((method, i) => ({
+    // Map quizzes from current node eval config
+    const nodeEvalMethodsForCheck = nodeEvalMethods.length > 0 ? nodeEvalMethods : ((node.evalData as { methods?: string[] } | undefined)?.methods || [])
+    const quizzesForCheck = nodeEvalMethodsForCheck.length > 0
+      ? nodeEvalMethodsForCheck.map((method, i) => ({
           id: `qz-${i}`,
           title: (String(method) === "exam" || method === "homework") ? "作业测评" : method === "question_bank" ? "题库测验" : method === "paper" ? "试卷测验" : "现场问答",
           type: method === "question_bank" ? "question_bank" as const : "paper" as const,
@@ -730,7 +728,7 @@ function AddSystemPageInner() {
       resources: resForCheck.length > 0 ? resForCheck : node.resources,
       quizzes: quizzesForCheck.length > 0 ? quizzesForCheck : node.quizzes,
     }
-  }, [selectedNodeId, nodes, learningGoal, hours, knowledgePoints, selectedResourceIds, resourcePool])
+  }, [selectedNodeId, nodes, learningGoal, hours, knowledgePoints, selectedResourceIds, resourcePool, nodeEvalMethods])
 
   return (
     <EditorShell

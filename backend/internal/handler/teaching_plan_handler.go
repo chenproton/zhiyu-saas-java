@@ -157,11 +157,15 @@ func (h *TeachingPlanHandler) Generate(w http.ResponseWriter, r *http.Request) {
 			if entryType == "scene" {
 				scenarioID = c.ScenarioID
 			}
+			courseID := (*string)(nil)
+			if c.CourseID != nil && *c.CourseID != "" {
+				courseID = c.CourseID
+			}
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO teaching_plan_entries (id, plan_id, course_name, course_code, type, nature, credits, total_hours, week_hours, start_week, end_week, week_pattern, scenario_id, status)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 1, $10, 'all', $11, 'planned')
+				INSERT INTO teaching_plan_entries (id, plan_id, course_name, course_code, type, nature, credits, total_hours, week_hours, start_week, end_week, week_pattern, scenario_id, course_id, status)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 1, $10, 'all', $11, $12, 'planned')
 			`, uuid.NewString(), planID, c.Name, emptyStrToNil(c.Code), entryType, emptyStrToNil(c.Nature),
-				c.Credits, c.Hours, weekHours, weeksCount, scenarioID); err != nil {
+				c.Credits, c.Hours, weekHours, weeksCount, scenarioID, courseID); err != nil {
 				return err
 			}
 		}
@@ -378,11 +382,12 @@ type planCourseRow struct {
 	PracticeHours int
 	Nature        *string
 	ScenarioID    *string
+	CourseID      *string
 }
 
 func (h *TeachingPlanHandler) fetchProgramCoursesForPlan(ctx context.Context, programID string) ([]planCourseRow, error) {
 	rows, err := h.DB.Query(ctx, `
-		SELECT name, code, credits, hours, theory_hours, practice_hours, nature, scenario_id
+		SELECT name, code, credits, hours, theory_hours, practice_hours, nature, scenario_id, course_id
 		FROM training_program_courses WHERE program_id = $1 ORDER BY semester, sort_order, id
 	`, programID)
 	if err != nil {
@@ -393,7 +398,7 @@ func (h *TeachingPlanHandler) fetchProgramCoursesForPlan(ctx context.Context, pr
 	items := make([]planCourseRow, 0)
 	for rows.Next() {
 		var c planCourseRow
-		if err := rows.Scan(&c.Name, &c.Code, &c.Credits, &c.Hours, &c.TheoryHours, &c.PracticeHours, &c.Nature, &c.ScenarioID); err != nil {
+		if err := rows.Scan(&c.Name, &c.Code, &c.Credits, &c.Hours, &c.TheoryHours, &c.PracticeHours, &c.Nature, &c.ScenarioID, &c.CourseID); err != nil {
 			return nil, err
 		}
 		items = append(items, c)
@@ -446,17 +451,18 @@ func (h *TeachingPlanHandler) fetchPlanEntry(ctx context.Context, id, tenantID s
 		SELECT e.id, e.plan_id, e.course_name, e.course_code, e.type, e.nature, e.credits, e.total_hours,
 			e.week_hours, e.start_week, e.end_week, e.week_pattern,
 			e.class_node_id, COALESCE(o.name, ''), e.teacher_id, COALESCE(u.name, ''), e.teacher_type, e.venue_type,
-			e.scenario_id, COALESCE(s.name, ''), e.status
+			e.scenario_id, COALESCE(s.name, ''), e.course_id, COALESCE(c.name, ''), e.status
 		FROM teaching_plan_entries e
 		JOIN teaching_plans p ON p.id = e.plan_id
 		LEFT JOIN organizations o ON o.id = e.class_node_id
 		LEFT JOIN users u ON u.id = e.teacher_id
 		LEFT JOIN scenarios s ON s.id = e.scenario_id
+		LEFT JOIN courses c ON c.id = e.course_id
 		WHERE e.id = $1 AND p.tenant_id = $2
 	`, id, tenantID).Scan(&e.ID, &e.PlanID, &e.CourseName, &e.CourseCode, &e.Type, &e.Nature, &e.Credits, &e.TotalHours,
 		&e.WeekHours, &e.StartWeek, &e.EndWeek, &e.WeekPattern,
 		&e.ClassNodeID, &e.ClassName, &e.TeacherID, &e.TeacherName, &e.TeacherType, &e.VenueType,
-		&e.ScenarioID, &e.ScenarioName, &e.Status)
+		&e.ScenarioID, &e.ScenarioName, &e.CourseID, &e.LinkedCourseName, &e.Status)
 	return e, err
 }
 
@@ -465,12 +471,13 @@ func (h *TeachingPlanHandler) fetchPlanEntries(ctx context.Context, planID, tena
 		SELECT e.id, e.plan_id, e.course_name, e.course_code, e.type, e.nature, e.credits, e.total_hours,
 			e.week_hours, e.start_week, e.end_week, e.week_pattern,
 			e.class_node_id, COALESCE(o.name, ''), e.teacher_id, COALESCE(u.name, ''), e.teacher_type, e.venue_type,
-			e.scenario_id, COALESCE(s.name, ''), e.status
+			e.scenario_id, COALESCE(s.name, ''), e.course_id, COALESCE(c.name, ''), e.status
 		FROM teaching_plan_entries e
 		JOIN teaching_plans p ON p.id = e.plan_id
 		LEFT JOIN organizations o ON o.id = e.class_node_id
 		LEFT JOIN users u ON u.id = e.teacher_id
 		LEFT JOIN scenarios s ON s.id = e.scenario_id
+		LEFT JOIN courses c ON c.id = e.course_id
 		WHERE e.plan_id = $1 AND p.tenant_id = $2
 		ORDER BY e.start_week, e.course_name, e.id
 	`, planID, tenantID)
@@ -485,7 +492,7 @@ func (h *TeachingPlanHandler) fetchPlanEntries(ctx context.Context, planID, tena
 		if err := rows.Scan(&e.ID, &e.PlanID, &e.CourseName, &e.CourseCode, &e.Type, &e.Nature, &e.Credits, &e.TotalHours,
 			&e.WeekHours, &e.StartWeek, &e.EndWeek, &e.WeekPattern,
 			&e.ClassNodeID, &e.ClassName, &e.TeacherID, &e.TeacherName, &e.TeacherType, &e.VenueType,
-			&e.ScenarioID, &e.ScenarioName, &e.Status); err != nil {
+			&e.ScenarioID, &e.ScenarioName, &e.CourseID, &e.LinkedCourseName, &e.Status); err != nil {
 			return nil, err
 		}
 		items = append(items, e)

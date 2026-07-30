@@ -46,6 +46,7 @@ type TrainingProgramCourseRequest struct {
 	Nature        string  `json:"nature"`
 	Assessment    *string `json:"assessment"`
 	ScenarioID    *string `json:"scenarioId"`
+	CourseID      *string `json:"courseId"`
 	SortOrder     int     `json:"sortOrder"`
 }
 
@@ -342,10 +343,10 @@ func (h *TrainingProgramHandler) PutCourses(w http.ResponseWriter, r *http.Reque
 				sortOrder = i
 			}
 			if _, err := tx.Exec(r.Context(), `
-				INSERT INTO training_program_courses (id, program_id, name, code, credits, hours, theory_hours, practice_hours, semester, nature, assessment, scenario_id, sort_order)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+				INSERT INTO training_program_courses (id, program_id, name, code, credits, hours, theory_hours, practice_hours, semester, nature, assessment, scenario_id, course_id, sort_order)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 			`, uuid.NewString(), id, c.Name, emptyStrToNil(c.Code), c.Credits, c.Hours, c.TheoryHours, c.PracticeHours,
-				c.Semester, nature, emptyStrToNil(c.Assessment), emptyStrToNil(c.ScenarioID), sortOrder); err != nil {
+				c.Semester, nature, emptyStrToNil(c.Assessment), emptyStrToNil(c.ScenarioID), emptyStrToNil(c.CourseID), sortOrder); err != nil {
 				return err
 			}
 		}
@@ -379,8 +380,10 @@ func (h *TrainingProgramHandler) fetchProgram(ctx context.Context, id, tenantID 
 func (h *TrainingProgramHandler) fetchProgramCourses(ctx context.Context, programID string) ([]domain.TrainingProgramCourse, error) {
 	rows, err := h.DB.Query(ctx, `
 		SELECT c.id, c.program_id, c.name, c.code, c.credits, c.hours, c.theory_hours, c.practice_hours,
-			c.semester, c.nature, c.assessment, c.scenario_id, COALESCE(s.name, ''), c.sort_order
-		FROM training_program_courses c LEFT JOIN scenarios s ON s.id = c.scenario_id
+			c.semester, c.nature, c.assessment, c.scenario_id, COALESCE(s.name, ''), c.course_id, COALESCE(co.name, ''), c.sort_order
+		FROM training_program_courses c
+		LEFT JOIN scenarios s ON s.id = c.scenario_id
+		LEFT JOIN courses co ON co.id = c.course_id
 		WHERE c.program_id = $1
 		ORDER BY c.semester, c.sort_order, c.id
 	`, programID)
@@ -393,7 +396,7 @@ func (h *TrainingProgramHandler) fetchProgramCourses(ctx context.Context, progra
 	for rows.Next() {
 		var c domain.TrainingProgramCourse
 		if err := rows.Scan(&c.ID, &c.ProgramID, &c.Name, &c.Code, &c.Credits, &c.Hours, &c.TheoryHours, &c.PracticeHours,
-			&c.Semester, &c.Nature, &c.Assessment, &c.ScenarioID, &c.ScenarioName, &c.SortOrder); err != nil {
+			&c.Semester, &c.Nature, &c.Assessment, &c.ScenarioID, &c.ScenarioName, &c.CourseID, &c.CourseName, &c.SortOrder); err != nil {
 			return nil, err
 		}
 		items = append(items, c)
