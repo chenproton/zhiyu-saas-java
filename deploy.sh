@@ -523,14 +523,18 @@ update_env_var "$ENV_FILE" "KKFILEVIEW_HOST_PORT" "$KKFILEVIEW_HOST_PORT"
 
 # kkFileView 对外地址：未手动设置时，根据当前 nginx 配置自动推导协议和域名
 if [[ -z "${KK_BASE_URL:-}" ]]; then
-  if [[ -f /etc/nginx/conf.d/ai-zhiyu-https.conf ]] || [[ -n "${NGINX_SSL_CERT:-}" ]] || [[ "${NGINX_PORT:-80}" == "443" ]]; then
+  if [[ -n "${NGINX_SSL_DOMAIN:-}" ]] || [[ -f /etc/nginx/conf.d/zhiyu-saas-ssl.conf ]] || [[ -f /etc/nginx/conf.d/ai-zhiyu-https.conf ]] || [[ -n "${NGINX_SSL_CERT:-}" ]] || [[ "${NGINX_PORT:-80}" == "443" ]]; then
     kk_scheme="https"
   else
     kk_scheme="http"
   fi
-  kk_host="${NGINX_SERVER_NAME:-_}"
-  [[ "$kk_host" == "_" ]] && kk_host="localhost"
-  KK_BASE_URL="${kk_scheme}://${kk_host}:${NGINX_PORT}/kkfileview"
+  if [[ -n "${NGINX_SSL_DOMAIN:-}" ]]; then
+    kk_host="$NGINX_SSL_DOMAIN"
+  else
+    kk_host="${NGINX_SERVER_NAME:-_}"
+    [[ "$kk_host" == "_" ]] && kk_host="localhost"
+  fi
+  KK_BASE_URL="${kk_scheme}://${kk_host}/kkfileview"
 fi
 update_env_var "$ENV_FILE" "KK_BASE_URL" "$KK_BASE_URL"
 
