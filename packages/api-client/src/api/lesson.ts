@@ -13,7 +13,11 @@ import type { SystemCourseNode } from "../types/lesson-source"
 import { request, buildQuery, ListResponse } from "../api-helpers"
 import { createCrudApi, createContentApi } from "../api-factory"
 
-export const courseApi = createContentApi<Course, Omit<Course, "id" | "nodeCount" | "resourceCount" | "studyCount" | "createdAt" | "updatedAt">, Partial<Omit<Course, "id" | "createdAt" | "updatedAt">>>("/lesson/courses")
+export const courseApi = {
+  ...createContentApi<Course, Omit<Course, "id" | "nodeCount" | "resourceCount" | "studyCount" | "createdAt" | "updatedAt">, Partial<Omit<Course, "id" | "createdAt" | "updatedAt">>>("/lesson/courses"),
+  clone: (id: string, body: { name: string }) =>
+    request<Course>(`/lesson/courses/${id}/clone`, { method: "POST", body: JSON.stringify(body) }),
+}
 
 export interface CourseAssessmentExam {
   id: string
