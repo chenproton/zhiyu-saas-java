@@ -69,6 +69,7 @@ const DataContext = createContext<DataContextValue | null>(null)
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { toast } = useToast()
+  const [evaluationLoading, setEvaluationLoading] = useState(false)
   const [questionBanks, setQuestionBanks] = useState<QuestionBank[]>([])
   const [questions, setQuestions] = useState<Question[]>([])
   const [exams, setExams] = useState<Exam[]>([])
@@ -248,11 +249,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false
     const loadAll = async () => {
       try {
+        setEvaluationLoading(true)
         await Promise.all(tasks.map((fn) => fn()))
       } catch (err) {
         if (!cancelled) {
           console.error('Failed to load evaluation data', err)
         }
+      } finally {
+        if (!cancelled) setEvaluationLoading(false)
       }
     }
     loadAll()
@@ -536,6 +540,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [exams, loadExams])
 
   const value: DataContextValue = {
+    evaluationLoading,
     questionBanks,
     getQuestionBank,
     createQuestionBank,

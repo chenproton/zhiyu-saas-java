@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload, Copy, Users, Building2, ImageIcon, List, LayoutGrid, FolderInput, ChevronDown, FileDown } from "lucide-react"
+import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload, Copy, Users, Building2, ImageIcon, List, LayoutGrid, FolderInput, ChevronDown, FileDown, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -81,6 +81,7 @@ export default function QuestionBankDetailPage() {
     moveQuestions,
     questionBanks,
     loadBankQuestions,
+    evaluationLoading,
   } = useData()
 
   const bank = getQuestionBank(bankId)
@@ -143,6 +144,13 @@ export default function QuestionBankDetailPage() {
   }, [questions, search, typeFilter, creatorFilter])
 
   if (!bank) {
+    if (evaluationLoading) {
+      return (
+        <div className="flex h-[50vh] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      )
+    }
     return (
       <div className="flex h-[50vh] items-center justify-center">
         <div className="text-center">
