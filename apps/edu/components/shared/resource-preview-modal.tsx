@@ -175,21 +175,23 @@ function ResourcePreviewModalInner({ resource, open, onOpenChange, index = 0 }: 
   if (!open || !resource || !mounted) return null
 
   return createPortal(
-    <div
-      ref={contentRef}
-      className={cn(
-        "fixed top-1/2 left-1/2 flex flex-col w-full max-w-[calc(100%-2rem)] sm:max-w-4xl h-[85vh] bg-background rounded-lg border p-3 shadow-none group",
-        "contain-[layout_style_paint]",
-        (dragging || resizing) && "will-change-transform"
-      )}
-      style={{
-        transform: `translate3d(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px), 0)`,
-        width: size.width,
-        height: size.height,
-        zIndex,
-      }}
-      onMouseDown={() => bringToFrontRef.current()}
-    >
+    <div className="fixed inset-0 z-[90]" onClick={() => onOpenChange(false)}>
+      <div
+        ref={contentRef}
+        className={cn(
+          "fixed top-1/2 left-1/2 flex flex-col w-full max-w-[calc(100%-2rem)] sm:max-w-4xl h-[85vh] bg-background rounded-lg border p-3 shadow-none group",
+          "contain-[layout_style_paint]",
+          (dragging || resizing) && "will-change-transform"
+        )}
+        style={{
+          transform: `translate3d(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px), 0)`,
+          width: size.width,
+          height: size.height,
+          zIndex,
+        }}
+        onMouseDown={() => bringToFrontRef.current()}
+        onClick={(e) => e.stopPropagation()}
+      >
       <div
         className="shrink-0 flex flex-row items-center justify-between gap-4 cursor-move select-none"
         onMouseDown={handleMouseDown}
@@ -236,6 +238,7 @@ function ResourcePreviewModalInner({ resource, open, onOpenChange, index = 0 }: 
       >
         <div className="absolute bottom-0 right-0 w-2 h-2 border-r-2 border-b-2 border-muted-foreground" />
       </div>
+    </div>
     </div>,
     document.body
   )

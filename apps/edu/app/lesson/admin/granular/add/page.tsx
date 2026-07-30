@@ -45,6 +45,8 @@ import PublishCheckPanel from "../../system/add/_components/PublishCheckPanel"
 import { EditorShell } from "@/components/shared/editor-shell"
 import { BatchSelector } from "@/components/shared/batch-selector"
 
+const customKnowledgePointIds = new Set<string>()
+
 function AddGranularPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -75,7 +77,6 @@ function AddGranularPageInner() {
   /* module 2: knowledge points */
   const [knowledgePool, setKnowledgePool] = useState<KnowledgePointItem[]>([])
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePointItem[]>([])
-  const customKnowledgePointIds = new Set<string>()
 
   /* module 3: resources */
   const [resourcePool, setResourcePool] = useState<ResourceItem[]>([])
