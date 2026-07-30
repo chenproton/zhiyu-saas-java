@@ -8,9 +8,21 @@ import {
   BookOpen,
   GraduationCap,
   ImageUp,
+  Plus,
 } from "lucide-react"
 import { toast, Toaster } from "sonner"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -90,6 +102,7 @@ function AddGranularPageInner() {
           code: k.code,
           description: k.description,
           linked: !customKnowledgePointIds.has(k.id),
+          granularLessons: (k as any).granularLessonIds || [],
         }))
         setKnowledgePool(pool)
 
@@ -441,13 +454,33 @@ function AddGranularPageInner() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <ResourceSelector
-                  pool={resourcePool}
-                  selectedIds={selectedResourceIds}
-                  onChange={setSelectedResourceIds}
-                  onUpload={(r) => setResourcePool((prev) => [...prev, r])}
-                  courseId={editId || undefined}
-                />
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full border-dashed">
+                      <Plus className="mr-2 h-4 w-4" />
+                      添加课程资源
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>添加课程资源</DialogTitle>
+                      <DialogDescription>从资源库中选择或上传新资源</DialogDescription>
+                    </DialogHeader>
+                    <ResourceSelector
+                      standalone={false}
+                      pool={resourcePool}
+                      selectedIds={selectedResourceIds}
+                      onChange={setSelectedResourceIds}
+                      onUpload={(r) => setResourcePool((prev) => [...prev, r])}
+                      courseId={editId || undefined}
+                    />
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button variant="outline">关闭</Button>
+                      </DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </CardContent>
             </Card>
 
