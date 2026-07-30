@@ -5,6 +5,8 @@ import type { SystemCourseNode, NodeRefType } from "@/lib/types/lesson-source"
 
 interface PublishCheckPanelProps {
   node: SystemCourseNode | undefined
+  hideEval?: boolean
+  hideDetailedDescription?: boolean
 }
 
 interface CheckItem {
@@ -59,7 +61,7 @@ const CHECK_ITEMS: CheckItem[] = [
   },
 ]
 
-export default function PublishCheckPanel({ node }: PublishCheckPanelProps) {
+export default function PublishCheckPanel({ node, hideEval = false, hideDetailedDescription = false }: PublishCheckPanelProps) {
   const nodeEvalData = (node?.evalData || {}) as { methods?: string[]; evalRuleConfig?: Record<string, any> }
   const evalMethods = nodeEvalData.methods || nodeEvalData.evalRuleConfig?.evaluationMethods || []
   const evalCheck: CheckItem & { passed: boolean; statusText: string } = {
@@ -81,28 +83,30 @@ export default function PublishCheckPanel({ node }: PublishCheckPanelProps) {
     return (
       <aside className="w-64 shrink-0">
         <div className="bg-white rounded-xl border border-gray-100 p-4 sticky top-[88px]">
-          <div className="space-y-2">
-            <div className={`flex items-center gap-2 p-2 rounded ${evalCheck.passed ? "" : "bg-amber-50"}`}>
-              <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${evalCheck.passed ? "bg-green-100" : "bg-amber-100"}`}>
-                {evalCheck.passed ? (
-                  <CheckCircle2 className="w-3 h-3 text-green-500" />
-                ) : (
-                  <AlertCircle className="w-3 h-3 text-amber-500" />
-                )}
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-gray-800">{evalCheck.label}</p>
-                <p className={`text-[10px] truncate ${evalCheck.passed ? "text-green-600" : "text-amber-600"}`}>{evalCheck.statusText}</p>
+          {!hideEval && (
+            <div className="space-y-2">
+              <div className={`flex items-center gap-2 p-2 rounded ${evalCheck.passed ? "" : "bg-amber-50"}`}>
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${evalCheck.passed ? "bg-green-100" : "bg-amber-100"}`}>
+                  {evalCheck.passed ? (
+                    <CheckCircle2 className="w-3 h-3 text-green-500" />
+                  ) : (
+                    <AlertCircle className="w-3 h-3 text-amber-500" />
+                  )}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-gray-800">{evalCheck.label}</p>
+                  <p className={`text-[10px] truncate ${evalCheck.passed ? "text-green-600" : "text-amber-600"}`}>{evalCheck.statusText}</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
           <p className="text-sm text-gray-400 text-center py-4 mt-2">请选择一个节点查看完整检查</p>
         </div>
       </aside>
     )
   }
 
-  const items = CHECK_ITEMS
+  const items = CHECK_ITEMS.filter((item) => !(hideDetailedDescription && item.key === "detailedDescription"))
 
   const results = items.map((item) => ({
     ...item,
@@ -110,7 +114,9 @@ export default function PublishCheckPanel({ node }: PublishCheckPanelProps) {
     statusText: item.check(node) ? item.getStatus(node) : `未设置${item.label}`,
   }))
 
-  results.push(evalCheck)
+  if (!hideEval) {
+    results.push(evalCheck)
+  }
 
   const completed = results.filter((r) => r.passed).length
   const total = results.length

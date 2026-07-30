@@ -487,7 +487,7 @@ function AddGranularPageInner() {
             <div className="h-12" />
           </main>
 
-          <PublishCheckPanel node={currentCheckNode} />
+          <PublishCheckPanel node={currentCheckNode} hideEval hideDetailedDescription />
         </div>
         <Toaster />
       </EditorShell>
