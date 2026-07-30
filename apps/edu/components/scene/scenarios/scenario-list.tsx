@@ -1,11 +1,12 @@
 "use client"
 
-import { Copy, Eye, GitBranch, Pencil, Rocket, Send, Trash2, Undo2, CheckCircle, XCircle, ArrowDownFromLine, MessageSquare, UserPlus, Archive } from "lucide-react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { GitBranch } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { StatusBadge } from "@/components/shared/status-badge"
-import { HoverActionBar } from "@/components/shared/hover-action-bar"
+import { StatusActionBar } from "@/components/shared/status-action-bar"
 import { cn } from "@/lib/utils"
 
 export interface ScenarioListItem {
@@ -32,8 +33,6 @@ interface ScenarioListProps<T extends ScenarioListItem = ScenarioListItem> {
   onDelete?: (scenario: T) => void
   onSubmitApproval?: (scenario: T) => void
   onWithdrawApproval?: (scenario: T) => void
-  onApprove?: (scenario: T) => void
-  onReject?: (scenario: T) => void
   onPublish?: (scenario: T) => void
   onUnpublish?: (scenario: T) => void
   onArchive?: (scenario: T) => void
@@ -52,8 +51,6 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
   onDelete,
   onSubmitApproval,
   onWithdrawApproval,
-  onApprove,
-  onReject,
   onPublish,
   onUnpublish,
   onArchive,
@@ -62,6 +59,7 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
   className,
   basePath = "/scenarios",
 }: ScenarioListProps<T>) {
+  const router = useRouter()
   if (scenarios.length === 0) return null
 
   const allSelected = scenarios.length > 0 && scenarios.every((s) => selectedIds.includes(s.id))
@@ -130,176 +128,28 @@ export function ScenarioList<T extends ScenarioListItem = ScenarioListItem>({
                   </Link>
               </div>
               <div className="col-span-1 text-right relative">
-                <HoverActionBar>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
-                      <Link href={`/scene/landing/${scenario.id}`}>
-                        <Eye className="mr-1 h-3 w-3" />
-                        查看详情
-                      </Link>
-                    </Button>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
-                      <Link href={`${basePath}/${scenario.id}/edit`}>
-                        <Pencil className="mr-1 h-3 w-3" />
-                        编辑
-                      </Link>
-                    </Button>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
+                <StatusActionBar
+                  status={scenario.status}
+                  onView={() => router.push(`/scene/landing/${scenario.id}`)}
+                  onEdit={() => router.push(`${basePath}/${scenario.id}/edit`)}
+                  onClone={onClone ? () => onClone(scenario) : undefined}
+                  onSubmit={onSubmitApproval ? () => onSubmitApproval(scenario) : undefined}
+                  onWithdraw={onWithdrawApproval ? () => onWithdrawApproval(scenario) : undefined}
+                  onPublish={onPublish ? () => onPublish(scenario) : undefined}
+                  onUnpublish={onUnpublish ? () => onUnpublish(scenario) : undefined}
+                  onArchive={onArchive ? () => onArchive(scenario) : undefined}
+                  onDelete={onDelete ? () => onDelete(scenario) : undefined}
+                  onInvite={onInviteCoBuild ? () => onInviteCoBuild(scenario) : undefined}
+                  onViewRejectReason={onViewRejectReason ? () => onViewRejectReason(scenario) : undefined}
+                  extraActions={
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
                       <Link href={`${basePath}/${scenario.id}/edit/tasks`}>
                         <GitBranch className="mr-1 h-3 w-3" />
                         编排任务
                       </Link>
                     </Button>
-                  <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onClone?.(scenario)
-                      }}
-                    >
-                      <Copy className="mr-1 h-3 w-3" />
-                      克隆场景
-                    </Button>
-                  <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onInviteCoBuild?.(scenario)
-                      }}
-                    >
-                      <UserPlus className="mr-1 h-3 w-3" />
-                      邀请共建
-                    </Button>
-                  {(scenario.status === "draft" || scenario.status === "rejected") && onSubmitApproval && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onSubmitApproval(scenario)
-                        }}
-                      >
-                        <Send className="mr-1 h-3 w-3" />
-                        提交审批
-                      </Button>
-                  )}
-                  {scenario.status === "pending" && onWithdrawApproval && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-amber-600 hover:text-amber-700"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onWithdrawApproval(scenario)
-                        }}
-                      >
-                        <Undo2 className="mr-1 h-3 w-3" />
-                        撤回审批
-                      </Button>
-                  )}
-                  {scenario.status === "pending" && onApprove && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onApprove(scenario)
-                        }}
-                      >
-                        <CheckCircle className="mr-1 h-3 w-3" />
-                        通过
-                      </Button>
-                  )}
-                  {scenario.status === "pending" && onReject && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onReject(scenario)
-                        }}
-                      >
-                        <XCircle className="mr-1 h-3 w-3" />
-                        驳回
-                      </Button>
-                  )}
-                  {scenario.status === "approved" && onPublish && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onPublish(scenario)
-                        }}
-                      >
-                        <Rocket className="mr-1 h-3 w-3" />
-                        发布
-                      </Button>
-                  )}
-                  {scenario.status === "published" && onUnpublish && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onUnpublish(scenario)
-                        }}
-                      >
-                        <ArrowDownFromLine className="mr-1 h-3 w-3" />
-                        取消发布
-                      </Button>
-                  )}
-                  {scenario.status !== "pending" && scenario.status !== "archived" && onArchive && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-purple-600 hover:text-purple-700"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onArchive(scenario)
-                        }}
-                      >
-                        <Archive className="mr-1 h-3 w-3" />
-                        归档
-                      </Button>
-                  )}
-                  {scenario.status === "rejected" && onViewRejectReason && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onViewRejectReason(scenario)
-                        }}
-                      >
-                        <MessageSquare className="mr-1 h-3 w-3" />
-                        查看驳回原因
-                      </Button>
-                  )}
-                  {onDelete && ['draft', 'rejected', 'archived'].includes(scenario.status) && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onDelete(scenario)
-                        }}
-                      >
-                        <Trash2 className="mr-1 h-3 w-3" />
-                        删除
-                      </Button>
-                  )}
-                </HoverActionBar>
+                  }
+                />
               </div>
             </div>
           )

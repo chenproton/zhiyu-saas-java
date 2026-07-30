@@ -1,11 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import {
-  Archive,
-  Eye,
-  MessageSquare,
-} from "lucide-react"
+import { Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -18,7 +14,7 @@ import {
 } from "@/components/ui/table"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { TableRowActions } from "@/components/shared/table-row-actions"
-import { EvaluationStatusActions } from "@/components/evaluation/evaluation-status-actions"
+import { StatusActionBar } from "@/components/shared/status-action-bar"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth-provider"
 import type { ContentListItem, ListRenderProps } from "@/components/shared/content-list-page"
@@ -152,49 +148,22 @@ export function EvaluationListTable<T extends ContentListItem = ContentListItem>
                     查看
                   </Button>
                 ) : (
-                  <>
-                    <EvaluationStatusActions
-                      type={type}
-                      status={item.status}
-                      onView={() => router.push(detailHref(item.id))}
-                      onEdit={item.status !== "archived" ? () => router.push(detailHref(item.id)) : undefined}
-                      onClone={() => onClone(item)}
-                      onDelete={() => onDelete(item)}
-                      onInvite={() => onInviteCoBuild(item)}
-                      onStatusChange={(action) => {
-                        switch (action) {
-                          case 'submit': onSubmitApproval(item); break
-                          case 'withdraw': onWithdrawApproval(item); break
-                          case 'publish': onPublish(item); break
-                          case 'unpublish': onUnpublish(item); break
-                          case 'approve': onReview?.(item.id, "approved"); break
-                          case 'reject': onReview?.(item.id, "rejected"); break
-                        }
-                      }}
-                    />
-                    {item.status === "rejected" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-orange-600 hover:text-orange-700"
-                        onClick={() => onViewRejectReason(item)}
-                      >
-                        <MessageSquare className="mr-1 h-3 w-3" />
-                        查看驳回原因
-                      </Button>
-                    )}
-                    {item.status !== "pending" && item.status !== "archived" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-purple-600 hover:text-purple-700"
-                        onClick={() => onArchive(item)}
-                      >
-                        <Archive className="mr-1 h-3 w-3" />
-                        归档
-                      </Button>
-                    )}
-                  </>
+                  <StatusActionBar
+                    status={item.status}
+                    onView={() => router.push(detailHref(item.id))}
+                    onEdit={() => router.push(detailHref(item.id))}
+                    onClone={() => onClone(item)}
+                    onSubmit={() => onSubmitApproval(item)}
+                    onWithdraw={() => onWithdrawApproval(item)}
+                    onApprove={onReview ? () => onReview(item.id, "approved") : undefined}
+                    onReject={onReview ? () => onReview(item.id, "rejected") : undefined}
+                    onPublish={() => onPublish(item)}
+                    onUnpublish={() => onUnpublish(item)}
+                    onArchive={() => onArchive(item)}
+                    onDelete={() => onDelete(item)}
+                    onInvite={() => onInviteCoBuild(item)}
+                    onViewRejectReason={() => onViewRejectReason(item)}
+                  />
                 )}
               </TableRowActions>
             </TableRow>

@@ -1,12 +1,13 @@
 "use client"
 
-import { Copy, Eye, GitBranch, Pencil, Rocket, Send, Trash2, Undo2, ArrowDownFromLine, UserPlus, Archive, CheckCircle, XCircle, MessageSquare } from "lucide-react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { GitBranch } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import { StatusBadge } from "@/components/shared/status-badge"
-import { HoverActionBar } from "@/components/shared/hover-action-bar"
+import { StatusActionBar } from "@/components/shared/status-action-bar"
 import type { Position } from "@/lib/types/job-source"
 
 interface PositionListProps {
@@ -18,8 +19,6 @@ interface PositionListProps {
   onDelete?: (position: Position) => void
   onSubmitApproval?: (position: Position) => void
   onWithdrawApproval?: (position: Position) => void
-  onApprove?: (position: Position) => void
-  onReject?: (position: Position) => void
   onViewRejectReason?: (position: Position) => void
   onPublish?: (position: Position) => void
   onUnpublish?: (position: Position) => void
@@ -42,8 +41,6 @@ export function PositionList({
   onDelete,
   onSubmitApproval,
   onWithdrawApproval,
-  onApprove,
-  onReject,
   onViewRejectReason,
   onPublish,
   onUnpublish,
@@ -56,6 +53,7 @@ export function PositionList({
   majorMap,
   batchMap,
 }: PositionListProps) {
+  const router = useRouter()
   const getIndustryName = (id?: string) => {
     if (!id) return '-'
     return industryMap?.get(id) || '-'
@@ -142,180 +140,28 @@ export function PositionList({
               </div>
               <div className="col-span-1 text-center text-xs text-slate-500">{position.favoriteCount}</div>
               <div className="col-span-1 text-right relative">
-                <HoverActionBar>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
-                    <Link href={`/job/student/${position.id}`} className="flex items-center">
-                      <Eye className="mr-1 h-3 w-3" />
-                      查看详情
-                    </Link>
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
-                    <Link href={`${basePath}/${position.id}/edit`}>
-                      <Pencil className="mr-1 h-3 w-3" />
-                      编辑
-                    </Link>
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
-                    <Link href={`${basePath}/${position.id}/edit?step=${configureStepParam}`}>
-                      <GitBranch className="mr-1 h-3 w-3" />
-                      配置能力
-                    </Link>
-                  </Button>
-                  {onClone && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onClone(position)
-                      }}
-                    >
-                      <Copy className="mr-1 h-3 w-3" />
-                      克隆
+                <StatusActionBar
+                  status={position.status}
+                  onView={() => router.push(`/job/student/${position.id}`)}
+                  onEdit={() => router.push(`${basePath}/${position.id}/edit`)}
+                  onClone={onClone ? () => onClone(position) : undefined}
+                  onSubmit={onSubmitApproval ? () => onSubmitApproval(position) : undefined}
+                  onWithdraw={onWithdrawApproval ? () => onWithdrawApproval(position) : undefined}
+                  onPublish={onPublish ? () => onPublish(position) : undefined}
+                  onUnpublish={onUnpublish ? () => onUnpublish(position) : undefined}
+                  onArchive={onArchive ? () => onArchive(position) : undefined}
+                  onDelete={onDelete ? () => onDelete(position) : undefined}
+                  onInvite={onInviteCoBuild ? () => onInviteCoBuild(position) : undefined}
+                  onViewRejectReason={onViewRejectReason ? () => onViewRejectReason(position) : undefined}
+                  extraActions={
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
+                      <Link href={`${basePath}/${position.id}/edit?step=${configureStepParam}`}>
+                        <GitBranch className="mr-1 h-3 w-3" />
+                        配置能力
+                      </Link>
                     </Button>
-                  )}
-                  {(position.status === "draft" || position.status === "rejected") && onSubmitApproval && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onSubmitApproval(position)
-                      }}
-                    >
-                      <Send className="mr-1 h-3 w-3" />
-                      提交审批
-                    </Button>
-                  )}
-                  {position.status === "pending" && onWithdrawApproval && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-amber-600 hover:text-amber-700"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onWithdrawApproval(position)
-                      }}
-                    >
-                      <Undo2 className="mr-1 h-3 w-3" />
-                      撤回审批
-                    </Button>
-                  )}
-                  {position.status === "pending" && onApprove && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onApprove(position)
-                      }}
-                    >
-                      <CheckCircle className="mr-1 h-3 w-3" />
-                      通过
-                    </Button>
-                  )}
-                  {position.status === "pending" && onReject && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onReject(position)
-                      }}
-                    >
-                      <XCircle className="mr-1 h-3 w-3" />
-                      驳回
-                    </Button>
-                  )}
-                  {position.status === "rejected" && onViewRejectReason && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onViewRejectReason(position)
-                      }}
-                    >
-                      <MessageSquare className="mr-1 h-3 w-3" />
-                      查看驳回原因
-                    </Button>
-                  )}
-                  {position.status === "approved" && onPublish && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onPublish(position)
-                      }}
-                    >
-                      <Rocket className="mr-1 h-3 w-3" />
-                      发布
-                    </Button>
-                  )}
-                  {position.status === "published" && onUnpublish && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onUnpublish(position)
-                      }}
-                    >
-                      <ArrowDownFromLine className="mr-1 h-3 w-3" />
-                      取消发布
-                    </Button>
-                  )}
-                  {position.status !== "pending" && position.status !== "archived" && onArchive && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-purple-600 hover:text-purple-700"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onArchive(position)
-                      }}
-                    >
-                      <Archive className="mr-1 h-3 w-3" />
-                      归档
-                    </Button>
-                  )}
-                  {onInviteCoBuild && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onInviteCoBuild(position)
-                      }}
-                    >
-                      <UserPlus className="mr-1 h-3 w-3" />
-                      邀请共建
-                    </Button>
-                  )}
-                  {onDelete && ['draft', 'rejected', 'archived'].includes(position.status) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onDelete(position)
-                      }}
-                    >
-                      <Trash2 className="mr-1 h-3 w-3" />
-                      删除
-                    </Button>
-                  )}
-                </HoverActionBar>
+                  }
+                />
               </div>
             </div>
           )
