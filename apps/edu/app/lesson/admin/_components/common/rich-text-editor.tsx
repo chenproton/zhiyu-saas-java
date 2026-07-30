@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import {
   Bold,
   Italic,
@@ -25,17 +25,30 @@ import {
   Heading2,
   Upload,
   Trash2,
-  FileText,
+  Eye,
+  File,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { fileApi } from "@/lib/api"
 
 interface RichTextEditorProps {
   value: string
   onChange: (value: string) => void
   placeholder?: string
   minHeight?: number
+  pdfUrl?: string | null
+  onPdfChange?: (url: string | null) => void
+  toast: any
 }
 
 const toolbarItems = [
@@ -50,9 +63,42 @@ const toolbarItems = [
   [{ icon: <Palette className="h-4 w-4" />, label: "字体颜色" }, { icon: <Sparkles className="h-4 w-4" />, label: "背景色" }],
 ]
 
-export function RichTextEditor({ value, onChange, placeholder, minHeight = 300 }: RichTextEditorProps) {
+export function RichTextEditor({ value, onChange, placeholder, minHeight = 300, pdfUrl, onPdfChange, toast }: RichTextEditorProps) {
   const [mode, setMode] = useState<"rich_text" | "pdf">("rich_text")
-  const [pdfName, setPdfName] = useState<string | null>(null)
+  const [pdfUploading, setPdfUploading] = useState(false)
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false)
+  const pdfInputRef = useRef<HTMLInputElement>(null)
+
+  const pdfFileName = pdfUrl ? pdfUrl.split("/").pop() || pdfUrl : ""
+
+  const handlePdfUpload = async (file: File) => {
+    if (!file) return
+    if (file.type !== "application/pdf") {
+      toast({ variant: "destructive", title: "请上传 PDF 文件" })
+      return
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ variant: "destructive", title: "文件大小超过 20MB" })
+      return
+    }
+    setPdfUploading(true)
+    try {
+      const res = await fileApi.upload(file)
+      onPdfChange?.(res.url)
+      toast({ title: "上传成功" })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "上传失败", description: err.message })
+    } finally {
+      setPdfUploading(false)
+    }
+  }
+
+  const onPdfDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const file = e.dataTransfer.files?.[0]
+    if (file) handlePdfUpload(file)
+  }
 
   const defaultPlaceholder = `课程目标
 
@@ -93,7 +139,6 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 300 }
             className="border rounded-lg overflow-hidden flex flex-col"
             style={{ minHeight }}
           >
-            {/* Toolbar */}
             <div className="bg-gray-50 border-b px-3 py-2 flex flex-wrap gap-1">
               {toolbarItems.map((group, gi) => (
                 <div key={gi} className="flex items-center gap-0.5 mr-2">
@@ -104,10 +149,7 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 300 }
                       size="sm"
                       className="h-8 w-8 p-0 text-gray-600 hover:text-primary hover:bg-primary/5"
                       title={item.label}
-                      onClick={() => {
-                        // Mock toolbar action - in real app would format text
-                      
-                      }}
+                      onClick={() => {}}
                     >
                       {item.icon}
                     </Button>
@@ -115,7 +157,6 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 300 }
                 </div>
               ))}
             </div>
-            {/* Editor Area */}
             <div className="p-4 flex-1 bg-white">
               <Textarea
                 value={value}
@@ -125,7 +166,6 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 300 }
                 style={{ minHeight: minHeight - 100 }}
               />
             </div>
-            {/* Status Bar */}
             <div className="bg-gray-50 border-t px-3 py-1.5 flex items-center justify-between text-xs text-gray-400">
               <span>纯文本模式</span>
               <span>{value.length} 字符</span>
@@ -139,34 +179,78 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 300 }
           ) : null}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-8 space-y-4">
-          {pdfName ? (
-            <div className="text-center space-y-3">
+        <div
+          className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-8 space-y-4 cursor-pointer hover:border-primary/30 hover:bg-gray-50/50 transition-colors"
+          onClick={() => !pdfUploading && pdfInputRef.current?.click()}
+          onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+          onDrop={onPdfDrop}
+        >
+          <input
+            ref={pdfInputRef}
+            type="file"
+            accept="application/pdf"
+            className="hidden"
+            onChange={e => {
+              const file = e.target.files?.[0]
+              if (file) handlePdfUpload(file)
+              e.target.value = ""
+            }}
+          />
+          {pdfUrl ? (
+            <div className="text-center space-y-3 pointer-events-none">
               <div className="w-24 h-32 bg-red-50 border border-red-200 rounded-lg flex flex-col items-center justify-center mx-auto">
-                <FileText className="h-10 w-10 text-red-500 mb-2" />
+                <File className="h-10 w-10 text-red-500 mb-2" />
                 <span className="text-[10px] text-red-600 font-medium">PDF</span>
               </div>
-              <p className="text-sm font-medium text-gray-700">{pdfName}</p>
-              <Button variant="outline" size="sm" onClick={() => setPdfName(null)}>
-                <Trash2 className="h-4 w-4 mr-1" />移除文件
-              </Button>
+              <p className="text-sm font-medium text-gray-700 max-w-xs truncate">{pdfFileName}</p>
             </div>
           ) : (
             <>
               <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center">
-                <Upload className="h-8 w-8 text-gray-400" />
+                {pdfUploading ? <Loader2 className="h-8 w-8 text-gray-400 animate-spin" /> : <Upload className="h-8 w-8 text-gray-400" />}
               </div>
               <div className="text-center">
                 <p className="text-sm font-medium text-gray-700">点击或拖拽上传课程说明书</p>
                 <p className="text-xs text-gray-500 mt-1">支持 PDF 格式，最大 20MB</p>
               </div>
-              <Button variant="outline" size="sm" disabled>
-                <Upload className="h-4 w-4 mr-1" />上传文件
-              </Button>
             </>
+          )}
+          {pdfUrl && (
+            <div className="flex items-center gap-2 pointer-events-auto" onClick={e => e.stopPropagation()}>
+              <Button variant="outline" size="sm" onClick={() => setPdfPreviewOpen(true)}>
+                <Eye className="h-4 w-4 mr-1" />预览
+              </Button>
+              <Button variant="outline" size="sm" disabled={pdfUploading} onClick={() => pdfInputRef.current?.click()}>
+                <Upload className="h-4 w-4 mr-1" />重新上传
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => onPdfChange?.(null)}>
+                <Trash2 className="h-4 w-4 mr-1" />移除文件
+              </Button>
+            </div>
           )}
         </div>
       )}
+
+      <Dialog open={pdfPreviewOpen} onOpenChange={setPdfPreviewOpen}>
+        <DialogContent className="sm:max-w-4xl h-[80vh] flex flex-col">
+          <DialogHeader className="shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <File className="h-5 w-5 text-red-500" />
+              <span className="truncate">{pdfFileName || "文件预览"}</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 border rounded-lg overflow-hidden bg-gray-50">
+            {pdfUrl ? (
+              <iframe src={pdfUrl} title={pdfFileName || "PDF 预览"} className="w-full h-full" />
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-400">暂无文件</div>
+            )}
+          </div>
+          <DialogFooter className="shrink-0 gap-2">
+            <Button variant="outline" onClick={() => setPdfPreviewOpen(false)}>关闭</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

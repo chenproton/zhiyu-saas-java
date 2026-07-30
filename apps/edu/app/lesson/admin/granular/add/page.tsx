@@ -50,6 +50,7 @@ function AddGranularPageInner() {
   const [learningGoal, setLearningGoal] = useState("")
   const [detailedDescription, setDetailedDescription] = useState("")
   const [background, setBackground] = useState("")
+  const [learningGoalPdf, setLearningGoalPdf] = useState<string | null>(null)
   const [estimatedHours, setEstimatedHours] = useState("")
   const [major, setMajor] = useState("")
   const [majorId, setMajorId] = useState("")
@@ -177,6 +178,7 @@ function AddGranularPageInner() {
       detailedDescription: detailedDescription || undefined,
       background: background || undefined,
       estimatedHours: parseInt(estimatedHours) || undefined,
+      descriptionPdf: learningGoalPdf || undefined,
       duration: parseInt(hours) || 0,
       knowledgePoints: kpForCheck,
       resources: resForCheck,
@@ -215,6 +217,7 @@ function AddGranularPageInner() {
         detailedDescription: detailedDescription || undefined,
         background: background || undefined,
         estimatedHours: parseInt(estimatedHours) || 0,
+        descriptionPdf: learningGoalPdf || undefined,
         evalData: {
           learningGoal: learningGoal || undefined,
           knowledgePointIds,
@@ -319,7 +322,7 @@ function AddGranularPageInner() {
                   </div>
                   <div className="md:col-span-2 space-y-1.5">
                     <Label className="text-xs">学习目标</Label>
-                    <RichTextEditor value={learningGoal} onChange={setLearningGoal} minHeight={280} />
+                    <RichTextEditor value={learningGoal} onChange={setLearningGoal} minHeight={280} pdfUrl={learningGoalPdf} onPdfChange={setLearningGoalPdf} toast={toast} />
                   </div>
                   <div className="md:col-span-2 space-y-1.5">
                     <Label className="text-xs">封面图片</Label>

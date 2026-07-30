@@ -73,6 +73,7 @@ type AddMode = "upload" | "clone" | "quote"
 interface NodeDraft {
   hours: string
   learningGoal: string
+  learningGoalPdf: string | null
   detailedDescription: string
   background: string
   estimatedHours: string
@@ -380,6 +381,7 @@ function AddSystemPageInner() {
   const [background, setBackground] = useState("")
   const [detailedDescription, setDetailedDescription] = useState("")
   const [estimatedHours, setEstimatedHours] = useState("")
+  const [learningGoalPdf, setLearningGoalPdf] = useState<string | null>(null)
 
   /* module 2: knowledge points */
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePointItem[]>([])
@@ -413,6 +415,7 @@ function AddSystemPageInner() {
     if (!node) {
       setHours("")
       setLearningGoal("")
+      setLearningGoalPdf(null)
       setKnowledgePoints([])
       setSelectedResourceIds([])
       setDifficulty(0)
@@ -421,6 +424,7 @@ function AddSystemPageInner() {
     }
     setHours(String(node.duration || ""))
     setLearningGoal(node.teachingGoals || "")
+    setLearningGoalPdf((node as any).descriptionPdf || null)
     setDetailedDescription(node.detailedDescription || "")
     setBackground(node.background || "")
     setEstimatedHours(node.estimatedHours ? String(node.estimatedHours) : "")
@@ -446,6 +450,7 @@ function AddSystemPageInner() {
     if (draft) {
       setHours(draft.hours)
       setLearningGoal(draft.learningGoal)
+      setLearningGoalPdf(draft.learningGoalPdf)
       setDetailedDescription(draft.detailedDescription)
       setBackground(draft.background)
       setEstimatedHours(draft.estimatedHours)
@@ -469,6 +474,7 @@ function AddSystemPageInner() {
         [selectedNodeId]: {
           hours,
           learningGoal,
+          learningGoalPdf,
           detailedDescription,
           background,
           estimatedHours,
@@ -483,7 +489,7 @@ function AddSystemPageInner() {
         },
       }))
     })()
-  }, [selectedNodeId, hours, learningGoal, detailedDescription, background, estimatedHours, knowledgePoints, selectedResourceIds, nodeEvalMethods, nodeEvalRuleConfig, difficulty])
+  }, [selectedNodeId, hours, learningGoal, learningGoalPdf, detailedDescription, background, estimatedHours, knowledgePoints, selectedResourceIds, nodeEvalMethods, nodeEvalRuleConfig, difficulty])
 
   /* ---------- node mode selection handlers ---------- */
   const openGrainSelector = useCallback((mode: AddMode) => {
@@ -585,6 +591,7 @@ function AddSystemPageInner() {
         sourceId: node.sourceId,
         sourceName: node.sourceName,
         teachingGoals: draft?.learningGoal || node.teachingGoals,
+        descriptionPdf: draft?.learningGoalPdf || node.descriptionPdf || undefined,
         detailedDescription: draft?.detailedDescription || node.detailedDescription,
         background: draft?.background || node.background,
         estimatedHours: (draft?.estimatedHours || node.estimatedHours) ? parseFloat(draft?.estimatedHours || String(node.estimatedHours || "")) : undefined,
@@ -854,6 +861,7 @@ function AddSystemPageInner() {
                       onChange={setCourseDescription}
                       placeholder="请输入课程简介..."
                       minHeight={280}
+                      toast={toast}
                     />
                   </div>
                   <div className="md:col-span-4 space-y-1.5">
@@ -1023,7 +1031,7 @@ function AddSystemPageInner() {
                         </div>
                         <div className="md:col-span-2 space-y-1.5">
                           <Label className="text-xs">学习目标</Label>
-                          <RichTextEditor value={learningGoal} onChange={setLearningGoal} minHeight={280} />
+                          <RichTextEditor value={learningGoal} onChange={setLearningGoal} minHeight={280} pdfUrl={learningGoalPdf} onPdfChange={setLearningGoalPdf} toast={toast} />
                         </div>
                       </div>
                     </CardContent>
