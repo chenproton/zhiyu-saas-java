@@ -230,6 +230,7 @@ function AddSystemPageInner() {
         setCourseId(course.id)
         setCourseName(course.name || "")
         if (course.description) setCourseDescription(course.description)
+        setCourseDescriptionPdf(((course as any).evalData?.descriptionPdf) || null)
         if (course.coverImage) setCoverImage(course.coverImage)
         if (course.majorId) setMajor(course.majorId)
         if (course.batchId) setBatchId(course.batchId)
@@ -382,6 +383,7 @@ function AddSystemPageInner() {
   const [detailedDescription, setDetailedDescription] = useState("")
   const [estimatedHours, setEstimatedHours] = useState("")
   const [learningGoalPdf, setLearningGoalPdf] = useState<string | null>(null)
+  const [courseDescriptionPdf, setCourseDescriptionPdf] = useState<string | null>(null)
 
   /* module 2: knowledge points */
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePointItem[]>([])
@@ -659,7 +661,9 @@ function AddSystemPageInner() {
         category: "system",
         creatorId: "",
         coCreatorIds: [] as string[],
-        evalData: {},
+        evalData: {
+          descriptionPdf: courseDescriptionPdf || undefined,
+        },
         abilityPointIds: abilityPoints.map((a) => a.id),
       }
       let effectiveCourseId = courseId
@@ -861,6 +865,8 @@ function AddSystemPageInner() {
                       onChange={setCourseDescription}
                       placeholder="请输入课程简介..."
                       minHeight={280}
+                      pdfUrl={courseDescriptionPdf}
+                      onPdfChange={setCourseDescriptionPdf}
                       toast={toast}
                     />
                   </div>
