@@ -5148,9 +5148,13 @@ function EditCardDialog({
           .map((kp: any) => ({
             id: kp.id, name: kp.name, code: kp.code, description: kp.description, linked: true,
           }))
-        const selected: KnowledgePointItem[] = (state.knowledgePoints || []).map((id: string) =>
-          pool.find(p => p.id === id) || { id, name: id, linked: false }
-        )
+        const selected: KnowledgePointItem[] = (state.knowledgePoints || []).map((id: string) => {
+          const inPool = pool.find(p => p.id === id)
+          if (inPool) return inPool
+          const custom = knowledgePoints.find((k: any) => k.id === id)
+          if (custom) return { id: custom.id, name: custom.name, code: custom.code, description: custom.description, linked: false, granularLessons: custom.granularLessons || custom.granularLessonIds || [] }
+          return { id, name: id, linked: false }
+        })
         return (
           <KnowledgeSelector
             standalone={false}
