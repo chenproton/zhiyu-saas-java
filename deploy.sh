@@ -482,6 +482,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
       echo "KKFILEVIEW_HOST_PORT=${KKFILEVIEW_HOST_PORT:-8012}"
       echo "ENABLE_KKFILEVIEW=${ENABLE_KKFILEVIEW:-false}"
       echo "KKFILEVIEW_IMAGE=${KKFILEVIEW_IMAGE:-fangzhengjin/kkfileview:4.4.0}"
+      echo "KK_BASE_URL=${KK_BASE_URL:-https://ai.zhiyu.com.cn/kkfileview}"
       echo "DOCKER_REGISTRY_MIRRORS=${DOCKER_REGISTRY_MIRRORS:-}"
       echo "SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-admin123}"
     } >> "$ENV_FILE"
@@ -505,6 +506,7 @@ update_env_var "$ENV_FILE" "BACKEND_PORT" "$BACKEND_PORT"
 update_env_var "$ENV_FILE" "EDU_PORT" "$EDU_PORT"
 update_env_var "$ENV_FILE" "POSTGRES_HOST_PORT" "$POSTGRES_HOST_PORT"
 update_env_var "$ENV_FILE" "KKFILEVIEW_HOST_PORT" "$KKFILEVIEW_HOST_PORT"
+update_env_var "$ENV_FILE" "KK_BASE_URL" "${KK_BASE_URL:-https://ai.zhiyu.com.cn/kkfileview}"
 
 # 如果数据库 host 端口发生变化，同步更新 DATABASE_URL 中的 host 端口
 if [[ "$DATABASE_URL" != *":${POSTGRES_HOST_PORT}/zhiyu-saas"* ]]; then
