@@ -34,6 +34,7 @@ type Course struct {
 	CoCreatorIds      JSONSlice    `json:"coCreatorIds,omitempty"`
 	BatchID           *string      `json:"batchId,omitempty"`
 	BatchName         *string      `json:"batchName,omitempty"`
+	EvalData          JSONMap      `json:"evalData,omitempty"`
 	NodeCount         int          `json:"nodeCount"`
 	ResourceCount     int          `json:"resourceCount"`
 	ViewCount         int          `json:"viewCount"`
