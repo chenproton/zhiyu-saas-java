@@ -1005,6 +1005,8 @@ function AddSystemPageInner() {
                           <TaskInfoCard
                             name=""
                             onNameChange={() => {}}
+                            type="training"
+                            onTypeChange={() => {}}
                             difficulty={difficulty}
                             onDifficultyChange={setDifficulty}
                             hours={parseInt(hours) || 0}
@@ -1013,6 +1015,7 @@ function AddSystemPageInner() {
                             onBackgroundChange={setBackground}
                             showBackground={true}
                             showName={false}
+                            showType={false}
                             hoursLabel="课时数"
                           />
                         </div>

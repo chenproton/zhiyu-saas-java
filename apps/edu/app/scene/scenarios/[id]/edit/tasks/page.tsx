@@ -1622,24 +1622,22 @@ export default function TasksEditPage() {
               <Label>任务名称</Label>
               <Input value={newTask.name} onChange={e => setNewTask({ ...newTask, name: e.target.value })} placeholder="输入任务名称" className="mt-1.5" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>任务类型</Label>
-                <Select value={newTask.type} onValueChange={v => setNewTask({ ...newTask, type: v as "assessment" | "training" })}>
-                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="training">训练任务</SelectItem>
-                    <SelectItem value="assessment">考核任务</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div>
+              <Label>任务类型</Label>
+              <Select value={newTask.type} onValueChange={v => setNewTask({ ...newTask, type: v as "assessment" | "training" })}>
+                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="training">训练任务</SelectItem>
+                  <SelectItem value="assessment">考核任务</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <Label>预估学时</Label>
+                <span className="text-xs text-gray-400">学生完成任务的预估时长</span>
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <Label>预估学时</Label>
-                  <span className="text-xs text-gray-400">学生完成任务的预估时长</span>
-                </div>
-                <Input type="number" value={newTask.hours} onChange={e => setNewTask({ ...newTask, hours: +e.target.value })} className="mt-1.5" />
-              </div>
+              <Input type="number" value={newTask.hours} onChange={e => setNewTask({ ...newTask, hours: +e.target.value })} className="mt-1.5" />
             </div>
             <div>
               <Label>难度</Label>
@@ -5139,7 +5137,7 @@ function EditCardDialog({
   const renderContent = () => {
     switch (cardType) {
       case "info":
-        return <TaskInfoCard name={localTask.name} onNameChange={v => setLocalTask({ ...localTask, name: v })} difficulty={localTask.difficulty as 1|2|3|4|5} onDifficultyChange={v => setLocalTask({ ...localTask, difficulty: v as 1|2|3|4|5 })} hours={localTask.hours} onHoursChange={v => setLocalTask({ ...localTask, hours: v })} background={localTask.background} onBackgroundChange={v => setLocalTask({ ...localTask, background: v })} />
+        return <TaskInfoCard name={localTask.name} onNameChange={v => setLocalTask({ ...localTask, name: v })} type={localTask.type} onTypeChange={v => setLocalTask({ ...localTask, type: v as "assessment"|"training" })} difficulty={localTask.difficulty as 1|2|3|4|5} onDifficultyChange={v => setLocalTask({ ...localTask, difficulty: v as 1|2|3|4|5 })} hours={localTask.hours} onHoursChange={v => setLocalTask({ ...localTask, hours: v })} background={localTask.background} onBackgroundChange={v => setLocalTask({ ...localTask, background: v })} />
 
       case "description":
         return <TaskDescriptionCard description={state.description} onDescriptionChange={v => updateState({ description: v })} descriptionPdf={state.descriptionPdf} onDescriptionPdfChange={v => updateState({ descriptionPdf: v })} toast={toast} />

@@ -319,6 +319,8 @@ function AddGranularPageInner() {
                     <TaskInfoCard
                       name=""
                       onNameChange={() => {}}
+                      type="training"
+                      onTypeChange={() => {}}
                       difficulty={difficulty}
                       onDifficultyChange={setDifficulty}
                       hours={parseInt(hours) || 0}
@@ -327,6 +329,7 @@ function AddGranularPageInner() {
                       onBackgroundChange={setBackground}
                       showBackground={true}
                       showName={false}
+                      showType={false}
                       hoursLabel="课时数"
                     />
                   </div>
