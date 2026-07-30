@@ -147,7 +147,7 @@ function AddGranularPageInner() {
           )
 
           const resIds = new Set((c.resourceIds || []).filter((id): id is string => !!id))
-          setSelectedResourceIds(Array.from(resIds))
+          setSelectedResourceIds(Array.from(resIds).filter((id) => courseResourcePool.some((r) => r.id === id)))
         }
       } catch (err: any) {
         toast.error(err.message || "加载失败")
