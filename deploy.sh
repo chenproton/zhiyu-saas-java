@@ -18,14 +18,15 @@
 set -euo pipefail
 
 # ── 参数 ──
-BRANCH_NAME=""; CLEAN_BUILD=false; SKIP_MERGE=false
+BRANCH_NAME=""; CLEAN_BUILD=false; SKIP_MERGE=false; OFFLINE_MODE=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --branch) BRANCH_NAME="$2"; shift 2 ;;
     --clean) CLEAN_BUILD=true; shift ;;
     --skip-merge) SKIP_MERGE=true; shift ;;
+    --offline) OFFLINE_MODE=true; shift ;;
     --help|-h)
-      echo "用法: $0 --branch <分支名> [--clean] [--skip-merge]"; exit 0 ;;
+      echo "用法: $0 --branch <分支名> [--clean] [--skip-merge] [--offline]"; exit 0 ;;
     *) echo "未知参数: $1" >&2; exit 1 ;;
   esac
 done
@@ -209,22 +210,34 @@ lock_hash() { md5sum "$1/pnpm-lock.yaml" 2>/dev/null | awk '{print $1}'; }
 # 1. 自动安装系统依赖
 # ════════════════════════════════════════════
 log "检查系统依赖..."
-is_root && pkg_install curl ca-certificates rsync git python3 openssl
+if $OFFLINE_MODE; then
+  # 离线模式：跳过所有 apt/curl 安装，仅校验关键命令
+  for bin in curl rsync git python3 openssl; do
+    command -v "$bin" >/dev/null 2>&1 || die "离线模式需要预装: $bin"
+  done
+else
+  is_root && pkg_install curl ca-certificates rsync git python3 openssl
+fi
 
 # Docker
-if ! command -v docker >/dev/null 2>&1; then
-  log "安装 Docker..."
-  is_root || die "需要 root 安装 Docker"
-  if local_docker_script=$(offline_file "get-docker.sh"); then
-    log "  使用本地安装脚本: $local_docker_script"
-    bash "$local_docker_script" 2>/dev/null || pkg_install docker.io
-  else
-    curl -fsSL https://get.docker.com | bash 2>/dev/null || pkg_install docker.io
+if $OFFLINE_MODE; then
+  command -v docker >/dev/null 2>&1 || die "离线模式需要预装 Docker"
+  docker info >/dev/null 2>&1 || die "Docker 未运行"
+else
+  if ! command -v docker >/dev/null 2>&1; then
+    log "安装 Docker..."
+    is_root || die "需要 root 安装 Docker"
+    if local_docker_script=$(offline_file "get-docker.sh"); then
+      log "  使用本地安装脚本: $local_docker_script"
+      bash "$local_docker_script" 2>/dev/null || pkg_install docker.io
+    else
+      curl -fsSL https://get.docker.com | bash 2>/dev/null || pkg_install docker.io
+    fi
+    systemctl enable --now docker 2>/dev/null || true
   fi
-  systemctl enable --now docker 2>/dev/null || true
-fi
-if ! docker info >/dev/null 2>&1; then
-  systemctl start docker 2>/dev/null || service docker start 2>/dev/null || true; sleep 2
+  if ! docker info >/dev/null 2>&1; then
+    systemctl start docker 2>/dev/null || service docker start 2>/dev/null || true; sleep 2
+  fi
 fi
 
 # 配置 Docker Hub 镜像加速（支持 .env 覆盖，每次部署按 .env 刷新，避免旧镜像源过期）
@@ -235,7 +248,7 @@ configure_docker_mirrors() {
 
   if [[ -n "${DOCKER_REGISTRY_MIRRORS:-}" ]]; then
     mirrors=$(python3 -c "import sys; print('\n'.join(x.strip() for x in sys.argv[1].split(',') if x.strip()))" "$DOCKER_REGISTRY_MIRRORS")
-  else
+  elif ! $OFFLINE_MODE; then
     # .env 未配置时探测默认 mirror，任意一个可用即采用
     for url in "https://docker.1panel.live" "https://docker.m.daocloud.io"; do
       if timeout 10 curl -fsSLI "${url}/v2/" >/dev/null 2>&1; then
@@ -275,18 +288,27 @@ PY
 }
 configure_docker_mirrors
 
-if [[ -z "$(detect_docker_compose)" ]]; then
-  pkg_install docker-compose-plugin || true
+if $OFFLINE_MODE; then
+  command -v docker >/dev/null 2>&1 || die "离线模式需要预装 Docker"
+  DOCKER_COMPOSE="docker compose"
+else
+  if [[ -z "$(detect_docker_compose)" ]]; then
+    pkg_install docker-compose-plugin || true
+  fi
+  DOCKER_COMPOSE=$(detect_docker_compose)
+  [[ -z "$DOCKER_COMPOSE" ]] && die "未找到可用的 docker compose"
 fi
-DOCKER_COMPOSE=$(detect_docker_compose)
-[[ -z "$DOCKER_COMPOSE" ]] && die "未找到可用的 docker compose"
 compose() { $DOCKER_COMPOSE -f "$DEPLOY_COMPOSE" "$@"; }
 
 # Nginx（宿主标准 nginx，作为统一网关）
-if ! command -v nginx >/dev/null 2>&1; then
-  log "安装 Nginx..."
-  is_root || die "需要 root 安装 Nginx"
-  pkg_install nginx
+if $OFFLINE_MODE; then
+  command -v nginx >/dev/null 2>&1 || die "离线模式需要预装 Nginx"
+else
+  if ! command -v nginx >/dev/null 2>&1; then
+    log "安装 Nginx..."
+    is_root || die "需要 root 安装 Nginx"
+    pkg_install nginx
+  fi
 fi
 systemctl unmask nginx 2>/dev/null || true
 systemctl enable --now nginx 2>/dev/null || true
@@ -323,7 +345,11 @@ if ! command -v go >/dev/null 2>&1; then
   export PATH="/usr/local/go/bin:$PATH"
   echo 'export PATH="/usr/local/go/bin:$PATH"' > /etc/profile.d/go.sh
 fi
-export GOPROXY="${GOPROXY:-https://goproxy.cn,direct}"
+if $OFFLINE_MODE; then
+  export GOPROXY="${GOPROXY:-off}"
+else
+  export GOPROXY="${GOPROXY:-https://goproxy.cn,direct}"
+fi
 
 # Node.js + pnpm
 if ! command -v node >/dev/null 2>&1; then
@@ -368,7 +394,11 @@ if ! command -v pnpm >/dev/null 2>&1; then
 fi
 
 # PostgreSQL client
-command -v psql >/dev/null 2>&1 || pkg_install postgresql-client
+if $OFFLINE_MODE; then
+  command -v psql >/dev/null 2>&1 || die "离线模式需要预装 postgresql-client"
+else
+  command -v psql >/dev/null 2>&1 || pkg_install postgresql-client
+fi
 
 log "依赖准备完成"
 
@@ -381,6 +411,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if git -C "$SCRIPT_DIR" rev-parse --git-dir >/dev/null 2>&1; then
   PROJECT_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)"
   ORIGINAL_ROOT="$PROJECT_ROOT"
+elif $OFFLINE_MODE; then
+  die "离线模式需要从现有 git 仓库目录运行 deploy.sh"
 else
   [[ -z "${REPO_URL:-}" ]] && die "当前不是 git 仓库，请设置环境变量 REPO_URL 后重试"
   PROJECT_ROOT="$DEPLOY_DIR/source"
@@ -482,7 +514,11 @@ export IMAGE_TAG BACKEND_PORT EDU_PORT POSTGRES_HOST_PORT KKFILEVIEW_HOST_PORT N
 # ── 分支校验 ──
 if [[ -n "$BRANCH_NAME" ]]; then
   [[ -n "$(git -C "$ORIGINAL_ROOT" status --porcelain 2>/dev/null)" ]] && die "工作区不干净，请先提交或清理"
-  git -C "$ORIGINAL_ROOT" fetch origin master "$BRANCH_NAME" 2>/dev/null || true
+  if $OFFLINE_MODE; then
+    log "离线模式: 跳过 git fetch，使用本地分支"
+  else
+    git -C "$ORIGINAL_ROOT" fetch origin master "$BRANCH_NAME" 2>/dev/null || true
+  fi
   lc=$(git -C "$ORIGINAL_ROOT" rev-parse "$BRANCH_NAME" 2>/dev/null || true)
   oc=$(git -C "$ORIGINAL_ROOT" rev-parse "origin/$BRANCH_NAME" 2>/dev/null || true)
   [[ -z "$oc" ]] && die "origin/$BRANCH_NAME 不存在，请先 git push"
@@ -535,6 +571,9 @@ PREV_FRONTEND="$(docker inspect --format='{{.Config.Image}}' zhiyu-edu 2>/dev/nu
 # ════════════════════════════════════════════
 # 4. 构建后端（变更自动检测）
 # ════════════════════════════════════════════
+# 优先加载本地 Docker 镜像，避免无法联网时 pull 失败
+load_offline_images
+
 BACKEND_HASH=$(source_hash "$BACKEND_DIR")
 BUILD_BACKEND=true
 [[ "$CLEAN_BUILD" != "true" ]] && [[ -f "$BUILD_CACHE/backend-hash" ]] && \
@@ -544,14 +583,25 @@ BUILD_BACKEND=true
 if $BUILD_BACKEND; then
   log "构建后端"
   mkdir -p "$BUILD_CACHE/go-cache"
-  CGO_ENABLED=0 GOCACHE="$BUILD_CACHE/go-cache" \
-    go build -C "$BACKEND_DIR" -ldflags="-s -w" -o "$BACKEND_DIR/bin/server" ./cmd/server/main.go
+  if $OFFLINE_MODE && [[ -d "$BACKEND_DIR/vendor" ]]; then
+    (cd "$BACKEND_DIR" && CGO_ENABLED=0 GOCACHE="$BUILD_CACHE/go-cache" \
+      go build -mod=vendor -ldflags="-s -w" -o "$BACKEND_DIR/bin/server" ./cmd/server/main.go)
+  else
+    (cd "$BACKEND_DIR" && CGO_ENABLED=0 GOCACHE="$BUILD_CACHE/go-cache" \
+      go build -ldflags="-s -w" -o "$BACKEND_DIR/bin/server" ./cmd/server/main.go)
+  fi
 
   TMPCTX=$(mktemp -d)
   cp "$BACKEND_DIR/bin/server" "$TMPCTX/server"
   mkdir -p "$TMPCTX/migrations"
   rsync -a --delete "$BACKEND_DIR/migrations/" "$TMPCTX/migrations/"
-  docker build -t "zhiyu-backend:$IMAGE_TAG" -f "$BACKEND_DIR/Dockerfile" "$TMPCTX" 2>&1 | tail -3
+  if $OFFLINE_MODE; then
+    # 离线模式：移除 apk add（需联网），保留 adduser
+    sed 's/apk add --no-cache ca-certificates && //' "$BACKEND_DIR/Dockerfile" > "$TMPCTX/Dockerfile"
+  else
+    cp "$BACKEND_DIR/Dockerfile" "$TMPCTX/Dockerfile"
+  fi
+  docker build -t "zhiyu-backend:$IMAGE_TAG" -f "$TMPCTX/Dockerfile" "$TMPCTX" 2>&1 | tail -3
   docker tag "zhiyu-backend:$IMAGE_TAG" "zhiyu-backend:$BACKEND_HASH"
   rm -rf "$TMPCTX"
   echo "$BACKEND_HASH" > "$BUILD_CACHE/backend-hash"
@@ -582,8 +632,13 @@ if $BUILD_FRONTEND; then
 
   if $NEED_INSTALL; then
     log "  安装依赖..."
-    (cd "$BUILD_ROOT" && pnpm install --frozen-lockfile 2>/dev/null) || \
-    (cd "$BUILD_ROOT" && pnpm install --no-frozen-lockfile) || die "pnpm install 失败"
+    if $OFFLINE_MODE; then
+      (cd "$BUILD_ROOT" && pnpm install --offline --frozen-lockfile 2>/dev/null) || \
+        die "离线 pnpm install 失败，请确保 node_modules 或 pnpm store 已就绪"
+    else
+      (cd "$BUILD_ROOT" && pnpm install --frozen-lockfile 2>/dev/null) || \
+      (cd "$BUILD_ROOT" && pnpm install --no-frozen-lockfile) || die "pnpm install 失败"
+    fi
     echo "$LOCK_HASH" > "$BUILD_CACHE/lock-hash"
   fi
 
@@ -620,9 +675,6 @@ if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx '^kkfileview$'; the
   docker rm kkfileview >/dev/null 2>&1 || true
 fi
 
-# 优先加载本地 Docker 镜像，避免无法联网时 pull 失败
-load_offline_images
-
 COMPOSE_PROFILES=""
 [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]] && COMPOSE_PROFILES="--profile kkfileview"
 if ! compose up -d --remove-orphans $COMPOSE_PROFILES 2>&1 | tail -5; then
@@ -655,8 +707,8 @@ if [[ ! -f "$DEPLOY_DIR/.migration-done" ]]; then
   run_migrations "$BACKEND_DIR" "$MIGRATE_URL" || die "数据库迁移失败"
 
   log "初始化种子数据..."
-  (cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" go run ./cmd/seed/main.go) || warn "种子初始化失败"
-  log "  运营方租户: platform / 管理员: admin / admin123"
+  (cd "$BACKEND_DIR" && DATABASE_URL="$MIGRATE_URL" SEED_ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD:-admin123}" go run ./cmd/seed/main.go) || warn "种子初始化失败"
+  log "  运营方租户: platform / 管理员: admin / ${SEED_ADMIN_PASSWORD:-admin123}"
 else
   run_migrations "$BACKEND_DIR" "$MIGRATE_URL" || die "数据库迁移失败"
 fi
@@ -708,13 +760,21 @@ prune_old_images "zhiyu-edu" 5
 NGINX_CONF="$BUILD_ROOT/deploy/nginx/conf.d/zhiyu-saas.conf"
 if [[ -f "$NGINX_CONF" ]]; then
   NGINX_SERVER_NAME="${NGINX_SERVER_NAME:-_}"
-  NGINX_DEFAULT_SERVER="${NGINX_DEFAULT_SERVER:-default_server}"
-  sed -e 's/\${NGINX_SERVER_NAME:-_}/'"${NGINX_SERVER_NAME}"'/g' \
-      -e 's/\${NGINX_DEFAULT_SERVER:-default_server}/'"${NGINX_DEFAULT_SERVER}"'/g' \
-      -e 's/\${NGINX_PORT:-80}/'"${NGINX_PORT}"'/g' \
-      -e 's/\${BACKEND_PORT:-8080}/'"${BACKEND_PORT}"'/g' \
-      -e 's/\${EDU_PORT:-3020}/'"${EDU_PORT}"'/g' \
-      -e 's/\${KKFILEVIEW_HOST_PORT:-8012}/'"${KKFILEVIEW_HOST_PORT}"'/g' \
+  NGINX_DEFAULT_SERVER="${NGINX_DEFAULT_SERVER:-}"
+  NGINX_PORT="${NGINX_PORT:-80}"
+  NGINX_SSL_PORT="${NGINX_SSL_PORT:-443}"
+  NGINX_SSL_CERT="${NGINX_SSL_CERT:-/etc/ssl/certs/ssl-cert-snakeoil.pem}"
+  NGINX_SSL_CERT_KEY="${NGINX_SSL_CERT_KEY:-/etc/ssl/private/ssl-cert-snakeoil.key}"
+  KKFILEVIEW_HOST_PORT="${KKFILEVIEW_HOST_PORT:-8012}"
+  sed -e 's/${NGINX_SERVER_NAME:-_[^}]*}/'"${NGINX_SERVER_NAME}"'/g' \
+      -e 's/${NGINX_DEFAULT_SERVER:-[^}]*}/'"${NGINX_DEFAULT_SERVER}"'/g' \
+      -e 's/${NGINX_PORT:-[^}]*}/'"${NGINX_PORT}"'/g' \
+      -e 's/${NGINX_SSL_PORT:-[^}]*}/'"${NGINX_SSL_PORT}"'/g' \
+      -e 's|${NGINX_SSL_CERT:-[^}]*}|'"${NGINX_SSL_CERT}"'|g' \
+      -e 's|${NGINX_SSL_CERT_KEY:-[^}]*}|'"${NGINX_SSL_CERT_KEY}"'|g' \
+      -e 's/${BACKEND_PORT:-[^}]*}/'"${BACKEND_PORT}"'/g' \
+      -e 's/${EDU_PORT:-[^}]*}/'"${EDU_PORT}"'/g' \
+      -e 's/${KKFILEVIEW_HOST_PORT:-[^}]*}/'"${KKFILEVIEW_HOST_PORT}"'/g' \
       "$NGINX_CONF" > "$NGINX_DST"
 
   if ! nginx -t 2>/dev/null; then
@@ -742,7 +802,10 @@ if [[ -f "$NGINX_CONF" ]]; then
 fi
 
 if [[ -n "$BRANCH_NAME" && "$SKIP_MERGE" != "true" ]]; then
-  log "合并 $BRANCH_NAME → master"
+  if $OFFLINE_MODE; then
+    log "离线模式: 跳过合并 $BRANCH_NAME → master"
+  else
+    log "合并 $BRANCH_NAME → master"
   # ORIGINAL_ROOT 可能是特性 worktree（master 一般已被主工作树检出，直接 checkout 会失败），
   # 通过 worktree list 定位真正检出 master 的工作树执行合并
   MERGE_ROOT="$ORIGINAL_ROOT"
@@ -755,6 +818,7 @@ if [[ -n "$BRANCH_NAME" && "$SKIP_MERGE" != "true" ]]; then
     log "✅ 已合并"
   else
     warn "合并跳过（可手动执行：git checkout master && git merge origin/$BRANCH_NAME && git push origin master）"
+    fi
   fi
 fi
 
@@ -763,5 +827,5 @@ echo "   外部入口: http://<服务器IP>:${NGINX_PORT}/portal/login"
 echo "   nginx 端口: ${NGINX_PORT}"
 echo "   后端容器: http://localhost:${BACKEND_PORT}"
 echo "   前端容器: http://localhost:${EDU_PORT}"
-echo "   管理: admin / admin123  (SaaS 登录)"
+echo "   管理: admin / ${SEED_ADMIN_PASSWORD:-admin123}  (SaaS 登录)"
 echo "   镜像: zhiyu-backend:$IMAGE_TAG  zhiyu-edu:$IMAGE_TAG"

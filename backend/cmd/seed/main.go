@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"os"
 
@@ -34,9 +32,30 @@ func main() {
 	platformAdminUserID := uuid.MustParse("00000000-0000-0000-0000-000000000003")
 
 	var count int
-	_ = database.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM users`).Scan(&count)
-	if count > 0 {
-		fmt.Println("数据库已有数据，跳过种子初始化")
+	_ = database.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM tenants`).Scan(&count)
+	seeded := count > 0
+
+	adminPassword := os.Getenv("SEED_ADMIN_PASSWORD")
+	if adminPassword == "" {
+		adminPassword = "admin123"
+	}
+
+	// 已有种子数据时，仅重置 admin 密码（支持密码变更后重跑 deploy.sh）
+	if seeded {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
+		if err != nil {
+			fmt.Println("bcrypt error:", err)
+			os.Exit(1)
+		}
+		_, err = database.Pool.Exec(ctx, `
+			UPDATE users SET password_hash = $1 WHERE login_name = 'admin' AND platform = 'saas'
+		`, string(hashedPassword))
+		if err != nil {
+			fmt.Println("update admin password error:", err)
+			os.Exit(1)
+		}
+		fmt.Println("数据库已有数据，已重置 admin 密码")
+		fmt.Printf("  平台管理员: admin / %s\n", adminPassword)
 		return
 	}
 
@@ -65,17 +84,6 @@ func main() {
 	if err != nil {
 		fmt.Println("insert role error:", err)
 		os.Exit(1)
-	}
-
-	adminPassword := os.Getenv("SEED_ADMIN_PASSWORD")
-	if adminPassword == "" {
-		// 未显式指定时生成随机密码，避免硬编码弱口令
-		buf := make([]byte, 18)
-		if _, err := rand.Read(buf); err != nil {
-			fmt.Println("generate random password error:", err)
-			os.Exit(1)
-		}
-		adminPassword = base64.RawURLEncoding.EncodeToString(buf)
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
@@ -174,5 +182,5 @@ func main() {
 
 	fmt.Println("种子数据初始化完成")
 	fmt.Println("  运营方租户: platform (ID: 00000000-0000-0000-0000-000000000001)")
-	fmt.Printf("  平台管理员: admin / %s （仅首次初始化时显示一次，请妥善保存）\n", adminPassword)
+	fmt.Printf("  平台管理员: admin / %s\n", adminPassword)
 }
