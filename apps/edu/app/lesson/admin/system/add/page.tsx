@@ -217,7 +217,7 @@ function AddSystemPageInner() {
         setOriginalStatus(course.status || "draft")
         const courseEvalData = (course.evalData || {}) as { methods?: string[]; evalRuleConfig?: EvalRuleConfig }
         setEvalData(courseEvalData.methods ? { methods: courseEvalData.methods, evalRuleConfig: courseEvalData.evalRuleConfig } : undefined)
-        setAbilityPoints(((course as any).abilityPointIds || []).map((id: string) => {
+        setAbilityPoints((course.abilityPointIds || []).map((id: string) => {
           const found = abilityPool.find((a) => a.id === id)
           return found || { id, name: id }
         }))

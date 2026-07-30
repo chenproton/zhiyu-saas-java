@@ -23,6 +23,7 @@ export interface Course {
   courseTag?: string
   difficulty?: number
   knowledgePointIds?: string[]
+  abilityPointIds?: string[]
   resourceIds?: string[]
   creatorId: string
   coCreatorIds: string[]

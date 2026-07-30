@@ -47,6 +47,29 @@ export const courseAssessmentsApi = {
   get: (courseId: string) => request<CourseAssessmentsResponse>(`/lesson/courses/${courseId}/assessments`),
 }
 
+export interface CourseHomeworkSubmission {
+  id: string
+  studentId: string
+  studentName: string
+  content?: string
+  attachmentUrls?: string[]
+  status: "submitted" | "graded"
+  score?: number
+  totalScore?: number
+  comment?: string
+  createdAt?: string
+  gradedAt?: string
+}
+
+export const courseHomeworkApi = {
+  submit: (courseId: string, homeworkId: string, req: { content?: string; attachmentUrls?: string[] }) =>
+    request<{ id: string; status: string }>(`/lesson/courses/${courseId}/homeworks/${homeworkId}/submit`, { method: "POST", body: JSON.stringify(req) }),
+  listSubmissions: (courseId: string, homeworkId: string) =>
+    request<{ items: CourseHomeworkSubmission[] }>(`/lesson/courses/${courseId}/homeworks/${homeworkId}/submissions`),
+  grade: (courseId: string, homeworkId: string, submissionId: string, req: { score: number; comment?: string }) =>
+    request<{ id: string; status: string }>(`/lesson/courses/${courseId}/homeworks/${homeworkId}/submissions/${submissionId}/grade`, { method: "POST", body: JSON.stringify(req) }),
+}
+
 export const knowledgeApi = createCrudApi<KnowledgePoint, Omit<KnowledgePoint, "id" | "createdAt" | "updatedAt">, Partial<Omit<KnowledgePoint, "id" | "createdAt" | "updatedAt">>>("/lesson/knowledge-points")
 
 export const courseNodeApi = {

@@ -6,12 +6,18 @@ import { useParams, useRouter } from "next/navigation"
 import {
   ArrowLeft, ListChecks, FolderOpen, GitBranch, Target,
   Clock, Layers, BookOpen, Sparkles, PlayCircle, FileText,
+  Send, CheckCircle2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   courseApi,
   courseAssessmentsApi,
+  courseHomeworkApi,
   courseNodeApi,
   courseResourceApi,
   knowledgeApi,
@@ -22,7 +28,7 @@ import type {
   NodeResource,
   KnowledgePoint,
 } from "@/lib/types"
-import type { CourseAssessmentsResponse } from "@zhiyu/api-client"
+import type { CourseAssessmentsResponse, CourseAssessmentHomework, CourseHomeworkSubmission } from "@zhiyu/api-client"
 import { useAuth } from "@/contexts/auth-context"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
 
@@ -124,6 +130,19 @@ export default function CourseDetailPage() {
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
   const [assessments, setAssessments] = useState<CourseAssessmentsResponse | null>(null)
   const [assessmentsLoading, setAssessmentsLoading] = useState(false)
+
+  const [submitOpen, setSubmitOpen] = useState(false)
+  const [activeHomework, setActiveHomework] = useState<CourseAssessmentHomework | null>(null)
+  const [submitContent, setSubmitContent] = useState("")
+  const [submitUrls, setSubmitUrls] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+
+  const [gradeOpen, setGradeOpen] = useState(false)
+  const [submissions, setSubmissions] = useState<CourseHomeworkSubmission[]>([])
+  const [gradeSubmission, setGradeSubmission] = useState<CourseHomeworkSubmission | null>(null)
+  const [gradeScore, setGradeScore] = useState("")
+  const [gradeComment, setGradeComment] = useState("")
+  const [grading, setGrading] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -390,9 +409,28 @@ export default function CourseDetailPage() {
                           {hw.requirement && <div className="text-[11px] text-slate-400 line-clamp-1">{hw.requirement}</div>}
                         </div>
                       </div>
-                      <span className="inline-flex items-center text-xs font-medium text-emerald-600 hover:text-emerald-700 cursor-pointer">
+                      <button
+                        onClick={async () => {
+                          setActiveHomework(hw)
+                          if (isStudent) {
+                            setSubmitContent("")
+                            setSubmitUrls("")
+                            setSubmitOpen(true)
+                          } else {
+                            try {
+                              const res = await courseHomeworkApi.listSubmissions(id, hw.id)
+                              setSubmissions(res.items || [])
+                              setGradeOpen(true)
+                            } catch {
+                              setSubmissions([])
+                              setGradeOpen(true)
+                            }
+                          }
+                        }}
+                        className="inline-flex items-center text-xs font-medium text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                      >
                         {isStudent ? "提交作业 →" : "批改作业 →"}
-                      </span>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -588,6 +626,148 @@ export default function CourseDetailPage() {
           </div>
         </div>
       </main>
+
+      {/* Student submit homework dialog */}
+      <Dialog open={submitOpen} onOpenChange={setSubmitOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>提交作业：{activeHomework?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">作业要求</Label>
+              <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3">{activeHomework?.requirement || "无"}</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">作答内容</Label>
+              <Textarea value={submitContent} onChange={(e) => setSubmitContent(e.target.value)} placeholder="请输入作业内容" className="min-h-[120px] text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">附件链接（多个用逗号分隔）</Label>
+              <Input value={submitUrls} onChange={(e) => setSubmitUrls(e.target.value)} placeholder="https://..." className="text-sm h-9" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setSubmitOpen(false)}>取消</Button>
+            <Button
+              size="sm"
+              disabled={submitting}
+              onClick={async () => {
+                if (!activeHomework) return
+                setSubmitting(true)
+                try {
+                  await courseHomeworkApi.submit(id, activeHomework.id, {
+                    content: submitContent,
+                    attachmentUrls: submitUrls.split(",").map((s) => s.trim()).filter(Boolean),
+                  })
+                  setSubmitOpen(false)
+                } catch {
+                  alert("提交失败")
+                } finally {
+                  setSubmitting(false)
+                }
+              }}
+            >
+              <Send className="h-3.5 w-3.5 mr-1" />{submitting ? "提交中..." : "提交"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Teacher grade homework dialog */}
+      <Dialog open={gradeOpen} onOpenChange={setGradeOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>批改作业：{activeHomework?.title}</DialogTitle>
+          </DialogHeader>
+          {gradeSubmission ? (
+            <div className="space-y-3 py-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">学生作答</Label>
+                <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3 min-h-[80px]">{gradeSubmission.content || "无内容"}</p>
+              </div>
+              {gradeSubmission.attachmentUrls && gradeSubmission.attachmentUrls.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">附件</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {gradeSubmission.attachmentUrls.map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noreferrer" className="text-xs text-emerald-600 hover:underline">附件 {i + 1}</a>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">得分</Label>
+                  <Input type="number" value={gradeScore} onChange={(e) => setGradeScore(e.target.value)} placeholder="0-100" className="h-9 text-sm" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">评语</Label>
+                  <Input value={gradeComment} onChange={(e) => setGradeComment(e.target.value)} placeholder="评语" className="h-9 text-sm" />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2 py-2">
+              {submissions.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-6">暂无提交记录</p>
+              ) : (
+                submissions.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setGradeSubmission(s)
+                      setGradeScore(s.score !== undefined ? String(s.score) : "")
+                      setGradeComment(s.comment || "")
+                    }}
+                    className="w-full text-left p-3 rounded-lg border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/30 transition-all"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{s.studentName}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${s.status === "graded" ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"}`}>
+                        {s.status === "graded" ? `已批 ${s.score}分` : "待批改"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1 truncate">{s.content || "无内容"}</p>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            {gradeSubmission ? (
+              <>
+                <Button variant="outline" size="sm" onClick={() => setGradeSubmission(null)}>返回列表</Button>
+                <Button
+                  size="sm"
+                  disabled={grading || gradeScore === ""}
+                  onClick={async () => {
+                    if (!activeHomework || !gradeSubmission) return
+                    setGrading(true)
+                    try {
+                      await courseHomeworkApi.grade(id, activeHomework.id, gradeSubmission.id, {
+                        score: parseFloat(gradeScore),
+                        comment: gradeComment,
+                      })
+                      setGradeSubmission(null)
+                      const res = await courseHomeworkApi.listSubmissions(id, activeHomework.id)
+                      setSubmissions(res.items || [])
+                    } catch {
+                      alert("批改失败")
+                    } finally {
+                      setGrading(false)
+                    }
+                  }}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" />{grading ? "保存中..." : "保存评分"}
+                </Button>
+              </>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => setGradeOpen(false)}>关闭</Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <PlatformFooter />
     </div>
