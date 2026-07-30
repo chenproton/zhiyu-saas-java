@@ -103,6 +103,7 @@ export interface TeachingPlanEntry {
   planId: string
   courseName: string
   courseCode?: string
+  courseId?: string
   type: string
   nature?: string
   credits: number
@@ -165,6 +166,7 @@ export interface ScheduleEntry {
   planEntryId?: string
   courseName: string
   courseCode?: string
+  courseId?: string
   type: string
   classNodeId: string
   className?: string
@@ -191,6 +193,7 @@ export interface ScheduleEntryPayload {
   planEntryId?: string
   courseName: string
   courseCode?: string
+  courseId?: string
   type?: string
   classNodeId: string
   teacherId?: string

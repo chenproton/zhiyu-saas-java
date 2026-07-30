@@ -5,12 +5,13 @@ import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import {
   ArrowLeft, ListChecks, FolderOpen, GitBranch, Target,
-  Clock, Layers, BookOpen, Sparkles, PlayCircle,
+  Clock, Layers, BookOpen, Sparkles, PlayCircle, FileText,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   courseApi,
+  courseAssessmentsApi,
   courseNodeApi,
   courseResourceApi,
   knowledgeApi,
@@ -21,6 +22,8 @@ import type {
   NodeResource,
   KnowledgePoint,
 } from "@/lib/types"
+import type { CourseAssessmentsResponse } from "@zhiyu/api-client"
+import { useAuth } from "@/contexts/auth-context"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
 
 const TABS = [
@@ -109,6 +112,9 @@ export default function CourseDetailPage() {
   const id = params.id as string
   const router = useRouter()
 
+  const { user } = useAuth()
+  const isStudent = user?.currentRole?.name === "student"
+
   const [course, setCourse] = useState<Course | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("nodes")
@@ -116,6 +122,8 @@ export default function CourseDetailPage() {
   const [nodes, setNodes] = useState<SystemCourseNode[]>([])
   const [resources, setResources] = useState<NodeResource[]>([])
   const [knowledgeMap, setKnowledgeMap] = useState<Map<string, KnowledgePoint>>(new Map())
+  const [assessments, setAssessments] = useState<CourseAssessmentsResponse | null>(null)
+  const [assessmentsLoading, setAssessmentsLoading] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -152,7 +160,15 @@ export default function CourseDetailPage() {
         setKnowledgeMap(m)
       })
       .catch(() => setKnowledgeMap(new Map()))
-  }, [id, course])
+
+    if (course.type === "system" && activeTab === "evaluation") {
+      setAssessmentsLoading(true)
+      courseAssessmentsApi.get(id)
+        .then(setAssessments)
+        .catch(() => setAssessments({ exams: [], homeworks: [] }))
+        .finally(() => setAssessmentsLoading(false))
+    }
+  }, [id, course, activeTab])
 
   const totalResources = resources.length
   const courseKnowledgeList = useMemo(() => {
@@ -325,38 +341,95 @@ export default function CourseDetailPage() {
 
       case "evaluation":
         return (
-          <div>
-            <div className="text-sm text-slate-500 mb-4">
-              共 <strong className="text-emerald-600">{totalEvalCount}</strong> 个节点配置了评价
-            </div>
-            {totalEvalCount === 0 ? (
-              <div className="text-center py-16 text-slate-400">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
-                  <Target className="w-8 h-8 opacity-40" />
+          <div className="space-y-6">
+            {/* 课程级测评任务 */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Target className="w-5 h-5 text-emerald-500" />
+                <h3 className="text-base font-semibold text-slate-800">课程测评任务</h3>
+              </div>
+              {assessmentsLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-20 w-full" />
                 </div>
-                <div className="text-[15px] font-medium text-slate-600">暂未配置评价标准</div>
-                <div className="text-[13px] mt-1">该课程暂未设置评价方式</div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {nodes.filter((n) => n.teachingGoals).map((node) => (
-                  <div key={node.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:border-emerald-200 hover:shadow-md transition-all">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-400 text-white flex items-center justify-center text-xs font-bold shrink-0">
-                        <Target className="w-4 h-4" />
+              ) : !assessments || (assessments.exams.length === 0 && assessments.homeworks.length === 0) ? (
+                <div className="text-center py-10 text-slate-400 rounded-xl border border-dashed border-slate-200 bg-slate-50/50">
+                  <div className="text-[14px] font-medium text-slate-600">暂无课程级测评任务</div>
+                  <div className="text-[12px] mt-1">发布系统课后将自动生成考试/作业安排</div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {assessments.exams.map((exam) => (
+                    <div key={exam.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:border-emerald-200 hover:shadow-md transition-all">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                          <BookOpen className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-semibold text-slate-800 truncate">{exam.name}</div>
+                          <div className="text-[11px] text-slate-400">{exam.isTemp ? "动态组卷" : "固定试卷"} · {exam.duration ? `${exam.duration} 分钟` : "不限时"}</div>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-slate-800 truncate">{node.name}</div>
-                        {node.duration && <span className="text-[11px] text-slate-400">预计 {node.duration} 课时</span>}
-                      </div>
+                      <Link
+                        href={isStudent ? `/evaluation/exams/${exam.id}/take` : `/evaluation/exam-usages/${exam.id}`}
+                        className="inline-flex items-center text-xs font-medium text-emerald-600 hover:text-emerald-700"
+                      >
+                        {isStudent ? "进入考试 →" : "查看安排 →"}
+                      </Link>
                     </div>
-                    {node.teachingGoals && (
-                      <p className="text-xs text-slate-500 leading-relaxed bg-slate-50 rounded-lg p-3">{node.teachingGoals}</p>
-                    )}
-                  </div>
-                ))}
+                  ))}
+                  {assessments.homeworks.map((hw) => (
+                    <div key={hw.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:border-emerald-200 hover:shadow-md transition-all">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-semibold text-slate-800 truncate">{hw.title}</div>
+                          {hw.requirement && <div className="text-[11px] text-slate-400 line-clamp-1">{hw.requirement}</div>}
+                        </div>
+                      </div>
+                      <span className="inline-flex items-center text-xs font-medium text-emerald-600 hover:text-emerald-700 cursor-pointer">
+                        {isStudent ? "提交作业 →" : "批改作业 →"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 节点评价标准 */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-semibold text-slate-800">节点评价标准</h3>
+                <span className="text-sm text-slate-500">共 <strong className="text-emerald-600">{totalEvalCount}</strong> 个节点</span>
               </div>
-            )}
+              {totalEvalCount === 0 ? (
+                <div className="text-center py-10 text-slate-400 rounded-xl border border-dashed border-slate-200 bg-slate-50/50">
+                  <div className="text-[14px] font-medium text-slate-600">暂未配置节点评价标准</div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {nodes.filter((n) => n.teachingGoals).map((node) => (
+                    <div key={node.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:border-emerald-200 hover:shadow-md transition-all">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-400 text-white flex items-center justify-center text-xs font-bold shrink-0">
+                          <Target className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-semibold text-slate-800 truncate">{node.name}</div>
+                          {node.duration && <span className="text-[11px] text-slate-400">预计 {node.duration} 课时</span>}
+                        </div>
+                      </div>
+                      {node.teachingGoals && (
+                        <p className="text-xs text-slate-500 leading-relaxed bg-slate-50 rounded-lg p-3">{node.teachingGoals}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )
 

@@ -15,6 +15,38 @@ import { createCrudApi, createContentApi } from "../api-factory"
 
 export const courseApi = createContentApi<Course, Omit<Course, "id" | "nodeCount" | "resourceCount" | "studyCount" | "createdAt" | "updatedAt">, Partial<Omit<Course, "id" | "createdAt" | "updatedAt">>>("/lesson/courses")
 
+export interface CourseAssessmentExam {
+  id: string
+  examId: string
+  examName: string
+  isTemp: boolean
+  name: string
+  startTime?: string
+  endTime?: string
+  duration?: number
+  status: string
+  type: "exam"
+}
+
+export interface CourseAssessmentHomework {
+  id: string
+  title: string
+  requirement: string
+  needAttachment: boolean
+  deadline?: string
+  status: string
+  type: "homework"
+}
+
+export interface CourseAssessmentsResponse {
+  exams: CourseAssessmentExam[]
+  homeworks: CourseAssessmentHomework[]
+}
+
+export const courseAssessmentsApi = {
+  get: (courseId: string) => request<CourseAssessmentsResponse>(`/lesson/courses/${courseId}/assessments`),
+}
+
 export const knowledgeApi = createCrudApi<KnowledgePoint, Omit<KnowledgePoint, "id" | "createdAt" | "updatedAt">, Partial<Omit<KnowledgePoint, "id" | "createdAt" | "updatedAt">>>("/lesson/knowledge-points")
 
 export const courseNodeApi = {

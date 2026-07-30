@@ -130,6 +130,7 @@ export function ScheduleFormDialog({
         planEntryId: scheduleEntry?.planEntryId || planEntry?.id || undefined,
         courseName,
         courseCode: scheduleEntry?.courseCode || planEntry?.courseCode || undefined,
+        courseId: scheduleEntry?.courseId || planEntry?.courseId || undefined,
         type: scheduleEntry?.type || (planEntry?.type === "scene" ? "scene" : "traditional"),
         classNodeId: scheduleEntry?.classNodeId || planEntry?.classNodeId || classNodeId || "",
         teacherId: scheduleEntry?.teacherId || planEntry?.teacherId || undefined,

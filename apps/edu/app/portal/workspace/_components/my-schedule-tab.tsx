@@ -50,8 +50,13 @@ export function MyScheduleTab({ role }: MyScheduleTabProps) {
   }, [loadData])
 
   const getEntryHref = (entry: ScheduleEntry) => {
-    if (entry.type !== "scene" || !entry.scenarioId) return undefined
-    return role === "student" ? `/scene/landing/${entry.scenarioId}` : "/evaluation/scene-results"
+    if (entry.type === "scene" && entry.scenarioId) {
+      return role === "student" ? `/scene/landing/${entry.scenarioId}` : "/evaluation/scene-results"
+    }
+    if (entry.type === "traditional" && entry.courseId) {
+      return `/lesson/landing/${entry.courseId}`
+    }
+    return undefined
   }
 
   const empty = !loading && (noTerm || entries.length === 0)

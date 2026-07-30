@@ -372,7 +372,7 @@ type ScheduleEntryRequest struct {
 	ScenarioID  *string          `json:"scenarioId"`
 }
 
-const scheduleEntrySelectColumns = "se.id, se.term_id, se.plan_entry_id, se.course_name, se.course_code, se.type, se.class_node_id, COALESCE(o.name, '') AS class_name, se.teacher_id, COALESCE(u.name, '') AS teacher_name, se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern, se.venue_id, COALESCE(v.name, '') AS venue_name, se.scenario_id, COALESCE(sc.name, '') AS scenario_name, se.source, se.status, se.version, se.created_at, se.updated_at"
+const scheduleEntrySelectColumns = "se.id, se.term_id, se.plan_entry_id, se.course_name, se.course_code, se.course_id, se.type, se.class_node_id, COALESCE(o.name, '') AS class_name, se.teacher_id, COALESCE(u.name, '') AS teacher_name, se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern, se.venue_id, COALESCE(v.name, '') AS venue_name, se.scenario_id, COALESCE(sc.name, '') AS scenario_name, se.source, se.status, se.version, se.created_at, se.updated_at"
 
 const scheduleEntryFrom = "schedule_entries se LEFT JOIN organizations o ON o.id = se.class_node_id LEFT JOIN users u ON u.id = se.teacher_id LEFT JOIN venues v ON v.id = se.venue_id LEFT JOIN scenarios sc ON sc.id = se.scenario_id"
 
@@ -380,7 +380,7 @@ func scanScheduleEntryRow(rows pgx.Rows) ([]domain.ScheduleEntry, error) {
 	items := make([]domain.ScheduleEntry, 0)
 	for rows.Next() {
 		var e domain.ScheduleEntry
-		if err := rows.Scan(&e.ID, &e.TermID, &e.PlanEntryID, &e.CourseName, &e.CourseCode, &e.Type,
+		if err := rows.Scan(&e.ID, &e.TermID, &e.PlanEntryID, &e.CourseName, &e.CourseCode, &e.CourseID, &e.Type,
 			&e.ClassNodeID, &e.ClassName, &e.TeacherID, &e.TeacherName, &e.DayOfWeek, &e.Periods,
 			&e.StartWeek, &e.EndWeek, &e.WeekPattern, &e.VenueID, &e.VenueName,
 			&e.ScenarioID, &e.ScenarioName, &e.Source, &e.Status, &e.Version, &e.CreatedAt, &e.UpdatedAt); err != nil {
@@ -489,12 +489,13 @@ func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Reques
 
 	id := uuid.NewString()
 	err = withTx(ctx, h.DB, func(tx pgx.Tx) error {
+		courseID := resolveCourseIDByCode(ctx, tx, tenantID, req.CourseCode)
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO schedule_entries (id, tenant_id, term_id, plan_entry_id, course_name, course_code, type,
+			INSERT INTO schedule_entries (id, tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
 				class_node_id, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
 				venue_id, scenario_id, source, status, version)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'manual', 'draft', 1)
-		`, id, tenantID, req.TermID, emptyStrToNil(req.PlanEntryID), req.CourseName, emptyStrToNil(req.CourseCode), entryType,
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 'manual', 'draft', 1)
+		`, id, tenantID, req.TermID, emptyStrToNil(req.PlanEntryID), req.CourseName, emptyStrToNil(req.CourseCode), courseID, entryType,
 			req.ClassNodeID, emptyStrToNil(req.TeacherID), req.DayOfWeek, req.Periods, req.StartWeek, req.EndWeek, weekPattern,
 			emptyStrToNil(req.VenueID), emptyStrToNil(req.ScenarioID)); err != nil {
 			return err
@@ -566,13 +567,14 @@ func (h *SchedulingHandler) UpdateSchedule(w http.ResponseWriter, r *http.Reques
 		weekPattern = "all"
 	}
 
+	courseID := resolveCourseIDByCode(ctx, h.DB, tenantID, req.CourseCode)
 	_, err = h.DB.Exec(ctx, `
 		UPDATE schedule_entries
-		SET term_id = $1, plan_entry_id = $2, course_name = $3, course_code = $4, type = $5,
-			class_node_id = $6, teacher_id = $7, day_of_week = $8, periods = $9,
-			start_week = $10, end_week = $11, week_pattern = $12, venue_id = $13, scenario_id = $14, updated_at = NOW()
-		WHERE id = $15 AND tenant_id = $16
-	`, req.TermID, emptyStrToNil(req.PlanEntryID), req.CourseName, emptyStrToNil(req.CourseCode), entryType,
+		SET term_id = $1, plan_entry_id = $2, course_name = $3, course_code = $4, course_id = $5, type = $6,
+			class_node_id = $7, teacher_id = $8, day_of_week = $9, periods = $10,
+			start_week = $11, end_week = $12, week_pattern = $13, venue_id = $14, scenario_id = $15, updated_at = NOW()
+		WHERE id = $16 AND tenant_id = $17
+	`, req.TermID, emptyStrToNil(req.PlanEntryID), req.CourseName, emptyStrToNil(req.CourseCode), courseID, entryType,
 		req.ClassNodeID, emptyStrToNil(req.TeacherID), req.DayOfWeek, req.Periods,
 		req.StartWeek, req.EndWeek, weekPattern, emptyStrToNil(req.VenueID), emptyStrToNil(req.ScenarioID), id, tenantID)
 	if err != nil {
@@ -907,11 +909,31 @@ func (h *SchedulingHandler) fetchScheduleEntry(ctx context.Context, id, tenantID
 		SELECT `+scheduleEntrySelectColumns+`
 		FROM `+scheduleEntryFrom+`
 		WHERE se.id = $1 AND se.tenant_id = $2
-	`, id, tenantID).Scan(&e.ID, &e.TermID, &e.PlanEntryID, &e.CourseName, &e.CourseCode, &e.Type,
+	`, id, tenantID).Scan(&e.ID, &e.TermID, &e.PlanEntryID, &e.CourseName, &e.CourseCode, &e.CourseID, &e.Type,
 		&e.ClassNodeID, &e.ClassName, &e.TeacherID, &e.TeacherName, &e.DayOfWeek, &e.Periods,
 		&e.StartWeek, &e.EndWeek, &e.WeekPattern, &e.VenueID, &e.VenueName,
 		&e.ScenarioID, &e.ScenarioName, &e.Source, &e.Status, &e.Version, &e.CreatedAt, &e.UpdatedAt)
 	return e, err
+}
+
+// rowQuerier abstracts pgx.Tx and *pgxpool.Pool for resolveCourseIDByCode.
+type rowQuerier interface {
+	QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row
+}
+
+// resolveCourseIDByCode 根据课程代码查询课程 ID，用于排课保存时回填 schedule_entries.course_id。
+func resolveCourseIDByCode(ctx context.Context, db rowQuerier, tenantID string, courseCode *string) *string {
+	if courseCode == nil || *courseCode == "" {
+		return nil
+	}
+	var id string
+	err := db.QueryRow(ctx, `
+		SELECT id FROM courses WHERE tenant_id = $1 AND code = $2 AND type = 'system' LIMIT 1
+	`, tenantID, *courseCode).Scan(&id)
+	if err != nil {
+		return nil
+	}
+	return &id
 }
 
 func (h *SchedulingHandler) fetchTermBrief(ctx context.Context, id, tenantID string) (domain.Term, error) {

@@ -293,13 +293,16 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 			continue
 		}
 
+		courseCode := nullableStr(sr.courseCode)
+		courseID := resolveCourseIDByCode(ctx, h.DB, tenantID, courseCode)
+
 		if existingID != "" {
 			_, err := h.DB.Exec(ctx, `
 				UPDATE schedule_entries
-				SET course_code=$1, type=$2, teacher_id=$3, periods=$4, start_week=$5, end_week=$6,
-					week_pattern=$7, venue_id=$8, scenario_id=$9, source='imported', updated_at=NOW()
-				WHERE id=$10 AND tenant_id=$11
-			`, nullableStr(sr.courseCode), sr.entryType, teacherID, periods, sr.startWeek, sr.endWeek,
+				SET course_code=$1, course_id=$2, type=$3, teacher_id=$4, periods=$5, start_week=$6, end_week=$7,
+					week_pattern=$8, venue_id=$9, scenario_id=$10, source='imported', updated_at=NOW()
+				WHERE id=$11 AND tenant_id=$12
+			`, courseCode, courseID, sr.entryType, teacherID, periods, sr.startWeek, sr.endWeek,
 				sr.weekPattern, venueID, scenarioID, existingID, tenantID)
 			if err != nil {
 				result.Failed++
@@ -311,11 +314,11 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 		}
 
 		_, err = h.DB.Exec(ctx, `
-			INSERT INTO schedule_entries (id, tenant_id, term_id, course_name, course_code, type,
+			INSERT INTO schedule_entries (id, tenant_id, term_id, course_name, course_code, course_id, type,
 				class_node_id, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
 				venue_id, scenario_id, source, status, version)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'imported', 'draft', 1)
-		`, uuid.NewString(), tenantID, termID, sr.courseName, nullableStr(sr.courseCode), sr.entryType,
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'imported', 'draft', 1)
+		`, uuid.NewString(), tenantID, termID, sr.courseName, courseCode, courseID, sr.entryType,
 			classNodeID, teacherID, sr.dayOfWeek, periods, sr.startWeek, sr.endWeek, sr.weekPattern,
 			venueID, scenarioID)
 		if err != nil {

@@ -109,6 +109,12 @@ func (c contentActions) saveDraft(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c contentActions) transition(w http.ResponseWriter, r *http.Request, status domain.ContentStatus) {
+	c.transitionWithHook(w, r, status, nil)
+}
+
+// transitionWithHook 与 transition 相同，但在事务提交前调用 hook。
+// hook 可用于在状态流转的同时创建/更新关联资源，保持原子性。
+func (c contentActions) transitionWithHook(w http.ResponseWriter, r *http.Request, status domain.ContentStatus, hook func(tx pgx.Tx, id string) error) {
 	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
@@ -157,6 +163,13 @@ func (c contentActions) transition(w http.ResponseWriter, r *http.Request, statu
 			WHERE target_type = $1 AND target_id = $2 AND status = $3
 		`, c.targetType, id, string(domain.ApprovalStatusPending)); err != nil {
 			respondError(w, http.StatusInternalServerError, "删除审批记录失败")
+			return
+		}
+	}
+
+	if hook != nil {
+		if err := hook(tx, id); err != nil {
+			respondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 	}

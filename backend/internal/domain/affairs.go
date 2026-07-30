@@ -116,6 +116,7 @@ type ScheduleEntry struct {
 	PlanEntryID  *string   `json:"planEntryId,omitempty"`
 	CourseName   string    `json:"courseName"`
 	CourseCode   *string   `json:"courseCode,omitempty"`
+	CourseID     *string   `json:"courseId,omitempty"`
 	Type         string    `json:"type"` // traditional/scene
 	ClassNodeID  string    `json:"classNodeId"`
 	ClassName    string    `json:"className,omitempty"`
