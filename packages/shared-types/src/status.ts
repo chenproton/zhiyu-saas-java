@@ -9,7 +9,7 @@ interface StatusConfig {
 const STATUS_MAP: Record<string, StatusConfig> = {
   draft:         { label: "草稿",    color: "#64748b", bg: "#f1f5f9" },
   pending:       { label: "审核中",  color: "#2563eb", bg: "#dbeafe" },
-  approved:      { label: "已通过",  color: "#16a34a", bg: "#dcfce7" },
+  approved:      { label: "已通过",  color: "#7c3aed", bg: "#ede9fe" },
   rejected:      { label: "已驳回",  color: "#dc2626", bg: "#fee2e2" },
   published:     { label: "已发布",  color: "#16a34a", bg: "#dcfce7" },
   archived:      { label: "已归档",  color: "#8f959e", bg: "#f5f6f7" },
