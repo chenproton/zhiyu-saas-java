@@ -270,7 +270,7 @@ func (h *JobAbilityResultHandler) Aggregate(w http.ResponseWriter, r *http.Reque
 	respondJSON(w, http.StatusAccepted, map[string]string{"logId": logID, "status": "running"})
 }
 
-// AggregateStatus GET /evaluation/job-ability/aggregate/status?careerPositionId=
+// AggregateStatus GET /evaluation/job-ability/aggregate/status?careerPositionId=&logId=
 func (h *JobAbilityResultHandler) AggregateStatus(w http.ResponseWriter, r *http.Request) {
 	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusForbidden, "权限不足")
@@ -285,14 +285,24 @@ func (h *JobAbilityResultHandler) AggregateStatus(w http.ResponseWriter, r *http
 		respondError(w, http.StatusBadRequest, "缺少必填参数")
 		return
 	}
+	logID := r.URL.Query().Get("logId")
 
 	var log JobAbilityAggregateLog
-	err := h.DB.QueryRow(r.Context(), `
-		SELECT id, career_position_id, status, student_count, updated_count, error_message, started_at, finished_at
-		FROM job_ability_aggregate_logs
-		WHERE tenant_id = $1 AND career_position_id = $2
-		ORDER BY started_at DESC LIMIT 1
-	`, tenantID, positionID).Scan(&log.ID, &log.CareerPositionID, &log.Status, &log.StudentCount, &log.UpdatedCount, &log.ErrorMessage, &log.StartedAt, &log.FinishedAt)
+	var err error
+	if logID != "" {
+		err = h.DB.QueryRow(r.Context(), `
+			SELECT id, career_position_id, status, student_count, updated_count, error_message, started_at, finished_at
+			FROM job_ability_aggregate_logs
+			WHERE id = $1
+		`, logID).Scan(&log.ID, &log.CareerPositionID, &log.Status, &log.StudentCount, &log.UpdatedCount, &log.ErrorMessage, &log.StartedAt, &log.FinishedAt)
+	} else {
+		err = h.DB.QueryRow(r.Context(), `
+			SELECT id, career_position_id, status, student_count, updated_count, error_message, started_at, finished_at
+			FROM job_ability_aggregate_logs
+			WHERE tenant_id = $1 AND career_position_id = $2 AND started_at > NOW() - INTERVAL '1 hour'
+			ORDER BY started_at DESC LIMIT 1
+		`, tenantID, positionID).Scan(&log.ID, &log.CareerPositionID, &log.Status, &log.StudentCount, &log.UpdatedCount, &log.ErrorMessage, &log.StartedAt, &log.FinishedAt)
+	}
 	if err == pgx.ErrNoRows {
 		respondError(w, http.StatusNotFound, "暂无汇聚记录")
 		return

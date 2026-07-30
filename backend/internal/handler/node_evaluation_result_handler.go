@@ -41,6 +41,10 @@ func (h *NodeEvaluationResultHandler) List(w http.ResponseWriter, r *http.Reques
 		OrderBy:      "created_at DESC",
 		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
 			qb.addCondition("node_id = " + qb.nextArg(nodeID))
+			if middleware.HasRole(claims, "student") {
+				qb.addCondition("evaluatee_id = " + qb.nextArg(claims.UserID))
+				return
+			}
 			if evaluateeID != "" {
 				qb.addCondition("evaluatee_id = " + qb.nextArg(evaluateeID))
 			}

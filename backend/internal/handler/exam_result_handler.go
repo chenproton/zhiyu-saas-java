@@ -165,7 +165,10 @@ func (h *ExamResultHandler) submit(ctx context.Context, tenantID, userID, usageI
 			score += qq.score
 		}
 	}
-	isPass := score >= passScore
+	isPass := false
+	if !hasSubjective {
+		isPass = score >= passScore
+	}
 
 	// user profile
 	var studentName string
@@ -315,7 +318,7 @@ func (h *ExamResultHandler) syncCourseEvaluationResult(ctx context.Context, tena
 			updated_at = NOW()
 	`, tenantID, courseID, methodKey, userID, status, score, maxScore, objectiveAnswers)
 	if err != nil {
-		slog.Info(fmt.Sprintf("syncCourseEvaluationResult upsert failed: usage=%s course=%s method=%s user=%s err=%v", usageID, courseID, methodKey, userID, err))
+		slog.Error(fmt.Sprintf("syncCourseEvaluationResult upsert failed: usage=%s course=%s method=%s user=%s err=%v", usageID, courseID, methodKey, userID, err))
 	}
 }
 
@@ -355,7 +358,7 @@ func (h *ExamResultHandler) syncNodeEvaluationResult(ctx context.Context, tenant
 			updated_at = NOW()
 	`, tenantID, nodeID, methodKey, userID, status, score, maxScore, objectiveAnswers)
 	if err != nil {
-		slog.Info(fmt.Sprintf("syncNodeEvaluationResult upsert failed: usage=%s node=%s method=%s user=%s err=%v", usageID, nodeID, methodKey, userID, err))
+		slog.Error(fmt.Sprintf("syncNodeEvaluationResult upsert failed: usage=%s node=%s method=%s user=%s err=%v", usageID, nodeID, methodKey, userID, err))
 	}
 }
 
@@ -365,13 +368,14 @@ func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenan
 		methodKey = "paper"
 	}
 	rows, err := h.DB.Query(ctx, `
-		SELECT tem.method_key, tem.task_id
+		SELECT tem.method_key, tem.task_id, st.scenario_id
 		FROM exam_usages eu
 		JOIN task_evaluation_methods tem ON tem.task_id = ANY(eu.target_ids)
-		WHERE eu.id = $1 AND tem.method_key = $2 AND tem.tenant_id = $3
+		JOIN scenario_tasks st ON st.id = tem.task_id
+		WHERE eu.id = $1 AND eu.target_type = 'task' AND tem.method_key = $2 AND tem.tenant_id = $3
 	`, usageID, methodKey, tenantID)
 	if err != nil {
-		slog.Info(fmt.Sprintf("syncSceneEvaluationResult query failed: usage=%s err=%v", usageID, err))
+		slog.Error(fmt.Sprintf("syncSceneEvaluationResult query failed: usage=%s err=%v", usageID, err))
 		return
 	}
 	defer rows.Close()
@@ -383,18 +387,16 @@ func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenan
 
 	for rows.Next() {
 		var methodKey, taskID string
-		if err := rows.Scan(&methodKey, &taskID); err != nil {
-			slog.Info(fmt.Sprintf("syncSceneEvaluationResult scan failed: usage=%s err=%v", usageID, err))
+		var sceneID *string
+		if err := rows.Scan(&methodKey, &taskID, &sceneID); err != nil {
+			slog.Error(fmt.Sprintf("syncSceneEvaluationResult scan failed: usage=%s err=%v", usageID, err))
 			continue
 		}
-
-		var sceneID *string
-		_ = h.DB.QueryRow(ctx, `SELECT scenario_id FROM scenario_tasks WHERE id = $1`, taskID).Scan(&sceneID)
 
 		_, err := h.DB.Exec(ctx, `
 			INSERT INTO scene_evaluation_results (tenant_id, task_id, scene_id, method_key, evaluatee_id, status, total_score, max_score, objective_answers)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-			ON CONFLICT (task_id, evaluatee_id, method_key)
+			ON CONFLICT (tenant_id, task_id, evaluatee_id, method_key)
 			DO UPDATE SET
 				scene_id = EXCLUDED.scene_id,
 				total_score = EXCLUDED.total_score,
@@ -409,7 +411,7 @@ func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenan
 				updated_at = NOW()
 		`, tenantID, taskID, sceneID, methodKey, userID, status, score, maxScore, objectiveAnswers)
 		if err != nil {
-			slog.Info(fmt.Sprintf("syncSceneEvaluationResult upsert failed: usage=%s task=%s method=%s user=%s err=%v", usageID, taskID, methodKey, userID, err))
+			slog.Error(fmt.Sprintf("syncSceneEvaluationResult upsert failed: usage=%s task=%s method=%s user=%s err=%v", usageID, taskID, methodKey, userID, err))
 		}
 	}
 }

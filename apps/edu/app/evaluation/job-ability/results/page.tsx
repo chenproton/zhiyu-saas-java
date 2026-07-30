@@ -201,8 +201,10 @@ function JobAbilityResultsContent() {
     if (!selectedPositionId) return
     const careerPositionId = selectedPositionId
     setAggregating(true)
+    let triggerLogId: string | undefined
     try {
-      await jobAbilityResultApi.aggregate({ careerPositionId })
+      const triggered = await jobAbilityResultApi.aggregate({ careerPositionId })
+      triggerLogId = triggered.logId
     } catch (err) {
       toast({
         title: "触发失败",
@@ -217,7 +219,7 @@ function JobAbilityResultsContent() {
     const poll = async () => {
       attempts += 1
       try {
-        const status = await jobAbilityResultApi.aggregateStatus(careerPositionId)
+        const status = await jobAbilityResultApi.aggregateStatus(careerPositionId, triggerLogId)
         if (status?.status === "success") {
           setAggregating(false)
           const updatedCount = status.updatedCount ?? 0

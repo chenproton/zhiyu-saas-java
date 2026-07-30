@@ -282,8 +282,8 @@ export const jobAbilityResultApi = {
   summary: () => request<JobAbilitySummaryItem[]>("/evaluation/job-ability/results/summary"),
   aggregate: (data: { careerPositionId: string; userIds?: string[] }) =>
     request<{ logId: string; status: string }>("/evaluation/job-ability/aggregate", { method: "POST", body: JSON.stringify(data) }),
-  aggregateStatus: (careerPositionId?: string) =>
-    request<JobAbilityAggregateStatus | null>(`/evaluation/job-ability/aggregate/status${buildQuery({ careerPositionId })}`),
+  aggregateStatus: (careerPositionId?: string, logId?: string) =>
+    request<JobAbilityAggregateStatus | null>(`/evaluation/job-ability/aggregate/status${buildQuery({ careerPositionId, logId })}`),
 }
 
 export const portraitApi = {

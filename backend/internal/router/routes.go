@@ -106,6 +106,29 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 
 			// 学生/教师工作台课表渲染需要节次定义
 			r.Get("/affairs/period-slots", h.schedulingHandler.ListPeriodSlots)
+
+			// 课程前台落地页只读接口
+			registerContentReadRoutes(r, "/lesson/courses", h.courseHandler)
+
+			// 资源库前台落地页只读接口
+			r.Get("/library/resources", h.resourceLibraryHandler.List)
+			r.Get("/library/resources/{id}", h.resourceLibraryHandler.Get)
+			r.Get("/library/on-site-questions", h.onSiteQuestionLibraryHandler.List)
+			r.Get("/library/on-site-questions/{id}", h.onSiteQuestionLibraryHandler.Get)
+
+			// 岗位详情前台只读接口（岗位职责、能力绑定、能力域、证书）
+			r.Get("/job/position-responsibilities", h.positionResponsibilityHandler.List)
+			r.Get("/job/position-responsibilities/{id}", h.positionResponsibilityHandler.Get)
+			r.Get("/job/position-abilities", h.positionAbilityHandler.ListBindings)
+			r.Get("/job/ability-domains", h.abilityDomainHandler.List)
+			r.Get("/job/ability-domains/{id}", h.abilityDomainHandler.Get)
+			r.Get("/job/position-certificates", h.positionCertificateHandler.List)
+			r.Get("/job/position-certificates/{id}", h.positionCertificateHandler.Get)
+
+			// 岗位收藏前台接口
+			r.Get("/job/positions/{id}/favorite", h.positionHandler.GetFavorite)
+			r.Post("/job/positions/{id}/favorite", h.positionHandler.ToggleFavorite)
+			r.Get("/job/positions/favorites", h.positionHandler.ListFavorites)
 		})
 
 		r.Group(func(r chi.Router) {

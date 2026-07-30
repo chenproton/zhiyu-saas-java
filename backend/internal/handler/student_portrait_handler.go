@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -138,7 +139,10 @@ func (h *StudentPortraitHandler) Generate(w http.ResponseWriter, r *http.Request
 	}
 
 	// 先对该 (user, careerPosition) 执行岗位能力汇聚，同步生成/更新画像
-	if err := h.Agg.AggregatePosition(r.Context(), tenantID, req.CareerPositionID, []string{req.UserID}); err != nil {
+	// 使用独立 context，避免 HTTP 请求超时中断汇聚
+	aggCtx, aggCancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer aggCancel()
+	if err := h.Agg.AggregatePosition(aggCtx, tenantID, req.CareerPositionID, []string{req.UserID}); err != nil {
 		slog.Error("生成学生画像失败", "userId", req.UserID, "careerPositionId", req.CareerPositionID, "error", err)
 		respondError(w, http.StatusInternalServerError, "生成画像失败")
 		return

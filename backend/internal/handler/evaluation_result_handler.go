@@ -71,6 +71,10 @@ func (h *EvaluationResultHandler) List(w http.ResponseWriter, r *http.Request) {
 		TenantScoped:  true,
 		OrderBy:       "id DESC",
 		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if middleware.HasRole(claims, "student") {
+				qb.addCondition("evaluatee_id = " + qb.nextArg(claims.UserID))
+				return
+			}
 			if taskID := r.URL.Query().Get("taskId"); taskID != "" {
 				qb.addCondition("task_id = " + qb.nextArg(taskID))
 			}
@@ -153,12 +157,13 @@ func (h *EvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Request)
 	err := h.DB.QueryRow(r.Context(), `
 		INSERT INTO scene_evaluation_results (tenant_id, task_id, scene_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, $10, $11, $12, $13, $14)
-		ON CONFLICT (task_id, evaluatee_id, method_key) DO UPDATE SET
+		ON CONFLICT (tenant_id, task_id, evaluatee_id, method_key) DO UPDATE SET
 			scene_id = EXCLUDED.scene_id,
 			objective_answers = EXCLUDED.objective_answers,
 			subjective_content = EXCLUDED.subjective_content,
 			drawn_questions = EXCLUDED.drawn_questions,
 			eval_point_scores = EXCLUDED.eval_point_scores,
+			status = 'pending',
 			updated_at = EXCLUDED.updated_at
 		RETURNING id
 	`, tenantID, req.TaskID, req.SceneID, req.MethodKey, req.EvaluateeID,
@@ -198,7 +203,7 @@ func (h *EvaluationResultHandler) Grade(w http.ResponseWriter, r *http.Request) 
 	subjectiveContent := jsonRawMessageToJSONMap(req.SubjectiveContent)
 	_, err = h.DB.Exec(r.Context(), `
 		UPDATE scene_evaluation_results SET total_score = $1, comment = $2, eval_point_scores = $3, drawn_questions = $4, subjective_content = $5, status = 'evaluated', graded_at = NOW(), graded_by = $6, updated_at = NOW()
-		WHERE id = $7
+		WHERE id = $7 AND status = 'pending'
 	`, req.Score, req.Comment, evalPointScores, drawnQuestions, subjectiveContent, claims.UserID, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "评分失败")
@@ -250,7 +255,7 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 		evalPointScores := jsonRawMessageToJSONMap(item.EvalPointScores)
 		_, err = tx.Exec(r.Context(), `
 			UPDATE scene_evaluation_results SET total_score = $1, comment = $2, eval_point_scores = $3, status = 'evaluated', graded_at = NOW(), graded_by = $4, updated_at = NOW()
-			WHERE id = $5
+			WHERE id = $5 AND status = 'pending'
 		`, item.Score, item.Comment, evalPointScores, claims.UserID, item.ID)
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, "批量评分失败")
@@ -284,7 +289,7 @@ func (h *EvaluationResultHandler) syncExamResultScore(ctx context.Context, taskI
 		FROM exam_results er
 		JOIN exam_usages eu ON er.exam_usage_id = eu.id
 		JOIN task_evaluation_methods tem ON tem.task_id = ANY(eu.target_ids)
-		WHERE tem.task_id = $1 AND tem.method_key = $2 AND er.user_id = $3
+		WHERE tem.task_id = $1 AND tem.method_key = $2 AND er.user_id = $3 AND eu.target_type = 'task'
 		ORDER BY er.submit_time DESC NULLS LAST, er.created_at DESC
 		LIMIT 1
 	`, taskID, methodKey, evaluateeID).Scan(&examResultID)

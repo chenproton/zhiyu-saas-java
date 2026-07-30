@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"sync"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -15,10 +16,24 @@ import (
 // JobAbilityAggregator 按认证规则汇聚学生场景任务评分为岗位能力结果。
 type JobAbilityAggregator struct {
 	DB *pgxpool.Pool
+	mu sync.Mutex
+	positionLocks map[string]*sync.Mutex
 }
 
 func NewJobAbilityAggregator(db *pgxpool.Pool) *JobAbilityAggregator {
-	return &JobAbilityAggregator{DB: db}
+	return &JobAbilityAggregator{DB: db, positionLocks: make(map[string]*sync.Mutex)}
+}
+
+func (a *JobAbilityAggregator) lockPosition(tenantID, positionID string) *sync.Mutex {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	key := tenantID + ":" + positionID
+	if m, ok := a.positionLocks[key]; ok {
+		return m
+	}
+	m := &sync.Mutex{}
+	a.positionLocks[key] = m
+	return m
 }
 
 // aggPoint 汇聚用能力点：关联链来自 position_ability_bindings + 场景评分点关联。
@@ -137,6 +152,11 @@ type portraitRecommendPosition struct {
 
 // aggregate 为单租户单岗位计算并 upsert 所有学生的岗位能力结果。
 func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPositionID string, userIDs []string) (int, int, error) {
+	// 防止同岗位并发汇聚导致数据竞争
+	posLock := a.lockPosition(tenantID, careerPositionID)
+	posLock.Lock()
+	defer posLock.Unlock()
+
 	// 1. 加载规则 + 组装能力模型（绑定链/任务链全量自动带出，权重缺省均分兜底）
 	// 优先 published，其次任意状态，无规则则使用默认均分权重
 	var ruleID string
@@ -403,7 +423,7 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 		profile := profiles[studentID]
 		detailsJSON, err := json.Marshal(details)
 		if err != nil {
-			return len(studentIDs), updated, err
+			return updated, updated, err
 		}
 
 		_, err = a.DB.Exec(ctx, `
@@ -434,7 +454,7 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 		`, tenantID, careerPositionID, studentID, profile.className, profile.majorID, profile.majorName,
 			len(points), achieved, rate, grade, detailsJSON)
 		if err != nil {
-			return len(studentIDs), updated, err
+			return updated, updated, err
 		}
 
 		// 推荐岗位：该用户所有岗位汇聚结果按达标率取前 3
@@ -444,11 +464,11 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 		}
 		domainScoresJSON, err := json.Marshal(domainScores)
 		if err != nil {
-			return len(studentIDs), updated, err
+			return updated, updated, err
 		}
 		recommendsJSON, err := json.Marshal(recommends)
 		if err != nil {
-			return len(studentIDs), updated, err
+			return updated, updated, err
 		}
 
 		// 同步学生画像（岗位等级 + 能力域得分 + 推荐岗位；排名在循环后统一刷新）
@@ -465,7 +485,7 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 				updated_at = EXCLUDED.updated_at
 		`, tenantID, studentID, careerPositionID, grade, domainScoresJSON, recommendsJSON)
 		if err != nil {
-			return len(studentIDs), updated, err
+			return updated, updated, err
 		}
 		updated++
 	}
@@ -474,20 +494,20 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 	if _, err := a.DB.Exec(ctx, `
 		WITH ranked AS (
 			SELECT user_id,
-				ROW_NUMBER() OVER (PARTITION BY class_name ORDER BY achievement_rate DESC, user_id) AS class_rank,
+				RANK() OVER (PARTITION BY class_name ORDER BY achievement_rate DESC) AS class_rank,
 				COUNT(*) OVER (PARTITION BY class_name) AS class_total,
-				ROW_NUMBER() OVER (PARTITION BY major_id ORDER BY achievement_rate DESC, user_id) AS major_rank,
+				RANK() OVER (PARTITION BY major_id ORDER BY achievement_rate DESC) AS major_rank,
 				COUNT(*) OVER (PARTITION BY major_id) AS major_total
 			FROM job_ability_results
-			WHERE career_position_id = $1
+			WHERE career_position_id = $1 AND tenant_id = $2
 		)
 		UPDATE student_ability_portraits p
 		SET class_rank = r.class_rank, class_total = r.class_total,
 			major_rank = r.major_rank, major_total = r.major_total,
 			updated_at = NOW()
 		FROM ranked r
-		WHERE p.career_position_id = $1 AND p.user_id = r.user_id
-	`, careerPositionID); err != nil {
+		WHERE p.career_position_id = $1 AND p.user_id = r.user_id AND p.tenant_id = $2
+	`, careerPositionID, tenantID); err != nil {
 		return len(studentIDs), updated, err
 	}
 
