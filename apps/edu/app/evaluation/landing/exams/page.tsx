@@ -39,7 +39,7 @@ export default function ExamListPage() {
       setLoading(true)
       try {
         const res = await landingApi.listExams()
-        setExams(res.items)
+        setExams(res.items || [])
       } catch {
         // ignore
       } finally {

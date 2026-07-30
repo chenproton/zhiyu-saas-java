@@ -65,7 +65,7 @@ function ExamCard({ exam, index }: { exam: Exam; index: number }) {
           <h3 className="text-[15px] font-semibold text-slate-800 mb-1.5 truncate">{exam.name}</h3>
           <p className="text-xs text-slate-400 leading-relaxed mb-3 line-clamp-2 flex-1">{exam.description || "暂无描述"}</p>
           <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-50 pt-3 mb-3">
-            <span className="flex items-center gap-1"><FileText className="w-3 h-3" /> {exam.questions.length} 题</span>
+            <span className="flex items-center gap-1"><FileText className="w-3 h-3" /> {(exam.questions || []).length} 题</span>
             <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {exam.duration} 分钟</span>
           </div>
           <Button className="w-full rounded-[10px] h-9 text-xs bg-gradient-to-r from-purple-500 to-purple-400 hover:from-purple-600 hover:to-purple-500 text-white shadow-md shadow-purple-500/20 hover:shadow-lg hover:shadow-purple-500/30 hover:-translate-y-0.5 transition-all">

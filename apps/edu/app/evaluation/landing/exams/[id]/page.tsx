@@ -61,9 +61,10 @@ export default function ExamDetailPage() {
   const { exams, getExam } = useData()
   const { toast } = useToast()
 
-  const cachedExam = getExam ? getExam(examId) : exams.find((e) => e.id === examId)
+  const cachedExam = getExam ? getExam(examId) : (exams || []).find((e) => e.id === examId)
   const [fetchedExam, setFetchedExam] = useState<Exam | null>(null)
   const exam = cachedExam || fetchedExam
+  const questions = exam?.questions || []
   const [examLoading, setExamLoading] = useState(!cachedExam)
 
   const [started, setStarted] = useState(false)
@@ -79,7 +80,7 @@ export default function ExamDetailPage() {
   const questionTypeStats = useMemo(() => {
     if (!exam) return []
     const stats: Record<string, { count: number; score: number }> = {}
-    exam.questions.forEach((q) => {
+    questions.forEach((q) => {
       const label = typeLabelMap[q.type] || q.type
       if (!stats[label]) stats[label] = { count: 0, score: 0 }
       stats[label].count += 1
@@ -92,7 +93,7 @@ export default function ExamDetailPage() {
       value: count,
       color: pieColors[index % pieColors.length],
     }))
-  }, [exam])
+  }, [exam, questions])
 
   const isSceneTask = !!taskId && !!methodKey
   const isCourseTask = !!courseId && !!nodeId
@@ -201,7 +202,7 @@ export default function ExamDetailPage() {
     )
   }
 
-  const totalScore = exam.questions.reduce((s, q) => s + (q.score || 0), 0)
+  const totalScore = questions.reduce((s, q) => s + (q.score || 0), 0)
   const answeredCount = Object.keys(answers).length
   const targetAudience = getTargetAudience()
   const canStart = examAccessState === 'started' && (isSceneTask || exam.status === "published") && currentUsage
@@ -273,13 +274,13 @@ export default function ExamDetailPage() {
             <span style={{ display: "flex", alignItems: "center", gap: 4, color: timeLeft < 300 ? "#dc2626" : "#8f959e" }}>
               <Clock style={{ width: 16, height: 16 }} /> 剩余 {fmtTime(timeLeft)}
             </span>
-            <span style={{ color: "#8f959e" }}>已答 {answeredCount} / {exam.questions.length} 题</span>
+            <span style={{ color: "#8f959e" }}>已答 {answeredCount} / {questions.length} 题</span>
           </div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 24 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {exam.questions.map((q, idx) => (
+            {questions.map((q, idx) => (
               <div key={q.id} style={{ background: "#fff", borderRadius: 12, border: "1px solid #e5e6eb", padding: 24 }}>
                 <div style={{ marginBottom: 16 }}>
                   <span style={{ fontSize: 14, fontWeight: 600, color: "#8f959e" }}>{idx + 1}. </span>
@@ -360,7 +361,7 @@ export default function ExamDetailPage() {
           <div style={{ position: "sticky", top: 80, alignSelf: "flex-start", background: "#fff", borderRadius: 12, border: "1px solid #e5e6eb", padding: 20 }}>
             <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>答题卡</h4>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
-              {exam.questions.map((q, i) => (
+              {questions.map((q, i) => (
                 <div key={q.id} style={{
                   width: 36, height: 36, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 13, fontWeight: 500, cursor: "pointer",
@@ -379,7 +380,7 @@ export default function ExamDetailPage() {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ width: 12, height: 12, borderRadius: 4, background: "#f5f6f7", border: "1px solid #e5e6eb" }} />
-                未答 {exam.questions.length - answeredCount} 题
+                未答 {questions.length - answeredCount} 题
               </div>
             </div>
           </div>
@@ -413,7 +414,7 @@ export default function ExamDetailPage() {
         <div style={{ padding: "24px 32px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24 }}>
           {[
             { icon: <Clock style={{ width: 18, height: 18 }} />, label: "考试时长", value: `${exam.duration} 分钟` },
-            { icon: <ListOrdered style={{ width: 18, height: 18 }} />, label: "题目数量", value: `${exam.questions.length} 题` },
+            { icon: <ListOrdered style={{ width: 18, height: 18 }} />, label: "题目数量", value: `${questions.length} 题` },
             { icon: <BarChart3 style={{ width: 18, height: 18 }} />, label: "总分", value: `${totalScore} 分` },
             { icon: <Users style={{ width: 18, height: 18 }} />, label: "考试对象", value: `${targetAudience.type}（${targetAudience.detail}）`, clickable: examAccessState === 'not-in-range', key: 'audience' }
           ].map((item, i) => (
