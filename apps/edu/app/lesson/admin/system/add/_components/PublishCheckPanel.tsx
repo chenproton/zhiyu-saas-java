@@ -5,6 +5,7 @@ import type { SystemCourseNode, NodeRefType } from "@/lib/types/lesson-source"
 
 interface PublishCheckPanelProps {
   node: SystemCourseNode | undefined
+  courseEvalData?: { methods?: string[]; evalRuleConfig?: Record<string, any> }
 }
 
 interface CheckItem {
@@ -49,20 +50,6 @@ const CHECK_ITEMS: CheckItem[] = [
     getStatus: (node) => `已上传：${node.resources?.length ?? 0} 个文件`,
   },
   {
-    key: "quiz",
-    label: "测验",
-    check: (node) =>
-      (node.quizzes?.length ?? 0) > 0 || (node.homeworks?.length ?? 0) > 0,
-    getStatus: (node) => {
-      const q = node.quizzes?.length ?? 0
-      const h = node.homeworks?.length ?? 0
-      if (q > 0 && h > 0) return `已配置：${q} 个测验, ${h} 个作业`
-      if (q > 0) return `已配置：${q} 个测验`
-      if (h > 0) return `已配置：${h} 个作业`
-      return "未设置测验"
-    },
-  },
-  {
     key: "detailedDescription",
     label: "详细描述",
     check: (node) => !!node.detailedDescription?.trim(),
@@ -71,29 +58,45 @@ const CHECK_ITEMS: CheckItem[] = [
       return len > 0 ? `已填写：${len} 字符` : "未填写详细描述"
     },
   },
-  {
-    key: "evalData",
-    label: "评价数据",
-    check: (node) => {
-      if (!node.evalData) return false
-      if (typeof node.evalData === "object") return Object.keys(node.evalData).length > 0
-      return false
-    },
-    getStatus: (node) => {
-      const count = node.evalData && typeof node.evalData === "object"
-        ? Object.keys(node.evalData).length
-        : 0
-      return count > 0 ? `已配置：${count} 项` : "未配置评价数据"
-    },
-  },
 ]
 
-export default function PublishCheckPanel({ node }: PublishCheckPanelProps) {
+export default function PublishCheckPanel({ node, courseEvalData }: PublishCheckPanelProps) {
+  const evalMethods = courseEvalData?.methods || courseEvalData?.evalRuleConfig?.evaluationMethods || []
+  const evalCheck: CheckItem & { passed: boolean; statusText: string } = {
+    key: "courseEval",
+    label: "课程评价规则",
+    check: () => evalMethods.length > 0,
+    getStatus: () =>
+      evalMethods.length > 0
+        ? `已配置：${evalMethods.length} 种测评方式`
+        : "未配置课程评价规则",
+    passed: evalMethods.length > 0,
+    statusText:
+      evalMethods.length > 0
+        ? `已配置：${evalMethods.length} 种测评方式`
+        : "未配置课程评价规则",
+  }
+
   if (!node) {
     return (
       <aside className="w-64 shrink-0">
         <div className="bg-white rounded-xl border border-gray-100 p-4 sticky top-[88px]">
-          <p className="text-sm text-gray-400 text-center py-8">请选择一个节点</p>
+          <div className="space-y-2">
+            <div className={`flex items-center gap-2 p-2 rounded ${evalCheck.passed ? "" : "bg-amber-50"}`}>
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${evalCheck.passed ? "bg-green-100" : "bg-amber-100"}`}>
+                {evalCheck.passed ? (
+                  <CheckCircle2 className="w-3 h-3 text-green-500" />
+                ) : (
+                  <AlertCircle className="w-3 h-3 text-amber-500" />
+                )}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-800">{evalCheck.label}</p>
+                <p className={`text-[10px] truncate ${evalCheck.passed ? "text-green-600" : "text-amber-600"}`}>{evalCheck.statusText}</p>
+              </div>
+            </div>
+          </div>
+          <p className="text-sm text-gray-400 text-center py-4 mt-2">请选择一个节点查看完整检查</p>
         </div>
       </aside>
     )
@@ -106,6 +109,8 @@ export default function PublishCheckPanel({ node }: PublishCheckPanelProps) {
     passed: item.check(node),
     statusText: item.check(node) ? item.getStatus(node) : `未设置${item.label}`,
   }))
+
+  results.push(evalCheck)
 
   const completed = results.filter((r) => r.passed).length
   const total = results.length

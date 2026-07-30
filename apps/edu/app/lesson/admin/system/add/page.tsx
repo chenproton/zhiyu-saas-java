@@ -214,6 +214,8 @@ function AddSystemPageInner() {
         if (course.majorId) setMajor(course.majorId)
         if (course.batchId) setBatchId(course.batchId)
         setOriginalStatus(course.status || "draft")
+        const courseEvalData = (course.evalData || {}) as { methods?: string[]; evalRuleConfig?: EvalRuleConfig }
+        setEvalData(courseEvalData.methods ? { methods: courseEvalData.methods, evalRuleConfig: courseEvalData.evalRuleConfig } : undefined)
         setResourcePool((resRes.items || []).map((r: any) => ({
           id: r.id,
           name: r.name,
@@ -387,7 +389,6 @@ function AddSystemPageInner() {
       setLearningGoal("")
       setKnowledgePoints([])
       setSelectedResourceIds([])
-      setEvalData(undefined)
       setDifficulty(0)
       return
     }
@@ -406,8 +407,6 @@ function AddSystemPageInner() {
       }))
     )
     setSelectedResourceIds((node.resources || []).map((r) => r.id))
-    const nodeEvalData = (node.evalData || {}) as { methods?: string[]; evalRuleConfig?: EvalRuleConfig }
-    setEvalData(nodeEvalData.methods ? { methods: nodeEvalData.methods, evalRuleConfig: nodeEvalData.evalRuleConfig } : undefined)
     setDifficulty(node.difficulty || 0)
   }, [])
 
@@ -423,7 +422,6 @@ function AddSystemPageInner() {
       setEstimatedHours(draft.estimatedHours)
       setKnowledgePoints(draft.knowledgePoints)
       setSelectedResourceIds(draft.selectedResourceIds)
-      setEvalData(draft.evalData)
       setDifficulty(draft.difficulty)
     } else if (node) {
       resetFormFromNode(node)
@@ -446,8 +444,8 @@ function AddSystemPageInner() {
           estimatedHours,
           knowledgePoints,
           selectedResourceIds,
-          selectedEvalMethods: evalData?.methods || [],
-          evalData,
+          selectedEvalMethods: [],
+          evalData: undefined,
           difficulty,
         },
       }))
@@ -503,13 +501,9 @@ function AddSystemPageInner() {
       const goals = node.id === selectedNodeId ? learningGoal.trim() : (node.teachingGoals || "").trim()
       const duration = node.id === selectedNodeId ? parseInt(hours) || 0 : node.duration || 0
       const resourceCount = node.id === selectedNodeId ? selectedResourceIds.length : (node.resources?.length || 0)
-      const evalCount =
-        node.id === selectedNodeId
-          ? evalData?.methods?.length || 0
-          : (node.quizzes?.length || 0) + (node.homeworks?.length || 0)
-      return !!name && !!goals && duration > 0 && resourceCount > 0 && evalCount > 0
+      return !!name && !!goals && duration > 0 && resourceCount > 0
     },
-    [selectedNodeId, selectedNode, learningGoal, hours, selectedResourceIds, evalData]
+    [selectedNodeId, selectedNode, learningGoal, hours, selectedResourceIds]
   )
 
   const [saving, setSaving] = useState(false)
@@ -565,7 +559,6 @@ function AddSystemPageInner() {
         difficulty: draft?.difficulty ?? node.difficulty,
         knowledgePointIds,
         resourceIds: existingResourceIds,
-        evalData: draft?.evalData || node.evalData,
         status: node.status || "draft",
       }
 
@@ -598,44 +591,6 @@ function AddSystemPageInner() {
         }
       }
 
-      // 保存测评方式
-      const currentMethods: string[] = []
-      node.quizzes?.forEach((q) => {
-        if (q.type === "question_bank") currentMethods.push("question_bank")
-        else if (q.type === "paper") currentMethods.push("paper")
-        else if (q.type === "quiz") currentMethods.push("quiz")
-      })
-      if (node.homeworks?.length) currentMethods.push("exam")
-
-      const methods = draft?.evalData?.methods || []
-      const methodsChanged = methods !== undefined &&
-        (methods.length !== currentMethods.length ||
-          [...methods].sort().join(",") !== [...currentMethods].sort().join(","))
-
-      if (realNodeId && !realNodeId.startsWith("node-")) {
-        // 测评方式有变更时先清空旧的，避免重复
-        if (methodsChanged) {
-          for (const q of node.quizzes || []) {
-            try { await nodeQuizApi.delete(q.id) } catch {}
-          }
-          for (const hw of node.homeworks || []) {
-            try { await nodeHomeworkApi.delete(hw.id) } catch {}
-          }
-        }
-        for (const method of methods || []) {
-          try {
-            if (method === "homework" || String(method) === "exam") {
-              await nodeHomeworkApi.create({ nodeId: realNodeId, title: "作业测评", requirement: "", needAttachment: false })
-            } else {
-              await nodeQuizApi.create({
-                nodeId: realNodeId,
-                title: method === "question_bank" ? "题库测验" : method === "paper" ? "试卷测验" : "随堂测",
-                type: method === "quiz" ? "quiz" : (method as "paper" | "question_bank"),
-              })
-            }
-          } catch {}
-        }
-      }
     }
 
     // 刷新 nodes
@@ -663,6 +618,7 @@ function AddSystemPageInner() {
         category: "system",
         creatorId: "",
         coCreatorIds: [] as string[],
+        evalData: evalData || {},
       }
       let effectiveCourseId = courseId
       if (isEdit && courseId) {
@@ -1088,18 +1044,6 @@ function AddSystemPageInner() {
                     </CardContent>
                   </Card>
 
-                  {/* Module 4: Assessment & Evaluation Rules */}
-                  <EvalMethodConfigPanel
-                    value={evalData?.evalRuleConfig}
-                    onChange={(config) =>
-                      setEvalData({
-                        methods: config.evaluationMethods,
-                        evalRuleConfig: config,
-                      })
-                    }
-                    knowledgePoints={knowledgePoints}
-                    title="配置节点评价规则"
-                  />
                 </>
               )}
 
@@ -1109,7 +1053,22 @@ function AddSystemPageInner() {
           </div>
 
           {/* Right: Publish Check Panel */}
-          <PublishCheckPanel node={currentCheckNode} />
+          <PublishCheckPanel node={currentCheckNode} courseEvalData={evalData} />
+        </div>
+
+        {/* Course-level Assessment & Evaluation Rules */}
+        <div className="mt-6">
+          <EvalMethodConfigPanel
+            value={evalData?.evalRuleConfig}
+            onChange={(config) =>
+              setEvalData({
+                methods: config.evaluationMethods,
+                evalRuleConfig: config,
+              })
+            }
+            knowledgePoints={knowledgePoints}
+            title="配置课程评价规则"
+          />
         </div>
 
       {/* Convert complete nodes to grain course dialog */}
