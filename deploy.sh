@@ -229,35 +229,26 @@ install_offline_debs() {
 }
 
 log "检查系统依赖..."
-if $OFFLINE_MODE; then
-  # 离线模式：先尝试从本地 deb 安装，再校验关键命令
-  install_offline_debs
-  for bin in curl rsync git python3 openssl; do
-    command -v "$bin" >/dev/null 2>&1 || die "离线模式需要预装: $bin"
-  done
-else
-  is_root && pkg_install curl ca-certificates rsync git python3 openssl
-fi
+# 优先从本地 deb 安装，再校验关键命令，缺失则尝试 apt 安装
+install_offline_debs
+for bin in curl rsync git python3 openssl; do
+  command -v "$bin" >/dev/null 2>&1 || { is_root && pkg_install "$bin"; }
+done
 
 # Docker
-if $OFFLINE_MODE; then
-  command -v docker >/dev/null 2>&1 || die "离线模式需要预装 Docker"
-  docker info >/dev/null 2>&1 || die "Docker 未运行"
-else
-  if ! command -v docker >/dev/null 2>&1; then
-    log "安装 Docker..."
-    is_root || die "需要 root 安装 Docker"
-    if local_docker_script=$(offline_file "get-docker.sh"); then
-      log "  使用本地安装脚本: $local_docker_script"
-      bash "$local_docker_script" 2>/dev/null || pkg_install docker.io
-    else
-      curl -fsSL https://get.docker.com | bash 2>/dev/null || pkg_install docker.io
-    fi
-    systemctl enable --now docker 2>/dev/null || true
+if ! command -v docker >/dev/null 2>&1; then
+  log "安装 Docker..."
+  is_root || die "需要 root 安装 Docker"
+  if local_docker_script=$(offline_file "get-docker.sh"); then
+    log "  使用本地安装脚本: $local_docker_script"
+    bash "$local_docker_script" 2>/dev/null || pkg_install docker.io
+  else
+    curl -fsSL https://get.docker.com | bash 2>/dev/null || pkg_install docker.io
   fi
-  if ! docker info >/dev/null 2>&1; then
-    systemctl start docker 2>/dev/null || service docker start 2>/dev/null || true; sleep 2
-  fi
+  systemctl enable --now docker 2>/dev/null || true
+fi
+if ! docker info >/dev/null 2>&1; then
+  systemctl start docker 2>/dev/null || service docker start 2>/dev/null || true; sleep 2
 fi
 
 # 配置 Docker Hub 镜像加速（支持 .env 覆盖，每次部署按 .env 刷新，避免旧镜像源过期）
@@ -268,7 +259,7 @@ configure_docker_mirrors() {
 
   if [[ -n "${DOCKER_REGISTRY_MIRRORS:-}" ]]; then
     mirrors=$(python3 -c "import sys; print('\n'.join(x.strip() for x in sys.argv[1].split(',') if x.strip()))" "$DOCKER_REGISTRY_MIRRORS")
-  elif ! $OFFLINE_MODE; then
+  else
     # .env 未配置时探测默认 mirror，任意一个可用即采用
     for url in "https://docker.1panel.live" "https://docker.m.daocloud.io"; do
       if timeout 10 curl -fsSLI "${url}/v2/" >/dev/null 2>&1; then
@@ -308,30 +299,19 @@ PY
 }
 configure_docker_mirrors
 
-if $OFFLINE_MODE; then
-  command -v docker >/dev/null 2>&1 || die "离线模式需要预装 Docker"
-  DOCKER_COMPOSE="docker compose"
-else
-  if [[ -z "$(detect_docker_compose)" ]]; then
-    pkg_install docker-compose-plugin || true
-  fi
+DOCKER_COMPOSE=$(detect_docker_compose)
+if [[ -z "$DOCKER_COMPOSE" ]]; then
+  pkg_install docker-compose-plugin || true
   DOCKER_COMPOSE=$(detect_docker_compose)
   [[ -z "$DOCKER_COMPOSE" ]] && die "未找到可用的 docker compose"
 fi
 compose() { $DOCKER_COMPOSE -f "$DEPLOY_COMPOSE" "$@"; }
 
 # Nginx（宿主标准 nginx，作为统一网关）
-if $OFFLINE_MODE; then
-  if ! command -v nginx >/dev/null 2>&1; then
-    install_offline_debs
-    command -v nginx >/dev/null 2>&1 || die "离线模式需要预装 Nginx（请将 nginx*.deb 放入 offline/debs/）"
-  fi
-else
-  if ! command -v nginx >/dev/null 2>&1; then
-    log "安装 Nginx..."
-    is_root || die "需要 root 安装 Nginx"
-    pkg_install nginx
-  fi
+if ! command -v nginx >/dev/null 2>&1; then
+  log "安装 Nginx..."
+  is_root || die "需要 root 安装 Nginx"
+  pkg_install nginx
 fi
 systemctl unmask nginx 2>/dev/null || true
 systemctl enable --now nginx 2>/dev/null || true
@@ -368,7 +348,8 @@ if ! command -v go >/dev/null 2>&1; then
   export PATH="/usr/local/go/bin:$PATH"
   echo 'export PATH="/usr/local/go/bin:$PATH"' > /etc/profile.d/go.sh
 fi
-if $OFFLINE_MODE; then
+# 优先使用 vendor/ 目录（如果存在），否则用 GOPROXY 下载
+if [[ -d "$BACKEND_DIR/vendor" ]]; then
   export GOPROXY="${GOPROXY:-off}"
 else
   export GOPROXY="${GOPROXY:-https://goproxy.cn,direct}"
@@ -417,13 +398,8 @@ if ! command -v pnpm >/dev/null 2>&1; then
 fi
 
 # PostgreSQL client
-if $OFFLINE_MODE; then
-  if ! command -v psql >/dev/null 2>&1; then
-    install_offline_debs
-    command -v psql >/dev/null 2>&1 || die "离线模式需要预装 postgresql-client（请将 postgresql-client*.deb 放入 offline/debs/）"
-  fi
-else
-  command -v psql >/dev/null 2>&1 || pkg_install postgresql-client
+if ! command -v psql >/dev/null 2>&1; then
+  pkg_install postgresql-client
 fi
 
 log "依赖准备完成"
@@ -437,19 +413,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if git -C "$SCRIPT_DIR" rev-parse --git-dir >/dev/null 2>&1; then
   PROJECT_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)"
   ORIGINAL_ROOT="$PROJECT_ROOT"
-elif $OFFLINE_MODE; then
-  die "离线模式需要从现有 git 仓库目录运行 deploy.sh"
 else
-  [[ -z "${REPO_URL:-}" ]] && die "当前不是 git 仓库，请设置环境变量 REPO_URL 后重试"
+  [[ -z "${REPO_URL:-}" ]] && die "当前不是 git 仓库且未设置 REPO_URL"
   PROJECT_ROOT="$DEPLOY_DIR/source"
   ORIGINAL_ROOT="$PROJECT_ROOT"
   if [[ -d "$PROJECT_ROOT/.git" ]]; then
-    git -C "$PROJECT_ROOT" fetch origin --tags || true
-    git -C "$PROJECT_ROOT" reset --hard origin/master || true
+    git -C "$PROJECT_ROOT" fetch origin --tags 2>/dev/null || true
+    git -C "$PROJECT_ROOT" reset --hard origin/master 2>/dev/null || true
   else
     log "克隆代码: $REPO_URL"
     rm -rf "$PROJECT_ROOT"
-    git clone "$REPO_URL" "$PROJECT_ROOT"
+    git clone "$REPO_URL" "$PROJECT_ROOT" 2>/dev/null || die "git clone 失败，请检查 REPO_URL 或网络"
   fi
 fi
 
@@ -540,11 +514,7 @@ export IMAGE_TAG BACKEND_PORT EDU_PORT POSTGRES_HOST_PORT KKFILEVIEW_HOST_PORT N
 # ── 分支校验 ──
 if [[ -n "$BRANCH_NAME" ]]; then
   [[ -n "$(git -C "$ORIGINAL_ROOT" status --porcelain 2>/dev/null)" ]] && die "工作区不干净，请先提交或清理"
-  if $OFFLINE_MODE; then
-    log "离线模式: 跳过 git fetch，使用本地分支"
-  else
-    git -C "$ORIGINAL_ROOT" fetch origin master "$BRANCH_NAME" 2>/dev/null || true
-  fi
+  git -C "$ORIGINAL_ROOT" fetch origin master "$BRANCH_NAME" 2>/dev/null || true
   lc=$(git -C "$ORIGINAL_ROOT" rev-parse "$BRANCH_NAME" 2>/dev/null || true)
   oc=$(git -C "$ORIGINAL_ROOT" rev-parse "origin/$BRANCH_NAME" 2>/dev/null || true)
   [[ -z "$oc" ]] && die "origin/$BRANCH_NAME 不存在，请先 git push"
@@ -609,7 +579,7 @@ BUILD_BACKEND=true
 if $BUILD_BACKEND; then
   log "构建后端"
   mkdir -p "$BUILD_CACHE/go-cache"
-  if $OFFLINE_MODE && [[ -d "$BACKEND_DIR/vendor" ]]; then
+  if [[ -d "$BACKEND_DIR/vendor" ]]; then
     (cd "$BACKEND_DIR" && CGO_ENABLED=0 GOCACHE="$BUILD_CACHE/go-cache" \
       go build -mod=vendor -ldflags="-s -w" -o "$BACKEND_DIR/bin/server" ./cmd/server/main.go)
   else
@@ -621,8 +591,8 @@ if $BUILD_BACKEND; then
   cp "$BACKEND_DIR/bin/server" "$TMPCTX/server"
   mkdir -p "$TMPCTX/migrations"
   rsync -a --delete "$BACKEND_DIR/migrations/" "$TMPCTX/migrations/"
-  if $OFFLINE_MODE; then
-    # 离线模式：移除 apk add（需联网），保留 adduser
+  # 本地已加载 alpine 镜像时跳过 apk add（避免联网）
+  if docker images alpine:3.21 --format ok 2>/dev/null | grep -q ok; then
     sed 's/apk add --no-cache ca-certificates && //' "$BACKEND_DIR/Dockerfile" > "$TMPCTX/Dockerfile"
   else
     cp "$BACKEND_DIR/Dockerfile" "$TMPCTX/Dockerfile"
@@ -658,13 +628,10 @@ if $BUILD_FRONTEND; then
 
   if $NEED_INSTALL; then
     log "  安装依赖..."
-    if $OFFLINE_MODE; then
-      (cd "$BUILD_ROOT" && pnpm install --offline --frozen-lockfile 2>/dev/null) || \
-        die "离线 pnpm install 失败，请确保 node_modules 或 pnpm store 已就绪"
-    else
-      (cd "$BUILD_ROOT" && pnpm install --frozen-lockfile 2>/dev/null) || \
-      (cd "$BUILD_ROOT" && pnpm install --no-frozen-lockfile) || die "pnpm install 失败"
-    fi
+    # 先试离线安装（需要 node_modules 或 pnpm store 已就绪）
+    (cd "$BUILD_ROOT" && pnpm install --offline --frozen-lockfile 2>/dev/null) || \
+    (cd "$BUILD_ROOT" && pnpm install --frozen-lockfile 2>/dev/null) || \
+    (cd "$BUILD_ROOT" && pnpm install --no-frozen-lockfile) || die "pnpm install 失败"
     echo "$LOCK_HASH" > "$BUILD_CACHE/lock-hash"
   fi
 
@@ -828,9 +795,6 @@ if [[ -f "$NGINX_CONF" ]]; then
 fi
 
 if [[ -n "$BRANCH_NAME" && "$SKIP_MERGE" != "true" ]]; then
-  if $OFFLINE_MODE; then
-    log "离线模式: 跳过合并 $BRANCH_NAME → master"
-  else
     log "合并 $BRANCH_NAME → master"
   # ORIGINAL_ROOT 可能是特性 worktree（master 一般已被主工作树检出，直接 checkout 会失败），
   # 通过 worktree list 定位真正检出 master 的工作树执行合并
@@ -844,7 +808,6 @@ if [[ -n "$BRANCH_NAME" && "$SKIP_MERGE" != "true" ]]; then
     log "✅ 已合并"
   else
     warn "合并跳过（可手动执行：git checkout master && git merge origin/$BRANCH_NAME && git push origin master）"
-    fi
   fi
 fi
 
