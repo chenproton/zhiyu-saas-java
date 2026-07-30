@@ -74,7 +74,7 @@ const nextConfig = {
       },
       {
         source: '/explore/:path*',
-        destination: '/job/positions/:path*',
+        destination: '/job/student/:path*',
       },
     ]
   },
