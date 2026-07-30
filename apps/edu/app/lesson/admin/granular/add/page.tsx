@@ -195,9 +195,29 @@ function AddGranularPageInner() {
     }
     setSaving(true)
     try {
+      const kpIdMapping: Record<string, string> = {}
+      for (const kp of knowledgePoints) {
+        if (!kp.id.startsWith("kp-custom-")) continue
+        try {
+          const created = await knowledgeApi.create({
+            name: kp.name,
+            code: kp.code,
+            description: kp.description,
+            linked: false,
+            granularLessonIds: (kp as any).granularLessons || [],
+            sourceType: "course",
+            sourceId: editId,
+          } as any)
+          kpIdMapping[kp.id] = created.id
+        } catch (err: any) {
+          toast.error(`知识点「${kp.name}」创建失败: ${err.message}`)
+          setSaving(false)
+          return
+        }
+      }
       const description = learningGoal || undefined
       const knowledgePointIds = knowledgePoints
-        .map((kp) => kp.id)
+        .map((kp) => kpIdMapping[kp.id] || kp.id)
         .filter((id) => !id.startsWith("kp-custom-"))
       const payload: Partial<Omit<Course, "id" | "createdAt" | "updatedAt" | "nodeCount" | "resourceCount" | "studyCount" | "viewCount">> = {
         name: courseName,
@@ -233,6 +253,9 @@ function AddGranularPageInner() {
           setCourse((prev) => (prev ? { ...prev, status: "draft" as const } : prev))
         }
         toast.success("草稿已保存")
+        if (Object.keys(kpIdMapping).length > 0) {
+          setKnowledgePoints((prev) => prev.map((kp) => kpIdMapping[kp.id] ? { ...kp, id: kpIdMapping[kp.id] } : kp))
+        }
       } else {
         const c = await courseApi.create(payload as Omit<Course, "id" | "nodeCount" | "resourceCount" | "studyCount" | "createdAt" | "updatedAt">)
         router.replace(`/lesson/admin/granular/add?id=${c.id}`)
