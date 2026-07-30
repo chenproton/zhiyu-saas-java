@@ -64,6 +64,8 @@ export interface TrainingProgramCourse {
   assessment?: string
   scenarioId?: string
   scenarioName?: string
+  courseId?: string
+  courseName?: string
   sortOrder: number
 }
 
@@ -78,6 +80,7 @@ export interface TrainingProgramCoursePayload {
   nature: string
   assessment?: string
   scenarioId?: string
+  courseId?: string
   sortOrder: number
 }
 

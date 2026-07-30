@@ -47,6 +47,8 @@ type TrainingProgramCourse struct {
 	Assessment    *string `json:"assessment,omitempty"`
 	ScenarioID    *string `json:"scenarioId,omitempty"`
 	ScenarioName  string  `json:"scenarioName,omitempty"`
+	CourseID      *string `json:"courseId,omitempty"`
+	CourseName    string  `json:"courseName,omitempty"`
 	SortOrder     int     `json:"sortOrder"`
 }
 
@@ -88,6 +90,8 @@ type TeachingPlanEntry struct {
 	VenueType    *string `json:"venueType,omitempty"`
 	ScenarioID   *string `json:"scenarioId,omitempty"`
 	ScenarioName string  `json:"scenarioName,omitempty"`
+	CourseID        *string `json:"courseId,omitempty"`
+	LinkedCourseName string  `json:"linkedCourseName,omitempty"`
 	Status       string  `json:"status"`
 }
 

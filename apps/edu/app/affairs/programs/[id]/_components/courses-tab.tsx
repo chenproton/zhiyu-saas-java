@@ -20,8 +20,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useToast } from "@zhiyu/ui"
-import { programApi, scenarioApi } from "@/lib/api"
+import { programApi, scenarioApi, courseApi } from "@/lib/api"
 import type { Scenario } from "@/lib/types"
+import type { Course } from "@/lib/types/lesson"
 
 const NATURE_OPTIONS = ["必修", "选修", "实践", "场景"]
 const ASSESSMENT_OPTIONS = ["考试", "考查", "场景测评"]
@@ -38,6 +39,7 @@ interface CourseRow {
   nature: string
   assessment: string
   scenarioId: string
+  courseId: string
 }
 
 function emptyRow(key: string, semester: number): CourseRow {
@@ -53,6 +55,7 @@ function emptyRow(key: string, semester: number): CourseRow {
     nature: "必修",
     assessment: "",
     scenarioId: "",
+    courseId: "",
   }
 }
 
@@ -60,6 +63,7 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
   const { toast } = useToast()
   const [rows, setRows] = useState<CourseRow[]>([])
   const [scenarios, setScenarios] = useState<Scenario[]>([])
+  const [systemCourses, setSystemCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -79,6 +83,7 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
           nature: c.nature || "必修",
           assessment: c.assessment || "",
           scenarioId: c.scenarioId || "",
+          courseId: c.courseId || "",
         })),
       )
     } catch (err: any) {
@@ -103,6 +108,21 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
         if (!cancelled) setScenarios(res.items)
       } catch {
         // 场景列表加载失败不阻断课程设置，仅无法选择关联场景
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await courseApi.list({ type: "system", limit: 200 })
+        if (!cancelled) setSystemCourses(res.items)
+      } catch {
+        // 体系课列表加载失败不阻断课程设置
       }
     })()
     return () => {
@@ -144,6 +164,7 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
           nature: r.nature,
           assessment: r.assessment || undefined,
           scenarioId: r.nature === "场景" ? r.scenarioId || undefined : undefined,
+          courseId: r.nature !== "场景" ? r.courseId || undefined : undefined,
           sortOrder: i,
         })),
       )
@@ -189,7 +210,7 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
               <TableHead className="w-[70px]">学期 *</TableHead>
               <TableHead className="w-[100px]">性质</TableHead>
               <TableHead className="w-[110px]">考核方式</TableHead>
-              <TableHead className="w-[160px]">关联场景</TableHead>
+              <TableHead className="w-[160px]">关联对象</TableHead>
               <TableHead className="w-[60px] text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
@@ -321,7 +342,31 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
                         </SelectContent>
                       </Select>
                     ) : (
-                      <span className="text-xs text-muted-foreground">-</span>
+                      <Select
+                        value={r.courseId || "none"}
+                        onValueChange={(v) => {
+                          const courseId = v === "none" ? "" : v
+                          const course = systemCourses.find((c) => c.id === courseId)
+                          updateRow(r.key, {
+                            courseId,
+                            name: course ? course.name : r.name,
+                            code: course ? (course.code || "") : r.code,
+                            hours: course ? (course.onlineHours || 0) : r.hours,
+                          })
+                        }}
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="选择体系课" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">未关联</SelectItem>
+                          {systemCourses.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
                   </TableCell>
                   <TableCell className="text-right">

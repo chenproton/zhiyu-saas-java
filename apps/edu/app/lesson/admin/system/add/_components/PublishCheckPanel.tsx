@@ -5,7 +5,6 @@ import type { SystemCourseNode, NodeRefType } from "@/lib/types/lesson-source"
 
 interface PublishCheckPanelProps {
   node: SystemCourseNode | undefined
-  courseEvalData?: { methods?: string[]; evalRuleConfig?: Record<string, any> }
 }
 
 interface CheckItem {
@@ -60,21 +59,22 @@ const CHECK_ITEMS: CheckItem[] = [
   },
 ]
 
-export default function PublishCheckPanel({ node, courseEvalData }: PublishCheckPanelProps) {
-  const evalMethods = courseEvalData?.methods || courseEvalData?.evalRuleConfig?.evaluationMethods || []
+export default function PublishCheckPanel({ node }: PublishCheckPanelProps) {
+  const nodeEvalData = (node?.evalData || {}) as { methods?: string[]; evalRuleConfig?: Record<string, any> }
+  const evalMethods = nodeEvalData.methods || nodeEvalData.evalRuleConfig?.evaluationMethods || []
   const evalCheck: CheckItem & { passed: boolean; statusText: string } = {
-    key: "courseEval",
-    label: "课程评价规则",
+    key: "nodeEval",
+    label: "节点评价规则",
     check: () => evalMethods.length > 0,
     getStatus: () =>
       evalMethods.length > 0
         ? `已配置：${evalMethods.length} 种测评方式`
-        : "未配置课程评价规则",
+        : "未配置节点评价规则",
     passed: evalMethods.length > 0,
     statusText:
       evalMethods.length > 0
         ? `已配置：${evalMethods.length} 种测评方式`
-        : "未配置课程评价规则",
+        : "未配置节点评价规则",
   }
 
   if (!node) {

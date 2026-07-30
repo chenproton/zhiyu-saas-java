@@ -27,9 +27,7 @@ import { courseApi, knowledgeApi, fileApi, approvalApi, majorApi, lessonBatchApi
 
 import { KnowledgeSelector } from "../../_components/knowledge/knowledge-selector"
 import { ResourceSelector, type ResourceItem } from "../../_components/resources/resource-selector"
-import { EvalMethodConfigPanel } from "@/components/shared/eval-method-config-panel"
 import { TaskInfoCard } from "@/app/scene/scenarios/[id]/edit/tasks/_components/task-info-card"
-import type { EvalRuleConfig } from "@/lib/types/evaluation"
 import { TaskDescriptionCard } from "@/app/scene/scenarios/[id]/edit/tasks/_components/task-description-card"
 import { RichTextEditor } from "../../_components/common/rich-text-editor"
 import PublishCheckPanel from "../../system/add/_components/PublishCheckPanel"
@@ -70,10 +68,6 @@ function AddGranularPageInner() {
   /* module 3: resources */
   const [resourcePool, setResourcePool] = useState<ResourceItem[]>([])
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([])
-
-  /* module 4: assessment */
-  const [evalRuleConfig, setEvalRuleConfig] = useState<EvalRuleConfig | undefined>(undefined)
-  const evalMethods = useMemo(() => evalRuleConfig?.evaluationMethods || [], [evalRuleConfig?.evaluationMethods])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -127,9 +121,6 @@ function AddGranularPageInner() {
           }))
           setResourcePool(resources)
           setSelectedResourceIds((c.resourceIds || []).filter((id): id is string => !!id))
-
-          const evalData = (c.evalData || {}) as Record<string, any>
-          setEvalRuleConfig(evalData.evalRuleConfig as EvalRuleConfig | undefined)
         }
       } catch (err: any) {
         toast.error(err.message || "加载失败")
@@ -189,9 +180,9 @@ function AddGranularPageInner() {
       resources: resForCheck,
       quizzes: [],
       homeworks: [],
-      evalData: { methods: evalMethods },
+      evalData: {},
     }
-  }, [editId, courseName, code, hours, learningGoal, detailedDescription, background, estimatedHours, knowledgePoints, selectedResourceIds, resourcePool, evalMethods])
+  }, [editId, courseName, code, hours, learningGoal, detailedDescription, background, estimatedHours, knowledgePoints, selectedResourceIds, resourcePool])
 
   const handleSave = async () => {
     if (!courseName) {
@@ -226,8 +217,6 @@ function AddGranularPageInner() {
         evalData: {
           learningGoal: learningGoal || undefined,
           knowledgePointIds,
-          methods: evalMethods,
-          evalRuleConfig,
         },
         knowledgePointIds,
         resourceIds: selectedResourceIds,
@@ -437,13 +426,6 @@ function AddGranularPageInner() {
                 />
               </CardContent>
             </Card>
-
-            {/* Module 4: Assessment & Evaluation */}
-            <EvalMethodConfigPanel
-              value={evalRuleConfig}
-              onChange={setEvalRuleConfig}
-              knowledgePoints={knowledgePoints}
-            />
 
             <div className="h-12" />
           </main>

@@ -196,8 +196,9 @@ function AddSystemPageInner() {
   const [abilityPoints, setAbilityPoints] = useState<{ id: string; name: string; code?: string; description?: string }[]>([])
   const [abilityPool, setAbilityPool] = useState<{ id: string; name: string; code?: string; description?: string }[]>([])
 
-  /* module 4: assessment */
-  const [evalData, setEvalData] = useState<{ methods: string[]; evalRuleConfig?: EvalRuleConfig } | undefined>()
+  /* module 4: per-node assessment */
+  const [nodeEvalRuleConfig, setNodeEvalRuleConfig] = useState<EvalRuleConfig | undefined>(undefined)
+  const nodeEvalMethods = useMemo(() => nodeEvalRuleConfig?.evaluationMethods || [], [nodeEvalRuleConfig?.evaluationMethods])
 
   useEffect(() => {
     abilityApi.list({ limit: 1000 }).then((res) => {
@@ -233,8 +234,6 @@ function AddSystemPageInner() {
         if (course.majorId) setMajor(course.majorId)
         if (course.batchId) setBatchId(course.batchId)
         setOriginalStatus(course.status || "draft")
-        const courseEvalData = (course.evalData || {}) as { methods?: string[]; evalRuleConfig?: EvalRuleConfig }
-        setEvalData(courseEvalData.methods ? { methods: courseEvalData.methods, evalRuleConfig: courseEvalData.evalRuleConfig } : undefined)
         setAbilityPoints((course.abilityPointIds || []).map((id: string) => {
           const found = abilityPool.find((a) => a.id === id)
           return found || { id, name: id }
@@ -411,6 +410,7 @@ function AddSystemPageInner() {
       setKnowledgePoints([])
       setSelectedResourceIds([])
       setDifficulty(0)
+      setNodeEvalRuleConfig(undefined)
       return
     }
     setHours(String(node.duration || ""))
@@ -429,6 +429,8 @@ function AddSystemPageInner() {
     )
     setSelectedResourceIds((node.resources || []).map((r) => r.id))
     setDifficulty(node.difficulty || 0)
+    const nodeEvalData = (node.evalData || {}) as { methods?: string[]; evalRuleConfig?: EvalRuleConfig }
+    setNodeEvalRuleConfig(nodeEvalData.evalRuleConfig)
   }, [])
 
   /* load draft when selected node changes */
@@ -444,6 +446,7 @@ function AddSystemPageInner() {
       setKnowledgePoints(draft.knowledgePoints)
       setSelectedResourceIds(draft.selectedResourceIds)
       setDifficulty(draft.difficulty)
+      setNodeEvalRuleConfig(draft.evalData?.evalRuleConfig)
     } else if (node) {
       resetFormFromNode(node)
     } else {
@@ -465,13 +468,16 @@ function AddSystemPageInner() {
           estimatedHours,
           knowledgePoints,
           selectedResourceIds,
-          selectedEvalMethods: [],
-          evalData: undefined,
+          selectedEvalMethods: nodeEvalMethods,
+          evalData: {
+            methods: nodeEvalMethods,
+            evalRuleConfig: nodeEvalRuleConfig,
+          },
           difficulty,
         },
       }))
     })()
-  }, [selectedNodeId, hours, learningGoal, detailedDescription, background, estimatedHours, knowledgePoints, selectedResourceIds, evalData, difficulty])
+  }, [selectedNodeId, hours, learningGoal, detailedDescription, background, estimatedHours, knowledgePoints, selectedResourceIds, nodeEvalMethods, nodeEvalRuleConfig, difficulty])
 
   /* ---------- node mode selection handlers ---------- */
   const openGrainSelector = useCallback((mode: AddMode) => {
@@ -506,10 +512,10 @@ function AddSystemPageInner() {
     setHours(String(grain.duration))
     setLearningGoal(grain.description)
     setSelectedResourceIds([])
-    setEvalData(undefined)
+    setNodeEvalRuleConfig(undefined)
     setDifficulty(grain.difficulty)
     setShowGrainSelector(false)
-  }, [grainSelectedId, selectedNodeId, grainSelectorMode, handleUpdateNode, grainCourses, setNodeModes, setEvalData])
+  }, [grainSelectedId, selectedNodeId, grainSelectorMode, handleUpdateNode, grainCourses, setNodeModes])
 
   /* ---------- submit: convert complete nodes to grain ---------- */
   const [convertDialogOpen, setConvertDialogOpen] = useState(false)
@@ -580,6 +586,7 @@ function AddSystemPageInner() {
         difficulty: draft?.difficulty ?? node.difficulty,
         knowledgePointIds,
         resourceIds: existingResourceIds,
+        evalData: draft?.evalData || node.evalData || {},
         status: node.status || "draft",
       }
 
@@ -639,7 +646,7 @@ function AddSystemPageInner() {
         category: "system",
         creatorId: "",
         coCreatorIds: [] as string[],
-        evalData: evalData || {},
+        evalData: {},
         abilityPointIds: abilityPoints.map((a) => a.id),
       }
       let effectiveCourseId = courseId
@@ -667,7 +674,7 @@ function AddSystemPageInner() {
     } finally {
       setSaving(false)
     }
-  }, [courseName, major, courseDescription, coverImage, batchId, isEdit, courseId, originalStatus, saveNodes, abilityPoints, evalData])
+  }, [courseName, major, courseDescription, coverImage, batchId, isEdit, courseId, originalStatus, saveNodes, abilityPoints])
 
   const handleFinish = useCallback(async () => {
     await handleSave()
@@ -701,10 +708,10 @@ function AddSystemPageInner() {
       })
       .filter(Boolean) as NodeResource[]
 
-    // Map quizzes from eval methods
-    const evalMethods = evalData?.methods || []
-    const quizzesForCheck = evalMethods.length > 0
-      ? evalMethods.map((method, i) => ({
+    // Map quizzes from current node eval config
+    const nodeEvalMethodsForCheck = nodeEvalMethods.length > 0 ? nodeEvalMethods : ((node.evalData as { methods?: string[] } | undefined)?.methods || [])
+    const quizzesForCheck = nodeEvalMethodsForCheck.length > 0
+      ? nodeEvalMethodsForCheck.map((method, i) => ({
           id: `qz-${i}`,
           title: (String(method) === "exam" || method === "homework") ? "作业测评" : method === "question_bank" ? "题库测验" : method === "paper" ? "试卷测验" : "现场问答",
           type: method === "question_bank" ? "question_bank" as const : "paper" as const,
@@ -721,7 +728,7 @@ function AddSystemPageInner() {
       resources: resForCheck.length > 0 ? resForCheck : node.resources,
       quizzes: quizzesForCheck.length > 0 ? quizzesForCheck : node.quizzes,
     }
-  }, [selectedNodeId, nodes, learningGoal, hours, knowledgePoints, selectedResourceIds, resourcePool, evalData])
+  }, [selectedNodeId, nodes, learningGoal, hours, knowledgePoints, selectedResourceIds, resourcePool, nodeEvalMethods])
 
   return (
     <EditorShell
@@ -1079,6 +1086,25 @@ function AddSystemPageInner() {
                     </CardContent>
                   </Card>
 
+                  {/* Module 4: Node Assessment */}
+                  <Card className="border-0 shadow-sm">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                        <ClipboardList className="w-4 h-4 text-[#1890ff]" />
+                        配置节点测评
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <EvalMethodConfigPanel
+                        value={nodeEvalRuleConfig}
+                        onChange={(config) => setNodeEvalRuleConfig(config)}
+                        knowledgePoints={knowledgePoints}
+                        abilityPoints={abilityPoints}
+                        title="配置节点评价规则"
+                      />
+                    </CardContent>
+                  </Card>
+
                 </>
               )}
 
@@ -1088,24 +1114,10 @@ function AddSystemPageInner() {
           </div>
 
           {/* Right: Publish Check Panel */}
-          <PublishCheckPanel node={currentCheckNode} courseEvalData={evalData} />
+          <PublishCheckPanel node={currentCheckNode} />
         </div>
 
-        {/* Course-level Assessment & Evaluation Rules */}
-        <div className="mt-6">
-          <EvalMethodConfigPanel
-            value={evalData?.evalRuleConfig}
-            onChange={(config) =>
-              setEvalData({
-                methods: config.evaluationMethods,
-                evalRuleConfig: config,
-              })
-            }
-            knowledgePoints={knowledgePoints}
-            abilityPoints={abilityPoints}
-            title="配置课程评价规则"
-          />
-        </div>
+
 
       {/* Convert complete nodes to grain course dialog */}
 

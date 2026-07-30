@@ -490,6 +490,13 @@ func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Reques
 	id := uuid.NewString()
 	err = withTx(ctx, h.DB, func(tx pgx.Tx) error {
 		courseID := resolveCourseIDByCode(ctx, tx, tenantID, req.CourseCode)
+		if req.PlanEntryID != nil && *req.PlanEntryID != "" {
+			var planCourseID *string
+			_ = tx.QueryRow(ctx, `SELECT course_id FROM teaching_plan_entries WHERE id = $1`, *req.PlanEntryID).Scan(&planCourseID)
+			if planCourseID != nil && *planCourseID != "" {
+				courseID = planCourseID
+			}
+		}
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO schedule_entries (id, tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
 				class_node_id, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
@@ -568,6 +575,13 @@ func (h *SchedulingHandler) UpdateSchedule(w http.ResponseWriter, r *http.Reques
 	}
 
 	courseID := resolveCourseIDByCode(ctx, h.DB, tenantID, req.CourseCode)
+	if req.PlanEntryID != nil && *req.PlanEntryID != "" {
+		var planCourseID *string
+		_ = h.DB.QueryRow(ctx, `SELECT course_id FROM teaching_plan_entries WHERE id = $1`, *req.PlanEntryID).Scan(&planCourseID)
+		if planCourseID != nil && *planCourseID != "" {
+			courseID = planCourseID
+		}
+	}
 	_, err = h.DB.Exec(ctx, `
 		UPDATE schedule_entries
 		SET term_id = $1, plan_entry_id = $2, course_name = $3, course_code = $4, course_id = $5, type = $6,
