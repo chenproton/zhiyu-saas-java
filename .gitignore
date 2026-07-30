@@ -43,3 +43,4 @@ offline/*.sh
 offline/pnpm
 offline/pnpm-*.tgz
 offline/docker-images/*.tar
+offline/debs/*.deb

@@ -212,9 +212,26 @@ lock_hash() { md5sum "$1/pnpm-lock.yaml" 2>/dev/null | awk '{print $1}'; }
 # ════════════════════════════════════════════
 # 1. 自动安装系统依赖
 # ════════════════════════════════════════════
+# 离线 deb 包本地安装（离线模式下 pkg_install 被跳过，依赖 offline/debs/）
+install_offline_debs() {
+  local deb_dir="$OFFLINE_DIR/debs"
+  [[ -d "$deb_dir" ]] || return 0
+  local count
+  count=$(find "$deb_dir" -maxdepth 1 -name '*.deb' 2>/dev/null | wc -l)
+  [[ "$count" -gt 0 ]] || return 0
+  log "安装离线 deb 包（$count 个）..."
+  dpkg -i "$deb_dir"/*.deb 2>/dev/null || {
+    # dpkg -i 可能因依赖顺序失败，用 apt-get 修复
+    apt-get install -y -f -qq 2>/dev/null || true
+    dpkg -i "$deb_dir"/*.deb 2>/dev/null || true
+  }
+  log "离线 deb 包安装完成"
+}
+
 log "检查系统依赖..."
 if $OFFLINE_MODE; then
-  # 离线模式：跳过所有 apt/curl 安装，仅校验关键命令
+  # 离线模式：先尝试从本地 deb 安装，再校验关键命令
+  install_offline_debs
   for bin in curl rsync git python3 openssl; do
     command -v "$bin" >/dev/null 2>&1 || die "离线模式需要预装: $bin"
   done
@@ -305,7 +322,10 @@ compose() { $DOCKER_COMPOSE -f "$DEPLOY_COMPOSE" "$@"; }
 
 # Nginx（宿主标准 nginx，作为统一网关）
 if $OFFLINE_MODE; then
-  command -v nginx >/dev/null 2>&1 || die "离线模式需要预装 Nginx"
+  if ! command -v nginx >/dev/null 2>&1; then
+    install_offline_debs
+    command -v nginx >/dev/null 2>&1 || die "离线模式需要预装 Nginx（请将 nginx*.deb 放入 offline/debs/）"
+  fi
 else
   if ! command -v nginx >/dev/null 2>&1; then
     log "安装 Nginx..."
@@ -398,7 +418,10 @@ fi
 
 # PostgreSQL client
 if $OFFLINE_MODE; then
-  command -v psql >/dev/null 2>&1 || die "离线模式需要预装 postgresql-client"
+  if ! command -v psql >/dev/null 2>&1; then
+    install_offline_debs
+    command -v psql >/dev/null 2>&1 || die "离线模式需要预装 postgresql-client（请将 postgresql-client*.deb 放入 offline/debs/）"
+  fi
 else
   command -v psql >/dev/null 2>&1 || pkg_install postgresql-client
 fi
