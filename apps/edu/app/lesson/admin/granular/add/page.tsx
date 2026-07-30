@@ -64,6 +64,7 @@ function AddGranularPageInner() {
   /* module 2: knowledge points */
   const [knowledgePool, setKnowledgePool] = useState<KnowledgePointItem[]>([])
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePointItem[]>([])
+  const customKnowledgePointIds = new Set<string>()
 
   /* module 3: resources */
   const [resourcePool, setResourcePool] = useState<ResourceItem[]>([])
@@ -78,12 +79,18 @@ function AddGranularPageInner() {
         const [kpRes] = await Promise.all([
           knowledgeApi.list({ limit: 1000 }),
         ])
+        customKnowledgePointIds.clear()
+        ;(kpRes.items || []).forEach((k) => {
+          if (k.sourceType === "course" && k.sourceId === editId) {
+            customKnowledgePointIds.add(k.id)
+          }
+        })
         const pool = kpRes.items.map((k) => ({
           id: k.id,
           name: k.name,
           code: k.code,
           description: k.description,
-          linked: !(k.sourceType === "course" && k.sourceId === editId),
+          linked: !customKnowledgePointIds.has(k.id),
         }))
         setKnowledgePool(pool)
 
@@ -104,9 +111,7 @@ function AddGranularPageInner() {
 
           const selectedKpIds = new Set((c.knowledgePointIds || []).filter((id): id is string => !!id))
           setKnowledgePoints(
-            pool
-              .filter((k) => selectedKpIds.has(k.id))
-              .map((k) => ({ ...k, linked: true }))
+            pool.filter((k) => selectedKpIds.has(k.id))
           )
 
           const resources = (resRes.items || []).map((r: any) => ({
@@ -395,15 +400,17 @@ function AddGranularPageInner() {
                   selected={knowledgePoints}
                   pool={knowledgePool}
                   onChange={setKnowledgePoints}
-                  onAddCustom={(name, description) => {
-                    const newKp: KnowledgePointItem = {
-                      id: `kp-custom-${Date.now()}`,
-                      name,
-                      description,
-                      linked: false,
-                    }
-                    setKnowledgePoints((prev) => [...prev, newKp])
-                  }}
+                   onAddCustom={(name, description) => {
+                     const newId = `kp-custom-${Date.now()}`
+                     customKnowledgePointIds.add(newId)
+                     const newKp: KnowledgePointItem = {
+                       id: newId,
+                       name,
+                       description,
+                       linked: false,
+                     }
+                     setKnowledgePoints((prev) => [...prev, newKp])
+                   }}
                 />
               </CardContent>
             </Card>

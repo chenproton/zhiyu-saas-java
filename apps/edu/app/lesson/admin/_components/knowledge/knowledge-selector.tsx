@@ -126,7 +126,7 @@ export function KnowledgeSelector({ selected, pool, onChange, onAddCustom, stand
 
   const handleReferenceKp = (kp: KnowledgePointItem) => {
     if (selected.find((s) => s.id === kp.id)) return
-    onChange?.([...selected, { ...kp, linked: true }])
+    onChange?.([...selected, kp])
   }
 
   const handleRemoveKp = (kpId: string) => {

@@ -385,15 +385,22 @@ function AddSystemPageInner() {
   /* module 2: knowledge points */
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePointItem[]>([])
   const [knowledgePool, setKnowledgePool] = useState<KnowledgePointItem[]>([])
+  const customKnowledgePointIds = new Set<string>()
 
   useEffect(() => {
     knowledgeApi.list({ limit: 200 }).then((res) => {
+      customKnowledgePointIds.clear()
+      ;(res.items || []).forEach((k) => {
+        if (k.sourceType === "course" && k.sourceId === editId) {
+          customKnowledgePointIds.add(k.id)
+        }
+      })
       setKnowledgePool((res.items || []).map((k) => ({
         id: k.id,
         name: k.name,
         code: k.code,
         description: k.description,
-        linked: !(k.sourceType === "course" && k.sourceId === editId),
+        linked: !customKnowledgePointIds.has(k.id),
       })))
     }).catch(() => setKnowledgePool([]))
   }, [])
@@ -424,7 +431,7 @@ function AddSystemPageInner() {
         name: kp.name,
         code: kp.code,
         description: kp.description,
-        linked: true,
+        linked: !customKnowledgePointIds.has(kp.id),
       }))
     )
     setSelectedResourceIds((node.resources || []).map((r) => r.id))
@@ -1052,8 +1059,10 @@ function AddSystemPageInner() {
                         pool={knowledgePool}
                         onChange={setKnowledgePoints}
                         onAddCustom={(name, description) => {
+                          const newId = `kp-custom-${Date.now()}`
+                          customKnowledgePointIds.add(newId)
                           const newKp: KnowledgePointItem = {
-                            id: `kp-custom-${Date.now()}`,
+                            id: newId,
                             name,
                             description,
                             linked: false,
