@@ -478,7 +478,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
       echo "EDU_PORT=${EDU_PORT:-3020}"
       echo "POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT:-5433}"
       echo "KKFILEVIEW_HOST_PORT=${KKFILEVIEW_HOST_PORT:-8012}"
-      echo "ENABLE_KKFILEVIEW=${ENABLE_KKFILEVIEW:-false}"
+      echo "ENABLE_KKFILEVIEW=${ENABLE_KKFILEVIEW:-true}"
       echo "KKFILEVIEW_IMAGE=${KKFILEVIEW_IMAGE:-fangzhengjin/kkfileview:4.4.0}"
       echo "KK_BASE_URL=${KK_BASE_URL:-}"  # deploy.sh 会根据 nginx 配置自动推导
       echo "DOCKER_REGISTRY_MIRRORS=${DOCKER_REGISTRY_MIRRORS:-}"
@@ -489,6 +489,12 @@ if [[ ! -f "$ENV_FILE" ]]; then
   fi
 fi
 set -a; source "$ENV_FILE"; set +a
+
+# 旧 .env 若未配置 ENABLE_KKFILEVIEW，默认启用（预览功能依赖 kkFileView）
+if ! grep -q "^ENABLE_KKFILEVIEW=" "$ENV_FILE" 2>/dev/null; then
+  update_env_var "$ENV_FILE" "ENABLE_KKFILEVIEW" "true"
+  ENABLE_KKFILEVIEW=true
+fi
 
 # 根据 .env 启用 docker compose profile，兼容 docker compose 与 docker-compose
 if [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]]; then
@@ -727,6 +733,15 @@ if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx '^kkfileview$'; the
   log "发现旧版独立 kkfileview 容器，正在接管..."
   docker stop kkfileview >/dev/null 2>&1 || true
   docker rm kkfileview >/dev/null 2>&1 || true
+fi
+
+# 若显式禁用 kkFileView，停止并移除 compose 管理的容器
+if [[ "${ENABLE_KKFILEVIEW:-false}" != "true" ]]; then
+  if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx '^zhiyu-kkfileview$'; then
+    log "ENABLE_KKFILEVIEW 为 false，停止 kkfileview 容器..."
+    docker stop zhiyu-kkfileview >/dev/null 2>&1 || true
+    docker rm zhiyu-kkfileview >/dev/null 2>&1 || true
+  fi
 fi
 
 COMPOSE_UP_LOG="$DEPLOY_DIR/.compose-up.log"
