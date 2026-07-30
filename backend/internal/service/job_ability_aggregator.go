@@ -137,7 +137,8 @@ type portraitRecommendPosition struct {
 
 // aggregate 为单租户单岗位计算并 upsert 所有学生的岗位能力结果。
 func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPositionID string, userIDs []string) (int, int, error) {
-	// 1. 加载 published 规则 + 组装能力模型（绑定链/任务链全量自动带出，权重缺省均分兜底）
+	// 1. 加载规则 + 组装能力模型（绑定链/任务链全量自动带出，权重缺省均分兜底）
+	// 优先 published，其次任意状态，无规则则使用默认均分权重
 	var ruleID string
 	err := a.DB.QueryRow(ctx, `
 		SELECT id FROM certification_rules
@@ -145,9 +146,12 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 		ORDER BY updated_at DESC LIMIT 1
 	`, careerPositionID, tenantID).Scan(&ruleID)
 	if err == pgx.ErrNoRows {
-		return 0, 0, nil // 无规则直接返回
-	}
-	if err != nil {
+		_ = a.DB.QueryRow(ctx, `
+			SELECT id FROM certification_rules
+			WHERE career_position_id = $1 AND tenant_id = $2
+			ORDER BY updated_at DESC LIMIT 1
+		`, careerPositionID, tenantID).Scan(&ruleID)
+	} else if err != nil {
 		return 0, 0, err
 	}
 
