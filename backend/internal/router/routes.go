@@ -253,7 +253,7 @@ func registerPortalRoutes(r chi.Router, h *Handlers) {
 	r.Put("/org-types/{id}", h.orgTypeHandler.Update)
 	r.Delete("/org-types/{id}", h.orgTypeHandler.Delete)
 
-	r.Get("/users", h.userManagementHandler.Create)
+	r.Post("/users", h.userManagementHandler.Create)
 	r.Put("/users/{id}", h.userManagementHandler.Update)
 	r.Delete("/users/{id}", h.userManagementHandler.Delete)
 	r.Post("/users/{id}/status", h.userManagementHandler.UpdateStatus)
