@@ -46,9 +46,18 @@ warn()  { echo "  警告：$*" >&2; }
 die()   { echo "  错误：$*" >&2; exit 1; }
 is_root() { [[ "${EUID:-$(id -u)}" -eq 0 ]]; }
 
-# 检查端口是否被占用（包含本机进程与 Docker 容器映射）
+# 检查端口是否被占用（包含本机进程与 Docker 容器映射）。
+# 本项目自身容器（zhiyu-* / kkfileview）发布的端口不算占用——compose up 会重建这些容器并释放端口；
+# allow_nginx=true 时（仅 NGINX_PORT）自身 nginx 监听的端口也不算占用——本脚本会重写 zhiyu-saas.conf 并 reload，
+# 真正的冲突由后续 nginx -t 兜底报错。
 port_in_use() {
-  local port="$1"
+  local port="$1" allow_nginx="${2:-false}"
+  if docker ps --format '{{.Names}} {{.Ports}}' 2>/dev/null | grep -E '^(zhiyu-[a-z-]+|kkfileview) ' | grep -qE "(0\.0\.0\.0|127\.0\.0\.1|\*):${port}->"; then
+    return 1
+  fi
+  if [[ "$allow_nginx" == "true" ]] && ss -tlnp 2>/dev/null | awk -v p="$port" '$4 ~ ":" p "$"' | grep -q '"nginx"'; then
+    return 1
+  fi
   ss -tlnp 2>/dev/null | awk '{print $4}' | grep -qE ":${port}$" && return 0
   docker ps --format '{{.Ports}}' 2>/dev/null | grep -qE "0\.0\.0\.0:${port}->|127\.0\.0\.1:${port}->|\*:${port}->" && return 0
   return 1
@@ -56,10 +65,10 @@ port_in_use() {
 
 # 端口冲突解决：首选端口被占用时依次尝试备用端口及后续 9 个递增端口
 resolve_port() {
-  local name="$1" primary="$2" fallback="$3"
+  local name="$1" primary="$2" fallback="$3" allow_nginx="${4:-false}"
   local port
   for port in "$primary" "$fallback" $(seq $((fallback + 1)) $((fallback + 9))); do
-    if ! port_in_use "$port"; then
+    if ! port_in_use "$port" "$allow_nginx"; then
       if [[ "$port" != "$primary" ]]; then
         warn "${name} 端口 ${primary} 已被占用，已自动切换至 ${port}"
       fi
@@ -142,6 +151,9 @@ load_offline_images() {
     loaded=true
   done
   $loaded && log "本地 Docker 镜像加载完成"
+  # 必须显式返回 0：无 tar 可加载时上面的 && 列表会使函数返回 1，
+  # 在 set -e 下作为简单命令调用会导致脚本静默退出
+  return 0
 }
 
 # 执行数据库迁移；若 migrate 工具失败，使用 psql 兜底逐个执行未应用迁移文件
@@ -423,7 +435,7 @@ set -a; source "$ENV_FILE"; set +a
 # ════════════════════════════════════════════
 # 端口冲突检测与自动回退
 # ════════════════════════════════════════════
-NGINX_PORT=$(resolve_port "NGINX_PORT" "${NGINX_PORT:-80}" "2026")
+NGINX_PORT=$(resolve_port "NGINX_PORT" "${NGINX_PORT:-80}" "2026" "true")
 BACKEND_PORT=$(resolve_port "BACKEND_PORT" "${BACKEND_PORT:-8080}" "8081")
 EDU_PORT=$(resolve_port "EDU_PORT" "${EDU_PORT:-3020}" "3021")
 POSTGRES_HOST_PORT=$(resolve_port "POSTGRES_HOST_PORT" "${POSTGRES_HOST_PORT:-5433}" "5434")
@@ -613,7 +625,10 @@ load_offline_images
 
 COMPOSE_PROFILES=""
 [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]] && COMPOSE_PROFILES="--profile kkfileview"
-compose up -d --remove-orphans $COMPOSE_PROFILES 2>&1 | tail -5
+if ! compose up -d --remove-orphans $COMPOSE_PROFILES 2>&1 | tail -5; then
+  compose logs --tail 30 2>&1 | tail -30 || true
+  die "docker compose up 失败，请检查上方容器日志"
+fi
 
 # 等待 PG
 for i in $(seq 1 30); do
