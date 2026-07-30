@@ -175,7 +175,8 @@ function ResourcePreviewModalInner({ resource, open, onOpenChange, index = 0 }: 
   if (!open || !resource || !mounted) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-[90]" onClick={() => onOpenChange(false)}>
+    <>
+      <div className="fixed inset-0 bg-black/40 z-[90]" onClick={() => onOpenChange(false)} />
       <div
         ref={contentRef}
         className={cn(
@@ -190,7 +191,6 @@ function ResourcePreviewModalInner({ resource, open, onOpenChange, index = 0 }: 
           zIndex,
         }}
         onMouseDown={() => bringToFrontRef.current()}
-        onClick={(e) => e.stopPropagation()}
       >
       <div
         className="shrink-0 flex flex-row items-center justify-between gap-4 cursor-move select-none"
@@ -238,8 +238,8 @@ function ResourcePreviewModalInner({ resource, open, onOpenChange, index = 0 }: 
       >
         <div className="absolute bottom-0 right-0 w-2 h-2 border-r-2 border-b-2 border-muted-foreground" />
       </div>
-    </div>
-    </div>,
+      </div>
+    </>,
     document.body
   )
 }
