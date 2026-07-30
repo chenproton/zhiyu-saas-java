@@ -29,7 +29,7 @@ import {
   BookOpen,
   ClipboardList,
 } from "lucide-react"
-import { useMemo, useState, useRef, useLayoutEffect, useCallback } from "react"
+import { useMemo, useState, useRef, useLayoutEffect, useCallback, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -69,6 +69,10 @@ import {
   type ScoreTypeField,
   type RubricIdField,
 } from "@/lib/evaluation-rule-store"
+import { ExamFormDialog } from "@/components/evaluation/exam-form-dialog"
+import { BankQuestionSelectorPanel } from "@/app/scene/scenarios/[id]/edit/tasks/_components/bank-question-selector-panel"
+import { examApi, examUsageApi } from "@/lib/api"
+import { loadedExams } from "@/app/scene/scenarios/[id]/edit/tasks/_components/shared-defs"
 
 // ============ Types & Configs ============
 
@@ -289,6 +293,37 @@ export function CourseEvaluationRulesDialog({
       },
     })
   }, [config.methodResourceConfigs, updateConfig])
+
+  // Paper loading
+  const [loadingPapers, setLoadingPapers] = useState(false)
+  const [paperSearch, setPaperSearch] = useState("")
+  const [showCreatePaperLocal, setShowCreatePaperLocal] = useState(false)
+  const [paperDetailOpenLocal, setPaperDetailOpenLocal] = useState(false)
+  const [selectedPaperForDetailLocal, setSelectedPaperForDetailLocal] = useState<string | null>(null)
+
+  const loadPapers = useCallback(async () => {
+    if (loadedExams.length > 0) return
+    setLoadingPapers(true)
+    try {
+      const res = await examApi.list({ limit: 1000 })
+      loadedExams.length = 0
+      ;(res.items || []).forEach((e: any) => loadedExams.push(e))
+    } catch { /* ignore */ }
+    finally { setLoadingPapers(false) }
+  }, [])
+
+  // Preload papers when component mounts
+  useEffect(() => { loadPapers() }, [loadPapers])
+
+  const handleCreatePaper = useCallback(async (data: any) => {
+    try {
+      const created = await examApi.create(data as any)
+      loadedExams.push(created)
+      updateConfig({ paperIds: [created.id], paperWeights: { [created.id]: 100 } })
+    } catch (_) {
+      toast({ variant: "destructive", title: "创建失败", description: "创建试卷失败" })
+    }
+  }, [updateConfig, toast])
 
   const mockResReview = getResourceConfig("review", { requiresMaterial: true, deadlineDays: 3, submitFormatDesc: "", venueResources: "", allowResubmit: false })
   const setMockResReview = useCallback((updates: Partial<typeof mockResReview>) => updateResourceConfig("review", updates), [updateResourceConfig])
@@ -1146,80 +1181,117 @@ export function CourseEvaluationRulesDialog({
     }
     if (erDialogMethod === "paper") {
       const selectPaper = (paperId: string) => { updateConfig({ paperIds: [paperId], paperWeights: { [paperId]: 100 } }) }
+      const paperCfg = getResourceConfig("paper", { duration: 60, allowRetake: false, retakeCount: 1, shuffleQuestions: true, showResult: true, activationMode: "manual" as string, scheduledTime: "", scheduledEndTime: "" })
+      const setPaperCfg = (patch: Record<string, any>) => updateResourceConfig("paper", patch)
       return (
         <div className="space-y-4">
           <div className="border rounded-xl p-4">
             <p className="text-sm font-medium mb-3">选择已有试卷</p>
             <div className="flex items-center gap-3 mb-3">
-              <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /><Input placeholder="搜索试卷..." className="pl-9" /></div>
-              <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => { setShowCreatePaper(true); setNewPaperName(""); setNewPaperQuestionCount(10); setNewPaperTotalScore(100); }}><Plus className="h-3.5 w-3.5 mr-1" />新建试卷</Button>
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input value={paperSearch} onChange={e => setPaperSearch(e.target.value)} placeholder="搜索试卷..." className="pl-9" />
+              </div>
+              <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => { setShowCreatePaperLocal(true); }}><Plus className="h-3.5 w-3.5 mr-1" />新建试卷</Button>
             </div>
-            <div className="space-y-2">
-              {paperMocks.map(paper => {
-                const selected = config.paperIds.includes(paper.id)
-                return (
-                  <div key={paper.id} onClick={() => selectPaper(paper.id)} className={cn("p-4 rounded-lg border cursor-pointer", selected ? "border-primary bg-primary/5" : "hover:border-gray-300")}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center shrink-0", selected ? "bg-primary border-primary" : "border-gray-300")}>{selected && <div className="w-2 h-2 rounded-full bg-white" />}</div>
-                        <div>
-                          <p className="text-sm font-medium">{paper.name}</p>
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <Badge className="text-[10px] bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-50">{paper.questionCount} 题</Badge>
-                            <Badge className="text-[10px] bg-green-50 text-green-600 border-green-200 hover:bg-green-50">总分 {paper.totalScore}</Badge>
-                          </div>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="sm" className="h-7 text-[11px] px-2 text-gray-400 hover:text-primary" onClick={e => { e.stopPropagation(); setSelectedPaperForDetail(paper.id); setPaperDetailOpen(true); }}>查看详情</Button>
+            {loadingPapers ? (
+              <div className="text-center py-8 text-gray-400">加载中...</div>
+            ) : (
+              <div className="space-y-2">
+                {loadedExams.filter((p: any) => !paperSearch || p.name.includes(paperSearch)).map((paper: any) => {
+                  const selected = config.paperIds.includes(paper.id)
+                  const questionCount = paper.questions?.length ?? paper.questionCount ?? 0
+                  const totalScore = paper.totalScore ?? 100
+                  return (
+                    <div key={paper.id} onClick={() => selectPaper(paper.id)} className={cn("px-3 py-2 rounded-lg border cursor-pointer flex items-center gap-3", selected ? "border-primary bg-primary/5" : "hover:border-gray-300")}>
+                      <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center shrink-0", selected ? "bg-primary border-primary" : "border-gray-300")}>{selected && <div className="w-2 h-2 rounded-full bg-white" />}</div>
+                      <p className="text-sm font-medium flex-1 min-w-0 truncate">{paper.name}</p>
+                      <Badge className="text-[10px] bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-50 shrink-0">{questionCount} 题</Badge>
+                      <Badge className="text-[10px] bg-green-50 text-green-600 border-green-200 hover:bg-green-50 shrink-0">总分 {totalScore}</Badge>
+                      <Button variant="ghost" size="sm" className="h-7 text-[11px] px-2 text-gray-400 hover:text-primary shrink-0" onClick={e => { e.stopPropagation(); setSelectedPaperForDetailLocal(paper.id); setPaperDetailOpenLocal(true); }}>查看详情</Button>
                     </div>
+                  )
+                })}
+                {loadedExams.filter((p: any) => !paperSearch || p.name.includes(paperSearch)).length === 0 && !paperSearch && (
+                  <div className="text-center py-8 text-gray-400">
+                    <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">暂无可选试卷</p>
+                    <p className="text-xs mt-1">请点击「新建试卷」创建试卷</p>
                   </div>
-                )
-              })}
-            </div>
+                )}
+                {loadedExams.length > 0 && loadedExams.filter((p: any) => !paperSearch || p.name.includes(paperSearch)).length === 0 && (
+                  <div className="text-center py-8 text-gray-400">
+                    <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">未找到匹配的试卷</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className="border rounded-xl p-4">
             <p className="text-sm font-medium mb-3">考卷设置</p>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs text-gray-500">考试时长（分钟）</Label><Input type="number" value={mockResPaper.duration} onChange={e => setMockResPaper({ ...mockResPaper, duration: Math.max(5, parseInt(e.target.value) || 5) })} className="mt-1 text-sm" min={5} /></div>
-              <div><Label className="text-xs text-gray-500">允许重考</Label><div className="mt-2 flex items-center gap-2"><Switch checked={mockResPaper.allowRetake} onCheckedChange={v => setMockResPaper({ ...mockResPaper, allowRetake: v })} /><span className="text-xs text-gray-600">{mockResPaper.allowRetake ? "是" : "否"}</span></div></div>
-              {mockResPaper.allowRetake && <div><Label className="text-xs text-gray-500">最多重考次数</Label><Input type="number" value={mockResPaper.retakeCount} onChange={e => setMockResPaper({ ...mockResPaper, retakeCount: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} /></div>}
+              <div><Label className="text-xs text-gray-500">考试时长（分钟）</Label><Input type="number" value={paperCfg.duration ?? 60} onChange={e => setPaperCfg({ duration: Math.max(0, parseInt(e.target.value) || 0) })} className="mt-1 text-sm" min={0} /></div>
+              <div><Label className="text-xs text-gray-500">允许重考</Label><div className="mt-2 flex items-center gap-2"><Switch checked={paperCfg.allowRetake ?? false} onCheckedChange={v => setPaperCfg({ allowRetake: v })} /><span className="text-xs text-gray-600">{(paperCfg.allowRetake ?? false) ? "是" : "否"}</span></div></div>
+              {(paperCfg.allowRetake ?? false) && <div><Label className="text-xs text-gray-500">最多重考次数</Label><Input type="number" value={paperCfg.retakeCount ?? 1} onChange={e => setPaperCfg({ retakeCount: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} /></div>}
             </div>
             <div className="mt-3 flex items-center gap-4">
-              <div className="flex items-center gap-2"><Switch checked={mockResPaper.shuffleQuestions} onCheckedChange={v => setMockResPaper({ ...mockResPaper, shuffleQuestions: v })} /><span className="text-xs text-gray-600">题目乱序</span></div>
-              <div className="flex items-center gap-2"><Switch checked={mockResPaper.showResult} onCheckedChange={v => setMockResPaper({ ...mockResPaper, showResult: v })} /><span className="text-xs text-gray-600">交卷后显示成绩</span></div>
+              <div className="flex items-center gap-2"><Switch checked={paperCfg.shuffleQuestions ?? true} onCheckedChange={v => setPaperCfg({ shuffleQuestions: v })} /><span className="text-xs text-gray-600">题目乱序</span></div>
+              <div className="flex items-center gap-2"><Switch checked={paperCfg.showResult ?? true} onCheckedChange={v => setPaperCfg({ showResult: v })} /><span className="text-xs text-gray-600">交卷后显示成绩</span></div>
             </div>
             <div className="mt-4 pt-4 border-t">
               <Label className="text-xs text-gray-500 mb-2">试卷启用条件</Label>
-              <div className="space-y-2 mt-1">
+              <div className="grid grid-cols-3 gap-3 mt-2">
                 {[
-                  { key: "manual", label: "后台手动启用", desc: `老师手动开启试卷后，学生才能进入作答。` },
-                  { key: "scheduled", label: "定时启用", desc: "提前预设考试的开始、结束时间。" },
-                  { key: "always", label: "随时作答", desc: "试卷创建完成后立即开放，学生可随时进入作答。" },
+                  { key: "manual", label: "手动启用", desc: "老师手动开启后学生可作答" },
+                  { key: "scheduled", label: "定时启用", desc: "预设开始结束时间，到时间自动开启关闭" },
+                  { key: "always", label: "随时作答", desc: "创建后立即开放，学生随时可进入作答" },
                 ].map(mode => (
-                  <button key={mode.key} onClick={() => setMockResPaper({ ...mockResPaper, activationMode: mode.key as "manual" | "scheduled" | "always" })} className={cn("w-full text-left p-3 rounded-lg border transition-all", mockResPaper.activationMode === mode.key ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-600 hover:border-gray-300")}>
-                    <div className="flex items-center gap-2">
-                      <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center shrink-0", mockResPaper.activationMode === mode.key ? "bg-primary border-primary" : "border-gray-300")}>{mockResPaper.activationMode === mode.key && <div className="w-2 h-2 rounded-full bg-white" />}</div>
-                      <span className="text-xs font-medium">{mode.label}</span>
-                    </div>
+                  <button key={mode.key} onClick={() => setPaperCfg({ activationMode: mode.key })} className={cn("w-full text-left p-3 rounded-lg border transition-all", (paperCfg.activationMode ?? "manual") === mode.key ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-600 hover:border-gray-300")}>
+                    <div className="flex items-center gap-2"><div className={cn("w-4 h-4 rounded-full border flex items-center justify-center shrink-0", (paperCfg.activationMode ?? "manual") === mode.key ? "bg-primary border-primary" : "border-gray-300")}>{(paperCfg.activationMode ?? "manual") === mode.key && <div className="w-2 h-2 rounded-full bg-white" />}</div><span className="text-xs font-medium">{mode.label}</span></div>
                     <p className="text-[11px] text-gray-400 mt-1 ml-6">{mode.desc}</p>
                   </button>
                 ))}
               </div>
-              {mockResPaper.activationMode === "scheduled" && (
+              {(paperCfg.activationMode ?? "manual") === "scheduled" && (
                 <div className="mt-3 grid grid-cols-2 gap-3">
-                  <div><Label className="text-xs text-gray-500">启用时间</Label><Input type="datetime-local" value={mockResPaper.scheduledTime} onChange={e => setMockResPaper({ ...mockResPaper, scheduledTime: e.target.value })} className="mt-1 text-sm" /></div>
-                  <div><Label className="text-xs text-gray-500">停用时间</Label><Input type="datetime-local" value={paperEndTime} onChange={e => setPaperEndTime(e.target.value)} className="mt-1 text-sm" /></div>
+                  <div><Label className="text-xs text-gray-500">启用时间</Label><Input type="datetime-local" value={paperCfg.scheduledTime ?? ""} onChange={e => setPaperCfg({ scheduledTime: e.target.value })} onFocus={e => e.currentTarget.showPicker?.()} className="mt-1 text-sm" /></div>
+                  <div><Label className="text-xs text-gray-500">停用时间</Label><Input type="datetime-local" value={paperCfg.scheduledEndTime ?? ""} onChange={e => setPaperCfg({ scheduledEndTime: e.target.value })} onFocus={e => e.currentTarget.showPicker?.()} className="mt-1 text-sm" /></div>
                 </div>
               )}
             </div>
           </div>
+          <ExamFormDialog open={showCreatePaperLocal} onOpenChange={setShowCreatePaperLocal} onSubmit={handleCreatePaper} />
+          <Dialog open={paperDetailOpenLocal} onOpenChange={setPaperDetailOpenLocal}>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader><DialogTitle>试卷详情</DialogTitle></DialogHeader>
+              {(() => {
+                const paper = loadedExams.find((e: any) => e.id === selectedPaperForDetailLocal)
+                if (!paper) return null
+                return (
+                  <div className="space-y-3 py-2">
+                    <div><Label className="text-xs text-gray-500">试卷名称</Label><p className="text-sm font-medium mt-1">{paper.name}</p></div>
+                    <div className="flex items-center gap-4"><div><Label className="text-xs text-gray-500">题目数量</Label><p className="text-sm mt-1">{paper.questions?.length ?? paper.questionCount ?? 0} 题</p></div><div><Label className="text-xs text-gray-500">总分</Label><p className="text-sm mt-1">{paper.totalScore ?? 100} 分</p></div></div>
+                  </div>
+                )
+              })()}
+              <DialogFooter><Button variant="outline" onClick={() => setPaperDetailOpen(false)}>关闭</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       )
     }
     if (erDialogMethod === "question_bank") {
       return (
         <div className="space-y-4">
-          <QuestionSelectorPanel field="questionBankQuestions" selectedIds={config.questionBankQuestions} showAutoSelect={true} />
+          <BankQuestionSelectorPanel
+            field="questionBankQuestions"
+            selectedIds={config.questionBankQuestions}
+            onToggleQuestion={(qid) => toggleQuestion(qid, "questionBankQuestions")}
+            questionScores={(getResourceConfig("question_bank", {}) as any).questionScores || {}}
+            onUpdateQuestionScore={(qid, score) => updateResourceConfig("question_bank", { questionScores: { ...((getResourceConfig("question_bank", {}) as any).questionScores || {}), [qid]: score } })}
+            onUpdateQuestionScores={(scores) => updateResourceConfig("question_bank", { questionScores: { ...((getResourceConfig("question_bank", {}) as any).questionScores || {}), ...scores } })}
+          />
           <div className="border rounded-xl p-4">
             <p className="text-sm font-medium mb-3">答题规则</p>
             <div className="grid grid-cols-2 gap-3">
@@ -1273,7 +1345,15 @@ export function CourseEvaluationRulesDialog({
       const quizIsPreset = quizPresetTimes.includes(mockResQuiz.timeLimit)
       return (
         <div className="space-y-4">
-          <QuestionSelectorPanel field="quizQuestions" selectedIds={config.quizQuestions} showAutoSelect={true} maxCount={30} />
+          <BankQuestionSelectorPanel
+            field="quizQuestions"
+            selectedIds={config.quizQuestions}
+            maxCount={30}
+            onToggleQuestion={(qid) => toggleQuestion(qid, "quizQuestions")}
+            questionScores={(getResourceConfig("quiz", {}) as any).questionScores || {}}
+            onUpdateQuestionScore={(qid, score) => updateResourceConfig("quiz", { questionScores: { ...((getResourceConfig("quiz", {}) as any).questionScores || {}), [qid]: score } })}
+            onUpdateQuestionScores={(scores) => updateResourceConfig("quiz", { questionScores: { ...((getResourceConfig("quiz", {}) as any).questionScores || {}), ...scores } })}
+          />
           <div className="border rounded-xl p-4">
             <p className="text-sm font-medium mb-3">答题规则</p>
             <div className="grid grid-cols-2 gap-3">
@@ -2100,41 +2180,6 @@ export function CourseEvaluationRulesDialog({
           <DialogHeader><DialogTitle>新增题目</DialogTitle></DialogHeader>
           <div className="py-8 text-center text-gray-500">请前往题库管理添加题目</div>
           <DialogFooter><Button onClick={() => setShowAddQuestion(false)}>知道了</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={paperDetailOpen} onOpenChange={setPaperDetailOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader><DialogTitle>试卷详情</DialogTitle></DialogHeader>
-          {(() => {
-            const paper = paperMocks.find(p => p.id === selectedPaperForDetail)
-            if (!paper) return null
-            return (
-              <div className="space-y-3 py-2">
-                <div><Label className="text-xs text-gray-500">试卷名称</Label><p className="text-sm font-medium mt-1">{paper.name}</p></div>
-                <div className="flex items-center gap-4"><div><Label className="text-xs text-gray-500">题目数量</Label><p className="text-sm mt-1">{paper.questionCount} 题</p></div><div><Label className="text-xs text-gray-500">总分</Label><p className="text-sm mt-1">{paper.totalScore} 分</p></div></div>
-                <div><Label className="text-xs text-gray-500">包含题型</Label><div className="flex flex-wrap gap-1 mt-1"><Badge variant="secondary" className="text-[10px]">单选题</Badge><Badge variant="secondary" className="text-[10px]">多选题</Badge><Badge variant="secondary" className="text-[10px]">判断题</Badge></div></div>
-              </div>
-            )
-          })()}
-          <DialogFooter><Button variant="outline" onClick={() => setPaperDetailOpen(false)}>关闭</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showCreatePaper} onOpenChange={setShowCreatePaper}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader><DialogTitle>新建试卷</DialogTitle><DialogDescription>创建新的试卷</DialogDescription></DialogHeader>
-          <div className="space-y-4 py-2">
-            <div><Label className="text-xs text-gray-500">试卷名称</Label><Input value={newPaperName} onChange={e => setNewPaperName(e.target.value)} placeholder="输入试卷名称" className="mt-1 text-sm" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs text-gray-500">题目数量</Label><Input type="number" value={newPaperQuestionCount} onChange={e => setNewPaperQuestionCount(Math.max(1, parseInt(e.target.value) || 1))} className="mt-1 text-sm" min={1} /></div>
-              <div><Label className="text-xs text-gray-500">总分</Label><Input type="number" value={newPaperTotalScore} onChange={e => setNewPaperTotalScore(Math.max(1, parseInt(e.target.value) || 1))} className="mt-1 text-sm" min={1} /></div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreatePaper(false)}>取消</Button>
-            <Button onClick={() => { if (!newPaperName.trim()) return; const newId = uid("paper"); (paperMocks as any).push({ id: newId, name: newPaperName.trim(), questionCount: newPaperQuestionCount, totalScore: newPaperTotalScore }); updateConfig({ paperIds: [...config.paperIds, newId], paperWeights: { ...config.paperWeights, [newId]: config.paperIds.length === 0 ? 100 : 0 } }); setShowCreatePaper(false); setNewPaperName(""); setNewPaperQuestionCount(10); setNewPaperTotalScore(100); }}>创建</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
