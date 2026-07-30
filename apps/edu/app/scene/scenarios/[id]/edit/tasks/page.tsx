@@ -5169,6 +5169,7 @@ function EditCardDialog({
         const pool: KnowledgePointItem[] = knowledgePoints.map((kp: any) => ({
           id: kp.id, name: kp.name, code: kp.code, description: kp.description,
           linked: !customKnowledgePointIds.has(kp.id),
+          granularLessons: kp.granularLessons || [],
         }))
         const selected: KnowledgePointItem[] = (state.knowledgePoints || []).map((id: string) => {
           const found = pool.find(p => p.id === id)
