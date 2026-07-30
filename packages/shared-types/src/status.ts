@@ -25,6 +25,9 @@ const STATUS_MAP: Record<string, StatusConfig> = {
   graduated:     { label: "毕业",    color: "#8f959e", bg: "#f5f6f7" },
   in_progress:   { label: "进行中",  color: "#16a34a", bg: "#dcfce7" },
   finished:      { label: "已结束",  color: "#8f959e", bg: "#f5f6f7" },
+  confirmed:     { label: "已确认",  color: "#16a34a", bg: "#dcfce7" },
+  planned:       { label: "待排课",  color: "#d97706", bg: "#fef3c7" },
+  scheduled:     { label: "已排课",  color: "#2563eb", bg: "#dbeafe" },
 }
 
 export function getStatusConfig(status: string): StatusConfig {

@@ -51,6 +51,7 @@
 | `GranularLessonSelectDialog` | `granular-lesson-select-dialog.tsx` | 课时多选对话框（搜索+勾选+批量确认） | `open`, `onOpenChange`, `granularCourses`, `selectedIds`, `onChange` |
 | `KnowledgePointFormDialog` | `knowledge-point-form-dialog.tsx` | 知识点创建/编辑/克隆表单 | `open`, `onOpenChange`, `onSubmit`, `initialValues`, `title` |
 | `LogTableShell<T>` | `log-table-shell.tsx` | 日志表格壳子（表格+分页+加载态） | `items`, `columns`, `total`, `page`, `totalPages` |
+| `ScheduleGrid` | `schedule-grid.tsx` | 周课表网格（7 列星期 × 节次行），排课页与学生/教师工作台共用 | `entries`, `periodSlots?`, `week?`, `onEntryClick?`, `getEntryHref?` |
 
 ## 选择器组件
 

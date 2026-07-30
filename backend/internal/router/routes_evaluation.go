@@ -35,13 +35,13 @@ func registerEvaluationRoutes(r chi.Router, h *Handlers) {
 	r.Get("/evaluation/exam-results", h.examResultHandler.List)
 	r.Post("/evaluation/exam-results", h.examResultHandler.Create)
 
-	r.Get("/evaluation/results", h.evaluationResultHandler.List)
-	r.Post("/evaluation/results", h.evaluationResultHandler.Submit)
+	// 场景评估结果的学生可读/可提交接口挂在 jobViewer 角色组（routes.go，含学生），
+	// 评分（grade/batch-grade）仍限本组业务角色。
 	r.Get("/evaluation/results/{id}", h.evaluationResultHandler.Get)
 	r.Post("/evaluation/results/{id}/grade", h.evaluationResultHandler.Grade)
 	r.Post("/evaluation/results/batch-grade", h.evaluationResultHandler.BatchGrade)
 
-	r.Get("/evaluation/job-ability/results", h.jobAbilityResultHandler.List)
+	// 岗位能力汇聚结果 List 挂在 jobViewer 角色组（routes.go，含学生），学生可查看本人结果
 	r.Get("/evaluation/job-ability/results/summary", h.jobAbilityResultHandler.Summary)
 	r.Get("/evaluation/job-ability/results/{id}", h.jobAbilityResultHandler.Get)
 	r.Post("/evaluation/job-ability/aggregate", h.jobAbilityResultHandler.Aggregate)

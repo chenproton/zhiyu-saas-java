@@ -435,6 +435,44 @@ export const libraryNavigationConfig: PlatformNavigationConfig = {
 }
 
 /* ============================================================
+   Affairs 模块导航（教务管理服务平台）
+   ============================================================ */
+export const affairsNavigationConfig: PlatformNavigationConfig = {
+  brandTitle: "教务管理服务平台",
+  currentPlatformId: "affairs",
+  currentPlatformLabel: "教务管理平台",
+  brandHref: "/affairs/programs",
+  brandIcon: "calendar",
+  platformIcon: "calendar",
+  sideBackHref: "/affairs/programs",
+  currentUserName: "教师",
+  currentUserRoleLabel: "教学用户",
+  showCurrentTime: true,
+  showUserMenu: true,
+  userMenuItems: [
+    { id: "profile", label: "个人中心", icon: "user" },
+    { id: "account", label: "账号设置", icon: "settings" },
+    { id: "logout", label: "退出登录", tone: "danger" },
+  ],
+  sideNavItems: [
+    {
+      id: "teaching-mgmt",
+      label: "教学管理",
+      icon: "calendar",
+      children: [
+        { id: "programs", label: "人才培养方案", href: "/affairs/programs", matchers: ["/affairs/programs"] },
+        { id: "teaching-plans", label: "教学计划", href: "/affairs/teaching-plans", matchers: ["/affairs/teaching-plans"] },
+        { id: "scheduling", label: "排课管理", href: "/affairs/scheduling", matchers: ["/affairs/scheduling"] },
+      ],
+    },
+  ],
+  defaultExpandedSideNavIds: ["teaching-mgmt"],
+  platformSwitchItems: [],
+  shellClassName: "bg-background",
+  mainClassName: "min-w-0 flex-1",
+}
+
+/* ============================================================
    平台模块卡片 / 套餐页统一数据源
    所有平台的一级功能模块都从这里读取，保证 /portal/apps 与
    /portal/apps/system/resource/package 看到的内容一致。
@@ -526,6 +564,13 @@ export const platformModuleDefs: Record<string, PlatformModuleDef> = {
     href: firstHrefFromNavConfig(libraryNavigationConfig),
     subModules: subModulesFromNavConfig(libraryNavigationConfig),
   },
+  affairs: {
+    id: "affairs",
+    label: "教务管理服务平台",
+    icon: "calendar",
+    href: firstHrefFromNavConfig(affairsNavigationConfig),
+    subModules: subModulesFromNavConfig(affairsNavigationConfig),
+  },
 }
 
 const PLATFORM_CARD_DESCRIPTIONS: Record<string, string> = {
@@ -546,6 +591,7 @@ const PLATFORM_CARD_DESCRIPTIONS: Record<string, string> = {
   "ability-result-center": "查看场景任务评价与认证结果",
   "resource-my-resource-center": "管理个人教学资源",
   "resource-resource-center": "管理知识点、能力点与教学资源",
+  "affairs-teaching-mgmt": "维护人才培养方案、教学计划与排课",
 }
 
 export function getPlatformCardModules(platformId: string): PlatformCardModule[] {

@@ -70,12 +70,34 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 			r.Use(jobViewer)
 			r.With(cachedPublicPositions).Get("/job/public/positions", h.positionHandler.PublicList)
 			r.Get("/job/public/positions/{id}", h.positionHandler.PublicGet)
+
+			// 学生场景学习链路只读接口（写操作仍在 businessUser 组）：
+			// 学生从工作台课表进入场景大厅学习并提交测评，需要读取场景/任务/能力点/知识点
+			registerContentReadRoutes(r, "/scene/scenarios", h.scenarioHandler)
+			r.Get("/scene/tasks", h.scenarioTaskHandler.List)
+			r.Get("/scene/tasks/{id}", h.scenarioTaskHandler.Get)
+			r.Get("/scene/tasks/{taskId}/evaluation-methods", h.taskEvaluationHandler.ListMethods)
+			r.Get("/job/abilities", h.abilityHandler.List)
+			r.Get("/job/abilities/{id}", h.abilityHandler.Get)
+			r.Get("/lesson/knowledge-points", h.knowledgePointHandler.List)
+			r.Get("/lesson/knowledge-points/{id}", h.knowledgePointHandler.Get)
+
+			// 学生提交/查看本人的场景测评结果；评分仍限 businessUser
+			r.Get("/evaluation/results", h.evaluationResultHandler.List)
+			r.Post("/evaluation/results", h.evaluationResultHandler.Submit)
+
+			// 学生查看本人的岗位能力汇聚结果
+			r.Get("/evaluation/job-ability/results", h.jobAbilityResultHandler.List)
+
+			// 学生/教师工作台课表渲染需要节次定义
+			r.Get("/affairs/period-slots", h.schedulingHandler.ListPeriodSlots)
 		})
 
 		r.Group(func(r chi.Router) {
 			r.Use(portalWorkspace)
 			// dashboard 内容按 userID 查询，缓存键只含 tenant+role 会串数据，故不缓存
 			r.Get("/portal/workspace/dashboard", h.portalHandler.WorkspaceDashboard)
+			r.Get("/portal/workspace/my-schedule", h.schedulingHandler.MySchedule)
 		})
 
 		// 学生画像查询对全部业务角色开放（含学生本人），generate/archives 仍限业务用户
@@ -106,6 +128,7 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 			registerLessonRoutes(r, h)
 			registerEvaluationRoutes(r, h)
 			registerLibraryRoutes(r, h)
+			registerAffairsRoutes(r, h)
 		})
 	})
 }

@@ -10,8 +10,7 @@ func registerJobRoutes(r chi.Router, h *Handlers) {
 	r.Post("/job/positions/{id}/favorite", h.positionHandler.ToggleFavorite)
 	r.Get("/job/positions/favorites", h.positionHandler.ListFavorites)
 
-	r.Get("/job/abilities", h.abilityHandler.List)
-	r.Get("/job/abilities/{id}", h.abilityHandler.Get)
+	// 能力点只读接口挂在 jobViewer 角色组（routes.go，含学生），供学生场景学习页使用
 	r.Post("/job/abilities", h.abilityHandler.Create)
 	r.Put("/job/abilities/{id}", h.abilityHandler.Update)
 	r.Delete("/job/abilities/{id}", h.abilityHandler.Delete)

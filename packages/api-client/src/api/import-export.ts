@@ -76,7 +76,7 @@ export const importExportApi = {
     }
     return res.json()
   },
-  downloadTemplate: (entity: "positions" | "scenarios" | "courses" | "system-courses" | "granular-courses" | "question-banks" | "exams" | "industries" | "majors" | "organizations" | "students" | "teachers") => {
+  downloadTemplate: (entity: "positions" | "scenarios" | "courses" | "system-courses" | "granular-courses" | "question-banks" | "exams" | "industries" | "majors" | "organizations" | "students" | "teachers" | "schedules") => {
     return authedFetch(`/templates/${entity}`)
   },
   downloadQuestionTemplate: (bankId: string) => {

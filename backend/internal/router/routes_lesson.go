@@ -5,8 +5,7 @@ import "github.com/go-chi/chi/v5"
 func registerLessonRoutes(r chi.Router, h *Handlers) {
 	registerContentRoutes(r, "/lesson/courses", h.courseHandler)
 
-	r.Get("/lesson/knowledge-points", h.knowledgePointHandler.List)
-	r.Get("/lesson/knowledge-points/{id}", h.knowledgePointHandler.Get)
+	// 知识点只读接口挂在 jobViewer 角色组（routes.go，含学生），供学生场景学习页使用
 	r.Post("/lesson/knowledge-points", h.knowledgePointHandler.Create)
 	r.Put("/lesson/knowledge-points/{id}", h.knowledgePointHandler.Update)
 	r.Delete("/lesson/knowledge-points/{id}", h.knowledgePointHandler.Delete)

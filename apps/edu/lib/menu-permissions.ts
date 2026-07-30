@@ -5,6 +5,7 @@ import {
   sceneNavigationConfig,
   evaluationNavigationConfig,
   libraryNavigationConfig,
+  affairsNavigationConfig,
 } from "@/lib/navigation-config"
 
 export interface MenuTreeItem {
@@ -46,6 +47,7 @@ export function buildMenuTree(): MenuTreeItem[] {
   ability.children?.push({ id: "ability-landing", label: "前台落地页", href: "/evaluation/landing" })
   const resource = platformGroup("resource", "教学资源共享服务平台", libraryNavigationConfig)
   resource.children?.push({ id: "resource-landing", label: "前台落地页", href: "/library/landing" })
+  const affairs = platformGroup("affairs", "教务管理服务平台", affairsNavigationConfig)
 
   return [
     {
@@ -77,6 +79,7 @@ export function buildMenuTree(): MenuTreeItem[] {
     scene,
     ability,
     resource,
+    affairs,
   ]
 }
 
@@ -111,6 +114,7 @@ const PLATFORM_PATH_PREFIXES = [
   { prefix: "/scene", platform: "scene" },
   { prefix: "/evaluation", platform: "ability" },
   { prefix: "/library", platform: "resource" },
+  { prefix: "/affairs", platform: "affairs" },
 ]
 
 function getPathPlatformId(path: string): string | null {

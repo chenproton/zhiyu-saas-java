@@ -1,4 +1,5 @@
 export * from "./backend"
+export * from "./affairs"
 export * from "./evaluation"
 export * from "./job"
 export * from "./lesson"

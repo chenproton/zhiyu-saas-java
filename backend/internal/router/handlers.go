@@ -96,6 +96,11 @@ type Handlers struct {
 	resourceLibraryHandler        *handler.ResourceLibraryHandler
 	onSiteQuestionLibraryHandler  *handler.OnSiteQuestionLibraryHandler
 	jobAbilityResultHandler       *handler.JobAbilityResultHandler
+	affairsTermHandler            *handler.AffairsTermHandler
+	trainingProgramHandler        *handler.TrainingProgramHandler
+	teachingPlanHandler           *handler.TeachingPlanHandler
+	schedulingHandler             *handler.SchedulingHandler
+	scheduleImportHandler         *handler.ScheduleImportHandler
 }
 
 func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHandler) *Handlers {
@@ -189,5 +194,10 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		resourceLibraryHandler:        &handler.ResourceLibraryHandler{DB: db},
 		onSiteQuestionLibraryHandler:  &handler.OnSiteQuestionLibraryHandler{DB: db, Store: store.NewOnSiteQuestionLibraryStore(db)},
 		jobAbilityResultHandler:       handler.NewJobAbilityResultHandler(db),
+		affairsTermHandler:            &handler.AffairsTermHandler{DB: db},
+		trainingProgramHandler:        &handler.TrainingProgramHandler{DB: db},
+		teachingPlanHandler:           &handler.TeachingPlanHandler{DB: db},
+		schedulingHandler:             &handler.SchedulingHandler{DB: db},
+		scheduleImportHandler:         &handler.ScheduleImportHandler{DB: db},
 	}
 }

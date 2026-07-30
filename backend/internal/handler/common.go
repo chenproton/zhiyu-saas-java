@@ -146,7 +146,7 @@ var lookupIDByNameTables = []string{
 	"ability_points", "ability_domains", "career_positions", "certificate_library",
 	"courses", "evaluation_batches", "exams", "industries", "institutions",
 	"knowledge_points", "majors", "organizations", "question_banks", "questions",
-	"resource_library", "roles", "scenarios", "staff_titles", "subscription_packages", "users",
+	"resource_library", "roles", "scenarios", "staff_titles", "subscription_packages", "terms", "users",
 }
 
 // lookupIDByName 按表名+租户+名称查询记录 ID，不存在时返回空字符串。
@@ -437,6 +437,7 @@ var (
 		"on_site_question_library",
 		"org_types",
 		"organizations",
+		"period_slots",
 		"platform_links",
 		"position_ability_bindings",
 		"position_favorites pf JOIN career_positions cp ON cp.id = pf.career_position_id LEFT JOIN LATERAL (SELECT COALESCE(array_agg(cpm.major_id), '{}') AS major_ids, COALESCE(array_agg(m.name), '{}') AS major_names FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id) maj ON true LEFT JOIN users cr_u ON cr_u.id = cp.created_by LEFT JOIN view_counters vc ON vc.target_type = 'career_position' AND vc.target_id = cp.id LEFT JOIN favorite_counters fc ON fc.target_type = 'career_position' AND fc.target_id = cp.id",
@@ -450,6 +451,7 @@ var (
 		"scenario_grade_mappings",
 		"scenario_tasks",
 		"scenario_weight_configs",
+		"schedule_entries se LEFT JOIN organizations o ON o.id = se.class_node_id LEFT JOIN users u ON u.id = se.teacher_id LEFT JOIN venues v ON v.id = se.venue_id LEFT JOIN scenarios sc ON sc.id = se.scenario_id",
 		"scene_batches",
 		"scene_batches sb LEFT JOIN majors m ON m.id = sb.major_id",
 		"scenarios s LEFT JOIN LATERAL (SELECT COALESCE(array_agg(i.name), '{}') AS names FROM industries i WHERE i.id::text = ANY(s.industry_ids)) ind ON true LEFT JOIN LATERAL (SELECT COALESCE(array_agg(m2.name), '{}') AS names FROM majors m2 WHERE m2.id = ANY(s.profession_ids)) prof ON true LEFT JOIN view_counters vc ON vc.target_type = 'scenario' AND vc.target_id = s.id LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM scenario_tasks t WHERE t.scenario_id = s.id) tcnt ON true",
@@ -458,8 +460,12 @@ var (
 		"student_ability_archives",
 		"student_ability_portraits",
 		"system_course_nodes n",
+		"teaching_plans p LEFT JOIN training_programs tp ON tp.id = p.program_id LEFT JOIN terms t ON t.id = p.term_id LEFT JOIN majors m ON m.id = p.major_id",
 		"tenants",
+		"terms",
+		"training_programs tp LEFT JOIN majors m ON m.id = tp.major_id",
 		"users",
+		"venues",
 		"workflows",
 	}
 
@@ -518,6 +524,12 @@ var (
 		`id, scenario_id, name, code, sort_order, description, detailed_description, description_pdf,
 	estimated_hours, task_type, difficulty, background, dependency_ids, is_referenced, source_scenario_id,
 	knowledge_point_ids, ability_point_ids, resource_ids, eval_data, tenant_id`,
+		"id, name, to_char(start_date, 'YYYY-MM-DD') AS start_date, to_char(end_date, 'YYYY-MM-DD') AS end_date, weeks_count, is_current, created_at",
+		"id, name, type, capacity, created_at",
+		"id, name, sort_order, start_time::text, end_time::text",
+		"tp.id, tp.name, tp.code, tp.major_id, COALESCE(m.name, '') AS major_name, tp.entry_year, tp.level, tp.duration, tp.total_credits, tp.status, tp.description, (SELECT COUNT(*) FROM training_program_courses c WHERE c.program_id = tp.id) AS course_count, tp.created_by, tp.created_at, tp.updated_at",
+		"p.id, p.program_id, COALESCE(tp.name, '') AS program_name, p.term_id, COALESCE(t.name, '') AS term_name, p.major_id, COALESCE(m.name, '') AS major_name, p.entry_year, p.status, (SELECT COUNT(*) FROM teaching_plan_entries e WHERE e.plan_id = p.id) AS entry_count, p.generated_at, p.confirmed_at",
+		"se.id, se.term_id, se.plan_entry_id, se.course_name, se.course_code, se.type, se.class_node_id, COALESCE(o.name, '') AS class_name, se.teacher_id, COALESCE(u.name, '') AS teacher_name, se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern, se.venue_id, COALESCE(v.name, '') AS venue_name, se.scenario_id, COALESCE(sc.name, '') AS scenario_name, se.source, se.status, se.version, se.created_at, se.updated_at",
 	}
 
 	allowedListQueryOrderBy = []string{
@@ -531,15 +543,19 @@ var (
 		"module_key ASC",
 		"n.sort_order ASC, n.id ASC",
 		"name",
+		"p.generated_at DESC",
 		"pf.created_at DESC",
 		"platform ASC",
 		"pr.sort_order ASC, pr.created_at DESC",
 		"s.created_at DESC",
+		"se.day_of_week ASC, se.start_week ASC",
 		"sort_order",
 		"sort_order ASC",
 		"sort_order ASC, created_at ASC",
 		"sort_order ASC, created_at DESC",
 		"sort_order ASC, id ASC",
+		"start_date DESC",
+		"tp.created_at DESC",
 		"updated_at DESC",
 	}
 
@@ -552,9 +568,12 @@ var (
 		"eb.tenant_id",
 		"id",
 		"lb.tenant_id",
+		"p.tenant_id",
 		"pr.tenant_id",
 		"s.tenant_id",
 		"sb.tenant_id",
+		"se.tenant_id",
+		"tp.tenant_id",
 	}
 
 	allowedListQuerySearchColumns = []string{
@@ -575,6 +594,7 @@ var (
 		"s.code",
 		"s.name",
 		"title",
+		"tp.name",
 		"username",
 	}
 )

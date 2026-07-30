@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import {
   Bell,
   Calendar,
+  CalendarDays,
   CheckSquare,
   Shield,
   Users,
@@ -42,6 +43,7 @@ import { AssessmentTab } from "./_components/assessment-tab"
 import { PortraitTab } from "./_components/portrait-tab"
 import { CommunityTab } from "./_components/community-tab"
 import { ProfileTab } from "./_components/profile-tab"
+import { MyScheduleTab } from "./_components/my-schedule-tab"
 
 import type { PrepAssociationRecord } from "./_data/mock-teacher-data"
 import { TeacherDashboardTab } from "./_components/teacher-dashboard-tab"
@@ -144,6 +146,7 @@ const roleIcons = {
 const teacherTabs = [
   { id: "dashboard", label: "工作台首页", icon: LayoutDashboard },
   { id: "courses", label: "我的场景/课程", icon: BookOpen },
+  { id: "schedule", label: "我的课表", icon: CalendarDays },
   { id: "portraits", label: "我的学生", icon: BarChart3 },
   { id: "profile", label: "个人中心", icon: User },
 ]
@@ -152,6 +155,7 @@ const teacherTabs = [
 const studentTabs = [
   { id: "dashboard", label: "工作台首页", icon: LayoutDashboard },
   { id: "learning", label: "我的学习", icon: Layers },
+  { id: "schedule", label: "我的课表", icon: CalendarDays },
   { id: "career", label: "我的收藏", icon: Compass },
   { id: "assessment", label: "测评认证", icon: Award },
   { id: "portrait", label: "学生画像", icon: BarChart3 },
@@ -168,6 +172,8 @@ function StudentWorkspace({ userId }: { userId?: string }) {
         return <DashboardTab onTabChange={setActiveTab} />
       case "learning":
         return <LearningTab />
+      case "schedule":
+        return <MyScheduleTab role="student" />
       case "career":
         return <CareerTab />
       case "assessment":
@@ -227,6 +233,8 @@ function TeacherWorkspace() {
         return <TeacherDashboardTab onTabChange={setActiveTab} prepAssociations={prepAssociations} onAssociate={setPrepAssociations} />
       case "courses":
         return <TeacherCoursesTab prepAssociations={prepAssociations} onAssociate={setPrepAssociations} />
+      case "schedule":
+        return <MyScheduleTab role="teacher" />
       case "portraits":
         return <TeacherPortraitsTab />
       case "profile":

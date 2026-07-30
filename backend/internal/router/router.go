@@ -44,6 +44,27 @@ func registerContentRoutes(r chi.Router, base string, h contentRoutes) {
 	r.Post(base+"/{id}/invite", h.Invite)
 }
 
+// registerContentWriteRoutes 只注册内容资源的写操作路由，
+// 两个 GET（List/Get）由 registerContentReadRoutes 挂在更宽的角色组（如含学生的 jobViewer）。
+func registerContentWriteRoutes(r chi.Router, base string, h contentRoutes) {
+	r.Post(base, h.Create)
+	r.Put(base+"/{id}", h.Update)
+	r.Delete(base+"/{id}", h.Delete)
+	r.Post(base+"/{id}/submit", h.Submit)
+	r.Post(base+"/{id}/review", h.Review)
+	r.Post(base+"/{id}/publish", h.Publish)
+	r.Post(base+"/{id}/archive", h.Archive)
+	r.Post(base+"/{id}/unpublish", h.Unpublish)
+	r.Post(base+"/{id}/withdraw", h.Withdraw)
+	r.Post(base+"/{id}/save-draft", h.SaveDraft)
+	r.Post(base+"/{id}/invite", h.Invite)
+}
+
+func registerContentReadRoutes(r chi.Router, base string, h contentRoutes) {
+	r.Get(base, h.List)
+	r.Get(base+"/{id}", h.Get)
+}
+
 type batchRoutes interface {
 	List(http.ResponseWriter, *http.Request)
 	Get(http.ResponseWriter, *http.Request)
