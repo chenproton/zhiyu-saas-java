@@ -31,7 +31,7 @@ import type {
   KnowledgePoint,
 } from "@/lib/types"
 import type { CourseAssessmentsResponse, CourseAssessmentHomework, CourseHomeworkSubmission, NodeHomework, NodeHomeworkSubmission, NodeEvaluationResult, NodeQuiz } from "@zhiyu/api-client"
-import { useAuth } from "@/contexts/auth-context"
+import { useAuth } from "@/components/auth-provider"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
 
 const TABS = [
@@ -122,8 +122,8 @@ export default function CourseDetailPage() {
   const searchParams = useSearchParams()
   const highlightNodeId = searchParams.get("node")
 
-  const { user } = useAuth()
-  const isStudent = user?.currentRole?.name === "student"
+  const { user, activeRoleCode } = useAuth()
+  const isStudent = activeRoleCode === "student"
 
   const [course, setCourse] = useState<Course | null>(null)
   const [loading, setLoading] = useState(true)

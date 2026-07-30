@@ -68,6 +68,7 @@ type Handlers struct {
 	scenarioGradeHandler          *handler.ScenarioGradeHandler
 	sceneBatchHandler             *handler.SceneBatchHandler
 	courseHandler                 *handler.CourseHandler
+	courseCloneHandler            *handler.CourseCloneHandler
 	knowledgePointHandler         *handler.KnowledgePointHandler
 	courseNodeHandler             *handler.CourseNodeHandler
 	nodeEvaluationResultHandler   *handler.NodeEvaluationResultHandler
@@ -167,6 +168,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		scenarioGradeHandler:          &handler.ScenarioGradeHandler{DB: db},
 		sceneBatchHandler:             handler.NewSceneBatchHandler(db),
 		courseHandler:                 &handler.CourseHandler{DB: db},
+		courseCloneHandler:            &handler.CourseCloneHandler{DB: db},
 		knowledgePointHandler:         &handler.KnowledgePointHandler{DB: db},
 		courseNodeHandler:             &handler.CourseNodeHandler{DB: db},
 		nodeEvaluationResultHandler:   &handler.NodeEvaluationResultHandler{DB: db},

@@ -118,6 +118,7 @@ export function CourseAdminPage({ title, subtitle, courseType, addHref, importEx
           onArchive={props.onArchive}
           onViewRejectReason={props.onViewRejectReason}
           onInviteCoBuild={props.onInviteCoBuild}
+          viewHref={(course) => `/lesson/landing/${course.id}`}
           className="border-0 rounded-none"
         />
       )}
