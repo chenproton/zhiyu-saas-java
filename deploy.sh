@@ -347,12 +347,6 @@ if ! command -v go >/dev/null 2>&1; then
   export PATH="/usr/local/go/bin:$PATH"
   echo 'export PATH="/usr/local/go/bin:$PATH"' > /etc/profile.d/go.sh
 fi
-# 优先使用 vendor/ 目录（如果存在），否则用 GOPROXY 下载
-if [[ -d "$BACKEND_DIR/vendor" ]]; then
-  export GOPROXY="${GOPROXY:-off}"
-else
-  export GOPROXY="${GOPROXY:-https://goproxy.cn,direct}"
-fi
 
 # Node.js + pnpm
 if ! command -v node >/dev/null 2>&1; then
@@ -557,6 +551,13 @@ fi
 
 BACKEND_DIR="$BUILD_ROOT/backend"
 EDU_DIR="$BUILD_ROOT/apps/edu"
+
+# 优先使用 vendor/ 目录（如果存在），否则用 GOPROXY 下载
+if [[ -d "$BACKEND_DIR/vendor" ]]; then
+  export GOPROXY="${GOPROXY:-off}"
+else
+  export GOPROXY="${GOPROXY:-https://goproxy.cn,direct}"
+fi
 
 mkdir -p "$DEPLOY_DIR" "$DEPLOY_DIR/backups" "$DEPLOY_DIR/data/uploads" \
   "$DEPLOY_DIR/logs" "$DEPLOY_DIR/.rollback" "$BUILD_CACHE"
