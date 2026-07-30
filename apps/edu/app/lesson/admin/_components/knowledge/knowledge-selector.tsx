@@ -164,7 +164,7 @@ export function KnowledgeSelector({ selected, pool, onChange, onAddCustom, stand
     if (kpActionMode === "edit" && kpActionTarget) {
       const updated = selected.map((s) =>
         s.id === kpActionTarget.id
-          ? { ...s, name: newKpForm.name.trim(), description: newKpForm.description.trim(), code: newKpForm.code }
+          ? { ...s, name: newKpForm.name.trim(), description: newKpForm.description.trim(), code: newKpForm.code, granularLessons: newKpForm.granularLessons }
           : s
       )
       onChange?.(updated)

@@ -5184,6 +5184,11 @@ function EditCardDialog({
               for (const item of items) {
                 if (item.id.startsWith("kp-custom-") && !customKnowledgePointIds.has(item.id)) {
                   customKnowledgePointIds.add(item.id)
+                }
+                const idx = knowledgePoints.findIndex(k => k.id === item.id)
+                if (idx >= 0) {
+                  knowledgePoints[idx] = { ...knowledgePoints[idx], name: item.name, description: item.description || "", code: item.code || "", granularLessons: (item as any).granularLessons || knowledgePoints[idx].granularLessons || [] }
+                } else {
                   knowledgePoints.push({ id: item.id, name: item.name, description: item.description || "", code: item.code || "", granularLessons: (item as any).granularLessons || [] })
                 }
               }
