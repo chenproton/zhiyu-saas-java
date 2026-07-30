@@ -56,8 +56,32 @@ function mapBatch(backend: any): ContentBatch {
 export default function ExamsPage() {
   const { user } = useAuth()
   const currentUserId = user?.id ?? ""
+  const router = useRouter()
   const [refreshKey, setRefreshKey] = useState(0)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const { toast } = useToast()
+
+  const handleCreate = useCallback(async (data: ExamFormData) => {
+    try {
+      const newItem = await examApi.create({
+        name: data.name,
+        description: data.description,
+        duration: data.duration || 60,
+        coverImage: data.coverImage || "",
+        collaboratorIds: data.collaboratorIds || [],
+        collaboratorDeptIds: [],
+        batchId: data.batchId || "",
+        status: "draft",
+        ownerType: "mine",
+        version: "v1.0",
+        questions: [],
+      })
+      setRefreshKey((k) => k + 1)
+      router.push(`/evaluation/exams/${newItem.id}?new=true`)
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "创建失败", description: err.message || "创建失败" })
+    }
+  }, [router, toast])
 
   const handleReview = useCallback(async (id: string, status: "approved" | "rejected") => {
     try {
@@ -75,48 +99,45 @@ export default function ExamsPage() {
   }, [toast])
 
   return (
-    <ContentListPage<ExamItem>
-      key={refreshKey}
-      title="试卷资源管理"
-      subtitle="维护试卷资源，支持组卷、审批、发布与批次分组管理"
-      entityLabel="试卷"
-      addHref="/evaluation/exams"
-      permissionModule="evaluation"
-      permissionResource="exams"
-      itemApi={examApi as any}
-      batchApi={evaluationBatchApi as any}
-      approvalApi={approvalApi as any}
-      importExportApi={importExportApi}
-      approvalTargetType="exam"
-      importEntityName="exams"
-      exportEntityName="exams"
-      importExcelEntity="exams"
-      coBuilderField="collaboratorIds"
-      statusFilterOptions={[
-        { value: "draft", label: "草稿" },
-        { value: "pending", label: "审批中" },
-        { value: "approved", label: "已通过" },
-        { value: "rejected", label: "已驳回" },
-        { value: "published", label: "已发布" },
-        { value: "archived", label: "已归档" },
-      ]}
-      mapItem={(b) => mapExamItem(b, currentUserId)}
-      mapBatch={mapBatch}
-      createPayload={() => ({
-        name: `新建试卷_${draftSuffix()}`,
-        description: "",
-        duration: 60,
-        coverImage: "",
-        collaboratorIds: [],
-        collaboratorDeptIds: [],
-        batchId: "",
-        status: "draft",
-        ownerType: "mine",
-        version: "v1.0",
-        questions: [],
-      })}
-      createRedirectUrl={(id) => `/evaluation/exams/${id}?new=true`}
-      renderList={(props) => <EvaluationListTable {...(props as any)} type="exam" onReview={handleReview} />}
-    />
+    <>
+      <ContentListPage<ExamItem>
+        key={refreshKey}
+        title="试卷资源管理"
+        subtitle="维护试卷资源，支持组卷、审批、发布与批次分组管理"
+        entityLabel="试卷"
+        addHref="/evaluation/exams"
+        permissionModule="evaluation"
+        permissionResource="exams"
+        itemApi={examApi as any}
+        batchApi={evaluationBatchApi as any}
+        approvalApi={approvalApi as any}
+        importExportApi={importExportApi}
+        approvalTargetType="exam"
+        importEntityName="exams"
+        exportEntityName="exams"
+        importExcelEntity="exams"
+        coBuilderField="collaboratorIds"
+        statusFilterOptions={[
+          { value: "draft", label: "草稿" },
+          { value: "pending", label: "审批中" },
+          { value: "approved", label: "已通过" },
+          { value: "rejected", label: "已驳回" },
+          { value: "published", label: "已发布" },
+          { value: "archived", label: "已归档" },
+        ]}
+        mapItem={(b) => mapExamItem(b, currentUserId)}
+        mapBatch={mapBatch}
+        createPayload={() => ({ name: "", description: "", duration: 60, coverImage: "", collaboratorIds: [], collaboratorDeptIds: [], batchId: "" })}
+        createRedirectUrl={(id) => `/evaluation/exams/${id}?new=true`}
+        onCreate={() => setCreateDialogOpen(true)}
+        renderList={(props) => <EvaluationListTable {...(props as any)} type="exam" onReview={handleReview} />}
+      />
+      <ExamFormDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        exam={null}
+        onSubmit={handleCreate}
+      />
+    </>
   )
 }
