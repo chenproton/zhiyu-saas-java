@@ -9,13 +9,16 @@ func registerLessonRoutes(r chi.Router, h *Handlers) {
 	r.Get("/lesson/courses/{id}/homeworks/{homeworkId}/submissions", h.courseHandler.ListHomeworkSubmissions)
 	r.Post("/lesson/courses/{id}/homeworks/{homeworkId}/submissions/{submissionId}/grade", h.courseHandler.GradeHomeworkSubmission)
 
+	// 节点作业查询/批改（教师端）
+	r.Get("/lesson/nodes/{nodeId}/homeworks/{homeworkId}/submissions", h.courseHandler.ListNodeHomeworkSubmissions)
+	r.Post("/lesson/nodes/{nodeId}/homeworks/{homeworkId}/submissions/{submissionId}/grade", h.courseHandler.GradeNodeHomeworkSubmission)
+
 	// 知识点只读接口挂在 jobViewer 角色组（routes.go，含学生），供学生场景学习页使用
 	r.Post("/lesson/knowledge-points", h.knowledgePointHandler.Create)
 	r.Put("/lesson/knowledge-points/{id}", h.knowledgePointHandler.Update)
 	r.Delete("/lesson/knowledge-points/{id}", h.knowledgePointHandler.Delete)
 
-	r.Get("/lesson/nodes", h.courseNodeHandler.List)
-	r.Get("/lesson/nodes/{id}", h.courseNodeHandler.Get)
+	// 节点只读接口（List/Get）已移至 jobViewer 组，供学生体系课学习页使用
 	r.Post("/lesson/nodes", h.courseNodeHandler.Create)
 	r.Put("/lesson/nodes/{id}", h.courseNodeHandler.Update)
 	r.Delete("/lesson/nodes/{id}", h.courseNodeHandler.Delete)

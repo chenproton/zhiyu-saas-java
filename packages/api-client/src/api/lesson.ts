@@ -129,9 +129,53 @@ export const nodeQuizApi = {
     request<{ id: string }>(`/lesson/quizzes/${id}`, { method: "DELETE" }),
 }
 
+export interface NodeHomeworkSubmission {
+  id: string
+  studentId: string
+  studentName: string
+  content?: string
+  attachmentUrls?: string[]
+  status: "submitted" | "graded"
+  score?: number
+  totalScore?: number
+  comment?: string
+  createdAt?: string
+  gradedAt?: string
+}
+
 export const nodeHomeworkApi = {
   create: (req: Omit<NodeHomework, "id">) =>
     request<NodeHomework>("/lesson/homeworks", { method: "POST", body: JSON.stringify(req) }),
   delete: (id: string) =>
     request<{ id: string }>(`/lesson/homeworks/${id}`, { method: "DELETE" }),
+  submit: (nodeId: string, homeworkId: string, req: { content?: string; attachmentUrls?: string[] }) =>
+    request<{ id: string; status: string }>(`/lesson/nodes/${nodeId}/homeworks/${homeworkId}/submit`, { method: "POST", body: JSON.stringify(req) }),
+  listSubmissions: (nodeId: string, homeworkId: string) =>
+    request<{ items: NodeHomeworkSubmission[] }>(`/lesson/nodes/${nodeId}/homeworks/${homeworkId}/submissions`),
+  grade: (nodeId: string, homeworkId: string, submissionId: string, req: { score: number; comment?: string }) =>
+    request<{ id: string; status: string }>(`/lesson/nodes/${nodeId}/homeworks/${homeworkId}/submissions/${submissionId}/grade`, { method: "POST", body: JSON.stringify(req) }),
+}
+
+export interface NodeEvaluationResult {
+  id: string
+  nodeId: string
+  methodKey: string
+  evaluateeId: string
+  evaluatorId?: string
+  evaluatorType?: string
+  status: "pending" | "evaluated"
+  totalScore?: number
+  maxScore: number
+  evalPointScores?: Record<string, any>
+  objectiveAnswers?: Record<string, any>
+  subjectiveContent?: Record<string, any>
+  drawnQuestions?: Record<string, any>
+  comment?: string
+  gradedAt?: string
+  gradedBy?: string
+}
+
+export const nodeEvaluationResultApi = {
+  list: (params?: { nodeId?: string; evaluateeId?: string; limit?: number; offset?: number }) =>
+    request<{ items: NodeEvaluationResult[]; total: number }>(`/lesson/node-evaluation-results${buildQuery(params || {})}`),
 }

@@ -70,6 +70,8 @@ export interface SystemCourseNode {
   difficulty?: number
   knowledgePointIds?: string[]
   resourceIds?: string[]
+  quizzes?: NodeQuiz[]
+  homeworks?: NodeHomework[]
   evalData?: Record<string, any>
   status: string
   createdAt: string

@@ -21,6 +21,8 @@ import {
   courseNodeApi,
   courseResourceApi,
   knowledgeApi,
+  nodeHomeworkApi,
+  nodeEvaluationResultApi,
 } from "@/lib/api"
 import type {
   Course,
@@ -28,7 +30,7 @@ import type {
   NodeResource,
   KnowledgePoint,
 } from "@/lib/types"
-import type { CourseAssessmentsResponse, CourseAssessmentHomework, CourseHomeworkSubmission } from "@zhiyu/api-client"
+import type { CourseAssessmentsResponse, CourseAssessmentHomework, CourseHomeworkSubmission, NodeHomework, NodeHomeworkSubmission, NodeEvaluationResult, NodeQuiz } from "@zhiyu/api-client"
 import { useAuth } from "@/contexts/auth-context"
 import { PlatformFooter } from "@/components/job/student/platform-footer"
 
@@ -144,6 +146,22 @@ export default function CourseDetailPage() {
   const [gradeComment, setGradeComment] = useState("")
   const [grading, setGrading] = useState(false)
 
+  const [activeNodeId, setActiveNodeId] = useState<string | null>(null)
+  const [activeNodeHomework, setActiveNodeHomework] = useState<NodeHomework | null>(null)
+  const [nodeSubmitOpen, setNodeSubmitOpen] = useState(false)
+  const [nodeSubmitContent, setNodeSubmitContent] = useState("")
+  const [nodeSubmitUrls, setNodeSubmitUrls] = useState("")
+  const [nodeSubmitting, setNodeSubmitting] = useState(false)
+
+  const [nodeGradeOpen, setNodeGradeOpen] = useState(false)
+  const [nodeSubmissions, setNodeSubmissions] = useState<NodeHomeworkSubmission[]>([])
+  const [nodeGradeSubmission, setNodeGradeSubmission] = useState<NodeHomeworkSubmission | null>(null)
+  const [nodeGradeScore, setNodeGradeScore] = useState("")
+  const [nodeGradeComment, setNodeGradeComment] = useState("")
+  const [nodeGrading, setNodeGrading] = useState(false)
+
+  const [nodeResults, setNodeResults] = useState<Map<string, NodeEvaluationResult[]>>(new Map())
+
   useEffect(() => {
     if (!id) return
     let cancelled = false
@@ -190,6 +208,28 @@ export default function CourseDetailPage() {
     }
   }, [id, course, activeTab])
 
+  // 查询每个节点的测评结果（学生看自己，教师可查看所教学生）
+  useEffect(() => {
+    if (!user?.id || nodes.length === 0) return
+    const next = new Map<string, NodeEvaluationResult[]>()
+    let pending = nodes.length
+    nodes.forEach((node) => {
+      nodeEvaluationResultApi.list({ nodeId: node.id, evaluateeId: user.id, limit: 50 })
+        .then((res) => {
+          next.set(node.id, res.items || [])
+        })
+        .catch(() => {
+          next.set(node.id, [])
+        })
+        .finally(() => {
+          pending--
+          if (pending === 0) {
+            setNodeResults(new Map(next))
+          }
+        })
+    })
+  }, [nodes, user?.id])
+
   const totalResources = resources.length
   const courseKnowledgeList = useMemo(() => {
     const ids = new Set(course?.knowledgePointIds || [])
@@ -206,6 +246,34 @@ export default function CourseDetailPage() {
   }, [nodes])
 
   const diff = difficultyMap[course?.difficulty ?? 3] || difficultyMap[3]
+
+  const evalMethodLabels: Record<string, string> = {
+    paper: "试卷", question_bank: "题库", quiz: "测验",
+    homework: "作业", random_draw: "随机抽题", review: "评审", outcome: "成果",
+  }
+  const evalMethodColors: Record<string, string> = {
+    paper: "#0ea5e9", question_bank: "#8b5cf6", quiz: "#06b6d4",
+    homework: "#f59e0b", random_draw: "#6366f1", review: "#f43f5e", outcome: "#10b981",
+  }
+
+  function getNodeEvalMethods(node: SystemCourseNode) {
+    const evalRuleConfig = (node.evalData as any)?.evalRuleConfig
+    const methods = (evalRuleConfig?.evaluationMethods || []) as string[]
+    const methodResourceConfigs = (evalRuleConfig?.methodResourceConfigs || {}) as Record<string, Record<string, any>>
+    return methods.map((methodKey) => ({
+      methodKey,
+      resourceConfig: methodResourceConfigs[methodKey] || {},
+      isExam: ["paper", "question_bank", "quiz"].includes(methodKey),
+      isHomework: methodKey === "homework",
+    }))
+  }
+
+  function getNodeExamHref(nodeId: string, methodKey: string, rc: Record<string, any>) {
+    const examId = methodKey === "paper" ? rc.paperId : rc.examId
+    const usageId = rc.usageId
+    if (!examId) return "#"
+    return `/evaluation/landing/exams/${examId}?node=${nodeId}&method=${methodKey}&usage=${usageId || ""}`
+  }
 
   if (loading) {
     return (
@@ -256,6 +324,8 @@ export default function CourseDetailPage() {
                 {nodes.sort((a, b) => a.sortOrder - b.sortOrder).map((node, idx) => {
                   const nodeResources = resources.filter((r) => (r as any).nodeId === node.id)
                   const nodeKnow = node.knowledgePointIds?.length || 0
+                  const evalMethods = getNodeEvalMethods(node)
+                  const results = nodeResults.get(node.id) || []
                   return (
                     <div key={node.id} className="group bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-emerald-200 transition-all">
                       <div className="flex items-center gap-4 p-5">
@@ -279,6 +349,83 @@ export default function CourseDetailPage() {
                           )}
                         </div>
                       </div>
+
+                      {evalMethods.length > 0 && (
+                        <div className="border-t border-slate-100 bg-slate-50/50 px-5 py-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {evalMethods.map(({ methodKey, resourceConfig, isExam, isHomework }) => {
+                              const label = evalMethodLabels[methodKey] || methodKey
+                              const color = evalMethodColors[methodKey] || "#94a3b8"
+                              const result = results.find((r) => r.methodKey === methodKey)
+                              const hw = isHomework ? (node.homeworks || [])[0] : undefined
+                              return (
+                                <div
+                                  key={methodKey}
+                                  className="bg-white rounded-lg border border-slate-200 p-3 hover:border-emerald-200 hover:shadow-sm transition-all"
+                                >
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <div
+                                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0"
+                                      style={{ backgroundColor: color }}
+                                    >
+                                      {isHomework ? <FileText className="w-4 h-4" /> : <BookOpen className="w-4 h-4" />}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-sm font-semibold text-slate-800 truncate">{label}</div>
+                                      <div className="text-[11px] text-slate-400">
+                                        {isExam ? "在线考试" : isHomework ? "作业提交" : "测评"}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    {result ? (
+                                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${result.status === "evaluated" ? "text-emerald-600 bg-emerald-50 border-emerald-200" : "text-amber-600 bg-amber-50 border-amber-200"}`}>
+                                        {result.status === "evaluated" ? `得分 ${result.totalScore}/${result.maxScore}` : "待评分"}
+                                      </span>
+                                    ) : (
+                                      <span className="text-xs text-slate-400">未开始</span>
+                                    )}
+                                    {isExam ? (
+                                      <Link
+                                        href={getNodeExamHref(node.id, methodKey, resourceConfig)}
+                                        className="text-xs font-medium text-emerald-600 hover:text-emerald-700"
+                                      >
+                                        {resourceConfig.examId || resourceConfig.paperId ? "进入考试 →" : "未配置"}
+                                      </Link>
+                                    ) : isHomework && hw ? (
+                                      <button
+                                        onClick={async () => {
+                                          setActiveNodeId(node.id)
+                                          setActiveNodeHomework(hw)
+                                          if (isStudent) {
+                                            setNodeSubmitContent("")
+                                            setNodeSubmitUrls("")
+                                            setNodeSubmitOpen(true)
+                                          } else {
+                                            try {
+                                              const res = await nodeHomeworkApi.listSubmissions(node.id, hw.id)
+                                              setNodeSubmissions(res.items || [])
+                                              setNodeGradeOpen(true)
+                                            } catch {
+                                              setNodeSubmissions([])
+                                              setNodeGradeOpen(true)
+                                            }
+                                          }
+                                        }}
+                                        className="text-xs font-medium text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                                      >
+                                        {isStudent ? "提交作业 →" : "批改作业 →"}
+                                      </button>
+                                    ) : (
+                                      <span className="text-xs text-slate-400">未配置</span>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -765,6 +912,148 @@ export default function CourseDetailPage() {
               </>
             ) : (
               <Button variant="outline" size="sm" onClick={() => setGradeOpen(false)}>关闭</Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Student submit node homework dialog */}
+      <Dialog open={nodeSubmitOpen} onOpenChange={setNodeSubmitOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>提交作业：{activeNodeHomework?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">作业要求</Label>
+              <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3">{activeNodeHomework?.requirement || "无"}</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">作答内容</Label>
+              <Textarea value={nodeSubmitContent} onChange={(e) => setNodeSubmitContent(e.target.value)} placeholder="请输入作业内容" className="min-h-[120px] text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">附件链接（多个用逗号分隔）</Label>
+              <Input value={nodeSubmitUrls} onChange={(e) => setNodeSubmitUrls(e.target.value)} placeholder="https://..." className="text-sm h-9" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setNodeSubmitOpen(false)}>取消</Button>
+            <Button
+              size="sm"
+              disabled={nodeSubmitting}
+              onClick={async () => {
+                if (!activeNodeId || !activeNodeHomework) return
+                setNodeSubmitting(true)
+                try {
+                  await nodeHomeworkApi.submit(activeNodeId, activeNodeHomework.id, {
+                    content: nodeSubmitContent,
+                    attachmentUrls: nodeSubmitUrls.split(",").map((s) => s.trim()).filter(Boolean),
+                  })
+                  setNodeSubmitOpen(false)
+                } catch {
+                  alert("提交失败")
+                } finally {
+                  setNodeSubmitting(false)
+                }
+              }}
+            >
+              <Send className="h-3.5 w-3.5 mr-1" />{nodeSubmitting ? "提交中..." : "提交"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Teacher grade node homework dialog */}
+      <Dialog open={nodeGradeOpen} onOpenChange={setNodeGradeOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>批改作业：{activeNodeHomework?.title}</DialogTitle>
+          </DialogHeader>
+          {nodeGradeSubmission ? (
+            <div className="space-y-3 py-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">学生作答</Label>
+                <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3 min-h-[80px]">{nodeGradeSubmission.content || "无内容"}</p>
+              </div>
+              {nodeGradeSubmission.attachmentUrls && nodeGradeSubmission.attachmentUrls.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">附件</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {nodeGradeSubmission.attachmentUrls.map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noreferrer" className="text-xs text-emerald-600 hover:underline">附件 {i + 1}</a>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">得分</Label>
+                  <Input type="number" value={nodeGradeScore} onChange={(e) => setNodeGradeScore(e.target.value)} placeholder="0-100" className="h-9 text-sm" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">评语</Label>
+                  <Input value={nodeGradeComment} onChange={(e) => setNodeGradeComment(e.target.value)} placeholder="评语" className="h-9 text-sm" />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2 py-2">
+              {nodeSubmissions.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-6">暂无提交记录</p>
+              ) : (
+                nodeSubmissions.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setNodeGradeSubmission(s)
+                      setNodeGradeScore(s.score !== undefined ? String(s.score) : "")
+                      setNodeGradeComment(s.comment || "")
+                    }}
+                    className="w-full text-left p-3 rounded-lg border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/30 transition-all"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{s.studentName}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${s.status === "graded" ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"}`}>
+                        {s.status === "graded" ? `已批 ${s.score}分` : "待批改"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1 truncate">{s.content || "无内容"}</p>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            {nodeGradeSubmission ? (
+              <>
+                <Button variant="outline" size="sm" onClick={() => setNodeGradeSubmission(null)}>返回列表</Button>
+                <Button
+                  size="sm"
+                  disabled={nodeGrading || nodeGradeScore === ""}
+                  onClick={async () => {
+                    if (!activeNodeId || !activeNodeHomework || !nodeGradeSubmission) return
+                    setNodeGrading(true)
+                    try {
+                      await nodeHomeworkApi.grade(activeNodeId, activeNodeHomework.id, nodeGradeSubmission.id, {
+                        score: parseFloat(nodeGradeScore),
+                        comment: nodeGradeComment,
+                      })
+                      setNodeGradeSubmission(null)
+                      const res = await nodeHomeworkApi.listSubmissions(activeNodeId, activeNodeHomework.id)
+                      setNodeSubmissions(res.items || [])
+                    } catch {
+                      alert("批改失败")
+                    } finally {
+                      setNodeGrading(false)
+                    }
+                  }}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" />{nodeGrading ? "保存中..." : "保存评分"}
+                </Button>
+              </>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => setNodeGradeOpen(false)}>关闭</Button>
             )}
           </DialogFooter>
         </DialogContent>
