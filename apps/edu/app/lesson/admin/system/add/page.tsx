@@ -53,7 +53,6 @@ import { AbilityPointSelector } from "../../_components/ability/ability-point-se
 import { EvalMethodConfigPanel } from "@/components/shared/eval-method-config-panel"
 import { TaskInfoCard } from "@/app/scene/scenarios/[id]/edit/tasks/_components/task-info-card"
 import type { EvalRuleConfig } from "@/lib/types/evaluation"
-import { TaskDescriptionCard } from "@/app/scene/scenarios/[id]/edit/tasks/_components/task-description-card"
 import { ResourceSelector, type ResourceItem } from "../../_components/resources/resource-selector"
 import { RichTextEditor } from "../../_components/common/rich-text-editor"
 import { EditorShell } from "@/components/shared/editor-shell"
@@ -1016,30 +1015,15 @@ function AddSystemPageInner() {
                             onDifficultyChange={setDifficulty}
                             hours={parseInt(hours) || 0}
                             onHoursChange={v => setHours(String(v))}
-                            background={background}
-                            onBackgroundChange={setBackground}
-                            showBackground={true}
+                            showBackground={false}
                             showName={false}
                             showType={false}
                             hoursLabel="课时数"
                           />
                         </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">预计学时</Label>
-                          <Input type="number" value={estimatedHours} onChange={(e) => setEstimatedHours(e.target.value)} placeholder="预计完成学时" className="h-9 text-sm" />
-                        </div>
                         <div className="md:col-span-2 space-y-1.5">
                           <Label className="text-xs">学习目标</Label>
                           <RichTextEditor value={learningGoal} onChange={setLearningGoal} minHeight={280} />
-                        </div>
-                        <div className="md:col-span-2">
-                          <TaskDescriptionCard
-                            description={detailedDescription}
-                            onDescriptionChange={setDetailedDescription}
-                            descriptionPdf={null}
-                            onDescriptionPdfChange={() => {}}
-                            toast={(o) => { if (o.variant === "destructive") toast.error(o.title || ""); else toast.success(o.title || ""); }}
-                          />
                         </div>
                       </div>
                     </CardContent>
