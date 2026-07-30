@@ -300,12 +300,23 @@ function QuestionGradingCard({
   const [localScore, setLocalScore] = useState(score.toString())
   const [expanded, setExpanded] = useState(!isAutoQuestion(question))
 
-  const handleBlur = () => {
-    const num = parseFloat(localScore)
+  const commitIfValid = (val: string) => {
+    const num = parseFloat(val)
     const max = question.score || 0
     if (!isNaN(num) && num >= 0 && num <= max) {
       onScoreChange(question.id, num)
-    } else {
+      return true
+    }
+    return false
+  }
+
+  const handleScoreInput = (val: string) => {
+    setLocalScore(val)
+    commitIfValid(val)
+  }
+
+  const handleBlur = () => {
+    if (!commitIfValid(localScore)) {
       setLocalScore(score.toString())
     }
   }
@@ -342,10 +353,8 @@ function QuestionGradingCard({
                 value={localScore}
                 max={question.score || 0}
                 disabled={isGraded}
-                onChange={setLocalScore}
-                onBlur={() => {
-                  handleBlur()
-                }}
+                onChange={handleScoreInput}
+                onBlur={handleBlur}
               />
             ) : (
               <div className="flex items-center gap-1.5">
@@ -502,12 +511,24 @@ function EvalPointGradingCard({
   const [localScore, setLocalScore] = useState(score.toString())
   const [localComment, setLocalComment] = useState(comment)
 
-  const handleScoreBlur = () => {
-    const num = parseFloat(localScore)
+  const commitIfValid = (val: string, newComment?: string) => {
+    const num = parseFloat(val)
     const max = evalPoint.weight || 0
+    const cmt = newComment !== undefined ? newComment : localComment
     if (!isNaN(num) && num >= 0 && num <= max) {
-      onChange(evalPoint.id, num, localComment)
-    } else {
+      onChange(evalPoint.id, num, cmt)
+      return true
+    }
+    return false
+  }
+
+  const handleScoreInput = (val: string) => {
+    setLocalScore(val)
+    commitIfValid(val)
+  }
+
+  const handleScoreBlur = () => {
+    if (!commitIfValid(localScore)) {
       setLocalScore(score.toString())
     }
   }
@@ -533,9 +554,7 @@ function EvalPointGradingCard({
               value={localScore}
               max={evalPoint.weight || 100}
               disabled={isGraded}
-              onChange={(val) => {
-                setLocalScore(val)
-              }}
+              onChange={handleScoreInput}
               onBlur={handleScoreBlur}
             />
           </div>
