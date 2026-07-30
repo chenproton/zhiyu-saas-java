@@ -111,7 +111,10 @@ pkg_updated=false
 pkg_install() {
   is_root || return 0
   $pkg_updated || { apt-get update -qq 2>/dev/null || yum makecache -q 2>/dev/null || true; pkg_updated=true; }
-  if command -v apt-get >/dev/null 2>&1; then apt-get install -y -qq "$@" 2>/dev/null || true
+  if command -v apt-get >/dev/null 2>&1; then
+    # 锁定内核元包，避免 apt install 其他包时顺带升级内核导致需要重启
+    apt-mark hold linux-image-generic linux-headers-generic 2>/dev/null || true
+    apt-get install -y -qq "$@" 2>/dev/null || true
   elif command -v yum >/dev/null 2>&1; then yum install -y "$@" 2>/dev/null || true
   fi
 }
