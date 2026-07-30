@@ -7,9 +7,10 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input"
 import { TableHead, TableCell, TableRow } from "@/components/ui/table"
 import { Label } from "@/components/ui/label"
-import { certificateLibraryApi } from "@/lib/api"
+import { certificateLibraryApi, fileApi } from "@/lib/api"
 import type { CertificateLibraryItem } from "@/lib/types/job"
 import { useToast } from "@zhiyu/ui"
+import { CoverImageUpload } from "@/components/shared/cover-image-upload"
 import { LibraryPageShell } from "../_components/library-page-shell"
 
 export default function CertificatesPage() {
@@ -23,6 +24,7 @@ export default function CertificatesPage() {
   const [url, setUrl] = useState("")
   const [description, setDescription] = useState("")
   const [imageUrl, setImageUrl] = useState("")
+  const [imageUploading, setImageUploading] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
   const loadItems = useCallback(async () => {
@@ -38,6 +40,17 @@ export default function CertificatesPage() {
   }, [loadItems])
 
   const resetForm = () => { setName(""); setUrl(""); setDescription(""); setImageUrl("") }
+  const handleImageUpload = async (file: File) => {
+    setImageUploading(true)
+    try {
+      const res = await fileApi.upload(file)
+      setImageUrl(res.url)
+      toast({ title: "封面上传成功" })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "上传失败", description: err?.message || "请稍后重试" })
+    } finally { setImageUploading(false) }
+  }
+  const handleImageRemove = () => setImageUrl("")
   const handleOpenAdd = () => { setEditingItem(null); resetForm(); setIsDialogOpen(true) }
   const handleOpenEdit = (item: CertificateLibraryItem) => {
     setEditingItem(item); setName(item.name); setUrl(item.url || ""); setDescription(item.description || ""); setImageUrl(item.imageUrl || ""); setIsDialogOpen(true)
@@ -99,7 +112,7 @@ export default function CertificatesPage() {
           <DialogContent><DialogHeader><DialogTitle>{editingItem ? "编辑证书" : "新增证书"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div><Label>名称 *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="证书名称" /></div>
-            <div><Label>图片地址</Label><Input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="封面图片URL" /></div>
+            <div><CoverImageUpload imageUrl={imageUrl} uploading={imageUploading} label="证书封面" alt="证书封面" onUpload={handleImageUpload} onRemove={handleImageRemove} /></div>
             <div><Label>链接</Label><Input value={url} onChange={e => setUrl(e.target.value)} placeholder="官方链接" /></div>
             <div><Label>描述</Label><Input value={description} onChange={e => setDescription(e.target.value)} placeholder="简要描述" /></div>
           </div>
