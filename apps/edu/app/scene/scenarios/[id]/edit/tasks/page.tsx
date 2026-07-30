@@ -5143,9 +5143,11 @@ function EditCardDialog({
         return <TaskDescriptionCard description={state.description} onDescriptionChange={v => updateState({ description: v })} descriptionPdf={state.descriptionPdf} onDescriptionPdfChange={v => updateState({ descriptionPdf: v })} toast={toast} />
 
       case "knowledge": {
-        const pool: KnowledgePointItem[] = knowledgePoints.map((kp: any) => ({
-          id: kp.id, name: kp.name, code: kp.code, description: kp.description, linked: kp.linked ?? true,
-        }))
+        const pool: KnowledgePointItem[] = knowledgePoints
+          .filter((kp: any) => !customKnowledgePointIds.has(kp.id))
+          .map((kp: any) => ({
+            id: kp.id, name: kp.name, code: kp.code, description: kp.description, linked: true,
+          }))
         const selected: KnowledgePointItem[] = (state.knowledgePoints || []).map((id: string) =>
           pool.find(p => p.id === id) || { id, name: id, linked: false }
         )
