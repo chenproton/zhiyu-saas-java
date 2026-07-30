@@ -9,8 +9,10 @@ import {
   GraduationCap,
   ImageUp,
   Plus,
+  X,
 } from "lucide-react"
 import { toast, Toaster } from "sonner"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -47,6 +49,7 @@ import { BatchSelector } from "@/components/shared/batch-selector"
 import { usePreviewResources } from "@/components/shared/resource-preview-modal"
 
 const customKnowledgePointIds = new Set<string>()
+const courseResourcePool: ResourceItem[] = []
 
 function AddGranularPageInner() {
   const router = useRouter()
@@ -90,8 +93,9 @@ function AddGranularPageInner() {
     const load = async () => {
       setLoading(true)
       try {
-        const [kpRes] = await Promise.all([
+        const [kpRes, libRes] = await Promise.all([
           knowledgeApi.list({ limit: 1000 }),
+          resourceLibraryApi.list({ limit: 1000 }),
         ])
         customKnowledgePointIds.clear()
         ;(kpRes.items || []).forEach((k) => {
@@ -108,6 +112,18 @@ function AddGranularPageInner() {
           granularLessons: (k as any).granularLessonIds || [],
         }))
         setKnowledgePool(pool)
+
+        courseResourcePool.length = 0
+        ;(libRes.items || []).forEach((r: any) => {
+          courseResourcePool.push({
+            id: r.id,
+            name: r.name,
+            type: r.resourceType || r.type,
+            url: r.url,
+            description: r.description,
+            size: r.fileSize !== undefined ? r.fileSize : r.size,
+          } as ResourceItem)
+        })
 
         if (editId) {
           const [c, resRes] = await Promise.all([
@@ -130,36 +146,8 @@ function AddGranularPageInner() {
             pool.filter((k) => selectedKpIds.has(k.id))
           )
 
-          const resIds = (c.resourceIds || []).filter((id): id is string => !!id)
-          if (resIds.length > 0) {
-            const libRes = await resourceLibraryApi.list({ limit: 1000 })
-            const libItems: ResourceItem[] = (libRes.items || []).map((r: any) => ({
-              id: r.id,
-              name: r.name,
-              type: r.resourceType || r.type,
-              url: r.url,
-              description: r.description,
-              size: r.fileSize ?? r.size,
-              uploadedBy: r.uploadedBy,
-              uploadedAt: r.createdAt || r.uploadedAt,
-            }))
-            const selectedRes = libItems.filter((r) => resIds.includes(r.id))
-            setResourcePool(selectedRes)
-            setSelectedResourceIds(selectedRes.map((r) => r.id))
-          } else {
-            const resources = (resRes.items || []).map((r: any) => ({
-              id: r.id,
-              name: r.name,
-              type: r.type,
-              url: r.url || r.URL,
-              description: r.description,
-              size: r.size,
-              uploadedBy: r.uploadedBy,
-              uploadedAt: r.uploadedAt,
-            }))
-            setResourcePool(resources)
-            setSelectedResourceIds(resources.map((r) => r.id))
-          }
+          const resIds = new Set((c.resourceIds || []).filter((id): id is string => !!id))
+          setSelectedResourceIds(Array.from(resIds))
         }
       } catch (err: any) {
         toast.error(err.message || "加载失败")
@@ -475,6 +463,26 @@ function AddGranularPageInner() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
+                {selectedResourceIds.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {(() => {
+                      const allRes = [...resourcePool]
+                      for (const id of selectedResourceIds) {
+                        if (!allRes.find(r => r.id === id)) {
+                          allRes.push({ id, name: id.slice(0, 8), type: "other", url: "" })
+                        }
+                      }
+                      return allRes.filter(r => selectedResourceIds.includes(r.id)).map((r) => (
+                        <Badge key={r.id} variant="secondary" className="px-2 py-0.5 text-xs gap-1 bg-blue-50 text-blue-600">
+                          {r.name}
+                          <button className="text-blue-400 hover:text-blue-700" onClick={() => setSelectedResourceIds(prev => prev.filter(id => id !== r.id))}>
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))
+                    })()}
+                  </div>
+                )}
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm" className="w-full border-dashed">
@@ -497,11 +505,15 @@ function AddGranularPageInner() {
                     </DialogHeader>
                     <ResourceSelector
                       standalone={false}
-                      pool={resourcePool}
+                      pool={courseResourcePool}
                       selectedIds={selectedResourceIds}
                       onChange={setSelectedResourceIds}
-                      onUpload={(r) => setResourcePool((prev) => [...prev, r])}
-                      courseId={editId || undefined}
+                      onUpload={(r) => {
+                        if (!courseResourcePool.find(x => x.id === r.id)) {
+                          courseResourcePool.push(r)
+                        }
+                        setSelectedResourceIds((prev) => [...prev, r.id])
+                      }}
                       previewResources={previewResources}
                       onAddPreviewResource={addPreviewResource}
                       onRemovePreviewResource={removePreviewResource}
