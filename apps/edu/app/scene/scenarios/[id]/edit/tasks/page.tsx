@@ -5151,7 +5151,7 @@ function EditCardDialog({
 
       case "knowledge": {
         const pool: KnowledgePointItem[] = knowledgePoints.map((kp: any) => ({
-          id: kp.id, name: kp.name, code: kp.code, description: kp.description, linked: kp.linked ?? true,
+          id: kp.id, name: kp.name, code: kp.code, description: kp.description, linked: true,
         }))
         const selected: KnowledgePointItem[] = (state.knowledgePoints || []).map((id: string) =>
           pool.find(p => p.id === id) || { id, name: id, linked: false }
@@ -5161,7 +5161,6 @@ function EditCardDialog({
             standalone={false}
             selected={selected}
             pool={pool}
-            customKpIds={customKnowledgePointIds}
             onChange={(items) => {
               const ids = items.map(i => i.id)
               for (const item of items) {
