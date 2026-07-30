@@ -193,8 +193,11 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 		}
 	} else {
 		stRows, err := a.DB.Query(ctx, `
-			SELECT DISTINCT evaluatee_id FROM scene_evaluation_results
+			SELECT evaluatee_id FROM scene_evaluation_results
 			WHERE tenant_id = $1 AND task_id = ANY($2) AND status = 'evaluated'
+			UNION
+			SELECT evaluatee_id FROM course_evaluation_results
+			WHERE tenant_id = $1 AND course_id = ANY($2) AND status = 'evaluated'
 		`, tenantID, taskIDs)
 		if err != nil {
 			return 0, 0, err
@@ -225,9 +228,16 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 	}
 	scores := map[studentTaskKey]taskScore{}
 	scoreRows, err := a.DB.Query(ctx, `
-		SELECT evaluatee_id, task_id, MAX(total_score / NULLIF(max_score, 0) * 100)
-		FROM scene_evaluation_results
-		WHERE tenant_id = $1 AND task_id = ANY($2) AND evaluatee_id = ANY($3) AND total_score IS NOT NULL AND status = 'evaluated'
+		SELECT evaluatee_id, task_id, MAX(score)
+		FROM (
+			SELECT evaluatee_id, task_id, total_score / NULLIF(max_score, 0) * 100 AS score
+			FROM scene_evaluation_results
+			WHERE tenant_id = $1 AND task_id = ANY($2) AND evaluatee_id = ANY($3) AND total_score IS NOT NULL AND status = 'evaluated'
+			UNION ALL
+			SELECT evaluatee_id, course_id AS task_id, total_score / NULLIF(max_score, 0) * 100 AS score
+			FROM course_evaluation_results
+			WHERE tenant_id = $1 AND course_id = ANY($2) AND evaluatee_id = ANY($3) AND total_score IS NOT NULL AND status = 'evaluated'
+		) t
 		GROUP BY evaluatee_id, task_id
 	`, tenantID, taskIDs, studentIDs)
 	if err != nil {

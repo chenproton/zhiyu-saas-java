@@ -201,6 +201,8 @@ func (h *ExamResultHandler) submit(ctx context.Context, tenantID, userID, usageI
 
 	// Bridge: auto-create scene_evaluation_result if exam targets a task
 	h.syncSceneEvaluationResult(ctx, tenantID, usageID, userID, score, totalScore, answersJSON, hasSubjective, methodKey)
+	// Bridge: auto-create course_evaluation_result if exam targets a course
+	h.syncCourseEvaluationResult(ctx, tenantID, usageID, userID, score, totalScore, answersJSON, hasSubjective, methodKey)
 
 	return &domain.ExamResult{
 		ID:          resultID,
@@ -273,6 +275,46 @@ func isCorrect(qType string, correct []string, raw interface{}) bool {
 
 func roundScore(s float64) float64 {
 	return float64(int64(s*100+0.5)) / 100
+}
+
+func (h *ExamResultHandler) syncCourseEvaluationResult(ctx context.Context, tenantID, usageID, userID string, score, maxScore float64, objectiveAnswers domain.JSONMap, hasSubjective bool, methodKey string) {
+	if methodKey == "" {
+		methodKey = "paper"
+	}
+	var courseID string
+	err := h.DB.QueryRow(ctx, `
+		SELECT target_ids[1]
+		FROM exam_usages
+		WHERE id = $1 AND target_type = 'course' AND array_length(target_ids, 1) > 0
+	`, usageID).Scan(&courseID)
+	if err != nil {
+		return
+	}
+
+	status := "evaluated"
+	if hasSubjective {
+		status = "pending"
+	}
+
+	_, err = h.DB.Exec(ctx, `
+		INSERT INTO course_evaluation_results (tenant_id, course_id, method_key, evaluatee_id, status, total_score, max_score, objective_answers)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		ON CONFLICT (tenant_id, course_id, evaluatee_id, method_key)
+		DO UPDATE SET
+			total_score = EXCLUDED.total_score,
+			max_score = EXCLUDED.max_score,
+			status = CASE WHEN course_evaluation_results.status = 'evaluated' THEN 'evaluated' ELSE EXCLUDED.status END,
+			objective_answers = EXCLUDED.objective_answers,
+			graded_at = CASE
+				WHEN course_evaluation_results.status = 'evaluated' THEN course_evaluation_results.graded_at
+				WHEN EXCLUDED.status = 'evaluated' THEN NOW()
+				ELSE NULL
+			END,
+			updated_at = NOW()
+	`, tenantID, courseID, methodKey, userID, status, score, maxScore, objectiveAnswers)
+	if err != nil {
+		slog.Info(fmt.Sprintf("syncCourseEvaluationResult upsert failed: usage=%s course=%s method=%s user=%s err=%v", usageID, courseID, methodKey, userID, err))
+	}
 }
 
 func (h *ExamResultHandler) syncSceneEvaluationResult(ctx context.Context, tenantID, usageID, userID string, score, maxScore float64, objectiveAnswers domain.JSONMap, hasSubjective bool, methodKey string) {

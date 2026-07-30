@@ -29,6 +29,7 @@ type Course struct {
 	Difficulty        *int         `json:"difficulty,omitempty"`
 	Description       *string      `json:"description,omitempty"`
 	KnowledgePointIds JSONSlice    `json:"knowledgePointIds,omitempty"`
+	AbilityPointIds   JSONSlice    `json:"abilityPointIds,omitempty"`
 	ResourceIds       JSONSlice    `json:"resourceIds,omitempty"`
 	CreatorID         string       `json:"creatorId"`
 	CoCreatorIds      JSONSlice    `json:"coCreatorIds,omitempty"`

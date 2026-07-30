@@ -7,11 +7,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// CertificationModelTask 能力点关联的场景任务（链路：场景→任务→评分方式→评分点能力点）。
+// CertificationModelTask 能力点关联的测评任务（场景任务或课程）。
 type CertificationModelTask struct {
 	TaskID       string  `json:"taskId"`
 	TaskName     string  `json:"taskName"`
 	ScenarioName string  `json:"scenarioName"`
+	TaskType     string  `json:"taskType"` // "scene" | "course"
 	Weight       float64 `json:"weight"`
 }
 
@@ -105,11 +106,39 @@ func LoadCertificationModel(ctx context.Context, db *pgxpool.Pool, tenantID, pos
 		if err := taskRows.Scan(&apID, &t.TaskID, &t.TaskName, &t.ScenarioName); err != nil {
 			return nil, err
 		}
+		t.TaskType = "scene"
 		if i, ok := pointIdx[apID]; ok {
 			points[i].point.Tasks = append(points[i].point.Tasks, t)
 		}
 	}
 	if err := taskRows.Err(); err != nil {
+		return nil, err
+	}
+
+	// 2b. 能力点→关联课程：课程上 ability_point_ids 与岗位能力点匹配。
+	courseRows, err := db.Query(ctx, `
+		SELECT DISTINCT u.ap_id, c.id, COALESCE(c.name, '')
+		FROM courses c
+		CROSS JOIN LATERAL unnest(c.ability_point_ids) AS u(ap_id)
+		WHERE c.tenant_id = $1 AND c.status = 'published' AND u.ap_id = ANY($2)
+		ORDER BY u.ap_id, c.id
+	`, tenantID, pointIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer courseRows.Close()
+	for courseRows.Next() {
+		var apID string
+		var t CertificationModelTask
+		if err := courseRows.Scan(&apID, &t.TaskID, &t.TaskName); err != nil {
+			return nil, err
+		}
+		t.TaskType = "course"
+		if i, ok := pointIdx[apID]; ok {
+			points[i].point.Tasks = append(points[i].point.Tasks, t)
+		}
+	}
+	if err := courseRows.Err(); err != nil {
 		return nil, err
 	}
 
