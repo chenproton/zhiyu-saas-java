@@ -427,7 +427,7 @@ func (h *CourseHandler) fetchCourse(ctx context.Context, id string) (*domain.Cou
 		&c.ID, &c.Code, &c.Name, &c.Type, &c.Category, &c.MajorID, &c.MajorName, &c.TeacherID, &c.IndustryID, &c.IndustryName, &c.Version,
 		&c.OnlineHours, &c.OfflineHours, &c.OnlineWeight, &c.OfflineWeight, &c.Semester, &c.ClassName,
 		&c.Status, &c.CoverColor, &c.CoverImage, &c.CourseTag, &c.Difficulty, &c.Description,
-		&c.KnowledgePointIds, &c.ResourceIds, &c.CreatorID, &c.CoCreatorIds, &c.BatchID, &c.BatchName,
+		&c.KnowledgePointIds, &c.ResourceIds, &c.EvalData, &c.CreatorID, &c.CoCreatorIds, &c.BatchID, &c.BatchName,
 		&c.NodeCount, &c.ResourceCount, &c.ViewCount, &c.StudyCount, &c.CreatedAt, &c.UpdatedAt,
 	)
 	if err != nil {

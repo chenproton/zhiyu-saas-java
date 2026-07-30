@@ -9,6 +9,30 @@ import (
 // JSONMap / JSONSlice are generic containers for JSONB columns.
 type JSONMap map[string]interface{}
 
+func (m JSONMap) Value() (driver.Value, error) {
+	if m == nil {
+		return nil, nil
+	}
+	return json.Marshal(m)
+}
+
+func (m *JSONMap) Scan(src interface{}) error {
+	if src == nil {
+		*m = nil
+		return nil
+	}
+	var data []byte
+	switch v := src.(type) {
+	case []byte:
+		data = v
+	case string:
+		data = []byte(v)
+	default:
+		return nil
+	}
+	return json.Unmarshal(data, (*map[string]interface{})(m))
+}
+
 type JSONSlice []interface{}
 
 // StringSlice is a JSON-serializable string slice for JSONB columns.
