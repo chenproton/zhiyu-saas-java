@@ -8,14 +8,16 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type PlatformLinkHandler struct {
-	DB    *pgxpool.Pool
-	Store *store.PlatformLinksStore
+	DB          *pgxpool.Pool
+	Store       *store.PlatformLinksStore
+	RedisClient *redis.Client
 }
 
 type PlatformLinkListResponse struct {
@@ -103,6 +105,9 @@ func (h *PlatformLinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.RedisClient != nil {
+		h.RedisClient.Del(r.Context(), "zhiyu:public:platform-links")
+	}
 	link, _ := h.Store.GetByPlatform(r.Context(), req.Platform)
 	respondJSON(w, http.StatusCreated, link)
 }
@@ -134,6 +139,9 @@ func (h *PlatformLinkHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.RedisClient != nil {
+		h.RedisClient.Del(r.Context(), "zhiyu:public:platform-links")
+	}
 	link, _ := h.Store.GetByID(r.Context(), id)
 	respondJSON(w, http.StatusOK, link)
 }
@@ -154,6 +162,9 @@ func (h *PlatformLinkHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if err := h.Store.Delete(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除平台链接失败")
 		return
+	}
+	if h.RedisClient != nil {
+		h.RedisClient.Del(r.Context(), "zhiyu:public:platform-links")
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }

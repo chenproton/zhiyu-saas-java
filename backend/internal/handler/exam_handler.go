@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -11,12 +12,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 )
 
 type ExamHandler struct {
-	DB *pgxpool.Pool
+	DB          *pgxpool.Pool
+	RedisClient *redis.Client
 }
 
 type ExamListResponse struct {
@@ -215,16 +218,19 @@ func (h *ExamHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchExam(r.Context(), id); err != nil {
+	var tenantID string
+	err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM exams WHERE id = $1`, id).Scan(&tenantID)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "考试不存在")
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM exams WHERE id = $1`, id)
+	_, err = h.DB.Exec(r.Context(), `DELETE FROM exams WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "删除考试失败")
 		return
 	}
+	h.clearLandingExamsCache(r, tenantID)
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 
@@ -251,14 +257,17 @@ func (h *ExamHandler) Review(w http.ResponseWriter, r *http.Request) {
 
 func (h *ExamHandler) Publish(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusPublished)
+	h.clearLandingExamsCacheFromRequest(r)
 }
 
 func (h *ExamHandler) Archive(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusArchived)
+	h.clearLandingExamsCacheFromRequest(r)
 }
 
 func (h *ExamHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusDraft)
+	h.clearLandingExamsCacheFromRequest(r)
 }
 
 func (h *ExamHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
@@ -271,6 +280,37 @@ func (h *ExamHandler) SaveDraft(w http.ResponseWriter, r *http.Request) {
 
 func (h *ExamHandler) Invite(w http.ResponseWriter, r *http.Request) {
 	h.actions().invite(w, r)
+}
+
+func (h *ExamHandler) clearLandingExamsCacheFromRequest(r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var tenantID string
+	err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM exams WHERE id = $1`, id).Scan(&tenantID)
+	if err != nil {
+		return
+	}
+	h.clearLandingExamsCache(r, tenantID)
+}
+
+func (h *ExamHandler) clearLandingExamsCache(r *http.Request, tenantID string) {
+	if h.RedisClient == nil {
+		return
+	}
+	prefix := fmt.Sprintf("zhiyu:%s:", tenantID)
+	var cursor uint64
+	for {
+		keys, nextCursor, err := h.RedisClient.Scan(r.Context(), cursor, prefix+"*", 100).Result()
+		if err != nil {
+			return
+		}
+		if len(keys) > 0 {
+			h.RedisClient.Del(r.Context(), keys...)
+		}
+		cursor = nextCursor
+		if cursor == 0 {
+			break
+		}
+	}
 }
 
 func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {

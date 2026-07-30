@@ -11,12 +11,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 )
 
 type AppModuleHandler struct {
-	DB *pgxpool.Pool
+	DB          *pgxpool.Pool
+	RedisClient *redis.Client
 }
 
 type AppModuleGroup struct {
@@ -121,6 +123,9 @@ func (h *AppModuleHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.RedisClient != nil {
+		h.RedisClient.Del(r.Context(), "zhiyu:public:app-modules")
+	}
 	module, _ := h.fetchAppModule(r.Context(), id)
 	respondJSON(w, http.StatusCreated, module)
 }
@@ -158,6 +163,9 @@ func (h *AppModuleHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.RedisClient != nil {
+		h.RedisClient.Del(r.Context(), "zhiyu:public:app-modules")
+	}
 	module, _ := h.fetchAppModule(r.Context(), id)
 	respondJSON(w, http.StatusOK, module)
 }
@@ -179,6 +187,9 @@ func (h *AppModuleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "删除应用模块失败")
 		return
+	}
+	if h.RedisClient != nil {
+		h.RedisClient.Del(r.Context(), "zhiyu:public:app-modules")
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
