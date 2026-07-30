@@ -743,10 +743,19 @@ fi
 
 if [[ -n "$BRANCH_NAME" && "$SKIP_MERGE" != "true" ]]; then
   log "合并 $BRANCH_NAME → master"
-  git -C "$ORIGINAL_ROOT" checkout master 2>/dev/null && \
-  git -C "$ORIGINAL_ROOT" pull origin master --ff-only 2>/dev/null && \
-  git -C "$ORIGINAL_ROOT" merge "origin/$BRANCH_NAME" --no-edit 2>/dev/null && \
-  git -C "$ORIGINAL_ROOT" push origin master 2>/dev/null && log "✅ 已合并" || warn "合并跳过"
+  # ORIGINAL_ROOT 可能是特性 worktree（master 一般已被主工作树检出，直接 checkout 会失败），
+  # 通过 worktree list 定位真正检出 master 的工作树执行合并
+  MERGE_ROOT="$ORIGINAL_ROOT"
+  main_wt=$(git -C "$ORIGINAL_ROOT" worktree list --porcelain 2>/dev/null | awk '/^worktree /{wt=$2} /^branch refs\/heads\/master$/{print wt}')
+  [[ -n "$main_wt" ]] && MERGE_ROOT="$main_wt"
+  if git -C "$MERGE_ROOT" checkout master 2>&1 && \
+     git -C "$MERGE_ROOT" pull origin master --ff-only 2>&1 && \
+     git -C "$MERGE_ROOT" merge "origin/$BRANCH_NAME" --no-edit 2>&1 && \
+     git -C "$MERGE_ROOT" push origin master 2>&1; then
+    log "✅ 已合并"
+  else
+    warn "合并跳过（可手动执行：git checkout master && git merge origin/$BRANCH_NAME && git push origin master）"
+  fi
 fi
 
 log "✨ 部署完成！"
