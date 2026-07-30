@@ -171,6 +171,26 @@ type SceneEvaluationResult struct {
 	GradedBy          *string    `json:"gradedBy,omitempty"`
 }
 
+// NodeEvaluationResult represents the result of a system-course-node evaluation.
+type NodeEvaluationResult struct {
+	ID                string     `json:"id"`
+	NodeID            string     `json:"nodeId"`
+	MethodKey         string     `json:"methodKey"`
+	EvaluateeID       string     `json:"evaluateeId"`
+	EvaluatorID       string     `json:"evaluatorId"`
+	EvaluatorType     string     `json:"evaluatorType"`
+	Status            string     `json:"status"`
+	TotalScore        *float64   `json:"totalScore,omitempty"`
+	MaxScore          float64    `json:"maxScore"`
+	EvalPointScores   JSONMap    `json:"evalPointScores"`
+	ObjectiveAnswers  JSONMap    `json:"objectiveAnswers"`
+	SubjectiveContent JSONMap    `json:"subjectiveContent"`
+	DrawnQuestions    JSONMap    `json:"drawnQuestions"`
+	Comment           *string    `json:"comment,omitempty"`
+	GradedAt          *time.Time `json:"gradedAt,omitempty"`
+	GradedBy          *string    `json:"gradedBy,omitempty"`
+}
+
 // JobAbilityResult represents a job ability evaluation result.
 type JobAbilityResult struct {
 	ID                    string    `json:"id"`

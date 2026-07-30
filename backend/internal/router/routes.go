@@ -82,6 +82,12 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 			r.Get("/lesson/knowledge-points", h.knowledgePointHandler.List)
 			r.Get("/lesson/knowledge-points/{id}", h.knowledgePointHandler.Get)
 
+			// 学生体系课学习页只读接口（写操作仍限 businessUser）
+			r.Get("/lesson/nodes", h.courseNodeHandler.List)
+			r.Get("/lesson/nodes/{id}", h.courseNodeHandler.Get)
+			r.Get("/lesson/node-evaluation-results", h.nodeEvaluationResultHandler.List)
+			r.Post("/lesson/nodes/{nodeId}/homeworks/{homeworkId}/submit", h.courseHandler.SubmitNodeHomework)
+
 			// 学生提交/查看本人的场景测评结果；评分仍限 businessUser
 			r.Get("/evaluation/results", h.evaluationResultHandler.List)
 			r.Post("/evaluation/results", h.evaluationResultHandler.Submit)
