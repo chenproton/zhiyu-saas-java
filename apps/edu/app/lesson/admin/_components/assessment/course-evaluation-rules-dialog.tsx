@@ -1680,6 +1680,246 @@ export function CourseEvaluationRulesDialog({
     )
   }
 
+  const renderObjectDialogContent = (methodKey: string) => {
+    const currentObject = config.methodEvalObjects[methodKey] || config.evalObject
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-gray-500 mb-4">选择本评价方式的测评对象类型</p>
+        <div className="grid grid-cols-2 gap-4">
+          {[
+            { key: "individual", label: "个人", desc: "以学生个人为单位进行测评", icon: <User className="h-6 w-6" /> },
+            { key: "group", label: "小组", desc: "以小组为单位进行测评", icon: <Users className="h-6 w-6" /> },
+          ].map(opt => (
+            <button
+              key={opt.key}
+              onClick={() => updateConfig({ methodEvalObjects: { ...config.methodEvalObjects, [methodKey]: opt.key as EvalObjectType } })}
+              className={cn("p-5 rounded-xl border text-left transition-all flex items-center gap-4", currentObject === opt.key ? "border-primary bg-primary/[0.03] ring-1 ring-primary/20" : "border-gray-200 hover:border-gray-300 bg-white")}
+            >
+              <div className={cn("p-3 rounded-lg", currentObject === opt.key ? "bg-primary/10 text-primary" : "bg-gray-100 text-gray-400")}>
+                {opt.icon}
+              </div>
+              <div>
+                <p className="text-sm font-semibold mb-1">{opt.label}</p>
+                <p className="text-xs text-gray-400">{opt.desc}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  const renderSubjectDialogContent = (methodKey: string) => {
+    const currentSubjects = config.methodEvalSubjects[methodKey] || config.evalSubjects
+    const evalObject = config.methodEvalObjects[methodKey] || config.evalObject
+    const displayTypes = ["teacher", "enterprise_mentor", "self", "peer"] as const
+
+    const handleDistributeWeights = () => {
+      const enabled = currentSubjects.filter(s => s.enabled && displayTypes.includes(s.type as typeof displayTypes[number]))
+      const count = enabled.length
+      if (count === 0) return
+      const base = Math.floor(100 / count)
+      const remainder = 100 % count
+      const enabledIdxMap = new Map(enabled.map((s, i) => [s.type, i]))
+      const newSubjects = currentSubjects.map(s => {
+        if (!s.enabled || !displayTypes.includes(s.type as typeof displayTypes[number])) return s
+        const idx = enabledIdxMap.get(s.type) ?? 0
+        return { ...s, params: { ...s.params, weightPercent: base + (idx < remainder ? 1 : 0) } }
+      })
+      updateConfig({ methodEvalSubjects: { ...config.methodEvalSubjects, [methodKey]: newSubjects } })
+    }
+
+    const allowedSubjectsForMethod: Record<string, string[]> = {
+      paper: ["teacher", "enterprise_mentor"],
+      question_bank: ["teacher", "enterprise_mentor"],
+      quiz: ["teacher", "enterprise_mentor"],
+      random_draw: ["teacher", "enterprise_mentor", "self", "peer"],
+      review: ["teacher", "enterprise_mentor", "self", "peer"],
+      outcome: ["teacher", "enterprise_mentor"],
+      homework: ["teacher", "enterprise_mentor"],
+    }
+
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-500">配置参与评价的主体及其参数</p>
+          <Button variant="outline" size="sm" className="text-xs h-8" onClick={handleDistributeWeights}>
+            <Scale className="h-3.5 w-3.5 mr-1" />一键平均权重
+          </Button>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {currentSubjects.filter(s => displayTypes.includes(s.type as typeof displayTypes[number])).map(subject => {
+            const originalIdx = currentSubjects.findIndex(s => s.type === subject.type)
+            const methodAllowed = (allowedSubjectsForMethod[methodKey] || []).includes(subject.type)
+            const peerAllowed = subject.type !== "peer" || evalObject === "group"
+            const allowed = methodAllowed && peerAllowed
+            return (
+              <div key={subject.type} className={cn("p-3 rounded-lg border transition-all", !allowed ? "opacity-50 bg-gray-50 border-gray-200" : subject.enabled ? "border-primary bg-primary/[0.03]" : "border-gray-200 bg-white")}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Switch checked={subject.enabled} disabled={!allowed} onCheckedChange={v => updateMethodEvalSubject(methodKey, originalIdx, { enabled: v })} />
+                    <span className={cn("text-xs font-medium", !allowed && "text-gray-400")}>{subjectLabels[subject.type]}</span>
+                  </div>
+                  {subject.enabled && allowed && subject.params?.weightPercent !== undefined && (
+                    <Badge variant="outline" className="text-[10px]">权重 {subject.params.weightPercent}%</Badge>
+                  )}
+                </div>
+                {subject.enabled && (
+                  <div className="pl-8 space-y-2">
+                    {subject.type === "teacher" && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-[11px] text-gray-500">专业背景要求</Label>
+                          <Input value={subject.params?.teacherBackground || ""} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, teacherBackground: e.target.value } })} placeholder="计算机/软件工程相关专业" className="mt-0.5 text-xs h-8" />
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-gray-500">评分人数</Label>
+                          <Input type="number" value={subject.params?.scorerCount || 1} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, scorerCount: Math.max(1, parseInt(e.target.value) || 1) } })} className="mt-0.5 text-xs h-8" min={1} />
+                          {(subject.params?.scorerCount || 1) > 1 && (
+                            <div className="mt-1">
+                              <Label className="text-[11px] text-gray-500">统计规则</Label>
+                              <Select value={subject.params?.aggregationRule || "average"} onValueChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, aggregationRule: v as "average" | "median" | "max" | "min" } })}>
+                                <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue placeholder="选择统计规则" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="average">平均值</SelectItem>
+                                  <SelectItem value="median">中位数</SelectItem>
+                                  <SelectItem value="max">最高分</SelectItem>
+                                  <SelectItem value="min">最低分</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-gray-500">评分权重 (%)</Label>
+                          <Input type="number" value={subject.params?.weightPercent || 0} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, weightPercent: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } })} className="mt-0.5 text-xs h-8" min={0} max={100} />
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-gray-500">最低教龄 (年)</Label>
+                          <Input type="number" value={subject.params?.minTeachingYears || 0} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, minTeachingYears: Math.max(0, parseInt(e.target.value) || 0) } })} className="mt-0.5 text-xs h-8" min={0} />
+                        </div>
+                      </div>
+                    )}
+                    {subject.type === "enterprise_mentor" && (
+                      <>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-[11px] text-gray-500">专业领域</Label>
+                            <Input value={subject.params?.expertise || ""} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, expertise: e.target.value } })} placeholder="网络安全 / 渗透测试" className="mt-0.5 text-xs h-8" />
+                          </div>
+                          <div>
+                            <Label className="text-[11px] text-gray-500">工作年限要求 (年)</Label>
+                            <Input type="number" value={subject.params?.minYears || 0} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, minYears: Math.max(0, parseInt(e.target.value) || 0) } })} className="mt-0.5 text-xs h-8" min={0} />
+                          </div>
+                          <div>
+                            <Label className="text-[11px] text-gray-500">评分人数</Label>
+                            <Input type="number" value={subject.params?.scorerCount || 1} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, scorerCount: Math.max(1, parseInt(e.target.value) || 1) } })} className="mt-0.5 text-xs h-8" min={1} />
+                            {(subject.params?.scorerCount || 1) > 1 && (
+                              <div className="mt-1">
+                                <Label className="text-[11px] text-gray-500">统计规则</Label>
+                                <Select value={subject.params?.aggregationRule || "average"} onValueChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, aggregationRule: v as "average" | "median" | "max" | "min" } })}>
+                                  <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue placeholder="选择统计规则" /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="average">平均值</SelectItem>
+                                    <SelectItem value="median">中位数</SelectItem>
+                                    <SelectItem value="max">最高分</SelectItem>
+                                    <SelectItem value="min">最低分</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <Label className="text-[11px] text-gray-500">评分权重 (%)</Label>
+                            <Input type="number" value={subject.params?.weightPercent || 0} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, weightPercent: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } })} className="mt-0.5 text-xs h-8" min={0} max={100} />
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-gray-500">岗位工作经历</Label>
+                          <Input value={subject.params?.jobExperience || ""} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, jobExperience: e.target.value } })} placeholder="请填写岗位工作经历要求" className="mt-0.5 text-xs h-8" />
+                        </div>
+                      </>
+                    )}
+                    {subject.type === "peer" && (
+                      <>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-[11px] text-gray-500">互评人数</Label>
+                            <Input type="number" value={subject.params?.peerCount || 3} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, peerCount: Math.max(1, parseInt(e.target.value) || 1) } })} className="mt-0.5 text-xs h-8" min={1} />
+                            {(subject.params?.peerCount || 3) > 1 && (
+                              <div className="mt-1">
+                                <Label className="text-[11px] text-gray-500">统计规则</Label>
+                                <Select value={subject.params?.aggregationRule || "average"} onValueChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, aggregationRule: v as "average" | "median" | "max" | "min" } })}>
+                                  <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue placeholder="选择统计规则" /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="average">平均值</SelectItem>
+                                    <SelectItem value="median">中位数</SelectItem>
+                                    <SelectItem value="max">最高分</SelectItem>
+                                    <SelectItem value="min">最低分</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <Label className="text-[11px] text-gray-500">评分权重 (%)</Label>
+                            <Input type="number" value={subject.params?.weightPercent || 0} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, weightPercent: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } })} className="mt-0.5 text-xs h-8" min={0} max={100} />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-[11px] text-gray-500">互评规则</Label>
+                            <Select value={subject.params?.peerRule || ""} onValueChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, peerRule: v } })}>
+                              <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue placeholder="选择互评规则" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="随机分配">随机分配</SelectItem>
+                                <SelectItem value="相邻座位">相邻座位</SelectItem>
+                                <SelectItem value="自由组合">自由组合</SelectItem>
+                                <SelectItem value="指定分组">指定分组</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex items-end pb-1">
+                            <div className="flex items-center gap-1.5">
+                              <Switch checked={subject.params?.anonymous || false} onCheckedChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, anonymous: v } })} />
+                              <span className="text-[11px] text-gray-600">匿名评价</span>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                    {subject.type === "self" && (
+                      <>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-[11px] text-gray-500">评分权重 (%)</Label>
+                            <Input type="number" value={subject.params?.weightPercent || 0} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, weightPercent: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } })} className="mt-0.5 text-xs h-8" min={0} max={100} />
+                          </div>
+                          <div className="flex items-end pb-1">
+                            <div className="flex items-center gap-1.5">
+                              <Switch checked={subject.params?.requiresReflection || false} onCheckedChange={v => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, requiresReflection: v } })} />
+                              <span className="text-[11px] text-gray-600">需要提交反思报告</span>
+                            </div>
+                          </div>
+                        </div>
+                        {subject.params?.requiresReflection && (
+                          <div>
+                            <Label className="text-[11px] text-gray-500">反思报告最少字数</Label>
+                            <Input type="number" value={subject.params?.reflectionMinLength || 300} onChange={e => updateMethodEvalSubject(methodKey, originalIdx, { params: { ...subject.params, reflectionMinLength: Math.max(100, parseInt(e.target.value) || 100) } })} className="mt-0.5 text-xs h-8 w-28" min={100} />
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
   const bodyContent = (
     <>
       {config.evaluationMethods.length === 0 ? (
@@ -1761,20 +2001,30 @@ export function CourseEvaluationRulesDialog({
                   <div className="flex-1 min-w-0"><p className="text-sm font-semibold">{displayLabel}</p><p className="text-xs text-gray-400">{method.desc}</p></div>
                 </div>
                 <div className="p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 relative">
+                  <div className="flex items-center gap-1">
+                    <ObjectCard methodKey={methodKey} onClick={() => openDialog("object", methodKey)} />
+                    <div className="flex flex-col items-center justify-center text-gray-300 shrink-0 px-0.5">
+                      <span className="text-[10px] font-medium">①</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </div>
+                    <SubjectCard methodKey={methodKey} onClick={() => openDialog("subject", methodKey)} />
+                    <div className="flex flex-col items-center justify-center text-gray-300 shrink-0 px-0.5">
+                      <span className="text-[10px] font-medium">②</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </div>
                     <ResourceCard methodKey={methodKey} onClick={() => openDialog("resource", methodKey)} />
-                    <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-100 border border-gray-200 text-gray-400 text-xs items-center justify-center z-10">→</div>
+                    <div className="flex flex-col items-center justify-center text-gray-300 shrink-0 px-0.5">
+                      <span className="text-[10px] font-medium">③</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </div>
                     {(methodKey === "question_bank" || methodKey === "paper" || methodKey === "quiz") ? (
-                      <div className="relative p-4 rounded-xl border text-left bg-green-50/50 border-green-100 hover:border-green-200 transition-colors h-full">
-                        <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-green-100 text-green-600 text-[10px] flex items-center justify-center font-medium border border-green-200">2</div>
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="p-1.5 rounded-md bg-green-100 text-green-600">
-                            <Target className="h-4 w-4" />
-                          </div>
-                          <span className="text-xs font-medium text-green-700">评价标准配置</span>
+                      <div className="flex-1 min-w-0 p-4 rounded-xl border text-left bg-green-50/50 border-green-100">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Target className="h-4 w-4 text-green-500" />
+                          <span className="text-xs font-medium text-green-600">评价标准配置</span>
                         </div>
                         <p className="text-sm font-semibold text-green-700">自动读取得分</p>
-                        <p className="text-xs text-green-500 mt-1">系统将自动读取测评资源的得分</p>
+                        <p className="text-xs text-green-500 truncate mt-0.5">系统将自动读取测评资源的得分</p>
                       </div>
                     ) : <MethodCard methodKey={methodKey} onClick={() => openDialog("method", methodKey)} />}
                   </div>
@@ -1789,6 +2039,30 @@ export function CourseEvaluationRulesDialog({
 
   const subDialogs = (
     <>
+      <Dialog open={erDialogOpen === "object"} onOpenChange={v => !v && setErDialogOpen(null)}>
+        <DialogContent className="sm:max-w-[63vw] max-w-[63vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>测评对象配置</DialogTitle>
+            <DialogDescription>
+              配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的测评对象
+            </DialogDescription>
+          </DialogHeader>
+          {erDialogMethod && renderObjectDialogContent(erDialogMethod)}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={erDialogOpen === "subject"} onOpenChange={v => !v && setErDialogOpen(null)}>
+        <DialogContent className="sm:max-w-[72vw] max-w-[72vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>评价主体配置</DialogTitle>
+            <DialogDescription>
+              配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的评价主体
+            </DialogDescription>
+          </DialogHeader>
+          {erDialogMethod && renderSubjectDialogContent(erDialogMethod)}
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={erDialogOpen === "resource"} onOpenChange={v => !v && setErDialogOpen(null)}>
         <DialogContent className="sm:max-w-[85vw] max-w-[85vw] h-[92vh] overflow-y-auto">
           <DialogHeader><DialogTitle>测评资源配置</DialogTitle><DialogDescription>配置 {erDialogMethod ? evaluationMethodOptions.find(o => o.key === erDialogMethod)?.label : ""} 的测评资源</DialogDescription></DialogHeader>
