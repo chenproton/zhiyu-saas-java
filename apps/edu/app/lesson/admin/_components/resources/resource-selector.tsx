@@ -72,6 +72,9 @@ interface ResourceSelectorProps {
   courseId?: string
   nodeId?: string
   standalone?: boolean
+  previewResources?: any[]
+  onAddPreviewResource?: (r: any) => void
+  onRemovePreviewResource?: (id: string) => void
 }
 
 const ALL_TYPES = ["all", "document", "spreadsheet", "image", "link", "audio", "video", "archive", "venue", "facility", "software", "other"]
@@ -143,7 +146,7 @@ const resourceTypeExtensionMap: Record<string, string[]> = {
 
 const RESOURCE_MAX_FILE_SIZE = 100 * 1024 * 1024
 
-export function ResourceSelector({ pool: externalPool, selectedIds, onChange, onUpload, courseId, nodeId, standalone = true }: ResourceSelectorProps) {
+export function ResourceSelector({ pool: externalPool, selectedIds, onChange, onUpload, courseId, nodeId, standalone = true, previewResources: externalPreviews, onAddPreviewResource, onRemovePreviewResource }: ResourceSelectorProps) {
   const [resType, setResType] = useState("all")
   const [resSearchName, setResSearchName] = useState("")
   const [resSearchProvider, setResSearchProvider] = useState("")
@@ -153,7 +156,10 @@ export function ResourceSelector({ pool: externalPool, selectedIds, onChange, on
   const [loadingPool, setLoadingPool] = useState(false)
   const [apiAvailable, setApiAvailable] = useState(false)
 
-  const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
+  const [internalPreviews, addInternalPreview, removeInternalPreview] = usePreviewResources()
+  const previewResources = externalPreviews !== undefined ? externalPreviews : internalPreviews
+  const addPreviewResource = onAddPreviewResource || addInternalPreview
+  const removePreviewResource = onRemovePreviewResource || removeInternalPreview
 
   const [showUpload, setShowUpload] = useState(false)
   const [showUploadTypePicker, setShowUploadTypePicker] = useState(false)

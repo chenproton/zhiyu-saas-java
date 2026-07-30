@@ -44,6 +44,7 @@ import { RichTextEditor } from "../../_components/common/rich-text-editor"
 import PublishCheckPanel from "../../system/add/_components/PublishCheckPanel"
 import { EditorShell } from "@/components/shared/editor-shell"
 import { BatchSelector } from "@/components/shared/batch-selector"
+import { usePreviewResources } from "@/components/shared/resource-preview-modal"
 
 const customKnowledgePointIds = new Set<string>()
 
@@ -81,6 +82,7 @@ function AddGranularPageInner() {
   /* module 3: resources */
   const [resourcePool, setResourcePool] = useState<ResourceItem[]>([])
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([])
+  const [previewResources, addPreviewResource, removePreviewResource] = usePreviewResources()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -462,7 +464,15 @@ function AddGranularPageInner() {
                       添加课程资源
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent
+                    className="sm:max-w-5xl max-h-[90vh] overflow-y-auto"
+                    onInteractOutside={(e) => {
+                      if (previewResources.length > 0) {
+                        e.preventDefault()
+                        previewResources.forEach((r: any) => removePreviewResource(r.id))
+                      }
+                    }}
+                  >
                     <DialogHeader>
                       <DialogTitle>添加课程资源</DialogTitle>
                       <DialogDescription>从资源库中选择或上传新资源</DialogDescription>
@@ -474,6 +484,9 @@ function AddGranularPageInner() {
                       onChange={setSelectedResourceIds}
                       onUpload={(r) => setResourcePool((prev) => [...prev, r])}
                       courseId={editId || undefined}
+                      previewResources={previewResources}
+                      onAddPreviewResource={addPreviewResource}
+                      onRemovePreviewResource={removePreviewResource}
                     />
                     <DialogFooter>
                       <DialogClose asChild>
