@@ -427,16 +427,19 @@ func (h *PositionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchPosition(r.Context(), id); err != nil {
+	var tenantID string
+	err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM career_positions WHERE id = $1`, id).Scan(&tenantID)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM career_positions WHERE id = $1`, id)
+	_, err = h.DB.Exec(r.Context(), `DELETE FROM career_positions WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "删除岗位失败")
 		return
 	}
+	h.clearPublicPositionsCacheByTenantID(r, tenantID)
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 
@@ -1031,13 +1034,17 @@ func (h *PositionHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PositionHandler) clearPublicPositionsCache(r *http.Request) {
-	if h.RedisClient == nil {
-		return
-	}
 	id := chi.URLParam(r, "id")
 	var tenantID string
 	err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM career_positions WHERE id = $1`, id).Scan(&tenantID)
 	if err != nil {
+		return
+	}
+	h.clearPublicPositionsCacheByTenantID(r, tenantID)
+}
+
+func (h *PositionHandler) clearPublicPositionsCacheByTenantID(r *http.Request, tenantID string) {
+	if h.RedisClient == nil {
 		return
 	}
 	prefix := fmt.Sprintf("zhiyu:%s:", tenantID)
