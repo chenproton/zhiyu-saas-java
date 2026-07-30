@@ -818,15 +818,14 @@ func (h *CourseHandler) syncKnowledgePointGranularLessons(ctx context.Context, t
 
 
 // generateCourseAssessments 在课程发布时为 system 课程生成测评资源。
-// 仅对 type='system' 且 eval_data.evalRuleConfig 存在的课程执行。
+// 体系课测评已下放到节点：遍历 system_course_nodes，对每个含 eval_data.evalRuleConfig 的节点生成 exam_usages / node_homeworks。
 func (h *CourseHandler) generateCourseAssessments(ctx context.Context, tx pgx.Tx, courseID string) error {
 	var courseType, courseName, tenantID, creatorID string
-	var evalData domain.JSONMap
 	err := tx.QueryRow(ctx, `
-		SELECT c.type, c.name, c.tenant_id, c.creator_id, c.eval_data
+		SELECT c.type, c.name, c.tenant_id, c.creator_id
 		FROM courses c
 		WHERE c.id = $1
-	`, courseID).Scan(&courseType, &courseName, &tenantID, &creatorID, &evalData)
+	`, courseID).Scan(&courseType, &courseName, &tenantID, &creatorID)
 	if err != nil {
 		return fmt.Errorf("读取课程信息失败: %w", err)
 	}
@@ -835,53 +834,87 @@ func (h *CourseHandler) generateCourseAssessments(ctx context.Context, tx pgx.Tx
 		return nil
 	}
 
-	ruleConfig := extractEvalRuleConfig(evalData)
-	if ruleConfig == nil {
-		return nil
+	rows, err := tx.Query(ctx, `
+		SELECT id, name, eval_data
+		FROM system_course_nodes
+		WHERE course_id = $1
+		ORDER BY sort_order ASC, id ASC
+	`, courseID)
+	if err != nil {
+		return fmt.Errorf("查询课程节点失败: %w", err)
+	}
+	defer rows.Close()
+
+	type nodeEval struct {
+		id       string
+		name     string
+		evalData domain.JSONMap
+	}
+	var nodes []nodeEval
+	for rows.Next() {
+		var n nodeEval
+		if err := rows.Scan(&n.id, &n.name, &n.evalData); err != nil {
+			return fmt.Errorf("扫描课程节点失败: %w", err)
+		}
+		nodes = append(nodes, n)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("遍历课程节点失败: %w", err)
 	}
 
-	methods := getStringSliceFromJSONMap(ruleConfig, "evaluationMethods")
-	methodResourceConfigs, _ := ruleConfig["methodResourceConfigs"].(map[string]interface{})
-	if methodResourceConfigs == nil {
-		methodResourceConfigs = make(map[string]interface{})
-	}
-
-	updated := false
-	for _, methodKey := range methods {
-		rc, _ := methodResourceConfigs[methodKey].(map[string]interface{})
-		if rc == nil {
-			rc = make(map[string]interface{})
+	for _, n := range nodes {
+		ruleConfig := extractEvalRuleConfig(n.evalData)
+		if ruleConfig == nil {
+			continue
 		}
 
-		switch methodKey {
-		case "paper":
-			newRC, err := h.ensureCoursePaperUsage(ctx, tx, courseID, courseName, tenantID, creatorID, rc)
-			if err != nil {
-				return fmt.Errorf("生成试卷测评失败: %w", err)
+		methods := getStringSliceFromJSONMap(ruleConfig, "evaluationMethods")
+		methodResourceConfigs, _ := ruleConfig["methodResourceConfigs"].(map[string]interface{})
+		if methodResourceConfigs == nil {
+			methodResourceConfigs = make(map[string]interface{})
+		}
+
+		updated := false
+		for _, methodKey := range methods {
+			rc, _ := methodResourceConfigs[methodKey].(map[string]interface{})
+			if rc == nil {
+				rc = make(map[string]interface{})
 			}
-			methodResourceConfigs[methodKey] = newRC
-			updated = true
-		case "question_bank", "quiz":
-			newRC, err := h.ensureCourseQuestionExam(ctx, tx, courseID, courseName, tenantID, creatorID, methodKey, rc)
-			if err != nil {
-				return fmt.Errorf("生成%s测评失败: %w", methodKey, err)
+
+			switch methodKey {
+			case "paper":
+				newRC, err := h.ensureNodePaperUsage(ctx, tx, n.id, n.name, courseName, tenantID, creatorID, rc)
+				if err != nil {
+					return fmt.Errorf("生成节点 %s 试卷测评失败: %w", n.id, err)
+				}
+				methodResourceConfigs[methodKey] = newRC
+				updated = true
+			case "question_bank", "quiz":
+				newRC, err := h.ensureNodeQuestionExam(ctx, tx, n.id, n.name, courseName, tenantID, creatorID, methodKey, rc)
+				if err != nil {
+					return fmt.Errorf("生成节点 %s %s测评失败: %w", n.id, methodKey, err)
+				}
+				methodResourceConfigs[methodKey] = newRC
+				updated = true
+			case "homework":
+				if err := h.ensureNodeHomework(ctx, tx, n.id, n.name, courseName, tenantID, creatorID); err != nil {
+					return fmt.Errorf("生成节点 %s 作业失败: %w", n.id, err)
+				}
 			}
-			methodResourceConfigs[methodKey] = newRC
-			updated = true
-		case "homework":
-			if err := h.ensureCourseHomework(ctx, tx, courseID, courseName, tenantID, creatorID); err != nil {
-				return fmt.Errorf("生成课程作业失败: %w", err)
+		}
+
+		if updated {
+			ruleConfig["methodResourceConfigs"] = methodResourceConfigs
+			n.evalData["evalRuleConfig"] = ruleConfig
+			if _, err := tx.Exec(ctx, `UPDATE system_course_nodes SET eval_data = $1, updated_at = NOW() WHERE id = $2`, n.evalData, n.id); err != nil {
+				return fmt.Errorf("更新节点 %s 测评配置失败: %w", n.id, err)
 			}
 		}
 	}
 
-	if updated {
-		ruleConfig["methodResourceConfigs"] = methodResourceConfigs
-		evalData["evalRuleConfig"] = ruleConfig
-		if _, err := tx.Exec(ctx, `UPDATE courses SET eval_data = $1, updated_at = NOW() WHERE id = $2`, evalData, courseID); err != nil {
-			return fmt.Errorf("更新课程测评配置失败: %w", err)
-		}
-	}
+	// 兼容旧数据：清理课程级 exam_usages / course_homeworks，避免重复展示
+	_, _ = tx.Exec(ctx, `DELETE FROM exam_usages WHERE target_type = 'course' AND $1 = ANY(target_ids)`, courseID)
+	_, _ = tx.Exec(ctx, `DELETE FROM course_homeworks WHERE course_id = $1`, courseID)
 
 	return nil
 }
@@ -896,7 +929,7 @@ func extractEvalRuleConfig(evalData domain.JSONMap) domain.JSONMap {
 	return nil
 }
 
-func (h *CourseHandler) ensureCoursePaperUsage(ctx context.Context, tx pgx.Tx, courseID, courseName, tenantID, creatorID string, rc map[string]interface{}) (map[string]interface{}, error) {
+func (h *CourseHandler) ensureNodePaperUsage(ctx context.Context, tx pgx.Tx, nodeID, nodeName, courseName, tenantID, creatorID string, rc map[string]interface{}) (map[string]interface{}, error) {
 	paperIDs := getStringSliceFromJSONMap(rc, "paperIds")
 	if len(paperIDs) == 0 {
 		paperIDs = getStringSliceFromJSONMap(extractEvalRuleConfigFromRC(rc), "paperIds")
@@ -918,8 +951,8 @@ func (h *CourseHandler) ensureCoursePaperUsage(ctx context.Context, tx pgx.Tx, c
 		var usageID string
 		err = tx.QueryRow(ctx, `
 			SELECT id FROM exam_usages
-			WHERE exam_id = $1 AND target_type = 'course' AND $2 = ANY(target_ids)
-		`, paperID, courseID).Scan(&usageID)
+			WHERE exam_id = $1 AND target_type = 'node' AND $2 = ANY(target_ids)
+		`, paperID, nodeID).Scan(&usageID)
 		if err != nil && err != pgx.ErrNoRows {
 			return rc, err
 		}
@@ -932,10 +965,10 @@ func (h *CourseHandler) ensureCoursePaperUsage(ctx context.Context, tx pgx.Tx, c
 			}
 			_, err = tx.Exec(ctx, `
 				INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id)
-				VALUES ($1, $2, $3, $4, NULL, NULL, NULL, NULL, 'course', $5, 'published', $6)
-			`, usageID, tenantID, paperID, fmt.Sprintf("%s-%s", courseName, examName), []string{courseID}, creator)
+				VALUES ($1, $2, $3, $4, NULL, NULL, NULL, NULL, 'node', $5, 'published', $6)
+			`, usageID, tenantID, paperID, fmt.Sprintf("%s-%s-%s", courseName, nodeName, examName), []string{nodeID}, creator)
 			if err != nil {
-				return rc, fmt.Errorf("创建试卷安排失败: %w", err)
+				return rc, fmt.Errorf("创建节点试卷安排失败: %w", err)
 			}
 		}
 	}
@@ -952,7 +985,7 @@ func extractEvalRuleConfigFromRC(rc map[string]interface{}) domain.JSONMap {
 	return nil
 }
 
-func (h *CourseHandler) ensureCourseQuestionExam(ctx context.Context, tx pgx.Tx, courseID, courseName, tenantID, creatorID, methodKey string, rc map[string]interface{}) (map[string]interface{}, error) {
+func (h *CourseHandler) ensureNodeQuestionExam(ctx context.Context, tx pgx.Tx, nodeID, nodeName, courseName, tenantID, creatorID, methodKey string, rc map[string]interface{}) (map[string]interface{}, error) {
 	field := map[string]string{
 		"question_bank": "questionBankQuestions",
 		"quiz":          "quizQuestions",
@@ -981,7 +1014,7 @@ func (h *CourseHandler) ensureCourseQuestionExam(ctx context.Context, tx pgx.Tx,
 		} else if d, ok := rc["timeLimit"].(float64); ok && d > 0 {
 			duration = int(d)
 		}
-		newID, err := courseCreateTempExam(ctx, tx, tenantID, fmt.Sprintf("%s-%s", courseName, label), duration, creatorID)
+		newID, err := courseCreateTempExam(ctx, tx, tenantID, fmt.Sprintf("%s-%s-%s", courseName, nodeName, label), duration, creatorID)
 		if err != nil {
 			return rc, err
 		}
@@ -994,7 +1027,7 @@ func (h *CourseHandler) ensureCourseQuestionExam(ctx context.Context, tx pgx.Tx,
 	}
 
 	if usageID == "" {
-		newID, err := courseCreateExamUsage(ctx, tx, tenantID, examID, courseID, fmt.Sprintf("%s-%s", courseName, label), creatorID)
+		newID, err := courseCreateExamUsage(ctx, tx, tenantID, examID, "node", nodeID, fmt.Sprintf("%s-%s-%s", courseName, nodeName, label), creatorID)
 		if err != nil {
 			return rc, err
 		}
@@ -1095,7 +1128,7 @@ func courseEnsureExamQuestions(ctx context.Context, tx pgx.Tx, tenantID, examID 
 	return nil
 }
 
-func courseCreateExamUsage(ctx context.Context, tx pgx.Tx, tenantID, examID, courseID, name, creatorID string) (string, error) {
+func courseCreateExamUsage(ctx context.Context, tx pgx.Tx, tenantID, examID, targetType, targetID, name, creatorID string) (string, error) {
 	id := uuid.NewString()
 	var creator interface{}
 	if creatorID != "" {
@@ -1103,26 +1136,22 @@ func courseCreateExamUsage(ctx context.Context, tx pgx.Tx, tenantID, examID, cou
 	}
 	_, err := tx.Exec(ctx, `
 		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id)
-		VALUES ($1, $2, $3, $4, NULL, NULL, NULL, NULL, 'course', $5, 'published', $6)
-	`, id, tenantID, examID, name, []string{courseID}, creator)
+		VALUES ($1, $2, $3, $4, NULL, NULL, NULL, NULL, $5, $6, 'published', $7)
+	`, id, tenantID, examID, name, targetType, []string{targetID}, creator)
 	if err != nil {
 		return "", fmt.Errorf("创建考试安排失败: %w", err)
 	}
 	return id, nil
 }
 
-func (h *CourseHandler) ensureCourseHomework(ctx context.Context, tx pgx.Tx, courseID, courseName, tenantID, creatorID string) error {
+func (h *CourseHandler) ensureNodeHomework(ctx context.Context, tx pgx.Tx, nodeID, nodeName, courseName, tenantID, creatorID string) error {
 	var exists bool
-	err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM course_homeworks WHERE course_id = $1)`, courseID).Scan(&exists)
+	err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM node_homeworks WHERE node_id = $1)`, nodeID).Scan(&exists)
 	if err != nil {
-		return fmt.Errorf("查询课程作业失败: %w", err)
+		return fmt.Errorf("查询节点作业失败: %w", err)
 	}
 	if exists {
-		_, err = tx.Exec(ctx, `
-			UPDATE course_homeworks SET status = 'published', updated_at = NOW()
-			WHERE course_id = $1
-		`, courseID)
-		return err
+		return nil
 	}
 
 	var creator interface{}
@@ -1130,11 +1159,11 @@ func (h *CourseHandler) ensureCourseHomework(ctx context.Context, tx pgx.Tx, cou
 		creator = creatorID
 	}
 	_, err = tx.Exec(ctx, `
-		INSERT INTO course_homeworks (id, tenant_id, course_id, title, requirement, need_attachment, status, creator_id)
-		VALUES ($1, $2, $3, $4, '', FALSE, 'published', $5)
-	`, uuid.NewString(), tenantID, courseID, fmt.Sprintf("%s-课程作业", courseName), creator)
+		INSERT INTO node_homeworks (id, tenant_id, node_id, title, requirement, need_attachment, creator_id)
+		VALUES ($1, $2, $3, $4, '', FALSE, $5)
+	`, uuid.NewString(), tenantID, nodeID, fmt.Sprintf("%s-%s-节点作业", courseName, nodeName), creator)
 	if err != nil {
-		return fmt.Errorf("创建课程作业失败: %w", err)
+		return fmt.Errorf("创建节点作业失败: %w", err)
 	}
 	return nil
 }
