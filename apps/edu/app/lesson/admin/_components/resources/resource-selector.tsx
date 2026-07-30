@@ -24,6 +24,7 @@ import {
   Users,
 } from "lucide-react"
 import { useState, useRef, useEffect, useCallback, useMemo } from "react"
+import { createPortal } from "react-dom"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { fileApi, nodeResourceApi, courseResourceApi, resourceLibraryApi } from "@/lib/api"
@@ -721,8 +722,9 @@ export function ResourceSelector({ pool: externalPool, selectedIds, onChange, on
       </Dialog>
 
       {/* Resource Preview Modals */}
-      {previewResources.length > 0 && (
-        <div className="fixed inset-0 bg-black/40 z-[90]" onClick={() => previewResources.forEach((r) => removePreviewResource(r.id))} />
+      {previewResources.length > 0 && createPortal(
+        <div className="fixed inset-0 bg-black/40 z-[90]" onClick={() => previewResources.forEach((r) => removePreviewResource(r.id))} />,
+        document.body
       )}
       {previewResources.map((r, i) => (
         <ResourcePreviewModal key={r.id} resource={r} open index={i} onOpenChange={() => removePreviewResource(r.id)} />

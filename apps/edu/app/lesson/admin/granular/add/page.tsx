@@ -197,20 +197,33 @@ function AddGranularPageInner() {
     try {
       const kpIdMapping: Record<string, string> = {}
       for (const kp of knowledgePoints) {
-        if (!kp.id.startsWith("kp-custom-")) continue
+        const isNew = kp.id.startsWith("kp-custom-")
+        const isCustom = isNew || customKnowledgePointIds.has(kp.id)
+        if (!isCustom) continue
         try {
-          const created = await knowledgeApi.create({
-            name: kp.name,
-            code: kp.code,
-            description: kp.description,
-            linked: false,
-            granularLessonIds: (kp as any).granularLessons || [],
-            sourceType: "course",
-            sourceId: editId,
-          } as any)
-          kpIdMapping[kp.id] = created.id
+          if (isNew) {
+            const created = await knowledgeApi.create({
+              name: kp.name,
+              code: kp.code,
+              description: kp.description,
+              linked: false,
+              granularLessonIds: (kp as any).granularLessons || [],
+              sourceType: "course",
+              sourceId: editId,
+            } as any)
+            kpIdMapping[kp.id] = created.id
+            customKnowledgePointIds.add(created.id)
+          } else {
+            await knowledgeApi.update(kp.id, {
+              name: kp.name,
+              code: kp.code,
+              description: kp.description,
+              linked: false,
+              granularLessonIds: (kp as any).granularLessons || [],
+            } as any)
+          }
         } catch (err: any) {
-          toast.error(`知识点「${kp.name}」创建失败: ${err.message}`)
+          toast.error(`知识点「${kp.name}」保存失败: ${err.message}`)
           setSaving(false)
           return
         }
