@@ -360,6 +360,7 @@ type ScheduleEntryRequest struct {
 	PlanEntryID *string          `json:"planEntryId"`
 	CourseName  string           `json:"courseName"`
 	CourseCode  *string          `json:"courseCode"`
+	CourseID    *string          `json:"courseId"`
 	Type        string           `json:"type"`
 	ClassNodeID string           `json:"classNodeId"`
 	TeacherID   *string          `json:"teacherId"`
@@ -489,7 +490,12 @@ func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Reques
 
 	id := uuid.NewString()
 	err = withTx(ctx, h.DB, func(tx pgx.Tx) error {
-		courseID := resolveCourseIDByCode(ctx, tx, tenantID, req.CourseCode)
+		var courseID *string
+		if req.CourseID != nil && *req.CourseID != "" {
+			courseID = req.CourseID
+		} else {
+			courseID = resolveCourseIDByCode(ctx, tx, tenantID, req.CourseCode)
+		}
 		if req.PlanEntryID != nil && *req.PlanEntryID != "" {
 			var planCourseID *string
 			_ = tx.QueryRow(ctx, `SELECT course_id FROM teaching_plan_entries WHERE id = $1`, *req.PlanEntryID).Scan(&planCourseID)
@@ -574,7 +580,12 @@ func (h *SchedulingHandler) UpdateSchedule(w http.ResponseWriter, r *http.Reques
 		weekPattern = "all"
 	}
 
-	courseID := resolveCourseIDByCode(ctx, h.DB, tenantID, req.CourseCode)
+	var courseID *string
+	if req.CourseID != nil && *req.CourseID != "" {
+		courseID = req.CourseID
+	} else {
+		courseID = resolveCourseIDByCode(ctx, h.DB, tenantID, req.CourseCode)
+	}
 	if req.PlanEntryID != nil && *req.PlanEntryID != "" {
 		var planCourseID *string
 		_ = h.DB.QueryRow(ctx, `SELECT course_id FROM teaching_plan_entries WHERE id = $1`, *req.PlanEntryID).Scan(&planCourseID)
