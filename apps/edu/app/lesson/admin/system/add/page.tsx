@@ -49,7 +49,7 @@ import { cn } from "@/lib/utils"
 import type { SystemCourseNode, NodeResource, NodeRefType } from "@/lib/types/lesson-source"
 
 import { KnowledgeSelector } from "../../_components/knowledge/knowledge-selector"
-import { CourseEvalConfig, type CourseEvalData } from "../../_components/eval/course-eval-config"
+import { EvalMethodSelector } from "@/components/shared/eval-method-selector"
 import { TaskInfoCard } from "@/app/scene/scenarios/[id]/edit/tasks/_components/task-info-card"
 import { TaskDescriptionCard } from "@/app/scene/scenarios/[id]/edit/tasks/_components/task-description-card"
 import { ResourceSelector, type ResourceItem } from "../../_components/resources/resource-selector"
@@ -82,7 +82,7 @@ interface NodeDraft {
   selectedResourceIds: string[]
   selectedEvalMethods: string[]
   evalRules?: EvalRuleConfig
-  evalData?: CourseEvalData
+  evalData?: { methods: string[] }
   difficulty: number
   coverImage?: string
 }
@@ -379,7 +379,7 @@ function AddSystemPageInner() {
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([])
 
   /* module 4: assessment */
-  const [evalData, setEvalData] = useState<CourseEvalData | undefined>()
+  const [evalData, setEvalData] = useState<{ methods: string[] } | undefined>()
 
   /* module 5: evaluation rules */
 
@@ -408,7 +408,7 @@ function AddSystemPageInner() {
       }))
     )
     setSelectedResourceIds((node.resources || []).map((r) => r.id))
-    setEvalData(node.evalData as CourseEvalData | undefined || undefined)
+    setEvalData(node.evalData as { methods: string[] } | undefined || undefined)
     setDifficulty(node.difficulty || 0)
   }, [])
 
@@ -1095,7 +1095,7 @@ function AddSystemPageInner() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      <CourseEvalConfig value={evalData} onChange={setEvalData} />
+                      <EvalMethodSelector value={evalData?.methods || []} onChange={(methods) => setEvalData({ methods })} />
                     </CardContent>
                   </Card>
                 </>

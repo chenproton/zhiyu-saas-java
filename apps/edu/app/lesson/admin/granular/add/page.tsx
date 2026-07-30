@@ -27,7 +27,7 @@ import { courseApi, knowledgeApi, fileApi, approvalApi, majorApi, lessonBatchApi
 
 import { KnowledgeSelector } from "../../_components/knowledge/knowledge-selector"
 import { ResourceSelector, type ResourceItem } from "../../_components/resources/resource-selector"
-import { CourseEvalConfig, type CourseEvalData } from "../../_components/eval/course-eval-config"
+import { EvalMethodSelector } from "@/components/shared/eval-method-selector"
 import { TaskInfoCard } from "@/app/scene/scenarios/[id]/edit/tasks/_components/task-info-card"
 import { TaskDescriptionCard } from "@/app/scene/scenarios/[id]/edit/tasks/_components/task-description-card"
 import { RichTextEditor } from "../../_components/common/rich-text-editor"
@@ -80,7 +80,7 @@ function AddGranularPageInner() {
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([])
 
   /* module 4: assessment */
-  const [evalData, setEvalData] = useState<CourseEvalData | undefined>()
+  const [evalMethods, setEvalMethods] = useState<string[]>([])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -193,9 +193,9 @@ function AddGranularPageInner() {
       resources: resForCheck,
       quizzes: [],
       homeworks: [],
-      evalData: evalData || undefined,
+      evalData: { methods: evalMethods },
     }
-  }, [editId, courseName, code, hours, learningGoal, detailedDescription, background, estimatedHours, knowledgePoints, selectedResourceIds, resourcePool, evalData])
+  }, [editId, courseName, code, hours, learningGoal, detailedDescription, background, estimatedHours, knowledgePoints, selectedResourceIds, resourcePool, evalMethods])
 
   const handleSave = async () => {
     if (!courseName) {
@@ -230,6 +230,7 @@ function AddGranularPageInner() {
         evalData: {
           learningGoal: learningGoal || undefined,
           knowledgePointIds,
+          methods: evalMethods,
         },
         knowledgePointIds,
         resourceIds: selectedResourceIds,
@@ -446,7 +447,7 @@ function AddGranularPageInner() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <CourseEvalConfig value={evalData} onChange={setEvalData} />
+                <EvalMethodSelector value={evalMethods} onChange={setEvalMethods} />
               </CardContent>
             </Card>
 
