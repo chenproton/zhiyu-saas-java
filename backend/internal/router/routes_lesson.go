@@ -4,6 +4,7 @@ import "github.com/go-chi/chi/v5"
 
 func registerLessonRoutes(r chi.Router, h *Handlers) {
 	registerContentRoutes(r, "/lesson/courses", h.courseHandler)
+	r.Post("/lesson/courses/{id}/clone", h.courseCloneHandler.Clone)
 	r.Get("/lesson/courses/{id}/assessments", h.courseHandler.Assessments)
 	r.Post("/lesson/courses/{id}/homeworks/{homeworkId}/submit", h.courseHandler.SubmitHomework)
 	r.Get("/lesson/courses/{id}/homeworks/{homeworkId}/submissions", h.courseHandler.ListHomeworkSubmissions)
