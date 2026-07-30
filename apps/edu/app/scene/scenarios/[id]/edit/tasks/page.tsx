@@ -1298,7 +1298,6 @@ export default function TasksEditPage() {
     const updatedTaskStates: Record<string, TaskState> = { ...taskStates }
     Object.keys(updatedTaskStates).forEach(tid => {
       const s = updatedTaskStates[tid]
-      if (Object.keys(kpIdMapping).length === 0 && Object.keys(abIdMapping).length === 0 && Object.keys(resourceIdMapping).length === 0) return
       updatedTaskStates[tid] = {
         ...s,
         knowledgePoints: replaceIds(s.knowledgePoints),
