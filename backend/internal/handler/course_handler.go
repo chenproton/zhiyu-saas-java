@@ -523,6 +523,172 @@ func (h *CourseHandler) listCourseHomeworks(ctx context.Context, courseID, tenan
 	return items, rows.Err()
 }
 
+// SubmitHomework POST /api/v1/lesson/courses/{id}/homeworks/{homeworkId}/submit
+func (h *CourseHandler) SubmitHomework(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	if claims.TenantID == nil || *claims.TenantID == "" {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	courseID := chi.URLParam(r, "id")
+	homeworkID := chi.URLParam(r, "homeworkId")
+
+	var req struct {
+		Content         string   `json:"content"`
+		AttachmentUrls  []string `json:"attachmentUrls"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "无效请求体")
+		return
+	}
+
+	var exists bool
+	err := h.DB.QueryRow(r.Context(), `
+		SELECT EXISTS(SELECT 1 FROM course_homeworks WHERE id = $1 AND course_id = $2 AND tenant_id = $3)
+	`, homeworkID, courseID, *claims.TenantID).Scan(&exists)
+	if err != nil || !exists {
+		respondError(w, http.StatusNotFound, "作业不存在")
+		return
+	}
+
+	var submissionID string
+	err = h.DB.QueryRow(r.Context(), `
+		INSERT INTO course_homework_submissions (tenant_id, course_id, homework_id, student_id, content, attachment_urls, status)
+		VALUES ($1, $2, $3, $4, $5, $6, 'submitted')
+		ON CONFLICT (homework_id, student_id)
+		DO UPDATE SET content = EXCLUDED.content, attachment_urls = EXCLUDED.attachment_urls, status = 'submitted', updated_at = NOW()
+		RETURNING id
+	`, *claims.TenantID, courseID, homeworkID, claims.UserID, req.Content, req.AttachmentUrls).Scan(&submissionID)
+	if err != nil {
+		slog.Error("提交课程作业失败", "error", err)
+		respondError(w, http.StatusInternalServerError, "提交作业失败")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"id": submissionID, "status": "submitted"})
+}
+
+// ListHomeworkSubmissions GET /api/v1/lesson/courses/{id}/homeworks/{homeworkId}/submissions
+func (h *CourseHandler) ListHomeworkSubmissions(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	if claims.TenantID == nil || *claims.TenantID == "" {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	courseID := chi.URLParam(r, "id")
+	homeworkID := chi.URLParam(r, "homeworkId")
+
+	rows, err := h.DB.Query(r.Context(), `
+		SELECT s.id, s.student_id, COALESCE(u.name, ''), s.content, s.attachment_urls, s.status, s.score, s.total_score, s.comment, s.created_at, s.graded_at
+		FROM course_homework_submissions s
+		JOIN users u ON u.id = s.student_id
+		WHERE s.tenant_id = $1 AND s.course_id = $2 AND s.homework_id = $3
+		ORDER BY s.created_at DESC
+	`, *claims.TenantID, courseID, homeworkID)
+	if err != nil {
+		slog.Error("查询课程作业提交失败", "error", err)
+		respondError(w, http.StatusInternalServerError, "查询失败")
+		return
+	}
+	defer rows.Close()
+
+	items := make([]map[string]interface{}, 0)
+	for rows.Next() {
+		var id, studentID, studentName, content, status, comment string
+		var score, totalScore *float64
+		var attachmentUrls []string
+		var createdAt, gradedAt *time.Time
+		if err := rows.Scan(&id, &studentID, &studentName, &content, &attachmentUrls, &status, &score, &totalScore, &comment, &createdAt, &gradedAt); err != nil {
+			continue
+		}
+		item := map[string]interface{}{
+			"id":            id,
+			"studentId":     studentID,
+			"studentName":   studentName,
+			"content":       content,
+			"attachmentUrls": attachmentUrls,
+			"status":        status,
+			"comment":       comment,
+		}
+		if score != nil {
+			item["score"] = *score
+		}
+		if totalScore != nil {
+			item["totalScore"] = *totalScore
+		}
+		if createdAt != nil {
+			item["createdAt"] = createdAt.Format(time.RFC3339)
+		}
+		if gradedAt != nil {
+			item["gradedAt"] = gradedAt.Format(time.RFC3339)
+		}
+		items = append(items, item)
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{"items": items})
+}
+
+// GradeHomeworkSubmission POST /api/v1/lesson/courses/{id}/homeworks/{homeworkId}/submissions/{submissionId}/grade
+func (h *CourseHandler) GradeHomeworkSubmission(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	if claims.TenantID == nil || *claims.TenantID == "" {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	courseID := chi.URLParam(r, "id")
+	homeworkID := chi.URLParam(r, "homeworkId")
+	submissionID := chi.URLParam(r, "submissionId")
+
+	var req struct {
+		Score   float64 `json:"score"`
+		Comment string  `json:"comment"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "无效请求体")
+		return
+	}
+
+	var studentID string
+	var totalScore float64
+	err := h.DB.QueryRow(r.Context(), `
+		UPDATE course_homework_submissions
+		SET score = $1, comment = $2, status = 'graded', graded_at = NOW(), graded_by = $3
+		WHERE id = $4 AND tenant_id = $5 AND course_id = $6 AND homework_id = $7
+		RETURNING student_id, COALESCE(total_score, 100)
+	`, req.Score, req.Comment, claims.UserID, submissionID, *claims.TenantID, courseID, homeworkID).Scan(&studentID, &totalScore)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "提交记录不存在")
+			return
+		}
+		slog.Error("批改课程作业失败", "error", err)
+		respondError(w, http.StatusInternalServerError, "批改失败")
+		return
+	}
+
+	// 同步到课程统一评价结果表，参与能力汇聚
+	_, _ = h.DB.Exec(r.Context(), `
+		INSERT INTO course_evaluation_results (tenant_id, course_id, method_key, evaluatee_id, status, total_score, max_score)
+		VALUES ($1, $2, 'homework', $3, 'evaluated', $4, $5)
+		ON CONFLICT (tenant_id, course_id, evaluatee_id, method_key)
+		DO UPDATE SET total_score = EXCLUDED.total_score, max_score = EXCLUDED.max_score, status = 'evaluated', graded_at = NOW(), updated_at = NOW()
+	`, *claims.TenantID, courseID, studentID, req.Score, totalScore)
+
+	respondJSON(w, http.StatusOK, map[string]string{"id": submissionID, "status": "graded"})
+}
+
 func (h *CourseHandler) Archive(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusArchived)
 }

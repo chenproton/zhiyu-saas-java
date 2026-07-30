@@ -5,6 +5,9 @@ import "github.com/go-chi/chi/v5"
 func registerLessonRoutes(r chi.Router, h *Handlers) {
 	registerContentRoutes(r, "/lesson/courses", h.courseHandler)
 	r.Get("/lesson/courses/{id}/assessments", h.courseHandler.Assessments)
+	r.Post("/lesson/courses/{id}/homeworks/{homeworkId}/submit", h.courseHandler.SubmitHomework)
+	r.Get("/lesson/courses/{id}/homeworks/{homeworkId}/submissions", h.courseHandler.ListHomeworkSubmissions)
+	r.Post("/lesson/courses/{id}/homeworks/{homeworkId}/submissions/{submissionId}/grade", h.courseHandler.GradeHomeworkSubmission)
 
 	// 知识点只读接口挂在 jobViewer 角色组（routes.go，含学生），供学生场景学习页使用
 	r.Post("/lesson/knowledge-points", h.knowledgePointHandler.Create)
