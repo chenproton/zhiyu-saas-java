@@ -1041,15 +1041,15 @@ export function CourseEvaluationRulesDialog({
             </div>
             <Button onClick={handleAddRdqLocal}><Plus className="h-4 w-4 mr-1" />新增现场问答题</Button>
           </div>
-          <div className="flex gap-4">
-            <div className="w-3/5 flex flex-col border rounded-xl p-3">
+          <div className="flex gap-4 flex-1 min-h-0">
+            <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
               <div className="flex items-center gap-1 mb-2 flex-wrap">
                 {majorOptions.map(opt => (
                   <button key={opt.id} onClick={() => setRdqMajorTab(opt.id)} className={cn("px-2.5 py-1 rounded-md text-[11px] transition-all", rdqMajorTab === opt.id ? "bg-primary/10 text-primary font-medium" : "text-gray-500 hover:bg-gray-100")}>{opt.name}</button>
                 ))}
               </div>
               <p className="text-sm font-medium mb-2 text-gray-700">{rdqSearch ? `搜索结果 (${filteredRdq.length})` : (rdqMajorTab === "全部" ? "全部现场问答题" : `${majorNameMap[rdqMajorTab] || rdqMajorTab}相关现场问答题`)}</p>
-              <div className="min-h-[300px] max-h-[400px] overflow-y-auto pr-1">
+              <div className="flex-1 overflow-y-auto pr-1">
                 {loadingRdq ? (
                   <div className="text-center text-gray-400 py-8"><p className="text-sm">加载中...</p></div>
                 ) : filteredRdq.length === 0 ? (
