@@ -49,6 +49,7 @@ import { cn } from "@/lib/utils"
 import type { SystemCourseNode, NodeResource, NodeRefType } from "@/lib/types/lesson-source"
 
 import { KnowledgeSelector } from "../../_components/knowledge/knowledge-selector"
+import { AbilityPointSelector } from "../../_components/ability/ability-point-selector"
 import { EvalMethodConfigPanel } from "@/components/shared/eval-method-config-panel"
 import { TaskInfoCard } from "@/app/scene/scenarios/[id]/edit/tasks/_components/task-info-card"
 import type { EvalRuleConfig } from "@/lib/types/evaluation"
@@ -64,7 +65,7 @@ import PublishCheckPanel from "./_components/PublishCheckPanel"
 
 import type { KnowledgePointItem } from "@/lib/types/lesson"
 import type { Major } from "@/lib/types/backend"
-import { courseApi, courseNodeApi, knowledgeApi, majorApi, approvalApi, lessonBatchApi, nodeResourceApi, nodeQuizApi, nodeHomeworkApi } from "@/lib/api"
+import { courseApi, courseNodeApi, knowledgeApi, abilityApi, majorApi, approvalApi, lessonBatchApi, nodeResourceApi, nodeQuizApi, nodeHomeworkApi } from "@/lib/api"
 
 /* ---------- node editing mode ---------- */
 
@@ -216,6 +217,10 @@ function AddSystemPageInner() {
         setOriginalStatus(course.status || "draft")
         const courseEvalData = (course.evalData || {}) as { methods?: string[]; evalRuleConfig?: EvalRuleConfig }
         setEvalData(courseEvalData.methods ? { methods: courseEvalData.methods, evalRuleConfig: courseEvalData.evalRuleConfig } : undefined)
+        setAbilityPoints(((course as any).abilityPointIds || []).map((id: string) => {
+          const found = abilityPool.find((a) => a.id === id)
+          return found || { id, name: id }
+        }))
         setResourcePool((resRes.items || []).map((r: any) => ({
           id: r.id,
           name: r.name,
@@ -373,6 +378,21 @@ function AddSystemPageInner() {
         linked: k.linked,
       })))
     }).catch(() => setKnowledgePool([]))
+  }, [])
+
+  /* module 2b: ability points (course-level, for job ability aggregation) */
+  const [abilityPoints, setAbilityPoints] = useState<{ id: string; name: string; code?: string; description?: string }[]>([])
+  const [abilityPool, setAbilityPool] = useState<{ id: string; name: string; code?: string; description?: string }[]>([])
+
+  useEffect(() => {
+    abilityApi.list({ limit: 1000 }).then((res) => {
+      setAbilityPool((res.items || []).map((a: any) => ({
+        id: a.id,
+        name: a.name,
+        code: a.code,
+        description: a.description,
+      })))
+    }).catch(() => setAbilityPool([]))
   }, [])
 
   /* module 3: resources */
@@ -619,6 +639,7 @@ function AddSystemPageInner() {
         creatorId: "",
         coCreatorIds: [] as string[],
         evalData: evalData || {},
+        abilityPointIds: abilityPoints.map((a) => a.id),
       }
       let effectiveCourseId = courseId
       if (isEdit && courseId) {
@@ -645,7 +666,7 @@ function AddSystemPageInner() {
     } finally {
       setSaving(false)
     }
-  }, [courseName, major, courseDescription, coverImage, batchId, isEdit, courseId, originalStatus, saveNodes])
+  }, [courseName, major, courseDescription, coverImage, batchId, isEdit, courseId, originalStatus, saveNodes, abilityPoints])
 
   const handleFinish = useCallback(async () => {
     await handleSave()
@@ -819,6 +840,19 @@ function AddSystemPageInner() {
                       onChange={setCourseDescription}
                       placeholder="请输入课程简介..."
                       minHeight={280}
+                    />
+                  </div>
+                  <div className="md:col-span-4 space-y-1.5">
+                    <Label className="text-xs">关联能力点（用于岗位能力汇聚）</Label>
+                    <AbilityPointSelector
+                      selected={abilityPoints}
+                      pool={abilityPool}
+                      onChange={setAbilityPoints}
+                      onAddCustom={(name, description) => {
+                        const newAp = { id: `ap-custom-${Date.now()}`, name, description }
+                        setAbilityPoints((prev) => [...prev, newAp])
+                        setAbilityPool((prev) => [...prev, newAp])
+                      }}
                     />
                   </div>
                 </div>
@@ -1067,6 +1101,7 @@ function AddSystemPageInner() {
               })
             }
             knowledgePoints={knowledgePoints}
+            abilityPoints={abilityPoints}
             title="配置课程评价规则"
           />
         </div>
