@@ -238,13 +238,23 @@ done
 if ! command -v docker >/dev/null 2>&1; then
   log "安装 Docker..."
   is_root || die "需要 root 安装 Docker"
-  if local_docker_script=$(offline_file "get-docker.sh"); then
+  # 优先用本地 deb 包安装
+  if ls "$OFFLINE_DIR"/debs/docker-ce_*_amd64.deb "$OFFLINE_DIR"/debs/containerd.io_*_amd64.deb >/dev/null 2>&1; then
+    dpkg -i "$OFFLINE_DIR"/debs/containerd.io_*_amd64.deb \
+             "$OFFLINE_DIR"/debs/docker-ce-cli_*_amd64.deb \
+             "$OFFLINE_DIR"/debs/docker-ce_*_amd64.deb \
+             "$OFFLINE_DIR"/debs/docker-buildx-plugin_*_amd64.deb \
+             "$OFFLINE_DIR"/debs/docker-compose-plugin_*_amd64.deb 2>/dev/null
+    apt-get install -y -f -qq 2>/dev/null || true
+    systemctl enable --now docker 2>/dev/null || true
+  elif local_docker_script=$(offline_file "get-docker.sh"); then
     log "  使用本地安装脚本: $local_docker_script"
     bash "$local_docker_script" 2>/dev/null || pkg_install docker.io
+    systemctl enable --now docker 2>/dev/null || true
   else
     curl -fsSL https://get.docker.com | bash 2>/dev/null || pkg_install docker.io
+    systemctl enable --now docker 2>/dev/null || true
   fi
-  systemctl enable --now docker 2>/dev/null || true
 fi
 if ! docker info >/dev/null 2>&1; then
   systemctl start docker 2>/dev/null || service docker start 2>/dev/null || true; sleep 2
