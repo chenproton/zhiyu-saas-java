@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@zhiyu/ui"
 import { PageHeaderCard } from "@/components/shared/page-header-card"
-import { teachingPlanApi, termApi } from "@/lib/api"
+import { teachingPlanApi } from "@/lib/api"
 import type { TeachingPlan, TeachingPlanDetail } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { ScheduleGridTab } from "./_components/schedule-grid-tab"

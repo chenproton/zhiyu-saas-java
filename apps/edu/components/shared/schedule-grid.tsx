@@ -33,8 +33,9 @@ interface ScheduleGridProps {
   emptyText?: string
   onEntryClick?: (entry: ScheduleEntry) => void
   getEntryHref?: (entry: ScheduleEntry) => string | undefined
-  /** 点击空单元格回调（用于 click-to-assign 排课） */
   onCellClick?: (dayOfWeek: number, periodSlotKey: string) => void
+  /** 即使无条目也渲染空表格（排课页始终显示网格） */
+  alwaysShow?: boolean
 }
 
 interface GridRow {
@@ -53,6 +54,7 @@ export function ScheduleGrid({
   onEntryClick,
   getEntryHref,
   onCellClick,
+  alwaysShow,
 }: ScheduleGridProps) {
   const visibleEntries = useMemo(() => filterEntriesByWeek(entries, week), [entries, week])
 
@@ -146,9 +148,15 @@ export function ScheduleGrid({
     return <div className="py-16 text-center text-sm text-muted-foreground">加载中...</div>
   }
 
-  if (rows.length === 0 || visibleEntries.length === 0) {
+  const hasData = rows.length > 0
+  if (!hasData && !alwaysShow) {
     return <div className="py-16 text-center text-sm text-muted-foreground">{emptyText}</div>
   }
+
+  // 始终渲染时用节次数据兜底，fallback 为空数组
+  const displayRows = hasData ? rows : (periodSlots && periodSlots.length > 0
+    ? [...periodSlots].sort((a, b) => a.sortOrder - b.sortOrder).map((s) => ({ key: s.name, label: s.name } as GridRow))
+    : [{ key: "__empty", label: "暂无节次" } as GridRow])
 
   return (
     <div className="overflow-x-auto">
@@ -164,7 +172,7 @@ export function ScheduleGrid({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {displayRows.map((row) => (
             <tr key={row.key}>
               <td className="border bg-muted/20 px-2 py-1.5 align-top">
                 <div className="text-xs font-medium text-gray-700">{row.label}</div>
