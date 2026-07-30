@@ -191,6 +191,7 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 	kpIDs := jsonSliceToUUIDSlice(req.KnowledgePointIds)
 	apIDs := jsonSliceToUUIDSlice(req.AbilityPointIds)
 	resIDs := jsonSliceToUUIDSlice(req.ResourceIds)
+	coIDs := jsonSliceToUUIDSlice(req.CoCreatorIds)
 	if req.EvalData == nil {
 		req.EvalData = domain.JSONMap{}
 	}
@@ -199,12 +200,13 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 			online_hours, offline_hours, online_weight, offline_weight, semester, class_name,
 			status, cover_color, cover_image, course_tag, difficulty, description, creator_id, co_creator_ids, batch_id,
 			knowledge_point_ids, ability_point_ids, resource_ids, eval_data, node_count, resource_count, study_count)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'draft', $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, 0, 0, 0)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'draft', $17, $18, $19, $20, $21, $22::uuid[], $23, $24::uuid[], $25::uuid[], $26::uuid[], $27, 0, 0, 0)
 	`, id, tenantID, code, req.Name, req.Type, req.Category, req.MajorID, req.TeacherID, req.IndustryID, req.Version,
 		req.OnlineHours, req.OfflineHours, req.OnlineWeight, req.OfflineWeight, req.Semester, req.ClassName,
-		req.CoverColor, req.CoverImage, req.CourseTag, req.Difficulty, req.Description, claims.UserID, req.CoCreatorIds, emptyStrToNil(req.BatchID),
+		req.CoverColor, req.CoverImage, req.CourseTag, req.Difficulty, req.Description, claims.UserID, coIDs, emptyStrToNil(req.BatchID),
 		kpIDs, apIDs, resIDs, req.EvalData)
 	if err != nil {
+		slog.Error("创建课程失败", "error", err)
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "课程代码已存在，请使用其他代码")
 			return
