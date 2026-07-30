@@ -148,31 +148,31 @@ func (h *CourseCloneHandler) Clone(w http.ResponseWriter, r *http.Request) {
 }
 
 type sourceCourseFields struct {
-	Name              string
-	Type              string
-	Category          string
-	MajorID           *string
-	TeacherID         *string
-	IndustryID        *string
-	Version           *string
-	OnlineHours       *float64
-	OfflineHours      *float64
-	OnlineWeight      *float64
-	OfflineWeight     *float64
-	Semester          *string
-	ClassName         *string
-	CoverColor        *string
-	CoverImage        *string
-	CourseTag         *string
-	Difficulty        *int
-	Description       *string
+	Name             string
+	Type             string
+	Category         string
+	MajorID          *string
+	TeacherID        *string
+	IndustryID       *string
+	Version          *string
+	OnlineHours      *float64
+	OfflineHours     *float64
+	OnlineWeight     *float64
+	OfflineWeight    *float64
+	Semester         *string
+	ClassName        *string
+	CoverColor       *string
+	CoverImage       *string
+	CourseTag        *string
+	Difficulty       *int
+	Description      *string
 	KnowledgePointIds []string
-	AbilityPointIds   []string
-	ResourceIds       []string
-	CoCreatorIds      []string
-	BatchID           *string
-	EvalData          domain.JSONMap
-	TenantID          *string
+	AbilityPointIds  []string
+	ResourceIds      []string
+	CoCreatorIds     []string
+	BatchID          *string
+	EvalData         domain.JSONMap
+	TenantID         *string
 }
 
 func (h *CourseCloneHandler) fetchSourceCourse(ctx context.Context, id string) (*sourceCourseFields, error) {
@@ -200,13 +200,6 @@ func (h *CourseCloneHandler) fetchSourceCourse(ctx context.Context, id string) (
 }
 
 func (h *CourseCloneHandler) cloneCourseBindings(ctx context.Context, tx pgx.Tx, oldCourseID, newCourseID, tenantID string) error {
-	type kpRow struct {
-		KpID     string
-		BindType string
-		SourceID *string
-	}
-	var kpRows []kpRow
-
 	rows, err := tx.Query(ctx, `
 		SELECT knowledge_point_id, bind_type, source_id
 		FROM course_knowledge_bindings WHERE course_id = $1
@@ -215,6 +208,14 @@ func (h *CourseCloneHandler) cloneCourseBindings(ctx context.Context, tx pgx.Tx,
 		slog.Error("[CloneCourse] query knowledge bindings failed", "error", err)
 		return err
 	}
+	defer rows.Close()
+
+	type kpRow struct {
+		KpID     string
+		BindType string
+		SourceID *string
+	}
+	var kpRows []kpRow
 	for rows.Next() {
 		var r kpRow
 		if err := rows.Scan(&r.KpID, &r.BindType, &r.SourceID); err != nil {
@@ -222,8 +223,9 @@ func (h *CourseCloneHandler) cloneCourseBindings(ctx context.Context, tx pgx.Tx,
 		}
 		kpRows = append(kpRows, r)
 	}
-	rows.Close()
-
+	if err := rows.Err(); err != nil {
+		return err
+	}
 	for _, r := range kpRows {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO course_knowledge_bindings (id, tenant_id, course_id, knowledge_point_id, bind_type, source_id)
@@ -234,24 +236,19 @@ func (h *CourseCloneHandler) cloneCourseBindings(ctx context.Context, tx pgx.Tx,
 		}
 	}
 
-	var resIDs []string
-	resRows, err := tx.Query(ctx, `
+	resRows, resErr := tx.Query(ctx, `
 		SELECT resource_id FROM course_resource_bindings WHERE course_id = $1
 	`, oldCourseID)
-	if err != nil {
-		slog.Error("[CloneCourse] query resource bindings failed", "error", err)
-		return err
+	if resErr != nil {
+		slog.Error("[CloneCourse] query resource bindings failed", "error", resErr)
+		return resErr
 	}
+	defer resRows.Close()
 	for resRows.Next() {
 		var resID string
 		if err := resRows.Scan(&resID); err != nil {
 			continue
 		}
-		resIDs = append(resIDs, resID)
-	}
-	resRows.Close()
-
-	for _, resID := range resIDs {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO course_resource_bindings (id, tenant_id, course_id, resource_id)
 			VALUES ($1, $2, $3, $4)
@@ -260,7 +257,7 @@ func (h *CourseCloneHandler) cloneCourseBindings(ctx context.Context, tx pgx.Tx,
 			return err
 		}
 	}
-	return nil
+	return resRows.Err()
 }
 
 func (h *CourseCloneHandler) cloneSystemCourseNodes(ctx context.Context, tx pgx.Tx, oldCourseID, newCourseID, tenantID string) error {
@@ -300,6 +297,7 @@ func (h *CourseCloneHandler) cloneSystemCourseNodes(ctx context.Context, tx pgx.
 		slog.Error("[CloneCourse] query nodes failed", "error", err)
 		return err
 	}
+	defer rows.Close()
 
 	var nodes []nodeRow
 	for rows.Next() {
@@ -308,12 +306,13 @@ func (h *CourseCloneHandler) cloneSystemCourseNodes(ctx context.Context, tx pgx.
 			&n.SourceID, &n.SourceName, &n.TeachingGoals, &n.DetailedDescription, &n.DescriptionPdf,
 			&n.Background, &n.EstimatedHours, &n.Duration, &n.Difficulty,
 			&n.KnowledgePointIds, &n.ResourceIds, &n.AbilityPointIds, &n.EvalData, &n.Status); err != nil {
-			rows.Close()
 			return err
 		}
 		nodes = append(nodes, n)
 	}
-	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
 
 	if len(nodes) == 0 {
 		return nil
@@ -395,18 +394,12 @@ func (h *CourseCloneHandler) cloneNodeQuizzes(ctx context.Context, tx pgx.Tx, no
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
 
-	type quizInsert struct {
-		newNodeID string
-		newQuizID string
-		q         quizRow
-	}
-	var quizInserts []quizInsert
 	quizIDMap := make(map[string]string)
 	for rows.Next() {
 		var q quizRow
 		if err := rows.Scan(&q.OldID, &q.NodeID, &q.Title, &q.Type, &q.TimeLimit); err != nil {
-			rows.Close()
 			return err
 		}
 		newNodeID, ok := nodeIDMap[q.NodeID]
@@ -415,18 +408,16 @@ func (h *CourseCloneHandler) cloneNodeQuizzes(ctx context.Context, tx pgx.Tx, no
 		}
 		newQuizID := uuid.NewString()
 		quizIDMap[q.OldID] = newQuizID
-		quizInserts = append(quizInserts, quizInsert{newNodeID, newQuizID, q})
-	}
-	rows.Close()
-
-	for _, qi := range quizInserts {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO node_quizzes (id, tenant_id, node_id, title, type, time_limit)
 			VALUES ($1, $2, $3, $4, $5, $6)
-		`, qi.newQuizID, tenantID, qi.newNodeID, qi.q.Title, qi.q.Type, qi.q.TimeLimit)
+		`, newQuizID, tenantID, newNodeID, q.Title, q.Type, q.TimeLimit)
 		if err != nil {
 			return err
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
 	}
 
 	if len(quizIDMap) == 0 {
@@ -438,46 +429,36 @@ func (h *CourseCloneHandler) cloneNodeQuizzes(ctx context.Context, tx pgx.Tx, no
 		oldQuizIDs = append(oldQuizIDs, oldID)
 	}
 
-	qRows, err := tx.Query(ctx, `
+	qRows, qErr := tx.Query(ctx, `
 		SELECT quiz_id, type, question, options, answer, score, sort_order
 		FROM node_quiz_questions
 		WHERE quiz_id = ANY($1)
 		ORDER BY sort_order ASC
 	`, oldQuizIDs)
-	if err != nil {
-		return err
+	if qErr != nil {
+		return qErr
 	}
+	defer qRows.Close()
 
-	type questionInsert struct {
-		qID string
-		qq domain.NodeQuizQuestion
-	}
-	var qInserts []questionInsert
 	for qRows.Next() {
 		var qq domain.NodeQuizQuestion
 		var oldQuizID string
 		if err := qRows.Scan(&oldQuizID, &qq.Type, &qq.Question, &qq.Options, &qq.Answer, &qq.Score, &qq.SortOrder); err != nil {
-			qRows.Close()
 			return err
 		}
 		newQuizID, ok := quizIDMap[oldQuizID]
 		if !ok {
 			continue
 		}
-		qInserts = append(qInserts, questionInsert{newQuizID, qq})
-	}
-	qRows.Close()
-
-	for _, qi := range qInserts {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO node_quiz_questions (id, tenant_id, quiz_id, type, question, options, answer, score, sort_order)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		`, uuid.NewString(), tenantID, qi.qID, qi.qq.Type, qi.qq.Question, qi.qq.Options, qi.qq.Answer, qi.qq.Score, qi.qq.SortOrder)
+		`, uuid.NewString(), tenantID, newQuizID, qq.Type, qq.Question, qq.Options, qq.Answer, qq.Score, qq.SortOrder)
 		if err != nil {
 			return err
 		}
 	}
-	return nil
+	return qRows.Err()
 }
 
 func (h *CourseCloneHandler) cloneNodeHomeworks(ctx context.Context, tx pgx.Tx, nodeIDMap map[string]string, tenantID string) error {
@@ -498,37 +479,27 @@ func (h *CourseCloneHandler) cloneNodeHomeworks(ctx context.Context, tx pgx.Tx, 
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
 
-	type hwInsert struct {
-		newNodeID string
-		hw        domain.NodeHomework
-	}
-	var hwInserts []hwInsert
 	for rows.Next() {
 		var hw domain.NodeHomework
 		var oldNodeID string
 		if err := rows.Scan(&oldNodeID, &hw.Title, &hw.Requirement, &hw.NeedAttachment, &hw.Deadline); err != nil {
-			rows.Close()
 			return err
 		}
 		newNodeID, ok := nodeIDMap[oldNodeID]
 		if !ok {
 			continue
 		}
-		hwInserts = append(hwInserts, hwInsert{newNodeID, hw})
-	}
-	rows.Close()
-
-	for _, hi := range hwInserts {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO node_homeworks (id, tenant_id, node_id, title, requirement, need_attachment, deadline)
 			VALUES ($1, $2, $3, $4, $5, $6, $7)
-		`, uuid.NewString(), tenantID, hi.newNodeID, hi.hw.Title, hi.hw.Requirement, hi.hw.NeedAttachment, hi.hw.Deadline)
+		`, uuid.NewString(), tenantID, newNodeID, hw.Title, hw.Requirement, hw.NeedAttachment, hw.Deadline)
 		if err != nil {
 			return err
 		}
 	}
-	return nil
+	return rows.Err()
 }
 
 func (h *CourseCloneHandler) cloneHybridNodeModules(ctx context.Context, tx pgx.Tx, nodeIDMap map[string]string, tenantID string) error {
@@ -549,37 +520,27 @@ func (h *CourseCloneHandler) cloneHybridNodeModules(ctx context.Context, tx pgx.
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
 
-	type modInsert struct {
-		newNodeID string
-		m         domain.HybridNodeModule
-	}
-	var modInserts []modInsert
 	for rows.Next() {
 		var m domain.HybridNodeModule
 		var oldNodeID string
 		if err := rows.Scan(&oldNodeID, &m.ModuleKey, &m.Mode, &m.Data); err != nil {
-			rows.Close()
 			return err
 		}
 		newNodeID, ok := nodeIDMap[oldNodeID]
 		if !ok {
 			continue
 		}
-		modInserts = append(modInserts, modInsert{newNodeID, m})
-	}
-	rows.Close()
-
-	for _, mi := range modInserts {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO hybrid_node_modules (id, tenant_id, node_id, module_key, mode, data)
 			VALUES ($1, $2, $3, $4, $5, $6)
-		`, uuid.NewString(), tenantID, mi.newNodeID, mi.m.ModuleKey, mi.m.Mode, mi.m.Data)
+		`, uuid.NewString(), tenantID, newNodeID, m.ModuleKey, m.Mode, m.Data)
 		if err != nil {
 			return err
 		}
 	}
-	return nil
+	return rows.Err()
 }
 
 func (h *CourseCloneHandler) cloneNodeKnowledgeBindings(ctx context.Context, tx pgx.Tx, oldNodeID, newNodeID, tenantID string) error {
@@ -589,27 +550,22 @@ func (h *CourseCloneHandler) cloneNodeKnowledgeBindings(ctx context.Context, tx 
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
 
-	var kpIDs []string
 	for rows.Next() {
 		var kpID string
 		if err := rows.Scan(&kpID); err != nil {
 			continue
 		}
-		kpIDs = append(kpIDs, kpID)
-	}
-	rows.Close()
-
-	for _, kpID := range kpIDs {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO node_knowledge_point_bindings (node_id, knowledge_point_id)
-			VALUES ($1, $2)
-		`, newNodeID, kpID)
+			INSERT INTO node_knowledge_point_bindings (id, tenant_id, node_id, knowledge_point_id)
+			VALUES ($1, $2, $3, $4)
+		`, uuid.NewString(), tenantID, newNodeID, kpID)
 		if err != nil {
 			return err
 		}
 	}
-	return nil
+	return rows.Err()
 }
 
 func (h *CourseCloneHandler) cloneNodeResourceBindings(ctx context.Context, tx pgx.Tx, oldNodeID, newNodeID, tenantID string) error {
@@ -619,18 +575,13 @@ func (h *CourseCloneHandler) cloneNodeResourceBindings(ctx context.Context, tx p
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
 
-	var resIDs []string
 	for rows.Next() {
 		var resID string
 		if err := rows.Scan(&resID); err != nil {
 			continue
 		}
-		resIDs = append(resIDs, resID)
-	}
-	rows.Close()
-
-	for _, resID := range resIDs {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO node_resource_bindings (id, tenant_id, node_id, resource_id)
 			VALUES ($1, $2, $3, $4)
@@ -639,5 +590,12 @@ func (h *CourseCloneHandler) cloneNodeResourceBindings(ctx context.Context, tx p
 			return err
 		}
 	}
-	return nil
+	return rows.Err()
+}
+
+func isNoRowsErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	return err.Error() == "no rows in result set"
 }
