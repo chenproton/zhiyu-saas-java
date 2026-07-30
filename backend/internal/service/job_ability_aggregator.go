@@ -198,6 +198,11 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 			UNION
 			SELECT evaluatee_id FROM course_evaluation_results
 			WHERE tenant_id = $1 AND course_id = ANY($2) AND status = 'evaluated'
+			UNION
+			SELECT ner.evaluatee_id
+			FROM node_evaluation_results ner
+			JOIN system_course_nodes n ON n.id = ner.node_id
+			WHERE ner.tenant_id = $1 AND n.course_id = ANY($2) AND ner.status = 'evaluated'
 		`, tenantID, taskIDs)
 		if err != nil {
 			return 0, 0, err
@@ -237,6 +242,11 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 			SELECT evaluatee_id, course_id AS task_id, total_score / NULLIF(max_score, 0) * 100 AS score
 			FROM course_evaluation_results
 			WHERE tenant_id = $1 AND course_id = ANY($2) AND evaluatee_id = ANY($3) AND total_score IS NOT NULL AND status = 'evaluated'
+			UNION ALL
+			SELECT ner.evaluatee_id, n.course_id AS task_id, ner.total_score / NULLIF(ner.max_score, 0) * 100 AS score
+			FROM node_evaluation_results ner
+			JOIN system_course_nodes n ON n.id = ner.node_id
+			WHERE ner.tenant_id = $1 AND n.course_id = ANY($2) AND ner.evaluatee_id = ANY($3) AND ner.total_score IS NOT NULL AND ner.status = 'evaluated'
 		) t
 		GROUP BY evaluatee_id, task_id
 	`, tenantID, taskIDs, studentIDs)

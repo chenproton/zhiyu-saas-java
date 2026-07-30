@@ -54,6 +54,8 @@ export default function ExamDetailPage() {
   const examId = params.id as string
   const taskId = searchParams.get("task") || ""
   const sceneId = searchParams.get("scene") || ""
+  const courseId = searchParams.get("course") || ""
+  const nodeId = searchParams.get("node") || ""
   const methodKey = searchParams.get("method") || ""
   const usageIdFromQuery = searchParams.get("usage") || ""
   const { exams, getExam } = useData()
@@ -93,6 +95,7 @@ export default function ExamDetailPage() {
   }, [exam])
 
   const isSceneTask = !!taskId && !!methodKey
+  const isCourseTask = !!courseId && !!nodeId
 
   useEffect(() => {
     if (!examId || cachedExam) return
@@ -244,6 +247,11 @@ export default function ExamDetailPage() {
             {isSceneTask && sceneId && (
               <Link href={`/scene/landing/${sceneId}/learn?task=${taskId}`}>
                 <Button variant="outline">返回学习页</Button>
+              </Link>
+            )}
+            {isCourseTask && courseId && (
+              <Link href={`/lesson/landing/${courseId}?node=${nodeId}`}>
+                <Button variant="outline">返回课程学习页</Button>
               </Link>
             )}
             <Link href="/evaluation/landing/exams">

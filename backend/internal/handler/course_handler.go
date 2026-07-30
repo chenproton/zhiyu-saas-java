@@ -417,12 +417,12 @@ func (h *CourseHandler) Assessments(w http.ResponseWriter, r *http.Request) {
 	}
 	courseID := chi.URLParam(r, "id")
 
-	course, err := h.fetchCourse(r.Context(), courseID)
+	_, err := h.fetchCourse(r.Context(), courseID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "课程不存在")
 		return
 	}
-	if !verifyTenantOwnership(w, r, course.CreatorID) {
+	if !verifyTenantOwnership(w, r, *claims.TenantID) {
 		return
 	}
 
@@ -1049,14 +1049,14 @@ func (h *CourseHandler) generateCourseAssessments(ctx context.Context, tx pgx.Tx
 
 			switch methodKey {
 			case "paper":
-				newRC, err := h.ensureNodePaperUsage(ctx, tx, n.id, n.name, courseName, tenantID, creatorID, rc)
+				newRC, err := h.ensureNodePaperUsage(ctx, tx, n.id, n.name, courseName, tenantID, creatorID, rc, ruleConfig)
 				if err != nil {
 					return fmt.Errorf("生成节点 %s 试卷测评失败: %w", n.id, err)
 				}
 				methodResourceConfigs[methodKey] = newRC
 				updated = true
 			case "question_bank", "quiz":
-				newRC, err := h.ensureNodeQuestionExam(ctx, tx, n.id, n.name, courseName, tenantID, creatorID, methodKey, rc)
+				newRC, err := h.ensureNodeQuestionExam(ctx, tx, n.id, n.name, courseName, tenantID, creatorID, methodKey, rc, ruleConfig)
 				if err != nil {
 					return fmt.Errorf("生成节点 %s %s测评失败: %w", n.id, methodKey, err)
 				}
@@ -1078,9 +1078,18 @@ func (h *CourseHandler) generateCourseAssessments(ctx context.Context, tx pgx.Tx
 		}
 	}
 
-	// 兼容旧数据：清理课程级 exam_usages / course_homeworks，避免重复展示
-	_, _ = tx.Exec(ctx, `DELETE FROM exam_usages WHERE target_type = 'course' AND $1 = ANY(target_ids)`, courseID)
-	_, _ = tx.Exec(ctx, `DELETE FROM course_homeworks WHERE course_id = $1`, courseID)
+	// 兼容旧数据：清理课程级 exam_usages / course_homeworks，避免重复展示。
+	// 仅删除无关联结果的记录，防止误删历史数据。
+	_, _ = tx.Exec(ctx, `
+		DELETE FROM exam_usages eu
+		WHERE eu.target_type = 'course' AND $1 = ANY(eu.target_ids)
+		  AND NOT EXISTS (SELECT 1 FROM exam_results er WHERE er.exam_usage_id = eu.id)
+	`, courseID)
+	_, _ = tx.Exec(ctx, `
+		DELETE FROM course_homeworks ch
+		WHERE ch.course_id = $1
+		  AND NOT EXISTS (SELECT 1 FROM course_homework_submissions chs WHERE chs.homework_id = ch.id)
+	`, courseID)
 
 	return nil
 }
@@ -1095,11 +1104,8 @@ func extractEvalRuleConfig(evalData domain.JSONMap) domain.JSONMap {
 	return nil
 }
 
-func (h *CourseHandler) ensureNodePaperUsage(ctx context.Context, tx pgx.Tx, nodeID, nodeName, courseName, tenantID, creatorID string, rc map[string]interface{}) (map[string]interface{}, error) {
-	paperIDs := getStringSliceFromJSONMap(rc, "paperIds")
-	if len(paperIDs) == 0 {
-		paperIDs = getStringSliceFromJSONMap(extractEvalRuleConfigFromRC(rc), "paperIds")
-	}
+func (h *CourseHandler) ensureNodePaperUsage(ctx context.Context, tx pgx.Tx, nodeID, nodeName, courseName, tenantID, creatorID string, rc map[string]interface{}, ruleConfig domain.JSONMap) (map[string]interface{}, error) {
+	paperIDs := getStringSliceFromJSONMap(ruleConfig, "paperIds")
 	if len(paperIDs) == 0 {
 		return rc, nil
 	}
@@ -1142,26 +1148,13 @@ func (h *CourseHandler) ensureNodePaperUsage(ctx context.Context, tx pgx.Tx, nod
 	return rc, nil
 }
 
-func extractEvalRuleConfigFromRC(rc map[string]interface{}) domain.JSONMap {
-	if rc == nil {
-		return nil
-	}
-	if m, ok := rc["evalRuleConfig"].(map[string]interface{}); ok {
-		return m
-	}
-	return nil
-}
-
-func (h *CourseHandler) ensureNodeQuestionExam(ctx context.Context, tx pgx.Tx, nodeID, nodeName, courseName, tenantID, creatorID, methodKey string, rc map[string]interface{}) (map[string]interface{}, error) {
+func (h *CourseHandler) ensureNodeQuestionExam(ctx context.Context, tx pgx.Tx, nodeID, nodeName, courseName, tenantID, creatorID, methodKey string, rc map[string]interface{}, ruleConfig domain.JSONMap) (map[string]interface{}, error) {
 	field := map[string]string{
 		"question_bank": "questionBankQuestions",
 		"quiz":          "quizQuestions",
 	}[methodKey]
 
-	questionIDs := getStringSliceFromJSONMap(rc, "questionIds")
-	if len(questionIDs) == 0 {
-		questionIDs = getStringSliceFromJSONMap(extractEvalRuleConfigFromRC(rc), field)
-	}
+	questionIDs := getStringSliceFromJSONMap(ruleConfig, field)
 	if len(questionIDs) == 0 {
 		return rc, nil
 	}

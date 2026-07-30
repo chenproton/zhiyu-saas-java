@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeft, ListChecks, FolderOpen, GitBranch, Target,
   Clock, Layers, BookOpen, Sparkles, PlayCircle, FileText,
@@ -119,6 +119,8 @@ export default function CourseDetailPage() {
   const params = useParams()
   const id = params.id as string
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const highlightNodeId = searchParams.get("node")
 
   const { user } = useAuth()
   const isStudent = user?.currentRole?.name === "student"
@@ -230,6 +232,15 @@ export default function CourseDetailPage() {
     })
   }, [nodes, user?.id])
 
+  // 从考试页返回时高亮并定位到对应节点
+  useEffect(() => {
+    if (!highlightNodeId) return
+    const el = document.getElementById(`course-node-${highlightNodeId}`)
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" })
+    }
+  }, [highlightNodeId, nodes])
+
   const totalResources = resources.length
   const courseKnowledgeList = useMemo(() => {
     const ids = new Set(course?.knowledgePointIds || [])
@@ -272,7 +283,7 @@ export default function CourseDetailPage() {
     const examId = methodKey === "paper" ? rc.paperId : rc.examId
     const usageId = rc.usageId
     if (!examId) return "#"
-    return `/evaluation/landing/exams/${examId}?node=${nodeId}&method=${methodKey}&usage=${usageId || ""}`
+    return `/evaluation/landing/exams/${examId}?node=${nodeId}&method=${methodKey}&usage=${usageId || ""}&course=${id}`
   }
 
   if (loading) {
@@ -327,7 +338,11 @@ export default function CourseDetailPage() {
                   const evalMethods = getNodeEvalMethods(node)
                   const results = nodeResults.get(node.id) || []
                   return (
-                    <div key={node.id} className="group bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-emerald-200 transition-all">
+                    <div
+                      key={node.id}
+                      id={`course-node-${node.id}`}
+                      className={`group bg-white rounded-xl border overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-emerald-200 transition-all ${highlightNodeId === node.id ? "ring-2 ring-emerald-400 border-emerald-300" : "border-slate-200"}`}
+                    >
                       <div className="flex items-center gap-4 p-5">
                         <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-400 text-white flex items-center justify-center text-sm font-bold shrink-0 shadow-lg shadow-emerald-500/25">
                           {idx + 1}
@@ -539,7 +554,7 @@ export default function CourseDetailPage() {
                         </div>
                       </div>
                       <Link
-                        href={isStudent ? `/evaluation/exams/${exam.id}/take` : `/evaluation/exam-usages/${exam.id}`}
+                        href={isStudent ? `/evaluation/landing/exams/${exam.examId}?usage=${exam.id}&course=${id}` : `/evaluation/exam-usages/${exam.id}`}
                         className="inline-flex items-center text-xs font-medium text-emerald-600 hover:text-emerald-700"
                       >
                         {isStudent ? "进入考试 →" : "查看安排 →"}
