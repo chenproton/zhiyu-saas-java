@@ -27,6 +27,8 @@ import type { Course } from "@/lib/types/lesson"
 const NATURE_OPTIONS = ["必修", "选修", "实践", "场景"]
 const ASSESSMENT_OPTIONS = ["考试", "考查", "场景测评"]
 
+type LinkType = "none" | "scenario" | "course"
+
 interface CourseRow {
   key: string
   name: string
@@ -38,6 +40,7 @@ interface CourseRow {
   semester: number
   nature: string
   assessment: string
+  linkType: LinkType
   scenarioId: string
   courseId: string
 }
@@ -54,6 +57,7 @@ function emptyRow(key: string, semester: number): CourseRow {
     semester,
     nature: "必修",
     assessment: "",
+    linkType: "none",
     scenarioId: "",
     courseId: "",
   }
@@ -82,6 +86,7 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
           semester: c.semester,
           nature: c.nature || "必修",
           assessment: c.assessment || "",
+          linkType: c.scenarioId ? "scenario" : c.courseId ? "course" : "none",
           scenarioId: c.scenarioId || "",
           courseId: c.courseId || "",
         })),
@@ -104,7 +109,7 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
     let cancelled = false
     ;(async () => {
       try {
-        const res = await scenarioApi.list({ limit: 200 })
+        const res = await scenarioApi.list({ status: "published", limit: 200 })
         if (!cancelled) setScenarios(res.items)
       } catch {
         // 场景列表加载失败不阻断课程设置，仅无法选择关联场景
@@ -119,7 +124,7 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
     let cancelled = false
     ;(async () => {
       try {
-        const res = await courseApi.list({ type: "system", limit: 200 })
+        const res = await courseApi.list({ type: "system", status: "published", limit: 200 })
         if (!cancelled) setSystemCourses(res.items)
       } catch {
         // 体系课列表加载失败不阻断课程设置
@@ -163,8 +168,8 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
           semester: r.semester,
           nature: r.nature,
           assessment: r.assessment || undefined,
-          scenarioId: r.nature === "场景" ? r.scenarioId || undefined : undefined,
-          courseId: r.nature !== "场景" ? r.courseId || undefined : undefined,
+          scenarioId: r.linkType === "scenario" ? r.scenarioId || undefined : undefined,
+          courseId: r.linkType === "course" ? r.courseId || undefined : undefined,
           sortOrder: i,
         })),
       )
@@ -183,7 +188,7 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
     <div className="rounded-lg border bg-white px-4 py-3 space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          共 {rows.length} 门课程，合计 {totalCredits} 学分；性质为「场景」的课程需关联实践场景
+          共 {rows.length} 门课程，合计 {totalCredits} 学分；通过「关联对象」可将课程关联至已发布场景或体系课
         </p>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={addRow}>
@@ -324,50 +329,70 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
                     </Select>
                   </TableCell>
                   <TableCell>
-                    {r.nature === "场景" ? (
+                    <div className="flex items-center gap-1">
                       <Select
-                        value={r.scenarioId || "none"}
-                        onValueChange={(v) => updateRow(r.key, { scenarioId: v === "none" ? "" : v })}
-                      >
-                        <SelectTrigger className="h-8">
-                          <SelectValue placeholder="选择场景" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">未关联</SelectItem>
-                          {scenarios.map((s) => (
-                            <SelectItem key={s.id} value={s.id}>
-                              {s.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Select
-                        value={r.courseId || "none"}
+                        value={r.linkType}
                         onValueChange={(v) => {
-                          const courseId = v === "none" ? "" : v
-                          const course = systemCourses.find((c) => c.id === courseId)
-                          updateRow(r.key, {
-                            courseId,
-                            name: course ? course.name : r.name,
-                            code: course ? (course.code || "") : r.code,
-                            hours: course ? (course.onlineHours || 0) : r.hours,
-                          })
+                          const lt = v as LinkType
+                          updateRow(r.key, { linkType: lt, scenarioId: lt === "scenario" ? r.scenarioId : "", courseId: lt === "course" ? r.courseId : "" })
                         }}
                       >
-                        <SelectTrigger className="h-8">
-                          <SelectValue placeholder="选择体系课" />
+                        <SelectTrigger className="h-8 w-[80px]">
+                          <SelectValue placeholder="类型" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">未关联</SelectItem>
-                          {systemCourses.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.name}
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="scenario">场景</SelectItem>
+                          <SelectItem value="course">体系课</SelectItem>
                         </SelectContent>
                       </Select>
-                    )}
+                      {r.linkType === "scenario" ? (
+                        <Select
+                          value={r.scenarioId || "none"}
+                          onValueChange={(v) => updateRow(r.key, { scenarioId: v === "none" ? "" : v })}
+                        >
+                          <SelectTrigger className="h-8 flex-1">
+                            <SelectValue placeholder="选择场景" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">未选择</SelectItem>
+                            {scenarios.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : r.linkType === "course" ? (
+                        <Select
+                          value={r.courseId || "none"}
+                          onValueChange={(v) => {
+                            const courseId = v === "none" ? "" : v
+                            const course = systemCourses.find((c) => c.id === courseId)
+                            updateRow(r.key, {
+                              courseId,
+                              name: course ? course.name : r.name,
+                              code: course ? (course.code || "") : r.code,
+                              hours: course ? (course.onlineHours || 0) : r.hours,
+                            })
+                          }}
+                        >
+                          <SelectTrigger className="h-8 flex-1">
+                            <SelectValue placeholder="选择体系课" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">未选择</SelectItem>
+                            {systemCourses.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button

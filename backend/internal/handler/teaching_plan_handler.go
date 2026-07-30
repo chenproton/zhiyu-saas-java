@@ -154,7 +154,7 @@ func (h *TeachingPlanHandler) Generate(w http.ResponseWriter, r *http.Request) {
 				weekHours = (c.Hours + weeksCount - 1) / weeksCount
 			}
 			scenarioID := (*string)(nil)
-			if entryType == "scene" {
+			if c.ScenarioID != nil && *c.ScenarioID != "" {
 				scenarioID = c.ScenarioID
 			}
 			courseID := (*string)(nil)
@@ -407,9 +407,12 @@ func (h *TeachingPlanHandler) fetchProgramCoursesForPlan(ctx context.Context, pr
 }
 
 // planEntryType 判定计划条目类型：
-// 场景性质 → scene（带 scenario_id）；实践性质 → practice；
+// 有关联场景 → scene（带 scenario_id）；场景性质/实践 → 对应类型；
 // 普通课程纯实践学时（practice_hours>0 且无理论学时）→ practice，其余 → theory。
 func planEntryType(c planCourseRow) string {
+	if c.ScenarioID != nil && *c.ScenarioID != "" {
+		return "scene"
+	}
 	nature := ""
 	if c.Nature != nil {
 		nature = *c.Nature

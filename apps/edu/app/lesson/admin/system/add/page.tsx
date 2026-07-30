@@ -533,6 +533,7 @@ function AddSystemPageInner() {
     // Fetch full grain data for KPs and resources
     try {
       const grainFull = await courseApi.get(`${grain.id}?_t=${Date.now()}` as any)
+      setLearningGoalPdf(((grainFull as any).evalData?.descriptionPdf) || null)
       const grainKpIds = new Set((grainFull.knowledgePointIds || []).filter((id: any) => !!id))
       setKnowledgePoints(
         knowledgePool.filter((k: any) => grainKpIds.has(k.id))
