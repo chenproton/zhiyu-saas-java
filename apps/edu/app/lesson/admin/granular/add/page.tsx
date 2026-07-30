@@ -177,7 +177,7 @@ function AddGranularPageInner() {
 
     const resForCheck: NodeResource[] = selectedResourceIds
       .map((id) => {
-        const r = resourcePool.find((x) => x.id === id)
+        const r = courseResourcePool.find((x) => x.id === id)
         if (!r) return null
         return {
           id: r.id,
