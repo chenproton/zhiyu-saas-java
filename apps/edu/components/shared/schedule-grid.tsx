@@ -27,16 +27,14 @@ export function filterEntriesByWeek(entries: ScheduleEntry[], week?: number): Sc
 
 interface ScheduleGridProps {
   entries: ScheduleEntry[]
-  /** 节次行（按 sortOrder 排序）；缺省时从 entries 的 periods 推导 */
   periodSlots?: PeriodSlot[]
-  /** 选中周次过滤（缺省显示全部周次的并集） */
   week?: number
   loading?: boolean
   emptyText?: string
-  /** 点击单元格卡片（排课页编辑场景） */
   onEntryClick?: (entry: ScheduleEntry) => void
-  /** 场景课跳转链接（工作台场景）；返回 undefined 表示不可跳转 */
   getEntryHref?: (entry: ScheduleEntry) => string | undefined
+  /** 点击空单元格回调（用于 click-to-assign 排课） */
+  onCellClick?: (dayOfWeek: number, periodSlotKey: string) => void
 }
 
 interface GridRow {
@@ -54,6 +52,7 @@ export function ScheduleGrid({
   emptyText = "暂无课表数据",
   onEntryClick,
   getEntryHref,
+  onCellClick,
 }: ScheduleGridProps) {
   const visibleEntries = useMemo(() => filterEntriesByWeek(entries, week), [entries, week])
 
@@ -174,8 +173,9 @@ export function ScheduleGrid({
               {DAY_LABELS.map((_, dayIdx) => {
                 const dayEntries = cellMap.get(`${dayIdx + 1}:${row.key}`) || []
                 return (
-                  <td key={dayIdx} className="border px-1 py-1 align-top">
-                    <div className="space-y-1">{dayEntries.map(renderCard)}</div>
+                  <td key={dayIdx} className={cn("border px-1 py-1 align-top", onCellClick && "cursor-pointer hover:bg-blue-50/40 transition-colors")}
+                    onClick={() => { if (onCellClick && dayEntries.length === 0) onCellClick(dayIdx + 1, row.key) }}>
+                    <div className="space-y-1 min-h-[2rem]">{dayEntries.map(renderCard)}</div>
                   </td>
                 )
               })}
