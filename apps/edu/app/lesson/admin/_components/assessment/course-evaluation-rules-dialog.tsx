@@ -29,7 +29,7 @@ import {
   BookOpen,
   ClipboardList,
 } from "lucide-react"
-import { useMemo, useState, useRef, useLayoutEffect, useCallback } from "react"
+import { useMemo, useState, useRef, useLayoutEffect, useCallback, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -69,6 +69,10 @@ import {
   type ScoreTypeField,
   type RubricIdField,
 } from "@/lib/evaluation-rule-store"
+import { ExamFormDialog } from "@/components/evaluation/exam-form-dialog"
+import { BankQuestionSelectorPanel } from "@/app/scene/scenarios/[id]/edit/tasks/_components/bank-question-selector-panel"
+import { examApi, examUsageApi, randomDrawQuestionApi, majorApi, taskEvaluationApi } from "@/lib/api"
+import { loadedExams } from "@/app/scene/scenarios/[id]/edit/tasks/_components/shared-defs"
 
 // ============ Types & Configs ============
 
@@ -289,6 +293,130 @@ export function CourseEvaluationRulesDialog({
       },
     })
   }, [config.methodResourceConfigs, updateConfig])
+
+  // Random draw question API state
+  const [rdqApiQuestions, setRdqApiQuestions] = useState<any[]>([])
+  const [loadingRdq, setLoadingRdq] = useState(false)
+  const [majors, setMajors] = useState<any[]>([])
+
+  // Paper loading
+  const [loadingPapers, setLoadingPapers] = useState(false)
+  const [paperSearch, setPaperSearch] = useState("")
+  const [showCreatePaperLocal, setShowCreatePaperLocal] = useState(false)
+  const [paperDetailOpenLocal, setPaperDetailOpenLocal] = useState(false)
+  const [selectedPaperForDetailLocal, setSelectedPaperForDetailLocal] = useState<string | null>(null)
+
+  const loadRdqQuestions = useCallback(async () => {
+    setLoadingRdq(true)
+    try {
+      const res = await randomDrawQuestionApi.list({ limit: 9999 })
+      setRdqApiQuestions(res.items || [])
+    } catch { /* ignore */ }
+    finally { setLoadingRdq(false) }
+  }, [])
+
+  const loadMajors = useCallback(async () => {
+    try {
+      const res = await majorApi.list({ limit: 1000 })
+      setMajors((res.items || []).map((m: any) => ({ id: m.id, name: m.name })))
+    } catch { /* ignore */ }
+  }, [])
+
+  const loadRubricTemplates = useCallback(async () => {
+    try {
+      const res = await taskEvaluationApi.listTemplates({ limit: 200 }).catch(() => ({ items: [] as any[], total: 0 }))
+      setRubricLibrary((res.items || []).map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        types: t.types || [],
+        desc: t.description || "",
+        points: (t.data?.points || []).map((p: any) => ({
+          id: p.id || uid("ep"),
+          name: p.name,
+          desc: p.description || "",
+          subType: p.types?.[0],
+          types: p.types || [],
+          knowledgePointIds: p.knowledgePointIds || [],
+          abilityPointIds: p.abilityPointIds || [],
+          scoringMethod: p.scoringMethod || "level",
+          gradeMapping: p.gradeMapping || [],
+          weight: p.weight || 0,
+        })),
+        mode: t.mode || "rubric",
+        scoreRuleItems: t.data?.scoreRuleItems || [],
+      })))
+    } catch { /* ignore */ }
+  }, [])
+
+  const handleCreateRdq = useCallback(async () => {
+    if (!newRdqForm.name.trim()) return
+    try {
+      if (rdqActionMode === "edit" && rdqActionTarget) {
+        await randomDrawQuestionApi.update(rdqActionTarget.id, {
+          name: newRdqForm.name.trim(),
+          description: newRdqForm.description.trim() || undefined,
+          answer: newRdqForm.answer.trim() || undefined,
+          majorId: newRdqForm.majorId || undefined,
+        } as any)
+      } else {
+        await randomDrawQuestionApi.create({
+          name: newRdqForm.name.trim(),
+          description: newRdqForm.description.trim() || undefined,
+          answer: newRdqForm.answer.trim() || undefined,
+          majorId: newRdqForm.majorId || undefined,
+        } as any)
+      }
+      await loadRdqQuestions()
+    } catch (_) {
+      toast({ variant: "destructive", title: "保存失败", description: "现场问答题保存失败" })
+    }
+    setRdqActionOpen(false)
+    setRdqSearch("")
+  }, [newRdqForm, rdqActionMode, rdqActionTarget, loadRdqQuestions, toast])
+
+  const handleDeleteRdq = useCallback(async (id: string) => {
+    try {
+      await randomDrawQuestionApi.delete(id)
+      updateConfig({ randomDrawSelectedIds: config.randomDrawSelectedIds.filter((sid: string) => sid !== id) })
+      await loadRdqQuestions()
+    } catch (_) {
+      toast({ variant: "destructive", title: "删除失败", description: "现场问答题删除失败" })
+    }
+  }, [config.randomDrawSelectedIds, updateConfig, loadRdqQuestions, toast])
+
+  const loadPapers = useCallback(async () => {
+    if (loadedExams.length > 0) return
+    setLoadingPapers(true)
+    try {
+      const res = await examApi.list({ limit: 1000 })
+      loadedExams.length = 0
+      ;(res.items || []).forEach((e: any) => loadedExams.push(e))
+    } catch { /* ignore */ }
+    finally { setLoadingPapers(false) }
+  }, [])
+
+  // Preload papers when component mounts
+  useEffect(() => { loadPapers() }, [loadPapers])
+
+  // Preload random draw questions, majors, and rubric templates
+  useEffect(() => { loadRdqQuestions(); loadMajors(); loadRubricTemplates() }, [loadRdqQuestions, loadMajors, loadRubricTemplates])
+
+  const majorOptions = useMemo(() => [{ id: "全部", name: "全部" }, ...majors.map((m: any) => ({ id: m.id, name: m.name }))], [majors])
+  const majorNameMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    majors.forEach((m: any) => { map[m.id] = m.name })
+    return map
+  }, [majors])
+
+  const handleCreatePaper = useCallback(async (data: any) => {
+    try {
+      const created = await examApi.create(data as any)
+      loadedExams.push(created)
+      updateConfig({ paperIds: [created.id], paperWeights: { [created.id]: 100 } })
+    } catch (_) {
+      toast({ variant: "destructive", title: "创建失败", description: "创建试卷失败" })
+    }
+  }, [updateConfig, toast])
 
   const mockResReview = getResourceConfig("review", { requiresMaterial: true, deadlineDays: 3, submitFormatDesc: "", venueResources: "", allowResubmit: false })
   const setMockResReview = useCallback((updates: Partial<typeof mockResReview>) => updateResourceConfig("review", updates), [updateResourceConfig])
@@ -889,53 +1017,42 @@ export function CourseEvaluationRulesDialog({
 
   const evalResourceOnlyPanel = erDialogMethod ? (() => {
     if (erDialogMethod === "random_draw") {
-      const rdqMajorOptions = ["全部", "经济学", "物流管理", "机械工程", "计算机科学", "电子信息", "工商管理", "会计学", "市场营销", "土木工程", "英语", "法学"]
-      const filteredRdq = config.randomDrawCustomQuestions.filter(q => {
+      const filteredRdq = rdqApiQuestions.filter(q => {
         const matchMajor = rdqMajorTab === "全部" || q.majorId === rdqMajorTab
-        const matchSearch = !rdqSearch || q.name.includes(rdqSearch) || q.description.includes(rdqSearch) || q.majorId.includes(rdqSearch)
+        const matchSearch = !rdqSearch || (q.name || "").includes(rdqSearch) || (q.description || "").includes(rdqSearch) || (q.majorName || "").includes(rdqSearch)
         return matchMajor && matchSearch
       })
-
-      const handleAddRdq = () => { setNewRdqForm({ name: "", description: "", answer: "", majorId: "" }); setRdqActionMode("add"); setRdqActionTarget(null); setRdqActionOpen(true); }
-      const handleEditRdq = (q: typeof config.randomDrawCustomQuestions[0]) => { setNewRdqForm({ name: q.name, description: q.description, answer: q.answer, majorId: q.majorId }); setRdqActionMode("edit"); setRdqActionTarget(q); setRdqActionOpen(true); }
-      const handleSaveRdq = () => {
-        if (!newRdqForm.name.trim()) return
-        if (rdqActionMode === "edit" && rdqActionTarget) {
-          updateConfig({ randomDrawCustomQuestions: config.randomDrawCustomQuestions.map(q => q.id === rdqActionTarget.id ? { ...q, name: newRdqForm.name.trim(), description: newRdqForm.description.trim(), answer: newRdqForm.answer.trim(), majorId: newRdqForm.majorId.trim() } : q) })
-          setRdqActionOpen(false)
-          return
-        }
-        const newQ = { id: uid("rdq"), name: newRdqForm.name.trim(), description: newRdqForm.description.trim(), answer: newRdqForm.answer.trim(), majorId: newRdqForm.majorId.trim() }
-        updateConfig({ randomDrawCustomQuestions: [...config.randomDrawCustomQuestions, newQ] })
-        setRdqActionOpen(false)
-        setRdqSearch("")
-      }
-      const handleDeleteRdq = (id: string) => { updateConfig({ randomDrawCustomQuestions: config.randomDrawCustomQuestions.filter(q => q.id !== id), randomDrawSelectedIds: config.randomDrawSelectedIds.filter(sid => sid !== id) }) }
+      const handleAddRdqLocal = () => { setNewRdqForm({ name: "", description: "", answer: "", majorId: "" }); setRdqActionMode("add"); setRdqActionTarget(null); setRdqActionOpen(true); }
+      const handleEditRdqLocal = (q: any) => { setNewRdqForm({ name: q.name, description: q.description || "", answer: q.answer || "", majorId: q.majorId || "" }); setRdqActionMode("edit"); setRdqActionTarget({ id: q.id, name: q.name, description: q.description || "", answer: q.answer || "", majorId: q.majorId || "" }); setRdqActionOpen(true); }
       const handleToggleSelect = (id: string) => {
         const isSelected = config.randomDrawSelectedIds.includes(id)
         updateConfig({ randomDrawSelectedIds: isSelected ? config.randomDrawSelectedIds.filter(sid => sid !== id) : [...config.randomDrawSelectedIds, id] })
       }
-      const selectedRdqList = config.randomDrawSelectedIds.map(id => config.randomDrawCustomQuestions.find(q => q.id === id)).filter(Boolean) as typeof config.randomDrawCustomQuestions
+      const selectedRdqList = config.randomDrawSelectedIds.map(id => rdqApiQuestions.find(q => q.id === id)).filter(Boolean)
+      const submitFormatDesc = (getResourceConfig("random_draw", {}) as any).submitFormatDesc || ""
+      const venueResources = (getResourceConfig("random_draw", {}) as any).venueResources || ""
 
       return (
-        <div className="h-[calc(92vh-180px)] flex flex-col">
+        <div className="flex flex-col">
           <div className="flex items-center gap-3 mb-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input value={rdqSearch} onChange={e => setRdqSearch(e.target.value)} placeholder="搜索现场问答题名称、描述或适用专业..." className="pl-9" />
             </div>
-            <Button onClick={handleAddRdq}><Plus className="h-4 w-4 mr-1" />新增现场问答题</Button>
+            <Button onClick={handleAddRdqLocal}><Plus className="h-4 w-4 mr-1" />新增现场问答题</Button>
           </div>
-          <div className="flex gap-4 flex-1 min-h-0">
-            <div className="w-3/5 flex flex-col min-h-0 border rounded-xl p-3">
-              <div className="flex items-center gap-1 mb-2">
-                {rdqMajorOptions.map(opt => (
-                  <button key={opt} onClick={() => setRdqMajorTab(opt)} className={cn("px-2.5 py-1 rounded-md text-[11px] transition-all", rdqMajorTab === opt ? "bg-primary/10 text-primary font-medium" : "text-gray-500 hover:bg-gray-100")}>{opt}</button>
+          <div className="flex gap-4">
+            <div className="w-3/5 flex flex-col border rounded-xl p-3">
+              <div className="flex items-center gap-1 mb-2 flex-wrap">
+                {majorOptions.map(opt => (
+                  <button key={opt.id} onClick={() => setRdqMajorTab(opt.id)} className={cn("px-2.5 py-1 rounded-md text-[11px] transition-all", rdqMajorTab === opt.id ? "bg-primary/10 text-primary font-medium" : "text-gray-500 hover:bg-gray-100")}>{opt.name}</button>
                 ))}
               </div>
-              <p className="text-sm font-medium mb-2 text-gray-700">{rdqSearch ? `搜索结果 (${filteredRdq.length})` : (rdqMajorTab === "全部" ? "全部现场问答题" : `${rdqMajorTab}相关现场问答题`)}</p>
-              <div className="flex-1 overflow-y-auto pr-1">
-                {filteredRdq.length === 0 ? (
+              <p className="text-sm font-medium mb-2 text-gray-700">{rdqSearch ? `搜索结果 (${filteredRdq.length})` : (rdqMajorTab === "全部" ? "全部现场问答题" : `${majorNameMap[rdqMajorTab] || rdqMajorTab}相关现场问答题`)}</p>
+              <div className="min-h-[300px] max-h-[400px] overflow-y-auto pr-1">
+                {loadingRdq ? (
+                  <div className="text-center text-gray-400 py-8"><p className="text-sm">加载中...</p></div>
+                ) : filteredRdq.length === 0 ? (
                   <div className="text-center text-gray-400 py-8"><FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" /><p className="text-sm">{rdqSearch ? "未找到匹配的现场问答题" : "暂无现场问答题，请点击上方按钮新增"}</p></div>
                 ) : (
                   <table className="w-full text-sm">
@@ -947,11 +1064,11 @@ export function CourseEvaluationRulesDialog({
                           <tr key={q.id} className={cn("hover:bg-gray-50 transition-colors", isSelected ? "bg-primary/[0.03]" : "")}>
                             <td className="px-3 py-2"><span className="text-sm font-medium text-gray-800">{q.name}</span></td>
                             <td className="px-3 py-2"><p className="text-xs text-gray-500 line-clamp-1" title={q.description}>{q.description || "-"}</p></td>
-                            <td className="px-3 py-2"><Badge variant="secondary" className="text-[10px]">{q.majorId || "-"}</Badge></td>
+                            <td className="px-3 py-2"><Badge variant="secondary" className="text-[10px]">{q.majorName || "-"}</Badge></td>
                             <td className="px-3 py-2">
                               <div className="flex items-center justify-end gap-1">
                                 <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary" onClick={() => { setSelectedRdqForDetail(q.id); setRdqDetailOpen(true); }}>详情</Button>
-                                <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary" onClick={() => handleEditRdq(q)}>编辑</Button>
+                                <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-gray-500 hover:text-primary" onClick={() => handleEditRdqLocal(q)}>编辑</Button>
                                 {isSelected ? <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => handleToggleSelect(q.id)}>取消</Button> : <Button size="sm" className="h-6 text-[11px] px-2" onClick={() => handleToggleSelect(q.id)}>选择</Button>}
                                 <Button variant="ghost" size="sm" className="h-6 text-[11px] px-1.5 text-red-400 hover:text-red-600" onClick={() => handleDeleteRdq(q.id)}>删除</Button>
                               </div>
@@ -964,9 +1081,9 @@ export function CourseEvaluationRulesDialog({
                 )}
               </div>
             </div>
-            <div className="w-2/5 border rounded-xl p-3 flex flex-col min-h-0">
+            <div className="w-2/5 border rounded-xl p-3 flex flex-col">
               <p className="text-sm font-medium mb-3 text-gray-700">已配置现场问答题 ({selectedRdqList.length})</p>
-              <div className="flex-1 overflow-y-auto">
+              <div className="min-h-[300px] max-h-[400px] overflow-y-auto">
                 {selectedRdqList.length === 0 ? (
                   <div className="text-center text-gray-400 py-8"><FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" /><p className="text-xs">请从左侧选择现场问答题</p></div>
                 ) : (
@@ -975,7 +1092,7 @@ export function CourseEvaluationRulesDialog({
                       <div key={q.id} className="p-2.5 rounded-lg border border-primary/20 bg-primary/5 relative">
                         <div className="flex items-center gap-2 mb-1"><span className="text-xs font-medium flex-1 truncate">{q.name}</span><Button variant="ghost" size="icon" className="h-5 w-5 text-gray-400 -mr-1 -mt-1" onClick={() => handleToggleSelect(q.id)}><X className="h-3 w-3" /></Button></div>
                         <p className="text-[11px] text-gray-500 line-clamp-1">{q.description || "暂无描述"}</p>
-                        <Badge variant="outline" className="text-[9px] mt-1 font-normal px-1 py-0 h-4">{q.majorId || "通用"}</Badge>
+                        <Badge variant="outline" className="text-[9px] mt-1 font-normal px-1 py-0 h-4">{q.majorName || "通用"}</Badge>
                       </div>
                     ))}
                   </div>
@@ -988,14 +1105,27 @@ export function CourseEvaluationRulesDialog({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs text-gray-500">抽题方式</Label>
-                <Select value={rdqDrawMode} onValueChange={v => setRdqDrawMode(v as "random" | "manual")}>
+                <Select value={(getResourceConfig("random_draw", {}) as any).drawMode ?? "random"} onValueChange={v => updateResourceConfig("random_draw", { drawMode: v })}>
                   <SelectTrigger className="mt-1 text-sm h-9"><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="random">系统随机分配</SelectItem><SelectItem value="manual">老师手动选择</SelectItem></SelectContent>
                 </Select>
               </div>
               <div>
                 <Label className="text-xs text-gray-500">抽题数量</Label>
-                <Input type="number" value={rdqDrawCount} onChange={e => setRdqDrawCount(Math.max(1, parseInt(e.target.value) || 1))} className="mt-1 text-sm" min={1} />
+                <Input type="number" value={(getResourceConfig("random_draw", {}) as any).drawCount ?? 5} onChange={e => updateResourceConfig("random_draw", { drawCount: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} />
+              </div>
+            </div>
+          </div>
+          <div className="border rounded-xl p-4 mt-4">
+            <p className="text-sm font-medium mb-3">现场要求</p>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs text-gray-500 mb-1.5">提交材料要求</Label>
+                <Textarea value={submitFormatDesc} onChange={e => updateResourceConfig("random_draw", { submitFormatDesc: e.target.value })} placeholder="请用一句话说明学生需要准备的材料要求..." rows={4} className="text-sm" />
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500 mb-1.5">现场场地/环境资源准备</Label>
+                <Textarea value={venueResources} onChange={e => updateResourceConfig("random_draw", { venueResources: e.target.value })} placeholder="请描述现场问答所需的场地、设备及环境资源准备要求..." rows={4} className="text-sm" />
               </div>
             </div>
           </div>
@@ -1004,13 +1134,13 @@ export function CourseEvaluationRulesDialog({
               <DialogHeader><DialogTitle>{rdqActionMode === "add" ? "新增现场问答题" : "编辑现场问答题"}</DialogTitle><DialogDescription>{rdqActionMode === "add" ? "创建一个新的现场问答题" : "修改现场问答题信息"}</DialogDescription></DialogHeader>
               <div className="space-y-4 py-4">
                 <div><Label>题目名称</Label><Input value={newRdqForm.name} onChange={e => setNewRdqForm({ ...newRdqForm, name: e.target.value })} placeholder="输入题目名称" className="mt-1.5" /></div>
-                <div><Label>适用专业</Label><Select value={newRdqForm.majorId} onValueChange={v => setNewRdqForm({ ...newRdqForm, majorId: v })}><SelectTrigger className="mt-1.5"><SelectValue placeholder="选择适用专业" /></SelectTrigger><SelectContent>{rdqMajorOptions.map(m => m !== "全部" && <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent></Select></div>
+                <div><Label>适用专业</Label><Select value={newRdqForm.majorId} onValueChange={v => setNewRdqForm({ ...newRdqForm, majorId: v })}><SelectTrigger className="mt-1.5"><SelectValue placeholder="选择适用专业" /></SelectTrigger><SelectContent>{majors.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select></div>
                 <div><Label>题目描述</Label><Textarea value={newRdqForm.description} onChange={e => setNewRdqForm({ ...newRdqForm, description: e.target.value })} placeholder="输入题目描述" className="mt-1.5" rows={3} /></div>
                 <div><Label>题目答案</Label><Textarea value={newRdqForm.answer} onChange={e => setNewRdqForm({ ...newRdqForm, answer: e.target.value })} placeholder="输入题目答案" className="mt-1.5" rows={3} /></div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setRdqActionOpen(false)}>取消</Button>
-                <Button onClick={handleSaveRdq} disabled={!newRdqForm.name.trim()}>{rdqActionMode === "add" ? "新增" : "保存修改"}</Button>
+                <Button onClick={handleCreateRdq} disabled={!newRdqForm.name.trim()}>{rdqActionMode === "add" ? "新增" : "保存修改"}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -1018,12 +1148,12 @@ export function CourseEvaluationRulesDialog({
             <DialogContent className="sm:max-w-md">
               <DialogHeader><DialogTitle>现场问答题详情</DialogTitle></DialogHeader>
               {(() => {
-                const q = config.randomDrawCustomQuestions.find(x => x.id === selectedRdqForDetail)
+                const q = rdqApiQuestions.find(x => x.id === selectedRdqForDetail)
                 if (!q) return null
                 return (
                   <div className="space-y-4 py-2">
                     <div><Label className="text-xs text-gray-500">题目名称</Label><p className="text-sm font-medium mt-1">{q.name}</p></div>
-                    <div><Label className="text-xs text-gray-500">适用专业</Label><Badge variant="secondary" className="text-[10px] mt-1">{q.majorId || "通用"}</Badge></div>
+                    <div><Label className="text-xs text-gray-500">适用专业</Label><Badge variant="secondary" className="text-[10px] mt-1">{q.majorName || "通用"}</Badge></div>
                     <div><Label className="text-xs text-gray-500">题目描述</Label><p className="text-sm mt-1 text-gray-700 whitespace-pre-wrap">{q.description || "-"}</p></div>
                     <div><Label className="text-xs text-gray-500">题目答案</Label><p className="text-sm mt-1 text-gray-700 whitespace-pre-wrap">{q.answer || "-"}</p></div>
                   </div>
@@ -1146,80 +1276,117 @@ export function CourseEvaluationRulesDialog({
     }
     if (erDialogMethod === "paper") {
       const selectPaper = (paperId: string) => { updateConfig({ paperIds: [paperId], paperWeights: { [paperId]: 100 } }) }
+      const paperCfg = getResourceConfig("paper", { duration: 60, allowRetake: false, retakeCount: 1, shuffleQuestions: true, showResult: true, activationMode: "manual" as string, scheduledTime: "", scheduledEndTime: "" })
+      const setPaperCfg = (patch: Record<string, any>) => updateResourceConfig("paper", patch)
       return (
         <div className="space-y-4">
           <div className="border rounded-xl p-4">
             <p className="text-sm font-medium mb-3">选择已有试卷</p>
             <div className="flex items-center gap-3 mb-3">
-              <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /><Input placeholder="搜索试卷..." className="pl-9" /></div>
-              <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => { setShowCreatePaper(true); setNewPaperName(""); setNewPaperQuestionCount(10); setNewPaperTotalScore(100); }}><Plus className="h-3.5 w-3.5 mr-1" />新建试卷</Button>
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input value={paperSearch} onChange={e => setPaperSearch(e.target.value)} placeholder="搜索试卷..." className="pl-9" />
+              </div>
+              <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => { setShowCreatePaperLocal(true); }}><Plus className="h-3.5 w-3.5 mr-1" />新建试卷</Button>
             </div>
-            <div className="space-y-2">
-              {paperMocks.map(paper => {
-                const selected = config.paperIds.includes(paper.id)
-                return (
-                  <div key={paper.id} onClick={() => selectPaper(paper.id)} className={cn("p-4 rounded-lg border cursor-pointer", selected ? "border-primary bg-primary/5" : "hover:border-gray-300")}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center shrink-0", selected ? "bg-primary border-primary" : "border-gray-300")}>{selected && <div className="w-2 h-2 rounded-full bg-white" />}</div>
-                        <div>
-                          <p className="text-sm font-medium">{paper.name}</p>
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <Badge className="text-[10px] bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-50">{paper.questionCount} 题</Badge>
-                            <Badge className="text-[10px] bg-green-50 text-green-600 border-green-200 hover:bg-green-50">总分 {paper.totalScore}</Badge>
-                          </div>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="sm" className="h-7 text-[11px] px-2 text-gray-400 hover:text-primary" onClick={e => { e.stopPropagation(); setSelectedPaperForDetail(paper.id); setPaperDetailOpen(true); }}>查看详情</Button>
+            {loadingPapers ? (
+              <div className="text-center py-8 text-gray-400">加载中...</div>
+            ) : (
+              <div className="space-y-2">
+                {loadedExams.filter((p: any) => !paperSearch || p.name.includes(paperSearch)).map((paper: any) => {
+                  const selected = config.paperIds.includes(paper.id)
+                  const questionCount = paper.questions?.length ?? paper.questionCount ?? 0
+                  const totalScore = paper.totalScore ?? 100
+                  return (
+                    <div key={paper.id} onClick={() => selectPaper(paper.id)} className={cn("px-3 py-2 rounded-lg border cursor-pointer flex items-center gap-3", selected ? "border-primary bg-primary/5" : "hover:border-gray-300")}>
+                      <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center shrink-0", selected ? "bg-primary border-primary" : "border-gray-300")}>{selected && <div className="w-2 h-2 rounded-full bg-white" />}</div>
+                      <p className="text-sm font-medium flex-1 min-w-0 truncate">{paper.name}</p>
+                      <Badge className="text-[10px] bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-50 shrink-0">{questionCount} 题</Badge>
+                      <Badge className="text-[10px] bg-green-50 text-green-600 border-green-200 hover:bg-green-50 shrink-0">总分 {totalScore}</Badge>
+                      <Button variant="ghost" size="sm" className="h-7 text-[11px] px-2 text-gray-400 hover:text-primary shrink-0" onClick={e => { e.stopPropagation(); setSelectedPaperForDetailLocal(paper.id); setPaperDetailOpenLocal(true); }}>查看详情</Button>
                     </div>
+                  )
+                })}
+                {loadedExams.filter((p: any) => !paperSearch || p.name.includes(paperSearch)).length === 0 && !paperSearch && (
+                  <div className="text-center py-8 text-gray-400">
+                    <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">暂无可选试卷</p>
+                    <p className="text-xs mt-1">请点击「新建试卷」创建试卷</p>
                   </div>
-                )
-              })}
-            </div>
+                )}
+                {loadedExams.length > 0 && loadedExams.filter((p: any) => !paperSearch || p.name.includes(paperSearch)).length === 0 && (
+                  <div className="text-center py-8 text-gray-400">
+                    <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">未找到匹配的试卷</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className="border rounded-xl p-4">
             <p className="text-sm font-medium mb-3">考卷设置</p>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs text-gray-500">考试时长（分钟）</Label><Input type="number" value={mockResPaper.duration} onChange={e => setMockResPaper({ ...mockResPaper, duration: Math.max(5, parseInt(e.target.value) || 5) })} className="mt-1 text-sm" min={5} /></div>
-              <div><Label className="text-xs text-gray-500">允许重考</Label><div className="mt-2 flex items-center gap-2"><Switch checked={mockResPaper.allowRetake} onCheckedChange={v => setMockResPaper({ ...mockResPaper, allowRetake: v })} /><span className="text-xs text-gray-600">{mockResPaper.allowRetake ? "是" : "否"}</span></div></div>
-              {mockResPaper.allowRetake && <div><Label className="text-xs text-gray-500">最多重考次数</Label><Input type="number" value={mockResPaper.retakeCount} onChange={e => setMockResPaper({ ...mockResPaper, retakeCount: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} /></div>}
+              <div><Label className="text-xs text-gray-500">考试时长（分钟）</Label><Input type="number" value={paperCfg.duration ?? 60} onChange={e => setPaperCfg({ duration: Math.max(0, parseInt(e.target.value) || 0) })} className="mt-1 text-sm" min={0} /></div>
+              <div><Label className="text-xs text-gray-500">允许重考</Label><div className="mt-2 flex items-center gap-2"><Switch checked={paperCfg.allowRetake ?? false} onCheckedChange={v => setPaperCfg({ allowRetake: v })} /><span className="text-xs text-gray-600">{(paperCfg.allowRetake ?? false) ? "是" : "否"}</span></div></div>
+              {(paperCfg.allowRetake ?? false) && <div><Label className="text-xs text-gray-500">最多重考次数</Label><Input type="number" value={paperCfg.retakeCount ?? 1} onChange={e => setPaperCfg({ retakeCount: Math.max(1, parseInt(e.target.value) || 1) })} className="mt-1 text-sm" min={1} /></div>}
             </div>
             <div className="mt-3 flex items-center gap-4">
-              <div className="flex items-center gap-2"><Switch checked={mockResPaper.shuffleQuestions} onCheckedChange={v => setMockResPaper({ ...mockResPaper, shuffleQuestions: v })} /><span className="text-xs text-gray-600">题目乱序</span></div>
-              <div className="flex items-center gap-2"><Switch checked={mockResPaper.showResult} onCheckedChange={v => setMockResPaper({ ...mockResPaper, showResult: v })} /><span className="text-xs text-gray-600">交卷后显示成绩</span></div>
+              <div className="flex items-center gap-2"><Switch checked={paperCfg.shuffleQuestions ?? true} onCheckedChange={v => setPaperCfg({ shuffleQuestions: v })} /><span className="text-xs text-gray-600">题目乱序</span></div>
+              <div className="flex items-center gap-2"><Switch checked={paperCfg.showResult ?? true} onCheckedChange={v => setPaperCfg({ showResult: v })} /><span className="text-xs text-gray-600">交卷后显示成绩</span></div>
             </div>
             <div className="mt-4 pt-4 border-t">
               <Label className="text-xs text-gray-500 mb-2">试卷启用条件</Label>
-              <div className="space-y-2 mt-1">
+              <div className="grid grid-cols-3 gap-3 mt-2">
                 {[
-                  { key: "manual", label: "后台手动启用", desc: `老师手动开启试卷后，学生才能进入作答。` },
-                  { key: "scheduled", label: "定时启用", desc: "提前预设考试的开始、结束时间。" },
-                  { key: "always", label: "随时作答", desc: "试卷创建完成后立即开放，学生可随时进入作答。" },
+                  { key: "manual", label: "手动启用", desc: "老师手动开启后学生可作答" },
+                  { key: "scheduled", label: "定时启用", desc: "预设开始结束时间，到时间自动开启关闭" },
+                  { key: "always", label: "随时作答", desc: "创建后立即开放，学生随时可进入作答" },
                 ].map(mode => (
-                  <button key={mode.key} onClick={() => setMockResPaper({ ...mockResPaper, activationMode: mode.key as "manual" | "scheduled" | "always" })} className={cn("w-full text-left p-3 rounded-lg border transition-all", mockResPaper.activationMode === mode.key ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-600 hover:border-gray-300")}>
-                    <div className="flex items-center gap-2">
-                      <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center shrink-0", mockResPaper.activationMode === mode.key ? "bg-primary border-primary" : "border-gray-300")}>{mockResPaper.activationMode === mode.key && <div className="w-2 h-2 rounded-full bg-white" />}</div>
-                      <span className="text-xs font-medium">{mode.label}</span>
-                    </div>
+                  <button key={mode.key} onClick={() => setPaperCfg({ activationMode: mode.key })} className={cn("w-full text-left p-3 rounded-lg border transition-all", (paperCfg.activationMode ?? "manual") === mode.key ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-600 hover:border-gray-300")}>
+                    <div className="flex items-center gap-2"><div className={cn("w-4 h-4 rounded-full border flex items-center justify-center shrink-0", (paperCfg.activationMode ?? "manual") === mode.key ? "bg-primary border-primary" : "border-gray-300")}>{(paperCfg.activationMode ?? "manual") === mode.key && <div className="w-2 h-2 rounded-full bg-white" />}</div><span className="text-xs font-medium">{mode.label}</span></div>
                     <p className="text-[11px] text-gray-400 mt-1 ml-6">{mode.desc}</p>
                   </button>
                 ))}
               </div>
-              {mockResPaper.activationMode === "scheduled" && (
+              {(paperCfg.activationMode ?? "manual") === "scheduled" && (
                 <div className="mt-3 grid grid-cols-2 gap-3">
-                  <div><Label className="text-xs text-gray-500">启用时间</Label><Input type="datetime-local" value={mockResPaper.scheduledTime} onChange={e => setMockResPaper({ ...mockResPaper, scheduledTime: e.target.value })} className="mt-1 text-sm" /></div>
-                  <div><Label className="text-xs text-gray-500">停用时间</Label><Input type="datetime-local" value={paperEndTime} onChange={e => setPaperEndTime(e.target.value)} className="mt-1 text-sm" /></div>
+                  <div><Label className="text-xs text-gray-500">启用时间</Label><Input type="datetime-local" value={paperCfg.scheduledTime ?? ""} onChange={e => setPaperCfg({ scheduledTime: e.target.value })} onFocus={e => e.currentTarget.showPicker?.()} className="mt-1 text-sm" /></div>
+                  <div><Label className="text-xs text-gray-500">停用时间</Label><Input type="datetime-local" value={paperCfg.scheduledEndTime ?? ""} onChange={e => setPaperCfg({ scheduledEndTime: e.target.value })} onFocus={e => e.currentTarget.showPicker?.()} className="mt-1 text-sm" /></div>
                 </div>
               )}
             </div>
           </div>
+          <ExamFormDialog open={showCreatePaperLocal} onOpenChange={setShowCreatePaperLocal} onSubmit={handleCreatePaper} />
+          <Dialog open={paperDetailOpenLocal} onOpenChange={setPaperDetailOpenLocal}>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader><DialogTitle>试卷详情</DialogTitle></DialogHeader>
+              {(() => {
+                const paper = loadedExams.find((e: any) => e.id === selectedPaperForDetailLocal)
+                if (!paper) return null
+                return (
+                  <div className="space-y-3 py-2">
+                    <div><Label className="text-xs text-gray-500">试卷名称</Label><p className="text-sm font-medium mt-1">{paper.name}</p></div>
+                    <div className="flex items-center gap-4"><div><Label className="text-xs text-gray-500">题目数量</Label><p className="text-sm mt-1">{paper.questions?.length ?? paper.questionCount ?? 0} 题</p></div><div><Label className="text-xs text-gray-500">总分</Label><p className="text-sm mt-1">{paper.totalScore ?? 100} 分</p></div></div>
+                  </div>
+                )
+              })()}
+              <DialogFooter><Button variant="outline" onClick={() => setPaperDetailOpen(false)}>关闭</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       )
     }
     if (erDialogMethod === "question_bank") {
       return (
         <div className="space-y-4">
-          <QuestionSelectorPanel field="questionBankQuestions" selectedIds={config.questionBankQuestions} showAutoSelect={true} />
+          <BankQuestionSelectorPanel
+            field="questionBankQuestions"
+            selectedIds={config.questionBankQuestions}
+            onToggleQuestion={(qid) => toggleQuestion(qid, "questionBankQuestions")}
+            questionScores={(getResourceConfig("question_bank", {}) as any).questionScores || {}}
+            onUpdateQuestionScore={(qid, score) => updateResourceConfig("question_bank", { questionScores: { ...((getResourceConfig("question_bank", {}) as any).questionScores || {}), [qid]: score } })}
+            onUpdateQuestionScores={(scores) => updateResourceConfig("question_bank", { questionScores: { ...((getResourceConfig("question_bank", {}) as any).questionScores || {}), ...scores } })}
+          />
           <div className="border rounded-xl p-4">
             <p className="text-sm font-medium mb-3">答题规则</p>
             <div className="grid grid-cols-2 gap-3">
@@ -1273,7 +1440,15 @@ export function CourseEvaluationRulesDialog({
       const quizIsPreset = quizPresetTimes.includes(mockResQuiz.timeLimit)
       return (
         <div className="space-y-4">
-          <QuestionSelectorPanel field="quizQuestions" selectedIds={config.quizQuestions} showAutoSelect={true} maxCount={30} />
+          <BankQuestionSelectorPanel
+            field="quizQuestions"
+            selectedIds={config.quizQuestions}
+            maxCount={30}
+            onToggleQuestion={(qid) => toggleQuestion(qid, "quizQuestions")}
+            questionScores={(getResourceConfig("quiz", {}) as any).questionScores || {}}
+            onUpdateQuestionScore={(qid, score) => updateResourceConfig("quiz", { questionScores: { ...((getResourceConfig("quiz", {}) as any).questionScores || {}), [qid]: score } })}
+            onUpdateQuestionScores={(scores) => updateResourceConfig("quiz", { questionScores: { ...((getResourceConfig("quiz", {}) as any).questionScores || {}), ...scores } })}
+          />
           <div className="border rounded-xl p-4">
             <p className="text-sm font-medium mb-3">答题规则</p>
             <div className="grid grid-cols-2 gap-3">
@@ -1395,14 +1570,52 @@ export function CourseEvaluationRulesDialog({
       setView("edit")
     }
 
-    const saveRubricToLibrary = (schemeId: string | null, updates: Partial<RubricScheme>) => {
-      if (schemeId) setRubricLibrary(prev => prev.map(s => s.id === schemeId ? { ...s, ...updates } as RubricScheme : s))
-      else {
-        const newId = uid("scheme")
-        const newScheme: RubricScheme = { id: newId, name: updates.name || "新建评价标准", types: updates.types || [], desc: updates.desc || "", points: info.points.map(p => ({ ...p, id: uid("ep") })), mode: updates.mode || "rubric", scoreRuleItems: updates.scoreRuleItems || [] }
-        setRubricLibrary(prev => [...prev, newScheme])
-        updateConfig({ [rubricIdField]: newId } as any)
-      }
+    const saveRubricToLibrary = async (schemeId: string | null, updates: Partial<RubricScheme>) => {
+      try {
+        if (schemeId) {
+          const data = {
+            name: updates.name || "",
+            mode: updates.mode || "rubric",
+            types: updates.types || [],
+            description: updates.desc || "",
+            data: updates.mode === "score_rule"
+              ? { scoreRuleItems: updates.scoreRuleItems || [] }
+              : { points: info.points.map(p => ({
+                  id: p.id, name: p.name, description: p.desc || "",
+                  types: p.types || (p.subType ? [p.subType] : []),
+                  weight: p.weight || 0, scoringMethod: p.scoringMethod || "level",
+                  gradeMapping: p.gradeMapping || [],
+                  knowledgePointIds: p.knowledgePointIds || [],
+                  abilityPointIds: p.abilityPointIds || [],
+                })) },
+          }
+          await taskEvaluationApi.updateTemplate(schemeId, data).catch(() => {})
+          setRubricLibrary(prev => prev.map(s => s.id === schemeId ? { ...s, ...updates } as RubricScheme : s))
+        } else {
+          const data = {
+            name: updates.name || "新建评价标准",
+            mode: updates.mode || "rubric",
+            types: updates.types || [],
+            description: updates.desc || "",
+            data: updates.mode === "score_rule"
+              ? { scoreRuleItems: updates.scoreRuleItems || [] }
+              : { points: info.points.map(p => ({
+                  id: p.id, name: p.name, description: p.desc || "",
+                  types: p.types || (p.subType ? [p.subType] : []),
+                  weight: p.weight || 0, scoringMethod: p.scoringMethod || "level",
+                  gradeMapping: p.gradeMapping || [],
+                  knowledgePointIds: p.knowledgePointIds || [],
+                  abilityPointIds: p.abilityPointIds || [],
+                })) },
+          }
+          const created = await taskEvaluationApi.createTemplate(data).catch(() => null)
+          if (created) {
+            const newScheme: RubricScheme = { id: created.id, name: created.name || updates.name || "新建评价标准", types: updates.types || [], desc: created.description || "", points: info.points.map(p => ({ ...p })), mode: updates.mode || "rubric", scoreRuleItems: updates.scoreRuleItems || [] }
+            setRubricLibrary(prev => [...prev, newScheme])
+            updateConfig({ [rubricIdField]: created.id } as any)
+          }
+        }
+      } catch { /* ignore */ }
     }
 
     const editingScheme = editingRubricId ? rubricLibrary.find(s => s.id === editingRubricId) : null
@@ -2100,41 +2313,6 @@ export function CourseEvaluationRulesDialog({
           <DialogHeader><DialogTitle>新增题目</DialogTitle></DialogHeader>
           <div className="py-8 text-center text-gray-500">请前往题库管理添加题目</div>
           <DialogFooter><Button onClick={() => setShowAddQuestion(false)}>知道了</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={paperDetailOpen} onOpenChange={setPaperDetailOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader><DialogTitle>试卷详情</DialogTitle></DialogHeader>
-          {(() => {
-            const paper = paperMocks.find(p => p.id === selectedPaperForDetail)
-            if (!paper) return null
-            return (
-              <div className="space-y-3 py-2">
-                <div><Label className="text-xs text-gray-500">试卷名称</Label><p className="text-sm font-medium mt-1">{paper.name}</p></div>
-                <div className="flex items-center gap-4"><div><Label className="text-xs text-gray-500">题目数量</Label><p className="text-sm mt-1">{paper.questionCount} 题</p></div><div><Label className="text-xs text-gray-500">总分</Label><p className="text-sm mt-1">{paper.totalScore} 分</p></div></div>
-                <div><Label className="text-xs text-gray-500">包含题型</Label><div className="flex flex-wrap gap-1 mt-1"><Badge variant="secondary" className="text-[10px]">单选题</Badge><Badge variant="secondary" className="text-[10px]">多选题</Badge><Badge variant="secondary" className="text-[10px]">判断题</Badge></div></div>
-              </div>
-            )
-          })()}
-          <DialogFooter><Button variant="outline" onClick={() => setPaperDetailOpen(false)}>关闭</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showCreatePaper} onOpenChange={setShowCreatePaper}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader><DialogTitle>新建试卷</DialogTitle><DialogDescription>创建新的试卷</DialogDescription></DialogHeader>
-          <div className="space-y-4 py-2">
-            <div><Label className="text-xs text-gray-500">试卷名称</Label><Input value={newPaperName} onChange={e => setNewPaperName(e.target.value)} placeholder="输入试卷名称" className="mt-1 text-sm" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs text-gray-500">题目数量</Label><Input type="number" value={newPaperQuestionCount} onChange={e => setNewPaperQuestionCount(Math.max(1, parseInt(e.target.value) || 1))} className="mt-1 text-sm" min={1} /></div>
-              <div><Label className="text-xs text-gray-500">总分</Label><Input type="number" value={newPaperTotalScore} onChange={e => setNewPaperTotalScore(Math.max(1, parseInt(e.target.value) || 1))} className="mt-1 text-sm" min={1} /></div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreatePaper(false)}>取消</Button>
-            <Button onClick={() => { if (!newPaperName.trim()) return; const newId = uid("paper"); (paperMocks as any).push({ id: newId, name: newPaperName.trim(), questionCount: newPaperQuestionCount, totalScore: newPaperTotalScore }); updateConfig({ paperIds: [...config.paperIds, newId], paperWeights: { ...config.paperWeights, [newId]: config.paperIds.length === 0 ? 100 : 0 } }); setShowCreatePaper(false); setNewPaperName(""); setNewPaperQuestionCount(10); setNewPaperTotalScore(100); }}>创建</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
