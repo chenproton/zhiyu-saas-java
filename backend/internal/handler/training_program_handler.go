@@ -323,8 +323,8 @@ func (h *TrainingProgramHandler) PutCourses(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	for _, c := range req.Courses {
-		if c.Name == "" || c.Semester <= 0 {
-			respondError(w, http.StatusBadRequest, "课程缺少必填字段（名称/学期）")
+		if c.Name == "" {
+			respondError(w, http.StatusBadRequest, "课程缺少必填字段（名称）")
 			return
 		}
 	}
