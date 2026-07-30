@@ -35,7 +35,7 @@ import {
 
 import type { SystemCourseNode, NodeResource } from "@/lib/types/lesson-source"
 import type { Course, KnowledgePointItem } from "@/lib/types/lesson"
-import { courseApi, knowledgeApi, fileApi, approvalApi, majorApi, lessonBatchApi, courseResourceApi } from "@/lib/api"
+import { courseApi, knowledgeApi, fileApi, approvalApi, majorApi, lessonBatchApi, courseResourceApi, resourceLibraryApi } from "@/lib/api"
 
 import { KnowledgeSelector } from "../../_components/knowledge/knowledge-selector"
 import { ResourceSelector, type ResourceItem } from "../../_components/resources/resource-selector"
@@ -130,19 +130,36 @@ function AddGranularPageInner() {
             pool.filter((k) => selectedKpIds.has(k.id))
           )
 
-          const resources = (resRes.items || []).map((r: any) => ({
-            id: r.id,
-            name: r.name,
-            type: r.type,
-            url: r.url || r.URL,
-            description: r.description,
-            size: r.size,
-            uploadedBy: r.uploadedBy,
-            uploadedAt: r.uploadedAt,
-          }))
-          setResourcePool(resources)
           const resIds = (c.resourceIds || []).filter((id): id is string => !!id)
-          setSelectedResourceIds(resIds.length > 0 ? resIds : resources.map((r) => r.id))
+          if (resIds.length > 0) {
+            const libRes = await resourceLibraryApi.list({ limit: 1000 })
+            const libItems: ResourceItem[] = (libRes.items || []).map((r: any) => ({
+              id: r.id,
+              name: r.name,
+              type: r.resourceType || r.type,
+              url: r.url,
+              description: r.description,
+              size: r.fileSize ?? r.size,
+              uploadedBy: r.uploadedBy,
+              uploadedAt: r.createdAt || r.uploadedAt,
+            }))
+            const selectedRes = libItems.filter((r) => resIds.includes(r.id))
+            setResourcePool(selectedRes)
+            setSelectedResourceIds(selectedRes.map((r) => r.id))
+          } else {
+            const resources = (resRes.items || []).map((r: any) => ({
+              id: r.id,
+              name: r.name,
+              type: r.type,
+              url: r.url || r.URL,
+              description: r.description,
+              size: r.size,
+              uploadedBy: r.uploadedBy,
+              uploadedAt: r.uploadedAt,
+            }))
+            setResourcePool(resources)
+            setSelectedResourceIds(resources.map((r) => r.id))
+          }
         }
       } catch (err: any) {
         toast.error(err.message || "加载失败")
