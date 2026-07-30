@@ -4,13 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { CalendarPlus, FileUp, Clock3, CalendarDays, CheckCircle2, X, MapPin, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@zhiyu/ui"
 import { ScheduleGrid } from "@/components/shared/schedule-grid"
@@ -19,7 +12,6 @@ import type { PeriodSlot, ScheduleEntry, TeachingPlan, TeachingPlanEntry, Venue 
 import { cn } from "@/lib/utils"
 import { ScheduleFormDialog } from "./schedule-form-dialog"
 import { ScheduleImportDialog } from "./schedule-import-dialog"
-import { QuickAssignDialog } from "./quick-assign-dialog"
 
 interface ScheduleGridTabProps {
   plan: TeachingPlan
@@ -41,8 +33,8 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
   const [importOpen, setImportOpen] = useState(false)
 
   const [selectedPendingId, setSelectedPendingId] = useState<string | null>(null)
-  const [quickOpen, setQuickOpen] = useState(false)
-  const [quickPrefillDay, setQuickPrefillDay] = useState(1)
+
+  const [savingQuick, setSavingQuick] = useState(false)
 
   const [venueFilter, setVenueFilter] = useState<string>("__all")
 
@@ -99,16 +91,39 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
     onPlanChanged()
   }, [loadScheduleEntries, onPlanChanged])
 
-  const handleCellClick = (dayOfWeek: number, _periodKey: string) => {
-    if (!selectedEntry) return
-    setQuickPrefillDay(dayOfWeek)
-    setQuickOpen(true)
-  }
-
-  const handleQuickSaved = () => {
-    setSelectedPendingId(null)
-    reloadAll()
-  }
+  const handleCellClick = useCallback(async (dayOfWeek: number, periodKey: string) => {
+    if (!selectedEntry || savingQuick) return
+    setSavingQuick(true)
+    try {
+      await scheduleApi.create({
+        termId: plan.termId,
+        planEntryId: selectedEntry.id,
+        courseName: selectedEntry.courseName,
+        courseCode: selectedEntry.courseCode || undefined,
+        courseId: selectedEntry.courseId || undefined,
+        type: selectedEntry.type || "traditional",
+        classNodeId: selectedEntry.classNodeId || "",
+        teacherId: selectedEntry.teacherId || undefined,
+        dayOfWeek,
+        periods: [periodKey],
+        startWeek: selectedEntry.startWeek || 1,
+        endWeek: selectedEntry.endWeek || 1,
+        weekPattern: selectedEntry.weekPattern || "all",
+        scenarioId: selectedEntry.scenarioId || undefined,
+      })
+      toast({ title: "排课成功", description: `${selectedEntry.courseName} 已排入周${dayOfWeek} ${periodKey}` })
+      setSelectedPendingId(null)
+      reloadAll()
+    } catch (err: any) {
+      const c = err?.conflicts
+      if (c && c.length > 0) {
+        const msgs = c.map((x: any) => `${x.kind === "teacher" ? "教师" : x.kind === "class" ? "班级" : "场地"}冲突：${x.courseName}`).join("；")
+        toast({ variant: "destructive", title: "排课冲突", description: msgs })
+      } else {
+        toast({ variant: "destructive", title: "排课失败", description: err.message || "请稍后重试" })
+      }
+    } finally { setSavingQuick(false) }
+  }, [selectedEntry, savingQuick, plan.termId, toast, reloadAll])
 
   const handleEditClick = (entry: ScheduleEntry) => {
     setActiveScheduleEntry(entry)
@@ -228,10 +243,6 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
         planEntry={activePlanEntry} scheduleEntry={activeScheduleEntry}
         classNodeId={undefined} venues={venues} periodSlots={periodSlots}
         onSaved={reloadAll} onDeleted={reloadAll} />
-
-      <QuickAssignDialog open={quickOpen} onOpenChange={setQuickOpen}
-        entry={selectedEntry} termId={plan.termId} venues={venues}
-        prefillDay={quickPrefillDay} periodSlotNames={periodSlotNames} onSaved={handleQuickSaved} />
 
       <ScheduleImportDialog open={importOpen} onOpenChange={setImportOpen} onImported={reloadAll} />
     </div>
