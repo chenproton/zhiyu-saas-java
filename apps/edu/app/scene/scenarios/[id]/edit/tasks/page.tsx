@@ -686,6 +686,7 @@ export default function TasksEditPage() {
   if (user?.id && knowledgePoints.length > 0) {
     knowledgePoints.forEach((kp: any) => {
       if (kp.creatorId && kp.creatorId === user.id) {
+        customKnowledgePointIds.add(kp.id)
         persistedCustomKnowledgePointIds.add(kp.id)
       }
     })
@@ -739,7 +740,7 @@ export default function TasksEditPage() {
           kpRes.items.forEach((kp: any) => {
             knowledgePoints.push({ ...kp, granularLessons: kp.granularLessonIds || [] })
             if (kp.creatorId && kp.creatorId === user?.id) {
-              persistedCustomKnowledgePointIds.add(kp.id)
+              customKnowledgePointIds.add(kp.id)
             }
           })
           granularLessons.length = 0
@@ -1230,6 +1231,7 @@ export default function TasksEditPage() {
           const idx = knowledgePoints.findIndex(k => k.id === kpId)
           if (idx >= 0) knowledgePoints[idx] = { ...knowledgePoints[idx], id: created.id, granularLessons: created.granularLessonIds || knowledgePoints[idx].granularLessons || [] }
           customKnowledgePointIds.delete(kpId)
+          customKnowledgePointIds.add(created.id)
           persistedCustomKnowledgePointIds.add(created.id)
         }
       } catch (err: any) {
@@ -5148,23 +5150,18 @@ function EditCardDialog({
         return <TaskDescriptionCard description={state.description} onDescriptionChange={v => updateState({ description: v })} descriptionPdf={state.descriptionPdf} onDescriptionPdfChange={v => updateState({ descriptionPdf: v })} toast={toast} />
 
       case "knowledge": {
-        const pool: KnowledgePointItem[] = knowledgePoints
-          .filter((kp: any) => !customKnowledgePointIds.has(kp.id))
-          .map((kp: any) => ({
-            id: kp.id, name: kp.name, code: kp.code, description: kp.description, linked: true,
-          }))
-        const selected: KnowledgePointItem[] = (state.knowledgePoints || []).map((id: string) => {
-          const inPool = pool.find(p => p.id === id)
-          if (inPool) return inPool
-          const custom = knowledgePoints.find((k: any) => k.id === id)
-          if (custom) return { id: custom.id, name: custom.name, code: custom.code, description: custom.description, linked: false, granularLessons: custom.granularLessons || custom.granularLessonIds || [] }
-          return { id, name: id, linked: false }
-        })
+        const pool: KnowledgePointItem[] = knowledgePoints.map((kp: any) => ({
+          id: kp.id, name: kp.name, code: kp.code, description: kp.description, linked: kp.linked ?? true,
+        }))
+        const selected: KnowledgePointItem[] = (state.knowledgePoints || []).map((id: string) =>
+          pool.find(p => p.id === id) || { id, name: id, linked: false }
+        )
         return (
           <KnowledgeSelector
             standalone={false}
             selected={selected}
             pool={pool}
+            customKpIds={customKnowledgePointIds}
             onChange={(items) => {
               const ids = items.map(i => i.id)
               for (const item of items) {

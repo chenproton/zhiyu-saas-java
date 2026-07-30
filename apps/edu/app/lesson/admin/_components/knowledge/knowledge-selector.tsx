@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { Lightbulb, Plus, Search, X, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -37,6 +37,7 @@ interface KnowledgeSelectorProps {
   onChange?: (selected: KnowledgePointItem[]) => void
   onAddCustom?: (name: string, description?: string) => void
   standalone?: boolean
+  customKpIds?: Set<string>
 }
 
 const SCENES = [
@@ -85,7 +86,7 @@ const TASK_SCENE_MAP: Record<string, string[]> = {
   "task-component": ["dev-standard"],
 }
 
-export function KnowledgeSelector({ selected, pool, onChange, onAddCustom, standalone = true }: KnowledgeSelectorProps) {
+export function KnowledgeSelector({ selected, pool, onChange, onAddCustom, standalone = true, customKpIds }: KnowledgeSelectorProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [kpSearch, setKpSearch] = useState("")
   const [sceneFilter, setSceneFilter] = useState("all")
@@ -110,8 +111,7 @@ export function KnowledgeSelector({ selected, pool, onChange, onAddCustom, stand
     }).catch(() => setGranularCourses([]))
   }, [])
 
-  const poolIds = useMemo(() => new Set(pool.map((kp) => kp.id)), [pool])
-  const isReferenceKp = (kpId: string) => poolIds.has(kpId)
+  const isReferenceKp = (kpId: string) => !customKpIds?.has(kpId)
 
   const sceneKpIds = sceneFilter === "all" ? null : SCENE_KNOWLEDGE_MAP[sceneFilter]
   const filtered = pool.filter(
