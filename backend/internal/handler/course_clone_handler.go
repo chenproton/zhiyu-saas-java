@@ -558,9 +558,9 @@ func (h *CourseCloneHandler) cloneNodeKnowledgeBindings(ctx context.Context, tx 
 			continue
 		}
 		_, err := tx.Exec(ctx, `
-			INSERT INTO node_knowledge_point_bindings (node_id, knowledge_point_id)
-			VALUES ($1, $2)
-		`, newNodeID, kpID)
+			INSERT INTO node_knowledge_point_bindings (id, tenant_id, node_id, knowledge_point_id)
+			VALUES ($1, $2, $3, $4)
+		`, uuid.NewString(), tenantID, newNodeID, kpID)
 		if err != nil {
 			return err
 		}
@@ -591,4 +591,11 @@ func (h *CourseCloneHandler) cloneNodeResourceBindings(ctx context.Context, tx p
 		}
 	}
 	return rows.Err()
+}
+
+func isNoRowsErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	return err.Error() == "no rows in result set"
 }
