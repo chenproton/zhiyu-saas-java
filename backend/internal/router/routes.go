@@ -95,6 +95,15 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 			// 学生查看本人的岗位能力汇聚结果
 			r.Get("/evaluation/job-ability/results", h.jobAbilityResultHandler.List)
 
+			// 学生场景任务中查看/作答试卷（仅读）；写操作仍在 businessUser
+			registerContentReadRoutes(r, "/evaluation/exams", h.examHandler)
+			// 考试安排：学生查询 + 开始考试
+			r.Get("/evaluation/exam-usages", h.examUsageHandler.List)
+			r.Get("/evaluation/exam-usages/{id}", h.examUsageHandler.Get)
+			r.Post("/evaluation/exam-usages/{id}/start", h.examUsageHandler.Start)
+			// 学生提交考试结果
+			r.Post("/evaluation/exam-results", h.examResultHandler.Create)
+
 			// 学生/教师工作台课表渲染需要节次定义
 			r.Get("/affairs/period-slots", h.schedulingHandler.ListPeriodSlots)
 		})
