@@ -1200,6 +1200,7 @@ export default function TasksEditPage() {
   const saveTasksToBackend = async () => {
     // Persist custom knowledge points added in this session and map their IDs
     const kpIdMapping: Record<string, string> = {}
+    const failedCreateIds: string[] = []
     for (const kpId of Array.from(customKnowledgePointIds)) {
       const kp = knowledgePoints.find(k => k.id === kpId)
       if (!kp) continue
@@ -1231,7 +1232,11 @@ export default function TasksEditPage() {
           persistedCustomKnowledgePointIds.add(created.id)
         }
       } catch (err: any) {
+        failedCreateIds.push(kpId)
       }
+    }
+    if (failedCreateIds.length > 0) {
+      toast({ variant: "destructive", title: "部分自定义知识点保存失败", description: `${failedCreateIds.length} 个知识点未能创建，将从任务中移除` })
     }
 
     // Persist custom ability points added in this session and map their IDs
