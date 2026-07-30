@@ -45,6 +45,8 @@ export interface KnowledgePoint {
   linked: boolean
   granularLessonIds: string[]
   creatorId?: string
+  sourceType?: string
+  sourceId?: string
   createdAt: string
   updatedAt: string
 }

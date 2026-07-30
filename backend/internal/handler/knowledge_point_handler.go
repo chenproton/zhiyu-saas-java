@@ -29,6 +29,8 @@ type CreateKnowledgePointRequest struct {
 	Description       *string          `json:"description"`
 	Linked            bool             `json:"linked"`
 	GranularLessonIds domain.JSONSlice `json:"granularLessonIds"`
+	SourceType        *string          `json:"sourceType"`
+	SourceID          *string          `json:"sourceId"`
 }
 
 type UpdateKnowledgePointRequest struct {
@@ -47,7 +49,7 @@ func (h *KnowledgePointHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	cfg := listQueryConfig[domain.KnowledgePoint]{
 		Table:         "knowledge_points",
-		SelectColumns: "id, name, code, description, linked, granular_lesson_ids::text[] AS granular_lesson_ids, creator_id, created_at, updated_at",
+		SelectColumns: "id, name, code, description, linked, granular_lesson_ids::text[] AS granular_lesson_ids, creator_id, source_type, source_id, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name", "code"},
 		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
@@ -123,9 +125,9 @@ func (h *KnowledgePointHandler) Create(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(r.Context())
 
 	_, err = tx.Exec(r.Context(), `
-		INSERT INTO knowledge_points (id, tenant_id, name, code, description, linked, granular_lesson_ids, creator_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-	`, id, tenantID, req.Name, req.Code, req.Description, req.Linked, req.GranularLessonIds, creatorID)
+		INSERT INTO knowledge_points (id, tenant_id, name, code, description, linked, granular_lesson_ids, creator_id, source_type, source_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	`, id, tenantID, req.Name, req.Code, req.Description, req.Linked, req.GranularLessonIds, creatorID, req.SourceType, req.SourceID)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "知识点名称已存在，请使用其他名称")
@@ -232,11 +234,11 @@ func (h *KnowledgePointHandler) Delete(w http.ResponseWriter, r *http.Request) {
 func (h *KnowledgePointHandler) fetchKnowledgePoint(ctx context.Context, id string) (*domain.KnowledgePoint, error) {
 	var kp domain.KnowledgePoint
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, code, description, linked, granular_lesson_ids::text[] AS granular_lesson_ids, creator_id, created_at, updated_at
+		SELECT id, name, code, description, linked, granular_lesson_ids::text[] AS granular_lesson_ids, creator_id, source_type, source_id, created_at, updated_at
 		FROM knowledge_points WHERE id = $1
 	`, id).Scan(
 		&kp.ID, &kp.Name, &kp.Code, &kp.Description, &kp.Linked, &kp.GranularLessonIds,
-		&kp.CreatorID, &kp.CreatedAt, &kp.UpdatedAt,
+		&kp.CreatorID, &kp.SourceType, &kp.SourceID, &kp.CreatedAt, &kp.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -250,7 +252,7 @@ func (h *KnowledgePointHandler) scanKnowledgePointRows(rows pgx.Rows) ([]domain.
 		var kp domain.KnowledgePoint
 		if err := rows.Scan(
 			&kp.ID, &kp.Name, &kp.Code, &kp.Description, &kp.Linked, &kp.GranularLessonIds,
-			&kp.CreatorID, &kp.CreatedAt, &kp.UpdatedAt,
+			&kp.CreatorID, &kp.SourceType, &kp.SourceID, &kp.CreatedAt, &kp.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

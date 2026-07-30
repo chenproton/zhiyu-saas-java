@@ -59,6 +59,8 @@ type KnowledgePoint struct {
 	Linked            bool      `json:"linked"`
 	GranularLessonIds JSONSlice `json:"granularLessonIds,omitempty"`
 	CreatorID         *string   `json:"creatorId,omitempty"`
+	SourceType        *string   `json:"sourceType,omitempty"`
+	SourceID          *string   `json:"sourceId,omitempty"`
 	CreatedAt         time.Time `json:"createdAt"`
 	UpdatedAt         time.Time `json:"updatedAt"`
 }

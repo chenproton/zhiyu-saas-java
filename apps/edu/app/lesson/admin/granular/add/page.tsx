@@ -89,7 +89,7 @@ function AddGranularPageInner() {
           name: k.name,
           code: k.code,
           description: k.description,
-          linked: k.linked,
+          linked: !(k.sourceType === "course" && k.sourceId === editId),
         }))
         setKnowledgePool(pool)
 

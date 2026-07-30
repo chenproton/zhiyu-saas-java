@@ -1226,6 +1226,8 @@ export default function TasksEditPage() {
             description: kp.description,
             linked: false,
             granularLessonIds: kp.granularLessons || [],
+            sourceType: "scenario_task",
+            sourceId: scenarioId,
           } as any)
           kpIdMapping[kpId] = created.id
           const idx = knowledgePoints.findIndex(k => k.id === kpId)
@@ -1758,6 +1760,7 @@ export default function TasksEditPage() {
           majors={majors}
           rubricLibrary={rubricLibrary}
           setRubricLibrary={setRubricLibrary}
+          scenarioId={scenarioId}
         />
       )}
 
@@ -4758,6 +4761,7 @@ function EditCardDialog({
   majors,
   rubricLibrary,
   setRubricLibrary,
+  scenarioId,
 }: {
   allTasks: Task[]
   taskId: string
@@ -4777,6 +4781,7 @@ function EditCardDialog({
   majors: any[]
   rubricLibrary: RubricScheme[]
   setRubricLibrary: React.Dispatch<React.SetStateAction<RubricScheme[]>>
+  scenarioId: string
 }) {
   const config = cardConfigs.find(c => c.type === cardType)!
   const [localTask, setLocalTask] = useState({ name: task.name, type: task.taskType, difficulty: task.difficulty, hours: task.estimatedHours, background: task.background })
@@ -5153,9 +5158,14 @@ function EditCardDialog({
         const pool: KnowledgePointItem[] = knowledgePoints.map((kp: any) => ({
           id: kp.id, name: kp.name, code: kp.code, description: kp.description, linked: true,
         }))
-        const selected: KnowledgePointItem[] = (state.knowledgePoints || []).map((id: string) =>
-          pool.find(p => p.id === id) || { id, name: id, linked: false }
-        )
+        const selected: KnowledgePointItem[] = (state.knowledgePoints || []).map((id: string) => {
+          const inPool = pool.find(p => p.id === id)
+          if (inPool) {
+            const kp = knowledgePoints.find((k: any) => k.id === id)
+            return { ...inPool, linked: !(kp?.sourceType === "scenario_task" && kp?.sourceId === scenarioId) }
+          }
+          return { id, name: id, linked: false }
+        })
         return (
           <KnowledgeSelector
             standalone={false}
