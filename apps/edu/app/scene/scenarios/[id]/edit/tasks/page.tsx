@@ -686,7 +686,6 @@ export default function TasksEditPage() {
   if (user?.id && knowledgePoints.length > 0) {
     knowledgePoints.forEach((kp: any) => {
       if (kp.creatorId && kp.creatorId === user.id) {
-        customKnowledgePointIds.add(kp.id)
         persistedCustomKnowledgePointIds.add(kp.id)
       }
     })
@@ -740,7 +739,7 @@ export default function TasksEditPage() {
           kpRes.items.forEach((kp: any) => {
             knowledgePoints.push({ ...kp, granularLessons: kp.granularLessonIds || [] })
             if (kp.creatorId && kp.creatorId === user?.id) {
-              customKnowledgePointIds.add(kp.id)
+              persistedCustomKnowledgePointIds.add(kp.id)
             }
           })
           granularLessons.length = 0
@@ -1231,7 +1230,6 @@ export default function TasksEditPage() {
           const idx = knowledgePoints.findIndex(k => k.id === kpId)
           if (idx >= 0) knowledgePoints[idx] = { ...knowledgePoints[idx], id: created.id, granularLessons: created.granularLessonIds || knowledgePoints[idx].granularLessons || [] }
           customKnowledgePointIds.delete(kpId)
-          customKnowledgePointIds.add(created.id)
           persistedCustomKnowledgePointIds.add(created.id)
         }
       } catch (err: any) {
