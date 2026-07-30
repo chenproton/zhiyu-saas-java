@@ -47,6 +47,7 @@ func registerAffairsRoutes(r chi.Router, h *Handlers) {
 	r.Delete("/affairs/schedules/{id}", h.schedulingHandler.DeleteSchedule)
 	r.Post("/affairs/schedules/publish", h.schedulingHandler.PublishSchedules)
 	r.Get("/affairs/schedules/timetable", h.schedulingHandler.Timetable)
+	r.Get("/affairs/schedules/export", h.schedulingHandler.ExportSchedules)
 
 	// 排课 Excel 导入（对齐 registerImportExportRoutes 风格）
 	r.Post("/import/schedules/excel", h.scheduleImportHandler.ImportExcel)

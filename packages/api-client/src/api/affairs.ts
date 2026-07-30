@@ -145,6 +145,11 @@ export const scheduleApi = {
       method: "POST",
       body: JSON.stringify({ termId }),
     }),
+  /** 导出当前学期排课为 Excel（格式与导入模板一致） */
+  exportExcel: (termId: string) => {
+    const url = `/affairs/schedules/export?termId=${encodeURIComponent(termId)}`
+    window.open(url, "_blank")
+  },
   /** 班级/教师课表视图（默认仅 published，含 version） */
   timetable: (params: { termId: string; classNodeId?: string; teacherId?: string; status?: string }) =>
     request<TimetableResponse>(`/affairs/schedules/timetable${buildQuery(params)}`),

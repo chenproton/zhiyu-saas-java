@@ -6,11 +6,13 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/xuri/excelize/v2"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 )
@@ -694,6 +696,104 @@ func (h *SchedulingHandler) PublishSchedules(w http.ResponseWriter, r *http.Requ
 	`, tenantID, req.TermID).Scan(&version)
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{"published": tag.RowsAffected(), "version": version})
+}
+
+// ExportSchedules GET /affairs/schedules/export?termId= — 导出排课为 Excel，格式与导入模板一致。
+func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	termID := r.URL.Query().Get("termId")
+	if termID == "" {
+		respondError(w, http.StatusBadRequest, "缺少 termId 参数")
+		return
+	}
+	term, err := h.fetchTermBrief(r.Context(), termID, tenantID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "学期不存在")
+		return
+	}
+
+	rows, err := h.DB.Query(r.Context(), `
+		SELECT se.course_name, COALESCE(o.name, '') AS class_name, se.day_of_week, se.periods,
+			se.start_week, se.end_week, se.week_pattern,
+			COALESCE(u.name, '') AS teacher_name, COALESCE(v.name, '') AS venue_name,
+			COALESCE(se.course_code, '') AS course_code, se.type, COALESCE(sc.name, '') AS scene_name
+		FROM schedule_entries se
+		LEFT JOIN organizations o ON o.id = se.class_node_id
+		LEFT JOIN users u ON u.id = se.teacher_id
+		LEFT JOIN venues v ON v.id = se.venue_id
+		LEFT JOIN scenarios sc ON sc.id = se.scenario_id
+		WHERE se.tenant_id = $1 AND se.term_id = $2
+		ORDER BY se.day_of_week, se.start_week, se.course_name
+	`, tenantID, termID)
+	if err != nil {
+		slog.Error("查询排课导出数据失败", "error", err)
+		respondError(w, http.StatusInternalServerError, "查询排课导出数据失败")
+		return
+	}
+	defer rows.Close()
+
+	f := excelize.NewFile()
+	f.DeleteSheet("Sheet1")
+	hdrStyle := makeHeaderStyle(f)
+	noteStyle := makeNoteStyle(f)
+	wrapAlign := makeWrapAlign(f)
+
+	headers := []string{"学期 *", "课程名称 *", "班级 *", "星期 *", "节次 *", "起始周 *", "结束周 *", "周次模式", "教师", "场地", "课程编码", "类型", "场景名称"}
+	widths := []float64{16, 24, 20, 8, 16, 10, 10, 10, 14, 16, 14, 10, 20}
+	s1, _ := f.NewSheet(scheduleImportSheet)
+	f.SetActiveSheet(s1)
+
+	note := strings.Join([]string{"学期：" + term.Name, "可直接修改后重新导入", "", "导入说明：", "* 必填列。", "星期：1-7 或 周一~周日。", "节次：多个用逗号分隔。", "周次模式：全部/单周/双周，默认全部。", "教师：姓名或登录账号。场地：需已在场地管理中创建。", "类型：普通/场景，类型为场景时场景名称必填。"}, "\n")
+	start, _ := excelize.CoordinatesToCellName(1, 1)
+	end, _ := excelize.CoordinatesToCellName(len(headers), 1)
+	f.MergeCell(scheduleImportSheet, start, end)
+	f.SetCellValue(scheduleImportSheet, start, note)
+	f.SetCellStyle(scheduleImportSheet, start, end, noteStyle)
+	f.SetCellStyle(scheduleImportSheet, start, end, wrapAlign)
+	f.SetRowHeight(scheduleImportSheet, 1, 32)
+
+	for ci, hdr := range headers {
+		cell, _ := excelize.CoordinatesToCellName(ci+1, 2)
+		f.SetCellValue(scheduleImportSheet, cell, hdr)
+		f.SetCellStyle(scheduleImportSheet, cell, cell, hdrStyle)
+		f.SetColWidth(scheduleImportSheet, colName(ci+1), colName(ci+1), widths[ci])
+	}
+	f.SetRowHeight(scheduleImportSheet, 2, 28)
+
+	dayMap := map[int]string{1: "周一", 2: "周二", 3: "周三", 4: "周四", 5: "周五", 6: "周六", 7: "周日"}
+	weekPatMap := map[string]string{"all": "全部", "odd": "单周", "even": "双周"}
+
+	rowIdx := 3
+	for rows.Next() {
+		var courseName, className, weekPattern, teacherName, venueName, courseCode, entryType, sceneName string
+		var dayOfWeek, startWeek, endWeek int
+		var periods domain.JSONSlice
+		if err := rows.Scan(&courseName, &className, &dayOfWeek, &periods, &startWeek, &endWeek, &weekPattern, &teacherName, &venueName, &courseCode, &entryType, &sceneName); err != nil {
+			continue
+		}
+		periodStrs := jsonSliceToStrings(periods)
+		vals := []interface{}{
+			term.Name, courseName, className,
+			dayMap[dayOfWeek], strings.Join(periodStrs, "，"),
+			startWeek, endWeek,
+			weekPatMap[weekPattern], teacherName, venueName,
+			courseCode, entryType, sceneName,
+		}
+		for ci, v := range vals {
+			cell, _ := excelize.CoordinatesToCellName(ci+1, rowIdx)
+			f.SetCellValue(scheduleImportSheet, cell, v)
+		}
+		rowIdx++
+	}
+	writeExcel(w, f, "排课导出_"+term.Name+".xlsx")
 }
 
 // Timetable GET /affairs/schedules/timetable?termId=&classNodeId=&teacherId= — 班级/教师课表视图。

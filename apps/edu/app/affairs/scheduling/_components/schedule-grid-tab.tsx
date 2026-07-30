@@ -1,13 +1,13 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { CalendarPlus, FileUp, Clock3, CalendarDays, CheckCircle2, X, MapPin, Users } from "lucide-react"
+import { FileUp, Clock3, CalendarDays, CheckCircle2, X, MapPin, Users, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@zhiyu/ui"
 import { ScheduleGrid } from "@/components/shared/schedule-grid"
-import { periodSlotApi, scheduleApi, teachingPlanApi, venueApi } from "@/lib/api"
+import { periodSlotApi, scheduleApi, venueApi } from "@/lib/api"
 import type { PeriodSlot, ScheduleEntry, TeachingPlan, TeachingPlanEntry, Venue } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { ScheduleFormDialog } from "./schedule-form-dialog"
@@ -147,6 +147,9 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => scheduleApi.exportExcel(plan.termId)}>
+            <Download className="mr-1 size-4" />导出
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
             <FileUp className="mr-1 size-4" />导入
           </Button>
