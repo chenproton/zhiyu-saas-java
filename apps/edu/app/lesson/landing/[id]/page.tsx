@@ -181,6 +181,7 @@ export default function CourseDetailPage() {
       .catch(() => setKnowledgeMap(new Map()))
 
     if (course.type === "system" && activeTab === "evaluation") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- loading state is necessary for UX
       setAssessmentsLoading(true)
       courseAssessmentsApi.get(id)
         .then(setAssessments)

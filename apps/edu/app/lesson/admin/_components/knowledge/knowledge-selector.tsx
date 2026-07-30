@@ -110,8 +110,7 @@ export function KnowledgeSelector({ selected, pool, onChange, onAddCustom, stand
     }).catch(() => setGranularCourses([]))
   }, [])
 
-  const poolIds = useMemo(() => new Set(pool.map((kp) => kp.id)), [pool])
-  const isReferenceKp = (kpId: string) => poolIds.has(kpId)
+  const isReferenceKp = (kp: KnowledgePointItem) => kp.linked
 
   const sceneKpIds = sceneFilter === "all" ? null : SCENE_KNOWLEDGE_MAP[sceneFilter]
   const filtered = pool.filter(
@@ -386,7 +385,7 @@ export function KnowledgeSelector({ selected, pool, onChange, onAddCustom, stand
           ) : (
             <div className="grid grid-cols-2 gap-2">
               {selected.map((kp) => {
-                const isReference = isReferenceKp(kp.id)
+                const isReference = isReferenceKp(kp)
                 const kpGlNames =
                   kp.granularLessons
                     ?.map((gid) => granularCourses.find((g) => g.id === gid)?.name)
@@ -593,7 +592,7 @@ export function KnowledgeSelector({ selected, pool, onChange, onAddCustom, stand
             <div className="space-y-4 py-2">
               <div className="flex items-center gap-2">
                 <Label className="text-xs text-gray-500">知识点名称</Label>
-                {isReferenceKp(detailKp.id) ? (
+                {isReferenceKp(detailKp) ? (
                   <Badge variant="secondary" className="text-[10px] h-5">引用（不可编辑）</Badge>
                 ) : (
                   <Badge variant="outline" className="text-[10px] h-5 border-primary/30 text-primary">自定义（可编辑）</Badge>
@@ -613,7 +612,7 @@ export function KnowledgeSelector({ selected, pool, onChange, onAddCustom, stand
               <div>
                 <div className="flex items-center justify-between">
                   <Label className="text-xs text-gray-500">关联颗粒课</Label>
-                  {!isReferenceKp(detailKp.id) && (
+                  {!isReferenceKp(detailKp) && (
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="sm" className="h-6 text-[11px] px-2 text-primary" onClick={() => { setKpDetailOpen(false); openGlSelect(detailKp.id) }}>引用颗粒课</Button>
                     </div>
@@ -655,7 +654,7 @@ export function KnowledgeSelector({ selected, pool, onChange, onAddCustom, stand
               variant="secondary"
               className={cn(
                 "px-2.5 py-1 text-xs font-normal hover:cursor-pointer",
-                isReferenceKp(kp.id) ? "bg-gray-100 text-gray-600 hover:bg-gray-200" : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                isReferenceKp(kp) ? "bg-gray-100 text-gray-600 hover:bg-gray-200" : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
               )}
             >
               {kp.name}

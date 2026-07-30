@@ -192,6 +192,24 @@ function AddSystemPageInner() {
   const [nodeModes, setNodeModes] = useState<Record<string, AddMode>>({})
   const [resourcePool, setResourcePool] = useState<ResourceItem[]>([])
 
+  /* module 2b: ability points (course-level, for job ability aggregation) */
+  const [abilityPoints, setAbilityPoints] = useState<{ id: string; name: string; code?: string; description?: string }[]>([])
+  const [abilityPool, setAbilityPool] = useState<{ id: string; name: string; code?: string; description?: string }[]>([])
+
+  /* module 4: assessment */
+  const [evalData, setEvalData] = useState<{ methods: string[]; evalRuleConfig?: EvalRuleConfig } | undefined>()
+
+  useEffect(() => {
+    abilityApi.list({ limit: 1000 }).then((res) => {
+      setAbilityPool((res.items || []).map((a: any) => ({
+        id: a.id,
+        name: a.name,
+        code: a.code,
+        description: a.description,
+      })))
+    }).catch(() => setAbilityPool([]))
+  }, [])
+
   useEffect(() => {
     majorApi.list({ limit: 1000 }).then((res) => {
       setMajors((res.items || []).filter((m: Major) => m.enabled))
@@ -249,6 +267,7 @@ function AddSystemPageInner() {
         setLoadingEdit(false)
       }
     })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- editId-only trigger, abilityPool loaded separately
   }, [editId])
 
   const handleAddNode = useCallback((parentId: string | null, name: string, order: number, type?: NodeRefType, sourceId?: string, sourceName?: string) => {
@@ -380,26 +399,8 @@ function AddSystemPageInner() {
     }).catch(() => setKnowledgePool([]))
   }, [])
 
-  /* module 2b: ability points (course-level, for job ability aggregation) */
-  const [abilityPoints, setAbilityPoints] = useState<{ id: string; name: string; code?: string; description?: string }[]>([])
-  const [abilityPool, setAbilityPool] = useState<{ id: string; name: string; code?: string; description?: string }[]>([])
-
-  useEffect(() => {
-    abilityApi.list({ limit: 1000 }).then((res) => {
-      setAbilityPool((res.items || []).map((a: any) => ({
-        id: a.id,
-        name: a.name,
-        code: a.code,
-        description: a.description,
-      })))
-    }).catch(() => setAbilityPool([]))
-  }, [])
-
   /* module 3: resources */
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([])
-
-  /* module 4: assessment */
-  const [evalData, setEvalData] = useState<{ methods: string[]; evalRuleConfig?: EvalRuleConfig } | undefined>()
 
   /* module 5: evaluation rules */
 
@@ -508,7 +509,7 @@ function AddSystemPageInner() {
     setEvalData(undefined)
     setDifficulty(grain.difficulty)
     setShowGrainSelector(false)
-  }, [grainSelectedId, selectedNodeId, grainSelectorMode, handleUpdateNode, grainCourses, setNodeModes])
+  }, [grainSelectedId, selectedNodeId, grainSelectorMode, handleUpdateNode, grainCourses, setNodeModes, setEvalData])
 
   /* ---------- submit: convert complete nodes to grain ---------- */
   const [convertDialogOpen, setConvertDialogOpen] = useState(false)
@@ -666,7 +667,7 @@ function AddSystemPageInner() {
     } finally {
       setSaving(false)
     }
-  }, [courseName, major, courseDescription, coverImage, batchId, isEdit, courseId, originalStatus, saveNodes, abilityPoints])
+  }, [courseName, major, courseDescription, coverImage, batchId, isEdit, courseId, originalStatus, saveNodes, abilityPoints, evalData])
 
   const handleFinish = useCallback(async () => {
     await handleSave()
