@@ -369,7 +369,7 @@ export function ResourceSelector({ pool: externalPool, selectedIds, onChange, on
   const fileTypesWithUpload = ["document", "spreadsheet", "image", "audio", "video", "archive", "other", "software"]
 
   const selectionContent = (
-    <div className="space-y-4">
+    <div className={cn("space-y-4", !standalone && "flex flex-col h-full min-h-0")}>
       {/* Toolbar */}
       <div className="shrink-0 space-y-3">
         <div className="flex gap-1.5 flex-wrap">
