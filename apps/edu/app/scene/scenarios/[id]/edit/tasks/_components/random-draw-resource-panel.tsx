@@ -201,7 +201,7 @@ export function RandomDrawResourcePanel({
           <p className="text-sm font-medium mb-2 text-gray-700">
             {rdqSearch ? `搜索结果 (${filteredRdq.length})` : (rdqMajorTab === "全部" ? "全部现场问答题" : `${majorNameMap[rdqMajorTab] || rdqMajorTab}相关现场问答题`)}
           </p>
-          <div className="min-h-[400px] overflow-y-auto pr-1">
+          <div className="min-h-[560px] overflow-y-auto pr-1">
             {loading ? (
               <div className="text-center text-gray-400 py-8">
                 <p className="text-sm">加载中...</p>
@@ -269,7 +269,7 @@ export function RandomDrawResourcePanel({
         {/* Right: Selected questions */}
         <div className="w-2/5 border rounded-xl p-3 flex flex-col">
           <p className="text-sm font-medium mb-3 text-gray-700">已配置现场问答题 ({selectedRdqList.length})</p>
-          <div className="min-h-[400px] overflow-y-auto">
+          <div className="min-h-[560px] overflow-y-auto">
             {selectedRdqList.length === 0 ? (
               <div className="text-center text-gray-400 py-8">
                 <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
