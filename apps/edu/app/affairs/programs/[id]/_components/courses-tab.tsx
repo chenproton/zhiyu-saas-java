@@ -349,7 +349,15 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
                       {r.linkType === "scenario" ? (
                         <Select
                           value={r.scenarioId || "none"}
-                          onValueChange={(v) => updateRow(r.key, { scenarioId: v === "none" ? "" : v })}
+                          onValueChange={(v) => {
+                            const scenarioId = v === "none" ? "" : v
+                            const scenario = scenarios.find((s) => s.id === scenarioId)
+                            updateRow(r.key, {
+                              scenarioId,
+                              name: scenario ? scenario.name : r.name,
+                              code: scenario ? (scenario.code || "") : r.code,
+                            })
+                          }}
                         >
                           <SelectTrigger className="h-8 flex-1">
                             <SelectValue placeholder="选择场景" />

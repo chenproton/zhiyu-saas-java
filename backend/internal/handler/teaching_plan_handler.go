@@ -93,7 +93,7 @@ func (h *TeachingPlanHandler) List(w http.ResponseWriter, r *http.Request) {
 // Generate POST /affairs/teaching-plans — 从人培方案生成教学计划。
 // 合并方案课程：场景性质课程生成 type=scene 条目并带 scenario_id，实践性质课程生成
 // type=practice 条目，普通课程按学时构成生成 theory/practice 条目。
-// 同一方案同一学期已存在教学计划时返回 409。
+// 同一方案同一学期已存在教学计划时，若无排课记录则先删旧再重建（覆盖），有排课则拒绝。
 func (h *TeachingPlanHandler) Generate(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
@@ -138,8 +138,32 @@ func (h *TeachingPlanHandler) Generate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 已有计划时检查是否已排课：有排课记录则拒绝覆盖，无排课则允许删旧重建
+	var existingPlanID string
+	if err := h.DB.QueryRow(ctx, `
+		SELECT p.id FROM teaching_plans p
+		WHERE p.program_id = $1 AND p.term_id = $2 AND p.tenant_id = $3
+	`, req.ProgramID, req.TermID, tenantID).Scan(&existingPlanID); err == nil && existingPlanID != "" {
+		var scheduledCount int
+		_ = h.DB.QueryRow(ctx, `
+			SELECT COUNT(*) FROM teaching_plan_entries e
+			JOIN schedule_entries se ON se.plan_entry_id = e.id
+			WHERE e.plan_id = $1
+		`, existingPlanID).Scan(&scheduledCount)
+		if scheduledCount > 0 {
+			respondError(w, http.StatusConflict, "该计划已有排课记录，无法重新生成")
+			return
+		}
+	}
+
 	planID := uuid.NewString()
 	err = withTx(ctx, h.DB, func(tx pgx.Tx) error {
+		// 先删旧计划（CASCADE 删除条目），再插入新计划
+		if _, err := tx.Exec(ctx, `
+			DELETE FROM teaching_plans WHERE program_id = $1 AND term_id = $2 AND tenant_id = $3
+		`, req.ProgramID, req.TermID, tenantID); err != nil {
+			return err
+		}
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO teaching_plans (id, tenant_id, program_id, term_id, major_id, entry_year, status)
 			VALUES ($1, $2, $3, $4, $5, $6, 'draft')
@@ -172,10 +196,6 @@ func (h *TeachingPlanHandler) Generate(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		if isUniqueViolation(err) {
-			respondError(w, http.StatusConflict, "该方案在此学期已生成教学计划")
-			return
-		}
 		slog.Error("生成教学计划失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "生成教学计划失败")
 		return

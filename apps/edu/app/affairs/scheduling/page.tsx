@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { CalendarCog, CalendarRange, CalendarCheck2 } from "lucide-react"
+import { CalendarRange, CalendarCheck2 } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -15,12 +15,10 @@ import { PageHeaderCard } from "@/components/shared/page-header-card"
 import { termApi } from "@/lib/api"
 import type { AffairsTerm } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { VenuePeriodConfigTab } from "./_components/venue-period-config-tab"
 import { ScheduleGridTab } from "./_components/schedule-grid-tab"
 import { TimetableViewTab } from "./_components/timetable-view-tab"
 
 const STEPS = [
-  { id: "config", label: "教务基础配置", icon: CalendarCog },
   { id: "grid", label: "自定义排课", icon: CalendarRange },
   { id: "timetable", label: "课表视图与发布", icon: CalendarCheck2 },
 ] as const
@@ -32,7 +30,7 @@ function SchedulingPageInner() {
   const planId = searchParams.get("planId") || undefined
   const { toast } = useToast()
 
-  const [step, setStep] = useState<StepId>(planId ? "grid" : "config")
+  const [step, setStep] = useState<StepId>("grid")
   const [terms, setTerms] = useState<AffairsTerm[]>([])
   const [termId, setTermId] = useState("")
 
@@ -62,7 +60,7 @@ function SchedulingPageInner() {
     <div className="space-y-6">
       <PageHeaderCard
         title="排课管理"
-        description="按「基础配置 → 自定义排课 → 课表视图与发布」三步完成排课，发布后学生/教师工作台可见"
+        description="将教学计划条目安排到具体时间格上，发布后学生/教师工作台可见"
         actions={
           <Select value={termId} onValueChange={setTermId}>
             <SelectTrigger className="w-[220px]">
@@ -71,7 +69,7 @@ function SchedulingPageInner() {
             <SelectContent>
               {terms.length === 0 ? (
                 <SelectItem value="__empty" disabled>
-                  暂无学期，请先在「教务基础配置」中创建
+                  暂无学期，请先在「教务配置」中创建
                 </SelectItem>
               ) : (
                 terms.map((t) => (
@@ -117,7 +115,6 @@ function SchedulingPageInner() {
         </div>
       </div>
 
-      {step === "config" && <VenuePeriodConfigTab onTermsChanged={loadTerms} />}
       {step === "grid" && <ScheduleGridTab term={currentTerm} planId={planId} />}
       {step === "timetable" && <TimetableViewTab term={currentTerm} />}
     </div>
