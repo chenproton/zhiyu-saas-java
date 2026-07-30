@@ -474,6 +474,9 @@ if [[ ! -f "$ENV_FILE" ]]; then
       echo "NGINX_SERVER_NAME=${NGINX_SERVER_NAME:-_}"
       echo "NGINX_DEFAULT_SERVER=${NGINX_DEFAULT_SERVER:-default_server}"
       echo "NGINX_PORT=${NGINX_PORT:-80}"
+      echo "NGINX_SSL_DOMAIN=${NGINX_SSL_DOMAIN:-}"
+      echo "NGINX_SSL_CERT=${NGINX_SSL_CERT:-}"
+      echo "NGINX_SSL_CERT_KEY=${NGINX_SSL_CERT_KEY:-}"
       echo "BACKEND_PORT=${BACKEND_PORT:-8080}"
       echo "EDU_PORT=${EDU_PORT:-3020}"
       echo "POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT:-5433}"
@@ -839,6 +842,21 @@ if [[ -f "$NGINX_CONF" ]]; then
 
   # 将模板中的 ${VAR:-default} → ${VAR}，再用 envsubst 替换
   sed 's/\${\([A-Z_]*\):-[^}]*}/${\1}/g' "$NGINX_CONF" | envsubst '$NGINX_SERVER_NAME $NGINX_DEFAULT_SERVER $NGINX_PORT $BACKEND_PORT $EDU_PORT $KKFILEVIEW_HOST_PORT' > "$NGINX_DST"
+
+  # 若配置了 SSL 域名和证书，生成 HTTPS 网关配置
+  NGINX_SSL_CONF="$BUILD_ROOT/deploy/nginx/conf.d/zhiyu-saas-ssl.conf"
+  NGINX_SSL_DST="/etc/nginx/conf.d/zhiyu-saas-ssl.conf"
+  if [[ -f "$NGINX_SSL_CONF" && -n "${NGINX_SSL_DOMAIN:-}" && -n "${NGINX_SSL_CERT:-}" && -n "${NGINX_SSL_CERT_KEY:-}" ]]; then
+    if [[ -f "$NGINX_SSL_CERT" && -f "$NGINX_SSL_CERT_KEY" ]]; then
+      export NGINX_SSL_DOMAIN NGINX_SSL_CERT NGINX_SSL_CERT_KEY
+      sed 's/\${\([A-Z_]*\):-[^}]*}/${\1}/g' "$NGINX_SSL_CONF" | envsubst '$NGINX_SSL_DOMAIN $NGINX_SSL_CERT $NGINX_SSL_CERT_KEY $BACKEND_PORT $EDU_PORT $KKFILEVIEW_HOST_PORT' > "$NGINX_SSL_DST"
+      log "已生成 HTTPS nginx 配置: $NGINX_SSL_DST"
+    else
+      warn "NGINX_SSL_DOMAIN 已设置但证书文件不存在，跳过 HTTPS 配置"
+      warn "  cert: $NGINX_SSL_CERT"
+      warn "  key:  $NGINX_SSL_CERT_KEY"
+    fi
+  fi
 
   if ! nginx -t 2>/dev/null; then
     warn "nginx 配置测试失败，常见原因："
