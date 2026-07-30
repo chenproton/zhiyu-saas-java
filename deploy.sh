@@ -336,9 +336,7 @@ if [[ -z "$DOCKER_COMPOSE" ]]; then
   DOCKER_COMPOSE=$(detect_docker_compose)
   [[ -z "$DOCKER_COMPOSE" ]] && die "未找到可用的 docker compose"
 fi
-COMPOSE_PROFILES_ARG=""
-[[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]] && COMPOSE_PROFILES_ARG="--profile kkfileview"
-compose() { $DOCKER_COMPOSE $COMPOSE_PROFILES_ARG -f "$DEPLOY_COMPOSE" "$@"; }
+compose() { $DOCKER_COMPOSE -f "$DEPLOY_COMPOSE" "$@"; }
 
 # Nginx（宿主标准 nginx，作为统一网关）
 if ! command -v nginx >/dev/null 2>&1; then
@@ -482,7 +480,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
       echo "KKFILEVIEW_HOST_PORT=${KKFILEVIEW_HOST_PORT:-8012}"
       echo "ENABLE_KKFILEVIEW=${ENABLE_KKFILEVIEW:-false}"
       echo "KKFILEVIEW_IMAGE=${KKFILEVIEW_IMAGE:-fangzhengjin/kkfileview:4.4.0}"
-      echo "KK_BASE_URL=${KK_BASE_URL:-https://ai.zhiyu.com.cn/kkfileview}"
+      echo "KK_BASE_URL=${KK_BASE_URL:-}"  # deploy.sh 会根据 nginx 配置自动推导
       echo "DOCKER_REGISTRY_MIRRORS=${DOCKER_REGISTRY_MIRRORS:-}"
       echo "SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-admin123}"
     } >> "$ENV_FILE"
@@ -491,6 +489,13 @@ if [[ ! -f "$ENV_FILE" ]]; then
   fi
 fi
 set -a; source "$ENV_FILE"; set +a
+
+# 根据 .env 启用 docker compose profile，兼容 docker compose 与 docker-compose
+if [[ "${ENABLE_KKFILEVIEW:-false}" == "true" ]]; then
+  export COMPOSE_PROFILES="kkfileview"
+else
+  unset COMPOSE_PROFILES 2>/dev/null || true
+fi
 
 # ════════════════════════════════════════════
 # 端口冲突检测与自动回退
@@ -506,7 +511,19 @@ update_env_var "$ENV_FILE" "BACKEND_PORT" "$BACKEND_PORT"
 update_env_var "$ENV_FILE" "EDU_PORT" "$EDU_PORT"
 update_env_var "$ENV_FILE" "POSTGRES_HOST_PORT" "$POSTGRES_HOST_PORT"
 update_env_var "$ENV_FILE" "KKFILEVIEW_HOST_PORT" "$KKFILEVIEW_HOST_PORT"
-update_env_var "$ENV_FILE" "KK_BASE_URL" "${KK_BASE_URL:-https://ai.zhiyu.com.cn/kkfileview}"
+
+# kkFileView 对外地址：未手动设置时，根据当前 nginx 配置自动推导协议和域名
+if [[ -z "${KK_BASE_URL:-}" ]]; then
+  if [[ -f /etc/nginx/conf.d/ai-zhiyu-https.conf ]] || [[ -n "${NGINX_SSL_CERT:-}" ]] || [[ "${NGINX_PORT:-80}" == "443" ]]; then
+    kk_scheme="https"
+  else
+    kk_scheme="http"
+  fi
+  kk_host="${NGINX_SERVER_NAME:-_}"
+  [[ "$kk_host" == "_" ]] && kk_host="localhost"
+  KK_BASE_URL="${kk_scheme}://${kk_host}:${NGINX_PORT}/kkfileview"
+fi
+update_env_var "$ENV_FILE" "KK_BASE_URL" "$KK_BASE_URL"
 
 # 如果数据库 host 端口发生变化，同步更新 DATABASE_URL 中的 host 端口
 if [[ "$DATABASE_URL" != *":${POSTGRES_HOST_PORT}/zhiyu-saas"* ]]; then
