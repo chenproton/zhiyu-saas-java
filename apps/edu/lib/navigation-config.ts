@@ -460,6 +460,7 @@ export const affairsNavigationConfig: PlatformNavigationConfig = {
       label: "教学管理",
       icon: "calendar",
       children: [
+        { id: "config", label: "教务配置", href: "/affairs/config", matchers: ["/affairs/config"] },
         { id: "programs", label: "人才培养方案", href: "/affairs/programs", matchers: ["/affairs/programs"] },
         { id: "teaching-plans", label: "教学计划", href: "/affairs/teaching-plans", matchers: ["/affairs/teaching-plans"] },
         { id: "scheduling", label: "排课管理", href: "/affairs/scheduling", matchers: ["/affairs/scheduling"] },
