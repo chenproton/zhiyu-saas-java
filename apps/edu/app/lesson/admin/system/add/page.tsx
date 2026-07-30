@@ -568,6 +568,16 @@ function AddSystemPageInner() {
     // 收集当前所有草稿状态
     const allDrafts = { ...nodeDraftsRef.current }
 
+    // 删除在后端存在但本地已删除的节点
+    const currentBackendNodes = await courseNodeApi.list({ courseId: effectiveCourseId })
+    const backendNodeIds = new Set((currentBackendNodes.items || []).map((n: any) => n.id))
+    const localNodeIds = new Set(nodesRef.current.map((n) => n.id).filter((id) => !id.startsWith("node-")))
+    for (const backendId of backendNodeIds) {
+      if (!localNodeIds.has(backendId)) {
+        try { await courseNodeApi.delete(backendId) } catch {}
+      }
+    }
+
     // 按 parentId 分组并排序
     const sortedNodes = [...nodesRef.current].sort((a, b) => a.order - b.order)
 
