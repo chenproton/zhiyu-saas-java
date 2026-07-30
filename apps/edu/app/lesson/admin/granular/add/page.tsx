@@ -237,10 +237,10 @@ function AddGranularPageInner() {
         detailedDescription: detailedDescription || undefined,
         background: background || undefined,
         estimatedHours: parseInt(estimatedHours) || 0,
-        descriptionPdf: learningGoalPdf || undefined,
         evalData: {
           learningGoal: learningGoal || undefined,
           knowledgePointIds,
+          descriptionPdf: learningGoalPdf || undefined,
         },
         knowledgePointIds,
         resourceIds: selectedResourceIds,

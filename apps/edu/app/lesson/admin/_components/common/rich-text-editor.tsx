@@ -74,20 +74,20 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 300, 
   const handlePdfUpload = async (file: File) => {
     if (!file) return
     if (file.type !== "application/pdf") {
-      toast({ variant: "destructive", title: "请上传 PDF 文件" })
+      toast.error("请上传 PDF 文件")
       return
     }
     if (file.size > 20 * 1024 * 1024) {
-      toast({ variant: "destructive", title: "文件大小超过 20MB" })
+      toast.error("文件大小超过 20MB")
       return
     }
     setPdfUploading(true)
     try {
       const res = await fileApi.upload(file)
       onPdfChange?.(res.url)
-      toast({ title: "上传成功" })
+      toast.success("上传成功")
     } catch (err: any) {
-      toast({ variant: "destructive", title: "上传失败", description: err.message })
+      toast.error("上传失败", { description: err.message })
     } finally {
       setPdfUploading(false)
     }
