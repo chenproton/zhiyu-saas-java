@@ -951,6 +951,9 @@ export default function TasksEditPage() {
         })
         setTaskStates(states)
 
+        // Preload datasets so card previews show names immediately
+        await ensureDatasets(["knowledge", "ability", "resources", "evaluation", "users"])
+
         setDataLoaded(true)
       } catch (err) {
       }
