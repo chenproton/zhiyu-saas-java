@@ -296,7 +296,7 @@ func (h *ExamHandler) clearLandingExamsCache(r *http.Request, tenantID string) {
 	if h.RedisClient == nil {
 		return
 	}
-	prefix := fmt.Sprintf("zhiyu:%s:", tenantID)
+	prefix := fmt.Sprintf("zhiyu:%s", tenantID)
 	var cursor uint64
 	for {
 		keys, nextCursor, err := h.RedisClient.Scan(r.Context(), cursor, prefix+"*", 100).Result()
