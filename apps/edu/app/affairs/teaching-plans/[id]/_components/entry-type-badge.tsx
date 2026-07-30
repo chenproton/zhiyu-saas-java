@@ -1,7 +1,7 @@
 "use client"
 
 const TYPE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  theory: { label: "理论", color: "#2563eb", bg: "#dbeafe" },
+  theory: { label: "课程", color: "#2563eb", bg: "#dbeafe" },
   practice: { label: "实践", color: "#16a34a", bg: "#dcfce7" },
   scene: { label: "场景", color: "#ea580c", bg: "#ffedd5" },
 }
