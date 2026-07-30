@@ -18,15 +18,14 @@
 set -euo pipefail
 
 # ── 参数 ──
-BRANCH_NAME=""; CLEAN_BUILD=false; SKIP_MERGE=false; OFFLINE_MODE=false
+BRANCH_NAME=""; CLEAN_BUILD=false; SKIP_MERGE=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --branch) BRANCH_NAME="$2"; shift 2 ;;
     --clean) CLEAN_BUILD=true; shift ;;
     --skip-merge) SKIP_MERGE=true; shift ;;
-    --offline) OFFLINE_MODE=true; shift ;;
     --help|-h)
-      echo "用法: $0 --branch <分支名> [--clean] [--skip-merge] [--offline]"; exit 0 ;;
+      echo "用法: $0 --branch <分支名> [--clean] [--skip-merge]"; exit 0 ;;
     *) echo "未知参数: $1" >&2; exit 1 ;;
   esac
 done
@@ -528,6 +527,8 @@ if command -v flock >/dev/null 2>&1; then
   flock "$LOCK_FD" || { log "等待部署锁..."; flock "$LOCK_FD"; }
   cleanup() { exec {LOCK_FD}>&- 2>/dev/null || true; }
   trap cleanup EXIT
+else
+  warn "flock 不可用，跳过部署锁（建议安装 util-linux）"
 fi
 
 # ════════════════════════════════════════════
@@ -591,13 +592,15 @@ if $BUILD_BACKEND; then
   cp "$BACKEND_DIR/bin/server" "$TMPCTX/server"
   mkdir -p "$TMPCTX/migrations"
   rsync -a --delete "$BACKEND_DIR/migrations/" "$TMPCTX/migrations/"
-  # 本地已加载 alpine 镜像时跳过 apk add（避免联网）
+  cp "$BACKEND_DIR/Dockerfile" "$TMPCTX/Dockerfile"
+
+  # 本地已加载 alpine 镜像时跳过 apk add，避免离线环境联网失败
+  DOCKER_BUILD_ARGS=()
   if docker images alpine:3.21 --format ok 2>/dev/null | grep -q ok; then
-    sed 's/apk add --no-cache ca-certificates && //' "$BACKEND_DIR/Dockerfile" > "$TMPCTX/Dockerfile"
-  else
-    cp "$BACKEND_DIR/Dockerfile" "$TMPCTX/Dockerfile"
+    DOCKER_BUILD_ARGS+=(--build-arg SKIP_APK_ADD=true)
   fi
-  docker build -t "zhiyu-backend:$IMAGE_TAG" -f "$TMPCTX/Dockerfile" "$TMPCTX" 2>&1 | tail -3
+
+  docker build "${DOCKER_BUILD_ARGS[@]}" -t "zhiyu-backend:$IMAGE_TAG" -f "$TMPCTX/Dockerfile" "$TMPCTX" 2>&1 | tail -3
   docker tag "zhiyu-backend:$IMAGE_TAG" "zhiyu-backend:$BACKEND_HASH"
   rm -rf "$TMPCTX"
   echo "$BACKEND_HASH" > "$BUILD_CACHE/backend-hash"
@@ -759,16 +762,11 @@ if [[ -f "$NGINX_CONF" ]]; then
   NGINX_SSL_CERT="${NGINX_SSL_CERT:-/etc/ssl/certs/ssl-cert-snakeoil.pem}"
   NGINX_SSL_CERT_KEY="${NGINX_SSL_CERT_KEY:-/etc/ssl/private/ssl-cert-snakeoil.key}"
   KKFILEVIEW_HOST_PORT="${KKFILEVIEW_HOST_PORT:-8012}"
-  sed -e 's/${NGINX_SERVER_NAME:-_[^}]*}/'"${NGINX_SERVER_NAME}"'/g' \
-      -e 's/${NGINX_DEFAULT_SERVER:-[^}]*}/'"${NGINX_DEFAULT_SERVER}"'/g' \
-      -e 's/${NGINX_PORT:-[^}]*}/'"${NGINX_PORT}"'/g' \
-      -e 's/${NGINX_SSL_PORT:-[^}]*}/'"${NGINX_SSL_PORT}"'/g' \
-      -e 's|${NGINX_SSL_CERT:-[^}]*}|'"${NGINX_SSL_CERT}"'|g' \
-      -e 's|${NGINX_SSL_CERT_KEY:-[^}]*}|'"${NGINX_SSL_CERT_KEY}"'|g' \
-      -e 's/${BACKEND_PORT:-[^}]*}/'"${BACKEND_PORT}"'/g' \
-      -e 's/${EDU_PORT:-[^}]*}/'"${EDU_PORT}"'/g' \
-      -e 's/${KKFILEVIEW_HOST_PORT:-[^}]*}/'"${KKFILEVIEW_HOST_PORT}"'/g' \
-      "$NGINX_CONF" > "$NGINX_DST"
+  export NGINX_SERVER_NAME NGINX_DEFAULT_SERVER NGINX_PORT NGINX_SSL_PORT \
+         NGINX_SSL_CERT NGINX_SSL_CERT_KEY BACKEND_PORT EDU_PORT KKFILEVIEW_HOST_PORT
+
+  # 将模板中的 ${VAR:-default} → ${VAR}，再用 envsubst 替换（白名单内变量）
+  sed 's/\${\([A-Z_]*\):-[^}]*}/${\1}/g' "$NGINX_CONF" | envsubst '$NGINX_SERVER_NAME $NGINX_DEFAULT_SERVER $NGINX_PORT $NGINX_SSL_PORT $NGINX_SSL_CERT $NGINX_SSL_CERT_KEY $BACKEND_PORT $EDU_PORT $KKFILEVIEW_HOST_PORT' > "$NGINX_DST"
 
   if ! nginx -t 2>/dev/null; then
     warn "nginx 配置测试失败，常见原因："
