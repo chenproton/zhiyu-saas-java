@@ -465,22 +465,17 @@ function AddGranularPageInner() {
               <CardContent className="pt-0">
                 {selectedResourceIds.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-3">
-                    {(() => {
-                      const allRes = [...resourcePool]
-                      for (const id of selectedResourceIds) {
-                        if (!allRes.find(r => r.id === id)) {
-                          allRes.push({ id, name: id.slice(0, 8), type: "other", url: "" })
-                        }
-                      }
-                      return allRes.filter(r => selectedResourceIds.includes(r.id)).map((r) => (
-                        <Badge key={r.id} variant="secondary" className="px-2 py-0.5 text-xs gap-1 bg-blue-50 text-blue-600">
-                          {r.name}
-                          <button className="text-blue-400 hover:text-blue-700" onClick={() => setSelectedResourceIds(prev => prev.filter(id => id !== r.id))}>
+                    {selectedResourceIds.map((rid) => {
+                      const r = courseResourcePool.find((x) => x.id === rid)
+                      return (
+                        <Badge key={rid} variant="secondary" className="px-2 py-0.5 text-xs gap-1 bg-blue-50 text-blue-600">
+                          {r?.name || rid.slice(0, 8)}
+                          <button className="text-blue-400 hover:text-blue-700" onClick={() => setSelectedResourceIds(prev => prev.filter(id => id !== rid))}>
                             <X className="h-3 w-3" />
                           </button>
                         </Badge>
-                      ))
-                    })()}
+                      )
+                    })}
                   </div>
                 )}
                 <Dialog>
