@@ -1,12 +1,10 @@
 package handler
 
 import (
-	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
@@ -19,56 +17,104 @@ type ProgramCourseImportHandler struct {
 
 const pcImportSheet = "导入"
 
-// ImportExcel POST /import/program-courses/{programId} — 导入方案课程 Excel，全量替换保存。
-func (h *ProgramCourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
+func getProgramID(r *http.Request) string {
+	if v := r.URL.Query().Get("programId"); v != "" {
+		return v
 	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	programID := chi.URLParam(r, "id")
-	if programID == "" {
-		respondError(w, http.StatusBadRequest, "缺少方案ID")
-		return
-	}
+	return r.FormValue("programId")
+}
+
+type pcImportResult struct {
+	Created        int
+	Duplicates     int
+	Failed         int
+	DuplicateItems []ImportPreviewItem
+	Errors         []string
+}
+
+// PreviewExcel POST /import/program-courses/preview — 解析校验，不写库。
+func (h *ProgramCourseImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request) {
+	_, ok := h.checkAuth(w, r)
+	if !ok { return }
 
 	xlsx, _, err := parseUploadedExcel(r)
-	if err != nil {
-		respondError(w, http.StatusBadRequest, "无法解析上传文件")
-		return
-	}
+	if err != nil { respondError(w, http.StatusBadRequest, "无法解析上传文件"); return }
 	defer xlsx.Close()
 
-	rows, err := xlsx.GetRows(pcImportSheet)
-	if err != nil {
-		respondError(w, http.StatusBadRequest, "请使用名为「导入」的 Sheet")
+	courses, errors := h.parseCourses(r, xlsx)
+	result := &pcImportResult{Created: len(courses), Errors: errors}
+	respondJSON(w, http.StatusOK, result)
+}
+
+// ImportExcel POST /import/program-courses/excel — 导入方案课程 Excel，全量替换。
+func (h *ProgramCourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
+	_, ok := h.checkAuth(w, r)
+	if !ok { return }
+
+	programID := getProgramID(r)
+	if programID == "" { respondError(w, http.StatusBadRequest, "缺少方案ID programId"); return }
+
+	xlsx, _, err := parseUploadedExcel(r)
+	if err != nil { respondError(w, http.StatusBadRequest, "无法解析上传文件"); return }
+	defer xlsx.Close()
+
+	courses, errors := h.parseCourses(r, xlsx)
+	if len(courses) == 0 {
+		respondError(w, http.StatusBadRequest, "未解析到任何有效课程数据")
 		return
 	}
 
-	type course struct {
-		Name        string
-		Code        string
-		Credits     float64
-		Hours       int
-		Nature      string
-		ScenarioID  string
-		CourseID    string
+	tx, err := h.DB.Begin(r.Context())
+	if err != nil { respondError(w, http.StatusInternalServerError, "导入失败"); return }
+	defer tx.Rollback(r.Context())
+
+	if _, err := tx.Exec(r.Context(), `DELETE FROM training_program_courses WHERE program_id = $1`, programID); err != nil {
+		respondError(w, http.StatusInternalServerError, "清理旧数据失败"); return
 	}
-	courses := make([]course, 0)
-	errors := make([]string, 0)
+	for i, c := range courses {
+		var code *string
+		if c.Code != "" { code = &c.Code }
+		if _, err := tx.Exec(r.Context(),
+			`INSERT INTO training_program_courses (id, program_id, name, code, credits, hours, nature, scenario_id, course_id, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+			c.ID, programID, c.Name, code, c.Credits, c.Hours, c.Nature, c.ScenarioID, c.CourseID, i); err != nil {
+			respondError(w, http.StatusInternalServerError, "保存课程失败"); return
+		}
+	}
+	if err := tx.Commit(r.Context()); err != nil { respondError(w, http.StatusInternalServerError, "提交失败"); return }
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{"created": len(courses), "failed": len(errors), "entity": "方案课程", "errors": errors})
+}
+
+func (h *ProgramCourseImportHandler) checkAuth(w http.ResponseWriter, r *http.Request) (string, bool) {
+	tenantID, ok := requireTenant(w, r)
+	if !ok { return "", false }
+	claims := middleware.CurrentUser(r)
+	if claims == nil { respondError(w, http.StatusForbidden, "权限不足"); return "", false }
+	return tenantID, true
+}
+
+type pcCourse struct {
+	ID         string
+	Name       string
+	Code       string
+	Credits    float64
+	Hours      int
+	Nature     string
+	ScenarioID *string
+	CourseID   *string
+}
+
+func (h *ProgramCourseImportHandler) parseCourses(r *http.Request, xlsx *excelize.File) ([]pcCourse, []string) {
+	rows, err := xlsx.GetRows(pcImportSheet)
+	if err != nil { return nil, []string{"请使用名为「导入」的 Sheet"} }
+
+	courses := make([]pcCourse, 0)
+	errs := make([]string, 0)
 
 	for i, row := range rows {
-		if i < 2 {
-			continue
-		}
+		if i < 2 { continue }
 		rowNum := i + 1
-		if len(row) == 0 || strings.TrimSpace(col(row, 0)) == "" {
-			continue
-		}
+		if len(row) == 0 || strings.TrimSpace(col(row, 0)) == "" { continue }
 		name := strings.TrimSpace(col(row, 0))
 		code := strings.TrimSpace(col(row, 1))
 		creditsStr := strings.TrimSpace(col(row, 2))
@@ -77,77 +123,29 @@ func (h *ProgramCourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 		scenarioName := strings.TrimSpace(col(row, 5))
 		courseName := strings.TrimSpace(col(row, 6))
 
-		if name == "" {
-			errors = append(errors, "第"+strconv.Itoa(rowNum)+"行：课程名称不能为空")
-			continue
-		}
+		if name == "" { errs = append(errs, "第"+strconv.Itoa(rowNum)+"行：课程名称不能为空"); continue }
 		credits, _ := strconv.ParseFloat(creditsStr, 64)
 		hours, _ := strconv.Atoi(hoursStr)
-		if nature == "" {
-			nature = "必修"
-		}
+		if nature == "" { nature = "必修" }
 
-		var scenarioID, courseID string
+		c := pcCourse{ID: uuid.NewString(), Name: name, Code: code, Credits: credits, Hours: hours, Nature: nature}
+
 		if scenarioName != "" {
-			_ = h.DB.QueryRow(r.Context(), `SELECT id FROM scenarios WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, scenarioName).Scan(&scenarioID)
+			var id string
+			if err := h.DB.QueryRow(r.Context(), `SELECT id FROM scenarios WHERE name=$2 LIMIT 1`, scenarioName).Scan(&id); err == nil {
+				c.ScenarioID = &id
+			}
 		}
 		if courseName != "" {
-			_ = h.DB.QueryRow(r.Context(), `SELECT id FROM courses WHERE tenant_id=$1 AND name=$2 AND type='system' LIMIT 1`, tenantID, courseName).Scan(&courseID)
+			var id string
+			if err := h.DB.QueryRow(r.Context(), `SELECT id FROM courses WHERE name=$1 AND type='system' LIMIT 1`, courseName).Scan(&id); err == nil {
+				c.CourseID = &id
+			}
 		}
 
-		courses = append(courses, course{
-			Name: name, Code: code, Credits: credits, Hours: hours,
-			Nature: nature, ScenarioID: scenarioID, CourseID: courseID,
-		})
+		courses = append(courses, c)
 	}
-
-	if len(courses) == 0 {
-		respondError(w, http.StatusBadRequest, "未解析到任何有效课程数据")
-		return
-	}
-
-	tx, err := h.DB.Begin(r.Context())
-	if err != nil {
-		slog.Error("导入方案课程事务失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "导入失败")
-		return
-	}
-	defer tx.Rollback(r.Context())
-
-	if _, err := tx.Exec(r.Context(), `DELETE FROM training_program_courses WHERE program_id = $1`, programID); err != nil {
-		respondError(w, http.StatusInternalServerError, "清理旧数据失败")
-		return
-	}
-	for i, c := range courses {
-		var scid, cid *string
-		if c.ScenarioID != "" {
-			scid = &c.ScenarioID
-		}
-		if c.CourseID != "" {
-			cid = &c.CourseID
-		}
-		var code *string
-		if c.Code != "" {
-			code = &c.Code
-		}
-		if _, err := tx.Exec(r.Context(), `
-			INSERT INTO training_program_courses (id, program_id, name, code, credits, hours, nature, scenario_id, course_id, sort_order)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-		`, uuid.NewString(), programID, c.Name, code, c.Credits, c.Hours, c.Nature, scid, cid, i); err != nil {
-			slog.Error("插入方案课程失败", "error", err)
-			respondError(w, http.StatusInternalServerError, "保存课程失败")
-			return
-		}
-	}
-	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "提交失败")
-		return
-	}
-
-	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"created": len(courses),
-		"errors":  errors,
-	})
+	return courses, errs
 }
 
 // ServeTemplate GET /templates/program-courses — 下载方案课程导入模板。

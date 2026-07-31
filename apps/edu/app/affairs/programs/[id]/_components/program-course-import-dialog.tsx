@@ -4,8 +4,8 @@ import { useState, useRef } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@zhiyu/ui"
-import { Download, Upload, Loader2 } from "lucide-react"
-import { request } from "@zhiyu/api-client"
+import { Loader2, Download, FileUp } from "lucide-react"
+import { importExportApi } from "@zhiyu/api-client"
 
 interface ProgramCourseImportDialogProps {
   open: boolean
@@ -16,37 +16,50 @@ interface ProgramCourseImportDialogProps {
 
 export function ProgramCourseImportDialog({ open, onOpenChange, programId, onImported }: ProgramCourseImportDialogProps) {
   const { toast } = useToast()
-  const [file, setFile] = useState<File | null>(null)
+  const [files, setFiles] = useState<File[]>([])
   const [importing, setImporting] = useState(false)
   const [downloading, setDownloading] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleDownloadTemplate = async () => {
+  const handleAddFiles = (fl: FileList | null) => {
+    if (!fl) return
+    const existing = new Set(files.map((f) => f.name + "_" + f.size))
+    const added = Array.from(fl).filter((f) => !existing.has(f.name + "_" + f.size))
+    setFiles((prev) => [...prev, ...added])
+  }
+
+  const handleDownload = async () => {
     setDownloading(true)
     try {
+      const res = await importExportApi.downloadTemplate("program-courses")
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
-      a.href = "/api/v1/templates/program-courses"
-      a.download = "方案课程批量导入模板.xlsx"
-      a.click()
+      a.href = url; a.download = "方案课程批量导入模板.xlsx"; a.click()
+      URL.revokeObjectURL(url)
     } finally { setDownloading(false) }
   }
 
   const handleImport = async () => {
-    if (!file) return
+    if (files.length === 0) return
     setImporting(true)
     try {
-      const formData = new FormData()
-      formData.append("file", file)
-      const res = await request<{ created: number; errors: string[] }>(
-        `/import/program-courses/${programId}`,
-        { method: "POST", body: formData }
-      )
-      toast({ title: `导入完成`, description: `成功导入 ${res.created} 门课程${res.errors?.length ? "，" + res.errors.length + " 条错误" : ""}` })
-      onOpenChange(false)
-      setFile(null)
-      onImported()
+      const form = new FormData()
+      files.forEach((f) => form.append("file", f))
+      const res = await fetch(`/api/v1/import/program-courses/excel?programId=${encodeURIComponent(programId)}`, {
+        method: "POST", body: form,
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast({ title: "导入完成", description: `成功导入 ${data.created || 0} 门课程${data.errors?.length ? "，" + data.errors.length + " 条错误" : ""}` })
+        onOpenChange(false)
+        setFiles([])
+        onImported()
+      } else {
+        toast({ variant: "destructive", title: "导入失败", description: data.error || "请检查文件格式" })
+      }
     } catch (err: any) {
-      toast({ variant: "destructive", title: "导入失败", description: err.message || "请检查文件格式" })
+      toast({ variant: "destructive", title: "导入失败", description: err.message || "请稍后重试" })
     } finally { setImporting(false) }
   }
 
@@ -55,25 +68,26 @@ export function ProgramCourseImportDialog({ open, onOpenChange, programId, onImp
       <DialogContent>
         <DialogHeader>
           <DialogTitle>批量导入课程</DialogTitle>
-          <DialogDescription>下载模板，填写后上传，将替换当前方案的全部课程</DialogDescription>
+          <DialogDescription>下载模板填写后上传，将替换当前方案的全部课程</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <Button variant="outline" onClick={handleDownloadTemplate} disabled={downloading} className="w-full">
+          <Button variant="outline" onClick={handleDownload} disabled={downloading} className="w-full">
             {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
             下载导入模板
           </Button>
-          <div className="flex items-center gap-2">
-            <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
-              onChange={(e) => { if (e.target.files?.[0]) setFile(e.target.files[0]) }} />
-            <Button variant="outline" onClick={() => fileRef.current?.click()} className="flex-1">
-              {file ? file.name : "选择 Excel 文件"}
+          <div className="rounded-lg border border-dashed p-6 text-center">
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden"
+              onChange={(e) => handleAddFiles(e.target.files)} />
+            <Button variant="ghost" onClick={() => fileInputRef.current?.click()} className="mx-auto">
+              <FileUp className="mr-2 h-4 w-4" />
+              {files.length > 0 ? `已选 ${files.length} 个文件（${files.map((f) => f.name).join("、")}）` : "选择 Excel 文件"}
             </Button>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={importing}>取消</Button>
-          <Button onClick={handleImport} disabled={!file || importing}>
-            {importing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+          <Button variant="outline" onClick={() => { onOpenChange(false); setFiles([]) }} disabled={importing}>取消</Button>
+          <Button onClick={handleImport} disabled={files.length === 0 || importing}>
+            {importing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {importing ? "导入中..." : "开始导入"}
           </Button>
         </DialogFooter>
