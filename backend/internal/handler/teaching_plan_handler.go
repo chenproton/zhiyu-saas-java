@@ -30,15 +30,17 @@ type GenerateTeachingPlanRequest struct {
 }
 
 type UpdateTeachingPlanEntryRequest struct {
-	WeekHours   *int    `json:"weekHours"`
-	StartWeek   *int    `json:"startWeek"`
-	EndWeek     *int    `json:"endWeek"`
-	WeekPattern *string `json:"weekPattern"`
-	ClassNodeID *string `json:"classNodeId"`
-	TeacherID   *string `json:"teacherId"`
-	TeacherType *string `json:"teacherType"`
-	VenueType   *string `json:"venueType"`
-	Status      *string `json:"status"`
+	WeekHours   *int     `json:"weekHours"`
+	StartWeek   *int     `json:"startWeek"`
+	EndWeek     *int     `json:"endWeek"`
+	WeekPattern *string  `json:"weekPattern"`
+	ClassNodeID *string  `json:"classNodeId"`
+	TeacherID   *string  `json:"teacherId"`
+	TeacherType *string  `json:"teacherType"`
+	VenueType   *string  `json:"venueType"`
+	Status      *string  `json:"status"`
+	Credits     *float64 `json:"credits"`
+	TotalHours  *int     `json:"totalHours"`
 }
 
 type TeachingPlanDetailResponse struct {
@@ -285,6 +287,12 @@ func (h *TeachingPlanHandler) UpdateEntry(w http.ResponseWriter, r *http.Request
 	if req.VenueType != nil {
 		entry.VenueType = emptyStrToNil(req.VenueType)
 	}
+	if req.Credits != nil {
+		entry.Credits = *req.Credits
+	}
+	if req.TotalHours != nil {
+		entry.TotalHours = *req.TotalHours
+	}
 	if req.Status != nil {
 		if *req.Status != "planned" && *req.Status != "scheduled" {
 			respondError(w, http.StatusBadRequest, "状态仅支持 planned/scheduled")
@@ -300,11 +308,13 @@ func (h *TeachingPlanHandler) UpdateEntry(w http.ResponseWriter, r *http.Request
 	_, err = h.DB.Exec(r.Context(), `
 		UPDATE teaching_plan_entries e
 		SET week_hours = $1, start_week = $2, end_week = $3, week_pattern = $4,
-			class_node_id = $5, teacher_id = $6, teacher_type = $7, venue_type = $8, status = $9
+			class_node_id = $5, teacher_id = $6, teacher_type = $7, venue_type = $8, status = $9,
+			credits = COALESCE($12, credits), total_hours = COALESCE($13, total_hours)
 		FROM teaching_plans p
 		WHERE e.id = $10 AND p.id = e.plan_id AND p.tenant_id = $11
 	`, entry.WeekHours, entry.StartWeek, entry.EndWeek, entry.WeekPattern,
-		entry.ClassNodeID, entry.TeacherID, entry.TeacherType, entry.VenueType, entry.Status, id, tenantID)
+		entry.ClassNodeID, entry.TeacherID, entry.TeacherType, entry.VenueType, entry.Status, id, tenantID,
+		req.Credits, req.TotalHours)
 	if err != nil {
 		slog.Error("更新计划条目失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "更新计划条目失败")
