@@ -264,6 +264,7 @@ func (h *TemplateHandler) generateScenarioTemplate(ctx context.Context, tenantID
 	s1, _ := f.NewSheet("场景基本信息")
 	f.DeleteSheet("Sheet1")
 	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
 	headers1 := []string{"场景名称 *", "目标岗位", "面向行业", "适用专业", "难度等级", "场景介绍", "所属批次"}
 	widths1 := []float64{24, 22, 20, 26, 10, 48, 18}
 	setA1("场景基本信息", 7, "填写说明：\n* 必填列。编码由系统自动生成（格式: SC-YYYY-NNNN），无需填写\n目标岗位：从「岗位字典」Sheet 选取，匹配则关联，不匹配则忽略\n面向行业：从「行业字典」Sheet 选取，匹配则关联，不匹配则忽略\n适用专业：从「专业字典」Sheet 选取，多个逗号分隔；匹配则关联，不匹配则忽略\n难度等级：1-5，1 最易，5 最难\n导入后默认状态为 draft")
@@ -383,6 +384,7 @@ func (h *TemplateHandler) generateGranularCourseTemplate(ctx context.Context, te
 	s1, _ := f.NewSheet("课程基本信息")
 	f.DeleteSheet("Sheet1")
 	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
 	headers1 := []string{"课程名称 *", "适用专业", "难度", "预计课时", "学习目标", "关联知识点", "课程资源", "所属批次"}
 	widths1 := []float64{28, 24, 10, 12, 48, 28, 28, 20}
 	setA1("课程基本信息", 8, "填写说明：\n* 必填列。\n适用专业：从「专业字典」Sheet 选取，匹配则关联，不匹配则忽略\n难度：1-5，1 最易，5 最难\n预计课时：数字，单位小时\n学习目标：课程的总体学习要求\n关联知识点：从「知识点库」Sheet 选取，多个逗号分隔；匹配则关联，不匹配则自动新建并关联\n课程资源：从「任务资源库」Sheet 选取，多个逗号分隔；匹配则关联，不匹配则自动新建为文档类型资源并关联\n所属批次：从「批次字典」Sheet 选取，匹配则关联，不匹配则忽略\n导入后默认状态为 draft")
@@ -502,6 +504,7 @@ func (h *TemplateHandler) generateSystemCourseTemplate(ctx context.Context, tena
 	s1, _ := f.NewSheet("课程基本信息")
 	f.DeleteSheet("Sheet1")
 	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
 	headers1 := []string{"课程名称 *", "适用专业", "课程简介", "所属批次"}
 	widths1 := []float64{28, 24, 48, 20}
 	setA1("课程基本信息", 4, "填写说明：\n* 必填列。\n适用专业：从「专业字典」Sheet 选取，匹配则关联，不匹配则忽略\n所属批次：从「批次字典」Sheet 选取，匹配则关联，不匹配则忽略\n导入后默认状态为 draft")
@@ -705,7 +708,6 @@ func (h *TemplateHandler) ServeExamTemplate(w http.ResponseWriter, r *http.Reque
 
 func (h *TemplateHandler) generateQuestionBankTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
-	f.DeleteSheet("Sheet1")
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
@@ -732,6 +734,7 @@ func (h *TemplateHandler) generateQuestionBankTemplate(ctx context.Context, tena
 	// Sheet 1: 题库基本信息
 	s1, _ := f.NewSheet("题库基本信息")
 	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
 	headers1 := []string{"题库名称 *", "题库简介", "所属批次"}
 	widths1 := []float64{28, 42, 22}
 	setA1("题库基本信息", 3, "填写说明：\n* 必填列。\n所属批次：从「批次参考」Sheet 选取，匹配则关联，不匹配则忽略。\n导入后默认状态为 draft")
@@ -755,7 +758,6 @@ func (h *TemplateHandler) generateQuestionBankTemplate(ctx context.Context, tena
 
 func (h *TemplateHandler) generateQuestionTemplate(ctx context.Context, tenantID, bankID string) *excelize.File {
 	f := excelize.NewFile()
-	f.DeleteSheet("Sheet1")
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
@@ -785,6 +787,7 @@ func (h *TemplateHandler) generateQuestionTemplate(ctx context.Context, tenantID
 	// Sheet 1: 题目明细
 	s1, _ := f.NewSheet("题目明细")
 	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
 	headers1 := []string{"题型 *", "题目内容 *", "选项A", "选项B", "选项C", "选项D", "正确答案 *", "答案解析", "难度", "知识点", "分数", "来源"}
 	widths1 := []float64{12, 48, 24, 24, 24, 24, 28, 36, 10, 28, 10, 20}
 	setA1("题目明细", 12, fmt.Sprintf("填写说明：\n目标题库：%s\n* 必填列。\n题型：单选题 / 多选题 / 判断题 / 填空题 / 问答题 / 简答题\n单选题/多选题：填写选项A-D，正确答案可填选项文字或A/B/C/D\n判断题：正确答案填 正确/错误 或 true/false\n填空题：题目内容用 {1}、{2} 表示空位，正确答案用逗号分隔多个空位答案\n问答题/简答题：正确答案填写参考要点文本\n难度：简单 / 中等 / 困难\n知识点：多个用逗号分隔，不存在则自动新建\n导入后默认状态为 draft", bankName))
@@ -807,7 +810,6 @@ func (h *TemplateHandler) generateQuestionTemplate(ctx context.Context, tenantID
 
 func (h *TemplateHandler) generateExamTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
-	f.DeleteSheet("Sheet1")
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
@@ -834,6 +836,7 @@ func (h *TemplateHandler) generateExamTemplate(ctx context.Context, tenantID str
 	// Sheet 1: 试卷基本信息
 	s1, _ := f.NewSheet("试卷基本信息")
 	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
 	headers1 := []string{"试卷名称 *", "试卷简介", "所属批次"}
 	widths1 := []float64{28, 42, 22}
 	setA1("试卷基本信息", 3, "填写说明：\n* 必填列。\n所属批次：从「批次参考」Sheet 选取，匹配则关联，不匹配则忽略。\n导入后默认状态为 draft")
@@ -940,7 +943,6 @@ func (h *TemplateHandler) ServeTeacherTemplate(w http.ResponseWriter, r *http.Re
 
 func (h *TemplateHandler) generateIndustryTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
-	f.DeleteSheet("Sheet1")
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
@@ -966,6 +968,7 @@ func (h *TemplateHandler) generateIndustryTemplate(ctx context.Context, tenantID
 
 	s1, _ := f.NewSheet("行业列表")
 	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
 	headers := []string{"行业代码 *", "行业名称 *", "上级行业代码", "排序", "是否启用"}
 	widths := []float64{18, 28, 18, 10, 12}
 	setA1("行业列表", 5, "填写说明：\n* 必填列。\n行业代码：租户内唯一，已存在则更新。\n上级行业代码：填写本 Sheet 中已有的行业代码，或系统中已存在的行业代码；为空表示顶级行业。\n排序：数字，越小越靠前，默认为 0。\n是否启用：true/是/启用 表示启用；false/否/禁用 表示禁用，默认启用。")
@@ -978,7 +981,6 @@ func (h *TemplateHandler) generateIndustryTemplate(ctx context.Context, tenantID
 
 func (h *TemplateHandler) generateMajorTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
-	f.DeleteSheet("Sheet1")
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
@@ -1004,6 +1006,7 @@ func (h *TemplateHandler) generateMajorTemplate(ctx context.Context, tenantID st
 
 	s1, _ := f.NewSheet("专业列表")
 	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
 	headers := []string{"专业代码 *", "专业名称 *", "别名", "是否启用"}
 	widths := []float64{18, 30, 24, 12}
 	setA1("专业列表", 4, "填写说明：\n* 必填列。\n专业代码：租户内唯一，已存在则更新。\n别名：可选简称。\n是否启用：true/是/启用 表示启用；false/否/禁用 表示禁用，默认启用。")
@@ -1016,7 +1019,6 @@ func (h *TemplateHandler) generateMajorTemplate(ctx context.Context, tenantID st
 
 func (h *TemplateHandler) generateOrganizationTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
-	f.DeleteSheet("Sheet1")
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
@@ -1042,6 +1044,7 @@ func (h *TemplateHandler) generateOrganizationTemplate(ctx context.Context, tena
 
 	s1, _ := f.NewSheet("组织架构")
 	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
 	headers := []string{"组织名称 *", "组织类型 *", "父组织名称", "排序"}
 	widths := []float64{30, 20, 30, 10}
 	setA1("组织架构", 4, "填写说明：\n* 必填列。\n组织类型：须与「组织类型参考」Sheet 中的类型名称完全一致。\n父组织名称：填写本 Sheet 中已有的组织名称，或系统中已存在的组织名称；为空表示一级节点。\n排序：数字，越小越靠前，默认为 0。\n相同「组织名称+组织类型」的组合视为同一组织，重复导入会更新父组织和排序。")
@@ -1064,7 +1067,6 @@ func (h *TemplateHandler) generateOrganizationTemplate(ctx context.Context, tena
 
 func (h *TemplateHandler) generateStudentTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
-	f.DeleteSheet("Sheet1")
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
@@ -1090,6 +1092,7 @@ func (h *TemplateHandler) generateStudentTemplate(ctx context.Context, tenantID 
 
 	s1, _ := f.NewSheet("学生列表")
 	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
 	headers := []string{"登录账号(学号) *", "姓名 *", "密码 *", "班级(组织节点路径) *", "状态"}
 	widths := []float64{24, 16, 20, 42, 12}
 	setA1("学生列表", 5, "填写说明：\n* 必填列。\n登录账号(学号)：租户内唯一，已存在则跳过。\n密码：长度至少 8 位，且需同时包含字母和数字。\n班级(组织节点路径)：支持多级路径，用于精确定位班级。\n  格式示例：学校-学院-班级 或 学校/学院/班级\n  若系统中该班级名称唯一，也可只写班级名称。\n状态：正常 / 禁用 / 毕业，默认为正常。")
@@ -1105,7 +1108,6 @@ func (h *TemplateHandler) generateStudentTemplate(ctx context.Context, tenantID 
 
 func (h *TemplateHandler) generateTeacherTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
-	f.DeleteSheet("Sheet1")
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
@@ -1131,6 +1133,7 @@ func (h *TemplateHandler) generateTeacherTemplate(ctx context.Context, tenantID 
 
 	s1, _ := f.NewSheet("教师列表")
 	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
 	headers := []string{"登录账号(工号) *", "姓名 *", "密码 *", "所属组织节点(路径)", "职位(逗号分隔)", "状态"}
 	widths := []float64{24, 16, 20, 42, 28, 12}
 	setA1("教师列表", 6, "填写说明：\n* 必填列。\n登录账号(工号)：租户内唯一，已存在则跳过。\n密码：长度至少 8 位，且需同时包含字母和数字。\n所属组织节点(路径)：支持多级路径，用于精确定位组织节点。\n  格式示例：学校-学院 或 学校/学院\n  若系统中该组织节点名称唯一，也可只写组织节点名称。\n职位：多个职位用逗号分隔，须与系统中已存在的职位名称一致，不匹配则忽略。\n状态：正常 / 禁用，默认为正常。")
@@ -1344,7 +1347,6 @@ func (h *TemplateHandler) ServeBrandTopicTemplate(w http.ResponseWriter, r *http
 
 func (h *TemplateHandler) generateEnterpriseTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
-	f.DeleteSheet("Sheet1")
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
@@ -1370,6 +1372,7 @@ func (h *TemplateHandler) generateEnterpriseTemplate(ctx context.Context, tenant
 
 	s1, _ := f.NewSheet("合作企业")
 	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
 	headers := []string{"企业名称 *", "企业类型", "所属行业", "所在地区", "合作状态", "合作评级", "联系人", "联系电话", "联系邮箱", "企业地址"}
 	widths := []float64{28, 22, 20, 20, 22, 22, 18, 18, 24, 36}
 	setA1("合作企业", 10, "填写说明：\n* 必填列。\n企业类型：platform（平台企业） / school-based（校办企业），默认为 platform\n所属行业 / 所在地区：文本，选填\n合作状态：negotiating（洽谈中） / active（合作中） / paused（暂停） / terminated（终止），默认为 active\n合作评级：strategic（战略） / deep（深度） / general（一般），选填\n联系人 / 联系电话 / 联系邮箱 / 企业地址：选填")
@@ -1382,7 +1385,6 @@ func (h *TemplateHandler) generateEnterpriseTemplate(ctx context.Context, tenant
 
 func (h *TemplateHandler) generateProjectTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
-	f.DeleteSheet("Sheet1")
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
@@ -1408,6 +1410,7 @@ func (h *TemplateHandler) generateProjectTemplate(ctx context.Context, tenantID 
 
 	s1, _ := f.NewSheet("合作项目")
 	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
 	headers := []string{"项目名称 *", "项目类型", "项目阶段", "开始日期", "结束日期", "描述"}
 	widths := []float64{28, 20, 22, 16, 16, 48}
 	setA1("合作项目", 6, "填写说明：\n* 必填列。\n项目类型：文本，选填\n项目阶段：initiation（启动） / execution（执行） / acceptance（验收） / closure（关闭），默认为 initiation\n开始日期 / 结束日期：格式 YYYY-MM-DD，选填\n描述：文本，选填")
@@ -1420,7 +1423,6 @@ func (h *TemplateHandler) generateProjectTemplate(ctx context.Context, tenantID 
 
 func (h *TemplateHandler) generateAchievementTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
-	f.DeleteSheet("Sheet1")
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
@@ -1446,6 +1448,7 @@ func (h *TemplateHandler) generateAchievementTemplate(ctx context.Context, tenan
 
 	s1, _ := f.NewSheet("合作成果")
 	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
 	headers := []string{"成果名称 *", "成果类型", "描述", "成果日期"}
 	widths := []float64{28, 22, 48, 16}
 	setA1("合作成果", 4, "填写说明：\n* 必填列。\n成果类型：job（岗位） / scene（场景） / course（课程） / custom（自定义），默认为 custom\n描述：文本，选填\n成果日期：格式 YYYY-MM-DD，选填")
@@ -1458,7 +1461,6 @@ func (h *TemplateHandler) generateAchievementTemplate(ctx context.Context, tenan
 
 func (h *TemplateHandler) generateExpertTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
-	f.DeleteSheet("Sheet1")
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
@@ -1484,6 +1486,7 @@ func (h *TemplateHandler) generateExpertTemplate(ctx context.Context, tenantID s
 
 	s1, _ := f.NewSheet("专家资源")
 	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
 	headers := []string{"姓名 *", "头衔", "职位", "行业", "城市", "简介"}
 	widths := []float64{20, 22, 22, 20, 18, 48}
 	setA1("专家资源", 6, "填写说明：\n* 必填列。\n头衔 / 职位 / 行业 / 城市：文本，选填\n简介：文本，选填")
@@ -1496,7 +1499,6 @@ func (h *TemplateHandler) generateExpertTemplate(ctx context.Context, tenantID s
 
 func (h *TemplateHandler) generateAgreementTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
-	f.DeleteSheet("Sheet1")
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
@@ -1522,6 +1524,7 @@ func (h *TemplateHandler) generateAgreementTemplate(ctx context.Context, tenantI
 
 	s1, _ := f.NewSheet("合作协议")
 	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
 	headers := []string{"协议名称 *", "协议类型", "开始日期", "结束日期", "状态", "内容"}
 	widths := []float64{28, 22, 16, 16, 20, 48}
 	setA1("合作协议", 6, "填写说明：\n* 必填列。\n协议类型：文本，选填\n开始日期 / 结束日期：格式 YYYY-MM-DD，选填\n状态：draft（草稿）/ active（有效）/ expired（失效），默认为 draft\n内容：文本，选填")
@@ -1534,7 +1537,6 @@ func (h *TemplateHandler) generateAgreementTemplate(ctx context.Context, tenantI
 
 func (h *TemplateHandler) generatePermissionTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
-	f.DeleteSheet("Sheet1")
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
@@ -1560,6 +1562,7 @@ func (h *TemplateHandler) generatePermissionTemplate(ctx context.Context, tenant
 
 	s1, _ := f.NewSheet("合作权限")
 	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
 	headers := []string{"账号名称 *", "账号类型", "是否启用"}
 	widths := []float64{28, 22, 14}
 	setA1("合作权限", 3, "填写说明：\n* 必填列。\n账号类型：enterprise（企业） / expert（专家），默认为 enterprise\n是否启用：true / false 或 是 / 否，默认为 true（启用）")
@@ -1572,7 +1575,6 @@ func (h *TemplateHandler) generatePermissionTemplate(ctx context.Context, tenant
 
 func (h *TemplateHandler) generateBrandTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
-	f.DeleteSheet("Sheet1")
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
@@ -1598,6 +1600,7 @@ func (h *TemplateHandler) generateBrandTemplate(ctx context.Context, tenantID st
 
 	s1, _ := f.NewSheet("品牌内容")
 	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
 	headers := []string{"品牌类型 *", "名称 *", "描述"}
 	widths := []float64{28, 28, 48}
 	setA1("品牌内容", 3, "填写说明：\n* 必填列。\n品牌类型：talent（人才品牌） / employer（雇主品牌） / job（岗位品牌） / major（专业品牌） / teacher（教师品牌） / culture（文化品牌）\n名称：品牌名称\n描述：文本，选填")
@@ -1610,7 +1613,6 @@ func (h *TemplateHandler) generateBrandTemplate(ctx context.Context, tenantID st
 
 func (h *TemplateHandler) generateBrandTopicTemplate(ctx context.Context, tenantID string) *excelize.File {
 	f := excelize.NewFile()
-	f.DeleteSheet("Sheet1")
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
@@ -1636,6 +1638,7 @@ func (h *TemplateHandler) generateBrandTopicTemplate(ctx context.Context, tenant
 
 	s1, _ := f.NewSheet("品牌专题")
 	f.SetActiveSheet(s1)
+	f.DeleteSheet("Sheet1")
 	headers := []string{"专题名称 *", "主题", "布局", "描述"}
 	widths := []float64{28, 28, 22, 48}
 	setA1("品牌专题", 4, "填写说明：\n* 必填列。\n主题：文本，选填\n布局：grid（网格） / timeline（时间线） / magazine（杂志），默认为 grid\n描述：文本，选填")
