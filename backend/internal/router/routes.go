@@ -266,6 +266,93 @@ func registerLandingRoutes(r chi.Router, h *Handlers, cachedLandingExams func(ht
 	r.Get("/evaluation/landing/certifications/{id}/grades", h.certGradeHandler.ListGrades)
 }
 
+func registerAllianceRoutes(r chi.Router, h *Handlers) {
+	r.Route("/alliance", func(r chi.Router) {
+		r.Get("/school-info", h.allianceHandler.GetSchoolInfo)
+		r.Put("/school-info", h.allianceHandler.UpdateSchoolInfo)
+
+		r.Get("/enterprises", h.allianceHandler.ListEnterprises)
+		r.Post("/enterprises", h.allianceHandler.CreateEnterprise)
+		r.Get("/enterprises/{id}", h.allianceHandler.GetEnterprise)
+		r.Put("/enterprises/{id}", h.allianceHandler.UpdateEnterprise)
+		r.Delete("/enterprises/{id}", h.allianceHandler.DeleteEnterprise)
+
+		r.Get("/enterprises/{eid}/agreements", h.allianceHandler.ListEnterpriseAgreements)
+		r.Post("/enterprises/{eid}/agreements", h.allianceHandler.CreateEnterpriseAgreement)
+		r.Put("/enterprises/{eid}/agreements/{id}", h.allianceHandler.UpdateEnterpriseAgreement)
+		r.Delete("/enterprises/{eid}/agreements/{id}", h.allianceHandler.DeleteEnterpriseAgreement)
+
+		r.Get("/projects", h.allianceHandler.ListProjects)
+		r.Post("/projects", h.allianceHandler.CreateProject)
+		r.Get("/projects/{id}", h.allianceHandler.GetProject)
+		r.Put("/projects/{id}", h.allianceHandler.UpdateProject)
+		r.Delete("/projects/{id}", h.allianceHandler.DeleteProject)
+
+		r.Get("/projects/{pid}/milestones", h.allianceHandler.ListMilestones)
+		r.Post("/projects/{pid}/milestones", h.allianceHandler.CreateMilestone)
+		r.Put("/projects/{pid}/milestones/{id}", h.allianceHandler.UpdateMilestone)
+		r.Delete("/projects/{pid}/milestones/{id}", h.allianceHandler.DeleteMilestone)
+
+		r.Get("/achievements", h.allianceHandler.ListAchievements)
+		r.Post("/achievements", h.allianceHandler.CreateAchievement)
+		r.Get("/achievements/{id}", h.allianceHandler.GetAchievement)
+		r.Put("/achievements/{id}", h.allianceHandler.UpdateAchievement)
+		r.Delete("/achievements/{id}", h.allianceHandler.DeleteAchievement)
+
+		r.Get("/experts", h.allianceHandler.ListExperts)
+		r.Post("/experts", h.allianceHandler.CreateExpert)
+		r.Get("/experts/{id}", h.allianceHandler.GetExpert)
+		r.Put("/experts/{id}", h.allianceHandler.UpdateExpert)
+		r.Delete("/experts/{id}", h.allianceHandler.DeleteExpert)
+
+		r.Get("/agreements", h.allianceHandler.ListAgreements)
+		r.Post("/agreements", h.allianceHandler.CreateAgreement)
+		r.Get("/agreements/{id}", h.allianceHandler.GetAgreement)
+		r.Put("/agreements/{id}", h.allianceHandler.UpdateAgreement)
+		r.Delete("/agreements/{id}", h.allianceHandler.DeleteAgreement)
+
+		r.Get("/permissions", h.allianceHandler.ListPermissions)
+		r.Post("/permissions", h.allianceHandler.CreatePermission)
+		r.Put("/permissions/{id}", h.allianceHandler.UpdatePermission)
+		r.Delete("/permissions/{id}", h.allianceHandler.DeletePermission)
+
+		r.Get("/dictionaries/{dictType}", h.allianceHandler.ListDictionaryItems)
+		r.Post("/dictionaries/{dictType}", h.allianceHandler.CreateDictionaryItem)
+		r.Put("/dictionaries/{dictType}/{id}", h.allianceHandler.UpdateDictionaryItem)
+		r.Delete("/dictionaries/{dictType}/{id}", h.allianceHandler.DeleteDictionaryItem)
+
+		r.Get("/brands", h.allianceHandler.ListBrands)
+		r.Post("/brands", h.allianceHandler.CreateBrand)
+		r.Get("/brands/{id}", h.allianceHandler.GetBrand)
+		r.Put("/brands/{id}", h.allianceHandler.UpdateBrand)
+		r.Delete("/brands/{id}", h.allianceHandler.DeleteBrand)
+
+		r.Get("/brand-topics", h.allianceHandler.ListBrandTopics)
+		r.Post("/brand-topics", h.allianceHandler.CreateBrandTopic)
+		r.Get("/brand-topics/{id}", h.allianceHandler.GetBrandTopic)
+		r.Put("/brand-topics/{id}", h.allianceHandler.UpdateBrandTopic)
+		r.Delete("/brand-topics/{id}", h.allianceHandler.DeleteBrandTopic)
+	})
+
+	// 公开 API（前台展示）
+	r.Route("/alliance/public", func(r chi.Router) {
+		r.Get("/school-info", h.allianceHandler.GetPublicSchoolInfo)
+		r.Get("/enterprises", h.allianceHandler.ListPublicEnterprises)
+		r.Get("/enterprises/{id}", h.allianceHandler.GetPublicEnterprise)
+		r.Get("/projects", h.allianceHandler.ListPublicProjects)
+		r.Get("/projects/{id}", h.allianceHandler.GetPublicProject)
+		r.Get("/achievements", h.allianceHandler.ListPublicAchievements)
+		r.Get("/achievements/{id}", h.allianceHandler.GetPublicAchievement)
+		r.Get("/experts", h.allianceHandler.ListPublicExperts)
+		r.Get("/experts/{id}", h.allianceHandler.GetPublicExpert)
+		r.Get("/brands", h.allianceHandler.ListPublicBrands)
+		r.Get("/brands/{id}", h.allianceHandler.GetPublicBrand)
+		r.Get("/brand-topics", h.allianceHandler.ListPublicBrandTopics)
+		r.Get("/brand-topics/{id}", h.allianceHandler.GetPublicBrandTopic)
+		r.Get("/stats", h.allianceHandler.GetPublicStats)
+	})
+}
+
 func registerPortalRoutes(r chi.Router, h *Handlers) {
 	r.Get("/tenants", h.tenantHandler.List)
 	r.Get("/tenants/{id}", h.tenantHandler.Get)
@@ -352,4 +439,6 @@ func registerPortalRoutes(r chi.Router, h *Handlers) {
 
 	r.Get("/platform-links/{id}", h.platformLinkHandler.Get)
 	r.Get("/app-modules/{id}", h.appModuleHandler.Get)
+
+	registerAllianceRoutes(r, h)
 }
