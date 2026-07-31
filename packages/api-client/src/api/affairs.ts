@@ -153,6 +153,12 @@ export const scheduleApi = {
   /** 班级/教师课表视图（默认仅 published，含 version） */
   timetable: (params: { termId: string; classNodeId?: string; teacherId?: string; status?: string }) =>
     request<TimetableResponse>(`/affairs/schedules/timetable${buildQuery(params)}`),
+  /** 自动为教学计划待排条目分配时间+场地 */
+  autoSchedule: (req: { termId: string; planId?: string }) =>
+    request<{ success: number; failed: number; failures: string[] }>("/affairs/schedules/auto-schedule", {
+      method: "POST",
+      body: JSON.stringify(req),
+    }),
 }
 
 // ==================== 我的课表（学生/教师工作台） ====================

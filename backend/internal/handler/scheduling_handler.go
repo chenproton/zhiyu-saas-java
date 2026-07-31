@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -455,15 +456,31 @@ func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Reques
 		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
-	if !validateScheduleRequest(w, &req) {
-		return
-	}
 
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
 	ctx := r.Context()
+
+	// 班级兜底：请求未带班级且来源教学计划条目时，从条目中读取并回填；
+	// 若条目也没有班级，则拒绝并提示先去教学计划设置。
+	if req.ClassNodeID == "" && req.PlanEntryID != nil && *req.PlanEntryID != "" {
+		var planClassNodeID *string
+		_ = h.DB.QueryRow(ctx, `
+			SELECT class_node_id FROM teaching_plan_entries WHERE id = $1
+		`, *req.PlanEntryID).Scan(&planClassNodeID)
+		if planClassNodeID != nil && *planClassNodeID != "" {
+			req.ClassNodeID = *planClassNodeID
+		} else {
+			respondError(w, http.StatusBadRequest, "该教学计划条目尚未设置班级，请先在教学计划中设置班级")
+			return
+		}
+	}
+
+	if !validateScheduleRequest(w, &req) {
+		return
+	}
 
 	if _, err := h.fetchTermBrief(ctx, req.TermID, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "学期不存在")
@@ -653,6 +670,227 @@ func (h *SchedulingHandler) DeleteSchedule(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+}
+
+// AutoSchedule POST /affairs/schedules/auto-schedule — 为教学计划待排条目自动分配时间+场地。
+func (h *SchedulingHandler) AutoSchedule(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+
+	var req struct {
+		TermID string `json:"termId"`
+		PlanID string `json:"planId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.TermID == "" {
+		respondError(w, http.StatusBadRequest, "缺少必填字段 termId")
+		return
+	}
+
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	ctx := r.Context()
+
+	if _, err := h.fetchTermBrief(ctx, req.TermID, tenantID); err != nil {
+		respondError(w, http.StatusNotFound, "学期不存在")
+		return
+	}
+
+	// 加载节次与场地
+	periodRows, err := h.DB.Query(ctx, `
+		SELECT id, name, sort_order FROM period_slots WHERE tenant_id = $1 ORDER BY sort_order ASC
+	`, tenantID)
+	if err != nil {
+		slog.Error("自动排课加载节次失败", "error", err)
+		respondError(w, http.StatusInternalServerError, "加载节次失败")
+		return
+	}
+	defer periodRows.Close()
+	periodNames := make([]string, 0)
+	for periodRows.Next() {
+		var id, name string
+		var sortOrder int
+		if err := periodRows.Scan(&id, &name, &sortOrder); err != nil {
+			continue
+		}
+		periodNames = append(periodNames, name)
+	}
+	if len(periodNames) == 0 {
+		respondError(w, http.StatusBadRequest, "尚未配置节次，无法自动排课")
+		return
+	}
+
+	venueRows, err := h.DB.Query(ctx, `
+		SELECT id, name, type FROM venues WHERE tenant_id = $1 ORDER BY name
+	`, tenantID)
+	if err != nil {
+		slog.Error("自动排课加载场地失败", "error", err)
+		respondError(w, http.StatusInternalServerError, "加载场地失败")
+		return
+	}
+	defer venueRows.Close()
+	type venueInfo struct {
+		id   string
+		name string
+		vtype string
+	}
+	venues := make([]venueInfo, 0)
+	for venueRows.Next() {
+		var v venueInfo
+		if err := venueRows.Scan(&v.id, &v.name, &v.vtype); err != nil {
+			continue
+		}
+		venues = append(venues, v)
+	}
+	if len(venues) == 0 {
+		respondError(w, http.StatusBadRequest, "尚未配置场地，无法自动排课")
+		return
+	}
+
+	// 加载待排教学计划条目
+	var planFilter string
+	args := []interface{}{tenantID, req.TermID}
+	if req.PlanID != "" {
+		planFilter = " AND p.id = $3"
+		args = append(args, req.PlanID)
+	}
+	entryRows, err := h.DB.Query(ctx, `
+		SELECT e.id, e.course_name, e.course_code, e.type, e.start_week, e.end_week, e.week_pattern,
+			COALESCE(e.class_node_id::text, ''), COALESCE(e.teacher_id::text, ''), COALESCE(e.venue_type, ''),
+			COALESCE(e.scenario_id::text, ''), COALESCE(e.course_id::text, '')
+		FROM teaching_plan_entries e
+		JOIN teaching_plans p ON p.id = e.plan_id
+		WHERE p.tenant_id = $1 AND p.term_id = $2 AND p.status = 'confirmed' AND e.status = 'planned'`+planFilter+`
+		ORDER BY e.start_week, e.course_name
+	`, args...)
+	if err != nil {
+		slog.Error("自动排课加载待排条目失败", "error", err)
+		respondError(w, http.StatusInternalServerError, "加载待排条目失败")
+		return
+	}
+	defer entryRows.Close()
+
+	type planEntry struct {
+		id          string
+		courseName  string
+		courseCode  string
+		entryType   string
+		startWeek   int
+		endWeek     int
+		weekPattern string
+		classNodeID string
+		teacherID   string
+		venueType   string
+		scenarioID  string
+		courseID    string
+	}
+	pending := make([]planEntry, 0)
+	for entryRows.Next() {
+		var e planEntry
+		if err := entryRows.Scan(&e.id, &e.courseName, &e.courseCode, &e.entryType, &e.startWeek, &e.endWeek, &e.weekPattern,
+			&e.classNodeID, &e.teacherID, &e.venueType, &e.scenarioID, &e.courseID); err != nil {
+			continue
+		}
+		if e.classNodeID == "" {
+			continue
+		}
+		pending = append(pending, e)
+	}
+
+	success := 0
+	failed := 0
+	failures := make([]string, 0)
+
+	for _, e := range pending {
+		// 优先按 venueType 过滤场地，无匹配则使用全部场地
+		candidateVenues := venues
+		if e.venueType != "" {
+			filtered := make([]venueInfo, 0)
+			for _, v := range venues {
+				if v.vtype == e.venueType {
+					filtered = append(filtered, v)
+				}
+			}
+			if len(filtered) > 0 {
+				candidateVenues = filtered
+			}
+		}
+
+		placed := false
+		entryType := e.entryType
+		if entryType == "theory" || entryType == "practice" {
+			entryType = "traditional"
+		}
+
+	dayLoop:
+		for day := 1; day <= 7; day++ {
+			for _, periodName := range periodNames {
+				for _, venue := range candidateVenues {
+					schedReq := &ScheduleEntryRequest{
+						TermID:      req.TermID,
+						PlanEntryID: &e.id,
+						CourseName:  e.courseName,
+						CourseCode:  strPtrIfNonEmpty(e.courseCode),
+						CourseID:    strPtrIfNonEmpty(e.courseID),
+						Type:        entryType,
+						ClassNodeID: e.classNodeID,
+						TeacherID:   strPtrIfNonEmpty(e.teacherID),
+						DayOfWeek:   day,
+						Periods:     domain.JSONSlice{periodName},
+						StartWeek:   e.startWeek,
+						EndWeek:     e.endWeek,
+						WeekPattern: e.weekPattern,
+						VenueID:     &venue.id,
+						ScenarioID:  strPtrIfNonEmpty(e.scenarioID),
+					}
+					conflicts, err := h.checkScheduleConflicts(ctx, tenantID, schedReq, "")
+					if err != nil {
+						continue
+					}
+					if len(conflicts) > 0 {
+						continue
+					}
+
+					// 创建排课
+					weekPattern := e.weekPattern
+					if weekPattern == "" {
+						weekPattern = "all"
+					}
+					_, err = h.DB.Exec(ctx, `
+						INSERT INTO schedule_entries (id, tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
+							class_node_id, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
+							venue_id, scenario_id, source, status, version)
+						VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 'auto', 'draft', 1)
+					`, uuid.NewString(), tenantID, req.TermID, e.id, e.courseName, strPtrIfNonEmpty(e.courseCode),
+						strPtrIfNonEmpty(e.courseID), entryType, e.classNodeID, strPtrIfNonEmpty(e.teacherID), day,
+						domain.JSONSlice{periodName}, e.startWeek, e.endWeek, weekPattern, venue.id, strPtrIfNonEmpty(e.scenarioID))
+					if err != nil {
+						continue
+					}
+					// 标记教学计划条目为已排
+					_, _ = h.DB.Exec(ctx, `UPDATE teaching_plan_entries SET status = 'scheduled' WHERE id = $1`, e.id)
+					success++
+					placed = true
+					break dayLoop
+				}
+			}
+		}
+
+		if !placed {
+			failed++
+			failures = append(failures, fmt.Sprintf("%s：未找到可用时段", e.courseName))
+		}
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"success":  success,
+		"failed":   failed,
+		"failures": failures,
+	})
 }
 
 // PublishSchedules POST /affairs/schedules/publish — 按 term 批量发布（draft → published，version+1）。

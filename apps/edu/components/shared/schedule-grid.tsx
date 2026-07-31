@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import Link from "next/link"
-import { MapPin, User } from "lucide-react"
+import { MapPin, User, Pencil } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { PeriodSlot, ScheduleEntry } from "@/lib/types"
 
@@ -36,6 +36,12 @@ interface ScheduleGridProps {
   onCellClick?: (dayOfWeek: number, periodSlotKey: string) => void
   /** 即使无条目也渲染空表格（排课页始终显示网格） */
   alwaysShow?: boolean
+  /** 拖拽/快速切换：将条目移动到新格子 */
+  onEntryMove?: (entry: ScheduleEntry, dayOfWeek: number, periodSlotKey: string) => void
+  /** 点击已排课程卡片主体进入移动模式（与 onEntryClick 的编辑按钮共存） */
+  onEntryMoveStart?: (entry: ScheduleEntry) => void
+  /** 当前正在调整位置的目标条目（高亮显示） */
+  movingEntry?: ScheduleEntry | null
 }
 
 interface GridRow {
@@ -55,6 +61,9 @@ export function ScheduleGrid({
   getEntryHref,
   onCellClick,
   alwaysShow,
+  onEntryMove,
+  onEntryMoveStart,
+  movingEntry,
 }: ScheduleGridProps) {
   const visibleEntries = useMemo(() => filterEntriesByWeek(entries, week), [entries, week])
 
@@ -93,13 +102,31 @@ export function ScheduleGrid({
   const renderCard = (entry: ScheduleEntry) => {
     const isScene = entry.type === "scene"
     const href = getEntryHref?.(entry)
-    const clickable = !!href || !!onEntryClick
+    const canEdit = !!onEntryClick
+    const canMoveStart = !!onEntryMoveStart
+    const draggable = !!onEntryMove
+    const isMoving = movingEntry?.id === entry.id
     const card = (
       <div
+        draggable={draggable}
+        onDragStart={(e) => {
+          e.dataTransfer.setData("scheduleEntryId", entry.id)
+          e.dataTransfer.effectAllowed = "move"
+        }}
+        onClick={(e) => {
+          e.stopPropagation()
+          if (canMoveStart) {
+            onEntryMoveStart(entry)
+          } else {
+            onEntryClick?.(entry)
+          }
+        }}
         className={cn(
-          "w-full rounded-md border p-1.5 text-left text-xs leading-4",
+          "w-full rounded-md border p-1.5 text-left text-xs leading-4 select-none",
           isScene ? "border-orange-200 bg-orange-50" : "border-blue-200 bg-blue-50",
-          clickable && "cursor-pointer transition-shadow hover:shadow-md"
+          (canEdit || canMoveStart) && "cursor-pointer transition-shadow hover:shadow-md",
+          draggable && "cursor-move",
+          isMoving && "ring-2 ring-blue-500 shadow-md"
         )}
       >
         <div className="flex items-center gap-1">
@@ -108,6 +135,16 @@ export function ScheduleGrid({
             <span className="shrink-0 rounded-full bg-orange-100 px-1.5 py-px text-[10px] font-medium text-orange-600">
               场景
             </span>
+          )}
+          {canEdit && canMoveStart && (
+            <button
+              type="button"
+              title="编辑排课"
+              onClick={(e) => { e.stopPropagation(); onEntryClick?.(entry) }}
+              className="ml-auto shrink-0 rounded p-0.5 text-muted-foreground hover:bg-black/5 hover:text-foreground"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
           )}
         </div>
         {entry.teacherName && (
@@ -180,9 +217,31 @@ export function ScheduleGrid({
               </td>
               {DAY_LABELS.map((_, dayIdx) => {
                 const dayEntries = cellMap.get(`${dayIdx + 1}:${row.key}`) || []
+                const canDrop = !!onEntryMove && dayEntries.length === 0
                 return (
-                  <td key={dayIdx} className={cn("border px-1 py-1 align-top", onCellClick && "cursor-pointer hover:bg-blue-50/40 transition-colors")}
-                    onClick={() => { if (onCellClick && dayEntries.length === 0) onCellClick(dayIdx + 1, row.key) }}>
+                  <td
+                    key={dayIdx}
+                    className={cn(
+                      "border px-1 py-1 align-top",
+                      (onCellClick || canDrop) && "cursor-pointer hover:bg-blue-50/40 transition-colors",
+                      canDrop && "hover:bg-blue-50/60"
+                    )}
+                    onClick={() => {
+                      if (movingEntry && onEntryMove && dayEntries.length === 0) {
+                        onEntryMove(movingEntry, dayIdx + 1, row.key)
+                      } else if (onCellClick && dayEntries.length === 0) {
+                        onCellClick(dayIdx + 1, row.key)
+                      }
+                    }}
+                    onDragOver={(e) => { if (canDrop) { e.preventDefault(); e.dataTransfer.dropEffect = "move" } }}
+                    onDrop={(e) => {
+                      if (!canDrop || !onEntryMove) return
+                      e.preventDefault()
+                      const entryId = e.dataTransfer.getData("scheduleEntryId")
+                      const entry = visibleEntries.find((en) => en.id === entryId)
+                      if (entry) onEntryMove(entry, dayIdx + 1, row.key)
+                    }}
+                  >
                     <div className="space-y-1 min-h-[2rem]">{dayEntries.map(renderCard)}</div>
                   </td>
                 )

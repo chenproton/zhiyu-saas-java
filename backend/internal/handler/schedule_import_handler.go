@@ -160,6 +160,8 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 	}
 
 	sched := &SchedulingHandler{DB: h.DB}
+	// 记录需要同步为 scheduled 的教学计划条目
+	planEntryIDs := make(map[string]struct{})
 
 	for i, row := range rows {
 		if i < 2 {
@@ -234,13 +236,31 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 			scenarioID = &id
 		}
 
-		// 重复判定：同学期+班级+星期+课程且节次有交集
-		var existingID string
+		// 尝试匹配教学计划条目（用于覆盖已有排课并同步待排区状态）
+		var planEntryID *string
 		_ = h.DB.QueryRow(ctx, `
-			SELECT id::text FROM schedule_entries
-			WHERE tenant_id=$1 AND term_id=$2 AND class_node_id=$3 AND day_of_week=$4 AND course_name=$5 AND periods ?| $6
+			SELECT e.id::text FROM teaching_plan_entries e
+			JOIN teaching_plans p ON p.id = e.plan_id
+			WHERE p.tenant_id = $1 AND p.term_id = $2 AND e.class_node_id = $3 AND e.course_name = $4
 			LIMIT 1
-		`, tenantID, termID, classNodeID, sr.dayOfWeek, sr.courseName, sr.periods).Scan(&existingID)
+		`, tenantID, termID, classNodeID, sr.courseName).Scan(&planEntryID)
+
+		// 重复判定：优先按 plan_entry_id，其次按同学期+班级+星期+课程+节次交集
+		var existingID string
+		if planEntryID != nil && *planEntryID != "" {
+			_ = h.DB.QueryRow(ctx, `
+				SELECT id::text FROM schedule_entries
+				WHERE tenant_id=$1 AND plan_entry_id=$2
+				LIMIT 1
+			`, tenantID, *planEntryID).Scan(&existingID)
+		}
+		if existingID == "" {
+			_ = h.DB.QueryRow(ctx, `
+				SELECT id::text FROM schedule_entries
+				WHERE tenant_id=$1 AND term_id=$2 AND class_node_id=$3 AND day_of_week=$4 AND course_name=$5 AND periods ?| $6
+				LIMIT 1
+			`, tenantID, termID, classNodeID, sr.dayOfWeek, sr.courseName, sr.periods).Scan(&existingID)
+		}
 
 		if existingID != "" {
 			if preview {
@@ -258,6 +278,7 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 
 		req := &ScheduleEntryRequest{
 			TermID:      termID,
+			PlanEntryID: planEntryID,
 			CourseName:  sr.courseName,
 			ClassNodeID: classNodeID,
 			TeacherID:   teacherID,
@@ -299,26 +320,29 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 		if existingID != "" {
 			_, err := h.DB.Exec(ctx, `
 				UPDATE schedule_entries
-				SET course_code=$1, course_id=$2, type=$3, teacher_id=$4, periods=$5, start_week=$6, end_week=$7,
-					week_pattern=$8, venue_id=$9, scenario_id=$10, source='imported', updated_at=NOW()
-				WHERE id=$11 AND tenant_id=$12
-			`, courseCode, courseID, sr.entryType, teacherID, periods, sr.startWeek, sr.endWeek,
+				SET plan_entry_id=$1, course_code=$2, course_id=$3, type=$4, teacher_id=$5, periods=$6, start_week=$7, end_week=$8,
+					week_pattern=$9, venue_id=$10, scenario_id=$11, source='imported', updated_at=NOW()
+				WHERE id=$12 AND tenant_id=$13
+			`, planEntryID, courseCode, courseID, sr.entryType, teacherID, periods, sr.startWeek, sr.endWeek,
 				sr.weekPattern, venueID, scenarioID, existingID, tenantID)
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("第%d行课程[%s]更新失败: %v", rowNum, sr.courseName, err))
 				continue
 			}
+			if planEntryID != nil && *planEntryID != "" {
+				planEntryIDs[*planEntryID] = struct{}{}
+			}
 			result.Created++
 			continue
 		}
 
 		_, err = h.DB.Exec(ctx, `
-			INSERT INTO schedule_entries (id, tenant_id, term_id, course_name, course_code, course_id, type,
+			INSERT INTO schedule_entries (id, tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
 				class_node_id, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
 				venue_id, scenario_id, source, status, version)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'imported', 'draft', 1)
-		`, uuid.NewString(), tenantID, termID, sr.courseName, courseCode, courseID, sr.entryType,
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 'imported', 'draft', 1)
+		`, uuid.NewString(), tenantID, termID, planEntryID, sr.courseName, courseCode, courseID, sr.entryType,
 			classNodeID, teacherID, sr.dayOfWeek, periods, sr.startWeek, sr.endWeek, sr.weekPattern,
 			venueID, scenarioID)
 		if err != nil {
@@ -326,7 +350,21 @@ func (h *ScheduleImportHandler) processRows(ctx context.Context, xlsx *excelize.
 			result.Errors = append(result.Errors, fmt.Sprintf("第%d行课程[%s]创建失败: %v", rowNum, sr.courseName, err))
 			continue
 		}
+		if planEntryID != nil && *planEntryID != "" {
+			planEntryIDs[*planEntryID] = struct{}{}
+		}
 		result.Created++
+	}
+
+	// 将本次涉及的教学计划条目同步标记为已排
+	if !preview && len(planEntryIDs) > 0 {
+		ids := make([]string, 0, len(planEntryIDs))
+		for id := range planEntryIDs {
+			ids = append(ids, id)
+		}
+		_, _ = h.DB.Exec(ctx, `
+			UPDATE teaching_plan_entries SET status = 'scheduled' WHERE id = ANY($1)
+		`, ids)
 	}
 
 	return result

@@ -1,13 +1,16 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { FileUp, Clock3, CalendarDays, CheckCircle2, X, MapPin, Users, Download } from "lucide-react"
+import { FileUp, Clock3, CalendarDays, CheckCircle2, X, MapPin, Users, Download, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@zhiyu/ui"
 import { ScheduleGrid } from "@/components/shared/schedule-grid"
-import { periodSlotApi, scheduleApi, venueApi } from "@/lib/api"
+import { OrgNodePicker } from "@/components/shared/org-node-picker"
+import { usePortalAuth } from "@/contexts/portal-auth-context"
+import { periodSlotApi, scheduleApi, teachingPlanApi, venueApi } from "@/lib/api"
 import type { PeriodSlot, ScheduleEntry, TeachingPlan, TeachingPlanEntry, Venue } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { ScheduleFormDialog } from "./schedule-form-dialog"
@@ -21,6 +24,7 @@ interface ScheduleGridTabProps {
 
 export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGridTabProps) {
   const { toast } = useToast()
+  const { tenantId } = usePortalAuth()
 
   const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([])
   const [gridLoading, setGridLoading] = useState(false)
@@ -37,6 +41,12 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
   const [savingQuick, setSavingQuick] = useState(false)
 
   const [venueFilter, setVenueFilter] = useState<string>("__all")
+
+  const [movingEntry, setMovingEntry] = useState<ScheduleEntry | null>(null)
+
+  const [missingClassEntry, setMissingClassEntry] = useState<TeachingPlanEntry | null>(null)
+  const [pendingClassNodeId, setPendingClassNodeId] = useState<string | undefined>(undefined)
+  const [savingClass, setSavingClass] = useState(false)
 
   const pendingEntries = useMemo(() => planEntries.filter((e) => e.status === "planned"), [planEntries])
   const scheduledCount = useMemo(() => planEntries.filter((e) => e.status === "scheduled").length, [planEntries])
@@ -91,8 +101,52 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
     onPlanChanged()
   }, [loadScheduleEntries, onPlanChanged])
 
+  const handleEntryMove = useCallback(async (entry: ScheduleEntry, dayOfWeek: number, periodKey: string) => {
+    setSavingQuick(true)
+    try {
+      await scheduleApi.update(entry.id, {
+        termId: entry.termId,
+        planEntryId: entry.planEntryId,
+        courseName: entry.courseName,
+        courseCode: entry.courseCode || undefined,
+        courseId: entry.courseId || undefined,
+        type: entry.type,
+        classNodeId: entry.classNodeId,
+        teacherId: entry.teacherId || undefined,
+        dayOfWeek,
+        periods: [periodKey],
+        startWeek: entry.startWeek,
+        endWeek: entry.endWeek,
+        weekPattern: entry.weekPattern,
+        venueId: entry.venueId || undefined,
+        scenarioId: entry.scenarioId || undefined,
+      })
+      toast({ title: "排课已调整", description: `${entry.courseName} 已移动到周${dayOfWeek} ${periodKey}` })
+      reloadAll()
+    } catch (err: any) {
+      const c = err?.conflicts
+      if (c && c.length > 0) {
+        const msgs = c.map((x: any) => `${x.kind === "teacher" ? "教师" : x.kind === "class" ? "班级" : "场地"}冲突：${x.courseName}`).join("；")
+        toast({ variant: "destructive", title: "排课冲突", description: msgs })
+      } else {
+        toast({ variant: "destructive", title: "调整失败", description: err.message || "请稍后重试" })
+      }
+    } finally { setSavingQuick(false) }
+  }, [toast, reloadAll])
+
   const handleCellClick = useCallback(async (dayOfWeek: number, periodKey: string) => {
-    if (!selectedEntry || savingQuick) return
+    if (savingQuick) return
+    if (movingEntry) {
+      await handleEntryMove(movingEntry, dayOfWeek, periodKey)
+      setMovingEntry(null)
+      return
+    }
+    if (!selectedEntry) return
+    if (!selectedEntry.classNodeId) {
+      setMissingClassEntry(selectedEntry)
+      setPendingClassNodeId(undefined)
+      return
+    }
     setSavingQuick(true)
     try {
       await scheduleApi.create({
@@ -102,7 +156,7 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
         courseCode: selectedEntry.courseCode || undefined,
         courseId: selectedEntry.courseId || undefined,
         type: selectedEntry.type || "traditional",
-        classNodeId: selectedEntry.classNodeId || "",
+        classNodeId: selectedEntry.classNodeId,
         teacherId: selectedEntry.teacherId || undefined,
         dayOfWeek,
         periods: [periodKey],
@@ -123,13 +177,17 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
         toast({ variant: "destructive", title: "排课失败", description: err.message || "请稍后重试" })
       }
     } finally { setSavingQuick(false) }
-  }, [selectedEntry, savingQuick, plan.termId, toast, reloadAll])
+  }, [selectedEntry, savingQuick, plan.termId, toast, reloadAll, movingEntry, handleEntryMove])
 
   const handleEditClick = (entry: ScheduleEntry) => {
     setActiveScheduleEntry(entry)
     setActivePlanEntry(null)
     setFormOpen(true)
   }
+
+  const handleEntryMoveStart = useCallback((entry: ScheduleEntry) => {
+    setMovingEntry((prev) => (prev?.id === entry.id ? null : entry))
+  }, [])
 
   const getAssignedVenues = (e: TeachingPlanEntry) => {
     return scheduleEntries.filter((se) => se.planEntryId === e.id).map((se) => se.venueName).filter(Boolean)
@@ -152,6 +210,31 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
           </Button>
           <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
             <FileUp className="mr-1 size-4" />导入
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              setSavingQuick(true)
+              try {
+                const res = await scheduleApi.autoSchedule({ termId: plan.termId, planId: plan.id })
+                if (res.failed > 0) {
+                  toast({
+                    variant: "default",
+                    title: `自动排课完成：成功 ${res.success} 门，失败 ${res.failed} 门`,
+                    description: res.failures.slice(0, 5).join("；") + (res.failures.length > 5 ? "…" : ""),
+                  })
+                } else {
+                  toast({ title: "自动排课完成", description: `成功为 ${res.success} 门课程分配了时间与场地` })
+                }
+                reloadAll()
+              } catch (err: any) {
+                toast({ variant: "destructive", title: "自动排课失败", description: err.message || "请检查节次、场地是否已配置" })
+              } finally { setSavingQuick(false) }
+            }}
+            disabled={savingQuick || pendingEntries.length === 0}
+          >
+            <Sparkles className="mr-1 size-4" />自动排课
           </Button>
         </div>
       </div>
@@ -227,6 +310,13 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
                   <Button variant="ghost" size="sm" className="ml-auto h-5 px-1.5 text-[10px]" onClick={() => setSelectedPendingId(null)}><X className="mr-0.5 h-3 w-3" />取消</Button>
                 </div>
               )}
+              {movingEntry && (
+                <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700">
+                  <span className="font-medium">调整位置：{movingEntry.courseName}</span>
+                  <span>→ 点击目标空格切换时间/场地，或拖拽卡片到新格子</span>
+                  <Button variant="ghost" size="sm" className="ml-auto h-5 px-1.5 text-[10px]" onClick={() => setMovingEntry(null)}><X className="mr-0.5 h-3 w-3" />取消</Button>
+                </div>
+              )}
               <ScheduleGrid
                 entries={filteredEntries}
                 periodSlots={periodSlots}
@@ -235,6 +325,9 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
                 emptyText="暂无排课，选择左侧课程后点击此处空格"
                 onEntryClick={handleEditClick}
                 onCellClick={selectedEntry ? handleCellClick : undefined}
+                onEntryMove={handleEntryMove}
+                onEntryMoveStart={handleEntryMoveStart}
+                movingEntry={movingEntry}
               />
             </div>
           )}
@@ -248,6 +341,49 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
         onSaved={reloadAll} onDeleted={reloadAll} />
 
       <ScheduleImportDialog open={importOpen} onOpenChange={setImportOpen} onImported={reloadAll} />
+
+      <Dialog open={!!missingClassEntry} onOpenChange={(open) => { if (!open) setMissingClassEntry(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>补全授课班级</DialogTitle>
+            <DialogDescription>
+              「{missingClassEntry?.courseName}」尚未设置班级，请先在教学计划中设置，或在此处临时指定。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <OrgNodePicker
+              tenantId={tenantId}
+              value={pendingClassNodeId}
+              onChange={setPendingClassNodeId}
+              selectableTypes={["班级"]}
+              placeholder="选择授课班级"
+              title="选择授课班级"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMissingClassEntry(null)} disabled={savingClass}>取消</Button>
+            <Button
+              disabled={!pendingClassNodeId || savingClass}
+              onClick={async () => {
+                if (!missingClassEntry || !pendingClassNodeId) return
+                setSavingClass(true)
+                try {
+                  await teachingPlanApi.updateEntry(missingClassEntry.id, { classNodeId: pendingClassNodeId })
+                  toast({ title: "班级已保存", description: "请重新点击目标时间格完成排课" })
+                  setMissingClassEntry(null)
+                  await onPlanChanged()
+                } catch (err: any) {
+                  toast({ variant: "destructive", title: "保存失败", description: err.message || "保存班级失败" })
+                } finally {
+                  setSavingClass(false)
+                }
+              }}
+            >
+              {savingClass ? "保存中..." : "保存并继续排课"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -24,6 +24,8 @@ import { useToast } from "@zhiyu/ui"
 import { PageHeaderCard } from "@/components/shared/page-header-card"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { UserSelector } from "@/components/shared/user-selector"
+import { OrgNodePicker } from "@/components/shared/org-node-picker"
+import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { teachingPlanApi } from "@/lib/api"
 import type { TeachingPlanDetail, TeachingPlanEntry } from "@/lib/types"
 import { EntryTypeBadge } from "./_components/entry-type-badge"
@@ -43,6 +45,7 @@ export default function TeachingPlanDetailPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const { toast } = useToast()
+  const { tenantId } = usePortalAuth()
   const id = params.id
 
   const [plan, setPlan] = useState<TeachingPlanDetail | null>(null)
@@ -54,6 +57,7 @@ export default function TeachingPlanDetailPage() {
   const [editEndWeek, setEditEndWeek] = useState("")
   const [editTeacherType, setEditTeacherType] = useState("")
   const [editVenueType, setEditVenueType] = useState("")
+  const [editClassNodeId, setEditClassNodeId] = useState<string | undefined>(undefined)
   const [savingEntry, setSavingEntry] = useState(false)
 
   const loadPlan = useCallback(async () => {
@@ -88,6 +92,7 @@ export default function TeachingPlanDetailPage() {
     setEditEndWeek(String(e.endWeek))
     setEditTeacherType(e.teacherType || "")
     setEditVenueType(e.venueType || "")
+    setEditClassNodeId(e.classNodeId)
   }
 
   const handleSaveEntry = async (entryId: string) => {
@@ -98,6 +103,7 @@ export default function TeachingPlanDetailPage() {
         endWeek: Number(editEndWeek) || 1,
         teacherType: editTeacherType,
         venueType: editVenueType,
+        classNodeId: editClassNodeId,
       })
       replaceEntry(updated)
       setEditingId(null)
@@ -147,7 +153,8 @@ export default function TeachingPlanDetailPage() {
                 <TableHead className="w-[70px]">学分</TableHead>
                 <TableHead className="w-[80px]">总学时</TableHead>
                 <TableHead className="w-[150px]">起止周</TableHead>
-                <TableHead className="w-[200px]">教师</TableHead>
+                <TableHead className="w-[160px]">班级</TableHead>
+                <TableHead className="w-[160px]">教师</TableHead>
                 <TableHead className="w-[120px]">场地类型</TableHead>
                 <TableHead className="w-[90px]">状态</TableHead>
                 <TableHead className="sticky right-0 w-[100px] bg-white text-right">操作</TableHead>
@@ -155,14 +162,14 @@ export default function TeachingPlanDetailPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={9} className="h-24 text-center text-muted-foreground">加载中...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="h-24 text-center text-muted-foreground">加载中...</TableCell></TableRow>
               ) : groups.length === 0 ? (
-                <TableRow><TableCell colSpan={9} className="h-24 text-center text-muted-foreground">暂无教学条目</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="h-24 text-center text-muted-foreground">暂无教学条目</TableCell></TableRow>
               ) : (
                 groups.map(([startWeek, groupEntries]) => (
                   <Fragment key={`group-${startWeek}`}>
                     <TableRow className="bg-muted/40 hover:bg-muted/40">
-                      <TableCell colSpan={9} className="py-1.5 text-xs font-medium text-muted-foreground">
+                      <TableCell colSpan={10} className="py-1.5 text-xs font-medium text-muted-foreground">
                         第 {startWeek} 周起（{groupEntries.length} 门）
                       </TableCell>
                     </TableRow>
@@ -187,6 +194,20 @@ export default function TeachingPlanDetailPage() {
                               </div>
                             ) : (
                               <span className="text-sm">第 {e.startWeek}-{e.endWeek} 周</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {editing ? (
+                              <OrgNodePicker
+                                tenantId={tenantId}
+                                value={editClassNodeId}
+                                onChange={setEditClassNodeId}
+                                selectableTypes={["班级"]}
+                                placeholder="选择班级"
+                                title="选择授课班级"
+                              />
+                            ) : (
+                              <span className="text-sm">{e.className || "-"}</span>
                             )}
                           </TableCell>
                           <TableCell>

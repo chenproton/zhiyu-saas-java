@@ -42,6 +42,14 @@ func emptyStrToNil(s *string) *string {
 	return s
 }
 
+// strPtrIfNonEmpty 将非空字符串转为 *string，空字符串返回 nil。
+func strPtrIfNonEmpty(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
 // coalesceStringSlice 将 nil 切片转为空切片，避免 SQL 参数中写入 NULL。
 func coalesceStringSlice(s []string) []string {
 	if s == nil {

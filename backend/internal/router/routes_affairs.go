@@ -43,6 +43,7 @@ func registerAffairsRoutes(r chi.Router, h *Handlers) {
 	// 排课
 	r.Get("/affairs/schedules", h.schedulingHandler.ListSchedules)
 	r.Post("/affairs/schedules", h.schedulingHandler.CreateSchedule)
+	r.Post("/affairs/schedules/auto-schedule", h.schedulingHandler.AutoSchedule)
 	r.Put("/affairs/schedules/{id}", h.schedulingHandler.UpdateSchedule)
 	r.Delete("/affairs/schedules/{id}", h.schedulingHandler.DeleteSchedule)
 	r.Post("/affairs/schedules/publish", h.schedulingHandler.PublishSchedules)
