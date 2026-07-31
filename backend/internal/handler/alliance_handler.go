@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -13,6 +14,14 @@ import (
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
+
+func formatNullableDate(t *time.Time) *string {
+	if t == nil {
+		return nil
+	}
+	s := t.Format("2006-01-02")
+	return &s
+}
 
 type AllianceHandler struct {
 	DB    *pgxpool.Pool
@@ -1723,7 +1732,8 @@ func (h *AllianceHandler) ListPublicProjects(w http.ResponseWriter, r *http.Requ
 func (h *AllianceHandler) GetPublicProject(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var p domain.AllianceProject
-	var typ, description, startDate, endDate, budget, coverImage *string
+	var typ, description, budget, coverImage *string
+	var startDate, endDate *time.Time
 	var enterpriseIDs, agreementIDs, colleges json.RawMessage
 	err := h.DB.QueryRow(r.Context(), `
 		SELECT id, tenant_id, name, type, description, phase, publish_status,
@@ -1739,8 +1749,8 @@ func (h *AllianceHandler) GetPublicProject(w http.ResponseWriter, r *http.Reques
 	}
 	p.Type = typ
 	p.Description = description
-	p.StartDate = startDate
-	p.EndDate = endDate
+	p.StartDate = formatNullableDate(startDate)
+	p.EndDate = formatNullableDate(endDate)
 	p.Budget = budget
 	p.CoverImage = coverImage
 	p.EnterpriseIDs = enterpriseIDs
@@ -1770,7 +1780,8 @@ func (h *AllianceHandler) ListPublicAchievements(w http.ResponseWriter, r *http.
 func (h *AllianceHandler) GetPublicAchievement(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var a domain.AllianceAchievement
-	var description, achievementDate, coverImage, citationReason *string
+	var description, coverImage, citationReason *string
+	var achievementDate *time.Time
 	var attachments, images, ownerPersons, coBuilders, enterpriseIDs, projectIDs, relatedPositions, relatedScenes, relatedCourses, colleges json.RawMessage
 	err := h.DB.QueryRow(r.Context(), `
 		SELECT id, tenant_id, title, type, description, achievement_date, cover_image,
@@ -1788,7 +1799,7 @@ func (h *AllianceHandler) GetPublicAchievement(w http.ResponseWriter, r *http.Re
 		return
 	}
 	a.Description = description
-	a.AchievementDate = achievementDate
+	a.AchievementDate = formatNullableDate(achievementDate)
 	a.CoverImage = coverImage
 	a.Attachments = attachments
 	a.CitationReason = citationReason

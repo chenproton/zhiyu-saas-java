@@ -319,15 +319,16 @@ func (s *AllianceStore) ScanEnterpriseAgreementRows(rows pgx.Rows) ([]domain.All
 	items := make([]domain.AllianceEnterpriseAgreement, 0)
 	for rows.Next() {
 		var a domain.AllianceEnterpriseAgreement
-		var typ, startDate, endDate, content *string
+		var typ, content *string
+		var startDate, endDate *time.Time
 		var attachments json.RawMessage
 		if err := rows.Scan(&a.ID, &a.TenantID, &a.EnterpriseID, &a.Name, &typ, &startDate,
 			&endDate, &a.Status, &content, &attachments, &a.CreatedAt, &a.UpdatedAt); err != nil {
 			return nil, err
 		}
 		a.Type = typ
-		a.StartDate = startDate
-		a.EndDate = endDate
+		a.StartDate = formatDate(startDate)
+		a.EndDate = formatDate(endDate)
 		a.Content = content
 		a.Attachments = attachments
 		items = append(items, a)
@@ -337,7 +338,8 @@ func (s *AllianceStore) ScanEnterpriseAgreementRows(rows pgx.Rows) ([]domain.All
 
 func (s *AllianceStore) GetEnterpriseAgreementByID(ctx context.Context, id, tenantID string) (*domain.AllianceEnterpriseAgreement, error) {
 	var a domain.AllianceEnterpriseAgreement
-	var typ, startDate, endDate, content *string
+	var typ, content *string
+	var startDate, endDate *time.Time
 	var attachments json.RawMessage
 	err := s.DB.QueryRow(ctx, `
 		SELECT id, tenant_id, enterprise_id, name, type, start_date, end_date, status,
@@ -349,8 +351,8 @@ func (s *AllianceStore) GetEnterpriseAgreementByID(ctx context.Context, id, tena
 		return nil, err
 	}
 	a.Type = typ
-	a.StartDate = startDate
-	a.EndDate = endDate
+	a.StartDate = formatDate(startDate)
+	a.EndDate = formatDate(endDate)
 	a.Content = content
 	a.Attachments = attachments
 	return &a, nil
@@ -487,15 +489,16 @@ func (s *AllianceStore) ScanMilestoneRows(rows pgx.Rows) ([]domain.AllianceProje
 	items := make([]domain.AllianceProjectMilestone, 0)
 	for rows.Next() {
 		var m domain.AllianceProjectMilestone
-		var description, dueDate, completedDate *string
+		var description *string
+		var dueDate, completedDate *time.Time
 		if err := rows.Scan(&m.ID, &m.TenantID, &m.ProjectID, &m.Name, &description,
 			&dueDate, &completedDate, &m.IsCompleted, &m.SortOrder,
 			&m.CreatedAt, &m.UpdatedAt); err != nil {
 			return nil, err
 		}
 		m.Description = description
-		m.DueDate = dueDate
-		m.CompletedDate = completedDate
+		m.DueDate = formatDate(dueDate)
+		m.CompletedDate = formatDate(completedDate)
 		items = append(items, m)
 	}
 	return items, nil
@@ -536,7 +539,8 @@ func (s *AllianceStore) ScanAchievementRows(rows pgx.Rows) ([]domain.AllianceAch
 	items := make([]domain.AllianceAchievement, 0)
 	for rows.Next() {
 		var a domain.AllianceAchievement
-		var description, achievementDate, coverImage, citationReason *string
+		var description, coverImage, citationReason *string
+		var achievementDate *time.Time
 		var attachments, images, ownerPersons, coBuilders, enterpriseIDs, projectIDs, relatedPositions, relatedScenes, relatedCourses, colleges json.RawMessage
 		if err := rows.Scan(&a.ID, &a.TenantID, &a.Title, &a.Type, &description, &achievementDate,
 			&coverImage, &attachments, &citationReason, &images, &ownerPersons, &coBuilders,
@@ -546,7 +550,7 @@ func (s *AllianceStore) ScanAchievementRows(rows pgx.Rows) ([]domain.AllianceAch
 			return nil, err
 		}
 		a.Description = description
-		a.AchievementDate = achievementDate
+		a.AchievementDate = formatDate(achievementDate)
 		a.CoverImage = coverImage
 		a.Attachments = attachments
 		a.CitationReason = citationReason
@@ -607,7 +611,8 @@ func (s *AllianceStore) DeleteAchievement(ctx context.Context, id, tenantID stri
 
 func (s *AllianceStore) GetAchievementByID(ctx context.Context, id, tenantID string) (*domain.AllianceAchievement, error) {
 	var a domain.AllianceAchievement
-	var description, achievementDate, coverImage, citationReason *string
+	var description, coverImage, citationReason *string
+	var achievementDate *time.Time
 	var attachments, images, ownerPersons, coBuilders, enterpriseIDs, projectIDs, relatedPositions, relatedScenes, relatedCourses, colleges json.RawMessage
 	err := s.DB.QueryRow(ctx, `
 		SELECT id, tenant_id, title, type, description, achievement_date, cover_image,
@@ -624,7 +629,7 @@ func (s *AllianceStore) GetAchievementByID(ctx context.Context, id, tenantID str
 		return nil, err
 	}
 	a.Description = description
-	a.AchievementDate = achievementDate
+	a.AchievementDate = formatDate(achievementDate)
 	a.CoverImage = coverImage
 	a.Attachments = attachments
 	a.CitationReason = citationReason
@@ -777,7 +782,8 @@ func (s *AllianceStore) ScanAgreementRows(rows pgx.Rows) ([]domain.AllianceAgree
 	items := make([]domain.AllianceAgreement, 0)
 	for rows.Next() {
 		var a domain.AllianceAgreement
-		var typ, content, startDate, endDate *string
+		var typ, content *string
+		var startDate, endDate *time.Time
 		var enterpriseIDs, attachments json.RawMessage
 		if err := rows.Scan(&a.ID, &a.TenantID, &a.Name, &typ, &content, &startDate,
 			&endDate, &a.Status, &enterpriseIDs, &attachments,
@@ -786,8 +792,8 @@ func (s *AllianceStore) ScanAgreementRows(rows pgx.Rows) ([]domain.AllianceAgree
 		}
 		a.Type = typ
 		a.Content = content
-		a.StartDate = startDate
-		a.EndDate = endDate
+		a.StartDate = formatDate(startDate)
+		a.EndDate = formatDate(endDate)
 		a.EnterpriseIDs = enterpriseIDs
 		a.Attachments = attachments
 		items = append(items, a)
@@ -827,7 +833,8 @@ func (s *AllianceStore) DeleteAgreement(ctx context.Context, id, tenantID string
 
 func (s *AllianceStore) GetAgreementByID(ctx context.Context, id, tenantID string) (*domain.AllianceAgreement, error) {
 	var a domain.AllianceAgreement
-	var typ, content, startDate, endDate *string
+	var typ, content *string
+	var startDate, endDate *time.Time
 	var enterpriseIDs, attachments json.RawMessage
 	err := s.DB.QueryRow(ctx, `
 		SELECT id, tenant_id, name, type, content, start_date, end_date, status,
@@ -840,8 +847,8 @@ func (s *AllianceStore) GetAgreementByID(ctx context.Context, id, tenantID strin
 	}
 	a.Type = typ
 	a.Content = content
-	a.StartDate = startDate
-	a.EndDate = endDate
+	a.StartDate = formatDate(startDate)
+	a.EndDate = formatDate(endDate)
 	a.EnterpriseIDs = enterpriseIDs
 	a.Attachments = attachments
 	return &a, nil

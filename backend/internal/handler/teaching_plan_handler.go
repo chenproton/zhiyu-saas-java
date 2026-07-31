@@ -159,6 +159,26 @@ func (h *TeachingPlanHandler) Generate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// 提前查询所有岗位下的场景（避免事务内查询导致 conn busy）
+	type posScenItem struct { ID, Name string; Code *string }
+	posScenMap := make(map[string][]posScenItem)
+	for _, c := range courses {
+		if c.PositionID != nil && *c.PositionID != "" {
+			if _, ok := posScenMap[*c.PositionID]; !ok {
+				srows, err := h.DB.Query(ctx, `SELECT id, name, code FROM scenarios WHERE career_position_id=$1 AND status='published'`, *c.PositionID)
+				if err != nil { continue }
+				var items []posScenItem
+				for srows.Next() {
+					var item posScenItem
+					if err := srows.Scan(&item.ID, &item.Name, &item.Code); err != nil { continue }
+					items = append(items, item)
+				}
+				srows.Close()
+				posScenMap[*c.PositionID] = items
+			}
+		}
+	}
+
 	planID := uuid.NewString()
 	err = withTx(ctx, h.DB, func(tx pgx.Tx) error {
 		// 先删旧计划（CASCADE 删除条目），再插入新计划
@@ -185,22 +205,15 @@ func (h *TeachingPlanHandler) Generate(w http.ResponseWriter, r *http.Request) {
 				courseID = c.CourseID
 			}
 			if c.PositionID != nil && *c.PositionID != "" {
-				scenarioRows, err := tx.Query(ctx, `SELECT id, name, code FROM scenarios WHERE career_position_id=$1 AND status='published'`, *c.PositionID)
-				if err != nil { return err }
-				for scenarioRows.Next() {
-					var sid, sname string
-					var scode *string
-					if err := scenarioRows.Scan(&sid, &sname, &scode); err != nil { return err }
+				for _, s := range posScenMap[*c.PositionID] {
 					if _, err := tx.Exec(ctx, `
 						INSERT INTO teaching_plan_entries (id, plan_id, course_name, course_code, type, nature, credits, total_hours, week_hours, start_week, end_week, week_pattern, scenario_id, course_id, status)
 						VALUES ($1, $2, $3, $4, 'scene', $5, $6, $7, $8, 1, $9, 'all', $10, $11, 'planned')
-					`, uuid.NewString(), planID, sname, scode, emptyStrToNil(c.Nature),
-						c.Credits, c.Hours, weekHours, weeksCount, sid, courseID); err != nil {
-						scenarioRows.Close()
+					`, uuid.NewString(), planID, s.Name, s.Code, emptyStrToNil(c.Nature),
+						c.Credits, c.Hours, weekHours, weeksCount, s.ID, courseID); err != nil {
 						return err
 					}
 				}
-				scenarioRows.Close()
 			} else {
 				if _, err := tx.Exec(ctx, `
 					INSERT INTO teaching_plan_entries (id, plan_id, course_name, course_code, type, nature, credits, total_hours, week_hours, start_week, end_week, week_pattern, scenario_id, course_id, status)
