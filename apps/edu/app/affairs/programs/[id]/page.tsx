@@ -40,12 +40,10 @@ export default function ProgramEditPage() {
 
   // 基本信息表单
   const [name, setName] = useState("")
-  const [code, setCode] = useState("")
   const [majorId, setMajorId] = useState<string | undefined>(undefined)
   const [entryYear, setEntryYear] = useState("")
   const [level, setLevel] = useState("")
   const [duration, setDuration] = useState("")
-  const [totalCredits, setTotalCredits] = useState("")
   const [description, setDescription] = useState("")
 
   const loadProgram = useCallback(async () => {
@@ -54,12 +52,10 @@ export default function ProgramEditPage() {
       const p = await programApi.get(id)
       setProgram(p)
       setName(p.name)
-      setCode(p.code || "")
       setMajorId(p.majorId || undefined)
       setEntryYear(String(p.entryYear))
       setLevel(p.level || "")
       setDuration(p.duration != null ? String(p.duration) : "")
-      setTotalCredits(p.totalCredits != null ? String(p.totalCredits) : "")
       setDescription(p.description || "")
     } catch (err: any) {
       toast({ variant: "destructive", title: "加载失败", description: err.message || "查询人培方案失败" })
@@ -81,14 +77,12 @@ export default function ProgramEditPage() {
     if (!isFormValid) return
     setSaving(true)
     const payload: TrainingProgramPayload = {
-      name: name.trim(),
-      code: code.trim() || undefined,
-      majorId: majorId || undefined,
-      entryYear: Number(entryYear),
-      level: level || undefined,
-      duration: duration ? Number(duration) : undefined,
-      totalCredits: totalCredits ? Number(totalCredits) : undefined,
-      description: description.trim() || undefined,
+        name: name.trim(),
+        entryYear: Number(entryYear),
+        majorId: majorId || undefined,
+        level: level || undefined,
+        duration: duration ? Number(duration) : undefined,
+        description: description.trim() || undefined,
     }
     try {
       if (isNew) {
@@ -152,20 +146,11 @@ export default function ProgramEditPage() {
           <TabsContent value="basic">
             <div className="rounded-lg border bg-white p-6">
               <FieldGroup>
-                <div className="grid grid-cols-2 gap-4">
-                  <Field>
-                    <FieldLabel>方案名称 *</FieldLabel>
-                    <Input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="如：计算机应用技术人才培养方案（2025 级）"
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel>方案编码</FieldLabel>
-                    <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="如：RP-2025-01" />
-                  </Field>
-                </div>
+                <Field>
+                  <FieldLabel>方案名称 *</FieldLabel>
+                  <Input value={name} onChange={(e) => setName(e.target.value)}
+                    placeholder="如：计算机应用技术人才培养方案（2025 级）" />
+                </Field>
 
                 <div className="grid grid-cols-2 gap-4">
                   <Field>
@@ -174,55 +159,35 @@ export default function ProgramEditPage() {
                   </Field>
                   <Field>
                     <FieldLabel>入学年份 *</FieldLabel>
-                    <Input
-                      type="number"
-                      value={entryYear}
-                      onChange={(e) => setEntryYear(e.target.value)}
-                      placeholder="如：2025"
-                      min={2000}
-                    />
+                    <Input type="number" value={entryYear} onChange={(e) => setEntryYear(e.target.value)}
+                      placeholder="如：2025" min={2000} />
                   </Field>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <Field>
                     <FieldLabel>层次</FieldLabel>
                     <Select value={level || "none"} onValueChange={(v) => setLevel(v === "none" ? "" : v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="请选择层次" />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="请选择层次" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">未设置</SelectItem>
-                        {LEVEL_OPTIONS.map((l) => (
-                          <SelectItem key={l} value={l}>
-                            {l}
-                          </SelectItem>
-                        ))}
+                        {LEVEL_OPTIONS.map((l) => (<SelectItem key={l} value={l}>{l}</SelectItem>))}
                       </SelectContent>
                     </Select>
                   </Field>
                   <Field>
                     <FieldLabel>学制（年）</FieldLabel>
-                    <Input
-                      type="number"
-                      value={duration}
-                      onChange={(e) => setDuration(e.target.value)}
-                      placeholder="如：3"
-                      min={0}
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel>总学分</FieldLabel>
-                    <Input
-                      type="number"
-                      value={totalCredits}
-                      onChange={(e) => setTotalCredits(e.target.value)}
-                      placeholder="如：140"
-                      min={0}
-                      step="0.5"
-                    />
+                    <Input type="number" value={duration} onChange={(e) => setDuration(e.target.value)}
+                      placeholder="如：3" min={0} />
                   </Field>
                 </div>
+
+                {!isNew && (
+                  <Field>
+                    <FieldLabel>方案编码</FieldLabel>
+                    <span className="text-sm text-muted-foreground">{program?.code || "自动生成"}</span>
+                  </Field>
+                )}
 
                 <Field>
                   <FieldLabel>方案描述</FieldLabel>

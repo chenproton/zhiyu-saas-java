@@ -349,6 +349,7 @@ var allowedUniqueCodeTables = []string{
 	"question_banks",
 	"questions",
 	"scenarios",
+	"training_programs",
 }
 
 // listQueryBuilder accumulates WHERE conditions and positional arguments for

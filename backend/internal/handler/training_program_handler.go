@@ -138,11 +138,17 @@ func (h *TrainingProgramHandler) Create(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	code := req.Code
+	if code == nil || *code == "" {
+		gen, err := generateUniqueEntityCode(r.Context(), h.DB, "RP", "training_programs", tenantID)
+		if err == nil { code = &gen }
+	}
+
 	id := uuid.NewString()
 	_, err := h.DB.Exec(r.Context(), `
 		INSERT INTO training_programs (id, tenant_id, name, code, major_id, entry_year, level, duration, total_credits, status, description, created_by)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft', $10, $11)
-	`, id, tenantID, req.Name, emptyStrToNil(req.Code), emptyStrToNil(req.MajorID), req.EntryYear,
+	`, id, tenantID, req.Name, code, emptyStrToNil(req.MajorID), req.EntryYear,
 		emptyStrToNil(req.Level), req.Duration, req.TotalCredits, emptyStrToNil(req.Description), claims.UserID)
 	if err != nil {
 		slog.Error("创建人培方案失败", "error", err)
