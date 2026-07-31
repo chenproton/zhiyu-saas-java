@@ -441,7 +441,18 @@ func scanTrainingProgramRows(rows pgx.Rows) ([]domain.TrainingProgram, error) {
 func (h *TrainingProgramHandler) actions() contentActions {
 	return contentActions{db: h.DB, table: "training_programs", entityName: "人培方案", targetType: "training_program", inviteCol: "collaborators",
 		fetch: func(ctx context.Context, id string) (interface{}, error) {
-			p, err := h.fetchProgram(ctx, id, "")
+			var p domain.TrainingProgram
+			err := h.DB.QueryRow(ctx, `
+				SELECT tp.id, tp.name, tp.code, tp.major_id, COALESCE(m.name, ''), tp.entry_year, tp.level, tp.duration,
+					tp.total_credits, tp.status, tp.description,
+					(SELECT COUNT(*) FROM training_program_courses c WHERE c.program_id = tp.id),
+					tp.created_by, COALESCE(cu.name, ''), tp.collaborators,
+					COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(tp.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}'),
+					tp.batch_id, COALESCE(lb.name, ''), tp.created_at, tp.updated_at
+				FROM training_programs tp LEFT JOIN majors m ON m.id = tp.major_id LEFT JOIN users cu ON cu.id = tp.created_by LEFT JOIN batches lb ON lb.id = tp.batch_id
+				WHERE tp.id = $1
+			`, id).Scan(&p.ID, &p.Name, &p.Code, &p.MajorID, &p.MajorName, &p.EntryYear, &p.Level, &p.Duration,
+				&p.TotalCredits, &p.Status, &p.Description, &p.CourseCount, &p.CreatedBy, &p.CreatedByName, &p.Collaborators, &p.CollaboratorNames, &p.BatchID, &p.BatchName, &p.CreatedAt, &p.UpdatedAt)
 			if err != nil { return nil, err }
 			return &p, nil
 		}}
