@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback, Fragment } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, CalendarRange, CheckCircle2, FileEdit } from "lucide-react"
+import { ArrowLeft, CalendarRange, CheckCircle2, FileEdit, Save, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -25,10 +25,10 @@ import { PageHeaderCard } from "@/components/shared/page-header-card"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { UserSelector } from "@/components/shared/user-selector"
 import { MultiOrgNodePicker } from "@/components/shared/multi-org-node-picker"
-import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { teachingPlanApi } from "@/lib/api"
 import type { TeachingPlanDetail, TeachingPlanEntry } from "@/lib/types"
 import { EntryTypeBadge } from "./_components/entry-type-badge"
+import { usePortalAuth } from "@/contexts/portal-auth-context"
 
 const VENUE_TYPES = ["教室", "机房", "实训室", "实验室", "校外基地"]
 
@@ -38,6 +38,16 @@ function formatDateTime(iso?: string) {
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit",
   }).format(new Date(iso))
+}
+
+interface EditState {
+  startWeek: string
+  endWeek: string
+  credits: string
+  totalHours: string
+  venueType: string
+  classNodeIds: string[]
+  teacherId?: string
 }
 
 export default function TeachingPlanDetailPage() {
@@ -50,15 +60,9 @@ export default function TeachingPlanDetailPage() {
   const [plan, setPlan] = useState<TeachingPlanDetail | null>(null)
   const [entries, setEntries] = useState<TeachingPlanEntry[]>([])
   const [loading, setLoading] = useState(true)
-
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editStartWeek, setEditStartWeek] = useState("")
-  const [editEndWeek, setEditEndWeek] = useState("")
-  const [editCredits, setEditCredits] = useState("")
-  const [editTotalHours, setEditTotalHours] = useState("")
-  const [editVenueType, setEditVenueType] = useState("")
-  const [editClassNodeIds, setEditClassNodeIds] = useState<string[]>([])
-  const [savingEntry, setSavingEntry] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [editMap, setEditMap] = useState<Record<string, EditState>>({})
 
   const loadPlan = useCallback(async () => {
     try {
@@ -82,37 +86,62 @@ export default function TeachingPlanDetailPage() {
     return Array.from(map.entries()).sort((a, b) => a[0] - b[0])
   }, [entries])
 
-  const replaceEntry = (updated: TeachingPlanEntry) => {
-    setEntries((prev) => prev.map((e) => (e.id === updated.id ? updated : e)))
+  const startEdit = () => {
+    const map: Record<string, EditState> = {}
+    entries.forEach((e) => {
+      map[e.id] = {
+        startWeek: String(e.startWeek),
+        endWeek: String(e.endWeek),
+        credits: String(e.credits || 0),
+        totalHours: String(e.totalHours || 0),
+        venueType: e.venueType || "",
+        classNodeIds: e.classNodeIds || (e.classNodeId ? [e.classNodeId] : []),
+        teacherId: e.teacherId || undefined,
+      }
+    })
+    setEditMap(map)
+    setIsEditing(true)
   }
 
-  const startEdit = (e: TeachingPlanEntry) => {
-    setEditingId(e.id)
-    setEditStartWeek(String(e.startWeek))
-    setEditEndWeek(String(e.endWeek))
-    setEditCredits(String(e.credits || 0))
-    setEditTotalHours(String(e.totalHours || 0))
-    setEditVenueType(e.venueType || "")
-    setEditClassNodeIds(e.classNodeIds || (e.classNodeId ? [e.classNodeId] : []))
+  const cancelEdit = () => {
+    setIsEditing(false)
+    setEditMap({})
   }
 
-  const handleSaveEntry = async (entryId: string) => {
-    setSavingEntry(true)
+  const updateEditField = (entryId: string, patch: Partial<EditState>) => {
+    setEditMap((prev) => ({ ...prev, [entryId]: { ...prev[entryId], ...patch } }))
+  }
+
+  const updateTeacherId = async (entryId: string, tid: string) => {
     try {
-      const updated = await teachingPlanApi.updateEntry(entryId, {
-        startWeek: Number(editStartWeek) || 1,
-        endWeek: Number(editEndWeek) || 1,
-        credits: editCredits !== "" ? Number(editCredits) : undefined,
-        totalHours: editTotalHours !== "" ? Number(editTotalHours) : undefined,
-        venueType: editVenueType,
-        classNodeIds: editClassNodeIds,
-      })
-      replaceEntry(updated)
-      setEditingId(null)
-      toast({ title: "条目已保存" })
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "保存失败", description: err.message || "保存条目失败" })
-    } finally { setSavingEntry(false) }
+      const updated = await teachingPlanApi.updateEntry(entryId, { teacherId: tid })
+      setEntries((prev) => prev.map((e) => (e.id === updated.id ? updated : e)))
+    } catch { /* ignore */ }
+  }
+
+  const handleSaveAll = async () => {
+    setSaving(true)
+    const toSave = entries.filter((e) => editMap[e.id])
+    let success = 0
+    for (const e of toSave) {
+      const s = editMap[e.id]
+      try {
+        const updated = await teachingPlanApi.updateEntry(e.id, {
+          startWeek: Number(s.startWeek) || 1,
+          endWeek: Number(s.endWeek) || 1,
+          credits: s.credits !== "" ? Number(s.credits) : undefined,
+          totalHours: s.totalHours !== "" ? Number(s.totalHours) : undefined,
+          venueType: s.venueType,
+          classNodeIds: s.classNodeIds,
+        })
+        setEntries((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
+        success++
+      } catch { /* skip failed, already saved ones stay */ }
+    }
+    setIsEditing(false)
+    setEditMap({})
+    setSaving(false)
+    toast({ title: `保存完成：${success}/${toSave.length} 项` })
   }
 
   const handleConfirm = async () => {
@@ -133,10 +162,25 @@ export default function TeachingPlanDetailPage() {
         actions={
           <div className="flex items-center gap-2">
             {plan && <StatusBadge status={plan.status} />}
-            {plan?.status === "draft" && (
-              <Button variant="outline" onClick={handleConfirm}>
-                <CheckCircle2 className="mr-2 size-4" />确认计划
-              </Button>
+            {plan?.status === "draft" && !isEditing && (
+              <>
+                <Button variant="outline" onClick={startEdit}>
+                  <FileEdit className="mr-2 size-4" />编辑
+                </Button>
+                <Button variant="outline" onClick={handleConfirm}>
+                  <CheckCircle2 className="mr-2 size-4" />确认计划
+                </Button>
+              </>
+            )}
+            {isEditing && (
+              <>
+                <Button variant="outline" onClick={cancelEdit} disabled={saving}>
+                  <X className="mr-2 size-4" />取消
+                </Button>
+                <Button onClick={handleSaveAll} disabled={saving}>
+                  <Save className="mr-2 size-4" />{saving ? "保存中..." : "保存"}
+                </Button>
+              </>
             )}
             <Button variant="outline" onClick={() => router.push("/affairs/teaching-plans")}>
               <ArrowLeft className="mr-2 size-4" />返回列表
@@ -150,33 +194,33 @@ export default function TeachingPlanDetailPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[200px]">课程</TableHead>
-                <TableHead className="w-[80px]">类型</TableHead>
+                <TableHead className="w-[180px]">课程</TableHead>
+                <TableHead className="w-[70px]">类型</TableHead>
                 <TableHead className="w-[70px]">学分</TableHead>
                 <TableHead className="w-[80px]">总学时</TableHead>
-                <TableHead className="w-[150px]">起止周</TableHead>
-                <TableHead className="w-[160px]">班级</TableHead>
-                <TableHead className="w-[160px]">教师</TableHead>
-                <TableHead className="w-[120px]">场地类型</TableHead>
-                <TableHead className="w-[90px]">状态</TableHead>
-                <TableHead className="sticky right-0 w-[100px] bg-white text-right">操作</TableHead>
+                <TableHead className="w-[130px]">起止周</TableHead>
+                <TableHead className="w-[110px]">班级</TableHead>
+                <TableHead className="w-[130px]">教师</TableHead>
+                <TableHead className="w-[110px]">场地类型</TableHead>
+                <TableHead className="w-[70px]">状态</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={10} className="h-24 text-center text-muted-foreground">加载中...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="h-24 text-center text-muted-foreground">加载中...</TableCell></TableRow>
               ) : groups.length === 0 ? (
-                <TableRow><TableCell colSpan={10} className="h-24 text-center text-muted-foreground">暂无教学条目</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="h-24 text-center text-muted-foreground">暂无教学条目</TableCell></TableRow>
               ) : (
                 groups.map(([startWeek, groupEntries]) => (
                   <Fragment key={`group-${startWeek}`}>
                     <TableRow className="bg-muted/40 hover:bg-muted/40">
-                      <TableCell colSpan={10} className="py-1.5 text-xs font-medium text-muted-foreground">
+                      <TableCell colSpan={9} className="py-1.5 text-xs font-medium text-muted-foreground">
                         第 {startWeek} 周起（{groupEntries.length} 门）
                       </TableCell>
                     </TableRow>
                     {groupEntries.map((e) => {
-                      const editing = editingId === e.id
+                      const es = editMap[e.id]
+                      const editing = isEditing && !!es
                       return (
                         <TableRow key={e.id} className="group">
                           <TableCell>
@@ -187,14 +231,14 @@ export default function TeachingPlanDetailPage() {
                           <TableCell><EntryTypeBadge type={e.type} /></TableCell>
                           <TableCell>
                             {editing ? (
-                              <Input className="h-8 w-[60px]" type="number" min={0} step="0.5" value={editCredits} onChange={(ev) => setEditCredits(ev.target.value)} />
+                              <Input className="h-8 w-[60px]" type="number" min={0} step="0.5" value={es.credits} onChange={(ev) => updateEditField(e.id, { credits: ev.target.value })} />
                             ) : (
                               <span className="text-sm">{e.credits}</span>
                             )}
                           </TableCell>
                           <TableCell>
                             {editing ? (
-                              <Input className="h-8 w-[60px]" type="number" min={0} value={editTotalHours} onChange={(ev) => setEditTotalHours(ev.target.value)} />
+                              <Input className="h-8 w-[60px]" type="number" min={0} value={es.totalHours} onChange={(ev) => updateEditField(e.id, { totalHours: ev.target.value })} />
                             ) : (
                               <span className="text-sm">{e.totalHours}</span>
                             )}
@@ -202,47 +246,39 @@ export default function TeachingPlanDetailPage() {
                           <TableCell>
                             {editing ? (
                               <div className="flex items-center gap-1">
-                                <Input className="h-8 w-[60px]" type="number" min={1} value={editStartWeek} onChange={(ev) => setEditStartWeek(ev.target.value)} />
-                                <span className="text-xs text-muted-foreground">至</span>
-                                <Input className="h-8 w-[60px]" type="number" min={1} value={editEndWeek} onChange={(ev) => setEditEndWeek(ev.target.value)} />
+                                <Input className="h-8 w-[50px]" type="number" min={1} value={es.startWeek} onChange={(ev) => updateEditField(e.id, { startWeek: ev.target.value })} />
+                                <span className="text-xs text-muted-foreground">-</span>
+                                <Input className="h-8 w-[50px]" type="number" min={1} value={es.endWeek} onChange={(ev) => updateEditField(e.id, { endWeek: ev.target.value })} />
                               </div>
                             ) : (
-                              <span className="text-sm">第 {e.startWeek}-{e.endWeek} 周</span>
+                              <span className="text-sm">{e.startWeek}-{e.endWeek}周</span>
                             )}
                           </TableCell>
                           <TableCell>
                             {editing ? (
-                              <MultiOrgNodePicker
-                                tenantId={tenantId}
-                                value={editClassNodeIds}
-                                onChange={setEditClassNodeIds}
-                                selectableTypes={["班级"]}
-                                placeholder="选择班级"
-                                title="选择授课班级"
-                              />
+                              <MultiOrgNodePicker tenantId={tenantId} value={es.classNodeIds} onChange={(v) => updateEditField(e.id, { classNodeIds: v })}
+                                selectableTypes={["班级"]} placeholder="选择班级" title="选择授课班级" maxVisible={2} />
                             ) : (
                               <span className="text-sm">{(e.classNames || []).length > 0 ? (e.classNames || []).slice(0, 2).join("、") + ((e.classNames || []).length > 2 ? ` 等${(e.classNames || []).length}个` : "") : (e.className || "-")}</span>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="w-[130px]">
                             {editing ? (
-                              <UserSelector
-                                value={e.teacherId ? [e.teacherId] : []}
+                              <UserSelector value={es.teacherId ? [es.teacherId] : []}
                                 onChange={(ids) => {
                                   const tid = ids[0] || ""
-                                  teachingPlanApi.updateEntry(e.id, { teacherId: tid }).then((updated) => replaceEntry(updated)).catch(() => {})
+                                  updateEditField(e.id, { teacherId: tid })
+                                  updateTeacherId(e.id, tid)
                                 }}
-                                multiple={false}
-                                placeholder={e.teacherName || "选择教师"}
-                              />
+                                multiple={false} placeholder={e.teacherName || "选择教师"} />
                             ) : (
-                              <span className="text-sm">{e.teacherName || "未指定"}</span>
+                              <span className="text-sm">{e.teacherName || "-"}</span>
                             )}
                           </TableCell>
                           <TableCell>
                             {editing ? (
-                              <Select value={editVenueType || "none"} onValueChange={(v) => setEditVenueType(v === "none" ? "" : v)}>
-                                <SelectTrigger className="h-8"><SelectValue placeholder="选择场地类型" /></SelectTrigger>
+                              <Select value={es.venueType || "none"} onValueChange={(v) => updateEditField(e.id, { venueType: v === "none" ? "" : v })}>
+                                <SelectTrigger className="h-8"><SelectValue placeholder="选择" /></SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="none">未设置</SelectItem>
                                   {VENUE_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
@@ -253,18 +289,6 @@ export default function TeachingPlanDetailPage() {
                             )}
                           </TableCell>
                           <TableCell><StatusBadge status={e.status} /></TableCell>
-                          <TableCell className="text-right">
-                            {editing ? (
-                              <div className="flex items-center gap-1">
-                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-green-600 hover:text-green-700" disabled={savingEntry} onClick={() => handleSaveEntry(e.id)}>保存</Button>
-                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" disabled={savingEntry} onClick={() => setEditingId(null)}>取消</Button>
-                              </div>
-                            ) : (
-                              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => startEdit(e)}>
-                                <FileEdit className="mr-1 h-3 w-3" />编辑
-                              </Button>
-                            )}
-                          </TableCell>
                         </TableRow>
                       )
                     })}
