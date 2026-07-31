@@ -321,8 +321,8 @@ func (h *TrainingProgramHandler) PutCourses(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	for _, c := range req.Courses {
-		if c.Name == "" && (c.PositionID == nil || *c.PositionID == "") && (c.CourseID == nil || *c.CourseID == "") {
-			respondError(w, http.StatusBadRequest, "课程缺少必填字段（名称/关联对象）")
+		if (c.PositionID == nil || *c.PositionID == "") && (c.CourseID == nil || *c.CourseID == "") {
+			respondError(w, http.StatusBadRequest, "须至少关联岗位或体系课")
 			return
 		}
 	}
@@ -340,10 +340,17 @@ func (h *TrainingProgramHandler) PutCourses(w http.ResponseWriter, r *http.Reque
 			if sortOrder == 0 {
 				sortOrder = i
 			}
+			name := c.Name
+			if name == "" && c.PositionID != nil && *c.PositionID != "" {
+				_ = tx.QueryRow(r.Context(), `SELECT name FROM career_positions WHERE id=$1`, *c.PositionID).Scan(&name)
+			}
+			if name == "" && c.CourseID != nil && *c.CourseID != "" {
+				_ = tx.QueryRow(r.Context(), `SELECT name FROM courses WHERE id=$1`, *c.CourseID).Scan(&name)
+			}
 			if _, err := tx.Exec(r.Context(), `
 				INSERT INTO training_program_courses (id, program_id, name, code, credits, hours, semester, nature, assessment, position_id, course_id, sort_order)
 				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-			`, uuid.NewString(), id, c.Name, emptyStrToNil(c.Code), c.Credits, c.Hours,
+			`, uuid.NewString(), id, name, emptyStrToNil(c.Code), c.Credits, c.Hours,
 				c.Semester, nature, emptyStrToNil(c.Assessment), emptyStrToNil(c.PositionID), emptyStrToNil(c.CourseID), sortOrder); err != nil {
 				return err
 			}

@@ -125,7 +125,6 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
       rows.forEach((r, i) => {
         if (r.linkType === "position" && r.positionId) {
           payloads.push({
-            name: "", code: undefined,
             credits: r.credits || 0, hours: r.hours || 0,
             semester: 1, nature: r.nature, assessment: undefined,
             positionId: r.positionId, courseId: undefined,
@@ -133,7 +132,7 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
           })
         } else if (r.linkType === "course" && r.courseId) {
           payloads.push({
-            name: r.name.trim() || "", code: r.code.trim() || undefined,
+            code: r.code.trim() || undefined,
             credits: r.credits || 0, hours: r.hours || 0,
             semester: 1, nature: r.nature, assessment: undefined,
             positionId: undefined, courseId: r.courseId,
