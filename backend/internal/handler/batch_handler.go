@@ -68,6 +68,7 @@ type BatchHandler struct {
 }
 
 var allowedBatchWriteTables = []string{
+	"affairs_batches",
 	"batches",
 	"scene_batches",
 	"evaluation_batches",
