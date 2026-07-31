@@ -668,9 +668,10 @@ const PLATFORM_CARD_DESCRIPTIONS: Record<string, string> = {
   "ability-result-center": "查看场景任务评价与认证结果",
   "resource-my-resource-center": "管理个人教学资源",
   "resource-resource-center": "管理知识点、能力点与教学资源",
-  "affairs-teaching-mgmt": "维护人才培养方案、教学计划与排课",
-  "alliance-cooperation": "管理学校信息、合作企业、项目、成果与专家",
-  "alliance-brand": "管理人才、雇主、岗位、专业、师资、文化六大品牌",
+  "affairs-teaching-mgmt": "维护培养方案、教学计划与排课",
+  "affairs-teaching-approval": "维护审批流程与批次管理",
+  "alliance-cooperation": "管理校企合作项目与成果",
+  "alliance-brand": "管理六大品牌资源",
 }
 
 export function getPlatformCardModules(platformId: string): PlatformCardModule[] {
