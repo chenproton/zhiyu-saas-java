@@ -9,6 +9,14 @@ export interface Tenant {
   phone?: string
   address?: string
   description?: string
+  shortName?: string
+  schoolType?: string
+  province?: string
+  city?: string
+  website?: string
+  contactPhone?: string
+  scaleData?: Record<string, any>
+  secondaryColleges?: any[]
   adminIds: string[]
   status: "active" | "inactive"
   createdAt: string
