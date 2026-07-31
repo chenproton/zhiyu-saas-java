@@ -151,13 +151,13 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
 
   const {
     fileInputRef,
-    importFile,
-    setImportFile,
+    importFiles,
+    setImportFiles,
     isImporting,
     isDownloading,
     importPreview,
     setImportPreview,
-    handleFileSelect,
+    handleAddFiles,
     handleImport,
     executeImport,
     handleDownloadTemplate,
@@ -473,7 +473,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
           setIsImportDialogOpen(open)
           if (!open) {
             setImportStep("download")
-            setImportFile(null)
+            setImportFiles([])
           }
         }}
       >
@@ -513,15 +513,16 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
               >
                 <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
                 <p className="text-sm text-muted-foreground mb-2">
-                  {importFile ? importFile.name : "点击选择已填写的 Excel (.xlsx) 文件"}
+                  {importFiles.length > 0 ? importFiles.map(f => f.name).join(", ") : "点击选择已填写的 Excel (.xlsx) 文件"}
                 </p>
                 <p className="text-xs text-muted-foreground">仅支持 .xlsx 格式</p>
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept=".xlsx"
+                  multiple
                   className="hidden"
-                  onChange={(e) => handleFileSelect(e.target.files)}
+                  onChange={(e) => handleAddFiles(e.target.files)}
                 />
               </div>
             )}
@@ -532,7 +533,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
               onClick={() => {
                 setIsImportDialogOpen(false)
                 setImportStep("download")
-                setImportFile(null)
+                setImportFiles([])
               }}
             >
               取消
@@ -540,7 +541,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
             {importStep === "download" ? (
               <Button onClick={() => setImportStep("upload")}>下一步</Button>
             ) : (
-              <Button onClick={doHandleImport} disabled={!importFile || isImporting}>
+              <Button onClick={doHandleImport} disabled={importFiles.length === 0 || isImporting}>
                 {isImporting ? "导入中..." : "开始导入"}
               </Button>
             )}

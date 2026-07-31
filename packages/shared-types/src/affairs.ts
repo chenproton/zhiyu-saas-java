@@ -249,4 +249,6 @@ export interface TeachingPlanEntryUpdatePayload {
   teacherType?: string
   venueType?: string
   status?: string
+  credits?: number
+  totalHours?: number
 }

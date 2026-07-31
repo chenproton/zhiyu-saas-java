@@ -30,7 +30,6 @@ import { teachingPlanApi } from "@/lib/api"
 import type { TeachingPlanDetail, TeachingPlanEntry } from "@/lib/types"
 import { EntryTypeBadge } from "./_components/entry-type-badge"
 
-const TEACHER_TYPE_OPTIONS = ["校本师资", "企业导师"]
 const VENUE_TYPES = ["教室", "机房", "实训室", "实验室", "校外基地"]
 
 function formatDateTime(iso?: string) {
@@ -55,7 +54,8 @@ export default function TeachingPlanDetailPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editStartWeek, setEditStartWeek] = useState("")
   const [editEndWeek, setEditEndWeek] = useState("")
-  const [editTeacherType, setEditTeacherType] = useState("")
+  const [editCredits, setEditCredits] = useState("")
+  const [editTotalHours, setEditTotalHours] = useState("")
   const [editVenueType, setEditVenueType] = useState("")
   const [editClassNodeId, setEditClassNodeId] = useState<string | undefined>(undefined)
   const [savingEntry, setSavingEntry] = useState(false)
@@ -90,7 +90,8 @@ export default function TeachingPlanDetailPage() {
     setEditingId(e.id)
     setEditStartWeek(String(e.startWeek))
     setEditEndWeek(String(e.endWeek))
-    setEditTeacherType(e.teacherType || "")
+    setEditCredits(String(e.credits || 0))
+    setEditTotalHours(String(e.totalHours || 0))
     setEditVenueType(e.venueType || "")
     setEditClassNodeId(e.classNodeId)
   }
@@ -101,7 +102,8 @@ export default function TeachingPlanDetailPage() {
       const updated = await teachingPlanApi.updateEntry(entryId, {
         startWeek: Number(editStartWeek) || 1,
         endWeek: Number(editEndWeek) || 1,
-        teacherType: editTeacherType,
+        credits: Number(editCredits) || undefined,
+        totalHours: Number(editTotalHours) || undefined,
         venueType: editVenueType,
         classNodeId: editClassNodeId,
       })
@@ -183,8 +185,20 @@ export default function TeachingPlanDetailPage() {
                             {e.type === "scene" && e.scenarioName && <div className="text-xs text-orange-600">{e.scenarioName}</div>}
                           </TableCell>
                           <TableCell><EntryTypeBadge type={e.type} /></TableCell>
-                          <TableCell><span className="text-sm">{e.credits}</span></TableCell>
-                          <TableCell><span className="text-sm">{e.totalHours}</span></TableCell>
+                          <TableCell>
+                            {editing ? (
+                              <Input className="h-8 w-[60px]" type="number" min={0} step="0.5" value={editCredits} onChange={(ev) => setEditCredits(ev.target.value)} />
+                            ) : (
+                              <span className="text-sm">{e.credits}</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {editing ? (
+                              <Input className="h-8 w-[60px]" type="number" min={0} value={editTotalHours} onChange={(ev) => setEditTotalHours(ev.target.value)} />
+                            ) : (
+                              <span className="text-sm">{e.totalHours}</span>
+                            )}
+                          </TableCell>
                           <TableCell>
                             {editing ? (
                               <div className="flex items-center gap-1">
@@ -211,37 +225,15 @@ export default function TeachingPlanDetailPage() {
                             )}
                           </TableCell>
                           <TableCell>
-                            {editing ? (
-                              <div className="space-y-1.5">
-                                <Select value={editTeacherType || "none"} onValueChange={(v) => setEditTeacherType(v === "none" ? "" : v)}>
-                                  <SelectTrigger className="h-8 w-full"><SelectValue placeholder="师资类型" /></SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="none">未设置</SelectItem>
-                                    {TEACHER_TYPE_OPTIONS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                  </SelectContent>
-                                </Select>
-                                <UserSelector
-                                  value={e.teacherId ? [e.teacherId] : []}
-                                  onChange={(ids) => {
-                                    const tid = ids[0] || ""
-                                    teachingPlanApi.updateEntry(e.id, { teacherId: tid }).then((updated) => replaceEntry(updated)).catch(() => {})
-                                  }}
-                                  multiple={false}
-                                  placeholder="选择教师"
-                                />
-                              </div>
-                            ) : (
-                              <div>
-                                {e.teacherName ? (
-                                  <>
-                                    <div className="text-sm">{e.teacherName}</div>
-                                    {e.teacherType && <div className="text-xs text-muted-foreground">{e.teacherType}</div>}
-                                  </>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">未指定</span>
-                                )}
-                              </div>
-                            )}
+                            <UserSelector
+                              value={e.teacherId ? [e.teacherId] : []}
+                              onChange={(ids) => {
+                                const tid = ids[0] || ""
+                                teachingPlanApi.updateEntry(e.id, { teacherId: tid }).then((updated) => replaceEntry(updated)).catch(() => {})
+                              }}
+                              multiple={false}
+                              placeholder={e.teacherName || "选择教师"}
+                            />
                           </TableCell>
                           <TableCell>
                             {editing ? (

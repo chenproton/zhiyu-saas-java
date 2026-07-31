@@ -31,9 +31,10 @@ export const importExportApi = {
   export: (entity: string) => {
     return authedFetch(`/export/${entity}`)
   },
-  import: async (entity: string, file: File, overwrite = false): Promise<{ created: number; failed: number; entity: string; skipped?: number; errors?: string[] }> => {
+  import: async (entity: string, files: File | File[], overwrite = false): Promise<{ created: number; failed: number; entity: string; skipped?: number; errors?: string[] }> => {
     const form = new FormData()
-    form.append("file", file)
+    const fileArr = Array.isArray(files) ? files : [files]
+    fileArr.forEach(f => form.append("file", f))
     const res = await authedFetch(`/import/${entity}?overwrite=${overwrite}`, { method: "POST", body: form })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
@@ -41,9 +42,10 @@ export const importExportApi = {
     }
     return res.json()
   },
-  importPreview: async (entity: string, file: File): Promise<ImportPreviewResult> => {
+  importPreview: async (entity: string, files: File | File[]): Promise<ImportPreviewResult> => {
     const form = new FormData()
-    form.append("file", file)
+    const fileArr = Array.isArray(files) ? files : [files]
+    fileArr.forEach(f => form.append("file", f))
     const res = await authedFetch(`/import/${entity}/preview`, { method: "POST", body: form })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
@@ -51,14 +53,15 @@ export const importExportApi = {
     }
     return res.json()
   },
-  importExcel: async (entity: string, file: File, overwrite = false): Promise<{
+  importExcel: async (entity: string, files: File | File[], overwrite = false): Promise<{
     created: number; failed: number; skipped: number; entity: string;
     positionCreated?: number; responsibilities?: number; abilityBindings?: number;
     scenarioCreated?: number; taskCreated?: number;
     errors?: string[];
   }> => {
     const form = new FormData()
-    form.append("file", file)
+    const fileArr = Array.isArray(files) ? files : [files]
+    fileArr.forEach(f => form.append("file", f))
     const res = await authedFetch(`/import/${entity}/excel?overwrite=${overwrite}`, { method: "POST", body: form })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
@@ -66,9 +69,10 @@ export const importExportApi = {
     }
     return res.json()
   },
-  importExcelPreview: async (entity: string, file: File): Promise<ImportPreviewResult> => {
+  importExcelPreview: async (entity: string, files: File | File[]): Promise<ImportPreviewResult> => {
     const form = new FormData()
-    form.append("file", file)
+    const fileArr = Array.isArray(files) ? files : [files]
+    fileArr.forEach(f => form.append("file", f))
     const res = await authedFetch(`/import/${entity}/preview`, { method: "POST", body: form })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
