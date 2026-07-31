@@ -48,7 +48,7 @@ import { BankFormDialog } from "@/components/evaluation/bank-form-dialog"
 import { QuestionFormDialog } from "@/components/evaluation/question-form-dialog"
 import { QuestionPreview } from "@/components/evaluation/question-preview"
 import { useData } from "@/components/providers/data-provider"
-import { importExportApi } from "@/lib/api"
+import { importExportApi, downloadBlob } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
 import type { Question, QuestionType, QuestionFormData, QuestionBankFormData } from "@/lib/types"
 import { QUESTION_TYPE_LABELS, DIFFICULTY_LABELS } from "@/lib/types"
@@ -225,15 +225,7 @@ export default function QuestionBankDetailPage() {
     setIsDownloading(true)
     try {
       const res = await importExportApi.downloadQuestionTemplate(bankId)
-      const blob = await res.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = "题目批量导入模板.xlsx"
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.URL.revokeObjectURL(url)
+      downloadBlob(await res.blob(), "题目批量导入模板.xlsx")
     } catch (err: any) {
       toast({ variant: "destructive", title: "下载模板失败", description: err.message || "下载模板失败" })
     } finally {
@@ -327,14 +319,7 @@ export default function QuestionBankDetailPage() {
         throw new Error(data.error || `HTTP ${res.status}`)
       }
       const blob = await res.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `题目导出_${bankId}.xlsx`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.URL.revokeObjectURL(url)
+      downloadBlob(blob, `题目导出_${bankId}.xlsx`)
       toast({ title: "导出成功", description: `已导出 ${selectedQuestions.size} 道题目` })
     } catch (err: any) {
       toast({ title: "导出失败", description: err.message || "请稍后重试", variant: "destructive" })

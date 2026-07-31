@@ -62,7 +62,7 @@ import { UserSelector } from "@/components/shared/user-selector"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
 import { useImportFlow } from "@/hooks/use-import-flow"
-import { majorApi, workflowApi } from "@/lib/api"
+import { majorApi, workflowApi, downloadBlob } from "@/lib/api"
 import type { Major, Workflow } from "@/lib/types/backend"
 import type { ImportPreviewResult, ListResponse } from "@/lib/api"
 
@@ -621,15 +621,8 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     try {
       const res = await importExportApi.export(exportEntityName)
       const blob = await res.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
       const disposition = res.headers.get("content-disposition")
-      a.download = disposition?.match(/filename="?([^";]+)"?/)?.[1] || `${exportEntityName}-export.csv`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.URL.revokeObjectURL(url)
+      downloadBlob(blob, disposition?.match(/filename="?([^";]+)"?/)?.[1] || `${exportEntityName}-export.csv`)
     } catch (err: any) {
       toast({ variant: "destructive", title: "导出失败", description: err.message || "导出失败" })
     }
@@ -1135,13 +1128,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
               if (exportFn) {
                 try {
                   const res = await exportFn(selectedIds)
-                  const blob = await res.blob()
-                  const url = URL.createObjectURL(blob)
-                  const a = document.createElement("a")
-                  a.href = url
-                  a.download = `${entityLabel}导出.xlsx`
-                  a.click()
-                  URL.revokeObjectURL(url)
+                  downloadBlob(await res.blob(), `${entityLabel}导出.xlsx`)
                 } catch (err: any) {
                   toast({ variant: "destructive", title: "导出失败", description: err.message || "导出失败" })
                 }

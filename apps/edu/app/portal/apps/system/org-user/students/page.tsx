@@ -12,7 +12,7 @@ import { useOrgTree, findOrgAncestor } from "@/hooks/use-org-tree"
 import { OrgNodePicker } from "@/components/shared/org-node-picker"
 import { TableRowActions } from "@/components/shared/table-row-actions"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import { portalUserManagementApi, importExportApi } from "@/lib/api"
+import { portalUserManagementApi, importExportApi, downloadBlob } from "@/lib/api"
 import type { Organization } from "@/lib/types/backend"
 import { useToast, StatusBadge } from "@zhiyu/ui"
 import { PortalSidebarCrudPage } from "@/components/shared/portal-sidebar-crud-page"
@@ -384,15 +384,7 @@ export default function StudentsPage() {
       }}
       onExport={async (selectedIds) => {
         const res = await importExportApi.exportStudentsExcel(selectedIds)
-        const blob = await res.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = "学生导出.xlsx"
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        window.URL.revokeObjectURL(url)
+        downloadBlob(await res.blob(), "学生导出.xlsx")
         toast({ title: selectedIds.length > 0 ? `已导出 ${selectedIds.length} 名学生` : "导出完成" })
       }}
       joinEntityLabel="班级"

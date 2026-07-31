@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button"
 import { useToast } from "@zhiyu/ui"
 import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
-import { importExportApi, authedFetch } from "@zhiyu/api-client"
+import { importExportApi, authedFetch, downloadBlob } from "@zhiyu/api-client"
 import type { ImportPreviewResult } from "@zhiyu/api-client"
 import { FileDown, FileText, Plus, X } from "lucide-react"
 
@@ -48,11 +48,7 @@ export function ProgramCourseImportDialog({ open, onOpenChange, programId, onImp
     setDownloading(true)
     try {
       const res = await importExportApi.downloadTemplate("program-courses")
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url; a.download = "方案课程批量导入模板.xlsx"; a.click()
-      URL.revokeObjectURL(url)
+      downloadBlob(await res.blob(), "方案课程批量导入模板.xlsx")
     } finally { setDownloading(false) }
   }
 

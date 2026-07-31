@@ -297,6 +297,18 @@ export function buildQuery(params: Record<string, string | number | boolean | un
   return s ? `?${s}` : ""
 }
 
+/** 触发浏览器下载 Blob 文件 */
+export function downloadBlob(blob: Blob, filename: string) {
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.URL.revokeObjectURL(url)
+}
+
 async function authedFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const defaultPlatform = getDefaultPlatform()
   const platform = defaultPlatform === "portal" || isPortalPath() ? "portal" : "saas"

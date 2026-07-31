@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button"
 import { useToast } from "@zhiyu/ui"
 import { FileDown, FileText, Plus, X } from "lucide-react"
-import { importExportApi } from "@zhiyu/api-client"
+import { importExportApi, downloadBlob } from "@zhiyu/api-client"
 
 interface AffairsConfigImportDialogProps {
   open: boolean
@@ -36,11 +36,7 @@ export function AffairsConfigImportDialog({ open, onOpenChange, onImported }: Af
     setDownloading(true)
     try {
       const res = await importExportApi.downloadTemplate("affairs-config" as any)
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url; a.download = "教务配置批量导入模板.xlsx"; a.click()
-      URL.revokeObjectURL(url)
+      downloadBlob(await res.blob(), "教务配置批量导入模板.xlsx")
     } finally { setDownloading(false) }
   }
 

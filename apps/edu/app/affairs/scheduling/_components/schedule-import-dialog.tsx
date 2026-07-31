@@ -47,13 +47,9 @@ export function ScheduleImportDialog({ open, onOpenChange, termId, onImported }:
 
   // 下载当前教学计划数据（含参考表），编辑后回传导入
   const handleDownloadCurrent = async () => {
-    const { authedFetch } = await import("@zhiyu/api-client")
+    const { authedFetch, downloadBlob } = await import("@zhiyu/api-client")
     const res = await authedFetch(`/affairs/schedules/export?termId=${encodeURIComponent(termId)}`)
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url; a.download = "排课导入_当前数据.xlsx"; a.click()
-    URL.revokeObjectURL(url)
+    downloadBlob(await res.blob(), "排课导入_当前数据.xlsx")
   }
 
   // 弹窗重新打开时在渲染期间重置已选文件（adjust-state-during-render 模式）

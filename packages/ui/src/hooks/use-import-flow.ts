@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback } from "react"
-import { importExportApi } from "@zhiyu/api-client"
+import { importExportApi, downloadBlob } from "@zhiyu/api-client"
 import { useToast } from "./use-toast"
 
 type ImportEntityType = Parameters<typeof importExportApi.downloadTemplate>[0]
@@ -85,15 +85,7 @@ export function useImportFlow({ importType, entityLabel, templateFileName, onSuc
     setIsDownloading(true)
     try {
       const res = await importExportApi.downloadTemplate(importType)
-      const blob = await res.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = templateFileName
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.URL.revokeObjectURL(url)
+      downloadBlob(await res.blob(), templateFileName)
     } catch (err: any) {
       toast({ variant: "destructive", title: "下载模板失败", description: err.message || "下载模板失败" })
     } finally {

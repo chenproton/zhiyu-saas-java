@@ -12,7 +12,7 @@ import { useOrgTree } from "@/hooks/use-org-tree"
 import { OrgNodePicker } from "@/components/shared/org-node-picker"
 import { TableRowActions } from "@/components/shared/table-row-actions"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import { portalUserManagementApi, portalStaffTitleApi, importExportApi } from "@/lib/api"
+import { portalUserManagementApi, portalStaffTitleApi, importExportApi, downloadBlob } from "@/lib/api"
 import type { StaffTitle } from "@/lib/types/backend"
 import { MultiSelectSearch } from "@/components/ui/multi-select-search"
 import { useToast } from "@zhiyu/ui"
@@ -381,15 +381,7 @@ export default function TeachersPage() {
       }}
       onExport={async (selectedIds) => {
         const res = await importExportApi.exportTeachersExcel(selectedIds)
-        const blob = await res.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = "教师导出.xlsx"
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        window.URL.revokeObjectURL(url)
+        downloadBlob(await res.blob(), "教师导出.xlsx")
         toast({ title: selectedIds.length > 0 ? `已导出 ${selectedIds.length} 名教职工` : "导出完成" })
       }}
       joinEntityLabel="部门"
