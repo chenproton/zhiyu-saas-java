@@ -486,14 +486,14 @@ var (
 	}
 
 	allowedListQuerySelectColumns = []string{
-		"id, tenant_id, title, type, description, achievement_date, cover_image, attachments, enterprise_ids, project_ids, related_positions, related_scenes, related_courses, status, view_count, secondary_colleges, is_public, created_at, updated_at",
+		"id, tenant_id, title, type, description, achievement_date, cover_image, attachments, citation_reason, images, owner_persons, co_builders, enterprise_ids, project_ids, related_positions, related_scenes, related_courses, status, view_count, secondary_colleges, is_public, created_at, updated_at",
 		"id, tenant_id, name, type, content, start_date, end_date, status, enterprise_ids, attachments, created_at, updated_at",
 		"id, tenant_id, name, theme, description, layout, cover_image, content_blocks, related_brand_ids, status, is_recommended, sort_order, created_at, updated_at",
 		"id, tenant_id, brand_type, name, status, is_public, is_featured, cover_image, cover_video, description, data, sort_order, view_count, created_at, updated_at",
 		"id, tenant_id, name, enterprise_type, industry, region, description, logo_url, cover_image, status, rating, cooperation_types, contact_person, contact_phone, contact_email, address, unified_social_credit_code, established_year, employee_count, business_license_photos, qualification_photos, intellectual_property_photos, cover_photos, secondary_colleges, rating_record, is_public, created_at, updated_at",
-		"id, tenant_id, name, gender, age, title, position, expert_type, industry, professional_fields, specialties, experience_years, education, introduction, work_experience, city, avatar_url, photos, attachments, enterprise_id, rating, status, secondary_colleges, is_public, created_at, updated_at",
+		"id, tenant_id, name, gender, age, title, position, expert_type, industry, professional_fields, specialties, experience_years, education, introduction, work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, rating, status, partner_source, position_direction, secondary_colleges, is_public, created_at, updated_at",
 		"id, tenant_id, account_name, account_type, enterprise_id, expert_id, is_enabled, resource_permissions, platform_permissions, created_at, updated_at",
-		"id, tenant_id, name, type, description, phase, publish_status, start_date, end_date, budget, cover_image, enterprise_ids, secondary_colleges, is_public, created_at, updated_at",
+		"id, tenant_id, name, type, description, phase, publish_status, start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges, is_public, created_at, updated_at",
 		"b.id, b.name, b.code, b.org_node_id, b.major_id, COALESCE(m.name, '') AS major_name, b.workflow_id, b.status, b.position_count, b.published_count, b.pending_count, b.created_at, b.updated_at",		"eb.id, eb.name, eb.code, eb.org_node_id, eb.major_id, COALESCE(m.name, '') AS major_name, eb.workflow_id, eb.status, eb.created_at, eb.updated_at",
 		"er.id, er.exam_usage_id, er.user_id, er.student_name, er.class_name, er.grade, er.major_id, COALESCE(m.name, '') AS major_name, er.score, er.total_score, er.is_pass, er.answers, er.submit_time, er.created_at",
 		"id, tenant_id, career_position_id, name, description, binding_ids, sort_order",
