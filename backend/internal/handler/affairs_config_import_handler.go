@@ -30,59 +30,71 @@ func (h *AffairsConfigImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 	result := map[string]interface{}{}
 
 	if rows, _ := xlsx.GetRows("学期"); len(rows) > 2 {
-		created := 0
+		created, skipped := 0, 0
 		for i, row := range rows {
 			if i < 2 { continue }
 			name := strings.TrimSpace(col(row, 0))
 			startDate := strings.TrimSpace(col(row, 1))
 			endDate := strings.TrimSpace(col(row, 2))
 			weeksStr := strings.TrimSpace(col(row, 3))
-			if name == "" || startDate == "" || endDate == "" { continue }
+			if name == "" || startDate == "" || endDate == "" { skipped++; continue }
 			weeks, _ := strconv.Atoi(weeksStr)
 			if weeks <= 0 { weeks = 16 }
-			h.DB.Exec(ctx, `INSERT INTO terms (id, tenant_id, name, start_date, end_date, weeks_count) VALUES ($1,$2,$3,$4::date,$5::date,$6) ON CONFLICT DO NOTHING`,
+			var exists string
+			h.DB.QueryRow(ctx, `SELECT id FROM terms WHERE tenant_id=$1 AND name=$2`, tenantID, name).Scan(&exists)
+			if exists != "" { skipped++; continue }
+			h.DB.Exec(ctx, `INSERT INTO terms (id, tenant_id, name, start_date, end_date, weeks_count) VALUES ($1,$2,$3,$4::date,$5::date,$6)`,
 				uuid.NewString(), tenantID, name, startDate, endDate, weeks)
 			created++
 		}
 		result["termsCreated"] = created
+		result["termsSkipped"] = skipped
 	}
 
 	if rows, _ := xlsx.GetRows("场地"); len(rows) > 2 {
-		created := 0
+		created, skipped := 0, 0
 		for i, row := range rows {
 			if i < 2 { continue }
 			name := strings.TrimSpace(col(row, 0))
 			vtype := strings.TrimSpace(col(row, 1))
 			capacityStr := strings.TrimSpace(col(row, 2))
-			if name == "" || vtype == "" { continue }
+			if name == "" || vtype == "" { skipped++; continue }
 			capacity, _ := strconv.Atoi(capacityStr)
 			var cap *int
 			if capacity > 0 { cap = &capacity }
-			h.DB.Exec(ctx, `INSERT INTO venues (id, tenant_id, name, type, capacity) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
+			var exists string
+			h.DB.QueryRow(ctx, `SELECT id FROM venues WHERE tenant_id=$1 AND name=$2`, tenantID, name).Scan(&exists)
+			if exists != "" { skipped++; continue }
+			h.DB.Exec(ctx, `INSERT INTO venues (id, tenant_id, name, type, capacity) VALUES ($1,$2,$3,$4,$5)`,
 				uuid.NewString(), tenantID, name, vtype, cap)
 			created++
 		}
 		result["venuesCreated"] = created
+		result["venuesSkipped"] = skipped
 	}
 
 	if rows, _ := xlsx.GetRows("节次"); len(rows) > 2 {
-		created := 0
+		created, skipped := 0, 0
 		for i, row := range rows {
 			if i < 2 { continue }
 			name := strings.TrimSpace(col(row, 0))
 			startTime := strings.TrimSpace(col(row, 1))
 			endTime := strings.TrimSpace(col(row, 2))
 			sortStr := strings.TrimSpace(col(row, 3))
-			if name == "" { continue }
+			if name == "" { skipped++; continue }
 			sortOrder, _ := strconv.Atoi(sortStr)
 			var st, et *string
 			if startTime != "" { st = &startTime }
 			if endTime != "" { et = &endTime }
-			h.DB.Exec(ctx, `INSERT INTO period_slots (id, tenant_id, name, start_time, end_time, sort_order) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`,
+			var exists string
+			h.DB.QueryRow(ctx, `SELECT id FROM period_slots WHERE tenant_id=$1 AND name=$2`, tenantID, name).Scan(&exists)
+			if exists != "" { skipped++; continue }
+			h.DB.Exec(ctx, `INSERT INTO period_slots (id, tenant_id, name, start_time, end_time, sort_order) VALUES ($1,$2,$3,$4,$5,$6)`,
 				uuid.NewString(), tenantID, name, st, et, sortOrder)
 			created++
 		}
 		result["periodSlotsCreated"] = created
+		result["periodSlotsSkipped"] = skipped
 	}
 
 	respondJSON(w, http.StatusOK, result)

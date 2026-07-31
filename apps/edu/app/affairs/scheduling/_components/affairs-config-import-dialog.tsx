@@ -49,7 +49,7 @@ export function AffairsConfigImportDialog({ open, onOpenChange, onImported }: Af
     setImporting(true)
     try {
       const data = await importExportApi.importExcel("affairs-config" as any, files[0])
-      toast({ title: "导入完成", description: `学期 ${(data as any).termsCreated || 0} · 场地 ${(data as any).venuesCreated || 0} · 节次 ${(data as any).periodSlotsCreated || 0}` })
+      toast({ title: "导入完成", description: `学期 ${(data as any).termsCreated || 0}${(data as any).termsSkipped ? `（跳过${(data as any).termsSkipped}）` : ""} · 场地 ${(data as any).venuesCreated || 0}${(data as any).venuesSkipped ? `（跳过${(data as any).venuesSkipped}）` : ""} · 节次 ${(data as any).periodSlotsCreated || 0}${(data as any).periodSlotsSkipped ? `（跳过${(data as any).periodSlotsSkipped}）` : ""}` })
       resetAndClose()
       onImported()
     } catch (err: any) {
