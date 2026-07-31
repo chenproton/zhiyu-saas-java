@@ -20,9 +20,10 @@ interface ScheduleEditDialogProps {
   entry: ScheduleEntry | null
   venues: Venue[]
   onSaved: () => void
+  onReschedule?: (entry: ScheduleEntry) => void
 }
 
-export function ScheduleEditDialog({ open, onOpenChange, entry, venues, onSaved }: ScheduleEditDialogProps) {
+export function ScheduleEditDialog({ open, onOpenChange, entry, venues, onSaved, onReschedule }: ScheduleEditDialogProps) {
   const { toast } = useToast()
   const { tenantId } = usePortalAuth()
   const [venueId, setVenueId] = useState("")
@@ -120,6 +121,9 @@ export function ScheduleEditDialog({ open, onOpenChange, entry, venues, onSaved 
           <DialogFooter>
             <Button variant="ghost" className="mr-auto text-destructive" onClick={() => setConfirmDeleteOpen(true)} disabled={saving || deleting}>
               取消排课
+            </Button>
+            <Button variant="outline" onClick={() => { onOpenChange(false); if (entry) onReschedule?.(entry) }} disabled={saving || deleting}>
+              重新排课
             </Button>
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving || deleting}>关闭</Button>
             <Button onClick={handleSave} disabled={saving || deleting || classNodeIds.length === 0}>{saving ? "保存中..." : "保存"}</Button>

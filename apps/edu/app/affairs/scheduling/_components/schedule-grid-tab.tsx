@@ -120,7 +120,13 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
     finally { setPreConfigSaving(false) }
   }
 
+  const handleReschedule = useCallback((entry: ScheduleEntry) => {
+    setSelectedPendingId(null)
+    setMovingEntry(entry)
+  }, [])
+
   const handleEditClick = useCallback((entry: ScheduleEntry) => {
+    setMovingEntry(null)
     setEditTarget(entry); setEditOpen(true)
   }, [])
 
@@ -150,6 +156,13 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
         <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-700">
           <span className="font-medium">已选中：{selectedEntry.courseName}</span><span>→ 点击右侧空格排课</span>
           <Button variant="ghost" size="sm" className="ml-auto h-6 px-2 text-xs" onClick={() => setSelectedPendingId(null)}><X className="mr-1 h-3 w-3" />取消</Button>
+        </div>
+      )}
+
+      {movingEntry && (
+        <div className="flex items-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-4 py-2 text-sm text-orange-700">
+          <span className="font-medium">正在重新排课：{movingEntry.courseName}</span><span>→ 点击右侧空格切换时间</span>
+          <Button variant="ghost" size="sm" className="ml-auto h-6 px-2 text-xs" onClick={() => setMovingEntry(null)}><X className="mr-1 h-3 w-3" />取消</Button>
         </div>
       )}
 
@@ -187,11 +200,12 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
 
         <div className="min-w-0 flex-1 rounded-lg border bg-white p-3">
           <ScheduleGrid entries={filteredEntries} periodSlots={periodSlots} loading={gridLoading} alwaysShow
-            emptyText="点击左侧课程后点此处空格" onEntryClick={handleEditClick} onCellClick={selectedEntry ? handleCellClick : undefined} />
+            emptyText="点击左侧课程后点此处空格" onEntryClick={handleEditClick}
+            onCellClick={selectedEntry || movingEntry ? handleCellClick : undefined} movingEntry={movingEntry} />
         </div>
       </div>
 
-      <ScheduleEditDialog open={editOpen} onOpenChange={setEditOpen} entry={editTarget} venues={venues} onSaved={handleEditSaved} />
+      <ScheduleEditDialog open={editOpen} onOpenChange={setEditOpen} entry={editTarget} venues={venues} onSaved={handleEditSaved} onReschedule={handleReschedule} />
 
       <Dialog open={!!preConfigEntry} onOpenChange={(v) => { if (!v) setPreConfigEntry(null) }}>
         <DialogContent>
