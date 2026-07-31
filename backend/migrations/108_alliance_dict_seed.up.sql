@@ -1,7 +1,7 @@
 -- 联盟字典种子数据（code=英文存储值, name=中文显示名）
 -- 为所有已存在的租户插入，已存在(code 冲突)则跳过
-INSERT INTO alliance_dictionaries (id, tenant_id, dict_type, code, name, sort_order, created_at, updated_at)
-SELECT gen_random_uuid(), t.id, d.dict_type, d.code, d.name, d.sort_order, NOW(), NOW()
+INSERT INTO alliance_dictionaries (id, tenant_id, dict_type, code, name, sort_order, created_at)
+SELECT gen_random_uuid(), t.id, d.dict_type, d.code, d.name, d.sort_order, NOW()
 FROM (VALUES
     ('cooperation_type', '人才培养', '人才培养', 1),
     ('cooperation_type', '实习实训', '实习实训', 2),
