@@ -176,6 +176,20 @@
 | `RandomQuestionDialog` | `random-question-dialog.tsx` | 随机抽题 |
 | `ManualQuestionDialog` | `manual-question-dialog.tsx` | 手动选题 |
 
+## 移动端适配约定
+
+> 共享组件已内置移动端兜底（Dialog 高度限制/内部滚动、Tabs 超宽横向滚动、Pagination 换行、Table 自带横向滚动），新页面按以下约定开发即可自然适配移动端。
+
+1. **布局网格**：多列网格一律以 `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4` 起步（禁止写死 `grid-cols-4`），列数按内容重要度递减
+2. **Bento/显式摆放**：`gridColumn/gridRow` 显式摆放只允许在 `lg+` 生效（参考 `/portal` 首页 `lg:col-start-*` 模式），移动端走流式排列
+3. **数据表格**：一律使用 `<Table>`（自带 `overflow-x-auto` 横向滚动），禁止手写 table 或固定宽度列
+4. **宽网格（课表类）**：`grid-cols-7/8/12` 等宽网格需外层容器 `overflow-x-auto` + 网格本身 `min-w-[760px]`，保证移动端横向滚动而非挤压（参考 `schedule-grid.tsx`）
+5. **弹窗**：内容多的弹窗直接用 `<Dialog>` 默认尺寸（自带 `max-h-[calc(100dvh-2rem)]` 内部滚动）；全屏编辑器类用 `size="full"`
+6. **Tabs**：Tab 过多时直接使用 `<TabsList>`（自带超宽横向滚动）
+7. **分页**：`<Pagination>` 自带换行，无需额外处理
+8. **断点**：需要 JS 判断移动端时使用 `useIsMobile()`（`@zhiyu/ui`），样式一律用 Tailwind `max-md:` / `md:` 变体
+9. **触控目标**：移动端按钮/点击区域保持 ≥ 32px
+
 ## 注意事项
 
 1. **状态标签**：不要定义本地 `STATUS_CONFIG`，使用 `getStatusConfig()`（`packages/shared-types/src/status.ts`）+ `<StatusBadge>`
