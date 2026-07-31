@@ -255,22 +255,20 @@ func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *
 	}
 	defer tx.Rollback(ctx)
 
-	// 清空该学期已有排课
-	if overwrite {
-		if _, err := tx.Exec(ctx, `DELETE FROM schedule_entries WHERE tenant_id = $1 AND term_id = $2`, tenantID, termID); err != nil {
-			result.Errors = append(result.Errors, "清空旧排课失败")
-			result.Failed++
-			return result
-		}
-		// 教学计划条目全部恢复为待排
-		if _, err := tx.Exec(ctx, `
-			UPDATE teaching_plan_entries e SET status = 'planned'
-			FROM teaching_plans p WHERE p.id = e.plan_id AND p.tenant_id = $1 AND p.term_id = $2
-		`, tenantID, termID); err != nil {
-			result.Errors = append(result.Errors, "恢复待排状态失败")
-			result.Failed++
-			return result
-		}
+	// 课程列表格式为「清空重排」：回传文件代表该学期完整排课，始终清空后重建，避免重复导入叠加
+	if _, err := tx.Exec(ctx, `DELETE FROM schedule_entries WHERE tenant_id = $1 AND term_id = $2`, tenantID, termID); err != nil {
+		result.Errors = append(result.Errors, "清空旧排课失败")
+		result.Failed++
+		return result
+	}
+	// 教学计划条目全部恢复为待排
+	if _, err := tx.Exec(ctx, `
+		UPDATE teaching_plan_entries e SET status = 'planned'
+		FROM teaching_plans p WHERE p.id = e.plan_id AND p.tenant_id = $1 AND p.term_id = $2
+	`, tenantID, termID); err != nil {
+		result.Errors = append(result.Errors, "恢复待排状态失败")
+		result.Failed++
+		return result
 	}
 
 	created := 0
