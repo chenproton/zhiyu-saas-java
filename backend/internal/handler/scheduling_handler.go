@@ -463,15 +463,21 @@ func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Reques
 	}
 	ctx := r.Context()
 
-	// 班级兜底：请求未带班级且来源教学计划条目时，从条目中读取并回填；
-	// 若条目也没有班级，则拒绝并提示先去教学计划设置。
+	// 班级兜底：请求未带班级且来源教学计划条目时，优先从 junction table 读取，
+	// 再 fallback 到 class_node_id 字段。
 	if req.ClassNodeID == "" && req.PlanEntryID != nil && *req.PlanEntryID != "" {
-		var planClassNodeID *string
+		// 优先查多班级关联表
+		var fallbackClassID *string
 		_ = h.DB.QueryRow(ctx, `
-			SELECT class_node_id FROM teaching_plan_entries WHERE id = $1
-		`, *req.PlanEntryID).Scan(&planClassNodeID)
-		if planClassNodeID != nil && *planClassNodeID != "" {
-			req.ClassNodeID = *planClassNodeID
+			SELECT ec.class_node_id FROM teaching_plan_entry_classes ec WHERE ec.entry_id = $1 LIMIT 1
+		`, *req.PlanEntryID).Scan(&fallbackClassID)
+		if fallbackClassID == nil {
+			_ = h.DB.QueryRow(ctx, `
+				SELECT class_node_id FROM teaching_plan_entries WHERE id = $1
+			`, *req.PlanEntryID).Scan(&fallbackClassID)
+		}
+		if fallbackClassID != nil && *fallbackClassID != "" {
+			req.ClassNodeID = *fallbackClassID
 		} else {
 			respondError(w, http.StatusBadRequest, "该教学计划条目尚未设置班级，请先在教学计划中设置班级")
 			return

@@ -117,6 +117,8 @@ export interface TeachingPlanEntry {
   weekPattern: string
   classNodeId?: string
   className?: string
+  classNodeIds?: string[]
+  classNames?: string[]
   teacherId?: string
   teacherName?: string
   teacherType?: string
@@ -245,6 +247,7 @@ export interface TeachingPlanEntryUpdatePayload {
   endWeek?: number
   weekPattern?: string
   classNodeId?: string
+  classNodeIds?: string[]
   teacherId?: string
   teacherType?: string
   venueType?: string

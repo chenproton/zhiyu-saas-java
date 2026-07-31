@@ -30,17 +30,18 @@ type GenerateTeachingPlanRequest struct {
 }
 
 type UpdateTeachingPlanEntryRequest struct {
-	WeekHours   *int     `json:"weekHours"`
-	StartWeek   *int     `json:"startWeek"`
-	EndWeek     *int     `json:"endWeek"`
-	WeekPattern *string  `json:"weekPattern"`
-	ClassNodeID *string  `json:"classNodeId"`
-	TeacherID   *string  `json:"teacherId"`
-	TeacherType *string  `json:"teacherType"`
-	VenueType   *string  `json:"venueType"`
-	Status      *string  `json:"status"`
-	Credits     *float64 `json:"credits"`
-	TotalHours  *int     `json:"totalHours"`
+	WeekHours    *int     `json:"weekHours"`
+	StartWeek    *int     `json:"startWeek"`
+	EndWeek      *int     `json:"endWeek"`
+	WeekPattern  *string  `json:"weekPattern"`
+	ClassNodeID  *string  `json:"classNodeId"`
+	ClassNodeIDs []string `json:"classNodeIds"`
+	TeacherID    *string  `json:"teacherId"`
+	TeacherType  *string  `json:"teacherType"`
+	VenueType    *string  `json:"venueType"`
+	Status       *string  `json:"status"`
+	Credits      *float64 `json:"credits"`
+	TotalHours   *int     `json:"totalHours"`
 }
 
 type TeachingPlanDetailResponse struct {
@@ -321,6 +322,18 @@ func (h *TeachingPlanHandler) UpdateEntry(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// 更新多班级关联
+	if req.ClassNodeIDs != nil {
+		if _, err := h.DB.Exec(r.Context(), `DELETE FROM teaching_plan_entry_classes WHERE entry_id = $1`, id); err != nil {
+			slog.Error("清空班级关联失败", "error", err)
+		}
+		for _, cid := range req.ClassNodeIDs {
+			if cid != "" {
+				h.DB.Exec(r.Context(), `INSERT INTO teaching_plan_entry_classes (entry_id, class_node_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, id, cid)
+			}
+		}
+	}
+
 	entry, _ = h.fetchPlanEntry(r.Context(), id, tenantID)
 	respondJSON(w, http.StatusOK, entry)
 }
@@ -484,7 +497,9 @@ func (h *TeachingPlanHandler) fetchPlanEntry(ctx context.Context, id, tenantID s
 		SELECT e.id, e.plan_id, e.course_name, e.course_code, e.type, e.nature, e.credits, e.total_hours,
 			e.week_hours, e.start_week, e.end_week, e.week_pattern,
 			e.class_node_id, COALESCE(o.name, ''), e.teacher_id, COALESCE(u.name, ''), e.teacher_type, e.venue_type,
-			e.scenario_id, COALESCE(s.name, ''), e.course_id, COALESCE(c.name, ''), e.status
+			e.scenario_id, COALESCE(s.name, ''), e.course_id, COALESCE(c.name, ''), e.status,
+			COALESCE((SELECT array_agg(ec.class_node_id) FROM teaching_plan_entry_classes ec WHERE ec.entry_id = e.id), '{}') AS class_node_ids,
+			COALESCE((SELECT array_agg(o2.name ORDER BY ec.class_node_id) FROM teaching_plan_entry_classes ec JOIN organizations o2 ON o2.id = ec.class_node_id WHERE ec.entry_id = e.id), '{}') AS class_names
 		FROM teaching_plan_entries e
 		JOIN teaching_plans p ON p.id = e.plan_id
 		LEFT JOIN organizations o ON o.id = e.class_node_id
@@ -495,7 +510,8 @@ func (h *TeachingPlanHandler) fetchPlanEntry(ctx context.Context, id, tenantID s
 	`, id, tenantID).Scan(&e.ID, &e.PlanID, &e.CourseName, &e.CourseCode, &e.Type, &e.Nature, &e.Credits, &e.TotalHours,
 		&e.WeekHours, &e.StartWeek, &e.EndWeek, &e.WeekPattern,
 		&e.ClassNodeID, &e.ClassName, &e.TeacherID, &e.TeacherName, &e.TeacherType, &e.VenueType,
-		&e.ScenarioID, &e.ScenarioName, &e.CourseID, &e.LinkedCourseName, &e.Status)
+		&e.ScenarioID, &e.ScenarioName, &e.CourseID, &e.LinkedCourseName, &e.Status,
+		&e.ClassNodeIDs, &e.ClassNames)
 	return e, err
 }
 
@@ -504,7 +520,9 @@ func (h *TeachingPlanHandler) fetchPlanEntries(ctx context.Context, planID, tena
 		SELECT e.id, e.plan_id, e.course_name, e.course_code, e.type, e.nature, e.credits, e.total_hours,
 			e.week_hours, e.start_week, e.end_week, e.week_pattern,
 			e.class_node_id, COALESCE(o.name, ''), e.teacher_id, COALESCE(u.name, ''), e.teacher_type, e.venue_type,
-			e.scenario_id, COALESCE(s.name, ''), e.course_id, COALESCE(c.name, ''), e.status
+			e.scenario_id, COALESCE(s.name, ''), e.course_id, COALESCE(c.name, ''), e.status,
+			COALESCE((SELECT array_agg(ec.class_node_id) FROM teaching_plan_entry_classes ec WHERE ec.entry_id = e.id), '{}') AS class_node_ids,
+			COALESCE((SELECT array_agg(o2.name ORDER BY ec.class_node_id) FROM teaching_plan_entry_classes ec JOIN organizations o2 ON o2.id = ec.class_node_id WHERE ec.entry_id = e.id), '{}') AS class_names
 		FROM teaching_plan_entries e
 		JOIN teaching_plans p ON p.id = e.plan_id
 		LEFT JOIN organizations o ON o.id = e.class_node_id
@@ -525,7 +543,8 @@ func (h *TeachingPlanHandler) fetchPlanEntries(ctx context.Context, planID, tena
 		if err := rows.Scan(&e.ID, &e.PlanID, &e.CourseName, &e.CourseCode, &e.Type, &e.Nature, &e.Credits, &e.TotalHours,
 			&e.WeekHours, &e.StartWeek, &e.EndWeek, &e.WeekPattern,
 			&e.ClassNodeID, &e.ClassName, &e.TeacherID, &e.TeacherName, &e.TeacherType, &e.VenueType,
-			&e.ScenarioID, &e.ScenarioName, &e.CourseID, &e.LinkedCourseName, &e.Status); err != nil {
+			&e.ScenarioID, &e.ScenarioName, &e.CourseID, &e.LinkedCourseName, &e.Status,
+			&e.ClassNodeIDs, &e.ClassNames); err != nil {
 			return nil, err
 		}
 		items = append(items, e)

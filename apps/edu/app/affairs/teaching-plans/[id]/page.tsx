@@ -23,6 +23,7 @@ import {
 import { useToast } from "@zhiyu/ui"
 import { PageHeaderCard } from "@/components/shared/page-header-card"
 import { StatusBadge } from "@/components/shared/status-badge"
+import { Badge } from "@/components/ui/badge"
 import { UserSelector } from "@/components/shared/user-selector"
 import { OrgNodePicker } from "@/components/shared/org-node-picker"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
@@ -57,7 +58,8 @@ export default function TeachingPlanDetailPage() {
   const [editCredits, setEditCredits] = useState("")
   const [editTotalHours, setEditTotalHours] = useState("")
   const [editVenueType, setEditVenueType] = useState("")
-  const [editClassNodeId, setEditClassNodeId] = useState<string | undefined>(undefined)
+  const [editClassNodeIds, setEditClassNodeIds] = useState<string[]>([])
+  const [showAddClass, setShowAddClass] = useState(false)
   const [savingEntry, setSavingEntry] = useState(false)
 
   const loadPlan = useCallback(async () => {
@@ -93,7 +95,8 @@ export default function TeachingPlanDetailPage() {
     setEditCredits(String(e.credits || 0))
     setEditTotalHours(String(e.totalHours || 0))
     setEditVenueType(e.venueType || "")
-    setEditClassNodeId(e.classNodeId)
+    setEditClassNodeIds(e.classNodeIds || (e.classNodeId ? [e.classNodeId] : []))
+    setShowAddClass(false)
   }
 
   const handleSaveEntry = async (entryId: string) => {
@@ -102,10 +105,10 @@ export default function TeachingPlanDetailPage() {
       const updated = await teachingPlanApi.updateEntry(entryId, {
         startWeek: Number(editStartWeek) || 1,
         endWeek: Number(editEndWeek) || 1,
-        credits: Number(editCredits) || undefined,
-        totalHours: Number(editTotalHours) || undefined,
+        credits: editCredits !== "" ? Number(editCredits) : undefined,
+        totalHours: editTotalHours !== "" ? Number(editTotalHours) : undefined,
         venueType: editVenueType,
-        classNodeId: editClassNodeId,
+        classNodeIds: editClassNodeIds,
       })
       replaceEntry(updated)
       setEditingId(null)
@@ -212,16 +215,24 @@ export default function TeachingPlanDetailPage() {
                           </TableCell>
                           <TableCell>
                             {editing ? (
-                              <OrgNodePicker
-                                tenantId={tenantId}
-                                value={editClassNodeId}
-                                onChange={setEditClassNodeId}
-                                selectableTypes={["班级"]}
-                                placeholder="选择班级"
-                                title="选择授课班级"
-                              />
+                              <div className="space-y-1.5">
+                                <div className="flex flex-wrap gap-1">
+                                  {editClassNodeIds.map((cid, idx) => (
+                                    <Badge key={cid} variant="secondary" className="gap-1 pr-1">
+                                      <span className="max-w-[100px] truncate">{e.classNames?.[idx] || cid}</span>
+                                      <button className="ml-0.5 hover:text-destructive" onClick={() => setEditClassNodeIds((prev) => prev.filter((_, i) => i !== idx))}>&times;</button>
+                                    </Badge>
+                                  ))}
+                                  <Button variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={() => setShowAddClass(true)}>+ 添加班级</Button>
+                                </div>
+                                {showAddClass && (
+                                  <OrgNodePicker tenantId={tenantId} value={undefined}
+                                    onChange={(v) => { if (v && !editClassNodeIds.includes(v)) { setEditClassNodeIds((prev) => [...prev, v]) }; setShowAddClass(false) }}
+                                    selectableTypes={["班级"]} placeholder="选择班级" title="添加授课班级" />
+                                )}
+                              </div>
                             ) : (
-                              <span className="text-sm">{e.className || "-"}</span>
+                              <span className="text-sm">{(e.classNames || []).length > 0 ? (e.classNames || []).join("、") : (e.className || "-")}</span>
                             )}
                           </TableCell>
                           <TableCell>

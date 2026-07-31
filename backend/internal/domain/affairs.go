@@ -70,29 +70,31 @@ type TeachingPlan struct {
 
 // TeachingPlanEntry 教学计划条目（排课的待排来源）。
 type TeachingPlanEntry struct {
-	ID           string  `json:"id"`
-	PlanID       string  `json:"planId"`
-	CourseName   string  `json:"courseName"`
-	CourseCode   *string `json:"courseCode,omitempty"`
-	Type         string  `json:"type"` // theory/practice/scene
-	Nature       *string `json:"nature,omitempty"`
-	Credits      float64 `json:"credits"`
-	TotalHours   int     `json:"totalHours"`
-	WeekHours    int     `json:"weekHours"`
-	StartWeek    int     `json:"startWeek"`
-	EndWeek      int     `json:"endWeek"`
-	WeekPattern  string  `json:"weekPattern"`
-	ClassNodeID  *string `json:"classNodeId,omitempty"`
-	ClassName    string  `json:"className,omitempty"`
-	TeacherID    *string `json:"teacherId,omitempty"`
-	TeacherName  string  `json:"teacherName,omitempty"`
-	TeacherType  *string `json:"teacherType,omitempty"`
-	VenueType    *string `json:"venueType,omitempty"`
-	ScenarioID   *string `json:"scenarioId,omitempty"`
-	ScenarioName string  `json:"scenarioName,omitempty"`
+	ID            string   `json:"id"`
+	PlanID        string   `json:"planId"`
+	CourseName    string   `json:"courseName"`
+	CourseCode    *string  `json:"courseCode,omitempty"`
+	Type          string   `json:"type"` // theory/practice/scene
+	Nature        *string  `json:"nature,omitempty"`
+	Credits       float64  `json:"credits"`
+	TotalHours    int      `json:"totalHours"`
+	WeekHours     int      `json:"weekHours"`
+	StartWeek     int      `json:"startWeek"`
+	EndWeek       int      `json:"endWeek"`
+	WeekPattern   string   `json:"weekPattern"`
+	ClassNodeID   *string  `json:"classNodeId,omitempty"`
+	ClassName     string   `json:"className,omitempty"`
+	ClassNodeIDs  []string `json:"classNodeIds,omitempty"`
+	ClassNames    []string `json:"classNames,omitempty"`
+	TeacherID     *string  `json:"teacherId,omitempty"`
+	TeacherName   string   `json:"teacherName,omitempty"`
+	TeacherType   *string  `json:"teacherType,omitempty"`
+	VenueType     *string  `json:"venueType,omitempty"`
+	ScenarioID    *string  `json:"scenarioId,omitempty"`
+	ScenarioName  string   `json:"scenarioName,omitempty"`
 	CourseID        *string `json:"courseId,omitempty"`
 	LinkedCourseName string  `json:"linkedCourseName,omitempty"`
-	Status       string  `json:"status"`
+	Status        string   `json:"status"`
 }
 
 // Venue 场地。
