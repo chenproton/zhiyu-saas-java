@@ -127,6 +127,8 @@ export default function AllianceSchoolPage() {
         province: formData.province || null, city: formData.city || null,
         website: formData.website ? (formData.website.startsWith("http") ? formData.website : "https://" + formData.website) : null,
         contactPhone: formData.contactPhone || formData.phone || null,
+        educationLevel: formData.educationLevel || null,
+        educationNature: formData.educationNature || null,
       })})
       setIsEditDialogOpen(false); toast({ title: "已保存" }); await fetchTenant()
     } catch (err) { setError(err instanceof Error ? err.message : "保存失败") }
@@ -181,9 +183,30 @@ export default function AllianceSchoolPage() {
               <div className="grid gap-2"><Label>学校名称 <span className="text-destructive">*</span></Label><Input value={formData.name || ""} onChange={(e) => setF("name", e.target.value)} /></div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2"><Label>学校简称</Label><Input value={formData.shortName || ""} onChange={(e) => setF("shortName", e.target.value)} /></div>
-                <div className="grid gap-2"><Label>办学类型</Label><Input value={formData.schoolType || ""} onChange={(e) => setF("schoolType", e.target.value)} /></div>
+                <div className="grid gap-2"><Label>办学层次</Label>
+                  <Select value={formData.educationLevel || ""} onValueChange={(v) => setF("educationLevel", v)}>
+                    <SelectTrigger><SelectValue placeholder="请选择" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="普通本科院校">普通本科院校</SelectItem>
+                      <SelectItem value="职业本科院校">职业本科院校</SelectItem>
+                      <SelectItem value="高职院校">高职院校</SelectItem>
+                      <SelectItem value="中等专业学校">中等专业学校</SelectItem>
+                      <SelectItem value="职业高中">职业高中</SelectItem>
+                      <SelectItem value="技工学校">技工学校</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2"><Label>办学性质</Label>
+                  <Select value={formData.educationNature || ""} onValueChange={(v) => setF("educationNature", v)}>
+                    <SelectTrigger><SelectValue placeholder="请选择" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="公办">公办</SelectItem>
+                      <SelectItem value="民办">民办</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="grid gap-2"><Label>省份</Label>
                   <Select value={formData.province || ""} onValueChange={(v) => setF("province", v)}>
                     <SelectTrigger><SelectValue placeholder="请选择省份" /></SelectTrigger>
