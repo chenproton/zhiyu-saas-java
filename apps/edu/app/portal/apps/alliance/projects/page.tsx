@@ -12,8 +12,8 @@ import Link from "next/link"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest, buildQuery } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
+import { allianceLabel } from "@zhiyu/shared-types"
 import { TableRowActions } from "@/components/shared/table-row-actions"
-import { StatusBadge } from "@/components/shared/status-badge"
 import { PortalCrudPage } from "@/components/shared/portal-crud-page"
 import type { AllianceProject, AllianceListResponse } from "@/lib/types"
 
@@ -54,8 +54,8 @@ export default function AllianceProjectsPage() {
       renderTableRow={(p: any, actions: any) => (
         <>
           <TableCell className="font-medium">{p.name}</TableCell>
-          <TableCell><StatusBadge status={p.phase} /></TableCell>
-          <TableCell>{p.publishStatus === "published" ? "已发布" : "草稿"}</TableCell>
+          <TableCell>{allianceLabel("projectPhase", p.phase)}</TableCell>
+          <TableCell>{allianceLabel("publishStatus", p.publishStatus)}</TableCell>
           <TableCell>{p.startDate || "-"}</TableCell>
           <TableCell>{p.isPublic ? "是" : "否"}</TableCell>
           <TableRowActions>

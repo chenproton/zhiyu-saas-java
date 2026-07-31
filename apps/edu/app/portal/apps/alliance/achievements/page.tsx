@@ -12,8 +12,8 @@ import Link from "next/link"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
+import { allianceLabel } from "@zhiyu/shared-types"
 import { TableRowActions } from "@/components/shared/table-row-actions"
-import { StatusBadge } from "@/components/shared/status-badge"
 import { PortalCrudPage } from "@/components/shared/portal-crud-page"
 import type { AllianceAchievement, AllianceListResponse } from "@/lib/types"
 
@@ -76,8 +76,8 @@ export default function AllianceAchievementsPage() {
       renderTableRow={(item: any, actions: any) => (
         <>
           <TableCell className="font-medium">{item.title}</TableCell>
-          <TableCell>{item.type}</TableCell>
-          <TableCell><StatusBadge status={item.status} /></TableCell>
+          <TableCell>{allianceLabel("achievementType", item.type)}</TableCell>
+          <TableCell>{allianceLabel("achievementStatus", item.status)}</TableCell>
           <TableCell>{item.viewCount}</TableCell>
           <TableCell>{item.isPublic ? "是" : "否"}</TableCell>
           <TableRowActions>

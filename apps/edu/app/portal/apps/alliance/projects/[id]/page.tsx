@@ -12,7 +12,7 @@ import { TableCell, TableHead } from "@/components/ui/table"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
-import { StatusBadge } from "@/components/shared/status-badge"
+import { allianceLabel } from "@zhiyu/shared-types"
 import { AllianceDetailShell } from "@/components/shared/alliance-detail-shell"
 import { Plus, Pencil, Trash2, Loader2 } from "lucide-react"
 import type { AllianceProject, AllianceProjectMilestone, AllianceListResponse } from "@/lib/types"
@@ -85,10 +85,6 @@ export default function AllianceProjectDetailPage() {
     return <AllianceDetailShell title="" tabs={[]} notFound backHref="/portal/apps/alliance/projects" />
   }
 
-  const phaseLabel: Record<string, string> = {
-    initiation: "启动", execution: "执行中", acceptance: "验收", closure: "关闭",
-  }
-
   const tabs = [
     {
       key: "info", label: "基本信息",
@@ -97,8 +93,8 @@ export default function AllianceProjectDetailPage() {
           <Card><CardHeader><CardTitle>基础信息</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p><span className="text-muted-foreground">项目类型：</span>{project?.type || "-"}</p>
-              <p><span className="text-muted-foreground">项目阶段：</span>{phaseLabel[project?.phase || ""] || project?.phase || "-"}</p>
-              <p><span className="text-muted-foreground">发布状态：</span>{project?.publishStatus || "-"}</p>
+              <p><span className="text-muted-foreground">项目阶段：</span>{allianceLabel("projectPhase", project?.phase)}</p>
+              <p><span className="text-muted-foreground">发布状态：</span>{allianceLabel("publishStatus", project?.publishStatus)}</p>
               <p><span className="text-muted-foreground">公开显示：</span>{project?.isPublic ? "是" : "否"}</p>
             </CardContent></Card>
           <Card><CardHeader><CardTitle>时间信息</CardTitle></CardHeader>
@@ -163,7 +159,7 @@ export default function AllianceProjectDetailPage() {
     <>
       <AllianceDetailShell
         title={project?.name || ""}
-        statusBadge={project ? <StatusBadge status={project.phase} /> : undefined}
+        statusBadge={project ? <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">{allianceLabel("projectPhase", project.phase)}</span> : undefined}
         backHref="/portal/apps/alliance/projects"
         editHref={`/portal/apps/alliance/projects/${id}/edit`}
         tabs={tabs}

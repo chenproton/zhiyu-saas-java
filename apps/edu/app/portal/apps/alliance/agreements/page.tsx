@@ -11,8 +11,8 @@ import { Pencil, Trash2 } from "lucide-react"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
+import { allianceLabel } from "@zhiyu/shared-types"
 import { TableRowActions } from "@/components/shared/table-row-actions"
-import { StatusBadge } from "@/components/shared/status-badge"
 import { PortalCrudPage } from "@/components/shared/portal-crud-page"
 import type { AllianceAgreement, AllianceListResponse } from "@/lib/types"
 
@@ -74,7 +74,7 @@ export default function AllianceAgreementsPage() {
         <>
           <TableCell className="font-medium">{item.name}</TableCell>
           <TableCell>{item.type || "-"}</TableCell>
-          <TableCell><StatusBadge status={item.status} /></TableCell>
+          <TableCell>{allianceLabel("agreementStatus", item.status)}</TableCell>
           <TableCell>{item.startDate || "-"} ~ {item.endDate || "-"}</TableCell>
           <TableRowActions>
             <Button variant="ghost" size="sm" onClick={actions.edit}><Pencil className="h-3.5 w-3.5 mr-1" />编辑</Button>

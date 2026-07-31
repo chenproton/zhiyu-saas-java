@@ -12,7 +12,7 @@ import { TableCell, TableHead } from "@/components/ui/table"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
-import { StatusBadge } from "@/components/shared/status-badge"
+import { allianceLabel } from "@zhiyu/shared-types"
 import { AllianceDetailShell } from "@/components/shared/alliance-detail-shell"
 import { Plus, Pencil, Trash2, Loader2 } from "lucide-react"
 import type {
@@ -108,10 +108,10 @@ export default function AllianceEnterpriseDetailPage() {
         <div className="grid grid-cols-2 gap-6">
           <Card><CardHeader><CardTitle>基础信息</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <p><span className="text-muted-foreground">企业类型：</span>{enterprise?.enterpriseType === "platform" ? "平台企业" : "校本企业"}</p>
+              <p><span className="text-muted-foreground">企业类型：</span>{allianceLabel("enterpriseType", enterprise?.enterpriseType)}</p>
               <p><span className="text-muted-foreground">所属行业：</span>{enterprise?.industry || "-"}</p>
               <p><span className="text-muted-foreground">所在地区：</span>{enterprise?.region || "-"}</p>
-              <p><span className="text-muted-foreground">合作评级：</span>{enterprise?.rating || "-"}</p>
+              <p><span className="text-muted-foreground">合作评级：</span>{allianceLabel("enterpriseRating", enterprise?.rating)}</p>
               <p><span className="text-muted-foreground">公开显示：</span>{enterprise?.isPublic ? "是" : "否"}</p>
             </CardContent></Card>
           <Card><CardHeader><CardTitle>联系信息</CardTitle></CardHeader>
@@ -146,7 +146,7 @@ export default function AllianceEnterpriseDetailPage() {
                 ) : agreements.map((a) => (
                   <tr key={a.id} className="border-b">
                     <TableCell>{a.name}</TableCell><TableCell>{a.type || "-"}</TableCell>
-                    <TableCell><StatusBadge status={a.status} /></TableCell>
+                    <TableCell>{allianceLabel("agreementStatus", a.status)}</TableCell>
                     <TableCell>{a.startDate || "-"} ~ {a.endDate || "-"}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
@@ -176,7 +176,7 @@ export default function AllianceEnterpriseDetailPage() {
               ) : projects.map((p) => (
                 <tr key={p.id} className="border-b">
                   <TableCell className="font-medium">{p.name}</TableCell>
-                  <TableCell><StatusBadge status={p.phase} /></TableCell>
+                  <TableCell>{allianceLabel("projectPhase", p.phase)}</TableCell>
                   <TableCell>{p.startDate || "-"}</TableCell>
                 </tr>
               ))}
@@ -199,8 +199,8 @@ export default function AllianceEnterpriseDetailPage() {
               ) : achievements.map((a) => (
                 <tr key={a.id} className="border-b">
                   <TableCell className="font-medium">{a.title}</TableCell>
-                  <TableCell>{a.type}</TableCell>
-                  <TableCell><StatusBadge status={a.status} /></TableCell>
+                  <TableCell>{allianceLabel("achievementType", a.type)}</TableCell>
+                  <TableCell>{allianceLabel("achievementStatus", a.status)}</TableCell>
                 </tr>
               ))}
             </tbody>
@@ -214,7 +214,7 @@ export default function AllianceEnterpriseDetailPage() {
     <>
       <AllianceDetailShell
         title={enterprise?.name || ""}
-        statusBadge={enterprise ? <StatusBadge status={enterprise.status} /> : undefined}
+        statusBadge={enterprise ? <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">{allianceLabel("enterpriseStatus", enterprise.status)}</span> : undefined}
         backHref="/portal/apps/alliance/enterprises"
         editHref={`/portal/apps/alliance/enterprises/${id}/edit`}
         tabs={tabs}

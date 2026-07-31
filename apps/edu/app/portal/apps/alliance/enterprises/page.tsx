@@ -13,8 +13,8 @@ import Link from "next/link"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest, buildQuery } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
+import { allianceLabel } from "@zhiyu/shared-types"
 import { TableRowActions } from "@/components/shared/table-row-actions"
-import { StatusBadge } from "@/components/shared/status-badge"
 import { PortalCrudPage } from "@/components/shared/portal-crud-page"
 import type { AllianceEnterprise, AllianceListResponse } from "@/lib/types"
 
@@ -80,10 +80,10 @@ export default function AllianceEnterprisesPage() {
       renderTableRow={(enterprise: any, actions: any) => (
         <>
           <TableCell className="font-medium">{enterprise.name}</TableCell>
-          <TableCell>{enterprise.enterpriseType === "platform" ? "平台企业" : "校本企业"}</TableCell>
+          <TableCell>{allianceLabel("enterpriseType", enterprise.enterpriseType)}</TableCell>
           <TableCell>{enterprise.industry || "-"}</TableCell>
-          <TableCell><StatusBadge status={enterprise.status} /></TableCell>
-          <TableCell>{enterprise.rating || "-"}</TableCell>
+          <TableCell>{allianceLabel("enterpriseStatus", enterprise.status)}</TableCell>
+          <TableCell>{allianceLabel("enterpriseRating", enterprise.rating)}</TableCell>
           <TableCell>{enterprise.contactPerson || "-"}</TableCell>
           <TableCell>{enterprise.isPublic ? "是" : "否"}</TableCell>
           <TableRowActions>

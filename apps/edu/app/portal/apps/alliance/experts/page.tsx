@@ -11,8 +11,8 @@ import { Pencil, Trash2 } from "lucide-react"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest, buildQuery } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
+import { allianceLabel } from "@zhiyu/shared-types"
 import { TableRowActions } from "@/components/shared/table-row-actions"
-import { StatusBadge } from "@/components/shared/status-badge"
 import { PortalCrudPage } from "@/components/shared/portal-crud-page"
 import type { AllianceExpert, AllianceListResponse } from "@/lib/types"
 
@@ -55,8 +55,8 @@ export default function AllianceExpertsPage() {
           <TableCell>{e.title || "-"}</TableCell>
           <TableCell>{e.position || "-"}</TableCell>
           <TableCell>{e.industry || "-"}</TableCell>
-          <TableCell><StatusBadge status={e.status} /></TableCell>
-          <TableCell>{e.rating || "-"}</TableCell>
+          <TableCell>{allianceLabel("expertStatus", e.status)}</TableCell>
+          <TableCell>{allianceLabel("expertRating", e.rating)}</TableCell>
           <TableRowActions>
             <Button variant="ghost" size="sm" onClick={actions.edit}><Pencil className="h-3.5 w-3.5 mr-1" />编辑</Button>
             <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}><Trash2 className="h-3.5 w-3.5 mr-1" />删除</Button>
