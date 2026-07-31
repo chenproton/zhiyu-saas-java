@@ -122,6 +122,10 @@ export interface ContentImportExportApi {
   downloadTemplate?: (entity: "positions" | "scenarios" | "courses") => Promise<Response>
   exportScenariosExcel?: (ids: string[]) => Promise<Response>
   exportPositionsExcel?: (ids: string[]) => Promise<Response>
+  exportCoursesExcel?: (ids: string[]) => Promise<Response>
+  exportGranularCoursesExcel?: (ids: string[]) => Promise<Response>
+  exportQuestionBanksExcel?: (ids: string[]) => Promise<Response>
+  exportExamsExcel?: (ids: string[]) => Promise<Response>
 }
 
 export interface ContentListPageConfig<T extends ContentListItem> {
@@ -1119,6 +1123,14 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
                 ? importExportApi.exportScenariosExcel
                 : importExcelEntity === "positions"
                 ? importExportApi.exportPositionsExcel
+                : importExcelEntity === "courses"
+                ? importExportApi.exportCoursesExcel
+                : importExcelEntity === "granular-courses"
+                ? importExportApi.exportGranularCoursesExcel
+                : importExcelEntity === "question-banks"
+                ? importExportApi.exportQuestionBanksExcel
+                : importExcelEntity === "exams"
+                ? importExportApi.exportExamsExcel
                 : null
               if (exportFn) {
                 try {
