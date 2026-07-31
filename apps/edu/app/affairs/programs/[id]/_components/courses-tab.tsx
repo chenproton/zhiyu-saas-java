@@ -292,7 +292,7 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      {isPos ? (
+                      {r.linkType === "position" ? (
                         <div className="space-y-1">
                           <div className="flex items-center gap-1">
                             <Select value={r.linkType} onValueChange={(v) => {
