@@ -120,7 +120,7 @@ func (h *AllianceHandler) ListEnterprises(w http.ResponseWriter, r *http.Request
 			return
 		}
 		slog.Error("查询企业列表失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询企业列表失败: "+err.Error())
+		respondError(w, http.StatusInternalServerError, "查询企业列表失败")
 		return
 	}
 

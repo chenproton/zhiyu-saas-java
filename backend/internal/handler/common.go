@@ -601,6 +601,7 @@ var (
 	}
 
 	allowedListQuerySearchColumns = []string{
+		"account_name",
 		"c.code",
 		"c.name",
 		"code",
@@ -610,6 +611,7 @@ var (
 		"e.description",
 		"e.name",
 		"email",
+		"industry",
 		"m.name",
 		"name",
 		"question_text",
@@ -617,6 +619,7 @@ var (
 		"rdq.name",
 		"s.code",
 		"s.name",
+		"theme",
 		"title",
 		"tp.name",
 		"username",
