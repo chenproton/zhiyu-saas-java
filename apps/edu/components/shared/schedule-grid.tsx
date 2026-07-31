@@ -200,9 +200,9 @@ export function ScheduleGrid({
       <table className="w-full min-w-[840px] border-collapse">
         <thead>
           <tr>
-            <th className="w-[110px] border bg-muted/40 px-2 py-2 text-xs font-medium text-muted-foreground">节次</th>
+            <th className="w-[80px] border bg-muted/40 px-1 py-2 text-xs font-medium text-muted-foreground">节次</th>
             {DAY_LABELS.map((d) => (
-              <th key={d} className="border bg-muted/40 px-2 py-2 text-xs font-medium text-muted-foreground">
+              <th key={d} className="w-[130px] border bg-muted/40 px-1 py-2 text-xs font-medium text-muted-foreground">
                 {d}
               </th>
             ))}
