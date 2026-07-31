@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -385,11 +386,20 @@ func (s *AllianceStore) DeleteEnterpriseAgreement(ctx context.Context, id, tenan
 
 // ===== 合作项目 =====
 
+func formatDate(t *time.Time) *string {
+	if t == nil {
+		return nil
+	}
+	s := t.Format("2006-01-02")
+	return &s
+}
+
 func (s *AllianceStore) ScanProjectRows(rows pgx.Rows) ([]domain.AllianceProject, error) {
 	items := make([]domain.AllianceProject, 0)
 	for rows.Next() {
 		var p domain.AllianceProject
-		var typ, description, startDate, endDate, budget, coverImage *string
+		var typ, description, budget, coverImage *string
+		var startDate, endDate *time.Time
 		var enterpriseIDs, agreementIDs, colleges json.RawMessage
 		if err := rows.Scan(&p.ID, &p.TenantID, &p.Name, &typ, &description, &p.Phase,
 			&p.PublishStatus, &startDate, &endDate, &budget, &coverImage,
@@ -398,8 +408,8 @@ func (s *AllianceStore) ScanProjectRows(rows pgx.Rows) ([]domain.AllianceProject
 		}
 		p.Type = typ
 		p.Description = description
-		p.StartDate = startDate
-		p.EndDate = endDate
+		p.StartDate = formatDate(startDate)
+		p.EndDate = formatDate(endDate)
 		p.Budget = budget
 		p.CoverImage = coverImage
 		p.EnterpriseIDs = enterpriseIDs
@@ -412,7 +422,8 @@ func (s *AllianceStore) ScanProjectRows(rows pgx.Rows) ([]domain.AllianceProject
 
 func (s *AllianceStore) GetProjectByID(ctx context.Context, id, tenantID string) (*domain.AllianceProject, error) {
 	var p domain.AllianceProject
-	var typ, description, startDate, endDate, budget, coverImage *string
+	var typ, description, budget, coverImage *string
+	var startDate, endDate *time.Time
 	var enterpriseIDs, colleges json.RawMessage
 	err := s.DB.QueryRow(ctx, `
 		SELECT id, tenant_id, name, type, description, phase, publish_status,
@@ -427,8 +438,8 @@ func (s *AllianceStore) GetProjectByID(ctx context.Context, id, tenantID string)
 	}
 	p.Type = typ
 	p.Description = description
-	p.StartDate = startDate
-	p.EndDate = endDate
+	p.StartDate = formatDate(startDate)
+	p.EndDate = formatDate(endDate)
 	p.Budget = budget
 	p.CoverImage = coverImage
 	p.EnterpriseIDs = enterpriseIDs
