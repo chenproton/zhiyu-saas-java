@@ -1,6 +1,6 @@
 "use client"
 
-import { type ReactNode, useState, useEffect } from "react"
+import { type ReactNode, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Pencil } from "lucide-react"
@@ -43,6 +43,15 @@ export function AllianceDetailShell<T extends string = string>({
   const searchParams = useSearchParams()
   const urlTab = searchParams.get("tab")
 
+  const [activeTab, setActiveTab] = useState<string>(defaultTab ?? tabs[0]?.key ?? "")
+  const [prevUrlTab, setPrevUrlTab] = useState<string | null>(urlTab)
+  if (urlTab !== prevUrlTab) {
+    setPrevUrlTab(urlTab)
+    if (urlTab && tabs.some((t) => t.key === urlTab)) {
+      setActiveTab(urlTab)
+    }
+  }
+
   if (loading) {
     return <div className="text-center py-12 text-muted-foreground">加载中...</div>
   }
@@ -60,12 +69,6 @@ export function AllianceDetailShell<T extends string = string>({
     )
   }
 
-  const [activeTab, setActiveTab] = useState<string>(defaultTab ?? tabs[0]?.key ?? "")
-  useEffect(() => {
-    if (urlTab && tabs.some((t) => t.key === urlTab)) {
-      setActiveTab(urlTab)
-    }
-  }, [urlTab]) // eslint-disable-line react-hooks/exhaustive-deps
   const activeContent = tabs.find((t) => t.key === activeTab)?.content
 
   return (

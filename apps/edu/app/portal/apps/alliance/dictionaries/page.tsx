@@ -35,7 +35,13 @@ function DictionaryTab({ dictType, label }: { dictType: string; label: string })
     } catch {} finally { setLoading(false) }
   }, [tenantId, dictType])
 
-  useEffect(() => { if (authLoading || !tenantId) return; fetchItems() }, [tenantId, authLoading, fetchItems])
+  useEffect(() => {
+    if (authLoading || !tenantId) return
+    // 首屏加载：async IIFE 包裹，避免在 effect 体内同步触发 setState
+    ;(async () => {
+      await fetchItems()
+    })()
+  }, [tenantId, authLoading, fetchItems])
 
   const handleSave = async () => {
     setSaving(true)

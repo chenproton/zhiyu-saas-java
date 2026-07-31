@@ -78,10 +78,10 @@ export default function AllianceAgreementDetailPage() {
             <Card className="col-span-2"><CardHeader><CardTitle>协议概要</CardTitle></CardHeader>
               <CardContent><p className="text-sm whitespace-pre-wrap">{agreement.content}</p></CardContent></Card>
           )}
-          {(agreement?.attachments || []).length > 0 && (
+          {(agreement && agreement.attachments && agreement.attachments.length > 0) && (
             <Card className="col-span-2"><CardHeader><CardTitle>协议附件</CardTitle></CardHeader>
               <CardContent className="space-y-1">
-                {(agreement.attachments || []).map((a, i) => (
+                {agreement.attachments.map((a, i) => (
                   <p key={i} className="text-sm text-muted-foreground">📄 {typeof a === "string" ? a : (a as any)?.name || "附件"}</p>
                 ))}
               </CardContent></Card>

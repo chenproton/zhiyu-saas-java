@@ -46,7 +46,10 @@ function emptyRow(key: string, position?: boolean): CourseRow {
   return { key, name: "", code: "", credits: 0, hours: 0, nature: "必修", linkType: position ? "position" : "none", courseId: "", positionId: "" }
 }
 
-export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab({ programId }: { programId: string }, ref: any) {
+export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab(
+  { programId, onBusyChange }: { programId: string; onBusyChange?: (s: { saving: boolean; loading: boolean }) => void },
+  ref: any
+) {
   const { toast } = useToast()
   const [rows, setRows] = useState<CourseRow[]>([])
   const [systemCourses, setSystemCourses] = useState<Course[]>([])
@@ -56,6 +59,10 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab({ program
   const [saving, setSaving] = useState(false)
   const [loadingPosScen, setLoadingPosScen] = useState<Record<string, boolean>>({})
   const [importOpen, setImportOpen] = useState(false)
+
+  useEffect(() => {
+    onBusyChange?.({ saving, loading })
+  }, [saving, loading, onBusyChange])
 
   const loadCourses = useCallback(async () => {
     try {
@@ -109,7 +116,7 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab({ program
   const updateRow = (key: string, patch: Partial<CourseRow>) => {
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
   }
-  const addRow = () => { setRows((prev) => [emptyRow(`new-${Date.now()}-${prev.length}`, true), ...prev]) }
+  const addRow = useCallback(() => { setRows((prev) => [emptyRow(`new-${Date.now()}-${prev.length}`, true), ...prev]) }, [])
   const removeRow = (key: string) => { setRows((prev) => prev.filter((r) => r.key !== key)) }
 
   const handlePositionChange = async (rowKey: string, newPositionId: string) => {
@@ -118,7 +125,7 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab({ program
     fetchPositionScenarios(newPositionId)
   }
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setSaving(true)
     try {
       const payloads: any[] = []
@@ -146,7 +153,7 @@ export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab({ program
     } catch (err: any) {
       toast({ variant: "destructive", title: "保存失败", description: err.message || "保存课程设置失败" })
     } finally { setSaving(false) }
-  }
+  }, [rows, programId, toast, loadCourses])
 
   useImperativeHandle(ref, () => ({ handleSave, saving, loading, addRow, openImport: () => setImportOpen(true) }), [handleSave, saving, loading, addRow])
 

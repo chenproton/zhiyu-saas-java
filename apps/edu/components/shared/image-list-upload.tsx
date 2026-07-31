@@ -5,7 +5,7 @@ import { X, Plus, Loader2 } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { importExportApi } from "@zhiyu/api-client"
+import { fileApi } from "@zhiyu/api-client"
 
 export interface UploadFieldProps {
   label: string
@@ -16,7 +16,7 @@ export interface UploadFieldProps {
 }
 
 function uploadFile(file: File): Promise<string> {
-  return importExportApi.upload(file).then((res) => res.url)
+  return fileApi.upload(file).then((res) => res.url)
 }
 
 /** 图片多选上传：本地文件上传 / URL 直填，返回图片地址数组 */

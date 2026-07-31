@@ -20,11 +20,10 @@ interface BrandRelationFieldProps {
 /** 品牌关联对象选择器：从后端列表拉取选项（企业/岗位/专业/教师/专家等） */
 export function BrandRelationSelect({ label, value, onChange, placeholder = "选择关联对象", fetchUrl, optional = true }: BrandRelationFieldProps) {
   const [options, setOptions] = useState<Option[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
     portalRequest<AllianceListResponse<any>>(fetchUrl)
       .then((res) => {
         if (cancelled) return

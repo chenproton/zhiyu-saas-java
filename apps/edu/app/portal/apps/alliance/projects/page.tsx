@@ -49,7 +49,13 @@ export default function AllianceProjectsPage() {
     } catch (e: any) { setError(e.message || "加载失败") } finally { setLoading(false) }
   }, [tenantId])
 
-  useEffect(() => { if (authLoading || !tenantId) return; fetchProjects() }, [tenantId, authLoading, fetchProjects])
+  useEffect(() => {
+    if (authLoading || !tenantId) return
+    // 首屏加载：async IIFE 包裹，避免在 effect 体内同步触发 setState
+    ;(async () => {
+      await fetchProjects()
+    })()
+  }, [tenantId, authLoading, fetchProjects])
 
   const entName = (id: string) => enterprises.find((e) => e.id === id)?.name || id
   const fmtDate = (d?: string) => (d ? new Date(d).toLocaleDateString("zh-CN") : "-")

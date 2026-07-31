@@ -103,7 +103,7 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
     // 场地必须在排课时指定（教学计划条目不含场地），因此始终要求弹窗配置班级/教师/场地
     setPreConfigEntry(selectedEntry); setPreConfigDay(dayOfWeek); setPreConfigPeriod(periodKey)
     setPreClassIds(classIds); setPreTeacherId(selectedEntry.teacherId || ""); setPreVenueId("")
-  }, [selectedEntry, movingEntry, reloadAll])
+  }, [selectedEntry, movingEntry, reloadAll, savingQuick, toast])
 
   const handlePreConfigSave = async () => {
     if (!preConfigEntry) return

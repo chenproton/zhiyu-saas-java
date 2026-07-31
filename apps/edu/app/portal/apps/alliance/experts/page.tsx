@@ -33,7 +33,13 @@ export default function AllianceExpertsPage() {
     } catch (e: any) { setError(e.message || "加载失败") } finally { setLoading(false) }
   }, [tenantId])
 
-  useEffect(() => { if (authLoading || !tenantId) return; fetchExperts() }, [tenantId, authLoading, fetchExperts])
+  useEffect(() => {
+    if (authLoading || !tenantId) return
+    // 首屏加载：async IIFE 包裹，避免在 effect 体内同步触发 setState
+    ;(async () => {
+      await fetchExperts()
+    })()
+  }, [tenantId, authLoading, fetchExperts])
 
   return (
     <PortalCrudPage

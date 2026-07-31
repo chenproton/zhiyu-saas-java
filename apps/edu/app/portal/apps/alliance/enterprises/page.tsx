@@ -52,7 +52,10 @@ export default function AllianceEnterprisesPage() {
 
   useEffect(() => {
     if (authLoading || !tenantId) return
-    fetchEnterprises()
+    // 首屏加载：async IIFE 包裹，避免在 effect 体内同步触发 setState
+    ;(async () => {
+      await fetchEnterprises()
+    })()
   }, [tenantId, authLoading, fetchEnterprises])
 
   const countBy = (arr: any[], field: string, id: string) =>

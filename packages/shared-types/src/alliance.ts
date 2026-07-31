@@ -169,7 +169,9 @@ export interface AllianceAgreement {
   endDate?: string
   status: string
   enterpriseIds?: string[]
+  projectIds?: string[]
   attachments?: string[]
+  createdBy?: string
   createdAt: string
   updatedAt: string
 }

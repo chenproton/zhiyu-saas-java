@@ -37,6 +37,7 @@ export default function ProgramEditPage() {
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [tab, setTab] = useState("basic")
+  const [coursesBusy, setCoursesBusy] = useState({ saving: false, loading: true })
 
   // 基本信息表单
   const [name, setName] = useState("")
@@ -121,8 +122,8 @@ export default function ProgramEditPage() {
                 <Button variant="outline" size="sm" onClick={() => coursesRef.current?.addRow()}>
                   <Plus className="mr-1 size-4" />添加岗位/课程
                 </Button>
-                <Button size="sm" onClick={() => coursesRef.current?.handleSave()} disabled={coursesRef.current?.saving || coursesRef.current?.loading}>
-                  <Save className="mr-1 size-4" />{coursesRef.current?.saving ? "保存中..." : "保存"}
+                <Button size="sm" onClick={() => coursesRef.current?.handleSave()} disabled={coursesBusy.saving || coursesBusy.loading}>
+                  <Save className="mr-1 size-4" />{coursesBusy.saving ? "保存中..." : "保存"}
                 </Button>
               </>
             )}
@@ -206,7 +207,7 @@ export default function ProgramEditPage() {
           </TabsContent>
 
           <TabsContent value="courses">
-            {!isNew && <ProgramCoursesTab programId={id} ref={coursesRef} />}
+            {!isNew && <ProgramCoursesTab programId={id} ref={coursesRef} onBusyChange={setCoursesBusy} />}
           </TabsContent>
         </Tabs>
       )}

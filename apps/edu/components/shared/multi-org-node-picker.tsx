@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useCallback, useEffect } from "react"
+import { useMemo, useState, useCallback } from "react"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -107,12 +107,6 @@ export function MultiOrgNodePicker({
   const { orgs, orgTypeMap, typeNameMap, loading: orgLoading } = useOrgTree(tenantId)
   const [pendingIds, setPendingIds] = useState<string[]>([])
 
-  useEffect(() => {
-    if (open && tenantId) {
-      setPendingIds([...value])
-    }
-  }, [open, tenantId])
-
   const getNodeName = useCallback((id: string) => {
     const find = (nodes: any[]): string | null => {
       for (const n of nodes) {
@@ -180,6 +174,7 @@ export function MultiOrgNodePicker({
     if (v) {
       setSearch("")
       setCollapsedIds(new Set())
+      setPendingIds([...value])
     }
     setOpen(v)
   }
@@ -196,7 +191,7 @@ export function MultiOrgNodePicker({
           </Badge>
         ))}
         {value.length > maxVisible && <Badge variant="outline" className="gap-1 text-xs">+{value.length - maxVisible}</Badge>}
-        <Button type="button" variant="outline" size="sm" disabled={disabled} className="h-7 px-2 text-xs" onClick={() => setOpen(true)}>
+        <Button type="button" variant="outline" size="sm" disabled={disabled} className="h-7 px-2 text-xs" onClick={() => handleOpenChange(true)}>
           <Plus className="mr-1 h-3 w-3" />{value.length > 0 ? "管理班级" : "添加班级"}
         </Button>
       </div>

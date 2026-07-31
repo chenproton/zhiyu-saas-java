@@ -120,7 +120,13 @@ export default function AllianceSchoolPage() {
     } catch (err) { setError(err instanceof Error ? err.message : "加载失败") } finally { setLoading(false) }
   }, [tenantId])
 
-  useEffect(() => { if (authLoading) return; fetchTenant() }, [fetchTenant, authLoading])
+  useEffect(() => {
+    if (authLoading) return
+    // 首屏加载：async IIFE 包裹，避免在 effect 体内同步触发 setState
+    ;(async () => {
+      await fetchTenant()
+    })()
+  }, [fetchTenant, authLoading])
 
   const handleUpdate = async () => {
     if (!formData.name || !tenant) { setError("请填写学校名称"); return }

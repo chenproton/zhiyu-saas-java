@@ -49,7 +49,10 @@ export default function AllianceAchievementsPage() {
 
   useEffect(() => {
     if (authLoading || !tenantId) return
-    fetchItems()
+    // 首屏加载：async IIFE 包裹，避免在 effect 体内同步触发 setState
+    ;(async () => {
+      await fetchItems()
+    })()
   }, [tenantId, authLoading, fetchItems])
 
   return (
