@@ -71,6 +71,16 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
   const loadCourses = useCallback(async () => {
     try {
       const res = await programApi.listCourses(programId)
+      const scenarioIds = res.items.filter((c) => c.scenarioId).map((c) => c.scenarioId!) as string[]
+      const scenarioPosMap: Record<string, string> = {}
+      if (scenarioIds.length > 0) {
+        try {
+          const scenarioRes = await scenarioApi.list({ status: "published", limit: 1000 })
+          ;(scenarioRes.items || []).forEach((s) => {
+            if (s.careerPositionId && scenarioIds.includes(s.id)) scenarioPosMap[s.id] = s.careerPositionId
+          })
+        } catch { /* ignore */ }
+      }
       setRows(res.items.map((c) => ({
         key: c.id,
         name: c.name,
@@ -81,7 +91,7 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
         linkType: c.scenarioId ? "position" : c.courseId ? "course" : "none",
         scenarioId: c.scenarioId || "",
         courseId: c.courseId || "",
-        positionId: "",
+        positionId: c.scenarioId && scenarioPosMap[c.scenarioId] ? scenarioPosMap[c.scenarioId] : "",
         isPositionChild: false,
       })))
     } catch (err: any) {
