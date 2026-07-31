@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useCallback } from "react"
+import { useMemo, useState, useCallback, useEffect } from "react"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -107,6 +107,12 @@ export function MultiOrgNodePicker({
   const { orgTree, orgTypeMap, typeNameMap, loading: orgLoading } = useOrgTree(tenantId)
   const [pendingIds, setPendingIds] = useState<string[]>([])
 
+  useEffect(() => {
+    if (open && tenantId) {
+      setPendingIds([...value])
+    }
+  }, [open, tenantId])
+
   const getNodeName = useCallback((id: string) => {
     const find = (nodes: any[]): string | null => {
       for (const n of nodes) {
@@ -172,10 +178,8 @@ export function MultiOrgNodePicker({
 
   const handleOpenChange = (v: boolean) => {
     if (v) {
-      setPendingIds([...value])
       setSearch("")
-    } else {
-      setPendingIds([])
+      setCollapsedIds(new Set())
     }
     setOpen(v)
   }
@@ -207,8 +211,10 @@ export function MultiOrgNodePicker({
             <Input placeholder="搜索..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />
           </div>
           <ScrollArea className="h-[360px] border rounded-md p-2">
-            {orgLoading ? (
+            {orgLoading || !tenantId ? (
               <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+            ) : orgTree.length === 0 ? (
+              <div className="py-12 text-center text-sm text-muted-foreground">暂无组织架构数据</div>
             ) : (
               orgTree.map((node) => (
                 <TreeNodeRow key={node.id} node={node} level={0} orgTypeMap={orgTypeMap}
