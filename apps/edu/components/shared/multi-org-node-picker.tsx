@@ -104,7 +104,7 @@ export function MultiOrgNodePicker({
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
-  const { orgTree, orgTypeMap, typeNameMap, loading: orgLoading } = useOrgTree(tenantId)
+  const { orgs, orgTypeMap, typeNameMap, loading: orgLoading } = useOrgTree(tenantId)
   const [pendingIds, setPendingIds] = useState<string[]>([])
 
   useEffect(() => {
@@ -121,8 +121,8 @@ export function MultiOrgNodePicker({
       }
       return null
     }
-    return find(orgTree) || id
-  }, [orgTree])
+      return find(orgs) || id
+  }, [orgs])
 
   const visibleIds = useMemo(() => {
     if (!search) {
@@ -130,7 +130,7 @@ export function MultiOrgNodePicker({
       const add = (nodes: any[]) => {
         nodes.forEach((n: any) => { ids.add(n.id); if (n.children) add(n.children) })
       }
-      add(orgTree)
+      add(orgs)
       return ids
     }
     const ids = new Set<string>()
@@ -148,9 +148,9 @@ export function MultiOrgNodePicker({
       }
       return found
     }
-    addWithParents(orgTree, [])
+    addWithParents(orgs, [])
     return ids
-  }, [orgTree, search])
+  }, [orgs, search])
 
   const selectedSet = useMemo(() => new Set(pendingIds.length > 0 ? pendingIds : value), [pendingIds, value])
 
@@ -213,10 +213,10 @@ export function MultiOrgNodePicker({
           <ScrollArea className="h-[360px] border rounded-md p-2">
             {orgLoading || !tenantId ? (
               <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-            ) : orgTree.length === 0 ? (
+            ) : orgs.length === 0 ? (
               <div className="py-12 text-center text-sm text-muted-foreground">暂无组织架构数据</div>
             ) : (
-              orgTree.map((node) => (
+              orgs.map((node) => (
                 <TreeNodeRow key={node.id} node={node} level={0} orgTypeMap={orgTypeMap}
                   typeNameMap={typeNameMap} selectableTypes={selectableTypes} selectedIds={selectedSet}
                   onToggleSelect={handleToggleSelect} onBatchSelect={handleBatchSelect}
