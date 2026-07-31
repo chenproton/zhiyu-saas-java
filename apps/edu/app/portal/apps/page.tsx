@@ -210,7 +210,7 @@ export default function AppsPage() {
     <TooltipProvider>
       <div className="min-h-[calc(100vh-3.5rem)] bg-[#f5f7fa] pt-0">
         {/* Quick Access Bar */}
-        <div className="bg-background border-b border-border px-6 py-3 sticky top-14 z-10 shadow-sm">
+        <div className="bg-background border-b border-border px-4 md:px-6 py-3 sticky top-14 z-10 shadow-sm space-y-2">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
               <Sparkles className="w-4 h-4 text-amber-500" />
@@ -229,11 +229,29 @@ export default function AppsPage() {
               ))}
             </div>
           </div>
+
+          {/* 移动端分类芯片导航 */}
+          <div className="md:hidden flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1">
+            {allModules.map((section) => (
+              <button
+                key={section.id}
+                onClick={() => scrollToSection(section.id)}
+                className={cn(
+                  "shrink-0 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors border",
+                  activeMenu === section.id
+                    ? "bg-primary text-white border-primary"
+                    : "bg-muted text-muted-foreground border-border hover:text-foreground"
+                )}
+              >
+                {section.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex">
           {/* Left Sidebar */}
-          <aside className="w-56 bg-background shrink-0 min-h-[calc(100vh-3.5rem-40px)] sticky top-[96px] self-start border-r border-border shadow-sm">
+          <aside className="hidden md:block w-56 bg-background shrink-0 min-h-[calc(100vh-3.5rem-40px)] sticky top-[96px] self-start border-r border-border shadow-sm">
             <nav className="p-2 space-y-2">
               {menuItems.filter((m) => allModules.some((s) => s.id === m.id)).map((item) => {
                 const Icon = item.icon
@@ -296,7 +314,7 @@ export default function AppsPage() {
                     </div>
 
                     {/* Module Cards Grid */}
-                    <div className="grid grid-cols-5 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
                       {section.modules.map((module) => (
                         <ModuleCard key={module.id} module={module} />
                       ))}

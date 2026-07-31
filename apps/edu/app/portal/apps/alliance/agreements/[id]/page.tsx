@@ -46,7 +46,7 @@ export default function AllianceAgreementDetailPage() {
     {
       key: "info", label: "基本信息",
       content: (
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card><CardHeader><CardTitle>协议信息</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p><span className="text-muted-foreground">协议类型：</span>{agreement?.type || "-"}</p>

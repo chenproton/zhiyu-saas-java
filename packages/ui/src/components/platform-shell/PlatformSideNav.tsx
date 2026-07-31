@@ -3,11 +3,12 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronLeft, ChevronRight, Menu } from "lucide-react"
 import type { PlatformNavigationConfig, SideNavItem } from "./config"
 import { resolvePlatformIcon } from "./icons"
 import { cn } from "@/lib/utils"
 import { matchesPath } from "./utils"
+import { Sheet, SheetContent } from "@/components/ui/sheet"
 
 function isSideItemActive(pathname: string, item: SideNavItem) {
   if (item.children?.length) {
@@ -52,7 +53,15 @@ export function PlatformSideNav({
     [config.defaultExpandedSideNavIds, visibleSideNavItems]
   )
   const [expandedItems, setExpandedItems] = useState<string[]>(defaultExpanded)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const PlatformIcon = resolvePlatformIcon(config.platformIcon || "settings")
+
+  // 路由变化时收起移动端抽屉（render 期守卫式状态调整，等价于 effect 监听 pathname）
+  const [prevPath, setPrevPath] = useState(pathname)
+  if (pathname !== prevPath) {
+    setPrevPath(pathname)
+    setMobileOpen(false)
+  }
 
   useEffect(() => {
     const activeParents = visibleSideNavItems
@@ -68,8 +77,8 @@ export function PlatformSideNav({
     )
   }
 
-  return (
-    <aside className="sticky top-14 flex h-[calc(100vh-3.5rem)] w-56 shrink-0 flex-col overflow-hidden overflow-y-auto border-r border-gray-100 bg-white">
+  const navBody = (
+    <>
       <div className="border-b border-gray-100 p-4">
         <div className="flex items-center gap-3">
           <Link
@@ -175,6 +184,29 @@ export function PlatformSideNav({
           </div>
         </div>
       )}
-    </aside>
+    </>
+  )
+
+  return (
+    <>
+      {/* 移动端导航入口按钮 + 抽屉 */}
+      <button
+        type="button"
+        onClick={() => setMobileOpen(true)}
+        aria-label="打开导航菜单"
+        className="fixed left-3 top-16 z-40 flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:text-primary md:hidden"
+      >
+        <Menu className="h-4 w-4" />
+      </button>
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent side="left" className="w-72 p-0">
+          <div className="flex h-full flex-col">{navBody}</div>
+        </SheetContent>
+      </Sheet>
+
+      <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-56 shrink-0 flex-col border-r border-gray-100 bg-white md:flex md:overflow-y-auto">
+        {navBody}
+      </aside>
+    </>
   )
 }

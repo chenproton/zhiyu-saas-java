@@ -125,7 +125,7 @@ export default function AllianceEnterpriseDetailPage() {
     {
       key: "info", label: "基本信息",
       content: (
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card><CardHeader><CardTitle>基础信息</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p><span className="text-muted-foreground">企业类型：</span>{allianceLabel("enterpriseType", enterprise?.enterpriseType)}</p>
@@ -322,7 +322,7 @@ export default function AllianceEnterpriseDetailPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2"><Label>开始日期</Label><Input type="date" value={aForm.startDate} onChange={(e) => setAForm({ ...aForm, startDate: e.target.value })} /></div>
               <div className="grid gap-2"><Label>结束日期</Label><Input type="date" value={aForm.endDate} onChange={(e) => setAForm({ ...aForm, endDate: e.target.value })} /></div>
             </div>

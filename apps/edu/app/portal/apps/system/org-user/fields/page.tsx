@@ -129,7 +129,7 @@ export default function UserFieldsPage() {
   }
 
   return (
-    <div className="p-6 bg-[#f5f7fa] min-h-full">
+    <div className="p-4 sm:p-6 bg-[#f5f7fa] min-h-full">
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-foreground">用户字段扩展</h1>
         <p className="mt-1 text-sm text-muted-foreground">

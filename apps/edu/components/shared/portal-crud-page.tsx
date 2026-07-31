@@ -189,13 +189,13 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
   }
 
   return (
-    <div className="p-6 min-h-full">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="p-4 sm:p-6 min-h-full">
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-foreground">{title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
             <Upload className="h-4 w-4 mr-1" />
             导入
@@ -217,7 +217,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
       </div>
 
       <div className="mb-4">
-        <div className="relative max-w-md">
+        <div className="relative w-full sm:max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder={searchPlaceholder}

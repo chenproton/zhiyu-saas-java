@@ -81,11 +81,11 @@ export default function AllianceProjectNewPage() {
         <h1 className="text-xl font-bold">新建合作项目</h1>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-6">
           <Card>
             <CardHeader><CardTitle>基本信息</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>项目名称 *</Label>
                 <Input value={item.name} onChange={(e) => setField("name", e.target.value)} placeholder="请输入项目名称" />

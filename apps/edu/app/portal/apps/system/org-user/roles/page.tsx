@@ -363,7 +363,7 @@ export default function RolesPage() {
   }
 
   return (
-    <div className="p-6 bg-[#f5f7fa] min-h-full">
+    <div className="p-4 sm:p-6 bg-[#f5f7fa] min-h-full">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-foreground">角色权限管理</h1>

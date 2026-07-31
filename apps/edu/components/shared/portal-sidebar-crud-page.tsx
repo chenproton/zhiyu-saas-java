@@ -20,7 +20,7 @@ import { useImportFlow, type UseImportFlowOptions } from "@/hooks/use-import-flo
 import type { Organization, OrgType } from "@/lib/types/backend"
 import {
   Search, Upload, Download, FileDown,
-  FolderTree, Loader2, AlertCircle, RotateCcw, ChevronLeft, ChevronRight,
+  FolderTree, Loader2, AlertCircle, RotateCcw, ChevronLeft, ChevronRight, ChevronDown,
 } from "lucide-react"
 
 export interface PortalSidebarCrudPageConfig<T extends { id: string; orgNodeId?: string }> {
@@ -146,6 +146,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [importStep, setImportStep] = useState<"download" | "upload">("download")
   const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
+  const [orgTreeOpen, setOrgTreeOpen] = useState(false)
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
@@ -268,13 +269,13 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
   }
 
   return (
-    <div className="p-6 bg-[#f5f7fa] min-h-full">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="p-4 sm:p-6 bg-[#f5f7fa] min-h-full">
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-foreground">{title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {headerActions?.(selectedIds, () => { setJoinTargetNodeId(""); setIsJoinDialogOpen(true) })}
           <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
             <Upload className="h-4 w-4 mr-1" />导入
@@ -303,12 +304,28 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
         </div>
       )}
 
-      <div className="flex gap-4 items-start">
-        <div className="w-64 shrink-0 rounded-lg border border-gray-100 bg-white shadow-sm p-4">
+      <div className="flex flex-col md:flex-row gap-4 items-start">
+        {/* 移动端组织架构开关 */}
+        <button
+          type="button"
+          onClick={() => setOrgTreeOpen((v) => !v)}
+          className="md:hidden w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-gray-100 bg-white shadow-sm text-muted-foreground hover:text-foreground"
+        >
+          <FolderTree className="h-4 w-4 text-primary" />
+          组织架构筛选
+          <ChevronDown className={cn("h-4 w-4 ml-auto transition-transform", orgTreeOpen && "rotate-180")} />
+        </button>
+
+        <div
+          className={cn(
+            "w-full md:w-64 md:block shrink-0 rounded-lg border border-gray-100 bg-white shadow-sm p-4",
+            orgTreeOpen ? "block" : "hidden"
+          )}
+        >
           <h3 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
             <FolderTree className="h-4 w-4 text-primary" />组织架构
           </h3>
-          <ScrollArea className="h-[500px]">
+          <ScrollArea className="h-[300px] md:h-[500px]">
             <div className="space-y-1">
               <button
                 onClick={() => setSelectedOrgNodeId(null)}
@@ -335,10 +352,10 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
           </ScrollArea>
         </div>
 
-        <div className="flex-1 space-y-4">
+        <div className="flex-1 space-y-4 min-w-0">
           <div className="rounded-lg border border-gray-100 bg-white shadow-sm p-4">
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1 max-w-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="relative w-full sm:flex-1 sm:max-w-sm">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder={searchPlaceholder}
@@ -348,7 +365,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-full sm:w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -415,7 +432,7 @@ export function PortalSidebarCrudPage<T extends { id: string; orgNodeId?: string
             </Table>
           </div>
 
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-muted-foreground">
             <span>
               共 {total} 条记录{selectedIds.length > 0 ? `，已选择 ${selectedIds.length} 条` : ""}
             </span>

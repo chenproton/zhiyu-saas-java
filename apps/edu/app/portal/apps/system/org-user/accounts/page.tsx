@@ -151,16 +151,16 @@ export default function AccountsPage() {
   })
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-4">
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="relative">
+          <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="搜索姓名或账户..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              className="pl-9 w-64"
+              className="pl-9 w-full sm:w-64"
             />
           </div>
         </div>

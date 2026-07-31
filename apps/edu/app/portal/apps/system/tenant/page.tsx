@@ -159,7 +159,7 @@ export default function TenantPage() {
   if (authLoading || loading) return <div className="flex h-64 items-center justify-center gap-2 text-muted-foreground"><Spinner className="h-5 w-5" />加载中...</div>
 
   return (
-    <div className="p-6 bg-[#f5f7fa] min-h-full">
+    <div className="p-4 sm:p-6 bg-[#f5f7fa] min-h-full">
       <div className="mb-6 flex items-center justify-between">
         <div><h1 className="text-xl font-semibold">租户信息管理</h1><p className="mt-1 text-sm text-muted-foreground">查看和编辑当前租户及学校信息</p></div>
         {tenant && <Button size="sm" onClick={() => { loadTenantToForm(tenant); setIsEditDialogOpen(true) }}><Pencil className="h-4 w-4 mr-1" />编辑</Button>}
@@ -195,7 +195,7 @@ export default function TenantPage() {
         <DialogContent size="lg" className="max-h-[85vh] flex flex-col">
           <DialogHeader><DialogTitle>编辑信息</DialogTitle><DialogDescription>修改租户与学校信息</DialogDescription></DialogHeader>
           <div className="grid gap-5 py-4 overflow-y-auto flex-1 min-h-0">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2"><Label>租户标识</Label><Input disabled className="bg-muted font-mono" value={tenant?.code || ""} /></div>
               <div className="grid gap-2"><Label>状态</Label><Input disabled className="bg-muted" value={tenant?.status === "active" ? "启用" : "停用"} /></div>
             </div>
@@ -206,11 +206,11 @@ export default function TenantPage() {
                 <Label>学校名称 <span className="text-destructive">*</span></Label>
                 <IconInput icon={Building} value={formData.name || ""} onChange={(e) => setF("name", e.target.value)} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="grid gap-2"><Label>学校代码</Label><IconInput icon={Hash} value={formData.enterpriseCode || ""} onChange={(e) => setF("enterpriseCode", e.target.value)} /></div>
                 <div className="grid gap-2"><Label>学校简称</Label><IconInput icon={School} value={formData.shortName || ""} onChange={(e) => setF("shortName", e.target.value)} /></div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="grid gap-2"><Label>办学层次</Label>
                   <Select value={formData.educationLevel || ""} onValueChange={(v) => setF("educationLevel", v)}>
                     <SelectTrigger><SelectValue placeholder="请选择" /></SelectTrigger>
@@ -224,7 +224,7 @@ export default function TenantPage() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="grid gap-2"><Label>省份</Label>
                   <Select value={formData.province || ""} onValueChange={(v) => setF("province", v)}>
                     <SelectTrigger><SelectValue placeholder="请选择省份" /></SelectTrigger>
@@ -243,7 +243,7 @@ export default function TenantPage() {
             <Separator />
             <div><Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">联系信息</Label>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="grid gap-2"><Label>联系人</Label><IconInput icon={User} value={formData.contact || ""} onChange={(e) => setF("contact", e.target.value)} /></div>
                 <div className="grid gap-2"><Label>联系电话</Label><IconInput icon={Phone} value={formData.contactPhone || formData.phone || ""} onChange={(e) => { setF("phone", e.target.value); setF("contactPhone", e.target.value) }} /></div>
               </div>
@@ -252,7 +252,7 @@ export default function TenantPage() {
             <Separator />
             <div><Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">网络信息</Label>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="grid gap-2"><Label>官网</Label><IconInput icon={Globe} value={formData.website || ""} onChange={(e) => handleWebsiteChange(e.target.value)} placeholder="https://www.example.edu.cn" /></div>
                 <div className="grid gap-2"><Label>绑定域名</Label><IconInput icon={Monitor} value={formData.domain || ""} onChange={(e) => setF("domain", e.target.value)} /></div>
               </div>

@@ -43,15 +43,7 @@ export function PageHeaderCard({
         </div>
 
         {stats && stats.length > 0 && (
-          <div
-            className={cn(
-              "grid gap-3 mt-3",
-              stats.length <= 4 ? `grid-cols-${stats.length}` : "grid-cols-5",
-              stats.length === 2 && "grid-cols-2",
-              stats.length === 3 && "grid-cols-3",
-              stats.length === 4 && "grid-cols-4"
-            )}
-          >
+          <div className="grid gap-3 mt-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {stats.map((stat, idx) => (
               <Card key={idx} className="border-slate-200 shadow-sm w-full">
                 <CardContent className="px-3 py-[6px] flex items-center justify-between">

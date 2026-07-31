@@ -11,7 +11,7 @@ export default function AllianceAdminLayout({ children }: { children: React.Reac
     <div className="flex min-h-[calc(100vh-56px)] bg-[#f5f7fa]">
       <PlatformSideNav config={allianceNavigationConfig} hasMenuPermission={hasMenuPermission} />
       <main className="min-w-0 flex-1">
-        <div className="p-6">{children}</div>
+        <div className="p-4 sm:p-6">{children}</div>
       </main>
     </div>
   )

@@ -72,11 +72,11 @@ export default function AllianceEnterpriseEditPage() {
         <h1 className="text-xl font-bold">编辑合作企业</h1>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-6">
           <Card>
             <CardHeader><CardTitle>基本信息</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>企业名称 *</Label>
                 <Input value={item.name || ""} onChange={(e) => setField("name", e.target.value)} />
@@ -139,7 +139,7 @@ export default function AllianceEnterpriseEditPage() {
 
           <Card>
             <CardHeader><CardTitle>企业形象</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <SingleImageUpload label="企业 Logo" value={(item as any).logoUrl || ""} onChange={(v) => setField("logoUrl", v)} />
               <SingleImageUpload label="企业主页封面" value={(item as any).coverImage || ""} onChange={(v) => setField("coverImage", v)} />
             </CardContent>
@@ -156,7 +156,7 @@ export default function AllianceEnterpriseEditPage() {
 
           <Card>
             <CardHeader><CardTitle>联系信息</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>联系人</Label>
                 <Input value={item.contactPerson || ""} onChange={(e) => setField("contactPerson", e.target.value)} />

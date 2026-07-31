@@ -22,7 +22,7 @@ export function PlatformShell({
           <PlatformSideNav config={config} hasMenuPermission={hasMenuPermission} />
         )}
         <main className={cn("min-w-0 flex-1", config.mainClassName)}>
-          <div className={cn("p-6", config.contentClassName)}>{children}</div>
+          <div className={cn("p-4 sm:p-6", config.contentClassName)}>{children}</div>
         </main>
       </div>
     </div>

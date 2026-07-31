@@ -82,7 +82,7 @@ export default function AllianceExpertsPage() {
       createDefault={() => ({ id: "", name: "", status: "active", isPublic: false as any, createdAt: "", updatedAt: "" } as any)}
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="grid gap-2"><Label>姓名 *</Label><Input value={item.name || ""} onChange={(e: any) => setItem({ ...item, name: e.target.value })} /></div>
             <div className="grid gap-2"><Label>头衔</Label><Input value={item.title || ""} onChange={(e: any) => setItem({ ...item, title: e.target.value })} /></div>
             <div className="grid gap-2"><Label>职位</Label><Input value={item.position || ""} onChange={(e: any) => setItem({ ...item, position: e.target.value })} /></div>

@@ -151,7 +151,7 @@ export default function AllianceProjectDetailPage() {
     {
       key: "info", label: "基本信息",
       content: (
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card><CardHeader><CardTitle>基础信息</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p><span className="text-muted-foreground">项目类型：</span>{project?.type || "-"}</p>
@@ -303,7 +303,7 @@ export default function AllianceProjectDetailPage() {
           <div className="space-y-4">
             <div className="grid gap-2"><Label>名称 *</Label><Input value={mForm.name} onChange={(e) => setMForm({ ...mForm, name: e.target.value })} /></div>
             <div className="grid gap-2"><Label>描述</Label><Textarea value={mForm.description} onChange={(e) => setMForm({ ...mForm, description: e.target.value })} rows={2} /></div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2"><Label>截止日期</Label><Input type="date" value={mForm.dueDate} onChange={(e) => setMForm({ ...mForm, dueDate: e.target.value })} /></div>
               <div className="grid gap-2"><Label>完成日期</Label><Input type="date" value={mForm.completedDate} onChange={(e) => setMForm({ ...mForm, completedDate: e.target.value })} /></div>
             </div>
@@ -362,7 +362,7 @@ export default function AllianceProjectDetailPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2"><Label>开始日期</Label><Input type="date" value={aForm.startDate} onChange={(e) => setAForm({ ...aForm, startDate: e.target.value })} /></div>
               <div className="grid gap-2"><Label>结束日期</Label><Input type="date" value={aForm.endDate} onChange={(e) => setAForm({ ...aForm, endDate: e.target.value })} /></div>
             </div>

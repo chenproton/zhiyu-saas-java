@@ -125,7 +125,7 @@ export default function AllianceProjectsPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="grid gap-2"><Label>开始日期</Label><Input type="date" value={item.startDate || ""} onChange={(e: any) => setItem({ ...item, startDate: e.target.value })} /></div>
             <div className="grid gap-2"><Label>结束日期</Label><Input type="date" value={item.endDate || ""} onChange={(e: any) => setItem({ ...item, endDate: e.target.value })} /></div>
           </div>

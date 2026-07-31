@@ -121,7 +121,7 @@ export default function AllianceAchievementDetailPage() {
     {
       key: "info", label: "基本信息",
       content: (
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card><CardHeader><CardTitle>基础信息</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p><span className="text-muted-foreground">成果类型：</span>{allianceLabel("achievementType", achievement?.type)}</p>

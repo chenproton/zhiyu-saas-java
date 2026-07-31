@@ -153,7 +153,7 @@ export default function AllianceAgreementsPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label>开始日期</Label>
               <Input type="date" value={item.startDate || ""} onChange={(e: any) => setItem({ ...item, startDate: e.target.value })} />

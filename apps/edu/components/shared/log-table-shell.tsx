@@ -70,7 +70,7 @@ export function LogTableShell<T extends { id: string }>({
         </Table>
       </div>
 
-      <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+      <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-muted-foreground">
         <span>共 {total} 条记录</span>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" disabled={page <= 1 || loading} onClick={() => onPageChange(page - 1)}>

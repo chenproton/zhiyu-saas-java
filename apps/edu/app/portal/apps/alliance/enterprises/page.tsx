@@ -160,7 +160,7 @@ export default function AllianceEnterprisesPage() {
       } as AllianceEnterprise & { enabled?: boolean })}
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label>企业名称 *</Label>
               <Input value={item.name || ""} onChange={(e: any) => setItem({ ...item, name: e.target.value })} />

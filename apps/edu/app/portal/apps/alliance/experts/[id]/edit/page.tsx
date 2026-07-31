@@ -138,11 +138,11 @@ export default function AllianceExpertEditPage() {
         <h1 className="text-xl font-bold">编辑专家</h1>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-6">
           <Card>
             <CardHeader><CardTitle>基础信息</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>姓名 *</Label>
                 <Input value={item.name} onChange={(e) => setField("name", e.target.value)} />
@@ -190,7 +190,7 @@ export default function AllianceExpertEditPage() {
 
           <Card>
             <CardHeader><CardTitle>专家形象</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <SingleImageUpload label="专家头像" value={item.avatarUrl} onChange={(v) => setField("avatarUrl", v)} />
               <SingleImageUpload label="专家主页封面" value={item.coverImage} onChange={(v) => setField("coverImage", v)} />
             </CardContent>
