@@ -73,8 +73,8 @@ func (h *ProgramCourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 	}
 	for i, c := range courses {
 		if _, err := tx.Exec(r.Context(),
-			`INSERT INTO training_program_courses (id, program_id, name, credits, hours, nature, scenario_id, course_id, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-			c.ID, programID, c.Name, c.Credits, c.Hours, c.Nature, c.ScenarioID, c.CourseID, i); err != nil {
+			`INSERT INTO training_program_courses (id, program_id, name, credits, hours, nature, position_id, course_id, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+			c.ID, programID, c.Name, c.Credits, c.Hours, c.Nature, c.PositionID, c.CourseID, i); err != nil {
 			respondError(w, http.StatusInternalServerError, "保存课程失败"); return
 		}
 	}
@@ -97,7 +97,7 @@ type pcCourse struct {
 	Credits    float64
 	Hours      int
 	Nature     string
-	ScenarioID *string
+	PositionID *string
 	CourseID   *string
 }
 
@@ -111,14 +111,14 @@ func (h *ProgramCourseImportHandler) parseCourses(r *http.Request, xlsx *exceliz
 	for i, row := range rows {
 		if i < 2 { continue }
 		rowNum := i + 1
-		scenarioName := strings.TrimSpace(col(row, 0))
+		positionName := strings.TrimSpace(col(row, 0))
 		courseName := strings.TrimSpace(col(row, 1))
 		creditsStr := strings.TrimSpace(col(row, 2))
 		hoursStr := strings.TrimSpace(col(row, 3))
 		nature := strings.TrimSpace(col(row, 4))
 
-		if scenarioName == "" && courseName == "" {
-			errs = append(errs, "第"+strconv.Itoa(rowNum)+"行：关联场景和关联体系课至少填写一项")
+		if positionName == "" && courseName == "" {
+			errs = append(errs, "第"+strconv.Itoa(rowNum)+"行：关联岗位和关联体系课至少填写一项")
 			continue
 		}
 		credits, _ := strconv.ParseFloat(creditsStr, 64)
@@ -127,23 +127,20 @@ func (h *ProgramCourseImportHandler) parseCourses(r *http.Request, xlsx *exceliz
 
 		c := pcCourse{ID: uuid.NewString(), Credits: credits, Hours: hours, Nature: nature}
 
-		if scenarioName != "" {
-			var id string
-			if err := h.DB.QueryRow(r.Context(), `SELECT id, name FROM scenarios WHERE name=$1 LIMIT 1`, scenarioName).Scan(&id, &c.Name); err == nil {
-				c.ScenarioID = &id
+		if positionName != "" {
+			var pid string
+			if err := h.DB.QueryRow(r.Context(), `SELECT id FROM career_positions WHERE name=$1 LIMIT 1`, positionName).Scan(&pid); err == nil {
+				c.PositionID = &pid
+				c.Name = positionName
 			}
 		}
-		if courseName != "" {
+		if c.PositionID == nil && courseName != "" {
 			var id, n string
 			if err := h.DB.QueryRow(r.Context(), `SELECT id, name FROM courses WHERE name=$1 AND type='system' LIMIT 1`, courseName).Scan(&id, &n); err == nil {
-				if c.Name == "" { c.Name = n }
+				c.Name = n
 				if c.Name == "" { c.Name = courseName }
 				c.CourseID = &id
 			}
-		}
-		if c.Name == "" {
-			c.Name = scenarioName
-			if c.Name == "" { c.Name = courseName }
 		}
 
 		courses = append(courses, c)
@@ -168,12 +165,12 @@ func (h *ProgramCourseImportHandler) ServeTemplate(w http.ResponseWriter, r *htt
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
 
-	headers := []string{"关联场景名称（二选一）", "关联体系课名称（二选一）", "学分", "总学时", "性质"}
+	headers := []string{"关联岗位名称（二选一）", "关联体系课名称（二选一）", "学分", "总学时", "性质"}
 	widths := []float64{24, 24, 10, 10, 12}
 	s1, _ := f.NewSheet(pcImportSheet)
 	f.SetActiveSheet(s1)
 
-	note := "填写说明：\n* 二选一必填列。\n关联场景名称：填写已发布场景名称。\n关联体系课名称：填写已发布体系课名称。\n场景和体系课二选一填写，都填时以场景为准。\n学分：数字，如 3.5。\n总学时：整数。\n性质：默认为「必修」，可选：必修、选修、实践。"
+	note := "填写说明：\n* 二选一必填列。\n关联岗位名称：填写已发布岗位名称，导入时会关联该岗位下所有场景。\n关联体系课名称：填写已发布体系课名称。\n岗位和体系课二选一填写，都填时以岗位为准。\n学分：数字，如 3.5。\n总学时：整数。\n性质：默认为「必修」，可选：必修、选修、实践。"
 	start, _ := excelize.CoordinatesToCellName(1, 1)
 	end, _ := excelize.CoordinatesToCellName(len(headers), 1)
 	f.MergeCell(pcImportSheet, start, end)
