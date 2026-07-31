@@ -346,8 +346,9 @@ func (h *PortalHandler) listStudentCourses(ctx context.Context, userID string, t
 	ratio := h.creditHoursRatio(ctx)
 
 	query := `
-		SELECT c.id, c.code, c.name, c.type, c.category, c.online_hours, c.offline_hours,
-			c.semester, c.class_name, c.status, c.cover_color, c.cover_image, u.name
+		SELECT c.id, c.code, c.name, c.type, COALESCE(c.category, ''), c.online_hours, c.offline_hours,
+			COALESCE(c.semester, ''), COALESCE(c.class_name, ''), c.status,
+			COALESCE(c.cover_color, ''), COALESCE(c.cover_image, ''), COALESCE(u.name, '')
 		FROM courses c
 		LEFT JOIN users u ON u.id = c.teacher_id
 		WHERE c.status = 'published'`
@@ -485,8 +486,9 @@ func (h *PortalHandler) listStudentExams(ctx context.Context, userID string, ten
 
 func (h *PortalHandler) listTeacherCourses(ctx context.Context, userID string, tenantID *string) []domain.WorkspaceTeacherCourse {
 	query := `
-		SELECT c.id, c.code, c.name, c.type, c.category, c.online_hours, c.offline_hours,
-			c.semester, c.class_name, c.status, c.cover_color, c.cover_image
+		SELECT c.id, c.code, c.name, c.type, COALESCE(c.category, ''), c.online_hours, c.offline_hours,
+			COALESCE(c.semester, ''), COALESCE(c.class_name, ''), c.status,
+			COALESCE(c.cover_color, ''), COALESCE(c.cover_image, '')
 		FROM courses c
 		JOIN users u ON u.id = c.creator_id
 		WHERE c.status = 'published' AND (c.teacher_id = $1::uuid OR c.creator_id = $1::uuid)`
