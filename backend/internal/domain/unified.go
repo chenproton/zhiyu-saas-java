@@ -89,20 +89,28 @@ const (
 )
 
 type Tenant struct {
-	ID             string       `json:"id"`
-	Name           string       `json:"name"`
-	Code           string       `json:"code"`
-	LogoURL        *string      `json:"logoUrl,omitempty"`
-	Domain         *string      `json:"domain,omitempty"`
-	EnterpriseCode *string      `json:"enterpriseCode,omitempty"`
-	Contact        *string      `json:"contact,omitempty"`
-	Phone          *string      `json:"phone,omitempty"`
-	Address        *string      `json:"address,omitempty"`
-	Description    *string      `json:"description,omitempty"`
-	AdminIDs       []string     `json:"adminIds,omitempty"`
-	Status         TenantStatus `json:"status"`
-	CreatedAt      time.Time    `json:"createdAt"`
-	UpdatedAt      time.Time    `json:"updatedAt"`
+	ID               string          `json:"id"`
+	Name             string          `json:"name"`
+	Code             string          `json:"code"`
+	LogoURL          *string         `json:"logoUrl,omitempty"`
+	Domain           *string         `json:"domain,omitempty"`
+	EnterpriseCode   *string         `json:"enterpriseCode,omitempty"`
+	Contact          *string         `json:"contact,omitempty"`
+	Phone            *string         `json:"phone,omitempty"`
+	Address          *string         `json:"address,omitempty"`
+	Description      *string         `json:"description,omitempty"`
+	ShortName        *string         `json:"shortName,omitempty"`
+	SchoolType       *string         `json:"schoolType,omitempty"`
+	Province         *string         `json:"province,omitempty"`
+	City             *string         `json:"city,omitempty"`
+	Website          *string         `json:"website,omitempty"`
+	ContactPhone     *string         `json:"contactPhone,omitempty"`
+	ScaleData        json.RawMessage `json:"scaleData,omitempty"`
+	SecondaryColleges json.RawMessage `json:"secondaryColleges,omitempty"`
+	AdminIDs         []string        `json:"adminIds,omitempty"`
+	Status           TenantStatus    `json:"status"`
+	CreatedAt        time.Time       `json:"createdAt"`
+	UpdatedAt        time.Time       `json:"updatedAt"`
 }
 
 type OrgType struct {

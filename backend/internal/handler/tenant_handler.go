@@ -37,14 +37,22 @@ type CreateTenantRequest struct {
 }
 
 type UpdateTenantRequest struct {
-	Name           string  `json:"name"`
-	LogoURL        *string `json:"logoUrl"`
-	Domain         *string `json:"domain"`
-	EnterpriseCode *string `json:"enterpriseCode"`
-	Contact        *string `json:"contact"`
-	Phone          *string `json:"phone"`
-	Address        *string `json:"address"`
-	Description    *string `json:"description"`
+	Name             string           `json:"name"`
+	LogoURL          *string          `json:"logoUrl"`
+	Domain           *string          `json:"domain"`
+	EnterpriseCode   *string          `json:"enterpriseCode"`
+	Contact          *string          `json:"contact"`
+	Phone            *string          `json:"phone"`
+	Address          *string          `json:"address"`
+	Description      *string          `json:"description"`
+	ShortName        *string          `json:"shortName"`
+	SchoolType       *string          `json:"schoolType"`
+	Province         *string          `json:"province"`
+	City             *string          `json:"city"`
+	Website          *string          `json:"website"`
+	ContactPhone     *string          `json:"contactPhone"`
+	ScaleData        json.RawMessage  `json:"scaleData"`
+	SecondaryColleges json.RawMessage `json:"secondaryColleges"`
 }
 
 type UpdateTenantStatusRequest struct {
@@ -65,7 +73,7 @@ type adminUserInfo struct {
 func (h *TenantHandler) List(w http.ResponseWriter, r *http.Request) {
 	items, total, err := executeListQuery[domain.Tenant](r.Context(), h.DB, r, listQueryConfig[domain.Tenant]{
 		Table:         "tenants",
-		SelectColumns: "id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, admin_ids, status, created_at, updated_at",
+		SelectColumns: "id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, admin_ids, status, created_at, updated_at",
 		TenantScoped:  true,
 		TenantColumn:  "id",
 		SearchColumns: []string{"name", "code"},
@@ -373,9 +381,15 @@ func (h *TenantHandler) updateTenant(w http.ResponseWriter, r *http.Request) {
 
 	_, err := h.DB.Exec(r.Context(), `
 		UPDATE tenants SET name = $1, logo_url = $2, domain = $3, enterprise_code = $4, contact = $5,
-			phone = $6, address = $7, description = $8, updated_at = NOW()
-		WHERE id = $9
-	`, req.Name, req.LogoURL, req.Domain, req.EnterpriseCode, req.Contact, req.Phone, req.Address, req.Description, id)
+			phone = $6, address = $7, description = $8,
+			short_name = $9, school_type = $10, province = $11, city = $12,
+			website = $13, contact_phone = $14, scale_data = $15, secondary_colleges = $16,
+			updated_at = NOW()
+		WHERE id = $17
+	`, req.Name, req.LogoURL, req.Domain, req.EnterpriseCode, req.Contact, req.Phone, req.Address, req.Description,
+		req.ShortName, req.SchoolType, req.Province, req.City,
+		req.Website, req.ContactPhone, req.ScaleData, req.SecondaryColleges,
+		id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "更新租户失败")
 		return
@@ -426,12 +440,17 @@ func (h *TenantHandler) updateTenantStatus(w http.ResponseWriter, r *http.Reques
 func (h *TenantHandler) fetchTenant(ctx context.Context, id string) (domain.Tenant, error) {
 	var t domain.Tenant
 	var logo, domainVal, enterpriseCode, contact, phone, address, description *string
+	var shortName, schoolType, province, city, website, contactPhone *string
+	var scaleData, secondaryColleges json.RawMessage
 
 	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, admin_ids, status, created_at, updated_at
+		SELECT id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description,
+			short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges,
+			admin_ids, status, created_at, updated_at
 		FROM tenants WHERE id = $1
 	`, id).Scan(
 		&t.ID, &t.Name, &t.Code, &logo, &domainVal, &enterpriseCode, &contact, &phone, &address, &description,
+		&shortName, &schoolType, &province, &city, &website, &contactPhone, &scaleData, &secondaryColleges,
 		&t.AdminIDs, &t.Status, &t.CreatedAt, &t.UpdatedAt,
 	)
 	if err != nil {
@@ -444,6 +463,14 @@ func (h *TenantHandler) fetchTenant(ctx context.Context, id string) (domain.Tena
 	t.Phone = phone
 	t.Address = address
 	t.Description = description
+	t.ShortName = shortName
+	t.SchoolType = schoolType
+	t.Province = province
+	t.City = city
+	t.Website = website
+	t.ContactPhone = contactPhone
+	t.ScaleData = scaleData
+	t.SecondaryColleges = secondaryColleges
 	return t, nil
 }
 
@@ -452,8 +479,11 @@ func (h *TenantHandler) scanTenantRows(rows pgx.Rows) ([]domain.Tenant, error) {
 	for rows.Next() {
 		var t domain.Tenant
 		var logo, domainVal, enterpriseCode, contact, phone, address, description *string
+		var shortName, schoolType, province, city, website, contactPhone *string
+		var scaleData, secondaryColleges json.RawMessage
 		if err := rows.Scan(
 			&t.ID, &t.Name, &t.Code, &logo, &domainVal, &enterpriseCode, &contact, &phone, &address, &description,
+			&shortName, &schoolType, &province, &city, &website, &contactPhone, &scaleData, &secondaryColleges,
 			&t.AdminIDs, &t.Status, &t.CreatedAt, &t.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -465,6 +495,14 @@ func (h *TenantHandler) scanTenantRows(rows pgx.Rows) ([]domain.Tenant, error) {
 		t.Phone = phone
 		t.Address = address
 		t.Description = description
+		t.ShortName = shortName
+		t.SchoolType = schoolType
+		t.Province = province
+		t.City = city
+		t.Website = website
+		t.ContactPhone = contactPhone
+		t.ScaleData = scaleData
+		t.SecondaryColleges = secondaryColleges
 		items = append(items, t)
 	}
 	return items, nil

@@ -9,29 +9,28 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
-import type { AllianceSchoolInfo } from "@/lib/types"
+import type { Tenant as BackendTenant } from "@/lib/types/backend"
 
 export default function AllianceSchoolPage() {
   const { tenantId } = usePortalAuth()
   const { toast } = useToast()
-  const [info, setInfo] = useState<AllianceSchoolInfo | null>(null)
+  const [tenant, setTenant] = useState<BackendTenant | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!tenantId) return
-
-    portalRequest<AllianceSchoolInfo>("/alliance/school-info")
-      .then(setInfo)
+    portalRequest<BackendTenant>(`/tenants/${tenantId}`)
+      .then(setTenant)
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [tenantId])
 
   const handleSave = async () => {
-    if (!info) return
+    if (!tenant) return
     setSaving(true)
     try {
-      await portalRequest("/alliance/school-info", { method: "PUT", body: JSON.stringify(info) })
+      await portalRequest(`/tenants/${tenant.id}`, { method: "PUT", body: JSON.stringify(tenant) })
       toast({ title: "学校信息已保存" })
     } catch (e: any) {
       toast({ title: "保存失败", description: e.message, variant: "destructive" })
@@ -42,14 +41,14 @@ export default function AllianceSchoolPage() {
 
   if (loading) return <div className="text-center py-12 text-muted-foreground">加载中...</div>
 
-  const update = (f: Partial<AllianceSchoolInfo>) => setInfo((prev) => prev ? { ...prev, ...f } : prev)
+  const update = (f: Partial<BackendTenant>) => setTenant((prev) => prev ? { ...prev, ...f } : prev)
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="grid gap-2">
+        <div>
           <h1 className="text-2xl font-bold">学校信息管理</h1>
-          <p className="text-muted-foreground text-sm mt-1">配置学校基本信息，数据将展示在门户前台</p>
+          <p className="text-muted-foreground text-sm mt-1">配置学校基本信息，数据将展示在门户前台，与租户信息同步</p>
         </div>
         <Button onClick={handleSave} disabled={saving}>{saving ? "保存中..." : "保存"}</Button>
       </div>
@@ -59,44 +58,44 @@ export default function AllianceSchoolPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label>学校全称</Label>
-              <Input value={info?.name || ""} onChange={(e) => update({ name: e.target.value })} />
+              <Input value={(tenant as any)?.name || ""} onChange={(e) => update({ name: e.target.value } as any)} />
             </div>
             <div className="grid gap-2">
               <Label>学校简称</Label>
-              <Input value={info?.shortName || ""} onChange={(e) => update({ shortName: e.target.value })} />
+              <Input value={(tenant as any)?.shortName || ""} onChange={(e) => update({ shortName: e.target.value } as any)} />
             </div>
             <div className="grid gap-2">
               <Label>办学类型</Label>
-              <Input value={info?.schoolType || ""} onChange={(e) => update({ schoolType: e.target.value })} />
+              <Input value={(tenant as any)?.schoolType || ""} onChange={(e) => update({ schoolType: e.target.value } as any)} />
             </div>
             <div className="grid gap-2">
               <Label>省份</Label>
-              <Input value={info?.province || ""} onChange={(e) => update({ province: e.target.value })} />
+              <Input value={(tenant as any)?.province || ""} onChange={(e) => update({ province: e.target.value } as any)} />
             </div>
             <div className="grid gap-2">
               <Label>城市</Label>
-              <Input value={info?.city || ""} onChange={(e) => update({ city: e.target.value })} />
+              <Input value={(tenant as any)?.city || ""} onChange={(e) => update({ city: e.target.value } as any)} />
             </div>
             <div className="grid gap-2">
               <Label>联系电话</Label>
-              <Input value={info?.contactPhone || ""} onChange={(e) => update({ contactPhone: e.target.value })} />
+              <Input value={(tenant as any)?.contactPhone || ""} onChange={(e) => update({ contactPhone: e.target.value } as any)} />
             </div>
           </div>
           <div className="grid gap-2">
             <Label>地址</Label>
-            <Input value={info?.address || ""} onChange={(e) => update({ address: e.target.value })} />
+            <Input value={(tenant as any)?.address || ""} onChange={(e) => update({ address: e.target.value } as any)} />
           </div>
           <div className="grid gap-2">
             <Label>官网</Label>
-            <Input value={info?.website || ""} onChange={(e) => update({ website: e.target.value })} />
+            <Input value={(tenant as any)?.website || ""} onChange={(e) => update({ website: e.target.value } as any)} />
           </div>
           <div className="grid gap-2">
             <Label>学校简介</Label>
-            <Textarea value={info?.description || ""} onChange={(e) => update({ description: e.target.value })} rows={6} />
+            <Textarea value={(tenant as any)?.description || ""} onChange={(e) => update({ description: e.target.value } as any)} rows={6} />
           </div>
           <div className="grid gap-2">
             <Label>Logo URL</Label>
-            <Input value={info?.logoUrl || ""} onChange={(e) => update({ logoUrl: e.target.value })} placeholder="https://..." />
+            <Input value={(tenant as any)?.logoUrl || ""} onChange={(e) => update({ logoUrl: e.target.value } as any)} placeholder="https://..." />
           </div>
         </CardContent>
       </Card>
