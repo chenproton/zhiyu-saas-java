@@ -63,6 +63,7 @@ export default function AllianceEnterprisesPage() {
         )
       }
       importConfig={{ importType: "alliance-enterprises", entityLabel: "合作企业", templateFileName: "合作企业批量导入模板.xlsx" }}
+      createHref="/portal/apps/alliance/enterprises/new"
       colSpan={8}
       renderTableHeader={() => (
         <>
@@ -89,7 +90,9 @@ export default function AllianceEnterprisesPage() {
             <Link href={`/portal/apps/alliance/enterprises/${enterprise.id}`}>
               <Button variant="ghost" size="sm"><ExternalLink className="h-3.5 w-3.5 mr-1" />查看</Button>
             </Link>
-            <Button variant="ghost" size="sm" onClick={actions.edit}><Pencil className="h-3.5 w-3.5 mr-1" />编辑</Button>
+            <Link href={`/portal/apps/alliance/enterprises/${enterprise.id}/edit`}>
+              <Button variant="ghost" size="sm"><Pencil className="h-3.5 w-3.5 mr-1" />编辑</Button>
+            </Link>
             <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}><Trash2 className="h-3.5 w-3.5 mr-1" />删除</Button>
           </TableRowActions>
         </>

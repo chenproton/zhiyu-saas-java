@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Pencil, Trash2 } from "lucide-react"
+import { Pencil, Trash2, ExternalLink } from "lucide-react"
+import Link from "next/link"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest, buildQuery } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
@@ -47,6 +48,7 @@ export default function AllianceProjectsPage() {
       onRetry={fetchProjects}
       filterItems={(items, search) => items.filter((p) => !search || p.name.toLowerCase().includes(search.toLowerCase()))}
       importConfig={{ importType: "alliance-projects", entityLabel: "合作项目", templateFileName: "合作项目批量导入模板.xlsx" }}
+      createHref="/portal/apps/alliance/projects/new"
       colSpan={6}
       renderTableHeader={() => <><TableHead>项目名称</TableHead><TableHead>阶段</TableHead><TableHead>发布状态</TableHead><TableHead>开始日期</TableHead><TableHead>公开</TableHead><TableHead>操作</TableHead></>}
       renderTableRow={(p: any, actions: any) => (
@@ -57,7 +59,12 @@ export default function AllianceProjectsPage() {
           <TableCell>{p.startDate || "-"}</TableCell>
           <TableCell>{p.isPublic ? "是" : "否"}</TableCell>
           <TableRowActions>
-            <Button variant="ghost" size="sm" onClick={actions.edit}><Pencil className="h-3.5 w-3.5 mr-1" />编辑</Button>
+            <Link href={`/portal/apps/alliance/projects/${p.id}`}>
+              <Button variant="ghost" size="sm"><ExternalLink className="h-3.5 w-3.5 mr-1" />查看</Button>
+            </Link>
+            <Link href={`/portal/apps/alliance/projects/${p.id}/edit`}>
+              <Button variant="ghost" size="sm"><Pencil className="h-3.5 w-3.5 mr-1" />编辑</Button>
+            </Link>
             <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}><Trash2 className="h-3.5 w-3.5 mr-1" />删除</Button>
           </TableRowActions>
         </>

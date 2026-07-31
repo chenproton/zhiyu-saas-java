@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useState, useMemo, type ReactNode } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -38,6 +40,7 @@ export interface PortalCrudPageConfig<T extends { id: string; enabled?: boolean 
 
   createDefault: () => T
   renderForm: (item: T, setItem: (item: T) => void) => ReactNode
+  createHref?: string
 
   getDeleteDescription: (item: T) => ReactNode
   onSave: (item: T, isEdit: boolean) => Promise<void>
@@ -66,6 +69,7 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
   onSave,
   onDelete,
   onToggleEnabled,
+  createHref,
 }: PortalCrudPageConfig<T>) {
   const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
@@ -196,10 +200,19 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
             <Upload className="h-4 w-4 mr-1" />
             导入
           </Button>
-          <Button size="sm" onClick={openCreateDialog}>
-            <Plus className="h-4 w-4 mr-1" />
-            {createButtonLabel}
-          </Button>
+          {createHref ? (
+            <Link href={createHref}>
+              <Button size="sm">
+                <Plus className="h-4 w-4 mr-1" />
+                {createButtonLabel}
+              </Button>
+            </Link>
+          ) : (
+            <Button size="sm" onClick={openCreateDialog}>
+              <Plus className="h-4 w-4 mr-1" />
+              {createButtonLabel}
+            </Button>
+          )}
         </div>
       </div>
 
