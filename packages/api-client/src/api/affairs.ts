@@ -157,7 +157,6 @@ export const scheduleApi = {
     }),
   /** 导出当前学期排课为 Excel（格式与导入模板一致） */
   exportExcel: async (termId: string) => {
-    const { authedFetch } = await import("./api-helpers")
     const res = await authedFetch(`/affairs/schedules/export?termId=${encodeURIComponent(termId)}`)
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
