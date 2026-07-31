@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -34,7 +35,7 @@ func scanAffairsBatchRow(ctx context.Context, db *pgxpool.Pool, id string) (any,
 		ID, Name, Status string
 		Code, OrgNodeID, MajorID, MajorName, WorkflowID *string
 		ProgramCount, PublishedCount, PendingCount int
-		CreatedAt, UpdatedAt string
+		CreatedAt, UpdatedAt time.Time
 	}
 	err := db.QueryRow(ctx, `
 		SELECT ab.id, ab.name, ab.code, ab.org_node_id, ab.major_id, COALESCE(m.name, ''), ab.workflow_id, ab.status,
@@ -53,7 +54,7 @@ func scanAffairsBatchRows(rows pgx.Rows) ([]any, error) {
 			ID, Name, Status string
 			Code, OrgNodeID, MajorID, MajorName, WorkflowID *string
 			ProgramCount, PublishedCount, PendingCount int
-			CreatedAt, UpdatedAt string
+			CreatedAt, UpdatedAt time.Time
 		}
 		if err := rows.Scan(&b.ID, &b.Name, &b.Code, &b.OrgNodeID, &b.MajorID, &b.MajorName, &b.WorkflowID, &b.Status,
 			&b.ProgramCount, &b.PublishedCount, &b.PendingCount, &b.CreatedAt, &b.UpdatedAt); err != nil { return nil, err }
