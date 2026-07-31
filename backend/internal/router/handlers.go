@@ -29,6 +29,10 @@ type Handlers struct {
 	templateHandler               *handler.TemplateHandler
 	scenarioExportHandler         *handler.ScenarioExportHandler
 	positionExportHandler         *handler.PositionExportHandler
+	courseExportHandler           *handler.CourseExportHandler
+	granularCourseExportHandler   *handler.GranularCourseExportHandler
+	questionBankExportHandler     *handler.QuestionBankExportHandler
+	examExportHandler             *handler.ExamExportHandler
 	tenantHandler                 *handler.TenantHandler
 	orgHandler                    *handler.OrgHandler
 	orgTypeHandler                *handler.OrgTypeHandler
@@ -132,6 +136,10 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		templateHandler:               &handler.TemplateHandler{DB: db},
 		scenarioExportHandler:         &handler.ScenarioExportHandler{DB: db},
 		positionExportHandler:         &handler.PositionExportHandler{DB: db},
+		courseExportHandler:           &handler.CourseExportHandler{DB: db},
+		granularCourseExportHandler:   &handler.GranularCourseExportHandler{DB: db},
+		questionBankExportHandler:     &handler.QuestionBankExportHandler{DB: db},
+		examExportHandler:             &handler.ExamExportHandler{DB: db},
 		tenantHandler:                 &handler.TenantHandler{DB: db},
 		orgHandler:                    &handler.OrgHandler{DB: db},
 		orgTypeHandler:                &handler.OrgTypeHandler{DB: db, Store: store.NewOrgTypesStore(db)},

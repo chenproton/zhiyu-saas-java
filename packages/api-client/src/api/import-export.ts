@@ -98,6 +98,30 @@ export const importExportApi = {
       body: JSON.stringify({ ids }),
     })
   },
+  exportCoursesExcel: (ids: string[]) => {
+    return authedFetch(`/export/courses/excel`, {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    })
+  },
+  exportGranularCoursesExcel: (ids: string[]) => {
+    return authedFetch(`/export/granular-courses/excel`, {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    })
+  },
+  exportQuestionBanksExcel: (ids: string[]) => {
+    return authedFetch(`/export/question-banks/excel`, {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    })
+  },
+  exportExamsExcel: (ids: string[]) => {
+    return authedFetch(`/export/exams/excel`, {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    })
+  },
   exportOrganizationsExcel: (ids: string[]) => {
     return authedFetch(`/export/organizations/excel`, {
       method: "POST",
