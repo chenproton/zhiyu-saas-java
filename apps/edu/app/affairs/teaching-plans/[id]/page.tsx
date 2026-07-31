@@ -221,7 +221,7 @@ export default function TeachingPlanDetailPage() {
                                 title="选择授课班级"
                               />
                             ) : (
-                              <span className="text-sm">{(e.classNames || []).length > 0 ? (e.classNames || []).join("、") : (e.className || "-")}</span>
+                              <span className="text-sm">{(e.classNames || []).length > 0 ? (e.classNames || []).slice(0, 2).join("、") + ((e.classNames || []).length > 2 ? ` 等${(e.classNames || []).length}个` : "") : (e.className || "-")}</span>
                             )}
                           </TableCell>
                           <TableCell>
