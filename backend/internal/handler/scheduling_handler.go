@@ -986,7 +986,6 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 	}
 
 	f := excelize.NewFile()
-	f.DeleteSheet("Sheet1")
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
@@ -1080,16 +1079,17 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 	}
 	rows.Close()
 
-	// ===== 参考表：教师名单 =====
-	teacherSheet := "教师名单"
+	// ===== 参考表：教师名单（全部教师） =====
+	teacherSheet := "【参考】教师名单"
 	f.NewSheet(teacherSheet)
 	f.SetCellValue(teacherSheet, "A1", "教师姓名"); f.SetCellStyle(teacherSheet, "A1", "A1", hdrStyle)
 	tr, _ := h.DB.Query(r.Context(), `
 		SELECT DISTINCT u.name FROM users u
-		JOIN teaching_plan_entries e ON e.teacher_id = u.id
-		JOIN teaching_plans p ON p.id = e.plan_id
-		WHERE p.term_id = $1 AND p.tenant_id = $2 AND u.name <> ''
-	`, termID, tenantID)
+		JOIN user_roles ur ON ur.user_id = u.id
+		JOIN roles r2 ON r2.id = ur.role_id
+		WHERE u.tenant_id = $1 AND u.name <> '' AND u.status = 'active' AND r2.code = 'teacher'
+		ORDER BY u.name
+	`, tenantID)
 	ti := 2
 	for tr.Next() {
 		var n string
@@ -1103,8 +1103,8 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 	tr.Close()
 	f.SetColWidth(teacherSheet, "A", "A", 20)
 
-	// ===== 参考表：场地名单 =====
-	venueSheet := "场地名单"
+	// ===== 参考表：场地名单（全部场地） =====
+	venueSheet := "【参考】场地名单"
 	f.NewSheet(venueSheet)
 	f.SetCellValue(venueSheet, "A1", "场地名称"); f.SetCellStyle(venueSheet, "A1", "A1", hdrStyle)
 	f.SetCellValue(venueSheet, "B1", "类型"); f.SetCellStyle(venueSheet, "B1", "B1", hdrStyle)
@@ -1125,17 +1125,16 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 	vr.Close()
 	f.SetColWidth(venueSheet, "A", "A", 20); f.SetColWidth(venueSheet, "B", "B", 16)
 
-	// ===== 参考表：班级名单 =====
-	classSheet := "班级名单"
+	// ===== 参考表：班级名单（全部班级组织节点） =====
+	classSheet := "【参考】班级名单"
 	f.NewSheet(classSheet)
 	f.SetCellValue(classSheet, "A1", "班级名称"); f.SetCellStyle(classSheet, "A1", "A1", hdrStyle)
 	cr, _ := h.DB.Query(r.Context(), `
 		SELECT DISTINCT o.name FROM organizations o
-		JOIN teaching_plan_entry_classes ec ON ec.class_node_id = o.id
-		JOIN teaching_plan_entries e ON e.id = ec.entry_id
-		JOIN teaching_plans p ON p.id = e.plan_id
-		WHERE p.term_id = $1 AND p.tenant_id = $2 AND o.name <> ''
-	`, termID, tenantID)
+		JOIN org_types ot ON ot.id = o.type_id
+		WHERE o.tenant_id = $1 AND o.name <> '' AND ot.name = '班级'
+		ORDER BY o.name
+	`, tenantID)
 	ci2 := 2
 	for cr.Next() {
 		var n string
@@ -1150,7 +1149,7 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 	f.SetColWidth(classSheet, "A", "A", 24)
 
 	// ===== 参考表：节次表 =====
-	periodSheet := "节次表"
+	periodSheet := "【参考】节次表"
 	f.NewSheet(periodSheet)
 	f.SetCellValue(periodSheet, "A1", "节次名称"); f.SetCellStyle(periodSheet, "A1", "A1", hdrStyle)
 	f.SetCellValue(periodSheet, "B1", "开始时间"); f.SetCellStyle(periodSheet, "B1", "B1", hdrStyle)
@@ -1174,6 +1173,7 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 	}
 	pr.Close()
 
+	f.DeleteSheet("Sheet1")
 	idx, _ := f.GetSheetIndex(mainSheet)
 	f.SetActiveSheet(idx)
 	writeExcel(w, f, "排课导入_"+term.Name+".xlsx")
