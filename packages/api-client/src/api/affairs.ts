@@ -156,9 +156,14 @@ export const scheduleApi = {
       body: JSON.stringify({ termId }),
     }),
   /** 导出当前学期排课为 Excel（格式与导入模板一致） */
-  exportExcel: (termId: string) => {
-    const url = `/api/v1/affairs/schedules/export?termId=${encodeURIComponent(termId)}`
-    window.open(url, "_blank")
+  exportExcel: async (termId: string) => {
+    const { authedFetch } = await import("./api-helpers")
+    const res = await authedFetch(`/affairs/schedules/export?termId=${encodeURIComponent(termId)}`)
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url; a.download = "排课导出.xlsx"; a.click()
+    URL.revokeObjectURL(url)
   },
   /** 班级/教师课表视图（默认仅 published，含 version） */
   timetable: (params: { termId: string; classNodeId?: string; teacherId?: string; status?: string }) =>
