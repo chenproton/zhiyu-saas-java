@@ -306,6 +306,10 @@ func (h *ScenarioHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.DB.Exec(r.Context(), `UPDATE training_program_courses SET scenario_id = NULL WHERE scenario_id = $1`, id)
+	h.DB.Exec(r.Context(), `UPDATE teaching_plan_entries SET scenario_id = NULL WHERE scenario_id = $1`, id)
+	h.DB.Exec(r.Context(), `UPDATE schedule_entries SET scenario_id = NULL WHERE scenario_id = $1`, id)
+
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM scenarios WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "删除场景方案失败")

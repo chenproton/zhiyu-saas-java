@@ -364,6 +364,13 @@ func (h *CourseHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.DB.Exec(r.Context(), `UPDATE training_program_courses SET course_id = NULL WHERE course_id = $1`, id)
+	h.DB.Exec(r.Context(), `UPDATE teaching_plan_entries SET course_id = NULL WHERE course_id = $1`, id)
+	h.DB.Exec(r.Context(), `UPDATE schedule_entries SET course_id = NULL WHERE course_id = $1`, id)
+	h.DB.Exec(r.Context(), `DELETE FROM course_homework_submissions WHERE course_id = $1`, id)
+	h.DB.Exec(r.Context(), `DELETE FROM course_homeworks WHERE course_id = $1`, id)
+	h.DB.Exec(r.Context(), `DELETE FROM course_evaluation_results WHERE course_id = $1`, id)
+
 	_, err := h.DB.Exec(r.Context(), `DELETE FROM courses WHERE id = $1`, id)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "删除课程失败")
