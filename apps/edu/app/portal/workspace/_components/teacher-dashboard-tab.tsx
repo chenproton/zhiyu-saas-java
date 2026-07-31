@@ -340,7 +340,7 @@ function CourseScheduleTable({ events = [], classPlans = [], classSessions = [],
 
   return (
     <>
-      <div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+      <div className="border border-gray-200 rounded-xl overflow-x-auto bg-white shadow-sm">
         <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -397,7 +397,7 @@ function CourseScheduleTable({ events = [], classPlans = [], classSessions = [],
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-8 bg-gray-50 border-b border-gray-200">
+        <div className="grid grid-cols-8 min-w-[760px] bg-gray-50 border-b border-gray-200">
           <div className="p-3 text-sm font-semibold text-gray-700 border-r border-gray-200 flex items-center justify-center">
             节次 / 星期
           </div>
@@ -408,7 +408,7 @@ function CourseScheduleTable({ events = [], classPlans = [], classSessions = [],
           ))}
         </div>
         {allPeriods.map((period) => (
-          <div key={period} className="grid grid-cols-8 border-t border-gray-200">
+          <div key={period} className="grid grid-cols-8 min-w-[760px] border-t border-gray-200">
             <div className="p-3 text-xs text-gray-500 border-r border-gray-200 bg-gray-50/50 flex items-center justify-center font-medium">
               {period}
             </div>

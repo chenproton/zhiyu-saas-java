@@ -314,8 +314,8 @@ function ScheduleEventPopover({ event, children }: { event: ScheduleEvent; child
 
 function WeekView({ events }: { events: ScheduleEvent[] }) {
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
-      <div className="grid grid-cols-8 bg-gray-50">
+    <div className="border border-gray-200 rounded-xl overflow-x-auto bg-white shadow-sm">
+      <div className="grid grid-cols-8 min-w-[760px] bg-gray-50">
         <div className="p-3 text-sm font-semibold text-gray-700 border-r border-gray-200 flex items-center justify-center">
           节次 / 星期
         </div>
@@ -330,7 +330,7 @@ function WeekView({ events }: { events: ScheduleEvent[] }) {
       </div>
 
       {allPeriods.map((period) => (
-        <div key={period} className="grid grid-cols-8 border-t border-gray-200">
+        <div key={period} className="grid grid-cols-8 min-w-[760px] border-t border-gray-200">
           <div className="p-3 text-xs text-gray-500 border-r border-gray-200 bg-gray-50/50 flex items-center justify-center font-medium">
             {period}
           </div>

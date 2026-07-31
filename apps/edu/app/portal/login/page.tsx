@@ -111,12 +111,12 @@ export default function PortalLoginPage() {
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30 ring-1 ring-white/20">
             <GraduationCap className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">场景化数智教学服务平台</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">场景化数智教学服务平台</h1>
           <p className="text-sm text-indigo-200/60">数智融合 · 精准教学</p>
         </div>
 
         <Card className="border-0 bg-white/95 shadow-2xl shadow-black/20 backdrop-blur-xl">
-          <CardContent className="px-8 py-8">
+          <CardContent className="px-5 py-6 sm:px-8 sm:py-8">
             <div className="mb-6 flex rounded-lg bg-slate-100 p-1">
               {methodTabs.map(({ key, label, icon: Icon }) => (
                 <button

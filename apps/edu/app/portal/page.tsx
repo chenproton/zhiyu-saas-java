@@ -251,6 +251,19 @@ function findByLabel(items: { id: string; icon: string; color: string; title: st
   return items.find((i) => i.id === id)
 }
 
+// Bento 显式摆放仅在 lg+ 生效，移动端/平板按流式网格自然排列
+const COL_START_CLASS: Record<string, string> = {
+  "1": "lg:col-start-1",
+  "2": "lg:col-start-2",
+  "3": "lg:col-start-3",
+  "4": "lg:col-start-4",
+}
+
+const ROW_START_CLASS: Record<string, string> = {
+  "1": "lg:row-start-1",
+  "2": "lg:row-start-2",
+}
+
 const INTERNAL_ROUTES: Record<string, string> = {
   career: "/job/student",
   scene: "/scene/landing",
@@ -313,14 +326,13 @@ function GradientTile({
   const color = style?.color || "#000"
 
   const iconH = isBig ? "w-16 h-16 text-2xl mb-5" : "w-[46px] h-[46px] text-xl mb-3.5"
+  const placementClass = `${COL_START_CLASS[gridColumn] || ""} ${ROW_START_CLASS[gridRow] || ""}`
 
   return (
     <Wrapper
       {...wrapperProps}
-      className={`group rounded-2xl p-6 bg-white/60 backdrop-blur-xl relative overflow-hidden flex border-[1.5px] ${layoutClass} ${isLocked ? "" : "cursor-pointer hover:-translate-y-2 transition-all duration-[400ms]"}`}
+      className={`group rounded-2xl p-4 sm:p-6 bg-white/60 backdrop-blur-xl relative overflow-hidden flex border-[1.5px] ${layoutClass} ${placementClass} ${isLocked ? "" : "cursor-pointer hover:-translate-y-2 transition-all duration-[400ms]"}`}
       style={{
-        gridColumn,
-        gridRow,
         borderColor: `${color}3d`,
         boxShadow: `0 2px 8px ${color}14, 0 16px 40px ${color}0a`,
       }}
@@ -351,7 +363,7 @@ function GradientTile({
 
       {/* shared title + desc — identical across all variants */}
       <div className="relative" style={{ zIndex: 2 }}>
-        <h4 className="text-lg font-bold leading-tight mb-1 text-[#141a2e]">{item.title}</h4>
+        <h4 className="text-base sm:text-lg font-bold leading-tight mb-1 text-[#141a2e]">{item.title}</h4>
         <p className="text-xs leading-relaxed text-[#5b677b] line-clamp-2">{item.desc}</p>
       </div>
 
@@ -412,17 +424,17 @@ export default function PortalHomePage() {
       />
 
       {/* Hero */}
-      <section className="relative pt-8 pb-6 text-center px-10">
+      <section className="relative pt-8 pb-6 text-center px-4 sm:px-10">
         <div className="relative max-w-3xl mx-auto" style={{ zIndex: 2 }}>
-          <h1 className="text-4xl font-extrabold text-[#141a2e] tracking-wide leading-tight mb-3">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#141a2e] tracking-wide leading-tight mb-3">
             <span className="bg-gradient-to-r from-violet-600 via-indigo-600 to-cyan-400 bg-clip-text text-transparent">
               场景化数智
             </span>
             教学服务体系
           </h1>
-          <div className="flex items-center justify-center gap-1.5">
+          <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-2">
             {features.map((f, i) => (
-              <span key={i} className="relative text-sm text-[#8590a6] px-4">
+              <span key={i} className="relative text-xs sm:text-sm text-[#8590a6] px-2 sm:px-4">
                 {f.label}
                 {i < features.length - 1 && (
                   <span className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-[#c5cede]" />
@@ -435,13 +447,12 @@ export default function PortalHomePage() {
       </section>
 
       {/* Main content */}
-      <main className="max-w-[1312px] mx-auto px-10 relative" style={{ zIndex: 2 }}>
+      <main className="max-w-[1312px] mx-auto px-4 sm:px-10 relative" style={{ zIndex: 2 }}>
 
         <SectionLabel title="场景应用生态" tag="" />
 
         <div
-          className="grid grid-cols-4 gap-[18px]"
-          style={{ gridAutoRows: "188px" }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-[18px] lg:auto-rows-[188px]"
         >
           {BENTO_LAYOUT.slice(0, 8).map((layout) => {
             const item = findByLabel(items, layout.id)
@@ -463,8 +474,7 @@ export default function PortalHomePage() {
         <SectionLabel title="教学资源保障生态" tag="" />
 
         <div
-          className="grid grid-cols-4 gap-[18px]"
-          style={{ gridAutoRows: "188px" }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-[18px] lg:auto-rows-[188px]"
         >
           {BENTO_LAYOUT.slice(8).map((layout) => {
             const item = findByLabel(items, layout.id)

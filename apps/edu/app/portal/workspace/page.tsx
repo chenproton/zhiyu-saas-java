@@ -392,7 +392,7 @@ export default function WorkspacePage() {
       </div>
 
       {/* 快捷统计 */}
-      <div className="grid grid-cols-4 gap-4 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-5">
         <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
@@ -439,7 +439,7 @@ export default function WorkspacePage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
         {/* 通知公告 */}
         <Card className="bg-card/80 backdrop-blur border-0 shadow-sm">
           <CardHeader className="pb-3">
