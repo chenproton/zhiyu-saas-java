@@ -72,11 +72,9 @@ func (h *ProgramCourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 		respondError(w, http.StatusInternalServerError, "清理旧数据失败"); return
 	}
 	for i, c := range courses {
-		var code *string
-		if c.Code != "" { code = &c.Code }
 		if _, err := tx.Exec(r.Context(),
-			`INSERT INTO training_program_courses (id, program_id, name, code, credits, hours, nature, scenario_id, course_id, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-			c.ID, programID, c.Name, code, c.Credits, c.Hours, c.Nature, c.ScenarioID, c.CourseID, i); err != nil {
+			`INSERT INTO training_program_courses (id, program_id, name, credits, hours, nature, scenario_id, course_id, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+			c.ID, programID, c.Name, c.Credits, c.Hours, c.Nature, c.ScenarioID, c.CourseID, i); err != nil {
 			respondError(w, http.StatusInternalServerError, "保存课程失败"); return
 		}
 	}
@@ -96,7 +94,6 @@ func (h *ProgramCourseImportHandler) checkAuth(w http.ResponseWriter, r *http.Re
 type pcCourse struct {
 	ID         string
 	Name       string
-	Code       string
 	Credits    float64
 	Hours      int
 	Nature     string
@@ -114,33 +111,39 @@ func (h *ProgramCourseImportHandler) parseCourses(r *http.Request, xlsx *exceliz
 	for i, row := range rows {
 		if i < 2 { continue }
 		rowNum := i + 1
-		if len(row) == 0 || strings.TrimSpace(col(row, 0)) == "" { continue }
-		name := strings.TrimSpace(col(row, 0))
-		code := strings.TrimSpace(col(row, 1))
+		scenarioName := strings.TrimSpace(col(row, 0))
+		courseName := strings.TrimSpace(col(row, 1))
 		creditsStr := strings.TrimSpace(col(row, 2))
 		hoursStr := strings.TrimSpace(col(row, 3))
 		nature := strings.TrimSpace(col(row, 4))
-		scenarioName := strings.TrimSpace(col(row, 5))
-		courseName := strings.TrimSpace(col(row, 6))
 
-		if name == "" { errs = append(errs, "第"+strconv.Itoa(rowNum)+"行：课程名称不能为空"); continue }
+		if scenarioName == "" && courseName == "" {
+			errs = append(errs, "第"+strconv.Itoa(rowNum)+"行：关联场景和关联体系课至少填写一项")
+			continue
+		}
 		credits, _ := strconv.ParseFloat(creditsStr, 64)
 		hours, _ := strconv.Atoi(hoursStr)
 		if nature == "" { nature = "必修" }
 
-		c := pcCourse{ID: uuid.NewString(), Name: name, Code: code, Credits: credits, Hours: hours, Nature: nature}
+		c := pcCourse{ID: uuid.NewString(), Credits: credits, Hours: hours, Nature: nature}
 
 		if scenarioName != "" {
 			var id string
-			if err := h.DB.QueryRow(r.Context(), `SELECT id FROM scenarios WHERE name=$2 LIMIT 1`, scenarioName).Scan(&id); err == nil {
+			if err := h.DB.QueryRow(r.Context(), `SELECT id, name FROM scenarios WHERE name=$1 LIMIT 1`, scenarioName).Scan(&id, &c.Name); err == nil {
 				c.ScenarioID = &id
 			}
 		}
 		if courseName != "" {
-			var id string
-			if err := h.DB.QueryRow(r.Context(), `SELECT id FROM courses WHERE name=$1 AND type='system' LIMIT 1`, courseName).Scan(&id); err == nil {
+			var id, n string
+			if err := h.DB.QueryRow(r.Context(), `SELECT id, name FROM courses WHERE name=$1 AND type='system' LIMIT 1`, courseName).Scan(&id, &n); err == nil {
+				if c.Name == "" { c.Name = n }
+				if c.Name == "" { c.Name = courseName }
 				c.CourseID = &id
 			}
+		}
+		if c.Name == "" {
+			c.Name = scenarioName
+			if c.Name == "" { c.Name = courseName }
 		}
 
 		courses = append(courses, c)
@@ -165,12 +168,12 @@ func (h *ProgramCourseImportHandler) ServeTemplate(w http.ResponseWriter, r *htt
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
 
-	headers := []string{"课程名称 *", "编码", "学分", "总学时", "性质", "关联场景名称", "关联体系课名称"}
-	widths := []float64{24, 14, 8, 10, 10, 20, 24}
+	headers := []string{"关联场景名称（二选一）", "关联体系课名称（二选一）", "学分", "总学时", "性质"}
+	widths := []float64{24, 24, 10, 10, 12}
 	s1, _ := f.NewSheet(pcImportSheet)
 	f.SetActiveSheet(s1)
 
-	note := "填写说明：\n* 必填列。\n课程名称：填写课程名称。\n性质：默认为「必修」，可选：必修、选修、实践。\n关联场景：填写已发布场景名称，或留空。\n关联体系课：填写已发布体系课名称，或留空。\n场景和体系课二选一，都填时以场景为准。"
+	note := "填写说明：\n* 二选一必填列。\n关联场景名称：填写已发布场景名称。\n关联体系课名称：填写已发布体系课名称。\n场景和体系课二选一填写，都填时以场景为准。\n学分：数字，如 3.5。\n总学时：整数。\n性质：默认为「必修」，可选：必修、选修、实践。"
 	start, _ := excelize.CoordinatesToCellName(1, 1)
 	end, _ := excelize.CoordinatesToCellName(len(headers), 1)
 	f.MergeCell(pcImportSheet, start, end)
