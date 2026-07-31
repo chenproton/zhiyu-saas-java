@@ -121,31 +121,33 @@ type PeriodSlot struct {
 
 // ScheduleEntry 排课结果（课表核心实体）。
 type ScheduleEntry struct {
-	ID           string    `json:"id"`
-	TermID       string    `json:"termId"`
-	PlanEntryID  *string   `json:"planEntryId,omitempty"`
-	CourseName   string    `json:"courseName"`
-	CourseCode   *string   `json:"courseCode,omitempty"`
-	CourseID     *string   `json:"courseId,omitempty"`
-	Type         string    `json:"type"` // traditional/scene
-	ClassNodeID  string    `json:"classNodeId"`
-	ClassName    string    `json:"className,omitempty"`
-	TeacherID    *string   `json:"teacherId,omitempty"`
-	TeacherName  string    `json:"teacherName,omitempty"`
-	DayOfWeek    int       `json:"dayOfWeek"`
-	Periods      JSONSlice `json:"periods"`
-	StartWeek    int       `json:"startWeek"`
-	EndWeek      int       `json:"endWeek"`
-	WeekPattern  string    `json:"weekPattern"`
-	VenueID      *string   `json:"venueId,omitempty"`
-	VenueName    string    `json:"venueName,omitempty"`
-	ScenarioID   *string   `json:"scenarioId,omitempty"`
-	ScenarioName string    `json:"scenarioName,omitempty"`
-	Source       string    `json:"source"`
-	Status       string    `json:"status"`
-	Version      int       `json:"version"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	ID            string    `json:"id"`
+	TermID        string    `json:"termId"`
+	PlanEntryID   *string   `json:"planEntryId,omitempty"`
+	CourseName    string    `json:"courseName"`
+	CourseCode    *string   `json:"courseCode,omitempty"`
+	CourseID      *string   `json:"courseId,omitempty"`
+	Type          string    `json:"type"` // traditional/scene
+	ClassNodeID   string    `json:"classNodeId"`
+	ClassName     string    `json:"className,omitempty"`
+	ClassNodeIDs  []string  `json:"classNodeIds,omitempty"`
+	ClassNames    []string  `json:"classNames,omitempty"`
+	TeacherID     *string   `json:"teacherId,omitempty"`
+	TeacherName   string    `json:"teacherName,omitempty"`
+	DayOfWeek     int       `json:"dayOfWeek"`
+	Periods       JSONSlice `json:"periods"`
+	StartWeek     int       `json:"startWeek"`
+	EndWeek       int       `json:"endWeek"`
+	WeekPattern   string    `json:"weekPattern"`
+	VenueID       *string   `json:"venueId,omitempty"`
+	VenueName     string    `json:"venueName,omitempty"`
+	ScenarioID    *string   `json:"scenarioId,omitempty"`
+	ScenarioName  string    `json:"scenarioName,omitempty"`
+	Source        string    `json:"source"`
+	Status        string    `json:"status"`
+	Version       int       `json:"version"`
+	CreatedAt     time.Time `json:"createdAt"`
+	UpdatedAt     time.Time `json:"updatedAt"`
 }
 
 // ScheduleConflict 排课冲突详情（409 响应体）。

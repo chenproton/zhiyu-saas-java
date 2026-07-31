@@ -47,6 +47,10 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
   const pendingEntries = useMemo(() => planEntries.filter((e) => e.status === "planned"), [planEntries])
   const scheduledCount = useMemo(() => planEntries.filter((e) => e.status === "scheduled").length, [planEntries])
   const selectedEntry = useMemo(() => pendingEntries.find((e) => e.id === selectedPendingId) || null, [pendingEntries, selectedPendingId])
+  const filteredEntries = useMemo(() => {
+    if (venueFilter === "__all") return scheduleEntries
+    return scheduleEntries.filter((e) => e.venueId === venueFilter)
+  }, [scheduleEntries, venueFilter])
 
   const loadScheduleEntries = useCallback(async () => {
     if (!plan.termId) { setScheduleEntries([]); return }
@@ -64,21 +68,17 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
   const reloadAll = useCallback(async () => { await loadScheduleEntries(); onPlanChanged() }, [loadScheduleEntries, onPlanChanged])
 
   const doCreateSchedule = async (entry: TeachingPlanEntry, day: number, period: string, classIds: string[], teacherId: string, venueId: string) => {
-    let created = 0
-    let lastErr = ""
-    for (const cid of classIds) {
-      try {
-        await scheduleApi.create({
-          termId: plan.termId, planEntryId: entry.id, courseName: entry.courseName, courseCode: entry.courseCode || undefined,
-          courseId: entry.courseId || undefined, type: entry.type || "traditional", classNodeId: cid,
-          teacherId: teacherId || undefined, dayOfWeek: day, periods: [period],
-          startWeek: entry.startWeek || 1, endWeek: entry.endWeek || 1, weekPattern: entry.weekPattern || "all",
-          venueId: venueId || undefined, scenarioId: entry.scenarioId || undefined,
-        })
-        created++
-      } catch (err: any) { lastErr = err.message || "" }
-    }
-    return { created, lastErr }
+    try {
+      await scheduleApi.create({
+        termId: plan.termId, planEntryId: entry.id, courseName: entry.courseName, courseCode: entry.courseCode || undefined,
+        courseId: entry.courseId || undefined, type: entry.type || "traditional",
+        classNodeId: classIds[0] || "", classNodeIds: classIds,
+        teacherId: teacherId || undefined, dayOfWeek: day, periods: [period],
+        startWeek: entry.startWeek || 1, endWeek: entry.endWeek || 1, weekPattern: entry.weekPattern || "all",
+        venueId: venueId || undefined, scenarioId: entry.scenarioId || undefined,
+      })
+      return { created: 1, lastErr: "" }
+    } catch (err: any) { return { created: 0, lastErr: err.message || "" } }
   }
 
   const handleCellClick = useCallback(async (dayOfWeek: number, periodKey: string) => {
@@ -109,10 +109,9 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
     if (!preConfigEntry) return
     setPreConfigSaving(true)
     try {
-      if (preClassIds.length > 0) await teachingPlanApi.updateEntry(preConfigEntry.id, { classNodeIds: preClassIds, teacherId: preTeacherId || undefined }).catch(() => {})
       const { created, lastErr } = await doCreateSchedule(preConfigEntry, preConfigDay, preConfigPeriod, preClassIds, preTeacherId, preVenueId)
       if (created > 0) {
-        toast({ title: "排课成功", description: `${created}/${preClassIds.length} 班已排` })
+        toast({ title: "排课成功", description: `${preConfigEntry.courseName} 已排入周${preConfigDay} ${preConfigPeriod}` })
         setSelectedPendingId(null); setPreConfigEntry(null); reloadAll()
       } else if (lastErr) {
         toast({ variant: "destructive", title: "排课失败", description: lastErr })
@@ -188,7 +187,7 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
         </div>
 
         <div className="min-w-0 flex-1 rounded-lg border bg-white p-3">
-          <ScheduleGrid entries={scheduleEntries} periodSlots={periodSlots} loading={gridLoading} alwaysShow
+          <ScheduleGrid entries={filteredEntries} periodSlots={periodSlots} loading={gridLoading} alwaysShow
             emptyText="点击左侧课程后点此处空格" onEntryClick={handleEditClick} onCellClick={selectedEntry ? handleCellClick : undefined} />
         </div>
       </div>

@@ -359,24 +359,25 @@ type ScheduleEntryListResponse struct {
 }
 
 type ScheduleEntryRequest struct {
-	TermID      string           `json:"termId"`
-	PlanEntryID *string          `json:"planEntryId"`
-	CourseName  string           `json:"courseName"`
-	CourseCode  *string          `json:"courseCode"`
-	CourseID    *string          `json:"courseId"`
-	Type        string           `json:"type"`
-	ClassNodeID string           `json:"classNodeId"`
-	TeacherID   *string          `json:"teacherId"`
-	DayOfWeek   int              `json:"dayOfWeek"`
-	Periods     domain.JSONSlice `json:"periods"`
-	StartWeek   int              `json:"startWeek"`
-	EndWeek     int              `json:"endWeek"`
-	WeekPattern string           `json:"weekPattern"`
-	VenueID     *string          `json:"venueId"`
-	ScenarioID  *string          `json:"scenarioId"`
+	TermID       string           `json:"termId"`
+	PlanEntryID  *string          `json:"planEntryId"`
+	CourseName   string           `json:"courseName"`
+	CourseCode   *string          `json:"courseCode"`
+	CourseID     *string          `json:"courseId"`
+	Type         string           `json:"type"`
+	ClassNodeID  string           `json:"classNodeId"`
+	ClassNodeIDs []string         `json:"classNodeIds"`
+	TeacherID    *string          `json:"teacherId"`
+	DayOfWeek    int              `json:"dayOfWeek"`
+	Periods      domain.JSONSlice `json:"periods"`
+	StartWeek    int              `json:"startWeek"`
+	EndWeek      int              `json:"endWeek"`
+	WeekPattern  string           `json:"weekPattern"`
+	VenueID      *string          `json:"venueId"`
+	ScenarioID   *string          `json:"scenarioId"`
 }
 
-const scheduleEntrySelectColumns = "se.id, se.term_id, se.plan_entry_id, se.course_name, se.course_code, se.course_id, se.type, se.class_node_id, COALESCE(o.name, '') AS class_name, se.teacher_id, COALESCE(u.name, '') AS teacher_name, se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern, se.venue_id, COALESCE(v.name, '') AS venue_name, se.scenario_id, COALESCE(sc.name, '') AS scenario_name, se.source, se.status, se.version, se.created_at, se.updated_at"
+const scheduleEntrySelectColumns = "se.id, se.term_id, se.plan_entry_id, se.course_name, se.course_code, se.course_id, se.type, se.class_node_id, COALESCE(o.name, '') AS class_name, se.teacher_id, COALESCE(u.name, '') AS teacher_name, se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern, se.venue_id, COALESCE(v.name, '') AS venue_name, se.scenario_id, COALESCE(sc.name, '') AS scenario_name, se.source, se.status, se.version, se.created_at, se.updated_at, COALESCE(se.class_node_ids, '{}') AS class_node_ids, COALESCE((SELECT array_agg(o2.name ORDER BY cid) FROM unnest(se.class_node_ids) WITH ORDINALITY AS c(cid, ord) JOIN organizations o2 ON o2.id = c.cid), '{}') AS class_names"
 
 const scheduleEntryFrom = "schedule_entries se LEFT JOIN organizations o ON o.id = se.class_node_id LEFT JOIN users u ON u.id = se.teacher_id LEFT JOIN venues v ON v.id = se.venue_id LEFT JOIN scenarios sc ON sc.id = se.scenario_id"
 
@@ -387,7 +388,8 @@ func scanScheduleEntryRow(rows pgx.Rows) ([]domain.ScheduleEntry, error) {
 		if err := rows.Scan(&e.ID, &e.TermID, &e.PlanEntryID, &e.CourseName, &e.CourseCode, &e.CourseID, &e.Type,
 			&e.ClassNodeID, &e.ClassName, &e.TeacherID, &e.TeacherName, &e.DayOfWeek, &e.Periods,
 			&e.StartWeek, &e.EndWeek, &e.WeekPattern, &e.VenueID, &e.VenueName,
-			&e.ScenarioID, &e.ScenarioName, &e.Source, &e.Status, &e.Version, &e.CreatedAt, &e.UpdatedAt); err != nil {
+			&e.ScenarioID, &e.ScenarioName, &e.Source, &e.Status, &e.Version, &e.CreatedAt, &e.UpdatedAt,
+			&e.ClassNodeIDs, &e.ClassNames); err != nil {
 			return nil, err
 		}
 		items = append(items, e)
@@ -528,13 +530,22 @@ func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Reques
 				courseID = planCourseID
 			}
 		}
+		// 合并班级：优先 classNodeIds 数组，缺省回退 classNodeId
+		classIDs := req.ClassNodeIDs
+		if len(classIDs) == 0 && req.ClassNodeID != "" {
+			classIDs = []string{req.ClassNodeID}
+		}
+		primaryClass := req.ClassNodeID
+		if primaryClass == "" && len(classIDs) > 0 {
+			primaryClass = classIDs[0]
+		}
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO schedule_entries (id, tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
-				class_node_id, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
+				class_node_id, class_node_ids, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
 				venue_id, scenario_id, source, status, version)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 'manual', 'draft', 1)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, 'manual', 'draft', 1)
 		`, id, tenantID, req.TermID, emptyStrToNil(req.PlanEntryID), req.CourseName, emptyStrToNil(req.CourseCode), courseID, entryType,
-			req.ClassNodeID, emptyStrToNil(req.TeacherID), req.DayOfWeek, req.Periods, req.StartWeek, req.EndWeek, weekPattern,
+			primaryClass, classIDs, emptyStrToNil(req.TeacherID), req.DayOfWeek, req.Periods, req.StartWeek, req.EndWeek, weekPattern,
 			emptyStrToNil(req.VenueID), emptyStrToNil(req.ScenarioID)); err != nil {
 			return err
 		}
@@ -618,14 +629,22 @@ func (h *SchedulingHandler) UpdateSchedule(w http.ResponseWriter, r *http.Reques
 			courseID = planCourseID
 		}
 	}
+	classIDs := req.ClassNodeIDs
+	if len(classIDs) == 0 && req.ClassNodeID != "" {
+		classIDs = []string{req.ClassNodeID}
+	}
+	primaryClass := req.ClassNodeID
+	if primaryClass == "" && len(classIDs) > 0 {
+		primaryClass = classIDs[0]
+	}
 	_, err = h.DB.Exec(ctx, `
 		UPDATE schedule_entries
 		SET term_id = $1, plan_entry_id = $2, course_name = $3, course_code = $4, course_id = $5, type = $6,
-			class_node_id = $7, teacher_id = $8, day_of_week = $9, periods = $10,
-			start_week = $11, end_week = $12, week_pattern = $13, venue_id = $14, scenario_id = $15, updated_at = NOW()
-		WHERE id = $16 AND tenant_id = $17
+			class_node_id = $7, class_node_ids = $8, teacher_id = $9, day_of_week = $10, periods = $11,
+			start_week = $12, end_week = $13, week_pattern = $14, venue_id = $15, scenario_id = $16, updated_at = NOW()
+		WHERE id = $17 AND tenant_id = $18
 	`, req.TermID, emptyStrToNil(req.PlanEntryID), req.CourseName, emptyStrToNil(req.CourseCode), courseID, entryType,
-		req.ClassNodeID, emptyStrToNil(req.TeacherID), req.DayOfWeek, req.Periods,
+		primaryClass, classIDs, emptyStrToNil(req.TeacherID), req.DayOfWeek, req.Periods,
 		req.StartWeek, req.EndWeek, weekPattern, emptyStrToNil(req.VenueID), emptyStrToNil(req.ScenarioID), id, tenantID)
 	if err != nil {
 		slog.Error("更新排课失败", "error", err)
@@ -1224,10 +1243,15 @@ func (h *SchedulingHandler) checkScheduleConflicts(ctx context.Context, tenantID
 		weekPattern = "all"
 	}
 
+	reqClasses := req.ClassNodeIDs
+	if len(reqClasses) == 0 && req.ClassNodeID != "" {
+		reqClasses = []string{req.ClassNodeID}
+	}
+
 	rows, err := h.DB.Query(ctx, `
 		SELECT se.id, se.course_name, COALESCE(o.name, ''), COALESCE(u.name, ''), COALESCE(v.name, ''),
 			se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern,
-			se.teacher_id, se.class_node_id, se.venue_id, se.plan_entry_id
+			se.teacher_id, se.class_node_id, se.venue_id, se.plan_entry_id, se.class_node_ids
 		FROM schedule_entries se
 		LEFT JOIN organizations o ON o.id = se.class_node_id
 		LEFT JOIN users u ON u.id = se.teacher_id
@@ -1247,9 +1271,10 @@ func (h *SchedulingHandler) checkScheduleConflicts(ctx context.Context, tenantID
 	for rows.Next() {
 		var c domain.ScheduleConflict
 		var rowTeacherID, rowClassNodeID, rowVenueID, rowPlanEntryID *string
+		var rowClassNodeIDs []string
 		if err := rows.Scan(&c.EntryID, &c.CourseName, &c.ClassName, &c.TeacherName, &c.VenueName,
 			&c.DayOfWeek, &c.Periods, &c.StartWeek, &c.EndWeek, &c.WeekPattern,
-			&rowTeacherID, &rowClassNodeID, &rowVenueID, &rowPlanEntryID); err != nil {
+			&rowTeacherID, &rowClassNodeID, &rowVenueID, &rowPlanEntryID, &rowClassNodeIDs); err != nil {
 			return nil, err
 		}
 
@@ -1263,7 +1288,19 @@ func (h *SchedulingHandler) checkScheduleConflicts(ctx context.Context, tenantID
 			dup.Kind = "teacher"
 			conflicts = append(conflicts, dup)
 		}
-		if rowClassNodeID != nil && *rowClassNodeID == req.ClassNodeID {
+		// 班级冲突：任一班重叠即冲突
+		existingClasses := rowClassNodeIDs
+		if len(existingClasses) == 0 && rowClassNodeID != nil {
+			existingClasses = []string{*rowClassNodeID}
+		}
+		classOverlap := false
+		for _, ec := range existingClasses {
+			for _, rc := range reqClasses {
+				if ec == rc { classOverlap = true; break }
+			}
+			if classOverlap { break }
+		}
+		if classOverlap {
 			dup := c
 			dup.Kind = "class"
 			conflicts = append(conflicts, dup)
@@ -1286,7 +1323,8 @@ func (h *SchedulingHandler) fetchScheduleEntry(ctx context.Context, id, tenantID
 	`, id, tenantID).Scan(&e.ID, &e.TermID, &e.PlanEntryID, &e.CourseName, &e.CourseCode, &e.CourseID, &e.Type,
 		&e.ClassNodeID, &e.ClassName, &e.TeacherID, &e.TeacherName, &e.DayOfWeek, &e.Periods,
 		&e.StartWeek, &e.EndWeek, &e.WeekPattern, &e.VenueID, &e.VenueName,
-		&e.ScenarioID, &e.ScenarioName, &e.Source, &e.Status, &e.Version, &e.CreatedAt, &e.UpdatedAt)
+		&e.ScenarioID, &e.ScenarioName, &e.Source, &e.Status, &e.Version, &e.CreatedAt, &e.UpdatedAt,
+		&e.ClassNodeIDs, &e.ClassNames)
 	return e, err
 }
 

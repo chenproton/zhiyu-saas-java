@@ -177,6 +177,8 @@ export interface ScheduleEntry {
   type: string
   classNodeId: string
   className?: string
+  classNodeIds?: string[]
+  classNames?: string[]
   teacherId?: string
   teacherName?: string
   dayOfWeek: number
@@ -203,6 +205,7 @@ export interface ScheduleEntryPayload {
   courseId?: string
   type?: string
   classNodeId: string
+  classNodeIds?: string[]
   teacherId?: string
   dayOfWeek: number
   periods: string[]
