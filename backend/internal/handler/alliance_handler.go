@@ -1661,7 +1661,7 @@ func (h *AllianceHandler) ListPublicEnterprises(w http.ResponseWriter, r *http.R
 			cover_image, status, rating, cooperation_types, contact_person, contact_phone,
 			contact_email, address, unified_social_credit_code, established_year, employee_count,
 			business_license_photos, qualification_photos, intellectual_property_photos,
-			cover_photos, secondary_colleges, rating_record, is_public, created_at, updated_at
+			cover_photos, secondary_colleges, rating_record, is_public, created_by, created_at, updated_at
 		FROM alliance_enterprises WHERE is_public = true AND status = 'active'
 		ORDER BY created_at DESC
 	`)
@@ -1681,19 +1681,20 @@ func (h *AllianceHandler) GetPublicEnterprise(w http.ResponseWriter, r *http.Req
 	var contactPerson, contactPhone, contactEmail, address, creditCode *string
 	var establishedYear, employeeCount *int
 	var coopTypes, bizPhotos, qualPhotos, ipPhotos, coverPhotos, colleges, ratingRecord json.RawMessage
+	var createdBy *string
 	err := h.DB.QueryRow(r.Context(), `
 		SELECT id, tenant_id, name, enterprise_type, industry, region, description,
 			logo_url, cover_image, status, rating, cooperation_types, contact_person,
 			contact_phone, contact_email, address, unified_social_credit_code,
 			established_year, employee_count, business_license_photos, qualification_photos,
 			intellectual_property_photos, cover_photos, secondary_colleges, rating_record,
-			is_public, created_at, updated_at
+			is_public, created_by, created_at, updated_at
 		FROM alliance_enterprises WHERE id = $1 AND is_public = true AND status = 'active'
 	`, id).Scan(&e.ID, &e.TenantID, &e.Name, &e.EnterpriseType, &industry, &region,
 		&description, &logoURL, &coverImage, &e.Status, &rating, &coopTypes,
 		&contactPerson, &contactPhone, &contactEmail, &address, &creditCode,
 		&establishedYear, &employeeCount, &bizPhotos, &qualPhotos, &ipPhotos,
-		&coverPhotos, &colleges, &ratingRecord, &e.IsPublic, &e.CreatedAt, &e.UpdatedAt)
+		&coverPhotos, &colleges, &ratingRecord, &e.IsPublic, &createdBy, &e.CreatedAt, &e.UpdatedAt)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "企业不存在")
 		return
@@ -1718,6 +1719,7 @@ func (h *AllianceHandler) GetPublicEnterprise(w http.ResponseWriter, r *http.Req
 	e.CoverPhotos = coverPhotos
 	e.SecondaryColleges = colleges
 	e.RatingRecord = ratingRecord
+	e.CreatedBy = createdBy
 	respondJSON(w, http.StatusOK, e)
 }
 
