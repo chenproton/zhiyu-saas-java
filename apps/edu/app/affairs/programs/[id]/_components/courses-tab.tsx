@@ -23,6 +23,7 @@ import { useToast } from "@zhiyu/ui"
 import { programApi, scenarioApi, courseApi, positionApi } from "@/lib/api"
 import type { Scenario, CareerPosition } from "@/lib/types"
 import type { Course } from "@/lib/types/lesson"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 
 const NATURE_OPTIONS = ["必修", "选修", "实践", "场景"]
 
@@ -41,8 +42,8 @@ interface CourseRow {
   positionId: string
 }
 
-function emptyRow(key: string): CourseRow {
-  return { key, name: "", code: "", credits: 0, hours: 0, nature: "必修", linkType: "none", scenarioId: "", courseId: "", positionId: "" }
+function emptyRow(key: string, position?: boolean): CourseRow {
+  return { key, name: "", code: "", credits: 0, hours: 0, nature: "必修", linkType: position ? "position" : "none", scenarioId: "", courseId: "", positionId: "" }
 }
 
 export function ProgramCoursesTab({ programId }: { programId: string }) {
@@ -141,8 +142,11 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
   }
 
   const addRow = () => {
-    setRows((prev) => [...prev, emptyRow(`new-${Date.now()}-${prev.length}`)])
+    setRows((prev) => [emptyRow(`new-${Date.now()}-${prev.length}`, true), ...prev])
   }
+
+  const positionOpts = useMemo(() => positions.map((p) => ({ value: p.id, label: p.name })), [positions])
+  const courseOpts = useMemo(() => systemCourses.map((c) => ({ value: c.id, label: c.name })), [systemCourses])
 
   const removeRow = (key: string) => {
     setRows((prev) => prev.filter((r) => r.key !== key))
@@ -310,13 +314,14 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
                                 <SelectItem value="course">体系课</SelectItem>
                               </SelectContent>
                             </Select>
-                            <Select value={r.positionId || "none"} onValueChange={(v) => handlePositionChange(r.key, v === "none" ? "" : v)}>
-                              <SelectTrigger className="h-8 flex-1"><SelectValue placeholder="选择岗位" /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">未选择</SelectItem>
-                                {positions.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
+                            <ComboboxSelect
+                              value={r.positionId}
+                              onChange={(v) => handlePositionChange(r.key, v || "")}
+                              options={positionOpts}
+                              placeholder="搜索岗位..."
+                              emptyText="未找到岗位"
+                              className="flex-1"
+                            />
                           </div>
                           {r.positionId && (
                             <div className="text-xs text-muted-foreground pl-1">
@@ -337,17 +342,18 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
                               <SelectItem value="course">体系课</SelectItem>
                             </SelectContent>
                           </Select>
-                          <Select value={r.courseId || "none"} onValueChange={(v) => {
-                            const courseId = v === "none" ? "" : v
-                            const course = systemCourses.find((c) => c.id === courseId)
-                            updateRow(r.key, { courseId, name: course ? course.name : r.name, code: course ? (course.code || "") : r.code, hours: course ? (course.onlineHours || 0) : r.hours })
-                          }}>
-                            <SelectTrigger className="h-8 flex-1"><SelectValue placeholder="选择体系课" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">未选择</SelectItem>
-                              {systemCourses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
+                          <ComboboxSelect
+                            value={r.courseId}
+                            onChange={(v) => {
+                              const courseId = v || ""
+                              const course = systemCourses.find((c) => c.id === courseId)
+                              updateRow(r.key, { courseId, name: course ? course.name : r.name, code: course ? (course.code || "") : r.code, hours: course ? (course.onlineHours || 0) : r.hours })
+                            }}
+                            options={courseOpts}
+                            placeholder="搜索体系课..."
+                            emptyText="未找到体系课"
+                            className="flex-1"
+                          />
                         </div>
                       ) : (
                         <div className="flex items-center gap-1">
