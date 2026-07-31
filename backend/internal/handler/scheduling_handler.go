@@ -961,7 +961,9 @@ func (h *SchedulingHandler) PublishSchedules(w http.ResponseWriter, r *http.Requ
 	respondJSON(w, http.StatusOK, map[string]interface{}{"published": tag.RowsAffected(), "version": version})
 }
 
-// ExportSchedules GET /affairs/schedules/export?termId= — 导出排课为 Excel，格式与导入模板一致。
+// ExportSchedules GET /affairs/schedules/export?termId= — 导出教学计划课程列表 + 参考表。
+// 主表：该学期教学计划全部条目（已排的回填 星期/节次/教师/场地/班级，未排的留空待填）。
+// 参考表：教师名单 / 场地名单 / 班级名单 / 节次表。
 func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
@@ -983,80 +985,194 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	rows, err := h.DB.Query(r.Context(), `
-		SELECT se.course_name, COALESCE(o.name, '') AS class_name, se.day_of_week, se.periods,
-			se.start_week, se.end_week, se.week_pattern,
-			COALESCE(u.name, '') AS teacher_name, COALESCE(v.name, '') AS venue_name,
-			COALESCE(se.course_code, '') AS course_code, se.type, COALESCE(sc.name, '') AS scene_name
-		FROM schedule_entries se
-		LEFT JOIN organizations o ON o.id = se.class_node_id
-		LEFT JOIN users u ON u.id = se.teacher_id
-		LEFT JOIN venues v ON v.id = se.venue_id
-		LEFT JOIN scenarios sc ON sc.id = se.scenario_id
-		WHERE se.tenant_id = $1 AND se.term_id = $2
-		ORDER BY se.day_of_week, se.start_week, se.course_name
-	`, tenantID, termID)
-	if err != nil {
-		slog.Error("查询排课导出数据失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询排课导出数据失败")
-		return
-	}
-	defer rows.Close()
-
 	f := excelize.NewFile()
 	f.DeleteSheet("Sheet1")
 	hdrStyle := makeHeaderStyle(f)
 	noteStyle := makeNoteStyle(f)
 	wrapAlign := makeWrapAlign(f)
 
-	headers := []string{"学期 *", "课程名称 *", "班级 *", "星期 *", "节次 *", "起始周 *", "结束周 *", "周次模式", "教师", "场地", "课程编码", "类型", "场景名称"}
-	widths := []float64{16, 24, 20, 8, 16, 10, 10, 10, 14, 16, 14, 10, 20}
-	s1, _ := f.NewSheet(scheduleImportSheet)
-	f.SetActiveSheet(s1)
-
-	note := strings.Join([]string{"学期：" + term.Name, "可直接修改后重新导入", "", "导入说明：", "* 必填列。", "星期：1-7 或 周一~周日。", "节次：多个用逗号分隔。", "周次模式：全部/单周/双周，默认全部。", "教师：姓名或登录账号。场地：需已在场地管理中创建。", "类型：普通/场景，类型为场景时场景名称必填。"}, "\n")
-	start, _ := excelize.CoordinatesToCellName(1, 1)
-	end, _ := excelize.CoordinatesToCellName(len(headers), 1)
-	f.MergeCell(scheduleImportSheet, start, end)
-	f.SetCellValue(scheduleImportSheet, start, note)
-	f.SetCellStyle(scheduleImportSheet, start, end, noteStyle)
-	f.SetCellStyle(scheduleImportSheet, start, end, wrapAlign)
-	f.SetRowHeight(scheduleImportSheet, 1, 32)
-
-	for ci, hdr := range headers {
-		cell, _ := excelize.CoordinatesToCellName(ci+1, 2)
-		f.SetCellValue(scheduleImportSheet, cell, hdr)
-		f.SetCellStyle(scheduleImportSheet, cell, cell, hdrStyle)
-		f.SetColWidth(scheduleImportSheet, colName(ci+1), colName(ci+1), widths[ci])
-	}
-	f.SetRowHeight(scheduleImportSheet, 2, 28)
-
 	dayMap := map[int]string{1: "周一", 2: "周二", 3: "周三", 4: "周四", 5: "周五", 6: "周六", 7: "周日"}
 	weekPatMap := map[string]string{"all": "全部", "odd": "单周", "even": "双周"}
 
+	// ===== 主表：课程列表 =====
+	mainSheet := "课程列表"
+	f.NewSheet(mainSheet)
+	headers := []string{"课程名称 *", "类型", "起始周 *", "结束周 *", "周次模式", "星期", "节次", "教师", "场地", "班级"}
+	widths := []float64{28, 10, 10, 10, 10, 8, 20, 16, 18, 30}
+	note := "填写说明：\n* 必填列。\n星期：1-7 或 周一~周日。\n节次：填写节次名称（如 上午1-2）。\n教师：姓名或登录账号。\n场地：场地名称。\n班级：班级名称，多个班级用逗号分隔。\n已排课的条目已回填星期/节次/教师/场地/班级，未排的留空待你填写。\n参考「教师名单/场地名单/班级名单/节次表」Sheet 填写。\n导入时将以该表为准，先清空当前学期排课再重新生成。"
+	start, _ := excelize.CoordinatesToCellName(1, 1)
+	end, _ := excelize.CoordinatesToCellName(len(headers), 1)
+	f.MergeCell(mainSheet, start, end)
+	f.SetCellValue(mainSheet, start, note)
+	f.SetCellStyle(mainSheet, start, end, noteStyle)
+	f.SetCellStyle(mainSheet, start, end, wrapAlign)
+	f.SetRowHeight(mainSheet, 1, 90)
+	for ci, hdr := range headers {
+		cell, _ := excelize.CoordinatesToCellName(ci+1, 2)
+		f.SetCellValue(mainSheet, cell, hdr)
+		f.SetCellStyle(mainSheet, cell, cell, hdrStyle)
+		f.SetColWidth(mainSheet, colName(ci+1), colName(ci+1), widths[ci])
+	}
+	f.SetRowHeight(mainSheet, 2, 28)
+	f.SetPanes(mainSheet, &excelize.Panes{Freeze: true, YSplit: 2})
+
+	// 已排课映射：plan_entry_id -> (day, periods, teacherName, venueName, classNames)
+	schedMap := map[string]map[string]string{}
+	srows, err := h.DB.Query(r.Context(), `
+		SELECT se.plan_entry_id, se.day_of_week, se.periods,
+			COALESCE(u.name, '') AS teacher_name, COALESCE(v.name, '') AS venue_name,
+			COALESCE((SELECT array_agg(o2.name ORDER BY cid) FROM unnest(se.class_node_ids) WITH ORDINALITY AS c(cid, ord) JOIN organizations o2 ON o2.id = c.cid), '{}') AS class_names
+		FROM schedule_entries se
+		LEFT JOIN users u ON u.id = se.teacher_id
+		LEFT JOIN venues v ON v.id = se.venue_id
+		WHERE se.tenant_id = $1 AND se.term_id = $2
+	`, tenantID, termID)
+	if err == nil {
+		for srows.Next() {
+			var pid *string
+			var day int
+			var periods domain.JSONSlice
+			var tName, vName string
+			var classNames []string
+			if err := srows.Scan(&pid, &day, &periods, &tName, &vName, &classNames); err == nil && pid != nil {
+				schedMap[*pid] = map[string]string{
+					"day": dayMap[day], "periods": strings.Join(jsonSliceToStrings(periods), "，"),
+					"teacher": tName, "venue": vName, "classes": strings.Join(classNames, "，"),
+				}
+			}
+		}
+		srows.Close()
+	}
+
+	// 教学计划全部条目
+	rows, err := h.DB.Query(r.Context(), `
+		SELECT e.id, e.course_name, e.type, e.start_week, e.end_week, e.week_pattern
+		FROM teaching_plan_entries e
+		JOIN teaching_plans p ON p.id = e.plan_id
+		WHERE p.term_id = $1 AND p.tenant_id = $2
+		ORDER BY e.start_week, e.course_name, e.id
+	`, termID, tenantID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "查询教学计划失败")
+		return
+	}
 	rowIdx := 3
 	for rows.Next() {
-		var courseName, className, weekPattern, teacherName, venueName, courseCode, entryType, sceneName string
-		var dayOfWeek, startWeek, endWeek int
-		var periods domain.JSONSlice
-		if err := rows.Scan(&courseName, &className, &dayOfWeek, &periods, &startWeek, &endWeek, &weekPattern, &teacherName, &venueName, &courseCode, &entryType, &sceneName); err != nil {
+		var id, courseName, entryType, weekPattern string
+		var startWeek, endWeek int
+		if err := rows.Scan(&id, &courseName, &entryType, &startWeek, &endWeek, &weekPattern); err != nil {
 			continue
 		}
-		periodStrs := jsonSliceToStrings(periods)
+		sd := schedMap[id]
 		vals := []interface{}{
-			term.Name, courseName, className,
-			dayMap[dayOfWeek], strings.Join(periodStrs, "，"),
-			startWeek, endWeek,
-			weekPatMap[weekPattern], teacherName, venueName,
-			courseCode, entryType, sceneName,
+			courseName, entryType, startWeek, endWeek, weekPatMap[weekPattern],
+			sd["day"], sd["periods"], sd["teacher"], sd["venue"], sd["classes"],
 		}
 		for ci, v := range vals {
 			cell, _ := excelize.CoordinatesToCellName(ci+1, rowIdx)
-			f.SetCellValue(scheduleImportSheet, cell, v)
+			f.SetCellValue(mainSheet, cell, v)
 		}
 		rowIdx++
 	}
-	writeExcel(w, f, "排课导出_"+term.Name+".xlsx")
+	rows.Close()
+
+	// ===== 参考表：教师名单 =====
+	teacherSheet := "教师名单"
+	f.NewSheet(teacherSheet)
+	f.SetCellValue(teacherSheet, "A1", "教师姓名"); f.SetCellStyle(teacherSheet, "A1", "A1", hdrStyle)
+	tr, _ := h.DB.Query(r.Context(), `
+		SELECT DISTINCT u.name FROM users u
+		JOIN teaching_plan_entries e ON e.teacher_id = u.id
+		JOIN teaching_plans p ON p.id = e.plan_id
+		WHERE p.term_id = $1 AND p.tenant_id = $2 AND u.name <> ''
+	`, termID, tenantID)
+	ti := 2
+	for tr.Next() {
+		var n string
+		if tr.Scan(&n) == nil && n != "" {
+			if cell, err := excelize.CoordinatesToCellName(1, ti); err == nil {
+				f.SetCellValue(teacherSheet, cell, n)
+			}
+			ti++
+		}
+	}
+	tr.Close()
+	f.SetColWidth(teacherSheet, "A", "A", 20)
+
+	// ===== 参考表：场地名单 =====
+	venueSheet := "场地名单"
+	f.NewSheet(venueSheet)
+	f.SetCellValue(venueSheet, "A1", "场地名称"); f.SetCellStyle(venueSheet, "A1", "A1", hdrStyle)
+	f.SetCellValue(venueSheet, "B1", "类型"); f.SetCellStyle(venueSheet, "B1", "B1", hdrStyle)
+	vr, _ := h.DB.Query(r.Context(), `SELECT name, type FROM venues WHERE tenant_id = $1 ORDER BY name`, tenantID)
+	vi := 2
+	for vr.Next() {
+		var n, t string
+		if vr.Scan(&n, &t) == nil {
+			if c1, e1 := excelize.CoordinatesToCellName(1, vi); e1 == nil {
+				f.SetCellValue(venueSheet, c1, n)
+			}
+			if c2, e2 := excelize.CoordinatesToCellName(2, vi); e2 == nil {
+				f.SetCellValue(venueSheet, c2, t)
+			}
+			vi++
+		}
+	}
+	vr.Close()
+	f.SetColWidth(venueSheet, "A", "A", 20); f.SetColWidth(venueSheet, "B", "B", 16)
+
+	// ===== 参考表：班级名单 =====
+	classSheet := "班级名单"
+	f.NewSheet(classSheet)
+	f.SetCellValue(classSheet, "A1", "班级名称"); f.SetCellStyle(classSheet, "A1", "A1", hdrStyle)
+	cr, _ := h.DB.Query(r.Context(), `
+		SELECT DISTINCT o.name FROM organizations o
+		JOIN teaching_plan_entry_classes ec ON ec.class_node_id = o.id
+		JOIN teaching_plan_entries e ON e.id = ec.entry_id
+		JOIN teaching_plans p ON p.id = e.plan_id
+		WHERE p.term_id = $1 AND p.tenant_id = $2 AND o.name <> ''
+	`, termID, tenantID)
+	ci2 := 2
+	for cr.Next() {
+		var n string
+		if cr.Scan(&n) == nil && n != "" {
+			if cell, err := excelize.CoordinatesToCellName(1, ci2); err == nil {
+				f.SetCellValue(classSheet, cell, n)
+			}
+			ci2++
+		}
+	}
+	cr.Close()
+	f.SetColWidth(classSheet, "A", "A", 24)
+
+	// ===== 参考表：节次表 =====
+	periodSheet := "节次表"
+	f.NewSheet(periodSheet)
+	f.SetCellValue(periodSheet, "A1", "节次名称"); f.SetCellStyle(periodSheet, "A1", "A1", hdrStyle)
+	f.SetCellValue(periodSheet, "B1", "开始时间"); f.SetCellStyle(periodSheet, "B1", "B1", hdrStyle)
+	f.SetCellValue(periodSheet, "C1", "结束时间"); f.SetCellStyle(periodSheet, "C1", "C1", hdrStyle)
+	pr, _ := h.DB.Query(r.Context(), `SELECT name, to_char(start_time,'HH24:MI'), to_char(end_time,'HH24:MI') FROM period_slots WHERE tenant_id = $1 ORDER BY sort_order`, tenantID)
+	pi := 2
+	for pr.Next() {
+		var n, s, e string
+		if pr.Scan(&n, &s, &e) == nil {
+			if c1, e1 := excelize.CoordinatesToCellName(1, pi); e1 == nil {
+				f.SetCellValue(periodSheet, c1, n)
+			}
+			if c2, e2 := excelize.CoordinatesToCellName(2, pi); e2 == nil {
+				f.SetCellValue(periodSheet, c2, s)
+			}
+			if c3, e3 := excelize.CoordinatesToCellName(3, pi); e3 == nil {
+				f.SetCellValue(periodSheet, c3, e)
+			}
+			pi++
+		}
+	}
+	pr.Close()
+
+	idx, _ := f.GetSheetIndex(mainSheet)
+	f.SetActiveSheet(idx)
+	writeExcel(w, f, "排课导入_"+term.Name+".xlsx")
 }
 
 // Timetable GET /affairs/schedules/timetable?termId=&classNodeId=&teacherId= — 班级/教师课表视图。

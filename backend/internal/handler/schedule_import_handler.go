@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -40,13 +41,26 @@ func (h *ScheduleImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	xlsx, _, err := parseUploadedExcel(r)
+	xlsx, sheets, err := parseUploadedExcel(r)
 	if err != nil {
 		slog.Error("导入文件解析失败", "error", err)
 		respondError(w, http.StatusBadRequest, "导入文件解析失败")
 		return
 	}
 	defer xlsx.Close()
+
+	// 新格式：课程列表
+	if hasSheet(sheets, "课程列表") {
+		result := h.previewCourseList(r.Context(), xlsx, tenantID)
+		respondJSON(w, http.StatusOK, ImportPreviewResult{
+			Created: result.Created,
+			Duplicates: len(result.DuplicateItems),
+			Failed:  result.Failed,
+			DuplicateItems: result.DuplicateItems,
+			Errors:  result.Errors,
+		})
+		return
+	}
 
 	result := h.processRows(r.Context(), xlsx, tenantID, true, false)
 	respondJSON(w, http.StatusOK, ImportPreviewResult{
@@ -58,7 +72,35 @@ func (h *ScheduleImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Requ
 	})
 }
 
+// previewCourseList 仅统计课程列表有效行数，不写库。
+func (h *ScheduleImportHandler) previewCourseList(ctx context.Context, xlsx *excelize.File, tenantID string) *scheduleImportResult {
+	result := &scheduleImportResult{}
+	rows, err := xlsx.GetRows("课程列表")
+	if err != nil {
+		result.Errors = append(result.Errors, "读取「课程列表」Sheet 失败")
+		result.Failed++
+		return result
+	}
+	dayMap := map[string]bool{"周一": true, "周二": true, "周三": true, "周四": true, "周五": true, "周六": true, "周日": true, "1": true, "2": true, "3": true, "4": true, "5": true, "6": true, "7": true}
+	for i, row := range rows {
+		if i < 2 {
+			continue
+		}
+		if len(row) == 0 || strings.TrimSpace(col(row, 0)) == "" {
+			continue
+		}
+		day := strings.TrimSpace(col(row, 5))
+		period := strings.TrimSpace(col(row, 6))
+		classes := strings.TrimSpace(col(row, 9))
+		if dayMap[day] && period != "" && classes != "" {
+			result.Created++
+		}
+	}
+	return result
+}
+
 // ImportExcel POST /import/schedules/excel — 导入排课（source=imported，status=draft）。
+// 若文件含「课程列表」Sheet，则按课程列表清空重排；否则走旧格式逐行导入。
 func (h *ScheduleImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
@@ -79,6 +121,16 @@ func (h *ScheduleImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 	}
 	defer xlsx.Close()
 
+	// 新格式：课程列表
+	if hasSheet(sheets, "课程列表") {
+		result := h.importFromCourseList(r.Context(), xlsx, tenantID, overwrite)
+		respondJSON(w, http.StatusOK, map[string]interface{}{
+			"created": result.Created, "failed": result.Failed, "skipped": result.Skipped,
+			"entity": "排课", "errors": result.Errors, "sheets": sheets,
+		})
+		return
+	}
+
 	result := h.processRows(r.Context(), xlsx, tenantID, false, overwrite)
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"created": result.Created,
@@ -88,6 +140,226 @@ func (h *ScheduleImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 		"errors":  result.Errors,
 		"sheets":  sheets,
 	})
+}
+
+func hasSheet(sheets []string, name string) bool {
+	for _, s := range sheets {
+		if s == name {
+			return true
+		}
+	}
+	return false
+}
+
+// importFromCourseList 从「课程列表」Sheet 清空重排。
+func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *excelize.File, tenantID string, overwrite bool) *scheduleImportResult {
+	result := &scheduleImportResult{}
+	rows, err := xlsx.GetRows("课程列表")
+	if err != nil {
+		result.Errors = append(result.Errors, "读取「课程列表」Sheet 失败")
+		result.Failed++
+		return result
+	}
+
+	dayMap := map[string]int{"周一": 1, "周二": 2, "周三": 3, "周四": 4, "周五": 5, "周六": 6, "周日": 7, "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7}
+
+	// 收集有排课信息的行
+	type rowData struct {
+		courseName, entryType string
+		startWeek, endWeek    int
+		weekPattern           string
+		day                   int
+		periods               []string
+		teacherName, venueName, classes string
+	}
+	var items []rowData
+
+	for i, row := range rows {
+		if i < 2 {
+			continue
+		}
+		if len(row) == 0 || strings.TrimSpace(col(row, 0)) == "" {
+			continue
+		}
+		courseName := strings.TrimSpace(col(row, 0))
+		entryType := strings.TrimSpace(col(row, 1))
+		startWeek, _ := strconv.Atoi(strings.TrimSpace(col(row, 2)))
+		endWeek, _ := strconv.Atoi(strings.TrimSpace(col(row, 3)))
+		weekPattern := strings.TrimSpace(col(row, 4))
+		if weekPattern == "" {
+			weekPattern = "all"
+		}
+		switch weekPattern {
+		case "全部": weekPattern = "all"
+		case "单周": weekPattern = "odd"
+		case "双周": weekPattern = "even"
+		}
+		dayStr := strings.TrimSpace(col(row, 5))
+		day := dayMap[dayStr]
+		periodStr := strings.TrimSpace(col(row, 6))
+		teacherName := strings.TrimSpace(col(row, 7))
+		venueName := strings.TrimSpace(col(row, 8))
+		classes := strings.TrimSpace(col(row, 9))
+
+		// 未填 星期/节次/班级 视为未排，跳过
+		if day == 0 || periodStr == "" || classes == "" {
+			continue
+		}
+		var periods []string
+		for _, p := range strings.Split(periodStr, "，") {
+			p = strings.TrimSpace(p)
+			if p != "" {
+				periods = append(periods, p)
+			}
+		}
+		if len(periods) == 0 {
+			continue
+		}
+		items = append(items, rowData{
+			courseName: courseName, entryType: entryType, startWeek: startWeek, endWeek: endWeek,
+			weekPattern: weekPattern, day: day, periods: periods,
+			teacherName: teacherName, venueName: venueName, classes: classes,
+		})
+	}
+
+	if len(items) == 0 {
+		result.Errors = append(result.Errors, "课程列表无有效的排课数据（需填写 星期/节次/班级）")
+		result.Failed++
+		return result
+	}
+
+	// 先解析出该学期（从第一个有效课程匹配教学计划）
+	termID := ""
+	_ = h.DB.QueryRow(ctx, `
+		SELECT p.term_id::text FROM teaching_plan_entries e
+		JOIN teaching_plans p ON p.id = e.plan_id
+		WHERE p.tenant_id = $1 AND e.course_name = $2 LIMIT 1
+	`, tenantID, items[0].courseName).Scan(&termID)
+	if termID == "" {
+		result.Errors = append(result.Errors, "无法从课程列表识别所属学期，请确认课程来自已生成的教学计划")
+		result.Failed++
+		return result
+	}
+
+	tx, err := h.DB.Begin(ctx)
+	if err != nil {
+		result.Errors = append(result.Errors, "开启事务失败")
+		result.Failed++
+		return result
+	}
+	defer tx.Rollback(ctx)
+
+	// 清空该学期已有排课
+	if overwrite {
+		if _, err := tx.Exec(ctx, `DELETE FROM schedule_entries WHERE tenant_id = $1 AND term_id = $2`, tenantID, termID); err != nil {
+			result.Errors = append(result.Errors, "清空旧排课失败")
+			result.Failed++
+			return result
+		}
+		// 教学计划条目全部恢复为待排
+		if _, err := tx.Exec(ctx, `
+			UPDATE teaching_plan_entries e SET status = 'planned'
+			FROM teaching_plans p WHERE p.id = e.plan_id AND p.tenant_id = $1 AND p.term_id = $2
+		`, tenantID, termID); err != nil {
+			result.Errors = append(result.Errors, "恢复待排状态失败")
+			result.Failed++
+			return result
+		}
+	}
+
+	created := 0
+	for _, it := range items {
+		// 匹配教学计划条目（按课程名+类型）
+		var planEntryID string
+		var peTeacherID, peClassNodeID *string
+		_ = tx.QueryRow(ctx, `
+			SELECT e.id::text, e.teacher_id::text, e.class_node_id::text FROM teaching_plan_entries e
+			JOIN teaching_plans p ON p.id = e.plan_id
+			WHERE p.tenant_id = $1 AND p.term_id = $2 AND e.course_name = $3 LIMIT 1
+		`, tenantID, termID, it.courseName).Scan(&planEntryID, &peTeacherID, &peClassNodeID)
+		if planEntryID == "" {
+			result.Failed++
+			result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]未匹配到教学计划条目", it.courseName))
+			continue
+		}
+
+		// 解析班级（逗号分隔）
+		var classIDs []string
+		parseOK := true
+		for _, cn := range strings.Split(it.classes, "，") {
+			cn = strings.TrimSpace(cn)
+			if cn == "" {
+				continue
+			}
+			var cid string
+			if err := tx.QueryRow(ctx, `SELECT id::text FROM organizations WHERE tenant_id = $1 AND name = $2 LIMIT 1`, tenantID, cn).Scan(&cid); err != nil {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]班级[%s]不存在", it.courseName, cn))
+				parseOK = false
+				break
+			}
+			classIDs = append(classIDs, cid)
+		}
+		if !parseOK || len(classIDs) == 0 {
+			continue
+		}
+
+		// 解析教师
+		var teacherID *string
+		if it.teacherName != "" {
+			var tid string
+			if err := tx.QueryRow(ctx, `SELECT id::text FROM users WHERE tenant_id=$1 AND (name=$2 OR username=$2) LIMIT 1`, tenantID, it.teacherName).Scan(&tid); err == nil {
+				teacherID = &tid
+			} else {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]教师[%s]不存在", it.courseName, it.teacherName))
+				continue
+			}
+		}
+
+		// 解析场地
+		var venueID *string
+		if it.venueName != "" {
+			var vid string
+			if err := tx.QueryRow(ctx, `SELECT id::text FROM venues WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, it.venueName).Scan(&vid); err == nil {
+				venueID = &vid
+			} else {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]场地[%s]不存在", it.courseName, it.venueName))
+				continue
+			}
+		}
+
+		// 查找场景/课程ID
+		var scenarioID, courseID *string
+		var courseCode *string
+		_ = tx.QueryRow(ctx, `SELECT scenario_id::text, course_id::text, course_code FROM teaching_plan_entries WHERE id = $1`, planEntryID).Scan(&scenarioID, &courseID, &courseCode)
+
+		id := uuid.NewString()
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO schedule_entries (id, tenant_id, term_id, plan_entry_id, course_name, course_code, course_id, type,
+				class_node_id, class_node_ids, teacher_id, day_of_week, periods, start_week, end_week, week_pattern,
+				venue_id, scenario_id, source, status, version)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, 'imported', 'draft', 1)
+		`, id, tenantID, termID, planEntryID, it.courseName, courseCode, courseID, it.entryType,
+			classIDs[0], classIDs, teacherID, it.day, it.periods, it.startWeek, it.endWeek, it.weekPattern,
+			venueID, scenarioID); err != nil {
+			result.Failed++
+			result.Errors = append(result.Errors, fmt.Sprintf("课程[%s]导入失败: %v", it.courseName, err))
+			continue
+		}
+		// 标记已排
+		_, _ = tx.Exec(ctx, `UPDATE teaching_plan_entries SET status = 'scheduled' WHERE id = $1`, planEntryID)
+		created++
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		result.Errors = append(result.Errors, "提交事务失败")
+		result.Failed++
+		return result
+	}
+	result.Created = created
+	return result
 }
 
 // ServeTemplate GET /templates/schedules — 下载排课导入模板。

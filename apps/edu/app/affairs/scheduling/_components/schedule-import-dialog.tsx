@@ -10,11 +10,12 @@ import { useImportFlow } from "@/hooks/use-import-flow"
 interface ScheduleImportDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  termId: string
   onImported: () => void
 }
 
-/** 排课 Excel 导入：下载模板 → 上传 → 预览 → 确认导入（复用 useImportFlow 模式） */
-export function ScheduleImportDialog({ open, onOpenChange, onImported }: ScheduleImportDialogProps) {
+/** 排课 Excel 导入：下载当前数据（可编辑） → 上传 → 预览 → 确认导入（复用 useImportFlow 模式） */
+export function ScheduleImportDialog({ open, onOpenChange, termId, onImported }: ScheduleImportDialogProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   const {
@@ -28,7 +29,6 @@ export function ScheduleImportDialog({ open, onOpenChange, onImported }: Schedul
     handleAddFiles,
     handleImport,
     executeImport,
-    handleDownloadTemplate,
   } = useImportFlow({
     importType: "schedules",
     entityLabel: "排课",
@@ -44,6 +44,17 @@ export function ScheduleImportDialog({ open, onOpenChange, onImported }: Schedul
       (async () => { setConfirmOpen(true) })()
     }
   }, [importPreview])
+
+  // 下载当前教学计划数据（含参考表），编辑后回传导入
+  const handleDownloadCurrent = async () => {
+    const { authedFetch } = await import("@zhiyu/api-client")
+    const res = await authedFetch(`/affairs/schedules/export?termId=${encodeURIComponent(termId)}`)
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url; a.download = "排课导入_当前数据.xlsx"; a.click()
+    URL.revokeObjectURL(url)
+  }
 
   // 弹窗重新打开时在渲染期间重置已选文件（adjust-state-during-render 模式）
   const [prevOpen, setPrevOpen] = useState(false)
@@ -73,12 +84,12 @@ export function ScheduleImportDialog({ open, onOpenChange, onImported }: Schedul
           <div className="space-y-4 py-2">
             <div className="flex items-center justify-between rounded-md border border-dashed p-3">
               <div className="text-sm">
-                <div className="font-medium">第一步：下载导入模板</div>
-                <div className="text-xs text-muted-foreground">模板含填写说明，学期/班级/场地/场景需已存在</div>
+                <div className="font-medium">第一步：下载当前数据</div>
+                <div className="text-xs text-muted-foreground">下载该学期教学计划课程列表及教师/场地/班级/节次参考表，填好 星期/节次/教师/场地/班级 后回传</div>
               </div>
-              <Button variant="outline" size="sm" onClick={handleDownloadTemplate} disabled={isDownloading}>
+              <Button variant="outline" size="sm" onClick={handleDownloadCurrent} disabled={isDownloading}>
                 <Download className="mr-1 size-4" />
-                {isDownloading ? "下载中..." : "下载模板"}
+                {isDownloading ? "下载中..." : "下载当前数据"}
               </Button>
             </div>
             <div className="flex items-center justify-between rounded-md border border-dashed p-3">

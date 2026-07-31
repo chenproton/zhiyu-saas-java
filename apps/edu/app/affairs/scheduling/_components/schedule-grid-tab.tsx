@@ -232,7 +232,7 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
         </DialogContent>
       </Dialog>
 
-      <ScheduleImportDialog open={importOpen} onOpenChange={setImportOpen} onImported={reloadAll} />
+      <ScheduleImportDialog open={importOpen} onOpenChange={setImportOpen} termId={plan.termId} onImported={reloadAll} />
     </div>
   )
 }
