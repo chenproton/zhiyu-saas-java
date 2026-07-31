@@ -126,6 +126,7 @@ export interface TeachingPlanEntry {
   venueType?: string
   scenarioId?: string
   scenarioName?: string
+  positionName?: string
   status: string
 }
 

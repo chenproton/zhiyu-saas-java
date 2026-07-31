@@ -511,7 +511,7 @@ func (h *TeachingPlanHandler) fetchPlanEntry(ctx context.Context, id, tenantID s
 		SELECT e.id, e.plan_id, e.course_name, e.course_code, e.type, e.nature, e.credits, e.total_hours,
 			e.week_hours, e.start_week, e.end_week, e.week_pattern,
 			e.class_node_id, COALESCE(o.name, ''), e.teacher_id, COALESCE(u.name, ''), e.teacher_type, e.venue_type,
-			e.scenario_id, COALESCE(s.name, ''), e.course_id, COALESCE(c.name, ''), e.status,
+			e.scenario_id, COALESCE(s.name, ''), COALESCE(cp.name, '') AS position_name, e.course_id, COALESCE(c.name, ''), e.status,
 			COALESCE((SELECT array_agg(ec.class_node_id) FROM teaching_plan_entry_classes ec WHERE ec.entry_id = e.id), '{}') AS class_node_ids,
 			COALESCE((SELECT array_agg(o2.name ORDER BY ec.class_node_id) FROM teaching_plan_entry_classes ec JOIN organizations o2 ON o2.id = ec.class_node_id WHERE ec.entry_id = e.id), '{}') AS class_names
 		FROM teaching_plan_entries e
@@ -519,12 +519,13 @@ func (h *TeachingPlanHandler) fetchPlanEntry(ctx context.Context, id, tenantID s
 		LEFT JOIN organizations o ON o.id = e.class_node_id
 		LEFT JOIN users u ON u.id = e.teacher_id
 		LEFT JOIN scenarios s ON s.id = e.scenario_id
+		LEFT JOIN career_positions cp ON cp.id = s.career_position_id
 		LEFT JOIN courses c ON c.id = e.course_id
 		WHERE e.id = $1 AND p.tenant_id = $2
 	`, id, tenantID).Scan(&e.ID, &e.PlanID, &e.CourseName, &e.CourseCode, &e.Type, &e.Nature, &e.Credits, &e.TotalHours,
 		&e.WeekHours, &e.StartWeek, &e.EndWeek, &e.WeekPattern,
 		&e.ClassNodeID, &e.ClassName, &e.TeacherID, &e.TeacherName, &e.TeacherType, &e.VenueType,
-		&e.ScenarioID, &e.ScenarioName, &e.CourseID, &e.LinkedCourseName, &e.Status,
+		&e.ScenarioID, &e.ScenarioName, &e.PositionName, &e.CourseID, &e.LinkedCourseName, &e.Status,
 		&e.ClassNodeIDs, &e.ClassNames)
 	return e, err
 }
@@ -534,7 +535,7 @@ func (h *TeachingPlanHandler) fetchPlanEntries(ctx context.Context, planID, tena
 		SELECT e.id, e.plan_id, e.course_name, e.course_code, e.type, e.nature, e.credits, e.total_hours,
 			e.week_hours, e.start_week, e.end_week, e.week_pattern,
 			e.class_node_id, COALESCE(o.name, ''), e.teacher_id, COALESCE(u.name, ''), e.teacher_type, e.venue_type,
-			e.scenario_id, COALESCE(s.name, ''), e.course_id, COALESCE(c.name, ''), e.status,
+			e.scenario_id, COALESCE(s.name, ''), COALESCE(cp.name, '') AS position_name, e.course_id, COALESCE(c.name, ''), e.status,
 			COALESCE((SELECT array_agg(ec.class_node_id) FROM teaching_plan_entry_classes ec WHERE ec.entry_id = e.id), '{}') AS class_node_ids,
 			COALESCE((SELECT array_agg(o2.name ORDER BY ec.class_node_id) FROM teaching_plan_entry_classes ec JOIN organizations o2 ON o2.id = ec.class_node_id WHERE ec.entry_id = e.id), '{}') AS class_names
 		FROM teaching_plan_entries e
@@ -542,6 +543,7 @@ func (h *TeachingPlanHandler) fetchPlanEntries(ctx context.Context, planID, tena
 		LEFT JOIN organizations o ON o.id = e.class_node_id
 		LEFT JOIN users u ON u.id = e.teacher_id
 		LEFT JOIN scenarios s ON s.id = e.scenario_id
+		LEFT JOIN career_positions cp ON cp.id = s.career_position_id
 		LEFT JOIN courses c ON c.id = e.course_id
 		WHERE e.plan_id = $1 AND p.tenant_id = $2
 		ORDER BY e.start_week, e.course_name, e.id
@@ -557,7 +559,7 @@ func (h *TeachingPlanHandler) fetchPlanEntries(ctx context.Context, planID, tena
 		if err := rows.Scan(&e.ID, &e.PlanID, &e.CourseName, &e.CourseCode, &e.Type, &e.Nature, &e.Credits, &e.TotalHours,
 			&e.WeekHours, &e.StartWeek, &e.EndWeek, &e.WeekPattern,
 			&e.ClassNodeID, &e.ClassName, &e.TeacherID, &e.TeacherName, &e.TeacherType, &e.VenueType,
-			&e.ScenarioID, &e.ScenarioName, &e.CourseID, &e.LinkedCourseName, &e.Status,
+			&e.ScenarioID, &e.ScenarioName, &e.PositionName, &e.CourseID, &e.LinkedCourseName, &e.Status,
 			&e.ClassNodeIDs, &e.ClassNames); err != nil {
 			return nil, err
 		}

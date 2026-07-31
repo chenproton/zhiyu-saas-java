@@ -95,6 +95,7 @@ type TeachingPlanEntry struct {
 	VenueType     *string  `json:"venueType,omitempty"`
 	ScenarioID    *string  `json:"scenarioId,omitempty"`
 	ScenarioName  string   `json:"scenarioName,omitempty"`
+	PositionName  string   `json:"positionName,omitempty"`
 	CourseID        *string `json:"courseId,omitempty"`
 	LinkedCourseName string  `json:"linkedCourseName,omitempty"`
 	Status        string   `json:"status"`

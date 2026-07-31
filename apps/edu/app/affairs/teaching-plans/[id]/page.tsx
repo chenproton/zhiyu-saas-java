@@ -226,7 +226,7 @@ export default function TeachingPlanDetailPage() {
                           <TableCell>
                             <div className="font-medium">{e.courseName}</div>
                             {e.courseCode && <div className="text-xs text-muted-foreground">{e.courseCode}</div>}
-                            {e.type === "scene" && e.scenarioName && <div className="text-xs text-orange-600">{e.scenarioName}</div>}
+                            {e.type === "scene" && e.positionName && <div className="text-xs text-orange-600">{e.positionName}</div>}
                           </TableCell>
                           <TableCell><EntryTypeBadge type={e.type} /></TableCell>
                           <TableCell>
