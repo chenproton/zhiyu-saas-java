@@ -436,7 +436,7 @@ func scheduleListFilter(r *http.Request, qb *listQueryBuilder) {
 		qb.addCondition("se.status = " + qb.nextArg(status))
 	}
 	if classNodeID := r.URL.Query().Get("classNodeId"); classNodeID != "" {
-		qb.addCondition("se.class_node_id = " + qb.nextArg(classNodeID))
+		qb.addCondition("(se.class_node_id = " + qb.nextArg(classNodeID) + " OR " + qb.nextArg(classNodeID) + " = ANY(se.class_node_ids))")
 	}
 	if teacherID := r.URL.Query().Get("teacherId"); teacherID != "" {
 		qb.addCondition("se.teacher_id = " + qb.nextArg(teacherID))
@@ -1111,7 +1111,7 @@ func (h *SchedulingHandler) listTimetableEntries(ctx context.Context, tenantID, 
 	qb.addCondition("se.term_id = " + qb.nextArg(termID))
 	qb.addCondition("se.status = " + qb.nextArg(status))
 	if classNodeID != "" {
-		qb.addCondition("se.class_node_id = " + qb.nextArg(classNodeID))
+		qb.addCondition("(se.class_node_id = " + qb.nextArg(classNodeID) + " OR " + qb.nextArg(classNodeID) + " = ANY(se.class_node_ids))")
 	}
 	if teacherID != "" {
 		qb.addCondition("se.teacher_id = " + qb.nextArg(teacherID))
