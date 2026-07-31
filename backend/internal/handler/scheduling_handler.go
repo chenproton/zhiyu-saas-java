@@ -1265,31 +1265,6 @@ func (h *SchedulingHandler) MySchedule(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 
-	termID := r.URL.Query().Get("termId")
-	if termID == "" {
-		// 缺省时优先取当前学期；无当前学期时取含本人排课的学期，否则取最近一个
-		err := h.DB.QueryRow(ctx, `
-			SELECT t.id FROM terms t
-			LEFT JOIN LATERAL (
-				SELECT COUNT(*) AS cnt FROM schedule_entries se
-				WHERE se.term_id = t.id AND se.tenant_id = t.tenant_id
-				  AND (se.teacher_id = $2::uuid)
-			) s ON true
-			WHERE t.tenant_id = $1
-			ORDER BY t.is_current DESC, COALESCE(s.cnt, 0) DESC, t.start_date DESC
-			LIMIT 1
-		`, tenantID, claims.UserID).Scan(&termID)
-		if err != nil {
-			respondError(w, http.StatusNotFound, "尚未配置学期")
-			return
-		}
-	}
-	term, err := h.fetchTermBrief(ctx, termID, tenantID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "学期不存在")
-		return
-	}
-
 	var classNodeID, teacherID string
 	viewAs := "teacher"
 	if middleware.HasRole(claims, "student") {
@@ -1302,6 +1277,37 @@ func (h *SchedulingHandler) MySchedule(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		teacherID = claims.UserID
+	}
+
+	termID := r.URL.Query().Get("termId")
+	if termID == "" {
+		// 缺省时优先取当前学期；无当前学期时取含本人（教师按 teacher_id、学生按班级）排课的学期，否则取最近一个
+		scopeCond := "se.teacher_id = $2::uuid"
+		scopeArgs := []interface{}{tenantID, claims.UserID}
+		if classNodeID != "" {
+			scopeCond = "(se.class_node_id = $2::uuid OR $2::uuid = ANY(se.class_node_ids))"
+			scopeArgs = []interface{}{tenantID, classNodeID}
+		}
+		err := h.DB.QueryRow(ctx, `
+			SELECT t.id FROM terms t
+			LEFT JOIN LATERAL (
+				SELECT COUNT(*) AS cnt FROM schedule_entries se
+				WHERE se.term_id = t.id AND se.tenant_id = t.tenant_id
+				  AND `+scopeCond+`
+			) s ON true
+			WHERE t.tenant_id = $1
+			ORDER BY t.is_current DESC, COALESCE(s.cnt, 0) DESC, t.start_date DESC
+			LIMIT 1
+		`, scopeArgs...).Scan(&termID)
+		if err != nil {
+			respondError(w, http.StatusNotFound, "尚未配置学期")
+			return
+		}
+	}
+	term, err := h.fetchTermBrief(ctx, termID, tenantID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "学期不存在")
+		return
 	}
 
 	items := make([]domain.ScheduleEntry, 0)

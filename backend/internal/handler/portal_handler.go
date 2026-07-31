@@ -213,6 +213,64 @@ func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantI
 				})
 			}
 		}
+	} else if role == "student" {
+		// 学生：取该学生所在班级已发布的排课，展示到周课表网格
+		var classNodeID string
+		_ = h.DB.QueryRow(ctx, `
+			SELECT org_node_id FROM users WHERE id = $1 AND ($2::uuid IS NULL OR tenant_id = $2::uuid)
+		`, userID, tenantID).Scan(&classNodeID)
+		if classNodeID != "" {
+			periodLabel := h.periodLabelMap(ctx, tenantID)
+			query := `
+				SELECT se.id::text, se.course_name, se.type, se.day_of_week, se.periods,
+					COALESCE(v.name, '') AS venue_name,
+					COALESCE(u.name, '')
+				FROM schedule_entries se
+				LEFT JOIN venues v ON v.id = se.venue_id
+				LEFT JOIN users u ON u.id = se.teacher_id
+				WHERE se.status = 'published'
+				  AND (se.class_node_id = $1::uuid OR $1::uuid = ANY(se.class_node_ids))`
+			args := []interface{}{classNodeID}
+			if tenantID != nil {
+				query += ` AND se.tenant_id = $2`
+				args = append(args, *tenantID)
+			}
+			query += ` ORDER BY se.day_of_week, se.start_week LIMIT 50`
+			rows, err := h.DB.Query(ctx, query, args...)
+			if err == nil {
+				defer rows.Close()
+				for rows.Next() {
+					var id, courseName, entryType, venueName, teacherName string
+					var dayOfWeek int
+					var periods domain.JSONSlice
+					if err := rows.Scan(&id, &courseName, &entryType, &dayOfWeek, &periods, &venueName, &teacherName); err != nil {
+						continue
+					}
+					eventType := "course"
+					if entryType == "scene" {
+						eventType = "scene"
+					}
+					periodNames := jsonSliceToStrings(periods)
+					if len(periodNames) == 0 {
+						continue
+					}
+					period := periodNames[0]
+					if label, ok := periodLabel[period]; ok {
+						period = label
+					}
+					events = append(events, domain.WorkspaceScheduleEvent{
+						ID:        id,
+						Title:     courseName,
+						Type:      eventType,
+						DayOfWeek: dayOfWeek,
+						Period:    period,
+						Location:  venueName,
+						Teacher:   teacherName,
+						Status:    "进行中",
+					})
+				}
+			}
+		}
 	}
 	rows, err := h.DB.Query(ctx, `
 		SELECT eu.id, eu.name, eu.start_time, eu.status
