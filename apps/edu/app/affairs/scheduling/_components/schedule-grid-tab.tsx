@@ -64,15 +64,21 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
   const reloadAll = useCallback(async () => { await loadScheduleEntries(); onPlanChanged() }, [loadScheduleEntries, onPlanChanged])
 
   const doCreateSchedule = async (entry: TeachingPlanEntry, day: number, period: string, classIds: string[], teacherId: string, venueId: string) => {
+    let created = 0
+    let lastErr = ""
     for (const cid of classIds) {
-      await scheduleApi.create({
-        termId: plan.termId, planEntryId: entry.id, courseName: entry.courseName, courseCode: entry.courseCode || undefined,
-        courseId: entry.courseId || undefined, type: entry.type || "traditional", classNodeId: cid,
-        teacherId: teacherId || undefined, dayOfWeek: day, periods: [period],
-        startWeek: entry.startWeek || 1, endWeek: entry.endWeek || 1, weekPattern: entry.weekPattern || "all",
-        venueId: venueId || undefined, scenarioId: entry.scenarioId || undefined,
-      })
+      try {
+        await scheduleApi.create({
+          termId: plan.termId, planEntryId: entry.id, courseName: entry.courseName, courseCode: entry.courseCode || undefined,
+          courseId: entry.courseId || undefined, type: entry.type || "traditional", classNodeId: cid,
+          teacherId: teacherId || undefined, dayOfWeek: day, periods: [period],
+          startWeek: entry.startWeek || 1, endWeek: entry.endWeek || 1, weekPattern: entry.weekPattern || "all",
+          venueId: venueId || undefined, scenarioId: entry.scenarioId || undefined,
+        })
+        created++
+      } catch (err: any) { lastErr = err.message || "" }
     }
+    return { created, lastErr }
   }
 
   const handleCellClick = useCallback(async (dayOfWeek: number, periodKey: string) => {
@@ -103,9 +109,13 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
     }
     setSavingQuick(true)
     try {
-      await doCreateSchedule(selectedEntry, dayOfWeek, periodKey, classIds, selectedEntry.teacherId || "", "")
-      toast({ title: "排课成功", description: `${selectedEntry.courseName} → 周${dayOfWeek} ${periodKey}` })
-      setSelectedPendingId(null); reloadAll()
+      const { created, lastErr } = await doCreateSchedule(selectedEntry, dayOfWeek, periodKey, classIds, selectedEntry.teacherId || "", "")
+      if (created > 0) {
+        toast({ title: "排课成功", description: `${selectedEntry.courseName} → 周${dayOfWeek} ${periodKey}（${created}/${classIds.length} 班）` })
+        setSelectedPendingId(null); reloadAll()
+      } else if (lastErr) {
+        toast({ variant: "destructive", title: "排课失败", description: lastErr })
+      }
     } catch (err: any) { toast({ variant: "destructive", title: "排课失败", description: err.message || "" }) }
     finally { setSavingQuick(false) }
   }, [selectedEntry, savingQuick, plan.termId, toast, reloadAll, movingEntry])
@@ -115,9 +125,13 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
     setPreConfigSaving(true)
     try {
       if (preClassIds.length > 0) await teachingPlanApi.updateEntry(preConfigEntry.id, { classNodeIds: preClassIds, teacherId: preTeacherId || undefined }).catch(() => {})
-      await doCreateSchedule(preConfigEntry, preConfigDay, preConfigPeriod, preClassIds, preTeacherId, preVenueId)
-      toast({ title: "排课成功" })
-      setSelectedPendingId(null); setPreConfigEntry(null); reloadAll()
+      const { created, lastErr } = await doCreateSchedule(preConfigEntry, preConfigDay, preConfigPeriod, preClassIds, preTeacherId, preVenueId)
+      if (created > 0) {
+        toast({ title: "排课成功", description: `${created}/${preClassIds.length} 班已排` })
+        setSelectedPendingId(null); setPreConfigEntry(null); reloadAll()
+      } else if (lastErr) {
+        toast({ variant: "destructive", title: "排课失败", description: lastErr })
+      }
     } catch (err: any) { toast({ variant: "destructive", title: "排课失败", description: err.message || "" }) }
     finally { setPreConfigSaving(false) }
   }
