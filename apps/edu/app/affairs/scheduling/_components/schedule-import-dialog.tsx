@@ -19,13 +19,13 @@ export function ScheduleImportDialog({ open, onOpenChange, onImported }: Schedul
 
   const {
     fileInputRef,
-    importFile,
-    setImportFile,
+    importFiles,
+    setImportFiles,
     isImporting,
     isDownloading,
     importPreview,
     setImportPreview,
-    handleFileSelect,
+    handleAddFiles,
     handleImport,
     executeImport,
     handleDownloadTemplate,
@@ -50,7 +50,7 @@ export function ScheduleImportDialog({ open, onOpenChange, onImported }: Schedul
   if (open !== prevOpen) {
     setPrevOpen(open)
     if (open) {
-      setImportFile(null)
+      setImportFiles([])
       setImportPreview(null)
     }
   }
@@ -85,10 +85,10 @@ export function ScheduleImportDialog({ open, onOpenChange, onImported }: Schedul
               <div className="text-sm">
                 <div className="font-medium">第二步：上传填写好的文件</div>
                 <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-                  {importFile ? (
+                  {importFiles.length > 0 ? (
                     <>
                       <FileSpreadsheet className="size-3.5 text-green-600" />
-                      <span className="text-foreground">{importFile.name}</span>
+                      <span className="text-foreground">{importFiles.map(f => f.name).join(", ")}</span>
                     </>
                   ) : (
                     "支持 .xlsx 文件"
@@ -103,8 +103,9 @@ export function ScheduleImportDialog({ open, onOpenChange, onImported }: Schedul
                 ref={fileInputRef}
                 type="file"
                 accept=".xlsx"
+                multiple
                 className="hidden"
-                onChange={(e) => handleFileSelect(e.target.files)}
+                onChange={(e) => handleAddFiles(e.target.files)}
               />
             </div>
           </div>
@@ -112,7 +113,7 @@ export function ScheduleImportDialog({ open, onOpenChange, onImported }: Schedul
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isImporting}>
               取消
             </Button>
-            <Button onClick={handleImport} disabled={!importFile || isImporting}>
+            <Button onClick={handleImport} disabled={importFiles.length === 0 || isImporting}>
               {isImporting ? "导入中..." : "预览并导入"}
             </Button>
           </DialogFooter>

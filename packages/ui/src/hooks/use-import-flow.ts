@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useCallback } from "react"
 import { importExportApi } from "@zhiyu/api-client"
 import { useToast } from "./use-toast"
 
@@ -16,21 +16,34 @@ export interface UseImportFlowOptions {
 export function useImportFlow({ importType, entityLabel, templateFileName, onSuccess }: UseImportFlowOptions) {
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importFiles, setImportFiles] = useState<File[]>([])
   const [isImporting, setIsImporting] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const [importPreview, setImportPreview] = useState<any>(null)
 
-  const handleFileSelect = (files: FileList | null) => {
-    const file = files?.[0]
-    if (file) setImportFile(file)
-  }
+  const handleAddFiles = useCallback((files: FileList | null) => {
+    if (files && files.length > 0) {
+      setImportFiles(prev => {
+        const existingNames = new Set(prev.map(f => f.name + "_" + f.size))
+        const newFiles = Array.from(files).filter(f => !existingNames.has(f.name + "_" + f.size))
+        return [...prev, ...newFiles]
+      })
+    }
+  }, [])
+
+  const handleRemoveFile = useCallback((index: number) => {
+    setImportFiles(prev => prev.filter((_, i) => i !== index))
+  }, [])
+
+  const handleClearFiles = useCallback(() => {
+    setImportFiles([])
+  }, [])
 
   const executeImport = async (overwrite = false) => {
-    if (!importFile) return
+    if (importFiles.length === 0) return
     setIsImporting(true)
     try {
-      const result = await importExportApi.importExcel(importType, importFile, overwrite)
+      const result = await importExportApi.importExcel(importType, importFiles, overwrite)
       const errorHint = result.errors && result.errors.length > 0
         ? `，错误：${result.errors.slice(0, 3).join(";")}`
         : ""
@@ -38,7 +51,7 @@ export function useImportFlow({ importType, entityLabel, templateFileName, onSuc
         title: "导入完成",
         description: `成功 ${result.created} 条，失败 ${result.failed || 0} 条，跳过 ${result.skipped || 0} 条${errorHint}`,
       })
-      setImportFile(null)
+      setImportFiles([])
       setImportPreview(null)
       await onSuccess()
       return true
@@ -51,10 +64,10 @@ export function useImportFlow({ importType, entityLabel, templateFileName, onSuc
   }
 
   const handleImport = async () => {
-    if (!importFile) return
+    if (importFiles.length === 0) return
     setIsImporting(true)
     try {
-      const preview = await importExportApi.importExcelPreview(importType, importFile)
+      const preview = await importExportApi.importExcelPreview(importType, importFiles)
       if (preview.duplicates > 0) {
         setImportPreview(preview)
         setIsImporting(false)
@@ -90,13 +103,15 @@ export function useImportFlow({ importType, entityLabel, templateFileName, onSuc
 
   return {
     fileInputRef,
-    importFile,
-    setImportFile,
+    importFiles,
+    setImportFiles,
     isImporting,
     isDownloading,
     importPreview,
     setImportPreview,
-    handleFileSelect,
+    handleAddFiles,
+    handleRemoveFile,
+    handleClearFiles,
     handleImport,
     executeImport,
     handleDownloadTemplate,
