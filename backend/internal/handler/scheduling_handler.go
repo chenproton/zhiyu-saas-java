@@ -1064,8 +1064,12 @@ func (h *SchedulingHandler) ExportSchedules(w http.ResponseWriter, r *http.Reque
 			continue
 		}
 		sd := schedMap[id]
+		typeLabel := "课程"
+		if entryType == "scene" {
+			typeLabel = "场景"
+		}
 		vals := []interface{}{
-			courseName, entryType, startWeek, endWeek, weekPatMap[weekPattern],
+			courseName, typeLabel, startWeek, endWeek, weekPatMap[weekPattern],
 			sd["day"], sd["periods"], sd["teacher"], sd["venue"], sd["classes"],
 		}
 		for ci, v := range vals {

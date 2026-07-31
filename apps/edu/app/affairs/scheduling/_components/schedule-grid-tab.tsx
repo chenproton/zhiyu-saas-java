@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { FileUp, Clock3, CalendarDays, CheckCircle2, X, MapPin, Users, Download } from "lucide-react"
+import { FileUp, Clock3, CalendarDays, CheckCircle2, X, MapPin, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
@@ -133,8 +133,7 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
           <span className="text-sm text-muted-foreground">已排 {scheduledCount}/{planEntries.length} 门 · 待排 {pendingEntries.length} 门</span>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => scheduleApi.exportExcel(plan.termId)}><Download className="mr-1 size-4" />导出</Button>
-          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}><FileUp className="mr-1 size-4" />导入</Button>
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}><FileUp className="mr-1 size-4" />导入批量排课结果</Button>
         </div>
       </div>
 

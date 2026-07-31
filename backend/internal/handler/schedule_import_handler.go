@@ -183,6 +183,12 @@ func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *
 		}
 		courseName := strings.TrimSpace(col(row, 0))
 		entryType := strings.TrimSpace(col(row, 1))
+		switch entryType {
+		case "场景":
+			entryType = "scene"
+		case "课程", "":
+			entryType = "traditional"
+		}
 		startWeek, _ := strconv.Atoi(strings.TrimSpace(col(row, 2)))
 		endWeek, _ := strconv.Atoi(strings.TrimSpace(col(row, 3)))
 		weekPattern := strings.TrimSpace(col(row, 4))
