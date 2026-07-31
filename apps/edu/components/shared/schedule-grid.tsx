@@ -122,7 +122,7 @@ export function ScheduleGrid({
           }
         }}
         className={cn(
-          "w-full rounded-md border p-1.5 text-left text-xs leading-4 select-none",
+          "w-full rounded-md border p-1 text-left text-[11px] leading-tight select-none max-w-[130px]",
           isScene ? "border-orange-200 bg-orange-50" : "border-blue-200 bg-blue-50",
           (canEdit || canMoveStart) && "cursor-pointer transition-shadow hover:shadow-md",
           draggable && "cursor-move",

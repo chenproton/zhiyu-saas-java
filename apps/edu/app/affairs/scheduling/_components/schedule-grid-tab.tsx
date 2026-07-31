@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@zhiyu/ui"
 import { ScheduleGrid } from "@/components/shared/schedule-grid"
-import { OrgNodePicker } from "@/components/shared/org-node-picker"
+import { MultiOrgNodePicker } from "@/components/shared/multi-org-node-picker"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { periodSlotApi, scheduleApi, teachingPlanApi, venueApi } from "@/lib/api"
 import type { PeriodSlot, ScheduleEntry, TeachingPlan, TeachingPlanEntry, Venue } from "@/lib/types"
@@ -45,7 +45,7 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
   const [movingEntry, setMovingEntry] = useState<ScheduleEntry | null>(null)
 
   const [missingClassEntry, setMissingClassEntry] = useState<TeachingPlanEntry | null>(null)
-  const [pendingClassNodeId, setPendingClassNodeId] = useState<string | undefined>(undefined)
+  const [pendingClassNodeIds, setPendingClassNodeIds] = useState<string[]>([])
   const [savingClass, setSavingClass] = useState(false)
 
   const pendingEntries = useMemo(() => planEntries.filter((e) => e.status === "planned"), [planEntries])
@@ -142,29 +142,31 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
       return
     }
     if (!selectedEntry) return
-    if (!selectedEntry.classNodeId) {
+    const classIds = selectedEntry.classNodeIds || (selectedEntry.classNodeId ? [selectedEntry.classNodeId] : [])
+    if (classIds.length === 0) {
       setMissingClassEntry(selectedEntry)
-      setPendingClassNodeId(undefined)
       return
     }
     setSavingQuick(true)
     try {
-      await scheduleApi.create({
-        termId: plan.termId,
-        planEntryId: selectedEntry.id,
-        courseName: selectedEntry.courseName,
-        courseCode: selectedEntry.courseCode || undefined,
-        courseId: selectedEntry.courseId || undefined,
-        type: selectedEntry.type || "traditional",
-        classNodeId: selectedEntry.classNodeId,
-        teacherId: selectedEntry.teacherId || undefined,
-        dayOfWeek,
-        periods: [periodKey],
-        startWeek: selectedEntry.startWeek || 1,
-        endWeek: selectedEntry.endWeek || 1,
-        weekPattern: selectedEntry.weekPattern || "all",
-        scenarioId: selectedEntry.scenarioId || undefined,
-      })
+      for (const cid of classIds) {
+        await scheduleApi.create({
+          termId: plan.termId,
+          planEntryId: selectedEntry.id,
+          courseName: selectedEntry.courseName,
+          courseCode: selectedEntry.courseCode || undefined,
+          courseId: selectedEntry.courseId || undefined,
+          type: selectedEntry.type || "traditional",
+          classNodeId: cid,
+          teacherId: selectedEntry.teacherId || undefined,
+          dayOfWeek,
+          periods: [periodKey],
+          startWeek: selectedEntry.startWeek || 1,
+          endWeek: selectedEntry.endWeek || 1,
+          weekPattern: selectedEntry.weekPattern || "all",
+          scenarioId: selectedEntry.scenarioId || undefined,
+        })
+      }
       toast({ title: "排课成功", description: `${selectedEntry.courseName} 已排入周${dayOfWeek} ${periodKey}` })
       setSelectedPendingId(null)
       reloadAll()
@@ -347,39 +349,38 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
           <DialogHeader>
             <DialogTitle>补全授课班级</DialogTitle>
             <DialogDescription>
-              「{missingClassEntry?.courseName}」尚未设置班级，请先在教学计划中设置，或在此处临时指定。
+              「{missingClassEntry?.courseName}」尚未设置班级，请选择授课班级后直接排课
             </DialogDescription>
           </DialogHeader>
           <div className="py-2">
-            <OrgNodePicker
+            <MultiOrgNodePicker
               tenantId={tenantId}
-              value={pendingClassNodeId}
-              onChange={setPendingClassNodeId}
+              value={pendingClassNodeIds}
+              onChange={setPendingClassNodeIds}
               selectableTypes={["班级"]}
-              placeholder="选择授课班级"
+              placeholder="选择班级"
               title="选择授课班级"
+              maxVisible={5}
             />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setMissingClassEntry(null)} disabled={savingClass}>取消</Button>
             <Button
-              disabled={!pendingClassNodeId || savingClass}
+              disabled={pendingClassNodeIds.length === 0 || savingClass}
               onClick={async () => {
-                if (!missingClassEntry || !pendingClassNodeId) return
+                if (!missingClassEntry || pendingClassNodeIds.length === 0) return
                 setSavingClass(true)
                 try {
-                  await teachingPlanApi.updateEntry(missingClassEntry.id, { classNodeId: pendingClassNodeId })
+                  await teachingPlanApi.updateEntry(missingClassEntry.id, { classNodeIds: pendingClassNodeIds })
                   toast({ title: "班级已保存", description: "请重新点击目标时间格完成排课" })
                   setMissingClassEntry(null)
                   await onPlanChanged()
                 } catch (err: any) {
                   toast({ variant: "destructive", title: "保存失败", description: err.message || "保存班级失败" })
-                } finally {
-                  setSavingClass(false)
-                }
+                } finally { setSavingClass(false) }
               }}
             >
-              {savingClass ? "保存中..." : "保存并继续排课"}
+              {savingClass ? "保存中..." : "保存并重新排课"}
             </Button>
           </DialogFooter>
         </DialogContent>
