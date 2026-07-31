@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
-import { Plus, Save, Trash2, Upload } from "lucide-react"
+import { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from "react"
+import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -46,7 +46,7 @@ function emptyRow(key: string, position?: boolean): CourseRow {
   return { key, name: "", code: "", credits: 0, hours: 0, nature: "必修", linkType: position ? "position" : "none", courseId: "", positionId: "" }
 }
 
-export function ProgramCoursesTab({ programId }: { programId: string }) {
+export const ProgramCoursesTab = forwardRef(function ProgramCoursesTab({ programId }: { programId: string }, ref: any) {
   const { toast } = useToast()
   const [rows, setRows] = useState<CourseRow[]>([])
   const [systemCourses, setSystemCourses] = useState<Course[]>([])
@@ -148,6 +148,8 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
     } finally { setSaving(false) }
   }
 
+  useImperativeHandle(ref, () => ({ handleSave, saving, loading, addRow, openImport: () => setImportOpen(true) }), [handleSave, saving, loading, addRow])
+
   const courseCount = useMemo(() => {
     let n = 0
     rows.forEach((r) => { if (r.linkType === "position" && r.positionId) n += (positionScenariosMap[r.positionId] || []).length; else if (r.linkType !== "none" && (r.courseId || r.positionId)) n++ })
@@ -160,24 +162,17 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
 
   return (
     <div className="rounded-lg border bg-white px-4 py-3 space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">共 {courseCount} 项，合计 {totalCredits} 学分</p>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={addRow}><Plus className="mr-1 size-4" />添加岗位/课程</Button>
-          <Button size="sm" onClick={handleSave} disabled={saving || loading}><Save className="mr-1 size-4" />{saving ? "保存中..." : "保存"}</Button>
-          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}><Upload className="mr-1 size-4" />导入</Button>
-        </div>
-      </div>
+      <p className="text-sm text-muted-foreground">共 {courseCount} 项，合计 {totalCredits} 学分</p>
 
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[360px]">关联对象</TableHead>
+              <TableHead className="w-[460px]">关联对象</TableHead>
               <TableHead className="w-[120px]">编码</TableHead>
               <TableHead className="w-[80px]">学分</TableHead>
               <TableHead className="w-[80px]">总学时</TableHead>
-              <TableHead className="w-[110px]">性质</TableHead>
+              <TableHead className="w-[100px]">性质</TableHead>
               <TableHead className="w-[60px] text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
@@ -244,4 +239,4 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
       <ProgramCourseImportDialog open={importOpen} onOpenChange={setImportOpen} programId={programId} onImported={loadCourses} />
     </div>
   )
-}
+})

@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Save } from "lucide-react"
+import { ArrowLeft, Save, Plus, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -31,6 +31,7 @@ export default function ProgramEditPage() {
   const { toast } = useToast()
   const id = params.id
   const isNew = id === "new"
+  const coursesRef = useRef<any>(null)
 
   const [program, setProgram] = useState<TrainingProgram | null>(null)
   const [loading, setLoading] = useState(!isNew)
@@ -118,6 +119,19 @@ export default function ProgramEditPage() {
               <ArrowLeft className="mr-2 size-4" />
               返回列表
             </Button>
+            {!isNew && tab === "courses" && (
+              <>
+                <Button variant="outline" size="sm" onClick={() => coursesRef.current?.openImport()}>
+                  <Upload className="mr-1 size-4" />导入
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => coursesRef.current?.addRow()}>
+                  <Plus className="mr-1 size-4" />添加岗位/课程
+                </Button>
+                <Button size="sm" onClick={() => coursesRef.current?.handleSave()} disabled={coursesRef.current?.saving || coursesRef.current?.loading}>
+                  <Save className="mr-1 size-4" />{coursesRef.current?.saving ? "保存中..." : "保存"}
+                </Button>
+              </>
+            )}
           </div>
         }
       />
@@ -234,7 +248,7 @@ export default function ProgramEditPage() {
           </TabsContent>
 
           <TabsContent value="courses">
-            {!isNew && <ProgramCoursesTab programId={id} />}
+            {!isNew && <ProgramCoursesTab programId={id} ref={coursesRef} />}
           </TabsContent>
         </Tabs>
       )}
