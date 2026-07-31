@@ -21,6 +21,7 @@ interface MultiOrgNodePickerProps {
   placeholder?: string
   disabled?: boolean
   title?: string
+  maxVisible?: number
 }
 
 function collectLeafIds(node: Organization, selectableTypes?: string[], typeNameMap?: Map<string, string>): string[] {
@@ -80,15 +81,9 @@ function TreeNodeRow({ node, level, orgTypeMap, typeNameMap, selectableTypes, se
         {isSelectable ? (
           <Checkbox checked={selectedIds.has(node.id)} onCheckedChange={() => onToggleSelect(node.id)} className="shrink-0" />
         ) : hasChildren ? (
-          <>
-            <input type="checkbox" className="shrink-0 w-4 h-4 rounded border-gray-300 accent-blue-600"
-              checked={allSelected} ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected }}
-              onChange={() => onBatchSelect(allSelected ? [] : allChildIds)} />
-            <Button variant="ghost" size="sm" className="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-blue-600 shrink-0"
-              onClick={(e) => { e.stopPropagation(); onBatchSelect(allChildIds.filter((id) => !selectedIds.has(id))) }}>
-              +全选
-            </Button>
-          </>
+          <input type="checkbox" className="shrink-0 w-4 h-4 rounded border-gray-300 accent-blue-600"
+            checked={allSelected} ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected }}
+            onChange={() => onBatchSelect(allChildIds.filter((id) => allSelected ? selectedIds.has(id) : !selectedIds.has(id)))} />
         ) : null}
         <Icon className={cn("w-4 h-4 shrink-0", meta.color)} />
         <span className="truncate">{node.name}</span>
@@ -104,7 +99,7 @@ function TreeNodeRow({ node, level, orgTypeMap, typeNameMap, selectableTypes, se
 }
 
 export function MultiOrgNodePicker({
-  tenantId, value, onChange, selectableTypes, placeholder = "选择班级", disabled, title = "选择班级",
+  tenantId, value, onChange, selectableTypes, placeholder = "选择班级", disabled, title = "选择班级", maxVisible = 5,
 }: MultiOrgNodePickerProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
@@ -162,7 +157,11 @@ export function MultiOrgNodePicker({
   }
 
   const handleBatchSelect = (ids: string[]) => {
-    setPendingIds((prev) => [...new Set([...prev, ...ids])])
+    setPendingIds((prev) => {
+      const add = ids.filter((id) => !prev.includes(id))
+      const remove = new Set(ids.filter((id) => prev.includes(id)))
+      return [...prev.filter((id) => !remove.has(id)), ...add]
+    })
   }
 
   const handleConfirm = () => {
@@ -186,14 +185,15 @@ export function MultiOrgNodePicker({
   return (
     <>
       <div className="flex flex-wrap items-center gap-1">
-        {value.map((id) => (
+        {value.slice(0, maxVisible).map((id) => (
           <Badge key={id} variant="secondary" className="gap-1 pr-1">
             <span className="max-w-[100px] truncate">{getNodeName(id)}</span>
             <button className="ml-0.5 hover:text-destructive" onClick={() => onChange(value.filter((x) => x !== id))}><X className="h-3 w-3" /></button>
           </Badge>
         ))}
+        {value.length > maxVisible && <Badge variant="outline" className="gap-1 text-xs">+{value.length - maxVisible}</Badge>}
         <Button type="button" variant="outline" size="sm" disabled={disabled} className="h-7 px-2 text-xs" onClick={() => setOpen(true)}>
-          <Plus className="mr-1 h-3 w-3" />添加班级
+          <Plus className="mr-1 h-3 w-3" />{value.length > 0 ? "管理班级" : "添加班级"}
         </Button>
       </div>
 
