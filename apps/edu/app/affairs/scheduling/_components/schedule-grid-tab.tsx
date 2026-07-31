@@ -101,15 +101,16 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
     if (!selectedEntry) return
     const classIds = selectedEntry.classNodeIds || (selectedEntry.classNodeId ? [selectedEntry.classNodeId] : [])
     const hasTeacher = !!selectedEntry.teacherId
-    const hasAll = classIds.length > 0 && hasTeacher
+    const hasVenue = !!selectedEntry.venueId
+    const hasAll = classIds.length > 0 && hasTeacher && hasVenue
     if (!hasAll) {
       setPreConfigEntry(selectedEntry); setPreConfigDay(dayOfWeek); setPreConfigPeriod(periodKey)
-      setPreClassIds(classIds); setPreTeacherId(selectedEntry.teacherId || ""); setPreVenueId("")
+      setPreClassIds(classIds); setPreTeacherId(selectedEntry.teacherId || ""); setPreVenueId(selectedEntry.venueId || "")
       return
     }
     setSavingQuick(true)
     try {
-      const { created, lastErr } = await doCreateSchedule(selectedEntry, dayOfWeek, periodKey, classIds, selectedEntry.teacherId || "", "")
+      const { created, lastErr } = await doCreateSchedule(selectedEntry, dayOfWeek, periodKey, classIds, selectedEntry.teacherId || "", selectedEntry.venueId || "")
       if (created > 0) {
         toast({ title: "排课成功", description: `${selectedEntry.courseName} → 周${dayOfWeek} ${periodKey}（${created}/${classIds.length} 班）` })
         setSelectedPendingId(null); reloadAll()
@@ -214,7 +215,7 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
         <DialogContent>
           <DialogHeader>
             <DialogTitle>完善排课信息</DialogTitle>
-            <DialogDescription>「{preConfigEntry?.courseName}」缺少班级/教师/场地，请补充后直接排课</DialogDescription>
+            <DialogDescription>「{preConfigEntry?.courseName}」排课前需配置完整：班级、教师、场地均为必填</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
@@ -229,11 +230,11 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
                 multiple={false} placeholder="选择教师" />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">场地</label>
+              <label className="text-sm font-medium mb-1 block">场地 *</label>
               <Select value={preVenueId || "none"} onValueChange={(v) => setPreVenueId(v === "none" ? "" : v)}>
                 <SelectTrigger><SelectValue placeholder="选择场地" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">不指定</SelectItem>
+                  <SelectItem value="none">请选择</SelectItem>
                   {venues.map((v) => <SelectItem key={v.id} value={v.id}>{v.name}（{v.type}）</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -241,7 +242,7 @@ export function ScheduleGridTab({ plan, planEntries, onPlanChanged }: ScheduleGr
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPreConfigEntry(null)} disabled={preConfigSaving}>取消</Button>
-            <Button onClick={handlePreConfigSave} disabled={preClassIds.length === 0 || !preTeacherId || preConfigSaving}>
+            <Button onClick={handlePreConfigSave} disabled={preClassIds.length === 0 || !preTeacherId || !preVenueId || preConfigSaving}>
               {preConfigSaving ? "保存中..." : "保存并排课"}
             </Button>
           </DialogFooter>
