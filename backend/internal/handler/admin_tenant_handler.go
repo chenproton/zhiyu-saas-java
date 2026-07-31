@@ -42,7 +42,7 @@ func (h *TenantHandler) AdminList(w http.ResponseWriter, r *http.Request) {
 	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
 
 	query := `
-		SELECT id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, admin_ids, status, created_at, updated_at
+		SELECT id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, admin_ids, status, created_at, updated_at
 		FROM tenants
 		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY created_at DESC
