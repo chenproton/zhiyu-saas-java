@@ -1,10 +1,31 @@
-// 用户接口
+// 用户接口（全仓唯一权威定义，api-client 从此处 re-export）
 export interface User {
   id: string
+  tenantId?: string
+  institutionId?: string
+  orgNodeId?: string
+  majorId?: string
+  role: "school" | "enterprise" | "operator"
+  platform: "saas" | "portal"
+  roleIds?: string[]
+  roleCodes?: string[]
+  roleNames?: string[]
+  loginName?: string
+  username: string
   name: string
-  avatar?: string
   email: string
-  department?: string
+  phone?: string
+  avatarUrl?: string
+  studentNo?: string
+  workId?: string
+  idCard?: string
+  titleIds?: string[]
+  oauth?: Record<string, any>
+  status: string
+  graduateYear?: number
+  lastLoginAt?: string
+  createdAt: string
+  updatedAt: string
 }
 
 // 协作者接口

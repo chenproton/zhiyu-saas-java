@@ -138,34 +138,9 @@ export interface SelectTenantRequest {
   tenantId: string
 }
 
-export interface User {
-  id: string
-  tenantId?: string
-  institutionId?: string
-  orgNodeId?: string
-  majorId?: string
-  role: "school" | "enterprise" | "operator"
-  platform: "saas" | "portal"
-  roleIds?: string[]
-  roleCodes?: string[]
-  roleNames?: string[]
-  loginName?: string
-  username: string
-  name: string
-  email: string
-  phone?: string
-  avatarUrl?: string
-  studentNo?: string
-  workId?: string
-  idCard?: string
-  titleIds?: string[]
-  oauth?: Record<string, any>
-  status: string
-  graduateYear?: number
-  lastLoginAt?: string
-  createdAt: string
-  updatedAt: string
-}
+// User 的权威定义在 @zhiyu/shared-types（shared-models.ts），此处仅 re-export 以保持既有导入路径
+import type { User } from "../../shared-types/src/shared-models"
+export type { User }
 
 export interface MeResponse {
   user: User
