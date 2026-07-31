@@ -68,6 +68,9 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 
 		r.Group(func(r chi.Router) {
 			r.Use(jobViewer)
+
+			registerAlliancePublicRoutes(r, h)
+
 			r.With(cachedPublicPositions).Get("/job/public/positions", h.positionHandler.PublicList)
 			r.Get("/job/public/positions/{id}", h.positionHandler.PublicGet)
 
@@ -333,8 +336,9 @@ func registerAllianceRoutes(r chi.Router, h *Handlers) {
 		r.Put("/brand-topics/{id}", h.allianceHandler.UpdateBrandTopic)
 		r.Delete("/brand-topics/{id}", h.allianceHandler.DeleteBrandTopic)
 	})
+}
 
-	// 公开 API（前台展示）
+func registerAlliancePublicRoutes(r chi.Router, h *Handlers) {
 	r.Route("/alliance/public", func(r chi.Router) {
 		r.Get("/school-info", h.allianceHandler.GetPublicSchoolInfo)
 		r.Get("/enterprises", h.allianceHandler.ListPublicEnterprises)

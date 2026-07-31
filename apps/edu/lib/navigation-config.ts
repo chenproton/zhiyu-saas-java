@@ -498,6 +498,66 @@ function firstHrefFromNavConfig(config: PlatformNavigationConfig): string {
   return "#"
 }
 
+/* ============================================================
+   Alliance 模块导航（产教融合与就业服务平台）
+   使用自定义 AllianceSideNav 侧边栏，此配置仅用于 platformModuleDefs
+   ============================================================ */
+export const allianceNavigationConfig: PlatformNavigationConfig = {
+  brandTitle: "产教融合与就业服务平台",
+  currentPlatformId: "alliance",
+  currentPlatformLabel: "产教融合管理平台",
+  brandHref: "/portal/apps/alliance/enterprises",
+  brandIcon: "users",
+  platformIcon: "users",
+  sideBackHref: "/portal/apps/alliance/enterprises",
+  currentUserName: "管理员",
+  currentUserRoleLabel: "学校管理员",
+  showCurrentTime: true,
+  showUserMenu: true,
+  userMenuItems: [
+    { id: "workspace", label: "我的服务台", href: "/portal/workspace", icon: "briefcase" },
+    { id: "apps", label: "应用中心", href: "/portal/apps", icon: "layoutGrid" },
+    { id: "logout", label: "退出登录", tone: "danger" },
+  ],
+  topNavItems: [],
+  sideNavItems: [
+    {
+      id: "cooperation",
+      label: "产教融合管理",
+      icon: "folderKanban",
+      children: [
+        { id: "school", label: "学校信息", href: "/portal/apps/alliance/school", matchers: ["/portal/apps/alliance/school"] },
+        { id: "enterprises", label: "合作企业", href: "/portal/apps/alliance/enterprises", matchers: ["/portal/apps/alliance/enterprises"] },
+        { id: "projects", label: "合作项目", href: "/portal/apps/alliance/projects", matchers: ["/portal/apps/alliance/projects"] },
+        { id: "achievements", label: "合作成果", href: "/portal/apps/alliance/achievements", matchers: ["/portal/apps/alliance/achievements"] },
+        { id: "experts", label: "专家资源库", href: "/portal/apps/alliance/experts", matchers: ["/portal/apps/alliance/experts"] },
+        { id: "agreements", label: "合作协议", href: "/portal/apps/alliance/agreements", matchers: ["/portal/apps/alliance/agreements"] },
+        { id: "permissions", label: "合作权限", href: "/portal/apps/alliance/permissions", matchers: ["/portal/apps/alliance/permissions"] },
+        { id: "dictionaries", label: "字典管理", href: "/portal/apps/alliance/dictionaries", matchers: ["/portal/apps/alliance/dictionaries"] },
+      ],
+    },
+    {
+      id: "brand",
+      label: "品牌运营管理",
+      icon: "share2",
+      children: [
+        { id: "brand-overview", label: "品牌概览", href: "/portal/apps/alliance/brands", matchers: ["/portal/apps/alliance/brands"] },
+        { id: "brand-talent", label: "人才品牌管理", href: "/portal/apps/alliance/brands/talent", matchers: ["/portal/apps/alliance/brands/talent"] },
+        { id: "brand-employer", label: "雇主品牌管理", href: "/portal/apps/alliance/brands/employer", matchers: ["/portal/apps/alliance/brands/employer"] },
+        { id: "brand-job", label: "岗位品牌管理", href: "/portal/apps/alliance/brands/job", matchers: ["/portal/apps/alliance/brands/job"] },
+        { id: "brand-major", label: "专业品牌管理", href: "/portal/apps/alliance/brands/major", matchers: ["/portal/apps/alliance/brands/major"] },
+        { id: "brand-teacher", label: "师资品牌管理", href: "/portal/apps/alliance/brands/teacher", matchers: ["/portal/apps/alliance/brands/teacher"] },
+        { id: "brand-culture", label: "文化思政品牌管理", href: "/portal/apps/alliance/brands/culture", matchers: ["/portal/apps/alliance/brands/culture"] },
+        { id: "brand-topics", label: "品牌专题页", href: "/portal/apps/alliance/brands/topics", matchers: ["/portal/apps/alliance/brands/topics"] },
+      ],
+    },
+  ],
+  defaultExpandedSideNavIds: ["cooperation", "brand"],
+  platformSwitchItems: [],
+  shellClassName: "bg-background",
+  mainClassName: "min-w-0 flex-1",
+}
+
 function subModulesFromNavConfig(
   config: PlatformNavigationConfig,
 ): { id: string; label: string; href: string; children?: { id: string; label: string; href: string }[] }[] {
@@ -572,6 +632,13 @@ export const platformModuleDefs: Record<string, PlatformModuleDef> = {
     href: firstHrefFromNavConfig(affairsNavigationConfig),
     subModules: subModulesFromNavConfig(affairsNavigationConfig),
   },
+  alliance: {
+    id: "alliance",
+    label: "产教融合与就业服务平台",
+    icon: "users",
+    href: firstHrefFromNavConfig(allianceNavigationConfig),
+    subModules: subModulesFromNavConfig(allianceNavigationConfig),
+  },
 }
 
 const PLATFORM_CARD_DESCRIPTIONS: Record<string, string> = {
@@ -593,6 +660,8 @@ const PLATFORM_CARD_DESCRIPTIONS: Record<string, string> = {
   "resource-my-resource-center": "管理个人教学资源",
   "resource-resource-center": "管理知识点、能力点与教学资源",
   "affairs-teaching-mgmt": "维护人才培养方案、教学计划与排课",
+  "alliance-cooperation": "管理学校信息、合作企业、项目、成果与专家",
+  "alliance-brand": "管理人才、雇主、岗位、专业、师资、文化六大品牌",
 }
 
 export function getPlatformCardModules(platformId: string): PlatformCardModule[] {
