@@ -157,7 +157,7 @@ export const scheduleApi = {
     }),
   /** 导出当前学期排课为 Excel（格式与导入模板一致） */
   exportExcel: (termId: string) => {
-    const url = `/affairs/schedules/export?termId=${encodeURIComponent(termId)}`
+    const url = `/api/v1/affairs/schedules/export?termId=${encodeURIComponent(termId)}`
     window.open(url, "_blank")
   },
   /** 班级/教师课表视图（默认仅 published，含 version） */
