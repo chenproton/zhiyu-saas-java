@@ -45,7 +45,7 @@ export default function AllianceSchoolPage() {
   const update = (f: Partial<AllianceSchoolInfo>) => setInfo((prev) => prev ? { ...prev, ...f } : prev)
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">学校信息管理</h1>

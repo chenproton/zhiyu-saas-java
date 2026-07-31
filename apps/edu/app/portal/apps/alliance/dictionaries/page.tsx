@@ -1,5 +1,4 @@
 "use client"
-/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
@@ -20,12 +19,12 @@ function DictionaryTab({ dictType, label }: { dictType: string; label: string })
   const { toast } = useToast()
   const [items, setItems] = useState<AllianceDictionary[]>([])
   const [loading, setLoading] = useState(true)
-  const [dialogOpen, setDialogOpen] = useState(true)
+  const [dialogOpen, setDialogOpen] = useState(false)
   const [formItem, setFormItem] = useState<{ code: string; name: string; sortOrder: number }>({ code: "", name: "", sortOrder: 0 })
   const [editId, setEditId] = useState<string | null>(null)
-  const [saving, setSaving] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<AllianceDictionary | null>(null)
-  const [deleting, setDeleting] = useState(true)
+  const [deleting, setDeleting] = useState(false)
 
   const fetchItems = useCallback(async () => {
     if (!tenantId) return
