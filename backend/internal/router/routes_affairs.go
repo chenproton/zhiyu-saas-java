@@ -17,6 +17,14 @@ func registerAffairsRoutes(r chi.Router, h *Handlers) {
 	r.Put("/affairs/programs/{id}/courses", h.trainingProgramHandler.PutCourses)
 	r.Post("/affairs/programs/{id}/clone", h.trainingProgramHandler.Clone)
 
+	// 批次 / 审批
+	registerBatchRoutes(r, "/affairs/batches", h.jobBatchHandler)
+	r.Get("/affairs/workflows", h.workflowHandler.List)
+	r.Post("/affairs/workflows", h.workflowHandler.Create)
+	r.Get("/affairs/workflows/{id}", h.workflowHandler.Get)
+	r.Put("/affairs/workflows/{id}", h.workflowHandler.Update)
+	r.Delete("/affairs/workflows/{id}", h.workflowHandler.Delete)
+
 	// 教学计划
 	r.Get("/affairs/teaching-plans", h.teachingPlanHandler.List)
 	r.Post("/affairs/teaching-plans", h.teachingPlanHandler.Generate)

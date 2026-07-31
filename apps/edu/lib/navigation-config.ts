@@ -469,7 +469,7 @@ export const affairsNavigationConfig: PlatformNavigationConfig = {
     {
       id: "teaching-approval",
       label: "审批管理",
-      icon: "clipboard",
+      icon: "settings",
       children: [
         { id: "batches", label: "批次管理", href: "/affairs/batches", matchers: ["/affairs/batches"] },
         { id: "workflows", label: "工作流管理", href: "/affairs/workflows", matchers: ["/affairs/workflows"] },

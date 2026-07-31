@@ -178,3 +178,16 @@ export const myScheduleApi = {
   get: (termId?: string) =>
     request<MyScheduleResponse>(`/portal/workspace/my-schedule${buildQuery({ termId })}`),
 }
+
+// ==================== 批次管理 ====================
+
+export const affairsBatchApi = {
+  list: (params?: Record<string, string | number | boolean | undefined>) =>
+    request<any>(`/affairs/batches${buildQuery(params || {})}`),
+  get: (id: string) => request<any>(`/affairs/batches/${id}`),
+  create: (req: any) => request<any>("/affairs/batches", { method: "POST", body: JSON.stringify(req) }),
+  update: (id: string, req: any) => request<any>(`/affairs/batches/${id}`, { method: "PUT", body: JSON.stringify(req) }),
+  delete: (id: string) => request<any>(`/affairs/batches/${id}`, { method: "DELETE" }),
+  updateStatus: (id: string, status: string) =>
+    request<any>(`/affairs/batches/${id}/status`, { method: "POST", body: JSON.stringify({ status }) }),
+}

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import { ContentListPage } from "@/components/shared/content-list-page"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { StatusActionBar } from "@/components/shared/status-action-bar"
-import { programApi, batchApi, approvalApi, importExportApi } from "@/lib/api"
+import { programApi, affairsBatchApi, approvalApi, importExportApi } from "@/lib/api"
 import type { TrainingProgram } from "@/lib/types"
 
 function mapProgram(backend: any) {
@@ -23,7 +23,7 @@ export default function ProgramsPage() {
       permissionModule="affairs"
       permissionResource="programs"
       itemApi={programApi as any}
-      batchApi={batchApi as any}
+      batchApi={affairsBatchApi as any}
       approvalApi={approvalApi as any}
       importExportApi={importExportApi}
       approvalTargetType="training_program"
