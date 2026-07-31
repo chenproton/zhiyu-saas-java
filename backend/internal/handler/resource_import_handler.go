@@ -951,14 +951,6 @@ func (h *ResourceImportHandler) ImportBrands(w http.ResponseWriter, r *http.Requ
 	h.importExcel(w, r, "alliance-brands", h.doImportBrands, false)
 }
 
-func (h *ResourceImportHandler) PreviewBrandTopics(w http.ResponseWriter, r *http.Request) {
-	h.importExcel(w, r, "alliance-brand-topics", h.doImportBrandTopics, true)
-}
-
-func (h *ResourceImportHandler) ImportBrandTopics(w http.ResponseWriter, r *http.Request) {
-	h.importExcel(w, r, "alliance-brand-topics", h.doImportBrandTopics, false)
-}
-
 // ===== Alliance doImport functions =====
 
 // Sheet: 合作企业
@@ -1506,83 +1498,6 @@ func (h *ResourceImportHandler) doImportBrands(ctx context.Context, xlsx *exceli
 			if err != nil {
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("品牌[%s/%s]创建失败: %v", brandType, name, err))
-				continue
-			}
-		}
-		result.Created++
-		previewRes.Created++
-	}
-
-	return previewRes, result
-}
-
-// Sheet: 品牌专题
-// Columns: 专题名称*, 主题, 布局, 描述
-func (h *ResourceImportHandler) doImportBrandTopics(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
-	previewRes := &ImportPreviewResult{}
-	result := &resourceImportResult{}
-
-	rows, err := xlsx.GetRows("品牌专题")
-	if err != nil {
-		msg := fmt.Sprintf("读取「品牌专题」Sheet 失败: %v", err)
-		result.Errors = append(result.Errors, msg)
-		previewRes.Errors = append(previewRes.Errors, msg)
-		return previewRes, result
-	}
-
-	for i, row := range rows {
-		if i < 2 {
-			continue
-		}
-		rowNum := i + 1
-		if len(row) < 1 || strings.TrimSpace(row[0]) == "" {
-			continue
-		}
-		name := strings.TrimSpace(row[0])
-		theme := nullableStr(col(row, 1))
-		layout := mapBrandTopicLayout(col(row, 2))
-		if layout == "" {
-			layout = "grid"
-		}
-		description := nullableStr(col(row, 3))
-
-		var existingID string
-		_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_brand_topics WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
-		if existingID != "" {
-			if !overwrite {
-				result.Skipped++
-				previewRes.Duplicates++
-				appendDuplicate(previewRes, rowNum, name, name)
-				continue
-			}
-			if !preview {
-				_, err := h.DB.Exec(ctx, `
-					UPDATE alliance_brand_topics SET theme=$1, layout=$2, description=$3, updated_at=NOW()
-					WHERE id=$4 AND tenant_id=$5
-				`, theme, layout, description, existingID, tenantID)
-				if err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("专题[%s]更新失败: %v", name, err))
-					continue
-				}
-			}
-			result.Created++
-			previewRes.Created++
-			continue
-		}
-
-		if !preview {
-			id := uuid.NewString()
-			_, err := h.DB.Exec(ctx, `
-				INSERT INTO alliance_brand_topics (id, tenant_id, name, theme, description, layout,
-					content_blocks, related_brand_ids, status, is_recommended, sort_order,
-					created_at, updated_at)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW(),NOW())
-			`, id, tenantID, name, theme, description, layout,
-				[]byte("[]"), []byte("[]"), "draft", false, 0)
-			if err != nil {
-				result.Failed++
-				result.Errors = append(result.Errors, fmt.Sprintf("专题[%s]创建失败: %v", name, err))
 				continue
 			}
 		}

@@ -419,7 +419,6 @@ var (
 		"affairs_batches ab LEFT JOIN majors m ON m.id = ab.major_id",
 		"alliance_achievements",
 		"alliance_agreements",
-		"alliance_brand_topics",
 		"alliance_brands",
 		"alliance_enterprises",
 		"alliance_experts",
@@ -491,7 +490,6 @@ var (
 	allowedListQuerySelectColumns = []string{
 		"id, tenant_id, title, type, description, achievement_date, cover_image, attachments, citation_reason, images, owner_persons, co_builders, enterprise_ids, project_ids, related_positions, related_scenes, related_courses, status, view_count, secondary_colleges, is_public, created_by, created_at, updated_at",
 		"id, tenant_id, name, type, content, start_date, end_date, status, enterprise_ids, project_ids, attachments, created_by, created_at, updated_at",
-		"id, tenant_id, name, theme, description, layout, cover_image, content_blocks, related_brand_ids, status, is_recommended, sort_order, created_at, updated_at",
 		"id, tenant_id, brand_type, name, status, is_public, is_featured, cover_image, cover_video, description, data, student_id, enterprise_id, position_id, major_id, teacher_id, expert_id, sort_order, view_count, created_at, updated_at",
 		"id, tenant_id, name, enterprise_type, industry, region, description, logo_url, cover_image, status, rating, cooperation_types, contact_person, contact_phone, contact_email, address, unified_social_credit_code, established_year, employee_count, business_license_photos, qualification_photos, intellectual_property_photos, cover_photos, secondary_colleges, rating_record, is_public, created_by, created_at, updated_at",
 		"id, tenant_id, name, gender, age, title, position, expert_type, industry, professional_fields, specialties, experience_years, education, introduction, work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating, status, partner_source, position_direction, secondary_colleges, is_public, created_by, created_at, updated_at",

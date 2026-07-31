@@ -219,15 +219,6 @@ func mapBrandType(v string) string {
 	)
 }
 
-// mapBrandTopicLayout 专题布局：网格/时间线/杂志 ↔ grid/timeline/magazine。
-func mapBrandTopicLayout(v string) string {
-	return mapDictValue(v,
-		"网格", "grid", "网格布局", "grid",
-		"时间线", "timeline", "时间线布局", "timeline",
-		"杂志", "magazine", "杂志布局", "magazine",
-	)
-}
-
 // mapExpertRating 专家评级：金牌/银牌/铜牌 ↔ gold/silver/copper。
 func mapExpertRating(v string) string {
 	return mapDictValue(v,

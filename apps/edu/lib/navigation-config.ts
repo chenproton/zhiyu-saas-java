@@ -558,7 +558,6 @@ export const allianceNavigationConfig: PlatformNavigationConfig = {
         { id: "brand-major", label: "专业品牌管理", href: "/portal/apps/alliance/brands/major", matchers: ["/portal/apps/alliance/brands/major"] },
         { id: "brand-teacher", label: "师资品牌管理", href: "/portal/apps/alliance/brands/teacher", matchers: ["/portal/apps/alliance/brands/teacher"] },
         { id: "brand-culture", label: "文化思政品牌管理", href: "/portal/apps/alliance/brands/culture", matchers: ["/portal/apps/alliance/brands/culture"] },
-        { id: "brand-topics", label: "品牌专题页", href: "/portal/apps/alliance/brands/topics", matchers: ["/portal/apps/alliance/brands/topics"] },
       ],
     },
   ],

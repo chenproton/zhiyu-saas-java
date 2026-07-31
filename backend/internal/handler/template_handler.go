@@ -1328,21 +1328,6 @@ func (h *TemplateHandler) ServeBrandTemplate(w http.ResponseWriter, r *http.Requ
 	writeExcel(w, f, "品牌内容批量导入模板.xlsx")
 }
 
-func (h *TemplateHandler) ServeBrandTopicTemplate(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	ctx := r.Context()
-	f := h.generateBrandTopicTemplate(ctx, tenantID)
-	writeExcel(w, f, "品牌专题批量导入模板.xlsx")
-}
-
 // ===== Alliance Template Generators =====
 
 func (h *TemplateHandler) generateEnterpriseTemplate(ctx context.Context, tenantID string) *excelize.File {
@@ -1607,44 +1592,6 @@ func (h *TemplateHandler) generateBrandTemplate(ctx context.Context, tenantID st
 	setHdr("品牌内容", 2, headers, widths)
 	f.SetPanes("品牌内容", &excelize.Panes{Freeze: true, YSplit: 2})
 	f.AutoFilter("品牌内容", "A2:C2", []excelize.AutoFilterOptions{})
-
-	return f
-}
-
-func (h *TemplateHandler) generateBrandTopicTemplate(ctx context.Context, tenantID string) *excelize.File {
-	f := excelize.NewFile()
-	hdrStyle := makeHeaderStyle(f)
-	noteStyle := makeNoteStyle(f)
-	wrapAlign := makeWrapAlign(f)
-
-	setHdr := func(sheet string, row int, headers []string, widths []float64) {
-		for ci, h := range headers {
-			cell, _ := excelize.CoordinatesToCellName(ci+1, row)
-			f.SetCellValue(sheet, cell, h)
-			f.SetCellStyle(sheet, cell, cell, hdrStyle)
-			f.SetColWidth(sheet, colName(ci+1), colName(ci+1), widths[ci])
-		}
-		f.SetRowHeight(sheet, row, 28)
-	}
-	setA1 := func(sheet string, cols int, text string) {
-		start, _ := excelize.CoordinatesToCellName(1, 1)
-		end, _ := excelize.CoordinatesToCellName(cols, 1)
-		f.MergeCell(sheet, start, end)
-		f.SetCellValue(sheet, start, text)
-		f.SetCellStyle(sheet, start, end, noteStyle)
-		f.SetCellStyle(sheet, start, end, wrapAlign)
-		f.SetRowHeight(sheet, 1, float64(strings.Count(text, "\n")+2)*16)
-	}
-
-	s1, _ := f.NewSheet("品牌专题")
-	f.SetActiveSheet(s1)
-	f.DeleteSheet("Sheet1")
-	headers := []string{"专题名称 *", "主题", "布局", "描述"}
-	widths := []float64{28, 28, 22, 48}
-	setA1("品牌专题", 4, "填写说明：\n* 必填列。\n主题：文本，选填\n布局：网格 / 时间线 / 杂志（或 grid / timeline / magazine），默认为 网格\n描述：文本，选填")
-	setHdr("品牌专题", 2, headers, widths)
-	f.SetPanes("品牌专题", &excelize.Panes{Freeze: true, YSplit: 2})
-	f.AutoFilter("品牌专题", "A2:D2", []excelize.AutoFilterOptions{})
 
 	return f
 }

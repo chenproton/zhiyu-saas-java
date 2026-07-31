@@ -242,21 +242,3 @@ type AllianceBrand struct {
 	CreatedAt    time.Time       `json:"createdAt"`
 	UpdatedAt    time.Time       `json:"updatedAt"`
 }
-
-// ===== 品牌专题页 =====
-type AllianceBrandTopic struct {
-	ID              string          `json:"id"`
-	TenantID        string          `json:"tenantId"`
-	Name            string          `json:"name"`
-	Theme           *string         `json:"theme,omitempty"`
-	Description     *string         `json:"description,omitempty"`
-	Layout          string          `json:"layout"`
-	CoverImage      *string         `json:"coverImage,omitempty"`
-	ContentBlocks   json.RawMessage `json:"contentBlocks,omitempty"`
-	RelatedBrandIDs json.RawMessage `json:"relatedBrandIds,omitempty"`
-	Status          string          `json:"status"`
-	IsRecommended   bool            `json:"isRecommended"`
-	SortOrder       int             `json:"sortOrder"`
-	CreatedAt       time.Time       `json:"createdAt"`
-	UpdatedAt       time.Time       `json:"updatedAt"`
-}

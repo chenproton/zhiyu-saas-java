@@ -222,23 +222,6 @@ export interface AllianceBrand {
   updatedAt: string
 }
 
-export interface AllianceBrandTopic {
-  id: string
-  tenantId: string
-  name: string
-  theme?: string
-  description?: string
-  layout: string
-  coverImage?: string
-  contentBlocks?: any[]
-  relatedBrandIds?: string[]
-  status: string
-  isRecommended: boolean
-  sortOrder: number
-  createdAt: string
-  updatedAt: string
-}
-
 export interface AlliancePublicStats {
   enterpriseCount: number
   projectCount: number

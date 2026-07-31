@@ -11,7 +11,6 @@ import type {
   AlliancePermission,
   AllianceDictionary,
   AllianceBrand,
-  AllianceBrandTopic,
   AlliancePublicStats,
   AllianceListResponse,
 } from "../types/alliance"
@@ -139,18 +138,6 @@ export const allianceApi = {
       portalRequest<{ id: string }>(`/alliance/brands/${id}`, { method: "DELETE" }),
   },
 
-  brandTopics: {
-    list: (params?: { status?: string; search?: string; page?: number; limit?: number }) =>
-      portalRequest<AllianceListResponse<AllianceBrandTopic>>(`/alliance/brand-topics${buildQuery(params || {})}`),
-    get: (id: string) => portalRequest<AllianceBrandTopic>(`/alliance/brand-topics/${id}`),
-    create: (data: Partial<AllianceBrandTopic>) =>
-      portalRequest<AllianceBrandTopic>("/alliance/brand-topics", { method: "POST", body: JSON.stringify(data) }),
-    update: (id: string, data: Partial<AllianceBrandTopic>) =>
-      portalRequest<AllianceBrandTopic>(`/alliance/brand-topics/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-    delete: (id: string) =>
-      portalRequest<{ id: string }>(`/alliance/brand-topics/${id}`, { method: "DELETE" }),
-  },
-
   public: {
     stats: () => portalRequest<AlliancePublicStats>("/alliance/public/stats"),
     schoolInfo: (tenantId: string) => portalRequest<AllianceSchoolInfo>(`/alliance/public/school-info?tenantId=${tenantId}`),
@@ -165,7 +152,5 @@ export const allianceApi = {
     brands: (brandType?: string) =>
       portalRequest<AllianceListResponse<AllianceBrand>>(`/alliance/public/brands${brandType ? `?brandType=${brandType}` : ""}`),
     brand: (id: string) => portalRequest<AllianceBrand>(`/alliance/public/brands/${id}`),
-    brandTopics: () => portalRequest<AllianceListResponse<AllianceBrandTopic>>("/alliance/public/brand-topics"),
-    brandTopic: (id: string) => portalRequest<AllianceBrandTopic>(`/alliance/public/brand-topics/${id}`),
   },
 }

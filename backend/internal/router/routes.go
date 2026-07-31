@@ -259,8 +259,6 @@ func registerImportExportRoutes(r chi.Router, h *Handlers) {
 	r.Post("/import/alliance-permissions/preview", h.resourceImportHandler.PreviewPermissions)
 	r.Post("/import/alliance-brands/excel", h.resourceImportHandler.ImportBrands)
 	r.Post("/import/alliance-brands/preview", h.resourceImportHandler.PreviewBrands)
-	r.Post("/import/alliance-brand-topics/excel", h.resourceImportHandler.ImportBrandTopics)
-	r.Post("/import/alliance-brand-topics/preview", h.resourceImportHandler.PreviewBrandTopics)
 	r.Get("/templates/positions", h.templateHandler.ServePositionTemplate)
 	r.Get("/templates/scenarios", h.templateHandler.ServeScenarioTemplate)
 	r.Get("/templates/courses", h.templateHandler.ServeSystemCourseTemplate)
@@ -280,7 +278,6 @@ func registerImportExportRoutes(r chi.Router, h *Handlers) {
 	r.Get("/templates/alliance-agreements", h.templateHandler.ServeAgreementTemplate)
 	r.Get("/templates/alliance-permissions", h.templateHandler.ServePermissionTemplate)
 	r.Get("/templates/alliance-brands", h.templateHandler.ServeBrandTemplate)
-	r.Get("/templates/alliance-brand-topics", h.templateHandler.ServeBrandTopicTemplate)
 	r.Post("/export/scenarios/excel", h.scenarioExportHandler.ExportExcel)
 	r.Post("/export/positions/excel", h.positionExportHandler.ExportExcel)
 	r.Post("/export/courses/excel", h.courseExportHandler.ExportExcel)
@@ -359,12 +356,6 @@ func registerAllianceRoutes(r chi.Router, h *Handlers) {
 		r.Get("/brands/{id}", h.allianceHandler.GetBrand)
 		r.Put("/brands/{id}", h.allianceHandler.UpdateBrand)
 		r.Delete("/brands/{id}", h.allianceHandler.DeleteBrand)
-
-		r.Get("/brand-topics", h.allianceHandler.ListBrandTopics)
-		r.Post("/brand-topics", h.allianceHandler.CreateBrandTopic)
-		r.Get("/brand-topics/{id}", h.allianceHandler.GetBrandTopic)
-		r.Put("/brand-topics/{id}", h.allianceHandler.UpdateBrandTopic)
-		r.Delete("/brand-topics/{id}", h.allianceHandler.DeleteBrandTopic)
 	})
 }
 
@@ -381,8 +372,6 @@ func registerAlliancePublicRoutes(r chi.Router, h *Handlers) {
 		r.Get("/experts/{id}", h.allianceHandler.GetPublicExpert)
 		r.Get("/brands", h.allianceHandler.ListPublicBrands)
 		r.Get("/brands/{id}", h.allianceHandler.GetPublicBrand)
-		r.Get("/brand-topics", h.allianceHandler.ListPublicBrandTopics)
-		r.Get("/brand-topics/{id}", h.allianceHandler.GetPublicBrandTopic)
 		r.Get("/stats", h.allianceHandler.GetPublicStats)
 	})
 }

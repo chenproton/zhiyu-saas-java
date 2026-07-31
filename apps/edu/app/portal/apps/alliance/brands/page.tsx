@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { GraduationCap, Building, Briefcase, BookOpen, Users, Palette, Sparkles, Share2 } from "lucide-react"
+import { GraduationCap, Building, Briefcase, BookOpen, Users, Palette } from "lucide-react"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
 import type { AllianceBrand, AllianceListResponse } from "@/lib/types"
@@ -65,19 +65,6 @@ export default function AllianceBrandsPage() {
             </Link>
           )
         })}
-      </div>
-      <div className="flex items-center gap-2">
-        <Link href="/portal/apps/alliance/brands/topics">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer inline-flex">
-            <CardHeader className="flex flex-row items-center gap-3 pb-2">
-              <div className="p-2 rounded-lg text-indigo-600 bg-indigo-50"><Sparkles className="h-5 w-5" /></div>
-              <div>
-                <CardTitle className="text-base">品牌专题页</CardTitle>
-                <CardDescription className="text-xs">管理品牌聚合专题展示</CardDescription>
-              </div>
-            </CardHeader>
-          </Card>
-        </Link>
       </div>
     </div>
   )
