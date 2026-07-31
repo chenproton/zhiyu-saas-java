@@ -105,11 +105,11 @@ export default function AllianceTeacherBrandPage() {
       } as AllianceBrand & { enabled?: boolean })}
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
-          <div>
+          <div className="grid gap-2">
             <Label>名称 *</Label>
             <Input value={item.name || ""} onChange={(e: any) => setItem({ ...item, name: e.target.value })} />
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>状态</Label>
             <Select value={item.status || "draft"} onValueChange={(v: any) => setItem({ ...item, status: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -120,11 +120,11 @@ export default function AllianceTeacherBrandPage() {
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>描述</Label>
             <Textarea value={item.description || ""} onChange={(e: any) => setItem({ ...item, description: e.target.value })} rows={3} />
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>封面图 URL</Label>
             <Input value={item.coverImage || ""} onChange={(e: any) => setItem({ ...item, coverImage: e.target.value })} placeholder="https://..." />
           </div>
@@ -138,11 +138,11 @@ export default function AllianceTeacherBrandPage() {
               <Label>推荐</Label>
             </div>
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>教师 ID</Label>
             <Input value={item.teacherId || ""} onChange={(e: any) => setItem({ ...item, teacherId: e.target.value })} placeholder="UUID (users表)" />
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>专家 ID</Label>
             <Input value={item.expertId || ""} onChange={(e: any) => setItem({ ...item, expertId: e.target.value })} placeholder="UUID (alliance_experts表)" />
           </div>

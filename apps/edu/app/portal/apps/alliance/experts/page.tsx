@@ -67,11 +67,11 @@ export default function AllianceExpertsPage() {
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>姓名 *</Label><Input value={item.name || ""} onChange={(e: any) => setItem({ ...item, name: e.target.value })} /></div>
-            <div><Label>头衔</Label><Input value={item.title || ""} onChange={(e: any) => setItem({ ...item, title: e.target.value })} /></div>
-            <div><Label>职位</Label><Input value={item.position || ""} onChange={(e: any) => setItem({ ...item, position: e.target.value })} /></div>
-            <div><Label>行业</Label><Input value={item.industry || ""} onChange={(e: any) => setItem({ ...item, industry: e.target.value })} /></div>
-            <div><Label>城市</Label><Input value={item.city || ""} onChange={(e: any) => setItem({ ...item, city: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>姓名 *</Label><Input value={item.name || ""} onChange={(e: any) => setItem({ ...item, name: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>头衔</Label><Input value={item.title || ""} onChange={(e: any) => setItem({ ...item, title: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>职位</Label><Input value={item.position || ""} onChange={(e: any) => setItem({ ...item, position: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>行业</Label><Input value={item.industry || ""} onChange={(e: any) => setItem({ ...item, industry: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>城市</Label><Input value={item.city || ""} onChange={(e: any) => setItem({ ...item, city: e.target.value })} /></div>
             <div>
               <Label>评级</Label>
               <Select value={item.rating || "copper"} onValueChange={(v: any) => setItem({ ...item, rating: v })}>
@@ -82,7 +82,7 @@ export default function AllianceExpertsPage() {
               </Select>
             </div>
           </div>
-          <div><Label>简介</Label><Textarea value={item.introduction || ""} onChange={(e: any) => setItem({ ...item, introduction: e.target.value })} rows={3} /></div>
+          <div className="grid gap-2"><Label>简介</Label><Textarea value={item.introduction || ""} onChange={(e: any) => setItem({ ...item, introduction: e.target.value })} rows={3} /></div>
         </div>
       )}
       getDeleteDescription={(item: any) => <>确定要删除专家 <b>{item.name}</b> 吗？</>}

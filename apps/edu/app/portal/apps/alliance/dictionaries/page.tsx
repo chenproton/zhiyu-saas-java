@@ -88,9 +88,9 @@ function DictionaryTab({ dictType, label }: { dictType: string; label: string })
           <div className="bg-background rounded-lg shadow-lg w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-semibold mb-4">{editId ? "编辑字典项" : "新增字典项"}</h2>
             <div className="space-y-4">
-              <div><Label>编码 *</Label><Input value={formItem.code} onChange={(e) => setFormItem({ ...formItem, code: e.target.value })} disabled={!!editId} /></div>
-              <div><Label>名称 *</Label><Input value={formItem.name} onChange={(e) => setFormItem({ ...formItem, name: e.target.value })} /></div>
-              <div><Label>排序</Label><Input type="number" value={formItem.sortOrder} onChange={(e) => setFormItem({ ...formItem, sortOrder: parseInt(e.target.value) || 0 })} /></div>
+              <div className="grid gap-2"><Label>编码 *</Label><Input value={formItem.code} onChange={(e) => setFormItem({ ...formItem, code: e.target.value })} disabled={!!editId} /></div>
+              <div className="grid gap-2"><Label>名称 *</Label><Input value={formItem.name} onChange={(e) => setFormItem({ ...formItem, name: e.target.value })} /></div>
+              <div className="grid gap-2"><Label>排序</Label><Input type="number" value={formItem.sortOrder} onChange={(e) => setFormItem({ ...formItem, sortOrder: parseInt(e.target.value) || 0 })} /></div>
             </div>
             <div className="flex justify-end gap-2 mt-6">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>取消</Button>

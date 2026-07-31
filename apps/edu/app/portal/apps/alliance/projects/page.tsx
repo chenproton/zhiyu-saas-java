@@ -65,7 +65,7 @@ export default function AllianceProjectsPage() {
       createDefault={() => ({ id: "", name: "", phase: "initiation", publishStatus: "draft", isPublic: false as any, createdAt: "", updatedAt: "" } as any)}
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
-          <div><Label>项目名称 *</Label><Input value={item.name || ""} onChange={(e: any) => setItem({ ...item, name: e.target.value })} /></div>
+          <div className="grid gap-2"><Label>项目名称 *</Label><Input value={item.name || ""} onChange={(e: any) => setItem({ ...item, name: e.target.value })} /></div>
           <div>
             <Label>阶段</Label>
             <Select value={item.phase || ""} onValueChange={(v: any) => setItem({ ...item, phase: v })}>
@@ -76,10 +76,10 @@ export default function AllianceProjectsPage() {
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>开始日期</Label><Input type="date" value={item.startDate || ""} onChange={(e: any) => setItem({ ...item, startDate: e.target.value })} /></div>
-            <div><Label>结束日期</Label><Input type="date" value={item.endDate || ""} onChange={(e: any) => setItem({ ...item, endDate: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>开始日期</Label><Input type="date" value={item.startDate || ""} onChange={(e: any) => setItem({ ...item, startDate: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>结束日期</Label><Input type="date" value={item.endDate || ""} onChange={(e: any) => setItem({ ...item, endDate: e.target.value })} /></div>
           </div>
-          <div><Label>描述</Label><Textarea value={item.description || ""} onChange={(e: any) => setItem({ ...item, description: e.target.value })} rows={3} /></div>
+          <div className="grid gap-2"><Label>描述</Label><Textarea value={item.description || ""} onChange={(e: any) => setItem({ ...item, description: e.target.value })} rows={3} /></div>
         </div>
       )}
       getDeleteDescription={(item: any) => <>确定要删除项目 <b>{item.name}</b> 吗？</>}

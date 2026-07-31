@@ -104,11 +104,11 @@ export default function AllianceBrandTopicsPage() {
       } as AllianceBrandTopic & { enabled?: boolean })}
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
-          <div>
+          <div className="grid gap-2">
             <Label>名称 *</Label>
             <Input value={item.name || ""} onChange={(e: any) => setItem({ ...item, name: e.target.value })} />
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>状态</Label>
             <Select value={item.status || "draft"} onValueChange={(v: any) => setItem({ ...item, status: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -119,7 +119,7 @@ export default function AllianceBrandTopicsPage() {
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>布局</Label>
             <Select value={item.layout || "grid"} onValueChange={(v: any) => setItem({ ...item, layout: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -130,15 +130,15 @@ export default function AllianceBrandTopicsPage() {
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>主题</Label>
             <Input value={item.theme || ""} onChange={(e: any) => setItem({ ...item, theme: e.target.value })} />
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>描述</Label>
             <Textarea value={item.description || ""} onChange={(e: any) => setItem({ ...item, description: e.target.value })} rows={3} />
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>封面图 URL</Label>
             <Input value={item.coverImage || ""} onChange={(e: any) => setItem({ ...item, coverImage: e.target.value })} placeholder="https://..." />
           </div>

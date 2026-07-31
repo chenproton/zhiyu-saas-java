@@ -96,15 +96,15 @@ export default function AllianceAgreementsPage() {
       } as AllianceAgreement & { enabled?: boolean })}
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
-          <div>
+          <div className="grid gap-2">
             <Label>协议名称 *</Label>
             <Input value={item.name || ""} onChange={(e: any) => setItem({ ...item, name: e.target.value })} />
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>协议类型</Label>
             <Input value={item.type || ""} onChange={(e: any) => setItem({ ...item, type: e.target.value })} />
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>状态</Label>
             <Select value={item.status || "draft"} onValueChange={(v: any) => setItem({ ...item, status: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -118,16 +118,16 @@ export default function AllianceAgreementsPage() {
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="grid gap-2">
               <Label>开始日期</Label>
               <Input type="date" value={item.startDate || ""} onChange={(e: any) => setItem({ ...item, startDate: e.target.value })} />
             </div>
-            <div>
+            <div className="grid gap-2">
               <Label>结束日期</Label>
               <Input type="date" value={item.endDate || ""} onChange={(e: any) => setItem({ ...item, endDate: e.target.value })} />
             </div>
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>协议内容</Label>
             <Textarea value={item.content || ""} onChange={(e: any) => setItem({ ...item, content: e.target.value })} rows={4} />
           </div>

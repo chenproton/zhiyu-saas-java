@@ -119,11 +119,11 @@ export default function AllianceEnterprisesPage() {
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="grid gap-2">
               <Label>企业名称 *</Label>
               <Input value={item.name || ""} onChange={(e: any) => setItem({ ...item, name: e.target.value })} />
             </div>
-            <div>
+            <div className="grid gap-2">
               <Label>企业类型</Label>
               <Select value={item.enterpriseType || "platform"} onValueChange={(v: any) => setItem({ ...item, enterpriseType: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -133,15 +133,15 @@ export default function AllianceEnterprisesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="grid gap-2">
               <Label>所属行业</Label>
               <Input value={item.industry || ""} onChange={(e: any) => setItem({ ...item, industry: e.target.value })} />
             </div>
-            <div>
+            <div className="grid gap-2">
               <Label>所在地区</Label>
               <Input value={item.region || ""} onChange={(e: any) => setItem({ ...item, region: e.target.value })} />
             </div>
-            <div>
+            <div className="grid gap-2">
               <Label>合作状态</Label>
               <Select value={item.status || "negotiating"} onValueChange={(v: any) => setItem({ ...item, status: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -153,7 +153,7 @@ export default function AllianceEnterprisesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="grid gap-2">
               <Label>合作评级</Label>
               <Select value={item.rating || "general"} onValueChange={(v: any) => setItem({ ...item, rating: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -164,23 +164,23 @@ export default function AllianceEnterprisesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="grid gap-2">
               <Label>联系人</Label>
               <Input value={item.contactPerson || ""} onChange={(e: any) => setItem({ ...item, contactPerson: e.target.value })} />
             </div>
-            <div>
+            <div className="grid gap-2">
               <Label>联系电话</Label>
               <Input value={item.contactPhone || ""} onChange={(e: any) => setItem({ ...item, contactPhone: e.target.value })} />
             </div>
-            <div>
+            <div className="grid gap-2">
               <Label>联系邮箱</Label>
               <Input value={item.contactEmail || ""} onChange={(e: any) => setItem({ ...item, contactEmail: e.target.value })} />
             </div>
-            <div>
+            <div className="grid gap-2">
               <Label>Logo URL</Label>
               <Input value={item.logoUrl || ""} onChange={(e: any) => setItem({ ...item, logoUrl: e.target.value })} placeholder="https://..." />
             </div>
-            <div>
+            <div className="grid gap-2">
               <Label>企业地址</Label>
               <Input value={item.address || ""} onChange={(e: any) => setItem({ ...item, address: e.target.value })} />
             </div>
@@ -189,7 +189,7 @@ export default function AllianceEnterprisesPage() {
               <Label>公开显示</Label>
             </div>
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>企业描述</Label>
             <Textarea value={item.description || ""} onChange={(e: any) => setItem({ ...item, description: e.target.value })} rows={4} />
           </div>

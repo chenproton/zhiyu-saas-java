@@ -90,11 +90,11 @@ export default function AlliancePermissionsPage() {
       } as AlliancePermission & { enabled?: boolean })}
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
-          <div>
+          <div className="grid gap-2">
             <Label>账号名称 *</Label>
             <Input value={item.accountName || ""} onChange={(e: any) => setItem({ ...item, accountName: e.target.value })} />
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>账号类型</Label>
             <Select value={item.accountType || "enterprise"} onValueChange={(v: any) => setItem({ ...item, accountType: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>

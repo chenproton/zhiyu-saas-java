@@ -47,7 +47,7 @@ export default function AllianceSchoolPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
+        <div className="grid gap-2">
           <h1 className="text-2xl font-bold">学校信息管理</h1>
           <p className="text-muted-foreground text-sm mt-1">配置学校基本信息，数据将展示在门户前台</p>
         </div>
@@ -57,44 +57,44 @@ export default function AllianceSchoolPage() {
         <CardHeader><CardTitle>基础信息</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="grid gap-2">
               <Label>学校全称</Label>
               <Input value={info?.name || ""} onChange={(e) => update({ name: e.target.value })} />
             </div>
-            <div>
+            <div className="grid gap-2">
               <Label>学校简称</Label>
               <Input value={info?.shortName || ""} onChange={(e) => update({ shortName: e.target.value })} />
             </div>
-            <div>
+            <div className="grid gap-2">
               <Label>办学类型</Label>
               <Input value={info?.schoolType || ""} onChange={(e) => update({ schoolType: e.target.value })} />
             </div>
-            <div>
+            <div className="grid gap-2">
               <Label>省份</Label>
               <Input value={info?.province || ""} onChange={(e) => update({ province: e.target.value })} />
             </div>
-            <div>
+            <div className="grid gap-2">
               <Label>城市</Label>
               <Input value={info?.city || ""} onChange={(e) => update({ city: e.target.value })} />
             </div>
-            <div>
+            <div className="grid gap-2">
               <Label>联系电话</Label>
               <Input value={info?.contactPhone || ""} onChange={(e) => update({ contactPhone: e.target.value })} />
             </div>
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>地址</Label>
             <Input value={info?.address || ""} onChange={(e) => update({ address: e.target.value })} />
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>官网</Label>
             <Input value={info?.website || ""} onChange={(e) => update({ website: e.target.value })} />
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>学校简介</Label>
             <Textarea value={info?.description || ""} onChange={(e) => update({ description: e.target.value })} rows={6} />
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>Logo URL</Label>
             <Input value={info?.logoUrl || ""} onChange={(e) => update({ logoUrl: e.target.value })} placeholder="https://..." />
           </div>

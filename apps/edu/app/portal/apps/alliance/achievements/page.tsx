@@ -99,11 +99,11 @@ export default function AllianceAchievementsPage() {
       } as AllianceAchievement & { enabled?: boolean })}
       renderForm={(item: any, setItem: any) => (
         <div className="space-y-4">
-          <div>
+          <div className="grid gap-2">
             <Label>成果标题 *</Label>
             <Input value={item.title || ""} onChange={(e: any) => setItem({ ...item, title: e.target.value })} />
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>成果类型</Label>
             <Select value={item.type || "custom"} onValueChange={(v: any) => setItem({ ...item, type: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -115,7 +115,7 @@ export default function AllianceAchievementsPage() {
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>状态</Label>
             <Select value={item.status || "draft"} onValueChange={(v: any) => setItem({ ...item, status: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -126,11 +126,11 @@ export default function AllianceAchievementsPage() {
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>描述</Label>
             <Textarea value={item.description || ""} onChange={(e: any) => setItem({ ...item, description: e.target.value })} rows={4} />
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label>封面图 URL</Label>
             <Input value={item.coverImage || ""} onChange={(e: any) => setItem({ ...item, coverImage: e.target.value })} placeholder="https://..." />
           </div>
