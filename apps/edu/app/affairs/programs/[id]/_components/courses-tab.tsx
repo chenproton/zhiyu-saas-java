@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Plus, Save, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,23 +39,10 @@ interface CourseRow {
   scenarioId: string
   courseId: string
   positionId: string
-  isPositionChild: boolean
 }
 
 function emptyRow(key: string): CourseRow {
-  return {
-    key, name: "", code: "", credits: 0, hours: 0,
-    nature: "必修",
-    linkType: "none", scenarioId: "", courseId: "", positionId: "", isPositionChild: false,
-  }
-}
-
-function scenarioRow(key: string, scenario: Scenario, positionId: string): CourseRow {
-  return {
-    key, name: scenario.name, code: scenario.code || "", credits: 0, hours: 0,
-    nature: "必修",
-    linkType: "position", scenarioId: scenario.id, courseId: "", positionId: positionId, isPositionChild: true,
-  }
+  return { key, name: "", code: "", credits: 0, hours: 0, nature: "必修", linkType: "none", scenarioId: "", courseId: "", positionId: "" }
 }
 
 export function ProgramCoursesTab({ programId }: { programId: string }) {
@@ -71,51 +58,69 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
   const loadCourses = useCallback(async () => {
     try {
       const res = await programApi.listCourses(programId)
-      const scenarioIds = res.items.filter((c) => c.scenarioId).map((c) => c.scenarioId!) as string[]
-      const scenarioPosMap: Record<string, string> = {}
+      const loadedRows: CourseRow[] = res.items.map((c) => ({
+        key: c.id, name: c.name, code: c.code || "", credits: c.credits, hours: c.hours,
+        nature: c.nature || "必修",
+        linkType: c.scenarioId ? "position" : c.courseId ? "course" : "none",
+        scenarioId: c.scenarioId || "", courseId: c.courseId || "", positionId: "",
+      }))
+      const scenarioIds = loadedRows.filter((r) => r.scenarioId).map((r) => r.scenarioId) as string[]
       if (scenarioIds.length > 0) {
         try {
           const scenarioRes = await scenarioApi.list({ status: "published", limit: 1000 })
+          const posMap: Record<string, string> = {}
           ;(scenarioRes.items || []).forEach((s) => {
-            if (s.careerPositionId && scenarioIds.includes(s.id)) scenarioPosMap[s.id] = s.careerPositionId
+            if (s.careerPositionId && scenarioIds.includes(s.id)) posMap[s.id] = s.careerPositionId
+          })
+          loadedRows.forEach((r) => {
+            if (r.scenarioId && posMap[r.scenarioId]) r.positionId = posMap[r.scenarioId]
           })
         } catch { /* ignore */ }
       }
-      setRows(res.items.map((c) => ({
-        key: c.id,
-        name: c.name,
-        code: c.code || "",
-        credits: c.credits,
-        hours: c.hours,
-        nature: c.nature || "必修",
-        linkType: c.scenarioId ? "position" : c.courseId ? "course" : "none",
-        scenarioId: c.scenarioId || "",
-        courseId: c.courseId || "",
-        positionId: c.scenarioId && scenarioPosMap[c.scenarioId] ? scenarioPosMap[c.scenarioId] : "",
-        isPositionChild: false,
-      })))
+      const grouped = new Map<string, { posId: string; scenarios: CourseRow[] }>()
+      const regular: CourseRow[] = []
+      loadedRows.forEach((r) => {
+        if (r.linkType === "position" && r.positionId) {
+          const key = r.positionId
+          const entry = grouped.get(key)
+          if (entry) { entry.scenarios.push(r) } else { grouped.set(key, { posId: key, scenarios: [r] }) }
+        } else {
+          regular.push(r)
+        }
+      })
+      const displayRows: CourseRow[] = []
+      grouped.forEach((g) => {
+        const first = g.scenarios[0]
+        displayRows.push({ ...first, key: `pos-${g.posId}-${Date.now()}`, linkType: "position", positionId: g.posId })
+      })
+      displayRows.push(...regular)
+      setRows(displayRows)
+      for (const [posId, g] of grouped) {
+        const scenarioIds = g.scenarios.map((s) => s.scenarioId)
+        if (scenarioIds.length > 0) {
+          try {
+            const sn = await scenarioApi.list({ status: "published", limit: 1000 })
+            const filtered = (sn.items || []).filter((s) => scenarioIds.includes(s.id))
+            setPositionScenariosMap((prev) => ({ ...prev, [posId]: filtered }))
+          } catch { /* ignore */ }
+        }
+      }
     } catch (err: any) {
       toast({ variant: "destructive", title: "加载失败", description: err.message || "查询课程设置失败" })
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
   }, [programId, toast])
 
   useEffect(() => { ;(async () => { await loadCourses() })() }, [loadCourses])
 
   useEffect(() => {
     let c = false
-    ;(async () => {
-      try { const r = await positionApi.list({ status: "published", limit: 200 }); if (!c) setPositions(r.items) } catch { /* ignore */ }
-    })()
+    ;(async () => { try { const r = await positionApi.list({ status: "published", limit: 200 }); if (!c) setPositions(r.items) } catch { /* ignore */ } })()
     return () => { c = true }
   }, [])
 
   useEffect(() => {
     let c = false
-    ;(async () => {
-      try { const r = await courseApi.list({ type: "system", status: "published", limit: 200 }); if (!c) setSystemCourses(r.items) } catch { /* ignore */ }
-    })()
+    ;(async () => { try { const r = await courseApi.list({ type: "system", status: "published", limit: 200 }); if (!c) setSystemCourses(r.items) } catch { /* ignore */ } })()
     return () => { c = true }
   }, [])
 
@@ -140,77 +145,92 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
   }
 
   const removeRow = (key: string) => {
-    setRows((prev) => {
-      const target = prev.find((r) => r.key === key)
-      if (!target) return prev
-      if (target.linkType === "position" && target.positionId) {
-        return prev.filter((r) => r.key !== key && !(r.isPositionChild && r.positionId === target.positionId))
-      }
-      return prev.filter((r) => r.key !== key)
-    })
+    setRows((prev) => prev.filter((r) => r.key !== key))
   }
 
   const handlePositionChange = async (rowKey: string, newPositionId: string) => {
     if (!newPositionId || newPositionId === "none") {
-      setRows((prev) => {
-        const target = prev.find((r) => r.key === rowKey)
-        if (target?.positionId) {
-          return prev.filter((r) => !(r.isPositionChild && r.positionId === target.positionId)).map((r) => r.key === rowKey ? { ...r, positionId: "" } : r)
-        }
-        return prev.map((r) => r.key === rowKey ? { ...r, scenarioId: "", positionId: "" } : r)
-      })
+      updateRow(rowKey, { positionId: "", scenarioId: "" })
       return
     }
     updateRow(rowKey, { positionId: newPositionId })
-    const scenarios = await fetchPositionScenarios(newPositionId)
-    setRows((prev) => {
-      const target = prev.find((r) => r.key === rowKey)
-      const filtered = target?.positionId
-        ? prev.filter((r) => !(r.isPositionChild && r.positionId === target.positionId))
-        : prev
-      const childRows = scenarios.map((s, i) => scenarioRow(`pos-child-${Date.now()}-${newPositionId}-${i}`, s, newPositionId))
-      return filtered.flatMap((r) => {
-        if (r.key === rowKey) return [r, ...childRows]
-        return [r]
-      })
-    })
+    fetchPositionScenarios(newPositionId)
   }
 
   const handleSave = async () => {
-    const invalid = rows.filter((r) => !(r.linkType === "position" && r.positionId && !r.isPositionChild)).find((r) => r.name.trim() === "")
+    const invalid = rows.find((r) => r.name.trim() === "")
     if (invalid) {
       toast({ variant: "destructive", title: "无法保存", description: "每项岗位/课程需填写名称" })
       return
     }
     setSaving(true)
     try {
-      const saveRows = rows.filter((r) => !(r.linkType === "position" && r.positionId && !r.isPositionChild))
-      const payloads = saveRows.map((r, i) => ({
-        name: r.name.trim(),
-        code: r.code.trim() || undefined,
-        credits: r.credits || 0,
-        hours: r.hours || 0,
-        theoryHours: 0,
-        practiceHours: 0,
-        semester: 1,
-        nature: r.nature,
-        assessment: undefined,
-        scenarioId: r.scenarioId || undefined,
-        courseId: r.linkType === "course" ? r.courseId || undefined : undefined,
-        sortOrder: i,
-      }))
+      const payloads: any[] = []
+      rows.forEach((r, i) => {
+        if (r.linkType === "position" && r.positionId) {
+          const scenarios = positionScenariosMap[r.positionId] || []
+          scenarios.forEach((s, si) => {
+            payloads.push({
+              name: s.name, code: s.code || undefined,
+              credits: r.credits || 0, hours: r.hours || 0,
+              theoryHours: 0, practiceHours: 0, semester: 1,
+              nature: r.nature,
+              assessment: undefined,
+              scenarioId: s.id,
+              courseId: undefined,
+              sortOrder: i * 1000 + si,
+            })
+          })
+        } else {
+          payloads.push({
+            name: r.name.trim(), code: r.code.trim() || undefined,
+            credits: r.credits || 0, hours: r.hours || 0,
+            theoryHours: 0, practiceHours: 0, semester: 1,
+            nature: r.nature,
+            assessment: undefined,
+            scenarioId: undefined,
+            courseId: r.linkType === "course" ? r.courseId || undefined : undefined,
+            sortOrder: i * 1000,
+          })
+        }
+      })
       await programApi.saveCourses(programId, payloads)
       toast({ title: "课程设置已保存" })
       await loadCourses()
     } catch (err: any) {
       toast({ variant: "destructive", title: "保存失败", description: err.message || "保存课程设置失败" })
-    } finally {
-      setSaving(false)
-    }
+    } finally { setSaving(false) }
   }
 
-  const courseCount = rows.filter((r) => !(r.linkType === "position" && r.positionId && !r.isPositionChild)).length
-  const totalCredits = rows.reduce((sum, r) => sum + (r.credits || 0), 0)
+  const expandedPosIds = useMemo(() => {
+    const ids = new Set<string>()
+    rows.filter((r) => r.linkType === "position" && r.positionId).forEach((r) => ids.add(r.positionId))
+    return ids
+  }, [rows])
+
+  const courseCount = useMemo(() => {
+    let count = 0
+    rows.forEach((r) => {
+      if (r.linkType === "position" && r.positionId) {
+        count += (positionScenariosMap[r.positionId] || []).length
+      } else {
+        count++
+      }
+    })
+    return count
+  }, [rows, positionScenariosMap])
+
+  const totalCredits = useMemo(() => {
+    let sum = 0
+    rows.forEach((r) => {
+      if (r.linkType === "position" && r.positionId) {
+        sum += r.credits * (positionScenariosMap[r.positionId] || []).length
+      } else {
+        sum += r.credits || 0
+      }
+    })
+    return sum
+  }, [rows, positionScenariosMap])
 
   return (
     <div className="rounded-lg border bg-white px-4 py-3 space-y-3">
@@ -248,42 +268,37 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
               <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground">暂无岗位/课程，点击「添加岗位/课程」开始设置</TableCell></TableRow>
             ) : (
               rows.map((r) => {
-                const isParent = r.linkType === "position" && r.positionId !== ""
-                const isReadOnly = isParent
-                const posLabel = positions.find((p) => p.id === r.positionId)?.name || ""
+                const isPos = r.linkType === "position" && r.positionId !== ""
                 const posScenarios = r.positionId ? (positionScenariosMap[r.positionId] || []) : []
 
                 return (
-                  <TableRow key={r.key} className={isParent ? "bg-blue-50/50 border-l-2 border-l-blue-400" : r.isPositionChild ? "bg-blue-50/20" : ""}>
+                  <TableRow key={r.key}>
                     <TableCell>
-                      <Input className="h-8" value={r.name} onChange={(e) => updateRow(r.key, { name: e.target.value })} placeholder={r.isPositionChild ? "从场景自动填充" : "岗位/课程名称"} disabled={isReadOnly} />
+                      <Input className="h-8" value={r.name} onChange={(e) => updateRow(r.key, { name: e.target.value })} placeholder="岗位/课程名称" disabled={isPos} />
                     </TableCell>
                     <TableCell>
                       <span className="text-sm text-muted-foreground">{r.code || "-"}</span>
                     </TableCell>
                     <TableCell>
-                      <Input className="h-8" type="number" min={0} step="0.5" value={r.credits} onChange={(e) => updateRow(r.key, { credits: Number(e.target.value) })} disabled={isReadOnly} />
+                      <Input className="h-8" type="number" min={0} step="0.5" value={r.credits} onChange={(e) => updateRow(r.key, { credits: Number(e.target.value) })} disabled={isPos} />
                     </TableCell>
                     <TableCell>
-                      <Input className="h-8" type="number" min={0} value={r.hours} onChange={(e) => updateRow(r.key, { hours: Number(e.target.value) })} disabled={isReadOnly} />
+                      <Input className="h-8" type="number" min={0} value={r.hours} onChange={(e) => updateRow(r.key, { hours: Number(e.target.value) })} disabled={isPos} />
                     </TableCell>
                     <TableCell>
-                      <Select value={r.nature} onValueChange={(v) => updateRow(r.key, { nature: v })} disabled={isReadOnly}>
+                      <Select value={r.nature} onValueChange={(v) => updateRow(r.key, { nature: v })} disabled={isPos}>
                         <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                         <SelectContent>{NATURE_OPTIONS.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
                       </Select>
                     </TableCell>
                     <TableCell>
-                      {r.linkType === "position" ? (
+                      {isPos ? (
                         <div className="space-y-1">
                           <div className="flex items-center gap-1">
                             <Select value={r.linkType} onValueChange={(v) => {
                               const lt = v as LinkType
-                              if (lt !== "position" && r.positionId) {
-                                setRows((prev) => prev.filter((row) => !(row.isPositionChild && row.positionId === r.positionId)).map((row) => row.key === r.key ? { ...row, linkType: "none", positionId: "", scenarioId: "" } : row))
-                              } else {
-                                updateRow(r.key, { linkType: lt, scenarioId: "", courseId: "" })
-                              }
+                              if (lt !== "position") updateRow(r.key, { linkType: "none", positionId: "", scenarioId: "" })
+                              else updateRow(r.key, { linkType: lt, scenarioId: "", courseId: "" })
                             }}>
                               <SelectTrigger className="h-8 w-[80px]"><SelectValue /></SelectTrigger>
                               <SelectContent>
@@ -302,12 +317,13 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
                           </div>
                           {r.positionId && (
                             <div className="text-xs text-muted-foreground pl-1">
-                              {loadingPosScen[r.positionId] ? "加载场景中..." : posScenarios.length > 0 ? `${posScenarios.length} 个场景已加载到下方` : "该岗位下暂无已发布场景"}
+                              {loadingPosScen[r.positionId] ? "加载中..." :
+                                posScenarios.length > 0
+                                  ? `包含 ${posScenarios.length} 个场景：${posScenarios.map((s) => s.name).join("、")}`
+                                  : "该岗位下暂无已发布场景"}
                             </div>
                           )}
                         </div>
-                      ) : r.isPositionChild ? (
-                        <span className="text-xs text-blue-600">{posLabel} → {r.name}</span>
                       ) : r.linkType === "course" ? (
                         <div className="flex items-center gap-1">
                           <Select value={r.linkType} onValueChange={(v) => updateRow(r.key, { linkType: v as LinkType, courseId: "", scenarioId: "" })}>
@@ -345,9 +361,7 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                        onClick={() => removeRow(r.key)}
-                        title={isParent ? "删除此岗位及所有关联场景行" : ""}>
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={() => removeRow(r.key)}>
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </TableCell>
