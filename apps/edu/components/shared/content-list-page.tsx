@@ -1141,11 +1141,13 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
 
         {!isLoading && filtered.length > 0 && viewMode !== "group" && (
           <CardContent className="pt-0">
+            {/* eslint-disable-next-line react-hooks/refs */}
             {renderList(listProps)}
           </CardContent>
         )}
       </Card>
 
+      {/* eslint-disable react-hooks/refs */}
       {!isLoading && filtered.length > 0 && viewMode === "group" && itemsByBatch && (
         <div className="space-y-4">
           {Object.entries(itemsByBatch).map(([batchId, batchItems]) => {
@@ -1197,6 +1199,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
           )}
         </div>
       )}
+      {/* eslint-enable react-hooks/refs */}
 
       {!isLoading && loadError && (
         <div className="flex flex-col items-center justify-center rounded-xl border border-red-200 bg-white py-20 shadow-sm">

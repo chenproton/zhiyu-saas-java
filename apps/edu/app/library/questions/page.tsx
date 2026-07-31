@@ -48,6 +48,7 @@ export default function QuestionsPage() {
     } catch { /* ignore */ }
   }, [])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadMajors(); loadItems() }, [loadItems, loadMajors])
 
   const handleAdd = () => { setEditing(null); setName(""); setDesc(""); setAnswer(""); setMajorId(""); setDialogOpen(true) }

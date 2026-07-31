@@ -79,8 +79,9 @@ export default function ExamDetailPage() {
 
   const questionTypeStats = useMemo(() => {
     if (!exam) return []
+    const examQuestions = exam.questions || []
     const stats: Record<string, { count: number; score: number }> = {}
-    questions.forEach((q) => {
+    examQuestions.forEach((q) => {
       const label = typeLabelMap[q.type] || q.type
       if (!stats[label]) stats[label] = { count: 0, score: 0 }
       stats[label].count += 1
@@ -93,7 +94,7 @@ export default function ExamDetailPage() {
       value: count,
       color: pieColors[index % pieColors.length],
     }))
-  }, [exam, questions])
+  }, [exam])
 
   const isSceneTask = !!taskId && !!methodKey
   const isCourseTask = !!courseId && !!nodeId

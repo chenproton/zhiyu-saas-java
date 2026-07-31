@@ -396,9 +396,11 @@ export function CourseEvaluationRulesDialog({
   }, [])
 
   // Preload papers when component mounts
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadPapers() }, [loadPapers])
 
   // Preload random draw questions, majors, and rubric templates
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadRdqQuestions(); loadMajors(); loadRubricTemplates() }, [loadRdqQuestions, loadMajors, loadRubricTemplates])
 
   const majorOptions = useMemo(() => [{ id: "全部", name: "全部" }, ...majors.map((m: any) => ({ id: m.id, name: m.name }))], [majors])

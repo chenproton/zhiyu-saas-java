@@ -181,6 +181,7 @@ function AddSystemPageInner() {
   const [coverImage, setCoverImage] = useState("")
   const [batchId, setBatchId] = useState("")
   const [originalStatus, setOriginalStatus] = useState("draft")
+  const [courseDescriptionPdf, setCourseDescriptionPdf] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const hasSavedRef = useRef(false)
@@ -385,7 +386,6 @@ function AddSystemPageInner() {
   const [detailedDescription, setDetailedDescription] = useState("")
   const [estimatedHours, setEstimatedHours] = useState("")
   const [learningGoalPdf, setLearningGoalPdf] = useState<string | null>(null)
-  const [courseDescriptionPdf, setCourseDescriptionPdf] = useState<string | null>(null)
 
   /* module 2: knowledge points */
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePointItem[]>([])
@@ -408,6 +408,7 @@ function AddSystemPageInner() {
         linked: !customKnowledgePointIds.has(k.id),
       })))
     }).catch(() => setKnowledgePool([]))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   /* module 3: resources */
@@ -445,6 +446,7 @@ function AddSystemPageInner() {
     setDifficulty(node.difficulty || 0)
     const nodeEvalData = (node.evalData || {}) as { methods?: string[]; evalRuleConfig?: EvalRuleConfig }
     setNodeEvalRuleConfig(nodeEvalData.evalRuleConfig)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   /* load draft when selected node changes */

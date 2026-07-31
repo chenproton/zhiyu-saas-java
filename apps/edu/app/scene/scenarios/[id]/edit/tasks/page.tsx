@@ -970,7 +970,7 @@ export default function TasksEditPage() {
       }
     }
     load()
-  }, [scenarioId, user?.id])
+  }, [scenarioId, user?.id, ensureDatasets])
 
   const [editingCard, setEditingCard] = useState<{ taskId: string; type: CardType } | null>(null)
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false)
