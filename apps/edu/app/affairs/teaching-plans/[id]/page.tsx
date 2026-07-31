@@ -23,9 +23,8 @@ import {
 import { useToast } from "@zhiyu/ui"
 import { PageHeaderCard } from "@/components/shared/page-header-card"
 import { StatusBadge } from "@/components/shared/status-badge"
-import { Badge } from "@/components/ui/badge"
 import { UserSelector } from "@/components/shared/user-selector"
-import { OrgNodePicker } from "@/components/shared/org-node-picker"
+import { MultiOrgNodePicker } from "@/components/shared/multi-org-node-picker"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { teachingPlanApi } from "@/lib/api"
 import type { TeachingPlanDetail, TeachingPlanEntry } from "@/lib/types"
@@ -59,7 +58,6 @@ export default function TeachingPlanDetailPage() {
   const [editTotalHours, setEditTotalHours] = useState("")
   const [editVenueType, setEditVenueType] = useState("")
   const [editClassNodeIds, setEditClassNodeIds] = useState<string[]>([])
-  const [showAddClass, setShowAddClass] = useState(false)
   const [savingEntry, setSavingEntry] = useState(false)
 
   const loadPlan = useCallback(async () => {
@@ -96,7 +94,6 @@ export default function TeachingPlanDetailPage() {
     setEditTotalHours(String(e.totalHours || 0))
     setEditVenueType(e.venueType || "")
     setEditClassNodeIds(e.classNodeIds || (e.classNodeId ? [e.classNodeId] : []))
-    setShowAddClass(false)
   }
 
   const handleSaveEntry = async (entryId: string) => {
@@ -215,22 +212,14 @@ export default function TeachingPlanDetailPage() {
                           </TableCell>
                           <TableCell>
                             {editing ? (
-                              <div className="space-y-1.5">
-                                <div className="flex flex-wrap gap-1">
-                                  {editClassNodeIds.map((cid, idx) => (
-                                    <Badge key={cid} variant="secondary" className="gap-1 pr-1">
-                                      <span className="max-w-[100px] truncate">{e.classNames?.[idx] || cid}</span>
-                                      <button className="ml-0.5 hover:text-destructive" onClick={() => setEditClassNodeIds((prev) => prev.filter((_, i) => i !== idx))}>&times;</button>
-                                    </Badge>
-                                  ))}
-                                  <Button variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={() => setShowAddClass(true)}>+ 添加班级</Button>
-                                </div>
-                                {showAddClass && (
-                                  <OrgNodePicker tenantId={tenantId} value={undefined}
-                                    onChange={(v) => { if (v && !editClassNodeIds.includes(v)) { setEditClassNodeIds((prev) => [...prev, v]) }; setShowAddClass(false) }}
-                                    selectableTypes={["班级"]} placeholder="选择班级" title="添加授课班级" />
-                                )}
-                              </div>
+                              <MultiOrgNodePicker
+                                tenantId={tenantId}
+                                value={editClassNodeIds}
+                                onChange={setEditClassNodeIds}
+                                selectableTypes={["班级"]}
+                                placeholder="选择班级"
+                                title="选择授课班级"
+                              />
                             ) : (
                               <span className="text-sm">{(e.classNames || []).length > 0 ? (e.classNames || []).join("、") : (e.className || "-")}</span>
                             )}
