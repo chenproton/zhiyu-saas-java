@@ -7,6 +7,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
+import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceEnterprise } from "@/lib/types"
 
 export default function AlliancePublicEnterpriseDetailPage() {
@@ -37,11 +38,11 @@ export default function AlliancePublicEnterpriseDetailPage() {
         <div>
           <h1 className="text-2xl font-bold">{enterprise.name}</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {enterprise.enterpriseType === "platform" ? "平台企业" : "校本企业"}
+            {allianceLabel("enterpriseType", enterprise.enterpriseType)}
             {enterprise.industry ? ` · ${enterprise.industry}` : ""}
           </p>
         </div>
-        <Badge variant="outline">{enterprise.status}</Badge>
+        <Badge variant="outline">{allianceLabel("enterpriseStatus", enterprise.status)}</Badge>
       </div>
 
       {enterprise.logoUrl && (
@@ -54,7 +55,7 @@ export default function AlliancePublicEnterpriseDetailPage() {
           <CardContent className="space-y-2 text-sm">
             <p><span className="text-muted-foreground">所属行业：</span>{enterprise.industry || "-"}</p>
             <p><span className="text-muted-foreground">所在地区：</span>{enterprise.region || "-"}</p>
-            <p><span className="text-muted-foreground">合作评级：</span>{enterprise.rating || "-"}</p>
+            <p><span className="text-muted-foreground">合作评级：</span>{allianceLabel("enterpriseRating", enterprise.rating)}</p>
             <p><span className="text-muted-foreground">地址：</span>{enterprise.address || "-"}</p>
           </CardContent>
         </Card>

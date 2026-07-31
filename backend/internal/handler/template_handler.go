@@ -1375,7 +1375,7 @@ func (h *TemplateHandler) generateEnterpriseTemplate(ctx context.Context, tenant
 	f.DeleteSheet("Sheet1")
 	headers := []string{"企业名称 *", "企业类型", "所属行业", "所在地区", "合作状态", "合作评级", "联系人", "联系电话", "联系邮箱", "企业地址"}
 	widths := []float64{28, 22, 20, 20, 22, 22, 18, 18, 24, 36}
-	setA1("合作企业", 10, "填写说明：\n* 必填列。\n企业类型：platform（平台企业） / school-based（校办企业），默认为 platform\n所属行业 / 所在地区：文本，选填\n合作状态：negotiating（洽谈中） / active（合作中） / paused（暂停） / terminated（终止），默认为 active\n合作评级：strategic（战略） / deep（深度） / general（一般），选填\n联系人 / 联系电话 / 联系邮箱 / 企业地址：选填")
+	setA1("合作企业", 10, "填写说明：\n* 必填列。\n企业类型：平台企业 / 校本企业（或 platform / school-based），默认为 平台企业\n所属行业 / 所在地区：文本，选填\n合作状态：洽谈中 / 合作中 / 已暂停 / 已终止（或 negotiating / active / paused / terminated），默认为 合作中\n合作评级：战略合作 / 深度合作 / 一般合作（或 strategic / deep / general），选填\n联系人 / 联系电话 / 联系邮箱 / 企业地址：选填")
 	setHdr("合作企业", 2, headers, widths)
 	f.SetPanes("合作企业", &excelize.Panes{Freeze: true, YSplit: 2})
 	f.AutoFilter("合作企业", "A2:J2", []excelize.AutoFilterOptions{})
@@ -1413,7 +1413,7 @@ func (h *TemplateHandler) generateProjectTemplate(ctx context.Context, tenantID 
 	f.DeleteSheet("Sheet1")
 	headers := []string{"项目名称 *", "项目类型", "项目阶段", "开始日期", "结束日期", "描述"}
 	widths := []float64{28, 20, 22, 16, 16, 48}
-	setA1("合作项目", 6, "填写说明：\n* 必填列。\n项目类型：文本，选填\n项目阶段：initiation（启动） / execution（执行） / acceptance（验收） / closure（关闭），默认为 initiation\n开始日期 / 结束日期：格式 YYYY-MM-DD，选填\n描述：文本，选填")
+	setA1("合作项目", 6, "填写说明：\n* 必填列。\n项目类型：文本，选填\n项目阶段：启动 / 执行中 / 验收 / 关闭（或 initiation / execution / acceptance / closure），默认为 启动\n开始日期 / 结束日期：格式 YYYY-MM-DD，选填\n描述：文本，选填")
 	setHdr("合作项目", 2, headers, widths)
 	f.SetPanes("合作项目", &excelize.Panes{Freeze: true, YSplit: 2})
 	f.AutoFilter("合作项目", "A2:F2", []excelize.AutoFilterOptions{})
@@ -1451,7 +1451,7 @@ func (h *TemplateHandler) generateAchievementTemplate(ctx context.Context, tenan
 	f.DeleteSheet("Sheet1")
 	headers := []string{"成果名称 *", "成果类型", "描述", "成果日期"}
 	widths := []float64{28, 22, 48, 16}
-	setA1("合作成果", 4, "填写说明：\n* 必填列。\n成果类型：job（岗位） / scene（场景） / course（课程） / custom（自定义），默认为 custom\n描述：文本，选填\n成果日期：格式 YYYY-MM-DD，选填")
+	setA1("合作成果", 4, "填写说明：\n* 必填列。\n成果类型：岗位成果 / 场景成果 / 课程成果 / 自定义成果（或 job / scene / course / custom），默认为 自定义成果\n描述：文本，选填\n成果日期：格式 YYYY-MM-DD，选填")
 	setHdr("合作成果", 2, headers, widths)
 	f.SetPanes("合作成果", &excelize.Panes{Freeze: true, YSplit: 2})
 	f.AutoFilter("合作成果", "A2:D2", []excelize.AutoFilterOptions{})
@@ -1527,7 +1527,7 @@ func (h *TemplateHandler) generateAgreementTemplate(ctx context.Context, tenantI
 	f.DeleteSheet("Sheet1")
 	headers := []string{"协议名称 *", "协议类型", "开始日期", "结束日期", "状态", "内容"}
 	widths := []float64{28, 22, 16, 16, 20, 48}
-	setA1("合作协议", 6, "填写说明：\n* 必填列。\n协议类型：文本，选填\n开始日期 / 结束日期：格式 YYYY-MM-DD，选填\n状态：draft（草稿）/ active（有效）/ expired（失效），默认为 draft\n内容：文本，选填")
+	setA1("合作协议", 6, "填写说明：\n* 必填列。\n协议类型：文本，选填\n开始日期 / 结束日期：格式 YYYY-MM-DD，选填\n状态：草稿 / 生效中 / 已失效 / 已续签 / 已终止（或 draft / active / expired / renewed / terminated），默认为 草稿\n内容：文本，选填")
 	setHdr("合作协议", 2, headers, widths)
 	f.SetPanes("合作协议", &excelize.Panes{Freeze: true, YSplit: 2})
 	f.AutoFilter("合作协议", "A2:F2", []excelize.AutoFilterOptions{})
@@ -1565,7 +1565,7 @@ func (h *TemplateHandler) generatePermissionTemplate(ctx context.Context, tenant
 	f.DeleteSheet("Sheet1")
 	headers := []string{"账号名称 *", "账号类型", "是否启用"}
 	widths := []float64{28, 22, 14}
-	setA1("合作权限", 3, "填写说明：\n* 必填列。\n账号类型：enterprise（企业） / expert（专家），默认为 enterprise\n是否启用：true / false 或 是 / 否，默认为 true（启用）")
+	setA1("合作权限", 3, "填写说明：\n* 必填列。\n账号类型：企业账号 / 专家账号（或 enterprise / expert），默认为 企业账号\n是否启用：是 / 否（或 true / false），默认为 是（启用）")
 	setHdr("合作权限", 2, headers, widths)
 	f.SetPanes("合作权限", &excelize.Panes{Freeze: true, YSplit: 2})
 	f.AutoFilter("合作权限", "A2:C2", []excelize.AutoFilterOptions{})
@@ -1603,7 +1603,7 @@ func (h *TemplateHandler) generateBrandTemplate(ctx context.Context, tenantID st
 	f.DeleteSheet("Sheet1")
 	headers := []string{"品牌类型 *", "名称 *", "描述"}
 	widths := []float64{28, 28, 48}
-	setA1("品牌内容", 3, "填写说明：\n* 必填列。\n品牌类型：talent（人才品牌） / employer（雇主品牌） / job（岗位品牌） / major（专业品牌） / teacher（教师品牌） / culture（文化品牌）\n名称：品牌名称\n描述：文本，选填")
+	setA1("品牌内容", 3, "填写说明：\n* 必填列。\n品牌类型：人才品牌 / 雇主品牌 / 岗位品牌 / 专业品牌 / 师资品牌 / 文化品牌（或 talent / employer / job / major / teacher / culture）\n名称：品牌名称\n描述：文本，选填")
 	setHdr("品牌内容", 2, headers, widths)
 	f.SetPanes("品牌内容", &excelize.Panes{Freeze: true, YSplit: 2})
 	f.AutoFilter("品牌内容", "A2:C2", []excelize.AutoFilterOptions{})
@@ -1641,7 +1641,7 @@ func (h *TemplateHandler) generateBrandTopicTemplate(ctx context.Context, tenant
 	f.DeleteSheet("Sheet1")
 	headers := []string{"专题名称 *", "主题", "布局", "描述"}
 	widths := []float64{28, 28, 22, 48}
-	setA1("品牌专题", 4, "填写说明：\n* 必填列。\n主题：文本，选填\n布局：grid（网格） / timeline（时间线） / magazine（杂志），默认为 grid\n描述：文本，选填")
+	setA1("品牌专题", 4, "填写说明：\n* 必填列。\n主题：文本，选填\n布局：网格 / 时间线 / 杂志（或 grid / timeline / magazine），默认为 网格\n描述：文本，选填")
 	setHdr("品牌专题", 2, headers, widths)
 	f.SetPanes("品牌专题", &excelize.Panes{Freeze: true, YSplit: 2})
 	f.AutoFilter("品牌专题", "A2:D2", []excelize.AutoFilterOptions{})

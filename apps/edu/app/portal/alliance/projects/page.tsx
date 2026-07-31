@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
+import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceProject } from "@/lib/types"
 
 export default function AlliancePublicProjectsPage() {
@@ -34,7 +35,7 @@ export default function AlliancePublicProjectsPage() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <CardTitle className="text-lg">{item.name}</CardTitle>
-                    <Badge variant="outline">{item.phase}</Badge>
+                    <Badge variant="outline">{allianceLabel("projectPhase", item.phase)}</Badge>
                   </div>
                   {item.startDate && <CardDescription>开始: {item.startDate}</CardDescription>}
                 </CardHeader>

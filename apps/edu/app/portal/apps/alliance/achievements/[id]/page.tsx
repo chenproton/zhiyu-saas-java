@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
-import { StatusBadge } from "@/components/shared/status-badge"
+import { allianceLabel } from "@zhiyu/shared-types"
 import { AllianceDetailShell } from "@/components/shared/alliance-detail-shell"
 import type { AllianceAchievement } from "@/lib/types"
 
@@ -32,10 +32,6 @@ export default function AllianceAchievementDetailPage() {
     return <AllianceDetailShell title="" tabs={[]} notFound backHref="/portal/apps/alliance/achievements" />
   }
 
-  const typeLabel: Record<string, string> = {
-    job: "岗位", scene: "场景", course: "课程", custom: "自定义",
-  }
-
   const tabs = [
     {
       key: "info",
@@ -45,9 +41,9 @@ export default function AllianceAchievementDetailPage() {
           <Card>
             <CardHeader><CardTitle>基础信息</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <p><span className="text-muted-foreground">成果类型：</span>{typeLabel[achievement?.type || ""] || achievement?.type || "-"}</p>
+              <p><span className="text-muted-foreground">成果类型：</span>{allianceLabel("achievementType", achievement?.type)}</p>
               <p><span className="text-muted-foreground">成果日期：</span>{achievement?.achievementDate || "-"}</p>
-              <p><span className="text-muted-foreground">状态：</span><StatusBadge status={achievement?.status || "draft"} /></p>
+              <p><span className="text-muted-foreground">状态：</span>{allianceLabel("achievementStatus", achievement?.status)}</p>
               <p><span className="text-muted-foreground">公开显示：</span>{achievement?.isPublic ? "是" : "否"}</p>
               <p><span className="text-muted-foreground">浏览量：</span>{achievement?.viewCount || 0}</p>
             </CardContent>
@@ -127,8 +123,8 @@ export default function AllianceAchievementDetailPage() {
   return (
     <AllianceDetailShell
       title={achievement?.title || ""}
-      subtitle={`${typeLabel[achievement?.type || ""] || achievement?.type}成果`}
-      statusBadge={achievement ? <StatusBadge status={achievement.status} /> : undefined}
+      subtitle={`${allianceLabel("achievementType", achievement?.type)}成果`}
+      statusBadge={achievement ? <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">{allianceLabel("achievementStatus", achievement.status)}</span> : undefined}
       backHref="/portal/apps/alliance/achievements"
       editHref={`/portal/apps/alliance/achievements/${id}/edit`}
       tabs={tabs}

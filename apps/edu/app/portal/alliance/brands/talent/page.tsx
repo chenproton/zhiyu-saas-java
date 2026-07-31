@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
+import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceBrand } from "@/lib/types"
 
 export default function AlliancePublicTalentBrandPage() {
@@ -34,7 +35,7 @@ export default function AlliancePublicTalentBrandPage() {
                   <CardTitle className="text-lg">{item.name}</CardTitle>
                   <div className="flex items-center gap-1.5">
                     {item.isFeatured && <Badge variant="secondary">推荐</Badge>}
-                    <Badge variant="outline">{item.status}</Badge>
+                    <Badge variant="outline">{allianceLabel("brandStatus", item.status)}</Badge>
                   </div>
                 </div>
               </CardHeader>

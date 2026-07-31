@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
+import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceBrand } from "@/lib/types"
 
 export default function AlliancePublicMajorBrandPage() {
@@ -34,7 +35,7 @@ export default function AlliancePublicMajorBrandPage() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <CardTitle className="text-lg">{item.name}</CardTitle>
-                    <Badge variant="outline">{item.status}</Badge>
+                    <Badge variant="outline">{allianceLabel("brandStatus", item.status)}</Badge>
                   </div>
                   {item.description && (
                     <CardDescription className="line-clamp-3">{item.description}</CardDescription>

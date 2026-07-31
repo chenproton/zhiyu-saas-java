@@ -6,6 +6,7 @@ import { Building, Briefcase, Users, Trophy, Sparkles, ArrowRight } from "lucide
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
+import { allianceLabel } from "@zhiyu/shared-types"
 import type {
   AlliancePublicStats,
   AllianceBrand,
@@ -99,7 +100,7 @@ export default function AlliancePublicHomePage() {
                     <CardTitle className="text-lg">{brand.name}</CardTitle>
                     <div className="flex items-center gap-1.5">
                       {brand.isFeatured && <Badge variant="secondary">推荐</Badge>}
-                      <Badge variant="outline">{brand.brandType}</Badge>
+                      <Badge variant="outline">{allianceLabel("brandType", brand.brandType)}</Badge>
                     </div>
                   </div>
                   {brand.description && (
@@ -176,7 +177,7 @@ export default function AlliancePublicHomePage() {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <CardTitle className="text-lg">{achievement.title}</CardTitle>
-                      <Badge variant="outline">{achievement.type}</Badge>
+                      <Badge variant="outline">{allianceLabel("achievementType", achievement.type)}</Badge>
                     </div>
                   </CardHeader>
                   {achievement.description && (

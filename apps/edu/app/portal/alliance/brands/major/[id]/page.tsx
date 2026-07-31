@@ -7,6 +7,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
+import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceBrand } from "@/lib/types"
 
 export default function AlliancePublicMajorBrandDetailPage() {
@@ -38,7 +39,7 @@ export default function AlliancePublicMajorBrandDetailPage() {
           <h1 className="text-2xl font-bold">{brand.name}</h1>
           <p className="text-muted-foreground text-sm mt-1">专业品牌</p>
         </div>
-        <Badge variant="outline">{brand.status}</Badge>
+        <Badge variant="outline">{allianceLabel("brandStatus", brand.status)}</Badge>
       </div>
 
       {brand.coverImage && (

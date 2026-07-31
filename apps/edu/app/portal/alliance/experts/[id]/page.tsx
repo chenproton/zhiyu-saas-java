@@ -7,6 +7,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
+import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceExpert } from "@/lib/types"
 
 export default function AlliancePublicExpertDetailPage() {
@@ -45,7 +46,7 @@ export default function AlliancePublicExpertDetailPage() {
                 {[expert.title, expert.position].filter(Boolean).join(" · ") || ""}
               </p>
             </div>
-            <Badge variant="outline">{expert.rating || expert.status}</Badge>
+            <Badge variant="outline">{expert.rating ? allianceLabel("expertRating", expert.rating) : allianceLabel("expertStatus", expert.status)}</Badge>
           </div>
         </div>
       </div>

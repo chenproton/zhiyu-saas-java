@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
+import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceEnterprise } from "@/lib/types"
 
 export default function AlliancePublicEnterprisesPage() {
@@ -34,7 +35,7 @@ export default function AlliancePublicEnterprisesPage() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <CardTitle className="text-lg">{item.name}</CardTitle>
-                    <Badge variant="outline">{item.status}</Badge>
+                    <Badge variant="outline">{allianceLabel("enterpriseStatus", item.status)}</Badge>
                   </div>
                   {item.industry && <CardDescription>{item.industry}{item.region ? ` · ${item.region}` : ""}</CardDescription>}
                 </CardHeader>

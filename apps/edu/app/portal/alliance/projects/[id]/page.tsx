@@ -7,6 +7,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
+import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceProject } from "@/lib/types"
 
 export default function AlliancePublicProjectDetailPage() {
@@ -40,7 +41,7 @@ export default function AlliancePublicProjectDetailPage() {
             {project.type ? `${project.type}` : ""}
           </p>
         </div>
-        <Badge variant="outline">{project.phase}</Badge>
+        <Badge variant="outline">{allianceLabel("projectPhase", project.phase)}</Badge>
       </div>
 
       {project.coverImage && (
@@ -51,7 +52,7 @@ export default function AlliancePublicProjectDetailPage() {
         <Card>
           <CardHeader><CardTitle>项目信息</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p><span className="text-muted-foreground">阶段：</span>{project.phase}</p>
+            <p><span className="text-muted-foreground">阶段：</span>{allianceLabel("projectPhase", project.phase)}</p>
             <p><span className="text-muted-foreground">开始日期：</span>{project.startDate || "-"}</p>
             <p><span className="text-muted-foreground">结束日期：</span>{project.endDate || "-"}</p>
             <p><span className="text-muted-foreground">预算：</span>{project.budget || "-"}</p>

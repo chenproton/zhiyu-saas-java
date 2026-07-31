@@ -7,6 +7,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
+import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceAchievement } from "@/lib/types"
 
 export default function AlliancePublicAchievementDetailPage() {
@@ -37,12 +38,12 @@ export default function AlliancePublicAchievementDetailPage() {
         <div>
           <h1 className="text-2xl font-bold">{achievement.title}</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {achievement.type}
+            {allianceLabel("achievementType", achievement.type)}
             {achievement.achievementDate ? ` · ${achievement.achievementDate}` : ""}
           </p>
         </div>
         <div className="flex gap-2 items-center">
-          <Badge variant="outline">{achievement.status}</Badge>
+          <Badge variant="outline">{allianceLabel("achievementStatus", achievement.status)}</Badge>
           <span className="text-sm text-muted-foreground">{achievement.viewCount} 次浏览</span>
         </div>
       </div>

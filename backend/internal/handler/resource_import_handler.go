@@ -984,17 +984,17 @@ func (h *ResourceImportHandler) doImportEnterprises(ctx context.Context, xlsx *e
 			continue
 		}
 		name := strings.TrimSpace(row[0])
-		entType := strings.TrimSpace(col(row, 1))
+		entType := mapEnterpriseType(col(row, 1))
 		if entType == "" {
 			entType = "platform"
 		}
 		industry := nullableStr(col(row, 2))
 		region := nullableStr(col(row, 3))
-		status := strings.TrimSpace(col(row, 4))
+		status := mapCoopStatus(col(row, 4))
 		if status == "" {
 			status = "active"
 		}
-		rating := nullableStr(col(row, 5))
+		rating := nullableStr(mapCoopRating(col(row, 5)))
 		contactPerson := nullableStr(col(row, 6))
 		contactPhone := nullableStr(col(row, 7))
 		contactEmail := nullableStr(col(row, 8))
@@ -1075,7 +1075,7 @@ func (h *ResourceImportHandler) doImportProjects(ctx context.Context, xlsx *exce
 		}
 		name := strings.TrimSpace(row[0])
 		projType := nullableStr(col(row, 1))
-		phase := strings.TrimSpace(col(row, 2))
+		phase := mapProjectPhase(col(row, 2))
 		if phase == "" {
 			phase = "initiation"
 		}
@@ -1155,7 +1155,7 @@ func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *
 			continue
 		}
 		title := strings.TrimSpace(row[0])
-		achType := strings.TrimSpace(col(row, 1))
+		achType := mapAchievementType(col(row, 1))
 		if achType == "" {
 			achType = "custom"
 		}
@@ -1318,7 +1318,7 @@ func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *ex
 		agmtType := nullableStr(col(row, 1))
 		startDate := nullableStr(col(row, 2))
 		endDate := nullableStr(col(row, 3))
-		status := strings.TrimSpace(col(row, 4))
+		status := mapAgreementStatus(col(row, 4))
 		if status == "" {
 			status = "draft"
 		}
@@ -1394,7 +1394,7 @@ func (h *ResourceImportHandler) doImportPermissions(ctx context.Context, xlsx *e
 			continue
 		}
 		accountName := strings.TrimSpace(row[0])
-		accountType := strings.TrimSpace(col(row, 1))
+		accountType := mapAccountType(col(row, 1))
 		if accountType == "" {
 			accountType = "enterprise"
 		}
@@ -1467,7 +1467,7 @@ func (h *ResourceImportHandler) doImportBrands(ctx context.Context, xlsx *exceli
 		if len(row) < 2 || strings.TrimSpace(row[0]) == "" || strings.TrimSpace(row[1]) == "" {
 			continue
 		}
-		brandType := strings.TrimSpace(row[0])
+		brandType := mapBrandType(row[0])
 		name := strings.TrimSpace(row[1])
 		description := nullableStr(col(row, 2))
 
@@ -1540,7 +1540,7 @@ func (h *ResourceImportHandler) doImportBrandTopics(ctx context.Context, xlsx *e
 		}
 		name := strings.TrimSpace(row[0])
 		theme := nullableStr(col(row, 1))
-		layout := strings.TrimSpace(col(row, 2))
+		layout := mapBrandTopicLayout(col(row, 2))
 		if layout == "" {
 			layout = "grid"
 		}

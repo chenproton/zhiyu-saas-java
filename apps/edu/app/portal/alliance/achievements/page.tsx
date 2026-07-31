@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
+import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceAchievement } from "@/lib/types"
 
 export default function AlliancePublicAchievementsPage() {
@@ -34,7 +35,7 @@ export default function AlliancePublicAchievementsPage() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <CardTitle className="text-lg">{item.title}</CardTitle>
-                    <Badge variant="outline">{item.type}</Badge>
+                    <Badge variant="outline">{allianceLabel("achievementType", item.type)}</Badge>
                   </div>
                   {item.achievementDate && <CardDescription>{item.achievementDate}</CardDescription>}
                 </CardHeader>
