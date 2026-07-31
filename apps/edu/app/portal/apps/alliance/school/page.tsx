@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import { Textarea } from "@/components/ui/textarea"
 import { Loader2, Pencil, Building, Phone, Globe, MapPin, Hash, FileText, Calendar, School, BookOpen, Monitor, User } from "lucide-react"
 import { useToast } from "@zhiyu/ui"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
@@ -90,8 +91,8 @@ export default function AllianceSchoolPage() {
     setFormData({
       name: t.enterpriseName, shortName: t.shortName === "-" ? "" : t.shortName,
       schoolType: t.schoolType === "-" ? "" : t.schoolType,
-      province: PROVINCES.includes(t.province) ? t.province : "",
-      city: t.city === "-" ? "" : t.city,
+      province: PROVINCES.includes(t.province) ? t.province : PROVINCES[0],
+      city: t.city !== "-" && t.city ? t.city : CHINA_REGION[PROVINCES[0]][0],
       educationLevel: t.educationLevel === "-" ? "" : t.educationLevel,
       educationNature: t.educationNature === "-" ? "" : t.educationNature,
       contact: t.contact === "-" ? "" : t.contact, phone: t.phone === "-" ? "" : t.phone,
@@ -180,9 +181,11 @@ export default function AllianceSchoolPage() {
             <Separator />
             <div><Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">基础信息</Label>
             <div className="grid gap-4">
-              <div className="grid gap-2"><Label>学校名称 <span className="text-destructive">*</span></Label><Input value={formData.name || ""} onChange={(e) => setF("name", e.target.value)} /></div>
               <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2"><Label>学校名称 <span className="text-destructive">*</span></Label><Input value={formData.name || ""} onChange={(e) => setF("name", e.target.value)} /></div>
                 <div className="grid gap-2"><Label>学校简称</Label><Input value={formData.shortName || ""} onChange={(e) => setF("shortName", e.target.value)} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2"><Label>办学层次</Label>
                   <Select value={formData.educationLevel || ""} onValueChange={(v) => setF("educationLevel", v)}>
                     <SelectTrigger><SelectValue placeholder="请选择" /></SelectTrigger>
@@ -222,7 +225,7 @@ export default function AllianceSchoolPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2"><Label>学校代码</Label><Input value={formData.enterpriseCode || ""} onChange={(e) => setF("enterpriseCode", e.target.value)} /></div>
-                <div className="grid gap-2"><Label>学校简介</Label><Input value={formData.description || ""} onChange={(e) => setF("description", e.target.value)} /></div>
+                <div className="grid gap-2"><Label>学校简介</Label><Textarea value={formData.description || ""} onChange={(e) => setF("description", e.target.value)} rows={3} /></div>
               </div>
             </div></div>
             <Separator />
