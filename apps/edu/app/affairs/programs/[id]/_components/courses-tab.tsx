@@ -162,14 +162,6 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
   }
 
   const handleSave = async () => {
-    const invalid = rows.find((r) => {
-      if (r.linkType === "position" && r.positionId && (positionScenariosMap[r.positionId] || []).length > 0) return false
-      return r.name.trim() === ""
-    })
-    if (invalid) {
-      toast({ variant: "destructive", title: "无法保存", description: "每项岗位/课程需填写名称" })
-      return
-    }
     setSaving(true)
     try {
       const payloads: any[] = []
@@ -188,15 +180,15 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
               sortOrder: i * 1000 + si,
             })
           })
-        } else {
+        } else if (r.linkType === "course" && r.courseId) {
           payloads.push({
-            name: r.name.trim(), code: r.code.trim() || undefined,
+            name: r.name.trim() || "", code: r.code.trim() || undefined,
             credits: r.credits || 0, hours: r.hours || 0,
             theoryHours: 0, practiceHours: 0, semester: 1,
             nature: r.nature,
             assessment: undefined,
             scenarioId: undefined,
-            courseId: r.linkType === "course" ? r.courseId || undefined : undefined,
+            courseId: r.courseId,
             sortOrder: i * 1000,
           })
         }
@@ -243,14 +235,14 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
     <div className="rounded-lg border bg-white px-4 py-3 space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          共 {courseCount} 项岗位/课程，合计 {totalCredits} 学分；通过「关联对象」可关联至已发布岗位/体系课
+          共 {courseCount} 项，合计 {totalCredits} 学分
         </p>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={addRow}>
             <Plus className="mr-1 size-4" />添加岗位/课程
           </Button>
           <Button size="sm" onClick={handleSave} disabled={saving || loading}>
-            <Save className="mr-1 size-4" />{saving ? "保存中..." : "保存岗位/课程设置"}
+            <Save className="mr-1 size-4" />{saving ? "保存中..." : "保存"}
           </Button>
         </div>
       </div>
@@ -259,20 +251,19 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[220px]">名称 *</TableHead>
-              <TableHead className="w-[140px]">编码</TableHead>
+              <TableHead className="w-[360px]">关联对象</TableHead>
+              <TableHead className="w-[120px]">编码</TableHead>
               <TableHead className="w-[80px]">学分</TableHead>
               <TableHead className="w-[80px]">总学时</TableHead>
               <TableHead className="w-[110px]">性质</TableHead>
-              <TableHead className="w-[300px]">关联对象</TableHead>
               <TableHead className="w-[60px] text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground">加载中...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="h-24 text-center text-muted-foreground">加载中...</TableCell></TableRow>
             ) : rows.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground">暂无岗位/课程，点击「添加岗位/课程」开始设置</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="h-24 text-center text-muted-foreground">暂无岗位/课程，点击「添加岗位/课程」开始设置</TableCell></TableRow>
             ) : (
               rows.map((r) => {
                 const isPos = r.linkType === "position" && r.positionId !== ""
@@ -280,24 +271,6 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
 
                 return (
                   <TableRow key={r.key}>
-                    <TableCell>
-                      <Input className="h-8" value={r.name} onChange={(e) => updateRow(r.key, { name: e.target.value })} placeholder="岗位/课程名称" disabled={isPos} />
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground">{r.code || "-"}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Input className="h-8" type="number" min={0} step="0.5" value={r.credits} onChange={(e) => updateRow(r.key, { credits: Number(e.target.value) })} disabled={isPos} />
-                    </TableCell>
-                    <TableCell>
-                      <Input className="h-8" type="number" min={0} value={r.hours} onChange={(e) => updateRow(r.key, { hours: Number(e.target.value) })} disabled={isPos} />
-                    </TableCell>
-                    <TableCell>
-                      <Select value={r.nature} onValueChange={(v) => updateRow(r.key, { nature: v })} disabled={isPos}>
-                        <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                        <SelectContent>{NATURE_OPTIONS.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </TableCell>
                     <TableCell>
                       {r.linkType === "position" ? (
                         <div className="space-y-1">
@@ -368,6 +341,21 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
                           <span className="text-xs text-muted-foreground">-</span>
                         </div>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground">{r.code || "-"}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Input className="h-8" type="number" min={0} step="0.5" value={r.credits} onChange={(e) => updateRow(r.key, { credits: Number(e.target.value) })} />
+                    </TableCell>
+                    <TableCell>
+                      <Input className="h-8" type="number" min={0} value={r.hours} onChange={(e) => updateRow(r.key, { hours: Number(e.target.value) })} />
+                    </TableCell>
+                    <TableCell>
+                      <Select value={r.nature} onValueChange={(v) => updateRow(r.key, { nature: v })}>
+                        <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                        <SelectContent>{NATURE_OPTIONS.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={() => removeRow(r.key)}>
