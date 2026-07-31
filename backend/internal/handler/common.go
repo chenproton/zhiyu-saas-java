@@ -212,6 +212,12 @@ func canManagePlatform(claims *middleware.Claims) bool {
 	return platformAdminOnly(claims)
 }
 
+// requireOperator reports whether the request is from a platform operator.
+func requireOperator(r *http.Request) bool {
+	claims := middleware.CurrentUser(r)
+	return claims != nil && canManagePlatform(claims)
+}
+
 // canModifyContent returns true for business-resource write operations.
 func canModifyContent(claims *middleware.Claims) bool {
 	if claims == nil {

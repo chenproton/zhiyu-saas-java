@@ -81,9 +81,6 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 		r.Post("/auth/login", authHandler.Login)
 		r.Post("/auth/portal/login", authHandler.PortalLogin)
 
-		bannerHandler := &handler.BannerHandler{DB: pool}
-		r.Get("/banners", bannerHandler.List)
-
 		resourceHandler := &handler.ResourceHandler{DB: pool}
 		r.Get("/resources", resourceHandler.List)
 		r.Get("/resources/{id}", resourceHandler.Get)
@@ -110,27 +107,12 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Get("/stats/dashboard", statsHandler.Dashboard)
 			r.Get("/stats/me", statsHandler.MyStats)
 
-			institutionHandler := &handler.InstitutionHandler{DB: pool}
-			r.Get("/institutions", institutionHandler.List)
-			r.Get("/institutions/{id}", institutionHandler.Get)
-			r.Post("/institutions", institutionHandler.Create)
-			r.Put("/institutions/{id}", institutionHandler.Update)
-
 			r.Post("/resources", resourceHandler.Create)
 			r.Put("/resources/{id}", resourceHandler.Update)
 			r.Delete("/resources/{id}", resourceHandler.Delete)
 			r.Post("/resources/{id}/submit", resourceHandler.SubmitForReview)
 			r.Post("/resources/{id}/review", resourceHandler.Review)
 			r.Post("/resources/{id}/publish", resourceHandler.Publish)
-
-			orderHandler := &handler.OrderHandler{DB: pool}
-			r.Get("/orders", orderHandler.List)
-			r.Get("/orders/{id}", orderHandler.Get)
-			r.Post("/orders", orderHandler.Create)
-
-			r.Post("/banners", bannerHandler.Create)
-			r.Put("/banners/{id}", bannerHandler.Update)
-			r.Delete("/banners/{id}", bannerHandler.Delete)
 
 			tenantHandler := &handler.TenantHandler{DB: pool}
 			r.Get("/tenants", tenantHandler.List)

@@ -10,10 +10,7 @@ import (
 type Handlers struct {
 	authHandler                   *handler.AuthHandler
 	fileHandler                   *handler.FileHandler
-	institutionHandler            *handler.InstitutionHandler
 	resourceHandler               *handler.ResourceHandler
-	orderHandler                  *handler.OrderHandler
-	bannerHandler                 *handler.BannerHandler
 	statsHandler                  *handler.StatsHandler
 	portalHandler                 *handler.PortalHandler
 	importExportHandler           *handler.ImportExportHandler
@@ -117,10 +114,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 	return &Handlers{
 		authHandler:                   handler.NewAuthHandler(db, jwtSecret),
 		fileHandler:                   fileHandler,
-		institutionHandler:            &handler.InstitutionHandler{DB: db},
 		resourceHandler:               &handler.ResourceHandler{DB: db},
-		orderHandler:                  &handler.OrderHandler{DB: db},
-		bannerHandler:                 &handler.BannerHandler{DB: db},
 		statsHandler:                  &handler.StatsHandler{DB: db},
 		portalHandler:                 &handler.PortalHandler{DB: db},
 		importExportHandler:           &handler.ImportExportHandler{DB: db},
