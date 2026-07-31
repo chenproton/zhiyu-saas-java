@@ -2,11 +2,13 @@ package handler
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/xuri/excelize/v2"
+	"github.com/zhiyu-saas/backend/internal/middleware"
 )
 
 // ImportPreviewItem 单条重复记录预览信息。
@@ -186,4 +188,40 @@ func (m *MultiFileUpload) FirstSheets() []string {
 		return m.sheets[0]
 	}
 	return nil
+}
+
+// importRequestContext bundles parsed auth and multi-file data from an import request.
+type importRequestContext struct {
+	Claims    *middleware.Claims
+	TenantID  string
+	UserID    string
+	Overwrite bool
+	MFU       *MultiFileUpload
+}
+
+// parseMultiImportRequest handles auth, tenant, and multi-file form parsing.
+// Writes error response and returns nil on any failure.
+func parseMultiImportRequest(w http.ResponseWriter, r *http.Request, requirePortalAdmin bool) *importRequestContext {
+	claims := middleware.CurrentUser(r)
+	if claims == nil || (requirePortalAdmin && !canManagePortal(claims)) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return nil
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return nil
+	}
+	mfu, err := ParseMultiFileUpload(r)
+	if err != nil {
+		slog.Error("导入文件解析失败", "error", err)
+		respondError(w, http.StatusBadRequest, "导入文件解析失败")
+		return nil
+	}
+	return &importRequestContext{
+		Claims:    claims,
+		TenantID:  tenantID,
+		UserID:    claims.UserID,
+		Overwrite: importOverwriteParam(r),
+		MFU:       mfu,
+	}
 }

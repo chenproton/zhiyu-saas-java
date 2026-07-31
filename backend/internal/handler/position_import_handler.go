@@ -11,77 +11,40 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuri/excelize/v2"
-	"github.com/zhiyu-saas/backend/internal/middleware"
 )
 
 type PositionImportHandler struct {
 	DB *pgxpool.Pool
 }
 
-func (h *PositionImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	mfu, err := ParseMultiFileUpload(r)
-	if err != nil {
-		slog.Error("导入文件解析失败", "error", err)
-		respondError(w, http.StatusBadRequest, "导入文件解析失败")
-		return
-	}
-
-	ctx := r.Context()
-	aggregated := ImportPreviewResult{}
-	mfu.ForEach(func(xlsx *excelize.File) {
-		result := &importResult{}
-		positionMap := make(map[string]string)
-		h.importPositions(ctx, xlsx, tenantID, claims.UserID, true, false, positionMap, result)
-		h.importResponsibilities(ctx, xlsx, tenantID, claims.UserID, true, false, positionMap, result)
-		aggregated.Created += result.Created
-		aggregated.Failed += result.Failed
-		aggregated.Duplicates += len(result.DuplicateItems)
-		aggregated.DuplicateItems = append(aggregated.DuplicateItems, result.DuplicateItems...)
-		aggregated.Errors = append(aggregated.Errors, result.Errors...)
-	})
-
-	respondJSON(w, http.StatusOK, aggregated)
-}
-
-func (h *PositionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	userID := claims.UserID
-	overwrite := importOverwriteParam(r)
-
-	mfu, err := ParseMultiFileUpload(r)
-	if err != nil {
-		slog.Error("导入文件解析失败", "error", err)
-		respondError(w, http.StatusBadRequest, "导入文件解析失败")
+func (h *PositionImportHandler) processImport(r *http.Request, w http.ResponseWriter, preview bool) {
+	irc := parseMultiImportRequest(w, r, false)
+	if irc == nil {
 		return
 	}
 
 	ctx := r.Context()
 	aggregated := &importResult{}
-	mfu.ForEach(func(xlsx *excelize.File) {
+
+	irc.MFU.ForEach(func(xlsx *excelize.File) {
 		positionMap := make(map[string]string)
-		h.importPositions(ctx, xlsx, tenantID, userID, false, overwrite, positionMap, aggregated)
-		h.importResponsibilities(ctx, xlsx, tenantID, userID, false, overwrite, positionMap, aggregated)
+		h.importPositions(ctx, xlsx, irc.TenantID, irc.UserID, preview, irc.Overwrite, positionMap, aggregated)
+		h.importResponsibilities(ctx, xlsx, irc.TenantID, irc.UserID, preview, irc.Overwrite, positionMap, aggregated)
 	})
+
+	if preview {
+		previewRes := ImportPreviewResult{
+			Created:        aggregated.Created,
+			Failed:         aggregated.Failed,
+			Duplicates:     len(aggregated.DuplicateItems),
+			DuplicateItems: aggregated.DuplicateItems,
+			Errors:         aggregated.Errors,
+		}
+		slog.Info(fmt.Sprintf("[import/preview/positions] result: created=%d duplicates=%d failed=%d errors=%d",
+			previewRes.Created, previewRes.Duplicates, previewRes.Failed, len(previewRes.Errors)))
+		respondJSON(w, http.StatusOK, previewRes)
+		return
+	}
 
 	slog.Info(fmt.Sprintf("[import/positions] result: created=%d failed=%d skipped=%d positions=%d responsibilities=%d bindings=%d errors=%d",
 		aggregated.Created, aggregated.Failed, aggregated.Skipped, aggregated.PositionCreated, aggregated.RespCreated, aggregated.BindingCreated, len(aggregated.Errors)))
@@ -98,8 +61,16 @@ func (h *PositionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 		"responsibilities": aggregated.RespCreated,
 		"abilityBindings":  aggregated.BindingCreated,
 		"errors":           aggregated.Errors,
-		"sheets":           mfu.FirstSheets(),
+		"sheets":           irc.MFU.FirstSheets(),
 	})
+}
+
+func (h *PositionImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request) {
+	h.processImport(r, w, true)
+}
+
+func (h *PositionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
+	h.processImport(r, w, false)
 }
 
 func (h *PositionImportHandler) importPositions(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool, positionMap map[string]string, result *importResult) {
