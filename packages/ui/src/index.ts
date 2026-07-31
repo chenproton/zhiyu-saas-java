@@ -1,3 +1,4 @@
+export { Toaster } from "./components/ui/toaster"
 export { useIsMobile } from "./hooks/use-mobile"
 export { useToast, toast, reducer } from "./hooks/use-toast"
 export { usePlatformLinks, savePlatformLinks, useAppModules, saveAppModules } from "./hooks/use-platform-links"
