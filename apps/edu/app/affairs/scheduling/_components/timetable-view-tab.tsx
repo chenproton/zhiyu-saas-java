@@ -33,6 +33,7 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
   const { users: teachers, loading: teachersLoading } = usePortalUsers({ roleCode: "teacher", pageSize: 100 })
 
   const [viewMode, setViewMode] = useState<ViewMode>("class")
+  const [viewStatus, setViewStatus] = useState<"draft" | "published">("draft")
   const [classNodeId, setClassNodeId] = useState<string | undefined>(undefined)
   const [teacherId, setTeacherId] = useState("")
   const [week, setWeek] = useState("")
@@ -48,10 +49,10 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
     const params =
       viewMode === "class"
         ? classNodeId
-          ? { termId: term.id, classNodeId }
+          ? { termId: term.id, classNodeId, status: viewStatus }
           : null
         : teacherId
-          ? { termId: term.id, teacherId }
+          ? { termId: term.id, teacherId, status: viewStatus }
           : null
     if (!params) {
       setEntries([])
@@ -68,7 +69,7 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
     } finally {
       setLoading(false)
     }
-  }, [term, viewMode, classNodeId, teacherId, toast])
+  }, [term, viewMode, classNodeId, teacherId, viewStatus, toast])
 
   useEffect(() => {
     // 数据加载：async IIFE 包裹，避免在 effect 体内同步触发 setState
@@ -131,6 +132,22 @@ export function TimetableViewTab({ term }: TimetableViewTabProps) {
                 )}
               >
                 {mode === "class" ? "班级视图" : "教师视图"}
+              </button>
+            ))}
+          </div>
+
+          {/* 状态切换：草稿/已发布 */}
+          <div className="flex items-center rounded-lg border p-0.5">
+            {(["draft", "published"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setViewStatus(s)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium transition-all",
+                  viewStatus === s ? "bg-blue-600 text-white" : "text-gray-500 hover:text-gray-900"
+                )}
+              >
+                {s === "draft" ? "草稿" : "已发布"}
               </button>
             ))}
           </div>
