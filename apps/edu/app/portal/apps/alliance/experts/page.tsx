@@ -46,7 +46,7 @@ export default function AllianceExpertsPage() {
       error={error}
       onRetry={fetchExperts}
       filterItems={(items, search) => items.filter((e) => !search || e.name.toLowerCase().includes(search.toLowerCase()) || (e.title || "").toLowerCase().includes(search.toLowerCase()) || (e.industry || "").toLowerCase().includes(search.toLowerCase()))}
-      importConfig={{ importType: "alliance-experts" as any, entityLabel: "专家" as any, templateFileName: "" as any } as any}
+      importConfig={{ importType: "alliance-experts", entityLabel: "专家资源", templateFileName: "专家资源批量导入模板.xlsx" }}
       colSpan={7}
       renderTableHeader={() => <><TableHead>姓名</TableHead><TableHead>头衔</TableHead><TableHead>职位</TableHead><TableHead>行业</TableHead><TableHead>状态</TableHead><TableHead>评级</TableHead><TableHead>操作</TableHead></>}
       renderTableRow={(e: any, actions: any) => (

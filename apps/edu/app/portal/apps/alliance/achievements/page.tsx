@@ -59,7 +59,7 @@ export default function AllianceAchievementsPage() {
           a.title.toLowerCase().includes(search.toLowerCase())
         )
       }
-      importConfig={{ importType: "alliance-achievements" as any, entityLabel: "合作成果" as any, templateFileName: "" as any } as any}
+      importConfig={{ importType: "alliance-achievements", entityLabel: "合作成果", templateFileName: "合作成果批量导入模板.xlsx" }}
       colSpan={6}
       renderTableHeader={() => (
         <>

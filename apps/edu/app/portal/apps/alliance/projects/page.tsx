@@ -46,7 +46,7 @@ export default function AllianceProjectsPage() {
       error={error}
       onRetry={fetchProjects}
       filterItems={(items, search) => items.filter((p) => !search || p.name.toLowerCase().includes(search.toLowerCase()))}
-      importConfig={{ importType: "alliance-projects" as any, entityLabel: "合作项目" as any, templateFileName: "" as any } as any}
+      importConfig={{ importType: "alliance-projects", entityLabel: "合作项目", templateFileName: "合作项目批量导入模板.xlsx" }}
       colSpan={6}
       renderTableHeader={() => <><TableHead>项目名称</TableHead><TableHead>阶段</TableHead><TableHead>发布状态</TableHead><TableHead>开始日期</TableHead><TableHead>公开</TableHead><TableHead>操作</TableHead></>}
       renderTableRow={(p: any, actions: any) => (

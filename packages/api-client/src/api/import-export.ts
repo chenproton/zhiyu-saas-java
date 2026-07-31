@@ -80,7 +80,7 @@ export const importExportApi = {
     }
     return res.json()
   },
-  downloadTemplate: (entity: "positions" | "scenarios" | "courses" | "system-courses" | "granular-courses" | "question-banks" | "exams" | "industries" | "majors" | "organizations" | "students" | "teachers" | "schedules" | "program-courses") => {
+  downloadTemplate: (entity: "positions" | "scenarios" | "courses" | "system-courses" | "granular-courses" | "question-banks" | "exams" | "industries" | "majors" | "organizations" | "students" | "teachers" | "schedules" | "program-courses" | "alliance-enterprises" | "alliance-projects" | "alliance-achievements" | "alliance-experts" | "alliance-agreements" | "alliance-permissions" | "alliance-brands" | "alliance-brand-topics") => {
     return authedFetch(`/templates/${entity}`)
   },
   downloadQuestionTemplate: (bankId: string) => {

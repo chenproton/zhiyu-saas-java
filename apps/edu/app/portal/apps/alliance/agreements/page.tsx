@@ -59,7 +59,7 @@ export default function AllianceAgreementsPage() {
           a.name.toLowerCase().includes(search.toLowerCase())
         )
       }
-      importConfig={{ importType: "alliance-agreements" as any, entityLabel: "合作协议" as any, templateFileName: "" as any } as any}
+      importConfig={{ importType: "alliance-agreements", entityLabel: "合作协议", templateFileName: "合作协议批量导入模板.xlsx" }}
       colSpan={5}
       renderTableHeader={() => (
         <>

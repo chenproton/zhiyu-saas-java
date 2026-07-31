@@ -62,7 +62,7 @@ export default function AllianceEnterprisesPage() {
           (e.industry || "").toLowerCase().includes(search.toLowerCase())
         )
       }
-      importConfig={{ importType: "alliance-enterprises", entityLabel: "合作企业", templateFileName: "合作企业批量导入模板.xlsx" as any } as any}
+      importConfig={{ importType: "alliance-enterprises", entityLabel: "合作企业", templateFileName: "合作企业批量导入模板.xlsx" }}
       colSpan={8}
       renderTableHeader={() => (
         <>

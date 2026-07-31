@@ -64,7 +64,7 @@ export default function AllianceMajorBrandPage() {
           b.name.toLowerCase().includes(search.toLowerCase())
         )
       }
-      importConfig={{ importType: "alliance-brands" as any, entityLabel: brandLabel as any, templateFileName: "" as any } as any}
+      importConfig={{ importType: "alliance-brands", entityLabel: "品牌内容", templateFileName: "品牌内容批量导入模板.xlsx" }}
       colSpan={6}
       renderTableHeader={() => (
         <>
