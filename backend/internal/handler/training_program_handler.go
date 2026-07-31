@@ -439,7 +439,12 @@ func scanTrainingProgramRows(rows pgx.Rows) ([]domain.TrainingProgram, error) {
 }
 
 func (h *TrainingProgramHandler) actions() contentActions {
-	return contentActions{db: h.DB, table: "training_programs", entityName: "人培方案", targetType: "training_program", inviteCol: "collaborators", fetch: nil}
+	return contentActions{db: h.DB, table: "training_programs", entityName: "人培方案", targetType: "training_program", inviteCol: "collaborators",
+		fetch: func(ctx context.Context, id string) (interface{}, error) {
+			p, err := h.fetchProgram(ctx, id, "")
+			if err != nil { return nil, err }
+			return &p, nil
+		}}
 }
 
 func (h *TrainingProgramHandler) Submit(w http.ResponseWriter, r *http.Request)     { h.actions().transition(w, r, domain.StatusPending) }
