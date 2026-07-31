@@ -41,28 +41,28 @@ func (h *ScenarioImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	xlsx, _, err := parseUploadedExcel(r)
+	mfu, err := ParseMultiFileUpload(r)
 	if err != nil {
 		slog.Error("导入文件解析失败", "error", err)
 		respondError(w, http.StatusBadRequest, "导入文件解析失败")
 		return
 	}
-	defer xlsx.Close()
-
-	result := &scenarioImportResult{}
-	scenarioMap := make(map[string]string)
 
 	ctx := r.Context()
-	h.importScenarios(ctx, xlsx, tenantID, claims.UserID, true, false, scenarioMap, result)
-	h.importTasks(ctx, xlsx, tenantID, claims.UserID, true, false, scenarioMap, result)
-
-	respondJSON(w, http.StatusOK, ImportPreviewResult{
-		Created:        result.Created,
-		Duplicates:     len(result.DuplicateItems),
-		Failed:         result.Failed,
-		DuplicateItems: result.DuplicateItems,
-		Errors:         result.Errors,
+	aggregated := ImportPreviewResult{}
+	mfu.ForEach(func(xlsx *excelize.File) {
+		result := &scenarioImportResult{}
+		scenarioMap := make(map[string]string)
+		h.importScenarios(ctx, xlsx, tenantID, claims.UserID, true, false, scenarioMap, result)
+		h.importTasks(ctx, xlsx, tenantID, claims.UserID, true, false, scenarioMap, result)
+		aggregated.Created += result.Created
+		aggregated.Failed += result.Failed
+		aggregated.Duplicates += len(result.DuplicateItems)
+		aggregated.DuplicateItems = append(aggregated.DuplicateItems, result.DuplicateItems...)
+		aggregated.Errors = append(aggregated.Errors, result.Errors...)
 	})
+
+	respondJSON(w, http.StatusOK, aggregated)
 }
 
 func (h *ScenarioImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
@@ -79,35 +79,32 @@ func (h *ScenarioImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 	userID := claims.UserID
 	overwrite := importOverwriteParam(r)
 
-	xlsx, sheets, err := parseUploadedExcel(r)
+	mfu, err := ParseMultiFileUpload(r)
 	if err != nil {
 		slog.Error("导入文件解析失败", "error", err)
 		respondError(w, http.StatusBadRequest, "导入文件解析失败")
 		return
 	}
-	defer xlsx.Close()
 
-	result := &scenarioImportResult{}
 	ctx := r.Context()
-	scenarioMap := make(map[string]string)
-
-	h.importScenarios(ctx, xlsx, tenantID, userID, false, overwrite, scenarioMap, result)
-	if len(scenarioMap) == 0 && result.Failed == 0 {
-		respondError(w, http.StatusBadRequest, "Sheet1中未找到有效场景方案数据")
-		return
-	}
-
-	h.importTasks(ctx, xlsx, tenantID, userID, false, overwrite, scenarioMap, result)
+	aggregated := &scenarioImportResult{}
+	mfu.ForEach(func(xlsx *excelize.File) {
+		scenarioMap := make(map[string]string)
+		h.importScenarios(ctx, xlsx, tenantID, userID, false, overwrite, scenarioMap, aggregated)
+		if len(scenarioMap) > 0 {
+			h.importTasks(ctx, xlsx, tenantID, userID, false, overwrite, scenarioMap, aggregated)
+		}
+	})
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"created":         result.Created,
-		"failed":          result.Failed,
-		"skipped":         result.Skipped,
+		"created":         aggregated.Created,
+		"failed":          aggregated.Failed,
+		"skipped":         aggregated.Skipped,
 		"entity":          "场景",
-		"scenarioCreated": result.ScenarioCreated,
-		"taskCreated":     result.TaskCreated,
-		"errors":          result.Errors,
-		"sheets":          sheets,
+		"scenarioCreated": aggregated.ScenarioCreated,
+		"taskCreated":     aggregated.TaskCreated,
+		"errors":          aggregated.Errors,
+		"sheets":          mfu.FirstSheets(),
 	})
 }
 

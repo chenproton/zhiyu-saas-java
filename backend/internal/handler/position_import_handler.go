@@ -30,28 +30,28 @@ func (h *PositionImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	xlsx, _, err := parseUploadedExcel(r)
+	mfu, err := ParseMultiFileUpload(r)
 	if err != nil {
 		slog.Error("导入文件解析失败", "error", err)
 		respondError(w, http.StatusBadRequest, "导入文件解析失败")
 		return
 	}
-	defer xlsx.Close()
-
-	result := &importResult{}
-	positionMap := make(map[string]string)
 
 	ctx := r.Context()
-	h.importPositions(ctx, xlsx, tenantID, claims.UserID, true, false, positionMap, result)
-	h.importResponsibilities(ctx, xlsx, tenantID, claims.UserID, true, false, positionMap, result)
-
-	respondJSON(w, http.StatusOK, ImportPreviewResult{
-		Created:        result.Created,
-		Duplicates:     len(result.DuplicateItems),
-		Failed:         result.Failed,
-		DuplicateItems: result.DuplicateItems,
-		Errors:         result.Errors,
+	aggregated := ImportPreviewResult{}
+	mfu.ForEach(func(xlsx *excelize.File) {
+		result := &importResult{}
+		positionMap := make(map[string]string)
+		h.importPositions(ctx, xlsx, tenantID, claims.UserID, true, false, positionMap, result)
+		h.importResponsibilities(ctx, xlsx, tenantID, claims.UserID, true, false, positionMap, result)
+		aggregated.Created += result.Created
+		aggregated.Failed += result.Failed
+		aggregated.Duplicates += len(result.DuplicateItems)
+		aggregated.DuplicateItems = append(aggregated.DuplicateItems, result.DuplicateItems...)
+		aggregated.Errors = append(aggregated.Errors, result.Errors...)
 	})
+
+	respondJSON(w, http.StatusOK, aggregated)
 }
 
 func (h *PositionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
@@ -68,42 +68,37 @@ func (h *PositionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 	userID := claims.UserID
 	overwrite := importOverwriteParam(r)
 
-	xlsx, sheets, err := parseUploadedExcel(r)
+	mfu, err := ParseMultiFileUpload(r)
 	if err != nil {
 		slog.Error("导入文件解析失败", "error", err)
 		respondError(w, http.StatusBadRequest, "导入文件解析失败")
 		return
 	}
-	defer xlsx.Close()
 
-	result := &importResult{}
 	ctx := r.Context()
-	positionMap := make(map[string]string)
-
-	h.importPositions(ctx, xlsx, tenantID, userID, false, overwrite, positionMap, result)
-	if len(positionMap) == 0 && result.Failed == 0 {
-		respondError(w, http.StatusBadRequest, "Sheet1中未找到有效岗位数据")
-		return
-	}
-
-	h.importResponsibilities(ctx, xlsx, tenantID, userID, false, overwrite, positionMap, result)
+	aggregated := &importResult{}
+	mfu.ForEach(func(xlsx *excelize.File) {
+		positionMap := make(map[string]string)
+		h.importPositions(ctx, xlsx, tenantID, userID, false, overwrite, positionMap, aggregated)
+		h.importResponsibilities(ctx, xlsx, tenantID, userID, false, overwrite, positionMap, aggregated)
+	})
 
 	slog.Info(fmt.Sprintf("[import/positions] result: created=%d failed=%d skipped=%d positions=%d responsibilities=%d bindings=%d errors=%d",
-		result.Created, result.Failed, result.Skipped, result.PositionCreated, result.RespCreated, result.BindingCreated, len(result.Errors)))
-	for _, e := range result.Errors {
+		aggregated.Created, aggregated.Failed, aggregated.Skipped, aggregated.PositionCreated, aggregated.RespCreated, aggregated.BindingCreated, len(aggregated.Errors)))
+	for _, e := range aggregated.Errors {
 		slog.Info(fmt.Sprintf("[import/positions] error: %s", e))
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"created":          result.Created,
-		"failed":           result.Failed,
-		"skipped":          result.Skipped,
+		"created":          aggregated.Created,
+		"failed":           aggregated.Failed,
+		"skipped":          aggregated.Skipped,
 		"entity":           "岗位",
-		"positionCreated":  result.PositionCreated,
-		"responsibilities": result.RespCreated,
-		"abilityBindings":  result.BindingCreated,
-		"errors":           result.Errors,
-		"sheets":           sheets,
+		"positionCreated":  aggregated.PositionCreated,
+		"responsibilities": aggregated.RespCreated,
+		"abilityBindings":  aggregated.BindingCreated,
+		"errors":           aggregated.Errors,
+		"sheets":           mfu.FirstSheets(),
 	})
 }
 

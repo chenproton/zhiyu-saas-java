@@ -158,7 +158,10 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
   }
 
   const handleSave = async () => {
-    const invalid = rows.find((r) => r.name.trim() === "")
+    const invalid = rows.find((r) => {
+      if (r.linkType === "position" && r.positionId && (positionScenariosMap[r.positionId] || []).length > 0) return false
+      return r.name.trim() === ""
+    })
     if (invalid) {
       toast({ variant: "destructive", title: "无法保存", description: "每项岗位/课程需填写名称" })
       return

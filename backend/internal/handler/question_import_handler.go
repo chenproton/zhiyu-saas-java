@@ -36,33 +36,31 @@ func (h *QuestionImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if err := r.ParseMultipartForm(50 << 20); err != nil {
-		respondError(w, http.StatusBadRequest, "表单无效")
-		return
-	}
-	file, _, err := r.FormFile("file")
-	if err != nil {
-		respondError(w, http.StatusBadRequest, "缺少文件")
-		return
-	}
-	defer file.Close()
-
 	var existingBank string
-	err = h.DB.QueryRow(r.Context(), `SELECT id FROM question_banks WHERE id=$1 AND tenant_id=$2`, bankID, tenantID).Scan(&existingBank)
+	err := h.DB.QueryRow(r.Context(), `SELECT id FROM question_banks WHERE id=$1 AND tenant_id=$2`, bankID, tenantID).Scan(&existingBank)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "题库不存在")
 		return
 	}
 
-	xlsx, err := excelize.OpenReader(file)
+	mfu, err := ParseMultiFileUpload(r)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "解析Excel文件失败")
+		slog.Error("导入文件解析失败", "error", err)
+		respondError(w, http.StatusBadRequest, "导入文件解析失败")
 		return
 	}
-	defer xlsx.Close()
 
-	previewRes, _ := h.importQuestions(r.Context(), xlsx, tenantID, userID, bankID, true, false)
-	respondJSON(w, http.StatusOK, previewRes)
+	ctx := r.Context()
+	aggregated := ImportPreviewResult{}
+	mfu.ForEach(func(xlsx *excelize.File) {
+		previewRes, _ := h.importQuestions(ctx, xlsx, tenantID, userID, bankID, true, false)
+		aggregated.Created += previewRes.Created
+		aggregated.Failed += previewRes.Failed
+		aggregated.Duplicates += previewRes.Duplicates
+		aggregated.DuplicateItems = append(aggregated.DuplicateItems, previewRes.DuplicateItems...)
+		aggregated.Errors = append(aggregated.Errors, previewRes.Errors...)
+	})
+	respondJSON(w, http.StatusOK, aggregated)
 }
 
 func (h *QuestionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
@@ -82,40 +80,37 @@ func (h *QuestionImportHandler) ImportExcel(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := r.ParseMultipartForm(50 << 20); err != nil {
-		respondError(w, http.StatusBadRequest, "表单无效")
-		return
-	}
-	file, _, err := r.FormFile("file")
-	if err != nil {
-		respondError(w, http.StatusBadRequest, "缺少文件")
-		return
-	}
-	defer file.Close()
-
 	var existingBank string
-	err = h.DB.QueryRow(r.Context(), `SELECT id FROM question_banks WHERE id=$1 AND tenant_id=$2`, bankID, tenantID).Scan(&existingBank)
+	err := h.DB.QueryRow(r.Context(), `SELECT id FROM question_banks WHERE id=$1 AND tenant_id=$2`, bankID, tenantID).Scan(&existingBank)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "题库不存在")
 		return
 	}
 
-	xlsx, err := excelize.OpenReader(file)
+	mfu, err := ParseMultiFileUpload(r)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "解析Excel文件失败")
+		slog.Error("导入文件解析失败", "error", err)
+		respondError(w, http.StatusBadRequest, "导入文件解析失败")
 		return
 	}
-	defer xlsx.Close()
-
 	overwrite := importOverwriteParam(r)
-	_, result := h.importQuestions(r.Context(), xlsx, tenantID, userID, bankID, false, overwrite)
+
+	ctx := r.Context()
+	aggregated := ImportExecuteResult{Entity: "题目"}
+	mfu.ForEach(func(xlsx *excelize.File) {
+		_, res := h.importQuestions(ctx, xlsx, tenantID, userID, bankID, false, overwrite)
+		aggregated.Created += res.Created
+		aggregated.Failed += res.Failed
+		aggregated.Skipped += res.Skipped
+		aggregated.Errors = append(aggregated.Errors, res.Errors...)
+	})
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"created": result.Created,
-		"failed":  result.Failed,
-		"skipped": result.Skipped,
+		"created": aggregated.Created,
+		"failed":  aggregated.Failed,
+		"skipped": aggregated.Skipped,
 		"entity":  "题目",
-		"errors":  result.Errors,
+		"errors":  aggregated.Errors,
 	})
 }
 

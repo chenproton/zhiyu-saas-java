@@ -57,26 +57,28 @@ func (h *CourseImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	xlsx, _, err := parseUploadedExcel(r)
+	mfu, err := ParseMultiFileUpload(r)
 	if err != nil {
 		slog.Error("导入文件解析失败", "error", err)
 		respondError(w, http.StatusBadRequest, "导入文件解析失败")
 		return
 	}
-	defer xlsx.Close()
 
-	result := &courseImportResult{}
-	courseMap := make(map[string]string)
-	h.importCourses(r.Context(), xlsx, tenantID, claims.UserID, true, false, courseMap, result)
-	h.importNodes(r.Context(), xlsx, tenantID, claims.UserID, true, false, courseMap, result)
-
-	respondJSON(w, http.StatusOK, ImportPreviewResult{
-		Created:        result.Created,
-		Duplicates:     len(result.DuplicateItems),
-		Failed:         result.Failed,
-		DuplicateItems: result.DuplicateItems,
-		Errors:         result.Errors,
+	ctx := r.Context()
+	aggregated := ImportPreviewResult{}
+	mfu.ForEach(func(xlsx *excelize.File) {
+		result := &courseImportResult{}
+		courseMap := make(map[string]string)
+		h.importCourses(ctx, xlsx, tenantID, claims.UserID, true, false, courseMap, result)
+		h.importNodes(ctx, xlsx, tenantID, claims.UserID, true, false, courseMap, result)
+		aggregated.Created += result.Created
+		aggregated.Failed += result.Failed
+		aggregated.Duplicates += len(result.DuplicateItems)
+		aggregated.DuplicateItems = append(aggregated.DuplicateItems, result.DuplicateItems...)
+		aggregated.Errors = append(aggregated.Errors, result.Errors...)
 	})
+
+	respondJSON(w, http.StatusOK, aggregated)
 }
 
 func (h *CourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
@@ -93,42 +95,39 @@ func (h *CourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request
 	userID := claims.UserID
 	overwrite := importOverwriteParam(r)
 
-	xlsx, sheets, err := parseUploadedExcel(r)
+	mfu, err := ParseMultiFileUpload(r)
 	if err != nil {
 		slog.Error("导入文件解析失败", "error", err)
 		respondError(w, http.StatusBadRequest, "导入文件解析失败")
 		return
 	}
-	defer xlsx.Close()
 
-	result := &courseImportResult{}
 	ctx := r.Context()
-	courseMap := make(map[string]string)
+	aggregated := &courseImportResult{}
+	mfu.ForEach(func(xlsx *excelize.File) {
+		courseMap := make(map[string]string)
+		h.importCourses(ctx, xlsx, tenantID, userID, false, overwrite, courseMap, aggregated)
+		if len(courseMap) > 0 {
+			h.importNodes(ctx, xlsx, tenantID, userID, false, overwrite, courseMap, aggregated)
+		}
+	})
 
-	h.importCourses(ctx, xlsx, tenantID, userID, false, overwrite, courseMap, result)
-	if len(courseMap) == 0 && result.Failed == 0 {
-		respondError(w, http.StatusBadRequest, "课程基本信息中未找到有效课程数据")
-		return
-	}
-
-	h.importNodes(ctx, xlsx, tenantID, userID, false, overwrite, courseMap, result)
-
-	if len(result.Errors) > 0 {
-		slog.Info(fmt.Sprintf("[course-import] tenant=%s created=%d failed=%d skipped=%d errors:\n", tenantID, result.Created, result.Failed, result.Skipped))
-		for _, e := range result.Errors {
+	if len(aggregated.Errors) > 0 {
+		slog.Info(fmt.Sprintf("[course-import] tenant=%s created=%d failed=%d skipped=%d errors:\n", tenantID, aggregated.Created, aggregated.Failed, aggregated.Skipped))
+		for _, e := range aggregated.Errors {
 			slog.Info(fmt.Sprintf("[course-import]   %s\n", e))
 		}
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"created":       result.Created,
-		"failed":        result.Failed,
-		"skipped":       result.Skipped,
+		"created":       aggregated.Created,
+		"failed":        aggregated.Failed,
+		"skipped":       aggregated.Skipped,
 		"entity":        "体系课",
-		"courseCreated": result.CourseCreated,
-		"nodeCreated":   result.NodeCreated,
-		"errors":        result.Errors,
-		"sheets":        sheets,
+		"courseCreated": aggregated.CourseCreated,
+		"nodeCreated":   aggregated.NodeCreated,
+		"errors":        aggregated.Errors,
+		"sheets":        mfu.FirstSheets(),
 	})
 }
 

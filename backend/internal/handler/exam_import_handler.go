@@ -37,34 +37,26 @@ func (h *ExamImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := r.ParseMultipartForm(50 << 20); err != nil {
-		respondError(w, http.StatusBadRequest, "表单无效")
-		return
-	}
-	file, _, err := r.FormFile("file")
+	mfu, err := ParseMultiFileUpload(r)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "缺少文件")
+		slog.Error("导入文件解析失败", "error", err)
+		respondError(w, http.StatusBadRequest, "导入文件解析失败")
 		return
 	}
-	defer file.Close()
 
-	xlsx, err := excelize.OpenReader(file)
-	if err != nil {
-		respondError(w, http.StatusBadRequest, "解析Excel文件失败")
-		return
-	}
-	defer xlsx.Close()
-
-	result := &examImportResult{}
-	h.importExams(r.Context(), xlsx, tenantID, claims.UserID, true, false, nil, result)
-
-	respondJSON(w, http.StatusOK, ImportPreviewResult{
-		Created:        result.Created,
-		Duplicates:     len(result.DuplicateItems),
-		Failed:         result.Failed,
-		DuplicateItems: result.DuplicateItems,
-		Errors:         result.Errors,
+	ctx := r.Context()
+	aggregated := ImportPreviewResult{}
+	mfu.ForEach(func(xlsx *excelize.File) {
+		result := &examImportResult{}
+		h.importExams(ctx, xlsx, tenantID, claims.UserID, true, false, nil, result)
+		aggregated.Created += result.Created
+		aggregated.Failed += result.Failed
+		aggregated.Duplicates += len(result.DuplicateItems)
+		aggregated.DuplicateItems = append(aggregated.DuplicateItems, result.DuplicateItems...)
+		aggregated.Errors = append(aggregated.Errors, result.Errors...)
 	})
+
+	respondJSON(w, http.StatusOK, aggregated)
 }
 
 func (h *ExamImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
@@ -80,37 +72,29 @@ func (h *ExamImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) 
 	}
 	overwrite := importOverwriteParam(r)
 
-	if err := r.ParseMultipartForm(50 << 20); err != nil {
-		respondError(w, http.StatusBadRequest, "表单无效")
-		return
-	}
-	file, _, err := r.FormFile("file")
+	mfu, err := ParseMultiFileUpload(r)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "缺少文件")
+		slog.Error("导入文件解析失败", "error", err)
+		respondError(w, http.StatusBadRequest, "导入文件解析失败")
 		return
 	}
-	defer file.Close()
 
-	xlsx, err := excelize.OpenReader(file)
-	if err != nil {
-		respondError(w, http.StatusBadRequest, "解析Excel文件失败")
-		return
-	}
-	defer xlsx.Close()
-
-	result := &examImportResult{}
-	examMap := make(map[string]string)
-	h.importExams(r.Context(), xlsx, tenantID, claims.UserID, false, overwrite, examMap, result)
-	if len(examMap) > 0 {
-		h.importExamQuestions(r.Context(), xlsx, tenantID, examMap, result)
-	}
+	ctx := r.Context()
+	aggregated := &examImportResult{}
+	mfu.ForEach(func(xlsx *excelize.File) {
+		examMap := make(map[string]string)
+		h.importExams(ctx, xlsx, tenantID, claims.UserID, false, overwrite, examMap, aggregated)
+		if len(examMap) > 0 {
+			h.importExamQuestions(ctx, xlsx, tenantID, examMap, aggregated)
+		}
+	})
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"created": result.Created,
-		"failed":  result.Failed,
-		"skipped": result.Skipped,
+		"created": aggregated.Created,
+		"failed":  aggregated.Failed,
+		"skipped": aggregated.Skipped,
 		"entity":  "试卷",
-		"errors":  result.Errors,
+		"errors":  aggregated.Errors,
 	})
 }
 

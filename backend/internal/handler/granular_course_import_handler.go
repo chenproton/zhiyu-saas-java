@@ -38,24 +38,26 @@ func (h *GranularCourseImportHandler) PreviewExcel(w http.ResponseWriter, r *htt
 		return
 	}
 
-	xlsx, _, err := parseUploadedExcel(r)
+	mfu, err := ParseMultiFileUpload(r)
 	if err != nil {
 		slog.Error("导入文件解析失败", "error", err)
 		respondError(w, http.StatusBadRequest, "导入文件解析失败")
 		return
 	}
-	defer xlsx.Close()
 
-	result := &granularCourseImportResult{}
-	h.importCourses(r.Context(), xlsx, tenantID, claims.UserID, true, false, result)
-
-	respondJSON(w, http.StatusOK, ImportPreviewResult{
-		Created:        result.Created,
-		Duplicates:     len(result.DuplicateItems),
-		Failed:         result.Failed,
-		DuplicateItems: result.DuplicateItems,
-		Errors:         result.Errors,
+	ctx := r.Context()
+	aggregated := ImportPreviewResult{}
+	mfu.ForEach(func(xlsx *excelize.File) {
+		result := &granularCourseImportResult{}
+		h.importCourses(ctx, xlsx, tenantID, claims.UserID, true, false, result)
+		aggregated.Created += result.Created
+		aggregated.Failed += result.Failed
+		aggregated.Duplicates += len(result.DuplicateItems)
+		aggregated.DuplicateItems = append(aggregated.DuplicateItems, result.DuplicateItems...)
+		aggregated.Errors = append(aggregated.Errors, result.Errors...)
 	})
+
+	respondJSON(w, http.StatusOK, aggregated)
 }
 
 func (h *GranularCourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.Request) {
@@ -72,24 +74,26 @@ func (h *GranularCourseImportHandler) ImportExcel(w http.ResponseWriter, r *http
 	userID := claims.UserID
 	overwrite := importOverwriteParam(r)
 
-	xlsx, sheets, err := parseUploadedExcel(r)
+	mfu, err := ParseMultiFileUpload(r)
 	if err != nil {
 		slog.Error("导入文件解析失败", "error", err)
 		respondError(w, http.StatusBadRequest, "导入文件解析失败")
 		return
 	}
-	defer xlsx.Close()
 
-	result := &granularCourseImportResult{}
-	h.importCourses(r.Context(), xlsx, tenantID, userID, false, overwrite, result)
+	ctx := r.Context()
+	aggregated := &granularCourseImportResult{}
+	mfu.ForEach(func(xlsx *excelize.File) {
+		h.importCourses(ctx, xlsx, tenantID, userID, false, overwrite, aggregated)
+	})
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"created": result.Created,
-		"failed":  result.Failed,
-		"skipped": result.Skipped,
+		"created": aggregated.Created,
+		"failed":  aggregated.Failed,
+		"skipped": aggregated.Skipped,
 		"entity":  "颗粒课",
-		"errors":  result.Errors,
-		"sheets":  sheets,
+		"errors":  aggregated.Errors,
+		"sheets":  mfu.FirstSheets(),
 	})
 }
 

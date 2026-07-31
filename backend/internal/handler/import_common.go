@@ -129,3 +129,61 @@ func parseUploadedExcel(r *http.Request) (*excelize.File, []string, error) {
 	sheets := xlsx.GetSheetList()
 	return xlsx, sheets, nil
 }
+
+// parseUploadedExcels parses the multipart form and opens all uploaded Excel files.
+func parseUploadedExcels(r *http.Request) ([]*excelize.File, [][]string, error) {
+	if err := r.ParseMultipartForm(200 << 20); err != nil {
+		return nil, nil, fmt.Errorf("表单数据无效")
+	}
+	fhs := r.MultipartForm.File["file"]
+	if len(fhs) == 0 {
+		return nil, nil, fmt.Errorf("缺少上传文件")
+	}
+	xlsxs := make([]*excelize.File, 0, len(fhs))
+	sheetsList := make([][]string, 0, len(fhs))
+	for _, fh := range fhs {
+		f, err := fh.Open()
+		if err != nil {
+			return nil, nil, fmt.Errorf("打开文件 %s 失败", fh.Filename)
+		}
+		xlsx, err := excelize.OpenReader(f)
+		f.Close()
+		if err != nil {
+			return nil, nil, fmt.Errorf("解析 Excel 文件 %s 失败", fh.Filename)
+		}
+		xlsxs = append(xlsxs, xlsx)
+		sheetsList = append(sheetsList, xlsx.GetSheetList())
+	}
+	return xlsxs, sheetsList, nil
+}
+
+// MultiFileUpload 封装多文件上传的通用处理：解析、遍历、关闭、Sheet 列表。
+type MultiFileUpload struct {
+	Files  []*excelize.File
+	sheets [][]string
+}
+
+// ParseMultiFileUpload 解析请求中的所有上传 Excel 文件。
+func ParseMultiFileUpload(r *http.Request) (*MultiFileUpload, error) {
+	xlsxs, sheetsList, err := parseUploadedExcels(r)
+	if err != nil {
+		return nil, err
+	}
+	return &MultiFileUpload{Files: xlsxs, sheets: sheetsList}, nil
+}
+
+// ForEach 遍历所有文件，依次调用 fn，并在每次调用后关闭文件。
+func (m *MultiFileUpload) ForEach(fn func(*excelize.File)) {
+	for _, f := range m.Files {
+		fn(f)
+		f.Close()
+	}
+}
+
+// FirstSheets 返回第一个文件的 Sheet 名称列表，无文件时返回 nil。
+func (m *MultiFileUpload) FirstSheets() []string {
+	if len(m.sheets) > 0 {
+		return m.sheets[0]
+	}
+	return nil
+}
