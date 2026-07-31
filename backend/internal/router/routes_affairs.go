@@ -54,4 +54,8 @@ func registerAffairsRoutes(r chi.Router, h *Handlers) {
 	r.Post("/import/schedules/excel", h.scheduleImportHandler.ImportExcel)
 	r.Post("/import/schedules/preview", h.scheduleImportHandler.PreviewExcel)
 	r.Get("/templates/schedules", h.scheduleImportHandler.ServeTemplate)
+
+	// 方案课程批量导入
+	r.Post("/import/program-courses/{id}", h.programCourseImportHandler.ImportExcel)
+	r.Get("/templates/program-courses", h.programCourseImportHandler.ServeTemplate)
 }

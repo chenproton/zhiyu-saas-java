@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { Plus, Save, Trash2 } from "lucide-react"
+import { Plus, Save, Trash2, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -24,6 +24,7 @@ import { programApi, scenarioApi, courseApi, positionApi } from "@/lib/api"
 import type { Scenario, CareerPosition } from "@/lib/types"
 import type { Course } from "@/lib/types/lesson"
 import { ComboboxSelect } from "@/components/shared/combobox-select"
+import { ProgramCourseImportDialog } from "./program-course-import-dialog"
 
 const NATURE_OPTIONS = ["必修", "选修", "实践", "场景"]
 
@@ -55,6 +56,7 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [loadingPosScen, setLoadingPosScen] = useState<Record<string, boolean>>({})
+  const [importOpen, setImportOpen] = useState(false)
 
   const loadCourses = useCallback(async () => {
     try {
@@ -244,6 +246,9 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
           <Button size="sm" onClick={handleSave} disabled={saving || loading}>
             <Save className="mr-1 size-4" />{saving ? "保存中..." : "保存"}
           </Button>
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-1 size-4" />导入
+          </Button>
         </div>
       </div>
 
@@ -369,6 +374,8 @@ export function ProgramCoursesTab({ programId }: { programId: string }) {
           </TableBody>
         </Table>
       </div>
+
+      <ProgramCourseImportDialog open={importOpen} onOpenChange={setImportOpen} programId={programId} onImported={loadCourses} />
     </div>
   )
 }
