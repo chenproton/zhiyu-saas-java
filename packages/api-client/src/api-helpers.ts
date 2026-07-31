@@ -98,6 +98,13 @@ import type { WorkspaceDashboard } from "./types/portal"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1"
 
+type ApiErrorHandler = (message: string, status: number, path: string) => void
+let globalErrorHandler: ApiErrorHandler | null = null
+
+export function setGlobalErrorHandler(handler: ApiErrorHandler | null) {
+  globalErrorHandler = handler
+}
+
 export interface ApiError {
   error: string
 }
@@ -290,14 +297,17 @@ async function requestWithPlatform<T>(platform: AuthPlatform, path: string, opti
   const data = await res.json().catch(() => ({ error: "请求失败" }))
 
   if (!res.ok) {
+    const errorMessage = (data as any).error || `HTTP ${res.status}`
     if (res.status === 401 && typeof window !== "undefined" && token) {
       localStorage.removeItem(TOKEN_KEYS[platform])
       const loginPath = platform === "portal" ? "/portal/login" : "/login"
       if (!window.location.pathname.startsWith(loginPath)) {
         window.location.href = loginPath
       }
+    } else if (globalErrorHandler) {
+      globalErrorHandler(errorMessage, res.status, path)
     }
-    throw new Error(data.error || `HTTP ${res.status}`)
+    throw new Error(errorMessage)
   }
 
   return data as T

@@ -3,7 +3,9 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { AuthProvider } from '@/components/auth-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import { ChunkErrorHandler } from '@/components/chunk-error-handler'
+import { GlobalApiErrorHandler } from '@/components/global-api-error-handler'
 import { DataProvider as EvaluationDataProvider } from '@/components/providers/data-provider'
+import { Toaster } from '@zhiyu/ui'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -31,6 +33,8 @@ export default function RootLayout({
           <AuthProvider>
               <EvaluationDataProvider>
                 <ChunkErrorHandler />
+                <GlobalApiErrorHandler />
+                <Toaster />
                 {children}
               </EvaluationDataProvider>
           </AuthProvider>

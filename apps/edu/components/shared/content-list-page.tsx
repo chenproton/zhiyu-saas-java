@@ -486,7 +486,8 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       try {
         await itemApi.submit(id)
         await approvalApi.create({ targetType: approvalTargetType, targetId: id, workflowId: batch.workflowId })
-      } catch (err) {
+      } catch (err: any) {
+        toast({ variant: "destructive", title: "提交审批失败", description: err.message || "请稍后重试" })
       }
     }
   }
@@ -516,7 +517,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     for (const id of selectedIds) {
       const item = frontItems.find((i) => i.id === id)
       if (item && item.status === "pending") {
-        try { await itemApi.withdraw(id) } catch (err) { console.error(err) }
+        try { await itemApi.withdraw(id) } catch (err: any) { toast({ variant: "destructive", title: "撤回审批失败", description: err.message || "请稍后重试" }) }
       }
     }
     setSelectedIds([])
@@ -527,7 +528,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     for (const id of selectedIds) {
       const item = frontItems.find((i) => i.id === id)
       if (item && item.status === "published") {
-        try { await itemApi.unpublish(id) } catch (err) { console.error(err) }
+        try { await itemApi.unpublish(id) } catch (err: any) { toast({ variant: "destructive", title: "取消发布失败", description: err.message || "请稍后重试" }) }
       }
     }
     setSelectedIds([])
@@ -538,7 +539,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     for (const id of selectedIds) {
       const item = frontItems.find((i) => i.id === id)
       if (item && item.status === "approved") {
-        try { await itemApi.publish(id) } catch (err) { console.error(err) }
+        try { await itemApi.publish(id) } catch (err: any) { toast({ variant: "destructive", title: "发布失败", description: err.message || "请稍后重试" }) }
       }
     }
     setSelectedIds([])
@@ -547,7 +548,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
 
   const handleBatchDelete = async () => {
     for (const id of selectedIds) {
-      try { await itemApi.delete(id) } catch (err) { console.error(err) }
+      try { await itemApi.delete(id) } catch (err: any) { toast({ variant: "destructive", title: "删除失败", description: err.message || "请稍后重试" }) }
     }
     setSelectedIds([])
     await refresh()
@@ -567,8 +568,8 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
         await itemApi.delete(item.id)
       }
       await refresh()
-    } catch (err) {
-      console.error(err)
+    } catch (err: any) {
+      toast({ variant: "destructive", title: type === "archive" ? "归档失败" : "删除失败", description: err.message || "请稍后重试" })
     } finally {
       setConfirmAction(null)
     }
@@ -578,7 +579,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     for (const id of selectedIds) {
       const item = frontItems.find((i) => i.id === id)
       if (item && ["draft", "rejected", "approved", "published"].includes(item.status)) {
-        try { await itemApi.archive(item.id) } catch (err) { console.error(err) }
+        try { await itemApi.archive(item.id) } catch (err: any) { toast({ variant: "destructive", title: "归档失败", description: err.message || "请稍后重试" }) }
       }
     }
     setSelectedIds([])
@@ -625,7 +626,8 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       a.click()
       a.remove()
       window.URL.revokeObjectURL(url)
-    } catch (err) {
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "导出失败", description: err.message || "导出失败" })
     }
     setIsExportDialogOpen(false)
     setSelectedIds([])
@@ -651,7 +653,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
         return item && !item.batchId
       }).map((it) => it.id)
       for (const id of unboundIds) {
-        try { await itemApi.update(id, { batchId: moveTargetBatchId }) } catch (err) { console.error(err) }
+        try { await itemApi.update(id, { batchId: moveTargetBatchId }) } catch (err: any) { toast({ variant: "destructive", title: "绑定批次失败", description: err.message || "请稍后重试" }) }
       }
       await doBatchSubmit(submitItems)
       setBatchSubmitEligibleIds([])
@@ -663,7 +665,7 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       return
     }
     for (const id of selectedIds) {
-      try { await itemApi.update(id, { batchId: moveTargetBatchId }) } catch (err) { console.error(err) }
+      try { await itemApi.update(id, { batchId: moveTargetBatchId }) } catch (err: any) { toast({ variant: "destructive", title: "调整批次失败", description: err.message || "请稍后重试" }) }
     }
     setSelectedIds([])
     setIsBatchMoveDialogOpen(false)
@@ -730,8 +732,8 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       await itemApi.submit(item.id)
       await approvalApi.create({ targetType: approvalTargetType, targetId: item.id, workflowId: batch.workflowId })
       await refresh()
-    } catch (err) {
-      toast({ variant: "destructive", title: "提交失败", description: "提交审批失败，请稍后重试" })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "提交失败", description: err.message || "提交审批失败，请稍后重试" })
     }
   }
 
@@ -748,21 +750,21 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       setSubmitSelectedBatchId("")
       setSubmitSelectedMajorId("all")
       await refresh()
-    } catch (err) {
-      toast({ variant: "destructive", title: "提交失败", description: "提交审批失败，请稍后重试" })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "提交失败", description: err.message || "提交审批失败，请稍后重试" })
     }
   }
 
   const handleWithdrawApproval = async (item: T) => {
-    try { await itemApi.withdraw(item.id); await refresh() } catch (err) { console.error(err) }
+    try { await itemApi.withdraw(item.id); await refresh() } catch (err: any) { toast({ variant: "destructive", title: "撤回审批失败", description: err.message || "请稍后重试" }) }
   }
 
   const handlePublish = async (item: T) => {
-    try { await itemApi.publish(item.id); await refresh() } catch (err) { console.error(err) }
+    try { await itemApi.publish(item.id); await refresh() } catch (err: any) { toast({ variant: "destructive", title: "发布失败", description: err.message || "请稍后重试" }) }
   }
 
   const handleUnpublish = async (item: T) => {
-    try { await itemApi.unpublish(item.id); await refresh() } catch (err) { console.error(err) }
+    try { await itemApi.unpublish(item.id); await refresh() } catch (err: any) { toast({ variant: "destructive", title: "取消发布失败", description: err.message || "请稍后重试" }) }
   }
 
   const handleInviteCoBuild = (item: T) => {
@@ -778,9 +780,8 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       setIsInviteDialogOpen(false)
       setInviteTarget(null)
       await refresh()
-    } catch (err) {
-      console.error(err)
-      toast({ variant: "destructive", title: "保存失败", description: "调整共建人失败，请稍后重试" })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "保存失败", description: err.message || "调整共建人失败，请稍后重试" })
     }
   }
 
