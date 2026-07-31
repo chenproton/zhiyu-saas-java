@@ -73,7 +73,7 @@ func (h *ProgramCourseImportHandler) ImportExcel(w http.ResponseWriter, r *http.
 	}
 	for i, c := range courses {
 		if _, err := tx.Exec(r.Context(),
-			`INSERT INTO training_program_courses (id, program_id, name, credits, hours, nature, position_id, course_id, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+			`INSERT INTO training_program_courses (id, program_id, name, credits, hours, semester, nature, position_id, course_id, sort_order) VALUES ($1,$2,$3,$4,$5,1,$6,$7,$8,$9)`,
 			c.ID, programID, c.Name, c.Credits, c.Hours, c.Nature, c.PositionID, c.CourseID, i); err != nil {
 			respondError(w, http.StatusInternalServerError, "保存课程失败"); return
 		}
