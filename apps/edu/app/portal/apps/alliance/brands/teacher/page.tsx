@@ -1,5 +1,4 @@
 "use client"
-/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
@@ -11,122 +10,153 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Pencil, Trash2 } from "lucide-react"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
-import { portalRequest, buildQuery } from "@/lib/api"
+import { portalRequest } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
 import { TableRowActions } from "@/components/shared/table-row-actions"
 import { StatusBadge } from "@/components/shared/status-badge"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { PortalCrudPage } from "@/components/shared/portal-crud-page"
 import type { AllianceBrand, AllianceListResponse } from "@/lib/types"
 
 const brandType = "teacher"
 const brandLabel = "师资品牌"
-const brandDesc = "管理校本师资与产业导师品牌展示"
+const brandDesc = "管理校本师资与产业导师"
 
 export default function AllianceTeacherBrandPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
   const [items, setItems] = useState<AllianceBrand[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [dialogOpen, setDialogOpen] = useState(true)
-  const [formItem, setFormItem] = useState<Partial<AllianceBrand>>({})
-  const [saving, setSaving] = useState(true)
-  const [deleteTarget, setDeleteTarget] = useState<AllianceBrand | null>(null)
-  const [deleting, setDeleting] = useState(true)
 
   const fetchItems = useCallback(async () => {
     if (!tenantId) return
-    
+    setLoading(true)
+    setError(null)
     try {
       const data = await portalRequest<AllianceListResponse<AllianceBrand>>(`/alliance/brands?brandType=${brandType}`)
       setItems(data.items || [])
-    } catch (e: any) { setError(e.message || "加载失败") } finally { setLoading(false) }
+    } catch (e: any) {
+      setError(e.message || "加载失败")
+    } finally {
+      setLoading(false)
+    }
   }, [tenantId])
 
-  useEffect(() => { if (authLoading || !tenantId) return; fetchItems() }, [tenantId, authLoading, fetchItems])
-
-  const handleSave = async (item: Partial<AllianceBrand>, isEdit: boolean) => {
-    setSaving(true)
-    try {
-      item.brandType = brandType
-      if (isEdit && item.id) {
-        await portalRequest(`/alliance/brands/${item.id}`, { method: "PUT", body: JSON.stringify(item) })
-      } else {
-        await portalRequest("/alliance/brands", { method: "POST", body: JSON.stringify(item) })
-      }
-      setDialogOpen(false); await fetchItems()
-      toast({ title: `已${isEdit ? "更新" : "创建"}` })
-    } catch (e: any) { toast({ title: "保存失败", description: e.message, variant: "destructive" }) } finally { setSaving(false) }
-  }
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return
-    setDeleting(true)
-    try { await portalRequest(`/alliance/brands/${deleteTarget.id}`, { method: "DELETE" }); setDeleteTarget(null); await fetchItems(); toast({ title: "已删除" }) }
-    catch (e: any) { toast({ title: "删除失败", description: e.message, variant: "destructive" }) } finally { setDeleting(false) }
-  }
+  useEffect(() => {
+    if (authLoading || !tenantId) return
+    fetchItems()
+  }, [tenantId, authLoading, fetchItems])
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-bold">{brandLabel}管理</h1><p className="text-muted-foreground text-sm mt-1">{brandDesc}</p></div>
-        <Button onClick={() => { setFormItem({ name: "", status: "draft", isPublic: false }); setDialogOpen(true) }}>新增品牌</Button>
-      </div>
-      {error && <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-700">{error}<Button variant="link" size="sm" onClick={fetchItems}>重试</Button></div>}
-      <div className="rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 border-b"><tr><TableHead>名称</TableHead><TableHead>状态</TableHead><TableHead>推荐</TableHead><TableHead>公开</TableHead><TableHead>浏览</TableHead><TableHead>操作</TableHead></tr></thead>
-          <tbody>
-            {loading && items.length === 0 ? <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">加载中...</td></tr>
-            : items.length === 0 ? <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">暂无数据</td></tr>
-            : items.map((b) => (
-              <tr key={b.id} className="border-b hover:bg-muted/30">
-                <TableCell className="font-medium">{b.name}</TableCell>
-                <TableCell><StatusBadge status={b.status} /></TableCell>
-                <TableCell>{b.isFeatured ? "是" : "否"}</TableCell>
-                <TableCell>{b.isPublic ? "是" : "否"}</TableCell>
-                <TableCell>{b.viewCount}</TableCell>
-                <TableCell><TableRowActions>
-                  <Button variant="ghost" size="sm" onClick={() => { setFormItem({ ...b }); setDialogOpen(true) }}><Pencil className="h-4 w-4 mr-1" />编辑</Button>
-                  <Button variant="ghost" size="sm" className="text-red-600" onClick={() => setDeleteTarget(b)}><Trash2 className="h-4 w-4 mr-1" />删除</Button>
-                </TableRowActions></TableCell>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {dialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDialogOpen(false)}>
-          <div className="bg-background rounded-lg shadow-lg w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-semibold mb-4">{formItem.id ? "编辑品牌" : "新增品牌"}</h2>
-            <div className="space-y-4">
-              <div><Label>名称 *</Label><Input value={formItem.name || ""} onChange={(e) => setFormItem({ ...formItem, name: e.target.value })} /></div>
-              <div>
-                <Label>状态</Label>
-                <Select value={formItem.status || "draft"} onValueChange={(v) => setFormItem({ ...formItem, status: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">草稿</SelectItem>
-                    <SelectItem value="published">已发布</SelectItem>
-                    <SelectItem value="archived">已归档</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div><Label>描述</Label><Textarea value={formItem.description || ""} onChange={(e) => setFormItem({ ...formItem, description: e.target.value })} rows={3} /></div>
-              <div><Label>封面图 URL</Label><Input value={formItem.coverImage || ""} onChange={(e) => setFormItem({ ...formItem, coverImage: e.target.value })} /></div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2"><Switch checked={formItem.isPublic || false} onCheckedChange={(v) => setFormItem({ ...formItem, isPublic: v })} /><Label>公开显示</Label></div>
-                <div className="flex items-center gap-2"><Switch checked={formItem.isFeatured || false} onCheckedChange={(v) => setFormItem({ ...formItem, isFeatured: v })} /><Label>推荐</Label></div>
-              </div>
+    <PortalCrudPage
+      title={`${brandLabel}管理`}
+      description={brandDesc}
+      entityLabel={brandLabel}
+      searchPlaceholder="搜索品牌名称..."
+      createButtonLabel="新增品牌"
+      items={items}
+      loading={loading}
+      error={error}
+      onRetry={fetchItems}
+      filterItems={(filtered, search) =>
+        filtered.filter((b) =>
+          !search ||
+          b.name.toLowerCase().includes(search.toLowerCase())
+        )
+      }
+      importConfig={{ importType: "alliance-brands" as any, entityLabel: brandLabel as any, templateFileName: "" as any } as any}
+      colSpan={6}
+      renderTableHeader={() => (
+        <>
+          <TableHead>名称</TableHead>
+          <TableHead>状态</TableHead>
+          <TableHead>推荐</TableHead>
+          <TableHead>公开</TableHead>
+          <TableHead>浏览</TableHead>
+          <TableHead>操作</TableHead>
+        </>
+      )}
+      renderTableRow={(item: any, actions: any) => (
+        <>
+          <TableCell className="font-medium">{item.name}</TableCell>
+          <TableCell><StatusBadge status={item.status} /></TableCell>
+          <TableCell>{item.isFeatured ? "是" : "否"}</TableCell>
+          <TableCell>{item.isPublic ? "是" : "否"}</TableCell>
+          <TableCell>{item.viewCount}</TableCell>
+          <TableRowActions>
+            <Button variant="ghost" size="sm" onClick={actions.edit}><Pencil className="h-3.5 w-3.5 mr-1" />编辑</Button>
+            <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}><Trash2 className="h-3.5 w-3.5 mr-1" />删除</Button>
+          </TableRowActions>
+        </>
+      )}
+      createDefault={() => ({
+        id: "",
+        name: "",
+        brandType: brandType as any,
+        status: "draft",
+        description: "",
+        coverImage: "",
+        isPublic: false as any,
+        isFeatured: false as any,
+        viewCount: 0,
+        enabled: true as any,
+        createdAt: "",
+        updatedAt: "",
+      } as AllianceBrand & { enabled?: boolean })}
+      renderForm={(item: any, setItem: any) => (
+        <div className="space-y-4">
+          <div>
+            <Label>名称 *</Label>
+            <Input value={item.name || ""} onChange={(e: any) => setItem({ ...item, name: e.target.value })} />
+          </div>
+          <div>
+            <Label>状态</Label>
+            <Select value={item.status || "draft"} onValueChange={(v: any) => setItem({ ...item, status: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">草稿</SelectItem>
+                <SelectItem value="published">已发布</SelectItem>
+                <SelectItem value="archived">已归档</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>描述</Label>
+            <Textarea value={item.description || ""} onChange={(e: any) => setItem({ ...item, description: e.target.value })} rows={3} />
+          </div>
+          <div>
+            <Label>封面图 URL</Label>
+            <Input value={item.coverImage || ""} onChange={(e: any) => setItem({ ...item, coverImage: e.target.value })} placeholder="https://..." />
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Switch checked={item.isPublic || false} onCheckedChange={(v: any) => setItem({ ...item, isPublic: v })} />
+              <Label>公开显示</Label>
             </div>
-            <div className="flex justify-end gap-2 mt-6">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>取消</Button>
-              <Button onClick={() => handleSave(formItem, !!formItem.id)} disabled={saving || !formItem.name}>{saving ? "保存中..." : "保存"}</Button>
+            <div className="flex items-center gap-2">
+              <Switch checked={item.isFeatured || false} onCheckedChange={(v: any) => setItem({ ...item, isFeatured: v })} />
+              <Label>推荐</Label>
             </div>
           </div>
         </div>
       )}
-      <ConfirmDialog open={!!deleteTarget} onOpenChange={(v) => { if (!v) setDeleteTarget(null) }} title="确认删除" description={deleteTarget ? `确定要删除「${deleteTarget.name}」吗？` : ""} variant="destructive" confirmText="删除"  onConfirm={handleDelete} />
-    </div>
+      getDeleteDescription={(item: any) => (<>确定要删除品牌「{item.name}」吗？</>)}
+      onSave={async (item: any, isEdit: boolean) => {
+        item.brandType = brandType
+        if (isEdit) {
+          await portalRequest(`/alliance/brands/${item.id}`, { method: "PUT", body: JSON.stringify(item) })
+        } else {
+          await portalRequest("/alliance/brands", { method: "POST", body: JSON.stringify(item) })
+        }
+        toast({ title: `品牌已${isEdit ? "更新" : "创建"}` })
+        await fetchItems()
+      }}
+      onDelete={async (item: any) => {
+        await portalRequest(`/alliance/brands/${item.id}`, { method: "DELETE" })
+        toast({ title: "品牌已删除" })
+        await fetchItems()
+      }}
+      onToggleEnabled={async () => {}}
+    />
   )
 }
