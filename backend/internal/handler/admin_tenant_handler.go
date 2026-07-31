@@ -2,63 +2,27 @@ package handler
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
 // Superadmin console handlers for /api/v1/admin/tenants.
 // 按产品决策：内部隐藏控制台，不做鉴权，跨租户管理。
 
 func (h *TenantHandler) AdminList(w http.ResponseWriter, r *http.Request) {
-	status := r.URL.Query().Get("status")
-	search := r.URL.Query().Get("search")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(r.URL.Query().Get("limit"), 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-	if search != "" {
-		where = append(where, "(name ILIKE $"+itoa(argIdx)+" OR code ILIKE $"+itoa(argIdx)+")")
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM tenants WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, admin_ids, status, created_at, updated_at
-		FROM tenants
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery[domain.Tenant](r.Context(), h.DB, r, listQueryConfig[domain.Tenant]{
+		Table:         "tenants",
+		SelectColumns: "id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, admin_ids, status, created_at, updated_at",
+		SearchColumns: []string{"name", "code"},
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if status := r.URL.Query().Get("status"); status != "" {
+				qb.addCondition("status = " + qb.nextArg(status))
+			}
+		},
+	}, h.scanTenantRows)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询租户失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanTenantRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取租户失败")
 		return
 	}
 

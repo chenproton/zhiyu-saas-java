@@ -1,13 +1,12 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
-	"github.com/zhiyu-saas/backend/internal/middleware"
 )
 
 type LogHandler struct {
@@ -25,68 +24,27 @@ type OperationLogListResponse struct {
 }
 
 func (h *LogHandler) LoginLogs(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("userId")
-	status := r.URL.Query().Get("status")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if userID != "" {
-		where = append(where, "user_id = $"+itoa(argIdx))
-		args = append(args, userID)
-		argIdx++
-	}
-	if status != "" {
-		where = append(where, "status = $"+itoa(argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM login_logs WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, tenant_id, user_id, user_name, ip, location, device, status, created_at
-		FROM login_logs
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery[domain.LoginLog](r.Context(), h.DB, r, listQueryConfig[domain.LoginLog]{
+		Table:         "login_logs",
+		SelectColumns: "id, tenant_id, user_id, user_name, ip, location, device, status, created_at",
+		TenantScoped:  true,
+		OrderBy:       "created_at DESC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if userID := r.URL.Query().Get("userId"); userID != "" {
+				qb.addCondition("user_id = " + qb.nextArg(userID))
+			}
+			if status := r.URL.Query().Get("status"); status != "" {
+				qb.addCondition("status = " + qb.nextArg(status))
+			}
+		},
+		ScanRows: h.scanLoginLogRows,
+	})
 	if err != nil {
+		if errors.Is(err, ErrMissingTenant) {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "查询登录日志失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanLoginLogRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取登录日志失败")
 		return
 	}
 
@@ -94,74 +52,30 @@ func (h *LogHandler) LoginLogs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *LogHandler) OperationLogs(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("userId")
-	module := r.URL.Query().Get("module")
-	action := r.URL.Query().Get("action")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 50
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 50); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
-	if !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-	if effectiveTenantID != "" {
-		where = append(where, "tenant_id = $"+itoa(argIdx))
-		args = append(args, effectiveTenantID)
-		argIdx++
-	}
-
-	if userID != "" {
-		where = append(where, "user_id = $"+itoa(argIdx))
-		args = append(args, userID)
-		argIdx++
-	}
-	if module != "" {
-		where = append(where, "module = $"+itoa(argIdx))
-		args = append(args, module)
-		argIdx++
-	}
-	if action != "" {
-		where = append(where, "action = $"+itoa(argIdx))
-		args = append(args, action)
-		argIdx++
-	}
-
-	countQuery := "SELECT COUNT(*) FROM operation_logs WHERE " + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT id, tenant_id, user_id, user_name, module, action, target_type, target_id, detail, ip, status, created_at
-		FROM operation_logs
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := executeListQuery[domain.OperationLog](r.Context(), h.DB, r, listQueryConfig[domain.OperationLog]{
+		Table:         "operation_logs",
+		SelectColumns: "id, tenant_id, user_id, user_name, module, action, target_type, target_id, detail, ip, status, created_at",
+		TenantScoped:  true,
+		OrderBy:       "created_at DESC",
+		ExtraFilter: func(r *http.Request, qb *listQueryBuilder) {
+			if userID := r.URL.Query().Get("userId"); userID != "" {
+				qb.addCondition("user_id = " + qb.nextArg(userID))
+			}
+			if module := r.URL.Query().Get("module"); module != "" {
+				qb.addCondition("module = " + qb.nextArg(module))
+			}
+			if action := r.URL.Query().Get("action"); action != "" {
+				qb.addCondition("action = " + qb.nextArg(action))
+			}
+		},
+		ScanRows: h.scanOperationLogRows,
+	})
 	if err != nil {
+		if errors.Is(err, ErrMissingTenant) {
+			respondError(w, http.StatusForbidden, "缺少租户信息")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "查询操作日志失败")
-		return
-	}
-	defer rows.Close()
-
-	items, err := h.scanOperationLogRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取操作日志失败")
 		return
 	}
 
