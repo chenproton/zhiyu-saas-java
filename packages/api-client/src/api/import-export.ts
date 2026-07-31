@@ -116,6 +116,12 @@ export const importExportApi = {
       body: JSON.stringify({ ids }),
     })
   },
+  exportQuestionsExcel: (bankId: string, ids: string[]) => {
+    return authedFetch(`/export/question-banks/${bankId}/questions/excel`, {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    })
+  },
   exportExamsExcel: (ids: string[]) => {
     return authedFetch(`/export/exams/excel`, {
       method: "POST",

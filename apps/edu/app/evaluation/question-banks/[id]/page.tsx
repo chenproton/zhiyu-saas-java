@@ -108,6 +108,7 @@ export default function QuestionBankDetailPage() {
   const [batchDeleteConfirm, setBatchDeleteConfirm] = useState(false)
   const [batchMoveOpen, setBatchMoveOpen] = useState(false)
   const [moveSearch, setMoveSearch] = useState("")
+  const [isExporting, setIsExporting] = useState(false)
 
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -304,6 +305,32 @@ export default function QuestionBankDetailPage() {
       }
     })
     setSelectedQuestions(new Set())
+  }
+
+  const handleBatchExport = async () => {
+    if (selectedQuestions.size === 0) return
+    setIsExporting(true)
+    try {
+      const res = await importExportApi.exportQuestionsExcel(bankId, Array.from(selectedQuestions))
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || `HTTP ${res.status}`)
+      }
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `题目导出_${bankId}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+      toast({ title: "导出成功", description: `已导出 ${selectedQuestions.size} 道题目` })
+    } catch (err: any) {
+      toast({ title: "导出失败", description: err.message || "请稍后重试", variant: "destructive" })
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const handleBatchMove = (targetBankId: string) => {
@@ -526,6 +553,10 @@ export default function QuestionBankDetailPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleBatchExport} disabled={selectedQuestions.size === 0 || isExporting}>
+            <FileDown className="mr-1 size-3" />
+            {isExporting ? "导出中..." : "批量导出"}
+          </Button>
           <Button variant="outline" size="sm" onClick={handleBatchCopy} disabled={selectedQuestions.size === 0}>
             <Copy className="mr-1 size-3" />
             批量复制

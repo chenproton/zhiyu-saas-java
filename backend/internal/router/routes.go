@@ -286,6 +286,7 @@ func registerImportExportRoutes(r chi.Router, h *Handlers) {
 	r.Post("/export/courses/excel", h.courseExportHandler.ExportExcel)
 	r.Post("/export/granular-courses/excel", h.granularCourseExportHandler.ExportExcel)
 	r.Post("/export/question-banks/excel", h.questionBankExportHandler.ExportExcel)
+	r.Post("/export/question-banks/{bankId}/questions/excel", h.questionExportHandler.ExportExcel)
 	r.Post("/export/exams/excel", h.examExportHandler.ExportExcel)
 	r.Post("/export/organizations/excel", h.resourceExportHandler.ExportOrganizations)
 	r.Post("/export/students/excel", h.resourceExportHandler.ExportStudents)
