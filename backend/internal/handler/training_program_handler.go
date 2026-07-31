@@ -384,7 +384,7 @@ func (h *TrainingProgramHandler) fetchProgram(ctx context.Context, id, tenantID 
 
 func (h *TrainingProgramHandler) fetchProgramCourses(ctx context.Context, programID string) ([]domain.TrainingProgramCourse, error) {
 	rows, err := h.DB.Query(ctx, `
-		SELECT c.id, c.program_id, c.name, c.code, c.credits, c.hours,
+		SELECT c.id, c.program_id, c.name, COALESCE(NULLIF(c.code,''), cp.code, co.code) AS code, c.credits, c.hours,
 			c.semester, c.nature, c.assessment, c.position_id, COALESCE(cp.name, ''), c.course_id, COALESCE(co.name, ''), c.sort_order
 		FROM training_program_courses c
 		LEFT JOIN career_positions cp ON cp.id = c.position_id
