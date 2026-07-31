@@ -97,7 +97,8 @@ func (b *OpLogBuffer) flushLoop() {
 }
 
 func (b *OpLogBuffer) flush(entries []OpLogEntry) {
-	ctx, cancel := context.WithTimeout(b.ctx, 10*time.Second)
+	// 不基于 b.ctx：Shutdown 会先 cancel 它，导致关机前的最后一次 flush 必然失败丢日志
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	batch := &pgx.Batch{}
