@@ -426,15 +426,15 @@ func (s *AllianceStore) GetProjectByID(ctx context.Context, id, tenantID string)
 	var p domain.AllianceProject
 	var typ, description, budget, coverImage *string
 	var startDate, endDate *time.Time
-	var enterpriseIDs, colleges json.RawMessage
+	var enterpriseIDs, agreementIDs, colleges json.RawMessage
 	err := s.DB.QueryRow(ctx, `
 		SELECT id, tenant_id, name, type, description, phase, publish_status,
-			start_date, end_date, budget, cover_image, enterprise_ids, secondary_colleges,
+			start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
 			is_public, created_at, updated_at
 		FROM alliance_projects WHERE id = $1 AND tenant_id = $2
 	`, id, tenantID).Scan(&p.ID, &p.TenantID, &p.Name, &typ, &description, &p.Phase,
 		&p.PublishStatus, &startDate, &endDate, &budget, &coverImage,
-		&enterpriseIDs, &colleges, &p.IsPublic, &p.CreatedAt, &p.UpdatedAt)
+		&enterpriseIDs, &agreementIDs, &colleges, &p.IsPublic, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -445,6 +445,7 @@ func (s *AllianceStore) GetProjectByID(ctx context.Context, id, tenantID string)
 	p.Budget = budget
 	p.CoverImage = coverImage
 	p.EnterpriseIDs = enterpriseIDs
+	p.AgreementIDs = agreementIDs
 	p.SecondaryColleges = colleges
 	return &p, nil
 }
@@ -1019,11 +1020,14 @@ func (s *AllianceStore) GetBrandByID(ctx context.Context, id, tenantID string) (
 	var data json.RawMessage
 	err := s.DB.QueryRow(ctx, `
 		SELECT id, tenant_id, brand_type, name, status, is_public, is_featured,
-			cover_image, cover_video, description, data, sort_order, view_count, created_at, updated_at
+			cover_image, cover_video, description, data,
+			student_id, enterprise_id, position_id, major_id, teacher_id, expert_id,
+			sort_order, view_count, created_at, updated_at
 		FROM alliance_brands WHERE id = $1 AND tenant_id = $2
 	`, id, tenantID).Scan(&b.ID, &b.TenantID, &b.BrandType, &b.Name, &b.Status,
 		&b.IsPublic, &b.IsFeatured, &coverImage, &coverVideo, &description,
-		&data, &b.SortOrder, &b.ViewCount, &b.CreatedAt, &b.UpdatedAt)
+		&data, &b.StudentID, &b.EnterpriseID, &b.PositionID, &b.MajorID,
+		&b.TeacherID, &b.ExpertID, &b.SortOrder, &b.ViewCount, &b.CreatedAt, &b.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}

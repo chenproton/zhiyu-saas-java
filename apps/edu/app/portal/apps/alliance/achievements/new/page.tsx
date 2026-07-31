@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,23 +9,48 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { MultiSelect } from "@/components/ui/multi-select"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
+import type { AllianceEnterprise, AllianceProject, AllianceListResponse } from "@/lib/types"
+
+const SECONDARY_COLLEGES = [
+  "智能制造学院", "信息技术学院", "经济管理学院", "艺术设计学院",
+  "新能源工程学院", "生物医药学院", "现代服务学院", "国际教育学院",
+  "创新创业学院", "继续教育学院", "基础教育学院", "马克思主义学院",
+]
 
 export default function AllianceAchievementNewPage() {
   const { tenantId } = usePortalAuth()
   const { toast } = useToast()
   const router = useRouter()
   const [saving, setSaving] = useState(false)
+  const [enterprises, setEnterprises] = useState<{ label: string; value: string }[]>([])
+  const [projects, setProjects] = useState<{ label: string; value: string }[]>([])
   const [item, setItem] = useState({
     title: "",
     type: "custom",
     description: "",
     achievementDate: "",
     isPublic: false,
+    enterpriseIds: [] as string[],
+    projectIds: [] as string[],
+    secondaryColleges: [] as string[],
   })
+
+  useEffect(() => {
+    Promise.all([
+      portalRequest<AllianceListResponse<AllianceEnterprise>>("/alliance/enterprises?limit=1000"),
+      portalRequest<AllianceListResponse<AllianceProject>>("/alliance/projects?limit=1000"),
+    ])
+      .then(([ents, projs]) => {
+        setEnterprises((ents.items || []).map((e) => ({ label: e.name, value: e.id })))
+        setProjects((projs.items || []).map((p) => ({ label: p.name, value: p.id })))
+      })
+      .catch(() => {})
+  }, [])
 
   const setField = (field: string, value: any) => setItem({ ...item, [field]: value })
 
@@ -91,6 +116,45 @@ export default function AllianceAchievementNewPage() {
         </div>
 
         <div className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>归属项目</CardTitle></CardHeader>
+            <CardContent>
+              <Select value={item.projectIds?.[0] || "__none"} onValueChange={(v) => setField("projectIds", v === "__none" ? [] : [v])}>
+                <SelectTrigger><SelectValue placeholder="选择归属项目（可选）" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">不关联项目</SelectItem>
+                  {projects.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>合作企业</CardTitle></CardHeader>
+            <CardContent>
+              <MultiSelect
+                options={enterprises}
+                value={item.enterpriseIds}
+                onChange={(v) => setField("enterpriseIds", v)}
+                placeholder="选择合作企业"
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>二级学院</CardTitle></CardHeader>
+            <CardContent>
+              <MultiSelect
+                options={SECONDARY_COLLEGES}
+                value={item.secondaryColleges}
+                onChange={(v) => setField("secondaryColleges", v)}
+                placeholder="选择归属学院"
+              />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader><CardTitle>设置</CardTitle></CardHeader>
             <CardContent className="space-y-4">

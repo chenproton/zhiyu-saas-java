@@ -105,6 +105,10 @@ export interface AllianceAchievement {
   achievementDate?: string
   coverImage?: string
   attachments?: string[]
+  citationReason?: string
+  images?: string[]
+  ownerPersons?: string[]
+  coBuilders?: string[]
   enterpriseIds?: string[]
   projectIds?: string[]
   relatedPositions?: string[]
@@ -136,6 +140,9 @@ export interface AllianceExpert {
   workExperience?: string
   city?: string
   avatarUrl?: string
+  coverImage?: string
+  partnerSource?: string
+  positionDirection?: string
   photos?: string[]
   attachments?: string[]
   enterpriseId?: string

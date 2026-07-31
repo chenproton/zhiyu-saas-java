@@ -1227,7 +1227,7 @@ func (h *SchedulingHandler) checkScheduleConflicts(ctx context.Context, tenantID
 	rows, err := h.DB.Query(ctx, `
 		SELECT se.id, se.course_name, COALESCE(o.name, ''), COALESCE(u.name, ''), COALESCE(v.name, ''),
 			se.day_of_week, se.periods, se.start_week, se.end_week, se.week_pattern,
-			se.teacher_id, se.class_node_id, se.venue_id
+			se.teacher_id, se.class_node_id, se.venue_id, se.plan_entry_id
 		FROM schedule_entries se
 		LEFT JOIN organizations o ON o.id = se.class_node_id
 		LEFT JOIN users u ON u.id = se.teacher_id
@@ -1246,11 +1246,16 @@ func (h *SchedulingHandler) checkScheduleConflicts(ctx context.Context, tenantID
 	conflicts := make([]domain.ScheduleConflict, 0)
 	for rows.Next() {
 		var c domain.ScheduleConflict
-		var rowTeacherID, rowClassNodeID, rowVenueID *string
+		var rowTeacherID, rowClassNodeID, rowVenueID, rowPlanEntryID *string
 		if err := rows.Scan(&c.EntryID, &c.CourseName, &c.ClassName, &c.TeacherName, &c.VenueName,
 			&c.DayOfWeek, &c.Periods, &c.StartWeek, &c.EndWeek, &c.WeekPattern,
-			&rowTeacherID, &rowClassNodeID, &rowVenueID); err != nil {
+			&rowTeacherID, &rowClassNodeID, &rowVenueID, &rowPlanEntryID); err != nil {
 			return nil, err
+		}
+
+		// 同一门课（同一教学计划条目）多个班级同时上课不判冲突
+		if rowPlanEntryID != nil && req.PlanEntryID != nil && *rowPlanEntryID == *req.PlanEntryID {
+			continue
 		}
 
 		if req.TeacherID != nil && *req.TeacherID != "" && rowTeacherID != nil && *rowTeacherID == *req.TeacherID {

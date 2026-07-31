@@ -9,11 +9,18 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { MultiSelect } from "@/components/ui/multi-select"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
 import type { AllianceEnterprise } from "@/lib/types"
+
+const SECONDARY_COLLEGES = [
+  "智能制造学院", "信息技术学院", "经济管理学院", "艺术设计学院",
+  "新能源工程学院", "生物医药学院", "现代服务学院", "国际教育学院",
+  "创新创业学院", "继续教育学院", "基础教育学院", "马克思主义学院",
+]
 
 export default function AllianceEnterpriseEditPage() {
   const { id } = useParams<{ id: string }>()
@@ -49,7 +56,8 @@ export default function AllianceEnterpriseEditPage() {
   if (loading) return <div className="text-center py-12 text-muted-foreground">加载中...</div>
   if (!item) return <div className="text-center py-12 text-muted-foreground">企业不存在</div>
 
-  const setField = (field: string, value: any) => setItem({ ...item, [field]: value })
+  const setField = (field: string, value: any) => setItem({ ...item, [field]: value } as AllianceEnterprise)
+  const secondaryColleges: string[] = (item as any).secondaryColleges || []
 
   return (
     <div className="space-y-6">
@@ -148,6 +156,18 @@ export default function AllianceEnterpriseEditPage() {
         </div>
 
         <div className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>二级学院</CardTitle></CardHeader>
+            <CardContent>
+              <MultiSelect
+                options={SECONDARY_COLLEGES}
+                value={secondaryColleges}
+                onChange={(v) => setField("secondaryColleges", v)}
+                placeholder="选择归属学院"
+              />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader><CardTitle>设置</CardTitle></CardHeader>
             <CardContent className="space-y-4">
