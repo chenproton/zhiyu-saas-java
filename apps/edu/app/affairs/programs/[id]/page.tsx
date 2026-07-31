@@ -182,13 +182,6 @@ export default function ProgramEditPage() {
                   </Field>
                 </div>
 
-                {!isNew && (
-                  <Field>
-                    <FieldLabel>方案编码</FieldLabel>
-                    <span className="text-sm text-muted-foreground">{program?.code || "自动生成"}</span>
-                  </Field>
-                )}
-
                 <Field>
                   <FieldLabel>方案描述</FieldLabel>
                   <Textarea
