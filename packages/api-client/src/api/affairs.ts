@@ -57,6 +57,16 @@ export const programApi = {
       method: "PUT",
       body: JSON.stringify({ courses }),
     }),
+  clone: (id: string, body?: { name?: string; code?: string }) =>
+    request<TrainingProgram>(`/affairs/programs/${id}/clone`, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
+  submit: (id: string) => request<TrainingProgram>(`/affairs/programs/${id}/submit`, { method: "POST" }),
+  review: (id: string, req: { status: string; comment?: string }) =>
+    request<TrainingProgram>(`/affairs/programs/${id}/review`, { method: "POST", body: JSON.stringify(req) }),
+  archive: (id: string) => request<TrainingProgram>(`/affairs/programs/${id}/archive`, { method: "POST" }),
+  unpublish: (id: string) => request<TrainingProgram>(`/affairs/programs/${id}/unpublish`, { method: "POST" }),
+  withdraw: (id: string) => request<TrainingProgram>(`/affairs/programs/${id}/withdraw`, { method: "POST" }),
+  invite: (id: string, userId: string) =>
+    request<TrainingProgram>(`/affairs/programs/${id}/invite`, { method: "POST", body: JSON.stringify({ userId }) }),
 }
 
 // ==================== 教学计划 ====================

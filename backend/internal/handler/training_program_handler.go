@@ -435,3 +435,48 @@ func (h *TrainingProgramHandler) Review(w http.ResponseWriter, r *http.Request) 
 func (h *TrainingProgramHandler) Archive(w http.ResponseWriter, r *http.Request)    { h.actions().transition(w, r, domain.StatusArchived) }
 func (h *TrainingProgramHandler) Unpublish(w http.ResponseWriter, r *http.Request)  { h.actions().transition(w, r, domain.StatusDraft) }
 func (h *TrainingProgramHandler) SaveDraft(w http.ResponseWriter, r *http.Request)  { /* no-op: draft is default */ }
+
+// Clone POST /affairs/programs/{id}/clone — 克隆人培方案及课程设置。
+func (h *TrainingProgramHandler) Clone(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if claims == nil { respondError(w, http.StatusForbidden, "权限不足"); return }
+	tenantID, ok := requireTenant(w, r)
+	if !ok { return }
+	ctx := r.Context()
+	id := chi.URLParam(r, "id")
+
+	var req struct {
+		Name *string `json:"name"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
+	src, err := h.fetchProgram(ctx, id, tenantID)
+	if err != nil { respondError(w, http.StatusNotFound, "人培方案不存在"); return }
+	if src.Status == "" { src.Status = "draft" }
+
+	newName := src.Name + " (克隆)"
+	if req.Name != nil && *req.Name != "" { newName = *req.Name }
+
+	newID := uuid.NewString()
+	err = withTx(ctx, h.DB, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO training_programs (id, tenant_id, name, code, major_id, entry_year, level, duration, total_credits, status, description, created_by, collaborators)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'{}')
+		`, newID, tenantID, newName, src.Code, src.MajorID, src.EntryYear, src.Level, src.Duration, src.TotalCredits, "draft", src.Description, claims.UserID); err != nil {
+			return err
+		}
+		// 克隆课程设置
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO training_program_courses (id, program_id, name, code, credits, hours, semester, nature, assessment, position_id, course_id, sort_order)
+			SELECT gen_random_uuid(), $1, name, code, credits, hours, semester, nature, assessment, position_id, course_id, sort_order
+			FROM training_program_courses WHERE program_id = $2
+		`, newID, id); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil { respondError(w, http.StatusInternalServerError, "克隆失败"); return }
+
+	program, _ := h.fetchProgram(ctx, newID, tenantID)
+	respondJSON(w, http.StatusCreated, program)
+}

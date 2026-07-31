@@ -15,6 +15,7 @@ func registerAffairsRoutes(r chi.Router, h *Handlers) {
 	registerContentRoutes(r, "/affairs/programs", h.trainingProgramHandler)
 	r.Get("/affairs/programs/{id}/courses", h.trainingProgramHandler.ListCourses)
 	r.Put("/affairs/programs/{id}/courses", h.trainingProgramHandler.PutCourses)
+	r.Post("/affairs/programs/{id}/clone", h.trainingProgramHandler.Clone)
 
 	// 教学计划
 	r.Get("/affairs/teaching-plans", h.teachingPlanHandler.List)
