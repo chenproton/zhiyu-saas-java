@@ -32,24 +32,22 @@ type TrainingProgram struct {
 	UpdatedAt    time.Time `json:"updatedAt"`
 }
 
-// TrainingProgramCourse 人培方案课程（场景课程通过 scenario_id 关联已有场景）。
+// TrainingProgramCourse 人培方案课程（通过 position_id 关联岗位下的所有场景，或通过 course_id 关联体系课）。
 type TrainingProgramCourse struct {
-	ID            string  `json:"id"`
-	ProgramID     string  `json:"programId"`
-	Name          string  `json:"name"`
-	Code          *string `json:"code,omitempty"`
-	Credits       float64 `json:"credits"`
-	Hours         int     `json:"hours"`
-	TheoryHours   int     `json:"theoryHours"`
-	PracticeHours int     `json:"practiceHours"`
-	Semester      int     `json:"semester"`
-	Nature        string  `json:"nature"`
-	Assessment    *string `json:"assessment,omitempty"`
-	ScenarioID    *string `json:"scenarioId,omitempty"`
-	ScenarioName  string  `json:"scenarioName,omitempty"`
-	CourseID      *string `json:"courseId,omitempty"`
-	CourseName    string  `json:"courseName,omitempty"`
-	SortOrder     int     `json:"sortOrder"`
+	ID           string  `json:"id"`
+	ProgramID    string  `json:"programId"`
+	Name         string  `json:"name"`
+	Code         *string `json:"code,omitempty"`
+	Credits      float64 `json:"credits"`
+	Hours        int     `json:"hours"`
+	Semester     int     `json:"semester"`
+	Nature       string  `json:"nature"`
+	Assessment   *string `json:"assessment,omitempty"`
+	PositionID   *string `json:"positionId,omitempty"`
+	PositionName string  `json:"positionName,omitempty"`
+	CourseID     *string `json:"courseId,omitempty"`
+	CourseName   string  `json:"courseName,omitempty"`
+	SortOrder    int     `json:"sortOrder"`
 }
 
 // TeachingPlan 教学计划（从人培方案按学期生成）。

@@ -180,20 +180,35 @@ func (h *TeachingPlanHandler) Generate(w http.ResponseWriter, r *http.Request) {
 			if c.Hours > 0 && weeksCount > 0 {
 				weekHours = (c.Hours + weeksCount - 1) / weeksCount
 			}
-			scenarioID := (*string)(nil)
-			if c.ScenarioID != nil && *c.ScenarioID != "" {
-				scenarioID = c.ScenarioID
-			}
 			courseID := (*string)(nil)
 			if c.CourseID != nil && *c.CourseID != "" {
 				courseID = c.CourseID
 			}
-			if _, err := tx.Exec(ctx, `
-				INSERT INTO teaching_plan_entries (id, plan_id, course_name, course_code, type, nature, credits, total_hours, week_hours, start_week, end_week, week_pattern, scenario_id, course_id, status)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 1, $10, 'all', $11, $12, 'planned')
-			`, uuid.NewString(), planID, c.Name, emptyStrToNil(c.Code), entryType, emptyStrToNil(c.Nature),
-				c.Credits, c.Hours, weekHours, weeksCount, scenarioID, courseID); err != nil {
-				return err
+			if c.PositionID != nil && *c.PositionID != "" {
+				scenarioRows, err := tx.Query(ctx, `SELECT id, name, code FROM scenarios WHERE career_position_id=$1 AND status='published'`, *c.PositionID)
+				if err != nil { return err }
+				for scenarioRows.Next() {
+					var sid, sname string
+					var scode *string
+					if err := scenarioRows.Scan(&sid, &sname, &scode); err != nil { return err }
+					if _, err := tx.Exec(ctx, `
+						INSERT INTO teaching_plan_entries (id, plan_id, course_name, course_code, type, nature, credits, total_hours, week_hours, start_week, end_week, week_pattern, scenario_id, course_id, status)
+						VALUES ($1, $2, $3, $4, 'scene', $5, $6, $7, $8, 1, $9, 'all', $10, $11, 'planned')
+					`, uuid.NewString(), planID, sname, scode, emptyStrToNil(c.Nature),
+						c.Credits, c.Hours, weekHours, weeksCount, sid, courseID); err != nil {
+						scenarioRows.Close()
+						return err
+					}
+				}
+				scenarioRows.Close()
+			} else {
+				if _, err := tx.Exec(ctx, `
+					INSERT INTO teaching_plan_entries (id, plan_id, course_name, course_code, type, nature, credits, total_hours, week_hours, start_week, end_week, week_pattern, scenario_id, course_id, status)
+					VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 1, $10, 'all', $11, $12, 'planned')
+				`, uuid.NewString(), planID, c.Name, emptyStrToNil(c.Code), entryType, emptyStrToNil(c.Nature),
+					c.Credits, c.Hours, weekHours, weeksCount, (*string)(nil), courseID); err != nil {
+					return err
+				}
 			}
 		}
 		return nil
@@ -417,20 +432,18 @@ func (h *TeachingPlanHandler) fetchTermWeeks(ctx context.Context, id, tenantID s
 }
 
 type planCourseRow struct {
-	Name          string
-	Code          *string
-	Credits       float64
-	Hours         int
-	TheoryHours   int
-	PracticeHours int
-	Nature        *string
-	ScenarioID    *string
-	CourseID      *string
+	Name       string
+	Code       *string
+	Credits    float64
+	Hours      int
+	Nature     *string
+	PositionID *string
+	CourseID   *string
 }
 
 func (h *TeachingPlanHandler) fetchProgramCoursesForPlan(ctx context.Context, programID string) ([]planCourseRow, error) {
 	rows, err := h.DB.Query(ctx, `
-		SELECT name, code, credits, hours, theory_hours, practice_hours, nature, scenario_id, course_id
+		SELECT name, code, credits, hours, nature, position_id, course_id
 		FROM training_program_courses WHERE program_id = $1 ORDER BY semester, sort_order, id
 	`, programID)
 	if err != nil {
@@ -441,7 +454,7 @@ func (h *TeachingPlanHandler) fetchProgramCoursesForPlan(ctx context.Context, pr
 	items := make([]planCourseRow, 0)
 	for rows.Next() {
 		var c planCourseRow
-		if err := rows.Scan(&c.Name, &c.Code, &c.Credits, &c.Hours, &c.TheoryHours, &c.PracticeHours, &c.Nature, &c.ScenarioID, &c.CourseID); err != nil {
+		if err := rows.Scan(&c.Name, &c.Code, &c.Credits, &c.Hours, &c.Nature, &c.PositionID, &c.CourseID); err != nil {
 			return nil, err
 		}
 		items = append(items, c)
@@ -452,22 +465,10 @@ func (h *TeachingPlanHandler) fetchProgramCoursesForPlan(ctx context.Context, pr
 // planEntryType 判定计划条目类型：
 // 有关联场景 → scene（带 scenario_id）；场景性质/实践 → 对应类型；
 // 普通课程纯实践学时（practice_hours>0 且无理论学时）→ practice，其余 → theory。
+// planEntryType 判定计划条目类型：有关联岗位 → scene；其余 → theory。
 func planEntryType(c planCourseRow) string {
-	if c.ScenarioID != nil && *c.ScenarioID != "" {
+	if c.PositionID != nil && *c.PositionID != "" {
 		return "scene"
-	}
-	nature := ""
-	if c.Nature != nil {
-		nature = *c.Nature
-	}
-	switch nature {
-	case "场景":
-		return "scene"
-	case "实践":
-		return "practice"
-	}
-	if c.PracticeHours > 0 && c.TheoryHours == 0 {
-		return "practice"
 	}
 	return "theory"
 }
