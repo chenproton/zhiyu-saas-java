@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button"
 import { useToast } from "@zhiyu/ui"
 import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
-import { importExportApi } from "@zhiyu/api-client"
+import { importExportApi, authedFetch } from "@zhiyu/api-client"
 import type { ImportPreviewResult } from "@zhiyu/api-client"
 import { FileDown, FileText, Plus, X } from "lucide-react"
 
@@ -63,7 +63,7 @@ export function ProgramCourseImportDialog({ open, onOpenChange, programId, onImp
       const form = new FormData()
       files.forEach((f) => form.append("file", f))
       form.append("programId", programId)
-      const res = await fetch(`/api/v1/import/program-courses/excel?programId=${encodeURIComponent(programId)}&overwrite=${overwrite}`, { method: "POST", body: form })
+      const res = await authedFetch(`/import/program-courses/excel?programId=${encodeURIComponent(programId)}&overwrite=${overwrite}`, { method: "POST", body: form })
       const data = await res.json()
       if (res.ok) {
         toast({ title: `导入成功`, description: `共导入 ${data.created || 0} 门课程${data.failed ? "，" + data.failed + " 条失败" : ""}` })
@@ -84,7 +84,7 @@ export function ProgramCourseImportDialog({ open, onOpenChange, programId, onImp
       const form = new FormData()
       files.forEach((f) => form.append("file", f))
       form.append("programId", programId)
-      const previewRes = await fetch(`/api/v1/import/program-courses/preview?programId=${encodeURIComponent(programId)}`, { method: "POST", body: form })
+      const previewRes = await authedFetch(`/import/program-courses/preview?programId=${encodeURIComponent(programId)}`, { method: "POST", body: form })
       const preview = await previewRes.json()
       if (preview.duplicates > 0) {
         setImportPreview({ created: preview.created || 0, duplicates: preview.duplicates, failed: preview.failed || 0, duplicateItems: preview.duplicateItems || [], errors: preview.errors || [] })

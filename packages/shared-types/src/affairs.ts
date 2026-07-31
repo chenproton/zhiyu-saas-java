@@ -57,13 +57,11 @@ export interface TrainingProgramCourse {
   code?: string
   credits: number
   hours: number
-  theoryHours: number
-  practiceHours: number
   semester: number
   nature: string
   assessment?: string
-  scenarioId?: string
-  scenarioName?: string
+  positionId?: string
+  positionName?: string
   courseId?: string
   courseName?: string
   sortOrder: number
@@ -74,12 +72,10 @@ export interface TrainingProgramCoursePayload {
   code?: string
   credits: number
   hours: number
-  theoryHours: number
-  practiceHours: number
   semester: number
   nature: string
   assessment?: string
-  scenarioId?: string
+  positionId?: string
   courseId?: string
   sortOrder: number
 }

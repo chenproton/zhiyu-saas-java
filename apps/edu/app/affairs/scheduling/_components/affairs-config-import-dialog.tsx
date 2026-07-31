@@ -48,19 +48,12 @@ export function AffairsConfigImportDialog({ open, onOpenChange, onImported }: Af
     if (files.length === 0) return
     setImporting(true)
     try {
-      const form = new FormData()
-      files.forEach((f) => form.append("file", f))
-      const res = await fetch("/api/v1/import/affairs-config/excel", { method: "POST", body: form })
-      const data = await res.json()
-      if (res.ok) {
-        toast({ title: "导入完成", description: `学期 ${data.termsCreated || 0} · 场地 ${data.venuesCreated || 0} · 节次 ${data.periodSlotsCreated || 0}` })
-        resetAndClose()
-        onImported()
-      } else {
-        toast({ variant: "destructive", title: "导入失败", description: data.error || "请检查文件格式" })
-      }
+      const data = await importExportApi.importExcel("affairs-config" as any, files[0])
+      toast({ title: "导入完成", description: `学期 ${(data as any).termsCreated || 0} · 场地 ${(data as any).venuesCreated || 0} · 节次 ${(data as any).periodSlotsCreated || 0}` })
+      resetAndClose()
+      onImported()
     } catch (err: any) {
-      toast({ variant: "destructive", title: "导入失败", description: err.message || "请稍后重试" })
+      toast({ variant: "destructive", title: "导入失败", description: err.message || "请检查文件格式" })
     } finally { setImporting(false) }
   }
 
