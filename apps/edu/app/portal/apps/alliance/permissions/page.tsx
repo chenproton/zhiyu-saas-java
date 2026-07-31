@@ -58,7 +58,7 @@ export default function AlliancePermissionsPage() {
           p.accountName.toLowerCase().includes(search.toLowerCase())
         )
       }
-      importConfig={{ importType: "alliance-permissions" as any, entityLabel: "权限授权" as any, templateFileName: "" as any } as any}
+      importConfig={{ importType: "alliance-permissions", entityLabel: "合作权限", templateFileName: "合作权限批量导入模板.xlsx" }}
       colSpan={4}
       renderTableHeader={() => (
         <>

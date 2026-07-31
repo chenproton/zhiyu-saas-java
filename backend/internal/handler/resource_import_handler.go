@@ -892,3 +892,703 @@ func parseBoolDefault(s string, defaultVal bool) bool {
 		return defaultVal
 	}
 }
+
+// ===== Alliance Import Handlers =====
+
+func (h *ResourceImportHandler) PreviewEnterprises(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "alliance-enterprises", h.doImportEnterprises, true)
+}
+
+func (h *ResourceImportHandler) ImportEnterprises(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "alliance-enterprises", h.doImportEnterprises, false)
+}
+
+func (h *ResourceImportHandler) PreviewProjects(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "alliance-projects", h.doImportProjects, true)
+}
+
+func (h *ResourceImportHandler) ImportProjects(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "alliance-projects", h.doImportProjects, false)
+}
+
+func (h *ResourceImportHandler) PreviewAchievements(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "alliance-achievements", h.doImportAchievements, true)
+}
+
+func (h *ResourceImportHandler) ImportAchievements(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "alliance-achievements", h.doImportAchievements, false)
+}
+
+func (h *ResourceImportHandler) PreviewExperts(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "alliance-experts", h.doImportExperts, true)
+}
+
+func (h *ResourceImportHandler) ImportExperts(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "alliance-experts", h.doImportExperts, false)
+}
+
+func (h *ResourceImportHandler) PreviewAgreements(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "alliance-agreements", h.doImportAgreements, true)
+}
+
+func (h *ResourceImportHandler) ImportAgreements(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "alliance-agreements", h.doImportAgreements, false)
+}
+
+func (h *ResourceImportHandler) PreviewPermissions(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "alliance-permissions", h.doImportPermissions, true)
+}
+
+func (h *ResourceImportHandler) ImportPermissions(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "alliance-permissions", h.doImportPermissions, false)
+}
+
+func (h *ResourceImportHandler) PreviewBrands(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "alliance-brands", h.doImportBrands, true)
+}
+
+func (h *ResourceImportHandler) ImportBrands(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "alliance-brands", h.doImportBrands, false)
+}
+
+func (h *ResourceImportHandler) PreviewBrandTopics(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "alliance-brand-topics", h.doImportBrandTopics, true)
+}
+
+func (h *ResourceImportHandler) ImportBrandTopics(w http.ResponseWriter, r *http.Request) {
+	h.importExcel(w, r, "alliance-brand-topics", h.doImportBrandTopics, false)
+}
+
+// ===== Alliance doImport functions =====
+
+// Sheet: 合作企业
+// Columns: 企业名称*, 企业类型, 所属行业, 所在地区, 合作状态, 合作评级, 联系人, 联系电话, 联系邮箱, 企业地址
+func (h *ResourceImportHandler) doImportEnterprises(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+	previewRes := &ImportPreviewResult{}
+	result := &resourceImportResult{}
+
+	rows, err := xlsx.GetRows("合作企业")
+	if err != nil {
+		msg := fmt.Sprintf("读取「合作企业」Sheet 失败: %v", err)
+		result.Errors = append(result.Errors, msg)
+		previewRes.Errors = append(previewRes.Errors, msg)
+		return previewRes, result
+	}
+
+	for i, row := range rows {
+		if i < 2 {
+			continue
+		}
+		rowNum := i + 1
+		if len(row) < 1 || strings.TrimSpace(row[0]) == "" {
+			continue
+		}
+		name := strings.TrimSpace(row[0])
+		entType := strings.TrimSpace(col(row, 1))
+		if entType == "" {
+			entType = "platform"
+		}
+		industry := nullableStr(col(row, 2))
+		region := nullableStr(col(row, 3))
+		status := strings.TrimSpace(col(row, 4))
+		if status == "" {
+			status = "active"
+		}
+		rating := nullableStr(col(row, 5))
+		contactPerson := nullableStr(col(row, 6))
+		contactPhone := nullableStr(col(row, 7))
+		contactEmail := nullableStr(col(row, 8))
+		address := nullableStr(col(row, 9))
+
+		var existingID string
+		_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_enterprises WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
+		if existingID != "" {
+			if !overwrite {
+				result.Skipped++
+				previewRes.Duplicates++
+				appendDuplicate(previewRes, rowNum, name, name)
+				continue
+			}
+			if !preview {
+				_, err := h.DB.Exec(ctx, `
+					UPDATE alliance_enterprises SET enterprise_type=$1, industry=$2, region=$3,
+						status=$4, rating=$5, contact_person=$6, contact_phone=$7,
+						contact_email=$8, address=$9, updated_at=NOW()
+					WHERE id=$10 AND tenant_id=$11
+				`, entType, industry, region, status, rating, contactPerson, contactPhone, contactEmail, address, existingID, tenantID)
+				if err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("企业[%s]更新失败: %v", name, err))
+					continue
+				}
+			}
+			result.Created++
+			previewRes.Created++
+			continue
+		}
+
+		if !preview {
+			id := uuid.NewString()
+			_, err := h.DB.Exec(ctx, `
+				INSERT INTO alliance_enterprises (id, tenant_id, name, enterprise_type, industry, region, status, rating,
+					contact_person, contact_phone, contact_email, address, cooperation_types,
+					business_license_photos, qualification_photos, intellectual_property_photos, cover_photos,
+					secondary_colleges, is_public, created_at, updated_at)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,NOW(),NOW())
+			`, id, tenantID, name, entType, industry, region, status, rating,
+				contactPerson, contactPhone, contactEmail, address,
+				[]byte("[]"), []byte("[]"), []byte("[]"), []byte("[]"), []byte("[]"), []byte("[]"), false)
+			if err != nil {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("企业[%s]创建失败: %v", name, err))
+				continue
+			}
+		}
+		result.Created++
+		previewRes.Created++
+	}
+
+	return previewRes, result
+}
+
+// Sheet: 合作项目
+// Columns: 项目名称*, 项目类型, 项目阶段, 开始日期, 结束日期, 描述
+func (h *ResourceImportHandler) doImportProjects(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+	previewRes := &ImportPreviewResult{}
+	result := &resourceImportResult{}
+
+	rows, err := xlsx.GetRows("合作项目")
+	if err != nil {
+		msg := fmt.Sprintf("读取「合作项目」Sheet 失败: %v", err)
+		result.Errors = append(result.Errors, msg)
+		previewRes.Errors = append(previewRes.Errors, msg)
+		return previewRes, result
+	}
+
+	for i, row := range rows {
+		if i < 2 {
+			continue
+		}
+		rowNum := i + 1
+		if len(row) < 1 || strings.TrimSpace(row[0]) == "" {
+			continue
+		}
+		name := strings.TrimSpace(row[0])
+		projType := nullableStr(col(row, 1))
+		phase := strings.TrimSpace(col(row, 2))
+		if phase == "" {
+			phase = "initiation"
+		}
+		startDate := nullableStr(col(row, 3))
+		endDate := nullableStr(col(row, 4))
+		description := nullableStr(col(row, 5))
+
+		var existingID string
+		_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_projects WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
+		if existingID != "" {
+			if !overwrite {
+				result.Skipped++
+				previewRes.Duplicates++
+				appendDuplicate(previewRes, rowNum, name, name)
+				continue
+			}
+			if !preview {
+				_, err := h.DB.Exec(ctx, `
+					UPDATE alliance_projects SET type=$1, phase=$2, start_date=$3, end_date=$4,
+						description=$5, updated_at=NOW()
+					WHERE id=$6 AND tenant_id=$7
+				`, projType, phase, startDate, endDate, description, existingID, tenantID)
+				if err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("项目[%s]更新失败: %v", name, err))
+					continue
+				}
+			}
+			result.Created++
+			previewRes.Created++
+			continue
+		}
+
+		if !preview {
+			id := uuid.NewString()
+			_, err := h.DB.Exec(ctx, `
+				INSERT INTO alliance_projects (id, tenant_id, name, type, description, phase, publish_status,
+					start_date, end_date, enterprise_ids, agreement_ids, secondary_colleges, is_public,
+					created_at, updated_at)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())
+			`, id, tenantID, name, projType, description, phase, "draft",
+				startDate, endDate,
+				[]byte("[]"), []byte("[]"), []byte("[]"), false)
+			if err != nil {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("项目[%s]创建失败: %v", name, err))
+				continue
+			}
+		}
+		result.Created++
+		previewRes.Created++
+	}
+
+	return previewRes, result
+}
+
+// Sheet: 合作成果
+// Columns: 成果名称*, 成果类型, 描述, 成果日期
+func (h *ResourceImportHandler) doImportAchievements(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+	previewRes := &ImportPreviewResult{}
+	result := &resourceImportResult{}
+
+	rows, err := xlsx.GetRows("合作成果")
+	if err != nil {
+		msg := fmt.Sprintf("读取「合作成果」Sheet 失败: %v", err)
+		result.Errors = append(result.Errors, msg)
+		previewRes.Errors = append(previewRes.Errors, msg)
+		return previewRes, result
+	}
+
+	for i, row := range rows {
+		if i < 2 {
+			continue
+		}
+		rowNum := i + 1
+		if len(row) < 1 || strings.TrimSpace(row[0]) == "" {
+			continue
+		}
+		title := strings.TrimSpace(row[0])
+		achType := strings.TrimSpace(col(row, 1))
+		if achType == "" {
+			achType = "custom"
+		}
+		description := nullableStr(col(row, 2))
+		achievementDate := nullableStr(col(row, 3))
+
+		var existingID string
+		_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_achievements WHERE tenant_id=$1 AND title=$2 LIMIT 1`, tenantID, title).Scan(&existingID)
+		if existingID != "" {
+			if !overwrite {
+				result.Skipped++
+				previewRes.Duplicates++
+				appendDuplicate(previewRes, rowNum, title, title)
+				continue
+			}
+			if !preview {
+				_, err := h.DB.Exec(ctx, `
+					UPDATE alliance_achievements SET type=$1, description=$2, achievement_date=$3,
+						updated_at=NOW()
+					WHERE id=$4 AND tenant_id=$5
+				`, achType, description, achievementDate, existingID, tenantID)
+				if err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("成果[%s]更新失败: %v", title, err))
+					continue
+				}
+			}
+			result.Created++
+			previewRes.Created++
+			continue
+		}
+
+		if !preview {
+			id := uuid.NewString()
+			_, err := h.DB.Exec(ctx, `
+				INSERT INTO alliance_achievements (id, tenant_id, title, type, description, achievement_date,
+					attachments, images, owner_persons, co_builders, enterprise_ids, project_ids,
+					related_positions, related_scenes, related_courses, status, view_count,
+					secondary_colleges, is_public, created_at, updated_at)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,NOW(),NOW())
+			`, id, tenantID, title, achType, description, achievementDate,
+				[]byte("[]"), []byte("[]"), []byte("[]"), []byte("[]"), []byte("[]"), []byte("[]"),
+				[]byte("[]"), []byte("[]"), []byte("[]"), "draft", 0,
+				[]byte("[]"), false)
+			if err != nil {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("成果[%s]创建失败: %v", title, err))
+				continue
+			}
+		}
+		result.Created++
+		previewRes.Created++
+	}
+
+	return previewRes, result
+}
+
+// Sheet: 专家资源
+// Columns: 姓名*, 头衔, 职位, 行业, 城市, 简介
+func (h *ResourceImportHandler) doImportExperts(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+	previewRes := &ImportPreviewResult{}
+	result := &resourceImportResult{}
+
+	rows, err := xlsx.GetRows("专家资源")
+	if err != nil {
+		msg := fmt.Sprintf("读取「专家资源」Sheet 失败: %v", err)
+		result.Errors = append(result.Errors, msg)
+		previewRes.Errors = append(previewRes.Errors, msg)
+		return previewRes, result
+	}
+
+	for i, row := range rows {
+		if i < 2 {
+			continue
+		}
+		rowNum := i + 1
+		if len(row) < 1 || strings.TrimSpace(row[0]) == "" {
+			continue
+		}
+		name := strings.TrimSpace(row[0])
+		title := nullableStr(col(row, 1))
+		position := nullableStr(col(row, 2))
+		industry := nullableStr(col(row, 3))
+		city := nullableStr(col(row, 4))
+		introduction := nullableStr(col(row, 5))
+
+		var existingID string
+		_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_experts WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
+		if existingID != "" {
+			if !overwrite {
+				result.Skipped++
+				previewRes.Duplicates++
+				appendDuplicate(previewRes, rowNum, name, name)
+				continue
+			}
+			if !preview {
+				_, err := h.DB.Exec(ctx, `
+					UPDATE alliance_experts SET title=$1, position=$2, industry=$3, city=$4,
+						introduction=$5, updated_at=NOW()
+					WHERE id=$6 AND tenant_id=$7
+				`, title, position, industry, city, introduction, existingID, tenantID)
+				if err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("专家[%s]更新失败: %v", name, err))
+					continue
+				}
+			}
+			result.Created++
+			previewRes.Created++
+			continue
+		}
+
+		if !preview {
+			id := uuid.NewString()
+			_, err := h.DB.Exec(ctx, `
+				INSERT INTO alliance_experts (id, tenant_id, name, title, position, expert_type, industry,
+					introduction, city, professional_fields, specialties, photos, attachments,
+					secondary_colleges, status, is_public, created_at, updated_at)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,NOW(),NOW())
+			`, id, tenantID, name, title, position, nullableStr(""), industry,
+				introduction, city,
+				[]byte("[]"), []byte("[]"), []byte("[]"), []byte("[]"),
+				[]byte("[]"), "active", false)
+			if err != nil {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("专家[%s]创建失败: %v", name, err))
+				continue
+			}
+		}
+		result.Created++
+		previewRes.Created++
+	}
+
+	return previewRes, result
+}
+
+// Sheet: 合作协议
+// Columns: 协议名称*, 协议类型, 开始日期, 结束日期, 状态, 内容
+func (h *ResourceImportHandler) doImportAgreements(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+	previewRes := &ImportPreviewResult{}
+	result := &resourceImportResult{}
+
+	rows, err := xlsx.GetRows("合作协议")
+	if err != nil {
+		msg := fmt.Sprintf("读取「合作协议」Sheet 失败: %v", err)
+		result.Errors = append(result.Errors, msg)
+		previewRes.Errors = append(previewRes.Errors, msg)
+		return previewRes, result
+	}
+
+	for i, row := range rows {
+		if i < 2 {
+			continue
+		}
+		rowNum := i + 1
+		if len(row) < 1 || strings.TrimSpace(row[0]) == "" {
+			continue
+		}
+		name := strings.TrimSpace(row[0])
+		agmtType := nullableStr(col(row, 1))
+		startDate := nullableStr(col(row, 2))
+		endDate := nullableStr(col(row, 3))
+		status := strings.TrimSpace(col(row, 4))
+		if status == "" {
+			status = "draft"
+		}
+		content := nullableStr(col(row, 5))
+
+		var existingID string
+		_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_agreements WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
+		if existingID != "" {
+			if !overwrite {
+				result.Skipped++
+				previewRes.Duplicates++
+				appendDuplicate(previewRes, rowNum, name, name)
+				continue
+			}
+			if !preview {
+				_, err := h.DB.Exec(ctx, `
+					UPDATE alliance_agreements SET type=$1, start_date=$2, end_date=$3,
+						status=$4, content=$5, updated_at=NOW()
+					WHERE id=$6 AND tenant_id=$7
+				`, agmtType, startDate, endDate, status, content, existingID, tenantID)
+				if err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("协议[%s]更新失败: %v", name, err))
+					continue
+				}
+			}
+			result.Created++
+			previewRes.Created++
+			continue
+		}
+
+		if !preview {
+			id := uuid.NewString()
+			_, err := h.DB.Exec(ctx, `
+				INSERT INTO alliance_agreements (id, tenant_id, name, type, content, start_date,
+					end_date, status, enterprise_ids, attachments, created_at, updated_at)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),NOW())
+			`, id, tenantID, name, agmtType, content, startDate, endDate,
+				status, []byte("[]"), []byte("[]"))
+			if err != nil {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("协议[%s]创建失败: %v", name, err))
+				continue
+			}
+		}
+		result.Created++
+		previewRes.Created++
+	}
+
+	return previewRes, result
+}
+
+// Sheet: 合作权限
+// Columns: 账号名称*, 账号类型, 是否启用
+func (h *ResourceImportHandler) doImportPermissions(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+	previewRes := &ImportPreviewResult{}
+	result := &resourceImportResult{}
+
+	rows, err := xlsx.GetRows("合作权限")
+	if err != nil {
+		msg := fmt.Sprintf("读取「合作权限」Sheet 失败: %v", err)
+		result.Errors = append(result.Errors, msg)
+		previewRes.Errors = append(previewRes.Errors, msg)
+		return previewRes, result
+	}
+
+	for i, row := range rows {
+		if i < 2 {
+			continue
+		}
+		rowNum := i + 1
+		if len(row) < 1 || strings.TrimSpace(row[0]) == "" {
+			continue
+		}
+		accountName := strings.TrimSpace(row[0])
+		accountType := strings.TrimSpace(col(row, 1))
+		if accountType == "" {
+			accountType = "enterprise"
+		}
+		isEnabled := parseBoolDefault(col(row, 2), true)
+
+		var existingID string
+		_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_permissions WHERE tenant_id=$1 AND account_name=$2 LIMIT 1`, tenantID, accountName).Scan(&existingID)
+		if existingID != "" {
+			if !overwrite {
+				result.Skipped++
+				previewRes.Duplicates++
+				appendDuplicate(previewRes, rowNum, accountName, accountName)
+				continue
+			}
+			if !preview {
+				_, err := h.DB.Exec(ctx, `
+					UPDATE alliance_permissions SET account_type=$1, is_enabled=$2, updated_at=NOW()
+					WHERE id=$3 AND tenant_id=$4
+				`, accountType, isEnabled, existingID, tenantID)
+				if err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("权限[%s]更新失败: %v", accountName, err))
+					continue
+				}
+			}
+			result.Created++
+			previewRes.Created++
+			continue
+		}
+
+		if !preview {
+			id := uuid.NewString()
+			_, err := h.DB.Exec(ctx, `
+				INSERT INTO alliance_permissions (id, tenant_id, account_name, account_type,
+					is_enabled, resource_permissions, platform_permissions, created_at, updated_at)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),NOW())
+			`, id, tenantID, accountName, accountType, isEnabled, []byte("[]"), []byte("[]"))
+			if err != nil {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("权限[%s]创建失败: %v", accountName, err))
+				continue
+			}
+		}
+		result.Created++
+		previewRes.Created++
+	}
+
+	return previewRes, result
+}
+
+// Sheet: 品牌内容
+// Columns: 品牌类型*, 名称*, 描述
+func (h *ResourceImportHandler) doImportBrands(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+	previewRes := &ImportPreviewResult{}
+	result := &resourceImportResult{}
+
+	rows, err := xlsx.GetRows("品牌内容")
+	if err != nil {
+		msg := fmt.Sprintf("读取「品牌内容」Sheet 失败: %v", err)
+		result.Errors = append(result.Errors, msg)
+		previewRes.Errors = append(previewRes.Errors, msg)
+		return previewRes, result
+	}
+
+	for i, row := range rows {
+		if i < 2 {
+			continue
+		}
+		rowNum := i + 1
+		if len(row) < 2 || strings.TrimSpace(row[0]) == "" || strings.TrimSpace(row[1]) == "" {
+			continue
+		}
+		brandType := strings.TrimSpace(row[0])
+		name := strings.TrimSpace(row[1])
+		description := nullableStr(col(row, 2))
+
+		var existingID string
+		_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_brands WHERE tenant_id=$1 AND brand_type=$2 AND name=$3 LIMIT 1`, tenantID, brandType, name).Scan(&existingID)
+		if existingID != "" {
+			if !overwrite {
+				result.Skipped++
+				previewRes.Duplicates++
+				appendDuplicate(previewRes, rowNum, brandType+"|"+name, name)
+				continue
+			}
+			if !preview {
+				_, err := h.DB.Exec(ctx, `
+					UPDATE alliance_brands SET description=$1, updated_at=NOW()
+					WHERE id=$2 AND tenant_id=$3
+				`, description, existingID, tenantID)
+				if err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("品牌[%s/%s]更新失败: %v", brandType, name, err))
+					continue
+				}
+			}
+			result.Created++
+			previewRes.Created++
+			continue
+		}
+
+		if !preview {
+			id := uuid.NewString()
+			_, err := h.DB.Exec(ctx, `
+				INSERT INTO alliance_brands (id, tenant_id, brand_type, name, status, is_public,
+					is_featured, description, sort_order, view_count, created_at, updated_at)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),NOW())
+			`, id, tenantID, brandType, name, "draft", false, false, description, 0, 0)
+			if err != nil {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("品牌[%s/%s]创建失败: %v", brandType, name, err))
+				continue
+			}
+		}
+		result.Created++
+		previewRes.Created++
+	}
+
+	return previewRes, result
+}
+
+// Sheet: 品牌专题
+// Columns: 专题名称*, 主题, 布局, 描述
+func (h *ResourceImportHandler) doImportBrandTopics(ctx context.Context, xlsx *excelize.File, tenantID, userID string, preview, overwrite bool) (*ImportPreviewResult, *resourceImportResult) {
+	previewRes := &ImportPreviewResult{}
+	result := &resourceImportResult{}
+
+	rows, err := xlsx.GetRows("品牌专题")
+	if err != nil {
+		msg := fmt.Sprintf("读取「品牌专题」Sheet 失败: %v", err)
+		result.Errors = append(result.Errors, msg)
+		previewRes.Errors = append(previewRes.Errors, msg)
+		return previewRes, result
+	}
+
+	for i, row := range rows {
+		if i < 2 {
+			continue
+		}
+		rowNum := i + 1
+		if len(row) < 1 || strings.TrimSpace(row[0]) == "" {
+			continue
+		}
+		name := strings.TrimSpace(row[0])
+		theme := nullableStr(col(row, 1))
+		layout := strings.TrimSpace(col(row, 2))
+		if layout == "" {
+			layout = "grid"
+		}
+		description := nullableStr(col(row, 3))
+
+		var existingID string
+		_ = h.DB.QueryRow(ctx, `SELECT id FROM alliance_brand_topics WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&existingID)
+		if existingID != "" {
+			if !overwrite {
+				result.Skipped++
+				previewRes.Duplicates++
+				appendDuplicate(previewRes, rowNum, name, name)
+				continue
+			}
+			if !preview {
+				_, err := h.DB.Exec(ctx, `
+					UPDATE alliance_brand_topics SET theme=$1, layout=$2, description=$3, updated_at=NOW()
+					WHERE id=$4 AND tenant_id=$5
+				`, theme, layout, description, existingID, tenantID)
+				if err != nil {
+					result.Failed++
+					result.Errors = append(result.Errors, fmt.Sprintf("专题[%s]更新失败: %v", name, err))
+					continue
+				}
+			}
+			result.Created++
+			previewRes.Created++
+			continue
+		}
+
+		if !preview {
+			id := uuid.NewString()
+			_, err := h.DB.Exec(ctx, `
+				INSERT INTO alliance_brand_topics (id, tenant_id, name, theme, description, layout,
+					content_blocks, related_brand_ids, status, is_recommended, sort_order,
+					created_at, updated_at)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW(),NOW())
+			`, id, tenantID, name, theme, description, layout,
+				[]byte("[]"), []byte("[]"), "draft", false, 0)
+			if err != nil {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("专题[%s]创建失败: %v", name, err))
+				continue
+			}
+		}
+		result.Created++
+		previewRes.Created++
+	}
+
+	return previewRes, result
+}

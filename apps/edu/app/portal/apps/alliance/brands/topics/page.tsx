@@ -66,7 +66,7 @@ export default function AllianceBrandTopicsPage() {
           t.name.toLowerCase().includes(search.toLowerCase())
         )
       }
-      importConfig={{ importType: "alliance-brand-topics" as any, entityLabel: "品牌专题" as any, templateFileName: "" as any } as any}
+      importConfig={{ importType: "alliance-brand-topics", entityLabel: "品牌专题", templateFileName: "品牌专题批量导入模板.xlsx" }}
       colSpan={5}
       renderTableHeader={() => (
         <>
