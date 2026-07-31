@@ -38,6 +38,11 @@ export default function AlliancePublicEmployerBrandPage() {
                   <CardDescription className="line-clamp-3">{item.description}</CardDescription>
                 )}
               </CardHeader>
+              <CardContent>
+                {item.enterpriseId && (
+                  <p className="text-xs text-muted-foreground">企业: {item.enterpriseId}</p>
+                )}
+              </CardContent>
             </Card>
           ))}
         </div>

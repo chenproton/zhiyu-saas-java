@@ -474,7 +474,7 @@ func (h *AllianceHandler) ListProjects(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery[domain.AllianceProject](r.Context(), h.DB, r, listQueryConfig[domain.AllianceProject]{
 		Table:         "alliance_projects",
-		SelectColumns: "id, tenant_id, name, type, description, phase, publish_status, start_date, end_date, budget, cover_image, enterprise_ids, secondary_colleges, is_public, created_at, updated_at",
+		SelectColumns: "id, tenant_id, name, type, description, phase, publish_status, start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges, is_public, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
 		OrderBy:       "created_at DESC",
@@ -707,7 +707,7 @@ func (h *AllianceHandler) ListAchievements(w http.ResponseWriter, r *http.Reques
 
 	items, total, err := executeListQuery[domain.AllianceAchievement](r.Context(), h.DB, r, listQueryConfig[domain.AllianceAchievement]{
 		Table:         "alliance_achievements",
-		SelectColumns: "id, tenant_id, title, type, description, achievement_date, cover_image, attachments, enterprise_ids, project_ids, related_positions, related_scenes, related_courses, status, view_count, secondary_colleges, is_public, created_at, updated_at",
+		SelectColumns: "id, tenant_id, title, type, description, achievement_date, cover_image, attachments, citation_reason, images, owner_persons, co_builders, enterprise_ids, project_ids, related_positions, related_scenes, related_courses, status, view_count, secondary_colleges, is_public, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"title"},
 		OrderBy:       "created_at DESC",
@@ -845,7 +845,7 @@ func (h *AllianceHandler) ListExperts(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery[domain.AllianceExpert](r.Context(), h.DB, r, listQueryConfig[domain.AllianceExpert]{
 		Table:         "alliance_experts",
-		SelectColumns: "id, tenant_id, name, gender, age, title, position, expert_type, industry, professional_fields, specialties, experience_years, education, introduction, work_experience, city, avatar_url, photos, attachments, enterprise_id, rating, status, secondary_colleges, is_public, created_at, updated_at",
+		SelectColumns: "id, tenant_id, name, gender, age, title, position, expert_type, industry, professional_fields, specialties, experience_years, education, introduction, work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, rating, status, partner_source, position_direction, secondary_colleges, is_public, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name", "title", "industry"},
 		OrderBy:       "created_at DESC",
@@ -1706,7 +1706,7 @@ func (h *AllianceHandler) GetPublicEnterprise(w http.ResponseWriter, r *http.Req
 func (h *AllianceHandler) ListPublicProjects(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.DB.Query(r.Context(), `
 		SELECT id, tenant_id, name, type, description, phase, publish_status,
-			start_date, end_date, budget, cover_image, enterprise_ids, secondary_colleges,
+			start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
 			is_public, created_at, updated_at
 		FROM alliance_projects WHERE is_public = true AND publish_status = 'published'
 		ORDER BY created_at DESC
@@ -1724,15 +1724,15 @@ func (h *AllianceHandler) GetPublicProject(w http.ResponseWriter, r *http.Reques
 	id := chi.URLParam(r, "id")
 	var p domain.AllianceProject
 	var typ, description, startDate, endDate, budget, coverImage *string
-	var enterpriseIDs, colleges json.RawMessage
+	var enterpriseIDs, agreementIDs, colleges json.RawMessage
 	err := h.DB.QueryRow(r.Context(), `
 		SELECT id, tenant_id, name, type, description, phase, publish_status,
-			start_date, end_date, budget, cover_image, enterprise_ids, secondary_colleges,
+			start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
 			is_public, created_at, updated_at
 		FROM alliance_projects WHERE id = $1 AND is_public = true AND publish_status = 'published'
 	`, id).Scan(&p.ID, &p.TenantID, &p.Name, &typ, &description, &p.Phase,
 		&p.PublishStatus, &startDate, &endDate, &budget, &coverImage,
-		&enterpriseIDs, &colleges, &p.IsPublic, &p.CreatedAt, &p.UpdatedAt)
+		&enterpriseIDs, &agreementIDs, &colleges, &p.IsPublic, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "项目不存在")
 		return
@@ -1744,6 +1744,7 @@ func (h *AllianceHandler) GetPublicProject(w http.ResponseWriter, r *http.Reques
 	p.Budget = budget
 	p.CoverImage = coverImage
 	p.EnterpriseIDs = enterpriseIDs
+	p.AgreementIDs = agreementIDs
 	p.SecondaryColleges = colleges
 	respondJSON(w, http.StatusOK, p)
 }
@@ -1751,7 +1752,8 @@ func (h *AllianceHandler) GetPublicProject(w http.ResponseWriter, r *http.Reques
 func (h *AllianceHandler) ListPublicAchievements(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.DB.Query(r.Context(), `
 		SELECT id, tenant_id, title, type, description, achievement_date, cover_image,
-			attachments, enterprise_ids, project_ids, related_positions, related_scenes,
+			attachments, citation_reason, images, owner_persons, co_builders,
+			enterprise_ids, project_ids, related_positions, related_scenes,
 			related_courses, status, view_count, secondary_colleges, is_public, created_at, updated_at
 		FROM alliance_achievements WHERE is_public = true AND status = 'published'
 		ORDER BY created_at DESC
@@ -1768,15 +1770,17 @@ func (h *AllianceHandler) ListPublicAchievements(w http.ResponseWriter, r *http.
 func (h *AllianceHandler) GetPublicAchievement(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var a domain.AllianceAchievement
-	var description, achievementDate, coverImage *string
-	var attachments, enterpriseIDs, projectIDs, relatedPositions, relatedScenes, relatedCourses, colleges json.RawMessage
+	var description, achievementDate, coverImage, citationReason *string
+	var attachments, images, ownerPersons, coBuilders, enterpriseIDs, projectIDs, relatedPositions, relatedScenes, relatedCourses, colleges json.RawMessage
 	err := h.DB.QueryRow(r.Context(), `
 		SELECT id, tenant_id, title, type, description, achievement_date, cover_image,
-			attachments, enterprise_ids, project_ids, related_positions, related_scenes,
+			attachments, citation_reason, images, owner_persons, co_builders,
+			enterprise_ids, project_ids, related_positions, related_scenes,
 			related_courses, status, view_count, secondary_colleges, is_public, created_at, updated_at
 		FROM alliance_achievements WHERE id = $1 AND is_public = true AND status = 'published'
 	`, id).Scan(&a.ID, &a.TenantID, &a.Title, &a.Type, &description, &achievementDate,
-		&coverImage, &attachments, &enterpriseIDs, &projectIDs, &relatedPositions,
+		&coverImage, &attachments, &citationReason, &images, &ownerPersons, &coBuilders,
+		&enterpriseIDs, &projectIDs, &relatedPositions,
 		&relatedScenes, &relatedCourses, &a.Status, &a.ViewCount, &colleges,
 		&a.IsPublic, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
@@ -1787,6 +1791,10 @@ func (h *AllianceHandler) GetPublicAchievement(w http.ResponseWriter, r *http.Re
 	a.AchievementDate = achievementDate
 	a.CoverImage = coverImage
 	a.Attachments = attachments
+	a.CitationReason = citationReason
+	a.Images = images
+	a.OwnerPersons = ownerPersons
+	a.CoBuilders = coBuilders
 	a.EnterpriseIDs = enterpriseIDs
 	a.ProjectIDs = projectIDs
 	a.RelatedPositions = relatedPositions
@@ -1800,8 +1808,8 @@ func (h *AllianceHandler) ListPublicExperts(w http.ResponseWriter, r *http.Reque
 	rows, err := h.DB.Query(r.Context(), `
 		SELECT id, tenant_id, name, gender, age, title, position, expert_type, industry,
 			professional_fields, specialties, experience_years, education, introduction,
-			work_experience, city, avatar_url, photos, attachments, enterprise_id, rating,
-			status, secondary_colleges, is_public, created_at, updated_at
+			work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, rating,
+			status, partner_source, position_direction, secondary_colleges, is_public, created_at, updated_at
 		FROM alliance_experts WHERE is_public = true AND status = 'active'
 		ORDER BY created_at DESC
 	`)
@@ -1820,18 +1828,18 @@ func (h *AllianceHandler) GetPublicExpert(w http.ResponseWriter, r *http.Request
 	var gender, ttl, pos, etype, industry, edu, intro, workExp, city, avatar *string
 	var age, expYrs *int
 	var proFields, specs, photos, attachs json.RawMessage
-	var rating, enterpriseID *string
+	var rating, enterpriseID, coverImage, partnerSource, positionDirection *string
 	var colleges json.RawMessage
 	err := h.DB.QueryRow(r.Context(), `
 		SELECT id, tenant_id, name, gender, age, title, position, expert_type, industry,
 			professional_fields, specialties, experience_years, education, introduction,
-			work_experience, city, avatar_url, photos, attachments, enterprise_id, rating,
-			status, secondary_colleges, is_public, created_at, updated_at
+			work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, rating,
+			status, partner_source, position_direction, secondary_colleges, is_public, created_at, updated_at
 		FROM alliance_experts WHERE id = $1 AND is_public = true AND status = 'active'
 	`, id).Scan(&e.ID, &e.TenantID, &e.Name, &gender, &age, &ttl, &pos,
 		&etype, &industry, &proFields, &specs, &expYrs, &edu, &intro, &workExp,
-		&city, &avatar, &photos, &attachs, &enterpriseID, &rating,
-		&e.Status, &colleges, &e.IsPublic, &e.CreatedAt, &e.UpdatedAt)
+		&city, &avatar, &coverImage, &photos, &attachs, &enterpriseID, &rating,
+		&e.Status, &partnerSource, &positionDirection, &colleges, &e.IsPublic, &e.CreatedAt, &e.UpdatedAt)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "专家不存在")
 		return
@@ -1850,10 +1858,13 @@ func (h *AllianceHandler) GetPublicExpert(w http.ResponseWriter, r *http.Request
 	e.WorkExperience = workExp
 	e.City = city
 	e.AvatarURL = avatar
+	e.CoverImage = coverImage
 	e.Photos = photos
 	e.Attachments = attachs
 	e.EnterpriseID = enterpriseID
 	e.Rating = rating
+	e.PartnerSource = partnerSource
+	e.PositionDirection = positionDirection
 	e.SecondaryColleges = colleges
 	respondJSON(w, http.StatusOK, e)
 }

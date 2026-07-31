@@ -97,12 +97,30 @@ export default function AlliancePublicHomePage() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <CardTitle className="text-lg">{brand.name}</CardTitle>
-                    <Badge variant="outline">{brand.brandType}</Badge>
+                    <div className="flex items-center gap-1.5">
+                      {brand.isFeatured && <Badge variant="secondary">推荐</Badge>}
+                      <Badge variant="outline">{brand.brandType}</Badge>
+                    </div>
                   </div>
                   {brand.description && (
                     <CardDescription className="line-clamp-2">{brand.description}</CardDescription>
                   )}
                 </CardHeader>
+                <CardContent className="space-y-1">
+                  {brand.data?.major && (
+                    <p className="text-xs text-muted-foreground">专业: {brand.data.major}</p>
+                  )}
+                  {brand.data?.abilityScore != null && (
+                    <p className="text-xs text-muted-foreground">能力评分: {brand.data.abilityScore}</p>
+                  )}
+                  {brand.data?.tags && brand.data.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {brand.data.tags.slice(0, 3).map((tag: string, i: number) => (
+                        <Badge key={i} variant="secondary" className="text-xs">{tag}</Badge>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
               </Card>
             ))}
           </div>

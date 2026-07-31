@@ -198,6 +198,12 @@ export interface AllianceBrand {
   coverVideo?: string
   description?: string
   data: Record<string, any>
+  studentId?: string
+  enterpriseId?: string
+  positionId?: string
+  majorId?: string
+  teacherId?: string
+  expertId?: string
   sortOrder: number
   viewCount: number
   createdAt: string

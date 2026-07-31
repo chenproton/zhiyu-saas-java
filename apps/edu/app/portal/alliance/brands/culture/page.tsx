@@ -38,6 +38,14 @@ export default function AlliancePublicCultureBrandPage() {
                   <CardDescription className="line-clamp-3">{item.description}</CardDescription>
                 )}
               </CardHeader>
+              <CardContent className="space-y-1">
+                {item.data?.type && (
+                  <p className="text-xs text-muted-foreground">类型: {item.data.type}</p>
+                )}
+                {item.majorId && (
+                  <p className="text-xs text-muted-foreground">专业: {item.majorId}</p>
+                )}
+              </CardContent>
             </Card>
           ))}
         </div>

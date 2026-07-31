@@ -138,6 +138,14 @@ export default function AllianceTeacherBrandPage() {
               <Label>推荐</Label>
             </div>
           </div>
+          <div>
+            <Label>教师 ID</Label>
+            <Input value={item.teacherId || ""} onChange={(e: any) => setItem({ ...item, teacherId: e.target.value })} placeholder="UUID (users表)" />
+          </div>
+          <div>
+            <Label>专家 ID</Label>
+            <Input value={item.expertId || ""} onChange={(e: any) => setItem({ ...item, expertId: e.target.value })} placeholder="UUID (alliance_experts表)" />
+          </div>
         </div>
       )}
       getDeleteDescription={(item: any) => (<>确定要删除品牌「{item.name}」吗？</>)}

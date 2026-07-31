@@ -138,6 +138,14 @@ export default function AllianceJobBrandPage() {
               <Label>推荐</Label>
             </div>
           </div>
+          <div>
+            <Label>岗位 ID</Label>
+            <Input value={item.positionId || ""} onChange={(e: any) => setItem({ ...item, positionId: e.target.value })} placeholder="UUID (career_positions表)" />
+          </div>
+          <div>
+            <Label>专业 ID</Label>
+            <Input value={item.majorId || ""} onChange={(e: any) => setItem({ ...item, majorId: e.target.value })} placeholder="UUID (majors表)" />
+          </div>
         </div>
       )}
       getDeleteDescription={(item: any) => (<>确定要删除品牌「{item.name}」吗？</>)}

@@ -87,6 +87,7 @@ type AllianceProject struct {
 	Budget           *string         `json:"budget,omitempty"`
 	CoverImage       *string         `json:"coverImage,omitempty"`
 	EnterpriseIDs    json.RawMessage `json:"enterpriseIds,omitempty"`
+	AgreementIDs     json.RawMessage `json:"agreementIds,omitempty"`
 	SecondaryColleges json.RawMessage `json:"secondaryColleges,omitempty"`
 	IsPublic         bool            `json:"isPublic"`
 	CreatedAt        time.Time       `json:"createdAt"`
@@ -118,6 +119,10 @@ type AllianceAchievement struct {
 	AchievementDate  *string         `json:"achievementDate,omitempty"`
 	CoverImage       *string         `json:"coverImage,omitempty"`
 	Attachments      json.RawMessage `json:"attachments,omitempty"`
+	CitationReason   *string         `json:"citationReason,omitempty"`
+	Images           json.RawMessage `json:"images,omitempty"`
+	OwnerPersons     json.RawMessage `json:"ownerPersons,omitempty"`
+	CoBuilders       json.RawMessage `json:"coBuilders,omitempty"`
 	EnterpriseIDs    json.RawMessage `json:"enterpriseIds,omitempty"`
 	ProjectIDs       json.RawMessage `json:"projectIds,omitempty"`
 	RelatedPositions json.RawMessage `json:"relatedPositions,omitempty"`
@@ -150,11 +155,14 @@ type AllianceExpert struct {
 	WorkExperience    *string         `json:"workExperience,omitempty"`
 	City              *string         `json:"city,omitempty"`
 	AvatarURL         *string         `json:"avatarUrl,omitempty"`
+	CoverImage        *string         `json:"coverImage,omitempty"`
 	Photos            json.RawMessage `json:"photos,omitempty"`
 	Attachments       json.RawMessage `json:"attachments,omitempty"`
 	EnterpriseID      *string         `json:"enterpriseId,omitempty"`
 	Rating            *string         `json:"rating,omitempty"`
 	Status            string          `json:"status"`
+	PartnerSource     *string         `json:"partnerSource,omitempty"`
+	PositionDirection *string         `json:"positionDirection,omitempty"`
 	SecondaryColleges json.RawMessage `json:"secondaryColleges,omitempty"`
 	IsPublic          bool            `json:"isPublic"`
 	CreatedAt         time.Time       `json:"createdAt"`
@@ -205,21 +213,27 @@ type AllianceDictionary struct {
 
 // ===== 品牌内容 =====
 type AllianceBrand struct {
-	ID          string          `json:"id"`
-	TenantID    string          `json:"tenantId"`
-	BrandType   string          `json:"brandType"`
-	Name        string          `json:"name"`
-	Status      string          `json:"status"`
-	IsPublic    bool            `json:"isPublic"`
-	IsFeatured  bool            `json:"isFeatured"`
-	CoverImage  *string         `json:"coverImage,omitempty"`
-	CoverVideo  *string         `json:"coverVideo,omitempty"`
-	Description *string         `json:"description,omitempty"`
-	Data        json.RawMessage `json:"data,omitempty"`
-	SortOrder   int             `json:"sortOrder"`
-	ViewCount   int             `json:"viewCount"`
-	CreatedAt   time.Time       `json:"createdAt"`
-	UpdatedAt   time.Time       `json:"updatedAt"`
+	ID           string          `json:"id"`
+	TenantID     string          `json:"tenantId"`
+	BrandType    string          `json:"brandType"`
+	Name         string          `json:"name"`
+	Status       string          `json:"status"`
+	IsPublic     bool            `json:"isPublic"`
+	IsFeatured   bool            `json:"isFeatured"`
+	CoverImage   *string         `json:"coverImage,omitempty"`
+	CoverVideo   *string         `json:"coverVideo,omitempty"`
+	Description  *string         `json:"description,omitempty"`
+	Data         json.RawMessage `json:"data,omitempty"`
+	StudentID    *string         `json:"studentId,omitempty"`
+	EnterpriseID *string         `json:"enterpriseId,omitempty"`
+	PositionID   *string         `json:"positionId,omitempty"`
+	MajorID      *string         `json:"majorId,omitempty"`
+	TeacherID    *string         `json:"teacherId,omitempty"`
+	ExpertID     *string         `json:"expertId,omitempty"`
+	SortOrder    int             `json:"sortOrder"`
+	ViewCount    int             `json:"viewCount"`
+	CreatedAt    time.Time       `json:"createdAt"`
+	UpdatedAt    time.Time       `json:"updatedAt"`
 }
 
 // ===== 品牌专题页 =====

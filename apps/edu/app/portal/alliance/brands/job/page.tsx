@@ -38,6 +38,14 @@ export default function AlliancePublicJobBrandPage() {
                   <CardDescription className="line-clamp-3">{item.description}</CardDescription>
                 )}
               </CardHeader>
+              <CardContent className="space-y-1">
+                {item.positionId && (
+                  <p className="text-xs text-muted-foreground">岗位: {item.positionId}</p>
+                )}
+                {item.majorId && (
+                  <p className="text-xs text-muted-foreground">专业: {item.majorId}</p>
+                )}
+              </CardContent>
             </Card>
           ))}
         </div>

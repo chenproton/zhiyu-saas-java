@@ -32,12 +32,33 @@ export default function AlliancePublicTalentBrandPage() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <CardTitle className="text-lg">{item.name}</CardTitle>
-                  <Badge variant="outline">{item.status}</Badge>
+                  <div className="flex items-center gap-1.5">
+                    {item.isFeatured && <Badge variant="secondary">推荐</Badge>}
+                    <Badge variant="outline">{item.status}</Badge>
+                  </div>
                 </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
                 {item.description && (
                   <CardDescription className="line-clamp-3">{item.description}</CardDescription>
                 )}
-              </CardHeader>
+                {item.studentId && (
+                  <p className="text-xs text-muted-foreground">学生: {item.studentId}</p>
+                )}
+                {item.data?.major && (
+                  <p className="text-xs text-muted-foreground">专业: {item.data.major}</p>
+                )}
+                {item.data?.abilityScore != null && (
+                  <p className="text-xs text-muted-foreground">能力评分: {item.data.abilityScore}</p>
+                )}
+                {item.data?.tags && item.data.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {item.data.tags.map((tag: string, i: number) => (
+                      <Badge key={i} variant="secondary" className="text-xs">{tag}</Badge>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
             </Card>
           ))}
         </div>

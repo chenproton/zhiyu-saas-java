@@ -138,6 +138,10 @@ export default function AllianceEmployerBrandPage() {
               <Label>推荐</Label>
             </div>
           </div>
+          <div>
+            <Label>企业 ID</Label>
+            <Input value={item.enterpriseId || ""} onChange={(e: any) => setItem({ ...item, enterpriseId: e.target.value })} placeholder="UUID (alliance_enterprises表)" />
+          </div>
         </div>
       )}
       getDeleteDescription={(item: any) => (<>确定要删除品牌「{item.name}」吗？</>)}

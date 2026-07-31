@@ -138,6 +138,10 @@ export default function AllianceMajorBrandPage() {
               <Label>推荐</Label>
             </div>
           </div>
+          <div>
+            <Label>专业 ID</Label>
+            <Input value={item.majorId || ""} onChange={(e: any) => setItem({ ...item, majorId: e.target.value })} placeholder="UUID (majors表)" />
+          </div>
         </div>
       )}
       getDeleteDescription={(item: any) => (<>确定要删除品牌「{item.name}」吗？</>)}

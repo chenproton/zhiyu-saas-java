@@ -38,6 +38,14 @@ export default function AlliancePublicTeacherBrandPage() {
                   <CardDescription className="line-clamp-3">{item.description}</CardDescription>
                 )}
               </CardHeader>
+              <CardContent className="space-y-1">
+                {item.teacherId && (
+                  <p className="text-xs text-muted-foreground">教师: {item.teacherId}</p>
+                )}
+                {item.expertId && (
+                  <p className="text-xs text-muted-foreground">专家: {item.expertId}</p>
+                )}
+              </CardContent>
             </Card>
           ))}
         </div>

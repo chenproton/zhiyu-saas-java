@@ -390,10 +390,10 @@ func (s *AllianceStore) ScanProjectRows(rows pgx.Rows) ([]domain.AllianceProject
 	for rows.Next() {
 		var p domain.AllianceProject
 		var typ, description, startDate, endDate, budget, coverImage *string
-		var enterpriseIDs, colleges json.RawMessage
+		var enterpriseIDs, agreementIDs, colleges json.RawMessage
 		if err := rows.Scan(&p.ID, &p.TenantID, &p.Name, &typ, &description, &p.Phase,
 			&p.PublishStatus, &startDate, &endDate, &budget, &coverImage,
-			&enterpriseIDs, &colleges, &p.IsPublic, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			&enterpriseIDs, &agreementIDs, &colleges, &p.IsPublic, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, err
 		}
 		p.Type = typ
@@ -403,6 +403,7 @@ func (s *AllianceStore) ScanProjectRows(rows pgx.Rows) ([]domain.AllianceProject
 		p.Budget = budget
 		p.CoverImage = coverImage
 		p.EnterpriseIDs = enterpriseIDs
+		p.AgreementIDs = agreementIDs
 		p.SecondaryColleges = colleges
 		items = append(items, p)
 	}
@@ -439,12 +440,12 @@ func (s *AllianceStore) CreateProject(ctx context.Context, p *domain.AlliancePro
 	id := uuid.NewString()
 	_, err := s.DB.Exec(ctx, `
 		INSERT INTO alliance_projects (id, tenant_id, name, type, description, phase, publish_status,
-			start_date, end_date, budget, cover_image, enterprise_ids, secondary_colleges,
+			start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
 			is_public, created_at, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW(),NOW())
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NOW(),NOW())
 	`, id, p.TenantID, p.Name, p.Type, p.Description, p.Phase, p.PublishStatus,
 		p.StartDate, p.EndDate, p.Budget, p.CoverImage,
-		emptyJSON(p.EnterpriseIDs), emptyJSON(p.SecondaryColleges), p.IsPublic)
+		emptyJSON(p.EnterpriseIDs), emptyJSON(p.AgreementIDs), emptyJSON(p.SecondaryColleges), p.IsPublic)
 	if err != nil {
 		return "", err
 	}
@@ -456,11 +457,11 @@ func (s *AllianceStore) UpdateProject(ctx context.Context, id string, p *domain.
 		UPDATE alliance_projects SET
 			name = $1, type = $2, description = $3, phase = $4, publish_status = $5,
 			start_date = $6, end_date = $7, budget = $8, cover_image = $9, enterprise_ids = $10,
-			secondary_colleges = $11, is_public = $12, updated_at = NOW()
-		WHERE id = $13
+			agreement_ids = $11, secondary_colleges = $12, is_public = $13, updated_at = NOW()
+		WHERE id = $14
 	`, p.Name, p.Type, p.Description, p.Phase, p.PublishStatus,
 		p.StartDate, p.EndDate, p.Budget, p.CoverImage,
-		emptyJSON(p.EnterpriseIDs), emptyJSON(p.SecondaryColleges), p.IsPublic, id)
+		emptyJSON(p.EnterpriseIDs), emptyJSON(p.AgreementIDs), emptyJSON(p.SecondaryColleges), p.IsPublic, id)
 	return err
 }
 
@@ -524,10 +525,11 @@ func (s *AllianceStore) ScanAchievementRows(rows pgx.Rows) ([]domain.AllianceAch
 	items := make([]domain.AllianceAchievement, 0)
 	for rows.Next() {
 		var a domain.AllianceAchievement
-		var description, achievementDate, coverImage *string
-		var attachments, enterpriseIDs, projectIDs, relatedPositions, relatedScenes, relatedCourses, colleges json.RawMessage
+		var description, achievementDate, coverImage, citationReason *string
+		var attachments, images, ownerPersons, coBuilders, enterpriseIDs, projectIDs, relatedPositions, relatedScenes, relatedCourses, colleges json.RawMessage
 		if err := rows.Scan(&a.ID, &a.TenantID, &a.Title, &a.Type, &description, &achievementDate,
-			&coverImage, &attachments, &enterpriseIDs, &projectIDs, &relatedPositions,
+			&coverImage, &attachments, &citationReason, &images, &ownerPersons, &coBuilders,
+			&enterpriseIDs, &projectIDs, &relatedPositions,
 			&relatedScenes, &relatedCourses, &a.Status, &a.ViewCount, &colleges,
 			&a.IsPublic, &a.CreatedAt, &a.UpdatedAt); err != nil {
 			return nil, err
@@ -536,6 +538,10 @@ func (s *AllianceStore) ScanAchievementRows(rows pgx.Rows) ([]domain.AllianceAch
 		a.AchievementDate = achievementDate
 		a.CoverImage = coverImage
 		a.Attachments = attachments
+		a.CitationReason = citationReason
+		a.Images = images
+		a.OwnerPersons = ownerPersons
+		a.CoBuilders = coBuilders
 		a.EnterpriseIDs = enterpriseIDs
 		a.ProjectIDs = projectIDs
 		a.RelatedPositions = relatedPositions
@@ -551,11 +557,13 @@ func (s *AllianceStore) CreateAchievement(ctx context.Context, a *domain.Allianc
 	id := uuid.NewString()
 	_, err := s.DB.Exec(ctx, `
 		INSERT INTO alliance_achievements (id, tenant_id, title, type, description, achievement_date,
-			cover_image, attachments, enterprise_ids, project_ids, related_positions, related_scenes,
+			cover_image, attachments, citation_reason, images, owner_persons, co_builders,
+			enterprise_ids, project_ids, related_positions, related_scenes,
 			related_courses, status, view_count, secondary_colleges, is_public, created_at, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,NOW(),NOW())
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,NOW(),NOW())
 	`, id, a.TenantID, a.Title, a.Type, a.Description, a.AchievementDate, a.CoverImage,
-		emptyJSON(a.Attachments), emptyJSON(a.EnterpriseIDs), emptyJSON(a.ProjectIDs),
+		emptyJSON(a.Attachments), a.CitationReason, emptyJSON(a.Images), emptyJSON(a.OwnerPersons), emptyJSON(a.CoBuilders),
+		emptyJSON(a.EnterpriseIDs), emptyJSON(a.ProjectIDs),
 		emptyJSON(a.RelatedPositions), emptyJSON(a.RelatedScenes), emptyJSON(a.RelatedCourses),
 		a.Status, a.ViewCount, emptyJSON(a.SecondaryColleges), a.IsPublic)
 	if err != nil {
@@ -568,12 +576,14 @@ func (s *AllianceStore) UpdateAchievement(ctx context.Context, id string, a *dom
 	_, err := s.DB.Exec(ctx, `
 		UPDATE alliance_achievements SET
 			title = $1, type = $2, description = $3, achievement_date = $4, cover_image = $5,
-			attachments = $6, enterprise_ids = $7, project_ids = $8, related_positions = $9,
-			related_scenes = $10, related_courses = $11, status = $12, view_count = $13,
-			secondary_colleges = $14, is_public = $15, updated_at = NOW()
-		WHERE id = $16
+			attachments = $6, citation_reason = $7, images = $8, owner_persons = $9, co_builders = $10,
+			enterprise_ids = $11, project_ids = $12, related_positions = $13,
+			related_scenes = $14, related_courses = $15, status = $16, view_count = $17,
+			secondary_colleges = $18, is_public = $19, updated_at = NOW()
+		WHERE id = $20
 	`, a.Title, a.Type, a.Description, a.AchievementDate, a.CoverImage,
-		emptyJSON(a.Attachments), emptyJSON(a.EnterpriseIDs), emptyJSON(a.ProjectIDs),
+		emptyJSON(a.Attachments), a.CitationReason, emptyJSON(a.Images), emptyJSON(a.OwnerPersons), emptyJSON(a.CoBuilders),
+		emptyJSON(a.EnterpriseIDs), emptyJSON(a.ProjectIDs),
 		emptyJSON(a.RelatedPositions), emptyJSON(a.RelatedScenes), emptyJSON(a.RelatedCourses),
 		a.Status, a.ViewCount, emptyJSON(a.SecondaryColleges), a.IsPublic, id)
 	return err
@@ -586,15 +596,17 @@ func (s *AllianceStore) DeleteAchievement(ctx context.Context, id, tenantID stri
 
 func (s *AllianceStore) GetAchievementByID(ctx context.Context, id, tenantID string) (*domain.AllianceAchievement, error) {
 	var a domain.AllianceAchievement
-	var description, achievementDate, coverImage *string
-	var attachments, enterpriseIDs, projectIDs, relatedPositions, relatedScenes, relatedCourses, colleges json.RawMessage
+	var description, achievementDate, coverImage, citationReason *string
+	var attachments, images, ownerPersons, coBuilders, enterpriseIDs, projectIDs, relatedPositions, relatedScenes, relatedCourses, colleges json.RawMessage
 	err := s.DB.QueryRow(ctx, `
 		SELECT id, tenant_id, title, type, description, achievement_date, cover_image,
-			attachments, enterprise_ids, project_ids, related_positions, related_scenes,
+			attachments, citation_reason, images, owner_persons, co_builders,
+			enterprise_ids, project_ids, related_positions, related_scenes,
 			related_courses, status, view_count, secondary_colleges, is_public, created_at, updated_at
 		FROM alliance_achievements WHERE id = $1 AND tenant_id = $2
 	`, id, tenantID).Scan(&a.ID, &a.TenantID, &a.Title, &a.Type, &description, &achievementDate,
-		&coverImage, &attachments, &enterpriseIDs, &projectIDs, &relatedPositions,
+		&coverImage, &attachments, &citationReason, &images, &ownerPersons, &coBuilders,
+		&enterpriseIDs, &projectIDs, &relatedPositions,
 		&relatedScenes, &relatedCourses, &a.Status, &a.ViewCount, &colleges,
 		&a.IsPublic, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
@@ -604,6 +616,10 @@ func (s *AllianceStore) GetAchievementByID(ctx context.Context, id, tenantID str
 	a.AchievementDate = achievementDate
 	a.CoverImage = coverImage
 	a.Attachments = attachments
+	a.CitationReason = citationReason
+	a.Images = images
+	a.OwnerPersons = ownerPersons
+	a.CoBuilders = coBuilders
 	a.EnterpriseIDs = enterpriseIDs
 	a.ProjectIDs = projectIDs
 	a.RelatedPositions = relatedPositions
@@ -622,12 +638,12 @@ func (s *AllianceStore) ScanExpertRows(rows pgx.Rows) ([]domain.AllianceExpert, 
 		var gender, ttl, pos, etype, industry, edu, intro, workExp, city, avatar *string
 		var age, expYrs *int
 		var proFields, specs, photos, attachs json.RawMessage
-		var rating, enterpriseID *string
+		var rating, enterpriseID, coverImage, partnerSource, positionDirection *string
 		var colleges json.RawMessage
 		if err := rows.Scan(&e.ID, &e.TenantID, &e.Name, &gender, &age, &ttl, &pos,
 			&etype, &industry, &proFields, &specs, &expYrs, &edu, &intro, &workExp,
-			&city, &avatar, &photos, &attachs, &enterpriseID, &rating,
-			&e.Status, &colleges, &e.IsPublic, &e.CreatedAt, &e.UpdatedAt); err != nil {
+			&city, &avatar, &coverImage, &photos, &attachs, &enterpriseID, &rating,
+			&e.Status, &partnerSource, &positionDirection, &colleges, &e.IsPublic, &e.CreatedAt, &e.UpdatedAt); err != nil {
 			return nil, err
 		}
 		e.Gender = gender
@@ -644,10 +660,13 @@ func (s *AllianceStore) ScanExpertRows(rows pgx.Rows) ([]domain.AllianceExpert, 
 		e.WorkExperience = workExp
 		e.City = city
 		e.AvatarURL = avatar
+		e.CoverImage = coverImage
 		e.Photos = photos
 		e.Attachments = attachs
 		e.EnterpriseID = enterpriseID
 		e.Rating = rating
+		e.PartnerSource = partnerSource
+		e.PositionDirection = positionDirection
 		e.SecondaryColleges = colleges
 		items = append(items, e)
 	}
@@ -659,14 +678,14 @@ func (s *AllianceStore) CreateExpert(ctx context.Context, e *domain.AllianceExpe
 	_, err := s.DB.Exec(ctx, `
 		INSERT INTO alliance_experts (id, tenant_id, name, gender, age, title, position,
 			expert_type, industry, professional_fields, specialties, experience_years,
-			education, introduction, work_experience, city, avatar_url, photos, attachments,
-			enterprise_id, rating, status, secondary_colleges, is_public, created_at, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,NOW(),NOW())
+			education, introduction, work_experience, city, avatar_url, cover_image, photos, attachments,
+			enterprise_id, rating, status, partner_source, position_direction, secondary_colleges, is_public, created_at, updated_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,NOW(),NOW())
 	`, id, e.TenantID, e.Name, e.Gender, e.Age, e.Title, e.Position, e.ExpertType,
 		e.Industry, emptyJSON(e.ProfessionalFields), emptyJSON(e.Specialties), e.ExperienceYears,
-		e.Education, e.Introduction, e.WorkExperience, e.City, e.AvatarURL,
+		e.Education, e.Introduction, e.WorkExperience, e.City, e.AvatarURL, e.CoverImage,
 		emptyJSON(e.Photos), emptyJSON(e.Attachments), e.EnterpriseID, e.Rating,
-		e.Status, emptyJSON(e.SecondaryColleges), e.IsPublic)
+		e.Status, e.PartnerSource, e.PositionDirection, emptyJSON(e.SecondaryColleges), e.IsPublic)
 	if err != nil {
 		return "", err
 	}
@@ -679,14 +698,15 @@ func (s *AllianceStore) UpdateExpert(ctx context.Context, id string, e *domain.A
 			name = $1, gender = $2, age = $3, title = $4, position = $5, expert_type = $6,
 			industry = $7, professional_fields = $8, specialties = $9, experience_years = $10,
 			education = $11, introduction = $12, work_experience = $13, city = $14, avatar_url = $15,
-			photos = $16, attachments = $17, enterprise_id = $18, rating = $19, status = $20,
-			secondary_colleges = $21, is_public = $22, updated_at = NOW()
-		WHERE id = $23
+			cover_image = $16, photos = $17, attachments = $18, enterprise_id = $19, rating = $20,
+			status = $21, partner_source = $22, position_direction = $23,
+			secondary_colleges = $24, is_public = $25, updated_at = NOW()
+		WHERE id = $26
 	`, e.Name, e.Gender, e.Age, e.Title, e.Position, e.ExpertType, e.Industry,
 		emptyJSON(e.ProfessionalFields), emptyJSON(e.Specialties), e.ExperienceYears,
-		e.Education, e.Introduction, e.WorkExperience, e.City, e.AvatarURL,
+		e.Education, e.Introduction, e.WorkExperience, e.City, e.AvatarURL, e.CoverImage,
 		emptyJSON(e.Photos), emptyJSON(e.Attachments), e.EnterpriseID, e.Rating,
-		e.Status, emptyJSON(e.SecondaryColleges), e.IsPublic, id)
+		e.Status, e.PartnerSource, e.PositionDirection, emptyJSON(e.SecondaryColleges), e.IsPublic, id)
 	return err
 }
 
@@ -700,18 +720,18 @@ func (s *AllianceStore) GetExpertByID(ctx context.Context, id, tenantID string) 
 	var gender, ttl, pos, etype, industry, edu, intro, workExp, city, avatar *string
 	var age, expYrs *int
 	var proFields, specs, photos, attachs json.RawMessage
-	var rating, enterpriseID *string
+	var rating, enterpriseID, coverImage, partnerSource, positionDirection *string
 	var colleges json.RawMessage
 	err := s.DB.QueryRow(ctx, `
 		SELECT id, tenant_id, name, gender, age, title, position, expert_type, industry,
 			professional_fields, specialties, experience_years, education, introduction,
-			work_experience, city, avatar_url, photos, attachments, enterprise_id, rating,
-			status, secondary_colleges, is_public, created_at, updated_at
+			work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, rating,
+			status, partner_source, position_direction, secondary_colleges, is_public, created_at, updated_at
 		FROM alliance_experts WHERE id = $1 AND tenant_id = $2
 	`, id, tenantID).Scan(&e.ID, &e.TenantID, &e.Name, &gender, &age, &ttl, &pos,
 		&etype, &industry, &proFields, &specs, &expYrs, &edu, &intro, &workExp,
-		&city, &avatar, &photos, &attachs, &enterpriseID, &rating,
-		&e.Status, &colleges, &e.IsPublic, &e.CreatedAt, &e.UpdatedAt)
+		&city, &avatar, &coverImage, &photos, &attachs, &enterpriseID, &rating,
+		&e.Status, &partnerSource, &positionDirection, &colleges, &e.IsPublic, &e.CreatedAt, &e.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -729,10 +749,13 @@ func (s *AllianceStore) GetExpertByID(ctx context.Context, id, tenantID string) 
 	e.WorkExperience = workExp
 	e.City = city
 	e.AvatarURL = avatar
+	e.CoverImage = coverImage
 	e.Photos = photos
 	e.Attachments = attachs
 	e.EnterpriseID = enterpriseID
 	e.Rating = rating
+	e.PartnerSource = partnerSource
+	e.PositionDirection = positionDirection
 	e.SecondaryColleges = colleges
 	return &e, nil
 }
@@ -911,16 +934,24 @@ func (s *AllianceStore) ScanBrandRows(rows pgx.Rows) ([]domain.AllianceBrand, er
 	for rows.Next() {
 		var b domain.AllianceBrand
 		var coverImage, coverVideo, description *string
+		var studentID, enterpriseID, positionID, majorID, teacherID, expertID *string
 		var data json.RawMessage
 		if err := rows.Scan(&b.ID, &b.TenantID, &b.BrandType, &b.Name, &b.Status,
 			&b.IsPublic, &b.IsFeatured, &coverImage, &coverVideo, &description,
-			&data, &b.SortOrder, &b.ViewCount, &b.CreatedAt, &b.UpdatedAt); err != nil {
+			&data, &studentID, &enterpriseID, &positionID, &majorID, &teacherID, &expertID,
+			&b.SortOrder, &b.ViewCount, &b.CreatedAt, &b.UpdatedAt); err != nil {
 			return nil, err
 		}
 		b.CoverImage = coverImage
 		b.CoverVideo = coverVideo
 		b.Description = description
 		b.Data = data
+		b.StudentID = studentID
+		b.EnterpriseID = enterpriseID
+		b.PositionID = positionID
+		b.MajorID = majorID
+		b.TeacherID = teacherID
+		b.ExpertID = expertID
 		items = append(items, b)
 	}
 	return items, nil
@@ -930,11 +961,14 @@ func (s *AllianceStore) CreateBrand(ctx context.Context, b *domain.AllianceBrand
 	id := uuid.NewString()
 	_, err := s.DB.Exec(ctx, `
 		INSERT INTO alliance_brands (id, tenant_id, brand_type, name, status, is_public,
-			is_featured, cover_image, cover_video, description, data, sort_order, view_count,
-			created_at, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())
+			is_featured, cover_image, cover_video, description, data,
+			student_id, enterprise_id, position_id, major_id, teacher_id, expert_id,
+			sort_order, view_count, created_at, updated_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,NOW(),NOW())
 	`, id, b.TenantID, b.BrandType, b.Name, b.Status, b.IsPublic, b.IsFeatured,
-		b.CoverImage, b.CoverVideo, b.Description, b.Data, b.SortOrder, b.ViewCount)
+		b.CoverImage, b.CoverVideo, b.Description, b.Data,
+		b.StudentID, b.EnterpriseID, b.PositionID, b.MajorID, b.TeacherID, b.ExpertID,
+		b.SortOrder, b.ViewCount)
 	if err != nil {
 		return "", err
 	}
@@ -945,10 +979,14 @@ func (s *AllianceStore) UpdateBrand(ctx context.Context, id string, b *domain.Al
 	_, err := s.DB.Exec(ctx, `
 		UPDATE alliance_brands SET
 			name = $1, status = $2, is_public = $3, is_featured = $4, cover_image = $5,
-			cover_video = $6, description = $7, data = $8, sort_order = $9, updated_at = NOW()
-		WHERE id = $10
+			cover_video = $6, description = $7, data = $8,
+			student_id = $9, enterprise_id = $10, position_id = $11, major_id = $12,
+			teacher_id = $13, expert_id = $14, sort_order = $15, updated_at = NOW()
+		WHERE id = $16
 	`, b.Name, b.Status, b.IsPublic, b.IsFeatured, b.CoverImage, b.CoverVideo,
-		b.Description, b.Data, b.SortOrder, id)
+		b.Description, b.Data,
+		b.StudentID, b.EnterpriseID, b.PositionID, b.MajorID, b.TeacherID, b.ExpertID,
+		b.SortOrder, id)
 	return err
 }
 

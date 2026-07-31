@@ -1,0 +1,14 @@
+ALTER TABLE alliance_brands DROP COLUMN IF EXISTS student_id;
+ALTER TABLE alliance_brands DROP COLUMN IF EXISTS enterprise_id;
+ALTER TABLE alliance_brands DROP COLUMN IF EXISTS position_id;
+ALTER TABLE alliance_brands DROP COLUMN IF EXISTS major_id;
+ALTER TABLE alliance_brands DROP COLUMN IF EXISTS teacher_id;
+ALTER TABLE alliance_brands DROP COLUMN IF EXISTS expert_id;
+ALTER TABLE alliance_projects DROP COLUMN IF EXISTS agreement_ids;
+ALTER TABLE alliance_achievements DROP COLUMN IF EXISTS citation_reason;
+ALTER TABLE alliance_achievements DROP COLUMN IF EXISTS images;
+ALTER TABLE alliance_achievements DROP COLUMN IF EXISTS owner_persons;
+ALTER TABLE alliance_achievements DROP COLUMN IF EXISTS co_builders;
+ALTER TABLE alliance_experts DROP COLUMN IF EXISTS cover_image;
+ALTER TABLE alliance_experts DROP COLUMN IF EXISTS partner_source;
+ALTER TABLE alliance_experts DROP COLUMN IF EXISTS position_direction;

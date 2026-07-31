@@ -40,6 +40,11 @@ export default function AlliancePublicMajorBrandPage() {
                     <CardDescription className="line-clamp-3">{item.description}</CardDescription>
                   )}
                 </CardHeader>
+                <CardContent>
+                  {item.majorId && (
+                    <p className="text-xs text-muted-foreground">专业: {item.majorId}</p>
+                  )}
+                </CardContent>
               </Card>
             </Link>
           ))}
