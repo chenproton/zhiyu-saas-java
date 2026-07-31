@@ -160,7 +160,8 @@ func withTx(ctx context.Context, db *pgxpool.Pool, fn func(tx pgx.Tx) error) err
 
 // lookupIDByNameTables 是 lookupIDByName 允许查询的表名白名单。
 var lookupIDByNameTables = []string{
-	"ability_points", "ability_domains", "career_positions", "certificate_library",
+	"ability_points", "ability_domains", "alliance_agreements", "alliance_enterprises",
+	"alliance_experts", "alliance_projects", "career_positions", "certificate_library",
 	"courses", "evaluation_batches", "exams", "industries", "institutions",
 	"knowledge_points", "majors", "organizations", "question_banks", "questions",
 	"resource_library", "roles", "scenarios", "staff_titles", "subscription_packages", "terms", "users",
