@@ -1,4 +1,5 @@
 export * from "./ai"
+export * from "./alliance"
 export * from "./backend"
 export * from "./shared-models"
 export * from "./job"
