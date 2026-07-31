@@ -316,6 +316,7 @@ func registerAllianceRoutes(r chi.Router, h *Handlers) {
 
 		r.Get("/permissions", h.allianceHandler.ListPermissions)
 		r.Post("/permissions", h.allianceHandler.CreatePermission)
+		r.Get("/permissions/{id}", h.allianceHandler.GetPermission)
 		r.Put("/permissions/{id}", h.allianceHandler.UpdatePermission)
 		r.Delete("/permissions/{id}", h.allianceHandler.DeletePermission)
 

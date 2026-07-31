@@ -1,0 +1,177 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { Building, Briefcase, Users, Trophy, Sparkles, ArrowRight } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { portalRequest } from "@/lib/api"
+import type {
+  AlliancePublicStats,
+  AllianceBrand,
+  AllianceEnterprise,
+  AllianceAchievement,
+} from "@/lib/types"
+
+interface HomeData {
+  stats: AlliancePublicStats | null
+  featuredBrands: AllianceBrand[]
+  featuredEnterprises: AllianceEnterprise[]
+  latestAchievements: AllianceAchievement[]
+}
+
+export default function AlliancePublicHomePage() {
+  const [data, setData] = useState<HomeData>({
+    stats: null,
+    featuredBrands: [],
+    featuredEnterprises: [],
+    latestAchievements: [],
+  })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    Promise.all([
+      portalRequest<AlliancePublicStats>("/alliance/public/stats").catch(() => null),
+      portalRequest<{ items: AllianceBrand[] }>("/alliance/public/brands?isFeatured=true").catch(() => ({ items: [] })),
+      portalRequest<{ items: AllianceEnterprise[] }>("/alliance/public/enterprises").catch(() => ({ items: [] })),
+      portalRequest<{ items: AllianceAchievement[] }>("/alliance/public/achievements?sort=latest").catch(() => ({ items: [] })),
+    ])
+      .then(([stats, brands, enterprises, achievements]) => {
+        setData({
+          stats,
+          featuredBrands: brands.items?.slice(0, 6) || [],
+          featuredEnterprises: enterprises.items?.slice(0, 4) || [],
+          latestAchievements: achievements.items?.slice(0, 4) || [],
+        })
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading)
+    return <div className="text-center py-12 text-muted-foreground">加载中...</div>
+
+  return (
+    <div className="space-y-10">
+      <section className="text-center space-y-2">
+        <h1 className="text-3xl font-bold">校企合作联盟</h1>
+        <p className="text-muted-foreground text-lg">产教融合 · 协同育人 · 互利共赢</p>
+      </section>
+
+      {data.stats && (
+        <section className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[
+            { label: "合作企业", value: data.stats.enterpriseCount, icon: Building },
+            { label: "合作项目", value: data.stats.projectCount, icon: Briefcase },
+            { label: "企业专家", value: data.stats.expertCount, icon: Users },
+            { label: "合作成果", value: data.stats.achievementCount, icon: Trophy },
+            { label: "品牌展示", value: data.stats.brandCount, icon: Sparkles },
+          ].map((item) => {
+            const Icon = item.icon
+            return (
+              <Card key={item.label} className="text-center">
+                <CardContent className="pt-6 pb-4">
+                  <Icon className="h-8 w-8 mx-auto text-primary mb-2" />
+                  <p className="text-2xl font-bold">{item.value}</p>
+                  <p className="text-sm text-muted-foreground">{item.label}</p>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </section>
+      )}
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold">品牌展示</h2>
+          <Link href="/portal/alliance/brands" className="text-sm text-primary hover:underline inline-flex items-center gap-1">
+            查看更多 <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+        {data.featuredBrands.length === 0 ? (
+          <p className="text-muted-foreground">暂无品牌内容</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {data.featuredBrands.map((brand) => (
+              <Card key={brand.id} className="hover:shadow-md transition-shadow">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <CardTitle className="text-lg">{brand.name}</CardTitle>
+                    <Badge variant="outline">{brand.brandType}</Badge>
+                  </div>
+                  {brand.description && (
+                    <CardDescription className="line-clamp-2">{brand.description}</CardDescription>
+                  )}
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold">合作企业</h2>
+          <Link href="/portal/alliance/enterprises" className="text-sm text-primary hover:underline inline-flex items-center gap-1">
+            查看更多 <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+        {data.featuredEnterprises.length === 0 ? (
+          <p className="text-muted-foreground">暂无合作企业</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {data.featuredEnterprises.map((enterprise) => (
+              <Link key={enterprise.id} href={`/portal/alliance/enterprises/${enterprise.id}`}>
+                <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+                  <CardHeader>
+                    <CardTitle className="text-lg">{enterprise.name}</CardTitle>
+                    {enterprise.industry && (
+                      <CardDescription>{enterprise.industry}</CardDescription>
+                    )}
+                  </CardHeader>
+                  {enterprise.description && (
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{enterprise.description}</p>
+                    </CardContent>
+                  )}
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold">最新成果</h2>
+          <Link href="/portal/alliance/achievements" className="text-sm text-primary hover:underline inline-flex items-center gap-1">
+            查看更多 <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+        {data.latestAchievements.length === 0 ? (
+          <p className="text-muted-foreground">暂无成果</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {data.latestAchievements.map((achievement) => (
+              <Link key={achievement.id} href={`/portal/alliance/achievements/${achievement.id}`}>
+                <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <CardTitle className="text-lg">{achievement.title}</CardTitle>
+                      <Badge variant="outline">{achievement.type}</Badge>
+                    </div>
+                  </CardHeader>
+                  {achievement.description && (
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{achievement.description}</p>
+                    </CardContent>
+                  )}
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  )
+}

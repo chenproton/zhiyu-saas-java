@@ -1132,6 +1132,35 @@ func (h *AllianceHandler) ListPermissions(w http.ResponseWriter, r *http.Request
 	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: total})
 }
 
+func (h *AllianceHandler) GetPermission(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.CurrentUser(r)
+	if !canManagePortal(claims) {
+		respondError(w, http.StatusForbidden, "权限不足")
+		return
+	}
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
+	id := chi.URLParam(r, "id")
+	rows, err := h.DB.Query(r.Context(), `
+		SELECT id, tenant_id, account_name, account_type, enterprise_id, expert_id,
+			is_enabled, resource_permissions, platform_permissions, created_at, updated_at
+		FROM alliance_permissions WHERE id = $1 AND tenant_id = $2
+	`, id, tenantID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "查询失败")
+		return
+	}
+	defer rows.Close()
+	items, err := h.Store.ScanPermissionRows(rows)
+	if err != nil || len(items) == 0 {
+		respondError(w, http.StatusNotFound, "权限不存在")
+		return
+	}
+	respondJSON(w, http.StatusOK, items[0])
+}
+
 func (h *AllianceHandler) CreatePermission(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if !canManagePortal(claims) {
