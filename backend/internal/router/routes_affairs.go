@@ -18,7 +18,7 @@ func registerAffairsRoutes(r chi.Router, h *Handlers) {
 	r.Post("/affairs/programs/{id}/clone", h.trainingProgramHandler.Clone)
 
 	// 批次 / 审批
-	registerBatchRoutes(r, "/affairs/batches", h.jobBatchHandler)
+	registerBatchRoutes(r, "/affairs/batches", h.affairsBatchHandler)
 	r.Get("/affairs/workflows", h.workflowHandler.List)
 	r.Post("/affairs/workflows", h.workflowHandler.Create)
 	r.Get("/affairs/workflows/{id}", h.workflowHandler.Get)

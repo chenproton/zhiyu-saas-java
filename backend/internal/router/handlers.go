@@ -112,6 +112,7 @@ type Handlers struct {
 	scheduleImportHandler         *handler.ScheduleImportHandler
 	programCourseImportHandler    *handler.ProgramCourseImportHandler
 	affairsConfigImportHandler    *handler.AffairsConfigImportHandler
+	affairsBatchHandler           *handler.AffairsBatchHandler
 }
 
 func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHandler, redisClient *redis.Client) *Handlers {
@@ -220,5 +221,6 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		scheduleImportHandler:         &handler.ScheduleImportHandler{DB: db},
 		programCourseImportHandler:    &handler.ProgramCourseImportHandler{DB: db},
 		affairsConfigImportHandler:    &handler.AffairsConfigImportHandler{DB: db},
+		affairsBatchHandler:           handler.NewAffairsBatchHandler(db),
 	}
 }
