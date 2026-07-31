@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -133,8 +132,7 @@ func (h *CourseResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateCourseResourceRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.CourseID == "" || req.Name == "" || req.Type == "" {
@@ -192,8 +190,7 @@ func (h *CourseResourceHandler) BindResource(w http.ResponseWriter, r *http.Requ
 	}
 
 	var req BindCourseResourceRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.CourseID == "" || req.ResourceID == "" {

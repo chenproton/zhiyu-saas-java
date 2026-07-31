@@ -120,8 +120,7 @@ func (h *ScenarioTaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateScenarioTaskRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.ScenarioID == "" || req.Name == "" || req.Code == "" || req.TaskType == "" {
@@ -177,8 +176,7 @@ func (h *ScenarioTaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateScenarioTaskRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -249,8 +247,7 @@ func (h *ScenarioTaskHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req ReorderScenarioTasksRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.ScenarioID == "" {

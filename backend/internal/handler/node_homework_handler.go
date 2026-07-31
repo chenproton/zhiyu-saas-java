@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -94,8 +93,7 @@ func (h *NodeHomeworkHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateNodeHomeworkRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.NodeID == "" || req.Title == "" {
@@ -135,8 +133,7 @@ func (h *NodeHomeworkHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdateNodeHomeworkRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Title == "" {

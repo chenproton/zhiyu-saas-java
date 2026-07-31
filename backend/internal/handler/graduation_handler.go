@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -128,8 +127,7 @@ func (h *GraduationHandler) CreateTopic(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req CreateGraduationTopicRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" || req.CareerPositionID == "" {
@@ -182,8 +180,7 @@ func (h *GraduationHandler) UpdateTopic(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req CreateGraduationTopicRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" {
@@ -306,8 +303,7 @@ func (h *GraduationHandler) ArchivesCRUD(w http.ResponseWriter, r *http.Request)
 
 	if r.Method == http.MethodPost {
 		var req CreateGraduationArchiveRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondError(w, http.StatusBadRequest, "无效请求体")
+		if !decodeBody(w, r, &req) {
 			return
 		}
 		if req.TopicID == "" || req.UserID == "" {
@@ -397,8 +393,7 @@ func (h *GraduationHandler) EvaluationsCRUD(w http.ResponseWriter, r *http.Reque
 
 	if r.Method == http.MethodPost {
 		var req CreateGraduationEvaluationRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondError(w, http.StatusBadRequest, "无效请求体")
+		if !decodeBody(w, r, &req) {
 			return
 		}
 		if req.TopicID == "" || req.UserID == "" {

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -78,8 +77,7 @@ func (h *AbilityDomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateAbilityDomainRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -142,8 +140,7 @@ func (h *AbilityDomainHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdateAbilityDomainRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 

@@ -73,8 +73,7 @@ func (h *AllianceHandler) UpdateSchoolInfo(w http.ResponseWriter, r *http.Reques
 	}
 
 	var info domain.AllianceSchoolInfo
-	if err := json.NewDecoder(r.Body).Decode(&info); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &info) {
 		return
 	}
 	info.TenantID = tenantID
@@ -193,8 +192,7 @@ func (h *AllianceHandler) CreateEnterprise(w http.ResponseWriter, r *http.Reques
 		RatingRecord               json.RawMessage `json:"ratingRecord"`
 		IsPublic                   bool            `json:"isPublic"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &body) {
 		return
 	}
 	if body.Name == "" {
@@ -289,8 +287,7 @@ func (h *AllianceHandler) UpdateEnterprise(w http.ResponseWriter, r *http.Reques
 		RatingRecord               json.RawMessage `json:"ratingRecord"`
 		IsPublic                   bool            `json:"isPublic"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &body) {
 		return
 	}
 
@@ -400,8 +397,7 @@ func (h *AllianceHandler) CreateEnterpriseAgreement(w http.ResponseWriter, r *ht
 
 	eid := chi.URLParam(r, "eid")
 	var p store.AllianceEnterpriseAgreementCreateParams
-	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &p) {
 		return
 	}
 	p.TenantID = tenantID
@@ -440,8 +436,7 @@ func (h *AllianceHandler) UpdateEnterpriseAgreement(w http.ResponseWriter, r *ht
 	}
 
 	var p store.AllianceEnterpriseAgreementUpdateParams
-	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &p) {
 		return
 	}
 	if err := h.Store.UpdateEnterpriseAgreement(r.Context(), id, &p); err != nil {
@@ -538,8 +533,7 @@ func (h *AllianceHandler) CreateProject(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var p domain.AllianceProject
-	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &p) {
 		return
 	}
 	p.TenantID = tenantID
@@ -577,8 +571,7 @@ func (h *AllianceHandler) UpdateProject(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var p domain.AllianceProject
-	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &p) {
 		return
 	}
 	if err := h.Store.UpdateProject(r.Context(), id, &p); err != nil {
@@ -645,8 +638,7 @@ func (h *AllianceHandler) CreateMilestone(w http.ResponseWriter, r *http.Request
 
 	pid := chi.URLParam(r, "pid")
 	var m domain.AllianceProjectMilestone
-	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &m) {
 		return
 	}
 	m.TenantID = tenantID
@@ -674,8 +666,7 @@ func (h *AllianceHandler) UpdateMilestone(w http.ResponseWriter, r *http.Request
 
 	id := chi.URLParam(r, "id")
 	var m domain.AllianceProjectMilestone
-	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &m) {
 		return
 	}
 	if err := h.Store.UpdateMilestone(r.Context(), id, &m); err != nil {
@@ -775,8 +766,7 @@ func (h *AllianceHandler) CreateAchievement(w http.ResponseWriter, r *http.Reque
 	}
 
 	var a domain.AllianceAchievement
-	if err := json.NewDecoder(r.Body).Decode(&a); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &a) {
 		return
 	}
 	a.TenantID = tenantID
@@ -814,8 +804,7 @@ func (h *AllianceHandler) UpdateAchievement(w http.ResponseWriter, r *http.Reque
 	}
 
 	var a domain.AllianceAchievement
-	if err := json.NewDecoder(r.Body).Decode(&a); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &a) {
 		return
 	}
 	if err := h.Store.UpdateAchievement(r.Context(), id, &a); err != nil {
@@ -911,8 +900,7 @@ func (h *AllianceHandler) CreateExpert(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var e domain.AllianceExpert
-	if err := json.NewDecoder(r.Body).Decode(&e); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &e) {
 		return
 	}
 	e.TenantID = tenantID
@@ -950,8 +938,7 @@ func (h *AllianceHandler) UpdateExpert(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var e domain.AllianceExpert
-	if err := json.NewDecoder(r.Body).Decode(&e); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &e) {
 		return
 	}
 	if err := h.Store.UpdateExpert(r.Context(), id, &e); err != nil {
@@ -1047,8 +1034,7 @@ func (h *AllianceHandler) CreateAgreement(w http.ResponseWriter, r *http.Request
 	}
 
 	var a domain.AllianceAgreement
-	if err := json.NewDecoder(r.Body).Decode(&a); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &a) {
 		return
 	}
 	a.TenantID = tenantID
@@ -1086,8 +1072,7 @@ func (h *AllianceHandler) UpdateAgreement(w http.ResponseWriter, r *http.Request
 	}
 
 	var a domain.AllianceAgreement
-	if err := json.NewDecoder(r.Body).Decode(&a); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &a) {
 		return
 	}
 	if err := h.Store.UpdateAgreement(r.Context(), id, &a); err != nil {
@@ -1187,8 +1172,7 @@ func (h *AllianceHandler) CreatePermission(w http.ResponseWriter, r *http.Reques
 	}
 
 	var p domain.AlliancePermission
-	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &p) {
 		return
 	}
 	p.TenantID = tenantID
@@ -1218,8 +1202,7 @@ func (h *AllianceHandler) UpdatePermission(w http.ResponseWriter, r *http.Reques
 	}
 	id := chi.URLParam(r, "id")
 	var p domain.AlliancePermission
-	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &p) {
 		return
 	}
 	_ = tenantID
@@ -1289,8 +1272,7 @@ func (h *AllianceHandler) CreateDictionaryItem(w http.ResponseWriter, r *http.Re
 		Name      string `json:"name"`
 		SortOrder int    `json:"sortOrder"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Code == "" || req.Name == "" {
@@ -1329,8 +1311,7 @@ func (h *AllianceHandler) UpdateDictionaryItem(w http.ResponseWriter, r *http.Re
 		Name      string `json:"name"`
 		SortOrder int    `json:"sortOrder"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if err := h.Store.UpdateDictionary(r.Context(), id, &domain.AllianceDictionary{
@@ -1431,8 +1412,7 @@ func (h *AllianceHandler) CreateBrand(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var b domain.AllianceBrand
-	if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &b) {
 		return
 	}
 	b.TenantID = tenantID
@@ -1469,8 +1449,7 @@ func (h *AllianceHandler) UpdateBrand(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var b domain.AllianceBrand
-	if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &b) {
 		return
 	}
 	if err := h.Store.UpdateBrand(r.Context(), id, &b); err != nil {

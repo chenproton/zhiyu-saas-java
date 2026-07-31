@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -99,8 +98,7 @@ func (h *NodeQuizHandler) CreateQuiz(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateNodeQuizRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.NodeID == "" || req.Title == "" || req.Type == "" {
@@ -140,8 +138,7 @@ func (h *NodeQuizHandler) UpdateQuiz(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdateNodeQuizRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Title == "" || req.Type == "" {
@@ -250,8 +247,7 @@ func (h *NodeQuizHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateNodeQuizQuestionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Type == "" || req.Question == "" {
@@ -291,8 +287,7 @@ func (h *NodeQuizHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request)
 	}
 
 	var req UpdateNodeQuizQuestionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Type == "" || req.Question == "" {

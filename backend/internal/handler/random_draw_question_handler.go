@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -87,8 +86,7 @@ func (h *RandomDrawQuestionHandler) Create(w http.ResponseWriter, r *http.Reques
 	}
 
 	var req CreateRandomDrawQuestionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -133,8 +131,7 @@ func (h *RandomDrawQuestionHandler) Update(w http.ResponseWriter, r *http.Reques
 	}
 
 	var req UpdateRandomDrawQuestionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 

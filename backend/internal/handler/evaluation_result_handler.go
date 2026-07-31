@@ -129,8 +129,7 @@ func (h *EvaluationResultHandler) Submit(w http.ResponseWriter, r *http.Request)
 	}
 
 	var req SubmitResultRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.TaskID == "" || req.MethodKey == "" || req.EvaluateeID == "" {
@@ -187,8 +186,7 @@ func (h *EvaluationResultHandler) Grade(w http.ResponseWriter, r *http.Request) 
 
 	id := chi.URLParam(r, "id")
 	var req GradeResultRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -224,8 +222,7 @@ func (h *EvaluationResultHandler) BatchGrade(w http.ResponseWriter, r *http.Requ
 	}
 
 	var req BatchGradeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 

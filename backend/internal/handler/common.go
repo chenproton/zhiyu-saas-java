@@ -102,6 +102,15 @@ func respondError(w http.ResponseWriter, status int, message string) {
 	respondJSON(w, status, map[string]string{"error": message})
 }
 
+// decodeBody 解析 JSON 请求体，失败时写 400 响应并返回 false。
+func decodeBody(w http.ResponseWriter, r *http.Request, v interface{}) bool {
+	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+		respondError(w, http.StatusBadRequest, "无效请求体")
+		return false
+	}
+	return true
+}
+
 // MaxPageSize limits the number of items per page to prevent unbounded queries.
 const MaxPageSize = 200
 

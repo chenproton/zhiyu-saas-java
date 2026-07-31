@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -103,8 +102,7 @@ func (h *AbilityHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateAbilityRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -152,8 +150,7 @@ func (h *AbilityHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdateAbilityRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 

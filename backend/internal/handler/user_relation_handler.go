@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -133,8 +132,7 @@ func (h *UserRelationHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateUserRelationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.InitiatorID == "" || req.TargetID == "" || req.RelationType == "" {

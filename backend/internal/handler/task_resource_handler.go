@@ -134,8 +134,7 @@ func (h *TaskResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateTaskResourceRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" || req.Type == "" {
@@ -187,8 +186,7 @@ func (h *TaskResourceHandler) BindResource(w http.ResponseWriter, r *http.Reques
 	}
 
 	var req BindTaskResourceRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.TaskID == "" || req.ResourceID == "" {

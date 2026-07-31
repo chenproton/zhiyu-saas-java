@@ -126,8 +126,7 @@ func (h *TenantHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 	var req CreateTenantRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -371,8 +370,7 @@ func (h *TenantHandler) updateTenant(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdateTenantRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -421,8 +419,7 @@ func (h *TenantHandler) updateTenantStatus(w http.ResponseWriter, r *http.Reques
 	}
 
 	var req UpdateTenantStatusRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 

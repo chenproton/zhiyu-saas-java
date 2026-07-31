@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -164,8 +163,7 @@ func (h *ResourceLibraryHandler) Create(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req CreateResourceLibraryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -212,8 +210,7 @@ func (h *ResourceLibraryHandler) Update(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req UpdateResourceLibraryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 

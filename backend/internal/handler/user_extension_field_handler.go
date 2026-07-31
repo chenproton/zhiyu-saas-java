@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"sort"
 
@@ -92,8 +91,7 @@ func (h *UserExtensionFieldHandler) Update(w http.ResponseWriter, r *http.Reques
 	}
 
 	var req UpdateUserExtensionFieldRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 

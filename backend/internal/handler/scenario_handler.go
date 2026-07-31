@@ -166,8 +166,7 @@ func (h *ScenarioHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateScenarioRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -230,8 +229,7 @@ func (h *ScenarioHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdateScenarioRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 

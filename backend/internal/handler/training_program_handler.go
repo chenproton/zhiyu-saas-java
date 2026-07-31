@@ -124,8 +124,7 @@ func (h *TrainingProgramHandler) Create(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req TrainingProgramRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" || req.EntryYear <= 0 {
@@ -178,8 +177,7 @@ func (h *TrainingProgramHandler) Update(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req TrainingProgramRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -330,8 +328,7 @@ func (h *TrainingProgramHandler) PutCourses(w http.ResponseWriter, r *http.Reque
 	}
 
 	var req PutProgramCoursesRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	for _, c := range req.Courses {

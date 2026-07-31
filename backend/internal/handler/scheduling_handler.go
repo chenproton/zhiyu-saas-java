@@ -87,8 +87,7 @@ func (h *SchedulingHandler) CreateVenue(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req VenueRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" || req.Type == "" {
@@ -133,8 +132,7 @@ func (h *SchedulingHandler) UpdateVenue(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req VenueRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" || req.Type == "" {
@@ -237,8 +235,7 @@ func (h *SchedulingHandler) CreatePeriodSlot(w http.ResponseWriter, r *http.Requ
 	}
 
 	var req PeriodSlotRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" {
@@ -284,8 +281,7 @@ func (h *SchedulingHandler) UpdatePeriodSlot(w http.ResponseWriter, r *http.Requ
 	}
 
 	var req PeriodSlotRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" {
@@ -454,8 +450,7 @@ func (h *SchedulingHandler) CreateSchedule(w http.ResponseWriter, r *http.Reques
 	}
 
 	var req ScheduleEntryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -587,8 +582,7 @@ func (h *SchedulingHandler) UpdateSchedule(w http.ResponseWriter, r *http.Reques
 	}
 
 	var req ScheduleEntryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "无效请求体")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if !validateScheduleRequest(w, &req) {
