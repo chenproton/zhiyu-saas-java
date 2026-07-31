@@ -17,6 +17,8 @@ export interface Tenant {
   contactPhone?: string
   scaleData?: Record<string, any>
   secondaryColleges?: any[]
+  educationLevel?: string
+  educationNature?: string
   adminIds: string[]
   status: "active" | "inactive"
   createdAt: string

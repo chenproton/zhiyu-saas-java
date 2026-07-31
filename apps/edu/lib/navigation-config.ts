@@ -477,7 +477,7 @@ export const affairsNavigationConfig: PlatformNavigationConfig = {
       ],
     },
   ],
-  defaultExpandedSideNavIds: ["teaching-mgmt"],
+  defaultExpandedSideNavIds: ["teaching-mgmt", "teaching-approval"],
   platformSwitchItems: [],
   shellClassName: "bg-background",
   mainClassName: "min-w-0 flex-1",

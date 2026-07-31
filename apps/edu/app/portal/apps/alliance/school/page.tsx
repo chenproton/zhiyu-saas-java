@@ -21,6 +21,7 @@ interface Tenant {
   domain: string; address: string; enterpriseCode: string; description: string
   shortName: string; schoolType: string; province: string; city: string
   website: string; contactPhone: string
+  educationLevel: string; educationNature: string
   status: "active" | "inactive"; createdAt: string
 }
 
@@ -33,6 +34,7 @@ function mapBackendTenant(t: BackendTenant): Tenant {
     shortName: (t as any).shortName || "-", schoolType: (t as any).schoolType || "-",
     province: (t as any).province || "-", city: (t as any).city || "-",
     website: (t as any).website || "-", contactPhone: (t as any).contactPhone || "-",
+    educationLevel: (t as any).educationLevel || "-", educationNature: (t as any).educationNature || "-",
     status: t.status, createdAt: t.createdAt,
   }
 }
@@ -90,6 +92,8 @@ export default function AllianceSchoolPage() {
       schoolType: t.schoolType === "-" ? "" : t.schoolType,
       province: PROVINCES.includes(t.province) ? t.province : "",
       city: t.city === "-" ? "" : t.city,
+      educationLevel: t.educationLevel === "-" ? "" : t.educationLevel,
+      educationNature: t.educationNature === "-" ? "" : t.educationNature,
       contact: t.contact === "-" ? "" : t.contact, phone: t.phone === "-" ? "" : t.phone,
       contactPhone: t.contactPhone === "-" ? "" : t.contactPhone,
       domain: t.domain === "-" ? "" : t.domain, address: t.address === "-" ? "" : t.address,
@@ -153,7 +157,8 @@ export default function AllianceSchoolPage() {
           <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6">
             <Field icon={Phone} label="联系人" value={`${tenant.contact} / ${tenant.contactPhone !== "-" ? tenant.contactPhone : tenant.phone}`} />
             <Field icon={School} label="学校简称" value={tenant.shortName} />
-            <Field icon={BookOpen} label="办学类型" value={tenant.schoolType} />
+            <Field icon={BookOpen} label="办学层次" value={tenant.educationLevel} />
+            <Field icon={School} label="办学性质" value={tenant.educationNature} />
             <Field icon={MapPin} label="省份/城市" value={`${tenant.province} ${tenant.city}`} />
             <Field icon={Globe} label="官网" value={tenant.website} />
             <Field icon={Globe} label="绑定域名" value={tenant.domain} />

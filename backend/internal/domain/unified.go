@@ -107,6 +107,8 @@ type Tenant struct {
 	ContactPhone     *string         `json:"contactPhone,omitempty"`
 	ScaleData        json.RawMessage `json:"scaleData,omitempty"`
 	SecondaryColleges json.RawMessage `json:"secondaryColleges,omitempty"`
+	EducationLevel   *string         `json:"educationLevel,omitempty"`
+	EducationNature  *string         `json:"educationNature,omitempty"`
 	AdminIDs         []string        `json:"adminIds,omitempty"`
 	Status           TenantStatus    `json:"status"`
 	CreatedAt        time.Time       `json:"createdAt"`

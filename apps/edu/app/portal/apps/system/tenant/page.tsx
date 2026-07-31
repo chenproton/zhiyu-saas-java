@@ -23,6 +23,7 @@ interface Tenant {
   domain: string; address: string; enterpriseCode: string; description: string
   shortName: string; schoolType: string; province: string; city: string
   website: string; contactPhone: string
+  educationLevel: string; educationNature: string
   status: "active" | "inactive"; createdAt: string
 }
 
@@ -36,6 +37,7 @@ function mapBackendTenant(t: BackendTenant): Tenant {
     shortName: (t as any).shortName || "-", schoolType: (t as any).schoolType || "-",
     province: (t as any).province || "-", city: (t as any).city || "-",
     website: (t as any).website || "-", contactPhone: (t as any).contactPhone || "-",
+    educationLevel: (t as any).educationLevel || "-", educationNature: (t as any).educationNature || "-",
     status: t.status, createdAt: t.createdAt,
   }
 }
@@ -94,6 +96,8 @@ export default function TenantPage() {
       schoolType: t.schoolType === "-" ? "" : t.schoolType,
       province: PROVINCES.includes(t.province) ? t.province : "",
       city: t.city === "-" ? "" : t.city,
+      educationLevel: t.educationLevel === "-" ? "" : t.educationLevel,
+      educationNature: t.educationNature === "-" ? "" : t.educationNature,
       contact: t.contact === "-" ? "" : t.contact, phone: t.phone === "-" ? "" : t.phone,
       contactPhone: t.contactPhone === "-" ? "" : t.contactPhone,
       domain: t.domain === "-" ? "" : t.domain, address: t.address === "-" ? "" : t.address,
@@ -127,6 +131,8 @@ export default function TenantPage() {
         province: formData.province || null, city: formData.city || null,
         website: formData.website ? (formData.website.startsWith("http") ? formData.website : "https://" + formData.website) : null,
         contactPhone: formData.contactPhone || formData.phone || null,
+        educationLevel: formData.educationLevel || null,
+        educationNature: formData.educationNature || null,
       })})
       setIsEditDialogOpen(false); toast({ title: "保存成功" }); await fetchTenant()
     } catch (err) { setError(err instanceof Error ? err.message : "更新失败") }
@@ -166,7 +172,8 @@ export default function TenantPage() {
           <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6">
             <Field icon={Phone} label="联系人" value={`${tenant.contact} / ${tenant.contactPhone !== "-" ? tenant.contactPhone : tenant.phone}`} />
             <Field icon={School} label="学校简称" value={tenant.shortName} />
-            <Field icon={BookOpen} label="办学类型" value={tenant.schoolType} />
+            <Field icon={BookOpen} label="办学层次" value={tenant.educationLevel} />
+            <Field icon={School} label="办学性质" value={tenant.educationNature} />
             <Field icon={MapPin} label="省份/城市" value={`${tenant.province} ${tenant.city}`} />
             <Field icon={Globe} label="官网" value={tenant.website} />
             <Field icon={Globe} label="绑定域名" value={tenant.domain} />
@@ -197,9 +204,30 @@ export default function TenantPage() {
               <div className="grid gap-2"><Label>学校名称 <span className="text-destructive">*</span></Label><Input value={formData.name || ""} onChange={(e) => setF("name", e.target.value)} /></div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2"><Label>学校简称</Label><Input value={formData.shortName || ""} onChange={(e) => setF("shortName", e.target.value)} /></div>
-                <div className="grid gap-2"><Label>办学类型</Label><Input value={formData.schoolType || ""} onChange={(e) => setF("schoolType", e.target.value)} /></div>
+                <div className="grid gap-2"><Label>办学层次</Label>
+                  <Select value={formData.educationLevel || ""} onValueChange={(v) => setF("educationLevel", v)}>
+                    <SelectTrigger><SelectValue placeholder="请选择" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="普通本科院校">普通本科院校</SelectItem>
+                      <SelectItem value="职业本科院校">职业本科院校</SelectItem>
+                      <SelectItem value="高职院校">高职院校</SelectItem>
+                      <SelectItem value="中等专业学校">中等专业学校</SelectItem>
+                      <SelectItem value="职业高中">职业高中</SelectItem>
+                      <SelectItem value="技工学校">技工学校</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2"><Label>办学性质</Label>
+                  <Select value={formData.educationNature || ""} onValueChange={(v) => setF("educationNature", v)}>
+                    <SelectTrigger><SelectValue placeholder="请选择" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="公办">公办</SelectItem>
+                      <SelectItem value="民办">民办</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="grid gap-2"><Label>省份</Label>
                   <Select value={formData.province || ""} onValueChange={(v) => setF("province", v)}>
                     <SelectTrigger><SelectValue placeholder="请选择省份" /></SelectTrigger>
