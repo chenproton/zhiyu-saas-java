@@ -225,15 +225,19 @@ export default function TeachingPlanDetailPage() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <UserSelector
-                              value={e.teacherId ? [e.teacherId] : []}
-                              onChange={(ids) => {
-                                const tid = ids[0] || ""
-                                teachingPlanApi.updateEntry(e.id, { teacherId: tid }).then((updated) => replaceEntry(updated)).catch(() => {})
-                              }}
-                              multiple={false}
-                              placeholder={e.teacherName || "选择教师"}
-                            />
+                            {editing ? (
+                              <UserSelector
+                                value={e.teacherId ? [e.teacherId] : []}
+                                onChange={(ids) => {
+                                  const tid = ids[0] || ""
+                                  teachingPlanApi.updateEntry(e.id, { teacherId: tid }).then((updated) => replaceEntry(updated)).catch(() => {})
+                                }}
+                                multiple={false}
+                                placeholder={e.teacherName || "选择教师"}
+                              />
+                            ) : (
+                              <span className="text-sm">{e.teacherName || "未指定"}</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             {editing ? (
