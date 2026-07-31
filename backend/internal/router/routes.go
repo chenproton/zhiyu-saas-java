@@ -41,9 +41,9 @@ func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Poo
 	auth := authmw.JWT(jwtSecret)
 	platformAdmin := authmw.RequireRole("platform_admin")
 	systemAdmin := authmw.RequireSystemPermission()
-	portalWorkspace := authmw.RequireRole("teacher", "student", "school_admin")
-	businessUser := authmw.RequireRole("teacher", "school_admin", "enterprise_mentor", "platform_admin")
-	jobViewer := authmw.RequireRole("teacher", "student", "school_admin", "enterprise_mentor", "platform_admin")
+	portalWorkspace := authmw.RequireRoleOrMenu("teacher", "student", "school_admin")
+	businessUser := authmw.RequireRoleOrMenu("teacher", "school_admin", "enterprise_mentor", "platform_admin")
+	jobViewer := authmw.RequireRoleOrMenu("teacher", "student", "school_admin", "enterprise_mentor", "platform_admin")
 
 	cachedLandingExams := cache.Cached(redisClient, 2*time.Minute, cache.LandingExamsKey())
 	cachedPublicPositions := cache.Cached(redisClient, 2*time.Minute, cache.PublicPositionsKey())
@@ -199,7 +199,7 @@ func registerSuperAdminRoutes(r chi.Router, h *Handlers) {
 
 func registerWorkflowRoutes(r chi.Router, h *Handlers) {
 	r.Group(func(r chi.Router) {
-		r.Use(authmw.RequireRole("school_admin", "teacher"))
+		r.Use(authmw.RequireRoleOrMenu("school_admin", "teacher"))
 
 		r.Get("/workflows", h.workflowHandler.List)
 		r.Post("/workflows", h.workflowHandler.Create)
