@@ -8,13 +8,15 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
-import { Pencil, Trash2 } from "lucide-react"
+import { Pencil, Trash2, ExternalLink } from "lucide-react"
+import Link from "next/link"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
 import { TableRowActions } from "@/components/shared/table-row-actions"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { PortalCrudPage } from "@/components/shared/portal-crud-page"
+import { BrandRelationSelect } from "@/components/shared/brand-relation-select"
 import type { AllianceBrand, AllianceListResponse } from "@/lib/types"
 
 const brandType = "job"
@@ -84,6 +86,9 @@ export default function AllianceJobBrandPage() {
           <TableCell>{item.isPublic ? "是" : "否"}</TableCell>
           <TableCell>{item.viewCount}</TableCell>
           <TableRowActions>
+            <Link href={`/portal/apps/alliance/brands/${item.id}`}>
+              <Button variant="ghost" size="sm"><ExternalLink className="h-3.5 w-3.5 mr-1" />查看</Button>
+            </Link>
             <Button variant="ghost" size="sm" onClick={actions.edit}><Pencil className="h-3.5 w-3.5 mr-1" />编辑</Button>
             <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}><Trash2 className="h-3.5 w-3.5 mr-1" />删除</Button>
           </TableRowActions>
@@ -140,11 +145,11 @@ export default function AllianceJobBrandPage() {
           </div>
           <div className="grid gap-2">
             <Label>岗位 ID</Label>
-            <Input value={item.positionId || ""} onChange={(e: any) => setItem({ ...item, positionId: e.target.value })} placeholder="UUID (career_positions表)" />
+            <BrandRelationSelect label="关联岗位" value={item.positionId || ""} onChange={(v: any) => setItem({ ...item, positionId: v })} fetchUrl="/job/positions?limit=1000" />
           </div>
           <div className="grid gap-2">
             <Label>专业 ID</Label>
-            <Input value={item.majorId || ""} onChange={(e: any) => setItem({ ...item, majorId: e.target.value })} placeholder="UUID (majors表)" />
+            <BrandRelationSelect label="关联专业" value={item.majorId || ""} onChange={(v: any) => setItem({ ...item, majorId: v })} fetchUrl="/majors?limit=1000" />
           </div>
         </div>
       )}

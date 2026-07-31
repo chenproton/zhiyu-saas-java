@@ -15,12 +15,15 @@ import { useToast } from "@zhiyu/ui"
 import { allianceLabel } from "@zhiyu/shared-types"
 import { TableRowActions } from "@/components/shared/table-row-actions"
 import { PortalCrudPage } from "@/components/shared/portal-crud-page"
-import type { AllianceAchievement, AllianceListResponse } from "@/lib/types"
+import { Switch } from "@/components/ui/switch"
+import type { AllianceAchievement, AllianceEnterprise, AllianceProject, AllianceListResponse } from "@/lib/types"
 
 export default function AllianceAchievementsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
   const [items, setItems] = useState<AllianceAchievement[]>([])
+  const [enterprises, setEnterprises] = useState<AllianceEnterprise[]>([])
+  const [projects, setProjects] = useState<AllianceProject[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -29,8 +32,14 @@ export default function AllianceAchievementsPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await portalRequest<AllianceListResponse<AllianceAchievement>>("/alliance/achievements")
+      const [data, ents, projs] = await Promise.all([
+        portalRequest<AllianceListResponse<AllianceAchievement>>("/alliance/achievements"),
+        portalRequest<AllianceListResponse<AllianceEnterprise>>("/alliance/enterprises?limit=1000"),
+        portalRequest<AllianceListResponse<AllianceProject>>("/alliance/projects?limit=1000"),
+      ])
       setItems(data.items || [])
+      setEnterprises(ents.items || [])
+      setProjects(projs.items || [])
     } catch (e: any) {
       setError(e.message || "加载失败")
     } finally {
@@ -62,24 +71,33 @@ export default function AllianceAchievementsPage() {
       }
       importConfig={{ importType: "alliance-achievements", entityLabel: "合作成果", templateFileName: "合作成果批量导入模板.xlsx" }}
       createHref="/portal/apps/alliance/achievements/new"
-      colSpan={6}
+      colSpan={8}
       renderTableHeader={() => (
         <>
           <TableHead>成果名称</TableHead>
+          <TableHead>前台展示</TableHead>
+          <TableHead>合作企业</TableHead>
+          <TableHead>关联项目</TableHead>
           <TableHead>类型</TableHead>
-          <TableHead>状态</TableHead>
-          <TableHead>浏览</TableHead>
-          <TableHead>公开</TableHead>
+          <TableHead>发布时间</TableHead>
+          <TableHead>创建人</TableHead>
           <TableHead>操作</TableHead>
         </>
       )}
-      renderTableRow={(item: any, actions: any) => (
+      renderTableRow={(item: any, actions: any) => {
+        const entIds: string[] = (item.enterpriseIds || []).map(String)
+        const project = projects.find((p) => p.id === (item.projectIds || [])[0])
+        return (
         <>
-          <TableCell className="font-medium">{item.title}</TableCell>
+          <TableCell className="font-medium">
+            <Link href={`/portal/apps/alliance/achievements/${item.id}`} className="hover:underline">{item.title}</Link>
+          </TableCell>
+          <TableCell><Switch checked={item.isPublic || false} onCheckedChange={actions.toggle} /></TableCell>
+          <TableCell className="max-w-[160px]">{entIds.length > 0 ? entIds.map((eid) => enterprises.find((e) => e.id === eid)?.name || eid).join("、") : "-"}</TableCell>
+          <TableCell>{project?.name || "-"}</TableCell>
           <TableCell>{allianceLabel("achievementType", item.type)}</TableCell>
-          <TableCell>{allianceLabel("achievementStatus", item.status)}</TableCell>
-          <TableCell>{item.viewCount}</TableCell>
-          <TableCell>{item.isPublic ? "是" : "否"}</TableCell>
+          <TableCell>{item.achievementDate ? new Date(item.achievementDate).toLocaleDateString("zh-CN") : "-"}</TableCell>
+          <TableCell>{item.createdBy || "-"}</TableCell>
           <TableRowActions>
             <Link href={`/portal/apps/alliance/achievements/${item.id}`}>
               <Button variant="ghost" size="sm"><ExternalLink className="h-3.5 w-3.5 mr-1" />查看</Button>
@@ -90,7 +108,8 @@ export default function AllianceAchievementsPage() {
             <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}><Trash2 className="h-3.5 w-3.5 mr-1" />删除</Button>
           </TableRowActions>
         </>
-      )}
+        )
+      }}
       createDefault={() => ({
         id: "",
         title: "",

@@ -53,6 +53,7 @@ type AllianceEnterprise struct {
 	SecondaryColleges          json.RawMessage `json:"secondaryColleges,omitempty"`
 	RatingRecord               json.RawMessage `json:"ratingRecord,omitempty"`
 	IsPublic                   bool            `json:"isPublic"`
+	CreatedBy                  *string         `json:"createdBy,omitempty"`
 	CreatedAt                  time.Time       `json:"createdAt"`
 	UpdatedAt                  time.Time       `json:"updatedAt"`
 }
@@ -90,6 +91,7 @@ type AllianceProject struct {
 	AgreementIDs     json.RawMessage `json:"agreementIds,omitempty"`
 	SecondaryColleges json.RawMessage `json:"secondaryColleges,omitempty"`
 	IsPublic         bool            `json:"isPublic"`
+	CreatedBy        *string         `json:"createdBy,omitempty"`
 	CreatedAt        time.Time       `json:"createdAt"`
 	UpdatedAt        time.Time       `json:"updatedAt"`
 }
@@ -132,6 +134,7 @@ type AllianceAchievement struct {
 	ViewCount        int             `json:"viewCount"`
 	SecondaryColleges json.RawMessage `json:"secondaryColleges,omitempty"`
 	IsPublic         bool            `json:"isPublic"`
+	CreatedBy        *string         `json:"createdBy,omitempty"`
 	CreatedAt        time.Time       `json:"createdAt"`
 	UpdatedAt        time.Time       `json:"updatedAt"`
 }
@@ -159,12 +162,14 @@ type AllianceExpert struct {
 	Photos            json.RawMessage `json:"photos,omitempty"`
 	Attachments       json.RawMessage `json:"attachments,omitempty"`
 	EnterpriseID      *string         `json:"enterpriseId,omitempty"`
+	Organization      *string         `json:"organization,omitempty"`
 	Rating            *string         `json:"rating,omitempty"`
 	Status            string          `json:"status"`
 	PartnerSource     *string         `json:"partnerSource,omitempty"`
 	PositionDirection *string         `json:"positionDirection,omitempty"`
 	SecondaryColleges json.RawMessage `json:"secondaryColleges,omitempty"`
 	IsPublic          bool            `json:"isPublic"`
+	CreatedBy         *string         `json:"createdBy,omitempty"`
 	CreatedAt         time.Time       `json:"createdAt"`
 	UpdatedAt         time.Time       `json:"updatedAt"`
 }
@@ -180,7 +185,9 @@ type AllianceAgreement struct {
 	EndDate       *string         `json:"endDate,omitempty"`
 	Status        string          `json:"status"`
 	EnterpriseIDs json.RawMessage `json:"enterpriseIds,omitempty"`
+	ProjectIDs    json.RawMessage `json:"projectIds,omitempty"`
 	Attachments   json.RawMessage `json:"attachments,omitempty"`
+	CreatedBy     *string         `json:"createdBy,omitempty"`
 	CreatedAt     time.Time       `json:"createdAt"`
 	UpdatedAt     time.Time       `json:"updatedAt"`
 }

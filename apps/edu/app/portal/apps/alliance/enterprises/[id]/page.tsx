@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { TableCell, TableHead } from "@/components/ui/table"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
@@ -14,10 +15,10 @@ import { portalRequest } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
 import { allianceLabel } from "@zhiyu/shared-types"
 import { AllianceDetailShell } from "@/components/shared/alliance-detail-shell"
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react"
+import { Link2, Plus, Loader2 } from "lucide-react"
 import type {
   AllianceEnterprise,
-  AllianceEnterpriseAgreement,
+  AllianceAgreement,
   AllianceProject,
   AllianceAchievement,
   AllianceListResponse,
@@ -28,29 +29,31 @@ export default function AllianceEnterpriseDetailPage() {
   const { tenantId } = usePortalAuth()
   const { toast } = useToast()
   const [enterprise, setEnterprise] = useState<AllianceEnterprise | null>(null)
-  const [agreements, setAgreements] = useState<AllianceEnterpriseAgreement[]>([])
+  const [agreements, setAgreements] = useState<AllianceAgreement[]>([])
+  const [allAgreements, setAllAgreements] = useState<AllianceAgreement[]>([])
   const [projects, setProjects] = useState<AllianceProject[]>([])
   const [achievements, setAchievements] = useState<AllianceAchievement[]>([])
   const [loading, setLoading] = useState(true)
   const [savingA, setSavingA] = useState(false)
-  const [agreementDialog, setAgreementDialog] = useState<{
-    open: boolean; edit?: AllianceEnterpriseAgreement
-  }>({ open: false })
+  const [linkDialog, setLinkDialog] = useState(false)
+  const [linkSelected, setLinkSelected] = useState<string[]>([])
+  const [newDialog, setNewDialog] = useState(false)
   const [aForm, setAForm] = useState({
-    name: "", type: "", startDate: "", endDate: "", status: "draft",
+    name: "", type: "", startDate: "", endDate: "", status: "draft", content: "",
   })
 
   const loadData = () => {
     if (!tenantId || !id) return
     Promise.all([
       portalRequest<AllianceEnterprise>(`/alliance/enterprises/${id}`),
-      portalRequest<AllianceListResponse<AllianceEnterpriseAgreement>>(`/alliance/enterprises/${id}/agreements`),
+      portalRequest<AllianceListResponse<AllianceAgreement>>("/alliance/agreements?limit=1000"),
       portalRequest<AllianceListResponse<AllianceProject>>(`/alliance/projects?limit=1000`),
       portalRequest<AllianceListResponse<AllianceAchievement>>(`/alliance/achievements?limit=1000`),
     ])
       .then(([ent, agr, proj, ach]) => {
         setEnterprise(ent)
-        setAgreements(agr.items || [])
+        setAllAgreements(agr.items || [])
+        setAgreements((agr.items || []).filter((a) => (a.enterpriseIds || []).includes?.(id)))
         setProjects(proj.items?.filter((p: AllianceProject) => (p.enterpriseIds as any)?.includes?.(id)) || [])
         setAchievements(ach.items?.filter((a: AllianceAchievement) => (a.enterpriseIds as any)?.includes?.(id)) || [])
       })
@@ -59,47 +62,64 @@ export default function AllianceEnterpriseDetailPage() {
   }
   useEffect(() => { loadData() }, [tenantId, id]) // eslint-disable-line
 
-  const openAForm = (a?: AllianceEnterpriseAgreement) => {
-    setAForm(a ? {
-      name: a.name, type: a.type || "", startDate: a.startDate || "",
-      endDate: a.endDate || "", status: a.status,
-    } : { name: "", type: "", startDate: "", endDate: "", status: "draft" })
-    setAgreementDialog({ open: true, edit: a })
-  }
-  const saveAgreement = async () => {
+  const saveLink = async () => {
     setSavingA(true)
     try {
-      const edit = agreementDialog.edit
-      if (edit) {
-        await portalRequest(`/alliance/enterprises/${id}/agreements/${edit.id}`, {
-          method: "PUT", body: JSON.stringify({ ...edit, ...aForm }),
-        })
-        toast({ title: "协议已更新" })
-      } else {
-        await portalRequest(`/alliance/enterprises/${id}/agreements`, {
-          method: "POST", body: JSON.stringify(aForm),
-        })
-        toast({ title: "协议已创建" })
+      for (const aid of linkSelected) {
+        const agreement = allAgreements.find((a) => a.id === aid)
+        if (!agreement) continue
+        const ids = [...(agreement.enterpriseIds || []), id]
+        await portalRequest(`/alliance/agreements/${aid}`, { method: "PUT", body: JSON.stringify({ ...agreement, enterpriseIds: ids }) })
       }
-      setAgreementDialog({ open: false })
+      toast({ title: `已关联 ${linkSelected.length} 份协议` })
+      setLinkDialog(false)
+      setLinkSelected([])
       loadData()
     } catch (e: any) {
-      toast({ title: "保存失败", description: e.message, variant: "destructive" })
+      toast({ title: "关联失败", description: e.message, variant: "destructive" })
     } finally { setSavingA(false) }
   }
-  const deleteAgreement = async (aid: string) => {
+
+  const createAgreement = async () => {
+    if (!aForm.name) {
+      toast({ title: "请填写协议名称", variant: "destructive" })
+      return
+    }
+    setSavingA(true)
     try {
-      await portalRequest(`/alliance/enterprises/${id}/agreements/${aid}`, { method: "DELETE" })
-      toast({ title: "已删除" })
+      await portalRequest("/alliance/agreements", {
+        method: "POST",
+        body: JSON.stringify({ ...aForm, enterpriseIds: [id] }),
+      })
+      toast({ title: "协议已创建并关联" })
+      setNewDialog(false)
+      setAForm({ name: "", type: "", startDate: "", endDate: "", status: "draft", content: "" })
       loadData()
     } catch (e: any) {
-      toast({ title: "删除失败", description: e.message, variant: "destructive" })
+      toast({ title: "创建失败", description: e.message, variant: "destructive" })
+    } finally { setSavingA(false) }
+  }
+
+  const unlinkAgreement = async (aid: string) => {
+    const agreement = allAgreements.find((a) => a.id === aid)
+    if (!agreement) return
+    try {
+      await portalRequest(`/alliance/agreements/${aid}`, {
+        method: "PUT",
+        body: JSON.stringify({ ...agreement, enterpriseIds: (agreement.enterpriseIds || []).filter((x) => x !== id) }),
+      })
+      toast({ title: "已取消关联" })
+      loadData()
+    } catch (e: any) {
+      toast({ title: "操作失败", description: e.message, variant: "destructive" })
     }
   }
 
   if (!enterprise && !loading) {
     return <AllianceDetailShell title="" tabs={[]} notFound backHref="/portal/apps/alliance/enterprises" />
   }
+
+  const availableForLink = allAgreements.filter((a) => !(a.enterpriseIds || []).includes?.(id))
 
   const tabs = [
     {
@@ -111,8 +131,12 @@ export default function AllianceEnterpriseDetailPage() {
               <p><span className="text-muted-foreground">企业类型：</span>{allianceLabel("enterpriseType", enterprise?.enterpriseType)}</p>
               <p><span className="text-muted-foreground">所属行业：</span>{enterprise?.industry || "-"}</p>
               <p><span className="text-muted-foreground">所在地区：</span>{enterprise?.region || "-"}</p>
+              <p><span className="text-muted-foreground">统一社会信用代码：</span>{(enterprise as any)?.unifiedSocialCreditCode || "-"}</p>
+              <p><span className="text-muted-foreground">成立年份：</span>{(enterprise as any)?.establishedYear || "-"}</p>
+              <p><span className="text-muted-foreground">企业规模：</span>{(enterprise as any)?.employeeCount ? `${(enterprise as any).employeeCount}人` : "-"}</p>
               <p><span className="text-muted-foreground">合作评级：</span>{allianceLabel("enterpriseRating", enterprise?.rating)}</p>
-              <p><span className="text-muted-foreground">公开显示：</span>{enterprise?.isPublic ? "是" : "否"}</p>
+              <p><span className="text-muted-foreground">关联二级学院：</span>{((enterprise as any)?.secondaryColleges || []).join("、") || "-"}</p>
+              <p><span className="text-muted-foreground">前台展示：</span>{enterprise?.isPublic ? "是" : "否"}</p>
             </CardContent></Card>
           <Card><CardHeader><CardTitle>联系信息</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
@@ -121,8 +145,35 @@ export default function AllianceEnterpriseDetailPage() {
               <p><span className="text-muted-foreground">邮箱：</span>{enterprise?.contactEmail || "-"}</p>
               <p><span className="text-muted-foreground">地址：</span>{enterprise?.address || "-"}</p>
             </CardContent></Card>
+          {(enterprise as any)?.businessLicensePhotos?.length > 0 && (
+            <Card><CardHeader><CardTitle>营业执照</CardTitle></CardHeader>
+              <CardContent className="flex flex-wrap gap-2">
+                {((enterprise as any).businessLicensePhotos || []).map((u: string, i: number) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={i} src={u} alt={`营业执照 ${i + 1}`} className="w-24 h-16 object-cover rounded border" />
+                ))}
+              </CardContent></Card>
+          )}
+          {(enterprise as any)?.intellectualPropertyPhotos?.length > 0 && (
+            <Card><CardHeader><CardTitle>企业知识产权</CardTitle></CardHeader>
+              <CardContent className="flex flex-wrap gap-2">
+                {((enterprise as any).intellectualPropertyPhotos || []).map((u: string, i: number) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={i} src={u} alt={`知识产权 ${i + 1}`} className="w-24 h-16 object-cover rounded border" />
+                ))}
+              </CardContent></Card>
+          )}
+          {(enterprise as any)?.qualificationPhotos?.length > 0 && (
+            <Card><CardHeader><CardTitle>企业荣誉资质</CardTitle></CardHeader>
+              <CardContent className="flex flex-wrap gap-2">
+                {((enterprise as any).qualificationPhotos || []).map((u: string, i: number) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={i} src={u} alt={`荣誉资质 ${i + 1}`} className="w-24 h-16 object-cover rounded border" />
+                ))}
+              </CardContent></Card>
+          )}
           {enterprise?.description && (
-            <Card className="col-span-2"><CardHeader><CardTitle>企业描述</CardTitle></CardHeader>
+            <Card className="col-span-2"><CardHeader><CardTitle>企业简介</CardTitle></CardHeader>
               <CardContent><p className="text-sm whitespace-pre-wrap">{enterprise.description}</p></CardContent></Card>
           )}
         </div>
@@ -132,8 +183,11 @@ export default function AllianceEnterpriseDetailPage() {
       key: "agreements", label: "合作协议", badge: agreements.length,
       content: (
         <div className="space-y-4">
-          <div className="flex justify-end">
-            <Button size="sm" onClick={() => openAForm()}><Plus className="h-4 w-4 mr-1" />新增协议</Button>
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="outline" onClick={() => { setLinkSelected([]); setLinkDialog(true) }} disabled={availableForLink.length === 0}>
+              <Link2 className="h-4 w-4 mr-1" />关联已有协议
+            </Button>
+            <Button size="sm" onClick={() => setNewDialog(true)}><Plus className="h-4 w-4 mr-1" />新增协议</Button>
           </div>
           <div className="rounded-md border">
             <table className="w-full text-sm">
@@ -142,17 +196,15 @@ export default function AllianceEnterpriseDetailPage() {
               </thead>
               <tbody>
                 {agreements.length === 0 ? (
-                  <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">暂无合作协议</td></tr>
+                  <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">暂无合作协议，可点击右上角关联或新增</td></tr>
                 ) : agreements.map((a) => (
                   <tr key={a.id} className="border-b">
-                    <TableCell>{a.name}</TableCell><TableCell>{a.type || "-"}</TableCell>
+                    <TableCell className="font-medium">{a.name}</TableCell>
+                    <TableCell>{a.type || "-"}</TableCell>
                     <TableCell>{allianceLabel("agreementStatus", a.status)}</TableCell>
                     <TableCell>{a.startDate || "-"} ~ {a.endDate || "-"}</TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => openAForm(a)}><Pencil className="h-3 w-3" /></Button>
-                        <Button variant="ghost" size="sm" className="text-red-600" onClick={() => deleteAgreement(a.id)}><Trash2 className="h-3 w-3" /></Button>
-                      </div>
+                      <Button variant="ghost" size="sm" className="text-red-600" onClick={() => unlinkAgreement(a.id)}>取消关联</Button>
                     </TableCell>
                   </tr>
                 ))}
@@ -222,20 +274,51 @@ export default function AllianceEnterpriseDetailPage() {
         loading={loading}
       />
 
-      <Dialog open={agreementDialog.open} onOpenChange={(o) => !o && setAgreementDialog({ open: false })}>
+      {/* 关联已有协议 */}
+      <Dialog open={linkDialog} onOpenChange={(o) => !o && setLinkDialog(false)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{agreementDialog.edit ? "编辑" : "新增"}协议</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>关联已有协议</DialogTitle></DialogHeader>
+          <div className="max-h-[50vh] overflow-y-auto space-y-2">
+            {availableForLink.map((a) => (
+              <label key={a.id} className="flex items-center gap-2 p-2 rounded border hover:bg-muted/40 cursor-pointer">
+                <Checkbox
+                  checked={linkSelected.includes(a.id)}
+                  onCheckedChange={(v) => setLinkSelected((prev) => v ? [...prev, a.id] : prev.filter((x) => x !== a.id))}
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{a.name}</p>
+                  <p className="text-xs text-muted-foreground">{a.type || "未分类"} · {allianceLabel("agreementStatus", a.status)}</p>
+                </div>
+              </label>
+            ))}
+            {availableForLink.length === 0 && <p className="text-center py-6 text-sm text-muted-foreground">暂无可关联的协议</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLinkDialog(false)}>取消</Button>
+            <Button onClick={saveLink} disabled={savingA || linkSelected.length === 0}>
+              {savingA ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}关联 ({linkSelected.length})
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 新增协议（自动关联当前企业） */}
+      <Dialog open={newDialog} onOpenChange={(o) => !o && setNewDialog(false)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>新增协议（自动关联当前企业）</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="grid gap-2"><Label>协议名称 *</Label><Input value={aForm.name} onChange={(e) => setAForm({ ...aForm, name: e.target.value })} /></div>
-            <div className="grid gap-2"><Label>协议类型</Label><Input value={aForm.type} onChange={(e) => setAForm({ ...aForm, type: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>协议类型</Label><Input value={aForm.type} onChange={(e) => setAForm({ ...aForm, type: e.target.value })} placeholder="如：战略合作协议" /></div>
             <div className="grid gap-2">
-              <Label>状态</Label>
+              <Label>协议状态</Label>
               <Select value={aForm.status} onValueChange={(v) => setAForm({ ...aForm, status: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="draft">草稿</SelectItem>
-                  <SelectItem value="active">有效</SelectItem>
-                  <SelectItem value="expired">失效</SelectItem>
+                  <SelectItem value="active">生效中</SelectItem>
+                  <SelectItem value="expired">已失效</SelectItem>
+                  <SelectItem value="renewed">已续签</SelectItem>
+                  <SelectItem value="terminated">已终止</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -245,8 +328,8 @@ export default function AllianceEnterpriseDetailPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAgreementDialog({ open: false })}>取消</Button>
-            <Button onClick={saveAgreement} disabled={savingA}>{savingA ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}保存</Button>
+            <Button variant="outline" onClick={() => setNewDialog(false)}>取消</Button>
+            <Button onClick={createAgreement} disabled={savingA}>{savingA ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}创建并关联</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

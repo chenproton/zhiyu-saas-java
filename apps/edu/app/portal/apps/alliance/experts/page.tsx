@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Pencil, Trash2 } from "lucide-react"
+import { Pencil, Trash2, ExternalLink } from "lucide-react"
+import Link from "next/link"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest, buildQuery } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
@@ -47,18 +48,27 @@ export default function AllianceExpertsPage() {
       onRetry={fetchExperts}
       filterItems={(items, search) => items.filter((e) => !search || e.name.toLowerCase().includes(search.toLowerCase()) || (e.title || "").toLowerCase().includes(search.toLowerCase()) || (e.industry || "").toLowerCase().includes(search.toLowerCase()))}
       importConfig={{ importType: "alliance-experts", entityLabel: "专家资源", templateFileName: "专家资源批量导入模板.xlsx" }}
-      colSpan={7}
-      renderTableHeader={() => <><TableHead>姓名</TableHead><TableHead>头衔</TableHead><TableHead>职位</TableHead><TableHead>行业</TableHead><TableHead>状态</TableHead><TableHead>评级</TableHead><TableHead>操作</TableHead></>}
+      createHref="/portal/apps/alliance/experts/new"
+      colSpan={8}
+      renderTableHeader={() => <><TableHead>姓名</TableHead><TableHead>头衔</TableHead><TableHead>职位</TableHead><TableHead>所属机构</TableHead><TableHead>行业</TableHead><TableHead>状态</TableHead><TableHead>评级</TableHead><TableHead>操作</TableHead></>}
       renderTableRow={(e: any, actions: any) => (
         <>
-          <TableCell className="font-medium">{e.name}</TableCell>
+          <TableCell className="font-medium">
+            <Link href={`/portal/apps/alliance/experts/${e.id}`} className="hover:underline">{e.name}</Link>
+          </TableCell>
           <TableCell>{e.title || "-"}</TableCell>
           <TableCell>{e.position || "-"}</TableCell>
+          <TableCell className="max-w-[160px]">{e.organization || "-"}</TableCell>
           <TableCell>{e.industry || "-"}</TableCell>
           <TableCell>{allianceLabel("expertStatus", e.status)}</TableCell>
           <TableCell>{allianceLabel("expertRating", e.rating)}</TableCell>
           <TableRowActions>
-            <Button variant="ghost" size="sm" onClick={actions.edit}><Pencil className="h-3.5 w-3.5 mr-1" />编辑</Button>
+            <Link href={`/portal/apps/alliance/experts/${e.id}`}>
+              <Button variant="ghost" size="sm"><ExternalLink className="h-3.5 w-3.5 mr-1" />查看</Button>
+            </Link>
+            <Link href={`/portal/apps/alliance/experts/${e.id}/edit`}>
+              <Button variant="ghost" size="sm"><Pencil className="h-3.5 w-3.5 mr-1" />编辑</Button>
+            </Link>
             <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}><Trash2 className="h-3.5 w-3.5 mr-1" />删除</Button>
           </TableRowActions>
         </>

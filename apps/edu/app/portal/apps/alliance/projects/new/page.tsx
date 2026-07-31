@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { MultiSelect } from "@/components/ui/multi-select"
+import { SingleImageUpload } from "@/components/shared/image-list-upload"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
@@ -22,6 +23,11 @@ const SECONDARY_COLLEGES = [
   "创新创业学院", "继续教育学院", "基础教育学院", "马克思主义学院",
 ]
 
+const PROJECT_TYPES = [
+  "人才培养项目", "技术研发项目", "基地建设项目", "技能竞赛项目",
+  "创新创业项目", "师资培训项目", "课程开发项目", "专业共建项目",
+]
+
 export default function AllianceProjectNewPage() {
   const { tenantId } = usePortalAuth()
   const { toast } = useToast()
@@ -30,13 +36,14 @@ export default function AllianceProjectNewPage() {
   const [enterprises, setEnterprises] = useState<{ label: string; value: string }[]>([])
   const [item, setItem] = useState({
     name: "",
-    type: "",
+    type: "人才培养项目",
     phase: "initiation",
     startDate: "",
     endDate: "",
     budget: "",
     description: "",
     isPublic: false,
+    coverImage: "",
     enterpriseIds: [] as string[],
     secondaryColleges: [] as string[],
   })
@@ -84,8 +91,13 @@ export default function AllianceProjectNewPage() {
                 <Input value={item.name} onChange={(e) => setField("name", e.target.value)} placeholder="请输入项目名称" />
               </div>
               <div className="grid gap-2">
-                <Label>项目类型</Label>
-                <Input value={item.type} onChange={(e) => setField("type", e.target.value)} placeholder="如：技术研发" />
+                <Label>合作类型</Label>
+                <Select value={item.type} onValueChange={(v) => setField("type", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PROJECT_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <Label>项目阶段</Label>
@@ -123,6 +135,13 @@ export default function AllianceProjectNewPage() {
         </div>
 
         <div className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>项目封面</CardTitle></CardHeader>
+            <CardContent>
+              <SingleImageUpload label="项目封面" value={item.coverImage} onChange={(v) => setField("coverImage", v)} />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader><CardTitle>合作企业</CardTitle></CardHeader>
             <CardContent>

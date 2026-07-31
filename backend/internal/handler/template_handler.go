@@ -1375,7 +1375,7 @@ func (h *TemplateHandler) generateEnterpriseTemplate(ctx context.Context, tenant
 	f.DeleteSheet("Sheet1")
 	headers := []string{"企业名称 *", "企业类型", "所属行业", "所在地区", "合作状态", "合作评级", "联系人", "联系电话", "联系邮箱", "企业地址"}
 	widths := []float64{28, 22, 20, 20, 22, 22, 18, 18, 24, 36}
-	setA1("合作企业", 10, "填写说明：\n* 必填列。\n企业类型：平台企业 / 校本企业（或 platform / school-based），默认为 平台企业\n所属行业 / 所在地区：文本，选填\n合作状态：洽谈中 / 合作中 / 已暂停 / 已终止（或 negotiating / active / paused / terminated），默认为 合作中\n合作评级：战略合作 / 深度合作 / 一般合作（或 strategic / deep / general），选填\n联系人 / 联系电话 / 联系邮箱 / 企业地址：选填")
+	setA1("合作企业", 10, "填写说明：\n* 必填列。\n企业类型：合作企业 / 第三方雇主企业（或 cooperation / third-party），默认为 合作企业\n所属行业 / 所在地区：文本，选填\n合作状态：洽谈中 / 合作中 / 已暂停 / 已终止（或 negotiating / active / paused / terminated），默认为 合作中\n合作评级：战略合作 / 深度合作 / 一般合作（或 strategic / deep / general），选填\n联系人 / 联系电话 / 联系邮箱 / 企业地址：选填")
 	setHdr("合作企业", 2, headers, widths)
 	f.SetPanes("合作企业", &excelize.Panes{Freeze: true, YSplit: 2})
 	f.AutoFilter("合作企业", "A2:J2", []excelize.AutoFilterOptions{})

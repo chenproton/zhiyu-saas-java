@@ -14,8 +14,10 @@ import { portalRequest } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
 import { allianceLabel } from "@zhiyu/shared-types"
 import { AllianceDetailShell } from "@/components/shared/alliance-detail-shell"
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react"
-import type { AllianceProject, AllianceProjectMilestone, AllianceListResponse } from "@/lib/types"
+import { Plus, Pencil, Trash2, Loader2, Link2 } from "lucide-react"
+import Link from "next/link"
+import { Checkbox } from "@/components/ui/checkbox"
+import type { AllianceProject, AllianceProjectMilestone, AllianceAgreement, AllianceAchievement, AllianceListResponse } from "@/lib/types"
 
 export default function AllianceProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -23,24 +25,82 @@ export default function AllianceProjectDetailPage() {
   const { toast } = useToast()
   const [project, setProject] = useState<AllianceProject | null>(null)
   const [milestones, setMilestones] = useState<AllianceProjectMilestone[]>([])
+  const [allAgreements, setAllAgreements] = useState<AllianceAgreement[]>([])
+  const [achievements, setAchievements] = useState<AllianceAchievement[]>([])
   const [loading, setLoading] = useState(true)
   const [savingM, setSavingM] = useState(false)
   const [milestoneDialog, setMilestoneDialog] = useState<{
     open: boolean; edit?: AllianceProjectMilestone
   }>({ open: false })
   const [mForm, setMForm] = useState({ name: "", description: "", dueDate: "", completedDate: "", isCompleted: false })
+  const [linkDialog, setLinkDialog] = useState(false)
+  const [linkSelected, setLinkSelected] = useState<string[]>([])
+  const [newAgrDialog, setNewAgrDialog] = useState(false)
+  const [aForm, setAForm] = useState({ name: "", type: "", startDate: "", endDate: "", status: "draft", content: "" })
+  const [savingA, setSavingA] = useState(false)
 
   const loadData = () => {
     if (!tenantId || !id) return
     Promise.all([
       portalRequest<AllianceProject>(`/alliance/projects/${id}`),
       portalRequest<AllianceListResponse<AllianceProjectMilestone>>(`/alliance/projects/${id}/milestones`),
+      portalRequest<AllianceListResponse<AllianceAgreement>>("/alliance/agreements?limit=1000"),
+      portalRequest<AllianceListResponse<AllianceAchievement>>("/alliance/achievements?limit=1000"),
     ])
-      .then(([p, m]) => { setProject(p); setMilestones(m.items || []) })
+      .then(([p, m, agr, ach]) => {
+        setProject(p); setMilestones(m.items || [])
+        setAllAgreements(agr.items || [])
+        setAchievements(ach.items || [])
+      })
       .catch((e) => toast({ title: "加载失败", description: e.message, variant: "destructive" }))
       .finally(() => setLoading(false))
   }
   useEffect(() => { loadData() }, [tenantId, id]) // eslint-disable-line
+
+  const saveLinkAgr = async () => {
+    setSavingA(true)
+    try {
+      const current = project as any
+      const agreementIds = [...new Set([...(current.agreementIds || []), ...linkSelected])]
+      await portalRequest(`/alliance/projects/${id}`, { method: "PUT", body: JSON.stringify({ ...current, agreementIds }) })
+      toast({ title: `已关联 ${linkSelected.length} 份协议` })
+      setLinkDialog(false); setLinkSelected([])
+      loadData()
+    } catch (e: any) {
+      toast({ title: "关联失败", description: e.message, variant: "destructive" })
+    } finally { setSavingA(false) }
+  }
+
+  const unlinkAgr = async (aid: string) => {
+    const current = project as any
+    try {
+      await portalRequest(`/alliance/projects/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ ...current, agreementIds: (current.agreementIds || []).filter((x: string) => x !== aid) }),
+      })
+      toast({ title: "已取消关联" })
+      loadData()
+    } catch (e: any) {
+      toast({ title: "操作失败", description: e.message, variant: "destructive" })
+    }
+  }
+
+  const createProjectAgreement = async () => {
+    if (!aForm.name) { toast({ title: "请填写协议名称", variant: "destructive" }); return }
+    setSavingA(true)
+    try {
+      const data = await portalRequest<{ id: string }>("/alliance/agreements", { method: "POST", body: JSON.stringify(aForm) })
+      const current = project as any
+      const agreementIds = [...(current.agreementIds || []), data.id]
+      await portalRequest(`/alliance/projects/${id}`, { method: "PUT", body: JSON.stringify({ ...current, agreementIds }) })
+      toast({ title: "协议已创建并关联项目" })
+      setNewAgrDialog(false)
+      setAForm({ name: "", type: "", startDate: "", endDate: "", status: "draft", content: "" })
+      loadData()
+    } catch (e: any) {
+      toast({ title: "创建失败", description: e.message, variant: "destructive" })
+    } finally { setSavingA(false) }
+  }
 
   const openMForm = (m?: AllianceProjectMilestone) => {
     setMForm(m ? {
@@ -153,6 +213,74 @@ export default function AllianceProjectDetailPage() {
         </div>
       ),
     },
+    {
+      key: "agreements", label: "项目协议", badge: ((project as any)?.agreementIds || []).length,
+      content: (
+        <div className="space-y-4">
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="outline" onClick={() => { setLinkSelected([]); setLinkDialog(true) }}>
+              <Link2 className="h-4 w-4 mr-1" />关联已有协议
+            </Button>
+            <Button size="sm" onClick={() => setNewAgrDialog(true)}><Plus className="h-4 w-4 mr-1" />新增协议</Button>
+          </div>
+          <div className="rounded-md border">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 border-b">
+                <tr><TableHead>协议名称</TableHead><TableHead>类型</TableHead><TableHead>状态</TableHead><TableHead>起止日期</TableHead><TableHead>操作</TableHead></tr>
+              </thead>
+              <tbody>
+                {((project as any)?.agreementIds || []).length === 0 ? (
+                  <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">暂无项目协议</td></tr>
+                ) : ((project as any)?.agreementIds || []).map((aid: string) => {
+                  const agreement = allAgreements.find((a) => a.id === aid)
+                  return agreement ? (
+                    <tr key={aid} className="border-b">
+                      <TableCell className="font-medium">{agreement.name}</TableCell>
+                      <TableCell>{agreement.type || "-"}</TableCell>
+                      <TableCell>{allianceLabel("agreementStatus", agreement.status)}</TableCell>
+                      <TableCell>{agreement.startDate || "-"} ~ {agreement.endDate || "-"}</TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="sm" className="text-red-600" onClick={() => unlinkAgr(aid)}>取消关联</Button>
+                      </TableCell>
+                    </tr>
+                  ) : null
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "achievements", label: "关联成果", badge: achievements.filter((a) => (a.projectIds || []).includes?.(id)).length,
+      content: (
+        <div className="rounded-md border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 border-b">
+              <tr><TableHead>成果名称</TableHead><TableHead>类型</TableHead><TableHead>状态</TableHead><TableHead>操作</TableHead></tr>
+            </thead>
+            <tbody>
+              {achievements.filter((a) => (a.projectIds || []).includes?.(id)).length === 0 ? (
+                <tr><td colSpan={4} className="text-center py-8 text-muted-foreground">暂无关联成果</td></tr>
+              ) : achievements.filter((a) => (a.projectIds || []).includes?.(id)).map((a) => (
+                <tr key={a.id} className="border-b">
+                  <TableCell className="font-medium">
+                    <Link href={`/portal/apps/alliance/achievements/${a.id}`} className="hover:underline">{a.title}</Link>
+                  </TableCell>
+                  <TableCell>{allianceLabel("achievementType", a.type)}</TableCell>
+                  <TableCell>{allianceLabel("achievementStatus", a.status)}</TableCell>
+                  <TableCell>
+                    <Link href={`/portal/apps/alliance/achievements/${a.id}/edit`}>
+                      <Button variant="ghost" size="sm"><Pencil className="h-3 w-3 mr-1" />编辑</Button>
+                    </Link>
+                  </TableCell>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ),
+    },
   ]
 
   return (
@@ -181,6 +309,65 @@ export default function AllianceProjectDetailPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setMilestoneDialog({ open: false })}>取消</Button>
             <Button onClick={saveMilestone} disabled={savingM}>{savingM ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}保存</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* 关联已有协议 */}
+      <Dialog open={linkDialog} onOpenChange={(o) => !o && setLinkDialog(false)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>关联已有协议</DialogTitle></DialogHeader>
+          <div className="max-h-[50vh] overflow-y-auto space-y-2">
+            {allAgreements.map((a) => (
+              <label key={a.id} className="flex items-center gap-2 p-2 rounded border hover:bg-muted/40 cursor-pointer">
+                <Checkbox
+                  checked={linkSelected.includes(a.id)}
+                  onCheckedChange={(v) => setLinkSelected((prev) => v ? [...prev, a.id] : prev.filter((x) => x !== a.id))}
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{a.name}</p>
+                  <p className="text-xs text-muted-foreground">{a.type || "未分类"} · {allianceLabel("agreementStatus", a.status)}</p>
+                </div>
+              </label>
+            ))}
+            {allAgreements.length === 0 && <p className="text-center py-6 text-sm text-muted-foreground">暂无可关联的协议</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLinkDialog(false)}>取消</Button>
+            <Button onClick={saveLinkAgr} disabled={savingA || linkSelected.length === 0}>
+              {savingA ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}关联 ({linkSelected.length})
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 新增协议（自动关联当前项目） */}
+      <Dialog open={newAgrDialog} onOpenChange={(o) => !o && setNewAgrDialog(false)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>新增协议（自动关联当前项目）</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="grid gap-2"><Label>协议名称 *</Label><Input value={aForm.name} onChange={(e) => setAForm({ ...aForm, name: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>协议类型</Label><Input value={aForm.type} onChange={(e) => setAForm({ ...aForm, type: e.target.value })} placeholder="如：战略合作协议" /></div>
+            <div className="grid gap-2">
+              <Label>协议状态</Label>
+              <Select value={aForm.status} onValueChange={(v) => setAForm({ ...aForm, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">草稿</SelectItem>
+                  <SelectItem value="active">生效中</SelectItem>
+                  <SelectItem value="expired">已失效</SelectItem>
+                  <SelectItem value="renewed">已续签</SelectItem>
+                  <SelectItem value="terminated">已终止</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2"><Label>开始日期</Label><Input type="date" value={aForm.startDate} onChange={(e) => setAForm({ ...aForm, startDate: e.target.value })} /></div>
+              <div className="grid gap-2"><Label>结束日期</Label><Input type="date" value={aForm.endDate} onChange={(e) => setAForm({ ...aForm, endDate: e.target.value })} /></div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewAgrDialog(false)}>取消</Button>
+            <Button onClick={createProjectAgreement} disabled={savingA}>{savingA ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}创建并关联</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -44,6 +44,7 @@ export interface AllianceEnterprise {
   secondaryColleges?: string[]
   ratingRecord?: Record<string, any>
   isPublic: boolean
+  createdBy?: string
   createdAt: string
   updatedAt: string
 }
@@ -78,6 +79,7 @@ export interface AllianceProject {
   enterpriseIds?: string[]
   secondaryColleges?: string[]
   isPublic: boolean
+  createdBy?: string
   createdAt: string
   updatedAt: string
 }
@@ -118,6 +120,7 @@ export interface AllianceAchievement {
   viewCount: number
   secondaryColleges?: string[]
   isPublic: boolean
+  createdBy?: string
   createdAt: string
   updatedAt: string
 }
@@ -146,10 +149,12 @@ export interface AllianceExpert {
   photos?: string[]
   attachments?: string[]
   enterpriseId?: string
+  organization?: string
   rating?: string
   status: string
   secondaryColleges?: string[]
   isPublic: boolean
+  createdBy?: string
   createdAt: string
   updatedAt: string
 }
@@ -251,8 +256,10 @@ export interface AllianceListResponse<T> {
 
 export const ALLIANCE_DICTS = {
   enterpriseType: {
-    platform: "平台企业",
-    "school-based": "校本企业",
+    cooperation: "合作企业",
+    "third-party": "第三方雇主企业",
+    platform: "第三方雇主企业",
+    "school-based": "合作企业",
   },
   enterpriseStatus: {
     negotiating: "洽谈中",

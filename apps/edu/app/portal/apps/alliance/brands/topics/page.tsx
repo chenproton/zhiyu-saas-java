@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
-import { Pencil, Trash2 } from "lucide-react"
+import { Pencil, Trash2, ExternalLink } from "lucide-react"
+import Link from "next/link"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
@@ -84,7 +85,9 @@ export default function AllianceBrandTopicsPage() {
           <TableCell>{LAYOUT_OPTIONS.find((l) => l.value === item.layout)?.label || item.layout}</TableCell>
           <TableCell>{item.isRecommended ? "是" : "否"}</TableCell>
           <TableRowActions>
-            <Button variant="ghost" size="sm" onClick={actions.edit}><Pencil className="h-3.5 w-3.5 mr-1" />编辑</Button>
+            <Link href={`/portal/apps/alliance/brands/topics/${item.id}/edit`}>
+              <Button variant="ghost" size="sm"><Pencil className="h-3.5 w-3.5 mr-1" />编辑</Button>
+            </Link>
             <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}><Trash2 className="h-3.5 w-3.5 mr-1" />删除</Button>
           </TableRowActions>
         </>

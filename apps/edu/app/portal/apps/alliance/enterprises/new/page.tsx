@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { MultiSelect } from "@/components/ui/multi-select"
+import { SingleImageUpload, ImageListUpload } from "@/components/shared/image-list-upload"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
@@ -28,7 +29,7 @@ export default function AllianceEnterpriseNewPage() {
   const [saving, setSaving] = useState(false)
   const [item, setItem] = useState({
     name: "",
-    enterpriseType: "platform",
+    enterpriseType: "cooperation",
     status: "negotiating",
     rating: "general",
     isPublic: false,
@@ -39,13 +40,24 @@ export default function AllianceEnterpriseNewPage() {
     contactPhone: "",
     contactEmail: "",
     logoUrl: "",
+    coverImage: "",
     address: "",
+    unifiedSocialCreditCode: "",
+    establishedYear: undefined as number | undefined,
+    employeeCount: undefined as number | undefined,
+    businessLicensePhotos: [] as string[],
+    intellectualPropertyPhotos: [] as string[],
+    qualificationPhotos: [] as string[],
     secondaryColleges: [] as string[],
   })
 
   const setField = (field: string, value: any) => setItem({ ...item, [field]: value })
 
   const handleSave = async () => {
+    if (!item.name) {
+      toast({ title: "请填写企业名称", variant: "destructive" })
+      return
+    }
     setSaving(true)
     try {
       const data = await portalRequest<{ id: string }>("/alliance/enterprises", {
@@ -80,12 +92,16 @@ export default function AllianceEnterpriseNewPage() {
                 <Input value={item.name} onChange={(e) => setField("name", e.target.value)} placeholder="请输入企业名称" />
               </div>
               <div className="grid gap-2">
+                <Label>统一社会信用代码</Label>
+                <Input value={item.unifiedSocialCreditCode} onChange={(e) => setField("unifiedSocialCreditCode", e.target.value)} placeholder="如：91320594MA1P7XXXX1" />
+              </div>
+              <div className="grid gap-2">
                 <Label>企业类型</Label>
                 <Select value={item.enterpriseType} onValueChange={(v) => setField("enterpriseType", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="platform">平台企业</SelectItem>
-                    <SelectItem value="school-based">校本企业</SelectItem>
+                    <SelectItem value="cooperation">合作企业</SelectItem>
+                    <SelectItem value="third-party">第三方雇主企业</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -120,6 +136,31 @@ export default function AllianceEnterpriseNewPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="grid gap-2">
+                <Label>成立年份</Label>
+                <Input type="number" value={item.establishedYear ?? ""} onChange={(e) => setField("establishedYear", e.target.value ? Number(e.target.value) : undefined)} placeholder="如：2010" />
+              </div>
+              <div className="grid gap-2">
+                <Label>企业规模（人数）</Label>
+                <Input type="number" value={item.employeeCount ?? ""} onChange={(e) => setField("employeeCount", e.target.value ? Number(e.target.value) : undefined)} placeholder="如：500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>企业形象</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-2 gap-4">
+              <SingleImageUpload label="企业 Logo" value={item.logoUrl} onChange={(v) => setField("logoUrl", v)} />
+              <SingleImageUpload label="企业主页封面" value={item.coverImage} onChange={(v) => setField("coverImage", v)} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>企业证照</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <ImageListUpload label="企业营业执照" value={item.businessLicensePhotos} onChange={(v) => setField("businessLicensePhotos", v)} />
+              <ImageListUpload label="企业知识产权" value={item.intellectualPropertyPhotos} onChange={(v) => setField("intellectualPropertyPhotos", v)} />
+              <ImageListUpload label="企业荣誉资质" value={item.qualificationPhotos} onChange={(v) => setField("qualificationPhotos", v)} />
             </CardContent>
           </Card>
 
@@ -139,18 +180,14 @@ export default function AllianceEnterpriseNewPage() {
                 <Input value={item.contactEmail} onChange={(e) => setField("contactEmail", e.target.value)} />
               </div>
               <div className="grid gap-2">
-                <Label>企业地址</Label>
+                <Label>详细地址</Label>
                 <Input value={item.address} onChange={(e) => setField("address", e.target.value)} />
-              </div>
-              <div className="grid gap-2">
-                <Label>Logo URL</Label>
-                <Input value={item.logoUrl} onChange={(e) => setField("logoUrl", e.target.value)} placeholder="https://..." />
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>企业描述</CardTitle></CardHeader>
+            <CardHeader><CardTitle>企业简介</CardTitle></CardHeader>
             <CardContent>
               <Textarea value={item.description} onChange={(e) => setField("description", e.target.value)} rows={5} />
             </CardContent>
@@ -174,7 +211,7 @@ export default function AllianceEnterpriseNewPage() {
             <CardHeader><CardTitle>设置</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>公开显示</Label>
+                <Label>前台展示</Label>
                 <Switch checked={item.isPublic} onCheckedChange={(v) => setField("isPublic", v)} />
               </div>
             </CardContent>

@@ -128,11 +128,13 @@ func mapDictValue(value string, pairs ...string) string {
 	return value
 }
 
-// mapEnterpriseType 企业类型：平台企业/校办企业 ↔ platform/school-based。
+// mapEnterpriseType 企业类型：合作企业/第三方雇主企业 ↔ cooperation/third-party。
+// 兼容旧值 platform/school-based。
 func mapEnterpriseType(v string) string {
 	return mapDictValue(v,
-		"平台企业", "platform", "平台", "platform",
-		"校本企业", "school-based", "校办企业", "school-based", "校企业", "school-based",
+		"合作企业", "cooperation", "校企合作企业", "cooperation",
+		"第三方雇主企业", "third-party", "第三方", "third-party", "独立雇主企业", "third-party",
+		"platform", "third-party", "school-based", "cooperation",
 	)
 }
 

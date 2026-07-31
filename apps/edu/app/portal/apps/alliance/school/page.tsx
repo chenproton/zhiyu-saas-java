@@ -14,6 +14,7 @@ import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
 import type { Tenant as BackendTenant } from "@/lib/types/backend"
 import { Spinner } from "@/components/ui/spinner"
+import { MultiSelect } from "@/components/ui/multi-select"
 
 interface Tenant {
   id: string; code: string; enterpriseName: string
@@ -107,6 +108,7 @@ export default function AllianceSchoolPage() {
       description: t.description === "-" ? "" : t.description,
       educationLevel: t.educationLevel === "-" ? "" : t.educationLevel,
       educationNature: t.educationNature === "-" ? "" : t.educationNature,
+      secondaryColleges: (t as any).secondaryColleges || [],
     })
   }
 
@@ -133,6 +135,7 @@ export default function AllianceSchoolPage() {
         website: formData.website ? (formData.website.startsWith("http") ? formData.website : "https://" + formData.website) : null,
         contactPhone: formData.contactPhone || formData.phone || null,
         educationLevel: formData.educationLevel || null, educationNature: formData.educationNature || null,
+        secondaryColleges: (formData as any).secondaryColleges || [],
       })})
       setIsEditDialogOpen(false); toast({ title: "已保存" }); await fetchTenant()
     } catch (err) { setError(err instanceof Error ? err.message : "保存失败") } finally { setSubmitting(false) }
@@ -228,6 +231,17 @@ export default function AllianceSchoolPage() {
                 <div className="grid gap-2"><Label>联系电话</Label><IconInput icon={Phone} value={formData.contactPhone || formData.phone || ""} onChange={(e) => { setF("phone", e.target.value); setF("contactPhone", e.target.value) }} /></div>
               </div>
               <div className="grid gap-2"><Label>学校地址</Label><IconInput icon={MapPin} value={formData.address || ""} onChange={(e) => setF("address", e.target.value)} /></div>
+            </div></div>
+            <Separator />
+            <div><Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">二级学院</Label>
+            <div className="space-y-4">
+              <MultiSelect
+                options={["智能制造学院","信息技术学院","经济管理学院","艺术设计学院","新能源工程学院","生物医药学院","现代服务学院","国际教育学院","创新创业学院","继续教育学院","基础教育学院","马克思主义学院"]}
+                value={(formData as any).secondaryColleges || []}
+                onChange={(v) => setF("secondaryColleges" as any, v as any)}
+                placeholder="选择或维护二级学院（多选）"
+              />
+              <p className="text-xs text-muted-foreground">二级学院将作为企业/项目/成果/专家表单的归属学院选项</p>
             </div></div>
             <Separator />
             <div><Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">网络信息</Label>

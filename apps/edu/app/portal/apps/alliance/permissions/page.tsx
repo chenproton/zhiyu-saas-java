@@ -13,6 +13,7 @@ import { portalRequest } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
 import { TableRowActions } from "@/components/shared/table-row-actions"
 import { PortalCrudPage } from "@/components/shared/portal-crud-page"
+import { BrandRelationSelect } from "@/components/shared/brand-relation-select"
 import type { AlliancePermission, AllianceListResponse } from "@/lib/types"
 
 export default function AlliancePermissionsPage() {
@@ -59,11 +60,12 @@ export default function AlliancePermissionsPage() {
         )
       }
       importConfig={{ importType: "alliance-permissions", entityLabel: "合作权限", templateFileName: "合作权限批量导入模板.xlsx" }}
-      colSpan={4}
+      colSpan={5}
       renderTableHeader={() => (
         <>
           <TableHead>账号名称</TableHead>
           <TableHead>账号类型</TableHead>
+          <TableHead>所属主体</TableHead>
           <TableHead>启用</TableHead>
           <TableHead>操作</TableHead>
         </>
@@ -72,6 +74,7 @@ export default function AlliancePermissionsPage() {
         <>
           <TableCell className="font-medium">{item.accountName}</TableCell>
           <TableCell>{item.accountType === "enterprise" ? "企业账号" : "专家账号"}</TableCell>
+          <TableCell>{item.accountType === "enterprise" ? (item.enterpriseId ? "企业" : "-") : (item.expertId ? "专家" : "-")}</TableCell>
           <TableCell>{item.isEnabled ? "是" : "否"}</TableCell>
           <TableRowActions>
             <Button variant="ghost" size="sm" onClick={actions.edit}><Pencil className="h-3.5 w-3.5 mr-1" />编辑</Button>
@@ -104,6 +107,11 @@ export default function AlliancePermissionsPage() {
               </SelectContent>
             </Select>
           </div>
+          {item.accountType === "enterprise" ? (
+            <BrandRelationSelect label="所属企业" value={item.enterpriseId || ""} onChange={(v: any) => setItem({ ...item, enterpriseId: v, expertId: "" })} fetchUrl="/alliance/enterprises?limit=1000" />
+          ) : (
+            <BrandRelationSelect label="所属专家" value={item.expertId || ""} onChange={(v: any) => setItem({ ...item, expertId: v, enterpriseId: "" })} fetchUrl="/alliance/experts?limit=1000" />
+          )}
           <div className="flex items-center gap-2">
             <Switch checked={item.isEnabled ?? true} onCheckedChange={(v: any) => setItem({ ...item, isEnabled: v })} />
             <Label>启用</Label>

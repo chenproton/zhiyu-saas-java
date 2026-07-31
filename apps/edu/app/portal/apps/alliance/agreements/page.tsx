@@ -7,19 +7,22 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Pencil, Trash2 } from "lucide-react"
+import { Pencil, Trash2, ExternalLink } from "lucide-react"
+import Link from "next/link"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
 import { useToast } from "@zhiyu/ui"
 import { allianceLabel } from "@zhiyu/shared-types"
 import { TableRowActions } from "@/components/shared/table-row-actions"
 import { PortalCrudPage } from "@/components/shared/portal-crud-page"
-import type { AllianceAgreement, AllianceListResponse } from "@/lib/types"
+import type { AllianceAgreement, AllianceEnterprise, AllianceProject, AllianceListResponse } from "@/lib/types"
 
 export default function AllianceAgreementsPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const { toast } = useToast()
   const [items, setItems] = useState<AllianceAgreement[]>([])
+  const [enterprises, setEnterprises] = useState<AllianceEnterprise[]>([])
+  const [projects, setProjects] = useState<AllianceProject[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -28,8 +31,14 @@ export default function AllianceAgreementsPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await portalRequest<AllianceListResponse<AllianceAgreement>>("/alliance/agreements")
+      const [data, ents, projs] = await Promise.all([
+        portalRequest<AllianceListResponse<AllianceAgreement>>("/alliance/agreements"),
+        portalRequest<AllianceListResponse<AllianceEnterprise>>("/alliance/enterprises?limit=1000"),
+        portalRequest<AllianceListResponse<AllianceProject>>("/alliance/projects?limit=1000"),
+      ])
       setItems(data.items || [])
+      setEnterprises(ents.items || [])
+      setProjects(projs.items || [])
     } catch (e: any) {
       setError(e.message || "加载失败")
     } finally {
@@ -60,28 +69,52 @@ export default function AllianceAgreementsPage() {
         )
       }
       importConfig={{ importType: "alliance-agreements", entityLabel: "合作协议", templateFileName: "合作协议批量导入模板.xlsx" }}
-      colSpan={5}
+      createHref="/portal/apps/alliance/agreements/new"
+      colSpan={8}
       renderTableHeader={() => (
         <>
           <TableHead>协议名称</TableHead>
+          <TableHead>合作企业</TableHead>
+          <TableHead>关联项目</TableHead>
           <TableHead>类型</TableHead>
+          <TableHead>生效日期</TableHead>
+          <TableHead>到期日期</TableHead>
           <TableHead>状态</TableHead>
-          <TableHead>起止日期</TableHead>
           <TableHead>操作</TableHead>
         </>
       )}
-      renderTableRow={(item: any, actions: any) => (
+      renderTableRow={(item: any, actions: any) => {
+        const entIds: string[] = (item.enterpriseIds || []).map(String)
+        const expiring = item.endDate && (() => {
+          const days = (new Date(item.endDate).getTime() - Date.now()) / 86400000
+          return days >= 0 && days <= 90
+        })()
+        return (
         <>
-          <TableCell className="font-medium">{item.name}</TableCell>
+          <TableCell className="font-medium">
+            <Link href={`/portal/apps/alliance/agreements/${item.id}`} className="hover:underline">{item.name}</Link>
+          </TableCell>
+          <TableCell className="max-w-[160px]">{entIds.length > 0 ? entIds.map((eid) => enterprises.find((e) => e.id === eid)?.name || eid).join("、") : "-"}</TableCell>
+          <TableCell>{(item.projectIds || []).length > 0 ? projects.find((p) => p.id === (item.projectIds || [])[0])?.name || "-" : "-"}</TableCell>
           <TableCell>{item.type || "-"}</TableCell>
+          <TableCell>{item.startDate ? new Date(item.startDate).toLocaleDateString("zh-CN") : "-"}</TableCell>
+          <TableCell className={expiring ? "text-amber-600 font-medium" : ""}>
+            {item.endDate ? new Date(item.endDate).toLocaleDateString("zh-CN") : "-"}
+            {expiring && <span className="ml-1 text-xs">（即将到期）</span>}
+          </TableCell>
           <TableCell>{allianceLabel("agreementStatus", item.status)}</TableCell>
-          <TableCell>{item.startDate || "-"} ~ {item.endDate || "-"}</TableCell>
           <TableRowActions>
-            <Button variant="ghost" size="sm" onClick={actions.edit}><Pencil className="h-3.5 w-3.5 mr-1" />编辑</Button>
+            <Link href={`/portal/apps/alliance/agreements/${item.id}`}>
+              <Button variant="ghost" size="sm"><ExternalLink className="h-3.5 w-3.5 mr-1" />查看</Button>
+            </Link>
+            <Link href={`/portal/apps/alliance/agreements/${item.id}/edit`}>
+              <Button variant="ghost" size="sm"><Pencil className="h-3.5 w-3.5 mr-1" />编辑</Button>
+            </Link>
             <Button variant="ghost" size="sm" className="text-red-600" onClick={actions.delete}><Trash2 className="h-3.5 w-3.5 mr-1" />删除</Button>
           </TableRowActions>
         </>
-      )}
+        )
+      }}
       createDefault={() => ({
         id: "",
         name: "",

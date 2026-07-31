@@ -105,7 +105,7 @@ func (h *AllianceHandler) ListEnterprises(w http.ResponseWriter, r *http.Request
 		"contact_phone, contact_email, address, unified_social_credit_code, " +
 		"established_year, employee_count, business_license_photos, qualification_photos, " +
 		"intellectual_property_photos, cover_photos, secondary_colleges, rating_record, " +
-		"is_public, created_at, updated_at"
+		"is_public, created_by, created_at, updated_at"
 
 	items, total, err := executeListQuery[domain.AllianceEnterprise](r.Context(), h.DB, r, listQueryConfig[domain.AllianceEnterprise]{
 		Table:         "alliance_enterprises",
@@ -211,6 +211,7 @@ func (h *AllianceHandler) CreateEnterprise(w http.ResponseWriter, r *http.Reques
 	id, err := h.Store.CreateEnterprise(r.Context(), &store.AllianceEnterpriseCreateParams{
 		TenantID:                   tenantID,
 		Name:                       body.Name,
+		CreatedBy:                  &claims.UserID,
 		EnterpriseType:             body.EnterpriseType,
 		Industry:                   body.Industry,
 		Region:                     body.Region,
@@ -483,7 +484,7 @@ func (h *AllianceHandler) ListProjects(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery[domain.AllianceProject](r.Context(), h.DB, r, listQueryConfig[domain.AllianceProject]{
 		Table:         "alliance_projects",
-		SelectColumns: "id, tenant_id, name, type, description, phase, publish_status, start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges, is_public, created_at, updated_at",
+		SelectColumns: "id, tenant_id, name, type, description, phase, publish_status, start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges, is_public, created_by, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
 		OrderBy:       "created_at DESC",
@@ -547,6 +548,7 @@ func (h *AllianceHandler) CreateProject(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	p.CreatedBy = &claims.UserID
 	id, err := h.Store.CreateProject(r.Context(), &p)
 	if err != nil {
 		slog.Error("创建项目失败", "error", err)
@@ -716,7 +718,7 @@ func (h *AllianceHandler) ListAchievements(w http.ResponseWriter, r *http.Reques
 
 	items, total, err := executeListQuery[domain.AllianceAchievement](r.Context(), h.DB, r, listQueryConfig[domain.AllianceAchievement]{
 		Table:         "alliance_achievements",
-		SelectColumns: "id, tenant_id, title, type, description, achievement_date, cover_image, attachments, citation_reason, images, owner_persons, co_builders, enterprise_ids, project_ids, related_positions, related_scenes, related_courses, status, view_count, secondary_colleges, is_public, created_at, updated_at",
+		SelectColumns: "id, tenant_id, title, type, description, achievement_date, cover_image, attachments, citation_reason, images, owner_persons, co_builders, enterprise_ids, project_ids, related_positions, related_scenes, related_courses, status, view_count, secondary_colleges, is_public, created_by, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"title"},
 		OrderBy:       "created_at DESC",
@@ -783,6 +785,7 @@ func (h *AllianceHandler) CreateAchievement(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	a.CreatedBy = &claims.UserID
 	id, err := h.Store.CreateAchievement(r.Context(), &a)
 	if err != nil {
 		slog.Error("创建成果失败", "error", err)
@@ -854,7 +857,7 @@ func (h *AllianceHandler) ListExperts(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery[domain.AllianceExpert](r.Context(), h.DB, r, listQueryConfig[domain.AllianceExpert]{
 		Table:         "alliance_experts",
-		SelectColumns: "id, tenant_id, name, gender, age, title, position, expert_type, industry, professional_fields, specialties, experience_years, education, introduction, work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, rating, status, partner_source, position_direction, secondary_colleges, is_public, created_at, updated_at",
+		SelectColumns: "id, tenant_id, name, gender, age, title, position, expert_type, industry, professional_fields, specialties, experience_years, education, introduction, work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating, status, partner_source, position_direction, secondary_colleges, is_public, created_by, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name", "title", "industry"},
 		OrderBy:       "created_at DESC",
@@ -918,6 +921,7 @@ func (h *AllianceHandler) CreateExpert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	e.CreatedBy = &claims.UserID
 	id, err := h.Store.CreateExpert(r.Context(), &e)
 	if err != nil {
 		slog.Error("创建专家失败", "error", err)
@@ -989,7 +993,7 @@ func (h *AllianceHandler) ListAgreements(w http.ResponseWriter, r *http.Request)
 
 	items, total, err := executeListQuery[domain.AllianceAgreement](r.Context(), h.DB, r, listQueryConfig[domain.AllianceAgreement]{
 		Table:         "alliance_agreements",
-		SelectColumns: "id, tenant_id, name, type, content, start_date, end_date, status, enterprise_ids, attachments, created_at, updated_at",
+		SelectColumns: "id, tenant_id, name, type, content, start_date, end_date, status, enterprise_ids, project_ids, attachments, created_by, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
 		OrderBy:       "created_at DESC",
@@ -1053,6 +1057,7 @@ func (h *AllianceHandler) CreateAgreement(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	a.CreatedBy = &claims.UserID
 	id, err := h.Store.CreateAgreement(r.Context(), &a)
 	if err != nil {
 		slog.Error("创建协议失败", "error", err)
@@ -1248,11 +1253,15 @@ func (h *AllianceHandler) DeletePermission(w http.ResponseWriter, r *http.Reques
 
 func (h *AllianceHandler) ListDictionaryItems(w http.ResponseWriter, r *http.Request) {
 	dictType := chi.URLParam(r, "dictType")
+	tenantID, ok := requireTenant(w, r)
+	if !ok {
+		return
+	}
 
 	rows, err := h.DB.Query(r.Context(), `
 		SELECT id, tenant_id, dict_type, code, name, sort_order, created_at
-		FROM alliance_dictionaries WHERE dict_type = $1 ORDER BY sort_order ASC
-	`, dictType)
+		FROM alliance_dictionaries WHERE dict_type = $1 AND tenant_id = $2 ORDER BY sort_order ASC
+	`, dictType, tenantID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询失败")
 		return
@@ -1365,7 +1374,7 @@ func (h *AllianceHandler) ListBrands(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := executeListQuery[domain.AllianceBrand](r.Context(), h.DB, r, listQueryConfig[domain.AllianceBrand]{
 		Table:         "alliance_brands",
-		SelectColumns: "id, tenant_id, brand_type, name, status, is_public, is_featured, cover_image, cover_video, description, data, sort_order, view_count, created_at, updated_at",
+		SelectColumns: "id, tenant_id, brand_type, name, status, is_public, is_featured, cover_image, cover_video, description, data, student_id, enterprise_id, position_id, major_id, teacher_id, expert_id, sort_order, view_count, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
 		OrderBy:       "sort_order ASC, created_at DESC",
@@ -1716,7 +1725,7 @@ func (h *AllianceHandler) ListPublicProjects(w http.ResponseWriter, r *http.Requ
 	rows, err := h.DB.Query(r.Context(), `
 		SELECT id, tenant_id, name, type, description, phase, publish_status,
 			start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
-			is_public, created_at, updated_at
+			is_public, created_by, created_at, updated_at
 		FROM alliance_projects WHERE is_public = true AND publish_status = 'published'
 		ORDER BY created_at DESC
 	`)
@@ -1735,14 +1744,15 @@ func (h *AllianceHandler) GetPublicProject(w http.ResponseWriter, r *http.Reques
 	var typ, description, budget, coverImage *string
 	var startDate, endDate *time.Time
 	var enterpriseIDs, agreementIDs, colleges json.RawMessage
+	var createdBy *string
 	err := h.DB.QueryRow(r.Context(), `
 		SELECT id, tenant_id, name, type, description, phase, publish_status,
 			start_date, end_date, budget, cover_image, enterprise_ids, agreement_ids, secondary_colleges,
-			is_public, created_at, updated_at
+			is_public, created_by, created_at, updated_at
 		FROM alliance_projects WHERE id = $1 AND is_public = true AND publish_status = 'published'
 	`, id).Scan(&p.ID, &p.TenantID, &p.Name, &typ, &description, &p.Phase,
 		&p.PublishStatus, &startDate, &endDate, &budget, &coverImage,
-		&enterpriseIDs, &agreementIDs, &colleges, &p.IsPublic, &p.CreatedAt, &p.UpdatedAt)
+		&enterpriseIDs, &agreementIDs, &colleges, &p.IsPublic, &createdBy, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "项目不存在")
 		return
@@ -1756,6 +1766,7 @@ func (h *AllianceHandler) GetPublicProject(w http.ResponseWriter, r *http.Reques
 	p.EnterpriseIDs = enterpriseIDs
 	p.AgreementIDs = agreementIDs
 	p.SecondaryColleges = colleges
+	p.CreatedBy = createdBy
 	respondJSON(w, http.StatusOK, p)
 }
 
@@ -1764,7 +1775,7 @@ func (h *AllianceHandler) ListPublicAchievements(w http.ResponseWriter, r *http.
 		SELECT id, tenant_id, title, type, description, achievement_date, cover_image,
 			attachments, citation_reason, images, owner_persons, co_builders,
 			enterprise_ids, project_ids, related_positions, related_scenes,
-			related_courses, status, view_count, secondary_colleges, is_public, created_at, updated_at
+			related_courses, status, view_count, secondary_colleges, is_public, created_by, created_at, updated_at
 		FROM alliance_achievements WHERE is_public = true AND status = 'published'
 		ORDER BY created_at DESC
 	`)
@@ -1783,17 +1794,18 @@ func (h *AllianceHandler) GetPublicAchievement(w http.ResponseWriter, r *http.Re
 	var description, coverImage, citationReason *string
 	var achievementDate *time.Time
 	var attachments, images, ownerPersons, coBuilders, enterpriseIDs, projectIDs, relatedPositions, relatedScenes, relatedCourses, colleges json.RawMessage
+	var createdBy *string
 	err := h.DB.QueryRow(r.Context(), `
 		SELECT id, tenant_id, title, type, description, achievement_date, cover_image,
 			attachments, citation_reason, images, owner_persons, co_builders,
 			enterprise_ids, project_ids, related_positions, related_scenes,
-			related_courses, status, view_count, secondary_colleges, is_public, created_at, updated_at
+			related_courses, status, view_count, secondary_colleges, is_public, created_by, created_at, updated_at
 		FROM alliance_achievements WHERE id = $1 AND is_public = true AND status = 'published'
 	`, id).Scan(&a.ID, &a.TenantID, &a.Title, &a.Type, &description, &achievementDate,
 		&coverImage, &attachments, &citationReason, &images, &ownerPersons, &coBuilders,
 		&enterpriseIDs, &projectIDs, &relatedPositions,
 		&relatedScenes, &relatedCourses, &a.Status, &a.ViewCount, &colleges,
-		&a.IsPublic, &a.CreatedAt, &a.UpdatedAt)
+		&a.IsPublic, &createdBy, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "成果不存在")
 		return
@@ -1812,6 +1824,7 @@ func (h *AllianceHandler) GetPublicAchievement(w http.ResponseWriter, r *http.Re
 	a.RelatedScenes = relatedScenes
 	a.RelatedCourses = relatedCourses
 	a.SecondaryColleges = colleges
+	a.CreatedBy = createdBy
 	respondJSON(w, http.StatusOK, a)
 }
 
@@ -1819,8 +1832,8 @@ func (h *AllianceHandler) ListPublicExperts(w http.ResponseWriter, r *http.Reque
 	rows, err := h.DB.Query(r.Context(), `
 		SELECT id, tenant_id, name, gender, age, title, position, expert_type, industry,
 			professional_fields, specialties, experience_years, education, introduction,
-			work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, rating,
-			status, partner_source, position_direction, secondary_colleges, is_public, created_at, updated_at
+			work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating,
+			status, partner_source, position_direction, secondary_colleges, is_public, created_by, created_at, updated_at
 		FROM alliance_experts WHERE is_public = true AND status = 'active'
 		ORDER BY created_at DESC
 	`)
@@ -1839,18 +1852,19 @@ func (h *AllianceHandler) GetPublicExpert(w http.ResponseWriter, r *http.Request
 	var gender, ttl, pos, etype, industry, edu, intro, workExp, city, avatar *string
 	var age, expYrs *int
 	var proFields, specs, photos, attachs json.RawMessage
-	var rating, enterpriseID, coverImage, partnerSource, positionDirection *string
+	var rating, enterpriseID, coverImage, partnerSource, positionDirection, organization *string
 	var colleges json.RawMessage
+	var createdBy *string
 	err := h.DB.QueryRow(r.Context(), `
 		SELECT id, tenant_id, name, gender, age, title, position, expert_type, industry,
 			professional_fields, specialties, experience_years, education, introduction,
-			work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, rating,
-			status, partner_source, position_direction, secondary_colleges, is_public, created_at, updated_at
+			work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating,
+			status, partner_source, position_direction, secondary_colleges, is_public, created_by, created_at, updated_at
 		FROM alliance_experts WHERE id = $1 AND is_public = true AND status = 'active'
 	`, id).Scan(&e.ID, &e.TenantID, &e.Name, &gender, &age, &ttl, &pos,
 		&etype, &industry, &proFields, &specs, &expYrs, &edu, &intro, &workExp,
-		&city, &avatar, &coverImage, &photos, &attachs, &enterpriseID, &rating,
-		&e.Status, &partnerSource, &positionDirection, &colleges, &e.IsPublic, &e.CreatedAt, &e.UpdatedAt)
+		&city, &avatar, &coverImage, &photos, &attachs, &enterpriseID, &organization, &rating,
+		&e.Status, &partnerSource, &positionDirection, &colleges, &e.IsPublic, &createdBy, &e.CreatedAt, &e.UpdatedAt)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "专家不存在")
 		return
@@ -1873,17 +1887,21 @@ func (h *AllianceHandler) GetPublicExpert(w http.ResponseWriter, r *http.Request
 	e.Photos = photos
 	e.Attachments = attachs
 	e.EnterpriseID = enterpriseID
+	e.Organization = organization
 	e.Rating = rating
 	e.PartnerSource = partnerSource
 	e.PositionDirection = positionDirection
 	e.SecondaryColleges = colleges
+	e.CreatedBy = createdBy
 	respondJSON(w, http.StatusOK, e)
 }
 
 func (h *AllianceHandler) ListPublicBrands(w http.ResponseWriter, r *http.Request) {
 	brandType := r.URL.Query().Get("brandType")
 	query := `SELECT id, tenant_id, brand_type, name, status, is_public, is_featured,
-		cover_image, cover_video, description, data, sort_order, view_count, created_at, updated_at
+		cover_image, cover_video, description, data,
+		student_id, enterprise_id, position_id, major_id, teacher_id, expert_id,
+		sort_order, view_count, created_at, updated_at
 		FROM alliance_brands WHERE is_public = true AND status = 'published'`
 	args := []interface{}{}
 	if brandType != "" {
@@ -1908,11 +1926,14 @@ func (h *AllianceHandler) GetPublicBrand(w http.ResponseWriter, r *http.Request)
 	var data json.RawMessage
 	err := h.DB.QueryRow(r.Context(), `
 		SELECT id, tenant_id, brand_type, name, status, is_public, is_featured,
-			cover_image, cover_video, description, data, sort_order, view_count, created_at, updated_at
+			cover_image, cover_video, description, data,
+			student_id, enterprise_id, position_id, major_id, teacher_id, expert_id,
+			sort_order, view_count, created_at, updated_at
 		FROM alliance_brands WHERE id = $1 AND is_public = true AND status = 'published'
 	`, id).Scan(&b.ID, &b.TenantID, &b.BrandType, &b.Name, &b.Status,
 		&b.IsPublic, &b.IsFeatured, &coverImage, &coverVideo, &description,
-		&data, &b.SortOrder, &b.ViewCount, &b.CreatedAt, &b.UpdatedAt)
+		&data, &b.StudentID, &b.EnterpriseID, &b.PositionID, &b.MajorID,
+		&b.TeacherID, &b.ExpertID, &b.SortOrder, &b.ViewCount, &b.CreatedAt, &b.UpdatedAt)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "品牌不存在")
 		return

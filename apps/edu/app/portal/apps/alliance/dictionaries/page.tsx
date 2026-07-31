@@ -105,17 +105,39 @@ function DictionaryTab({ dictType, label }: { dictType: string; label: string })
 }
 
 export default function AllianceDictionariesPage() {
+  const tabs = [
+    { dictType: "cooperation_type", label: "合作类型", desc: "校企合作类型字典（人才培养/实习实训/技术研发等）" },
+    { dictType: "cooperation_rating", label: "合作评级", desc: "企业合作评级字典（战略合作/深度合作/一般合作）" },
+    { dictType: "enterprise_status", label: "合作状态", desc: "企业合作状态字典（洽谈中/合作中/已暂停/已终止）" },
+    { dictType: "achievement_type", label: "成果类型", desc: "合作成果类型字典（岗位/场景/课程/自定义）" },
+    { dictType: "agreement_type", label: "协议类型", desc: "合作协议类型字典" },
+    { dictType: "agreement_status", label: "协议状态", desc: "合作协议状态字典" },
+    { dictType: "expert_rating", label: "专家评级", desc: "专家评级字典（金牌/银牌/铜牌）" },
+    { dictType: "project_type", label: "项目类型", desc: "合作项目类型字典" },
+  ]
+  const [active, setActive] = useState(tabs[0].dictType)
+
   return (
     <div className="space-y-6">
-      <div><h1 className="text-2xl font-bold">字典管理</h1><p className="text-muted-foreground text-sm mt-1">维护合作类型与评级字典</p></div>
-      <div className="rounded-lg border p-6">
-        <h2 className="text-lg font-semibold mb-4">合作类型字典</h2>
-        <DictionaryTab dictType="cooperation_type" label="合作类型" />
+      <div><h1 className="text-2xl font-bold">字典管理</h1><p className="text-muted-foreground text-sm mt-1">维护联盟业务字典，供各模块下拉使用</p></div>
+      <div className="flex gap-1 border-b overflow-x-auto">
+        {tabs.map((t) => (
+          <button
+            key={t.dictType}
+            onClick={() => setActive(t.dictType)}
+            className={`px-4 py-2 text-sm border-b-2 whitespace-nowrap transition-colors ${active === t.dictType ? "border-primary text-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
-      <div className="rounded-lg border p-6">
-        <h2 className="text-lg font-semibold mb-4">合作评级字典</h2>
-        <DictionaryTab dictType="cooperation_rating" label="合作评级" />
-      </div>
+      {tabs.filter((t) => t.dictType === active).map((t) => (
+        <div key={t.dictType} className="rounded-lg border p-6">
+          <h2 className="text-lg font-semibold mb-1">{t.label}字典</h2>
+          <p className="text-sm text-muted-foreground mb-4">{t.desc}</p>
+          <DictionaryTab dictType={t.dictType} label={t.label} />
+        </div>
+      ))}
     </div>
   )
 }
