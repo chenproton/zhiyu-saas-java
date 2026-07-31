@@ -182,12 +182,20 @@ func (h *TrainingProgramHandler) Update(w http.ResponseWriter, r *http.Request) 
 		respondError(w, http.StatusBadRequest, "无效请求体")
 		return
 	}
-	if req.Name == "" || req.EntryYear <= 0 {
-		respondError(w, http.StatusBadRequest, "缺少必填字段")
-		return
-	}
 
-	_, err := h.DB.Exec(r.Context(), `
+	// 支持部分更新：从已有数据回填空值
+	existing, err := h.fetchProgram(r.Context(), id, tenantID)
+	if err != nil { respondError(w, http.StatusNotFound, "人培方案不存在"); return }
+	if req.Name == "" { req.Name = existing.Name }
+	if req.EntryYear <= 0 { req.EntryYear = existing.EntryYear }
+	if req.Code == nil { req.Code = existing.Code }
+	if req.MajorID == nil { req.MajorID = existing.MajorID }
+	if req.Level == nil { req.Level = existing.Level }
+	if req.Duration == nil { req.Duration = existing.Duration }
+	if req.TotalCredits == nil { req.TotalCredits = existing.TotalCredits }
+	if req.Description == nil { req.Description = existing.Description }
+
+	_, err = h.DB.Exec(r.Context(), `
 		UPDATE training_programs
 		SET name = $1, code = $2, major_id = $3, entry_year = $4, level = $5, duration = $6,
 			total_credits = $7, description = $8, updated_at = NOW()

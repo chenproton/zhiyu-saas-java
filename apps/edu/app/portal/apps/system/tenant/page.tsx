@@ -1,13 +1,15 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Loader2, Pencil, Building, Phone, Globe, MapPin, Hash, FileText, Calendar, Shield, School, BookOpen, Monitor } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Separator } from "@/components/ui/separator"
+import { Loader2, Pencil, Building, Phone, Globe, MapPin, Hash, FileText, Calendar, Shield, School, BookOpen, Monitor, User, Mail } from "lucide-react"
 import { useToast } from "@zhiyu/ui"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalRequest } from "@/lib/api"
@@ -38,6 +40,42 @@ function mapBackendTenant(t: BackendTenant): Tenant {
   }
 }
 
+const CHINA_REGION: Record<string, string[]> = {
+  "北京": ["东城区","西城区","朝阳区","海淀区","丰台区","石景山区","通州区","大兴区"],
+  "上海": ["黄浦区","徐汇区","长宁区","静安区","普陀区","浦东新区","闵行区"],
+  "天津": ["和平区","河东区","河西区","南开区","河北区","红桥区","滨海新区"],
+  "重庆": ["渝中区","江北区","沙坪坝区","九龙坡区","南岸区","渝北区"],
+  "广东": ["广州","深圳","珠海","东莞","佛山","中山","惠州","汕头"],
+  "浙江": ["杭州","宁波","温州","嘉兴","湖州","绍兴","金华","台州"],
+  "江苏": ["南京","苏州","无锡","常州","南通","徐州","扬州","镇江"],
+  "山东": ["济南","青岛","烟台","潍坊","临沂","淄博","威海","日照"],
+  "四川": ["成都","绵阳","德阳","宜宾","南充","泸州","乐山"],
+  "湖北": ["武汉","宜昌","襄阳","荆州","黄石","十堰","孝感"],
+  "湖南": ["长沙","株洲","湘潭","衡阳","岳阳","常德","郴州"],
+  "河南": ["郑州","洛阳","开封","新乡","南阳","许昌","周口"],
+  "河北": ["石家庄","唐山","保定","邯郸","廊坊","沧州","秦皇岛"],
+  "福建": ["福州","厦门","泉州","漳州","莆田","龙岩","三明"],
+  "安徽": ["合肥","芜湖","蚌埠","马鞍山","安庆","滁州","阜阳"],
+  "陕西": ["西安","咸阳","宝鸡","汉中","渭南","延安","榆林"],
+  "辽宁": ["沈阳","大连","鞍山","抚顺","本溪","锦州","营口"],
+  "江西": ["南昌","九江","赣州","景德镇","萍乡","新余","宜春"],
+  "云南": ["昆明","曲靖","玉溪","大理","丽江","保山","昭通"],
+  "贵州": ["贵阳","遵义","毕节","六盘水","安顺","铜仁"],
+  "广西": ["南宁","柳州","桂林","北海","玉林","梧州","百色"],
+  "黑龙江": ["哈尔滨","齐齐哈尔","牡丹江","佳木斯","大庆","鸡西"],
+  "吉林": ["长春","吉林市","四平","通化","延边","白城"],
+  "山西": ["太原","大同","阳泉","长治","临汾","运城","晋城"],
+  "内蒙": ["呼和浩特","包头","鄂尔多斯","赤峰","通辽","呼伦贝尔"],
+  "甘肃": ["兰州","天水","白银","酒泉","张掖","武威"],
+  "新疆": ["乌鲁木齐","克拉玛依","吐鲁番","哈密","喀什","伊犁"],
+  "海南": ["海口","三亚","儋州","琼海","文昌","万宁"],
+  "宁夏": ["银川","石嘴山","吴忠","固原","中卫"],
+  "青海": ["西宁","海东","格尔木","德令哈","玉树"],
+  "西藏": ["拉萨","日喀则","昌都","林芝","山南","那曲"],
+}
+
+const PROVINCES = Object.keys(CHINA_REGION)
+
 export default function TenantPage() {
   const { tenantId, loading: authLoading } = usePortalAuth()
   const [tenant, setTenant] = useState<Tenant | null>(null)
@@ -48,11 +86,14 @@ export default function TenantPage() {
   const [submitting, setSubmitting] = useState(false)
   const { toast } = useToast()
 
+  const cities = useMemo(() => formData.province ? (CHINA_REGION[formData.province] || []) : [], [formData.province])
+
   const loadTenantToForm = (t: Tenant) => {
     setFormData({
       name: t.enterpriseName, shortName: t.shortName === "-" ? "" : t.shortName,
       schoolType: t.schoolType === "-" ? "" : t.schoolType,
-      province: t.province === "-" ? "" : t.province, city: t.city === "-" ? "" : t.city,
+      province: PROVINCES.includes(t.province) ? t.province : "",
+      city: t.city === "-" ? "" : t.city,
       contact: t.contact === "-" ? "" : t.contact, phone: t.phone === "-" ? "" : t.phone,
       contactPhone: t.contactPhone === "-" ? "" : t.contactPhone,
       domain: t.domain === "-" ? "" : t.domain, address: t.address === "-" ? "" : t.address,
@@ -79,19 +120,28 @@ export default function TenantPage() {
     setSubmitting(true); setError(null)
     try {
       await portalRequest(`/tenants/${tenant.id}`, { method: "PUT", body: JSON.stringify({
-        name: formData.name, contact: formData.contact || null, phone: formData.phone || null,
+        name: formData.name, contact: formData.contact || null, phone: formData.phone || formData.contactPhone || null,
         domain: formData.domain || null, address: formData.address || null,
         enterpriseCode: formData.enterpriseCode || null, description: formData.description || null,
         shortName: formData.shortName || null, schoolType: formData.schoolType || null,
         province: formData.province || null, city: formData.city || null,
-        website: formData.website || null, contactPhone: formData.contactPhone || null,
+        website: formData.website ? (formData.website.startsWith("http") ? formData.website : "https://" + formData.website) : null,
+        contactPhone: formData.contactPhone || formData.phone || null,
       })})
       setIsEditDialogOpen(false); toast({ title: "保存成功" }); await fetchTenant()
     } catch (err) { setError(err instanceof Error ? err.message : "更新失败") }
     finally { setSubmitting(false) }
   }
 
-  const setF = (key: string, value: string) => setFormData(prev => ({ ...prev, [key]: value }))
+  const setF = (key: string, value: string) => {
+    if (key === "province" && value !== formData.province) setFormData(prev => ({ ...prev, province: value, city: "" }))
+    else setFormData(prev => ({ ...prev, [key]: value }))
+  }
+
+  const handleWebsiteChange = (value: string) => {
+    if (value && !value.startsWith("http")) value = "https://" + value
+    setF("website", value)
+  }
 
   const adminFetcher = async <T,>(path: string, options?: RequestInit): Promise<T> => portalRequest<T>(path, options)
 
@@ -114,12 +164,12 @@ export default function TenantPage() {
             </div>
           </div>
           <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Field icon={Phone} label="联系人" value={`${tenant.contact} / ${tenant.phone === "-" ? tenant.contactPhone : tenant.phone}`} />
+            <Field icon={Phone} label="联系人" value={`${tenant.contact} / ${tenant.contactPhone !== "-" ? tenant.contactPhone : tenant.phone}`} />
             <Field icon={School} label="学校简称" value={tenant.shortName} />
             <Field icon={BookOpen} label="办学类型" value={tenant.schoolType} />
-            <Field icon={Globe} label="绑定域名" value={tenant.domain} />
             <Field icon={MapPin} label="省份/城市" value={`${tenant.province} ${tenant.city}`} />
-            <Field icon={Monitor} label="官网" value={tenant.website} />
+            <Field icon={Globe} label="官网" value={tenant.website} />
+            <Field icon={Globe} label="绑定域名" value={tenant.domain} />
             <Field icon={MapPin} label="学校地址" value={tenant.address} />
             <Field icon={Hash} label="学校代码" value={tenant.enterpriseCode} />
             <Field icon={Calendar} label="创建时间" value={tenant.createdAt} />
@@ -134,33 +184,61 @@ export default function TenantPage() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent size="lg" className="max-h-[85vh] flex flex-col">
           <DialogHeader><DialogTitle>编辑信息</DialogTitle><DialogDescription>修改租户与学校信息</DialogDescription></DialogHeader>
-          <div className="grid gap-4 py-4 overflow-y-auto flex-1 min-h-0">
+          <div className="grid gap-5 py-4 overflow-y-auto flex-1 min-h-0">
+            {/* 只读信息 */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2"><Label>租户标识</Label><Input value={tenant?.code || ""} disabled className="bg-muted font-mono" /></div>
-              <div className="grid gap-2"><Label>状态</Label><Input value={tenant?.status === "active" ? "启用" : "停用"} disabled className="bg-muted" /></div>
+              <div className="grid gap-2"><Label>租户标识</Label><Input disabled className="bg-muted font-mono" value={tenant?.code || ""} /></div>
+              <div className="grid gap-2"><Label>状态</Label><Input disabled className="bg-muted" value={tenant?.status === "active" ? "启用" : "停用"} /></div>
             </div>
-            <div className="grid gap-2"><Label>学校名称 <span className="text-destructive">*</span></Label><Input value={formData.name || ""} onChange={(e) => setF("name", e.target.value)} /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2"><Label>学校简称</Label><Input value={formData.shortName || ""} onChange={(e) => setF("shortName", e.target.value)} /></div>
-              <div className="grid gap-2"><Label>办学类型</Label><Input value={formData.schoolType || ""} onChange={(e) => setF("schoolType", e.target.value)} /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2"><Label>省份</Label><Input value={formData.province || ""} onChange={(e) => setF("province", e.target.value)} /></div>
-              <div className="grid gap-2"><Label>城市</Label><Input value={formData.city || ""} onChange={(e) => setF("city", e.target.value)} /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2"><Label>联系人</Label><Input value={formData.contact || ""} onChange={(e) => setF("contact", e.target.value)} /></div>
-              <div className="grid gap-2"><Label>联系电话</Label><Input value={formData.contactPhone || formData.phone || ""} onChange={(e) => { setF("phone", e.target.value); setF("contactPhone", e.target.value) }} /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2"><Label>官网</Label><Input value={formData.website || ""} onChange={(e) => setF("website", e.target.value)} /></div>
-              <div className="grid gap-2"><Label>绑定域名</Label><Input value={formData.domain || ""} onChange={(e) => setF("domain", e.target.value)} /></div>
-            </div>
-            <div className="grid gap-2"><Label>学校地址</Label><Input value={formData.address || ""} onChange={(e) => setF("address", e.target.value)} /></div>
-            <div className="grid gap-2"><Label>学校代码</Label><Input value={formData.enterpriseCode || ""} onChange={(e) => setF("enterpriseCode", e.target.value)} /></div>
-            <div className="grid gap-2"><Label>学校简介</Label><Textarea value={formData.description || ""} onChange={(e) => setF("description", e.target.value)} rows={3} /></div>
+            <Separator />
+            {/* 基础信息 */}
+            <div><Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">基础信息</Label>
+            <div className="grid gap-4">
+              <div className="grid gap-2"><Label>学校名称 <span className="text-destructive">*</span></Label><Input value={formData.name || ""} onChange={(e) => setF("name", e.target.value)} /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2"><Label>学校简称</Label><Input value={formData.shortName || ""} onChange={(e) => setF("shortName", e.target.value)} /></div>
+                <div className="grid gap-2"><Label>办学类型</Label><Input value={formData.schoolType || ""} onChange={(e) => setF("schoolType", e.target.value)} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2"><Label>省份</Label>
+                  <Select value={formData.province || ""} onValueChange={(v) => setF("province", v)}>
+                    <SelectTrigger><SelectValue placeholder="请选择省份" /></SelectTrigger>
+                    <SelectContent>{PROVINCES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2"><Label>城市</Label>
+                  <Select value={formData.city || ""} onValueChange={(v) => setF("city", v)} disabled={!formData.province}>
+                    <SelectTrigger><SelectValue placeholder={formData.province ? "请选择城市" : "请先选省份"} /></SelectTrigger>
+                    <SelectContent>{cities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2"><Label>学校代码</Label><Input value={formData.enterpriseCode || ""} onChange={(e) => setF("enterpriseCode", e.target.value)} /></div>
+                <div className="grid gap-2"><Label>学校简介</Label><Input value={formData.description || ""} onChange={(e) => setF("description", e.target.value)} /></div>
+              </div>
+            </div></div>
+            <Separator />
+            {/* 联系信息 */}
+            <div><Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">联系信息</Label>
+            <div className="grid gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2"><Label>联系人</Label><Input value={formData.contact || ""} onChange={(e) => setF("contact", e.target.value)} /></div>
+                <div className="grid gap-2"><Label>联系电话</Label><Input value={formData.contactPhone || formData.phone || ""} onChange={(e) => { setF("phone", e.target.value); setF("contactPhone", e.target.value) }} /></div>
+              </div>
+              <div className="grid gap-2"><Label>学校地址</Label><Input value={formData.address || ""} onChange={(e) => setF("address", e.target.value)} /></div>
+            </div></div>
+            <Separator />
+            {/* 网络信息 */}
+            <div><Label className="text-xs text-muted-foreground uppercase tracking-wider mb-3 block">网络信息</Label>
+            <div className="grid gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2"><Label>官网</Label><Input value={formData.website || ""} onChange={(e) => handleWebsiteChange(e.target.value)} placeholder="https://www.example.edu.cn" /></div>
+                <div className="grid gap-2"><Label>绑定域名</Label><Input value={formData.domain || ""} onChange={(e) => setF("domain", e.target.value)} /></div>
+              </div>
+            </div></div>
           </div>
-          {error && <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+          {error && <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive mt-2">{error}</div>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={submitting}>取消</Button>
             <Button onClick={handleUpdate} disabled={submitting}>{submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}保存</Button>

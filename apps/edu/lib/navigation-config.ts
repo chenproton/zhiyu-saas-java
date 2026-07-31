@@ -466,6 +466,16 @@ export const affairsNavigationConfig: PlatformNavigationConfig = {
         { id: "scheduling", label: "排课管理", href: "/affairs/scheduling", matchers: ["/affairs/scheduling"] },
       ],
     },
+    {
+      id: "teaching-approval",
+      label: "审批管理",
+      icon: "clipboard",
+      children: [
+        { id: "batches", label: "批次管理", href: "/affairs/batches", matchers: ["/affairs/batches"] },
+        { id: "workflows", label: "工作流管理", href: "/affairs/workflows", matchers: ["/affairs/workflows"] },
+        { id: "approvals", label: "审批中心", href: "/affairs/approvals", matchers: ["/affairs/approvals"] },
+      ],
+    },
   ],
   defaultExpandedSideNavIds: ["teaching-mgmt"],
   platformSwitchItems: [],
