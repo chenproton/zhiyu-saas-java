@@ -15,21 +15,26 @@ type Term struct {
 
 // TrainingProgram 人才培养方案。
 type TrainingProgram struct {
-	ID           string    `json:"id"`
-	Name         string    `json:"name"`
-	Code         *string   `json:"code,omitempty"`
-	MajorID      *string   `json:"majorId,omitempty"`
-	MajorName    string    `json:"majorName,omitempty"`
-	EntryYear    int       `json:"entryYear"`
-	Level        *string   `json:"level,omitempty"`
-	Duration     *int      `json:"duration,omitempty"`
-	TotalCredits *float64  `json:"totalCredits,omitempty"`
-	Status       string    `json:"status"`
-	Description  *string   `json:"description,omitempty"`
-	CourseCount  int       `json:"courseCount"`
-	CreatedBy    *string   `json:"createdBy,omitempty"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	ID             string    `json:"id"`
+	Name           string    `json:"name"`
+	Code           *string   `json:"code,omitempty"`
+	MajorID        *string   `json:"majorId,omitempty"`
+	MajorName      string    `json:"majorName,omitempty"`
+	EntryYear      int       `json:"entryYear"`
+	Level          *string   `json:"level,omitempty"`
+	Duration       *int      `json:"duration,omitempty"`
+	TotalCredits   *float64  `json:"totalCredits,omitempty"`
+	Status         string    `json:"status"`
+	Description    *string   `json:"description,omitempty"`
+	CourseCount    int       `json:"courseCount"`
+	CreatedBy      *string   `json:"createdBy,omitempty"`
+	CreatedByName  string    `json:"createdByName,omitempty"`
+	Collaborators  []string  `json:"collaborators,omitempty"`
+	CollaboratorNames []string `json:"collaboratorNames,omitempty"`
+	BatchID        *string   `json:"batchId,omitempty"`
+	BatchName      string    `json:"batchName,omitempty"`
+	CreatedAt      time.Time `json:"createdAt"`
+	UpdatedAt      time.Time `json:"updatedAt"`
 }
 
 // TrainingProgramCourse 人培方案课程（通过 position_id 关联岗位下的所有场景，或通过 course_id 关联体系课）。

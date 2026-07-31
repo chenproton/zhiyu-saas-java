@@ -1,279 +1,154 @@
 "use client"
 
-import { useState, useMemo, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Search, BookCopy, FileEdit, Send, Undo2, Trash2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { useToast } from "@zhiyu/ui"
-import { PageHeaderCard } from "@/components/shared/page-header-card"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import { StatusBadge } from "@/components/shared/status-badge"
-import { TableRowActions } from "@/components/shared/table-row-actions"
-import { programApi } from "@/lib/api"
+  ContentListPage,
+} from "@/components/shared/content-list-page"
+import { programApi, batchApi, approvalApi, importExportApi } from "@/lib/api"
 import type { TrainingProgram } from "@/lib/types"
 
-type FilterStatus = "all" | "draft" | "published"
+function mapProgram(backend: any, _currentUserId: string) {
+  const p = backend as TrainingProgram
+  return {
+    ...p,
+    id: p.id,
+    name: p.name,
+    code: p.code,
+    status: p.status,
+    createdBy: p.createdBy,
+    creatorId: p.createdBy || "",
+    coCreatorIds: p.collaborators || [],
+    batchId: p.batchId,
+    batchName: p.batchName || "",
+    courseCount: p.courseCount,
+    totalCredits: p.totalCredits,
+    majorName: p.majorName,
+    entryYear: p.entryYear,
+    duration: p.duration,
+    level: p.level,
+    description: p.description,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+  } as any
+}
+
+function mapBatch(backend: any) {
+  return { id: backend.id, name: backend.name, workflowId: backend.workflowId }
+}
 
 export default function ProgramsPage() {
   const router = useRouter()
-  const { toast } = useToast()
-
-  const [items, setItems] = useState<TrainingProgram[]>([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState<FilterStatus>("all")
-
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
-  const [deleting, setDeleting] = useState<TrainingProgram | null>(null)
-
-  const loadItems = useCallback(async () => {
-    try {
-      const res = await programApi.list({ limit: 500 })
-      setItems(res.items)
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "加载失败", description: err.message || "查询人培方案列表失败" })
-    } finally {
-      setLoading(false)
-    }
-  }, [toast])
-
-  useEffect(() => {
-    // 首屏加载：async IIFE 包裹，避免在 effect 体内同步触发 setState
-    ;(async () => {
-      await loadItems()
-    })()
-  }, [loadItems])
-
-  const filteredItems = useMemo(() => {
-    return items.filter((p) => {
-      const matchSearch =
-        !search ||
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        (p.code || "").toLowerCase().includes(search.toLowerCase())
-      const matchStatus = statusFilter === "all" || p.status === statusFilter
-      return matchSearch && matchStatus
-    })
-  }, [items, search, statusFilter])
-
-  const stats = useMemo(() => {
-    return {
-      total: items.length,
-      draft: items.filter((p) => p.status === "draft").length,
-      published: items.filter((p) => p.status === "published").length,
-    }
-  }, [items])
-
-  const handleTogglePublish = async (p: TrainingProgram) => {
-    const next = p.status === "published" ? "draft" : "published"
-    try {
-      await programApi.publish(p.id, next)
-      toast({ title: next === "published" ? "方案已发布" : "方案已撤回" })
-      await loadItems()
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "操作失败", description: err.message || "更新方案状态失败" })
-    }
-  }
-
-  const openDeleteDialog = (p: TrainingProgram) => {
-    setDeleting(p)
-    setConfirmDeleteOpen(true)
-  }
-
-  const handleDelete = async () => {
-    if (!deleting) return
-    try {
-      await programApi.delete(deleting.id)
-      toast({ title: "方案已删除" })
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "删除失败", description: err.message || "删除失败" })
-    } finally {
-      setConfirmDeleteOpen(false)
-      setDeleting(null)
-      await loadItems()
-    }
-  }
 
   return (
-    <div className="space-y-6">
-      <PageHeaderCard
-        title="人才培养方案"
-        description="维护专业人才培养方案及课程设置，发布后可生成学期教学计划"
-        actions={
-          <Button onClick={() => router.push("/affairs/programs/new")}>
-            <Plus className="mr-2 size-4" />
-            新建方案
-          </Button>
-        }
-        stats={[
-          {
-            label: "方案总数",
-            value: stats.total,
-            icon: <BookCopy className="size-4 text-blue-500" />,
-            iconClassName: "bg-blue-50",
-          },
-          {
-            label: "草稿",
-            value: stats.draft,
-            icon: <FileEdit className="size-4 text-gray-500" />,
-            iconClassName: "bg-gray-50",
-          },
-          {
-            label: "已发布",
-            value: stats.published,
-            icon: <Send className="size-4 text-green-500" />,
-            iconClassName: "bg-green-50",
-          },
-        ]}
-      />
-
-      {/* 筛选栏 */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="relative flex-1 sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="搜索方案名称或编码..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as FilterStatus)}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="全部状态" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">全部状态</SelectItem>
-            <SelectItem value="draft">草稿</SelectItem>
-            <SelectItem value="published">已发布</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* 方案列表 */}
-      <div className="rounded-lg border bg-white px-4 py-3">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[220px]">方案名称</TableHead>
-                <TableHead className="w-[110px]">编码</TableHead>
-                <TableHead className="w-[140px]">专业</TableHead>
-                <TableHead className="w-[80px]">年级</TableHead>
-                <TableHead className="w-[80px]">学制</TableHead>
-                <TableHead className="w-[80px]">课程数</TableHead>
-                <TableHead className="w-[80px]">总学分</TableHead>
-                <TableHead className="w-[100px]">状态</TableHead>
-                <TableHead className="sticky right-0 w-[200px] bg-white text-right">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
-                    加载中...
-                  </TableCell>
-                </TableRow>
-              ) : filteredItems.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
-                    暂无人培方案
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredItems.map((p) => (
-                  <TableRow key={p.id} className="group">
-                    <TableCell className="font-medium">{p.name}</TableCell>
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground">{p.code || "-"}</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{p.majorName || "-"}</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{p.entryYear} 级</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{p.duration ? `${p.duration} 年` : "-"}</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{p.courseCount}</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{p.totalCredits ?? "-"}</span>
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={p.status} />
-                    </TableCell>
-                    <TableRowActions className="sticky right-0 bg-white">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => router.push(`/affairs/programs/${p.id}`)}
-                      >
-                        <FileEdit className="mr-1 h-3 w-3" />
-                        编辑
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={`h-7 px-2 text-xs ${p.status === "published" ? "text-amber-600 hover:text-amber-700" : "text-green-600 hover:text-green-700"}`}
-                        onClick={() => handleTogglePublish(p)}
-                      >
-                        {p.status === "published" ? (
-                          <>
-                            <Undo2 className="mr-1 h-3 w-3" />
-                            撤回
-                          </>
-                        ) : (
-                          <>
-                            <Send className="mr-1 h-3 w-3" />
-                            发布
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                        onClick={() => openDeleteDialog(p)}
-                      >
-                        <Trash2 className="mr-1 h-3 w-3" />
-                        删除
-                      </Button>
-                    </TableRowActions>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-
-      {/* 删除确认弹窗 */}
-      <ConfirmDialog
-        open={confirmDeleteOpen}
-        onOpenChange={setConfirmDeleteOpen}
-        title="删除人培方案"
-        description={`删除后其课程设置将一并删除且无法恢复，确定要删除「${deleting?.name || ""}」吗？`}
-        onConfirm={handleDelete}
-      />
-    </div>
+    <ContentListPage<TrainingProgram & { creatorId: string; coCreatorIds: string[] }>
+      title="人才培养方案"
+      subtitle="维护专业人才培养方案及课程设置，发布后可生成学期教学计划"
+      entityLabel="人培方案"
+      addHref="/affairs/programs"
+      permissionModule="affairs"
+      permissionResource="programs"
+      itemApi={programApi as any}
+      batchApi={batchApi as any}
+      approvalApi={approvalApi as any}
+      importExportApi={importExportApi}
+      approvalTargetType="training_program"
+      importExcelEntity=""
+      importEntityName=""
+      exportEntityName=""
+      coBuilderField="collaborators"
+      createRedirectUrl={(id) => `/affairs/programs/${id}?new=true`}
+      statusFilterOptions={[
+        { value: "draft", label: "草稿" },
+        { value: "pending", label: "审批中" },
+        { value: "approved", label: "已通过" },
+        { value: "rejected", label: "已驳回" },
+        { value: "published", label: "已发布" },
+        { value: "archived", label: "已归档" },
+      ]}
+      mapItem={(b) => mapProgram(b, "")}
+      mapBatch={mapBatch}
+      createPayload={() => ({
+        name: "新建人培方案",
+        code: undefined,
+        majorId: undefined,
+        entryYear: new Date().getFullYear(),
+        level: "本科",
+        duration: 4,
+        totalCredits: 0,
+        status: "draft",
+        description: "",
+        createdBy: "",
+        collaborators: [],
+      })}
+      renderList={(props) => {
+        const { items, selectedIds, onSelectId, onSelectAll, onClone, onDelete, onSubmitApproval, onWithdrawApproval, onArchive, onInviteCoBuild, batchMap } = props as any
+        return (
+          <div className="rounded-lg border bg-white px-4 py-3">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="w-8 px-2 py-2"><input type="checkbox" onChange={(e) => onSelectAll(e.target.checked)} /></th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">方案名称</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">专业</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">年级</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">课程数</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">批次</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">状态</th>
+                    <th className="sticky right-0 w-[200px] bg-white px-2 py-2 text-right text-xs font-medium text-muted-foreground">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.length === 0 ? (
+                    <tr><td colSpan={8} className="h-24 text-center text-sm text-muted-foreground">暂无人培方案</td></tr>
+                  ) : (
+                    items.map((item: any) => (
+                      <tr key={item.id} className="border-t hover:bg-muted/30 group">
+                        <td className="px-2 py-2">
+                          <input type="checkbox" checked={selectedIds?.includes(item.id)} onChange={() => onSelectId?.(item.id)} />
+                        </td>
+                        <td className="px-2 py-2">
+                          <div className="font-medium text-sm">{item.name}</div>
+                          {item.code && <div className="text-xs text-muted-foreground">{item.code}</div>}
+                        </td>
+                        <td className="px-2 py-2 text-sm text-muted-foreground">{item.majorName || "-"}</td>
+                        <td className="px-2 py-2 text-sm">{item.entryYear}级</td>
+                        <td className="px-2 py-2 text-sm">{item.courseCount}</td>
+                        <td className="px-2 py-2 text-sm text-muted-foreground">{item.batchName || "-"}</td>
+                        <td className="px-2 py-2">
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                            item.status === "published" ? "bg-green-100 text-green-700" :
+                            item.status === "approved" ? "bg-blue-100 text-blue-700" :
+                            item.status === "pending" ? "bg-yellow-100 text-yellow-700" :
+                            item.status === "rejected" ? "bg-red-100 text-red-700" :
+                            item.status === "archived" ? "bg-gray-100 text-gray-600" :
+                            "bg-gray-100 text-gray-600"
+                          }`}>
+                            {({draft: "草稿", pending: "审批中", approved: "已通过", rejected: "已驳回", published: "已发布", archived: "已归档"} as any)[item.status] || item.status}
+                          </span>
+                        </td>
+                        <td className="sticky right-0 bg-white px-2 py-2">
+                          <div className="flex items-center justify-end gap-1">
+                            <button onClick={() => router.push(`/affairs/programs/${item.id}`)} className="h-7 px-2 text-xs rounded hover:bg-muted">编辑</button>
+                            {item.status === "draft" && <button onClick={() => onSubmitApproval?.(item)} className="h-7 px-2 text-xs rounded hover:bg-muted text-blue-600">提交</button>}
+                            {item.status === "pending" && <button onClick={() => onWithdrawApproval?.(item)} className="h-7 px-2 text-xs rounded hover:bg-muted text-amber-600">撤回</button>}
+                            {item.status === "approved" && <button onClick={() => item.publish?.()} className="h-7 px-2 text-xs rounded hover:bg-muted text-green-600">发布</button>}
+                            {item.status === "published" && <button onClick={() => item.unpublish?.()} className="h-7 px-2 text-xs rounded hover:bg-muted text-amber-600">取消发布</button>}
+                            <button onClick={() => onArchive?.(item)} className="h-7 px-2 text-xs rounded hover:bg-muted text-gray-500">归档</button>
+                            <button onClick={() => onClone?.(item)} className="h-7 px-2 text-xs rounded hover:bg-muted">克隆</button>
+                            <button onClick={() => onInviteCoBuild?.(item)} className="h-7 px-2 text-xs rounded hover:bg-muted">共建</button>
+                            <button onClick={() => onDelete?.(item)} className="h-7 px-2 text-xs rounded hover:bg-muted text-red-500">删除</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      }}
+    />
   )
 }

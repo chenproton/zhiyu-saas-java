@@ -11,15 +11,10 @@ func registerAffairsRoutes(r chi.Router, h *Handlers) {
 	r.Put("/affairs/terms/{id}", h.affairsTermHandler.Update)
 	r.Delete("/affairs/terms/{id}", h.affairsTermHandler.Delete)
 
-	// 人才培养方案
-	r.Get("/affairs/programs", h.trainingProgramHandler.List)
-	r.Post("/affairs/programs", h.trainingProgramHandler.Create)
-	r.Get("/affairs/programs/{id}", h.trainingProgramHandler.Get)
-	r.Put("/affairs/programs/{id}", h.trainingProgramHandler.Update)
-	r.Delete("/affairs/programs/{id}", h.trainingProgramHandler.Delete)
+	// 人才培养方案（接入内容管理通用架构）
+	registerContentRoutes(r, "/affairs/programs", h.trainingProgramHandler)
 	r.Get("/affairs/programs/{id}/courses", h.trainingProgramHandler.ListCourses)
 	r.Put("/affairs/programs/{id}/courses", h.trainingProgramHandler.PutCourses)
-	r.Post("/affairs/programs/{id}/publish", h.trainingProgramHandler.Publish)
 
 	// 教学计划
 	r.Get("/affairs/teaching-plans", h.teachingPlanHandler.List)

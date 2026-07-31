@@ -60,8 +60,8 @@ func (h *TrainingProgramHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cfg := listQueryConfig[domain.TrainingProgram]{
-		Table:         "training_programs tp LEFT JOIN majors m ON m.id = tp.major_id",
-		SelectColumns: "tp.id, tp.name, tp.code, tp.major_id, COALESCE(m.name, '') AS major_name, tp.entry_year, tp.level, tp.duration, tp.total_credits, tp.status, tp.description, (SELECT COUNT(*) FROM training_program_courses c WHERE c.program_id = tp.id) AS course_count, tp.created_by, tp.created_at, tp.updated_at",
+		Table:         "training_programs tp LEFT JOIN majors m ON m.id = tp.major_id LEFT JOIN users cu ON cu.id = tp.created_by LEFT JOIN batches lb ON lb.id = tp.batch_id",
+		SelectColumns: "tp.id, tp.name, tp.code, tp.major_id, COALESCE(m.name, '') AS major_name, tp.entry_year, tp.level, tp.duration, tp.total_credits, tp.status, tp.description, (SELECT COUNT(*) FROM training_program_courses c WHERE c.program_id = tp.id) AS course_count, tp.created_by, COALESCE(cu.name, '') AS created_by_name, tp.collaborators, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(tp.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, tp.batch_id, COALESCE(lb.name, '') AS batch_name, tp.created_at, tp.updated_at",
 		TenantScoped:  true,
 		TenantColumn:  "tp.tenant_id",
 		SearchColumns: []string{"tp.name"},
@@ -374,11 +374,13 @@ func (h *TrainingProgramHandler) fetchProgram(ctx context.Context, id, tenantID 
 		SELECT tp.id, tp.name, tp.code, tp.major_id, COALESCE(m.name, ''), tp.entry_year, tp.level, tp.duration,
 			tp.total_credits, tp.status, tp.description,
 			(SELECT COUNT(*) FROM training_program_courses c WHERE c.program_id = tp.id),
-			tp.created_by, tp.created_at, tp.updated_at
-		FROM training_programs tp LEFT JOIN majors m ON m.id = tp.major_id
+			tp.created_by, COALESCE(cu.name, ''), tp.collaborators,
+			COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(tp.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}'),
+			tp.batch_id, COALESCE(lb.name, ''), tp.created_at, tp.updated_at
+		FROM training_programs tp LEFT JOIN majors m ON m.id = tp.major_id LEFT JOIN users cu ON cu.id = tp.created_by LEFT JOIN batches lb ON lb.id = tp.batch_id
 		WHERE tp.id = $1 AND tp.tenant_id = $2
 	`, id, tenantID).Scan(&p.ID, &p.Name, &p.Code, &p.MajorID, &p.MajorName, &p.EntryYear, &p.Level, &p.Duration,
-		&p.TotalCredits, &p.Status, &p.Description, &p.CourseCount, &p.CreatedBy, &p.CreatedAt, &p.UpdatedAt)
+		&p.TotalCredits, &p.Status, &p.Description, &p.CourseCount, &p.CreatedBy, &p.CreatedByName, &p.Collaborators, &p.CollaboratorNames, &p.BatchID, &p.BatchName, &p.CreatedAt, &p.UpdatedAt)
 	return p, err
 }
 
@@ -414,10 +416,22 @@ func scanTrainingProgramRows(rows pgx.Rows) ([]domain.TrainingProgram, error) {
 	for rows.Next() {
 		var p domain.TrainingProgram
 		if err := rows.Scan(&p.ID, &p.Name, &p.Code, &p.MajorID, &p.MajorName, &p.EntryYear, &p.Level, &p.Duration,
-			&p.TotalCredits, &p.Status, &p.Description, &p.CourseCount, &p.CreatedBy, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			&p.TotalCredits, &p.Status, &p.Description, &p.CourseCount, &p.CreatedBy, &p.CreatedByName, &p.Collaborators, &p.CollaboratorNames, &p.BatchID, &p.BatchName, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, p)
 	}
 	return items, nil
 }
+
+func (h *TrainingProgramHandler) actions() contentActions {
+	return contentActions{db: h.DB, table: "training_programs", entityName: "人培方案", targetType: "training_program", inviteCol: "collaborators", fetch: nil}
+}
+
+func (h *TrainingProgramHandler) Submit(w http.ResponseWriter, r *http.Request)     { h.actions().transition(w, r, domain.StatusPending) }
+func (h *TrainingProgramHandler) Withdraw(w http.ResponseWriter, r *http.Request)   { h.actions().transition(w, r, domain.StatusDraft) }
+func (h *TrainingProgramHandler) Invite(w http.ResponseWriter, r *http.Request)     { h.actions().invite(w, r) }
+func (h *TrainingProgramHandler) Review(w http.ResponseWriter, r *http.Request)     { h.actions().review(w, r) }
+func (h *TrainingProgramHandler) Archive(w http.ResponseWriter, r *http.Request)    { h.actions().transition(w, r, domain.StatusArchived) }
+func (h *TrainingProgramHandler) Unpublish(w http.ResponseWriter, r *http.Request)  { h.actions().transition(w, r, domain.StatusDraft) }
+func (h *TrainingProgramHandler) SaveDraft(w http.ResponseWriter, r *http.Request)  { /* no-op: draft is default */ }

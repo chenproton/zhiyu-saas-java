@@ -37,7 +37,7 @@ type contentActions struct {
 }
 
 // allowedContentTables lists the tables that may be used by contentActions.
-var allowedContentTables = []string{"career_positions", "courses", "exams", "question_banks", "scenarios"}
+var allowedContentTables = []string{"career_positions", "courses", "exams", "question_banks", "scenarios", "training_programs"}
 
 // allowedInviteColumns lists the columns that may be updated by invite().
 var allowedInviteColumns = []string{"collaborator_ids", "co_builder_ids", "co_creator_ids", "collaborators"}

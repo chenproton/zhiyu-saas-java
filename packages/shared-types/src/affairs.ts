@@ -34,6 +34,11 @@ export interface TrainingProgram {
   description?: string
   courseCount: number
   createdBy?: string
+  createdByName?: string
+  collaborators?: string[]
+  collaboratorNames?: string[]
+  batchId?: string
+  batchName?: string
   createdAt: string
   updatedAt: string
 }
