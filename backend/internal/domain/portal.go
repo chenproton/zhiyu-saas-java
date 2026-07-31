@@ -48,6 +48,7 @@ type WorkspaceScheduleEvent struct {
 	Teacher   string `json:"teacher,omitempty"`
 	Location  string `json:"location,omitempty"`
 	Status    string `json:"status,omitempty"`
+	ClassName string `json:"className,omitempty"`
 }
 
 type WorkspaceStats struct {

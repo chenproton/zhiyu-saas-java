@@ -3,6 +3,8 @@ package handler
 import (
 	"context"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -50,8 +52,7 @@ func (h *PortalHandler) WorkspaceDashboard(w http.ResponseWriter, r *http.Reques
 
 	if isTeacher {
 		dash.TeacherCourses = h.listTeacherCourses(r.Context(), claims.UserID, claims.TenantID)
-		dash.ClassPlans = []domain.WorkspaceClassPlan{}
-		dash.ClassSessions = []domain.WorkspaceClassSession{}
+		dash.ClassPlans, dash.ClassSessions = h.listTeacherClassPlansAndSessions(r.Context(), claims.UserID, claims.TenantID)
 	} else {
 		dash.Courses = h.listStudentCourses(r.Context(), claims.UserID, claims.TenantID)
 		dash.SceneTasks = h.listStudentSceneTasks(r.Context(), claims.UserID, claims.TenantID)
@@ -159,33 +160,55 @@ func (h *PortalHandler) listTodos(ctx context.Context, userID string, tenantID *
 func (h *PortalHandler) listSchedule(ctx context.Context, userID string, tenantID *string, role string) []domain.WorkspaceScheduleEvent {
 	var events []domain.WorkspaceScheduleEvent
 	if role == "teacher" || role == "school_admin" || role == "school" {
+		// 教师：取该教师已发布的排课（含课程与场景），展示到周课表网格
+		periodLabel := h.periodLabelMap(ctx, tenantID)
 		query := `
-			SELECT c.id, c.name, COALESCE(c.class_name, ''), u.name
-			FROM courses c
-			LEFT JOIN users u ON u.id = c.teacher_id
-			WHERE c.status = 'published' AND (c.teacher_id = $1::uuid OR c.creator_id = $1::uuid)`
+			SELECT se.id::text, se.course_name, se.type, se.day_of_week, se.periods,
+				COALESCE(v.name, '') AS venue_name,
+				COALESCE((SELECT array_agg(o2.name ORDER BY cid) FROM unnest(se.class_node_ids) WITH ORDINALITY AS c(cid, ord) JOIN organizations o2 ON o2.id = c.cid), '{}') AS class_names,
+				COALESCE(u.name, '')
+			FROM schedule_entries se
+			LEFT JOIN venues v ON v.id = se.venue_id
+			LEFT JOIN users u ON u.id = se.teacher_id
+			WHERE se.status = 'published' AND se.teacher_id = $1::uuid`
 		args := []interface{}{userID}
 		if tenantID != nil {
-			query += ` AND u.tenant_id = $2`
+			query += ` AND se.tenant_id = $2`
 			args = append(args, *tenantID)
 		}
-		query += ` ORDER BY c.updated_at DESC LIMIT 20`
+		query += ` ORDER BY se.day_of_week, se.start_week LIMIT 50`
 		rows, err := h.DB.Query(ctx, query, args...)
 		if err == nil {
 			defer rows.Close()
 			for rows.Next() {
-				var id, name, className, teacher string
-				if err := rows.Scan(&id, &name, &className, &teacher); err != nil {
+				var id, courseName, entryType, venueName, teacherName string
+				var dayOfWeek int
+				var periods domain.JSONSlice
+				var classNames []string
+				if err := rows.Scan(&id, &courseName, &entryType, &dayOfWeek, &periods, &venueName, &classNames, &teacherName); err != nil {
 					continue
+				}
+				eventType := "course"
+				if entryType == "scene" {
+					eventType = "scene"
+				}
+				periodNames := jsonSliceToStrings(periods)
+				if len(periodNames) == 0 {
+					continue
+				}
+				period := periodNames[0]
+				if label, ok := periodLabel[period]; ok {
+					period = label
 				}
 				events = append(events, domain.WorkspaceScheduleEvent{
 					ID:        id,
-					Title:     name,
-					Type:      "course",
-					DayOfWeek: 1,
-					Period:    className,
-					Location:  "",
-					Teacher:   teacher,
+					Title:     courseName,
+					Type:      eventType,
+					DayOfWeek: dayOfWeek,
+					Period:    period,
+					Location:  venueName,
+					ClassName: strings.Join(classNames, "、"),
+					Teacher:   teacherName,
 					Status:    "进行中",
 				})
 			}
@@ -448,6 +471,109 @@ func (h *PortalHandler) listTeacherCourses(ctx context.Context, userID string, t
 	return items
 }
 
+// listTeacherClassPlansAndSessions 从 schedule_entries 构建教师的课程/场景计划与节次。
+// 一个教学计划条目（plan_entry_id）对应一个 ClassPlan，其下的排课节次展开为每周的 ClassSession。
+func (h *PortalHandler) listTeacherClassPlansAndSessions(ctx context.Context, userID string, tenantID *string) ([]domain.WorkspaceClassPlan, []domain.WorkspaceClassSession) {
+	var plans []domain.WorkspaceClassPlan
+	var sessions []domain.WorkspaceClassSession
+	if tenantID == nil {
+		return plans, sessions
+	}
+
+	periodLabel := h.periodLabelMap(ctx, tenantID)
+
+	query := `
+		SELECT se.id::text, COALESCE(se.plan_entry_id::text, ''), se.course_name, se.type, se.day_of_week,
+			se.periods, se.start_week, se.end_week, se.week_pattern, se.status,
+			COALESCE(t.name, ''), COALESCE(u.name, ''), COALESCE(v.name, ''),
+			COALESCE((SELECT array_agg(o2.name ORDER BY cid) FROM unnest(se.class_node_ids) WITH ORDINALITY AS c(cid, ord) JOIN organizations o2 ON o2.id = c.cid), '{}') AS class_names
+		FROM schedule_entries se
+		JOIN terms t ON t.id = se.term_id
+		LEFT JOIN users u ON u.id = se.teacher_id
+		LEFT JOIN venues v ON v.id = se.venue_id
+		WHERE se.teacher_id = $1::uuid AND se.tenant_id = $2::uuid
+		ORDER BY t.start_date DESC, se.day_of_week, se.start_week, se.course_name`
+	rows, err := h.DB.Query(ctx, query, userID, *tenantID)
+	if err != nil {
+		return plans, sessions
+	}
+	defer rows.Close()
+
+	type planKey struct{ planEntryID, course, term string }
+	planIndex := map[planKey]int{}
+	dayNames := map[int]string{1: "周一", 2: "周二", 3: "周三", 4: "周四", 5: "周五", 6: "周六", 7: "周日"}
+
+	for rows.Next() {
+		var seID, planEntryID, courseName, entryType, status, termName, teacherName, venueName string
+		var dayOfWeek, startWeek, endWeek int
+		var weekPattern string
+		var periods domain.JSONSlice
+		var classNames []string
+		if err := rows.Scan(&seID, &planEntryID, &courseName, &entryType, &dayOfWeek, &periods,
+			&startWeek, &endWeek, &weekPattern, &status, &termName, &teacherName, &venueName, &classNames); err != nil {
+			continue
+		}
+		if planEntryID == "" {
+			planEntryID = seID
+		}
+
+		// 按 计划条目+课程名+学期 归并为一个 ClassPlan（同一计划条目多条排课共享）
+		key := planKey{planEntryID, courseName, termName}
+		idx, ok := planIndex[key]
+		if !ok {
+			statusVal := "pending"
+			if status == "published" {
+				statusVal = "active"
+			}
+			plans = append(plans, domain.WorkspaceClassPlan{
+				ID:       planEntryID,
+				Name:     strings.Join(classNames, "、"),
+				Course:   courseName,
+				Term:     termName,
+				Students: 0,
+				Teacher:  teacherName,
+				Status:   statusVal,
+			})
+			idx = len(plans) - 1
+			planIndex[key] = idx
+		}
+		planID := plans[idx].ID
+
+		// 节次展开：按周次模式生成该排课覆盖的周
+		periodNames := jsonSliceToStrings(periods)
+		if len(periodNames) == 0 {
+			continue
+		}
+		periodName := strings.Join(periodNames, "，")
+		for w := startWeek; w <= endWeek; w++ {
+			if weekPattern == "odd" && w%2 == 0 {
+				continue
+			}
+			if weekPattern == "even" && w%2 != 0 {
+				continue
+			}
+			sessionStatus := "pending"
+			if status == "published" {
+				sessionStatus = "associated"
+			}
+			displayPeriod := periodName
+			if label, ok := periodLabel[periodName]; ok {
+				displayPeriod = label
+			}
+			sessions = append(sessions, domain.WorkspaceClassSession{
+				ID:       seID + "-w" + strconv.Itoa(w),
+				CourseID: planID,
+				Venue:    venueName,
+				Week:     w,
+				Weekday:  dayNames[dayOfWeek],
+				Period:   displayPeriod,
+				Status:   sessionStatus,
+			})
+		}
+	}
+	return plans, sessions
+}
+
 func (h *PortalHandler) creditHoursRatio(ctx context.Context) float64 {
 	var ratio float64
 	_ = h.DB.QueryRow(ctx, `SELECT COALESCE(value::float, 16) FROM platform_configs WHERE key = 'credit_hours_ratio'`).Scan(&ratio)
@@ -597,4 +723,40 @@ func examStatusLabel(status string) string {
 	default:
 		return status
 	}
+}
+
+// periodLabelMap 构建 节次名称 → 周课表网格标签 的映射。
+// 教师工作台课表网格使用「上午 1/下午 2/晚自习 1」风格的固定列，而排课存的是节次名称，
+// 因此按 sort_order 顺序将前 4 节映射为 上午 1-4、中间 4 节映射为 下午 1-4、其余映射为 晚自习 N。
+func (h *PortalHandler) periodLabelMap(ctx context.Context, tenantID *string) map[string]string {
+	m := map[string]string{}
+	if tenantID == nil {
+		return m
+	}
+	rows, err := h.DB.Query(ctx, `
+		SELECT name FROM period_slots WHERE tenant_id = $1 ORDER BY sort_order ASC
+	`, *tenantID)
+	if err != nil {
+		return m
+	}
+	defer rows.Close()
+	var names []string
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err != nil {
+			continue
+		}
+		names = append(names, n)
+	}
+	for i, n := range names {
+		switch {
+		case i < 4:
+			m[n] = "上午 " + strconv.Itoa(i+1)
+		case i < 8:
+			m[n] = "下午 " + strconv.Itoa(i-3)
+		default:
+			m[n] = "晚自习 " + strconv.Itoa(i-7)
+		}
+	}
+	return m
 }

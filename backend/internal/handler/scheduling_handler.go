@@ -1267,10 +1267,18 @@ func (h *SchedulingHandler) MySchedule(w http.ResponseWriter, r *http.Request) {
 
 	termID := r.URL.Query().Get("termId")
 	if termID == "" {
-		// 缺省时取当前学期，未设置当前学期则取最近一个
+		// 缺省时优先取当前学期；无当前学期时取含本人排课的学期，否则取最近一个
 		err := h.DB.QueryRow(ctx, `
-			SELECT id FROM terms WHERE tenant_id = $1 ORDER BY is_current DESC, start_date DESC LIMIT 1
-		`, tenantID).Scan(&termID)
+			SELECT t.id FROM terms t
+			LEFT JOIN LATERAL (
+				SELECT COUNT(*) AS cnt FROM schedule_entries se
+				WHERE se.term_id = t.id AND se.tenant_id = t.tenant_id
+				  AND (se.teacher_id = $2::uuid)
+			) s ON true
+			WHERE t.tenant_id = $1
+			ORDER BY t.is_current DESC, COALESCE(s.cnt, 0) DESC, t.start_date DESC
+			LIMIT 1
+		`, tenantID, claims.UserID).Scan(&termID)
 		if err != nil {
 			respondError(w, http.StatusNotFound, "尚未配置学期")
 			return
