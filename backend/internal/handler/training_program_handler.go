@@ -321,8 +321,8 @@ func (h *TrainingProgramHandler) PutCourses(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	for _, c := range req.Courses {
-		if c.Name == "" {
-			respondError(w, http.StatusBadRequest, "课程缺少必填字段（名称）")
+		if c.Name == "" && (c.PositionID == nil || *c.PositionID == "") && (c.CourseID == nil || *c.CourseID == "") {
+			respondError(w, http.StatusBadRequest, "课程缺少必填字段（名称/关联对象）")
 			return
 		}
 	}
