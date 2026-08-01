@@ -14,18 +14,20 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthHandler struct {
-	DB         *pgxpool.Pool
+	Service    *service.AuthService
 	JWTSecret  string
 	usedNonces sync.Map // map[string]time.Time
 	stopCh     chan struct{}
 }
 
 func NewAuthHandler(db *pgxpool.Pool, jwtSecret string) *AuthHandler {
-	h := &AuthHandler{DB: db, JWTSecret: jwtSecret, stopCh: make(chan struct{})}
+	h := &AuthHandler{Service: service.NewAuthService(service.New(store.New(db))), JWTSecret: jwtSecret, stopCh: make(chan struct{})}
 	go func() {
 		ticker := time.NewTicker(5 * time.Minute)
 		defer ticker.Stop()
@@ -114,53 +116,16 @@ func (h *AuthHandler) loginWithPlatform(w http.ResponseWriter, r *http.Request, 
 		tenant domain.Tenant
 	}
 
-	rows, err := h.DB.Query(r.Context(), `
-		SELECT u.id, u.tenant_id, u.institution_id, u.org_node_id, u.major_id,
-		       u.role, u.platform, u.login_name, u.username, u.password_hash, u.name, u.email,
-		       u.phone, u.avatar_url, u.student_no, u.work_id, u.id_card, u.title_ids, u.oauth,
-		       u.status, u.created_at, u.updated_at,
-		       t.name as tenant_name
-		FROM users u
-		JOIN tenants t ON t.id = u.tenant_id
-		WHERE u.username = $1 AND u.platform = $2
-	`, req.Username, platform)
+	rows, err := h.Service.FindUsersByUsername(r.Context(), req.Username, platform)
 	if err != nil {
 		slog.Error("login query failed", "error", err)
 		respondError(w, http.StatusInternalServerError, "登录失败")
 		return
 	}
-	defer rows.Close()
 
 	var candidates []candidate
-	for rows.Next() {
-		var u candidate
-		var tenantID, orgNodeID, majorID, loginName *string
-		var phone, avatarURL, studentNo, workID, idCard *string
-		var titleIDs []string
-		var oauth domain.JSONMap
-
-		if err := rows.Scan(
-			&u.user.ID, &tenantID, &u.user.InstitutionID, &orgNodeID, &majorID,
-			&u.user.Role, &u.user.Platform, &loginName, &u.user.Username, &u.user.PasswordHash, &u.user.Name, &u.user.Email,
-			&phone, &avatarURL, &studentNo, &workID, &idCard, &titleIDs, &oauth, &u.user.Status,
-			&u.user.CreatedAt, &u.user.UpdatedAt, &u.tenant.Name,
-		); err != nil {
-			slog.Error("login scan failed", "error", err)
-			continue
-		}
-		u.user.TenantID = tenantID
-		u.user.OrgNodeID = orgNodeID
-		u.user.MajorID = majorID
-		u.user.LoginName = loginName
-		u.user.Phone = phone
-		u.user.AvatarURL = avatarURL
-		u.user.StudentNo = studentNo
-		u.user.WorkID = workID
-		u.user.IDCard = idCard
-		u.user.TitleIDs = titleIDs
-		u.user.Oauth = oauth
-		u.tenant.ID = *tenantID
-
+	for _, row := range rows {
+		u := candidate{user: row.User, tenant: row.Tenant}
 		if err := bcrypt.CompareHashAndPassword([]byte(u.user.PasswordHash), []byte(req.Password)); err == nil {
 			candidates = append(candidates, u)
 		}
@@ -267,9 +232,7 @@ func (h *AuthHandler) SelectTenant(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) issueTokenForUser(w http.ResponseWriter, r *http.Request, user *domain.User) {
-	if _, err := h.DB.Exec(r.Context(), `UPDATE users SET last_login_at = $1 WHERE id = $2`, time.Now(), user.ID); err != nil {
-		slog.Warn("failed to update last_login_at", "userId", user.ID, "error", err)
-	}
+	h.Service.UpdateLastLogin(r.Context(), user.ID, time.Now())
 	h.recordLoginLog(r, user, "success")
 
 	roleCodes := h.fetchUserRoleCodes(r.Context(), user.ID)
@@ -301,13 +264,7 @@ func (h *AuthHandler) recordLoginLog(r *http.Request, user *domain.User, status 
 	if len(device) > 256 {
 		device = device[:256]
 	}
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO login_logs (tenant_id, user_id, user_name, ip, device, status)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, *user.TenantID, user.ID, userName, middleware.ClientIP(r), device, status)
-	if err != nil {
-		slog.Warn("failed to record login log", "userId", user.ID, "error", err)
-	}
+	h.Service.RecordLoginLog(r.Context(), *user.TenantID, user.ID, userName, middleware.ClientIP(r), device, status)
 }
 
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
@@ -369,177 +326,43 @@ func (h *AuthHandler) meWithPlatform(w http.ResponseWriter, r *http.Request, pla
 }
 
 func (h *AuthHandler) fetchUserByID(ctx context.Context, id string) (domain.User, error) {
-	var user domain.User
-	var tenantID, orgNodeID, majorID, loginName, phone, avatarURL, studentNo, workID, idCard *string
-	var titleIDs []string
-	var oauth domain.JSONMap
-
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, tenant_id, institution_id, org_node_id, major_id,
-		       role, platform, login_name, username, password_hash, name, email, phone, avatar_url,
-		       student_no, work_id, id_card, title_ids, oauth, status, last_login_at, created_at, updated_at
-		FROM users WHERE id = $1
-	`, id).Scan(
-		&user.ID, &tenantID, &user.InstitutionID, &orgNodeID, &majorID,
-		&user.Role, &user.Platform, &loginName, &user.Username, &user.PasswordHash, &user.Name, &user.Email,
-		&phone, &avatarURL, &studentNo, &workID, &idCard, &titleIDs, &oauth, &user.Status,
-		&user.LastLoginAt, &user.CreatedAt, &user.UpdatedAt,
-	)
+	u, err := h.Service.GetUserByID(ctx, id)
 	if err != nil {
-		return user, err
+		return domain.User{}, err
 	}
-	user.TenantID = tenantID
-	user.OrgNodeID = orgNodeID
-	user.MajorID = majorID
-	user.LoginName = loginName
-	user.Phone = phone
-	user.AvatarURL = avatarURL
-	user.StudentNo = studentNo
-	user.WorkID = workID
-	user.IDCard = idCard
-	user.TitleIDs = titleIDs
-	user.Oauth = oauth
-	return user, nil
+	return *u, nil
 }
 
 func (h *AuthHandler) fetchInstitution(ctx context.Context, id string) (*domain.Institution, error) {
-	var inst domain.Institution
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, type, name, credit_code, logo, intro, contact_name, contact_phone, contact_email,
-		       qualification_file, status, org_code, balance, total_spent, total_income, created_at, updated_at
-		FROM institutions WHERE id = $1
-	`, id).Scan(
-		&inst.ID, &inst.Type, &inst.Name, &inst.CreditCode, &inst.Logo, &inst.Intro,
-		&inst.ContactName, &inst.ContactPhone, &inst.ContactEmail, &inst.QualificationFile,
-		&inst.Status, &inst.OrgCode, &inst.Balance, &inst.TotalSpent, &inst.TotalIncome,
-		&inst.CreatedAt, &inst.UpdatedAt,
-	)
-	if err != nil {
-		return nil, err
-	}
-	tags, _ := h.fetchInstitutionTags(ctx, inst.ID)
-	inst.ExpertiseTags = tags
-	return &inst, nil
+	return h.Service.GetInstitution(ctx, id)
 }
 
 func (h *AuthHandler) fetchInstitutionTags(ctx context.Context, institutionID string) ([]string, error) {
-	rows, err := h.DB.Query(ctx, `SELECT tag_value FROM institution_expertise_tags WHERE institution_id = $1 ORDER BY tag_value`, institutionID)
+	inst, err := h.Service.GetInstitution(ctx, institutionID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
-	var tags []string
-	for rows.Next() {
-		var t string
-		if err := rows.Scan(&t); err == nil {
-			tags = append(tags, t)
-		}
-	}
-	return tags, nil
+	return inst.ExpertiseTags, nil
 }
 
 func (h *AuthHandler) fetchTenantByID(ctx context.Context, id string) *domain.Tenant {
-	var t domain.Tenant
-	var logo, domainVal, enterpriseCode, contact, phone, address, description *string
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, admin_ids, status, created_at, updated_at
-		FROM tenants WHERE id = $1
-	`, id).Scan(
-		&t.ID, &t.Name, &t.Code, &logo, &domainVal, &enterpriseCode, &contact, &phone, &address, &description,
-		&t.AdminIDs, &t.Status, &t.CreatedAt, &t.UpdatedAt,
-	)
-	if err != nil {
-		return nil
-	}
-	t.LogoURL = logo
-	t.Domain = domainVal
-	t.EnterpriseCode = enterpriseCode
-	t.Contact = contact
-	t.Phone = phone
-	t.Address = address
-	t.Description = description
-	return &t
+	return h.Service.GetTenantByID(ctx, id)
 }
 
 func (h *AuthHandler) fetchOrganizationByID(ctx context.Context, id string) *domain.Organization {
-	var o domain.Organization
-	var parentID *string
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, tenant_id, name, type_id, parent_id, sort_order, member_count, created_at, updated_at
-		FROM organizations WHERE id = $1
-	`, id).Scan(
-		&o.ID, &o.TenantID, &o.Name, &o.TypeID, &parentID, &o.SortOrder, &o.MemberCount, &o.CreatedAt, &o.UpdatedAt,
-	)
-	if err != nil {
-		return nil
-	}
-	o.ParentID = parentID
-	return &o
+	return h.Service.GetOrganizationByID(ctx, id)
 }
 
 func (h *AuthHandler) fetchMajorByID(ctx context.Context, id string) *domain.Major {
-	var m domain.Major
-	var alias *string
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, tenant_id, code, name, alias, enabled, created_at, updated_at
-		FROM majors WHERE id = $1
-	`, id).Scan(
-		&m.ID, &m.TenantID, &m.Code, &m.Name, &alias, &m.Enabled, &m.CreatedAt, &m.UpdatedAt,
-	)
-	if err != nil {
-		return nil
-	}
-	m.Alias = alias
-	return &m
+	return h.Service.GetMajorByID(ctx, id)
 }
 
 func (h *AuthHandler) fetchUserRoles(ctx context.Context, userID string) []domain.Role {
-	rows, err := h.DB.Query(ctx, `
-		SELECT r.id, r.tenant_id, r.code, r.name, r.description, r.permissions, r.user_count, r.status, r.created_at
-		FROM roles r
-		JOIN user_roles ur ON ur.role_id = r.id
-		WHERE ur.user_id = $1
-	`, userID)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-
-	var roles []domain.Role
-	for rows.Next() {
-		var r domain.Role
-		var description *string
-		if err := rows.Scan(&r.ID, &r.TenantID, &r.Code, &r.Name, &description, &r.Permissions, &r.UserCount, &r.Status, &r.CreatedAt); err != nil {
-			continue
-		}
-		r.Description = description
-		roles = append(roles, r)
-	}
-	return roles
+	return h.Service.ListUserRoles(ctx, userID)
 }
 
 func (h *AuthHandler) fetchUserRoleCodes(ctx context.Context, userID string) []string {
-	rows, err := h.DB.Query(ctx, `
-		SELECT r.code
-		FROM roles r
-		JOIN user_roles ur ON ur.role_id = r.id
-		WHERE ur.user_id = $1
-		ORDER BY r.created_at
-	`, userID)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-
-	var codes []string
-	for rows.Next() {
-		var code string
-		if err := rows.Scan(&code); err == nil {
-			codes = append(codes, code)
-		}
-	}
-	return codes
+	return h.Service.ListUserRoleCodes(ctx, userID)
 }
 
 func (h *AuthHandler) fetchMergedPermissions(ctx context.Context, userID string) domain.JSONMap {
