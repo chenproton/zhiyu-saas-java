@@ -203,7 +203,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		evaluationBatchHandler:        handler.NewEvaluationBatchHandler(db),
 		randomDrawQuestionHandler:     &handler.RandomDrawQuestionHandler{Service: service.NewEvaluationService(svc)},
 		landingHandler:                &handler.LandingHandler{DB: db},
-		certGradeHandler:              &handler.CertGradeHandler{DB: db},
+		certGradeHandler:              &handler.CertGradeHandler{Service: service.NewEvaluationService(svc)},
 		resourceLibraryHandler:        &handler.ResourceLibraryHandler{Service: service.NewResourceService(svc)},
 		onSiteQuestionLibraryHandler:  &handler.OnSiteQuestionLibraryHandler{DB: db, Store: store.NewOnSiteQuestionLibraryStore(db)},
 		jobAbilityResultHandler:       handler.NewJobAbilityResultHandler(db),

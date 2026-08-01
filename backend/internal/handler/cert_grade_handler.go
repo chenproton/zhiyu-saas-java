@@ -4,12 +4,12 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 )
 
 type CertGradeHandler struct {
-	DB *pgxpool.Pool
+	Service *service.EvaluationService
 }
 
 type CompItemDTO struct {
@@ -54,8 +54,8 @@ func (h *CertGradeHandler) ListGrades(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var positionTenantID string
-	if err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM career_positions WHERE id = $1`, positionID).Scan(&positionTenantID); err != nil {
+	positionTenantID, err := h.Service.PositionTenantID(r.Context(), positionID)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
 	}
@@ -63,39 +63,10 @@ func (h *CertGradeHandler) ListGrades(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gradeRows, err := h.DB.Query(r.Context(), `
-		SELECT id, position_id, grade_year, total_ability_points, avg_achievement_rate, last_updated
-		FROM certification_grade_data
-		WHERE position_id = $1
-		ORDER BY grade_year DESC
-	`, positionID)
+	grades, allComps, allLB, err := h.Service.ListCertGrades(r.Context(), positionID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询grade data失败")
 		return
-	}
-	defer gradeRows.Close()
-
-	type gradeRow struct {
-		ID                 string
-		PositionID         string
-		GradeYear          int
-		TotalAbilityPoints int
-		AvgAchievementRate *float64
-		LastUpdated        string
-	}
-	var grades []gradeRow
-	var gradeIDs []string
-	for gradeRows.Next() {
-		var g gradeRow
-		var lu interface{}
-		if err := gradeRows.Scan(&g.ID, &g.PositionID, &g.GradeYear, &g.TotalAbilityPoints, &g.AvgAchievementRate, &lu); err != nil {
-			continue
-		}
-		if t, ok := lu.(interface{ Format(string) string }); ok {
-			g.LastUpdated = t.Format("2006-01-02")
-		}
-		grades = append(grades, g)
-		gradeIDs = append(gradeIDs, g.ID)
 	}
 
 	if len(grades) == 0 {
@@ -103,65 +74,10 @@ func (h *CertGradeHandler) ListGrades(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type compRow struct {
-		GradeDataID  string
-		DutyName     string
-		ItemName     string
-		TargetLevel  int
-		CurrentLevel int
-		Description  string
-		SortOrder    int
-	}
-
-	var allComps []compRow
-	if len(gradeIDs) > 0 {
-		compRows, err := h.DB.Query(r.Context(), `
-			SELECT grade_data_id, duty_name, item_name, target_level, current_level,
-				COALESCE(description, ''), sort_order
-			FROM certification_competency_requirements
-			WHERE grade_data_id = ANY($1)
-			ORDER BY grade_data_id, sort_order
-		`, gradeIDs)
-		if err == nil {
-			defer compRows.Close()
-			for compRows.Next() {
-				var c compRow
-				if err := compRows.Scan(&c.GradeDataID, &c.DutyName, &c.ItemName, &c.TargetLevel, &c.CurrentLevel, &c.Description, &c.SortOrder); err == nil {
-					allComps = append(allComps, c)
-				}
-			}
-		}
-	}
-
-	type lbRow struct {
-		GradeDataID     string
-		StudentName     string
-		ClassName       string
-		MajorName       string
-		AchievementRate float64
-		GradeLabel      string
-		SortOrder       int
-		UserID          string
-	}
-
-	var allLB []lbRow
-	if len(gradeIDs) > 0 {
-		lbRows, err := h.DB.Query(r.Context(), `
-			SELECT cgl.grade_data_id, cgl.student_name, COALESCE(cgl.class_name, ''), COALESCE(m.name, '') AS major_name,
-				COALESCE(cgl.achievement_rate, 0), COALESCE(cgl.grade_label, ''), cgl.sort_order, cgl.user_id
-			FROM certification_grade_leaderboard cgl
-			LEFT JOIN majors m ON m.id = cgl.major_id
-			WHERE cgl.grade_data_id = ANY($1)
-			ORDER BY cgl.grade_data_id, cgl.sort_order
-		`, gradeIDs)
-		if err == nil {
-			defer lbRows.Close()
-			for lbRows.Next() {
-				var l lbRow
-				if err := lbRows.Scan(&l.GradeDataID, &l.StudentName, &l.ClassName, &l.MajorName, &l.AchievementRate, &l.GradeLabel, &l.SortOrder, &l.UserID); err == nil {
-					allLB = append(allLB, l)
-				}
-			}
+	lastUpdatedMap := make(map[string]string)
+	for _, g := range grades {
+		if g.LastUpdated != nil && len(*g.LastUpdated) >= 10 {
+			lastUpdatedMap[g.ID] = (*g.LastUpdated)[:10]
 		}
 	}
 
@@ -170,7 +86,7 @@ func (h *CertGradeHandler) ListGrades(w http.ResponseWriter, r *http.Request) {
 		gradeKey := itoa(g.GradeYear)
 		dto := GradeDataDTO{
 			TotalPoints: g.TotalAbilityPoints,
-			LastUpdated: g.LastUpdated,
+			LastUpdated: lastUpdatedMap[g.ID],
 		}
 		if g.AvgAchievementRate != nil {
 			dto.AvgRate = *g.AvgAchievementRate
