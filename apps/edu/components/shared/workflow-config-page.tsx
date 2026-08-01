@@ -1,7 +1,7 @@
 "use client"
 
 import { GitBranch, Pencil, Plus, Trash2 } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -50,7 +50,7 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
     [workflows, filterMajorId]
   )
 
-  const loadWorkflows = async () => {
+  const loadWorkflows = useCallback(async () => {
     setLoading(true)
     try {
       const res = await workflowApi.list({ limit: 1000 })
@@ -58,21 +58,25 @@ export function WorkflowConfigPage({ subtitle }: WorkflowConfigPageProps) {
     } catch (err: any) {
       toast({ variant: "destructive", title: "加载失败", description: err.message || "无法获取审批流程" })
     } finally { setLoading(false) }
-  }
+  }, [toast])
 
-  const loadMajors = async () => { try { const res = await majorApi.list(); setMajors(res.items || []) } catch {} }
+  const loadMajors = useCallback(async () => {
+    try {
+      const res = await majorApi.list()
+      setMajors(res.items || [])
+    } catch {}
+  }, [])
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      await loadWorkflows()
-      await loadMajors()
+      if (!cancelled) await loadWorkflows()
+      if (!cancelled) await loadMajors()
     })()
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [loadWorkflows, loadMajors])
 
   const reset = () => { setName(""); setDescription(""); setSteps([{ ...DEFAULT_STEP }]); setMajorIds([]); setEditId(null); setError(null) }
 

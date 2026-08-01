@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -246,7 +246,7 @@ export default function OrgStructurePage() {
     }
   }
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!tenantId) {
       setIsLoading(false)
       setError("未获取到租户信息，请重新登录")
@@ -268,14 +268,17 @@ export default function OrgStructurePage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [tenantId])
 
   useEffect(() => {
+    let cancelled = false
     ;(async () => {
-      await fetchData()
+      if (!cancelled) await fetchData()
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantId])
+    return () => {
+      cancelled = true
+    }
+  }, [fetchData])
 
   const {
     fileInputRef,

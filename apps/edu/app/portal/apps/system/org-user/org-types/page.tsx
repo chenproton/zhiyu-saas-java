@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -36,7 +36,7 @@ export default function OrgTypesPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<OrgType | null>(null)
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!tenantId) {
       setIsLoading(false)
       setError("未获取到租户信息，请重新登录")
@@ -52,18 +52,17 @@ export default function OrgTypesPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [tenantId, searchTerm])
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      await fetchData()
+      if (!cancelled) await fetchData()
     })()
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantId, searchTerm])
+  }, [fetchData])
 
   const filteredTypes = orgTypes.filter((type) => type.name.includes(searchTerm))
 

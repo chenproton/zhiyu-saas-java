@@ -218,60 +218,61 @@ function AddSystemPageInner() {
     }).catch(() => setMajors([]))
   }, [])
 
-  useEffect(() => {
+  const loadCourse = useCallback(async () => {
     if (!editId) return
-    ;(async () => {
-      setLoadingEdit(true)
-      try {
-        const [course, nodeRes, resRes] = await Promise.all([
-          courseApi.get(editId),
-          courseNodeApi.list({ courseId: editId }),
-          nodeResourceApi.list({ courseId: editId, limit: 200 }),
-        ])
-        setCourseId(course.id)
-        setCourseName(course.name || "")
-        if (course.description) setCourseDescription(course.description)
-        setCourseDescriptionPdf(((course as any).evalData?.descriptionPdf) || null)
-        if (course.coverImage) setCoverImage(course.coverImage)
-        if (course.majorId) setMajor(course.majorId)
-        if (course.batchId) setBatchId(course.batchId)
-        setOriginalStatus(course.status || "draft")
-        setAbilityPoints((course.abilityPointIds || []).map((id: string) => {
-          const found = abilityPool.find((a) => a.id === id)
-          return found || { id, name: id }
-        }))
-        setResourcePool((resRes.items || []).map((r: any) => ({
-          id: r.id,
-          name: r.name,
-          type: r.type,
-          url: r.url || r.URL,
-          description: r.description,
-          size: r.size,
-          uploadedBy: r.uploadedBy,
-          uploadedAt: r.uploadedAt,
-        })))
-        const loadedNodes = (nodeRes.items || []) as SystemCourseNode[]
-        setNodes(loadedNodes)
-        if (loadedNodes.length > 0) {
-          setSelectedNodeId(loadedNodes[0].id)
-        }
-        const initialModes: Record<string, AddMode> = {}
-        loadedNodes.forEach((n) => {
-          if (n.type === "original") {
-            initialModes[n.id] = "quote"
-          } else {
-            initialModes[n.id] = "upload"
-          }
-        })
-        setNodeModes((prev) => ({ ...prev, ...initialModes }))
-      } catch (e: any) {
-        toast({ title: e.message || "加载课程失败", variant: "destructive" })
-      } finally {
-        setLoadingEdit(false)
+    setLoadingEdit(true)
+    try {
+      const [course, nodeRes, resRes] = await Promise.all([
+        courseApi.get(editId),
+        courseNodeApi.list({ courseId: editId }),
+        nodeResourceApi.list({ courseId: editId, limit: 200 }),
+      ])
+      setCourseId(course.id)
+      setCourseName(course.name || "")
+      if (course.description) setCourseDescription(course.description)
+      setCourseDescriptionPdf(((course as any).evalData?.descriptionPdf) || null)
+      if (course.coverImage) setCoverImage(course.coverImage)
+      if (course.majorId) setMajor(course.majorId)
+      if (course.batchId) setBatchId(course.batchId)
+      setOriginalStatus(course.status || "draft")
+      setAbilityPoints((course.abilityPointIds || []).map((id: string) => {
+        const found = abilityPool.find((a) => a.id === id)
+        return found || { id, name: id }
+      }))
+      setResourcePool((resRes.items || []).map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        type: r.type,
+        url: r.url || r.URL,
+        description: r.description,
+        size: r.size,
+        uploadedBy: r.uploadedBy,
+        uploadedAt: r.uploadedAt,
+      })))
+      const loadedNodes = (nodeRes.items || []) as SystemCourseNode[]
+      setNodes(loadedNodes)
+      if (loadedNodes.length > 0) {
+        setSelectedNodeId(loadedNodes[0].id)
       }
-    })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- editId-only trigger, abilityPool loaded separately
-  }, [editId])
+      const initialModes: Record<string, AddMode> = {}
+      loadedNodes.forEach((n) => {
+        if (n.type === "original") {
+          initialModes[n.id] = "quote"
+        } else {
+          initialModes[n.id] = "upload"
+        }
+      })
+      setNodeModes((prev) => ({ ...prev, ...initialModes }))
+    } catch (e: any) {
+      toast({ title: e.message || "加载课程失败", variant: "destructive" })
+    } finally {
+      setLoadingEdit(false)
+    }
+  }, [editId, abilityPool, toast])
+
+  useEffect(() => {
+    loadCourse()
+  }, [loadCourse])
 
   const handleAddNode = useCallback((parentId: string | null, name: string, order: number, type?: NodeRefType, sourceId?: string, sourceName?: string) => {
     const newNode: SystemCourseNode = {
@@ -344,7 +345,9 @@ function AddSystemPageInner() {
   const [grainCourses, setGrainCourses] = useState<GrainCourseOption[]>([])
 
   useEffect(() => {
+    let cancelled = false
     courseApi.list({ type: "granular" }).then((res) => {
+      if (cancelled) return
       setGrainCourses((res.items || []).map((c) => ({
         id: c.id,
         name: c.name,
@@ -353,7 +356,8 @@ function AddSystemPageInner() {
         duration: c.onlineHours ?? c.nodeCount ?? 0,
         difficulty: c.difficulty ?? 0,
       })))
-    }).catch(() => setGrainCourses([]))
+    }).catch(() => { if (!cancelled) setGrainCourses([]) })
+    return () => { cancelled = true }
   }, [])
 
   const filteredGrainCourses = useMemo(() => {
@@ -390,14 +394,15 @@ function AddSystemPageInner() {
   /* module 2: knowledge points */
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePointItem[]>([])
   const [knowledgePool, setKnowledgePool] = useState<KnowledgePointItem[]>([])
-  const customKnowledgePointIds = new Set<string>()
+  const customKnowledgePointIdsRef = useRef<Set<string>>(new Set())
 
-  useEffect(() => {
-    knowledgeApi.list({ limit: 200 }).then((res) => {
-      customKnowledgePointIds.clear()
+  const loadKnowledgePool = useCallback(async () => {
+    try {
+      const res = await knowledgeApi.list({ limit: 200 })
+      const customIds = new Set<string>()
       ;(res.items || []).forEach((k) => {
         if (k.sourceType === "course" && k.sourceId === editId) {
-          customKnowledgePointIds.add(k.id)
+          customIds.add(k.id)
         }
       })
       setKnowledgePool((res.items || []).map((k) => ({
@@ -405,11 +410,16 @@ function AddSystemPageInner() {
         name: k.name,
         code: k.code,
         description: k.description,
-        linked: !customKnowledgePointIds.has(k.id),
+        linked: !customIds.has(k.id),
       })))
-    }).catch(() => setKnowledgePool([]))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    } catch {
+      setKnowledgePool([])
+    }
+  }, [editId])
+
+  useEffect(() => {
+    loadKnowledgePool()
+  }, [loadKnowledgePool])
 
   /* module 3: resources */
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([])
@@ -439,14 +449,13 @@ function AddSystemPageInner() {
         name: kp.name,
         code: kp.code,
         description: kp.description,
-        linked: !customKnowledgePointIds.has(kp.id),
+        linked: true,
       }))
     )
     setSelectedResourceIds((node.resources || []).map((r) => r.id))
     setDifficulty(node.difficulty || 0)
     const nodeEvalData = (node.evalData || {}) as { methods?: string[]; evalRuleConfig?: EvalRuleConfig }
     setNodeEvalRuleConfig(nodeEvalData.evalRuleConfig)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   /* load draft when selected node changes */
@@ -1114,7 +1123,7 @@ function AddSystemPageInner() {
                         onChange={setKnowledgePoints}
                         onAddCustom={(name, description) => {
                           const newId = `kp-custom-${Date.now()}`
-                          customKnowledgePointIds.add(newId)
+                          customKnowledgePointIdsRef.current.add(newId)
                           const newKp: KnowledgePointItem = {
                             id: newId,
                             name,

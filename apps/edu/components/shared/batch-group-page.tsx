@@ -2,7 +2,7 @@
 
 import { Check, FolderKanban, Pencil, Plus, Power, RotateCcw, Search, Trash2 } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -107,7 +107,7 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
     }
   }, [tenantId, toast])
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     try {
       const [batchRes, wfRes] = await Promise.all([
@@ -127,18 +127,17 @@ export function BatchGroupPage({ api, subtitle, namePlaceholder, workflowHint, d
     } finally {
       setLoading(false)
     }
-  }
+  }, [api, workflowApi, toast])
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      await loadData()
+      if (!cancelled) await loadData()
     })()
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [loadData])
 
   const filteredWorkflows = useMemo(() => {
     if (selectedMajorId === "all") return workflows

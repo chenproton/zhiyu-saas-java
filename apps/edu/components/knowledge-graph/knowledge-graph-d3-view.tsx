@@ -244,6 +244,7 @@ export function KnowledgeGraphD3View({ nodes, edges, title, description, compact
     }, 800)
 
     return () => { clearTimeout(fitTimer); simulation.stop(); svg.on(".zoom", null) }
+    // 完整重绘代价高，仅当数据/尺寸变化时重建；样式更新由下方独立 effect 处理
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredNodes, filteredEdges, dims])
 
@@ -335,6 +336,7 @@ export function KnowledgeGraphD3View({ nodes, edges, title, description, compact
         .call(zoom.transform as any, d3.zoomIdentity.translate(tx, ty).scale(scale))
     }, 80)
     return () => clearTimeout(timer)
+    // 仅在选中节点或高亮集合变化时调整视口；dims 变化不重新触发自动聚焦
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, highlightNodeIds])
 

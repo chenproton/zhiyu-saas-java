@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { BookOpen, Lightbulb, Award, MessageSquare, FileText, Table, Image, Link, Music, Video, Archive, Building, Wrench, AppWindow, HelpCircle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -86,7 +86,7 @@ export default function MyResourcesPage() {
 
   const userId = user?.id
 
-  const loadKnowledge = async () => {
+  const loadKnowledge = useCallback(async () => {
     setLoadingKnowledge(true)
     try {
       const res = await knowledgeApi.list({ creatorId: userId!, limit: 500 })
@@ -94,9 +94,9 @@ export default function MyResourcesPage() {
     } catch (err: any) {
       toast({ variant: "destructive", title: "加载知识点失败", description: err.message })
     } finally { setLoadingKnowledge(false) }
-  }
+  }, [userId, toast])
 
-  const loadAbilities = async () => {
+  const loadAbilities = useCallback(async () => {
     setLoadingAbility(true)
     try {
       const res = await abilityApi.list({ creatorId: userId!, limit: 500 })
@@ -104,9 +104,9 @@ export default function MyResourcesPage() {
     } catch (err: any) {
       toast({ variant: "destructive", title: "加载能力点失败", description: err.message })
     } finally { setLoadingAbility(false) }
-  }
+  }, [userId, toast])
 
-  const loadCertificates = async () => {
+  const loadCertificates = useCallback(async () => {
     setLoadingCertificates(true)
     try {
       const res = await certificateLibraryApi.list({ creatorId: userId!, limit: 500 })
@@ -114,9 +114,9 @@ export default function MyResourcesPage() {
     } catch (err: any) {
       toast({ variant: "destructive", title: "加载证书失败", description: err.message })
     } finally { setLoadingCertificates(false) }
-  }
+  }, [userId, toast])
 
-  const loadQuestions = async () => {
+  const loadQuestions = useCallback(async () => {
     setLoadingQuestions(true)
     try {
       const res = await onSiteQuestionLibraryApi.list({ creatorId: userId!, limit: 500 })
@@ -124,9 +124,9 @@ export default function MyResourcesPage() {
     } catch (err: any) {
       toast({ variant: "destructive", title: "加载问答题失败", description: err.message })
     } finally { setLoadingQuestions(false) }
-  }
+  }, [userId, toast])
 
-  const loadResourceKind = async (kind: ResourceKind) => {
+  const loadResourceKind = useCallback(async (kind: ResourceKind) => {
     setLoadingResourceKind(kind)
     try {
       const res = await resourceLibraryApi.list({ uploadedBy: userId!, resourceType: kind, limit: 500 })
@@ -134,27 +134,26 @@ export default function MyResourcesPage() {
     } catch (err: any) {
       toast({ variant: "destructive", title: "加载资源失败", description: err.message })
     } finally { setLoadingResourceKind(null) }
-  }
+  }, [userId, toast])
 
   useEffect(() => {
     if (!userId) return
 
     if (activeTab === "knowledge" && knowledgeItems.length === 0) {
-      (async () => { await loadKnowledge() })()
+      loadKnowledge()
     } else if (activeTab === "ability" && abilityItems.length === 0) {
-      (async () => { await loadAbilities() })()
+      loadAbilities()
     } else if (activeTab === "certificates" && certificateItems.length === 0) {
-      (async () => { await loadCertificates() })()
+      loadCertificates()
     } else if (activeTab === "questions" && questionItems.length === 0) {
-      (async () => { await loadQuestions() })()
+      loadQuestions()
     } else if (activeTab.startsWith("resource:")) {
       const kind = activeTab.replace("resource:", "") as ResourceKind
       if (resourceItemsMap[kind].length === 0) {
-        (async () => { await loadResourceKind(kind) })()
+        loadResourceKind(kind)
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- load functions and item lengths are intentionally excluded to avoid infinite loops: the effect only triggers initial fetch when item list is empty
-  }, [activeTab, userId])
+  }, [activeTab, userId, knowledgeItems.length, abilityItems.length, certificateItems.length, questionItems.length, resourceItemsMap, loadKnowledge, loadAbilities, loadCertificates, loadQuestions, loadResourceKind])
 
   const countForTab = (tab: TabKey) => {
     if (tab === "knowledge") return knowledgeItems.length

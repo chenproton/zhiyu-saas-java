@@ -169,24 +169,6 @@ function generateUUID(): string {
   })
 }
 
-// Local-textarea: prevents parent re-render on keystroke, syncs on blur.
-// Defined at module level so its reference is stable across renders.
-function LocalTextarea({ id, defaultValue, onBlurSync, ...rest }: any) {
-  const ref = useRef<HTMLTextAreaElement>(null)
-  // Sync only when the field identity changes; parent blur-sync is the source of truth.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (ref.current && defaultValue != null) ref.current.value = defaultValue }, [id])
-  return (
-    <textarea
-      ref={ref}
-      defaultValue={defaultValue}
-      className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-      onBlur={() => { if (ref.current && onBlurSync) onBlurSync(ref.current.value) }}
-      {...rest}
-    />
-  )
-}
-
 // ============ Types & Configs ============
 
 type CardType = "info" | "description" | "knowledge" | "ability" | "resources" | "evaluation" | "evaluationRules" | "weight"

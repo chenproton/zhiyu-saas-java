@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -57,7 +57,7 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
   const [viewPassword, setViewPassword] = useState<{ admin: TenantAdmin; password: string } | null>(null)
   const { toast } = useToast()
 
-  const fetchAdmins = async () => {
+  const fetchAdmins = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
@@ -68,18 +68,17 @@ export function SchoolAdminManager({ tenantId, fetcher }: SchoolAdminManagerProp
     } finally {
       setLoading(false)
     }
-  }
+  }, [fetcher])
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      await fetchAdmins()
+      if (!cancelled) await fetchAdmins()
     })()
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantId])
+  }, [fetchAdmins])
 
   const startAdd = () => {
     setInline({ username: "", name: "" })

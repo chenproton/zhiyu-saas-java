@@ -186,15 +186,18 @@ export default function SceneLearnPage() {
       .then((res) => {
         const tList = res.items || []
         setTasks(tList)
-        if (targetTaskId && tList.find((t) => t.id === targetTaskId)) {
-          setActiveTaskId(targetTaskId)
-        } else if (tList.length > 0 && !activeTaskId) {
-          setActiveTaskId(tList[0].id)
-        }
+        setActiveTaskId((prev) => {
+          if (targetTaskId && tList.find((t) => t.id === targetTaskId)) {
+            return targetTaskId
+          }
+          if (tList.length > 0 && !prev) {
+            return tList[0].id
+          }
+          return prev
+        })
       })
       .catch(() => setTasks([]))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, scenario])
+  }, [id, scenario, targetTaskId])
 
   useEffect(() => {
     if (!id || !scenario) return

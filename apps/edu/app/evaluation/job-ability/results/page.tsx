@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { ChevronLeft, ChevronRight, Eye, RefreshCw, Search } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -111,28 +111,28 @@ function JobAbilityResultsContent() {
   }
 
   // 左侧岗位汇总
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const items = await jobAbilityResultApi.summary()
-        setSummary(items || [])
-        if (!positionIdParam && items && items.length > 0) {
-          setLoading(true)
-          setSelectedPositionId(items[0].positionId)
-        }
-      } catch (err) {
-        toast({
-          title: "加载失败",
-          description: err instanceof Error ? err.message : "获取岗位汇总失败",
-          variant: "destructive",
-        })
-      } finally {
-        setSummaryLoading(false)
+  const loadSummary = useCallback(async () => {
+    try {
+      const items = await jobAbilityResultApi.summary()
+      setSummary(items || [])
+      if (!positionIdParam && items && items.length > 0) {
+        setLoading(true)
+        setSelectedPositionId(items[0].positionId)
       }
+    } catch (err) {
+      toast({
+        title: "加载失败",
+        description: err instanceof Error ? err.message : "获取岗位汇总失败",
+        variant: "destructive",
+      })
+    } finally {
+      setSummaryLoading(false)
     }
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [positionIdParam, toast])
+
+  useEffect(() => {
+    loadSummary()
+  }, [loadSummary])
 
   // 右侧结果列表
   useEffect(() => {

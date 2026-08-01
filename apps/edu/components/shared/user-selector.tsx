@@ -212,11 +212,11 @@ export function UserSelector({
       if (cancelled) return
       const fetched = results
         .filter((r): r is PromiseFulfilledResult<User> => r.status === "fulfilled" && !!r.value)
-        .map((r) => r.value)
-      mergeUserCache(fetched)
+      if (fetched.length === 0) return
+      mergeUserCache(fetched.map((r) => r.value))
     })
     return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // valueKey 已稳定化 value 内容，避免数组引用变化导致重复请求
   }, [valueKey, userCache, usePortalApi, mergeUserCache])
 
   useEffect(() => {
