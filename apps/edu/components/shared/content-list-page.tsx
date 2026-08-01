@@ -480,19 +480,31 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
 
   // ─── Handlers ──────────────────────────────────────────────────────────
 
+  // 批量提交审批使用锁防止重复触发（双击按钮/并发调用），
+  // 避免同一岗位被 submit 两次导致第二次返回 400（pending -> pending）
+  const batchSubmitLock = useRef(false)
+
   const doBatchSubmit = async (submitItems: { id: string; batchId: string }[]) => {
-    for (const { id, batchId } of submitItems) {
-      const item = frontItems.find((i) => i.id === id)
-      const batch = batches.find((b) => b.id === batchId)
-      if (!batch) {
-        continue
+    if (batchSubmitLock.current) {
+      return
+    }
+    batchSubmitLock.current = true
+    try {
+      for (const { id, batchId } of submitItems) {
+        const item = frontItems.find((i) => i.id === id)
+        const batch = batches.find((b) => b.id === batchId)
+        if (!batch) {
+          continue
+        }
+        try {
+          await itemApi.submit(id)
+          await approvalApi.create({ targetType: approvalTargetType, targetId: id, workflowId: batch.workflowId })
+        } catch (err: any) {
+          toast({ variant: "destructive", title: "提交审批失败", description: err.message || "请稍后重试" })
+        }
       }
-      try {
-        await itemApi.submit(id)
-        await approvalApi.create({ targetType: approvalTargetType, targetId: id, workflowId: batch.workflowId })
-      } catch (err: any) {
-        toast({ variant: "destructive", title: "提交审批失败", description: err.message || "请稍后重试" })
-      }
+    } finally {
+      batchSubmitLock.current = false
     }
   }
 
