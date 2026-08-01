@@ -99,7 +99,7 @@
 
 ## DataProvider（评测数据上下文）
 
-> 工厂模式：`createDataContext()` → Context，`createUseData(ctx)` → Hook，`@zhiyu/ui` 导出。
+> 位于 `apps/edu/components/providers/data-provider.tsx`：用 `createContext()` + `useContext()` 提供题库、题目、试卷、审批等评测数据上下文。
 
 | 数据域 | 方法 |
 |--------|------|
