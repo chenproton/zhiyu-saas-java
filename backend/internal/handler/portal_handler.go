@@ -53,6 +53,7 @@ func (h *PortalHandler) WorkspaceDashboard(w http.ResponseWriter, r *http.Reques
 		dash.Stats = h.schoolAdminStats(r.Context(), claims.TenantID)
 		dash.ResourceStats = h.schoolAdminResourceStats(r.Context(), claims.TenantID)
 		dash.PersonnelStats = h.schoolAdminPersonnelStats(r.Context(), claims.TenantID)
+		dash.ResourceGrowth = h.schoolAdminResourceGrowth(r.Context(), claims.TenantID, 12)
 		dash.Todos = h.schoolAdminTodos(r.Context(), claims.TenantID)
 		dash.Schedule = []domain.WorkspaceScheduleEvent{}
 		respondJSON(w, http.StatusOK, dash)
@@ -200,6 +201,10 @@ func (h *PortalHandler) schoolAdminResourceStats(ctx context.Context, tenantID *
 		{Label: "试卷", Value: examCount, Icon: "file-text", Href: "/evaluation/exams"},
 		{Label: "考试", Value: examUsageCount, Icon: "check-circle", Href: "/evaluation/exam-usage"},
 	}
+}
+
+func (h *PortalHandler) schoolAdminResourceGrowth(ctx context.Context, tenantID *string, months int) []domain.WorkspaceResourceGrowth {
+	return h.Service.SchoolAdminResourceGrowth(ctx, tenantID, months)
 }
 
 func (h *PortalHandler) schoolAdminPersonnelStats(ctx context.Context, tenantID *string) []domain.WorkspacePersonnelStat {

@@ -51,7 +51,10 @@ import { TeacherDashboardTab } from "./_components/teacher-dashboard-tab"
 import { TeacherCoursesTab } from "./_components/teacher-courses-tab"
 import { TeacherPortraitsTab } from "./_components/teacher-portraits-tab"
 import { TeacherProfileTab } from "./_components/teacher-profile-tab"
-import { SchoolAdminDashboardTab } from "./_components/school-admin-dashboard-tab"
+import { SchoolAdminOverviewTab } from "./_components/school-admin-overview-tab"
+import { SchoolAdminResourcesTab } from "./_components/school-admin-resources-tab"
+import { SchoolAdminApprovalsTab } from "./_components/school-admin-approvals-tab"
+import { SchoolAdminPersonnelTab } from "./_components/school-admin-personnel-tab"
 
 // 不同身份的服务台内容（非学生角色保留原展示）
 const roleConfigs = {
@@ -170,7 +173,7 @@ const schoolAdminTabs = [
   { id: "dashboard", label: "工作台首页", icon: LayoutDashboard },
   { id: "resources", label: "资源运营", icon: BookOpen },
   { id: "approvals", label: "审批中心", icon: CheckSquare },
-  { id: "overview", label: "学校概览", icon: Building2 },
+  { id: "personnel", label: "教师学生情况", icon: Users },
   { id: "profile", label: "个人中心", icon: User },
 ]
 
@@ -295,17 +298,17 @@ function SchoolAdminWorkspace() {
   const renderTabContent = () => {
     switch (activeTab) {
       case "dashboard":
-        return <SchoolAdminDashboardTab onTabChange={setActiveTab} />
+        return <SchoolAdminOverviewTab onTabChange={setActiveTab} />
       case "resources":
-        return <SchoolAdminDashboardTab onTabChange={setActiveTab} />
+        return <SchoolAdminResourcesTab />
       case "approvals":
-        return <SchoolAdminDashboardTab onTabChange={setActiveTab} />
-      case "overview":
-        return <SchoolAdminDashboardTab onTabChange={setActiveTab} />
+        return <SchoolAdminApprovalsTab />
+      case "personnel":
+        return <SchoolAdminPersonnelTab />
       case "profile":
         return <ProfileTab />
       default:
-        return <SchoolAdminDashboardTab onTabChange={setActiveTab} />
+        return <SchoolAdminOverviewTab onTabChange={setActiveTab} />
     }
   }
 

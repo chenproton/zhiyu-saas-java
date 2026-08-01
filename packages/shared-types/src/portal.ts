@@ -48,6 +48,16 @@ export interface WorkspacePersonnelStat {
   value: number
 }
 
+export interface WorkspaceResourceGrowth {
+  month: string
+  courses: number
+  scenarios: number
+  careerPositions: number
+  questionBanks: number
+  exams: number
+  examUsages: number
+}
+
 export interface WorkspaceCourse {
   id: string
   code: string
@@ -140,6 +150,7 @@ export interface WorkspaceDashboard {
   stats?: WorkspaceStats
   resourceStats?: WorkspaceResourceStat[]
   personnelStats?: WorkspacePersonnelStat[]
+  resourceGrowth?: WorkspaceResourceGrowth[]
   courses: WorkspaceCourse[]
   sceneTasks: WorkspaceSceneTask[]
   exams: WorkspaceExam[]
