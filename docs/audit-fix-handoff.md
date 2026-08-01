@@ -1,19 +1,21 @@
 # 审计修复交接文档
 
 > 撰写时间：2026-08-01
+> 最后更新：2026-08-02（P1/P2/P4 全部完成，仅剩部署验证）
 > 分支：`fix/eval-rules-runtime-error`
 > 工作目录：`/tmp/fix-eval-runtime`
 > 目标：修复审计报告中除「大文件拆分」外的所有 P0–P4 问题
 
-本文档用于交接给下一个 Agent。已修复部分请直接继承并继续验证；未修复部分请按优先级逐项清零。
+本文档用于交接给下一个 Agent。除「部署验证」与「手工冒烟」外，P0–P4 已全部完成。
 
 ---
 
 ## 一、当前整体结论
 
-- **前端**：`pnpm lint` 0 error（剩余 13 条 warning），`pnpm typecheck` 通过。
-- **后端**：`go vet ./...` 通过，`go build ./...` 通过。
+- **前端**：`pnpm lint` 0 error 0 warning，`pnpm typecheck` 通过。
+- **后端**：`go vet ./...` 通过，`go build ./...` 通过，`gofmt -l .` 为空。
 - **后端测试**：`go test ./...` 因本地 PostgreSQL TLS 连接问题仍无法运行，属于环境阻断，不是代码错误。
+- **单测**：`pnpm test` 全绿（api-client 3 / ui 5 / edu 4 / shared-types 2）。
 - **部署**：尚未执行 `./deploy.sh --branch fix/eval-rules-runtime-error` 验证，需要下一个 Agent 在环境就绪后补跑。
 - **大文件拆分**：明确不在本次修复范围内（见 `docs/components.md` 对 `EvaluationRulesEditor` 的约定）。
 
@@ -53,122 +55,84 @@
 
 ---
 
-## 三、当前 lint 剩余 warning（13 条，建议优先清理）
+## 三、当前 lint 剩余 warning（已全部清零）
 
-运行命令：`cd /tmp/fix-eval-runtime/apps/edu && pnpm lint`
+> 运行命令：`cd /tmp/fix-eval-runtime/apps/edu && pnpm lint` → 0 problems
 
-| 文件 | 行号 | 规则 | 说明 |
-|------|------|------|------|
-| `app/portal/alliance/achievements/[id]/page.tsx` | 55 | `@next/next/no-img-element` | 使用 `<img>`，建议改为 `<Image />` 或禁用规则 |
-| `app/portal/alliance/brands/major/[id]/page.tsx` | 49 | `@next/next/no-img-element` | 同上 |
-| `app/portal/alliance/enterprises/[id]/page.tsx` | 52, 90 | `@next/next/no-img-element` | 同上 |
-| `app/portal/alliance/experts/[id]/page.tsx` | 42, 118 | `@next/next/no-img-element` | 同上 |
-| `app/portal/alliance/projects/[id]/page.tsx` | 51 | `@next/next/no-img-element` | 同上 |
-| `app/portal/apps/system/org-user/org-structure/page.tsx` | 270 | `react-hooks/exhaustive-deps` | `useCallback` 缺少 `mapToOrgNode` |
-| `components/shared/batch-group-page.tsx` | 131 | `react-hooks/exhaustive-deps` | 不必要依赖 `workflowApi` |
-| `components/shared/content-list-page.tsx` | 369 | `react-hooks/exhaustive-deps` | 不必要依赖 `listParamsKey` |
-| `components/shared/user-selector.tsx` | 220 | `react-hooks/exhaustive-deps` | `useEffect` 缺少 `value` |
-| `lib/error-handling.ts` | 28, 31 | `unused-eslint-disable` | 两条 `// eslint-disable-next-line no-console` 当前无对应报错，可删除 |
+原 13 条 warning 处理结果：
 
-> 这些 warning 不影响合并，但会破坏「lint 0 warning」目标。建议作为 P1/P2 收尾时统一清理。
+| 原清单项 | 处理 |
+|---------|------|
+| 6 处 alliance 详情页 `no-img-element` | 改 `next/image`（`unoptimized` 模式，`fill` + 容器或显式尺寸） |
+| org-structure `mapToOrgNode` 缺失依赖 | `mapToOrgNode` 提为模块级纯函数 |
+| batch-group-page 多余 `workflowApi` 依赖 | 移除（模块级静态导入） |
+| content-list-page 多余 `listParamsKey` 依赖 | 参数变化改由 `prevListParamsKey` effect bump `reloadKey` 触发 |
+| user-selector 缺失 `value` 依赖 | 补入（effect 幂等，重复运行无副作用） |
+| error-handling 两条失效 disable | 删除注释 |
 
 ---
 
-## 四、未修复问题清单（按优先级）
+## 四、未修复问题清单（全部完成）
 
-### P1 — 仍需完成
+> 本节原 P1/P2/P4 各条目均已处理完毕，记录处理结果供验收。
 
-#### 1. 共享组件下沉到 `packages/ui`
+### P1 — 已完成
 
-- **目标**：把 `ComboboxSelect`、`MixedTagEditor`、`ImportWizardDialog`、`ImportConfirmDialog` 从 `apps/edu/components/shared/` 迁移到 `packages/ui/src/components/shared/`，`apps/edu/components/shared/` 保留 re-export 薄封装。
-- **阻塞**：本次尝试启动子 Agent 时遇到配额错误，未执行。迁移时需要注意：
-  - `MixedTagEditor` 依赖 `apps/edu/lib/dom-utils.ts` 中的 `createTagElement`，需先复制到 `packages/ui/src/lib/dom-utils.ts`。
-  - `ImportConfirmDialog` 依赖 `apps/edu/lib/api` 的 `ImportPreviewItem` 类型，需把组件内类型改为本地 `{ name?: string; key?: string }[]`，在调用处做类型转换。
-  - 为 `packages/ui` 添加 `eslint.config.mjs` 与 `package.json` 的 `lint` script。
-- **参考文件**：
-  - 源：`apps/edu/components/shared/combobox-select.tsx`
-  - 源：`apps/edu/components/shared/mixed-tag-editor.tsx`
-  - 源：`apps/edu/components/shared/import-wizard-dialog.tsx`
-  - 源：`apps/edu/components/shared/import-confirm-dialog.tsx`
-  - 目标目录：`packages/ui/src/components/shared/`
-  - 目标工具：`packages/ui/src/lib/dom-utils.ts`（新建）
-  - 导出入口：`packages/ui/src/index.ts`
+#### 1. 共享组件下沉到 `packages.ui` ✅（`42d5fb4b`）
 
-#### 2. 隔离模块级可变状态
+- `ComboboxSelect`/`MixedTagEditor`/`ImportWizardDialog`/`ImportConfirmDialog` 已迁移至 `packages/ui/src/components/shared/`
+- `apps/edu/components/shared/` 保留 re-export 薄封装，调用方零改动
+- 新增 `packages/ui/src/lib/dom-utils.ts`（`createTagElement`）
+- `ImportConfirmDialog` 改用本地结构类型 `{ rowNum?; key?; name? }[]`（与 `ImportPreviewItem` 结构兼容，调用处无需转换）
+- `packages/ui` 已添加 `eslint.config.mjs` 与 `lint` script，并清理存量 lint error（`use-toast` 的 `actionTypes`、`use-import-flow` 的 `any`/未用参数、`platform-shell/utils` 未用 import）
 
-| 文件 | 问题 | 建议方案 |
-|------|------|---------|
-| `packages/ui/src/hooks/use-toast.ts` | `let count`、`let memoryState`、`const listeners` 全局单例 | 这是 shadcn 标准模式，但仍是模块级可变状态。可评估改用 React Context；如保留，应在文档中说明。 |
-| `apps/edu/components/shared/resource-preview-modal.tsx` | `let globalZIndexCounter = 100` | 改用 `useRef` 或 CSS `isolation: isolate`/`z-index` 层叠；若必须用全局计数，加版本/清理逻辑。 |
-| `apps/edu/lib/menu-permissions.ts` | `let knownMenuPaths: Set<string> \| undefined` 懒加载缓存 | 加失效策略或挂载时重新加载，避免菜单权限变更后仍用旧缓存。 |
-| `apps/edu/app/scene/scenarios/[id]/edit/tasks/_components/shared-defs.ts` | `_allQuestions`、`_questionCache`、`_loadedExams` 模块级缓存 | 改用 React Context / 查询缓存，或至少加卸载清理，避免跨组件污染。 |
+#### 2. 隔离模块级可变状态 ✅（`f021a1be`）
 
-#### 3. 非豁免 Handler 的 `ListQueryConfig` SQL 片段下沉到 Store
+| 文件 | 处理 |
+|------|------|
+| `packages/ui/src/hooks/use-toast.ts` | 保留 shadcn 标准单例模式，已在 `docs/components.md` 说明（刻意保留，不评估 Context 化） |
+| `resource-preview-modal.tsx` | `globalZIndexCounter` → DOM 派生 `nextZIndex()`（`data-resource-preview` 标记 + `max+1`，弹窗关闭即自然回落） |
+| `menu-permissions.ts` | 懒加载可变缓存 → 模块加载时不可变 `ReadonlySet` 常量（菜单树为静态配置，无需失效策略） |
+| `shared-defs.ts` | 新增 `clearAllCaches()`，任务编辑页（`tasks/page.tsx`）卸载时调用清理 |
 
-以下 handler 仍在自己的文件中定义 `Table` / `SelectColumns` / `ExtraFilter` SQL 片段，需要把 SQL 配置沉淀到对应 store：
+#### 3. 非豁免 Handler 的 `ListQueryConfig` SQL 片段下沉到 Store ✅（`1a8ad8ba`）
 
-- `backend/internal/handler/exam_handler.go:51`
-- `backend/internal/handler/position_handler.go:49-50,127-128,563-564`
-- `backend/internal/handler/question_bank_handler.go:49-50`
-- `backend/internal/handler/scenario_handler.go:104`（列表 SQL）
-- `backend/internal/handler/scheduling_handler.go:364`
-- `backend/internal/handler/teaching_plan_handler.go:55`
-- `backend/internal/handler/training_program_handler.go:60`
-- `backend/internal/handler/user_management_handler.go:106-112`（`ExtraFilter` 中手写 EXISTS / 递归 CTE）
+- 新增 store 方法：`ExamStore.ListConfig()`、`PositionStore.AdminListConfig()/PublicListConfig()/FavoritesListConfig()`、`QuestionBankStore.ListConfig()`、`ScenarioStore.ListConfig()`、`SchedulingStore.ListSchedulesConfig()/ListVenuesConfig()/ListPeriodSlotsConfig()`、`TeachingPlanStore.ListConfig()`、`TrainingProgramStore.ListConfig()`、`UserStore.ListConfig()`
+- 排课列表扫描器/过滤器/列常量一并迁入 `store/scheduling.go`
+- `handler/common.go` 的 `withTx`（死代码）已删除、`lookupIDByName` 迁移至 `import_common.go` 豁免区，`common.go` 不再依赖 `*pgxpool.Pool`
 
-**做法**：在对应 `store/*.go` 中提供预定义 `ListQueryConfig[T]` 或专用方法（如 `ExamStore.ListConfig()`、`UserStore.ListFilter(...)`），handler 只传过滤参数。
+### P2 — 已完成
 
-> `handler/common.go` 中的 `withTx` / `lookupIDByName` 仅被 import/export 豁免文件使用，可整体迁移到 `import_common.go`，让 `common.go` 不再依赖 `*pgxpool.Pool`。
+#### 4. 格式化债务 ✅（`5178d2dd` 前端、`9f9c8b83` 后端）
 
----
+- 根目录新增 `prettier` devDependency 与 `format`/`format:check` scripts，全量格式化 460+ 前端文件
+- `gofmt -w .` 全量格式化 71 个 Go 文件，`gofmt -l .` 已为空
 
-### P2 — 质量基线与格式化
+#### 5. 测试与 lint 覆盖 ✅（`6b6af7e4`）
 
-#### 4. 格式化债务
+- `apps/edu` 新增 Vitest 骨架（`vitest.config.ts`）+ `format-utils` 单测（4 用例）
+- `packages/api-client` 补 `buildQuery` 单测（3 用例）、`packages/shared-types` 补 `getStatusConfig` 单测（2 用例）
+- root `pnpm test` = `pnpm -r test`（4 个 workspace 全跑）；root `pnpm lint` = `pnpm -r lint`
 
-- **Prettier**：当前 `npx prettier --check` 约 512 个前端文件未格式化。需要在根目录增加 Prettier workspace 依赖与 `format`/`format:check` scripts，然后格式化全部前端文件。**建议单独提交**，避免与逻辑变更混在一起。
-- **gofmt**：当前 `gofmt -l .` 约 87 个 Go 文件未格式化。运行 `gofmt -w .` 后单独提交。
+#### 6. 修复剩余 eslint warnings ✅
 
-#### 5. 测试与 lint 覆盖
+见第三节，13 条全部清零。
 
-- `apps/edu` 没有 test script，需要引入 Vitest 骨架并至少覆盖 1–2 个核心 hooks。
-- `packages/api-client`、`packages/shared-types` 有 `test` script 但无测试文件，建议补充基础测试或移除空 script。
-- 统一 root `pnpm test`：应跑全部 workspace 测试，而非只跑 `packages/ui`。
-- `packages/ui` 需要 lint 配置（与 P1 组件下沉一并完成）。
+### P4 — 已完成
 
-#### 6. 修复剩余 eslint warnings
+#### 7. `deploy.sh` 质量门禁与风险操作修正 ✅（`7f6f1578`）
 
-见第三节 13 条 warning 清单。
+- 后端构建前：`gofmt -l .` 检查（未通过直接 die）、`go vet ./...`；`pg_isready "$DATABASE_URL"` 可用时跑 `go test ./...`，不可用仅 warn 跳过
+- 前端构建前：`pnpm typecheck`、`pnpm lint`
+- nginx 配置覆盖前自动备份 `$NGINX_DST.bak.$(date +%Y%m%d%H%M%S)`
+- `docker builder prune --all --force` 需 `--force` 显式参数（`--clean` 单独使用时仅全量重建并 warn）
+- `curl | bash`（Docker/NodeSource）回退安装前 warn 未校验 checksum
 
----
+#### 8. 文档同步 ✅（本文档 + `AGENTS.md` + `docs/refactor-layering.md` + `docs/components.md`）
 
-### P4 — 工具链与文档
-
-#### 7. `deploy.sh` 质量门禁与风险操作修正
-
-- **质量门禁**：当前 `deploy.sh` 完全没有以下门禁，需在构建阶段插入：
-  - 后端构建前：`gofmt -l .` 检查、`go vet ./...`。
-  - 前端构建前：`pnpm typecheck`、`pnpm lint`。
-  - `go test ./...` 因本地 DB 不一定就绪，建议加 DB 可用性检测：不可用则 warn 跳过，不要硬失败。
-- **风险操作修正**：
-  - Nginx 配置覆盖前加 `.bak.$(date)` 备份（行 ~847）。
-  - `--clean` / `docker builder prune --all --force` 等破坏性操作增加二次确认或 `--force` 显式参数。
-  - `curl ... | bash`（Docker/NodeSource 安装）增加 checksum 校验或至少记录 warn。
-
-#### 8. 文档同步
-
-- `AGENTS.md`：
-  - 补充 `ContentActionStore` 作为 store 层复用范例。
-  - 补充 `respondServerError` 作为新增 handler 的 500 错误处理约定。
-  - 更新「提交前检查」为实际可运行的命令（`pnpm typecheck`、`pnpm lint`、`go vet ./...` 等）。
-- `docs/refactor-layering.md`：
-  - 更新现状基线（handler 数量、store 数量、 exemption 列表）。
-  - 补充 `ContentActionStore` 下沉、事务与 500 错误处理、P2 完成范围。
-  - 调整 P3 待办，删除已完成的 handler SQL 下沉项。
-- `docs/components.md`：
-  - 修正 `EvalMethodConfigModule` 文档描述（实际只被课程编辑器使用）。
-  - 补充 `ImportWizardDialog`、`ComboboxSelect`、`MixedTagEditor`、`error-handling` 的使用说明。
-  - 待 P1 组件下沉完成后，更新组件位置说明。
+- `AGENTS.md`：补充 `ContentActionStore`/`respondServerError` 复用范例、提交前检查命令与 deploy.sh 门禁说明
+- `docs/refactor-layering.md`：更新现状基线（handler 121 / store 65 / 豁免 22）、P3 状态（common.go 瘦身、SQL 下沉完成、大文件拆分明确不做）
+- `docs/components.md`：修正 `EvalMethodConfigModule` 描述（仅课程编辑器使用）、补充下沉组件与 `error-handling` 说明、useToast 单例说明
 
 ---
 
@@ -182,33 +146,26 @@
 
 ---
 
-## 六、推荐下一步执行顺序
+## 六、剩余工作（下一个 Agent）
 
-1. **完成 P1 共享组件下沉到 `packages.ui`**（含 lint 配置）。
-2. **P1 隔离模块级可变状态**（优先 `shared-defs.ts` 和 `resource-preview-modal.tsx`）。
-3. **P2 格式化债务**（Prettier + gofmt，单独提交）。
-4. **P2 非豁免 Handler SQL 片段下沉**（可分批按领域处理）。
-5. **P4 `deploy.sh` 质量门禁与风险操作修正**。
-6. **P4 文档同步**（AGENTS.md、refactor-layering.md、components.md）。
-7. **全量验证**：`pnpm typecheck`、`pnpm lint`、`go vet ./...`、`go test ./...`（DB 就绪时）、`./deploy.sh --branch fix/eval-rules-runtime-error`。
+1. **部署验证**（需用户确认后执行）：`./deploy.sh --branch fix/eval-rules-runtime-error`
+2. **冒烟验证**：接口冒烟（岗位/试卷/题库/场景/排课/用户列表分页与过滤），重点确认下沉后的 `ListConfig()` 行为与原来一致
+3. **后端 go test**：本地 PostgreSQL 就绪后补跑 `go test ./...`
+4. **视觉回归**：alliance 详情页图片、ResourcePreviewModal 层级、ComboboxSelect/MixedTagEditor 样式由用户人工确认
 
 ---
 
 ## 七、常用验证命令
 
 ```bash
-# 前端 lint / typecheck
-cd /tmp/fix-eval-runtime/apps/edu && pnpm lint
-cd /tmp/fix-eval-runtime && pnpm typecheck
+# 前端 lint / typecheck / 测试
+cd /tmp/fix-eval-runtime && pnpm lint && pnpm typecheck && pnpm test
 
-# 后端 vet / build / test
-cd /tmp/fix-eval-runtime/backend && go vet ./...
-cd /tmp/fix-eval-runtime/backend && go build ./...
-cd /tmp/fix-eval-runtime/backend && go test ./...
+# 后端 vet / build / test / 格式化
+cd /tmp/fix-eval-runtime/backend && go vet ./... && go build ./... && gofmt -l .
 
 # 格式化检查
-cd /tmp/fix-eval-runtime && npx prettier --check . 2>/dev/null | head
-cd /tmp/fix-eval-runtime/backend && gofmt -l .
+cd /tmp/fix-eval-runtime && pnpm format:check
 
 # 部署（需用户确认）
 cd /tmp/fix-eval-runtime && ./deploy.sh --branch fix/eval-rules-runtime-error
@@ -221,7 +178,7 @@ cd /tmp/fix-eval-runtime && ./deploy.sh --branch fix/eval-rules-runtime-error
 ```bash
 cd /tmp/fix-eval-runtime
 git status --short   # 工作区干净
-git log --oneline -5 # 最近 5 条提交见上文
+git log --oneline -12
 ```
 
 工作区当前无未提交修改。所有已完成修复均已 push 到 `origin/fix/eval-rules-runtime-error`。

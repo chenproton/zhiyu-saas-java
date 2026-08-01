@@ -1,11 +1,12 @@
 # 前端公共组件速查
 
-> **页面级共享壳**与**业务组件**位于 `apps/edu/components/shared/`，长期视情况下沉到 `packages/ui` 或独立包。
-> **通用基础 UI 组件**（4 个）位于 `packages/ui/src/components/shared/`（通过 `@zhiyu/ui` 使用）。
+> **页面级共享壳**与**业务组件**位于 `apps/edu/components/shared/`。
+> **通用 UI/交互组件**位于 `packages/ui/src/components/shared/`（通过 `@zhiyu/ui` 使用，`apps/edu/components/shared/` 保留 re-export 薄封装）：`ComboboxSelect`/`MixedTagEditor`/`ImportWizardDialog`/`ImportConfirmDialog`/`ConfirmDialog`/`StatusBadge`/`TableRowActions`/`HoverActionBar`。
 > **评测配置组件**位于 `apps/edu/app/lesson/admin/_components/eval/`，同时被课程和任务编辑器复用。
 > **任务步骤卡片**位于 `apps/edu/app/scene/scenarios/[id]/edit/tasks/_components/`。
 > **评测专用组件**位于 `apps/edu/components/evaluation/`。
 > **通用 Hooks** 位于 `@/hooks/`（`apps/edu/hooks/`）和 `packages/ui/src/hooks/`。
+> **错误处理工具**：`apps/edu/lib/error-handling.ts`（`reportError`/`withFallback`），关键路径静默失败统一改用它记录。
 
 ## 页面级组件
 
@@ -40,12 +41,15 @@
 
 | 组件 | 文件 | 适用场景 | 关键 Props |
 |------|------|---------|-----------|
-| `StatusBadge` | `status-badge.tsx` | 状态标签（统一颜色体系） | `status` |
-| `ConfirmDialog` | `confirm-dialog.tsx` | 删除/危险操作二次确认 | `open`, `onOpenChange`, `title`, `description`, `variant`, `onConfirm` |
-| `TableRowActions` | `table-row-actions.tsx` | 表格行悬浮操作按钮，替代手写 `group-hover` | 包裹 `<Button>` 子元素 |
-| `HoverActionBar` | `hover-action-bar.tsx` | 非 Table 场景的 hover 操作栏 | 包裹子元素 |
+| `StatusBadge` | `packages/ui` re-export | 状态标签（统一颜色体系） | `status` |
+| `ConfirmDialog` | `packages/ui` re-export | 删除/危险操作二次确认 | `open`, `onOpenChange`, `title`, `description`, `variant`, `onConfirm` |
+| `TableRowActions` | `packages/ui` re-export | 表格行悬浮操作按钮，替代手写 `group-hover` | 包裹 `<Button>` 子元素 |
+| `HoverActionBar` | `packages/ui` re-export | 非 Table 场景的 hover 操作栏 | 包裹子元素 |
+| `ComboboxSelect` | `packages/ui` re-export | 可搜索下拉选择（单选/多选），替换 inline 搜索+Select 实现 | `options`, `value`, `onChange`, `multiple`, `loading`, `renderOption` |
+| `MixedTagEditor` | `packages/ui` re-export | contentEditable 输入框，纯文本与知识点/能力点标签混排（评价维度名/量规指标） | `text`, `knowledgePointIds`, `abilityPointIds`, `onChange`, `compact` |
+| `ImportWizardDialog` | `packages/ui` re-export | Excel 导入两步向导（下载模板→上传→导入），支持受控模式与 `useImportFlow` 组合 | `title`, `guideItems`, `onDownload`, `onImport`, `files?` 等 |
+| `ImportConfirmDialog` | `packages/ui` re-export | 导入重复确认对话框 | `open`, `entityLabel`, `created/duplicates/failed`, `onConfirmOverwrite/onConfirmSkip` |
 | `ResourcePreviewModal` | `resource-preview-modal.tsx` | 文件预览弹窗 | `resource`, `open`, `onOpenChange` |
-| `ImportConfirmDialog` | `import-confirm-dialog.tsx` | 导入重复确认对话框 | `open`, `entityLabel`, `created/duplicates/failed`, `onConfirmOverwrite/onConfirmSkip` |
 | `ResetPasswordDialog` | `reset-password-dialog.tsx` | 重置密码对话框 | `open`, `userId`, `userName`, `onSuccess` |
 | `CoverImageUpload` | `cover-image-upload.tsx` | 封面上传（预览/替换/删除） | `imageUrl`, `uploading`, `label`, `alt`, `onUpload`, `onRemove` |
 | `GranularLessonSelectDialog` | `granular-lesson-select-dialog.tsx` | 课时多选对话框（搜索+勾选+批量确认） | `open`, `onOpenChange`, `granularCourses`, `selectedIds`, `onChange` |
@@ -116,11 +120,11 @@
 | 证书发放 | `listCertRecords`, `createCertRecord`, `updateCertRecord`, `updateCertStatus`, `deleteCertRecord` |
 | 学分转换 | `listCreditRules`, `createCreditRule`, `updateCreditRule`, `deleteCreditRule` |
 
-## 评测配置组件（课程/任务复用）
+## 评测配置组件（课程编辑器使用）
 
-> 组件位于 `apps/edu/components/shared/eval-method-config-module.tsx`（`EvalMethodConfigModule`）与
-> `apps/edu/app/lesson/admin/_components/assessment/course-evaluation-rules-dialog.tsx`（`CourseEvaluationRulesDialog`），
-> 同时被课程编辑器和任务编辑器使用。架构分两层：
+> 组件位于 `apps/edu/components/shared/eval-method-config-module.tsx`（`EvalMethodConfigModule`），
+> 当前仅被课程编辑器（`lesson/admin/system/add`）使用；任务编辑器经 `method-config-dialog.tsx` 复用 `MixedTagEditor` 等共享组件。
+> 架构分两层：
 
 ### 第一层：`EvalMethodConfigModule` — 测评方式选择 + 4 步规则配置
 
@@ -194,6 +198,9 @@
 1. **状态标签**：不要定义本地 `STATUS_CONFIG`，使用 `getStatusConfig()`（`packages/shared-types/src/status.ts`）+ `<StatusBadge>`
 2. **表格操作**：使用 `<TableRowActions>` 和 `<HoverActionBar>`，不要手写 `group-hover:opacity-100`
 3. **删除确认**：使用 `<ConfirmDialog>`，禁止 `window.confirm()`
-4. **导入流程**：使用 `useImportFlow` hook，统一下载模板、预览、去重确认
+4. **导入流程**：使用 `useImportFlow` hook + `ImportWizardDialog`/`ImportConfirmDialog`，统一下载模板、预览、去重确认
 5. **就近放置**：仅被一处使用的子组件放在消费者 `_components/` 下，不要放入 `shared/`
 6. **新增测评方式**：在 `EVALUATION_METHOD_OPTIONS` 数组加一行 + 创建对应的面板组件即可
+7. **错误处理**：关键路径异步失败用 `reportError(err, source)`（`lib/error-handling.ts`）记录，不再静默吞掉
+8. **可搜索下拉**：优先 `ComboboxSelect`（已内置 Command 搜索/多选/清空），不要手写 inline 搜索 + Select/Popover
+9. **useToast 模块级单例**：`packages/ui/src/hooks/use-toast.ts` 采用 shadcn 标准模块级单例模式（`memoryState`/`listeners`/`count`），为刻意保留；若日后需要多实例独立 toast 状态再评估改 React Context

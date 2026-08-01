@@ -1,22 +1,24 @@
 # zhiyu-saas 后端分层重构计划
 
-> 状态：已确认，P0 立规完成，P1 骨架进行中
+> 状态：已确认，P0 立规完成，P1/P2 已完成，P3 部分完成（SQL 下沉/格式化清零，审计修复进行中）
 > 关联红线：见 `AGENTS.md`「二、交付要求」第 6 条
 
-## 一、现状基线（实测）
+## 一、现状基线（实测，2026-08-02 更新）
 
 | 包 | 文件/行数 | 状态 |
 |---|---|---|
-| handler | 108 文件 / 45.8k 行 | 91 个直写 SQL，79 个持有 `DB *pgxpool.Pool`，业务逻辑 + SQL 全部堆积于此 |
-| store | 10 文件 / 2.2k 行 | 独立类型模式已成熟：`AllianceStore`/`RolesStore` + `NewXxxStore(db)` 工厂，仅 10 个 handler 使用 |
-| service | 2 文件 / 847 行 | 空壳，应成为业务编排层 |
-| domain | 12 文件 / 2.1k 行 | 类型中心，store/handler 一致引用，**保持不动，不新建 model/** |
-| handler/common.go | 803 行 | `executeListQuery`（55 文件复用）+ 4 组白名单 + `withTx` + 租户 helper，需拆解 |
+| handler | 121 文件 | 除豁免冻结区（import/export/template 22 文件）与测试外，无直写 SQL、无 `*pgxpool.Pool` 字段 |
+| store | 65 文件 | 独立类型模式成熟：`NewXxxStore(q)` 工厂；列表查询配置（`ListConfig()`/`AdminListConfig()` 等）已覆盖 exam/position/question_bank/scenario/scheduling/teaching_plan/training_program/user 8 域 |
+| service | 多文件 | 业务编排层，提供 `Store()`/`Queryer()` 供 handler 直读 |
+| domain | 12 文件 / 2.1k 行 | 类型中心，**保持不动，不新建 model/** |
+| handler/common.go | ~370 行 | 响应/租户/权限 helper + `executeListQuery` 适配；`withTx`（死代码）已删除、`lookupIDByName` 已迁入 `import_common.go` 豁免区，不再依赖 `*pgxpool.Pool` |
 
-**现有可复用资产（整体下沉，不推翻）**：
-- `executeListQuery` + `listQueryBuilder` + 4 组白名单防注入（55 文件复用）
-- `decodeBody`（69 文件）、`withTx` 事务模板、`requireTenant`/`tenantFilter`/`verifyTenantOwnership`
-- `lookupIDByName`（25 表白名单）、`generateUniqueEntityCode`、`recordView`
+**现有可复用资产**：
+- `store.ExecuteListQuery` + `ListQueryBuilder` + 白名单防注入（原 common.go 下沉）
+- `decodeBody`、`requireTenant`/`tenantFilter`/`verifyTenantOwnership`
+- `generateUniqueEntityCode`、`recordView`
+- **`store.ContentActionStore`**（`store/content_actions.go`）：内容通用动作（提交审批/撤回/发布/下架/删除/归档）的 store 层复用范例，新建内容域接口优先复用
+- **`respondServerError`**（`handler/common.go`）：新增 handler 的 500 错误处理约定，统一记录原始 error 后返回通用错误响应
 
 ## 二、目标架构
 
@@ -25,7 +27,8 @@ internal/
 ├── handler/    # HTTP 适配：解析→校验→调用 service/store→响应（不拼 SQL、不持有 pool）
 ├── service/    # 业务编排：事务边界、跨 store 组合、聚合计算
 ├── store/      # 数据访问：唯一 SQL 所在；领域 store 类型 + 通用查询件
-│   ├── query.go      # executeListQuery/listQueryBuilder/白名单（从 common.go 下沉）
+│   ├── query.go      # ExecuteListQuery/ListQueryBuilder/白名单（从 common.go 下沉）
+│   ├── content_actions.go  # ContentActionStore 通用内容动作
 │   └── *_store.go    # 各领域 store（延续现有独立类型模式）
 ├── domain/     # 领域模型（现有，不动）
 └── middleware/ # Claims/鉴权（现有，不动）
@@ -70,10 +73,12 @@ internal/
 **P2 完成后**：除豁免冻结区（import/export/template 22 文件）外，全部 handler 无直写 SQL、无 `*pgxpool.Pool` 字段（认证类 fetch helper 经 store 封装，`LoadCertificationModel` 等既有 service 查询保留）。
 **类型安全**：store 层全部使用强类型 DTO（`map[string]any` 已清零）。
 
-### P3 清理（1 天）
-- `common.go` 803 行 → 保留响应/租户/权限 helper，目标 <200 行
-- 巨型文件拆分：scheduling(1486)/template(1621)/resource_import(1503)/course(1329)
-- 补 store 查询构建器单测、service 事务单测
+### P3 清理（进行中）
+- `common.go` → 保留响应/租户/权限 helper，`withTx`（死代码）已删除、`lookupIDByName` 已迁至 `import_common.go` ✅
+- **非豁免 Handler 列表 SQL 下沉** ✅：exam/position/question_bank/scenario/scheduling（含 venue/period_slots）/teaching_plan/training_program/user 的 `ListQueryConfig` 配置（Table/SelectColumns/ExtraFilter/扫描器）全部沉淀到对应 store 的 `ListConfig()`/`AdminListConfig()`/`PublicListConfig()`/`FavoritesListConfig()`/`ListSchedulesConfig()` 等
+- 巨型文件拆分：scheduling(1486)/template(1621)/resource_import(1503)/course(1329) — **明确不做**（`docs/components.md` 约定大文件不拆分）
+- store 查询构建器单测：`query_test.go` 已存在，`status.test.ts`/`api-helpers.test.ts`/`format-utils.test.ts` 补齐 ✅
+- 格式化债务：Prettier（根目录 `format`/`format:check`）+ gofmt 全量清零 ✅
 
 ## 五、风险与缓解
 

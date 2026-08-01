@@ -22,11 +22,12 @@
 3. **隔离部署验证**
    ```bash
    ./deploy.sh --branch feat/<agent>-<任务简述>
-   # 可选：--clean（强制全量重建）、--skip-merge（不自动合并）
+   # 可选：--clean（强制全量重建）、--force（允许 docker builder prune 等破坏性操作）、--skip-merge（不自动合并）
    ```
    deploy.sh 自动判断：
    - 首次运行 → 安装系统依赖、生成 .env、初始化数据库+种子数据
    - 后续运行 → 源码 hash 比对，仅构建变更部分（后端/前端独立判断）
+   - 构建前自动执行质量门禁：后端 `gofmt -l` + `go vet`（DB 可用时 `go test`），前端 `pnpm typecheck` + `pnpm lint`
    - 数据库 → 首次应用 baseline schema，后续只执行增量 migration，不触碰已有数据
 
 4. **清理工作树**
@@ -45,7 +46,12 @@
 
 1. 所有**代码修改**后必须通过 `./deploy.sh --branch <分支名>` 部署验证
 2. **纯文档修改**（`AGENTS.md`、`docs/` 下的文件）无需走 `deploy.sh`，直接 commit 合并即可
-3. 提交前检查：后端 `go vet ./...` `go test ./...`，前端 `pnpm typecheck` `pnpm lint`，migration 需配对 `.down.sql`
+3. 提交前检查（本地验证通过后再提请部署）：
+   ```bash
+   cd backend && go vet ./... && go build ./... && gofmt -l .
+   pnpm typecheck && pnpm lint && pnpm test
+   ```
+   migration 需配对 `.down.sql`
 4. 单次 commit 只含当次变更
 5. **后端分层重构**（详见 `docs/refactor-layering.md`）：
    - 目标架构：`handler`（HTTP 适配，不拼 SQL）→ `service`（业务编排+事务）→ `store`（唯一 SQL 所在）→ `domain`（模型）
@@ -53,6 +59,7 @@
    - 新增 handler 禁止持有 `*pgxpool.Pool` 字段
    - 豁免冻结区：现有 import/export/template 22 个 handler 文件保持现状、冻结不扩散、不迁移
    - `common.go` 新增函数必须说明为何不能放入 store 层；`service` 禁止拼接 SQL；`store` 禁止读取 HTTP/Claims
+   - **复用范例**：内容通用动作复用 `store.ContentActionStore`（`store/content_actions.go`）；新增 handler 的 500 错误统一用 `respondServerError`（记录原始 error 后返回通用响应）
    - 新接口必须附带 handler/service/store 测试至少一种
 
 ## 三、开发原则
