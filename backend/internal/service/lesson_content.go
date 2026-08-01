@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -137,3 +138,42 @@ func (s *LessonContentService) DeleteQuizQuestion(ctx context.Context, questionI
 func (s *LessonContentService) GetQuizQuestion(ctx context.Context, questionID string) (*domain.NodeQuizQuestion, error) {
 	return s.st.NodeQuizzes().GetQuestion(ctx, questionID)
 }
+
+// CloneCourse 克隆课程及全部关联（绑定/体系课节点/节点子表），返回新课程 ID。
+func (s *LessonContentService) CloneCourse(ctx context.Context, tenantID, oldCourseID, newName, createdBy string) (string, error) {
+	src, err := s.st.CourseClone().FetchSource(ctx, oldCourseID)
+	if err != nil {
+		return "", err
+	}
+	if src.TenantID != nil && *src.TenantID != tenantID {
+		return "", ErrCourseNotInTenant
+	}
+	if newName == "" {
+		newName = src.Name + " (克隆)"
+	}
+	prefix := "XT"
+	if src.Type == "granular" {
+		prefix = "KL"
+	}
+	var newID string
+	err = s.WithTx(ctx, func(txStore *store.Store) error {
+		code, err := store.GenerateUniqueEntityCode(ctx, txStore.Q(), prefix, "courses", tenantID)
+		if err != nil {
+			return err
+		}
+		newID, err = txStore.CourseClone().CloneCourse(ctx, txStore.Q(), tenantID, oldCourseID, newName, src, createdBy, code)
+		return err
+	})
+	if err != nil {
+		return "", err
+	}
+	return newID, nil
+}
+
+// GetCourse 查询完整课程。
+func (s *LessonContentService) GetCourse(ctx context.Context, id string) (*domain.Course, error) {
+	return s.st.CourseClone().FetchCourse(ctx, id)
+}
+
+// ErrCourseNotInTenant 课程不属于当前租户。
+var ErrCourseNotInTenant = errors.New("course not in tenant")

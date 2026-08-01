@@ -311,7 +311,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/lesson/courses/{id}/submit", courseHandler.Submit)
 			r.Post("/lesson/courses/{id}/review", courseHandler.Review)
 			r.Post("/lesson/courses/{id}/publish", courseHandler.Publish)
-			r.Post("/lesson/courses/{id}/clone", (&handler.CourseCloneHandler{DB: pool}).Clone)
+			r.Post("/lesson/courses/{id}/clone", (&handler.CourseCloneHandler{Service: service.NewLessonContentService(svc2)}).Clone)
 
 			knowledgePointHandler := &handler.KnowledgePointHandler{Service: service.NewLessonContentService(svc2)}
 			r.Get("/lesson/knowledge-points", knowledgePointHandler.List)
