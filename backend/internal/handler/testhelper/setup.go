@@ -203,13 +203,13 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/job/abilities/{id}", abilityHandler.Update)
 			r.Delete("/job/abilities/{id}", abilityHandler.Delete)
 
-			positionAbilityHandler := &handler.PositionAbilityHandler{DB: pool}
+			positionAbilityHandler := &handler.PositionAbilityHandler{Service: service.NewPositionConfigService(svc2)}
 			r.Get("/job/position-abilities", positionAbilityHandler.ListBindings)
 			r.Post("/job/position-abilities", positionAbilityHandler.CreateBinding)
 			r.Put("/job/position-abilities/{id}", positionAbilityHandler.UpdateBinding)
 			r.Delete("/job/position-abilities/{id}", positionAbilityHandler.DeleteBinding)
 
-			positionResponsibilityHandler := &handler.PositionResponsibilityHandler{DB: pool}
+			positionResponsibilityHandler := &handler.PositionResponsibilityHandler{Service: service.NewPositionConfigService(svc2)}
 			r.Get("/job/position-responsibilities", positionResponsibilityHandler.List)
 			r.Get("/job/position-responsibilities/{id}", positionResponsibilityHandler.Get)
 			r.Post("/job/position-responsibilities", positionResponsibilityHandler.Create)
