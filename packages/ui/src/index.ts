@@ -29,23 +29,3 @@ export type {
   PlatformIcon,
   PlatformIconKey,
 } from "./components/platform-shell"
-
-export {
-  parseDate,
-  parseOptDate,
-  parseQuestionBank,
-  parseQuestion,
-  parseExam,
-  parseSceneResult,
-  parseTopic,
-  parseArchive,
-  parseEvaluation,
-  parseStudentArchive,
-  parsePortrait,
-  parseCertRecord,
-  APPROVAL_TYPE_MAP,
-  mapApprovalRecord,
-  createDataContext,
-  createUseData,
-} from "./providers/data-provider"
-export type { DataContextValue } from "./providers/data-provider"
