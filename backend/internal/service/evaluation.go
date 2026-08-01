@@ -747,3 +747,16 @@ func (s *EvaluationService) CreateGraduationEvaluation(ctx context.Context, p *s
 func (s *EvaluationService) QueryGraduationResults(ctx context.Context, limit, offset int) ([]domain.GraduationQueryResult, int, error) {
 	return s.st.Graduations().QueryGraduationResults(ctx, limit, offset)
 }
+
+// FindPositionRule 查询岗位最新认证规则。
+func (s *EvaluationService) FindPositionRule(ctx context.Context, positionID, tenantID string) (*domain.CertificationRule, error) {
+	return s.st.Certifications().FindPositionRule(ctx, s.st.Q(), positionID, tenantID)
+}
+
+// PutCertificationWeights 保存岗位权重（事务）。
+func (s *EvaluationService) PutCertificationWeights(ctx context.Context, tenantID, positionID string, pointWeights, taskWeights []store.CertificationWeightItem) error {
+	return s.WithTx(ctx, func(txStore *store.Store) error {
+		_, err := txStore.Certifications().PutWeights(ctx, txStore.Q(), tenantID, positionID, pointWeights, taskWeights)
+		return err
+	})
+}

@@ -560,3 +560,70 @@ func (s *CertificationStore) PutFullRule(ctx context.Context, tx Queryer, tenant
 	}
 	return nil
 }
+
+// FindPositionRule 查询岗位最新规则（无则 nil）。
+func (s *CertificationStore) FindPositionRule(ctx context.Context, q Queryer, positionID, tenantID string) (*domain.CertificationRule, error) {
+	var rule domain.CertificationRule
+	err := q.QueryRow(ctx, `
+		SELECT id, career_position_id, status, rule_source, level_mapping, created_at, updated_at
+		FROM certification_rules
+		WHERE tenant_id = $1 AND career_position_id = $2
+		ORDER BY updated_at DESC LIMIT 1
+	`, tenantID, positionID).Scan(&rule.ID, &rule.CareerPositionID, &rule.Status, &rule.RuleSource, &rule.LevelMapping, &rule.CreatedAt, &rule.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &rule, nil
+}
+
+// PutWeights 保存权重（事务：自动建规则+整删整插）。
+func (s *CertificationStore) PutWeights(ctx context.Context, tx Queryer, tenantID, positionID string, pointWeights, taskWeights []CertificationWeightItem) (string, error) {
+	var ruleID string
+	err := tx.QueryRow(ctx, `
+		SELECT id FROM certification_rules
+		WHERE tenant_id = $1 AND career_position_id = $2
+		ORDER BY updated_at DESC LIMIT 1
+	`, tenantID, positionID).Scan(&ruleID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		ruleID = uuid.NewString()
+		if _, err = tx.Exec(ctx, `
+			INSERT INTO certification_rules (id, tenant_id, career_position_id, status, rule_source)
+			VALUES ($1, $2, $3, 'draft', 'custom')
+		`, ruleID, tenantID, positionID); err != nil {
+			return "", err
+		}
+	} else if err != nil {
+		return "", err
+	}
+
+	if _, err := tx.Exec(ctx, `DELETE FROM certification_weights WHERE rule_id = $1`, ruleID); err != nil {
+		return "", err
+	}
+	for _, pw := range pointWeights {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO certification_weights (id, rule_id, ability_point_id, task_id, weight, tenant_id)
+			VALUES ($1, $2, $3, NULL, $4, $5)
+		`, uuid.NewString(), ruleID, pw.AbilityPointID, pw.Weight, tenantID); err != nil {
+			return "", err
+		}
+	}
+	for _, tw := range taskWeights {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO certification_weights (id, rule_id, ability_point_id, task_id, weight, tenant_id)
+			VALUES ($1, $2, $3, $4, $5, $6)
+		`, uuid.NewString(), ruleID, tw.AbilityPointID, tw.TaskID, tw.Weight, tenantID); err != nil {
+			return "", err
+		}
+	}
+	return ruleID, nil
+}
+
+// CertificationWeightItem 权重项。
+type CertificationWeightItem struct {
+	AbilityPointID string
+	TaskID         *string
+	Weight         float64
+}
