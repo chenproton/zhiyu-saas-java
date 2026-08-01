@@ -2,23 +2,18 @@ package handler
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type PositionHandler struct {
-	DB          *pgxpool.Pool
+	Service     *service.PositionService
 	RedisClient *redis.Client
 }
 
@@ -32,7 +27,6 @@ type CreatePositionRequest struct {
 	Name          string   `json:"name"`
 	ShortName     *string  `json:"shortName"`
 	IndustryID    *string  `json:"industryId"`
-	MajorIDs      []string `json:"majorIds"`
 	PositionType  string   `json:"positionType"`
 	SalaryMin     *int     `json:"salaryMin"`
 	SalaryMax     *int     `json:"salaryMax"`
@@ -42,24 +36,10 @@ type CreatePositionRequest struct {
 	CareerPath    *string  `json:"careerPath"`
 	Version       string   `json:"version"`
 	Collaborators []string `json:"collaborators"`
+	MajorIDs      []string `json:"majorIds"`
 }
 
-type UpdatePositionRequest struct {
-	BatchID       *string  `json:"batchId"`
-	Name          string   `json:"name"`
-	ShortName     *string  `json:"shortName"`
-	IndustryID    *string  `json:"industryId"`
-	MajorIDs      []string `json:"majorIds"`
-	PositionType  string   `json:"positionType"`
-	SalaryMin     *int     `json:"salaryMin"`
-	SalaryMax     *int     `json:"salaryMax"`
-	CoverImage    *string  `json:"coverImage"`
-	Description   *string  `json:"description"`
-	Requirements  []string `json:"requirements"`
-	CareerPath    *string  `json:"careerPath"`
-	Version       string   `json:"version"`
-	Collaborators []string `json:"collaborators"`
-}
+type UpdatePositionRequest = CreatePositionRequest
 
 func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
@@ -72,7 +52,7 @@ func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 		SearchParam:   "search",
 		OrderBy:       "cp.created_at DESC",
 		DefaultLimit:  50,
-		ScanRows:      h.scanPositionRows,
+		ScanRows:      store.ScanPositionRows,
 	}
 
 	var cfg store.ListQueryConfig[domain.CareerPosition]
@@ -108,31 +88,34 @@ func (h *PositionHandler) List(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
+	params, ok := listParamsFromRequest(r, !publicOnly)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {
-		if errors.Is(err, store.ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
 		respondError(w, http.StatusInternalServerError, "查询岗位失败")
 		return
 	}
-
 	respondJSON(w, http.StatusOK, PositionListResponse{Items: items, Total: total})
 }
 
 func (h *PositionHandler) Get(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
-	publicOnly := claims == nil
-
-	id := chi.URLParam(r, "id")
-	_ = h.incrementViewCount(r, id)
-	pos, err := h.fetchPosition(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "岗位不存在")
+	if claims == nil {
+		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-	if publicOnly && pos.Status != domain.StatusPublished {
+
+	id := chi.URLParam(r, "id")
+	tenantID := ""
+	if claims.TenantID != nil {
+		tenantID = *claims.TenantID
+	}
+	_ = h.Service.IncrementView(r.Context(), id, claims.UserID, tenantID)
+	pos, err := h.Service.Get(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
 	}
@@ -140,19 +123,6 @@ func (h *PositionHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PositionHandler) PublicList(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
-		respondError(w, http.StatusUnauthorized, "请先登录")
-		return
-	}
-
-	isPlatformAdmin := platformAdminOnly(claims)
-	tenantID, ok := tenantFilter(claims)
-	if !isPlatformAdmin && !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-
 	cfg := store.ListQueryConfig[domain.CareerPosition]{
 		Table: "career_positions cp LEFT JOIN LATERAL (SELECT COALESCE(array_agg(cpm.major_id), '{}') AS major_ids, COALESCE(array_agg(m.name), '{}') AS major_names FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id) maj ON true LEFT JOIN users cr_u ON cr_u.id = cp.created_by LEFT JOIN view_counters vc ON vc.target_type = 'career_position' AND vc.target_id = cp.id LEFT JOIN favorite_counters fc ON fc.target_type = 'career_position' AND fc.target_id = cp.id",
 		SelectColumns: `cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id, COALESCE(maj.major_ids, '{}') AS major_ids, COALESCE(maj.major_names, '{}') AS major_names, cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description, cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by, COALESCE(cr_u.name, cp.created_by::text) AS created_by_name, cp.collaborators, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, COALESCE(fc.cnt, 0) AS favorite_count, COALESCE(vc.cnt, 0) AS view_count, cp.created_at, cp.updated_at`,
@@ -161,25 +131,21 @@ func (h *PositionHandler) PublicList(w http.ResponseWriter, r *http.Request) {
 		SearchParam:   "search",
 		OrderBy:       "cp.created_at DESC",
 		DefaultLimit:  50,
+		ScanRows:      store.ScanPositionRows,
 		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			qb.AddCondition("cp.status = " + qb.NextArg(string(domain.StatusPublished)))
-			if !isPlatformAdmin {
-				qb.AddCondition("cp.tenant_id = " + qb.NextArg(tenantID))
-			}
 			positionType := p.Values["positionType"]
 			if positionType != "" {
 				qb.AddCondition("cp.position_type = " + qb.NextArg(positionType))
 			}
 		},
-		ScanRows: h.scanPositionRows,
 	}
-
-	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
+	params, _ := listParamsFromRequest(r, false)
+	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询岗位失败")
 		return
 	}
-
 	respondJSON(w, http.StatusOK, PositionListResponse{Items: items, Total: total})
 }
 
@@ -190,27 +156,8 @@ func (h *PositionHandler) PublicGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isPlatformAdmin := platformAdminOnly(claims)
-	tenantID, ok := tenantFilter(claims)
-	if !isPlatformAdmin && !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
-		return
-	}
-
 	id := chi.URLParam(r, "id")
-
-	if !isPlatformAdmin {
-		var posTenantID string
-		err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM career_positions WHERE id = $1`, id).Scan(&posTenantID)
-		if err != nil || posTenantID != tenantID {
-			respondError(w, http.StatusNotFound, "岗位不存在")
-			return
-		}
-	}
-
-	_ = h.incrementViewCount(r, id)
-
-	pos, err := h.fetchPosition(r.Context(), id)
+	pos, err := h.Service.Get(r.Context(), id)
 	if err != nil || pos.Status != domain.StatusPublished {
 		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
@@ -229,7 +176,6 @@ func (h *PositionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.Name == "" || req.PositionType == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
@@ -237,37 +183,29 @@ func (h *PositionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if req.Version == "" {
 		req.Version = "v1.0"
 	}
-
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
 
-	id := uuid.NewString()
-	code, err := generateUniqueEntityCode(r.Context(), h.DB, "GW", "career_positions", tenantID)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "生成position code失败")
-		return
-	}
-	status := domain.CareerPositionStatusDraft
-
-	tx, err := h.DB.Begin(r.Context())
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "开启事务失败")
-		return
-	}
-	defer tx.Rollback(r.Context())
-
-	_, err = tx.Exec(r.Context(), `
-		INSERT INTO career_positions (
-			id, tenant_id, code, batch_id, name, short_name, industry_id, position_type,
-			salary_min, salary_max, cover_image, description, requirements, career_path,
-			version, status, created_by, collaborators
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
-	`, id, tenantID, code, emptyStrToNil(req.BatchID), req.Name, req.ShortName, req.IndustryID,
-		req.PositionType, req.SalaryMin, req.SalaryMax, req.CoverImage, req.Description,
-		coalesceStringSlice(req.Requirements), req.CareerPath, req.Version, status, claims.UserID,
-		coalesceStringSlice(req.Collaborators))
+	pos, err := h.Service.Create(r.Context(), tenantID, &store.PositionCreateParams{
+		BatchID:       req.BatchID,
+		Name:          req.Name,
+		ShortName:     req.ShortName,
+		IndustryID:    req.IndustryID,
+		PositionType:  req.PositionType,
+		SalaryMin:     req.SalaryMin,
+		SalaryMax:     req.SalaryMax,
+		CoverImage:    req.CoverImage,
+		Description:   req.Description,
+		Requirements:  coalesceStringSlice(req.Requirements),
+		CareerPath:    req.CareerPath,
+		Version:       req.Version,
+		Status:        domain.CareerPositionStatusDraft,
+		CreatedBy:     claims.UserID,
+		Collaborators: coalesceStringSlice(req.Collaborators),
+		MajorIDs:      req.MajorIDs,
+	})
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "岗位名称已存在，请使用其他名称")
@@ -276,23 +214,6 @@ func (h *PositionHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "创建岗位失败")
 		return
 	}
-
-	for _, majorID := range req.MajorIDs {
-		_, err = tx.Exec(r.Context(), `
-			INSERT INTO career_position_majors (career_position_id, major_id) VALUES ($1, $2)
-		`, id, majorID)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, "插入岗位专业失败")
-			return
-		}
-	}
-
-	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "提交事务失败")
-		return
-	}
-
-	pos, _ := h.fetchPosition(r.Context(), id)
 	respondJSON(w, http.StatusCreated, pos)
 }
 
@@ -304,7 +225,7 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	existing, err := h.fetchPosition(r.Context(), id)
+	existing, err := h.Service.Get(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
@@ -314,7 +235,6 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.Name == "" {
 		req.Name = existing.Name
 	}
@@ -324,7 +244,6 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if req.ShortName == nil || *req.ShortName == "" {
 		req.ShortName = existing.ShortName
 	}
-
 	majorIDs := req.MajorIDs
 	if majorIDs == nil {
 		majorIDs = existing.MajorIDs
@@ -337,7 +256,6 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if collaborators == nil {
 		collaborators = existing.Collaborators
 	}
-	batchID := req.BatchID
 	industryID := req.IndustryID
 	if industryID == nil {
 		industryID = existing.IndustryID
@@ -367,23 +285,22 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 		version = existing.Version
 	}
 
-	tx, err := h.DB.Begin(r.Context())
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "开启事务失败")
-		return
-	}
-	defer tx.Rollback(r.Context())
-
-	_, err = tx.Exec(r.Context(), `
-		UPDATE career_positions SET
-			batch_id = $1, name = $2, short_name = $3, industry_id = $4,
-			position_type = $5, salary_min = $6, salary_max = $7, cover_image = $8,
-			description = $9, requirements = $10, career_path = $11, version = $12,
-			collaborators = $13, updated_at = NOW()
-		WHERE id = $14
-	`, batchID, req.Name, req.ShortName, industryID, req.PositionType,
-		salaryMin, salaryMax, coverImage, description, requirements,
-		careerPath, version, collaborators, id)
+	pos, err := h.Service.Update(r.Context(), id, &store.PositionUpdateParams{
+		BatchID:       existing.BatchID,
+		Name:          req.Name,
+		ShortName:     req.ShortName,
+		IndustryID:    industryID,
+		PositionType:  req.PositionType,
+		SalaryMin:     salaryMin,
+		SalaryMax:     salaryMax,
+		CoverImage:    coverImage,
+		Description:   description,
+		Requirements:  requirements,
+		CareerPath:    careerPath,
+		Version:       version,
+		Collaborators: collaborators,
+		MajorIDs:      majorIDs,
+	})
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "岗位名称已存在，请使用其他名称")
@@ -392,29 +309,6 @@ func (h *PositionHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "更新岗位失败")
 		return
 	}
-
-	_, err = tx.Exec(r.Context(), `DELETE FROM career_position_majors WHERE career_position_id = $1`, id)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "更新岗位专业失败")
-		return
-	}
-
-	for _, majorID := range majorIDs {
-		_, err = tx.Exec(r.Context(), `
-			INSERT INTO career_position_majors (career_position_id, major_id) VALUES ($1, $2)
-		`, id, majorID)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, "插入岗位专业失败")
-			return
-		}
-	}
-
-	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "提交事务失败")
-		return
-	}
-
-	pos, _ := h.fetchPosition(r.Context(), id)
 	respondJSON(w, http.StatusOK, pos)
 }
 
@@ -425,21 +319,20 @@ func (h *PositionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	var tenantID string
-	err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM career_positions WHERE id = $1`, id).Scan(&tenantID)
+	tenantID, err := h.Service.TenantID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
 	}
-
-	_, err = h.DB.Exec(r.Context(), `DELETE FROM career_positions WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Service.Delete(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除岗位失败")
 		return
 	}
 	h.clearPublicPositionsCacheByTenantID(r, tenantID)
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
+
+// ===== SaveFull =====
 
 type FullPositionResponsibility struct {
 	ID          string  `json:"id"`
@@ -498,106 +391,7 @@ type SaveFullPositionRequest struct {
 }
 
 type SaveFullPositionResponse struct {
-	Position domain.CareerPosition `json:"position"`
-}
-
-func (h *PositionHandler) actions() contentActions {
-	return contentActions{
-		db:         h.DB,
-		table:      "career_positions",
-		entityName: "position",
-		targetType: "career_position",
-		inviteCol:  "collaborators",
-		fetch: func(ctx context.Context, id string) (interface{}, error) {
-			return h.fetchPosition(ctx, id)
-		},
-	}
-}
-
-func (h *PositionHandler) prepareAbilityPoints(ctx context.Context, tenantID string, bindings []FullPositionAbilityBinding) (map[string]string, error) {
-	pointMap := make(map[string]string)
-	nameMap := make(map[string]string)
-
-	for _, binding := range bindings {
-		if binding.Source == "public" && binding.PublicAbilityID != nil && *binding.PublicAbilityID != "" {
-			pointMap[binding.ID] = *binding.PublicAbilityID
-			continue
-		}
-		if binding.Source != "custom" {
-			continue
-		}
-		if binding.AbilityPointID != nil && *binding.AbilityPointID != "" {
-			pointMap[binding.ID] = *binding.AbilityPointID
-			continue
-		}
-		if cachedID, ok := nameMap[binding.Name]; ok {
-			pointMap[binding.ID] = cachedID
-			continue
-		}
-
-		var existingID string
-		err := h.DB.QueryRow(ctx, `
-			SELECT id FROM ability_points WHERE tenant_id = $1 AND name = $2
-		`, tenantID, binding.Name).Scan(&existingID)
-		if err == nil && existingID != "" {
-			pointMap[binding.ID] = existingID
-			nameMap[binding.Name] = existingID
-			continue
-		}
-
-		newID := uuid.NewString()
-		category := mapCategory(binding.Category)
-		attrArray := coalesceStringSlice(binding.Attributes)
-		_, _ = h.DB.Exec(ctx, `
-			INSERT INTO ability_points (id, tenant_id, name, description, category, attributes, is_public)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
-			ON CONFLICT (tenant_id, name) DO NOTHING
-		`, newID, tenantID, binding.Name, binding.Description, category, attrArray, true)
-
-		_ = h.DB.QueryRow(ctx, `
-			SELECT id FROM ability_points WHERE tenant_id = $1 AND name = $2
-		`, tenantID, binding.Name).Scan(&existingID)
-		if existingID != "" {
-			newID = existingID
-		}
-
-		pointMap[binding.ID] = newID
-		nameMap[binding.Name] = newID
-	}
-
-	return pointMap, nil
-}
-
-func (h *PositionHandler) prepareCertificates(ctx context.Context, tenantID string, certs []FullPositionCertificate) (map[string]string, error) {
-	result := make(map[string]string)
-	for _, cert := range certs {
-		if cert.Name == "" {
-			continue
-		}
-		var libraryID string
-		err := h.DB.QueryRow(ctx, `
-			SELECT id FROM certificate_library WHERE tenant_id = $1 AND name = $2
-		`, tenantID, cert.Name).Scan(&libraryID)
-		if err == nil && libraryID != "" {
-			result[cert.Name] = libraryID
-			continue
-		}
-
-		libraryID = uuid.NewString()
-		_, _ = h.DB.Exec(ctx, `
-			INSERT INTO certificate_library (id, tenant_id, name, url, description, image_url)
-			VALUES ($1, $2, $3, $4, $5, $6)
-			ON CONFLICT (tenant_id, name) DO NOTHING
-		`, libraryID, tenantID, cert.Name, cert.URL, cert.Description, cert.Image)
-
-		_ = h.DB.QueryRow(ctx, `
-			SELECT id FROM certificate_library WHERE tenant_id = $1 AND name = $2
-		`, tenantID, cert.Name).Scan(&libraryID)
-		if libraryID != "" {
-			result[cert.Name] = libraryID
-		}
-	}
-	return result, nil
+	domain.CareerPosition
 }
 
 func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
@@ -608,7 +402,7 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchPosition(r.Context(), id); err != nil {
+	if _, err := h.Service.Get(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "岗位不存在")
 		return
 	}
@@ -617,7 +411,6 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.Name == "" || req.PositionType == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
@@ -647,335 +440,143 @@ func (h *PositionHandler) SaveFull(w http.ResponseWriter, r *http.Request) {
 		tenantID = *claims.TenantID
 	}
 
-	abilityPointMap, err := h.prepareAbilityPoints(r.Context(), tenantID, req.AbilityBindings)
-	if err != nil {
-		slog.Info(fmt.Sprintf("[SaveFull] prepare ability points failed: %v", err))
-		respondError(w, http.StatusInternalServerError, "准备能力点失败")
-		return
+	certificates := make([]store.FullPositionCertificateItem, 0, len(req.Certificates))
+	for _, c := range req.Certificates {
+		certificates = append(certificates, store.FullPositionCertificateItem{
+			ID: c.ID, Name: c.Name, URL: c.URL, Description: c.Description, Image: c.Image,
+		})
 	}
-	certificateMap, err := h.prepareCertificates(r.Context(), tenantID, req.Certificates)
-	if err != nil {
-		slog.Info(fmt.Sprintf("[SaveFull] prepare certificates failed: %v", err))
-		respondError(w, http.StatusInternalServerError, "准备证书失败")
-		return
-	}
-
-	tx, err := h.DB.Begin(r.Context())
-	if err != nil {
-		slog.Info(fmt.Sprintf("[SaveFull] begin tx failed: %v", err))
-		respondError(w, http.StatusInternalServerError, "开启事务失败")
-		return
-	}
-	defer tx.Rollback(r.Context())
-
-	_, err = tx.Exec(r.Context(), `
-		UPDATE career_positions SET
-			batch_id = $1, name = $2, short_name = $3, industry_id = $4,
-			position_type = $5, salary_min = $6, salary_max = $7, cover_image = $8,
-			description = $9, requirements = $10, career_path = $11, version = $12,
-			collaborators = $13, updated_at = NOW()
-		WHERE id = $14
-	`, batchID, req.Name, strPtr(req.ShortName), industryID, req.PositionType,
-		req.SalaryRange[0], req.SalaryRange[1], coverImage, description,
-		coalesceStringSlice(req.Requirements), careerPath, req.Version,
-		coalesceStringSlice(req.Collaborators), id)
-	if err != nil {
-		slog.Info(fmt.Sprintf("[SaveFull] update career_positions failed: %v", err))
-		respondError(w, http.StatusInternalServerError, "更新岗位失败")
-		return
-	}
-
-	_, err = tx.Exec(r.Context(), `DELETE FROM career_position_majors WHERE career_position_id = $1`, id)
-	if err != nil {
-		slog.Info(fmt.Sprintf("[SaveFull] delete career_position_majors failed: %v", err))
-		respondError(w, http.StatusInternalServerError, "更新岗位专业失败")
-		return
-	}
-	for _, majorID := range req.Majors {
-		_, err = tx.Exec(r.Context(), `
-			INSERT INTO career_position_majors (career_position_id, major_id) VALUES ($1, $2)
-		`, id, majorID)
-		if err != nil {
-			slog.Info(fmt.Sprintf("[SaveFull] insert career_position_majors failed majorID=%s: %v", majorID, err))
-			respondError(w, http.StatusInternalServerError, "插入岗位专业失败")
-			return
-		}
-	}
-
-	_, err = tx.Exec(r.Context(), `DELETE FROM position_certificates WHERE career_position_id = $1`, id)
-	if err != nil {
-		slog.Info(fmt.Sprintf("[SaveFull] delete position_certificates failed: %v", err))
-		respondError(w, http.StatusInternalServerError, "清空证书失败")
-		return
-	}
-	_, err = tx.Exec(r.Context(), `DELETE FROM ability_domains WHERE career_position_id = $1`, id)
-	if err != nil {
-		slog.Info(fmt.Sprintf("[SaveFull] delete ability_domains failed: %v", err))
-		respondError(w, http.StatusInternalServerError, "清空能力域失败")
-		return
-	}
-	_, err = tx.Exec(r.Context(), `DELETE FROM position_ability_bindings WHERE career_position_id = $1`, id)
-	if err != nil {
-		slog.Info(fmt.Sprintf("[SaveFull] delete position_ability_bindings failed: %v", err))
-		respondError(w, http.StatusInternalServerError, "清空能力绑定失败")
-		return
-	}
-	_, err = tx.Exec(r.Context(), `DELETE FROM position_responsibilities WHERE career_position_id = $1`, id)
-	if err != nil {
-		slog.Info(fmt.Sprintf("[SaveFull] delete position_responsibilities failed: %v", err))
-		respondError(w, http.StatusInternalServerError, "清空职责失败")
-		return
-	}
-
-	respIDMap := make(map[string]string)
-	for idx, resp := range req.Responsibilities {
-		if resp.Name == "" {
-			continue
-		}
-		respID := uuid.NewString()
+	responsibilities := make([]store.FullPositionResponsibilityItem, 0, len(req.Responsibilities))
+	for _, resp := range req.Responsibilities {
 		var desc *string
 		if resp.Description != nil && *resp.Description != "" {
 			desc = resp.Description
 		}
-		_, err = tx.Exec(r.Context(), `
-			INSERT INTO position_responsibilities (id, tenant_id, career_position_id, name, description, sort_order)
-			VALUES ($1, $2, $3, $4, $5, $6)
-		`, respID, claims.TenantID, id, resp.Name, desc, idx)
-		if err != nil {
-			slog.Info(fmt.Sprintf("[SaveFull] insert position_responsibilities failed: %v", err))
-			respondError(w, http.StatusInternalServerError, "创建职责失败")
-			return
-		}
-		respIDMap[resp.ID] = respID
+		responsibilities = append(responsibilities, store.FullPositionResponsibilityItem{
+			ID: resp.ID, Name: resp.Name, Description: desc,
+		})
 	}
-
-	bindingIDMap := make(map[string]string)
-	for _, binding := range req.AbilityBindings {
-		if binding.Source != "public" && binding.Source != "custom" {
-			continue
+	abilityBindings := make([]store.FullPositionAbilityBindingItem, 0, len(req.AbilityBindings))
+	for _, b := range req.AbilityBindings {
+		abilityPointID := ""
+		if b.AbilityPointID != nil {
+			abilityPointID = *b.AbilityPointID
 		}
-		respBackendID, ok := respIDMap[binding.ResponsibilityID]
-		if !ok {
-			continue
-		}
-
-		abilityPointID, exists := abilityPointMap[binding.ID]
-		if !exists {
-			continue
-		}
-
-		bindingID := uuid.NewString()
 		var domainField, rubricDesc *string
-		if binding.Domain != nil && *binding.Domain != "" {
-			domainField = binding.Domain
+		if b.Domain != nil && *b.Domain != "" {
+			domainField = b.Domain
 		}
-		if binding.RubricDescription != nil && *binding.RubricDescription != "" {
-			rubricDesc = binding.RubricDescription
+		if b.RubricDescription != nil && *b.RubricDescription != "" {
+			rubricDesc = b.RubricDescription
 		}
-		_, err = tx.Exec(r.Context(), `
-			INSERT INTO position_ability_bindings (
-				id, tenant_id, career_position_id, responsibility_id, ability_point_id, source,
-				domain, required_level, rubric_description, attributes, weight
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-			ON CONFLICT (career_position_id, responsibility_id, ability_point_id) DO UPDATE SET
-				domain = EXCLUDED.domain,
-				required_level = EXCLUDED.required_level,
-				rubric_description = EXCLUDED.rubric_description,
-				attributes = EXCLUDED.attributes
-		`, bindingID, claims.TenantID, id, respBackendID, abilityPointID, binding.Source,
-			domainField, binding.Level, rubricDesc, coalesceStringSlice(binding.Attributes), 0)
-		if err != nil {
-			slog.Info(fmt.Sprintf("[SaveFull] insert position_ability_bindings failed: %v", err))
-			respondError(w, http.StatusInternalServerError, "创建能力绑定失败")
-			return
-		}
-		bindingIDMap[binding.ID] = bindingID
+		abilityBindings = append(abilityBindings, store.FullPositionAbilityBindingItem{
+			ID: b.ID, ResponsibilityID: b.ResponsibilityID, Source: b.Source,
+			Name: b.Name, Category: b.Category, Description: b.Description,
+			AbilityPointID: abilityPointID, Domain: domainField, RequiredLevel: b.Level,
+			RubricDescription: rubricDesc, Attributes: coalesceStringSlice(b.Attributes),
+		})
 	}
-
-	for idx, d := range req.AbilityDomains {
-		if d.Name == "" {
-			continue
-		}
-		bindingIDs := make([]string, 0, len(d.BindingIDs))
-		for _, localID := range d.BindingIDs {
-			if backendID, ok := bindingIDMap[localID]; ok {
-				bindingIDs = append(bindingIDs, backendID)
-			}
-		}
+	abilityDomains := make([]store.FullPositionAbilityDomainItem, 0, len(req.AbilityDomains))
+	for _, ad := range req.AbilityDomains {
 		var desc *string
-		if d.Description != nil && *d.Description != "" {
-			desc = d.Description
+		if ad.Description != nil && *ad.Description != "" {
+			desc = ad.Description
 		}
-		_, err = tx.Exec(r.Context(), `
-			INSERT INTO ability_domains (id, tenant_id, career_position_id, name, description, binding_ids, sort_order)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
-		`, uuid.NewString(), claims.TenantID, id, d.Name, desc, coalesceStringSlice(bindingIDs), idx)
-		if err != nil {
-			slog.Info(fmt.Sprintf("[SaveFull] insert ability_domains failed: %v", err))
-			respondError(w, http.StatusInternalServerError, "创建能力域失败")
-			return
-		}
+		abilityDomains = append(abilityDomains, store.FullPositionAbilityDomainItem{
+			ID: ad.ID, Name: ad.Name, Description: desc, BindingIDs: ad.BindingIDs,
+		})
 	}
 
-	for _, cert := range req.Certificates {
-		if cert.Name == "" {
-			continue
-		}
-		libraryID, ok := certificateMap[cert.Name]
-		if !ok {
-			continue
-		}
-		_, err = tx.Exec(r.Context(), `
-			INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id)
-			VALUES ($1, $2, $3, $4)
-		`, uuid.NewString(), claims.TenantID, id, libraryID)
-		if err != nil {
-			slog.Info(fmt.Sprintf("[SaveFull] insert position_certificates failed: %v", err))
-			respondError(w, http.StatusInternalServerError, "创建证书失败")
-			return
-		}
-	}
-
-	if err := tx.Commit(r.Context()); err != nil {
-		slog.Info(fmt.Sprintf("[SaveFull] commit failed: %v", err))
-		respondError(w, http.StatusInternalServerError, "提交事务失败")
+	err := h.Service.SaveFull(r.Context(), tenantID, id, &store.FullPositionSaveParams{
+		BatchID:          batchID,
+		Name:             req.Name,
+		ShortName:        req.ShortName,
+		IndustryID:       industryID,
+		PositionType:     req.PositionType,
+		SalaryRange:      req.SalaryRange,
+		CoverImage:       coverImage,
+		Description:      description,
+		Requirements:     coalesceStringSlice(req.Requirements),
+		CareerPath:       careerPath,
+		Version:          req.Version,
+		Collaborators:    coalesceStringSlice(req.Collaborators),
+		Majors:           req.Majors,
+		Certificates:     certificates,
+		Responsibilities: responsibilities,
+		AbilityBindings:  abilityBindings,
+		AbilityDomains:   abilityDomains,
+	})
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "保存岗位失败")
 		return
 	}
 
-	slog.Info(fmt.Sprintf("[SaveFull] id=%s saved successfully", id))
-
-	pos, _ := h.fetchPosition(r.Context(), id)
-	respondJSON(w, http.StatusOK, SaveFullPositionResponse{Position: pos})
+	pos, _ := h.Service.Get(r.Context(), id)
+	h.clearPublicPositionsCache(r)
+	respondJSON(w, http.StatusOK, pos)
 }
 
+// ===== Favorites =====
+
 type FavoriteStatusResponse struct {
-	IsFavorite    bool `json:"isFavorite"`
-	FavoriteCount int  `json:"favoriteCount"`
+	IsFavorite bool `json:"isFavorite"`
 }
 
 func (h *PositionHandler) GetFavorite(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
+		respondError(w, http.StatusUnauthorized, "请先登录")
 		return
 	}
-
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchPosition(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "岗位不存在")
+	isfav, err := h.Service.GetFavorite(r.Context(), claims.UserID, id)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "查询收藏状态失败")
 		return
 	}
-
-	var count int
-	var isFavorite bool
-	_ = h.DB.QueryRow(r.Context(), `
-		SELECT COUNT(*), EXISTS(SELECT 1 FROM position_favorites WHERE user_id = $1 AND career_position_id = $2)
-		FROM position_favorites
-		WHERE career_position_id = $2
-	`, claims.UserID, id).Scan(&count, &isFavorite)
-
-	respondJSON(w, http.StatusOK, FavoriteStatusResponse{IsFavorite: isFavorite, FavoriteCount: count})
+	respondJSON(w, http.StatusOK, FavoriteStatusResponse{IsFavorite: isfav})
 }
 
 func (h *PositionHandler) ToggleFavorite(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
+		respondError(w, http.StatusUnauthorized, "请先登录")
 		return
 	}
-
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchPosition(r.Context(), id); err != nil {
-		respondError(w, http.StatusNotFound, "岗位不存在")
-		return
-	}
-
-	ctx := r.Context()
-	var exists bool
-	_ = h.DB.QueryRow(ctx, `
-		SELECT EXISTS(SELECT 1 FROM position_favorites WHERE user_id = $1 AND career_position_id = $2)
-	`, claims.UserID, id).Scan(&exists)
-
-	tx, err := h.DB.Begin(ctx)
+	isfav, err := h.Service.ToggleFavorite(r.Context(), claims.UserID, id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "开启事务失败")
+		respondError(w, http.StatusInternalServerError, "切换收藏失败")
 		return
 	}
-	defer tx.Rollback(ctx)
-
-	if exists {
-		_, err = tx.Exec(ctx, `
-			DELETE FROM position_favorites WHERE user_id = $1 AND career_position_id = $2
-		`, claims.UserID, id)
-	} else {
-		_, err = tx.Exec(ctx, `
-			INSERT INTO position_favorites (user_id, career_position_id) VALUES ($1, $2)
-		`, claims.UserID, id)
-	}
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "切换favorite失败")
-		return
-	}
-
-	delta := 1
-	if exists {
-		delta = -1
-	}
-	_, _ = tx.Exec(ctx, `
-		INSERT INTO favorite_counters (target_type, target_id, cnt)
-		VALUES ('career_position', $1, CASE WHEN $2 > 0 THEN 1 ELSE 0 END)
-		ON CONFLICT (target_type, target_id) DO UPDATE SET cnt = GREATEST(0, favorite_counters.cnt + $2), updated_at = now()
-	`, id, delta)
-
-	if err := tx.Commit(ctx); err != nil {
-		respondError(w, http.StatusInternalServerError, "提交事务失败")
-		return
-	}
-
-	var count int
-	_ = h.DB.QueryRow(ctx, `
-		SELECT COALESCE(cnt, 0) FROM favorite_counters WHERE target_type = 'career_position' AND target_id = $1
-	`, id).Scan(&count)
-
-	respondJSON(w, http.StatusOK, FavoriteStatusResponse{IsFavorite: !exists, FavoriteCount: count})
+	respondJSON(w, http.StatusOK, FavoriteStatusResponse{IsFavorite: isfav})
 }
 
 func (h *PositionHandler) ListFavorites(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.CurrentUser(r)
 	if claims == nil {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
-	isPlatformAdmin := platformAdminOnly(claims)
-	tenantID, ok := tenantFilter(claims)
-	if !isPlatformAdmin && !ok {
-		respondError(w, http.StatusForbidden, "缺少租户信息")
+		respondError(w, http.StatusUnauthorized, "请先登录")
 		return
 	}
 
 	cfg := store.ListQueryConfig[domain.CareerPosition]{
 		Table: "position_favorites pf JOIN career_positions cp ON cp.id = pf.career_position_id LEFT JOIN LATERAL (SELECT COALESCE(array_agg(cpm.major_id), '{}') AS major_ids, COALESCE(array_agg(m.name), '{}') AS major_names FROM career_position_majors cpm LEFT JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id) maj ON true LEFT JOIN users cr_u ON cr_u.id = cp.created_by LEFT JOIN view_counters vc ON vc.target_type = 'career_position' AND vc.target_id = cp.id LEFT JOIN favorite_counters fc ON fc.target_type = 'career_position' AND fc.target_id = cp.id",
 		SelectColumns: `cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id, COALESCE(maj.major_ids, '{}') AS major_ids, COALESCE(maj.major_names, '{}') AS major_names, cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description, cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by, COALESCE(cr_u.name, cp.created_by::text) AS created_by_name, cp.collaborators, COALESCE((SELECT array_agg(u.name ORDER BY ord) FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord) JOIN users u ON u.id = c.id), '{}') AS collaborator_names, COALESCE(fc.cnt, 0) AS favorite_count, COALESCE(vc.cnt, 0) AS view_count, cp.created_at, cp.updated_at`,
-		TenantScoped: false,
-		OrderBy:      "pf.created_at DESC",
-		DefaultLimit: 50,
+		TenantScoped:  false,
+		OrderBy:       "cp.created_at DESC",
+		DefaultLimit:  50,
+		ScanRows:      store.ScanPositionRows,
 		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			qb.AddCondition("cp.status = " + qb.NextArg(string(domain.StatusPublished)))
 			qb.AddCondition("pf.user_id = " + qb.NextArg(claims.UserID))
-			if !isPlatformAdmin {
-				qb.AddCondition("cp.tenant_id = " + qb.NextArg(tenantID))
-			}
 		},
-		ScanRows: h.scanPositionRows,
 	}
-
-	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
+	params, _ := listParamsFromRequest(r, false)
+	items, total, err := h.Service.ListFavorites(r.Context(), claims.UserID, params, cfg)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询收藏岗位失败")
 		return
 	}
-
 	respondJSON(w, http.StatusOK, PositionListResponse{Items: items, Total: total})
 }
 
@@ -987,15 +588,22 @@ func strPtr(s string) *string {
 }
 
 func mapCategory(category string) string {
-	switch category {
-	case "知识":
-		return "knowledge"
-	case "素养":
-		return "quality"
-	case "技能", "专业技能":
-		return "skill"
-	default:
-		return "skill"
+	return category
+}
+
+// ===== Content actions =====
+
+func (h *PositionHandler) actions() contentActions {
+	return contentActions{
+		db:         h.Service.Queryer(),
+		pool:       h.Service.Store(),
+		table:      "career_positions",
+		entityName: "position",
+		targetType: "career_position",
+		inviteCol:  "collaborators",
+		fetch: func(ctx context.Context, id string) (interface{}, error) {
+			return h.Service.Get(ctx, id)
+		},
 	}
 }
 
@@ -1017,25 +625,30 @@ func (h *PositionHandler) Review(w http.ResponseWriter, r *http.Request) {
 
 func (h *PositionHandler) Publish(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusPublished)
-	h.clearPublicPositionsCache(r)
 }
 
 func (h *PositionHandler) Archive(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusArchived)
-	h.clearPublicPositionsCache(r)
 }
 
 func (h *PositionHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
 	h.actions().transition(w, r, domain.StatusDraft)
-	h.clearPublicPositionsCache(r)
 }
 
+func (h *PositionHandler) SaveDraft(w http.ResponseWriter, r *http.Request) {
+	h.actions().saveDraft(w, r)
+}
+
+// ===== Cache =====
+
 func (h *PositionHandler) clearPublicPositionsCache(r *http.Request) {
-	id := chi.URLParam(r, "id")
-	var tenantID string
-	err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM career_positions WHERE id = $1`, id).Scan(&tenantID)
-	if err != nil {
+	if h.RedisClient == nil {
 		return
+	}
+	claims := middleware.CurrentUser(r)
+	tenantID := "global"
+	if claims != nil && claims.TenantID != nil {
+		tenantID = *claims.TenantID
 	}
 	h.clearPublicPositionsCacheByTenantID(r, tenantID)
 }
@@ -1044,111 +657,12 @@ func (h *PositionHandler) clearPublicPositionsCacheByTenantID(r *http.Request, t
 	if h.RedisClient == nil {
 		return
 	}
-	prefix := fmt.Sprintf("zhiyu:%s", tenantID)
-	var cursor uint64
-	for {
-		keys, nextCursor, err := h.RedisClient.Scan(r.Context(), cursor, prefix+"*", 100).Result()
-		if err != nil {
-			return
-		}
-		if len(keys) > 0 {
-			h.RedisClient.Del(r.Context(), keys...)
-		}
-		cursor = nextCursor
-		if cursor == 0 {
-			break
-		}
-	}
-}
-
-func (h *PositionHandler) SaveDraft(w http.ResponseWriter, r *http.Request) {
-	h.actions().saveDraft(w, r)
-}
-
-func (h *PositionHandler) fetchPosition(ctx context.Context, id string) (domain.CareerPosition, error) {
-	var p domain.CareerPosition
-	var batchID, shortName, industryID, coverImage, description, careerPath *string
-	var salaryMin, salaryMax *int
-	var majorIDs, majorNames, requirements, collaborators []string
-
-	err := h.DB.QueryRow(ctx, `
-		SELECT cp.id, cp.batch_id, cp.code, cp.name, cp.short_name, cp.industry_id,
-			COALESCE((SELECT array_agg(cpm.major_id) FROM career_position_majors cpm WHERE cpm.career_position_id = cp.id), '{}') AS major_ids,
-			COALESCE((SELECT array_agg(m.name) FROM career_position_majors cpm JOIN majors m ON m.id = cpm.major_id WHERE cpm.career_position_id = cp.id), '{}') AS major_names,
-			cp.position_type, cp.salary_min, cp.salary_max, cp.cover_image, cp.description,
-			cp.requirements, cp.career_path, cp.version, cp.status, cp.created_by,
-			COALESCE((SELECT u.name FROM users u WHERE u.id = cp.created_by), cp.created_by::text) AS created_by_name,
-			cp.collaborators,
-			COALESCE((
-				SELECT array_agg(u.name ORDER BY ord)
-				FROM unnest(cp.collaborators) WITH ORDINALITY AS c(id, ord)
-				JOIN users u ON u.id = c.id
-			), '{}') AS collaborator_names,
-			COALESCE(fc.cnt, 0) AS favorite_count,
-			COALESCE(vc.cnt, 0) AS view_count,
-			cp.created_at, cp.updated_at
-		FROM career_positions cp
-		LEFT JOIN view_counters vc ON vc.target_type = 'career_position' AND vc.target_id = cp.id
-		LEFT JOIN favorite_counters fc ON fc.target_type = 'career_position' AND fc.target_id = cp.id
-		WHERE cp.id = $1
-	`, id).Scan(
-		&p.ID, &batchID, &p.Code, &p.Name, &shortName, &industryID, &majorIDs, &majorNames, &p.PositionType,
-		&salaryMin, &salaryMax, &coverImage, &description, &requirements, &careerPath,
-		&p.Version, &p.Status, &p.CreatedBy, &p.CreatedByName, &collaborators, &p.CollaboratorNames, &p.FavoriteCount, &p.ViewCount,
-		&p.CreatedAt, &p.UpdatedAt,
-	)
+	prefix := "zhiyu:" + tenantID + ":public:positions"
+	keys, _, err := h.RedisClient.Scan(r.Context(), 0, prefix+"*", 100).Result()
 	if err != nil {
-		return p, err
+		return
 	}
-	p.BatchID = batchID
-	p.ShortName = shortName
-	p.IndustryID = industryID
-	p.MajorIDs = majorIDs
-	p.MajorNames = majorNames
-	p.SalaryMin = salaryMin
-	p.SalaryMax = salaryMax
-	p.CoverImage = coverImage
-	p.Description = description
-	p.Requirements = requirements
-	p.CareerPath = careerPath
-	p.Collaborators = collaborators
-	return p, nil
-}
-
-func (h *PositionHandler) scanPositionRows(rows pgx.Rows) ([]domain.CareerPosition, error) {
-	items := make([]domain.CareerPosition, 0)
-	for rows.Next() {
-		var p domain.CareerPosition
-		var batchID, shortName, industryID, coverImage, description, careerPath *string
-		var salaryMin, salaryMax *int
-		var majorIDs, majorNames, requirements, collaborators, collaboratorNames []string
-
-		if err := rows.Scan(
-			&p.ID, &batchID, &p.Code, &p.Name, &shortName, &industryID, &majorIDs, &majorNames, &p.PositionType,
-			&salaryMin, &salaryMax, &coverImage, &description, &requirements, &careerPath,
-			&p.Version, &p.Status, &p.CreatedBy, &p.CreatedByName, &collaborators, &collaboratorNames, &p.FavoriteCount, &p.ViewCount,
-			&p.CreatedAt, &p.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		p.BatchID = batchID
-		p.ShortName = shortName
-		p.IndustryID = industryID
-		p.MajorIDs = majorIDs
-		p.MajorNames = majorNames
-		p.SalaryMin = salaryMin
-		p.SalaryMax = salaryMax
-		p.CoverImage = coverImage
-		p.Description = description
-		p.Requirements = requirements
-		p.CareerPath = careerPath
-		p.Collaborators = collaborators
-		p.CollaboratorNames = collaboratorNames
-		items = append(items, p)
+	if len(keys) > 0 {
+		_ = h.RedisClient.Del(r.Context(), keys...).Err()
 	}
-	return items, nil
-}
-
-func (h *PositionHandler) incrementViewCount(r *http.Request, id string) error {
-	return recordView(r.Context(), h.DB, "career_position", id, middleware.CurrentUser(r))
 }

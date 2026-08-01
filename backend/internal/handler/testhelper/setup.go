@@ -182,7 +182,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Get("/subscriptions", subscriptionHandler.Get)
 			r.Put("/subscriptions/{id}", subscriptionHandler.Update)
 
-			positionHandler := &handler.PositionHandler{DB: pool}
+			positionHandler := &handler.PositionHandler{Service: service.NewPositionService(svc2)}
 			positionCloneHandler := &handler.PositionCloneHandler{Service: service.NewPositionCloneService(svc2)}
 			r.Get("/job/positions", positionHandler.List)
 			r.Get("/job/positions/{id}", positionHandler.Get)
