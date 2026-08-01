@@ -21,6 +21,7 @@ interface BaseComboboxSelectProps {
   className?: string
   disabled?: boolean
   loading?: boolean
+  renderOption?: (option: ComboboxSelectOption, selected: boolean) => React.ReactNode
 }
 
 interface SingleComboboxSelectProps extends BaseComboboxSelectProps {
@@ -44,7 +45,7 @@ type ComboboxSelectProps = SingleComboboxSelectProps | MultipleComboboxSelectPro
  * 用于替换散落在各页面中的 inline 搜索 + Select/Popover 实现。
  */
 export function ComboboxSelect(props: ComboboxSelectProps) {
-  const { options, placeholder = "选择...", searchPlaceholder = "搜索...", emptyText = "无结果", className, disabled, loading } = props
+  const { options, placeholder = "选择...", searchPlaceholder = "搜索...", emptyText = "无结果", className, disabled, loading, renderOption } = props
   const isMultiple = props.multiple === true
   const [open, setOpen] = useState(false)
 
@@ -118,8 +119,12 @@ export function ComboboxSelect(props: ComboboxSelectProps) {
                     disabled={o.disabled}
                     onSelect={() => toggleValue(o.value)}
                   >
-                    <Check className={cn("mr-2 h-4 w-4", selected ? "opacity-100" : "opacity-0")} />
-                    {o.label}
+                    {renderOption ? renderOption(o, selected) : (
+                      <>
+                        <Check className={cn("mr-2 h-4 w-4", selected ? "opacity-100" : "opacity-0")} />
+                        {o.label}
+                      </>
+                    )}
                   </CommandItem>
                 )
               })}

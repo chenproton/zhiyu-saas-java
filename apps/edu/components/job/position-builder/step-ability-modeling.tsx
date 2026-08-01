@@ -22,19 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command'
+import { ComboboxSelect } from '@/components/shared/combobox-select'
 import {
   Plus,
   Search,
@@ -804,45 +792,15 @@ export function StepAbilityModeling({ position, onUpdate, aiMode = false }: Step
 
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[11px] font-medium text-gray-500 mr-1">关联岗位</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] bg-white text-gray-500 border border-gray-200 hover:border-gray-400 hover:text-gray-700 transition-colors min-w-0">
-                    {abilityPoolFilterPosition
-                      ? (abilityPoolPositions.find(p => p.id === abilityPoolFilterPosition)?.name || '已选岗位')
-                      : '选择岗位'}
-                    <ChevronsUpDown className="h-3 w-3 shrink-0 text-gray-400" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[260px] p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="搜索岗位..." className="h-8 text-xs" />
-                    <CommandList>
-                      <CommandEmpty className="py-3 text-center text-xs text-gray-400">暂无匹配岗位</CommandEmpty>
-                      <CommandGroup>
-                        {abilityPoolPositions.map((p) => (
-                          <CommandItem
-                            key={p.id}
-                            value={p.name}
-                            onSelect={() => {
-                              setAbilityPoolFilterPosition(
-                                abilityPoolFilterPosition === p.id ? null : p.id
-                              )
-                            }}
-                            className="text-xs"
-                          >
-                            <Check
-                              className={`h-3 w-3 shrink-0 ${
-                                abilityPoolFilterPosition === p.id ? 'opacity-100' : 'opacity-0'
-                              }`}
-                            />
-                            {p.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <ComboboxSelect
+                value={abilityPoolFilterPosition || ''}
+                onChange={(v) => setAbilityPoolFilterPosition(v || null)}
+                options={abilityPoolPositions.map((p) => ({ value: p.id, label: p.name }))}
+                placeholder="选择岗位"
+                searchPlaceholder="搜索岗位..."
+                emptyText="暂无匹配岗位"
+                className="h-7 text-[11px]"
+              />
               {abilityPoolFilterPosition && (
                 <button
                   onClick={() => setAbilityPoolFilterPosition(null)}

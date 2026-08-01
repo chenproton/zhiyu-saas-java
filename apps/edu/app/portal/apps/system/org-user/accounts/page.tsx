@@ -6,8 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 
 import { usePortalUsers } from "@/hooks/use-portal-users"
 import { useOrgTree } from "@/hooks/use-org-tree"
@@ -38,20 +37,12 @@ export default function AccountsPage() {
   const [bindTarget, setBindTarget] = useState<{ id: string; name: string } | null>(null)
   const [bindRoleIds, setBindRoleIds] = useState<string[]>([])
   const [bindSaving, setBindSaving] = useState(false)
-  const [rolePickerOpen, setRolePickerOpen] = useState(false)
 
   const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null)
 
   const openBindDialog = (account: { id: string; name: string; roleIds: string[] }) => {
     setBindTarget({ id: account.id, name: account.name })
     setBindRoleIds(account.roleIds)
-    setRolePickerOpen(false)
-  }
-
-  const toggleBindRole = (roleId: string) => {
-    setBindRoleIds((prev) =>
-      prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]
-    )
   }
 
   const handleBindRoles = async () => {
@@ -343,35 +334,23 @@ export default function AccountsPage() {
             <DialogDescription>为用户绑定 1 个或多个角色，用户登录后可在顶栏切换当前角色</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <Popover open={rolePickerOpen} onOpenChange={setRolePickerOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
-                  {bindRoleIds.length > 0 ? `已选择 ${bindRoleIds.length} 个角色` : "搜索并选择角色..."}
-                  <ChevronDown className="h-4 w-4 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="搜索角色名称或编码..." />
-                  <CommandList>
-                    <CommandEmpty>未找到角色</CommandEmpty>
-                    <CommandGroup>
-                      {roles.map((r) => (
-                        <CommandItem
-                          key={r.id}
-                          value={`${r.name} ${r.code}`}
-                          onSelect={() => toggleBindRole(r.id)}
-                        >
-                          <span className="flex-1">{r.name}</span>
-                          <span className="mr-2 font-mono text-xs text-muted-foreground">{r.code}</span>
-                          {bindRoleIds.includes(r.id) && <Check className="h-4 w-4 text-primary" />}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            <ComboboxSelect
+              multiple
+              value={bindRoleIds}
+              onChange={setBindRoleIds}
+              options={roles.map((r) => ({ value: r.id, label: r.name }))}
+              placeholder="搜索并选择角色..."
+              searchPlaceholder="搜索角色名称或编码..."
+              emptyText="未找到角色"
+              className="w-full"
+              renderOption={(o, selected) => (
+                <>
+                  <span className="flex-1">{o.label}</span>
+                  <span className="mr-2 font-mono text-xs text-muted-foreground">{roles.find((r) => r.id === o.value)?.code}</span>
+                  {selected && <Check className="h-4 w-4 text-primary" />}
+                </>
+              )}
+            />
 
             <div className="flex min-h-8 flex-wrap gap-1.5">
               {bindRoleIds.map((id) => {
@@ -380,7 +359,7 @@ export default function AccountsPage() {
                 return (
                   <Badge key={id} variant="secondary" className="gap-1">
                     {r.name}
-                    <button type="button" onClick={() => toggleBindRole(id)} className="ml-0.5 rounded-full hover:text-destructive">
+                    <button type="button" onClick={() => setBindRoleIds((prev) => prev.filter((i) => i !== id))} className="ml-0.5 rounded-full hover:text-destructive">
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>

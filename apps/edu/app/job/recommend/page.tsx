@@ -7,19 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command'
+import { ComboboxSelect } from '@/components/shared/combobox-select'
 import {
   Dialog,
   DialogContent,
@@ -78,7 +66,6 @@ export default function PostRecommendPage() {
 
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [selectedPositionId, setSelectedPositionId] = useState<string>('')
-  const [positionSearchOpen, setPositionSearchOpen] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
@@ -246,62 +233,28 @@ export default function PostRecommendPage() {
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">推荐岗位</label>
-                    <Popover open={positionSearchOpen} onOpenChange={setPositionSearchOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={positionSearchOpen}
-                          className="w-full justify-between font-normal h-10 px-3 bg-background hover:bg-background border-input"
-                          disabled={availablePositions.length === 0}
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-                            <span className={cn("truncate", !selectedPosition && "text-muted-foreground")}>
-                              {selectedPosition
-                                ? `${selectedPosition.name}（${selectedPosition.shortName}）`
-                                : availablePositions.length === 0
-                                ? '暂无可添加的岗位'
-                                : '搜索或选择岗位'}
+                    <ComboboxSelect
+                      value={selectedPositionId}
+                      onChange={setSelectedPositionId}
+                      options={availablePositions.map((p) => ({ value: p.id, label: `${p.name}（${p.shortName}）` }))}
+                      placeholder={availablePositions.length === 0 ? '暂无可添加的岗位' : '搜索或选择岗位'}
+                      searchPlaceholder="搜索岗位名称、简称、行业..."
+                      emptyText="未找到匹配岗位"
+                      disabled={availablePositions.length === 0}
+                      className="w-full h-10"
+                      renderOption={(o) => {
+                        const position = availablePositions.find((p) => p.id === o.value)
+                        if (!position) return o.label
+                        return (
+                          <div className="flex flex-col">
+                            <span className="text-sm">{position.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {position.shortName} · {getIndustryName(position.industry)}
                             </span>
                           </div>
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]">
-                        <Command>
-                          <CommandInput placeholder="搜索岗位名称、简称、行业..." />
-                          <CommandList>
-                            <CommandEmpty>未找到匹配岗位</CommandEmpty>
-                            <CommandGroup>
-                              {availablePositions.map((position) => (
-                                <CommandItem
-                                  key={position.id}
-                                  value={`${position.name} ${position.shortName} ${getIndustryName(position.industry)}`}
-                                  onSelect={() => {
-                                    setSelectedPositionId(position.id)
-                                    setPositionSearchOpen(false)
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      selectedPositionId === position.id ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
-                                  <div className="flex flex-col">
-                                    <span className="text-sm">{position.name}</span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {position.shortName} · {getIndustryName(position.industry)}
-                                    </span>
-                                  </div>
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
+                        )
+                      }}
+                    />
                   </div>
 
                   {selectedPosition && (
