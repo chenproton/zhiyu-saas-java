@@ -209,7 +209,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		jobAbilityResultHandler:       handler.NewJobAbilityResultHandler(db),
 		affairsTermHandler:            &handler.AffairsTermHandler{Service: service.NewPositionService(svc)},
 		trainingProgramHandler:        &handler.TrainingProgramHandler{DB: db},
-		teachingPlanHandler:           &handler.TeachingPlanHandler{DB: db},
+		teachingPlanHandler:           &handler.TeachingPlanHandler{Service: service.NewPositionService(svc)},
 		schedulingHandler:             &handler.SchedulingHandler{Service: service.NewAffairsService(svc)},
 		scheduleImportHandler:         &handler.ScheduleImportHandler{DB: db},
 		programCourseImportHandler:    &handler.ProgramCourseImportHandler{DB: db},

@@ -77,6 +77,7 @@ type Store struct {
 	lessonBehaviors *LessonBehaviorStore
 	landing         *LandingStore
 	approvals       *ApprovalStore
+	teachingPlans   *TeachingPlanStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -139,6 +140,7 @@ func New(db *pgxpool.Pool) *Store {
 		lessonBehaviors: NewLessonBehaviorStore(db),
 		landing:         NewLandingStore(db),
 		approvals:       NewApprovalStore(db),
+		teachingPlans:   NewTeachingPlanStore(db),
 	}
 }
 
@@ -202,6 +204,7 @@ func NewWithTx(tx pgx.Tx) *Store {
 		lessonBehaviors: NewLessonBehaviorStore(tx),
 		landing:         NewLandingStore(tx),
 		approvals:       NewApprovalStore(tx),
+		teachingPlans:   NewTeachingPlanStore(tx),
 	}
 }
 
@@ -488,6 +491,11 @@ func (s *Store) Landing() *LandingStore {
 // Approvals 返回审批 store。
 func (s *Store) Approvals() *ApprovalStore {
 	return s.approvals
+}
+
+// TeachingPlans 返回教学计划 store。
+func (s *Store) TeachingPlans() *TeachingPlanStore {
+	return s.teachingPlans
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。
