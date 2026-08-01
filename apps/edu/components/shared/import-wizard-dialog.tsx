@@ -21,11 +21,22 @@ interface ImportWizardDialogProps {
   /** 导入按钮文案（参数为已选文件数） */
   importLabel: (fileCount: number) => string
   /** 执行导入（可包含预览/重复确认流程），返回 true 表示导入成功，向导将关闭并重置 */
-  onImport: (files: File[]) => Promise<boolean>
+  onImport: (files: File[]) => Promise<boolean | undefined>
+  /** 外部控制的文件列表；提供时组件不再内部维护 files */
+  files?: File[]
+  /** 外部控制的文件添加；提供时须同时提供 files */
+  onAddFiles?: (files: FileList | null) => void
+  /** 外部控制的文件移除；提供时须同时提供 files */
+  onRemoveFile?: (index: number) => void
+  /** 外部控制的导入中状态 */
+  importing?: boolean
+  /** 外部控制的下载中状态 */
+  downloading?: boolean
 }
 
 /** Excel 导入两步向导：下载模板 → 上传文件 → 执行导入。
- *  只收敛 UI 状态机（两步切换、文件列表、去重、重置），导入协议由调用方注入 onImport */
+ *  只收敛 UI 状态机（两步切换、文件列表、去重、重置），导入协议由调用方注入 onImport。
+ *  支持受控模式：传入 files/onAddFiles/onRemoveFile/importing/downloading 可与 useImportFlow 组合使用。 */
 export function ImportWizardDialog({
   open,
   onOpenChange,
@@ -36,36 +47,64 @@ export function ImportWizardDialog({
   uploadHint,
   importLabel,
   onImport,
+  files: controlledFiles,
+  onAddFiles: controlledOnAddFiles,
+  onRemoveFile: controlledOnRemoveFile,
+  importing: controlledImporting,
+  downloading: controlledDownloading,
 }: ImportWizardDialogProps) {
+  const isControlled = controlledFiles !== undefined
   const [step, setStep] = useState<"download" | "upload">("download")
-  const [files, setFiles] = useState<File[]>([])
-  const [importing, setImporting] = useState(false)
-  const [downloading, setDownloading] = useState(false)
+  const [internalFiles, setInternalFiles] = useState<File[]>([])
+  const [internalImporting, setInternalImporting] = useState(false)
+  const [internalDownloading, setInternalDownloading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const files = isControlled ? controlledFiles : internalFiles
+  const importing = controlledImporting ?? internalImporting
+  const downloading = controlledDownloading ?? internalDownloading
+
   const handleAddFiles = (fl: FileList | null) => {
+    if (isControlled) {
+      controlledOnAddFiles?.(fl)
+      return
+    }
     if (!fl) return
-    const existing = new Set(files.map((f) => f.name + "_" + f.size))
+    const existing = new Set(internalFiles.map((f) => f.name + "_" + f.size))
     const added = Array.from(fl).filter((f) => !existing.has(f.name + "_" + f.size))
-    setFiles((prev) => [...prev, ...added])
+    setInternalFiles((prev) => [...prev, ...added])
   }
 
-  const handleRemoveFile = (i: number) => setFiles((prev) => prev.filter((_, idx) => idx !== i))
+  const handleRemoveFile = (i: number) => {
+    if (isControlled) {
+      controlledOnRemoveFile?.(i)
+      return
+    }
+    setInternalFiles((prev) => prev.filter((_, idx) => idx !== i))
+  }
 
-  const resetAndClose = () => { onOpenChange(false); setStep("download"); setFiles([]) }
+  const resetAndClose = () => {
+    onOpenChange(false)
+    setStep("download")
+    if (!isControlled) setInternalFiles([])
+  }
 
   const handleDownload = async () => {
-    setDownloading(true)
-    try { await onDownload() } finally { setDownloading(false) }
+    if (controlledDownloading === undefined) setInternalDownloading(true)
+    try { await onDownload() } finally {
+      if (controlledDownloading === undefined) setInternalDownloading(false)
+    }
   }
 
   const handleImport = async () => {
     if (files.length === 0) return
-    setImporting(true)
+    if (controlledImporting === undefined) setInternalImporting(true)
     try {
       const ok = await onImport(files)
       if (ok) resetAndClose()
-    } finally { setImporting(false) }
+    } finally {
+      if (controlledImporting === undefined) setInternalImporting(false)
+    }
   }
 
   return (

@@ -8,8 +8,6 @@ import {
   ChevronRight,
   Copy,
   Download,
-  FileDown,
-  FileText,
   FolderKanban,
   GitBranch,
   LayoutGrid,
@@ -61,6 +59,7 @@ import { useToast } from "@zhiyu/ui"
 import { UserSelector } from "@/components/shared/user-selector"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
+import { ImportWizardDialog } from "@/components/shared/import-wizard-dialog"
 import { useImportFlow } from "@/hooks/use-import-flow"
 import { majorApi, workflowApi, downloadBlob } from "@/lib/api"
 import type { Major, Workflow } from "@/lib/types/backend"
@@ -248,7 +247,6 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
   const [inviteTarget, setInviteTarget] = useState<T | null>(null)
   const [inviteSelectedIds, setInviteSelectedIds] = useState<string[]>([])
   const [confirmAction, setConfirmAction] = useState<{ type: "archive" | "delete"; item: T } | null>(null)
-  const [importStep, setImportStep] = useState<"download" | "upload">("download")
   const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
   const [csvImporting, setCsvImporting] = useState(false)
 
@@ -280,7 +278,6 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     setImportPreview,
     handleAddFiles,
     handleRemoveFile,
-    handleClearFiles,
     handleImport,
     executeImport,
     handleDownloadTemplate,
@@ -289,7 +286,6 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     entityLabel,
     templateFileName: `${entityLabel}批量导入模板.xlsx`,
     onSuccess: async () => {
-      setImportStep("download")
       setIsImportDialogOpen(false)
       setIsImportConfirmOpen(false)
       await refresh()
@@ -809,11 +805,8 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
     handleAddFiles(files)
   }
 
-  const handleImportClick = async () => {
+  const handleCsvImportClick = async () => {
     if (importFiles.length === 0) return
-    if (hasExcel) {
-      return handleImport()
-    }
     setCsvImporting(true)
     try {
       let preview: ImportPreviewResult | null = null
@@ -825,32 +818,22 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
         setCsvImporting(false)
         return
       }
-      await doExecuteImport(false)
+      await doCsvImport(false)
     } catch (err: any) {
       toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
       setCsvImporting(false)
     }
   }
 
-  const doExecuteImport = async (overwrite = false) => {
+  const doCsvImport = async (overwrite = false) => {
     if (importFiles.length === 0) return
-    if (hasExcel) {
-      await executeImport(overwrite)
-      return
-    }
     setCsvImporting(true)
     try {
-      let result: any
-      if (importExportApi.importExcel && importExcelEntity) {
-        result = await importExportApi.importExcel(importExcelEntity, importFiles[0], overwrite)
-      } else {
-        result = await importExportApi.import(importEntityName, importFiles[0], overwrite)
-      }
+      const result = await importExportApi.import(importEntityName, importFiles[0], overwrite)
       const skippedMsg = result.skipped != null ? `，跳过 ${result.skipped} 条` : ""
       toast({ title: "导入完成", description: `成功 ${result.created} 条，失败 ${result.failed} 条${skippedMsg}` })
       setImportFiles([])
       setImportPreview(null)
-      setImportStep("download")
       setIsImportDialogOpen(false)
       setIsImportConfirmOpen(false)
       await refresh()
@@ -858,6 +841,15 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       toast({ variant: "destructive", title: "导入失败", description: err.message || "导入失败" })
     } finally {
       setCsvImporting(false)
+    }
+  }
+
+  const doImport = async (overwrite = false) => {
+    if (hasExcel) {
+      await executeImport(overwrite)
+      // useImportFlow.onSuccess 负责关闭弹窗与刷新
+    } else {
+      await doCsvImport(overwrite)
     }
   }
 
@@ -1250,80 +1242,38 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
       )}
 
       {/* Import Dialog */}
-      <Dialog open={isImportDialogOpen} onOpenChange={(open) => { setIsImportDialogOpen(open); if (!open) { setImportStep("download"); setImportFiles([]) } }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>导入{entityLabel}</DialogTitle>
-            <DialogDescription>
-              {importExcelEntity
-                ? `第 ${importStep === "download" ? "1" : "2"} 步：${importStep === "download" ? "下载模板并填写数据" : "上传已填写的 Excel 文件"}`
-                : "上传 CSV 文件批量导入" + entityLabel + "数据"}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            {importExcelEntity ? (
-              importStep === "download" ? (
-                <div className="space-y-4">
-                  <div className="rounded-lg border bg-muted/30 p-4">
-                    <p className="text-sm font-medium mb-2">操作指引</p>
-                    <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                      <li>点击下方按钮下载最新的导入模板（含系统字典数据）</li>
-                      <li>参照模板中各 Sheet 的填写说明，填入{entityLabel}数据</li>
-                      <li>完成后点击&quot;下一步&quot;上传文件</li>
-                    </ol>
-                  </div>
-                  <Button
-                    className="w-full"
-                    size="lg"
-                    onClick={handleDownloadTemplate}
-                    disabled={isDownloading}
-                  >
-                    <FileDown className="mr-2 h-5 w-5" />
-                    {isDownloading ? "下载中..." : `下载${entityLabel}批量导入模板`}
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {importFiles.length > 0 && (
-                    <div className="space-y-2">
-                      {importFiles.map((file, i) => (
-                        <div key={i} className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <span className="text-sm truncate">{file.name}</span>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
-                            onClick={() => handleRemoveFile(i)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div
-                    className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:bg-muted/30 transition-colors"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Plus className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      {importFiles.length > 0 ? "继续添加文件" : "点击选择已填写的 Excel (.xlsx) 文件"}
-                    </p>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      multiple
-                      accept=".xlsx"
-                      className="hidden"
-                      onChange={(e) => handleImportFileSelect(e.target.files)}
-                    />
-                  </div>
-                </div>
-              )
-            ) : (
+      {hasExcel ? (
+        <ImportWizardDialog
+          open={isImportDialogOpen}
+          onOpenChange={(open) => {
+            setIsImportDialogOpen(open)
+            if (!open) setImportFiles([])
+          }}
+          title={`导入${entityLabel}`}
+          guideItems={[
+            <>点击下方按钮下载最新的导入模板（含系统字典数据）</>,
+            <>参照模板中各 Sheet 的填写说明，填入{entityLabel}数据</>,
+            <>完成后点击&quot;下一步&quot;上传文件</>,
+          ]}
+          downloadLabel={`下载${entityLabel}批量导入模板`}
+          onDownload={handleDownloadTemplate}
+          uploadHint="点击选择已填写的 Excel (.xlsx) 文件"
+          importLabel={(count) => `开始导入（${count} 个文件）`}
+          onImport={handleImport}
+          files={importFiles}
+          onAddFiles={handleAddFiles}
+          onRemoveFile={handleRemoveFile}
+          importing={isImporting}
+          downloading={isDownloading}
+        />
+      ) : (
+        <Dialog open={isImportDialogOpen} onOpenChange={(open) => { setIsImportDialogOpen(open); if (!open) setImportFiles([]) }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>导入{entityLabel}</DialogTitle>
+              <DialogDescription>上传 CSV 文件批量导入{entityLabel}数据</DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
               <div
                 className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer"
                 onClick={() => fileInputRef.current?.click()}
@@ -1340,25 +1290,16 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
                   onChange={(e) => handleImportFileSelect(e.target.files)}
                 />
               </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsImportDialogOpen(false); setImportStep("download"); setImportFiles([]) }}>取消</Button>
-            {importExcelEntity && importStep === "download" ? (
-              <Button onClick={() => setImportStep("upload")}>下一步</Button>
-            ) : (
-              <Button onClick={handleImportClick} disabled={importFiles.length === 0 || (hasExcel ? isImporting : csvImporting)}>
-                {(hasExcel ? isImporting : csvImporting) ? "导入中..." : `开始导入（${importFiles.length} 个文件）`}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setIsImportDialogOpen(false); setImportFiles([]) }}>取消</Button>
+              <Button onClick={handleCsvImportClick} disabled={importFiles.length === 0 || csvImporting}>
+                {csvImporting ? "导入中..." : "开始导入"}
               </Button>
-            )}
-            {importExcelEntity && importStep === "upload" && (
-              <Button variant="ghost" size="sm" onClick={() => setImportStep("download")}>
-                上一步
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Import Confirm Dialog */}
       {importPreview && (
@@ -1370,8 +1311,8 @@ export function ContentListPage<T extends ContentListItem>(config: ContentListPa
           duplicates={importPreview.duplicates}
           failed={importPreview.failed}
           duplicateItems={importPreview.duplicateItems}
-          onConfirmOverwrite={() => doExecuteImport(true)}
-          onConfirmSkip={() => doExecuteImport(false)}
+          onConfirmOverwrite={() => doImport(true)}
+          onConfirmSkip={() => doImport(false)}
         />
       )}
 

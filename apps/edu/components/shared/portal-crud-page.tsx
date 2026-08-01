@@ -9,10 +9,11 @@ import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Search, Trash2, Plus, Loader2, Upload, FileDown } from "lucide-react"
+import { Search, Trash2, Plus, Loader2, Upload } from "lucide-react"
 import { useToast } from "@zhiyu/ui"
 import { useImportFlow, type UseImportFlowOptions } from "@/hooks/use-import-flow"
 import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
+import { ImportWizardDialog } from "@/components/shared/import-wizard-dialog"
 import { TableRowActions } from "@/components/shared/table-row-actions"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 
@@ -80,17 +81,16 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
   const [deleting, setDeleting] = useState(false)
 
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
-  const [importStep, setImportStep] = useState<"download" | "upload">("download")
   const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
 
   const {
-    fileInputRef,
     importFiles,
     setImportFiles,
     isImporting,
     isDownloading,
     importPreview,
     handleAddFiles,
+    handleRemoveFile,
     handleImport,
     executeImport,
     handleDownloadTemplate,
@@ -174,17 +174,8 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
     const ok = await executeImport(overwrite)
     if (ok) {
       setIsImportDialogOpen(false)
-      setImportStep("download")
       setIsImportConfirmOpen(false)
-    }
-  }
-
-  const doHandleImport = async () => {
-    const ok = await handleImport()
-    if (ok) {
-      setIsImportDialogOpen(false)
-      setImportStep("download")
-      setIsImportConfirmOpen(false)
+      setImportFiles([])
     }
   }
 
@@ -275,92 +266,29 @@ export function PortalCrudPage<T extends { id: string; enabled?: boolean }>({
       )}
 
       {/* Import Dialog */}
-      <Dialog
+      <ImportWizardDialog
         open={isImportDialogOpen}
         onOpenChange={(open) => {
           setIsImportDialogOpen(open)
-          if (!open) {
-            setImportStep("download")
-            setImportFiles([])
-          }
+          if (!open) setImportFiles([])
         }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>导入{entityLabel}</DialogTitle>
-            <DialogDescription>
-              第 {importStep === "download" ? "1" : "2"} 步：
-              {importStep === "download" ? "下载模板并填写数据" : "上传已填写的 Excel 文件"}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            {importStep === "download" ? (
-              <div className="space-y-4">
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <p className="text-sm font-medium mb-2">操作指引</p>
-                  <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                    <li>点击下方按钮下载最新的导入模板（含系统字典数据）</li>
-                    <li>参照模板中各 Sheet 的填写说明，填入{entityLabel}数据</li>
-                    <li>完成后点击&quot;下一步&quot;上传文件</li>
-                  </ol>
-                </div>
-                <Button
-                  className="w-full"
-                  size="lg"
-                  onClick={handleDownloadTemplate}
-                  disabled={isDownloading}
-                >
-                  <FileDown className="mr-2 h-5 w-5" />
-                  {isDownloading ? "下载中..." : `下载${entityLabel}批量导入模板`}
-                </Button>
-              </div>
-            ) : (
-              <div
-                className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
-                <p className="text-sm text-muted-foreground mb-2">
-                  {importFiles.length > 0 ? importFiles.map(f => f.name).join(", ") : "点击选择已填写的 Excel (.xlsx) 文件"}
-                </p>
-                <p className="text-xs text-muted-foreground">仅支持 .xlsx 格式</p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => handleAddFiles(e.target.files)}
-                />
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsImportDialogOpen(false)
-                setImportStep("download")
-                setImportFiles([])
-              }}
-            >
-              取消
-            </Button>
-            {importStep === "download" ? (
-              <Button onClick={() => setImportStep("upload")}>下一步</Button>
-            ) : (
-              <Button onClick={doHandleImport} disabled={importFiles.length === 0 || isImporting}>
-                {isImporting ? "导入中..." : "开始导入"}
-              </Button>
-            )}
-            {importStep === "upload" && (
-              <Button variant="ghost" size="sm" onClick={() => setImportStep("download")}>
-                上一步
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title={`导入${entityLabel}`}
+        guideItems={[
+          <>点击下方按钮下载最新的导入模板（含系统字典数据）</>,
+          <>参照模板中各 Sheet 的填写说明，填入{entityLabel}数据</>,
+          <>完成后点击&quot;下一步&quot;上传文件</>,
+        ]}
+        downloadLabel={`下载${entityLabel}批量导入模板`}
+        onDownload={handleDownloadTemplate}
+        uploadHint="点击选择已填写的 Excel (.xlsx) 文件"
+        importLabel={() => "开始导入"}
+        onImport={handleImport}
+        files={importFiles}
+        onAddFiles={handleAddFiles}
+        onRemoveFile={handleRemoveFile}
+        importing={isImporting}
+        downloading={isDownloading}
+      />
 
       {importPreview && (
         <ImportConfirmDialog
