@@ -68,6 +68,7 @@ type Store struct {
 	abilityDomains  *AbilityDomainStore
 	banners         *BannerStore
 	terms           *TermStore
+	batches         *BatchStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -121,6 +122,7 @@ func New(db *pgxpool.Pool) *Store {
 		abilityDomains:  NewAbilityDomainStore(db),
 		banners:         NewBannerStore(db),
 		terms:           NewTermStore(db),
+		batches:         NewBatchStore(db),
 	}
 }
 
@@ -175,6 +177,7 @@ func NewWithTx(tx pgx.Tx) *Store {
 		abilityDomains:  NewAbilityDomainStore(tx),
 		banners:         NewBannerStore(tx),
 		terms:           NewTermStore(tx),
+		batches:         NewBatchStore(tx),
 	}
 }
 
@@ -416,6 +419,11 @@ func (s *Store) Banners() *BannerStore {
 // Terms 返回学期 store。
 func (s *Store) Terms() *TermStore {
 	return s.terms
+}
+
+// Batches 返回批次 store。
+func (s *Store) Batches() *BatchStore {
+	return s.batches
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。

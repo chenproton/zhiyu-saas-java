@@ -1,10 +1,10 @@
 package handler
 
 import (
-	"context"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/zhiyu-saas/backend/internal/store"
 	"github.com/zhiyu-saas/backend/internal/domain"
 )
 
@@ -24,33 +24,10 @@ func NewJobBatchHandler(db *pgxpool.Pool) *JobBatchHandler {
 			SearchColumns:      []string{"name"},
 			TenantScoped:       true,
 			TenantFilterColumn: "b.tenant_id",
-			ScanRow:            scanJobBatchRow,
+			ScanRow:            store.ScanJobBatchRow,
 			ScanRows:           scanJobBatchRows,
 		}),
 	}
-}
-
-func scanJobBatchRow(ctx context.Context, db *pgxpool.Pool, id string) (any, error) {
-	var b domain.JobBatch
-	var code, orgNodeID, majorID, majorName, workflowID *string
-
-	err := db.QueryRow(ctx, `
-		SELECT b.id, b.name, b.code, b.org_node_id, b.major_id, COALESCE(m.name, '') AS major_name, b.workflow_id, b.status,
-			b.position_count, b.published_count, b.pending_count, b.created_at, b.updated_at
-		FROM batches b LEFT JOIN majors m ON m.id = b.major_id WHERE b.id = $1
-	`, id).Scan(
-		&b.ID, &b.Name, &code, &orgNodeID, &majorID, &majorName, &workflowID, &b.Status,
-		&b.PositionCount, &b.PublishedCount, &b.PendingCount, &b.CreatedAt, &b.UpdatedAt,
-	)
-	if err != nil {
-		return nil, err
-	}
-	b.Code = code
-	b.OrgNodeID = orgNodeID
-	b.MajorID = majorID
-	b.MajorName = majorName
-	b.WorkflowID = workflowID
-	return b, nil
 }
 
 func scanJobBatchRows(rows pgx.Rows) ([]any, error) {

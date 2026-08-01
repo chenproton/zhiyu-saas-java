@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
@@ -37,6 +38,12 @@ type BatchUpdateStatusRequest struct {
 	Status string `json:"status"`
 }
 
+// BatchScanRowFunc 批次单行扫描（经 store 查询后由扫描函数转换）。
+type BatchScanRowFunc func(ctx context.Context, row pgx.Row) (any, error)
+
+// BatchScanRowsFunc 批次列表行扫描。
+type BatchScanRowsFunc func(rows pgx.Rows) ([]any, error)
+
 type BatchTableConfig struct {
 	TableName      string
 	WriteTableName string
@@ -58,29 +65,17 @@ type BatchTableConfig struct {
 	CreateWithStatus bool
 	UpdateWithStatus bool
 
-	ScanRow  func(ctx context.Context, db *pgxpool.Pool, id string) (any, error)
-	ScanRows func(rows pgx.Rows) ([]any, error)
+	ScanRow  BatchScanRowFunc
+	ScanRows BatchScanRowsFunc
 }
 
 type BatchHandler struct {
-	DB     *pgxpool.Pool
-	Config BatchTableConfig
-}
-
-var allowedBatchWriteTables = []string{
-	"affairs_batches",
-	"batches",
-	"scene_batches",
-	"evaluation_batches",
-	"lesson_batches",
+	Service *service.PositionService
+	Config  BatchTableConfig
 }
 
 func NewBatchHandler(db *pgxpool.Pool, config BatchTableConfig) *BatchHandler {
-	_, err := sanitizeIdentifier(config.WriteTableName, allowedBatchWriteTables)
-	if err != nil {
-		slog.Error("NewBatchHandler: invalid WriteTableName", "table", config.WriteTableName, "error", err)
-	}
-	return &BatchHandler{DB: db, Config: config}
+	return &BatchHandler{Service: service.NewPositionService(service.New(store.New(db))), Config: config}
 }
 
 func (h *BatchHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -88,7 +83,6 @@ func (h *BatchHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	orgNodeID := r.URL.Query().Get("orgNodeId")
 	status := r.URL.Query().Get("status")
 
@@ -97,12 +91,13 @@ func (h *BatchHandler) List(w http.ResponseWriter, r *http.Request) {
 		tenantColumn = "tenant_id"
 	}
 
-	items, total, err := executeListQuery(r.Context(), h.DB, r, store.ListQueryConfig[any]{
+	cfg := store.ListQueryConfig[any]{
 		Table:         h.Config.TableName,
 		SelectColumns: h.Config.SelectColumns,
 		TenantScoped:  h.Config.TenantScoped,
 		TenantColumn:  tenantColumn,
 		SearchColumns: h.Config.SearchColumns,
+		ScanRows:      h.Config.ScanRows,
 		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if orgNodeID != "" {
 				qb.AddCondition("org_node_id = " + qb.NextArg(orgNodeID))
@@ -114,8 +109,13 @@ func (h *BatchHandler) List(w http.ResponseWriter, r *http.Request) {
 				h.Config.ExtraListFilters(p, qb)
 			}
 		},
-		ScanRows: h.Config.ScanRows,
-	})
+	}
+	params, ok := listParamsFromRequest(r, h.Config.TenantScoped)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, total, err := store.ExecuteListQuery(r.Context(), h.Service.BatchQueryer(), params, cfg)
 	if err != nil {
 		slog.Error("batch list failed", "entity", h.Config.EntityName, "error", err)
 		if errors.Is(err, store.ErrMissingTenant) {
@@ -125,7 +125,6 @@ func (h *BatchHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "查询"+h.Config.EntityName+"es失败")
 		return
 	}
-
 	respondJSON(w, http.StatusOK, map[string]any{"items": items, "total": total})
 }
 
@@ -133,15 +132,20 @@ func (h *BatchHandler) checkTenantAccess(w http.ResponseWriter, r *http.Request,
 	if !h.Config.TenantScoped {
 		return true
 	}
-
-	var entityTenantID string
-	err := h.DB.QueryRow(r.Context(), "SELECT tenant_id FROM "+h.Config.WriteTableName+" WHERE id = $1", id).Scan(&entityTenantID)
+	entityTenantID, err := h.Service.BatchTenantOf(r.Context(), h.Config.WriteTableName, id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, h.Config.EntityName+"不存在")
 		return false
 	}
-
 	return verifyTenantOwnership(w, r, entityTenantID)
+}
+
+func (h *BatchHandler) scanRow(ctx context.Context, id string) (any, error) {
+	row, err := h.Service.BatchGetByTable(ctx, h.Config.TableName, h.Config.SelectColumns, id)
+	if err != nil {
+		return nil, err
+	}
+	return h.Config.ScanRow(ctx, row)
 }
 
 func (h *BatchHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -149,12 +153,11 @@ func (h *BatchHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	id := chi.URLParam(r, "id")
 	if !h.checkTenantAccess(w, r, id) {
 		return
 	}
-	batch, err := h.Config.ScanRow(r.Context(), h.DB, id)
+	batch, err := h.scanRow(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, h.Config.EntityName+"不存在")
 		return
@@ -168,7 +171,6 @@ func (h *BatchHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	var req BatchCreateRequest
 	if !decodeBody(w, r, &req) {
 		return
@@ -183,7 +185,6 @@ func (h *BatchHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if h.Config.CreateWithStatus && req.Status != "" {
 		status = req.Status
 	}
-
 	var tenantID *string
 	if claims.TenantID != nil && *claims.TenantID != "" {
 		tenantID = claims.TenantID
@@ -198,19 +199,11 @@ func (h *BatchHandler) Create(w http.ResponseWriter, r *http.Request) {
 	cols = append(cols, h.Config.CreateExtraCols...)
 	vals = append(vals, h.Config.CreateExtraVals...)
 
-	placeholders := make([]string, len(cols))
-	for i := range cols {
-		placeholders[i] = "$" + itoa(i+1)
-	}
-
-	query := "INSERT INTO " + h.Config.WriteTableName + " (" + strings.Join(cols, ", ") + ") VALUES (" + strings.Join(placeholders, ", ") + ")"
-	_, err := h.DB.Exec(r.Context(), query, vals...)
-	if err != nil {
+	if err := h.Service.BatchCreate(r.Context(), h.Config.WriteTableName, cols, vals); err != nil {
 		respondError(w, http.StatusInternalServerError, "创建"+h.Config.EntityName+"失败")
 		return
 	}
-
-	batch, err2 := h.Config.ScanRow(r.Context(), h.DB, id)
+	batch, err2 := h.scanRow(r.Context(), id)
 	if err2 != nil {
 		respondError(w, http.StatusInternalServerError, "创建"+h.Config.EntityName+"失败")
 		return
@@ -223,16 +216,14 @@ func (h *BatchHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	id := chi.URLParam(r, "id")
 	if !h.checkTenantAccess(w, r, id) {
 		return
 	}
-	if _, err := h.Config.ScanRow(r.Context(), h.DB, id); err != nil {
+	if _, err := h.scanRow(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, h.Config.EntityName+"不存在")
 		return
 	}
-
 	var req BatchUpdateRequest
 	if !decodeBody(w, r, &req) {
 		return
@@ -245,7 +236,6 @@ func (h *BatchHandler) Update(w http.ResponseWriter, r *http.Request) {
 	setClauses := []string{"name = $1", "code = $2", "org_node_id = $3", "major_id = $4", "workflow_id = $5", "updated_at = NOW()"}
 	args := []any{req.Name, req.Code, req.OrgNodeID, req.MajorID, req.WorkflowID}
 	argIdx := 6
-
 	if h.Config.UpdateWithStatus {
 		status := h.Config.StatusOpen
 		if req.Status != "" {
@@ -255,17 +245,13 @@ func (h *BatchHandler) Update(w http.ResponseWriter, r *http.Request) {
 		args = append(args, status)
 		argIdx++
 	}
-
-	query := "UPDATE " + h.Config.WriteTableName + " SET " + strings.Join(setClauses, ", ") + " WHERE id = $" + itoa(argIdx)
 	args = append(args, id)
 
-	_, err := h.DB.Exec(r.Context(), query, args...)
-	if err != nil {
+	if err := h.Service.BatchUpdate(r.Context(), h.Config.WriteTableName, setClauses, args); err != nil {
 		respondError(w, http.StatusInternalServerError, "更新"+h.Config.EntityName+"失败")
 		return
 	}
-
-	batch, err2 := h.Config.ScanRow(r.Context(), h.DB, id)
+	batch, err2 := h.scanRow(r.Context(), id)
 	if err2 != nil {
 		respondError(w, http.StatusInternalServerError, "更新"+h.Config.EntityName+"失败")
 		return
@@ -278,18 +264,15 @@ func (h *BatchHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	id := chi.URLParam(r, "id")
 	if !h.checkTenantAccess(w, r, id) {
 		return
 	}
-	if _, err := h.Config.ScanRow(r.Context(), h.DB, id); err != nil {
+	if _, err := h.scanRow(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, h.Config.EntityName+"不存在")
 		return
 	}
-
-	_, err := h.DB.Exec(r.Context(), "DELETE FROM "+h.Config.WriteTableName+" WHERE id = $1", id)
-	if err != nil {
+	if err := h.Service.BatchDelete(r.Context(), h.Config.WriteTableName, id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除"+h.Config.EntityName+"失败")
 		return
 	}
@@ -301,36 +284,32 @@ func (h *BatchHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	id := chi.URLParam(r, "id")
 	if !h.checkTenantAccess(w, r, id) {
 		return
 	}
-	if _, err := h.Config.ScanRow(r.Context(), h.DB, id); err != nil {
+	if _, err := h.scanRow(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, h.Config.EntityName+"不存在")
 		return
 	}
-
 	var req BatchUpdateStatusRequest
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.Status != h.Config.StatusOpen && req.Status != h.Config.StatusClosed {
 		respondError(w, http.StatusBadRequest, "无效状态")
 		return
 	}
-
-	_, err := h.DB.Exec(r.Context(), "UPDATE "+h.Config.WriteTableName+" SET status = $1, updated_at = NOW() WHERE id = $2", req.Status, id)
-	if err != nil {
+	if err := h.Service.BatchUpdateStatus(r.Context(), h.Config.WriteTableName, id, req.Status); err != nil {
 		respondError(w, http.StatusInternalServerError, "更新"+h.Config.EntityName+"状态失败")
 		return
 	}
-
-	batch, err2 := h.Config.ScanRow(r.Context(), h.DB, id)
+	batch, err2 := h.scanRow(r.Context(), id)
 	if err2 != nil {
 		respondError(w, http.StatusInternalServerError, "更新"+h.Config.EntityName+"状态失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, batch)
 }
+
+var _ = strings.Join

@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -35,29 +34,10 @@ func NewCourseBatchHandler(db *pgxpool.Pool) *CourseBatchHandler {
 			CreateExtraVals:  []any{0},
 			CreateWithStatus: true,
 			UpdateWithStatus: true,
-			ScanRow:          scanLessonBatchRow,
+			ScanRow:          store.ScanLessonBatchRow,
 			ScanRows:         scanLessonBatchRows,
 		}),
 	}
-}
-
-func scanLessonBatchRow(ctx context.Context, db *pgxpool.Pool, id string) (any, error) {
-	var b domain.LessonBatch
-	var majorID, majorName *string
-	err := db.QueryRow(ctx, `
-		SELECT lb.id, lb.name, lb.code, lb.org_node_id, lb.major_id, COALESCE(m.name, '') AS major_name,
-			lb.workflow_id, lb.status, lb.course_count, lb.created_at, lb.updated_at
-		FROM lesson_batches lb LEFT JOIN majors m ON m.id = lb.major_id WHERE lb.id = $1
-	`, id).Scan(
-		&b.ID, &b.Name, &b.Code, &b.OrgNodeID, &majorID, &majorName,
-		&b.WorkflowID, &b.Status, &b.CourseCount, &b.CreatedAt, &b.UpdatedAt,
-	)
-	if err != nil {
-		return nil, err
-	}
-	b.MajorID = majorID
-	b.MajorName = majorName
-	return &b, nil
 }
 
 func scanLessonBatchRows(rows pgx.Rows) ([]any, error) {
