@@ -4,7 +4,8 @@
  * scene.ts has different fields (careerPositionId, industryIds, batchId, etc.)
  * and should be used for all new code.
  *
- * Component-local type shapes originally from `lib/scene-mock-data`.
+ * Component-local type shapes originally from `lib/scene-mock-data`（并吸收
+ * 了 apps/edu/lib/mock-data 中任务编辑器使用的 Task/GradeMapping/PositionAbility 等类型）。
  * These types are used by scene builder / simulation UI components and do
  * not necessarily match the backend API schema in `lib/types/scene.ts`.
  * When adding new code, import from `scene.ts` instead.
@@ -81,6 +82,7 @@ export interface Task {
   order: number
   description: string
   detailedDescription?: string
+  descriptionPdf?: string
   estimatedHours: number
   taskType: "assessment" | "training"
   difficulty: 1 | 2 | 3 | 4 | 5
@@ -94,6 +96,7 @@ export interface Task {
   isReferenced?: boolean
   sourceScenarioId?: string
   sourceScenarioName?: string
+  evalData?: Record<string, any>
   evalPoints?: {
     randomDraw?: TaskEvalPoint[]
     review?: TaskEvalPoint[]
@@ -197,6 +200,16 @@ export interface GradeMapping {
   maxScore: number
   color: string
   remark?: string
+}
+
+// 岗位能力（迁自 apps/edu/lib/mock-data，任务编辑器使用）
+export interface PositionAbility {
+  id: string
+  positionId: string
+  name: string
+  description: string
+  weight: number // 在岗位内的权重占比（0-100）
+  category: string
 }
 
 export interface ObjectiveSubmissionAnswer {

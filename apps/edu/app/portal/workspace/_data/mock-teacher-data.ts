@@ -1,5 +1,11 @@
-// 教师工作台数据占位文件
-// 当前已清空为默认值/空数组，真实数据需从对应后端接口获取
+// ============================================================
+// 【演示数据】教师工作台占位 mock，非真实业务数据
+// 当前已清空为默认值/空数组，仅用于演示页面结构
+// 引用方：portal/workspace/_components 下的 teacher-dashboard-tab、teacher-courses-tab、
+//         teacher-tracking-tab、teacher-assessment-tab、teacher-final-tab、
+//         teacher-profile-tab、prep-associate-dialog 及 workspace/page.tsx
+// 后续规划：接真实后端接口后删除本文件，引用方改为从 API 获取数据
+// ============================================================
 
 export interface TeacherInfo {
   id: string

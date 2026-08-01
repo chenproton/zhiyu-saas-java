@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+// 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import { mockStudentInfo, mockStudyTime, mockActivityItems, mockEvaluations } from "../_data/mock-student-data"
 
 export function ArchiveContent() {

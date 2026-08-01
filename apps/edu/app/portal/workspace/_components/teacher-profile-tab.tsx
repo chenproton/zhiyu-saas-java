@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SectionCard } from "./section-card"
+// 演示数据：以下 import 来自占位 mock 文件，后续应替换为真实 API（详见该文件头部说明）
 import { mockTeacherInfo, teacherSecurityItems } from "../_data/mock-teacher-data"
 
 export function TeacherProfileTab() {
