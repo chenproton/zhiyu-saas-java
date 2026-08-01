@@ -4,13 +4,12 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 )
 
 type TaskKnowledgeAbilityHandler struct {
-	DB *pgxpool.Pool
+	Service *service.ScenarioConfigService
 }
 
 type BindTaskKnowledgeRequest struct {
@@ -37,28 +36,16 @@ func (h *TaskKnowledgeAbilityHandler) BindKnowledge(w http.ResponseWriter, r *ht
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
 
-	var id string
-	err := h.DB.QueryRow(r.Context(), `
-		INSERT INTO task_knowledge_bindings (tenant_id, task_id, knowledge_point_id)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (task_id, knowledge_point_id) DO UPDATE SET task_id = EXCLUDED.task_id
-		RETURNING id
-	`, tenantID, req.TaskID, req.KnowledgePointID).Scan(&id)
+	binding, err := h.Service.BindKnowledge(r.Context(), tenantID, req.TaskID, req.KnowledgePointID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "绑定知识失败")
 		return
 	}
-
-	var binding domain.TaskKnowledgeBinding
-	_ = h.DB.QueryRow(r.Context(), `SELECT id, task_id, knowledge_point_id FROM task_knowledge_bindings WHERE id = $1`, id).Scan(
-		&binding.ID, &binding.TaskID, &binding.KnowledgePointID,
-	)
 	respondJSON(w, http.StatusOK, binding)
 }
 
@@ -69,8 +56,7 @@ func (h *TaskKnowledgeAbilityHandler) UnbindKnowledge(w http.ResponseWriter, r *
 	}
 
 	id := chi.URLParam(r, "id")
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM task_knowledge_bindings WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Service.UnbindKnowledge(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "解绑知识失败")
 		return
 	}
@@ -91,28 +77,16 @@ func (h *TaskKnowledgeAbilityHandler) BindAbility(w http.ResponseWriter, r *http
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
 
-	var id string
-	err := h.DB.QueryRow(r.Context(), `
-		INSERT INTO task_ability_bindings (tenant_id, task_id, ability_point_id)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (task_id, ability_point_id) DO UPDATE SET task_id = EXCLUDED.task_id
-		RETURNING id
-	`, tenantID, req.TaskID, req.AbilityPointID).Scan(&id)
+	binding, err := h.Service.BindAbility(r.Context(), tenantID, req.TaskID, req.AbilityPointID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "绑定能力点失败")
 		return
 	}
-
-	var binding domain.TaskAbilityBinding
-	_ = h.DB.QueryRow(r.Context(), `SELECT id, task_id, ability_point_id FROM task_ability_bindings WHERE id = $1`, id).Scan(
-		&binding.ID, &binding.TaskID, &binding.AbilityPointID,
-	)
 	respondJSON(w, http.StatusOK, binding)
 }
 
@@ -123,10 +97,10 @@ func (h *TaskKnowledgeAbilityHandler) UnbindAbility(w http.ResponseWriter, r *ht
 	}
 
 	id := chi.URLParam(r, "id")
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM task_ability_bindings WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Service.UnbindAbility(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "解绑能力点失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
+

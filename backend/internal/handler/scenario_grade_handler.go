@@ -1,20 +1,18 @@
 package handler
 
 import (
-	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ScenarioGradeHandler struct {
-	DB *pgxpool.Pool
+	Service *service.ScenarioConfigService
 }
 
 type ScenarioGradeMappingListResponse struct {
@@ -52,20 +50,18 @@ func (h *ScenarioGradeHandler) ListGradeMappings(w http.ResponseWriter, r *http.
 				qb.AddCondition("task_id = " + qb.NextArg(taskID))
 			}
 		},
-		ScanRows: h.scanGradeMappingRows,
 	}
-
-	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, total, err := h.Service.ListGradeMappings(r.Context(), params, cfg)
 	if err != nil {
-		if errors.Is(err, store.ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
 		slog.Error("查询场景等级映射列表失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "查询场景等级映射列表失败")
 		return
 	}
-
 	respondJSON(w, http.StatusOK, ScenarioGradeMappingListResponse{Items: items, Total: total})
 }
 
@@ -83,41 +79,25 @@ func (h *ScenarioGradeHandler) UpsertGradeMapping(w http.ResponseWriter, r *http
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
 
-	var id string
-	if req.ID != "" {
-		_, err := h.DB.Exec(r.Context(), `
-			UPDATE scenario_grade_mappings SET scenario_id = $1, task_id = $2, level = $3,
-				min_score = $4, max_score = $5, description = $6, color = $7
-			WHERE id = $8
-		`, req.ScenarioID, req.TaskID, req.Level, req.MinScore, req.MaxScore, req.Description, req.Color, req.ID)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, "更新成绩映射失败")
-			return
-		}
-		id = req.ID
-	} else {
-		err := h.DB.QueryRow(r.Context(), `
-			INSERT INTO scenario_grade_mappings (tenant_id, scenario_id, task_id, level, min_score, max_score, description, color)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-			RETURNING id
-		`, tenantID, req.ScenarioID, req.TaskID, req.Level, req.MinScore, req.MaxScore, req.Description, req.Color).Scan(&id)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, "创建成绩映射失败")
-			return
-		}
+	m, err := h.Service.UpsertGradeMapping(r.Context(), tenantID, &store.ScenarioGradeUpsertParams{
+		ID:          req.ID,
+		ScenarioID:  req.ScenarioID,
+		TaskID:      req.TaskID,
+		Level:       req.Level,
+		MinScore:    req.MinScore,
+		MaxScore:    req.MaxScore,
+		Description: req.Description,
+		Color:       req.Color,
+	})
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "更新或创建成绩映射失败")
+		return
 	}
-
-	var m domain.ScenarioGradeMapping
-	_ = h.DB.QueryRow(r.Context(), `
-		SELECT id, scenario_id, task_id, level, min_score, max_score, description, color
-		FROM scenario_grade_mappings WHERE id = $1
-	`, id).Scan(&m.ID, &m.ScenarioID, &m.TaskID, &m.Level, &m.MinScore, &m.MaxScore, &m.Description, &m.Color)
 	respondJSON(w, http.StatusOK, m)
 }
 
@@ -128,22 +108,9 @@ func (h *ScenarioGradeHandler) DeleteGradeMapping(w http.ResponseWriter, r *http
 	}
 
 	id := chi.URLParam(r, "id")
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM scenario_grade_mappings WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Service.DeleteGradeMapping(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除成绩映射失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
-}
-
-func (h *ScenarioGradeHandler) scanGradeMappingRows(rows pgx.Rows) ([]domain.ScenarioGradeMapping, error) {
-	items := make([]domain.ScenarioGradeMapping, 0)
-	for rows.Next() {
-		var m domain.ScenarioGradeMapping
-		if err := rows.Scan(&m.ID, &m.ScenarioID, &m.TaskID, &m.Level, &m.MinScore, &m.MaxScore, &m.Description, &m.Color); err != nil {
-			return nil, err
-		}
-		items = append(items, m)
-	}
-	return items, nil
 }
