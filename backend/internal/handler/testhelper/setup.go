@@ -398,7 +398,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/evaluation/results/{id}/grade", evaluationResultHandler.Grade)
 			r.Post("/evaluation/results/batch-grade", evaluationResultHandler.BatchGrade)
 
-			certificationHandler := &handler.CertificationHandler{DB: pool}
+			certificationHandler := &handler.CertificationHandler{Service: service.NewEvaluationService(svc2)}
 			r.Get("/evaluation/certifications", certificationHandler.ListRules)
 			r.Get("/evaluation/certifications/{id}", certificationHandler.GetRule)
 			r.Post("/evaluation/certifications", certificationHandler.CreateRule)

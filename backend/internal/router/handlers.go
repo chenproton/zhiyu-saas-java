@@ -193,7 +193,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		examUsageHandler:              &handler.ExamUsageHandler{Service: service.NewEvaluationService(svc)},
 		examResultHandler:             &handler.ExamResultHandler{Service: service.NewEvaluationService(svc)},
 		evaluationResultHandler:       &handler.EvaluationResultHandler{DB: db},
-		certificationHandler:          &handler.CertificationHandler{DB: db},
+		certificationHandler:          &handler.CertificationHandler{Service: service.NewEvaluationService(svc)},
 		certificationModelHandler:     &handler.CertificationModelHandler{DB: db},
 		graduationHandler:             &handler.GraduationHandler{DB: db},
 		studentPortraitHandler:        handler.NewStudentPortraitHandler(db),
