@@ -374,7 +374,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Delete("/evaluation/questions/{id}", questionHandler.Delete)
 			r.Post("/evaluation/questions/batch", questionHandler.BatchCreate)
 
-			examHandler := &handler.ExamHandler{DB: pool}
+			examHandler := &handler.ExamHandler{Service: service.NewEvaluationService(svc2)}
 			r.Get("/evaluation/exams", examHandler.List)
 			r.Get("/evaluation/exams/{id}", examHandler.Get)
 			r.Post("/evaluation/exams", examHandler.Create)

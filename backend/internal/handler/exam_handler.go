@@ -2,24 +2,19 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
-	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ExamHandler struct {
-	DB          *pgxpool.Pool
+	Service     *service.EvaluationService
 	RedisClient *redis.Client
 }
 
@@ -60,29 +55,24 @@ func (h *ExamHandler) List(w http.ResponseWriter, r *http.Request) {
 		SearchParam:   "search",
 		OrderBy:       "e.created_at DESC",
 		DefaultLimit:  50,
+		ScanRows:      store.ScanExamRows,
 		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			qb.AddCondition("e.is_temp = FALSE")
-			status := p.Values["status"]
-			if status != "" {
+			if status := p.Values["status"]; status != "" {
 				qb.AddCondition("e.status = " + qb.NextArg(status))
 			}
 		},
-		ScanRows: func(rows pgx.Rows) ([]domain.Exam, error) {
-			return h.scanExamRows(r.Context(), rows)
-		},
 	}
-
-	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, total, err := h.Service.ListExams(r.Context(), params, cfg)
 	if err != nil {
-		slog.Error("exam list failed", "err", err)
-		if errors.Is(err, store.ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
 		respondError(w, http.StatusInternalServerError, "查询考试失败")
 		return
 	}
-
 	respondJSON(w, http.StatusOK, ExamListResponse{Items: items, Total: total})
 }
 
@@ -94,7 +84,7 @@ func (h *ExamHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	exam, err := h.fetchExam(r.Context(), id)
+	exam, err := h.Service.GetExam(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "考试不存在")
 		return
@@ -117,23 +107,38 @@ func (h *ExamHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
 
-	id := uuid.NewString()
-	code, err := generateUniqueEntityCode(r.Context(), h.DB, "SJ", "exams", tenantID)
+	var description *string
+	if req.Description != "" {
+		description = &req.Description
+	}
+	var duration *int
+	if req.Duration > 0 {
+		duration = &req.Duration
+	}
+
+	code, err := store.GenerateUniqueEntityCode(r.Context(), h.Service.Queryer(), "SJ", "exams", tenantID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "生成考试编码失败")
 		return
 	}
-	_, err = h.DB.Exec(r.Context(), `
-		INSERT INTO exams (id, tenant_id, code, name, description, status, total_score, duration, cover_image,
-			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, creator_id, is_temp)
-		VALUES ($1, $2, $3, $4, $5, 'draft', 0, $6, $7, $8, $9, $10, 'v1.0', 'mine', $11, $12)
-	`, id, tenantID, code, req.Name, req.Description, req.Duration, req.CoverImage, coalesceStringSlice(req.CollaboratorIDs), coalesceStringSlice(req.CollaboratorDeptIDs), emptyStrToNil(req.BatchID), claims.UserID, req.IsTemp)
+
+	exam, err := h.Service.CreateExam(r.Context(), tenantID, &store.ExamCreateParams{
+		Code:                code,
+		Name:                req.Name,
+		Description:         description,
+		Duration:            duration,
+		CoverImage:          req.CoverImage,
+		CollaboratorIDs:     coalesceStringSlice(req.CollaboratorIDs),
+		CollaboratorDeptIDs: coalesceStringSlice(req.CollaboratorDeptIDs),
+		BatchID:             emptyStrToNil(req.BatchID),
+		CreatorID:           claims.UserID,
+		IsTemp:              req.IsTemp,
+	})
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "考试名称已存在，请使用其他名称")
@@ -142,8 +147,6 @@ func (h *ExamHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "创建考试失败")
 		return
 	}
-
-	exam, _ := h.fetchExam(r.Context(), id)
 	respondJSON(w, http.StatusCreated, exam)
 }
 
@@ -155,7 +158,7 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	existing, err := h.fetchExam(r.Context(), id)
+	existing, err := h.Service.GetExam(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "考试不存在")
 		return
@@ -165,7 +168,6 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.Name == "" {
 		req.Name = existing.Name
 	}
@@ -181,7 +183,6 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if req.BatchID == nil {
 		req.BatchID = existing.BatchID
 	}
-
 	collaboratorIDs := req.CollaboratorIDs
 	if collaboratorIDs == nil {
 		collaboratorIDs = existing.CollaboratorIDs
@@ -191,11 +192,24 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 		collaboratorDeptIDs = existing.CollaboratorDeptIDs
 	}
 
-	_, err = h.DB.Exec(r.Context(), `
-		UPDATE exams SET name = $1, description = $2, duration = $3, cover_image = $4,
-			collaborator_ids = $5, collaborator_dept_ids = $6, batch_id = $7, updated_at = NOW()
-		WHERE id = $8
-	`, req.Name, req.Description, req.Duration, req.CoverImage, collaboratorIDs, collaboratorDeptIDs, emptyStrToNil(req.BatchID), id)
+	var description *string
+	if req.Description != "" {
+		description = &req.Description
+	}
+	var duration *int
+	if req.Duration > 0 {
+		duration = &req.Duration
+	}
+
+	exam, err := h.Service.UpdateExam(r.Context(), id, &store.ExamUpdateParams{
+		Name:                req.Name,
+		Description:         description,
+		Duration:            duration,
+		CoverImage:          req.CoverImage,
+		CollaboratorIDs:     collaboratorIDs,
+		CollaboratorDeptIDs: collaboratorDeptIDs,
+		BatchID:             req.BatchID,
+	})
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "考试名称已存在，请使用其他名称")
@@ -204,8 +218,6 @@ func (h *ExamHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "更新考试失败")
 		return
 	}
-
-	exam, _ := h.fetchExam(r.Context(), id)
 	respondJSON(w, http.StatusOK, exam)
 }
 
@@ -217,99 +229,17 @@ func (h *ExamHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	var tenantID string
-	err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM exams WHERE id = $1`, id).Scan(&tenantID)
+	tenantID, err := h.Service.ExamTenantID(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "考试不存在")
 		return
 	}
-
-	_, err = h.DB.Exec(r.Context(), `DELETE FROM exams WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Service.DeleteExam(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除考试失败")
 		return
 	}
 	h.clearLandingExamsCache(r, tenantID)
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
-}
-
-func (h *ExamHandler) actions() contentActions {
-	return contentActions{
-		db:         h.DB,
-		table:      "exams",
-		entityName: "exam",
-		targetType: "exam",
-		inviteCol:  "collaborator_ids",
-		fetch: func(ctx context.Context, id string) (interface{}, error) {
-			return h.fetchExam(ctx, id)
-		},
-	}
-}
-
-func (h *ExamHandler) Submit(w http.ResponseWriter, r *http.Request) {
-	h.actions().transition(w, r, domain.StatusPending)
-}
-
-func (h *ExamHandler) Review(w http.ResponseWriter, r *http.Request) {
-	h.actions().review(w, r)
-}
-
-func (h *ExamHandler) Publish(w http.ResponseWriter, r *http.Request) {
-	h.actions().transition(w, r, domain.StatusPublished)
-	h.clearLandingExamsCacheFromRequest(r)
-}
-
-func (h *ExamHandler) Archive(w http.ResponseWriter, r *http.Request) {
-	h.actions().transition(w, r, domain.StatusArchived)
-	h.clearLandingExamsCacheFromRequest(r)
-}
-
-func (h *ExamHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
-	h.actions().transition(w, r, domain.StatusDraft)
-	h.clearLandingExamsCacheFromRequest(r)
-}
-
-func (h *ExamHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
-	h.actions().transition(w, r, domain.StatusDraft)
-}
-
-func (h *ExamHandler) SaveDraft(w http.ResponseWriter, r *http.Request) {
-	h.actions().saveDraft(w, r)
-}
-
-func (h *ExamHandler) Invite(w http.ResponseWriter, r *http.Request) {
-	h.actions().invite(w, r)
-}
-
-func (h *ExamHandler) clearLandingExamsCacheFromRequest(r *http.Request) {
-	id := chi.URLParam(r, "id")
-	var tenantID string
-	err := h.DB.QueryRow(r.Context(), `SELECT tenant_id FROM exams WHERE id = $1`, id).Scan(&tenantID)
-	if err != nil {
-		return
-	}
-	h.clearLandingExamsCache(r, tenantID)
-}
-
-func (h *ExamHandler) clearLandingExamsCache(r *http.Request, tenantID string) {
-	if h.RedisClient == nil {
-		return
-	}
-	prefix := fmt.Sprintf("zhiyu:%s", tenantID)
-	var cursor uint64
-	for {
-		keys, nextCursor, err := h.RedisClient.Scan(r.Context(), cursor, prefix+"*", 100).Result()
-		if err != nil {
-			return
-		}
-		if len(keys) > 0 {
-			h.RedisClient.Del(r.Context(), keys...)
-		}
-		cursor = nextCursor
-		if cursor == 0 {
-			break
-		}
-	}
 }
 
 func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
@@ -320,7 +250,7 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchExam(r.Context(), id); err != nil {
+	if _, err := h.Service.GetExam(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "考试不存在")
 		return
 	}
@@ -334,24 +264,10 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var q domain.Question
-	var analysis, optionsStr, answerStr *string
-	err := h.DB.QueryRow(r.Context(), `
-		SELECT id, type, content, options, answer, analysis, score FROM questions WHERE id = $1
-	`, req.QuestionID).Scan(&q.ID, &q.Type, &q.Content, &optionsStr, &answerStr, &analysis, &q.Score)
+	q, err := h.Service.FetchExamQuestion(r.Context(), req.QuestionID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "题目不存在")
 		return
-	}
-	q.Analysis = analysis
-	if optionsStr != nil {
-		_ = json.Unmarshal([]byte(*optionsStr), &q.Options)
-	}
-	if answerStr != nil {
-		_ = json.Unmarshal([]byte(*answerStr), &q.Answer)
-	}
-	if q.Answer == nil {
-		q.Answer = domain.JSONSlice{}
 	}
 
 	score := req.Score
@@ -359,25 +275,16 @@ func (h *ExamHandler) AddQuestion(w http.ResponseWriter, r *http.Request) {
 		score = q.Score
 	}
 
-	optionsJSON, _ := json.Marshal(q.Options)
-	answerJSON, _ := json.Marshal(q.Answer)
-
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
 
-	_, err = h.DB.Exec(r.Context(), `
-		INSERT INTO exam_questions (id, tenant_id, exam_id, question_id, type, content, options, answer, analysis, score, sort_order)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM exam_questions WHERE exam_id = $3))
-	`, uuid.NewString(), tenantID, id, q.ID, q.Type, q.Content, string(optionsJSON), string(answerJSON), q.Analysis, score)
-	if err != nil {
+	if err := h.Service.AddExamQuestion(r.Context(), tenantID, id, q, score); err != nil {
 		respondError(w, http.StatusInternalServerError, "添加题目失败")
 		return
 	}
-
-	_ = h.recalcExamTotal(r.Context(), id)
-	exam, _ := h.fetchExam(r.Context(), id)
+	exam, _ := h.Service.GetExam(r.Context(), id)
 	respondJSON(w, http.StatusOK, exam)
 }
 
@@ -390,19 +297,15 @@ func (h *ExamHandler) RemoveQuestion(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	questionID := chi.URLParam(r, "questionId")
-	if _, err := h.fetchExam(r.Context(), id); err != nil {
+	if _, err := h.Service.GetExam(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "考试不存在")
 		return
 	}
-
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM exam_questions WHERE exam_id = $1 AND question_id = $2`, id, questionID)
-	if err != nil {
+	if err := h.Service.RemoveExamQuestion(r.Context(), id, questionID); err != nil {
 		respondError(w, http.StatusInternalServerError, "移除题目失败")
 		return
 	}
-
-	_ = h.recalcExamTotal(r.Context(), id)
-	exam, _ := h.fetchExam(r.Context(), id)
+	exam, _ := h.Service.GetExam(r.Context(), id)
 	respondJSON(w, http.StatusOK, exam)
 }
 
@@ -429,20 +332,16 @@ func (h *ExamHandler) UpdateQuestionScore(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	tag, err := h.DB.Exec(r.Context(), `
-		UPDATE exam_questions SET score = $1 WHERE exam_id = $2 AND question_id = $3
-	`, req.Score, examID, questionID)
+	err := h.Service.UpdateExamQuestionScore(r.Context(), examID, questionID, req.Score)
 	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			respondError(w, http.StatusNotFound, "考试中未找到该题目")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "更新question score失败")
 		return
 	}
-	if tag.RowsAffected() == 0 {
-		respondError(w, http.StatusNotFound, "考试中未找到该题目")
-		return
-	}
-
-	_ = h.recalcExamTotal(r.Context(), examID)
-	exam, _ := h.fetchExam(r.Context(), examID)
+	exam, _ := h.Service.GetExam(r.Context(), examID)
 	respondJSON(w, http.StatusOK, exam)
 }
 
@@ -456,7 +355,6 @@ func (h *ExamHandler) BulkUpdateScores(w http.ResponseWriter, r *http.Request) {
 	}
 
 	examID := chi.URLParam(r, "id")
-
 	var req BulkUpdateScoresRequest
 	if !decodeBody(w, r, &req) {
 		return
@@ -465,187 +363,92 @@ func (h *ExamHandler) BulkUpdateScores(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "分数映射不能为空")
 		return
 	}
-
-	tx, err := h.DB.Begin(r.Context())
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "开启事务失败")
-		return
-	}
-	defer tx.Rollback(r.Context())
-
-	for questionID, score := range req {
+	for _, score := range req {
 		if score <= 0 {
 			respondError(w, http.StatusBadRequest, "分数必须为正数")
 			return
 		}
-		tag, err := tx.Exec(r.Context(), `
-			UPDATE exam_questions SET score = $1 WHERE exam_id = $2 AND question_id = $3
-		`, score, examID, questionID)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, "更新question score失败")
-			return
-		}
-		if tag.RowsAffected() == 0 {
-			respondError(w, http.StatusNotFound, "考试中未找到题目："+questionID)
-			return
-		}
 	}
-
-	if _, err := tx.Exec(r.Context(), `
-		UPDATE exams SET total_score = COALESCE((SELECT SUM(score) FROM exam_questions WHERE exam_id = $1), 0), updated_at = NOW()
-		WHERE id = $1
-	`, examID); err != nil {
-		respondError(w, http.StatusInternalServerError, "重新计算exam total失败")
+	if err := h.Service.BulkUpdateExamScores(r.Context(), examID, req); err != nil {
+		respondError(w, http.StatusInternalServerError, "批量更新分数失败")
 		return
 	}
-
-	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "提交事务失败")
-		return
-	}
-
-	exam, _ := h.fetchExam(r.Context(), examID)
+	exam, _ := h.Service.GetExam(r.Context(), examID)
 	respondJSON(w, http.StatusOK, exam)
 }
 
-func (h *ExamHandler) recalcExamTotal(ctx context.Context, examID string) error {
-	_, err := h.DB.Exec(ctx, `
-		UPDATE exams SET total_score = COALESCE((SELECT SUM(score) FROM exam_questions WHERE exam_id = $1), 0), updated_at = NOW()
-		WHERE id = $1
-	`, examID)
-	return err
-}
+// ===== Cache =====
 
-func (h *ExamHandler) fetchExam(ctx context.Context, id string) (domain.Exam, error) {
-	var e domain.Exam
-	var coverImage, creatorID, batchID *string
-	err := h.DB.QueryRow(ctx, `
-		SELECT e.id, e.code, e.name, e.description, e.status, e.total_score, e.duration, e.cover_image,
-		e.is_temp,
-			e.collaborator_ids,
-			COALESCE((SELECT u.name FROM users u WHERE u.id = e.creator_id), e.creator_id::text) AS creator_name,
-			COALESCE((
-				SELECT array_agg(u.name ORDER BY ord)
-				FROM unnest(e.collaborator_ids) WITH ORDINALITY AS c(id, ord)
-				JOIN users u ON u.id = c.id
-			), '{}') AS collaborator_names,
-			e.collaborator_dept_ids, e.batch_id, e.version, e.owner_type, e.creator_id, e.created_at, e.updated_at
-		FROM exams e WHERE e.id = $1
-	`, id).Scan(
-		&e.ID, &e.Code, &e.Name, &e.Description, &e.Status, &e.TotalScore, &e.Duration, &coverImage,
-		&e.IsTemp, &e.CollaboratorIDs, &e.CreatorName, &e.CollaboratorNames, &e.CollaboratorDeptIDs, &batchID, &e.Version, &e.OwnerType, &creatorID, &e.CreatedAt, &e.UpdatedAt,
-	)
+func (h *ExamHandler) clearLandingExamsCacheFromRequest(r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var tenantID string
+	if h.Service == nil {
+		return
+	}
+	t, err := h.Service.ExamTenantID(r.Context(), id)
 	if err != nil {
-		return e, err
+		return
 	}
-	e.CoverImage = coverImage
-	e.CreatorID = creatorID
-	e.BatchID = batchID
-	e.Questions, _ = h.fetchExamQuestions(ctx, id)
-	return e, nil
+	tenantID = t
+	h.clearLandingExamsCache(r, tenantID)
 }
 
-func (h *ExamHandler) fetchExamQuestions(ctx context.Context, examID string) ([]domain.ExamQuestion, error) {
-	rows, err := h.DB.Query(ctx, `
-		SELECT id, exam_id, question_id, type, content, options, answer, analysis, score, sort_order
-		FROM exam_questions WHERE exam_id = $1 ORDER BY sort_order
-	`, examID)
+func (h *ExamHandler) clearLandingExamsCache(r *http.Request, tenantID string) {
+	if h.RedisClient == nil {
+		return
+	}
+	keys, _, err := h.RedisClient.Scan(r.Context(), 0, "zhiyu:"+tenantID+":landing:exams*", 100).Result()
 	if err != nil {
-		return nil, err
+		return
 	}
-	defer rows.Close()
-
-	items := make([]domain.ExamQuestion, 0)
-	for rows.Next() {
-		var q domain.ExamQuestion
-		var analysis, optionsStr, answerStr *string
-		if err := rows.Scan(&q.ID, &q.ExamID, &q.QuestionID, &q.Type, &q.Content, &optionsStr, &answerStr, &analysis, &q.Score, &q.Order); err != nil {
-			return nil, err
-		}
-		q.Analysis = analysis
-		if optionsStr != nil {
-			_ = json.Unmarshal([]byte(*optionsStr), &q.Options)
-		}
-		if answerStr != nil {
-			_ = json.Unmarshal([]byte(*answerStr), &q.Answer)
-		}
-		if q.Answer == nil {
-			q.Answer = domain.JSONSlice{}
-		}
-		items = append(items, q)
+	if len(keys) > 0 {
+		_ = h.RedisClient.Del(r.Context(), keys...).Err()
 	}
-	return items, nil
 }
 
-func (h *ExamHandler) scanExamRows(ctx context.Context, rows pgx.Rows) ([]domain.Exam, error) {
-	items := make([]domain.Exam, 0)
-	examIDs := make([]string, 0)
-	for rows.Next() {
-		var e domain.Exam
-		var coverImage, creatorID, batchID *string
-		if err := rows.Scan(
-			&e.ID, &e.Code, &e.Name, &e.Description, &e.Status, &e.TotalScore, &e.Duration, &coverImage,
-			&e.IsTemp, &e.CollaboratorIDs, &e.CreatorName, &e.CollaboratorNames, &e.CollaboratorDeptIDs, &batchID, &e.Version, &e.OwnerType, &creatorID, &e.CreatedAt, &e.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		e.CoverImage = coverImage
-		e.CreatorID = creatorID
-		e.BatchID = batchID
-		e.Questions = []domain.ExamQuestion{}
-		items = append(items, e)
-		examIDs = append(examIDs, e.ID)
+// actions 与状态流转
+func (h *ExamHandler) actions() contentActions {
+	return contentActions{
+		db:         h.Service.Queryer(),
+		pool:       h.Service.Store(),
+		table:      "exams",
+		entityName: "exam",
+		targetType: "exam",
+		inviteCol:  "collaborator_ids",
+		fetch: func(ctx context.Context, id string) (interface{}, error) {
+			return h.Service.GetExam(ctx, id)
+		},
 	}
-
-	if len(examIDs) > 0 {
-		questionsMap, err := h.batchFetchExamQuestions(ctx, examIDs)
-		if err != nil {
-			return nil, err
-		}
-		for i := range items {
-			items[i].Questions = questionsMap[items[i].ID]
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
-func (h *ExamHandler) batchFetchExamQuestions(ctx context.Context, examIDs []string) (map[string][]domain.ExamQuestion, error) {
-	result := make(map[string][]domain.ExamQuestion)
-	if len(examIDs) == 0 {
-		return result, nil
-	}
-	rows, err := h.DB.Query(ctx, `
-		SELECT id, exam_id, question_id, type, content, options, answer, analysis, score, sort_order
-		FROM exam_questions WHERE exam_id = ANY($1) ORDER BY exam_id, sort_order
-	`, examIDs)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+func (h *ExamHandler) Submit(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusPending)
+}
 
-	for rows.Next() {
-		var q domain.ExamQuestion
-		var analysis, optionsStr, answerStr *string
-		if err := rows.Scan(&q.ID, &q.ExamID, &q.QuestionID, &q.Type, &q.Content, &optionsStr, &answerStr, &analysis, &q.Score, &q.Order); err != nil {
-			return nil, err
-		}
-		q.Analysis = analysis
-		if optionsStr != nil {
-			_ = json.Unmarshal([]byte(*optionsStr), &q.Options)
-		}
-		if answerStr != nil {
-			_ = json.Unmarshal([]byte(*answerStr), &q.Answer)
-		}
-		if q.Answer == nil {
-			q.Answer = domain.JSONSlice{}
-		}
-		result[q.ExamID] = append(result[q.ExamID], q)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return result, nil
+func (h *ExamHandler) Review(w http.ResponseWriter, r *http.Request) {
+	h.actions().review(w, r)
+}
+
+func (h *ExamHandler) Publish(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusPublished)
+}
+
+func (h *ExamHandler) Archive(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusArchived)
+}
+
+func (h *ExamHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusDraft)
+}
+
+func (h *ExamHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
+	h.actions().transition(w, r, domain.StatusDraft)
+}
+
+func (h *ExamHandler) SaveDraft(w http.ResponseWriter, r *http.Request) {
+	h.actions().saveDraft(w, r)
+}
+
+func (h *ExamHandler) Invite(w http.ResponseWriter, r *http.Request) {
+	h.actions().invite(w, r)
 }

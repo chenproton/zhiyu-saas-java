@@ -189,7 +189,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		lessonBehaviorHandler:         &handler.LessonBehaviorHandler{DB: db},
 		questionBankHandler:           &handler.QuestionBankHandler{Service: service.NewEvaluationService(svc)},
 		questionHandler:               &handler.QuestionHandler{Service: service.NewEvaluationService(svc)},
-		examHandler:                   &handler.ExamHandler{DB: db, RedisClient: redisClient},
+		examHandler:                   &handler.ExamHandler{Service: service.NewEvaluationService(svc), RedisClient: redisClient},
 		examUsageHandler:              &handler.ExamUsageHandler{DB: db},
 		examResultHandler:             &handler.ExamResultHandler{DB: db},
 		evaluationResultHandler:       &handler.EvaluationResultHandler{DB: db},
