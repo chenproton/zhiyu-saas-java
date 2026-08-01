@@ -57,16 +57,18 @@ internal/
 2. **service 骨架**：`service.New(stores...)` + `withTx` 事务模板
 3. **试点**：迁移 `resource_library` 领域完整走 handler→service→store，作为后续模板
 
-### P2 核心域迁移（51 个 handler，分 4-5 批）
-| 批次 | 领域 | 涉及文件 |
+### P2 核心域迁移（73 个 handler，5 批）✅ 已完成
+| 批次 | 领域 | 状态 |
 |---|---|---|
-| 1 | 租户/组织/用户（写操作密集） | user_management、tenant、role、org、org_type、staff_title、user_extension_field、user_relation、major、industry |
-| 2 | 内容核心域 | course（含 clone/node/homework/quiz）、scenario（含 task/weight/grade）、position（含 ability/certificate/clone） |
-| 3 | 题库/考试 | question_bank、question、exam（含 usage/result） |
-| 4 | 评测/教务/排课 | evaluation 系、affairs 系、scheduling、graduation、student_portrait |
-| 5 | 前台/资源库 | landing、portal、resource_library、on_site_question_library、certificate_library |
+| 1 | 租户/组织/用户（13 个） | ✅ master `c543c280` |
+| 2 | 内容核心域（21 个，含 course 作业/评估子域） | ✅ master `33c86f58`/`4cacae7c` |
+| 3 | 题库/考试（8 个） | ✅ master `530b7f8a` |
+| 4 | 评测/教务/排课（8 个） | ✅ master `6aaa5707` |
+| 5 | 前台/公共（23 个，含 portal/auth/teaching_plan/training_program/batch 系） | ✅ master `41135c2c` |
 
 每批验收：该批 handler 文件 SQL 清零 → `go vet`/`go test` 全绿 → 部署后接口冒烟。
+**P2 完成后**：除豁免冻结区（import/export/template 22 文件）外，全部 handler 无直写 SQL、无 `*pgxpool.Pool` 字段（认证类 fetch helper 经 store 封装，`LoadCertificationModel` 等既有 service 查询保留）。
+**类型安全**：store 层全部使用强类型 DTO（`map[string]any` 已清零）。
 
 ### P3 清理（1 天）
 - `common.go` 803 行 → 保留响应/租户/权限 helper，目标 <200 行
