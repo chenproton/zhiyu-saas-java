@@ -73,6 +73,7 @@ type Store struct {
 	subscriptions   *SubscriptionStore
 	resourceCodes   *ResourceCodeStore
 	recommends      *RecommendStore
+	hybridModules   *HybridModuleStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -131,6 +132,7 @@ func New(db *pgxpool.Pool) *Store {
 		subscriptions:   NewSubscriptionStore(db),
 		resourceCodes:   NewResourceCodeStore(db),
 		recommends:      NewRecommendStore(db),
+		hybridModules:   NewHybridModuleStore(db),
 	}
 }
 
@@ -190,6 +192,7 @@ func NewWithTx(tx pgx.Tx) *Store {
 		subscriptions:   NewSubscriptionStore(tx),
 		resourceCodes:   NewResourceCodeStore(tx),
 		recommends:      NewRecommendStore(tx),
+		hybridModules:   NewHybridModuleStore(tx),
 	}
 }
 
@@ -456,6 +459,11 @@ func (s *Store) ResourceCodes() *ResourceCodeStore {
 // Recommends 返回推荐位 store。
 func (s *Store) Recommends() *RecommendStore {
 	return s.recommends
+}
+
+// HybridModules 返回混合模块 store。
+func (s *Store) HybridModules() *HybridModuleStore {
+	return s.hybridModules
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。

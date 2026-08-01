@@ -184,7 +184,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		nodeQuizHandler:               &handler.NodeQuizHandler{Service: service.NewLessonContentService(svc)},
 		nodeHomeworkHandler:           &handler.NodeHomeworkHandler{Service: service.NewLessonContentService(svc)},
 		nodeResourceHandler:           &handler.NodeResourceHandler{Service: service.NewResourceBindingService(svc)},
-		hybridModuleHandler:           &handler.HybridModuleHandler{DB: db},
+		hybridModuleHandler:           &handler.HybridModuleHandler{Service: service.NewPositionService(svc)},
 		courseBatchHandler:            handler.NewCourseBatchHandler(db),
 		lessonBehaviorHandler:         &handler.LessonBehaviorHandler{DB: db},
 		questionBankHandler:           &handler.QuestionBankHandler{Service: service.NewEvaluationService(svc)},

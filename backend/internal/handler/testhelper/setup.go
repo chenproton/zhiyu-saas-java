@@ -345,7 +345,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/lesson/homeworks/{id}", nodeHomeworkHandler.Update)
 			r.Delete("/lesson/homeworks/{id}", nodeHomeworkHandler.Delete)
 
-			hybridModuleHandler := &handler.HybridModuleHandler{DB: pool}
+			hybridModuleHandler := &handler.HybridModuleHandler{Service: service.NewPositionService(svc2)}
 			r.Get("/lesson/hybrid-modules", hybridModuleHandler.ListModules)
 			r.Post("/lesson/hybrid-modules", hybridModuleHandler.UpsertModule)
 			r.Put("/lesson/hybrid-modules/{id}", hybridModuleHandler.UpsertModule)
