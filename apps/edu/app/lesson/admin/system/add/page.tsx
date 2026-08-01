@@ -218,61 +218,68 @@ function AddSystemPageInner() {
     }).catch(() => setMajors([]))
   }, [])
 
-  const loadCourse = useCallback(async () => {
-    if (!editId) return
-    setLoadingEdit(true)
-    try {
-      const [course, nodeRes, resRes] = await Promise.all([
-        courseApi.get(editId),
-        courseNodeApi.list({ courseId: editId }),
-        nodeResourceApi.list({ courseId: editId, limit: 200 }),
-      ])
-      setCourseId(course.id)
-      setCourseName(course.name || "")
-      if (course.description) setCourseDescription(course.description)
-      setCourseDescriptionPdf(((course as any).evalData?.descriptionPdf) || null)
-      if (course.coverImage) setCoverImage(course.coverImage)
-      if (course.majorId) setMajor(course.majorId)
-      if (course.batchId) setBatchId(course.batchId)
-      setOriginalStatus(course.status || "draft")
-      setAbilityPoints((course.abilityPointIds || []).map((id: string) => {
-        const found = abilityPool.find((a) => a.id === id)
-        return found || { id, name: id }
-      }))
-      setResourcePool((resRes.items || []).map((r: any) => ({
-        id: r.id,
-        name: r.name,
-        type: r.type,
-        url: r.url || r.URL,
-        description: r.description,
-        size: r.size,
-        uploadedBy: r.uploadedBy,
-        uploadedAt: r.uploadedAt,
-      })))
-      const loadedNodes = (nodeRes.items || []) as SystemCourseNode[]
-      setNodes(loadedNodes)
-      if (loadedNodes.length > 0) {
-        setSelectedNodeId(loadedNodes[0].id)
-      }
-      const initialModes: Record<string, AddMode> = {}
-      loadedNodes.forEach((n) => {
-        if (n.type === "original") {
-          initialModes[n.id] = "quote"
-        } else {
-          initialModes[n.id] = "upload"
-        }
-      })
-      setNodeModes((prev) => ({ ...prev, ...initialModes }))
-    } catch (e: any) {
-      toast({ title: e.message || "加载课程失败", variant: "destructive" })
-    } finally {
-      setLoadingEdit(false)
-    }
-  }, [editId, abilityPool, toast])
-
   useEffect(() => {
-    loadCourse()
-  }, [loadCourse])
+    if (!editId) return
+    let cancelled = false
+    Promise.resolve()
+      .then(() => {
+        setLoadingEdit(true)
+        return Promise.all([
+          courseApi.get(editId),
+          courseNodeApi.list({ courseId: editId }),
+          nodeResourceApi.list({ courseId: editId, limit: 200 }),
+        ])
+      })
+      .then(([course, nodeRes, resRes]) => {
+        if (cancelled) return
+        setCourseId(course.id)
+        setCourseName(course.name || "")
+        if (course.description) setCourseDescription(course.description)
+        setCourseDescriptionPdf(((course as any).evalData?.descriptionPdf) || null)
+        if (course.coverImage) setCoverImage(course.coverImage)
+        if (course.majorId) setMajor(course.majorId)
+        if (course.batchId) setBatchId(course.batchId)
+        setOriginalStatus(course.status || "draft")
+        setAbilityPoints((course.abilityPointIds || []).map((id: string) => {
+          const found = abilityPool.find((a) => a.id === id)
+          return found || { id, name: id }
+        }))
+        setResourcePool((resRes.items || []).map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          type: r.type,
+          url: r.url || r.URL,
+          description: r.description,
+          size: r.size,
+          uploadedBy: r.uploadedBy,
+          uploadedAt: r.uploadedAt,
+        })))
+        const loadedNodes = (nodeRes.items || []) as SystemCourseNode[]
+        setNodes(loadedNodes)
+        if (loadedNodes.length > 0) {
+          setSelectedNodeId(loadedNodes[0].id)
+        }
+        const initialModes: Record<string, AddMode> = {}
+        loadedNodes.forEach((n) => {
+          if (n.type === "original") {
+            initialModes[n.id] = "quote"
+          } else {
+            initialModes[n.id] = "upload"
+          }
+        })
+        setNodeModes((prev) => ({ ...prev, ...initialModes }))
+      })
+      .catch((e: any) => {
+        if (cancelled) return
+        toast({ title: e.message || "加载课程失败", variant: "destructive" })
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingEdit(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [editId, abilityPool])
 
   const handleAddNode = useCallback((parentId: string | null, name: string, order: number, type?: NodeRefType, sourceId?: string, sourceName?: string) => {
     const newNode: SystemCourseNode = {
@@ -396,30 +403,33 @@ function AddSystemPageInner() {
   const [knowledgePool, setKnowledgePool] = useState<KnowledgePointItem[]>([])
   const customKnowledgePointIdsRef = useRef<Set<string>>(new Set())
 
-  const loadKnowledgePool = useCallback(async () => {
-    try {
-      const res = await knowledgeApi.list({ limit: 200 })
-      const customIds = new Set<string>()
-      ;(res.items || []).forEach((k) => {
-        if (k.sourceType === "course" && k.sourceId === editId) {
-          customIds.add(k.id)
-        }
+  useEffect(() => {
+    let cancelled = false
+    knowledgeApi
+      .list({ limit: 200 })
+      .then((res) => {
+        if (cancelled) return
+        const customIds = new Set<string>()
+        ;(res.items || []).forEach((k) => {
+          if (k.sourceType === "course" && k.sourceId === editId) {
+            customIds.add(k.id)
+          }
+        })
+        setKnowledgePool((res.items || []).map((k) => ({
+          id: k.id,
+          name: k.name,
+          code: k.code,
+          description: k.description,
+          linked: !customIds.has(k.id),
+        })))
       })
-      setKnowledgePool((res.items || []).map((k) => ({
-        id: k.id,
-        name: k.name,
-        code: k.code,
-        description: k.description,
-        linked: !customIds.has(k.id),
-      })))
-    } catch {
-      setKnowledgePool([])
+      .catch(() => {
+        if (!cancelled) setKnowledgePool([])
+      })
+    return () => {
+      cancelled = true
     }
   }, [editId])
-
-  useEffect(() => {
-    loadKnowledgePool()
-  }, [loadKnowledgePool])
 
   /* module 3: resources */
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([])

@@ -139,20 +139,23 @@ export default function MyResourcesPage() {
   useEffect(() => {
     if (!userId) return
 
-    if (activeTab === "knowledge" && knowledgeItems.length === 0) {
-      loadKnowledge()
-    } else if (activeTab === "ability" && abilityItems.length === 0) {
-      loadAbilities()
-    } else if (activeTab === "certificates" && certificateItems.length === 0) {
-      loadCertificates()
-    } else if (activeTab === "questions" && questionItems.length === 0) {
-      loadQuestions()
-    } else if (activeTab.startsWith("resource:")) {
-      const kind = activeTab.replace("resource:", "") as ResourceKind
-      if (resourceItemsMap[kind].length === 0) {
-        loadResourceKind(kind)
+    // 将 tab 切换视为外部事件：在微任务回调中分发加载，避免在 effect 体内同步 setState
+    Promise.resolve().then(() => {
+      if (activeTab === "knowledge" && knowledgeItems.length === 0) {
+        loadKnowledge()
+      } else if (activeTab === "ability" && abilityItems.length === 0) {
+        loadAbilities()
+      } else if (activeTab === "certificates" && certificateItems.length === 0) {
+        loadCertificates()
+      } else if (activeTab === "questions" && questionItems.length === 0) {
+        loadQuestions()
+      } else if (activeTab.startsWith("resource:")) {
+        const kind = activeTab.replace("resource:", "") as ResourceKind
+        if (resourceItemsMap[kind].length === 0) {
+          loadResourceKind(kind)
+        }
       }
-    }
+    })
   }, [activeTab, userId, knowledgeItems.length, abilityItems.length, certificateItems.length, questionItems.length, resourceItemsMap, loadKnowledge, loadAbilities, loadCertificates, loadQuestions, loadResourceKind])
 
   const countForTab = (tab: TabKey) => {

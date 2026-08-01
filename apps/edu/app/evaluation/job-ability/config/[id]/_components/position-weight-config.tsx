@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, ChevronDown, ChevronRight, Save, SlidersHorizontal } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -49,48 +49,42 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
   const [taskDialogPoint, setTaskDialogPoint] = useState<DomainPoint | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
 
-  const load = useCallback(async () => {
+  useEffect(() => {
     let cancelled = false
-    try {
-      const [position, positionModel] = await Promise.all([
-        positionApi.get(positionId),
-        certApi.getPositionModel(positionId),
-      ])
-      if (cancelled) return
-      setPositionName(position.name)
-      setModel(positionModel)
-      // 后端总是带权重值（缺省时给均分默认），直接作为本地草稿初值
-      const pw: Record<string, number> = {}
-      const tw: Record<string, number> = {}
-      positionModel.domains.forEach((domain) => {
-        domain.points.forEach((point) => {
-          pw[point.abilityPointId] = point.weight
-          point.tasks.forEach((task) => {
-            tw[taskKey(point.abilityPointId, task.taskId)] = task.weight
+    Promise.all([positionApi.get(positionId), certApi.getPositionModel(positionId)])
+      .then(([position, positionModel]) => {
+        if (cancelled) return
+        setPositionName(position.name)
+        setModel(positionModel)
+        // 后端总是带权重值（缺省时给均分默认），直接作为本地草稿初值
+        const pw: Record<string, number> = {}
+        const tw: Record<string, number> = {}
+        positionModel.domains.forEach((domain) => {
+          domain.points.forEach((point) => {
+            pw[point.abilityPointId] = point.weight
+            point.tasks.forEach((task) => {
+              tw[taskKey(point.abilityPointId, task.taskId)] = task.weight
+            })
           })
         })
+        setPointWeights(pw)
+        setTaskWeights(tw)
       })
-      setPointWeights(pw)
-      setTaskWeights(tw)
-    } catch (err) {
-      if (!cancelled) {
+      .catch((err) => {
+        if (cancelled) return
         toast({
           title: "加载失败",
           description: err instanceof Error ? err.message : "获取岗位能力模型失败",
           variant: "destructive",
         })
-      }
-    } finally {
-      if (!cancelled) setLoading(false)
-    }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
     return () => {
       cancelled = true
     }
-  }, [positionId, toast])
-
-  useEffect(() => {
-    load()
-  }, [load, reloadKey])
+  }, [positionId, toast, reloadKey])
 
   const allPoints = useMemo<DomainPoint[]>(
     () =>
@@ -149,6 +143,7 @@ export function PositionWeightConfig({ positionId }: PositionWeightConfigProps) 
         ),
       })
       toast({ title: "保存成功", description: "权重配置已保存" })
+      setLoading(true)
       setReloadKey((k) => k + 1)
     } catch (err) {
       toast({

@@ -405,12 +405,14 @@ export function EvaluationRulesEditor({
     } finally { setLoadingPapers(false) }
   }, [])
 
-  // Mount 时预加载一次依赖数据；load* 均为 useCallback 稳定引用，不会导致循环
+  // Mount 时预加载一次依赖数据；在微任务回调中触发加载，避免在 effect 体内同步 setState
   useEffect(() => {
-    loadPapers()
-    loadRdqQuestions()
-    loadMajors()
-    loadRubricTemplates()
+    Promise.resolve().then(() => {
+      loadPapers()
+      loadRdqQuestions()
+      loadMajors()
+      loadRubricTemplates()
+    })
   }, [loadPapers, loadRdqQuestions, loadMajors, loadRubricTemplates])
 
   const majorOptions = useMemo(() => [{ id: "全部", name: "全部" }, ...majors.map((m: any) => ({ id: m.id, name: m.name }))], [majors])

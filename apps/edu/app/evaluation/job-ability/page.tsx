@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, useCallback } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Search, Briefcase, CheckCircle2, FileEdit, AlertCircle, Settings2, Eye, Upload, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -34,44 +34,45 @@ export default function JobAbilityPage() {
   const [statusTarget, setStatusTarget] = useState<CertificationRule | null>(null)
   const [statusSaving, setStatusSaving] = useState(false)
 
-  const load = useCallback(async () => {
-    try {
-      const [positionRes, ruleRes] = await Promise.all([
-        positionApi.list(),
-        certApi.listRules(),
-      ])
-      setPositions(positionRes.items)
-      setRules(ruleRes.items)
-      // 统计每条规则下已配置的能力点数
-      const counts: Record<string, number> = {}
-      await Promise.all(
-        ruleRes.items.map(async (rule) => {
-          try {
-            const full = await certApi.getFullRule(rule.id)
-            counts[rule.id] = full.items.reduce(
-              (sum, item) => sum + item.points.length,
-              0,
-            )
-          } catch {
-            counts[rule.id] = 0
-          }
-        }),
-      )
-      setPointCounts(counts)
-    } catch (err) {
-      toast({
-        title: "加载失败",
-        description: err instanceof Error ? err.message : "获取岗位认证数据失败",
-        variant: "destructive",
+  useEffect(() => {
+    let cancelled = false
+    Promise.all([positionApi.list(), certApi.listRules()])
+      .then(async ([positionRes, ruleRes]) => {
+        if (cancelled) return
+        setPositions(positionRes.items)
+        setRules(ruleRes.items)
+        // 统计每条规则下已配置的能力点数
+        const counts: Record<string, number> = {}
+        await Promise.all(
+          ruleRes.items.map(async (rule) => {
+            try {
+              const full = await certApi.getFullRule(rule.id)
+              counts[rule.id] = full.items.reduce(
+                (sum, item) => sum + item.points.length,
+                0,
+              )
+            } catch {
+              counts[rule.id] = 0
+            }
+          }),
+        )
+        if (!cancelled) setPointCounts(counts)
       })
-    } finally {
-      setLoading(false)
+      .catch((err) => {
+        if (cancelled) return
+        toast({
+          title: "加载失败",
+          description: err instanceof Error ? err.message : "获取岗位认证数据失败",
+          variant: "destructive",
+        })
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
     }
   }, [toast])
-
-  useEffect(() => {
-    load()
-  }, [load])
 
   const ruleMap = useMemo(() => {
     const map = new Map<string, CertificationRule>()

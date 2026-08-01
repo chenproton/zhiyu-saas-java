@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { ChevronLeft, ChevronRight, Eye, RefreshCw, Search } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -111,28 +111,33 @@ function JobAbilityResultsContent() {
   }
 
   // 左侧岗位汇总
-  const loadSummary = useCallback(async () => {
-    try {
-      const items = await jobAbilityResultApi.summary()
-      setSummary(items || [])
-      if (!positionIdParam && items && items.length > 0) {
-        setLoading(true)
-        setSelectedPositionId(items[0].positionId)
-      }
-    } catch (err) {
-      toast({
-        title: "加载失败",
-        description: err instanceof Error ? err.message : "获取岗位汇总失败",
-        variant: "destructive",
+  useEffect(() => {
+    let cancelled = false
+    jobAbilityResultApi
+      .summary()
+      .then((items) => {
+        if (cancelled) return
+        setSummary(items || [])
+        if (!positionIdParam && items && items.length > 0) {
+          setLoading(true)
+          setSelectedPositionId(items[0].positionId)
+        }
       })
-    } finally {
-      setSummaryLoading(false)
+      .catch((err) => {
+        if (cancelled) return
+        toast({
+          title: "加载失败",
+          description: err instanceof Error ? err.message : "获取岗位汇总失败",
+          variant: "destructive",
+        })
+      })
+      .finally(() => {
+        if (!cancelled) setSummaryLoading(false)
+      })
+    return () => {
+      cancelled = true
     }
   }, [positionIdParam, toast])
-
-  useEffect(() => {
-    loadSummary()
-  }, [loadSummary])
 
   // 右侧结果列表
   useEffect(() => {
