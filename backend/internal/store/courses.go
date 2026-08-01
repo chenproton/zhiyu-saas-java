@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -91,43 +92,57 @@ func (s *CourseStore) Delete(ctx context.Context, id string) error {
 }
 
 // ReplaceCourseBindings 替换课程的知识点/资源绑定表。
-func (s *CourseStore) ReplaceCourseBindings(ctx context.Context, courseID, tenantID, userID string, kpIDs, resIDs []string) {
-	_, _ = s.q.Exec(ctx, `DELETE FROM course_knowledge_bindings WHERE course_id = $1`, courseID)
+func (s *CourseStore) ReplaceCourseBindings(ctx context.Context, courseID, tenantID, userID string, kpIDs, resIDs []string) error {
+	if _, err := s.q.Exec(ctx, `DELETE FROM course_knowledge_bindings WHERE course_id = $1`, courseID); err != nil {
+		return fmt.Errorf("delete course knowledge bindings: %w", err)
+	}
 	for _, kpID := range kpIDs {
-		_, _ = s.q.Exec(ctx, `
+		if _, err := s.q.Exec(ctx, `
 			INSERT INTO course_knowledge_bindings (id, tenant_id, course_id, knowledge_point_id, bind_type, source_id)
 			VALUES ($1, $2, $3, $4, 'course', $5)
 			ON CONFLICT (course_id, knowledge_point_id) DO NOTHING
-		`, uuid.NewString(), tenantID, courseID, kpID, userID)
+		`, uuid.NewString(), tenantID, courseID, kpID, userID); err != nil {
+			return fmt.Errorf("insert course knowledge binding: %w", err)
+		}
 	}
-	_, _ = s.q.Exec(ctx, `DELETE FROM course_resource_bindings WHERE course_id = $1`, courseID)
+	if _, err := s.q.Exec(ctx, `DELETE FROM course_resource_bindings WHERE course_id = $1`, courseID); err != nil {
+		return fmt.Errorf("delete course resource bindings: %w", err)
+	}
 	for _, resID := range resIDs {
-		_, _ = s.q.Exec(ctx, `
+		if _, err := s.q.Exec(ctx, `
 			INSERT INTO course_resource_bindings (id, tenant_id, course_id, resource_id)
 			VALUES ($1, $2, $3, $4)
 			ON CONFLICT (course_id, resource_id) DO NOTHING
-		`, uuid.NewString(), tenantID, courseID, resID)
+		`, uuid.NewString(), tenantID, courseID, resID); err != nil {
+			return fmt.Errorf("insert course resource binding: %w", err)
+		}
 	}
+	return nil
 }
 
 // SyncKnowledgePointGranularLessons 同步知识点与颗粒课引用。
-func (s *CourseStore) SyncKnowledgePointGranularLessons(ctx context.Context, tenantID, courseID string, kpIDs []string) {
+func (s *CourseStore) SyncKnowledgePointGranularLessons(ctx context.Context, tenantID, courseID string, kpIDs []string) error {
 	if tenantID == "" {
-		return
+		return nil
 	}
-	_, _ = s.q.Exec(ctx, `
+	if _, err := s.q.Exec(ctx, `
 		UPDATE knowledge_points
 		SET granular_lesson_ids = array_append(granular_lesson_ids, $1::text),
 		    updated_at = NOW()
 		WHERE tenant_id = $2 AND id = ANY($3::uuid[]) AND NOT ($1::text = ANY(granular_lesson_ids))
-	`, courseID, tenantID, kpIDs)
-	_, _ = s.q.Exec(ctx, `
+	`, courseID, tenantID, kpIDs); err != nil {
+		return fmt.Errorf("add granular lesson refs: %w", err)
+	}
+	if _, err := s.q.Exec(ctx, `
 		UPDATE knowledge_points
 		SET granular_lesson_ids = array_remove(granular_lesson_ids, $1::text),
 		    updated_at = NOW()
 		WHERE tenant_id = $2 AND ($3::uuid[] IS NULL OR id <> ALL($3::uuid[]))
 		  AND $1::text = ANY(granular_lesson_ids)
-	`, courseID, tenantID, kpIDs)
+	`, courseID, tenantID, kpIDs); err != nil {
+		return fmt.Errorf("remove granular lesson refs: %w", err)
+	}
+	return nil
 }
 
 // CourseCreateParams 创建课程参数。

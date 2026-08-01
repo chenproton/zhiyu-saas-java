@@ -285,28 +285,46 @@ func (s *LessonContentService) GetCourseDetail(ctx context.Context, id string) (
 	return s.st.Courses().Get(ctx, id)
 }
 
-// CreateCourse 创建课程。
+// CreateCourse 创建课程（主记录、绑定、知识点引用在同一事务）。
 func (s *LessonContentService) CreateCourse(ctx context.Context, tenantID string, p *store.CourseCreateParams) (*domain.Course, error) {
-	course, err := s.st.Courses().Create(ctx, tenantID, p)
-	if err != nil {
-		return nil, err
-	}
-	s.st.Courses().ReplaceCourseBindings(ctx, course.ID, tenantID, p.CreatorID, p.KnowledgePointIds, p.ResourceIds)
-	s.st.Courses().SyncKnowledgePointGranularLessons(ctx, tenantID, course.ID, p.KnowledgePointIds)
-	return course, nil
+	var course *domain.Course
+	err := s.WithTx(ctx, func(txStore *store.Store) error {
+		c, err := txStore.Courses().Create(ctx, tenantID, p)
+		if err != nil {
+			return err
+		}
+		if err := txStore.Courses().ReplaceCourseBindings(ctx, c.ID, tenantID, p.CreatorID, p.KnowledgePointIds, p.ResourceIds); err != nil {
+			return err
+		}
+		if err := txStore.Courses().SyncKnowledgePointGranularLessons(ctx, tenantID, c.ID, p.KnowledgePointIds); err != nil {
+			return err
+		}
+		course = c
+		return nil
+	})
+	return course, err
 }
 
-// UpdateCourse 更新课程。
+// UpdateCourse 更新课程（主记录、绑定、知识点引用在同一事务）。
 func (s *LessonContentService) UpdateCourse(ctx context.Context, id, tenantID, userID string, p *store.CourseUpdateParams, replaceBindings bool, kpIDs, resIDs []string) (*domain.Course, error) {
-	course, err := s.st.Courses().Update(ctx, id, p)
-	if err != nil {
-		return nil, err
-	}
-	if replaceBindings {
-		s.st.Courses().ReplaceCourseBindings(ctx, id, tenantID, userID, kpIDs, resIDs)
-		s.st.Courses().SyncKnowledgePointGranularLessons(ctx, tenantID, id, kpIDs)
-	}
-	return course, nil
+	var course *domain.Course
+	err := s.WithTx(ctx, func(txStore *store.Store) error {
+		c, err := txStore.Courses().Update(ctx, id, p)
+		if err != nil {
+			return err
+		}
+		if replaceBindings {
+			if err := txStore.Courses().ReplaceCourseBindings(ctx, id, tenantID, userID, kpIDs, resIDs); err != nil {
+				return err
+			}
+			if err := txStore.Courses().SyncKnowledgePointGranularLessons(ctx, tenantID, id, kpIDs); err != nil {
+				return err
+			}
+		}
+		course = c
+		return nil
+	})
+	return course, err
 }
 
 // DeleteCourse 删除课程。
