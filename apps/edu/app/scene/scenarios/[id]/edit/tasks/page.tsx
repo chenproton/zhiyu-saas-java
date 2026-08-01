@@ -2672,7 +2672,7 @@ function EditCardDialog({
             </DialogTitle>
           <DialogDescription>任务：{task.name}</DialogDescription>
         </DialogHeader>
-        <div className={cn("flex-1 py-4", isFullScreen ? "overflow-hidden" : "overflow-y-auto")}>{renderContent()}</div>
+        <div className={cn("flex-1 py-4 overflow-y-auto")}>{renderContent()}</div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>取消</Button>
           <Button onClick={handleSave}>保存</Button>
