@@ -78,6 +78,7 @@ type Store struct {
 	landing         *LandingStore
 	approvals       *ApprovalStore
 	teachingPlans   *TeachingPlanStore
+	portal          *PortalStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -141,6 +142,7 @@ func New(db *pgxpool.Pool) *Store {
 		landing:         NewLandingStore(db),
 		approvals:       NewApprovalStore(db),
 		teachingPlans:   NewTeachingPlanStore(db),
+		portal:          NewPortalStore(db),
 	}
 }
 
@@ -205,6 +207,7 @@ func NewWithTx(tx pgx.Tx) *Store {
 		landing:         NewLandingStore(tx),
 		approvals:       NewApprovalStore(tx),
 		teachingPlans:   NewTeachingPlanStore(tx),
+		portal:          NewPortalStore(tx),
 	}
 }
 
@@ -496,6 +499,11 @@ func (s *Store) Approvals() *ApprovalStore {
 // TeachingPlans 返回教学计划 store。
 func (s *Store) TeachingPlans() *TeachingPlanStore {
 	return s.teachingPlans
+}
+
+// Portal 返回工作台 store。
+func (s *Store) Portal() *PortalStore {
+	return s.portal
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。

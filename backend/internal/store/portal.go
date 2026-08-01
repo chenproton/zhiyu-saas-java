@@ -1,0 +1,718 @@
+package store
+
+import (
+	"context"
+	"time"
+
+	"github.com/zhiyu-saas/backend/internal/domain"
+)
+
+// PortalStore 工作台聚合查询持久化（只读）。
+type PortalStore struct {
+	q Queryer
+}
+
+// NewPortalStore 创建工作台 store。
+func NewPortalStore(q Queryer) *PortalStore {
+	return &PortalStore{q: q}
+}
+
+// AnnouncementRow 公告行。
+type AnnouncementRow struct {
+	ID        string
+	Title     string
+	Type      string
+	IsNew     bool
+	CreatedAt time.Time
+}
+
+// ListAnnouncements 查询公告。
+func (s *PortalStore) ListAnnouncements(ctx context.Context, role string, tenantID *string) ([]AnnouncementRow, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT id, title, type, is_new, created_at
+		FROM announcements
+		WHERE (array_length(target_roles, 1) IS NULL OR target_roles @> ARRAY[$1::varchar])
+			AND ($2::uuid IS NULL OR tenant_id = $2::uuid)
+		ORDER BY created_at DESC
+		LIMIT 10
+	`, role, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AnnouncementRow
+	for rows.Next() {
+		var a AnnouncementRow
+		if err := rows.Scan(&a.ID, &a.Title, &a.Type, &a.IsNew, &a.CreatedAt); err != nil {
+			continue
+		}
+		items = append(items, a)
+	}
+	return items, rows.Err()
+}
+
+// PendingApprovalCount 待审批数。
+func (s *PortalStore) PendingApprovalCount(ctx context.Context, tenantID *string) int {
+	var count int
+	query := `SELECT COUNT(*) FROM approval_records WHERE status = 'pending'`
+	args := []any{}
+	if tenantID != nil {
+		query += ` AND tenant_id = $1`
+		args = append(args, *tenantID)
+	}
+	_ = s.q.QueryRow(ctx, query, args...).Scan(&count)
+	return count
+}
+
+// DraftCourseCount 待提交课程数。
+func (s *PortalStore) DraftCourseCount(ctx context.Context, userID string, tenantID *string) int {
+	var count int
+	query := `
+		SELECT COUNT(*) FROM courses c
+		JOIN users u ON u.id = c.creator_id
+		WHERE c.status = 'draft' AND (c.teacher_id = $1::uuid OR c.creator_id = $1::uuid)`
+	args := []any{userID}
+	if tenantID != nil {
+		query += ` AND u.tenant_id = $2`
+		args = append(args, *tenantID)
+	}
+	_ = s.q.QueryRow(ctx, query, args...).Scan(&count)
+	return count
+}
+
+// UpcomingExamCount 待参加考试数。
+func (s *PortalStore) UpcomingExamCount(ctx context.Context, tenantID *string, now time.Time) int {
+	var count int
+	query := `
+		SELECT COUNT(*) FROM exam_usages eu
+		JOIN users u ON u.id = eu.creator_id
+		WHERE eu.status = 'published' AND (eu.start_time IS NULL OR eu.start_time >= $1)`
+	args := []any{now}
+	if tenantID != nil {
+		query += ` AND u.tenant_id = $2`
+		args = append(args, *tenantID)
+	}
+	_ = s.q.QueryRow(ctx, query, args...).Scan(&count)
+	return count
+}
+
+// TeacherScheduleRow 教师排课行。
+type TeacherScheduleRow struct {
+	ID         string
+	CourseName string
+	EntryType  string
+	DayOfWeek  int
+	Periods    domain.JSONSlice
+	VenueName  string
+	ClassNames []string
+	TeacherName string
+}
+
+// ListTeacherSchedules 教师排课事件。
+func (s *PortalStore) ListTeacherSchedules(ctx context.Context, userID string, tenantID *string) ([]TeacherScheduleRow, error) {
+	query := `
+		SELECT se.id::text, se.course_name, se.type, se.day_of_week, se.periods,
+			COALESCE(v.name, '') AS venue_name,
+			COALESCE((SELECT array_agg(o2.name ORDER BY cid) FROM unnest(se.class_node_ids) WITH ORDINALITY AS c(cid, ord) JOIN organizations o2 ON o2.id = c.cid), '{}') AS class_names,
+			COALESCE(u.name, '')
+		FROM schedule_entries se
+		LEFT JOIN venues v ON v.id = se.venue_id
+		LEFT JOIN users u ON u.id = se.teacher_id
+		WHERE se.status = 'published' AND se.teacher_id = $1::uuid`
+	args := []any{userID}
+	if tenantID != nil {
+		query += ` AND se.tenant_id = $2`
+		args = append(args, *tenantID)
+	}
+	query += ` ORDER BY se.day_of_week, se.start_week LIMIT 50`
+	rows, err := s.q.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TeacherScheduleRow
+	for rows.Next() {
+		var r TeacherScheduleRow
+		if err := rows.Scan(&r.ID, &r.CourseName, &r.EntryType, &r.DayOfWeek, &r.Periods, &r.VenueName, &r.ClassNames, &r.TeacherName); err != nil {
+			continue
+		}
+		items = append(items, r)
+	}
+	return items, rows.Err()
+}
+
+// UserClassNodeID 查询用户班级节点。
+func (s *PortalStore) UserClassNodeID(ctx context.Context, userID string, tenantID *string) string {
+	var classNodeID string
+	_ = s.q.QueryRow(ctx, `
+		SELECT org_node_id FROM users WHERE id = $1 AND ($2::uuid IS NULL OR tenant_id = $2::uuid)
+	`, userID, tenantID).Scan(&classNodeID)
+	return classNodeID
+}
+
+// StudentScheduleRow 学生排课行。
+type StudentScheduleRow struct {
+	ID         string
+	CourseName string
+	EntryType  string
+	DayOfWeek  int
+	Periods    domain.JSONSlice
+	VenueName  string
+	TeacherName string
+}
+
+// ListStudentSchedules 学生班级排课事件。
+func (s *PortalStore) ListStudentSchedules(ctx context.Context, classNodeID string, tenantID *string) ([]StudentScheduleRow, error) {
+	query := `
+		SELECT se.id::text, se.course_name, se.type, se.day_of_week, se.periods,
+			COALESCE(v.name, '') AS venue_name,
+			COALESCE(u.name, '')
+		FROM schedule_entries se
+		LEFT JOIN venues v ON v.id = se.venue_id
+		LEFT JOIN users u ON u.id = se.teacher_id
+		WHERE se.status = 'published'
+		  AND (se.class_node_id = $1::uuid OR $1::uuid = ANY(se.class_node_ids))`
+	args := []any{classNodeID}
+	if tenantID != nil {
+		query += ` AND se.tenant_id = $2`
+		args = append(args, *tenantID)
+	}
+	query += ` ORDER BY se.day_of_week, se.start_week LIMIT 50`
+	rows, err := s.q.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StudentScheduleRow
+	for rows.Next() {
+		var r StudentScheduleRow
+		if err := rows.Scan(&r.ID, &r.CourseName, &r.EntryType, &r.DayOfWeek, &r.Periods, &r.VenueName, &r.TeacherName); err != nil {
+			continue
+		}
+		items = append(items, r)
+	}
+	return items, rows.Err()
+}
+
+// ExamEventRow 考试事件行。
+type ExamEventRow struct {
+	ID     string
+	Name   string
+	Start  *time.Time
+	Status string
+}
+
+// ListExamEvents 全局考试事件。
+func (s *PortalStore) ListExamEvents(ctx context.Context, tenantID *string) ([]ExamEventRow, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT eu.id, eu.name, eu.start_time, eu.status
+		FROM exam_usages eu
+		JOIN users u ON u.id = eu.creator_id
+		WHERE eu.status IN ('published', 'in_progress')
+			AND ($1::uuid IS NULL OR u.tenant_id = $1::uuid)
+		ORDER BY eu.start_time ASC NULLS LAST
+		LIMIT 20
+	`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExamEventRow
+	for rows.Next() {
+		var r ExamEventRow
+		if err := rows.Scan(&r.ID, &r.Name, &r.Start, &r.Status); err != nil {
+			continue
+		}
+		items = append(items, r)
+	}
+	return items, rows.Err()
+}
+
+// TeacherStats 教师统计。
+func (s *PortalStore) TeacherStats(ctx context.Context, userID string, tenantID *string) (int, int) {
+	var courseCount, studentCount int
+	_ = s.q.QueryRow(ctx, `
+		WITH teacher_courses AS (
+			SELECT c.id
+			FROM courses c
+			JOIN users u ON u.id = c.creator_id
+			WHERE c.status = 'published'
+			  AND (c.teacher_id = $1::uuid OR c.creator_id = $1::uuid)
+			  AND ($2::uuid IS NULL OR u.tenant_id = $2::uuid)
+		)
+		SELECT
+			(SELECT COUNT(*) FROM teacher_courses),
+			COALESCE((SELECT COUNT(DISTINCT r.student_user_id)
+					  FROM lesson_behavior_records r
+					  WHERE r.course_id IN (SELECT id FROM teacher_courses)), 0)
+	`, userID, tenantID).Scan(&courseCount, &studentCount)
+	return courseCount, studentCount
+}
+
+// StudentStats 学生统计。
+func (s *PortalStore) StudentStats(ctx context.Context, tenantID *string) (int, int) {
+	var courseCount, examCount int
+	_ = s.q.QueryRow(ctx, `
+		SELECT
+			(SELECT COUNT(*) FROM courses c
+			 JOIN users u ON u.id = c.creator_id
+			 WHERE c.status = 'published' AND ($1::uuid IS NULL OR u.tenant_id = $1::uuid)),
+			(SELECT COUNT(*) FROM exam_usages eu
+			 JOIN users u ON u.id = eu.creator_id
+			 WHERE eu.status = 'published' AND ($1::uuid IS NULL OR u.tenant_id = $1::uuid))
+	`, tenantID).Scan(&courseCount, &examCount)
+	return courseCount, examCount
+}
+
+// SchoolAdminStats 学校管理员统计。
+func (s *PortalStore) SchoolAdminStats(ctx context.Context, tenantID *string) (int, int) {
+	var courseCount, pendingApprovalCount int
+	courseQuery := `SELECT COUNT(*) FROM courses WHERE ($1::uuid IS NULL OR tenant_id = $1::uuid)`
+	approvalQuery := `SELECT COUNT(*) FROM approval_records WHERE status = 'pending' AND ($1::uuid IS NULL OR tenant_id = $1::uuid)`
+	_ = s.q.QueryRow(ctx, courseQuery, tenantID).Scan(&courseCount)
+	_ = s.q.QueryRow(ctx, approvalQuery, tenantID).Scan(&pendingApprovalCount)
+	return courseCount, pendingApprovalCount
+}
+
+// SchoolAdminResourceStats 学校管理员资源统计。
+func (s *PortalStore) SchoolAdminResourceStats(ctx context.Context, tenantID *string) (int, int, int, int, int, int) {
+	var courseCount, scenarioCount, positionCount, questionBankCount, examCount, examUsageCount int
+	_ = s.q.QueryRow(ctx, `
+		SELECT
+			(SELECT COUNT(*) FROM courses WHERE ($1::uuid IS NULL OR tenant_id = $1::uuid)),
+			(SELECT COUNT(*) FROM scenarios WHERE ($1::uuid IS NULL OR tenant_id = $1::uuid)),
+			(SELECT COUNT(*) FROM career_positions WHERE ($1::uuid IS NULL OR tenant_id = $1::uuid)),
+			(SELECT COUNT(*) FROM question_banks WHERE ($1::uuid IS NULL OR tenant_id = $1::uuid)),
+			(SELECT COUNT(*) FROM exams WHERE ($1::uuid IS NULL OR tenant_id = $1::uuid)),
+			(SELECT COUNT(*) FROM exam_usages WHERE ($1::uuid IS NULL OR tenant_id = $1::uuid))
+	`, tenantID).Scan(&courseCount, &scenarioCount, &positionCount, &questionBankCount, &examCount, &examUsageCount)
+	return courseCount, scenarioCount, positionCount, questionBankCount, examCount, examUsageCount
+}
+
+// PersonnelStatRow 人员统计行。
+type PersonnelStatRow struct {
+	Code  string
+	Count int
+}
+
+// PersonnelStats 人员统计。
+func (s *PortalStore) PersonnelStats(ctx context.Context, tenantID *string) ([]PersonnelStatRow, error) {
+	query := `
+		SELECT r.code, COUNT(DISTINCT ur.user_id)
+		FROM roles r
+		JOIN user_roles ur ON ur.role_id = r.id
+		WHERE ($1::uuid IS NULL OR r.tenant_id = $1::uuid)
+		  AND r.code IN ('student', 'teacher', 'enterprise_mentor', 'school_admin')
+		GROUP BY r.code
+	`
+	rows, err := s.q.Query(ctx, query, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PersonnelStatRow
+	for rows.Next() {
+		var r PersonnelStatRow
+		if err := rows.Scan(&r.Code, &r.Count); err != nil {
+			continue
+		}
+		items = append(items, r)
+	}
+	return items, rows.Err()
+}
+
+// SchoolAdminTodoRow 待办行。
+type SchoolAdminTodoRow struct {
+	TargetType string
+	Count      int
+}
+
+// SchoolAdminTodos 学校管理员待办。
+func (s *PortalStore) SchoolAdminTodos(ctx context.Context, tenantID *string) ([]SchoolAdminTodoRow, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT target_type, COUNT(*)
+		FROM approval_records
+		WHERE status = 'pending' AND ($1::uuid IS NULL OR tenant_id = $1::uuid)
+		GROUP BY target_type
+		ORDER BY COUNT(*) DESC
+	`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SchoolAdminTodoRow
+	for rows.Next() {
+		var r SchoolAdminTodoRow
+		if err := rows.Scan(&r.TargetType, &r.Count); err != nil {
+			continue
+		}
+		items = append(items, r)
+	}
+	return items, rows.Err()
+}
+
+// StudentCourseRow 学生课程行。
+type StudentCourseRow struct {
+	ID           string
+	Code         string
+	Name         string
+	Type         string
+	Category     string
+	OnlineHours  *float64
+	OfflineHours *float64
+	Semester     string
+	ClassName    string
+	Status       string
+	CoverColor   string
+	CoverImage   string
+	Teacher      string
+}
+
+// ListStudentCourses 学生课程。
+func (s *PortalStore) ListStudentCourses(ctx context.Context, tenantID *string) ([]StudentCourseRow, error) {
+	query := `
+		SELECT c.id, c.code, c.name, c.type, COALESCE(c.category, ''), c.online_hours, c.offline_hours,
+			COALESCE(c.semester, ''), COALESCE(c.class_name, ''), c.status,
+			COALESCE(c.cover_color, ''), COALESCE(c.cover_image, ''), COALESCE(u.name, '')
+		FROM courses c
+		LEFT JOIN users u ON u.id = c.teacher_id
+		WHERE c.status = 'published'`
+	args := []any{}
+	if tenantID != nil {
+		query += ` AND (u.tenant_id = $1 OR c.creator_id IN (SELECT id FROM users WHERE tenant_id = $1))`
+		args = append(args, *tenantID)
+	}
+	query += ` ORDER BY c.updated_at DESC LIMIT 50`
+	rows, err := s.q.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StudentCourseRow
+	for rows.Next() {
+		var r StudentCourseRow
+		if err := rows.Scan(&r.ID, &r.Code, &r.Name, &r.Type, &r.Category, &r.OnlineHours, &r.OfflineHours,
+			&r.Semester, &r.ClassName, &r.Status, &r.CoverColor, &r.CoverImage, &r.Teacher); err != nil {
+			continue
+		}
+		items = append(items, r)
+	}
+	return items, rows.Err()
+}
+
+// SceneTaskRow 场景任务行。
+type SceneTaskRow struct {
+	ID         string
+	ScenarioID string
+	SceneName  string
+	TaskName   string
+	Difficulty int
+}
+
+// ListSceneTasks 场景任务。
+func (s *PortalStore) ListSceneTasks(ctx context.Context, tenantID *string) ([]SceneTaskRow, error) {
+	query := `
+		SELECT t.id, t.scenario_id, s.name, t.name, t.difficulty
+		FROM scenario_tasks t
+		JOIN scenarios s ON s.id = t.scenario_id
+		JOIN users u ON u.id = s.creator_id
+		WHERE s.status = 'published'`
+	args := []any{}
+	if tenantID != nil {
+		query += ` AND u.tenant_id = $1`
+		args = append(args, *tenantID)
+	}
+	query += ` ORDER BY s.updated_at DESC LIMIT 50`
+	rows, err := s.q.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SceneTaskRow
+	for rows.Next() {
+		var r SceneTaskRow
+		if err := rows.Scan(&r.ID, &r.ScenarioID, &r.SceneName, &r.TaskName, &r.Difficulty); err != nil {
+			continue
+		}
+		items = append(items, r)
+	}
+	return items, rows.Err()
+}
+
+// ExamRow 考试行。
+type ExamRow struct {
+	ID         string
+	Name       string
+	Start      *time.Time
+	End        *time.Time
+	Duration   *int
+	Status     string
+	TotalScore float64
+	Score      *float64
+}
+
+// ListStudentExams 学生考试。
+func (s *PortalStore) ListStudentExams(ctx context.Context, userID string, tenantID *string) ([]ExamRow, error) {
+	query := `
+		SELECT eu.id, eu.name, eu.start_time, eu.end_time, eu.duration, eu.status, e.total_score,
+			er.score
+		FROM exam_usages eu
+		JOIN exams e ON e.id = eu.exam_id
+		JOIN users u ON u.id = eu.creator_id
+		LEFT JOIN exam_results er ON er.exam_usage_id = eu.id AND er.user_id = $1::uuid
+		WHERE eu.status IN ('published', 'in_progress', 'finished')`
+	args := []any{userID}
+	if tenantID != nil {
+		query += ` AND u.tenant_id = $2`
+		args = append(args, *tenantID)
+	}
+	query += ` ORDER BY eu.start_time ASC NULLS LAST LIMIT 50`
+	rows, err := s.q.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExamRow
+	for rows.Next() {
+		var r ExamRow
+		if err := rows.Scan(&r.ID, &r.Name, &r.Start, &r.End, &r.Duration, &r.Status, &r.TotalScore, &r.Score); err != nil {
+			continue
+		}
+		items = append(items, r)
+	}
+	return items, rows.Err()
+}
+
+// TeacherCourseRow 教师课程行。
+type TeacherCourseRow struct {
+	ID           string
+	Code         string
+	Name         string
+	Type         string
+	Category     string
+	OnlineHours  *float64
+	OfflineHours *float64
+	Semester     string
+	ClassName    string
+	Status       string
+	CoverColor   string
+	CoverImage   string
+}
+
+// ListTeacherCourses 教师课程。
+func (s *PortalStore) ListTeacherCourses(ctx context.Context, userID string, tenantID *string) ([]TeacherCourseRow, error) {
+	query := `
+		SELECT c.id, c.code, c.name, c.type, COALESCE(c.category, ''), c.online_hours, c.offline_hours,
+			COALESCE(c.semester, ''), COALESCE(c.class_name, ''), c.status,
+			COALESCE(c.cover_color, ''), COALESCE(c.cover_image, '')
+		FROM courses c
+		JOIN users u ON u.id = c.creator_id
+		WHERE c.status = 'published' AND (c.teacher_id = $1::uuid OR c.creator_id = $1::uuid)`
+	args := []any{userID}
+	if tenantID != nil {
+		query += ` AND u.tenant_id = $2`
+		args = append(args, *tenantID)
+	}
+	query += ` ORDER BY c.updated_at DESC LIMIT 50`
+	rows, err := s.q.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TeacherCourseRow
+	for rows.Next() {
+		var r TeacherCourseRow
+		if err := rows.Scan(&r.ID, &r.Code, &r.Name, &r.Type, &r.Category, &r.OnlineHours, &r.OfflineHours,
+			&r.Semester, &r.ClassName, &r.Status, &r.CoverColor, &r.CoverImage); err != nil {
+			continue
+		}
+		items = append(items, r)
+	}
+	return items, rows.Err()
+}
+
+// ClassPlanRow 班级计划行。
+type ClassPlanRow struct {
+	ID          string
+	PlanEntryID string
+	CourseName  string
+	Type        string
+	DayOfWeek   int
+	Periods     domain.JSONSlice
+	StartWeek   int
+	EndWeek     int
+	WeekPattern string
+	Status      string
+	TermName    string
+	TeacherName string
+	VenueName   string
+	ClassNames  []string
+}
+
+// ListClassPlans 教师班级计划。
+func (s *PortalStore) ListClassPlans(ctx context.Context, userID string, tenantID *string) ([]ClassPlanRow, error) {
+	query := `
+		SELECT se.id::text, COALESCE(se.plan_entry_id::text, ''), se.course_name, se.type, se.day_of_week,
+			se.periods, se.start_week, se.end_week, se.week_pattern, se.status,
+			COALESCE(t.name, ''), COALESCE(u.name, ''), COALESCE(v.name, ''),
+			COALESCE((SELECT array_agg(o2.name ORDER BY cid) FROM unnest(se.class_node_ids) WITH ORDINALITY AS c(cid, ord) JOIN organizations o2 ON o2.id = c.cid), '{}') AS class_names
+		FROM schedule_entries se
+		JOIN terms t ON t.id = se.term_id
+		LEFT JOIN users u ON u.id = se.teacher_id
+		LEFT JOIN venues v ON v.id = se.venue_id
+		WHERE se.teacher_id = $1::uuid AND se.tenant_id = $2::uuid
+		ORDER BY t.start_date DESC, se.day_of_week, se.start_week, se.course_name
+	`
+	rows, err := s.q.Query(ctx, query, userID, *tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ClassPlanRow
+	for rows.Next() {
+		var r ClassPlanRow
+		if err := rows.Scan(&r.ID, &r.PlanEntryID, &r.CourseName, &r.Type, &r.DayOfWeek, &r.Periods,
+			&r.StartWeek, &r.EndWeek, &r.WeekPattern, &r.Status,
+			&r.TermName, &r.TeacherName, &r.VenueName, &r.ClassNames); err != nil {
+			continue
+		}
+		items = append(items, r)
+	}
+	return items, rows.Err()
+}
+
+// CreditHoursRatio 查询学分学时比。
+func (s *PortalStore) CreditHoursRatio(ctx context.Context) float64 {
+	var ratio float64
+	_ = s.q.QueryRow(ctx, `SELECT COALESCE(value::float, 16) FROM platform_configs WHERE key = 'credit_hours_ratio'`).Scan(&ratio)
+	if ratio <= 0 {
+		ratio = 16
+	}
+	return ratio
+}
+
+// BatchCourseProgress 课程出勤进度。
+func (s *PortalStore) BatchCourseProgress(ctx context.Context, courseIDs []string, userID string) map[string]int {
+	result := make(map[string]int)
+	if len(courseIDs) == 0 {
+		return result
+	}
+	rows, err := s.q.Query(ctx, `
+		SELECT course_id, COUNT(*), COUNT(*) FILTER (WHERE attendance = 'present')
+		FROM lesson_behavior_records
+		WHERE course_id = ANY($1::uuid[]) AND student_user_id = $2::uuid
+		GROUP BY course_id
+	`, courseIDs, userID)
+	if err != nil {
+		return result
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var courseID string
+		var total, present int
+		if err := rows.Scan(&courseID, &total, &present); err != nil {
+			continue
+		}
+		if total == 0 {
+			result[courseID] = 0
+		} else {
+			result[courseID] = present * 100 / total
+		}
+	}
+	return result
+}
+
+// BatchCourseStudentCounts 课程学生数。
+func (s *PortalStore) BatchCourseStudentCounts(ctx context.Context, courseIDs []string) map[string]int {
+	result := make(map[string]int)
+	if len(courseIDs) == 0 {
+		return result
+	}
+	rows, err := s.q.Query(ctx, `
+		SELECT course_id, COUNT(DISTINCT student_user_id)
+		FROM lesson_behavior_records
+		WHERE course_id = ANY($1::uuid[])
+		GROUP BY course_id
+	`, courseIDs)
+	if err != nil {
+		return result
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var courseID string
+		var count int
+		if err := rows.Scan(&courseID, &count); err != nil {
+			continue
+		}
+		result[courseID] = count
+	}
+	return result
+}
+
+// BatchSceneTaskStatus 场景任务状态。
+func (s *PortalStore) BatchSceneTaskStatus(ctx context.Context, taskIDs []string, userID string) map[string]string {
+	result := make(map[string]string)
+	if len(taskIDs) == 0 {
+		return result
+	}
+	rows, err := s.q.Query(ctx, `
+		SELECT DISTINCT ON (task_id) task_id, status, total_score
+		FROM scene_evaluation_results
+		WHERE task_id = ANY($1::uuid[]) AND evaluatee_id = $2::uuid
+		ORDER BY task_id, created_at DESC
+	`, taskIDs, userID)
+	if err != nil {
+		return result
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var taskID, status string
+		var score *float64
+		if err := rows.Scan(&taskID, &status, &score); err != nil {
+			continue
+		}
+		switch {
+		case status == "":
+			result[taskID] = "未开始"
+		case status == "evaluated" || score != nil:
+			result[taskID] = "已完成"
+		default:
+			result[taskID] = "进行中"
+		}
+	}
+	return result
+}
+
+// PeriodLabelMap 节次名称→网格标签（按 sort_order 索引分割）。
+func (s *PortalStore) PeriodLabelMap(ctx context.Context, tenantID *string) map[string]string {
+	m := map[string]string{}
+	if tenantID == nil {
+		return m
+	}
+	rows, err := s.q.Query(ctx, `
+		SELECT name FROM period_slots WHERE tenant_id = $1 ORDER BY sort_order ASC
+	`, *tenantID)
+	if err != nil {
+		return m
+	}
+	defer rows.Close()
+	var names []string
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err != nil {
+			continue
+		}
+		names = append(names, n)
+	}
+	for i, n := range names {
+		switch {
+		case i < 4:
+			m[n] = "上午 " + itoa(i+1)
+		case i < 8:
+			m[n] = "下午 " + itoa(i-3)
+		default:
+			m[n] = "晚自习 " + itoa(i-7)
+		}
+	}
+	return m
+}

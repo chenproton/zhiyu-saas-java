@@ -119,7 +119,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		fileHandler:                   fileHandler,
 		resourceHandler:               &handler.ResourceHandler{DB: db},
 		statsHandler:                  &handler.StatsHandler{DB: db},
-		portalHandler:                 &handler.PortalHandler{DB: db},
+		portalHandler:                 &handler.PortalHandler{Service: service.NewPositionService(svc)},
 		importExportHandler:           &handler.ImportExportHandler{DB: db},
 		positionImportHandler:         &handler.PositionImportHandler{DB: db},
 		scenarioImportHandler:         &handler.ScenarioImportHandler{DB: db},
