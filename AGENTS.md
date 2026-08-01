@@ -1,4 +1,4 @@
-# 知育 SaaS 架构收敛契约
+# 知与 SaaS 开发契约
 
 > **首要约束：禁止还原/覆盖他人代码。** 无论如何不得对工作区中非当次任务的文件执行 `git checkout`、`git restore`、`git reset` 等还原操作。部署时若遇到与本次任务无关的编译/类型错误，直接报错停止，告知用户即可，禁止擅自修复或还原他人未提交的修改。
 
@@ -46,8 +46,7 @@
 1. 所有**代码修改**后必须通过 `./deploy.sh --branch <分支名>` 部署验证
 2. **纯文档修改**（`AGENTS.md`、`docs/` 下的文件）无需走 `deploy.sh`，直接 commit 合并即可
 3. 提交前检查：后端 `go vet ./...` `go test ./...`，前端 `pnpm typecheck` `pnpm lint`，migration 需配对 `.down.sql`
-4. 修改 `AGENTS.md` 或 `docs/` 下的文件必须独立 commit
-5. 单次 commit 只含当次变更
+4. 单次 commit 只含当次变更
 
 ## 三、开发原则
 
@@ -67,8 +66,6 @@
 | 回滚部署 | `git checkout <上一个tag>` 后 `./deploy.sh`，禁止手动登服务器改代码 |
 
 环境变量（`DATABASE_URL`、`JWT_SECRET`、`PORT`）在 `.env` 配置，禁止提交仓库。
-
-> 演示环境：服务器地址与登录凭证请咨询运维或查看安全凭证存储，项目位于 `/root/projects/zhiyu-saas`。
 
 ## 五、前端公共组件
 
