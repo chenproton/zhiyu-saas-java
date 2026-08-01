@@ -280,7 +280,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/scene/rubric-templates/{id}", taskEvaluationHandler.UpdateTemplate)
 			r.Delete("/scene/rubric-templates/{id}", taskEvaluationHandler.DeleteTemplate)
 
-			taskResourceHandler := &handler.TaskResourceHandler{DB: pool}
+			taskResourceHandler := &handler.TaskResourceHandler{Service: service.NewResourceBindingService(svc2)}
 			r.Get("/scene/task-resources", taskResourceHandler.ListResources)
 			r.Post("/scene/task-resources", taskResourceHandler.BindResource)
 			r.Post("/scene/task-resources/create", taskResourceHandler.Create)

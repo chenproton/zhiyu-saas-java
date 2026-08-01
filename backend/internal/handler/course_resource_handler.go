@@ -3,18 +3,16 @@ package handler
 import (
 	"context"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type CourseResourceHandler struct {
-	DB *pgxpool.Pool
+	Service *service.ResourceBindingService
 }
 
 type CourseResourceListResponse struct {
@@ -41,86 +39,26 @@ func (h *CourseResourceHandler) ListResources(w http.ResponseWriter, r *http.Req
 		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
-
-	courseID := r.URL.Query().Get("courseId")
-	search := r.URL.Query().Get("search")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 200
-	offset := 0
-	if v, err := parsePageLimit(limitStr, 200); err == nil && v > 0 {
-		limit = v
-	}
-	if v, err := parseInt(offsetStr, 0); err == nil && v >= 0 {
-		offset = v
-	}
-
-	where := []string{"1=1"}
-	args := []interface{}{}
-	argIdx := 1
-
-	tenantClaims := middleware.CurrentUser(r)
-	effectiveTenantID, ok := tenantFilter(tenantClaims)
+	tenantID, ok := tenantFilter(middleware.CurrentUser(r))
 	if !ok {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
-	where = append(where, "rl.tenant_id = $"+itoa(argIdx))
-	args = append(args, effectiveTenantID)
-	argIdx++
 
-	joinCourseBindings := ""
-	if courseID != "" {
-		joinCourseBindings = `JOIN course_resource_bindings crb ON crb.resource_id = rl.id AND crb.course_id = $` + itoa(argIdx)
-		args = append(args, courseID)
-		argIdx++
-	} else {
-		joinCourseBindings = `LEFT JOIN course_resource_bindings crb ON crb.resource_id = rl.id`
+	limit := 200
+	if v, err := parsePageLimit(r.URL.Query().Get("limit"), 200); err == nil && v > 0 {
+		limit = v
 	}
-	if search != "" {
-		where = append(where, "(rl.name ILIKE $"+itoa(argIdx)+" OR rl.url ILIKE $"+itoa(argIdx)+")")
-		args = append(args, "%"+search+"%")
-		argIdx++
+	offset := 0
+	if v, err := parseInt(r.URL.Query().Get("offset"), 0); err == nil && v >= 0 {
+		offset = v
 	}
 
-	countQuery := `
-		SELECT COUNT(*) FROM resource_library rl
-		` + joinCourseBindings + `
-		WHERE ` + strings.Join(where, " AND ")
-	var total int
-	_ = h.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total)
-
-	query := `
-		SELECT rl.id,
-			COALESCE(crb.course_id::text, '') AS node_id,
-			rl.name,
-			rl.resource_type AS type,
-			rl.url,
-			rl.file_size::int AS size,
-			rl.tenant_id,
-			rl.created_at AS uploaded_at,
-			rl.uploaded_by
-		FROM resource_library rl
-		` + joinCourseBindings + `
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY rl.created_at DESC
-		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := h.DB.Query(r.Context(), query, args...)
+	items, total, err := h.Service.ListCourseResources(r.Context(), tenantID, r.URL.Query().Get("courseId"), r.URL.Query().Get("search"), limit, offset)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询课程资源失败")
 		return
 	}
-	defer rows.Close()
-
-	items, err := h.scanResourceRows(rows)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "读取课程资源失败")
-		return
-	}
-
 	respondJSON(w, http.StatusOK, CourseResourceListResponse{Items: items, Total: total})
 }
 
@@ -139,52 +77,50 @@ func (h *CourseResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
 
-	id := uuid.NewString()
 	var fileSize *int64
 	if req.Size != nil {
 		s := int64(*req.Size)
 		fileSize = &s
 	}
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO resource_library (id, tenant_id, name, resource_type, url, description, file_size, uploaded_by)
-		VALUES ($1, $2, $3, $4::resource_type, $5, $6, $7, $8)
-	`, id, tenantID, req.Name, req.Type, req.URL, req.Description, fileSize, claims.UserID)
+	uploadedBy := claims.UserID
+
+	row, err := h.Service.Create(r.Context(), tenantID, "course_resource_bindings", "course_id", req.CourseID, &store.ResourceCreateSimpleParams{
+		Name:       req.Name,
+		Type:       req.Type,
+		URL:        req.URL,
+		Description: req.Description,
+		FileSize:   fileSize,
+		UploadedBy: &uploadedBy,
+	}, func(ctx context.Context, q store.Queryer, courseID, resourceID string) error {
+		return store.CourseSyncBind(ctx, q, courseID, resourceID)
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "创建课程资源失败")
 		return
 	}
-
-	_, _ = h.DB.Exec(r.Context(), `
-		INSERT INTO course_resource_bindings (id, tenant_id, course_id, resource_id)
-		VALUES ($1, $2, $3, $4)
-		ON CONFLICT (course_id, resource_id) DO NOTHING
-	`, uuid.NewString(), tenantID, req.CourseID, id)
-	_, _ = h.DB.Exec(r.Context(), `
-		UPDATE courses
-		SET resource_ids = array_append(resource_ids, $2::uuid),
-		    resource_count = COALESCE(array_length(array_append(resource_ids, $2::uuid), 1), 0)
-		WHERE id = $1 AND NOT ($2::uuid = ANY(resource_ids))
-	`, req.CourseID, id)
-
-	resource, _ := h.fetchLibraryResource(r.Context(), id)
-	if resource != nil {
-		resource.NodeID = req.CourseID
-		if req.Size != nil {
-			resource.Size = req.Size
+	var res domain.NodeResource
+	res.ID = row.ID
+	res.NodeID = req.CourseID
+	res.Name = row.Name
+	res.Type = row.Type
+	res.URL = row.URL
+	if row.Size != "" {
+		if n, err := parseInt(row.Size, 0); err == nil {
+			res.Size = &n
 		}
 	}
-	respondJSON(w, http.StatusCreated, resource)
+	res.UploadedBy = row.UploadedBy
+	res.UploadedAt = row.UploadedAt
+	respondJSON(w, http.StatusCreated, res)
 }
 
 func (h *CourseResourceHandler) BindResource(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if claims == nil {
+	if middleware.CurrentUser(r) == nil {
 		respondError(w, http.StatusUnauthorized, "未授权")
 		return
 	}
@@ -197,32 +133,19 @@ func (h *CourseResourceHandler) BindResource(w http.ResponseWriter, r *http.Requ
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
 
-	var id string
-	err := h.DB.QueryRow(r.Context(), `
-		INSERT INTO course_resource_bindings (tenant_id, course_id, resource_id)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (course_id, resource_id) DO UPDATE SET course_id = EXCLUDED.course_id
-		RETURNING id
-	`, tenantID, req.CourseID, req.ResourceID).Scan(&id)
+	id, err := h.Service.Bind(r.Context(), tenantID, "course_resource_bindings", "course_id", req.CourseID, req.ResourceID, func(ctx context.Context, q store.Queryer, courseID, resourceID string) error {
+		return store.CourseSyncBind(ctx, q, courseID, resourceID)
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "绑定课程资源失败")
 		return
 	}
-	_, _ = h.DB.Exec(r.Context(), `
-		UPDATE courses
-		SET resource_ids = array_append(resource_ids, $2::uuid),
-		    resource_count = COALESCE(array_length(array_append(resource_ids, $2::uuid), 1), 0)
-		WHERE id = $1 AND NOT ($2::uuid = ANY(resource_ids))
-	`, req.CourseID, req.ResourceID)
-
-	binding, _ := h.fetchBinding(r.Context(), id)
-	respondJSON(w, http.StatusOK, binding)
+	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 
 func (h *CourseResourceHandler) UnbindResource(w http.ResponseWriter, r *http.Request) {
@@ -232,77 +155,11 @@ func (h *CourseResourceHandler) UnbindResource(w http.ResponseWriter, r *http.Re
 	}
 
 	id := chi.URLParam(r, "id")
-	var courseID, resourceID string
-	err := h.DB.QueryRow(r.Context(), `SELECT course_id, resource_id FROM course_resource_bindings WHERE id = $1`, id).Scan(&courseID, &resourceID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "绑定不存在")
-		return
-	}
-
-	_, err = h.DB.Exec(r.Context(), `DELETE FROM course_resource_bindings WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Service.Unbind(r.Context(), "course_resource_bindings", id, func(ctx context.Context, q store.Queryer, courseID, resourceID string) error {
+		return store.CourseSyncUnbind(ctx, q, courseID, resourceID)
+	}); err != nil {
 		respondError(w, http.StatusInternalServerError, "解绑课程资源失败")
 		return
 	}
-	_, _ = h.DB.Exec(r.Context(), `
-		UPDATE courses
-		SET resource_ids = array_remove(resource_ids, $2::uuid),
-		    resource_count = COALESCE(array_length(array_remove(resource_ids, $2::uuid), 1), 0)
-		WHERE id = $1
-	`, courseID, resourceID)
-
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
-}
-
-func (h *CourseResourceHandler) fetchBinding(ctx context.Context, id string) (*domain.CourseResourceBinding, error) {
-	var b domain.CourseResourceBinding
-	err := h.DB.QueryRow(ctx, `SELECT id, course_id, resource_id FROM course_resource_bindings WHERE id = $1`, id).Scan(
-		&b.ID, &b.CourseID, &b.ResourceID,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return &b, nil
-}
-
-func (h *CourseResourceHandler) fetchLibraryResource(ctx context.Context, id string) (*domain.NodeResource, error) {
-	var res domain.NodeResource
-	var tenantID *string
-	var uploadedBy *string
-	var fileSize *int64
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, resource_type, url, file_size, tenant_id, uploaded_by, created_at
-		FROM resource_library WHERE id = $1
-	`, id).Scan(
-		&res.ID, &res.Name, &res.Type, &res.URL, &fileSize, &tenantID, &uploadedBy, &res.UploadedAt,
-	)
-	if err != nil {
-		return nil, err
-	}
-	res.UploadedBy = uploadedBy
-	if fileSize != nil {
-		s := int(*fileSize)
-		res.Size = &s
-	}
-	return &res, nil
-}
-
-func (h *CourseResourceHandler) scanResourceRows(rows pgx.Rows) ([]domain.NodeResource, error) {
-	items := make([]domain.NodeResource, 0)
-	for rows.Next() {
-		var res domain.NodeResource
-		var tenantID *string
-		var uploadedBy *string
-		var fileSize *int64
-		if err := rows.Scan(&res.ID, &res.NodeID, &res.Name, &res.Type, &res.URL, &fileSize, &tenantID, &res.UploadedAt, &uploadedBy); err != nil {
-			return nil, err
-		}
-		res.UploadedBy = uploadedBy
-		if fileSize != nil {
-			s := int(*fileSize)
-			res.Size = &s
-		}
-		items = append(items, res)
-	}
-	return items, nil
 }

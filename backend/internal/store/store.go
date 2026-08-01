@@ -33,6 +33,7 @@ type Store struct {
 	taskBindings   *TaskKnowledgeAbilityStore
 	knowledgePoint *KnowledgePointStore
 	nodeHomework   *NodeHomeworkStore
+	resourceBind   *ResourceBindingStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -51,6 +52,7 @@ func New(db *pgxpool.Pool) *Store {
 		taskBindings:   NewTaskKnowledgeAbilityStore(db),
 		knowledgePoint: NewKnowledgePointStore(db),
 		nodeHomework:   NewNodeHomeworkStore(db),
+		resourceBind:   NewResourceBindingStore(db),
 	}
 }
 
@@ -70,6 +72,7 @@ func NewWithTx(tx pgx.Tx) *Store {
 		taskBindings:   NewTaskKnowledgeAbilityStore(tx),
 		knowledgePoint: NewKnowledgePointStore(tx),
 		nodeHomework:   NewNodeHomeworkStore(tx),
+		resourceBind:   NewResourceBindingStore(tx),
 	}
 }
 
@@ -136,6 +139,11 @@ func (s *Store) KnowledgePoints() *KnowledgePointStore {
 // NodeHomeworks 返回节点作业 store。
 func (s *Store) NodeHomeworks() *NodeHomeworkStore {
 	return s.nodeHomework
+}
+
+// ResourceBindings 返回资源绑定 store。
+func (s *Store) ResourceBindings() *ResourceBindingStore {
+	return s.resourceBind
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。
