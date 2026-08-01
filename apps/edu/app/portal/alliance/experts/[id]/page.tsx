@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
 import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceExpert } from "@/lib/types"
+import { reportError } from "@/lib/error-handling"
 
 export default function AlliancePublicExpertDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -19,7 +20,9 @@ export default function AlliancePublicExpertDetailPage() {
     if (!id) return
     portalRequest<AllianceExpert>(`/alliance/public/experts/${id}`)
       .then(setExpert)
-      .catch(() => {})
+      .catch((err) => {
+        reportError(err, { source: "加载企业专家详情" })
+      })
       .finally(() => setLoading(false))
   }, [id])
 

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
 import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceAchievement } from "@/lib/types"
+import { reportError } from "@/lib/error-handling"
 
 export default function AlliancePublicAchievementsPage() {
   const [items, setItems] = useState<AllianceAchievement[]>([])
@@ -15,7 +16,9 @@ export default function AlliancePublicAchievementsPage() {
   useEffect(() => {
     portalRequest<{ items: AllianceAchievement[] }>("/alliance/public/achievements")
       .then((data) => setItems(data.items || []))
-      .catch(() => {})
+      .catch((err) => {
+        reportError(err, { source: "加载成果列表" })
+      })
       .finally(() => setLoading(false))
   }, [])
 

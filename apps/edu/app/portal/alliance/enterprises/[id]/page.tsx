@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
 import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceEnterprise } from "@/lib/types"
+import { reportError } from "@/lib/error-handling"
 
 export default function AlliancePublicEnterpriseDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -19,7 +20,9 @@ export default function AlliancePublicEnterpriseDetailPage() {
     if (!id) return
     portalRequest<AllianceEnterprise>(`/alliance/public/enterprises/${id}`)
       .then(setEnterprise)
-      .catch(() => {})
+      .catch((err) => {
+        reportError(err, { source: "加载合作企业详情" })
+      })
       .finally(() => setLoading(false))
   }, [id])
 

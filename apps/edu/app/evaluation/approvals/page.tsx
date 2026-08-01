@@ -10,6 +10,7 @@ import { ApprovalListPage, type ApprovalColumn } from "@/components/shared/appro
 import type { ApprovalStepInfo } from "@/hooks/use-approvals"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { toast } from "@zhiyu/ui"
+import { reportError } from "@/lib/error-handling"
 
 const TYPE_LABELS: Record<string, string> = {
   question_bank: "题库",
@@ -47,7 +48,14 @@ export default function EvaluationApprovalsPage() {
       setBankMap(new Map(bankRes.items.map((b) => [b.id, b])))
       setExamMap(new Map(examRes.items.map((e) => [e.id, e])))
       setBatchMap(new Map(batchRes.items.map((b) => [b.id, b])))
-    }).catch(() => {})
+    }).catch((err) => {
+      reportError(err, { source: "加载题库/试卷/批次列表" })
+      toast({
+        variant: "destructive",
+        title: "加载失败",
+        description: err instanceof Error ? err.message : "加载题库/试卷/批次列表失败",
+      })
+    })
   }, [])
 
   const loading = bankLoading || examLoading

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
 import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceBrand } from "@/lib/types"
+import { reportError } from "@/lib/error-handling"
 
 export default function AlliancePublicMajorBrandPage() {
   const [items, setItems] = useState<AllianceBrand[]>([])
@@ -15,7 +16,9 @@ export default function AlliancePublicMajorBrandPage() {
   useEffect(() => {
     portalRequest<{ items: AllianceBrand[] }>("/alliance/public/brands?brandType=major")
       .then((data) => setItems(data.items || []))
-      .catch(() => {})
+      .catch((err) => {
+        reportError(err, { source: "加载专业品牌列表" })
+      })
       .finally(() => setLoading(false))
   }, [])
 

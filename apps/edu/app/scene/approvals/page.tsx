@@ -9,6 +9,8 @@ import { useApprovals } from "@/hooks/use-approvals"
 import { useSubmitterNames } from "@/hooks/use-submitter-names"
 import { ApprovalListPage, type ApprovalColumn } from "@/components/shared/approval-list-page"
 import type { ApprovalStepInfo } from "@/hooks/use-approvals"
+import { reportError } from "@/lib/error-handling"
+import { useToast } from "@zhiyu/ui"
 
 interface ApprovalView {
   id: string
@@ -28,6 +30,7 @@ interface ApprovalView {
 export default function SceneApprovalsPage() {
   const { records, loading, approve, reject, batchApprove, batchReject, getStepInfo } = useApprovals({ targetType: "scenario" })
   const { getName } = useSubmitterNames()
+  const { toast } = useToast()
   const [scenarioMap, setScenarioMap] = useState<Map<string, Scenario>>(new Map())
   const [batchMap, setBatchMap] = useState<Map<string, SceneBatch>>(new Map())
 
@@ -37,8 +40,15 @@ export default function SceneApprovalsPage() {
         setScenarioMap(new Map(scenarioRes.items.map((s) => [s.id, s])))
         setBatchMap(new Map(batchRes.items.map((b) => [b.id, b])))
       }
-    ).catch(() => {})
-  }, [])
+    ).catch((err) => {
+      reportError(err, { source: "加载场景/批次列表" })
+      toast({
+        variant: "destructive",
+        title: "加载失败",
+        description: err instanceof Error ? err.message : "加载场景/批次列表失败",
+      })
+    })
+  }, [toast])
 
   const columns: ApprovalColumn<ApprovalView>[] = [
     { header: "场景名称", cell: (i) => <span className="font-medium">{i.scenarioName}</span> },

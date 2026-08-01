@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
 import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceEnterprise } from "@/lib/types"
+import { reportError } from "@/lib/error-handling"
 
 export default function AlliancePublicEnterprisesPage() {
   const [items, setItems] = useState<AllianceEnterprise[]>([])
@@ -15,7 +16,9 @@ export default function AlliancePublicEnterprisesPage() {
   useEffect(() => {
     portalRequest<{ items: AllianceEnterprise[] }>("/alliance/public/enterprises")
       .then((data) => setItems(data.items || []))
-      .catch(() => {})
+      .catch((err) => {
+        reportError(err, { source: "加载合作企业列表" })
+      })
       .finally(() => setLoading(false))
   }, [])
 

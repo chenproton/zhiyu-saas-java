@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
 import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceBrand } from "@/lib/types"
+import { reportError } from "@/lib/error-handling"
 
 export default function AlliancePublicMajorBrandDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -19,7 +20,9 @@ export default function AlliancePublicMajorBrandDetailPage() {
     if (!id) return
     portalRequest<AllianceBrand>(`/alliance/public/brands/${id}`)
       .then(setBrand)
-      .catch(() => {})
+      .catch((err) => {
+        reportError(err, { source: "加载专业品牌详情" })
+      })
       .finally(() => setLoading(false))
   }, [id])
 

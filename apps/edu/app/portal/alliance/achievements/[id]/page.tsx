@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
 import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceAchievement } from "@/lib/types"
+import { reportError } from "@/lib/error-handling"
 
 export default function AlliancePublicAchievementDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -19,7 +20,9 @@ export default function AlliancePublicAchievementDetailPage() {
     if (!id) return
     portalRequest<AllianceAchievement>(`/alliance/public/achievements/${id}`)
       .then(setAchievement)
-      .catch(() => {})
+      .catch((err) => {
+        reportError(err, { source: "加载成果详情" })
+      })
       .finally(() => setLoading(false))
   }, [id])
 

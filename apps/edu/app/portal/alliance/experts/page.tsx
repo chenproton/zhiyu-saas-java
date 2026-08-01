@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
 import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceExpert } from "@/lib/types"
+import { reportError } from "@/lib/error-handling"
 
 export default function AlliancePublicExpertsPage() {
   const [items, setItems] = useState<AllianceExpert[]>([])
@@ -15,7 +16,9 @@ export default function AlliancePublicExpertsPage() {
   useEffect(() => {
     portalRequest<{ items: AllianceExpert[] }>("/alliance/public/experts")
       .then((data) => setItems(data.items || []))
-      .catch(() => {})
+      .catch((err) => {
+        reportError(err, { source: "加载企业专家列表" })
+      })
       .finally(() => setLoading(false))
   }, [])
 

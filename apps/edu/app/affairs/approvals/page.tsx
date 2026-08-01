@@ -8,6 +8,8 @@ import { useApprovals } from "@/hooks/use-approvals"
 import { useSubmitterNames } from "@/hooks/use-submitter-names"
 import { ApprovalListPage, type ApprovalColumn } from "@/components/shared/approval-list-page"
 import type { ApprovalStepInfo } from "@/hooks/use-approvals"
+import { reportError } from "@/lib/error-handling"
+import { useToast } from "@zhiyu/ui"
 
 interface ApprovalView {
   id: string
@@ -25,6 +27,7 @@ export default function AffairsApprovalsPage() {
   const targetType = "training_program"
   const { records, loading, approve, reject, batchApprove, batchReject, getStepInfo } = useApprovals({ targetType })
   const { getName } = useSubmitterNames()
+  const { toast } = useToast()
   const [programMap, setProgramMap] = useState<Map<string, TrainingProgram>>(new Map())
   const [batchMap, setBatchMap] = useState<Map<string, any>>(new Map())
 
@@ -32,8 +35,15 @@ export default function AffairsApprovalsPage() {
     Promise.all([programApi.list({ limit: 1000 }), batchApi.list({ limit: 1000 })]).then(([pres, bres]) => {
       setProgramMap(new Map(pres.items.map((p) => [p.id, p])))
       setBatchMap(new Map(bres.items.map((b) => [b.id, b])))
-    }).catch(() => {})
-  }, [])
+    }).catch((err) => {
+      reportError(err, { source: "加载培养方案/批次列表" })
+      toast({
+        variant: "destructive",
+        title: "加载失败",
+        description: err instanceof Error ? err.message : "加载培养方案/批次列表失败",
+      })
+    })
+  }, [toast])
 
   const columns: ApprovalColumn<ApprovalView>[] = [
     { header: "方案名称", cell: (i) => <span className="font-medium">{i.programName}</span> },

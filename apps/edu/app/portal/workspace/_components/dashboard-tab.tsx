@@ -10,6 +10,8 @@ import { WorkspaceScheduleGrid } from "./workspace-schedule-grid"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { portalApi } from "@/lib/api"
 import type { WorkspaceAnnouncement, WorkspaceTodo, WorkspaceScheduleEvent } from "@/lib/types"
+import { reportError } from "@/lib/error-handling"
+import { useToast } from "@zhiyu/ui"
 
 interface DashboardTabProps {
   onTabChange: (tab: string) => void
@@ -31,6 +33,7 @@ const typeLabelMap: Record<string, string> = {
 
 export function DashboardTab({ onTabChange }: DashboardTabProps) {
   const { activeRoleCode } = usePortalAuth()
+  const { toast } = useToast()
   const [announcements, setAnnouncements] = useState<WorkspaceAnnouncement[]>([])
   const [todos, setTodos] = useState<WorkspaceTodo[]>([])
   const [schedule, setSchedule] = useState<WorkspaceScheduleEvent[]>([])
@@ -40,8 +43,15 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
       setAnnouncements(res.announcements || [])
       setTodos(res.todos || [])
       setSchedule(res.schedule || [])
-    }).catch(() => {})
-  }, [activeRoleCode])
+    }).catch((err) => {
+      reportError(err, { source: "加载工作台 dashboard" })
+      toast({
+        variant: "destructive",
+        title: "加载失败",
+        description: err instanceof Error ? err.message : "加载工作台 dashboard 失败",
+      })
+    })
+  }, [activeRoleCode, toast])
 
   return (
     <div className="space-y-3">

@@ -9,6 +9,8 @@ import { useApprovals } from "@/hooks/use-approvals"
 import { useSubmitterNames } from "@/hooks/use-submitter-names"
 import { ApprovalListPage, type ApprovalColumn } from "@/components/shared/approval-list-page"
 import type { ApprovalStepInfo } from "@/hooks/use-approvals"
+import { reportError } from "@/lib/error-handling"
+import { useToast } from "@zhiyu/ui"
 
 interface ApprovalView {
   id: string
@@ -27,6 +29,7 @@ interface ApprovalView {
 export default function JobApprovalsPage() {
   const { records, loading, approve, reject, batchApprove, batchReject, getStepInfo } = useApprovals({ targetType: "career_position" })
   const { getName } = useSubmitterNames()
+  const { toast } = useToast()
   const [positionMap, setPositionMap] = useState<Map<string, CareerPosition>>(new Map())
   const [batchMap, setBatchMap] = useState<Map<string, JobBatch>>(new Map())
 
@@ -36,8 +39,15 @@ export default function JobApprovalsPage() {
         setPositionMap(new Map(posRes.items.map((p) => [p.id, p])))
         setBatchMap(new Map(batchRes.items.map((b) => [b.id, b])))
       }
-    ).catch(() => {})
-  }, [])
+    ).catch((err) => {
+      reportError(err, { source: "加载岗位/批次列表" })
+      toast({
+        variant: "destructive",
+        title: "加载失败",
+        description: err instanceof Error ? err.message : "加载岗位/批次列表失败",
+      })
+    })
+  }, [toast])
 
   const submitterCol: ApprovalColumn<ApprovalView> = {
     header: "创建人",

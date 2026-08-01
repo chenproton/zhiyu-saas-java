@@ -13,6 +13,7 @@ import type {
   AllianceEnterprise,
   AllianceAchievement,
 } from "@/lib/types"
+import { reportError } from "@/lib/error-handling"
 
 interface HomeData {
   stats: AlliancePublicStats | null
@@ -45,7 +46,9 @@ export default function AlliancePublicHomePage() {
           latestAchievements: achievements.items?.slice(0, 4) || [],
         })
       })
-      .catch(() => {})
+      .catch((err) => {
+        reportError(err, { source: "加载校企合作首页数据" })
+      })
       .finally(() => setLoading(false))
   }, [])
 

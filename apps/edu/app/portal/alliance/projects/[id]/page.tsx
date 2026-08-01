@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
 import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceProject } from "@/lib/types"
+import { reportError } from "@/lib/error-handling"
 
 export default function AlliancePublicProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -19,7 +20,9 @@ export default function AlliancePublicProjectDetailPage() {
     if (!id) return
     portalRequest<AllianceProject>(`/alliance/public/projects/${id}`)
       .then(setProject)
-      .catch(() => {})
+      .catch((err) => {
+        reportError(err, { source: "加载合作项目详情" })
+      })
       .finally(() => setLoading(false))
   }, [id])
 

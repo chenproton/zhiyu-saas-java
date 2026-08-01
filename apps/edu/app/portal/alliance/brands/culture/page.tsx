@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { portalRequest } from "@/lib/api"
 import { allianceLabel } from "@zhiyu/shared-types"
 import type { AllianceBrand } from "@/lib/types"
+import { reportError } from "@/lib/error-handling"
 
 export default function AlliancePublicCultureBrandPage() {
   const [items, setItems] = useState<AllianceBrand[]>([])
@@ -14,7 +15,9 @@ export default function AlliancePublicCultureBrandPage() {
   useEffect(() => {
     portalRequest<{ items: AllianceBrand[] }>("/alliance/public/brands?brandType=culture")
       .then((data) => setItems(data.items || []))
-      .catch(() => {})
+      .catch((err) => {
+        reportError(err, { source: "加载文化思政品牌列表" })
+      })
       .finally(() => setLoading(false))
   }, [])
 
