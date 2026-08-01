@@ -328,7 +328,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Delete("/lesson/nodes/{id}", courseNodeHandler.Delete)
 			r.Post("/lesson/nodes/reorder", courseNodeHandler.Reorder)
 
-			nodeQuizHandler := &handler.NodeQuizHandler{DB: pool}
+			nodeQuizHandler := &handler.NodeQuizHandler{Service: service.NewLessonContentService(svc2)}
 			r.Get("/lesson/quizzes", nodeQuizHandler.ListQuizzes)
 			r.Post("/lesson/quizzes", nodeQuizHandler.CreateQuiz)
 			r.Get("/lesson/quizzes/{id}", nodeQuizHandler.ListQuestions)

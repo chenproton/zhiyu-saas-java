@@ -85,3 +85,55 @@ func (s *LessonContentService) UpdateNodeHomework(ctx context.Context, id string
 func (s *LessonContentService) DeleteNodeHomework(ctx context.Context, id string) error {
 	return s.st.NodeHomeworks().Delete(ctx, id)
 }
+
+// ListQuizzes 查询测验列表。
+func (s *LessonContentService) ListQuizzes(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.NodeQuiz]) ([]domain.NodeQuiz, int, error) {
+	return s.st.NodeQuizzes().ListQuizzes(ctx, p, cfg)
+}
+
+// GetQuiz 查询单个测验。
+func (s *LessonContentService) GetQuiz(ctx context.Context, id string) (*domain.NodeQuiz, error) {
+	return s.st.NodeQuizzes().GetQuiz(ctx, id)
+}
+
+// CreateQuiz 创建测验。
+func (s *LessonContentService) CreateQuiz(ctx context.Context, tenantID string, p *store.NodeQuizParams) (*domain.NodeQuiz, error) {
+	return s.st.NodeQuizzes().CreateQuiz(ctx, tenantID, p)
+}
+
+// UpdateQuiz 更新测验。
+func (s *LessonContentService) UpdateQuiz(ctx context.Context, id string, p *store.NodeQuizUpdateParams) (*domain.NodeQuiz, error) {
+	return s.st.NodeQuizzes().UpdateQuiz(ctx, id, p)
+}
+
+// DeleteQuiz 删除测验（事务内连带题目）。
+func (s *LessonContentService) DeleteQuiz(ctx context.Context, id string) error {
+	return s.WithTx(ctx, func(txStore *store.Store) error {
+		return txStore.NodeQuizzes().DeleteQuiz(ctx, txStore.Q(), id)
+	})
+}
+
+// ListQuizQuestions 查询题目。
+func (s *LessonContentService) ListQuizQuestions(ctx context.Context, quizID string) ([]domain.NodeQuizQuestion, int, error) {
+	return s.st.NodeQuizzes().ListQuestions(ctx, quizID)
+}
+
+// AddQuizQuestion 添加题目。
+func (s *LessonContentService) AddQuizQuestion(ctx context.Context, tenantID, quizID string, p *store.NodeQuizQuestionParams) (*domain.NodeQuizQuestion, error) {
+	return s.st.NodeQuizzes().AddQuestion(ctx, tenantID, quizID, p)
+}
+
+// UpdateQuizQuestion 更新题目。
+func (s *LessonContentService) UpdateQuizQuestion(ctx context.Context, questionID string, p *store.NodeQuizQuestionParams) (*domain.NodeQuizQuestion, error) {
+	return s.st.NodeQuizzes().UpdateQuestion(ctx, questionID, p)
+}
+
+// DeleteQuizQuestion 删除题目。
+func (s *LessonContentService) DeleteQuizQuestion(ctx context.Context, questionID string) error {
+	return s.st.NodeQuizzes().DeleteQuestion(ctx, questionID)
+}
+
+// GetQuizQuestion 查询单个题目。
+func (s *LessonContentService) GetQuizQuestion(ctx context.Context, questionID string) (*domain.NodeQuizQuestion, error) {
+	return s.st.NodeQuizzes().GetQuestion(ctx, questionID)
+}

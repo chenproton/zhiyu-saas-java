@@ -41,6 +41,7 @@ type Store struct {
 	scenarios       *ScenarioStore
 	scenarioClone   *ScenarioCloneStore
 	scenarioTasks   *ScenarioTaskStore
+	nodeQuizzes     *NodeQuizStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -67,6 +68,7 @@ func New(db *pgxpool.Pool) *Store {
 		scenarios:       NewScenarioStore(db),
 		scenarioClone:   NewScenarioCloneStore(db),
 		scenarioTasks:   NewScenarioTaskStore(db),
+		nodeQuizzes:     NewNodeQuizStore(db),
 	}
 }
 
@@ -94,6 +96,7 @@ func NewWithTx(tx pgx.Tx) *Store {
 		scenarios:       NewScenarioStore(tx),
 		scenarioClone:   NewScenarioCloneStore(tx),
 		scenarioTasks:   NewScenarioTaskStore(tx),
+		nodeQuizzes:     NewNodeQuizStore(tx),
 	}
 }
 
@@ -200,6 +203,11 @@ func (s *Store) ScenarioClone() *ScenarioCloneStore {
 // ScenarioTasks 返回场景任务 store。
 func (s *Store) ScenarioTasks() *ScenarioTaskStore {
 	return s.scenarioTasks
+}
+
+// NodeQuizzes 返回节点测验 store。
+func (s *Store) NodeQuizzes() *NodeQuizStore {
+	return s.nodeQuizzes
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。
