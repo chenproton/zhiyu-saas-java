@@ -14,7 +14,7 @@
 
 - **前端**：`pnpm lint` 0 error 0 warning，`pnpm typecheck` 通过。
 - **后端**：`go vet ./...` 通过，`go build ./...` 通过，`gofmt -l .` 为空。
-- **后端测试**：`go test ./...` 因本地 PostgreSQL TLS 连接问题仍无法运行，属于环境阻断，不是代码错误。
+- **后端测试**：`go test ./...` **已全绿**。`.env` 中 `sslmode=require` 与本地容器不符会报 TLS 错误，用 `TEST_DATABASE_URL`/`DATABASE_URL` 覆盖为 `?sslmode=disable` 即可运行；期间发现并修复 6 处此前从未暴露的真实 SQL bug（见提交 `82e75dbf`）。
 - **单测**：`pnpm test` 全绿（api-client 3 / ui 5 / edu 4 / shared-types 2）。
 - **部署**：尚未执行 `./deploy.sh --branch fix/eval-rules-runtime-error` 验证，需要下一个 Agent 在环境就绪后补跑。
 - **大文件拆分**：明确不在本次修复范围内（见 `docs/components.md` 对 `EvaluationRulesEditor` 的约定）。
