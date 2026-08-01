@@ -526,3 +526,112 @@ func (s *EvaluationService) PutCertificationFull(ctx context.Context, tenantID, 
 		return txStore.Certifications().PutFullRule(ctx, txStore.Q(), tenantID, ruleID, positionID, ruleSource, levelMapping, items)
 	})
 }
+
+// ListEvaluationCategories 查询评价分类。
+func (s *EvaluationService) ListEvaluationCategories(ctx context.Context) ([]domain.EvaluationMethodCategory, error) {
+	return s.st.EvaluationMethods().ListCategories(ctx)
+}
+
+// ListEvaluationMethods 查询评价方法列表。
+func (s *EvaluationService) ListEvaluationMethods(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.EvaluationMethod]) ([]domain.EvaluationMethod, int, error) {
+	return s.st.EvaluationMethods().List(ctx, p, cfg)
+}
+
+// GetEvaluationMethod 查询单个评价方法。
+func (s *EvaluationService) GetEvaluationMethod(ctx context.Context, id string) (*domain.EvaluationMethod, error) {
+	return s.st.EvaluationMethods().Get(ctx, id)
+}
+
+// ToggleEvaluationMethod 切换启用状态。
+func (s *EvaluationService) ToggleEvaluationMethod(ctx context.Context, id string, enabled bool) (*domain.EvaluationMethod, error) {
+	return s.st.EvaluationMethods().Toggle(ctx, id, enabled)
+}
+
+// ListAppeals 查询申诉列表。
+func (s *EvaluationService) ListAppeals(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.AppealRecord]) ([]domain.AppealRecord, int, error) {
+	return s.st.Appeals().List(ctx, p, cfg)
+}
+
+// GetAppeal 查询单个申诉。
+func (s *EvaluationService) GetAppeal(ctx context.Context, id string) (*domain.AppealRecord, error) {
+	return s.st.Appeals().Get(ctx, id)
+}
+
+// CreateAppeal 创建申诉。
+func (s *EvaluationService) CreateAppeal(ctx context.Context, tenantID, userID, appealType, reason string) (*domain.AppealRecord, error) {
+	return s.st.Appeals().Create(ctx, tenantID, userID, appealType, reason)
+}
+
+// ProcessAppeal 处理申诉。
+func (s *EvaluationService) ProcessAppeal(ctx context.Context, id, status string) (*domain.AppealRecord, error) {
+	return s.st.Appeals().Process(ctx, id, status)
+}
+
+// ListEvaluationResults 查询评价结果列表。
+func (s *EvaluationService) ListEvaluationResults(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.SceneEvaluationResult]) ([]domain.SceneEvaluationResult, int, error) {
+	return s.st.EvaluationResults().List(ctx, p, cfg)
+}
+
+// GetEvaluationResult 查询单个评价结果。
+func (s *EvaluationService) GetEvaluationResult(ctx context.Context, id string) (*domain.SceneEvaluationResult, error) {
+	return s.st.EvaluationResults().Get(ctx, id)
+}
+
+// SubmitEvaluationResult 提交评价结果。
+func (s *EvaluationService) SubmitEvaluationResult(ctx context.Context, p *store.EvaluationResultSubmitParams) (*domain.SceneEvaluationResult, error) {
+	return s.st.EvaluationResults().Submit(ctx, p)
+}
+
+// GradeEvaluationResult 评分并同步考试分数。
+func (s *EvaluationService) GradeEvaluationResult(ctx context.Context, id, graderID string, p *store.EvaluationResultGradeParams, taskID, methodKey, evaluateeID string) error {
+	if err := s.st.EvaluationResults().Grade(ctx, id, graderID, p); err != nil {
+		return err
+	}
+	s.syncExamResultScore(ctx, taskID, methodKey, evaluateeID, p.Score)
+	return nil
+}
+
+// BatchGradeEvaluationResults 批量评分（事务）并同步考试分数。
+func (s *EvaluationService) BatchGradeEvaluationResults(ctx context.Context, graderID string, items []store.EvaluationResultGradeItem) ([]GradeTarget, error) {
+	var targets []GradeTarget
+	err := s.WithTx(ctx, func(txStore *store.Store) error {
+		if err := txStore.EvaluationResults().BatchGrade(ctx, txStore.Q(), graderID, items); err != nil {
+			return err
+		}
+		for _, item := range items {
+			res, err := txStore.EvaluationResults().Get(ctx, item.ID)
+			if err != nil {
+				continue
+			}
+			targets = append(targets, GradeTarget{TaskID: res.TaskID, MethodKey: res.MethodKey, EvaluateeID: res.EvaluateeID, Score: item.Score})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range targets {
+		s.syncExamResultScore(ctx, t.TaskID, t.MethodKey, t.EvaluateeID, t.Score)
+	}
+	return targets, nil
+}
+
+// GradeTarget 评分目标。
+type GradeTarget struct {
+	TaskID      string
+	MethodKey   string
+	EvaluateeID string
+	Score       float64
+}
+
+// syncExamResultScore 同步考试结果分数。
+func (s *EvaluationService) syncExamResultScore(ctx context.Context, taskID, methodKey, evaluateeID string, score float64) {
+	if methodKey != "paper" && methodKey != "question_bank" && methodKey != "quiz" {
+		return
+	}
+	examResultID, err := s.st.EvaluationResults().FindLatestExamResult(ctx, taskID, methodKey, evaluateeID)
+	if err != nil || examResultID == "" {
+		return
+	}
+	s.st.EvaluationResults().UpdateExamResultScore(ctx, examResultID, score)
+}

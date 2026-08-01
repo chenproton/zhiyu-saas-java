@@ -58,6 +58,9 @@ type Store struct {
 	certGrades      *CertGradeStore
 	scheduling      *SchedulingStore
 	certifications  *CertificationStore
+	evalMethods     *EvaluationMethodStore
+	appeals         *AppealStore
+	evalResults     *EvaluationResultStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -101,6 +104,9 @@ func New(db *pgxpool.Pool) *Store {
 		certGrades:      NewCertGradeStore(db),
 		scheduling:      NewSchedulingStore(db),
 		certifications:  NewCertificationStore(db),
+		evalMethods:     NewEvaluationMethodStore(db),
+		appeals:         NewAppealStore(db),
+		evalResults:     NewEvaluationResultStore(db),
 	}
 }
 
@@ -145,6 +151,9 @@ func NewWithTx(tx pgx.Tx) *Store {
 		certGrades:      NewCertGradeStore(tx),
 		scheduling:      NewSchedulingStore(tx),
 		certifications:  NewCertificationStore(tx),
+		evalMethods:     NewEvaluationMethodStore(tx),
+		appeals:         NewAppealStore(tx),
+		evalResults:     NewEvaluationResultStore(tx),
 	}
 }
 
@@ -336,6 +345,21 @@ func (s *Store) Scheduling() *SchedulingStore {
 // Certifications 返回认证 store。
 func (s *Store) Certifications() *CertificationStore {
 	return s.certifications
+}
+
+// EvaluationMethods 返回评价方法 store。
+func (s *Store) EvaluationMethods() *EvaluationMethodStore {
+	return s.evalMethods
+}
+
+// Appeals 返回申诉 store。
+func (s *Store) Appeals() *AppealStore {
+	return s.appeals
+}
+
+// EvaluationResults 返回评价结果 store。
+func (s *Store) EvaluationResults() *EvaluationResultStore {
+	return s.evalResults
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。

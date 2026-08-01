@@ -1,20 +1,17 @@
 package handler
 
 import (
-	"context"
-	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type EvaluationMethodHandler struct {
-	DB *pgxpool.Pool
+	Service *service.EvaluationService
 }
 
 type EvaluationMethodCategoryListResponse struct {
@@ -37,24 +34,10 @@ func (h *EvaluationMethodHandler) ListCategories(w http.ResponseWriter, r *http.
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
-	rows, err := h.DB.Query(r.Context(), `
-		SELECT id, name, sort_order FROM evaluation_method_categories ORDER BY sort_order
-	`)
+	items, err := h.Service.ListEvaluationCategories(r.Context())
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询分类失败")
 		return
-	}
-	defer rows.Close()
-
-	items := make([]domain.EvaluationMethodCategory, 0)
-	for rows.Next() {
-		var c domain.EvaluationMethodCategory
-		if err := rows.Scan(&c.ID, &c.Name, &c.Order); err != nil {
-			respondError(w, http.StatusInternalServerError, "读取分类失败")
-			return
-		}
-		items = append(items, c)
 	}
 	respondJSON(w, http.StatusOK, EvaluationMethodCategoryListResponse{Items: items, Total: len(items)})
 }
@@ -71,23 +54,23 @@ func (h *EvaluationMethodHandler) ListMethods(w http.ResponseWriter, r *http.Req
 		SelectColumns: "id, category_id, name, enabled, sub_category_name, description, doc_link",
 		TenantScoped:  true,
 		OrderBy:       "name",
+		ScanRows:      store.ScanEvaluationMethodRows,
 		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if categoryID := p.Values["categoryId"]; categoryID != "" {
 				qb.AddCondition("category_id = " + qb.NextArg(categoryID))
 			}
 		},
 	}
-
-	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg, h.scanMethodRows)
-	if err != nil {
-		if errors.Is(err, store.ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-		} else {
-			respondError(w, http.StatusInternalServerError, "查询测评方式失败")
-		}
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
-
+	items, total, err := h.Service.ListEvaluationMethods(r.Context(), params, cfg)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "查询测评方式失败")
+		return
+	}
 	respondJSON(w, http.StatusOK, EvaluationMethodListResponse{Items: items, Total: total})
 }
 
@@ -97,62 +80,19 @@ func (h *EvaluationMethodHandler) Toggle(w http.ResponseWriter, r *http.Request)
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	id := chi.URLParam(r, "id")
 	var req ToggleMethodRequest
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
-	if _, err := h.fetchMethod(r.Context(), id); err != nil {
+	if _, err := h.Service.GetEvaluationMethod(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "测评方式不存在")
 		return
 	}
-
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE evaluation_methods SET enabled = $1 WHERE id = $2
-	`, req.Enabled, id)
+	method, err := h.Service.ToggleEvaluationMethod(r.Context(), id, req.Enabled)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "切换测评方式失败")
 		return
 	}
-
-	method, _ := h.fetchMethod(r.Context(), id)
 	respondJSON(w, http.StatusOK, method)
-}
-
-func (h *EvaluationMethodHandler) fetchMethod(ctx context.Context, id string) (domain.EvaluationMethod, error) {
-	var m domain.EvaluationMethod
-	var subCategoryName, description, docLink *string
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, category_id, name, enabled, sub_category_name, description, doc_link
-		FROM evaluation_methods WHERE id = $1
-	`, id).Scan(
-		&m.ID, &m.CategoryID, &m.Name, &m.Enabled, &subCategoryName, &description, &docLink,
-	)
-	if err != nil {
-		return m, err
-	}
-	m.SubCategoryName = subCategoryName
-	m.Description = description
-	m.DocLink = docLink
-	return m, nil
-}
-
-func (h *EvaluationMethodHandler) scanMethodRows(rows pgx.Rows) ([]domain.EvaluationMethod, error) {
-	items := make([]domain.EvaluationMethod, 0)
-	for rows.Next() {
-		var m domain.EvaluationMethod
-		var subCategoryName, description, docLink *string
-		if err := rows.Scan(
-			&m.ID, &m.CategoryID, &m.Name, &m.Enabled, &subCategoryName, &description, &docLink,
-		); err != nil {
-			return nil, err
-		}
-		m.SubCategoryName = subCategoryName
-		m.Description = description
-		m.DocLink = docLink
-		items = append(items, m)
-	}
-	return items, nil
 }

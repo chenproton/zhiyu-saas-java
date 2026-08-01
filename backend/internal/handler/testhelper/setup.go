@@ -392,7 +392,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/evaluation/exam-usages/{id}/start", examUsageHandler.Start)
 			r.Post("/evaluation/exam-usages/{id}/finish", examUsageHandler.Finish)
 
-			evaluationResultHandler := &handler.EvaluationResultHandler{DB: pool}
+			evaluationResultHandler := &handler.EvaluationResultHandler{Service: service.NewEvaluationService(svc2)}
 			r.Get("/evaluation/results", evaluationResultHandler.List)
 			r.Get("/evaluation/results/{id}", evaluationResultHandler.Get)
 			r.Post("/evaluation/results/{id}/grade", evaluationResultHandler.Grade)
@@ -438,12 +438,12 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/evaluation/certificates/issue", microCertHandler.IssueCerts)
 			r.Get("/evaluation/certificates/history", microCertHandler.ListHistory)
 
-			evaluationMethodHandler := &handler.EvaluationMethodHandler{DB: pool}
+			evaluationMethodHandler := &handler.EvaluationMethodHandler{Service: service.NewEvaluationService(svc2)}
 			r.Get("/evaluation/methods/categories", evaluationMethodHandler.ListCategories)
 			r.Get("/evaluation/methods", evaluationMethodHandler.ListMethods)
 			r.Post("/evaluation/methods/{id}/toggle", evaluationMethodHandler.Toggle)
 
-			appealHandler := &handler.AppealHandler{DB: pool}
+			appealHandler := &handler.AppealHandler{Service: service.NewEvaluationService(svc2)}
 			r.Get("/evaluation/appeals", appealHandler.List)
 			r.Get("/evaluation/appeals/{id}", appealHandler.Get)
 			r.Post("/evaluation/appeals", appealHandler.Create)
