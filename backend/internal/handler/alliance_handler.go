@@ -387,14 +387,8 @@ func (h *AllianceHandler) DeleteAchievement(w http.ResponseWriter, r *http.Reque
 // ===== 专家 =====
 
 func (h *AllianceHandler) ListExperts(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
 	status := r.URL.Query().Get("status")
-
-	items, total, err := executeListQuery[domain.AllianceExpert](r.Context(), h.Store.DB, r, listQueryConfig[domain.AllianceExpert]{
+	allianceList(w, r, h.Store.DB, listQueryConfig[domain.AllianceExpert]{
 		Table:         "alliance_experts",
 		SelectColumns: "id, tenant_id, name, gender, age, title, position, expert_type, industry, professional_fields, specialties, experience_years, education, introduction, work_experience, city, avatar_url, cover_image, photos, attachments, enterprise_id, organization, rating, status, partner_source, position_direction, secondary_colleges, is_public, created_by, created_at, updated_at",
 		TenantScoped:  true,
@@ -406,129 +400,30 @@ func (h *AllianceHandler) ListExperts(w http.ResponseWriter, r *http.Request) {
 			}
 		},
 		ScanRows: h.Store.ScanExpertRows,
-	})
-	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
-		slog.Error("查询专家列表失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询专家列表失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: total})
+	}, "查询专家列表失败")
 }
 
 func (h *AllianceHandler) GetExpert(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	e, err := h.Store.GetExpertByID(r.Context(), id, tenantID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "专家不存在")
-		return
-	}
-	respondJSON(w, http.StatusOK, e)
+	allianceGet(w, r, h.Store.GetExpertByID, "专家不存在")
 }
 
 func (h *AllianceHandler) CreateExpert(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	var e domain.AllianceExpert
-	if !decodeBody(w, r, &e) {
-		return
-	}
-	e.TenantID = tenantID
-	if e.Name == "" {
-		respondError(w, http.StatusBadRequest, "专家姓名不能为空")
-		return
-	}
-
-	e.CreatedBy = &claims.UserID
-	id, err := h.Store.CreateExpert(r.Context(), &e)
-	if err != nil {
-		slog.Error("创建专家失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "创建专家失败")
-		return
-	}
-	expert, _ := h.Store.GetExpertByID(r.Context(), id, tenantID)
-	respondJSON(w, http.StatusCreated, expert)
+	allianceCreate(w, r, h.expertCRUD())
 }
 
 func (h *AllianceHandler) UpdateExpert(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	if _, err := h.Store.GetExpertByID(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "专家不存在")
-		return
-	}
-
-	var e domain.AllianceExpert
-	if !decodeBody(w, r, &e) {
-		return
-	}
-	if err := h.Store.UpdateExpert(r.Context(), id, &e); err != nil {
-		slog.Error("更新专家失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "更新失败")
-		return
-	}
-	expert, _ := h.Store.GetExpertByID(r.Context(), id, tenantID)
-	respondJSON(w, http.StatusOK, expert)
+	allianceUpdate(w, r, h.expertCRUD())
 }
 
 func (h *AllianceHandler) DeleteExpert(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	if err := h.Store.DeleteExpert(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	allianceDelete(w, r, h.expertCRUD())
 }
 
 // ===== 合作协议（独立） =====
 
 func (h *AllianceHandler) ListAgreements(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
 	status := r.URL.Query().Get("status")
-
-	items, total, err := executeListQuery[domain.AllianceAgreement](r.Context(), h.Store.DB, r, listQueryConfig[domain.AllianceAgreement]{
+	allianceList(w, r, h.Store.DB, listQueryConfig[domain.AllianceAgreement]{
 		Table:         "alliance_agreements",
 		SelectColumns: "id, tenant_id, name, type, content, start_date, end_date, status, enterprise_ids, project_ids, attachments, created_by, created_at, updated_at",
 		TenantScoped:  true,
@@ -540,116 +435,23 @@ func (h *AllianceHandler) ListAgreements(w http.ResponseWriter, r *http.Request)
 			}
 		},
 		ScanRows: h.Store.ScanAgreementRows,
-	})
-	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
-		slog.Error("查询协议列表失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询协议列表失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: total})
+	}, "查询协议列表失败")
 }
 
 func (h *AllianceHandler) GetAgreement(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	a, err := h.Store.GetAgreementByID(r.Context(), id, tenantID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "协议不存在")
-		return
-	}
-	respondJSON(w, http.StatusOK, a)
+	allianceGet(w, r, h.Store.GetAgreementByID, "协议不存在")
 }
 
 func (h *AllianceHandler) CreateAgreement(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	var a domain.AllianceAgreement
-	if !decodeBody(w, r, &a) {
-		return
-	}
-	a.TenantID = tenantID
-	if a.Name == "" {
-		respondError(w, http.StatusBadRequest, "协议名称不能为空")
-		return
-	}
-
-	a.CreatedBy = &claims.UserID
-	id, err := h.Store.CreateAgreement(r.Context(), &a)
-	if err != nil {
-		slog.Error("创建协议失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "创建失败")
-		return
-	}
-	agreement, _ := h.Store.GetAgreementByID(r.Context(), id, tenantID)
-	respondJSON(w, http.StatusCreated, agreement)
+	allianceCreate(w, r, h.agreementCRUD())
 }
 
 func (h *AllianceHandler) UpdateAgreement(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	if _, err := h.Store.GetAgreementByID(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "协议不存在")
-		return
-	}
-
-	var a domain.AllianceAgreement
-	if !decodeBody(w, r, &a) {
-		return
-	}
-	if err := h.Store.UpdateAgreement(r.Context(), id, &a); err != nil {
-		slog.Error("更新协议失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "更新失败")
-		return
-	}
-	agreement, _ := h.Store.GetAgreementByID(r.Context(), id, tenantID)
-	respondJSON(w, http.StatusOK, agreement)
+	allianceUpdate(w, r, h.agreementCRUD())
 }
 
 func (h *AllianceHandler) DeleteAgreement(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	if err := h.Store.DeleteAgreement(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	allianceDelete(w, r, h.agreementCRUD())
 }
 
 // ===== 权限 =====
@@ -1058,22 +860,11 @@ func (h *AllianceHandler) GetPublicAchievement(w http.ResponseWriter, r *http.Re
 }
 
 func (h *AllianceHandler) ListPublicExperts(w http.ResponseWriter, r *http.Request) {
-	items, err := h.Store.ListPublicExperts(r.Context())
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})
+	alliancePublicList(w, r, h.Store.ListPublicExperts)
 }
 
 func (h *AllianceHandler) GetPublicExpert(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	e, err := h.Store.GetPublicExpertByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "专家不存在")
-		return
-	}
-	respondJSON(w, http.StatusOK, e)
+	alliancePublicGet(w, r, h.Store.GetPublicExpertByID, "专家不存在")
 }
 
 func (h *AllianceHandler) ListPublicBrands(w http.ResponseWriter, r *http.Request) {

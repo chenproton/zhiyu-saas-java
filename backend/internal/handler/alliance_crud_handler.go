@@ -365,3 +365,67 @@ func (h *AllianceHandler) achievementCRUD() allianceCRUDConfig[domain.AllianceAc
 		},
 	}
 }
+
+// ===== 专家 =====
+
+func (h *AllianceHandler) expertCRUD() allianceCRUDConfig[domain.AllianceExpert] {
+	return allianceCRUDConfig[domain.AllianceExpert]{
+		LogName:      "专家",
+		NotFoundMsg:  "专家不存在",
+		CreateErrMsg: "创建专家失败",
+		UpdateErrMsg: "更新失败",
+		DeleteErrMsg: "删除失败",
+		ValidateCreate: func(t *domain.AllianceExpert) string {
+			if t.Name == "" {
+				return "专家姓名不能为空"
+			}
+			return ""
+		},
+		PrepareCreate: func(t *domain.AllianceExpert, tenantID, userID string) {
+			t.TenantID = tenantID
+			t.CreatedBy = &userID
+		},
+		CreateFn: func(ctx context.Context, t *domain.AllianceExpert, tenantID, userID string) (string, error) {
+			return h.Store.CreateExpert(ctx, t)
+		},
+		UpdateFn: func(ctx context.Context, id string, t *domain.AllianceExpert) error {
+			return h.Store.UpdateExpert(ctx, id, t)
+		},
+		DeleteFn: h.Store.DeleteExpert,
+		GetFn: func(ctx context.Context, id, tenantID string) (any, error) {
+			return h.Store.GetExpertByID(ctx, id, tenantID)
+		},
+	}
+}
+
+// ===== 合作协议（独立） =====
+
+func (h *AllianceHandler) agreementCRUD() allianceCRUDConfig[domain.AllianceAgreement] {
+	return allianceCRUDConfig[domain.AllianceAgreement]{
+		LogName:      "协议",
+		NotFoundMsg:  "协议不存在",
+		CreateErrMsg: "创建失败",
+		UpdateErrMsg: "更新失败",
+		DeleteErrMsg: "删除失败",
+		ValidateCreate: func(t *domain.AllianceAgreement) string {
+			if t.Name == "" {
+				return "协议名称不能为空"
+			}
+			return ""
+		},
+		PrepareCreate: func(t *domain.AllianceAgreement, tenantID, userID string) {
+			t.TenantID = tenantID
+			t.CreatedBy = &userID
+		},
+		CreateFn: func(ctx context.Context, t *domain.AllianceAgreement, tenantID, userID string) (string, error) {
+			return h.Store.CreateAgreement(ctx, t)
+		},
+		UpdateFn: func(ctx context.Context, id string, t *domain.AllianceAgreement) error {
+			return h.Store.UpdateAgreement(ctx, id, t)
+		},
+		DeleteFn: h.Store.DeleteAgreement,
+		GetFn: func(ctx context.Context, id, tenantID string) (any, error) {
+			return h.Store.GetAgreementByID(ctx, id, tenantID)
+		},
+	}
+}
