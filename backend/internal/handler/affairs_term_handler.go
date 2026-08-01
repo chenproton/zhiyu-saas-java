@@ -1,22 +1,17 @@
 package handler
 
 import (
-	"context"
-	"errors"
-	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type AffairsTermHandler struct {
-	DB *pgxpool.Pool
+	Service *service.PositionService
 }
 
 type TermListResponse struct {
@@ -38,32 +33,29 @@ func (h *AffairsTermHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	cfg := store.ListQueryConfig[domain.Term]{
 		Table:         "terms",
 		SelectColumns: "id, name, to_char(start_date, 'YYYY-MM-DD') AS start_date, to_char(end_date, 'YYYY-MM-DD') AS end_date, weeks_count, is_current, created_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name"},
 		OrderBy:       "start_date DESC",
+		ScanRows:      store.ScanTermRows,
 		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if isCurrent := p.Values["isCurrent"]; isCurrent == "true" {
 				qb.AddCondition("is_current = true")
 			}
 		},
-		ScanRows: scanTermRows,
 	}
-
-	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, total, err := h.Service.ListTerms(r.Context(), params, cfg)
 	if err != nil {
-		if errors.Is(err, store.ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
-		slog.Error("查询学期列表失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "查询学期列表失败")
 		return
 	}
-
 	respondJSON(w, http.StatusOK, TermListResponse{Items: items, Total: total})
 }
 
@@ -73,7 +65,6 @@ func (h *AffairsTermHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	var req TermRequest
 	if !decodeBody(w, r, &req) {
 		return
@@ -85,36 +76,23 @@ func (h *AffairsTermHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if req.WeeksCount <= 0 {
 		req.WeeksCount = 16
 	}
-
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
-
-	id := uuid.NewString()
-	err := withTx(r.Context(), h.DB, func(tx pgx.Tx) error {
-		if req.IsCurrent {
-			if _, err := tx.Exec(r.Context(), `UPDATE terms SET is_current = false WHERE tenant_id = $1`, tenantID); err != nil {
-				return err
-			}
-		}
-		_, err := tx.Exec(r.Context(), `
-			INSERT INTO terms (id, tenant_id, name, start_date, end_date, weeks_count, is_current)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
-		`, id, tenantID, req.Name, req.StartDate, req.EndDate, req.WeeksCount, req.IsCurrent)
-		return err
+	id, err := h.Service.CreateTerm(r.Context(), tenantID, &store.TermParams{
+		Name: req.Name, StartDate: req.StartDate, EndDate: req.EndDate,
+		WeeksCount: req.WeeksCount, IsCurrent: req.IsCurrent,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "学期已存在")
 			return
 		}
-		slog.Error("创建学期失败", "error", err)
 		respondError(w, http.StatusInternalServerError, "创建学期失败")
 		return
 	}
-
-	term, _ := h.fetchTerm(r.Context(), id, tenantID)
+	term, _ := h.Service.GetTerm(r.Context(), id, tenantID)
 	respondJSON(w, http.StatusCreated, term)
 }
 
@@ -124,17 +102,15 @@ func (h *AffairsTermHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	id := chi.URLParam(r, "id")
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
-	if _, err := h.fetchTerm(r.Context(), id, tenantID); err != nil {
+	if _, err := h.Service.GetTerm(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "学期不存在")
 		return
 	}
-
 	var req TermRequest
 	if !decodeBody(w, r, &req) {
 		return
@@ -146,26 +122,14 @@ func (h *AffairsTermHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if req.WeeksCount <= 0 {
 		req.WeeksCount = 16
 	}
-
-	err := withTx(r.Context(), h.DB, func(tx pgx.Tx) error {
-		if req.IsCurrent {
-			if _, err := tx.Exec(r.Context(), `UPDATE terms SET is_current = false WHERE tenant_id = $1 AND id <> $2`, tenantID, id); err != nil {
-				return err
-			}
-		}
-		_, err := tx.Exec(r.Context(), `
-			UPDATE terms SET name = $1, start_date = $2, end_date = $3, weeks_count = $4, is_current = $5
-			WHERE id = $6 AND tenant_id = $7
-		`, req.Name, req.StartDate, req.EndDate, req.WeeksCount, req.IsCurrent, id, tenantID)
-		return err
-	})
-	if err != nil {
-		slog.Error("更新学期失败", "error", err)
+	if err := h.Service.UpdateTerm(r.Context(), tenantID, id, &store.TermParams{
+		Name: req.Name, StartDate: req.StartDate, EndDate: req.EndDate,
+		WeeksCount: req.WeeksCount, IsCurrent: req.IsCurrent,
+	}); err != nil {
 		respondError(w, http.StatusInternalServerError, "更新学期失败")
 		return
 	}
-
-	term, _ := h.fetchTerm(r.Context(), id, tenantID)
+	term, _ := h.Service.GetTerm(r.Context(), id, tenantID)
 	respondJSON(w, http.StatusOK, term)
 }
 
@@ -175,42 +139,18 @@ func (h *AffairsTermHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	id := chi.URLParam(r, "id")
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
-	if _, err := h.fetchTerm(r.Context(), id, tenantID); err != nil {
+	if _, err := h.Service.GetTerm(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusNotFound, "学期不存在")
 		return
 	}
-
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM terms WHERE id = $1 AND tenant_id = $2`, id, tenantID)
-	if err != nil {
+	if err := h.Service.DeleteTerm(r.Context(), id, tenantID); err != nil {
 		respondError(w, http.StatusBadRequest, "该学期已被教学计划或排课引用，无法删除")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
-}
-
-func (h *AffairsTermHandler) fetchTerm(ctx context.Context, id, tenantID string) (domain.Term, error) {
-	var term domain.Term
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, to_char(start_date, 'YYYY-MM-DD'), to_char(end_date, 'YYYY-MM-DD'), weeks_count, is_current, created_at
-		FROM terms WHERE id = $1 AND tenant_id = $2
-	`, id, tenantID).Scan(&term.ID, &term.Name, &term.StartDate, &term.EndDate, &term.WeeksCount, &term.IsCurrent, &term.CreatedAt)
-	return term, err
-}
-
-func scanTermRows(rows pgx.Rows) ([]domain.Term, error) {
-	items := make([]domain.Term, 0)
-	for rows.Next() {
-		var term domain.Term
-		if err := rows.Scan(&term.ID, &term.Name, &term.StartDate, &term.EndDate, &term.WeeksCount, &term.IsCurrent, &term.CreatedAt); err != nil {
-			return nil, err
-		}
-		items = append(items, term)
-	}
-	return items, nil
 }

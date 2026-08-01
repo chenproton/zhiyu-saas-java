@@ -64,6 +64,10 @@ type Store struct {
 	studentPortrait *StudentPortraitStore
 	jobAbilityRes   *JobAbilityResultStore
 	graduations     *GraduationStore
+	abilities       *AbilityStore
+	abilityDomains  *AbilityDomainStore
+	banners         *BannerStore
+	terms           *TermStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -113,6 +117,10 @@ func New(db *pgxpool.Pool) *Store {
 		studentPortrait: NewStudentPortraitStore(db),
 		jobAbilityRes:   NewJobAbilityResultStore(db),
 		graduations:     NewGraduationStore(db),
+		abilities:       NewAbilityStore(db),
+		abilityDomains:  NewAbilityDomainStore(db),
+		banners:         NewBannerStore(db),
+		terms:           NewTermStore(db),
 	}
 }
 
@@ -163,6 +171,10 @@ func NewWithTx(tx pgx.Tx) *Store {
 		studentPortrait: NewStudentPortraitStore(tx),
 		jobAbilityRes:   NewJobAbilityResultStore(tx),
 		graduations:     NewGraduationStore(tx),
+		abilities:       NewAbilityStore(tx),
+		abilityDomains:  NewAbilityDomainStore(tx),
+		banners:         NewBannerStore(tx),
+		terms:           NewTermStore(tx),
 	}
 }
 
@@ -384,6 +396,26 @@ func (s *Store) JobAbilityResults() *JobAbilityResultStore {
 // Graduations 返回毕业设计 store。
 func (s *Store) Graduations() *GraduationStore {
 	return s.graduations
+}
+
+// Abilities 返回能力点 store。
+func (s *Store) Abilities() *AbilityStore {
+	return s.abilities
+}
+
+// AbilityDomains 返回能力域 store。
+func (s *Store) AbilityDomains() *AbilityDomainStore {
+	return s.abilityDomains
+}
+
+// Banners 返回轮播图 store。
+func (s *Store) Banners() *BannerStore {
+	return s.banners
+}
+
+// Terms 返回学期 store。
+func (s *Store) Terms() *TermStore {
+	return s.terms
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。
