@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -80,24 +79,16 @@ func (h *AllianceHandler) UpdateSchoolInfo(w http.ResponseWriter, r *http.Reques
 // ===== 合作企业 =====
 
 func (h *AllianceHandler) ListEnterprises(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-
 	status := r.URL.Query().Get("status")
 	rating := r.URL.Query().Get("rating")
-	selectCols := "id, tenant_id, name, enterprise_type, industry, region, description, " +
-		"logo_url, cover_image, status, rating, cooperation_types, contact_person, " +
-		"contact_phone, contact_email, address, unified_social_credit_code, " +
-		"established_year, employee_count, business_license_photos, qualification_photos, " +
-		"intellectual_property_photos, cover_photos, secondary_colleges, rating_record, " +
-		"is_public, created_by, created_at, updated_at"
-
-	items, total, err := executeListQuery[domain.AllianceEnterprise](r.Context(), h.Store.DB, r, listQueryConfig[domain.AllianceEnterprise]{
-		Table:         "alliance_enterprises",
-		SelectColumns: selectCols,
+	allianceList(w, r, h.Store.DB, listQueryConfig[domain.AllianceEnterprise]{
+		Table: "alliance_enterprises",
+		SelectColumns: "id, tenant_id, name, enterprise_type, industry, region, description, " +
+			"logo_url, cover_image, status, rating, cooperation_types, contact_person, " +
+			"contact_phone, contact_email, address, unified_social_credit_code, " +
+			"established_year, employee_count, business_license_photos, qualification_photos, " +
+			"intellectual_property_photos, cover_photos, secondary_colleges, rating_record, " +
+			"is_public, created_by, created_at, updated_at",
 		TenantScoped:  true,
 		SearchColumns: []string{"name", "industry"},
 		OrderBy:       "created_at DESC",
@@ -110,234 +101,23 @@ func (h *AllianceHandler) ListEnterprises(w http.ResponseWriter, r *http.Request
 			}
 		},
 		ScanRows: h.Store.ScanEnterpriseRows,
-	})
-	if err != nil {
-		if errors.Is(err, ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
-		slog.Error("查询企业列表失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "查询企业列表失败")
-		return
-	}
-
-	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: total})
+	}, "查询企业列表失败")
 }
 
 func (h *AllianceHandler) GetEnterprise(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	enterprise, err := h.Store.GetEnterpriseByID(r.Context(), id, tenantID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "企业不存在")
-		return
-	}
-	respondJSON(w, http.StatusOK, enterprise)
+	allianceGet(w, r, h.Store.GetEnterpriseByID, "企业不存在")
 }
 
 func (h *AllianceHandler) CreateEnterprise(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	var body struct {
-		Name                       string          `json:"name"`
-		EnterpriseType             string          `json:"enterpriseType"`
-		Industry                   *string         `json:"industry"`
-		Region                     *string         `json:"region"`
-		Description                *string         `json:"description"`
-		LogoURL                    *string         `json:"logoUrl"`
-		CoverImage                 *string         `json:"coverImage"`
-		Status                     string          `json:"status"`
-		Rating                     *string         `json:"rating"`
-		CooperationTypes           json.RawMessage `json:"cooperationTypes"`
-		ContactPerson              *string         `json:"contactPerson"`
-		ContactPhone               *string         `json:"contactPhone"`
-		ContactEmail               *string         `json:"contactEmail"`
-		Address                    *string         `json:"address"`
-		UnifiedSocialCreditCode    *string         `json:"unifiedSocialCreditCode"`
-		EstablishedYear            *int            `json:"establishedYear"`
-		EmployeeCount              *int            `json:"employeeCount"`
-		BusinessLicensePhotos      json.RawMessage `json:"businessLicensePhotos"`
-		QualificationPhotos        json.RawMessage `json:"qualificationPhotos"`
-		IntellectualPropertyPhotos json.RawMessage `json:"intellectualPropertyPhotos"`
-		CoverPhotos                json.RawMessage `json:"coverPhotos"`
-		SecondaryColleges          json.RawMessage `json:"secondaryColleges"`
-		RatingRecord               json.RawMessage `json:"ratingRecord"`
-		IsPublic                   bool            `json:"isPublic"`
-	}
-	if !decodeBody(w, r, &body) {
-		return
-	}
-	if body.Name == "" {
-		respondError(w, http.StatusBadRequest, "企业名称不能为空")
-		return
-	}
-	if body.EnterpriseType == "" {
-		body.EnterpriseType = "platform"
-	}
-	if body.Status == "" {
-		body.Status = "negotiating"
-	}
-
-	id, err := h.Store.CreateEnterprise(r.Context(), &store.AllianceEnterpriseCreateParams{
-		TenantID:                   tenantID,
-		Name:                       body.Name,
-		CreatedBy:                  &claims.UserID,
-		EnterpriseType:             body.EnterpriseType,
-		Industry:                   body.Industry,
-		Region:                     body.Region,
-		Description:                body.Description,
-		LogoURL:                    body.LogoURL,
-		CoverImage:                 body.CoverImage,
-		Status:                     body.Status,
-		Rating:                     body.Rating,
-		CooperationTypes:           body.CooperationTypes,
-		ContactPerson:              body.ContactPerson,
-		ContactPhone:               body.ContactPhone,
-		ContactEmail:               body.ContactEmail,
-		Address:                    body.Address,
-		UnifiedSocialCreditCode:    body.UnifiedSocialCreditCode,
-		EstablishedYear:            body.EstablishedYear,
-		EmployeeCount:              body.EmployeeCount,
-		BusinessLicensePhotos:      body.BusinessLicensePhotos,
-		QualificationPhotos:        body.QualificationPhotos,
-		IntellectualPropertyPhotos: body.IntellectualPropertyPhotos,
-		CoverPhotos:                body.CoverPhotos,
-		SecondaryColleges:          body.SecondaryColleges,
-		RatingRecord:               body.RatingRecord,
-		IsPublic:                   body.IsPublic,
-	})
-	if err != nil {
-		slog.Error("创建企业失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "创建企业失败")
-		return
-	}
-
-	enterprise, _ := h.Store.GetEnterpriseByID(r.Context(), id, tenantID)
-	respondJSON(w, http.StatusCreated, enterprise)
+	allianceCreate(w, r, h.enterpriseCRUD())
 }
 
 func (h *AllianceHandler) UpdateEnterprise(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	if _, err := h.Store.GetEnterpriseByID(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "企业不存在")
-		return
-	}
-
-	var body struct {
-		Name                       string          `json:"name"`
-		EnterpriseType             string          `json:"enterpriseType"`
-		Industry                   *string         `json:"industry"`
-		Region                     *string         `json:"region"`
-		Description                *string         `json:"description"`
-		LogoURL                    *string         `json:"logoUrl"`
-		CoverImage                 *string         `json:"coverImage"`
-		Status                     string          `json:"status"`
-		Rating                     *string         `json:"rating"`
-		CooperationTypes           json.RawMessage `json:"cooperationTypes"`
-		ContactPerson              *string         `json:"contactPerson"`
-		ContactPhone               *string         `json:"contactPhone"`
-		ContactEmail               *string         `json:"contactEmail"`
-		Address                    *string         `json:"address"`
-		UnifiedSocialCreditCode    *string         `json:"unifiedSocialCreditCode"`
-		EstablishedYear            *int            `json:"establishedYear"`
-		EmployeeCount              *int            `json:"employeeCount"`
-		BusinessLicensePhotos      json.RawMessage `json:"businessLicensePhotos"`
-		QualificationPhotos        json.RawMessage `json:"qualificationPhotos"`
-		IntellectualPropertyPhotos json.RawMessage `json:"intellectualPropertyPhotos"`
-		CoverPhotos                json.RawMessage `json:"coverPhotos"`
-		SecondaryColleges          json.RawMessage `json:"secondaryColleges"`
-		RatingRecord               json.RawMessage `json:"ratingRecord"`
-		IsPublic                   bool            `json:"isPublic"`
-	}
-	if !decodeBody(w, r, &body) {
-		return
-	}
-
-	if err := h.Store.UpdateEnterprise(r.Context(), id, &store.AllianceEnterpriseUpdateParams{
-		Name:                       body.Name,
-		EnterpriseType:             body.EnterpriseType,
-		Industry:                   body.Industry,
-		Region:                     body.Region,
-		Description:                body.Description,
-		LogoURL:                    body.LogoURL,
-		CoverImage:                 body.CoverImage,
-		Status:                     body.Status,
-		Rating:                     body.Rating,
-		CooperationTypes:           body.CooperationTypes,
-		ContactPerson:              body.ContactPerson,
-		ContactPhone:               body.ContactPhone,
-		ContactEmail:               body.ContactEmail,
-		Address:                    body.Address,
-		UnifiedSocialCreditCode:    body.UnifiedSocialCreditCode,
-		EstablishedYear:            body.EstablishedYear,
-		EmployeeCount:              body.EmployeeCount,
-		BusinessLicensePhotos:      body.BusinessLicensePhotos,
-		QualificationPhotos:        body.QualificationPhotos,
-		IntellectualPropertyPhotos: body.IntellectualPropertyPhotos,
-		CoverPhotos:                body.CoverPhotos,
-		SecondaryColleges:          body.SecondaryColleges,
-		RatingRecord:               body.RatingRecord,
-		IsPublic:                   body.IsPublic,
-	}); err != nil {
-		slog.Error("更新企业失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "更新企业失败")
-		return
-	}
-
-	enterprise, _ := h.Store.GetEnterpriseByID(r.Context(), id, tenantID)
-	respondJSON(w, http.StatusOK, enterprise)
+	allianceUpdate(w, r, h.enterpriseCRUD())
 }
 
 func (h *AllianceHandler) DeleteEnterprise(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.CurrentUser(r)
-	if !canManagePortal(claims) {
-		respondError(w, http.StatusForbidden, "权限不足")
-		return
-	}
-	tenantID, ok := requireTenant(w, r)
-	if !ok {
-		return
-	}
-
-	id := chi.URLParam(r, "id")
-	if _, err := h.Store.GetEnterpriseByID(r.Context(), id, tenantID); err != nil {
-		respondError(w, http.StatusNotFound, "企业不存在")
-		return
-	}
-
-	if err := h.Store.DeleteEnterprise(r.Context(), id, tenantID); err != nil {
-		slog.Error("删除企业失败", "error", err)
-		respondError(w, http.StatusInternalServerError, "删除企业失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, map[string]string{"id": id})
+	allianceDelete(w, r, h.enterpriseCRUD())
 }
 
 // ===== 企业合作协议 =====
@@ -1453,22 +1233,11 @@ func (h *AllianceHandler) GetPublicSchoolInfo(w http.ResponseWriter, r *http.Req
 }
 
 func (h *AllianceHandler) ListPublicEnterprises(w http.ResponseWriter, r *http.Request) {
-	items, err := h.Store.ListPublicEnterprises(r.Context())
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "查询失败")
-		return
-	}
-	respondJSON(w, http.StatusOK, allianceListResponse{Items: items, Total: len(items)})
+	alliancePublicList(w, r, h.Store.ListPublicEnterprises)
 }
 
 func (h *AllianceHandler) GetPublicEnterprise(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	e, err := h.Store.GetPublicEnterpriseByID(r.Context(), id)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "企业不存在")
-		return
-	}
-	respondJSON(w, http.StatusOK, e)
+	alliancePublicGet(w, r, h.Store.GetPublicEnterpriseByID, "企业不存在")
 }
 
 func (h *AllianceHandler) ListPublicProjects(w http.ResponseWriter, r *http.Request) {
