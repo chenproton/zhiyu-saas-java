@@ -27,7 +27,6 @@ import {
   Users,
   Upload,
   Download,
-  FileDown,
   GraduationCap,
   LayoutList,
   AlertCircle,
@@ -38,6 +37,7 @@ import { HoverActionBar } from "@/components/shared/hover-action-bar"
 import { orgApi, orgTypeApi, portalUserManagementApi, importExportApi, downloadBlob } from "@/lib/api"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ImportConfirmDialog } from "@/components/shared/import-confirm-dialog"
+import { ImportWizardDialog } from "@/components/shared/import-wizard-dialog"
 import type { Organization, OrgType } from "@/lib/types/backend"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { useToast } from "@zhiyu/ui"
@@ -209,7 +209,6 @@ export default function OrgStructurePage() {
   const nodeRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
-  const [importStep, setImportStep] = useState<"download" | "upload">("download")
   const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
 
   useEffect(() => {
@@ -281,7 +280,6 @@ export default function OrgStructurePage() {
   }, [fetchData])
 
   const {
-    fileInputRef,
     importFiles,
     importPreview,
     isImporting,
@@ -289,6 +287,7 @@ export default function OrgStructurePage() {
     setImportFiles,
     setImportPreview,
     handleAddFiles,
+    handleRemoveFile,
     handleDownloadTemplate,
     handleImport,
     executeImport,
@@ -303,17 +302,8 @@ export default function OrgStructurePage() {
     const ok = await executeImport(overwrite)
     if (ok) {
       setIsImportDialogOpen(false)
-      setImportStep("download")
       setIsImportConfirmOpen(false)
-    }
-  }
-
-  const doHandleImport = async () => {
-    const ok = await handleImport()
-    if (ok) {
-      setIsImportDialogOpen(false)
-      setImportStep("download")
-      setIsImportConfirmOpen(false)
+      setImportFiles([])
     }
   }
 
@@ -735,71 +725,29 @@ export default function OrgStructurePage() {
       )}
 
       {/* 导入组织架构 */}
-      <Dialog open={isImportDialogOpen} onOpenChange={(open) => { setIsImportDialogOpen(open); if (!open) { setImportStep("download"); setImportFiles([]) } }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>批量导入组织架构</DialogTitle>
-            <DialogDescription>
-              第 {importStep === "download" ? "1" : "2"} 步：{importStep === "download" ? "下载模板并填写数据" : "上传已填写的 Excel 文件"}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            {importStep === "download" ? (
-              <div className="space-y-4">
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <p className="text-sm font-medium mb-2">操作指引</p>
-                  <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                    <li>点击下方按钮下载最新的导入模板（含系统字典数据）</li>
-                    <li>参照模板中各 Sheet 的填写说明，填入组织架构数据</li>
-                    <li>完成后点击&quot;下一步&quot;上传文件</li>
-                  </ol>
-                </div>
-                <Button
-                  className="w-full"
-                  size="lg"
-                  onClick={handleDownloadTemplate}
-                  disabled={isDownloading}
-                >
-                  <FileDown className="mr-2 h-5 w-5" />
-                  {isDownloading ? "下载中..." : "下载组织架构批量导入模板"}
-                </Button>
-              </div>
-            ) : (
-              <div
-                className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
-                <p className="text-sm text-muted-foreground mb-2">
-                  {importFiles.length > 0 ? importFiles.map(f => f.name).join(", ") : "点击选择已填写的 Excel (.xlsx) 文件"}
-                </p>
-                <p className="text-xs text-muted-foreground">仅支持 .xlsx 格式</p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => handleAddFiles(e.target.files)}
-                />
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsImportDialogOpen(false); setImportStep("download"); setImportFiles([]) }}>取消</Button>
-            {importStep === "download" ? (
-              <Button onClick={() => setImportStep("upload")}>下一步</Button>
-            ) : (
-              <Button onClick={doHandleImport} disabled={importFiles.length === 0 || isImporting}>
-                {isImporting ? "导入中..." : "开始导入"}
-              </Button>
-            )}
-            {importStep === "upload" && (
-              <Button variant="ghost" size="sm" onClick={() => setImportStep("download")}>上一步</Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ImportWizardDialog
+        open={isImportDialogOpen}
+        onOpenChange={(open) => {
+          setIsImportDialogOpen(open)
+          if (!open) setImportFiles([])
+        }}
+        title="批量导入组织架构"
+        guideItems={[
+          <>点击下方按钮下载最新的导入模板（含系统字典数据）</>,
+          <>参照模板中各 Sheet 的填写说明，填入组织架构数据</>,
+          <>完成后点击&quot;下一步&quot;上传文件</>,
+        ]}
+        downloadLabel="下载组织架构批量导入模板"
+        onDownload={handleDownloadTemplate}
+        uploadHint="点击选择已填写的 Excel (.xlsx) 文件"
+        importLabel={() => "开始导入"}
+        onImport={handleImport}
+        files={importFiles}
+        onAddFiles={handleAddFiles}
+        onRemoveFile={handleRemoveFile}
+        importing={isImporting}
+        downloading={isDownloading}
+      />
 
       {importPreview && (
         <ImportConfirmDialog
