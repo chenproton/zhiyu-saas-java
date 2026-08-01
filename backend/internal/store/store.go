@@ -22,21 +22,39 @@ type Queryer interface {
 type Store struct {
 	q              Queryer
 	resourceLib    *ResourceLibraryStore
+	tenants        *TenantStore
+	tenantAdmins   *TenantAdminStore
+	organizations  *OrganizationStore
+	userExtFields  *UserExtensionFieldStore
+	userRelations  *UserRelationStore
+	users          *UserStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
 func New(db *pgxpool.Pool) *Store {
 	return &Store{
-		q:           db,
-		resourceLib: NewResourceLibraryStore(db),
+		q:             db,
+		resourceLib:   NewResourceLibraryStore(db),
+		tenants:       NewTenantStore(db),
+		tenantAdmins:  NewTenantAdminStore(db),
+		organizations: NewOrganizationStore(db),
+		userExtFields: NewUserExtensionFieldStore(db),
+		userRelations: NewUserRelationStore(db),
+		users:         NewUserStore(db),
 	}
 }
 
 // NewWithTx 创建基于既有事务的 store 入口（pgx.Tx 满足 Queryer）。
 func NewWithTx(tx pgx.Tx) *Store {
 	return &Store{
-		q:           tx,
-		resourceLib: NewResourceLibraryStore(tx),
+		q:             tx,
+		resourceLib:   NewResourceLibraryStore(tx),
+		tenants:       NewTenantStore(tx),
+		tenantAdmins:  NewTenantAdminStore(tx),
+		organizations: NewOrganizationStore(tx),
+		userExtFields: NewUserExtensionFieldStore(tx),
+		userRelations: NewUserRelationStore(tx),
+		users:         NewUserStore(tx),
 	}
 }
 
@@ -48,6 +66,36 @@ func (s *Store) Q() Queryer {
 // ResourceLibrary 返回资源库 store。
 func (s *Store) ResourceLibrary() *ResourceLibraryStore {
 	return s.resourceLib
+}
+
+// Tenants 返回租户 store。
+func (s *Store) Tenants() *TenantStore {
+	return s.tenants
+}
+
+// TenantAdmins 返回学校管理员 store。
+func (s *Store) TenantAdmins() *TenantAdminStore {
+	return s.tenantAdmins
+}
+
+// Organizations 返回组织 store。
+func (s *Store) Organizations() *OrganizationStore {
+	return s.organizations
+}
+
+// UserExtensionFields 返回扩展字段 store。
+func (s *Store) UserExtensionFields() *UserExtensionFieldStore {
+	return s.userExtFields
+}
+
+// UserRelations 返回用户关系 store。
+func (s *Store) UserRelations() *UserRelationStore {
+	return s.userRelations
+}
+
+// Users 返回用户 store。
+func (s *Store) Users() *UserStore {
+	return s.users
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。

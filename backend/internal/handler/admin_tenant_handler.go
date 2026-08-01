@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
@@ -12,7 +13,7 @@ import (
 // 按产品决策：内部隐藏控制台，不做鉴权，跨租户管理。
 
 func (h *TenantHandler) AdminList(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.Tenant](r.Context(), h.DB, r, store.ListQueryConfig[domain.Tenant]{
+	cfg := store.ListQueryConfig[domain.Tenant]{
 		Table:         "tenants",
 		SelectColumns: "id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, admin_ids, status, created_at, updated_at",
 		SearchColumns: []string{"name", "code"},
@@ -21,54 +22,141 @@ func (h *TenantHandler) AdminList(w http.ResponseWriter, r *http.Request) {
 				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 		},
-	}, h.scanTenantRows)
+	}
+	params, _ := listParamsFromRequest(r, false)
+	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "查询租户失败")
 		return
 	}
-
 	respondJSON(w, http.StatusOK, TenantListResponse{Items: items, Total: total})
 }
 
 func (h *TenantHandler) AdminCreate(w http.ResponseWriter, r *http.Request) {
-	h.createTenant(w, r)
+	var req CreateTenantRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if req.Name == "" || req.Code == "" {
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
+		return
+	}
+
+	result, err := h.Service.CreateWithDefaults(r.Context(), &store.TenantCreateParams{
+		Name:           req.Name,
+		Code:           req.Code,
+		LogoURL:        req.LogoURL,
+		Domain:         req.Domain,
+		EnterpriseCode: req.EnterpriseCode,
+		Contact:        req.Contact,
+		Phone:          req.Phone,
+		Address:        req.Address,
+		Description:    req.Description,
+	})
+	if err != nil {
+		if service.IsConflict(err) {
+			respondError(w, http.StatusConflict, "租户标识或管理员用户名已存在")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "创建租户失败")
+		return
+	}
+
+	tenant, err := h.Service.Get(r.Context(), result.TenantID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "创建租户失败")
+		return
+	}
+	respondJSON(w, http.StatusCreated, CreateTenantResponse{
+		Tenant: *tenant,
+		AdminUser: &adminUserInfo{
+			ID:        result.AdminUserID,
+			Username:  result.AdminUser,
+			LoginName: result.AdminUser,
+		},
+	})
 }
 
 func (h *TenantHandler) AdminUpdate(w http.ResponseWriter, r *http.Request) {
-	h.updateTenant(w, r)
-}
-
-func (h *TenantHandler) AdminUpdateStatus(w http.ResponseWriter, r *http.Request) {
-	h.updateTenantStatus(w, r)
-}
-
-func (h *TenantHandler) AdminDelete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchTenant(r.Context(), id); err != nil {
+	if _, err := h.Service.Get(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "租户不存在")
 		return
 	}
 
-	tx, err := h.DB.Begin(r.Context())
+	var req UpdateTenantRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if req.Name == "" {
+		respondError(w, http.StatusBadRequest, "缺少必填字段")
+		return
+	}
+
+	err := h.Service.Update(r.Context(), id, &store.TenantUpdateParams{
+		Name:              req.Name,
+		LogoURL:           req.LogoURL,
+		Domain:            req.Domain,
+		EnterpriseCode:    req.EnterpriseCode,
+		Contact:           req.Contact,
+		Phone:             req.Phone,
+		Address:           req.Address,
+		Description:       req.Description,
+		ShortName:         req.ShortName,
+		SchoolType:        req.SchoolType,
+		Province:          req.Province,
+		City:              req.City,
+		Website:           req.Website,
+		ContactPhone:      req.ContactPhone,
+		ScaleData:         req.ScaleData,
+		SecondaryColleges: req.SecondaryColleges,
+		EducationLevel:    req.EducationLevel,
+		EducationNature:   req.EducationNature,
+	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "开启事务失败")
-		return
-	}
-	defer tx.Rollback(r.Context())
-
-	// 显式清理该租户下的用户，避免 tenant_id SET NULL 后留下孤儿账户
-	if _, err := tx.Exec(r.Context(), `DELETE FROM users WHERE tenant_id = $1`, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "删除租户用户失败")
+		respondError(w, http.StatusInternalServerError, "更新租户失败")
 		return
 	}
 
-	if _, err := tx.Exec(r.Context(), `DELETE FROM tenants WHERE id = $1`, id); err != nil {
+	tenant, _ := h.Service.Get(r.Context(), id)
+	respondJSON(w, http.StatusOK, tenant)
+}
+
+func (h *TenantHandler) AdminUpdateStatus(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if _, err := h.Service.Get(r.Context(), id); err != nil {
+		respondError(w, http.StatusNotFound, "租户不存在")
+		return
+	}
+
+	var req UpdateTenantStatusRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if req.Status != domain.TenantStatusActive && req.Status != domain.TenantStatusInactive {
+		respondError(w, http.StatusBadRequest, "无效状态")
+		return
+	}
+
+	if err := h.Service.UpdateStatus(r.Context(), id, req.Status); err != nil {
+		respondError(w, http.StatusInternalServerError, "更新状态失败")
+		return
+	}
+
+	tenant, _ := h.Service.Get(r.Context(), id)
+	respondJSON(w, http.StatusOK, tenant)
+}
+
+func (h *TenantHandler) AdminDelete(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if _, err := h.Service.Get(r.Context(), id); err != nil {
+		respondError(w, http.StatusNotFound, "租户不存在")
+		return
+	}
+
+	err := h.Service.DeleteTenant(r.Context(), id)
+	if err != nil {
 		respondError(w, http.StatusInternalServerError, "删除租户失败")
-		return
-	}
-
-	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "提交事务失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id, "deleted": "true"})

@@ -7,17 +7,15 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type TenantHandler struct {
-	DB *pgxpool.Pool
+	Service      *service.TenantService
+	AdminService *service.TenantAdminService
 }
 
 type TenantListResponse struct {
@@ -38,24 +36,24 @@ type CreateTenantRequest struct {
 }
 
 type UpdateTenantRequest struct {
-	Name             string           `json:"name"`
-	LogoURL          *string          `json:"logoUrl"`
-	Domain           *string          `json:"domain"`
-	EnterpriseCode   *string          `json:"enterpriseCode"`
-	Contact          *string          `json:"contact"`
-	Phone            *string          `json:"phone"`
-	Address          *string          `json:"address"`
-	Description      *string          `json:"description"`
-	ShortName        *string          `json:"shortName"`
-	SchoolType       *string          `json:"schoolType"`
-	Province         *string          `json:"province"`
-	City             *string          `json:"city"`
-	Website          *string          `json:"website"`
-	ContactPhone     *string          `json:"contactPhone"`
-	ScaleData        json.RawMessage  `json:"scaleData"`
+	Name              string          `json:"name"`
+	LogoURL           *string         `json:"logoUrl"`
+	Domain            *string         `json:"domain"`
+	EnterpriseCode    *string         `json:"enterpriseCode"`
+	Contact           *string         `json:"contact"`
+	Phone             *string         `json:"phone"`
+	Address           *string         `json:"address"`
+	Description       *string         `json:"description"`
+	ShortName         *string         `json:"shortName"`
+	SchoolType        *string         `json:"schoolType"`
+	Province          *string         `json:"province"`
+	City              *string         `json:"city"`
+	Website           *string         `json:"website"`
+	ContactPhone      *string         `json:"contactPhone"`
+	ScaleData         json.RawMessage `json:"scaleData"`
 	SecondaryColleges json.RawMessage `json:"secondaryColleges"`
-	EducationLevel   *string          `json:"educationLevel"`
-	EducationNature  *string          `json:"educationNature"`
+	EducationLevel    *string         `json:"educationLevel"`
+	EducationNature   *string         `json:"educationNature"`
 }
 
 type UpdateTenantStatusRequest struct {
@@ -74,7 +72,7 @@ type adminUserInfo struct {
 }
 
 func (h *TenantHandler) List(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.Tenant](r.Context(), h.DB, r, store.ListQueryConfig[domain.Tenant]{
+	cfg := store.ListQueryConfig[domain.Tenant]{
 		Table:         "tenants",
 		SelectColumns: "id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges, education_level, education_nature, admin_ids, status, created_at, updated_at",
 		TenantScoped:  true,
@@ -85,22 +83,23 @@ func (h *TenantHandler) List(w http.ResponseWriter, r *http.Request) {
 				qb.AddCondition("status = " + qb.NextArg(status))
 			}
 		},
-	}, h.scanTenantRows)
+	}
+	params, ok := listParamsFromRequest(r, cfg.TenantScoped)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {
-		if errors.Is(err, store.ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
 		respondError(w, http.StatusInternalServerError, "查询租户列表失败")
 		return
 	}
-
 	respondJSON(w, http.StatusOK, TenantListResponse{Items: items, Total: total})
 }
 
 func (h *TenantHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	tenant, err := h.fetchTenant(r.Context(), id)
+	tenant, err := h.Service.Get(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "租户不存在")
 		return
@@ -122,227 +121,48 @@ func (h *TenantHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.createTenant(w, r)
-}
-
-func (h *TenantHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 	var req CreateTenantRequest
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.Name == "" || req.Code == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
-	id := uuid.NewString()
-	adminUsername := "admin-" + req.Code
-	adminPassword, pwdErr := generateSecurePassword(12)
-	if pwdErr != nil {
-		respondError(w, http.StatusInternalServerError, "生成管理员密码失败")
-		return
-	}
-
-	tx, err := h.DB.Begin(r.Context())
+	result, err := h.Service.CreateWithDefaults(r.Context(), &store.TenantCreateParams{
+		Name:           req.Name,
+		Code:           req.Code,
+		LogoURL:        req.LogoURL,
+		Domain:         req.Domain,
+		EnterpriseCode: req.EnterpriseCode,
+		Contact:        req.Contact,
+		Phone:          req.Phone,
+		Address:        req.Address,
+		Description:    req.Description,
+	})
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "启动事务失败")
-		return
-	}
-	defer tx.Rollback(r.Context())
-
-	var codeExists bool
-	if err := tx.QueryRow(r.Context(),
-		`SELECT EXISTS(SELECT 1 FROM tenants WHERE code = $1)`, req.Code,
-	).Scan(&codeExists); err != nil {
-		respondError(w, http.StatusInternalServerError, "检查租户代码失败")
-		return
-	}
-	if codeExists {
-		respondError(w, http.StatusConflict, "租户标识已存在")
-		return
-	}
-
-	var loginNameExists bool
-	if err := tx.QueryRow(r.Context(),
-		`SELECT EXISTS(SELECT 1 FROM users WHERE login_name = $1)`, adminUsername,
-	).Scan(&loginNameExists); err != nil {
-		respondError(w, http.StatusInternalServerError, "检查管理员用户名失败")
-		return
-	}
-	if loginNameExists {
-		respondError(w, http.StatusConflict, "管理员用户名 "+adminUsername+" 已存在")
-		return
-	}
-
-	if _, err := tx.Exec(r.Context(), `
-		INSERT INTO tenants (id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active')
-	`, id, req.Name, req.Code, req.LogoURL, req.Domain, req.EnterpriseCode, req.Contact, req.Phone, req.Address, req.Description); err != nil {
+		if service.IsConflict(err) {
+			respondError(w, http.StatusConflict, "租户标识或管理员用户名已存在")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "创建租户失败")
 		return
 	}
 
-	// 为新租户自动创建默认套餐，避免后续页面报 subscription not found
-	// 默认开启全部平台模块；后续可在 /superadmin 中按租户删减
-	if _, err := tx.Exec(r.Context(), `
-		INSERT INTO subscription_packages (tenant_id, name, valid_until, modules, status)
-		VALUES ($1, '默认全功能套餐', NULL, $2, 'active')
-	`, id, domain.JSONMap{
-		"system":   true,
-		"career":   true,
-		"course":   true,
-		"scene":    true,
-		"ability":  true,
-		"resource": true,
-		"alliance": true,
-		"affairs":  true,
-		"ai":       true,
-		"opc":      true,
-		"decision": true,
-		"research": true,
-	}); err != nil {
-		respondError(w, http.StatusInternalServerError, "创建默认订阅套餐失败")
+	tenant, err := h.Service.Get(r.Context(), result.TenantID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "创建租户失败")
 		return
 	}
-
-	// 为新租户初始化默认组织类型
-	if _, err := tx.Exec(r.Context(), `
-		INSERT INTO org_types (tenant_id, name, category, description, is_default)
-		VALUES
-			($1, '学校', 'internal', '学校根节点', TRUE),
-			($1, '二级学院', 'internal', '二级学院/系', TRUE),
-			($1, '专业', 'internal', '专业节点', TRUE),
-			($1, '班级', 'internal', '班级节点', TRUE),
-			($1, '行政职能部门', 'internal', '行政职能部门', TRUE)
-		ON CONFLICT DO NOTHING
-	`, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "创建默认机构类型失败")
-		return
-	}
-
-	// 为新租户创建默认角色。
-	// platform_admin 为跨租户运营角色，仅存在于运营方租户（seed/手工创建），普通租户不生成。
-	// 每个角色包含 menus（页面可见性）与结构化 permissions（按钮级操作权限）。
-	// school_admin 不设 menus，默认全部页面可见。
-	teacherMenus := domain.JSONMap{
-		"/job/positions": true, "/job/archive": true, "/job/approvals": true, "/job/landing": true,
-		"/lesson/admin/system": true, "/lesson/admin/granular": true, "/lesson/admin/hybrid": true,
-		"/lesson/admin/archive": true, "/lesson/teacher/claim": true,
-		"/lesson/teacher/behavior-collection": true, "/lesson/teacher/progress-tracking": true,
-		"/lesson/teacher/final-assessment": true, "/lesson/teacher/grade-submit": true,
-		"/lesson/teacher/learning-portrait": true, "/lesson/admin/approvals": true, "/lesson/landing": true,
-		"/scene/": true, "/scene/archive": true, "/scene/approvals": true, "/scene/landing": true,
-		"/evaluation/question-banks": true, "/evaluation/exams": true, "/evaluation/exam-usage": true,
-		"/evaluation/batches": true, "/evaluation/workflows": true, "/evaluation/approvals": true,
-		"/evaluation/scene-results": true, "/evaluation/job-ability": true, "/evaluation/job-ability/results": true,
-		"/evaluation/landing": true,
-	}
-	adminActions := []string{"submit_approval", "withdraw_approval", "publish", "unpublish", "delete", "review", "reject"}
-	modPerms := func(actions []string) domain.JSONMap {
-		return domain.JSONMap{
-			"scenarios": actions,
-		}
-	}
-
-	defaultRoles := []struct {
-		code        string
-		name        string
-		permissions domain.JSONMap
-	}{
-		{"school_admin", "学校管理员", domain.JSONMap{
-			"scene":      modPerms(adminActions),
-			"lesson":     domain.JSONMap{"courses": adminActions},
-			"evaluation": domain.JSONMap{"exams": adminActions},
-			"job":        domain.JSONMap{"positions": adminActions},
-		}},
-		{"teacher", "教师", domain.JSONMap{
-			"menus":      teacherMenus,
-			"scene":      modPerms(adminActions),
-			"lesson":     domain.JSONMap{"courses": adminActions},
-			"evaluation": domain.JSONMap{"exams": adminActions},
-			"job":        domain.JSONMap{"positions": adminActions},
-		}},
-		{"student", "学生", domain.JSONMap{
-			"menus": domain.JSONMap{
-				"/job/landing": true, "/lesson/landing": true,
-				"/scene/landing": true, "/evaluation/landing": true,
-			},
-		}},
-		{"enterprise_mentor", "企业导师", domain.JSONMap{
-			"menus": domain.JSONMap{
-				"/job/positions": true, "/job/landing": true,
-				"/scene/": true, "/scene/landing": true,
-			},
-			"scene": modPerms(adminActions),
-			"job":   domain.JSONMap{"positions": adminActions},
-		}},
-	}
-	for _, role := range defaultRoles {
-		if _, err := tx.Exec(r.Context(), `
-			INSERT INTO roles (id, tenant_id, code, name, description, permissions, user_count, status, created_at)
-			VALUES ($1, $2, $3, $4, '', $5, 0, 'active', NOW())
-		`, uuid.NewString(), id, role.code, role.name, role.permissions); err != nil {
-			respondError(w, http.StatusInternalServerError, "创建默认角色失败")
-			return
-		}
-	}
-
-	// 为新租户创建默认管理员用户，并绑定 school_admin 预设角色
-	var adminUser *adminUserInfo
-	adminID := uuid.NewString()
-	hash, hashErr := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
-	if hashErr != nil {
-		respondError(w, http.StatusInternalServerError, "管理员密码加密失败")
-		return
-	}
-
-	if _, err := tx.Exec(r.Context(), `
-		INSERT INTO users (id, tenant_id, institution_id, org_node_id, major_id,
-			role, platform, login_name, username, password_hash, name, email, phone, avatar_url,
-			student_no, work_id, id_card, title_ids, oauth, status)
-		VALUES ($1, $2, NULL, NULL, NULL, 'school', 'portal', $3, $4, $5, $6, NULL, NULL, NULL, NULL, NULL, NULL, $7, '{}', 'active')
-	`, adminID, id, adminUsername, adminUsername, string(hash), req.Name+"管理员", "{}"); err != nil {
-		respondError(w, http.StatusInternalServerError, "创建管理员用户失败")
-		return
-	}
-
-	if _, err := tx.Exec(r.Context(),
-		`INSERT INTO user_roles (id, user_id, role_id)
-		 SELECT $1, $2, id FROM roles WHERE tenant_id = $3 AND code = 'school_admin' LIMIT 1`,
-		uuid.NewString(), adminID, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "绑定管理员角色失败")
-		return
-	}
-
-	if _, err := tx.Exec(r.Context(),
-		`UPDATE roles SET user_count = user_count + 1
-		 WHERE tenant_id = $1 AND code = 'school_admin'`,
-		id); err != nil {
-		respondError(w, http.StatusInternalServerError, "更新角色用户数失败")
-		return
-	}
-
-	if _, err := tx.Exec(r.Context(),
-		`UPDATE tenants SET admin_ids = ARRAY[$1::UUID] WHERE id = $2`,
-		adminID, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "更新租户管理员ID失败")
-		return
-	}
-
-	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "提交事务失败")
-		return
-	}
-
-	adminUser = &adminUserInfo{
-		ID:        adminID,
-		Username:  adminUsername,
-		LoginName: adminUsername,
-	}
-
-	tenant, _ := h.fetchTenant(r.Context(), id)
-	respondJSON(w, http.StatusCreated, CreateTenantResponse{Tenant: tenant, AdminUser: adminUser})
+	respondJSON(w, http.StatusCreated, CreateTenantResponse{
+		Tenant: *tenant,
+		AdminUser: &adminUserInfo{
+			ID:        result.AdminUserID,
+			Username:  result.AdminUser,
+			LoginName: result.AdminUser,
+		},
+	})
 }
 
 func (h *TenantHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -352,20 +172,15 @@ func (h *TenantHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	id := chi.URLParam(r, "id")
 	if !canManagePlatform(claims) {
-		id := chi.URLParam(r, "id")
 		if claims.TenantID == nil || *claims.TenantID != id {
 			respondError(w, http.StatusForbidden, "只能更新自己的租户")
 			return
 		}
 	}
 
-	h.updateTenant(w, r)
-}
-
-func (h *TenantHandler) updateTenant(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if _, err := h.fetchTenant(r.Context(), id); err != nil {
+	if _, err := h.Service.Get(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "租户不存在")
 		return
 	}
@@ -374,31 +189,37 @@ func (h *TenantHandler) updateTenant(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.Name == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE tenants SET name = $1, logo_url = $2, domain = $3, enterprise_code = $4, contact = $5,
-			phone = $6, address = $7, description = $8,
-			short_name = $9, school_type = $10, province = $11, city = $12,
-			website = $13, contact_phone = $14, scale_data = $15, secondary_colleges = $16,
-			education_level = $17, education_nature = $18,
-			updated_at = NOW()
-		WHERE id = $19
-	`, req.Name, req.LogoURL, req.Domain, req.EnterpriseCode, req.Contact, req.Phone, req.Address, req.Description,
-		req.ShortName, req.SchoolType, req.Province, req.City,
-		req.Website, req.ContactPhone, req.ScaleData, req.SecondaryColleges,
-		req.EducationLevel, req.EducationNature,
-		id)
+	err := h.Service.Update(r.Context(), id, &store.TenantUpdateParams{
+		Name:             req.Name,
+		LogoURL:          req.LogoURL,
+		Domain:           req.Domain,
+		EnterpriseCode:   req.EnterpriseCode,
+		Contact:          req.Contact,
+		Phone:            req.Phone,
+		Address:          req.Address,
+		Description:      req.Description,
+		ShortName:        req.ShortName,
+		SchoolType:       req.SchoolType,
+		Province:         req.Province,
+		City:             req.City,
+		Website:          req.Website,
+		ContactPhone:     req.ContactPhone,
+		ScaleData:        req.ScaleData,
+		SecondaryColleges: req.SecondaryColleges,
+		EducationLevel:   req.EducationLevel,
+		EducationNature:  req.EducationNature,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "更新租户失败")
 		return
 	}
 
-	tenant, _ := h.fetchTenant(r.Context(), id)
+	tenant, _ := h.Service.Get(r.Context(), id)
 	respondJSON(w, http.StatusOK, tenant)
 }
 
@@ -409,12 +230,8 @@ func (h *TenantHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.updateTenantStatus(w, r)
-}
-
-func (h *TenantHandler) updateTenantStatus(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchTenant(r.Context(), id); err != nil {
+	if _, err := h.Service.Get(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "租户不存在")
 		return
 	}
@@ -423,98 +240,28 @@ func (h *TenantHandler) updateTenantStatus(w http.ResponseWriter, r *http.Reques
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.Status != domain.TenantStatusActive && req.Status != domain.TenantStatusInactive {
 		respondError(w, http.StatusBadRequest, "无效状态")
 		return
 	}
 
-	_, err := h.DB.Exec(r.Context(), `UPDATE tenants SET status = $1, updated_at = NOW() WHERE id = $2`, req.Status, id)
-	if err != nil {
+	if err := h.Service.UpdateStatus(r.Context(), id, req.Status); err != nil {
 		respondError(w, http.StatusInternalServerError, "更新状态失败")
 		return
 	}
 
-	tenant, _ := h.fetchTenant(r.Context(), id)
+	tenant, _ := h.Service.Get(r.Context(), id)
 	respondJSON(w, http.StatusOK, tenant)
 }
 
+var _ = errors.Is
+
+
+// fetchTenant 按 ID 查询租户（兼容 tenant_admin_handler 复用，不存在返回错误）。
 func (h *TenantHandler) fetchTenant(ctx context.Context, id string) (domain.Tenant, error) {
-	var t domain.Tenant
-	var logo, domainVal, enterpriseCode, contact, phone, address, description *string
-	var shortName, schoolType, province, city, website, contactPhone *string
-	var scaleData, secondaryColleges json.RawMessage
-	var edLevel, edNature *string
-
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description,
-			short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges,
-			education_level, education_nature,
-			admin_ids, status, created_at, updated_at
-		FROM tenants WHERE id = $1
-	`, id).Scan(
-		&t.ID, &t.Name, &t.Code, &logo, &domainVal, &enterpriseCode, &contact, &phone, &address, &description,
-		&shortName, &schoolType, &province, &city, &website, &contactPhone, &scaleData, &secondaryColleges,
-		&edLevel, &edNature,
-		&t.AdminIDs, &t.Status, &t.CreatedAt, &t.UpdatedAt,
-	)
+	t, err := h.Service.Get(ctx, id)
 	if err != nil {
-		return t, err
+		return domain.Tenant{}, err
 	}
-	t.LogoURL = logo
-	t.Domain = domainVal
-	t.EnterpriseCode = enterpriseCode
-	t.Contact = contact
-	t.Phone = phone
-	t.Address = address
-	t.Description = description
-	t.ShortName = shortName
-	t.SchoolType = schoolType
-	t.Province = province
-	t.City = city
-	t.Website = website
-	t.ContactPhone = contactPhone
-	t.ScaleData = scaleData
-	t.SecondaryColleges = secondaryColleges
-	t.EducationLevel = edLevel
-	t.EducationNature = edNature
-	return t, nil
-}
-
-func (h *TenantHandler) scanTenantRows(rows pgx.Rows) ([]domain.Tenant, error) {
-	items := make([]domain.Tenant, 0)
-	for rows.Next() {
-		var t domain.Tenant
-		var logo, domainVal, enterpriseCode, contact, phone, address, description *string
-		var shortName, schoolType, province, city, website, contactPhone *string
-		var scaleData, secondaryColleges json.RawMessage
-		var edLevel, edNature *string
-		if err := rows.Scan(
-			&t.ID, &t.Name, &t.Code, &logo, &domainVal, &enterpriseCode, &contact, &phone, &address, &description,
-			&shortName, &schoolType, &province, &city, &website, &contactPhone, &scaleData, &secondaryColleges,
-			&edLevel, &edNature,
-			&t.AdminIDs, &t.Status, &t.CreatedAt, &t.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		t.LogoURL = logo
-		t.Domain = domainVal
-		t.EnterpriseCode = enterpriseCode
-		t.Contact = contact
-		t.Phone = phone
-		t.Address = address
-		t.Description = description
-		t.ShortName = shortName
-		t.SchoolType = schoolType
-		t.Province = province
-		t.City = city
-		t.Website = website
-		t.ContactPhone = contactPhone
-		t.ScaleData = scaleData
-		t.SecondaryColleges = secondaryColleges
-		t.EducationLevel = edLevel
-		t.EducationNature = edNature
-		items = append(items, t)
-	}
-	return items, nil
+	return *t, nil
 }

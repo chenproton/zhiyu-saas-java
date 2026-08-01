@@ -18,6 +18,7 @@ import (
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/handler"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/router"
 	"github.com/zhiyu-saas/backend/internal/store"
 	"golang.org/x/crypto/bcrypt"
@@ -85,7 +86,9 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 		r.Get("/resources", resourceHandler.List)
 		r.Get("/resources/{id}", resourceHandler.Get)
 
-		tenantHandler := &handler.TenantHandler{DB: pool}
+		st2 := store.New(pool)
+		svc2 := service.New(st2)
+		tenantHandler := &handler.TenantHandler{Service: service.NewTenantService(svc2), AdminService: service.NewTenantAdminService(svc2)}
 		r.Get("/admin/tenants", tenantHandler.AdminList)
 		r.Post("/admin/tenants", tenantHandler.AdminCreate)
 		r.Put("/admin/tenants/{id}", tenantHandler.AdminUpdate)
@@ -114,14 +117,14 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/resources/{id}/review", resourceHandler.Review)
 			r.Post("/resources/{id}/publish", resourceHandler.Publish)
 
-			tenantHandler := &handler.TenantHandler{DB: pool}
+			tenantHandler := &handler.TenantHandler{Service: service.NewTenantService(svc2), AdminService: service.NewTenantAdminService(svc2)}
 			r.Get("/tenants", tenantHandler.List)
 			r.Get("/tenants/{id}", tenantHandler.Get)
 			r.Post("/tenants", tenantHandler.Create)
 			r.Put("/tenants/{id}", tenantHandler.Update)
 			r.Post("/tenants/{id}/status", tenantHandler.UpdateStatus)
 
-			orgHandler := &handler.OrgHandler{DB: pool}
+			orgHandler := &handler.OrgHandler{Service: service.NewOrgService(svc2)}
 			r.Get("/organizations", orgHandler.List)
 			r.Get("/organizations/tree", orgHandler.Tree)
 			r.Get("/organizations/{id}", orgHandler.Get)
@@ -136,7 +139,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/org-types/{id}", orgTypeHandler.Update)
 			r.Delete("/org-types/{id}", orgTypeHandler.Delete)
 
-			userManagementHandler := &handler.UserManagementHandler{DB: pool}
+			userManagementHandler := &handler.UserManagementHandler{Service: service.NewUserService(svc2)}
 			r.Get("/users", userManagementHandler.List)
 			r.Get("/users/{id}", userManagementHandler.Get)
 			r.Post("/users", userManagementHandler.Create)

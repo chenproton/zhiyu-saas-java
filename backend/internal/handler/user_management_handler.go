@@ -1,25 +1,21 @@
 package handler
 
 import (
-	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type UserManagementHandler struct {
-	DB *pgxpool.Pool
+	Service *service.UserService
 }
 
 type UserListResponse struct {
@@ -28,42 +24,42 @@ type UserListResponse struct {
 }
 
 type CreateUserRequest struct {
-	TenantID      string              `json:"tenantId"`
-	InstitutionID *string             `json:"institutionId"`
-	RoleID        *string             `json:"roleId"`
-	OrgNodeID     *string             `json:"orgNodeId"`
-	MajorID       *string             `json:"majorId"`
-	Username      string              `json:"username"`
-	LoginName     *string             `json:"loginName"`
-	Password      string              `json:"password"`
-	Name          string              `json:"name"`
-	Email         string              `json:"email"`
-	Phone         *string             `json:"phone"`
-	AvatarURL     *string             `json:"avatarUrl"`
-	StudentNo     *string             `json:"studentNo"`
-	WorkID        *string             `json:"workId"`
-	IDCard        *string             `json:"idCard"`
-	TitleIDs      []string            `json:"titleIds"`
-	Role          *string             `json:"role"`
+	TenantID      string       `json:"tenantId"`
+	InstitutionID *string      `json:"institutionId"`
+	OrgNodeID     *string      `json:"orgNodeId"`
+	MajorID       *string      `json:"majorId"`
+	Role          *string      `json:"role"`
+	RoleID        *string      `json:"roleId"`
 	Platform      domain.UserPlatform `json:"platform"`
+	Username      string       `json:"username"`
+	LoginName     *string      `json:"loginName"`
+	Password      string       `json:"password"`
+	Name          string       `json:"name"`
+	Email         *string      `json:"email"`
+	Phone         *string      `json:"phone"`
+	AvatarURL     *string      `json:"avatarUrl"`
+	StudentNo     *string      `json:"studentNo"`
+	WorkID        *string      `json:"workId"`
+	IDCard        *string      `json:"idCard"`
+	TitleIDs      []string     `json:"titleIds"`
 }
 
 type UpdateUserRequest struct {
-	InstitutionID *string  `json:"institutionId"`
-	RoleID        *string  `json:"roleId"`
-	OrgNodeID     *string  `json:"orgNodeId"`
-	MajorID       *string  `json:"majorId"`
-	Username      string   `json:"username"`
-	LoginName     *string  `json:"loginName"`
-	Name          string   `json:"name"`
-	Email         string   `json:"email"`
-	Phone         *string  `json:"phone"`
-	AvatarURL     *string  `json:"avatarUrl"`
-	StudentNo     *string  `json:"studentNo"`
-	WorkID        *string  `json:"workId"`
-	IDCard        *string  `json:"idCard"`
+	InstitutionID *string `json:"institutionId"`
+	OrgNodeID     *string `json:"orgNodeId"`
+	MajorID       *string `json:"majorId"`
+	Role          *string `json:"role"`
+	RoleID        *string `json:"roleId"`
+	Username      string  `json:"username"`
+	LoginName     *string `json:"loginName"`
+	Name          string  `json:"name"`
+	Email         *string `json:"email"`
+	Phone         *string `json:"phone"`
+	AvatarURL     *string `json:"avatarUrl"`
+	StudentNo     *string `json:"studentNo"`
+	WorkID        *string `json:"workId"`
+	IDCard        *string `json:"idCard"`
 	TitleIDs      []string `json:"titleIds"`
-	Role          *string  `json:"role"`
 }
 
 type UpdateUserStatusRequest struct {
@@ -79,8 +75,8 @@ type ResetPasswordRequest struct {
 }
 
 type BatchGraduateRequest struct {
-	UserIDs      []string `json:"userIds"`
-	GraduateYear *int     `json:"graduateYear"`
+	UserIDs       []string `json:"userIds"`
+	GraduateYear  *int     `json:"graduateYear"`
 }
 
 type BatchDeleteUsersRequest struct {
@@ -88,14 +84,13 @@ type BatchDeleteUsersRequest struct {
 }
 
 type BatchUpdateOrgNodeRequest struct {
-	UserIDs   []string `json:"userIds"`
-	OrgNodeID *string  `json:"orgNodeId"`
+	UserIDs    []string `json:"userIds"`
+	OrgNodeID  *string  `json:"orgNodeId"`
 }
 
 type BindUserRolesRequest struct {
 	RoleIDs []string `json:"roleIds"`
 }
-
 
 func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
 	cfg := store.ListQueryConfig[domain.User]{
@@ -103,7 +98,6 @@ func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
 		SelectColumns: `id, tenant_id, institution_id, org_node_id, major_id, role, platform, login_name, username, name, email, phone, avatar_url, student_no, work_id, id_card, title_ids, oauth, status, graduate_year, last_login_at, created_at, updated_at`,
 		TenantScoped:  true,
 		SearchColumns: []string{"username", "name", "email"},
-		ScanRows:      h.scanUserRows,
 		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if institutionID := p.Values["institutionId"]; institutionID != "" {
 				qb.AddCondition("institution_id = " + qb.NextArg(institutionID))
@@ -122,24 +116,22 @@ func (h *UserManagementHandler) List(w http.ResponseWriter, r *http.Request) {
 			}
 		},
 	}
-
-	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {
-		if errors.Is(err, store.ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
 		respondError(w, http.StatusInternalServerError, "查询用户列表失败")
 		return
 	}
-
-	h.attachUserRoles(r.Context(), items)
 	respondJSON(w, http.StatusOK, UserListResponse{Items: items, Total: total})
 }
 
 func (h *UserManagementHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	user, err := h.fetchUser(r.Context(), id)
+	user, err := h.Service.Get(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "用户不存在")
 		return
@@ -162,7 +154,6 @@ func (h *UserManagementHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.Platform == "" && claims != nil {
 		req.Platform = claims.Platform
 	}
@@ -175,15 +166,35 @@ func (h *UserManagementHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if !verifyRequestTenant(w, r, req.TenantID) {
 		return
 	}
-
 	if req.TenantID == "" || req.Username == "" || req.Password == "" || req.Name == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
-	user, err := h.createSingleUser(r.Context(), req)
+	params := &store.UserCreateParams{
+		TenantID:      req.TenantID,
+		InstitutionID: req.InstitutionID,
+		OrgNodeID:     req.OrgNodeID,
+		MajorID:       req.MajorID,
+		Role:          roleOrEmpty(req.Role, string(domain.UserRoleSchool)),
+		RoleID:        strOrEmpty(req.RoleID),
+		Platform:      string(req.Platform),
+		Username:      req.Username,
+		LoginName:     strOrEmpty(req.LoginName),
+		Password:      req.Password,
+		Name:          req.Name,
+		Email:         req.Email,
+		Phone:         req.Phone,
+		AvatarURL:     req.AvatarURL,
+		StudentNo:     req.StudentNo,
+		WorkID:        req.WorkID,
+		IDCard:        req.IDCard,
+		TitleIDs:      req.TitleIDs,
+	}
+
+	user, err := h.Service.Create(r.Context(), params)
 	if err != nil {
-		slog.Error("createSingleUser failed", "error", err, "tenantId", req.TenantID, "roleId", req.RoleID, "username", req.Username, "platform", req.Platform)
+		slog.Error("createSingleUser failed", "error", err, "tenantId", req.TenantID, "roleId", req.RoleID, "username", req.Username)
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
 			return
@@ -202,7 +213,7 @@ func (h *UserManagementHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	oldUser, err := h.fetchUser(r.Context(), id)
+	oldUser, err := h.Service.Get(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "用户不存在")
 		return
@@ -215,22 +226,12 @@ func (h *UserManagementHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.Username == "" || req.Name == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
 
-	if oldUser.TenantID != nil {
-		if err := h.validateUserOrgMajor(r.Context(), *oldUser.TenantID, req.OrgNodeID, req.MajorID); err != nil {
-			slog.Error("用户校验失败", "error", err)
-			respondError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-	}
-
-	role := h.resolveRole(req.Role, oldUser.Role)
-
+	role := roleOrEmpty(req.Role, string(oldUser.Role))
 	rawLoginName := req.Username
 	if req.LoginName != nil && *req.LoginName != "" {
 		rawLoginName = *req.LoginName
@@ -240,31 +241,36 @@ func (h *UserManagementHandler) Update(w http.ResponseWriter, r *http.Request) {
 		globalLoginName = *oldUser.TenantID + "_" + rawLoginName
 	}
 
-	_, err = h.DB.Exec(r.Context(), `
-		UPDATE users SET institution_id = $1, org_node_id = $2, major_id = $3,
-			role = $4, login_name = $5, username = $6, name = $7, email = $8, phone = $9, avatar_url = $10,
-			student_no = $11, work_id = $12, id_card = $13, title_ids = $14, updated_at = NOW()
-		WHERE id = $15
-	`, req.InstitutionID, req.OrgNodeID, req.MajorID,
-		role, globalLoginName, rawLoginName, req.Name, req.Email, req.Phone, req.AvatarURL,
-		req.StudentNo, req.WorkID, req.IDCard, coalesceStringSlice(req.TitleIDs), id)
+	params := &store.UserUpdateParams{
+		ID:              id,
+		InstitutionID:   req.InstitutionID,
+		OrgNodeID:       req.OrgNodeID,
+		MajorID:         req.MajorID,
+		Role:            role,
+		GlobalLoginName: globalLoginName,
+		Username:        rawLoginName,
+		Name:            req.Name,
+		Email:           req.Email,
+		Phone:           req.Phone,
+		AvatarURL:       req.AvatarURL,
+		StudentNo:       req.StudentNo,
+		WorkID:          req.WorkID,
+		IDCard:          req.IDCard,
+		TitleIDs:        req.TitleIDs,
+	}
+
+	err = h.Service.Update(r.Context(), id, *oldUser.TenantID, params, strOrEmpty(req.RoleID))
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
 			return
 		}
+		slog.Error("update user failed", "error", err)
 		respondError(w, http.StatusInternalServerError, "更新用户失败")
 		return
 	}
 
-	if req.RoleID != nil && *req.RoleID != "" {
-		if err := h.rebindUserRole(r.Context(), id, *req.RoleID, oldUser.TenantID); err != nil {
-			respondError(w, http.StatusInternalServerError, "绑定角色失败")
-			return
-		}
-	}
-
-	user, _ := h.fetchUser(r.Context(), id)
+	user, _ := h.Service.Get(r.Context(), id)
 	user.PasswordHash = ""
 	respondJSON(w, http.StatusOK, user)
 }
@@ -276,7 +282,7 @@ func (h *UserManagementHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	user, err := h.fetchUser(r.Context(), id)
+	user, err := h.Service.Get(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "用户不存在")
 		return
@@ -285,10 +291,7 @@ func (h *UserManagementHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.decRoleCountsForUser(r.Context(), id)
-
-	_, err = h.DB.Exec(r.Context(), `DELETE FROM users WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Service.Delete(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除用户失败")
 		return
 	}
@@ -302,7 +305,7 @@ func (h *UserManagementHandler) UpdateStatus(w http.ResponseWriter, r *http.Requ
 	}
 
 	id := chi.URLParam(r, "id")
-	user, err := h.fetchUser(r.Context(), id)
+	user, err := h.Service.Get(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "用户不存在")
 		return
@@ -315,19 +318,17 @@ func (h *UserManagementHandler) UpdateStatus(w http.ResponseWriter, r *http.Requ
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.Status != "active" && req.Status != "disabled" && req.Status != "graduated" {
 		respondError(w, http.StatusBadRequest, "无效状态")
 		return
 	}
 
-	_, err = h.DB.Exec(r.Context(), `UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`, req.Status, id)
-	if err != nil {
+	if err := h.Service.UpdateStatus(r.Context(), id, req.Status); err != nil {
 		respondError(w, http.StatusInternalServerError, "更新状态失败")
 		return
 	}
 
-	user, _ = h.fetchUser(r.Context(), id)
+	user, _ = h.Service.Get(r.Context(), id)
 	user.PasswordHash = ""
 	respondJSON(w, http.StatusOK, user)
 }
@@ -339,7 +340,7 @@ func (h *UserManagementHandler) ResetPassword(w http.ResponseWriter, r *http.Req
 	}
 
 	id := chi.URLParam(r, "id")
-	user, err := h.fetchUser(r.Context(), id)
+	user, err := h.Service.Get(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "用户不存在")
 		return
@@ -352,7 +353,6 @@ func (h *UserManagementHandler) ResetPassword(w http.ResponseWriter, r *http.Req
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.Password == "" {
 		respondError(w, http.StatusBadRequest, "密码不能为空")
 		return
@@ -362,18 +362,10 @@ func (h *UserManagementHandler) ResetPassword(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "密码加密失败")
-		return
-	}
-
-	_, err = h.DB.Exec(r.Context(), `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`, string(hash), id)
-	if err != nil {
+	if err := h.Service.ResetPassword(r.Context(), id, req.Password); err != nil {
 		respondError(w, http.StatusInternalServerError, "重置密码失败")
 		return
 	}
-
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
 
@@ -388,21 +380,12 @@ func (h *UserManagementHandler) BatchCreate(w http.ResponseWriter, r *http.Reque
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if len(req.Users) == 0 {
 		respondError(w, http.StatusBadRequest, "用户列表不能为空")
 		return
 	}
 
-	tx, err := h.DB.Begin(r.Context())
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "启动事务失败")
-		return
-	}
-	defer tx.Rollback(r.Context())
-
-	created := make([]domain.User, 0, len(req.Users))
-	seen := make(map[string]bool, len(req.Users))
+	params := make([]*store.UserCreateParams, 0, len(req.Users))
 	for _, u := range req.Users {
 		if u.Platform == "" && claims != nil {
 			u.Platform = claims.Platform
@@ -413,32 +396,37 @@ func (h *UserManagementHandler) BatchCreate(w http.ResponseWriter, r *http.Reque
 		if u.InstitutionID == nil && claims != nil && claims.InstitutionID != nil {
 			u.InstitutionID = claims.InstitutionID
 		}
-		if u.TenantID == "" || u.Username == "" || u.Password == "" || u.Name == "" {
-			continue
-		}
-		dedupKey := u.TenantID + ":" + string(u.Platform) + ":" + u.Username
-		if seen[dedupKey] {
-			continue
-		}
-		seen[dedupKey] = true
-		user, err := h.createSingleUserInTx(r.Context(), tx, u)
-		if err != nil {
-			if isUniqueViolation(err) {
-				respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
-				return
-			}
-			respondError(w, http.StatusInternalServerError, "批量创建用户失败")
+		params = append(params, &store.UserCreateParams{
+			TenantID:      u.TenantID,
+			InstitutionID: u.InstitutionID,
+			OrgNodeID:     u.OrgNodeID,
+			MajorID:       u.MajorID,
+			Role:          roleOrEmpty(u.Role, string(domain.UserRoleSchool)),
+			RoleID:        strOrEmpty(u.RoleID),
+			Platform:      string(u.Platform),
+			Username:      u.Username,
+			LoginName:     strOrEmpty(u.LoginName),
+			Password:      u.Password,
+			Name:          u.Name,
+			Email:         u.Email,
+			Phone:         u.Phone,
+			AvatarURL:     u.AvatarURL,
+			StudentNo:     u.StudentNo,
+			WorkID:        u.WorkID,
+			IDCard:        u.IDCard,
+			TitleIDs:      u.TitleIDs,
+		})
+	}
+
+	created, err := h.Service.BatchCreate(r.Context(), params)
+	if err != nil {
+		if isUniqueViolation(err) {
+			respondError(w, http.StatusConflict, "用户名已存在，请使用其他用户名")
 			return
 		}
-		user.PasswordHash = ""
-		created = append(created, user)
-	}
-
-	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "提交事务失败")
+		respondError(w, http.StatusInternalServerError, "批量创建用户失败")
 		return
 	}
-
 	respondJSON(w, http.StatusCreated, UserListResponse{Items: created, Total: len(created)})
 }
 
@@ -447,7 +435,6 @@ func (h *UserManagementHandler) BatchGraduate(w http.ResponseWriter, r *http.Req
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	claims := middleware.CurrentUser(r)
 	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
@@ -459,10 +446,15 @@ func (h *UserManagementHandler) BatchGraduate(w http.ResponseWriter, r *http.Req
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if len(req.UserIDs) == 0 {
 		respondError(w, http.StatusBadRequest, "缺少用户ID列表")
 		return
+	}
+	for _, id := range req.UserIDs {
+		if _, err := uuid.Parse(id); err != nil {
+			respondError(w, http.StatusBadRequest, "无效用户ID: "+id)
+			return
+		}
 	}
 
 	graduateYear := time.Now().Year()
@@ -470,25 +462,10 @@ func (h *UserManagementHandler) BatchGraduate(w http.ResponseWriter, r *http.Req
 		graduateYear = *req.GraduateYear
 	}
 
-	uuids := make([]uuid.UUID, len(req.UserIDs))
-	for i, id := range req.UserIDs {
-		uid, err := uuid.Parse(id)
-		if err != nil {
-			respondError(w, http.StatusBadRequest, "无效用户ID: "+id)
-			return
-		}
-		uuids[i] = uid
-	}
-
-	_, err := h.DB.Exec(r.Context(),
-		`UPDATE users SET status = 'graduated', graduate_year = $1, updated_at = NOW()
-		 WHERE id = ANY($2::uuid[]) AND tenant_id = $3 AND status = 'active'`,
-		graduateYear, uuids, callerTenantID)
-	if err != nil {
+	if err := h.Service.BatchGraduate(r.Context(), callerTenantID, req.UserIDs, graduateYear); err != nil {
 		respondError(w, http.StatusInternalServerError, "批量毕业操作失败")
 		return
 	}
-
 	respondJSON(w, http.StatusOK, map[string]int{"count": len(req.UserIDs)})
 }
 
@@ -497,7 +474,6 @@ func (h *UserManagementHandler) BatchDelete(w http.ResponseWriter, r *http.Reque
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	claims := middleware.CurrentUser(r)
 	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
@@ -509,50 +485,30 @@ func (h *UserManagementHandler) BatchDelete(w http.ResponseWriter, r *http.Reque
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if len(req.UserIDs) == 0 {
 		respondError(w, http.StatusBadRequest, "缺少用户ID列表")
 		return
 	}
-
-	uuids := make([]uuid.UUID, len(req.UserIDs))
-	for i, id := range req.UserIDs {
-		uid, err := uuid.Parse(id)
-		if err != nil {
+	for _, id := range req.UserIDs {
+		if _, err := uuid.Parse(id); err != nil {
 			respondError(w, http.StatusBadRequest, "无效用户ID: "+id)
 			return
 		}
-		uuids[i] = uid
 	}
 
-	tag, err := h.DB.Exec(r.Context(),
-		`DELETE FROM user_roles WHERE user_id = ANY($1::uuid[]) AND user_id IN (
-			SELECT id FROM users WHERE tenant_id = $2 AND id = ANY($1::uuid[])
-		)`, uuids, callerTenantID)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "删除用户角色失败")
-		return
-	}
-
-	result, err := h.DB.Exec(r.Context(),
-		`DELETE FROM users WHERE id = ANY($1::uuid[]) AND tenant_id = $2`,
-		uuids, callerTenantID)
+	count, err := h.Service.BatchDelete(r.Context(), callerTenantID, req.UserIDs)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "批量删除用户失败")
 		return
 	}
-
-	respondJSON(w, http.StatusOK, map[string]int64{"count": result.RowsAffected() + tag.RowsAffected()})
+	respondJSON(w, http.StatusOK, map[string]int64{"count": count})
 }
 
-// BatchUpdateOrgNode 批量更新选中用户的组织节点归属。
-// orgNodeId 为空时，会清空用户的 org_node_id（用于删除节点后解绑）。
 func (h *UserManagementHandler) BatchUpdateOrgNode(w http.ResponseWriter, r *http.Request) {
 	if !canManageUsers(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	claims := middleware.CurrentUser(r)
 	if claims == nil || claims.TenantID == nil || *claims.TenantID == "" {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
@@ -564,47 +520,29 @@ func (h *UserManagementHandler) BatchUpdateOrgNode(w http.ResponseWriter, r *htt
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if len(req.UserIDs) == 0 {
 		respondError(w, http.StatusBadRequest, "缺少用户ID列表")
 		return
 	}
-
-	if req.OrgNodeID != nil && *req.OrgNodeID != "" {
-		var exists bool
-		if err := h.DB.QueryRow(r.Context(),
-			`SELECT EXISTS(SELECT 1 FROM organizations WHERE id = $1 AND tenant_id = $2)`,
-			*req.OrgNodeID, callerTenantID,
-		).Scan(&exists); err != nil || !exists {
-			respondError(w, http.StatusBadRequest, "无效机构节点ID")
-			return
-		}
-	}
-
-	uuids := make([]uuid.UUID, len(req.UserIDs))
-	for i, id := range req.UserIDs {
-		uid, err := uuid.Parse(id)
-		if err != nil {
+	for _, id := range req.UserIDs {
+		if _, err := uuid.Parse(id); err != nil {
 			respondError(w, http.StatusBadRequest, "无效用户ID: "+id)
 			return
 		}
-		uuids[i] = uid
 	}
 
-	result, err := h.DB.Exec(r.Context(),
-		`UPDATE users SET org_node_id = $1, updated_at = NOW()
-		 WHERE id = ANY($2::uuid[]) AND tenant_id = $3`,
-		req.OrgNodeID, uuids, callerTenantID)
+	count, err := h.Service.BatchUpdateOrgNode(r.Context(), callerTenantID, req.UserIDs, req.OrgNodeID)
 	if err != nil {
+		if errors.Is(err, service.ErrOrgNodeInvalid) {
+			respondError(w, http.StatusBadRequest, "无效机构节点ID")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "更新用户机构绑定失败")
 		return
 	}
-
-	respondJSON(w, http.StatusOK, map[string]int64{"count": result.RowsAffected()})
+	respondJSON(w, http.StatusOK, map[string]int64{"count": count})
 }
 
-// BindRoles replaces the user's role bindings with the given set (at least one),
-// all roles must belong to the user's tenant.
 func (h *UserManagementHandler) BindRoles(w http.ResponseWriter, r *http.Request) {
 	if !canManageUsers(r) {
 		respondError(w, http.StatusForbidden, "权限不足")
@@ -612,7 +550,7 @@ func (h *UserManagementHandler) BindRoles(w http.ResponseWriter, r *http.Request
 	}
 
 	id := chi.URLParam(r, "id")
-	user, err := h.fetchUser(r.Context(), id)
+	user, err := h.Service.Get(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "用户不存在")
 		return
@@ -625,69 +563,46 @@ func (h *UserManagementHandler) BindRoles(w http.ResponseWriter, r *http.Request
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	roleIDs := uniqueStrings(req.RoleIDs)
 	if len(roleIDs) == 0 {
 		respondError(w, http.StatusBadRequest, "至少需要绑定一个角色")
 		return
 	}
 
-	var validCount int
-	_ = h.DB.QueryRow(r.Context(),
-		`SELECT COUNT(*) FROM roles WHERE id = ANY($1::uuid[]) AND tenant_id = $2`,
-		roleIDs, user.TenantID,
-	).Scan(&validCount)
-	if validCount != len(roleIDs) {
-		respondError(w, http.StatusBadRequest, "存在无效角色或角色不属于当前租户")
-		return
-	}
-
-	tx, err := h.DB.Begin(r.Context())
+	err = h.Service.BindRoles(r.Context(), id, roleIDs, *user.TenantID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "启动事务失败")
-		return
-	}
-	defer tx.Rollback(r.Context())
-
-	if _, err := tx.Exec(r.Context(), `
-		UPDATE roles SET user_count = GREATEST(user_count - 1, 0)
-		WHERE id IN (SELECT role_id FROM user_roles WHERE user_id = $1)
-	`, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "绑定角色失败")
-		return
-	}
-	if _, err := tx.Exec(r.Context(), `DELETE FROM user_roles WHERE user_id = $1`, id); err != nil {
-		respondError(w, http.StatusInternalServerError, "绑定角色失败")
-		return
-	}
-	for _, roleID := range roleIDs {
-		if _, err := tx.Exec(r.Context(), `
-			INSERT INTO user_roles (id, user_id, role_id)
-			VALUES ($1, $2, $3)
-			ON CONFLICT (user_id, role_id) DO NOTHING
-		`, uuid.NewString(), id, roleID); err != nil {
-			respondError(w, http.StatusInternalServerError, "绑定角色失败")
+		if errors.Is(err, service.ErrInvalidRoles) {
+			respondError(w, http.StatusBadRequest, "存在无效角色或角色不属于当前租户")
 			return
 		}
-	}
-	if _, err := tx.Exec(r.Context(),
-		`UPDATE roles SET user_count = user_count + 1 WHERE id = ANY($1::uuid[])`,
-		roleIDs,
-	); err != nil {
 		respondError(w, http.StatusInternalServerError, "绑定角色失败")
 		return
 	}
 
-	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "提交事务失败")
-		return
-	}
-
-	updated, _ := h.fetchUser(r.Context(), id)
+	updated, _ := h.Service.Get(r.Context(), id)
+	h.Service.AttachRoles(r.Context(), updated)
 	updated.PasswordHash = ""
-	items := []domain.User{updated}
-	h.attachUserRoles(r.Context(), items)
-	respondJSON(w, http.StatusOK, items[0])
+	respondJSON(w, http.StatusOK, updated)
+}
+
+func roleOrEmpty(v *string, fallback string) string {
+	if v != nil {
+		switch *v {
+		case string(domain.UserRoleSchool), string(domain.UserRoleEnterprise), string(domain.UserRoleOperator):
+			return *v
+		}
+	}
+	if fallback != "" {
+		return fallback
+	}
+	return string(domain.UserRoleSchool)
+}
+
+func strOrEmpty(v *string) string {
+	if v == nil {
+		return ""
+	}
+	return *v
 }
 
 func uniqueStrings(items []string) []string {
@@ -704,282 +619,4 @@ func uniqueStrings(items []string) []string {
 		out = append(out, s)
 	}
 	return out
-}
-
-func (h *UserManagementHandler) decRoleCountsForUser(ctx context.Context, userID string) {
-	_, _ = h.DB.Exec(ctx, `
-		UPDATE roles SET user_count = GREATEST(user_count - 1, 0)
-		WHERE id IN (SELECT role_id FROM user_roles WHERE user_id = $1)
-	`, userID)
-}
-
-func (h *UserManagementHandler) createSingleUser(ctx context.Context, req CreateUserRequest) (domain.User, error) {
-	tx, err := h.DB.Begin(ctx)
-	if err != nil {
-		return domain.User{}, err
-	}
-	defer tx.Rollback(ctx)
-
-	user, err := h.createSingleUserInTx(ctx, tx, req)
-	if err != nil {
-		return user, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return user, err
-	}
-	return user, nil
-}
-
-func (h *UserManagementHandler) createSingleUserInTx(ctx context.Context, tx pgx.Tx, req CreateUserRequest) (domain.User, error) {
-	id := uuid.NewString()
-
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		slog.Error("bcrypt in createSingleUserInTx failed", "error", err)
-		return domain.User{}, err
-	}
-
-	role := h.resolveRole(req.Role, domain.UserRoleSchool)
-	platform := req.Platform
-	if platform == "" {
-		platform = domain.UserPlatformSaas
-	}
-
-	rawLoginName := req.Username
-	if req.LoginName != nil && *req.LoginName != "" {
-		rawLoginName = *req.LoginName
-	}
-	globalLoginName := req.TenantID + "_" + rawLoginName
-
-	_, err = tx.Exec(ctx, `
-		INSERT INTO users (id, tenant_id, institution_id, org_node_id, major_id,
-			role, platform, login_name, username, password_hash, name, email, phone, avatar_url,
-			student_no, work_id, id_card, title_ids, oauth, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 'active')
-	`, id, req.TenantID, req.InstitutionID, req.OrgNodeID, req.MajorID,
-		role, platform, globalLoginName, rawLoginName, string(hash), req.Name, req.Email, req.Phone, req.AvatarURL,
-		req.StudentNo, req.WorkID, req.IDCard, coalesceStringSlice(req.TitleIDs), domain.JSONMap{})
-	if err != nil {
-		slog.Error("INSERT users in createSingleUserInTx failed", "error", err, "tenantId", req.TenantID, "roleId", req.RoleID, "username", req.Username)
-		return domain.User{}, err
-	}
-
-	if err := h.validateUserOrgMajor(ctx, req.TenantID, req.OrgNodeID, req.MajorID); err != nil {
-		return domain.User{}, err
-	}
-
-	if req.RoleID != nil && *req.RoleID != "" {
-		var validRole bool
-		_ = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM roles WHERE id = $1 AND tenant_id = $2)`, *req.RoleID, req.TenantID).Scan(&validRole)
-		if !validRole {
-			return domain.User{}, fmt.Errorf("invalid roleId: role not in tenant")
-		}
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO user_roles (id, user_id, role_id)
-			VALUES ($1, $2, $3)
-			ON CONFLICT (user_id, role_id) DO NOTHING
-		`, uuid.NewString(), id, *req.RoleID); err != nil {
-			return domain.User{}, err
-		}
-		_, _ = tx.Exec(ctx, `UPDATE roles SET user_count = user_count + 1 WHERE id = $1`, *req.RoleID)
-	}
-
-	return h.fetchUserInTx(ctx, tx, id)
-}
-
-// resolveRole maps the request-provided platform role enum, keeping the
-// fallback when absent. users.role 仅用于 marketplace 平台分区，与角色体系无关。
-func (h *UserManagementHandler) resolveRole(roleOverride *string, fallback domain.UserRole) domain.UserRole {
-	if roleOverride != nil {
-		switch *roleOverride {
-		case string(domain.UserRoleSchool), string(domain.UserRoleEnterprise), string(domain.UserRoleOperator):
-			return domain.UserRole(*roleOverride)
-		}
-	}
-	if fallback != "" {
-		return fallback
-	}
-	return domain.UserRoleSchool
-}
-
-// rebindUserRole replaces all role bindings of a user with the single given role.
-// 角色必须属于用户所在租户，防止跨租户角色（如运营方 platform_admin）被绑定。
-func (h *UserManagementHandler) rebindUserRole(ctx context.Context, userID, roleID string, tenantID *string) error {
-	var validRole bool
-	_ = h.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM roles WHERE id = $1 AND tenant_id = $2)`, roleID, tenantID).Scan(&validRole)
-	if !validRole {
-		return fmt.Errorf("角色 ID 无效：该角色不属于当前租户")
-	}
-	h.decRoleCountsForUser(ctx, userID)
-	if _, err := h.DB.Exec(ctx, `DELETE FROM user_roles WHERE user_id = $1`, userID); err != nil {
-		return err
-	}
-	if _, err := h.DB.Exec(ctx, `
-		INSERT INTO user_roles (id, user_id, role_id)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (user_id, role_id) DO NOTHING
-	`, uuid.NewString(), userID, roleID); err != nil {
-		return err
-	}
-	_, _ = h.DB.Exec(ctx, `UPDATE roles SET user_count = user_count + 1 WHERE id = $1`, roleID)
-	return nil
-}
-
-// attachUserRoles populates RoleIDs/RoleCodes/RoleNames for the given users.
-func (h *UserManagementHandler) attachUserRoles(ctx context.Context, items []domain.User) {
-	if len(items) == 0 {
-		return
-	}
-	ids := make([]string, 0, len(items))
-	index := make(map[string]int, len(items))
-	for i, u := range items {
-		ids = append(ids, u.ID)
-		index[u.ID] = i
-	}
-	rows, err := h.DB.Query(ctx, `
-		SELECT ur.user_id, r.id, r.code, r.name
-		FROM user_roles ur
-		JOIN roles r ON r.id = ur.role_id
-		WHERE ur.user_id = ANY($1::uuid[])
-		ORDER BY r.created_at
-	`, ids)
-	if err != nil {
-		return
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var userID, roleID, code, name string
-		if err := rows.Scan(&userID, &roleID, &code, &name); err != nil {
-			continue
-		}
-		if i, ok := index[userID]; ok {
-			items[i].RoleIDs = append(items[i].RoleIDs, roleID)
-			items[i].RoleCodes = append(items[i].RoleCodes, code)
-			items[i].RoleNames = append(items[i].RoleNames, name)
-		}
-	}
-}
-
-func (h *UserManagementHandler) fetchUser(ctx context.Context, id string) (domain.User, error) {
-	var user domain.User
-	var tenantID, institutionID, orgNodeID, majorID, loginName, phone, avatarURL, studentNo, workID, idCard *string
-	var titleIDs []string
-	var oauth domain.JSONMap
-
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, tenant_id, institution_id, org_node_id, major_id,
-			role, login_name, username, password_hash, name, email, phone, avatar_url,
-			student_no, work_id, id_card, title_ids, oauth, status, graduate_year, last_login_at, created_at, updated_at
-		FROM users WHERE id = $1
-	`, id).Scan(
-		&user.ID, &tenantID, &institutionID, &orgNodeID, &majorID,
-		&user.Role, &loginName, &user.Username, &user.PasswordHash, &user.Name, &user.Email,
-		&phone, &avatarURL, &studentNo, &workID, &idCard, &titleIDs, &oauth, &user.Status,
-		&user.GraduateYear, &user.LastLoginAt, &user.CreatedAt, &user.UpdatedAt,
-	)
-	if err != nil {
-		return user, err
-	}
-	user.TenantID = tenantID
-	user.InstitutionID = institutionID
-	user.OrgNodeID = orgNodeID
-	user.MajorID = majorID
-	user.LoginName = loginName
-	user.Phone = phone
-	user.AvatarURL = avatarURL
-	user.StudentNo = studentNo
-	user.WorkID = workID
-	user.IDCard = idCard
-	user.TitleIDs = titleIDs
-	user.Oauth = oauth
-	return user, nil
-}
-
-func (h *UserManagementHandler) fetchUserInTx(ctx context.Context, tx pgx.Tx, id string) (domain.User, error) {
-	var user domain.User
-	var tenantID, institutionID, orgNodeID, majorID, loginName, phone, avatarURL, studentNo, workID, idCard *string
-	var titleIDs []string
-	var oauth domain.JSONMap
-
-	err := tx.QueryRow(ctx, `
-		SELECT id, tenant_id, institution_id, org_node_id, major_id,
-			role, platform, login_name, username, password_hash, name, email, phone, avatar_url,
-			student_no, work_id, id_card, title_ids, oauth, status, graduate_year, last_login_at, created_at, updated_at
-		FROM users WHERE id = $1
-	`, id).Scan(
-		&user.ID, &tenantID, &institutionID, &orgNodeID, &majorID,
-		&user.Role, &user.Platform, &loginName, &user.Username, &user.PasswordHash, &user.Name, &user.Email,
-		&phone, &avatarURL, &studentNo, &workID, &idCard, &titleIDs, &oauth, &user.Status,
-		&user.GraduateYear, &user.LastLoginAt, &user.CreatedAt, &user.UpdatedAt,
-	)
-	if err != nil {
-		return user, err
-	}
-	user.TenantID = tenantID
-	user.InstitutionID = institutionID
-	user.OrgNodeID = orgNodeID
-	user.MajorID = majorID
-	user.LoginName = loginName
-	user.Phone = phone
-	user.AvatarURL = avatarURL
-	user.StudentNo = studentNo
-	user.WorkID = workID
-	user.IDCard = idCard
-	user.TitleIDs = titleIDs
-	user.Oauth = oauth
-	return user, nil
-}
-
-func (h *UserManagementHandler) scanUserRows(rows pgx.Rows) ([]domain.User, error) {
-	items := make([]domain.User, 0)
-	for rows.Next() {
-		var user domain.User
-		var tenantID, institutionID, orgNodeID, majorID, loginName, phone, avatarURL, studentNo, workID, idCard *string
-		var titleIDs []string
-		var oauth domain.JSONMap
-		if err := rows.Scan(
-			&user.ID, &tenantID, &institutionID, &orgNodeID, &majorID,
-			&user.Role, &user.Platform, &loginName, &user.Username, &user.Name, &user.Email,
-			&phone, &avatarURL, &studentNo, &workID, &idCard, &titleIDs, &oauth, &user.Status,
-			&user.GraduateYear, &user.LastLoginAt, &user.CreatedAt, &user.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		user.TenantID = tenantID
-		user.InstitutionID = institutionID
-		user.OrgNodeID = orgNodeID
-		user.MajorID = majorID
-		user.LoginName = loginName
-		user.Phone = phone
-		user.AvatarURL = avatarURL
-		user.StudentNo = studentNo
-		user.WorkID = workID
-		user.IDCard = idCard
-		user.TitleIDs = titleIDs
-		user.Oauth = oauth
-		items = append(items, user)
-	}
-	return items, nil
-}
-
-func (h *UserManagementHandler) validateUserOrgMajor(ctx context.Context, tenantID string, orgNodeID, majorID *string) error {
-	if tenantID == "" {
-		return nil
-	}
-	if orgNodeID != nil && *orgNodeID != "" {
-		var exists bool
-		err := h.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM organizations WHERE id = $1 AND tenant_id = $2)`, *orgNodeID, tenantID).Scan(&exists)
-		if err != nil || !exists {
-			return fmt.Errorf("无效机构节点ID")
-		}
-	}
-	if majorID != nil && *majorID != "" {
-		var exists bool
-		err := h.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM majors WHERE id = $1 AND tenant_id = $2)`, *majorID, tenantID).Scan(&exists)
-		if err != nil || !exists {
-			return fmt.Errorf("专业 ID 无效")
-		}
-	}
-	return nil
 }

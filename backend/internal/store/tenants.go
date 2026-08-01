@@ -1,0 +1,388 @@
+package store
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/zhiyu-saas/backend/internal/domain"
+	"golang.org/x/crypto/bcrypt"
+)
+
+// TenantStore 提供租户的持久化访问。
+type TenantStore struct {
+	q Queryer
+}
+
+// NewTenantStore 创建租户 store。
+func NewTenantStore(q Queryer) *TenantStore {
+	return &TenantStore{q: q}
+}
+
+// List 按租户范围分页查询租户（平台管理员视角）。
+func (s *TenantStore) List(ctx context.Context, p ListParams, cfg ListQueryConfig[domain.Tenant]) ([]domain.Tenant, int, error) {
+	return ExecuteListQuery(ctx, s.q, p, cfg, scanTenantRows)
+}
+
+// Get 按 ID 查询租户。
+func (s *TenantStore) Get(ctx context.Context, id string) (*domain.Tenant, error) {
+	t, err := s.fetchTenant(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+// CodeExists 检查租户标识是否已存在。
+func (s *TenantStore) CodeExists(ctx context.Context, code string) (bool, error) {
+	var exists bool
+	err := s.q.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM tenants WHERE code = $1)`, code).Scan(&exists)
+	return exists, err
+}
+
+// Update 更新租户基础信息与教育字段。
+func (s *TenantStore) Update(ctx context.Context, id string, p *TenantUpdateParams) error {
+	_, err := s.q.Exec(ctx, `
+		UPDATE tenants SET name = $1, logo_url = $2, domain = $3, enterprise_code = $4, contact = $5,
+			phone = $6, address = $7, description = $8,
+			short_name = $9, school_type = $10, province = $11, city = $12,
+			website = $13, contact_phone = $14, scale_data = $15, secondary_colleges = $16,
+			education_level = $17, education_nature = $18,
+			updated_at = NOW()
+		WHERE id = $19
+	`, p.Name, p.LogoURL, p.Domain, p.EnterpriseCode, p.Contact, p.Phone, p.Address, p.Description,
+		p.ShortName, p.SchoolType, p.Province, p.City,
+		p.Website, p.ContactPhone, p.ScaleData, p.SecondaryColleges,
+		p.EducationLevel, p.EducationNature, id)
+	return err
+}
+
+// UpdateStatus 更新租户状态。
+func (s *TenantStore) UpdateStatus(ctx context.Context, id string, status domain.TenantStatus) error {
+	_, err := s.q.Exec(ctx, `UPDATE tenants SET status = $1, updated_at = NOW() WHERE id = $2`, status, id)
+	return err
+}
+
+// TenantUpdateParams 更新租户参数。
+type TenantUpdateParams struct {
+	Name             string
+	LogoURL          *string
+	Domain           *string
+	EnterpriseCode   *string
+	Contact          *string
+	Phone            *string
+	Address          *string
+	Description      *string
+	ShortName        *string
+	SchoolType       *string
+	Province         *string
+	City             *string
+	Website          *string
+	ContactPhone     *string
+	ScaleData        json.RawMessage
+	SecondaryColleges json.RawMessage
+	EducationLevel   *string
+	EducationNature  *string
+}
+
+func (s *TenantStore) fetchTenant(ctx context.Context, id string) (*domain.Tenant, error) {
+	var t domain.Tenant
+	var logo, domainVal, enterpriseCode, contact, phone, address, description *string
+	var shortName, schoolType, province, city, website, contactPhone *string
+	var scaleData, secondaryColleges json.RawMessage
+	var edLevel, edNature *string
+
+	err := s.q.QueryRow(ctx, `
+		SELECT id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description,
+			short_name, school_type, province, city, website, contact_phone, scale_data, secondary_colleges,
+			education_level, education_nature,
+			admin_ids, status, created_at, updated_at
+		FROM tenants WHERE id = $1
+	`, id).Scan(
+		&t.ID, &t.Name, &t.Code, &logo, &domainVal, &enterpriseCode, &contact, &phone, &address, &description,
+		&shortName, &schoolType, &province, &city, &website, &contactPhone, &scaleData, &secondaryColleges,
+		&edLevel, &edNature,
+		&t.AdminIDs, &t.Status, &t.CreatedAt, &t.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	t.LogoURL = logo
+	t.Domain = domainVal
+	t.EnterpriseCode = enterpriseCode
+	t.Contact = contact
+	t.Phone = phone
+	t.Address = address
+	t.Description = description
+	t.ShortName = shortName
+	t.SchoolType = schoolType
+	t.Province = province
+	t.City = city
+	t.Website = website
+	t.ContactPhone = contactPhone
+	t.ScaleData = scaleData
+	t.SecondaryColleges = secondaryColleges
+	t.EducationLevel = edLevel
+	t.EducationNature = edNature
+	return &t, nil
+}
+
+func scanTenantRows(rows pgx.Rows) ([]domain.Tenant, error) {
+	items := make([]domain.Tenant, 0)
+	for rows.Next() {
+		var t domain.Tenant
+		var logo, domainVal, enterpriseCode, contact, phone, address, description *string
+		var shortName, schoolType, province, city, website, contactPhone *string
+		var scaleData, secondaryColleges json.RawMessage
+		var edLevel, edNature *string
+		if err := rows.Scan(
+			&t.ID, &t.Name, &t.Code, &logo, &domainVal, &enterpriseCode, &contact, &phone, &address, &description,
+			&shortName, &schoolType, &province, &city, &website, &contactPhone, &scaleData, &secondaryColleges,
+			&edLevel, &edNature,
+			&t.AdminIDs, &t.Status, &t.CreatedAt, &t.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		t.LogoURL = logo
+		t.Domain = domainVal
+		t.EnterpriseCode = enterpriseCode
+		t.Contact = contact
+		t.Phone = phone
+		t.Address = address
+		t.Description = description
+		t.ShortName = shortName
+		t.SchoolType = schoolType
+		t.Province = province
+		t.City = city
+		t.Website = website
+		t.ContactPhone = contactPhone
+		t.ScaleData = scaleData
+		t.SecondaryColleges = secondaryColleges
+		t.EducationLevel = edLevel
+		t.EducationNature = edNature
+		items = append(items, t)
+	}
+	return items, nil
+}
+
+// CreateTenantResult 新租户初始化结果。
+type CreateTenantResult struct {
+	TenantID    string
+	AdminUserID string
+	AdminUser   string // login name
+	AdminPass   string
+}
+
+// CreateWithDefaults 在事务内创建租户及默认资源（套餐/组织类型/角色/管理员）。
+func (s *TenantStore) CreateWithDefaults(ctx context.Context, tx Queryer, p *TenantCreateParams) (*CreateTenantResult, error) {
+	id := uuid.NewString()
+	adminUsername := "admin-" + p.Code
+	adminPassword, pwdErr := GenerateSecurePassword(12)
+	if pwdErr != nil {
+		return nil, pwdErr
+	}
+
+	var codeExists bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM tenants WHERE code = $1)`, p.Code).Scan(&codeExists); err != nil {
+		return nil, err
+	}
+	if codeExists {
+		return nil, ErrCodeExists
+	}
+
+	var loginNameExists bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE login_name = $1)`, adminUsername).Scan(&loginNameExists); err != nil {
+		return nil, err
+	}
+	if loginNameExists {
+		return nil, ErrLoginNameExists
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO tenants (id, name, code, logo_url, domain, enterprise_code, contact, phone, address, description, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active')
+	`, id, p.Name, p.Code, p.LogoURL, p.Domain, p.EnterpriseCode, p.Contact, p.Phone, p.Address, p.Description); err != nil {
+		return nil, err
+	}
+
+	// 默认套餐：开启全部平台模块，后续可在 /superadmin 中按租户删减
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO subscription_packages (tenant_id, name, valid_until, modules, status)
+		VALUES ($1, '默认全功能套餐', NULL, $2, 'active')
+	`, id, domain.JSONMap{
+		"system": true, "career": true, "course": true, "scene": true,
+		"ability": true, "resource": true, "alliance": true, "affairs": true,
+		"ai": true, "opc": true, "decision": true, "research": true,
+	}); err != nil {
+		return nil, err
+	}
+
+	// 默认组织类型
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO org_types (tenant_id, name, category, description, is_default)
+		VALUES
+			($1, '学校', 'internal', '学校根节点', TRUE),
+			($1, '二级学院', 'internal', '二级学院/系', TRUE),
+			($1, '专业', 'internal', '专业节点', TRUE),
+			($1, '班级', 'internal', '班级节点', TRUE),
+			($1, '行政职能部门', 'internal', '行政职能部门', TRUE)
+		ON CONFLICT DO NOTHING
+	`, id); err != nil {
+		return nil, err
+	}
+
+	// 默认角色（platform_admin 仅存在于运营方租户，不在此生成）
+	if err := s.insertDefaultRoles(ctx, tx, id); err != nil {
+		return nil, err
+	}
+
+	// 默认管理员用户 + school_admin 绑定
+	adminID := uuid.NewString()
+	hash, hashErr := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
+	if hashErr != nil {
+		return nil, hashErr
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO users (id, tenant_id, institution_id, org_node_id, major_id,
+			role, platform, login_name, username, password_hash, name, email, phone, avatar_url,
+			student_no, work_id, id_card, title_ids, oauth, status)
+		VALUES ($1, $2, NULL, NULL, NULL, 'school', 'portal', $3, $4, $5, $6, NULL, NULL, NULL, NULL, NULL, NULL, $7, '{}', 'active')
+	`, adminID, id, adminUsername, adminUsername, string(hash), p.Name+"管理员", "{}"); err != nil {
+		return nil, err
+	}
+
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO user_roles (id, user_id, role_id)
+		 SELECT $1, $2, id FROM roles WHERE tenant_id = $3 AND code = 'school_admin' LIMIT 1`,
+		uuid.NewString(), adminID, id); err != nil {
+		return nil, err
+	}
+
+	if _, err := tx.Exec(ctx,
+		`UPDATE roles SET user_count = user_count + 1
+		 WHERE tenant_id = $1 AND code = 'school_admin'`,
+		id); err != nil {
+		return nil, err
+	}
+
+	if _, err := tx.Exec(ctx,
+		`UPDATE tenants SET admin_ids = ARRAY[$1::UUID] WHERE id = $2`,
+		adminID, id); err != nil {
+		return nil, err
+	}
+
+	return &CreateTenantResult{
+		TenantID:    id,
+		AdminUserID: adminID,
+		AdminUser:   adminUsername,
+		AdminPass:   adminPassword,
+	}, nil
+}
+
+func (s *TenantStore) insertDefaultRoles(ctx context.Context, tx Queryer, tenantID string) error {
+	teacherMenus := domain.JSONMap{
+		"/job/positions": true, "/job/archive": true, "/job/approvals": true, "/job/landing": true,
+		"/lesson/admin/system": true, "/lesson/admin/granular": true, "/lesson/admin/hybrid": true,
+		"/lesson/admin/archive": true, "/lesson/teacher/claim": true,
+		"/lesson/teacher/behavior-collection": true, "/lesson/teacher/progress-tracking": true,
+		"/lesson/teacher/final-assessment": true, "/lesson/teacher/grade-submit": true,
+		"/lesson/teacher/learning-portrait": true, "/lesson/admin/approvals": true, "/lesson/landing": true,
+		"/scene/": true, "/scene/archive": true, "/scene/approvals": true, "/scene/landing": true,
+		"/evaluation/question-banks": true, "/evaluation/exams": true, "/evaluation/exam-usage": true,
+		"/evaluation/batches": true, "/evaluation/workflows": true, "/evaluation/approvals": true,
+		"/evaluation/scene-results": true, "/evaluation/job-ability": true, "/evaluation/job-ability/results": true,
+		"/evaluation/landing": true,
+	}
+	adminActions := []string{"submit_approval", "withdraw_approval", "publish", "unpublish", "delete", "review", "reject"}
+	modPerms := func(actions []string) domain.JSONMap {
+		return domain.JSONMap{"scenarios": actions}
+	}
+
+	defaultRoles := []struct {
+		code        string
+		name        string
+		permissions domain.JSONMap
+	}{
+		{"school_admin", "学校管理员", domain.JSONMap{
+			"scene":      modPerms(adminActions),
+			"lesson":     domain.JSONMap{"courses": adminActions},
+			"evaluation": domain.JSONMap{"exams": adminActions},
+			"job":        domain.JSONMap{"positions": adminActions},
+		}},
+		{"teacher", "教师", domain.JSONMap{
+			"menus":      teacherMenus,
+			"scene":      modPerms(adminActions),
+			"lesson":     domain.JSONMap{"courses": adminActions},
+			"evaluation": domain.JSONMap{"exams": adminActions},
+			"job":        domain.JSONMap{"positions": adminActions},
+		}},
+		{"student", "学生", domain.JSONMap{
+			"menus": domain.JSONMap{
+				"/job/landing": true, "/lesson/landing": true,
+				"/scene/landing": true, "/evaluation/landing": true,
+			},
+		}},
+		{"enterprise_mentor", "企业导师", domain.JSONMap{
+			"menus": domain.JSONMap{
+				"/job/positions": true, "/job/landing": true,
+				"/scene/": true, "/scene/landing": true,
+			},
+			"scene": modPerms(adminActions),
+			"job":   domain.JSONMap{"positions": adminActions},
+		}},
+	}
+	for _, role := range defaultRoles {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO roles (id, tenant_id, code, name, description, permissions, user_count, status, created_at)
+			VALUES ($1, $2, $3, $4, '', $5, 0, 'active', NOW())
+		`, uuid.NewString(), tenantID, role.code, role.name, role.permissions); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// TenantCreateParams 创建租户参数。
+type TenantCreateParams struct {
+	Name           string
+	Code           string
+	LogoURL        *string
+	Domain         *string
+	EnterpriseCode *string
+	Contact        *string
+	Phone          *string
+	Address        *string
+	Description    *string
+}
+
+// ErrCodeExists 租户标识已存在。
+var ErrCodeExists = errors.New("tenant code exists")
+
+// ErrLoginNameExists 管理员用户名已存在。
+var ErrLoginNameExists = errors.New("login name exists")
+
+func GenerateSecurePassword(length int) (string, error) {
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+// DeleteTenant 在事务内删除租户及其用户（避免 tenant_id SET NULL 后留下孤儿账户）。
+func (s *TenantStore) DeleteTenant(ctx context.Context, tx Queryer, tenantID string) error {
+	if _, err := tx.Exec(ctx, `DELETE FROM users WHERE tenant_id = $1`, tenantID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, tenantID); err != nil {
+		return err
+	}
+	return nil
+}

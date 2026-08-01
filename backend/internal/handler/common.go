@@ -375,13 +375,11 @@ var allowedUniqueCodeTables = []string{
 // request and forwards all query values via ListParams.Values so that
 // ExtraFilter callbacks can read filter parameters without touching HTTP.
 // The actual SQL assembly lives in store/query.go.
-func executeListQuery[T any](ctx context.Context, db store.ListQueryDB, r *http.Request, cfg store.ListQueryConfig[T], scanRows ...func(pgx.Rows) ([]T, error)) ([]T, int, error) {
-	searchParam := cfg.SearchParam
-	if searchParam == "" {
-		searchParam = "search"
-	}
+// listParamsFromRequest 从请求提取显式列表参数（search/limit/offset/tenant/query 值）。
+// tenantScoped 为 true 且缺少租户时返回 ok=false（调用方应响应 403）。
+func listParamsFromRequest(r *http.Request, tenantScoped bool) (store.ListParams, bool) {
 	p := store.ListParams{
-		Search: r.URL.Query().Get(searchParam),
+		Search: r.URL.Query().Get("search"),
 		Values: map[string]string{},
 	}
 	for k, vs := range r.URL.Query() {
@@ -399,10 +397,22 @@ func executeListQuery[T any](ctx context.Context, db store.ListQueryDB, r *http.
 			p.Offset = n
 		}
 	}
-	if cfg.TenantScoped {
+	if tenantScoped {
 		if tenantID, ok := tenantFilter(middleware.CurrentUser(r)); ok {
 			p.TenantID = tenantID
+		} else {
+			return p, false
 		}
+	}
+	return p, true
+}
+
+// executeListQuery 适配 store.ExecuteListQuery 到旧式调用点：内部经
+// listParamsFromRequest 提取显式参数。SQL 装配位于 store/query.go。
+func executeListQuery[T any](ctx context.Context, db store.ListQueryDB, r *http.Request, cfg store.ListQueryConfig[T], scanRows ...func(pgx.Rows) ([]T, error)) ([]T, int, error) {
+	p, ok := listParamsFromRequest(r, cfg.TenantScoped)
+	if !ok {
+		return nil, 0, store.ErrMissingTenant
 	}
 	return store.ExecuteListQuery(ctx, db, p, cfg, scanRows...)
 }
