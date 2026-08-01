@@ -9,9 +9,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 // InviteRequest 内容型实体邀请协作者的公共请求体。
@@ -28,12 +28,18 @@ type ContentReviewRequest struct {
 // contentActions 封装内容型实体（岗位/场景/课程/题库/试卷）共享的
 // 状态流转、审核、协作邀请逻辑，消除各 handler 的复制粘贴实现。
 type contentActions struct {
-	db         *pgxpool.Pool
+	db         store.Queryer
+	pool       txBeginner
 	table      string
 	entityName string
 	targetType string
 	inviteCol  string
 	fetch      func(ctx context.Context, id string) (interface{}, error)
+}
+
+// txBeginner 事务启动器（*pgxpool.Pool 与 *store.Store 均满足）。
+type txBeginner interface {
+	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
 // allowedContentTables lists the tables that may be used by contentActions.
@@ -144,7 +150,7 @@ func (c contentActions) transitionWithHook(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	tx, err := c.db.Begin(r.Context())
+	tx, err := c.pool.Begin(r.Context())
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "开启事务失败")
 		return

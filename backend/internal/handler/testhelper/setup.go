@@ -250,8 +250,8 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/job/learn-roads/{id}", learnRoadHandler.Update)
 			r.Delete("/job/learn-roads/{id}", learnRoadHandler.Delete)
 
-			scenarioHandler := &handler.ScenarioHandler{DB: pool}
-			scenarioCloneHandler := &handler.ScenarioCloneHandler{DB: pool}
+			scenarioHandler := &handler.ScenarioHandler{Service: service.NewScenarioService(svc2), DB: st2}
+			scenarioCloneHandler := &handler.ScenarioCloneHandler{Service: service.NewScenarioService(svc2)}
 			r.Get("/scene/scenarios", scenarioHandler.List)
 			r.Get("/scene/scenarios/{id}", scenarioHandler.Get)
 			r.Post("/scene/scenarios", scenarioHandler.Create)

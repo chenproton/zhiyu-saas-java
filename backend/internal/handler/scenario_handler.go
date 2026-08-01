@@ -3,20 +3,18 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ScenarioHandler struct {
-	DB *pgxpool.Pool
+	Service *service.ScenarioService
+	DB      *store.Store
 }
 
 type ScenarioListResponse struct {
@@ -127,19 +125,17 @@ func (h *ScenarioHandler) List(w http.ResponseWriter, r *http.Request) {
 				qb.AddCondition("s.career_position_id = " + qb.NextArg(careerPositionID))
 			}
 		},
-		ScanRows: h.scanScenarioRows,
 	}
-
-	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, total, err := h.Service.List(r.Context(), params, cfg)
 	if err != nil {
-		if errors.Is(err, store.ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
 		respondError(w, http.StatusInternalServerError, "查询场景方案失败")
 		return
 	}
-
 	respondJSON(w, http.StatusOK, ScenarioListResponse{Items: items, Total: total})
 }
 
@@ -150,8 +146,16 @@ func (h *ScenarioHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	_ = h.incrementScenarioView(r)
-	scenario, err := h.fetchScenario(r.Context(), id)
+	claims := middleware.CurrentUser(r)
+	var userID, tenantID any
+	if claims != nil {
+		userID = claims.UserID
+		if claims.TenantID != nil {
+			tenantID = *claims.TenantID
+		}
+	}
+	_ = h.Service.IncrementView(r.Context(), id, userID, tenantID)
+	scenario, err := h.Service.Get(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "场景方案不存在")
 		return
@@ -170,7 +174,6 @@ func (h *ScenarioHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.Name == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
@@ -178,8 +181,6 @@ func (h *ScenarioHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if req.Version == "" {
 		req.Version = "v1.0"
 	}
-
-	id := uuid.NewString()
 
 	var tenantID *string
 	if claims.TenantID != nil && *claims.TenantID != "" {
@@ -189,20 +190,28 @@ func (h *ScenarioHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
-	code, err := generateUniqueEntityCode(r.Context(), h.DB, "CJ", "scenarios", *tenantID)
+
+	code, err := store.GenerateUniqueEntityCode(r.Context(), h.DB.Q(), "CJ", "scenarios", *tenantID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "生成scenario code失败")
 		return
 	}
 
-	_, err = h.DB.Exec(r.Context(), `
-		INSERT INTO scenarios (id, name, code, cover_image, career_position_id, industry_ids,
-			profession_ids, batch_id, difficulty, version, status, background,
-			delivery_goal, creator_id, co_builder_ids, tenant_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'draft', $11, $12, $13, $14, $15)
-	`, id, req.Name, code, req.CoverImage, req.CareerPositionID, coalesceStringSlice(req.IndustryIDs),
-		coalesceStringSlice(req.ProfessionIDs), emptyStrToNil(req.BatchID), req.Difficulty, req.Version, req.Background,
-		req.DeliveryGoal, claims.UserID, coalesceStringSlice(req.CoBuilderIDs), tenantID)
+	scenario, err := h.Service.Create(r.Context(), *tenantID, &store.ScenarioCreateParams{
+		Name:             req.Name,
+		Code:             code,
+		CoverImage:       req.CoverImage,
+		CareerPositionID: req.CareerPositionID,
+		IndustryIDs:      coalesceStringSlice(req.IndustryIDs),
+		ProfessionIDs:    coalesceStringSlice(req.ProfessionIDs),
+		BatchID:          emptyStrToNil(req.BatchID),
+		Difficulty:       req.Difficulty,
+		Version:          req.Version,
+		Background:       req.Background,
+		DeliveryGoal:     req.DeliveryGoal,
+		CreatorID:        claims.UserID,
+		CoBuilderIDs:     coalesceStringSlice(req.CoBuilderIDs),
+	})
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(w, http.StatusConflict, "场景方案代码已存在，请使用其他代码")
@@ -211,8 +220,6 @@ func (h *ScenarioHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "创建场景方案失败")
 		return
 	}
-
-	scenario, _ := h.fetchScenario(r.Context(), id)
 	respondJSON(w, http.StatusCreated, scenario)
 }
 
@@ -223,7 +230,7 @@ func (h *ScenarioHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	existing, err := h.fetchScenario(r.Context(), id)
+	existing, err := h.Service.Get(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "场景方案不存在")
 		return
@@ -275,21 +282,23 @@ func (h *ScenarioHandler) Update(w http.ResponseWriter, r *http.Request) {
 	background := resolveNullable(req.Background, existing.Background)
 	deliveryGoal := resolveNullable(req.DeliveryGoal, existing.DeliveryGoal)
 
-	_, err = h.DB.Exec(r.Context(), `
-		UPDATE scenarios SET name = $1, cover_image = $2, career_position_id = $3,
-			industry_ids = $4, profession_ids = $5,
-			batch_id = $6, difficulty = $7, version = $8, background = $9, delivery_goal = $10,
-			co_builder_ids = $11, updated_at = NOW()
-		WHERE id = $12
-	`, name, coverImage, careerPositionID, industryIDs,
-		professionIDs, batchID, difficulty, version, background,
-		deliveryGoal, coBuilderIDs, id)
+	scenario, err := h.Service.Update(r.Context(), id, &store.ScenarioUpdateParams{
+		Name:             name,
+		CoverImage:       coverImage,
+		CareerPositionID: careerPositionID,
+		IndustryIDs:      industryIDs,
+		ProfessionIDs:    professionIDs,
+		BatchID:          batchID,
+		Difficulty:       difficulty,
+		Version:          version,
+		Background:       background,
+		DeliveryGoal:     deliveryGoal,
+		CoBuilderIDs:     coBuilderIDs,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "更新场景方案失败")
 		return
 	}
-
-	scenario, _ := h.fetchScenario(r.Context(), id)
 	respondJSON(w, http.StatusOK, scenario)
 }
 
@@ -300,17 +309,11 @@ func (h *ScenarioHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchScenario(r.Context(), id); err != nil {
+	if _, err := h.Service.Get(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "场景方案不存在")
 		return
 	}
-
-	h.DB.Exec(r.Context(), `UPDATE training_program_courses SET scenario_id = NULL WHERE scenario_id = $1`, id)
-	h.DB.Exec(r.Context(), `UPDATE teaching_plan_entries SET scenario_id = NULL WHERE scenario_id = $1`, id)
-	h.DB.Exec(r.Context(), `UPDATE schedule_entries SET scenario_id = NULL WHERE scenario_id = $1`, id)
-
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM scenarios WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Service.Delete(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除场景方案失败")
 		return
 	}
@@ -319,13 +322,14 @@ func (h *ScenarioHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 func (h *ScenarioHandler) actions() contentActions {
 	return contentActions{
-		db:         h.DB,
+		db:         h.DB.Q(),
+		pool:       h.DB,
 		table:      "scenarios",
 		entityName: "scenario",
 		targetType: "scenario",
 		inviteCol:  "co_builder_ids",
 		fetch: func(ctx context.Context, id string) (interface{}, error) {
-			return h.fetchScenario(ctx, id)
+			return h.Service.Get(ctx, id)
 		},
 	}
 }
@@ -360,48 +364,4 @@ func (h *ScenarioHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
 
 func (h *ScenarioHandler) Invite(w http.ResponseWriter, r *http.Request) {
 	h.actions().invite(w, r)
-}
-
-func (h *ScenarioHandler) fetchScenario(ctx context.Context, id string) (*domain.Scenario, error) {
-	var s domain.Scenario
-	err := h.DB.QueryRow(ctx, `
-		SELECT s.id, s.name, s.code, s.cover_image, s.career_position_id,
-			s.industry_ids, COALESCE((SELECT array_agg(i.name) FROM industries i WHERE i.id::text = ANY(s.industry_ids)), '{}') AS industry_names,
-			s.profession_ids, COALESCE((SELECT array_agg(m.name) FROM majors m WHERE m.id = ANY(s.profession_ids)), '{}') AS profession_names,
-			s.batch_id, s.difficulty, s.version, s.status, s.background,
-			s.delivery_goal, s.creator_id, s.co_builder_ids, s.tenant_id, s.created_at, s.updated_at, s.publish_time,
-			COALESCE(vc.cnt, 0) AS view_count
-		FROM scenarios s
-		LEFT JOIN view_counters vc ON vc.target_type = 'scenario' AND vc.target_id = s.id
-		WHERE s.id = $1
-	`, id).Scan(
-		&s.ID, &s.Name, &s.Code, &s.CoverImage, &s.CareerPositionID, &s.IndustryIDs, &s.IndustryNames,
-		&s.ProfessionIDs, &s.ProfessionNames, &s.BatchID, &s.Difficulty, &s.Version, &s.Status, &s.Background,
-		&s.DeliveryGoal, &s.CreatorID, &s.CoBuilderIDs, &s.TenantID, &s.CreatedAt, &s.UpdatedAt, &s.PublishTime, &s.ViewCount,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return &s, nil
-}
-
-func (h *ScenarioHandler) scanScenarioRows(rows pgx.Rows) ([]domain.Scenario, error) {
-	items := make([]domain.Scenario, 0)
-	for rows.Next() {
-		var s domain.Scenario
-		if err := rows.Scan(
-			&s.ID, &s.Name, &s.Code, &s.CoverImage, &s.CareerPositionID, &s.IndustryIDs, &s.IndustryNames,
-			&s.ProfessionIDs, &s.ProfessionNames, &s.BatchID, &s.Difficulty, &s.Version, &s.Status, &s.Background,
-			&s.DeliveryGoal, &s.CreatorID, &s.CoBuilderIDs, &s.TenantID, &s.CreatedAt, &s.UpdatedAt, &s.PublishTime, &s.ViewCount, &s.TaskCount,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, s)
-	}
-	return items, nil
-}
-
-func (h *ScenarioHandler) incrementScenarioView(r *http.Request) error {
-	id := chi.URLParam(r, "id")
-	return recordView(r.Context(), h.DB, "scenario", id, middleware.CurrentUser(r))
 }

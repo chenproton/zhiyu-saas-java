@@ -380,7 +380,7 @@ func executeListQuery[T any](ctx context.Context, db store.ListQueryDB, r *http.
 }
 
 // recordView inserts a view log entry for the given target.
-func recordView(ctx context.Context, db *pgxpool.Pool, targetType, targetID string, claims *middleware.Claims) error {
+func recordView(ctx context.Context, db store.Queryer, targetType, targetID string, claims *middleware.Claims) error {
 	var userID, tenantID any
 	if claims != nil {
 		userID = claims.UserID
@@ -388,17 +388,5 @@ func recordView(ctx context.Context, db *pgxpool.Pool, targetType, targetID stri
 			tenantID = *claims.TenantID
 		}
 	}
-	_, err := db.Exec(ctx, `
-		INSERT INTO view_logs (target_type, target_id, user_id, tenant_id)
-		VALUES ($1, $2, $3, $4)
-	`, targetType, targetID, userID, tenantID)
-	if err != nil {
-		return err
-	}
-	_, _ = db.Exec(ctx, `
-		INSERT INTO view_counters (target_type, target_id, cnt)
-		VALUES ($1, $2, 1)
-		ON CONFLICT (target_type, target_id) DO UPDATE SET cnt = view_counters.cnt + 1, updated_at = now()
-	`, targetType, targetID)
-	return nil
+	return store.RecordView(ctx, db, targetType, targetID, userID, tenantID)
 }

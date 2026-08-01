@@ -38,6 +38,8 @@ type Store struct {
 	positionResp    *PositionResponsibilityStore
 	positionCert    *PositionCertificateStore
 	positionClone   *PositionCloneStore
+	scenarios       *ScenarioStore
+	scenarioClone   *ScenarioCloneStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -61,6 +63,8 @@ func New(db *pgxpool.Pool) *Store {
 		positionResp:    NewPositionResponsibilityStore(db),
 		positionCert:    NewPositionCertificateStore(db),
 		positionClone:   NewPositionCloneStore(db),
+		scenarios:       NewScenarioStore(db),
+		scenarioClone:   NewScenarioCloneStore(db),
 	}
 }
 
@@ -85,6 +89,8 @@ func NewWithTx(tx pgx.Tx) *Store {
 		positionResp:    NewPositionResponsibilityStore(tx),
 		positionCert:    NewPositionCertificateStore(tx),
 		positionClone:   NewPositionCloneStore(tx),
+		scenarios:       NewScenarioStore(tx),
+		scenarioClone:   NewScenarioCloneStore(tx),
 	}
 }
 
@@ -176,6 +182,16 @@ func (s *Store) PositionCertificates() *PositionCertificateStore {
 // PositionClone 返回岗位克隆 store。
 func (s *Store) PositionClone() *PositionCloneStore {
 	return s.positionClone
+}
+
+// Scenarios 返回场景 store。
+func (s *Store) Scenarios() *ScenarioStore {
+	return s.scenarios
+}
+
+// ScenarioClone 返回场景克隆 store。
+func (s *Store) ScenarioClone() *ScenarioCloneStore {
+	return s.scenarioClone
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。
