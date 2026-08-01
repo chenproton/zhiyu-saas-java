@@ -2,22 +2,18 @@ package handler
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type ApprovalHandler struct {
-	DB *pgxpool.Pool
+	Service *service.PositionService
 }
 
 type ApprovalListResponse struct {
@@ -32,8 +28,17 @@ type CreateApprovalRequest struct {
 }
 
 type ReviewApprovalRequest struct {
-	Action string `json:"action"`
-	Remark string `json:"remark"`
+	Action string  `json:"action"`
+	Remark *string `json:"remark"`
+}
+
+var entityTableMap = map[string]string{
+	"career_position":  "career_positions",
+	"scenario":         "scenarios",
+	"course":           "courses",
+	"question_bank":    "question_banks",
+	"exam":             "exams",
+	"training_program": "training_programs",
 }
 
 func (h *ApprovalHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -41,35 +46,38 @@ func (h *ApprovalHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
+	status := r.URL.Query().Get("status")
+	submitterID := r.URL.Query().Get("submitterId")
+	targetType := r.URL.Query().Get("targetType")
 
-	items, total, err := executeListQuery[domain.ApprovalRecord](r.Context(), h.DB, r, store.ListQueryConfig[domain.ApprovalRecord]{
+	cfg := store.ListQueryConfig[domain.ApprovalRecord]{
 		Table:         "approval_records",
 		SelectColumns: "id, tenant_id, target_type, target_id, workflow_id, current_step_idx, status, submitter_id, history, created_at, updated_at",
 		TenantScoped:  true,
+		OrderBy:       "created_at DESC",
+		ScanRows:      store.ScanApprovalRows,
 		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
-			if targetType := p.Values["targetType"]; targetType != "" {
-				qb.AddCondition("target_type = " + qb.NextArg(targetType))
-			}
-			if targetID := p.Values["targetId"]; targetID != "" {
-				qb.AddCondition("target_id = " + qb.NextArg(targetID))
-			}
-			if status := p.Values["status"]; status != "" {
+			if status != "" {
 				qb.AddCondition("status = " + qb.NextArg(status))
 			}
-			if submitterID := p.Values["submitterId"]; submitterID != "" {
+			if targetType != "" {
+				qb.AddCondition("target_type = " + qb.NextArg(targetType))
+			}
+			if submitterID != "" {
 				qb.AddCondition("submitter_id = " + qb.NextArg(submitterID))
 			}
 		},
-	}, h.scanApprovalRows)
+	}
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, total, err := h.Service.ListApprovals(r.Context(), params, cfg)
 	if err != nil {
-		if errors.Is(err, store.ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
 		respondError(w, http.StatusInternalServerError, "查询审批记录失败")
 		return
 	}
-
 	respondJSON(w, http.StatusOK, ApprovalListResponse{Items: items, Total: total})
 }
 
@@ -78,9 +86,8 @@ func (h *ApprovalHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	id := chi.URLParam(r, "id")
-	record, err := h.fetchApproval(r.Context(), id)
+	record, err := h.Service.GetApproval(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "审批记录不存在")
 		return
@@ -97,32 +104,22 @@ func (h *ApprovalHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	var req CreateApprovalRequest
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.TargetType == "" || req.TargetID == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-
-	id := uuid.NewString()
-	status := string(domain.ApprovalStatusPending)
-	history := domain.JSONSlice{}
-
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO approval_records (id, tenant_id, target_type, target_id, workflow_id,
-			current_step_idx, status, submitter_id, history)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-	`, id, user.TenantID, req.TargetType, req.TargetID, req.WorkflowID, 0, status, user.UserID, history)
+	record, err := h.Service.CreateApproval(r.Context(), user.TenantID, &store.ApprovalCreateParams{
+		TargetType: req.TargetType, TargetID: req.TargetID, WorkflowID: req.WorkflowID,
+		Status: string(domain.ApprovalStatusPending), SubmitterID: user.UserID, History: domain.JSONSlice{},
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "创建审批记录失败")
 		return
 	}
-
-	record, _ := h.fetchApproval(r.Context(), id)
 	respondJSON(w, http.StatusCreated, record)
 }
 
@@ -132,14 +129,12 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	id := chi.URLParam(r, "id")
-	record, err := h.fetchApproval(r.Context(), id)
+	record, err := h.Service.GetApproval(r.Context(), id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "审批记录不存在")
 		return
 	}
-
 	if record.TenantID == nil {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
@@ -147,23 +142,19 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 	if !verifyTenantOwnership(w, r, *record.TenantID) {
 		return
 	}
-
 	if record.Status != string(domain.ApprovalStatusPending) {
 		respondError(w, http.StatusBadRequest, "审批记录不在待处理状态")
 		return
 	}
-
 	var req ReviewApprovalRequest
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.Action != string(domain.ApprovalStatusApproved) && req.Action != string(domain.ApprovalStatusRejected) {
 		respondError(w, http.StatusBadRequest, "无效操作")
 		return
 	}
-
-	if !h.isUserApproverForStep(r.Context(), &record, user.UserID) {
+	if !h.isUserApproverForStep(r.Context(), record, user.UserID) {
 		respondError(w, http.StatusForbidden, "无权评审此步骤")
 		return
 	}
@@ -180,67 +171,38 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 
 	if req.Action == string(domain.ApprovalStatusRejected) {
 		record.Status = string(domain.ApprovalStatusRejected)
-
-		tx, err := h.DB.Begin(r.Context())
+		err := h.Service.ReviewApproval(r.Context(), id, req.Action, record.Status, record.CurrentStepIdx,
+			record.History, record.TargetType, record.TargetID, record.TenantID, true)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "开启事务失败")
-			return
-		}
-		defer tx.Rollback(r.Context())
-
-		tag, err := tx.Exec(r.Context(), `
-			UPDATE approval_records SET status = $1, history = $2, updated_at = NOW()
-			WHERE id = $3 AND status = $4
-		`, record.Status, record.History, id, string(domain.ApprovalStatusPending))
-		if err != nil {
+			if err == store.ErrNotFound {
+				respondError(w, http.StatusBadRequest, "审批记录不在待处理状态")
+				return
+			}
 			respondError(w, http.StatusInternalServerError, "评审审批记录失败")
 			return
 		}
-		if tag.RowsAffected() == 0 {
-			respondError(w, http.StatusBadRequest, "审批记录不在待处理状态")
-			return
-		}
-
-		if tableName, ok := entityTableMap[record.TargetType]; ok {
-			if _, err := tx.Exec(r.Context(),
-				fmt.Sprintf("UPDATE %s SET status = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3", tableName),
-				string(domain.ApprovalStatusRejected), record.TargetID, *record.TenantID,
-			); err != nil {
-				respondError(w, http.StatusInternalServerError, "同步实体状态失败")
-				return
-			}
-		}
-
-		if err := tx.Commit(r.Context()); err != nil {
-			respondError(w, http.StatusInternalServerError, "提交事务失败")
-			return
-		}
-
-		record, _ = h.fetchApproval(r.Context(), id)
+		record, _ = h.Service.GetApproval(r.Context(), id)
 		respondJSON(w, http.StatusOK, record)
 		return
 	}
 
 	var workflow *domain.Workflow
 	if record.WorkflowID != nil {
-		wf, wfErr := h.fetchWorkflow(r.Context(), *record.WorkflowID)
+		wf, wfErr := h.Service.GetWorkflow(r.Context(), *record.WorkflowID)
 		if wfErr == nil {
-			workflow = &wf
+			workflow = wf
 		}
 	}
 
 	stepIdx := record.CurrentStepIdx
-	stepComplete := h.isStepComplete(workflow, &record, stepIdx)
+	stepComplete := h.isStepComplete(workflow, record, stepIdx)
 	if !stepComplete {
-		_, err = h.DB.Exec(r.Context(), `
-			UPDATE approval_records SET history = $1, updated_at = NOW()
-			WHERE id = $2 AND status = $3
-		`, record.History, id, string(domain.ApprovalStatusPending))
-		if err != nil {
+		ok, err := h.Service.UpdateApprovalHistory(r.Context(), id, record.History)
+		if err != nil || !ok {
 			respondError(w, http.StatusInternalServerError, "更新审批记录失败")
 			return
 		}
-		record, _ = h.fetchApproval(r.Context(), id)
+		record, _ = h.Service.GetApproval(r.Context(), id)
 		respondJSON(w, http.StatusOK, record)
 		return
 	}
@@ -250,45 +212,19 @@ func (h *ApprovalHandler) Review(w http.ResponseWriter, r *http.Request) {
 		newStatus = string(domain.ApprovalStatusApproved)
 	}
 	newStepIdx := stepIdx + 1
+	syncStatus := newStatus == string(domain.ApprovalStatusApproved)
 
-	tx, err := h.DB.Begin(r.Context())
+	err = h.Service.ReviewApproval(r.Context(), id, req.Action, newStatus, newStepIdx,
+		record.History, record.TargetType, record.TargetID, record.TenantID, syncStatus)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "开启事务失败")
-		return
-	}
-	defer tx.Rollback(r.Context())
-
-	tag, err := tx.Exec(r.Context(), `
-		UPDATE approval_records SET status = $1, current_step_idx = $2, history = $3, updated_at = NOW()
-		WHERE id = $4 AND status = $5
-	`, newStatus, newStepIdx, record.History, id, string(domain.ApprovalStatusPending))
-	if err != nil {
+		if err == store.ErrNotFound {
+			respondError(w, http.StatusBadRequest, "审批记录不在待处理状态")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "评审审批记录失败")
 		return
 	}
-	if tag.RowsAffected() == 0 {
-		respondError(w, http.StatusBadRequest, "审批记录不在待处理状态")
-		return
-	}
-
-	if newStatus == string(domain.ApprovalStatusApproved) {
-		if tableName, ok := entityTableMap[record.TargetType]; ok {
-			if _, err := tx.Exec(r.Context(),
-				fmt.Sprintf("UPDATE %s SET status = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3", tableName),
-				string(domain.ApprovalStatusApproved), record.TargetID, *record.TenantID,
-			); err != nil {
-				respondError(w, http.StatusInternalServerError, "同步实体状态失败")
-				return
-			}
-		}
-	}
-
-	if err := tx.Commit(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, "提交事务失败")
-		return
-	}
-
-	record, _ = h.fetchApproval(r.Context(), id)
+	record, _ = h.Service.GetApproval(r.Context(), id)
 	respondJSON(w, http.StatusOK, record)
 }
 
@@ -296,7 +232,7 @@ func (h *ApprovalHandler) isUserApproverForStep(ctx context.Context, record *dom
 	if record.WorkflowID == nil {
 		return true
 	}
-	wf, err := h.fetchWorkflow(ctx, *record.WorkflowID)
+	wf, err := h.Service.GetWorkflow(ctx, *record.WorkflowID)
 	if err != nil || len(wf.Steps) == 0 || record.CurrentStepIdx >= len(wf.Steps) {
 		return true
 	}
@@ -328,7 +264,6 @@ func (h *ApprovalHandler) isStepComplete(workflow *domain.Workflow, record *doma
 	if mode == "any" {
 		return true
 	}
-
 	approverIdsRaw, _ := stepMap["approverIds"].([]interface{})
 	approvedSet := make(map[string]bool)
 	for _, hEntry := range record.History {
@@ -361,78 +296,4 @@ func (h *ApprovalHandler) isLastStep(workflow *domain.Workflow, stepIdx int) boo
 		return true
 	}
 	return stepIdx >= len(workflow.Steps)-1
-}
-
-func (h *ApprovalHandler) fetchWorkflow(ctx context.Context, id string) (domain.Workflow, error) {
-	var w domain.Workflow
-	var tenantID, scene, description *string
-	var steps domain.JSONSlice
-	var majorIds domain.StringSlice
-
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, tenant_id, name, scene, description, steps, major_ids, usage_count, status, created_at
-		FROM workflows WHERE id = $1
-	`, id).Scan(
-		&w.ID, &tenantID, &w.Name, &scene, &description, &steps, &majorIds, &w.UsageCount, &w.Status, &w.CreatedAt,
-	)
-	if err != nil {
-		return w, err
-	}
-	w.TenantID = tenantID
-	w.Scene = scene
-	w.Description = description
-	w.Steps = steps
-	w.MajorIds = majorIds
-	return w, nil
-}
-
-var entityTableMap = map[string]string{
-	"career_position":  "career_positions",
-	"scenario":         "scenarios",
-	"course":           "courses",
-	"question_bank":    "question_banks",
-	"exam":             "exams",
-	"training_program": "training_programs",
-}
-
-func (h *ApprovalHandler) fetchApproval(ctx context.Context, id string) (domain.ApprovalRecord, error) {
-	var ar domain.ApprovalRecord
-	var tenantID, workflowID *string
-	var history domain.JSONSlice
-
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, tenant_id, target_type, target_id, workflow_id, current_step_idx, status,
-			submitter_id, history, created_at, updated_at
-		FROM approval_records WHERE id = $1
-	`, id).Scan(
-		&ar.ID, &tenantID, &ar.TargetType, &ar.TargetID, &workflowID, &ar.CurrentStepIdx,
-		&ar.Status, &ar.SubmitterID, &history, &ar.CreatedAt, &ar.UpdatedAt,
-	)
-	if err != nil {
-		return ar, err
-	}
-	ar.TenantID = tenantID
-	ar.WorkflowID = workflowID
-	ar.History = history
-	return ar, nil
-}
-
-func (h *ApprovalHandler) scanApprovalRows(rows pgx.Rows) ([]domain.ApprovalRecord, error) {
-	items := make([]domain.ApprovalRecord, 0)
-	for rows.Next() {
-		var ar domain.ApprovalRecord
-		var tenantID, workflowID *string
-		var history domain.JSONSlice
-		if err := rows.Scan(
-			&ar.ID, &tenantID, &ar.TargetType, &ar.TargetID, &workflowID, &ar.CurrentStepIdx,
-			&ar.Status, &ar.SubmitterID, &history, &ar.CreatedAt, &ar.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		ar.TenantID = tenantID
-		ar.WorkflowID = workflowID
-		ar.History = history
-		items = append(items, ar)
-	}
-	return items, nil
 }

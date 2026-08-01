@@ -76,6 +76,7 @@ type Store struct {
 	hybridModules   *HybridModuleStore
 	lessonBehaviors *LessonBehaviorStore
 	landing         *LandingStore
+	approvals       *ApprovalStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -137,6 +138,7 @@ func New(db *pgxpool.Pool) *Store {
 		hybridModules:   NewHybridModuleStore(db),
 		lessonBehaviors: NewLessonBehaviorStore(db),
 		landing:         NewLandingStore(db),
+		approvals:       NewApprovalStore(db),
 	}
 }
 
@@ -199,6 +201,7 @@ func NewWithTx(tx pgx.Tx) *Store {
 		hybridModules:   NewHybridModuleStore(tx),
 		lessonBehaviors: NewLessonBehaviorStore(tx),
 		landing:         NewLandingStore(tx),
+		approvals:       NewApprovalStore(tx),
 	}
 }
 
@@ -480,6 +483,11 @@ func (s *Store) LessonBehaviors() *LessonBehaviorStore {
 // Landing 返回落地页 store。
 func (s *Store) Landing() *LandingStore {
 	return s.landing
+}
+
+// Approvals 返回审批 store。
+func (s *Store) Approvals() *ApprovalStore {
+	return s.approvals
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。
