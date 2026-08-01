@@ -197,20 +197,6 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Get("/subscriptions", subscriptionHandler.Get)
 			r.Put("/subscriptions/{id}", subscriptionHandler.Update)
 
-			platformLinkHandler := &handler.PlatformLinkHandler{DB: pool, Store: store.NewPlatformLinksStore(pool)}
-			r.Get("/platform-links", platformLinkHandler.List)
-			r.Get("/platform-links/{id}", platformLinkHandler.Get)
-			r.Post("/platform-links", platformLinkHandler.Create)
-			r.Put("/platform-links/{id}", platformLinkHandler.Update)
-			r.Delete("/platform-links/{id}", platformLinkHandler.Delete)
-
-			appModuleHandler := &handler.AppModuleHandler{DB: pool}
-			r.Get("/app-modules", appModuleHandler.List)
-			r.Get("/app-modules/{id}", appModuleHandler.Get)
-			r.Post("/app-modules", appModuleHandler.Create)
-			r.Put("/app-modules/{id}", appModuleHandler.Update)
-			r.Delete("/app-modules/{id}", appModuleHandler.Delete)
-
 			positionHandler := &handler.PositionHandler{DB: pool}
 			positionCloneHandler := &handler.PositionCloneHandler{DB: pool}
 			r.Get("/job/positions", positionHandler.List)

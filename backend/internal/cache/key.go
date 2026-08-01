@@ -6,11 +6,6 @@ import (
 	authmw "github.com/zhiyu-saas/backend/internal/middleware"
 )
 
-const (
-	KeyPlatformLinks = "zhiyu:public:platform-links"
-	KeyAppModules    = "zhiyu:public:app-modules"
-)
-
 func tenantFromRequest(r *http.Request) string {
 	claims := authmw.CurrentUser(r)
 	if claims != nil && claims.TenantID != nil {

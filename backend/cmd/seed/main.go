@@ -118,63 +118,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	appModules := []struct {
-		ID          uuid.UUID
-		Platform    string
-		Title       string
-		Description string
-		Href        string
-		SortOrder   int
-	}{
-		{uuid.New(), "course", "课程教学", "数字课程与混合式教学", "/lesson/landing", 1},
-		{uuid.New(), "scene", "场景实训", "产业场景与任务实战", "/scene/landing", 2},
-		{uuid.New(), "evaluation", "能力评价", "考核测评与能力认定", "/evaluation/landing", 3},
-		{uuid.New(), "career", "产业岗位", "产业岗位与学习路径", "/job/landing", 4},
-		{uuid.New(), "resource", "知识资源", "知识资源与素材库", "/library/landing", 5},
-	}
-	for _, m := range appModules {
-		_, err = tx.Exec(ctx, `
-			INSERT INTO app_modules (id, platform, title, description, href, sort_order, tenant_id)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
-			ON CONFLICT DO NOTHING
-		`, m.ID, m.Platform, m.Title, m.Description, m.Href, m.SortOrder, nil)
-		if err != nil {
-			fmt.Println("insert app_module error:", err)
-			os.Exit(1)
-		}
-	}
-
-	platformLinks := []struct {
-		ID       uuid.UUID
-		Platform string
-		URL      string
-		Enabled  bool
-	}{
-		{uuid.New(), "course", "/lesson/landing", true},
-		{uuid.New(), "scene", "/scene/landing", true},
-		{uuid.New(), "evaluation", "/evaluation/landing", true},
-		{uuid.New(), "career", "/job/landing", true},
-		{uuid.New(), "resource", "/library/landing", true},
-		{uuid.New(), "alliance", "/portal", true},
-		{uuid.New(), "mall", "/", true},
-		{uuid.New(), "affairs", "/portal", false},
-		{uuid.New(), "ai", "/portal", false},
-		{uuid.New(), "opc", "/portal", false},
-		{uuid.New(), "research", "/portal", false},
-		{uuid.New(), "decision", "/portal", false},
-	}
-	for _, l := range platformLinks {
-		_, err = tx.Exec(ctx, `
-			INSERT INTO platform_links (id, platform, url, enabled, tenant_id)
-			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT DO NOTHING
-		`, l.ID, l.Platform, l.URL, l.Enabled, nil)
-		if err != nil {
-			fmt.Println("insert platform_link error:", err)
-			os.Exit(1)
-		}
-	}
-
 	if err := tx.Commit(ctx); err != nil {
 		fmt.Println("commit error:", err)
 		os.Exit(1)

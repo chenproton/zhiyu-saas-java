@@ -27,14 +27,6 @@ func RegisterPublicRoutes(r chi.Router, h *Handlers, redisClient *redis.Client) 
 	r.With(loginLimiter).Post("/auth/saas/login", h.authHandler.SaasLogin)
 	r.With(loginLimiter).Post("/auth/portal/login", h.authHandler.PortalLogin)
 	r.Post("/auth/select-tenant", h.authHandler.SelectTenant)
-	r.Group(func(r chi.Router) {
-		r.Use(cache.Cached(redisClient, 10*time.Minute, cache.StaticKey(cache.KeyPlatformLinks)))
-		r.Get("/platform-links", h.platformLinkHandler.List)
-	})
-	r.Group(func(r chi.Router) {
-		r.Use(cache.Cached(redisClient, 10*time.Minute, cache.StaticKey(cache.KeyAppModules)))
-		r.Get("/app-modules", h.appModuleHandler.List)
-	})
 }
 
 func RegisterAuthenticatedRoutes(r chi.Router, jwtSecret string, db *pgxpool.Pool, h *Handlers, redisClient *redis.Client, oplogBuffer *authmw.OpLogBuffer) {
@@ -459,9 +451,6 @@ func registerPortalRoutes(r chi.Router, h *Handlers) {
 
 	r.Get("/logs/login", h.logHandler.LoginLogs)
 	r.Get("/logs/operation", h.logHandler.OperationLogs)
-
-	r.Get("/platform-links/{id}", h.platformLinkHandler.Get)
-	r.Get("/app-modules/{id}", h.appModuleHandler.Get)
 
 	registerAllianceRoutes(r, h)
 }

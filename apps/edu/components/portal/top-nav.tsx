@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Briefcase, LayoutGrid, ChevronDown, User, Settings, LogOut, LogIn, Link2, Check, UserCog } from "lucide-react"
+import { Home, Briefcase, LayoutGrid, ChevronDown, User, Settings, LogOut, LogIn, Check, UserCog } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -147,12 +147,6 @@ export function TopNav() {
                 <DropdownMenuItem>
                   <Settings className="w-4 h-4 mr-2" />
                   账号设置
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/portal/config/links" className="cursor-pointer">
-                    <Link2 className="w-4 h-4 mr-2" />
-                    平台地址配置
-                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive" onClick={handleLogout}>

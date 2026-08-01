@@ -1,10 +1,8 @@
 export { Toaster } from "./components/ui/toaster"
 export { useIsMobile } from "./hooks/use-mobile"
 export { useToast, toast, reducer } from "./hooks/use-toast"
-export { usePlatformLinks, savePlatformLinks, useAppModules, saveAppModules } from "./hooks/use-platform-links"
 export { useImportFlow } from "./hooks/use-import-flow"
 export type { UseImportFlowOptions } from "./hooks/use-import-flow"
-export type { PlatformLink, PlatformLinksData, AppModule, AppModulePlatform, AppModulesData } from "./hooks/use-platform-links"
 export { cn } from "./lib/utils"
 
 export { ConfirmDialog } from "./components/shared/confirm-dialog"

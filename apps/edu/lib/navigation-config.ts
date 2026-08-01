@@ -648,6 +648,34 @@ export const platformModuleDefs: Record<string, PlatformModuleDef> = {
     href: firstHrefFromNavConfig(allianceNavigationConfig),
     subModules: subModulesFromNavConfig(allianceNavigationConfig),
   },
+  ai: {
+    id: "ai",
+    label: "AI 智能服务平台",
+    icon: "sparkles",
+    href: "#",
+    subModules: [],
+  },
+  opc: {
+    id: "opc",
+    label: "OPC专区",
+    icon: "rocket",
+    href: "#",
+    subModules: [],
+  },
+  decision: {
+    id: "decision",
+    label: "敏捷决策中心",
+    icon: "barChart",
+    href: "#",
+    subModules: [],
+  },
+  research: {
+    id: "research",
+    label: "教科研服务中心",
+    icon: "graduationCap",
+    href: "#",
+    subModules: [],
+  },
 }
 
 const PLATFORM_CARD_DESCRIPTIONS: Record<string, string> = {

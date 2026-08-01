@@ -12,8 +12,6 @@ import type {
   Industry,
   ResourceCode,
   SubscriptionPackage,
-  AppModule,
-  PlatformLink,
   Workflow,
   ApprovalRecord,
 } from "./types/backend"

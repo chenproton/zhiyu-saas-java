@@ -7,8 +7,6 @@ import type {
   Industry,
   ResourceCode,
   SubscriptionPackage,
-  AppModule,
-  PlatformLink,
   Workflow,
   ApprovalRecord,
   LoginLog,
@@ -69,19 +67,4 @@ export const approvalApi = {
       method: "POST",
       body: JSON.stringify({ action: req.status, remark: req.comment, nextStepIdx: req.stepIdx }),
     }),
-}
-
-export const platformLinkApi = {
-  list: () => request<ListResponse<PlatformLink>>("/platform-links"),
-  get: (id: string) => request<PlatformLink>(`/platform-links/${id}`),
-  create: (req: Omit<PlatformLink, "id">) =>
-    request<PlatformLink>("/platform-links", { method: "POST", body: JSON.stringify(req) }),
-  update: (id: string, req: Partial<Omit<PlatformLink, "id">>) =>
-    request<PlatformLink>(`/platform-links/${id}`, { method: "PUT", body: JSON.stringify(req) }),
-  delete: (id: string) => request<{ id: string }>(`/platform-links/${id}`, { method: "DELETE" }),
-}
-
-export const appModuleApi = {
-  list: (params?: { platform?: string }) =>
-    request<ListResponse<AppModule>>(`/app-modules${buildQuery(params || {})}`),
 }

@@ -2,7 +2,6 @@
 
 import type { ReactNode } from "react"
 import Link from "next/link"
-import { usePlatformLinks } from "@zhiyu/ui"
 import { Footer } from "@/components/portal/footer"
 
 const features = [
@@ -274,27 +273,15 @@ const INTERNAL_ROUTES: Record<string, string> = {
   alliance: "/portal/apps/alliance/enterprises",
 }
 
-function resolveTileUrl(id: string, configuredUrl: string): string {
-  const route = INTERNAL_ROUTES[id]
-  if (route) {
-    return route
-  }
-  return configuredUrl
-}
-
 /* ─── Components ─── */
 
 function GradientTile({
   item,
-  url,
-  enabled,
   variant,
   gridColumn,
   gridRow,
 }: {
   item: NonNullable<ReturnType<typeof findByLabel>>
-  url: string
-  enabled: boolean
   variant: CardVariant
   gridColumn: string
   gridRow: string
@@ -302,15 +289,14 @@ function GradientTile({
   const style = CARD_STYLES[item.id]
   const isBig = variant === "big"
   const isTall = variant === "tall"
-  const landingIds = ["career", "scene", "ability", "course", "resource", "affairs", "alliance"]
-  const isLocked = !landingIds.includes(item.id)
-  const effectiveUrl = resolveTileUrl(item.id, url)
+  const effectiveUrl = INTERNAL_ROUTES[item.id] || ""
+  const isLocked = !effectiveUrl
   const isRelative = effectiveUrl.startsWith("/")
   const isExternal = /^https?:\/\//i.test(effectiveUrl)
 
   let Wrapper: React.ElementType = "div"
   const wrapperProps: { href?: string; target?: string; rel?: string } = {}
-  if (!isLocked && effectiveUrl && enabled) {
+  if (effectiveUrl) {
     if (isRelative) {
       Wrapper = Link
       wrapperProps.href = effectiveUrl
@@ -389,8 +375,6 @@ function SectionLabel({ title, tag }: { title: string; tag: string }) {
 
 /* ─── Page ─── */
 export default function PortalHomePage() {
-  const { getUrl, isEnabled } = usePlatformLinks()
-
   const items = getFlatItems()
 
   return (
@@ -461,8 +445,6 @@ export default function PortalHomePage() {
               <GradientTile
                 key={layout.id}
                 item={item}
-                url={getUrl(layout.id)}
-                enabled={isEnabled(layout.id)}
                 variant={layout.variant}
                 gridColumn={layout.col}
                 gridRow={layout.row}
@@ -483,8 +465,6 @@ export default function PortalHomePage() {
               <GradientTile
                 key={layout.id}
                 item={item}
-                url={getUrl(layout.id)}
-                enabled={isEnabled(layout.id)}
                 variant={layout.variant}
                 gridColumn={layout.col}
                 gridRow={layout.row}

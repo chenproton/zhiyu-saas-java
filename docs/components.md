@@ -96,8 +96,6 @@
 |------|------|
 | `useToast` | Toast 通知（`toast`, `dismiss`, `toasts`），配合 `<Toaster>` 使用 |
 | `useIsMobile` | 响应式断点，viewport < 768px 时返回 `true` |
-| `usePlatformLinks` | 平台链接配置（`data`, `loading`, `getUrl`, `isEnabled`, `refresh`） |
-| `useAppModules` | 应用模块配置（`data`, `loading`, `getModules`, `refresh`） |
 
 ## DataProvider（评测数据上下文）
 

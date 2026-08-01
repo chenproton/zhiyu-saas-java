@@ -44,8 +44,6 @@ type Handlers struct {
 	resourceCodeHandler           *handler.ResourceCodeHandler
 	logHandler                    *handler.LogHandler
 	subscriptionHandler           *handler.SubscriptionHandler
-	platformLinkHandler           *handler.PlatformLinkHandler
-	appModuleHandler              *handler.AppModuleHandler
 	staffTitleHandler             *handler.StaffTitleHandler
 	userExtensionFieldHandler     *handler.UserExtensionFieldHandler
 	userRelationHandler           *handler.UserRelationHandler
@@ -153,8 +151,6 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		resourceCodeHandler:           &handler.ResourceCodeHandler{DB: db},
 		logHandler:                    &handler.LogHandler{DB: db},
 		subscriptionHandler:           &handler.SubscriptionHandler{DB: db},
-		platformLinkHandler:           &handler.PlatformLinkHandler{DB: db, Store: store.NewPlatformLinksStore(db), RedisClient: redisClient},
-		appModuleHandler:              &handler.AppModuleHandler{DB: db, RedisClient: redisClient},
 		staffTitleHandler:             &handler.StaffTitleHandler{DB: db, Store: store.NewStaffTitlesStore(db)},
 		userExtensionFieldHandler:     &handler.UserExtensionFieldHandler{DB: db},
 		userRelationHandler:           &handler.UserRelationHandler{DB: db},

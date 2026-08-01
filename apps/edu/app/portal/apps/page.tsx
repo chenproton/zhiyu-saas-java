@@ -20,7 +20,6 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { useAppModules } from "@zhiyu/ui"
 import { usePortalAuth } from "@/contexts/portal-auth-context"
 import { getPlatformCardModules } from "@/lib/navigation-config"
 
@@ -130,7 +129,6 @@ export default function AppsPage() {
   const [activeMenu, setActiveMenu] = useState(menuItems[0].id)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const contentRef = useRef<HTMLDivElement>(null)
-  const { data: modulesData, loading: modulesLoading } = useAppModules()
   const subscriptionLoading = subscriptionModules === null
 
   const visibleQuickAccess = quickAccess.filter((item) => hasMenuPermission(item.href))
@@ -139,26 +137,7 @@ export default function AppsPage() {
     return menuItems
       .filter((item) => subscriptionModules?.[item.id] === true)
       .map((item) => {
-        const configured = modulesData.platforms.find((p) => p.id === item.id)
-        let modules: ModuleItem[]
-
-        if (getPlatformCardModules(item.id).length > 0) {
-          // 已在统一平台模块定义中，按一级菜单聚合展示
-          modules = getPlatformCardModules(item.id).filter((m) => hasMenuPermission(m.href))
-        } else if (configured?.modules.length) {
-          // 未在定义中的平台，使用后台配置的模块数据
-          modules = configured.modules
-            .filter((m) => m.href && m.href !== "#" && hasMenuPermission(m.href))
-            .map((m) => ({
-              id: m.id,
-              title: m.title,
-              desc: (m as any).description || m.desc,
-              href: m.href || "#",
-            }))
-        } else {
-          modules = []
-        }
-
+        const modules = getPlatformCardModules(item.id).filter((m) => hasMenuPermission(m.href))
         return {
           id: item.id,
           label: item.label,
@@ -168,7 +147,7 @@ export default function AppsPage() {
         }
       })
       .filter((section) => section.modules.length > 0)
-  }, [modulesData.platforms, hasMenuPermission, subscriptionModules])
+  }, [hasMenuPermission, subscriptionModules])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -283,7 +262,7 @@ export default function AppsPage() {
 
           {/* Main Content */}
           <main ref={contentRef} className="flex-1 px-4 pb-4 pt-4 overflow-y-auto max-h-[calc(100vh-3.5rem-40px)] relative">
-            {modulesLoading || subscriptionLoading ? (
+            {subscriptionLoading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="text-sm text-muted-foreground">加载中...</div>
               </div>

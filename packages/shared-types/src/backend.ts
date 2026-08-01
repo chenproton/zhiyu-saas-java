@@ -173,22 +173,6 @@ export interface SubscriptionPackage {
   updatedAt: string
 }
 
-export interface AppModule {
-  id: string
-  platform: string
-  title: string
-  description?: string
-  href?: string
-  sortOrder: number
-}
-
-export interface PlatformLink {
-  id: string
-  platform: string
-  url: string
-  enabled: boolean
-}
-
 export interface WorkflowStep {
   name: string
   order: number

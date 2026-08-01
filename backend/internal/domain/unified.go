@@ -262,22 +262,6 @@ type OperationLog struct {
 	CreatedAt  time.Time `json:"createdAt"`
 }
 
-type AppModule struct {
-	ID          string `json:"id"`
-	Platform    string `json:"platform"`
-	Title       string `json:"title"`
-	Description string `json:"description,omitempty"`
-	Href        string `json:"href,omitempty"`
-	SortOrder   int    `json:"sortOrder"`
-}
-
-type PlatformLink struct {
-	ID       string `json:"id"`
-	Platform string `json:"platform"`
-	URL      string `json:"url"`
-	Enabled  bool   `json:"enabled"`
-}
-
 type Workflow struct {
 	ID          string         `json:"id"`
 	TenantID    *string        `json:"tenantId,omitempty"`

@@ -25,8 +25,6 @@ var moduleNames = map[string]string{
 	"industries":            "行业管理",
 	"resource-codes":        "资源代码",
 	"subscriptions":         "订阅管理",
-	"platform-links":        "平台链接",
-	"app-modules":           "应用模块",
 	"workflows":             "工作流",
 	"approvals":             "审批管理",
 	"job":                   "岗位管理",
