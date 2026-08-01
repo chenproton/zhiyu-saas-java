@@ -20,20 +20,20 @@ type TaskEvaluationMethodListResponse struct {
 }
 
 type SaveTaskEvaluationMethodsRequest struct {
-	Version int                       `json:"version"`
+	Version int                         `json:"version"`
 	Methods []TaskEvaluationMethodInput `json:"methods"`
 }
 
 type TaskEvaluationMethodInput struct {
-	MethodKey        string          `json:"methodKey"`
-	Weight           float64         `json:"weight"`
-	EvalObject       string          `json:"evalObject"`
-	ScoreType        *string         `json:"scoreType"`
-	EvalSubjects     json.RawMessage `json:"evalSubjects"`
-	RubricTemplateID *string         `json:"rubricTemplateId"`
-	ResourceConfig   json.RawMessage `json:"resourceConfig"`
-	IsEnabled        bool            `json:"isEnabled"`
-	EvalPoints       []EvalPointInput `json:"evalPoints"`
+	MethodKey        string            `json:"methodKey"`
+	Weight           float64           `json:"weight"`
+	EvalObject       string            `json:"evalObject"`
+	ScoreType        *string           `json:"scoreType"`
+	EvalSubjects     json.RawMessage   `json:"evalSubjects"`
+	RubricTemplateID *string           `json:"rubricTemplateId"`
+	ResourceConfig   json.RawMessage   `json:"resourceConfig"`
+	IsEnabled        bool              `json:"isEnabled"`
+	EvalPoints       []EvalPointInput  `json:"evalPoints"`
 	ReviewSteps      []ReviewStepInput `json:"reviewSteps"`
 }
 

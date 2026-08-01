@@ -195,24 +195,24 @@ func (h *TenantHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err := h.Service.Update(r.Context(), id, &store.TenantUpdateParams{
-		Name:             req.Name,
-		LogoURL:          req.LogoURL,
-		Domain:           req.Domain,
-		EnterpriseCode:   req.EnterpriseCode,
-		Contact:          req.Contact,
-		Phone:            req.Phone,
-		Address:          req.Address,
-		Description:      req.Description,
-		ShortName:        req.ShortName,
-		SchoolType:       req.SchoolType,
-		Province:         req.Province,
-		City:             req.City,
-		Website:          req.Website,
-		ContactPhone:     req.ContactPhone,
-		ScaleData:        req.ScaleData,
+		Name:              req.Name,
+		LogoURL:           req.LogoURL,
+		Domain:            req.Domain,
+		EnterpriseCode:    req.EnterpriseCode,
+		Contact:           req.Contact,
+		Phone:             req.Phone,
+		Address:           req.Address,
+		Description:       req.Description,
+		ShortName:         req.ShortName,
+		SchoolType:        req.SchoolType,
+		Province:          req.Province,
+		City:              req.City,
+		Website:           req.Website,
+		ContactPhone:      req.ContactPhone,
+		ScaleData:         req.ScaleData,
 		SecondaryColleges: req.SecondaryColleges,
-		EducationLevel:   req.EducationLevel,
-		EducationNature:  req.EducationNature,
+		EducationLevel:    req.EducationLevel,
+		EducationNature:   req.EducationNature,
 	})
 	if err != nil {
 		respondServerError(w, r, err, "更新租户失败")
@@ -255,7 +255,6 @@ func (h *TenantHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 var _ = errors.Is
-
 
 // fetchTenant 按 ID 查询租户（兼容 tenant_admin_handler 复用，不存在返回错误）。
 func (h *TenantHandler) fetchTenant(ctx context.Context, id string) (domain.Tenant, error) {

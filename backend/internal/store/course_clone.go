@@ -11,31 +11,31 @@ import (
 
 // SourceCourseFields 课程克隆源字段。
 type SourceCourseFields struct {
-	Name               string
-	Type               string
-	Category           string
-	MajorID            *string
-	TeacherID          *string
-	IndustryID         *string
-	Version            *string
-	OnlineHours        *float64
-	OfflineHours       *float64
-	OnlineWeight       *float64
-	OfflineWeight      *float64
-	Semester           *string
-	ClassName          *string
-	CoverColor         *string
-	CoverImage         *string
-	CourseTag          *string
-	Difficulty         *int
-	Description        *string
-	KnowledgePointIds  []string
-	AbilityPointIds    []string
-	ResourceIds        []string
-	CoCreatorIds       []string
-	BatchID            *string
-	EvalData           domain.JSONMap
-	TenantID           *string
+	Name              string
+	Type              string
+	Category          string
+	MajorID           *string
+	TeacherID         *string
+	IndustryID        *string
+	Version           *string
+	OnlineHours       *float64
+	OfflineHours      *float64
+	OnlineWeight      *float64
+	OfflineWeight     *float64
+	Semester          *string
+	ClassName         *string
+	CoverColor        *string
+	CoverImage        *string
+	CourseTag         *string
+	Difficulty        *int
+	Description       *string
+	KnowledgePointIds []string
+	AbilityPointIds   []string
+	ResourceIds       []string
+	CoCreatorIds      []string
+	BatchID           *string
+	EvalData          domain.JSONMap
+	TenantID          *string
 }
 
 // CourseCloneStore 课程克隆持久化（事务内多表复制）。

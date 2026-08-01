@@ -84,20 +84,20 @@ func (s *ScenarioCloneStore) CloneScenario(ctx context.Context, tx Queryer, tena
 		return "", "", err
 	}
 	type taskRow struct {
-		oldID, name, code    string
-		sortOrder            int
-		description          *string
-		detailedDescription  *string
-		descriptionPdf       *string
-		estimatedHours       float64
-		taskType             string
-		difficulty           int
-		background           *string
-		dependencyIDs        []string
-		knowledgePointIDs    []string
-		abilityPointIDs      []string
-		resourceIDs          []string
-		evalData             []byte
+		oldID, name, code   string
+		sortOrder           int
+		description         *string
+		detailedDescription *string
+		descriptionPdf      *string
+		estimatedHours      float64
+		taskType            string
+		difficulty          int
+		background          *string
+		dependencyIDs       []string
+		knowledgePointIDs   []string
+		abilityPointIDs     []string
+		resourceIDs         []string
+		evalData            []byte
 	}
 	var taskData []taskRow
 	for taskRows.Next() {
@@ -490,4 +490,3 @@ func (s *ScenarioCloneStore) cloneScenarioGradeMappings(ctx context.Context, tx 
 	}
 	return nil
 }
-

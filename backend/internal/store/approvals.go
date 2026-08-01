@@ -109,12 +109,12 @@ func (s *ApprovalStore) SyncEntityStatus(ctx context.Context, tx Queryer, table,
 
 // ApprovalCreateParams 审批创建参数。
 type ApprovalCreateParams struct {
-	TargetType string
-	TargetID   string
-	WorkflowID *string
-	Status     string
+	TargetType  string
+	TargetID    string
+	WorkflowID  *string
+	Status      string
 	SubmitterID string
-	History    domain.JSONSlice
+	History     domain.JSONSlice
 }
 
 func (s *ApprovalStore) fetchApproval(ctx context.Context, id string) (*domain.ApprovalRecord, error) {

@@ -454,8 +454,6 @@ func (h *CourseImportHandler) clearCourseNodes(ctx context.Context, courseID str
 	_, _ = h.DB.Exec(ctx, `DELETE FROM system_course_nodes WHERE course_id=$1`, courseID)
 }
 
-
-
 func (h *CourseImportHandler) lookupGranularCourse(ctx context.Context, tenantID, name string) *domain.Course {
 	if name == "" {
 		return nil
@@ -510,8 +508,6 @@ func (h *CourseImportHandler) lookupGranularCourseResourceIDs(ctx context.Contex
 	}
 	return ids
 }
-
-
 
 func (h *CourseImportHandler) generateSystemCourseCode(ctx context.Context, tenantID string) string {
 	year := time.Now().Format("2006")

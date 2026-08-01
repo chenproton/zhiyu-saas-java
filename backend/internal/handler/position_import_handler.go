@@ -331,7 +331,6 @@ func (h *PositionImportHandler) lookupMajors(ctx context.Context, tenantID strin
 	return ids
 }
 
-
 func (h *PositionImportHandler) findOrCreateCert(ctx context.Context, tenantID, name string) string {
 	var id string
 	err := h.DB.QueryRow(ctx, `SELECT id FROM certificate_library WHERE tenant_id=$1 AND name=$2 LIMIT 1`, tenantID, name).Scan(&id)

@@ -248,7 +248,6 @@ func (h *QuestionImportHandler) importQuestions(ctx context.Context, xlsx *excel
 	return previewRes, execRes
 }
 
-
 func mapQuestionType(t string) string {
 	switch strings.TrimSpace(t) {
 	case "单选题":

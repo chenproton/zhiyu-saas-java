@@ -41,11 +41,11 @@ type CreateCertificationItemRequest struct {
 }
 
 type CreateCertificationPointRequest struct {
-	AbilityPointID     string          `json:"abilityPointId"`
-	MappingType        string          `json:"mappingType"`
+	AbilityPointID     string           `json:"abilityPointId"`
+	MappingType        string           `json:"mappingType"`
 	CustomLevelMapping domain.JSONSlice `json:"customLevelMapping"`
-	RequiredLevel      string          `json:"requiredLevel"`
-	Weight             float64         `json:"weight"`
+	RequiredLevel      string           `json:"requiredLevel"`
+	Weight             float64          `json:"weight"`
 }
 
 type CertificationTaskRequest struct {
@@ -74,24 +74,24 @@ type CertificationFullItem struct {
 }
 
 type PutFullCertificationRuleRequest struct {
-	CareerPositionID string                    `json:"careerPositionId"`
-	RuleSource       string                    `json:"ruleSource"`
-	LevelMapping     domain.JSONSlice          `json:"levelMapping"`
+	CareerPositionID string                            `json:"careerPositionId"`
+	RuleSource       string                            `json:"ruleSource"`
+	LevelMapping     domain.JSONSlice                  `json:"levelMapping"`
 	Items            []PutFullCertificationItemRequest `json:"items"`
 }
 
 type PutFullCertificationItemRequest struct {
-	Name      string                       `json:"name"`
-	SortOrder int                          `json:"sortOrder"`
+	Name      string                             `json:"name"`
+	SortOrder int                                `json:"sortOrder"`
 	Points    []PutFullCertificationPointRequest `json:"points"`
 }
 
 type PutFullCertificationPointRequest struct {
-	AbilityPointID     string                    `json:"abilityPointId"`
-	MappingType        string                    `json:"mappingType"`
-	CustomLevelMapping domain.JSONSlice          `json:"customLevelMapping"`
-	RequiredLevel      string                    `json:"requiredLevel"`
-	Weight             float64                   `json:"weight"`
+	AbilityPointID     string                     `json:"abilityPointId"`
+	MappingType        string                     `json:"mappingType"`
+	CustomLevelMapping domain.JSONSlice           `json:"customLevelMapping"`
+	RequiredLevel      string                     `json:"requiredLevel"`
+	Weight             float64                    `json:"weight"`
 	Tasks              []CertificationTaskRequest `json:"tasks"`
 }
 
@@ -274,9 +274,9 @@ func (h *CertificationHandler) ConfigItems(w http.ResponseWriter, r *http.Reques
 		}
 		item, err := h.Service.CreateCertificationItem(r.Context(), tenantID, ruleID, req.Name, req.SortOrder)
 		if err != nil {
-		respondServerError(w, r, err, "创建认证项失败")
-		return
-	}
+			respondServerError(w, r, err, "创建认证项失败")
+			return
+		}
 		respondJSON(w, http.StatusCreated, item)
 		return
 	}
@@ -331,9 +331,9 @@ func (h *CertificationHandler) ConfigPoints(w http.ResponseWriter, r *http.Reque
 			Weight:             req.Weight,
 		})
 		if err != nil {
-		respondServerError(w, r, err, "创建认证点失败")
-		return
-	}
+			respondServerError(w, r, err, "创建认证点失败")
+			return
+		}
 		respondJSON(w, http.StatusCreated, point)
 		return
 	}

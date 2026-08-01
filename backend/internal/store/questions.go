@@ -110,32 +110,32 @@ func (s *QuestionStore) BatchCreate(ctx context.Context, tx Queryer, tenantID, b
 
 // QuestionCreateParams 创建题目参数。
 type QuestionCreateParams struct {
-	Code             string
-	BankID           string
-	Type             string
-	Content          string
-	OptionsJSON      string
-	AnswerJSON       string
-	Analysis         *string
-	Score            float64
-	Difficulty       *string
-	KnowledgePoints  []string
-	CreatorID        string
-	Source           *string
+	Code            string
+	BankID          string
+	Type            string
+	Content         string
+	OptionsJSON     string
+	AnswerJSON      string
+	Analysis        *string
+	Score           float64
+	Difficulty      *string
+	KnowledgePoints []string
+	CreatorID       string
+	Source          *string
 }
 
 // QuestionUpdateParams 更新题目参数。
 type QuestionUpdateParams struct {
-	BankID           string
-	Type             string
-	Content          string
-	OptionsJSON      string
-	AnswerJSON       string
-	Analysis         *string
-	Score            float64
-	Difficulty       *string
-	KnowledgePoints  []string
-	Source           *string
+	BankID          string
+	Type            string
+	Content         string
+	OptionsJSON     string
+	AnswerJSON      string
+	Analysis        *string
+	Score           float64
+	Difficulty      *string
+	KnowledgePoints []string
+	Source          *string
 }
 
 func (s *QuestionStore) fetchQuestion(ctx context.Context, id string) (*domain.Question, error) {

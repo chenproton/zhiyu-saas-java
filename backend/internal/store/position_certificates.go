@@ -131,12 +131,12 @@ func (s *PositionCertificateStore) Delete(ctx context.Context, id string) error 
 
 // PositionCertificateParams 创建参数。
 type PositionCertificateParams struct {
-	CareerPositionID       string
-	CertificateLibraryID   string
-	Name                   string
-	URL                    *string
-	Description            *string
-	ImageURL               *string
+	CareerPositionID     string
+	CertificateLibraryID string
+	Name                 string
+	URL                  *string
+	Description          *string
+	ImageURL             *string
 }
 
 // PositionCertificateUpdateParams 更新参数。

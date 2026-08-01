@@ -15,7 +15,7 @@ type UserRelationHandler struct {
 
 type UserRelationListResponse struct {
 	Items []store.UserRelationItem `json:"items"`
-	Total int                        `json:"total"`
+	Total int                      `json:"total"`
 }
 
 type CreateUserRelationRequest struct {

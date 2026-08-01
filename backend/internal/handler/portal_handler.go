@@ -397,13 +397,13 @@ func (h *PortalHandler) listTeacherClassPlansAndSessions(ctx context.Context, us
 				displayPeriod = label
 			}
 			sessions = append(sessions, domain.WorkspaceClassSession{
-				ID: seID + "-w" + strconv.Itoa(w),
+				ID:       seID + "-w" + strconv.Itoa(w),
 				CourseID: planID,
-				Venue: venueName,
-				Week: w,
-				Weekday: dayNames[dayOfWeek],
-				Period: displayPeriod,
-				Status: sessionStatus,
+				Venue:    venueName,
+				Week:     w,
+				Weekday:  dayNames[dayOfWeek],
+				Period:   displayPeriod,
+				Status:   sessionStatus,
 			})
 		}
 	}
@@ -478,4 +478,3 @@ func examStatusLabel(status string) string {
 		return status
 	}
 }
-

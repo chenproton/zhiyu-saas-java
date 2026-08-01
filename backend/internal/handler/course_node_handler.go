@@ -21,28 +21,28 @@ type CourseNodeListResponse struct {
 }
 
 type SystemCourseNodeResponse struct {
-	ID                  string                          `json:"id"`
-	CourseID            string                          `json:"courseId"`
-	ParentID            *string                         `json:"parentId,omitempty"`
-	Name                string                          `json:"name"`
-	Code                *string                         `json:"code,omitempty"`
-	Order               int                             `json:"order"`
-	Type                string                          `json:"type"`
-	SourceID            *string                         `json:"sourceId,omitempty"`
-	SourceName          *string                         `json:"sourceName,omitempty"`
-	TeachingGoals       *string                         `json:"teachingGoals,omitempty"`
-	DetailedDescription *string                         `json:"detailedDescription,omitempty"`
-	DescriptionPdf      *string                         `json:"descriptionPdf,omitempty"`
-	Background          *string                         `json:"background,omitempty"`
-	EstimatedHours      *float64                        `json:"estimatedHours,omitempty"`
-	Duration            *float64                        `json:"duration,omitempty"`
-	Difficulty          *int                            `json:"difficulty,omitempty"`
-	EvalData            domain.JSONMap                  `json:"evalData,omitempty"`
-	Status              string                          `json:"status"`
+	ID                  string                           `json:"id"`
+	CourseID            string                           `json:"courseId"`
+	ParentID            *string                          `json:"parentId,omitempty"`
+	Name                string                           `json:"name"`
+	Code                *string                          `json:"code,omitempty"`
+	Order               int                              `json:"order"`
+	Type                string                           `json:"type"`
+	SourceID            *string                          `json:"sourceId,omitempty"`
+	SourceName          *string                          `json:"sourceName,omitempty"`
+	TeachingGoals       *string                          `json:"teachingGoals,omitempty"`
+	DetailedDescription *string                          `json:"detailedDescription,omitempty"`
+	DescriptionPdf      *string                          `json:"descriptionPdf,omitempty"`
+	Background          *string                          `json:"background,omitempty"`
+	EstimatedHours      *float64                         `json:"estimatedHours,omitempty"`
+	Duration            *float64                         `json:"duration,omitempty"`
+	Difficulty          *int                             `json:"difficulty,omitempty"`
+	EvalData            domain.JSONMap                   `json:"evalData,omitempty"`
+	Status              string                           `json:"status"`
 	KnowledgePoints     []SystemCourseNodeKnowledgePoint `json:"knowledgePoints"`
-	Resources           []SystemCourseNodeResource      `json:"resources"`
-	Quizzes             []domain.NodeQuiz               `json:"quizzes"`
-	Homeworks           []domain.NodeHomework           `json:"homeworks"`
+	Resources           []SystemCourseNodeResource       `json:"resources"`
+	Quizzes             []domain.NodeQuiz                `json:"quizzes"`
+	Homeworks           []domain.NodeHomework            `json:"homeworks"`
 }
 
 type SystemCourseNodeKnowledgePoint struct {
@@ -62,25 +62,25 @@ type SystemCourseNodeResource struct {
 }
 
 type CreateCourseNodeRequest struct {
-	CourseID            string          `json:"courseId"`
-	ParentID            *string         `json:"parentId"`
-	Name                string          `json:"name"`
-	Code                *string         `json:"code"`
-	SortOrder           int             `json:"sortOrder"`
-	RefType             string          `json:"refType"`
-	SourceID            *string         `json:"sourceId"`
-	SourceName          *string         `json:"sourceName"`
-	TeachingGoals       *string         `json:"teachingGoals"`
-	DetailedDescription *string         `json:"detailedDescription"`
-	DescriptionPdf      *string         `json:"descriptionPdf"`
-	Background          *string         `json:"background"`
-	EstimatedHours      *float64        `json:"estimatedHours"`
-	Duration            *float64        `json:"duration"`
-	Difficulty          *int            `json:"difficulty"`
+	CourseID            string           `json:"courseId"`
+	ParentID            *string          `json:"parentId"`
+	Name                string           `json:"name"`
+	Code                *string          `json:"code"`
+	SortOrder           int              `json:"sortOrder"`
+	RefType             string           `json:"refType"`
+	SourceID            *string          `json:"sourceId"`
+	SourceName          *string          `json:"sourceName"`
+	TeachingGoals       *string          `json:"teachingGoals"`
+	DetailedDescription *string          `json:"detailedDescription"`
+	DescriptionPdf      *string          `json:"descriptionPdf"`
+	Background          *string          `json:"background"`
+	EstimatedHours      *float64         `json:"estimatedHours"`
+	Duration            *float64         `json:"duration"`
+	Difficulty          *int             `json:"difficulty"`
 	KnowledgePointIds   domain.JSONSlice `json:"knowledgePointIds"`
 	ResourceIds         domain.JSONSlice `json:"resourceIds"`
-	EvalData            domain.JSONMap  `json:"evalData"`
-	Status              string          `json:"status"`
+	EvalData            domain.JSONMap   `json:"evalData"`
+	Status              string           `json:"status"`
 }
 
 type UpdateCourseNodeRequest = CreateCourseNodeRequest

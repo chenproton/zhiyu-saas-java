@@ -72,24 +72,24 @@ func (s *TenantStore) UpdateStatus(ctx context.Context, id string, status domain
 
 // TenantUpdateParams 更新租户参数。
 type TenantUpdateParams struct {
-	Name             string
-	LogoURL          *string
-	Domain           *string
-	EnterpriseCode   *string
-	Contact          *string
-	Phone            *string
-	Address          *string
-	Description      *string
-	ShortName        *string
-	SchoolType       *string
-	Province         *string
-	City             *string
-	Website          *string
-	ContactPhone     *string
-	ScaleData        json.RawMessage
+	Name              string
+	LogoURL           *string
+	Domain            *string
+	EnterpriseCode    *string
+	Contact           *string
+	Phone             *string
+	Address           *string
+	Description       *string
+	ShortName         *string
+	SchoolType        *string
+	Province          *string
+	City              *string
+	Website           *string
+	ContactPhone      *string
+	ScaleData         json.RawMessage
 	SecondaryColleges json.RawMessage
-	EducationLevel   *string
-	EducationNature  *string
+	EducationLevel    *string
+	EducationNature   *string
 }
 
 func (s *TenantStore) fetchTenant(ctx context.Context, id string) (*domain.Tenant, error) {

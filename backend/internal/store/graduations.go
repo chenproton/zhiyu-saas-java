@@ -92,17 +92,17 @@ func (s *GraduationStore) ApplyTopic(ctx context.Context, id string) (bool, erro
 
 // GraduationTopicParams 课题参数。
 type GraduationTopicParams struct {
-	TenantID          string
-	Name              string
-	CareerPositionID  string
-	College           *string
-	Source            *string
-	Capacity          int
-	AdvisorID         *string
+	TenantID           string
+	Name               string
+	CareerPositionID   string
+	College            *string
+	Source             *string
+	Capacity           int
+	AdvisorID          *string
 	EnterpriseMentorID *string
-	StartDate         *time.Time
-	EndDate           *time.Time
-	Description       *string
+	StartDate          *time.Time
+	EndDate            *time.Time
+	Description        *string
 }
 
 // ListArchives 查询档案列表。
@@ -180,14 +180,14 @@ func (s *GraduationStore) GetEvaluation(ctx context.Context, id string) (*domain
 
 // GraduationEvaluationParams 评价参数。
 type GraduationEvaluationParams struct {
-	TenantID          string
-	TopicID           string
-	UserID            string
-	AdvisorScore      *float64
-	EnterpriseScore   *float64
-	DefenseScore      *float64
+	TenantID           string
+	TopicID            string
+	UserID             string
+	AdvisorScore       *float64
+	EnterpriseScore    *float64
+	DefenseScore       *float64
 	ComprehensiveGrade *string
-	IsExcellent       bool
+	IsExcellent        bool
 }
 
 // QueryGraduationResults 查询毕业结果（分页）。

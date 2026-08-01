@@ -112,9 +112,9 @@ func (h *SubscriptionHandler) AdminUpdate(w http.ResponseWriter, r *http.Request
 			Name: req.Name, ValidUntil: req.ValidUntil, Modules: req.Modules, Status: req.Status,
 		})
 		if err != nil {
-		respondServerError(w, r, err, "更新订阅失败")
-		return
-	}
+			respondServerError(w, r, err, "更新订阅失败")
+			return
+		}
 		respondJSON(w, http.StatusOK, updated)
 		return
 	}

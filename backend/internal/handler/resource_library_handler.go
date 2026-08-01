@@ -209,4 +209,3 @@ func (h *ResourceLibraryHandler) Delete(w http.ResponseWriter, r *http.Request) 
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
-

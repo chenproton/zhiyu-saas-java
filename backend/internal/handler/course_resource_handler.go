@@ -90,12 +90,12 @@ func (h *CourseResourceHandler) Create(w http.ResponseWriter, r *http.Request) {
 	uploadedBy := claims.UserID
 
 	row, err := h.Service.Create(r.Context(), tenantID, "course_resource_bindings", "course_id", req.CourseID, &store.ResourceCreateSimpleParams{
-		Name:       req.Name,
-		Type:       req.Type,
-		URL:        req.URL,
+		Name:        req.Name,
+		Type:        req.Type,
+		URL:         req.URL,
 		Description: req.Description,
-		FileSize:   fileSize,
-		UploadedBy: &uploadedBy,
+		FileSize:    fileSize,
+		UploadedBy:  &uploadedBy,
 	}, func(ctx context.Context, q store.Queryer, courseID, resourceID string) error {
 		return store.CourseSyncBind(ctx, q, courseID, resourceID)
 	})

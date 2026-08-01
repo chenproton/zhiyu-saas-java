@@ -13,9 +13,9 @@ import (
 
 func TestSanitizeIdentifier(t *testing.T) {
 	cases := []struct {
-		name  string
-		id    string
-		ok    bool
+		name string
+		id   string
+		ok   bool
 	}{
 		{"合法标识", "users", true},
 		{"非法标识（注入尝试）", "users; DROP TABLE users", false},

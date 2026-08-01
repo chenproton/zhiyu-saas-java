@@ -21,20 +21,20 @@ type QuestionListResponse struct {
 }
 
 type CreateQuestionRequest struct {
-	BankID           string           `json:"bankId"`
-	Type             string           `json:"type"`
-	Content          string           `json:"content"`
-	Options          []string         `json:"options"`
-	Answer           domain.JSONSlice `json:"answer"`
-	Analysis         *string          `json:"analysis"`
-	Score            float64          `json:"score"`
-	Difficulty       *string          `json:"difficulty"`
-	KnowledgePoints  []string         `json:"knowledgePoints"`
-	Source           *string          `json:"source"`
+	BankID          string           `json:"bankId"`
+	Type            string           `json:"type"`
+	Content         string           `json:"content"`
+	Options         []string         `json:"options"`
+	Answer          domain.JSONSlice `json:"answer"`
+	Analysis        *string          `json:"analysis"`
+	Score           float64          `json:"score"`
+	Difficulty      *string          `json:"difficulty"`
+	KnowledgePoints []string         `json:"knowledgePoints"`
+	Source          *string          `json:"source"`
 }
 
 type BatchCreateQuestionsRequest struct {
-	BankID string `json:"bankId"`
+	BankID string                  `json:"bankId"`
 	Items  []CreateQuestionRequest `json:"items"`
 }
 

@@ -329,8 +329,6 @@ func (h *ScenarioImportHandler) lookupProfessions(ctx context.Context, tenantID 
 	return ids
 }
 
-
-
 func (h *ScenarioImportHandler) lookupAbilityPoints(ctx context.Context, tenantID string, names []string) []string {
 	if len(names) == 0 {
 		return []string{}
@@ -349,7 +347,6 @@ func (h *ScenarioImportHandler) lookupAbilityPoints(ctx context.Context, tenantI
 	}
 	return ids
 }
-
 
 func mapTaskType(t string) string {
 	t = strings.TrimSpace(t)

@@ -262,7 +262,6 @@ func (h *StaffTitleHandler) ToggleStatus(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, http.StatusOK, title)
 }
 
-
 func generateCodeFromName(name string) string {
 	var b strings.Builder
 	for _, r := range name {

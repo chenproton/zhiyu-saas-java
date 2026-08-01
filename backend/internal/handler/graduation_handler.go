@@ -269,9 +269,9 @@ func (h *GraduationHandler) ArchivesCRUD(w http.ResponseWriter, r *http.Request)
 		}
 		archive, err := h.Service.CreateGraduationArchive(r.Context(), tenantID, req.TopicID, req.UserID, req.Phase)
 		if err != nil {
-		respondServerError(w, r, err, "创建毕业档案失败")
-		return
-	}
+			respondServerError(w, r, err, "创建毕业档案失败")
+			return
+		}
 		respondJSON(w, http.StatusCreated, archive)
 		return
 	}
@@ -325,9 +325,9 @@ func (h *GraduationHandler) EvaluationsCRUD(w http.ResponseWriter, r *http.Reque
 			ComprehensiveGrade: req.ComprehensiveGrade, IsExcellent: req.IsExcellent,
 		})
 		if err != nil {
-		respondServerError(w, r, err, "创建毕业评价失败")
-		return
-	}
+			respondServerError(w, r, err, "创建毕业评价失败")
+			return
+		}
 		respondJSON(w, http.StatusCreated, eval)
 		return
 	}

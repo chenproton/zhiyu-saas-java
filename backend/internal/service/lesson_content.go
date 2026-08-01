@@ -332,7 +332,6 @@ func (s *LessonContentService) DeleteCourse(ctx context.Context, id string) erro
 	return s.st.Courses().Delete(ctx, id)
 }
 
-
 // Queryer 暴露底层查询器。
 func (s *LessonContentService) Queryer() store.Queryer {
 	return s.st.Q()

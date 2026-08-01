@@ -98,13 +98,13 @@ func (s *PortalStore) UpcomingExamCount(ctx context.Context, tenantID *string, n
 
 // TeacherScheduleRow 教师排课行。
 type TeacherScheduleRow struct {
-	ID         string
-	CourseName string
-	EntryType  string
-	DayOfWeek  int
-	Periods    domain.JSONSlice
-	VenueName  string
-	ClassNames []string
+	ID          string
+	CourseName  string
+	EntryType   string
+	DayOfWeek   int
+	Periods     domain.JSONSlice
+	VenueName   string
+	ClassNames  []string
 	TeacherName string
 }
 
@@ -152,12 +152,12 @@ func (s *PortalStore) UserClassNodeID(ctx context.Context, userID string, tenant
 
 // StudentScheduleRow 学生排课行。
 type StudentScheduleRow struct {
-	ID         string
-	CourseName string
-	EntryType  string
-	DayOfWeek  int
-	Periods    domain.JSONSlice
-	VenueName  string
+	ID          string
+	CourseName  string
+	EntryType   string
+	DayOfWeek   int
+	Periods     domain.JSONSlice
+	VenueName   string
 	TeacherName string
 }
 

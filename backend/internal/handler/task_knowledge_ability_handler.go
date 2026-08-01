@@ -103,4 +103,3 @@ func (h *TaskKnowledgeAbilityHandler) UnbindAbility(w http.ResponseWriter, r *ht
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
 }
-

@@ -53,11 +53,11 @@ func (h *ScheduleImportHandler) PreviewExcel(w http.ResponseWriter, r *http.Requ
 	if hasSheet(sheets, "课程列表") {
 		result := h.previewCourseList(r.Context(), xlsx, tenantID)
 		respondJSON(w, http.StatusOK, ImportPreviewResult{
-			Created: result.Created,
-			Duplicates: len(result.DuplicateItems),
-			Failed:  result.Failed,
+			Created:        result.Created,
+			Duplicates:     len(result.DuplicateItems),
+			Failed:         result.Failed,
 			DuplicateItems: result.DuplicateItems,
-			Errors:  result.Errors,
+			Errors:         result.Errors,
 		})
 		return
 	}
@@ -165,11 +165,11 @@ func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *
 
 	// 收集有排课信息的行
 	type rowData struct {
-		courseName, entryType string
-		startWeek, endWeek    int
-		weekPattern           string
-		day                   int
-		periods               []string
+		courseName, entryType           string
+		startWeek, endWeek              int
+		weekPattern                     string
+		day                             int
+		periods                         []string
 		teacherName, venueName, classes string
 	}
 	var items []rowData
@@ -196,9 +196,12 @@ func (h *ScheduleImportHandler) importFromCourseList(ctx context.Context, xlsx *
 			weekPattern = "all"
 		}
 		switch weekPattern {
-		case "全部": weekPattern = "all"
-		case "单周": weekPattern = "odd"
-		case "双周": weekPattern = "even"
+		case "全部":
+			weekPattern = "all"
+		case "单周":
+			weekPattern = "odd"
+		case "双周":
+			weekPattern = "even"
 		}
 		dayStr := strings.TrimSpace(col(row, 5))
 		day := dayMap[dayStr]

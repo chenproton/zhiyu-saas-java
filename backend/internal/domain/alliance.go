@@ -7,22 +7,22 @@ import (
 
 // ===== 学校信息 =====
 type AllianceSchoolInfo struct {
-	ID               string          `json:"id"`
-	TenantID         string          `json:"tenantId"`
-	Name             string          `json:"name"`
-	ShortName        *string         `json:"shortName,omitempty"`
-	SchoolType       *string         `json:"schoolType,omitempty"`
-	Province         *string         `json:"province,omitempty"`
-	City             *string         `json:"city,omitempty"`
-	Address          *string         `json:"address,omitempty"`
-	Website          *string         `json:"website,omitempty"`
-	ContactPhone     *string         `json:"contactPhone,omitempty"`
-	Description      *string         `json:"description,omitempty"`
-	LogoURL          *string         `json:"logoUrl,omitempty"`
-	ScaleData        json.RawMessage `json:"scaleData,omitempty"`
+	ID                string          `json:"id"`
+	TenantID          string          `json:"tenantId"`
+	Name              string          `json:"name"`
+	ShortName         *string         `json:"shortName,omitempty"`
+	SchoolType        *string         `json:"schoolType,omitempty"`
+	Province          *string         `json:"province,omitempty"`
+	City              *string         `json:"city,omitempty"`
+	Address           *string         `json:"address,omitempty"`
+	Website           *string         `json:"website,omitempty"`
+	ContactPhone      *string         `json:"contactPhone,omitempty"`
+	Description       *string         `json:"description,omitempty"`
+	LogoURL           *string         `json:"logoUrl,omitempty"`
+	ScaleData         json.RawMessage `json:"scaleData,omitempty"`
 	SecondaryColleges json.RawMessage `json:"secondaryColleges,omitempty"`
-	CreatedAt        time.Time       `json:"createdAt"`
-	UpdatedAt        time.Time       `json:"updatedAt"`
+	CreatedAt         time.Time       `json:"createdAt"`
+	UpdatedAt         time.Time       `json:"updatedAt"`
 }
 
 // ===== 合作企业 =====
@@ -76,24 +76,24 @@ type AllianceEnterpriseAgreement struct {
 
 // ===== 合作项目 =====
 type AllianceProject struct {
-	ID               string          `json:"id"`
-	TenantID         string          `json:"tenantId"`
-	Name             string          `json:"name"`
-	Type             *string         `json:"type,omitempty"`
-	Description      *string         `json:"description,omitempty"`
-	Phase            string          `json:"phase"`
-	PublishStatus    string          `json:"publishStatus"`
-	StartDate        *string         `json:"startDate,omitempty"`
-	EndDate          *string         `json:"endDate,omitempty"`
-	Budget           *string         `json:"budget,omitempty"`
-	CoverImage       *string         `json:"coverImage,omitempty"`
-	EnterpriseIDs    json.RawMessage `json:"enterpriseIds,omitempty"`
-	AgreementIDs     json.RawMessage `json:"agreementIds,omitempty"`
+	ID                string          `json:"id"`
+	TenantID          string          `json:"tenantId"`
+	Name              string          `json:"name"`
+	Type              *string         `json:"type,omitempty"`
+	Description       *string         `json:"description,omitempty"`
+	Phase             string          `json:"phase"`
+	PublishStatus     string          `json:"publishStatus"`
+	StartDate         *string         `json:"startDate,omitempty"`
+	EndDate           *string         `json:"endDate,omitempty"`
+	Budget            *string         `json:"budget,omitempty"`
+	CoverImage        *string         `json:"coverImage,omitempty"`
+	EnterpriseIDs     json.RawMessage `json:"enterpriseIds,omitempty"`
+	AgreementIDs      json.RawMessage `json:"agreementIds,omitempty"`
 	SecondaryColleges json.RawMessage `json:"secondaryColleges,omitempty"`
-	IsPublic         bool            `json:"isPublic"`
-	CreatedBy        *string         `json:"createdBy,omitempty"`
-	CreatedAt        time.Time       `json:"createdAt"`
-	UpdatedAt        time.Time       `json:"updatedAt"`
+	IsPublic          bool            `json:"isPublic"`
+	CreatedBy         *string         `json:"createdBy,omitempty"`
+	CreatedAt         time.Time       `json:"createdAt"`
+	UpdatedAt         time.Time       `json:"updatedAt"`
 }
 
 // ===== 项目里程碑 =====
@@ -113,65 +113,65 @@ type AllianceProjectMilestone struct {
 
 // ===== 合作成果 =====
 type AllianceAchievement struct {
-	ID               string          `json:"id"`
-	TenantID         string          `json:"tenantId"`
-	Title            string          `json:"title"`
-	Type             string          `json:"type"`
-	Description      *string         `json:"description,omitempty"`
-	AchievementDate  *string         `json:"achievementDate,omitempty"`
-	CoverImage       *string         `json:"coverImage,omitempty"`
-	Attachments      json.RawMessage `json:"attachments,omitempty"`
-	CitationReason   *string         `json:"citationReason,omitempty"`
-	Images           json.RawMessage `json:"images,omitempty"`
-	OwnerPersons     json.RawMessage `json:"ownerPersons,omitempty"`
-	CoBuilders       json.RawMessage `json:"coBuilders,omitempty"`
-	EnterpriseIDs    json.RawMessage `json:"enterpriseIds,omitempty"`
-	ProjectIDs       json.RawMessage `json:"projectIds,omitempty"`
-	RelatedPositions json.RawMessage `json:"relatedPositions,omitempty"`
-	RelatedScenes    json.RawMessage `json:"relatedScenes,omitempty"`
-	RelatedCourses   json.RawMessage `json:"relatedCourses,omitempty"`
-	Status           string          `json:"status"`
-	ViewCount        int             `json:"viewCount"`
-	SecondaryColleges json.RawMessage `json:"secondaryColleges,omitempty"`
-	IsPublic         bool            `json:"isPublic"`
-	CreatedBy        *string         `json:"createdBy,omitempty"`
-	CreatedAt        time.Time       `json:"createdAt"`
-	UpdatedAt        time.Time       `json:"updatedAt"`
-}
-
-// ===== 专家资源库 =====
-type AllianceExpert struct {
 	ID                string          `json:"id"`
 	TenantID          string          `json:"tenantId"`
-	Name              string          `json:"name"`
-	Gender            *string         `json:"gender,omitempty"`
-	Age               *int            `json:"age,omitempty"`
-	Title             *string         `json:"title,omitempty"`
-	Position          *string         `json:"position,omitempty"`
-	ExpertType        *string         `json:"expertType,omitempty"`
-	Industry          *string         `json:"industry,omitempty"`
-	ProfessionalFields json.RawMessage `json:"professionalFields,omitempty"`
-	Specialties       json.RawMessage `json:"specialties,omitempty"`
-	ExperienceYears   *int            `json:"experienceYears,omitempty"`
-	Education         *string         `json:"education,omitempty"`
-	Introduction      *string         `json:"introduction,omitempty"`
-	WorkExperience    *string         `json:"workExperience,omitempty"`
-	City              *string         `json:"city,omitempty"`
-	AvatarURL         *string         `json:"avatarUrl,omitempty"`
+	Title             string          `json:"title"`
+	Type              string          `json:"type"`
+	Description       *string         `json:"description,omitempty"`
+	AchievementDate   *string         `json:"achievementDate,omitempty"`
 	CoverImage        *string         `json:"coverImage,omitempty"`
-	Photos            json.RawMessage `json:"photos,omitempty"`
 	Attachments       json.RawMessage `json:"attachments,omitempty"`
-	EnterpriseID      *string         `json:"enterpriseId,omitempty"`
-	Organization      *string         `json:"organization,omitempty"`
-	Rating            *string         `json:"rating,omitempty"`
+	CitationReason    *string         `json:"citationReason,omitempty"`
+	Images            json.RawMessage `json:"images,omitempty"`
+	OwnerPersons      json.RawMessage `json:"ownerPersons,omitempty"`
+	CoBuilders        json.RawMessage `json:"coBuilders,omitempty"`
+	EnterpriseIDs     json.RawMessage `json:"enterpriseIds,omitempty"`
+	ProjectIDs        json.RawMessage `json:"projectIds,omitempty"`
+	RelatedPositions  json.RawMessage `json:"relatedPositions,omitempty"`
+	RelatedScenes     json.RawMessage `json:"relatedScenes,omitempty"`
+	RelatedCourses    json.RawMessage `json:"relatedCourses,omitempty"`
 	Status            string          `json:"status"`
-	PartnerSource     *string         `json:"partnerSource,omitempty"`
-	PositionDirection *string         `json:"positionDirection,omitempty"`
+	ViewCount         int             `json:"viewCount"`
 	SecondaryColleges json.RawMessage `json:"secondaryColleges,omitempty"`
 	IsPublic          bool            `json:"isPublic"`
 	CreatedBy         *string         `json:"createdBy,omitempty"`
 	CreatedAt         time.Time       `json:"createdAt"`
 	UpdatedAt         time.Time       `json:"updatedAt"`
+}
+
+// ===== 专家资源库 =====
+type AllianceExpert struct {
+	ID                 string          `json:"id"`
+	TenantID           string          `json:"tenantId"`
+	Name               string          `json:"name"`
+	Gender             *string         `json:"gender,omitempty"`
+	Age                *int            `json:"age,omitempty"`
+	Title              *string         `json:"title,omitempty"`
+	Position           *string         `json:"position,omitempty"`
+	ExpertType         *string         `json:"expertType,omitempty"`
+	Industry           *string         `json:"industry,omitempty"`
+	ProfessionalFields json.RawMessage `json:"professionalFields,omitempty"`
+	Specialties        json.RawMessage `json:"specialties,omitempty"`
+	ExperienceYears    *int            `json:"experienceYears,omitempty"`
+	Education          *string         `json:"education,omitempty"`
+	Introduction       *string         `json:"introduction,omitempty"`
+	WorkExperience     *string         `json:"workExperience,omitempty"`
+	City               *string         `json:"city,omitempty"`
+	AvatarURL          *string         `json:"avatarUrl,omitempty"`
+	CoverImage         *string         `json:"coverImage,omitempty"`
+	Photos             json.RawMessage `json:"photos,omitempty"`
+	Attachments        json.RawMessage `json:"attachments,omitempty"`
+	EnterpriseID       *string         `json:"enterpriseId,omitempty"`
+	Organization       *string         `json:"organization,omitempty"`
+	Rating             *string         `json:"rating,omitempty"`
+	Status             string          `json:"status"`
+	PartnerSource      *string         `json:"partnerSource,omitempty"`
+	PositionDirection  *string         `json:"positionDirection,omitempty"`
+	SecondaryColleges  json.RawMessage `json:"secondaryColleges,omitempty"`
+	IsPublic           bool            `json:"isPublic"`
+	CreatedBy          *string         `json:"createdBy,omitempty"`
+	CreatedAt          time.Time       `json:"createdAt"`
+	UpdatedAt          time.Time       `json:"updatedAt"`
 }
 
 // ===== 合作协议（独立模块） =====

@@ -125,18 +125,18 @@ type EvaluationResultSubmitParams struct {
 
 // EvaluationResultGradeParams 评分参数。
 type EvaluationResultGradeParams struct {
-	Score              float64
-	Comment            *string
-	EvalPointScores    domain.JSONMap
-	DrawnQuestions     domain.JSONMap
-	SubjectiveContent  domain.JSONMap
+	Score             float64
+	Comment           *string
+	EvalPointScores   domain.JSONMap
+	DrawnQuestions    domain.JSONMap
+	SubjectiveContent domain.JSONMap
 }
 
 // EvaluationResultGradeItem 批量评分项。
 type EvaluationResultGradeItem struct {
-	ID             string
-	Score          float64
-	Comment        *string
+	ID              string
+	Score           float64
+	Comment         *string
 	EvalPointScores domain.JSONMap
 }
 

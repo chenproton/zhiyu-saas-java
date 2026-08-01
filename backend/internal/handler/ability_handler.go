@@ -105,12 +105,12 @@ func (h *AbilityHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ability, err := h.Service.CreateAbility(r.Context(), tenantID, &store.AbilityPointParams{
-		Name:       req.Name,
+		Name:        req.Name,
 		Description: req.Description,
-		Category:   req.Category,
-		Attributes: coalesceStringSlice(req.Attributes),
-		IsPublic:   req.IsPublic,
-		CreatorID:  claims.UserID,
+		Category:    req.Category,
+		Attributes:  coalesceStringSlice(req.Attributes),
+		IsPublic:    req.IsPublic,
+		CreatorID:   claims.UserID,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -142,11 +142,11 @@ func (h *AbilityHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ability, err := h.Service.UpdateAbility(r.Context(), id, &store.AbilityPointParams{
-		Name:       req.Name,
+		Name:        req.Name,
 		Description: req.Description,
-		Category:   req.Category,
-		Attributes: coalesceStringSlice(req.Attributes),
-		IsPublic:   req.IsPublic,
+		Category:    req.Category,
+		Attributes:  coalesceStringSlice(req.Attributes),
+		IsPublic:    req.IsPublic,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
