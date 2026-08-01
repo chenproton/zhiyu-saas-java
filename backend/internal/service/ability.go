@@ -153,3 +153,98 @@ func (s *PositionService) BatchUpdateStatus(ctx context.Context, table, id, stat
 func (s *PositionService) BatchGetByTable(ctx context.Context, table, selectColumns, id string) (pgx.Row, error) {
 	return s.st.Batches().GetByTable(ctx, s.st.Q(), table, selectColumns, id)
 }
+
+// ListWorkflows 查询审批流程列表。
+func (s *PositionService) ListWorkflows(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.Workflow]) ([]domain.Workflow, int, error) {
+	return s.st.Workflows().List(ctx, p, cfg)
+}
+
+// GetWorkflow 查询单个审批流程。
+func (s *PositionService) GetWorkflow(ctx context.Context, id string) (*domain.Workflow, error) {
+	return s.st.Workflows().Get(ctx, id)
+}
+
+// CreateWorkflow 创建审批流程。
+func (s *PositionService) CreateWorkflow(ctx context.Context, tenantID *string, p *store.WorkflowParams) (*domain.Workflow, error) {
+	return s.st.Workflows().Create(ctx, tenantID, p)
+}
+
+// UpdateWorkflow 更新审批流程。
+func (s *PositionService) UpdateWorkflow(ctx context.Context, id string, p *store.WorkflowParams) (*domain.Workflow, error) {
+	return s.st.Workflows().Update(ctx, id, p)
+}
+
+// DeleteWorkflow 删除审批流程。
+func (s *PositionService) DeleteWorkflow(ctx context.Context, id string) error {
+	return s.st.Workflows().Delete(ctx, id)
+}
+
+// GetSubscription 查询订阅。
+func (s *PositionService) GetSubscription(ctx context.Context, id string) (*domain.SubscriptionPackage, error) {
+	return s.st.Subscriptions().Get(ctx, id)
+}
+
+// GetSubscriptionByTenant 查询租户订阅。
+func (s *PositionService) GetSubscriptionByTenant(ctx context.Context, tenantID string) (*domain.SubscriptionPackage, error) {
+	return s.st.Subscriptions().GetByTenant(ctx, tenantID)
+}
+
+// UpdateSubscription 更新订阅。
+func (s *PositionService) UpdateSubscription(ctx context.Context, id string, p *store.SubscriptionUpdateParams) (*domain.SubscriptionPackage, error) {
+	return s.st.Subscriptions().Update(ctx, id, p)
+}
+
+// ListResourceCodes 查询资源码列表。
+func (s *PositionService) ListResourceCodes(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.ResourceCode]) ([]domain.ResourceCode, int, error) {
+	return s.st.ResourceCodes().List(ctx, p, cfg)
+}
+
+// GetResourceCode 查询单个资源码。
+func (s *PositionService) GetResourceCode(ctx context.Context, id string) (*domain.ResourceCode, error) {
+	return s.st.ResourceCodes().Get(ctx, id)
+}
+
+// CreateResourceCode 创建资源码。
+func (s *PositionService) CreateResourceCode(ctx context.Context, p *store.ResourceCodeParams) (*domain.ResourceCode, error) {
+	return s.st.ResourceCodes().Create(ctx, p)
+}
+
+// UpdateResourceCode 更新资源码。
+func (s *PositionService) UpdateResourceCode(ctx context.Context, id string, p *store.ResourceCodeParams) (*domain.ResourceCode, error) {
+	return s.st.ResourceCodes().Update(ctx, id, p)
+}
+
+// DeleteResourceCode 删除资源码。
+func (s *PositionService) DeleteResourceCode(ctx context.Context, id string) error {
+	return s.st.ResourceCodes().Delete(ctx, id)
+}
+
+// ListRecommends 查询推荐位列表。
+func (s *PositionService) ListRecommends(ctx context.Context, p store.ListParams, cfg store.ListQueryConfig[domain.PositionRecommendation]) ([]domain.PositionRecommendation, int, error) {
+	return s.st.Recommends().List(ctx, p, cfg)
+}
+
+// GetRecommend 查询单个推荐位。
+func (s *PositionService) GetRecommend(ctx context.Context, id string) (*domain.PositionRecommendation, error) {
+	return s.st.Recommends().Get(ctx, id)
+}
+
+// CreateRecommend 创建推荐位。
+func (s *PositionService) CreateRecommend(ctx context.Context, tenantID string, p *store.RecommendParams) (*domain.PositionRecommendation, error) {
+	return s.st.Recommends().Create(ctx, tenantID, p)
+}
+
+// UpdateRecommend 更新推荐位。
+func (s *PositionService) UpdateRecommend(ctx context.Context, id string, p *store.RecommendParams) (*domain.PositionRecommendation, error) {
+	return s.st.Recommends().Update(ctx, id, p)
+}
+
+// DeleteRecommend 删除推荐位。
+func (s *PositionService) DeleteRecommend(ctx context.Context, id string) error {
+	return s.st.Recommends().Delete(ctx, id)
+}
+
+// CreateSubscription 创建订阅。
+func (s *PositionService) CreateSubscription(ctx context.Context, p *store.SubscriptionUpdateParams) (*domain.SubscriptionPackage, error) {
+	return s.st.Subscriptions().Create(ctx, p)
+}

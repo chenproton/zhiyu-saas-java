@@ -1,18 +1,17 @@
 package handler
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type SubscriptionHandler struct {
-	DB *pgxpool.Pool
+	Service *service.PositionService
 }
 
 type UpdateSubscriptionRequest struct {
@@ -29,8 +28,7 @@ func (h *SubscriptionHandler) Get(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "缺少租户信息")
 		return
 	}
-
-	sub, err := h.fetchSubscriptionByTenant(r.Context(), tenantID)
+	sub, err := h.Service.GetSubscriptionByTenant(r.Context(), tenantID)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "订阅不存在")
 		return
@@ -44,18 +42,15 @@ func (h *SubscriptionHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchSubscription(r.Context(), id); err != nil {
+	if _, err := h.Service.GetSubscription(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "订阅不存在")
 		return
 	}
-
 	var req UpdateSubscriptionRequest
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.Name == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
@@ -63,58 +58,14 @@ func (h *SubscriptionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if req.Modules == nil {
 		req.Modules = domain.JSONMap{}
 	}
-
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE subscription_packages SET name = $1, valid_until = $2, modules = $3, status = $4, updated_at = NOW()
-		WHERE id = $5
-	`, req.Name, req.ValidUntil, req.Modules, req.Status, id)
+	sub, err := h.Service.UpdateSubscription(r.Context(), id, &store.SubscriptionUpdateParams{
+		Name: req.Name, ValidUntil: req.ValidUntil, Modules: req.Modules, Status: req.Status,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "更新订阅失败")
 		return
 	}
-
-	sub, _ := h.fetchSubscription(r.Context(), id)
 	respondJSON(w, http.StatusOK, sub)
-}
-
-func (h *SubscriptionHandler) fetchSubscription(ctx context.Context, id string) (domain.SubscriptionPackage, error) {
-	var sub domain.SubscriptionPackage
-	var validUntil *string
-	var modules domain.JSONMap
-
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, tenant_id, name, valid_until, modules, status, created_at, updated_at
-		FROM subscription_packages WHERE id = $1
-	`, id).Scan(
-		&sub.ID, &sub.TenantID, &sub.Name, &validUntil, &modules, &sub.Status, &sub.CreatedAt, &sub.UpdatedAt,
-	)
-	if err != nil {
-		return sub, err
-	}
-	sub.ValidUntil = validUntil
-	sub.Modules = modules
-	return sub, nil
-}
-
-func (h *SubscriptionHandler) fetchSubscriptionByTenant(ctx context.Context, tenantID string) (domain.SubscriptionPackage, error) {
-	var sub domain.SubscriptionPackage
-	var validUntil *string
-	var modules domain.JSONMap
-
-	err := h.DB.QueryRow(ctx, `
-		SELECT id, tenant_id, name, valid_until, modules, status, created_at, updated_at
-		FROM subscription_packages WHERE tenant_id = $1
-		ORDER BY created_at DESC
-		LIMIT 1
-	`, tenantID).Scan(
-		&sub.ID, &sub.TenantID, &sub.Name, &validUntil, &modules, &sub.Status, &sub.CreatedAt, &sub.UpdatedAt,
-	)
-	if err != nil {
-		return sub, err
-	}
-	sub.ValidUntil = validUntil
-	sub.Modules = modules
-	return sub, nil
 }
 
 func (h *SubscriptionHandler) AdminGet(w http.ResponseWriter, r *http.Request) {
@@ -123,8 +74,7 @@ func (h *SubscriptionHandler) AdminGet(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "缺少租户ID")
 		return
 	}
-
-	sub, err := h.fetchSubscriptionByTenant(r.Context(), tenantID)
+	sub, err := h.Service.GetSubscriptionByTenant(r.Context(), tenantID)
 	if err != nil {
 		respondJSON(w, http.StatusOK, domain.SubscriptionPackage{
 			TenantID: tenantID,
@@ -143,7 +93,6 @@ func (h *SubscriptionHandler) AdminUpdate(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusBadRequest, "缺少租户ID")
 		return
 	}
-
 	var req UpdateSubscriptionRequest
 	if !decodeBody(w, r, &req) {
 		return
@@ -157,34 +106,25 @@ func (h *SubscriptionHandler) AdminUpdate(w http.ResponseWriter, r *http.Request
 	}
 
 	ctx := r.Context()
-	existing, err := h.fetchSubscriptionByTenant(ctx, tenantID)
+	existing, err := h.Service.GetSubscriptionByTenant(ctx, tenantID)
 	if err == nil && existing.ID != "" {
-		_, err = h.DB.Exec(ctx, `
-			UPDATE subscription_packages SET name = $1, valid_until = $2, modules = $3, status = $4, updated_at = NOW()
-			WHERE id = $5
-		`, req.Name, req.ValidUntil, req.Modules, req.Status, existing.ID)
+		updated, err := h.Service.UpdateSubscription(ctx, existing.ID, &store.SubscriptionUpdateParams{
+			Name: req.Name, ValidUntil: req.ValidUntil, Modules: req.Modules, Status: req.Status,
+		})
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, "更新订阅失败")
 			return
 		}
-		existing.Name = req.Name
-		existing.ValidUntil = req.ValidUntil
-		existing.Modules = req.Modules
-		existing.Status = req.Status
-		respondJSON(w, http.StatusOK, existing)
+		respondJSON(w, http.StatusOK, updated)
 		return
 	}
 
-	id := uuid.NewString()
-	_, err = h.DB.Exec(ctx, `
-		INSERT INTO subscription_packages (id, tenant_id, name, valid_until, modules, status)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, id, tenantID, req.Name, req.ValidUntil, req.Modules, req.Status)
+	sub, err := h.Service.CreateSubscription(ctx, &store.SubscriptionUpdateParams{
+		TenantID: tenantID, Name: req.Name, ValidUntil: req.ValidUntil, Modules: req.Modules, Status: req.Status,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "创建订阅失败")
 		return
 	}
-
-	sub, _ := h.fetchSubscription(ctx, id)
 	respondJSON(w, http.StatusOK, sub)
 }

@@ -1,21 +1,17 @@
 package handler
 
 import (
-	"context"
-	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type RecommendHandler struct {
-	DB *pgxpool.Pool
+	Service *service.PositionService
 }
 
 type RecommendListResponse struct {
@@ -46,16 +42,15 @@ func (h *RecommendHandler) List(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	majorID := r.URL.Query().Get("majorId")
 	careerPositionID := r.URL.Query().Get("careerPositionId")
-
-	items, total, err := executeListQuery(r.Context(), h.DB, r, store.ListQueryConfig[domain.PositionRecommendation]{
+	cfg := store.ListQueryConfig[domain.PositionRecommendation]{
 		Table:         "position_recommendations pr LEFT JOIN majors m ON m.id = pr.major_id",
 		SelectColumns: "pr.id, pr.major_id, COALESCE(m.name, '') AS major_name, pr.career_position_id, pr.position_type, pr.reason, pr.sort_order, pr.is_enabled, pr.created_by, pr.created_at, pr.updated_at",
 		TenantScoped:  true,
 		TenantColumn:  "pr.tenant_id",
 		OrderBy:       "pr.sort_order ASC, pr.created_at DESC",
+		ScanRows:      store.ScanRecommendRows,
 		ExtraFilter: func(p store.ListParams, qb *store.ListQueryBuilder) {
 			if majorID != "" {
 				qb.AddCondition("pr.major_id = " + qb.NextArg(majorID))
@@ -64,17 +59,17 @@ func (h *RecommendHandler) List(w http.ResponseWriter, r *http.Request) {
 				qb.AddCondition("pr.career_position_id = " + qb.NextArg(careerPositionID))
 			}
 		},
-		ScanRows: h.scanRecommendRows,
-	})
+	}
+	params, ok := listParamsFromRequest(r, true)
+	if !ok {
+		respondError(w, http.StatusForbidden, "缺少租户信息")
+		return
+	}
+	items, total, err := h.Service.ListRecommends(r.Context(), params, cfg)
 	if err != nil {
-		if errors.Is(err, store.ErrMissingTenant) {
-			respondError(w, http.StatusForbidden, "缺少租户信息")
-			return
-		}
 		respondError(w, http.StatusInternalServerError, "查询推荐失败")
 		return
 	}
-
 	respondJSON(w, http.StatusOK, RecommendListResponse{Items: items, Total: total})
 }
 
@@ -84,34 +79,26 @@ func (h *RecommendHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	var req CreateRecommendRequest
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.CareerPositionID == "" || req.PositionType == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-
 	tenantID, ok := requireTenant(w, r)
 	if !ok {
 		return
 	}
-
-	id := uuid.NewString()
-	_, err := h.DB.Exec(r.Context(), `
-		INSERT INTO position_recommendations (
-			id, tenant_id, major_id, career_position_id, position_type, reason, sort_order, is_enabled, created_by
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-	`, id, tenantID, req.MajorID, req.CareerPositionID, req.PositionType, req.Reason, req.SortOrder, req.IsEnabled, claims.UserID)
+	rec, err := h.Service.CreateRecommend(r.Context(), tenantID, &store.RecommendParams{
+		MajorID: req.MajorID, CareerPositionID: req.CareerPositionID, PositionType: req.PositionType,
+		Reason: req.Reason, SortOrder: req.SortOrder, IsEnabled: req.IsEnabled, CreatedBy: claims.UserID,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "创建推荐失败")
 		return
 	}
-
-	rec, _ := h.fetchRecommend(r.Context(), id)
 	respondJSON(w, http.StatusCreated, rec)
 }
 
@@ -120,35 +107,27 @@ func (h *RecommendHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchRecommend(r.Context(), id); err != nil {
+	if _, err := h.Service.GetRecommend(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "推荐不存在")
 		return
 	}
-
 	var req UpdateRecommendRequest
 	if !decodeBody(w, r, &req) {
 		return
 	}
-
 	if req.CareerPositionID == "" || req.PositionType == "" {
 		respondError(w, http.StatusBadRequest, "缺少必填字段")
 		return
 	}
-
-	_, err := h.DB.Exec(r.Context(), `
-		UPDATE position_recommendations SET
-			major_id = $1, career_position_id = $2, position_type = $3, reason = $4,
-			sort_order = $5, is_enabled = $6, updated_at = NOW()
-		WHERE id = $7
-	`, req.MajorID, req.CareerPositionID, req.PositionType, req.Reason, req.SortOrder, req.IsEnabled, id)
+	rec, err := h.Service.UpdateRecommend(r.Context(), id, &store.RecommendParams{
+		MajorID: req.MajorID, CareerPositionID: req.CareerPositionID, PositionType: req.PositionType,
+		Reason: req.Reason, SortOrder: req.SortOrder, IsEnabled: req.IsEnabled,
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "更新推荐失败")
 		return
 	}
-
-	rec, _ := h.fetchRecommend(r.Context(), id)
 	respondJSON(w, http.StatusOK, rec)
 }
 
@@ -157,56 +136,14 @@ func (h *RecommendHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "权限不足")
 		return
 	}
-
 	id := chi.URLParam(r, "id")
-	if _, err := h.fetchRecommend(r.Context(), id); err != nil {
+	if _, err := h.Service.GetRecommend(r.Context(), id); err != nil {
 		respondError(w, http.StatusNotFound, "推荐不存在")
 		return
 	}
-
-	_, err := h.DB.Exec(r.Context(), `DELETE FROM position_recommendations WHERE id = $1`, id)
-	if err != nil {
+	if err := h.Service.DeleteRecommend(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "删除推荐失败")
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"id": id})
-}
-
-func (h *RecommendHandler) fetchRecommend(ctx context.Context, id string) (domain.PositionRecommendation, error) {
-	var rec domain.PositionRecommendation
-	var reason *string
-
-	err := h.DB.QueryRow(ctx, `
-		SELECT pr.id, pr.major_id, COALESCE(m.name, '') AS major_name,
-			pr.career_position_id, pr.position_type, pr.reason, pr.sort_order,
-			pr.is_enabled, pr.created_by, pr.created_at, pr.updated_at
-		FROM position_recommendations pr
-		LEFT JOIN majors m ON m.id = pr.major_id
-		WHERE pr.id = $1
-	`, id).Scan(
-		&rec.ID, &rec.MajorID, &rec.MajorName, &rec.CareerPositionID, &rec.PositionType, &reason, &rec.SortOrder,
-		&rec.IsEnabled, &rec.CreatedBy, &rec.CreatedAt, &rec.UpdatedAt,
-	)
-	if err != nil {
-		return rec, err
-	}
-	rec.Reason = reason
-	return rec, nil
-}
-
-func (h *RecommendHandler) scanRecommendRows(rows pgx.Rows) ([]domain.PositionRecommendation, error) {
-	items := make([]domain.PositionRecommendation, 0)
-	for rows.Next() {
-		var rec domain.PositionRecommendation
-		var reason *string
-		if err := rows.Scan(
-			&rec.ID, &rec.MajorID, &rec.MajorName, &rec.CareerPositionID, &rec.PositionType, &reason, &rec.SortOrder,
-			&rec.IsEnabled, &rec.CreatedBy, &rec.CreatedAt, &rec.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		rec.Reason = reason
-		items = append(items, rec)
-	}
-	return items, nil
 }

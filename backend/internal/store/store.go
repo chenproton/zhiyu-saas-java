@@ -69,6 +69,10 @@ type Store struct {
 	banners         *BannerStore
 	terms           *TermStore
 	batches         *BatchStore
+	workflows       *WorkflowStore
+	subscriptions   *SubscriptionStore
+	resourceCodes   *ResourceCodeStore
+	recommends      *RecommendStore
 }
 
 // New 创建统一 store 入口（连接池模式）。
@@ -123,6 +127,10 @@ func New(db *pgxpool.Pool) *Store {
 		banners:         NewBannerStore(db),
 		terms:           NewTermStore(db),
 		batches:         NewBatchStore(db),
+		workflows:       NewWorkflowStore(db),
+		subscriptions:   NewSubscriptionStore(db),
+		resourceCodes:   NewResourceCodeStore(db),
+		recommends:      NewRecommendStore(db),
 	}
 }
 
@@ -178,6 +186,10 @@ func NewWithTx(tx pgx.Tx) *Store {
 		banners:         NewBannerStore(tx),
 		terms:           NewTermStore(tx),
 		batches:         NewBatchStore(tx),
+		workflows:       NewWorkflowStore(tx),
+		subscriptions:   NewSubscriptionStore(tx),
+		resourceCodes:   NewResourceCodeStore(tx),
+		recommends:      NewRecommendStore(tx),
 	}
 }
 
@@ -424,6 +436,26 @@ func (s *Store) Terms() *TermStore {
 // Batches 返回批次 store。
 func (s *Store) Batches() *BatchStore {
 	return s.batches
+}
+
+// Workflows 返回审批流程 store。
+func (s *Store) Workflows() *WorkflowStore {
+	return s.workflows
+}
+
+// Subscriptions 返回订阅 store。
+func (s *Store) Subscriptions() *SubscriptionStore {
+	return s.subscriptions
+}
+
+// ResourceCodes 返回资源码 store。
+func (s *Store) ResourceCodes() *ResourceCodeStore {
+	return s.resourceCodes
+}
+
+// Recommends 返回推荐位 store。
+func (s *Store) Recommends() *RecommendStore {
+	return s.recommends
 }
 
 // Begin 开启事务，供 service 层 WithTx 使用。

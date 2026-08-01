@@ -170,7 +170,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/industries/{id}", industryHandler.Update)
 			r.Delete("/industries/{id}", industryHandler.Delete)
 
-			resourceCodeHandler := &handler.ResourceCodeHandler{DB: pool}
+			resourceCodeHandler := &handler.ResourceCodeHandler{Service: service.NewPositionService(svc2)}
 			r.Get("/resource-codes", resourceCodeHandler.List)
 			r.Get("/resource-codes/{id}", resourceCodeHandler.Get)
 
@@ -178,7 +178,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Get("/logs/login", logHandler.LoginLogs)
 			r.Get("/logs/operation", logHandler.OperationLogs)
 
-			subscriptionHandler := &handler.SubscriptionHandler{DB: pool}
+			subscriptionHandler := &handler.SubscriptionHandler{Service: service.NewPositionService(svc2)}
 			r.Get("/subscriptions", subscriptionHandler.Get)
 			r.Put("/subscriptions/{id}", subscriptionHandler.Update)
 
@@ -237,7 +237,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Delete("/job/batches/{id}", jobBatchHandler.Delete)
 			r.Post("/job/batches/{id}/status", jobBatchHandler.UpdateStatus)
 
-			recommendHandler := &handler.RecommendHandler{DB: pool}
+			recommendHandler := &handler.RecommendHandler{Service: service.NewPositionService(svc2)}
 			r.Get("/job/recommendations", recommendHandler.List)
 			r.Post("/job/recommendations", recommendHandler.Create)
 			r.Put("/job/recommendations/{id}", recommendHandler.Update)
