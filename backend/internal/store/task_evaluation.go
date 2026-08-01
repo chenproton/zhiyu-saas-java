@@ -1,0 +1,522 @@
+package store
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/zhiyu-saas/backend/internal/domain"
+)
+
+// TaskEvaluationStore 任务测评方式持久化（方法/评估点/评审步骤/rubric 模板）。
+type TaskEvaluationStore struct {
+	q Queryer
+}
+
+// NewTaskEvaluationStore 创建测评 store。
+func NewTaskEvaluationStore(q Queryer) *TaskEvaluationStore {
+	return &TaskEvaluationStore{q: q}
+}
+
+// ListRubricTemplates 查询评分模板列表。
+func (s *TaskEvaluationStore) ListRubricTemplates(ctx context.Context, p ListParams, cfg ListQueryConfig[domain.RubricTemplate]) ([]domain.RubricTemplate, int, error) {
+	return ExecuteListQuery(ctx, s.q, p, cfg, scanRubricTemplates)
+}
+
+// GetRubricTemplate 查询单个评分模板。
+func (s *TaskEvaluationStore) GetRubricTemplate(ctx context.Context, id string) (*domain.RubricTemplate, error) {
+	var t domain.RubricTemplate
+	err := s.q.QueryRow(ctx, `
+		SELECT id, tenant_id, name, mode, types, description, data, is_deleted, created_at, updated_at
+		FROM rubric_templates WHERE id = $1
+	`, id).Scan(&t.ID, &t.TenantID, &t.Name, &t.Mode, &t.Types, &t.Description, &t.Data, &t.IsDeleted, &t.CreatedAt, &t.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
+// CreateRubricTemplate 创建评分模板。
+func (s *TaskEvaluationStore) CreateRubricTemplate(ctx context.Context, tenantID string, p *RubricTemplateParams) (*domain.RubricTemplate, error) {
+	now := time.Now()
+	var id string
+	err := s.q.QueryRow(ctx, `
+		INSERT INTO rubric_templates (tenant_id, name, mode, types, description, data, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id
+	`, tenantID, p.Name, p.Mode, p.Types, p.Description, p.Data, now, now).Scan(&id)
+	if err != nil {
+		return nil, err
+	}
+	return s.GetRubricTemplate(ctx, id)
+}
+
+// UpdateRubricTemplate 更新评分模板。
+func (s *TaskEvaluationStore) UpdateRubricTemplate(ctx context.Context, id string, p *RubricTemplateParams) (*domain.RubricTemplate, error) {
+	now := time.Now()
+	if _, err := s.GetRubricTemplate(ctx, id); err != nil {
+		return nil, err
+	}
+	if _, err := s.q.Exec(ctx, `
+		UPDATE rubric_templates SET name = $1, mode = $2, types = $3, description = $4, data = $5, updated_at = $6
+		WHERE id = $7
+	`, p.Name, p.Mode, p.Types, p.Description, p.Data, now, id); err != nil {
+		return nil, err
+	}
+	return s.GetRubricTemplate(ctx, id)
+}
+
+// DeleteRubricTemplate 软删除评分模板。
+func (s *TaskEvaluationStore) DeleteRubricTemplate(ctx context.Context, id string) error {
+	_, err := s.q.Exec(ctx, `
+		UPDATE rubric_templates SET is_deleted = true, updated_at = NOW()
+		WHERE id = $1
+	`, id)
+	return err
+}
+
+// RubricTemplateParams 评分模板参数。
+type RubricTemplateParams struct {
+	Name        string
+	Mode        string
+	Types       []string
+	Description *string
+	Data        domain.JSONMap
+}
+
+// FetchTaskMethods 查询任务全部测评方式（含评估点/评审步骤）。
+func (s *TaskEvaluationStore) FetchTaskMethods(ctx context.Context, taskID, tenantID string) ([]domain.TaskEvaluationMethod, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config, version, is_enabled
+		FROM task_evaluation_methods
+		WHERE task_id = $1 AND tenant_id = $2
+		ORDER BY method_key
+	`, taskID, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var methods []domain.TaskEvaluationMethod
+	var configIDs []string
+	for rows.Next() {
+		var m domain.TaskEvaluationMethod
+		if err := rows.Scan(&m.ID, &m.TaskID, &m.MethodKey, &m.Weight, &m.EvalObject, &m.ScoreType, &m.EvalSubjects, &m.RubricTemplateID, &m.ResourceConfig, &m.Version, &m.IsEnabled); err != nil {
+			return nil, err
+		}
+		methods = append(methods, m)
+		configIDs = append(configIDs, m.ID)
+	}
+	if len(configIDs) == 0 {
+		return methods, nil
+	}
+
+	evalPointsByConfig := make(map[string][]domain.TaskEvalPoint)
+	reviewStepsByConfig := make(map[string][]domain.TaskReviewStep)
+
+	epRows, err := s.q.Query(ctx, `
+		SELECT id, config_id, name, description, sub_type, types, weight, scoring_method, grade_mapping, knowledge_point_ids, ability_point_ids, sort_order
+		FROM task_eval_points
+		WHERE config_id = ANY($1)
+		ORDER BY sort_order
+	`, configIDs)
+	if err != nil {
+		return methods, nil
+	}
+	defer epRows.Close()
+	for epRows.Next() {
+		var p domain.TaskEvalPoint
+		if err := epRows.Scan(&p.ID, &p.ConfigID, &p.Name, &p.Description, &p.SubType, &p.Types, &p.Weight, &p.ScoringMethod, &p.GradeMapping, &p.KnowledgePointIDs, &p.AbilityPointIDs, &p.SortOrder); err != nil {
+			continue
+		}
+		evalPointsByConfig[p.ConfigID] = append(evalPointsByConfig[p.ConfigID], p)
+	}
+
+	rsRows, err := s.q.Query(ctx, `
+		SELECT id, config_id, label, description, enabled, subject_type, weight, sort_order
+		FROM task_review_steps
+		WHERE config_id = ANY($1)
+		ORDER BY sort_order
+	`, configIDs)
+	if err != nil {
+		return methods, nil
+	}
+	defer rsRows.Close()
+	for rsRows.Next() {
+		var st domain.TaskReviewStep
+		if err := rsRows.Scan(&st.ID, &st.ConfigID, &st.Label, &st.Description, &st.Enabled, &st.SubjectType, &st.Weight, &st.SortOrder); err != nil {
+			continue
+		}
+		reviewStepsByConfig[st.ConfigID] = append(reviewStepsByConfig[st.ConfigID], st)
+	}
+
+	for i := range methods {
+		methods[i].EvalPoints = evalPointsByConfig[methods[i].ID]
+		methods[i].ReviewSteps = reviewStepsByConfig[methods[i].ID]
+	}
+	return methods, nil
+}
+
+// MaxMethodVersion 查询任务当前最大版本（乐观锁）。
+func (s *TaskEvaluationStore) MaxMethodVersion(ctx context.Context, taskID, tenantID string) (int, error) {
+	var v int
+	err := s.q.QueryRow(ctx, `
+		SELECT COALESCE(MAX(version), 0) FROM task_evaluation_methods WHERE task_id = $1 AND tenant_id = $2
+	`, taskID, tenantID).Scan(&v)
+	return v, err
+}
+
+// TaskName 查询任务名称。
+func (s *TaskEvaluationStore) TaskName(ctx context.Context, taskID string) (string, error) {
+	var name string
+	err := s.q.QueryRow(ctx, `SELECT name FROM scenario_tasks WHERE id = $1`, taskID).Scan(&name)
+	return name, err
+}
+
+// SaveTaskMethod 保存单个测评方式（upsert 方法 + 重写评估点/评审步骤）。
+func (s *TaskEvaluationStore) SaveTaskMethod(ctx context.Context, tx Queryer, tenantID, taskID string, newVersion int, m *TaskMethodInput) error {
+	if _, err := tx.Exec(ctx, `
+		UPDATE task_evaluation_methods SET is_enabled = false
+		WHERE task_id = $1 AND tenant_id = $2
+	`, taskID, tenantID); err != nil {
+		return err
+	}
+
+	var configID string
+	err := tx.QueryRow(ctx, `
+		INSERT INTO task_evaluation_methods (tenant_id, task_id, method_key, weight, eval_object, score_type, eval_subjects, rubric_template_id, resource_config, version, is_enabled)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		ON CONFLICT (task_id, method_key) DO UPDATE SET
+			weight = EXCLUDED.weight,
+			eval_object = EXCLUDED.eval_object,
+			score_type = EXCLUDED.score_type,
+			eval_subjects = EXCLUDED.eval_subjects,
+			rubric_template_id = EXCLUDED.rubric_template_id,
+			resource_config = EXCLUDED.resource_config,
+			version = EXCLUDED.version,
+			is_enabled = EXCLUDED.is_enabled
+		RETURNING id
+	`, tenantID, taskID, m.MethodKey, m.Weight, m.EvalObject, m.ScoreType, m.EvalSubjects, m.RubricTemplateID, m.ResourceConfig, newVersion, m.IsEnabled).Scan(&configID)
+	if err != nil {
+		return err
+	}
+
+	if !m.IsEnabled {
+		return nil
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM task_eval_points WHERE config_id = $1`, configID); err != nil {
+		return err
+	}
+	for _, ep := range m.EvalPoints {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO task_eval_points (tenant_id, config_id, name, description, sub_type, types, weight, scoring_method, grade_mapping, knowledge_point_ids, ability_point_ids, sort_order)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		`, tenantID, configID, ep.Name, ep.Description, ep.SubType, ep.Types,
+			ep.Weight, ep.ScoringMethod, ep.GradeMapping,
+			ep.KnowledgePointIDs, ep.AbilityPointIDs, ep.SortOrder); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM task_review_steps WHERE config_id = $1`, configID); err != nil {
+		return err
+	}
+	for _, rs := range m.ReviewSteps {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO task_review_steps (tenant_id, config_id, label, description, enabled, subject_type, weight, sort_order)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		`, tenantID, configID, rs.Label, rs.Description, rs.Enabled, rs.SubjectType, rs.Weight, rs.SortOrder); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// TaskMethodInput 测评方法输入（service 层组装）。
+type TaskMethodInput struct {
+	MethodKey        string
+	Weight           float64
+	EvalObject       string
+	ScoreType        *string
+	EvalSubjects     domain.JSONSlice
+	RubricTemplateID *string
+	ResourceConfig   domain.JSONMap
+	IsEnabled        bool
+	EvalPoints       []TaskEvalPointInput
+	ReviewSteps      []TaskReviewStepInput
+}
+
+// TaskEvalPointInput 评估点输入。
+type TaskEvalPointInput struct {
+	Name              string
+	Description       *string
+	SubType           *string
+	Types             []string
+	Weight            float64
+	ScoringMethod     string
+	GradeMapping      domain.JSONSlice
+	KnowledgePointIDs []string
+	AbilityPointIDs   []string
+	SortOrder         int
+}
+
+// TaskReviewStepInput 评审步骤输入。
+type TaskReviewStepInput struct {
+	Label       string
+	Description *string
+	Enabled     bool
+	SubjectType *string
+	Weight      float64
+	SortOrder   int
+}
+
+// EnsureExamUsageForMethod 确保试卷/题库/随堂测方法存在临时考试与使用记录。
+func (s *TaskEvaluationStore) EnsureExamUsageForMethod(ctx context.Context, tx Queryer, tenantID, taskID, taskName, creatorID, methodKey string, resourceConfig domain.JSONMap) (domain.JSONMap, error) {
+	methodLabels := map[string]string{
+		"paper":         "试卷",
+		"question_bank": "题库",
+		"quiz":          "随堂测",
+	}
+	label := methodLabels[methodKey]
+	if label == "" {
+		label = methodKey
+	}
+
+	examID, _ := resourceConfig["examId"].(string)
+	if methodKey == "paper" {
+		if pid, ok := resourceConfig["paperId"].(string); ok && pid != "" {
+			examID = pid
+		}
+	}
+	usageID, _ := resourceConfig["usageId"].(string)
+
+	if methodKey == "question_bank" || methodKey == "quiz" {
+		questionIDs := getStringSliceFromJSONMap(resourceConfig, "questionIds")
+		if len(questionIDs) == 0 {
+			return resourceConfig, nil
+		}
+		if examID == "" {
+			duration := 90
+			if d, ok := resourceConfig["duration"].(float64); ok && d > 0 {
+				duration = int(d)
+			} else if d, ok := resourceConfig["timeLimit"].(float64); ok && d > 0 {
+				duration = int(d)
+			}
+			name := fmt.Sprintf("%s-%s", taskName, label)
+			id, err := s.createTempExam(ctx, tx, tenantID, name, duration, creatorID)
+			if err != nil {
+				return resourceConfig, err
+			}
+			examID = id
+			resourceConfig["examId"] = examID
+		}
+		if err := s.ensureExamQuestions(ctx, tx, tenantID, examID, questionIDs, resourceConfig); err != nil {
+			return resourceConfig, err
+		}
+	}
+
+	if examID == "" {
+		return resourceConfig, nil
+	}
+	if usageID == "" {
+		id, err := s.createTempExamUsage(ctx, tx, tenantID, examID, taskID, creatorID)
+		if err != nil {
+			return resourceConfig, err
+		}
+		usageID = id
+		resourceConfig["usageId"] = usageID
+	}
+	return resourceConfig, nil
+}
+
+func (s *TaskEvaluationStore) createTempExam(ctx context.Context, tx Queryer, tenantID, name string, duration int, creatorID string) (string, error) {
+	id := uuid.NewString()
+	code, err := GenerateUniqueEntityCode(ctx, tx, "SJ", "exams", tenantID)
+	if err != nil {
+		return "", fmt.Errorf("generate exam code: %w", err)
+	}
+	_, err = tx.Exec(ctx, `
+		INSERT INTO exams (id, tenant_id, code, name, description, status, total_score, duration, cover_image,
+			collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, creator_id, is_temp)
+		VALUES ($1, $2, $3, $4, '', 'draft', 0, $5, NULL, '{}', '{}', NULL, 'v1.0', 'mine', $6, TRUE)
+	`, id, tenantID, code, name, duration, creatorID)
+	if err != nil {
+		return "", fmt.Errorf("create temp exam: %w", err)
+	}
+	return id, nil
+}
+
+func (s *TaskEvaluationStore) ensureExamQuestions(ctx context.Context, tx Queryer, tenantID, examID string, questionIDs []string, resourceConfig domain.JSONMap) error {
+	questionScores := getFloatMapFromJSONMap(resourceConfig, "questionScores")
+
+	rows, err := tx.Query(ctx, `
+		SELECT id, type, content, options, answer, analysis, score
+		FROM questions
+		WHERE id = ANY($1) AND tenant_id = $2
+		ORDER BY array_position($1, id)
+	`, questionIDs, tenantID)
+	if err != nil {
+		return fmt.Errorf("fetch questions: %w", err)
+	}
+	defer rows.Close()
+
+	type q struct {
+		id       string
+		qType    string
+		content  string
+		options  []byte
+		answer   []byte
+		analysis *string
+		score    float64
+	}
+	var questions []q
+	for rows.Next() {
+		var qq q
+		var optionsStr, answerStr *string
+		if err := rows.Scan(&qq.id, &qq.qType, &qq.content, &optionsStr, &answerStr, &qq.analysis, &qq.score); err != nil {
+			continue
+		}
+		if optionsStr != nil {
+			qq.options = []byte(*optionsStr)
+		} else {
+			qq.options = []byte("[]")
+		}
+		if answerStr != nil {
+			qq.answer = []byte(*answerStr)
+		} else {
+			qq.answer = []byte("[]")
+		}
+		questions = append(questions, qq)
+	}
+
+	for i, qq := range questions {
+		score := qq.score
+		if s, ok := questionScores[qq.id]; ok && s > 0 {
+			score = s
+		}
+		var existingID string
+		_ = tx.QueryRow(ctx, `SELECT id FROM exam_questions WHERE exam_id = $1 AND question_id = $2`, examID, qq.id).Scan(&existingID)
+		if existingID != "" {
+			if _, err := tx.Exec(ctx, `
+				UPDATE exam_questions SET type = $1, content = $2, options = $3, answer = $4, analysis = $5, score = $6, sort_order = $7
+				WHERE id = $8
+			`, qq.qType, qq.content, string(qq.options), string(qq.answer), qq.analysis, score, i+1, existingID); err != nil {
+				return fmt.Errorf("update exam question %s: %w", qq.id, err)
+			}
+		} else {
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO exam_questions (id, tenant_id, exam_id, question_id, type, content, options, answer, analysis, score, sort_order)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			`, uuid.NewString(), tenantID, examID, qq.id, qq.qType, qq.content, string(qq.options), string(qq.answer), qq.analysis, score, i+1); err != nil {
+				return fmt.Errorf("insert exam question %s: %w", qq.id, err)
+			}
+		}
+	}
+
+	_, err = tx.Exec(ctx, `
+		UPDATE exams SET total_score = COALESCE((SELECT SUM(score) FROM exam_questions WHERE exam_id = $1), 0), updated_at = NOW()
+		WHERE id = $1
+	`, examID)
+	if err != nil {
+		return fmt.Errorf("recalc exam total: %w", err)
+	}
+	return nil
+}
+
+func (s *TaskEvaluationStore) createTempExamUsage(ctx context.Context, tx Queryer, tenantID, examID, taskID, creatorID string) (string, error) {
+	id := uuid.NewString()
+	var creator any
+	if creatorID != "" {
+		creator = creatorID
+	}
+	_, err := tx.Exec(ctx, `
+		INSERT INTO exam_usages (id, tenant_id, exam_id, name, description, start_time, end_time, duration, target_type, target_ids, status, creator_id)
+		VALUES ($1, $2, $3, $4, NULL, NULL, NULL, NULL, 'task', $5, 'draft', $6)
+	`, id, tenantID, examID, fmt.Sprintf("场景任务-%s", taskID), []string{taskID}, creator)
+	if err != nil {
+		return "", fmt.Errorf("create temp exam usage: %w", err)
+	}
+	return id, nil
+}
+
+func scanRubricTemplates(rows pgx.Rows) ([]domain.RubricTemplate, error) {
+	items := make([]domain.RubricTemplate, 0)
+	for rows.Next() {
+		var t domain.RubricTemplate
+		if err := rows.Scan(&t.ID, &t.TenantID, &t.Name, &t.Mode, &t.Types, &t.Description, &t.Data, &t.IsDeleted, &t.CreatedAt, &t.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, t)
+	}
+	return items, nil
+}
+
+func jsonRawMessageToJSONSlice(raw json.RawMessage) domain.JSONSlice {
+	if len(raw) == 0 || string(raw) == "null" {
+		return domain.JSONSlice{}
+	}
+	var s domain.JSONSlice
+	_ = json.Unmarshal(raw, &s)
+	if s == nil {
+		return domain.JSONSlice{}
+	}
+	return s
+}
+
+func jsonRawMessageToJSONMap(raw json.RawMessage) domain.JSONMap {
+	if len(raw) == 0 || string(raw) == "null" {
+		return domain.JSONMap{}
+	}
+	var m domain.JSONMap
+	_ = json.Unmarshal(raw, &m)
+	if m == nil {
+		return domain.JSONMap{}
+	}
+	return m
+}
+
+func getStringSliceFromJSONMap(m domain.JSONMap, key string) []string {
+	raw, ok := m[key]
+	if !ok || raw == nil {
+		return nil
+	}
+	switch v := raw.(type) {
+	case []string:
+		return v
+	case []any:
+		out := make([]string, 0, len(v))
+		for _, x := range v {
+			if s, ok := x.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	return nil
+}
+
+func getFloatMapFromJSONMap(m domain.JSONMap, key string) map[string]float64 {
+	raw, ok := m[key]
+	if !ok || raw == nil {
+		return nil
+	}
+	switch v := raw.(type) {
+	case map[string]float64:
+		return v
+	case map[string]any:
+		out := make(map[string]float64, len(v))
+		for k, x := range v {
+			if f, ok := x.(float64); ok {
+				out[k] = f
+			}
+		}
+		return out
+	}
+	return nil
+}

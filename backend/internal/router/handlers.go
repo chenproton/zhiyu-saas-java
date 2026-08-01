@@ -169,7 +169,7 @@ func NewHandlers(db *pgxpool.Pool, jwtSecret string, fileHandler *handler.FileHa
 		scenarioHandler:               &handler.ScenarioHandler{Service: service.NewScenarioService(svc), DB: st},
 		scenarioCloneHandler:          &handler.ScenarioCloneHandler{Service: service.NewScenarioService(svc)},
 		scenarioTaskHandler:           &handler.ScenarioTaskHandler{Service: service.NewScenarioService(svc)},
-		taskEvaluationHandler:         &handler.TaskEvaluationHandler{DB: db},
+		taskEvaluationHandler:         &handler.TaskEvaluationHandler{Service: service.NewTaskEvaluationService(svc)},
 		taskResourceHandler:           &handler.TaskResourceHandler{Service: service.NewResourceBindingService(svc)},
 		taskKnowledgeAbilityHandler:   &handler.TaskKnowledgeAbilityHandler{Service: service.NewScenarioConfigService(svc)},
 		scenarioWeightHandler:         &handler.ScenarioWeightHandler{Service: service.NewScenarioConfigService(svc)},

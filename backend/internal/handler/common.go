@@ -416,3 +416,50 @@ func jsonSliceToUUIDSlice(ids domain.JSONSlice) []string {
 	}
 	return out
 }
+
+// jsonRawMessageToJSONSlice 将 json.RawMessage 解析为 JSONSlice。
+func jsonRawMessageToJSONSlice(raw json.RawMessage) domain.JSONSlice {
+	if len(raw) == 0 || string(raw) == "null" {
+		return domain.JSONSlice{}
+	}
+	var s domain.JSONSlice
+	_ = json.Unmarshal(raw, &s)
+	if s == nil {
+		return domain.JSONSlice{}
+	}
+	return s
+}
+
+// jsonRawMessageToJSONMap 将 json.RawMessage 解析为 JSONMap。
+func jsonRawMessageToJSONMap(raw json.RawMessage) domain.JSONMap {
+	if len(raw) == 0 || string(raw) == "null" {
+		return domain.JSONMap{}
+	}
+	var m domain.JSONMap
+	_ = json.Unmarshal(raw, &m)
+	if m == nil {
+		return domain.JSONMap{}
+	}
+	return m
+}
+
+// getStringSliceFromJSONMap 从 JSONMap 提取字符串数组。
+func getStringSliceFromJSONMap(m domain.JSONMap, key string) []string {
+	raw, ok := m[key]
+	if !ok || raw == nil {
+		return nil
+	}
+	switch v := raw.(type) {
+	case []string:
+		return v
+	case []interface{}:
+		out := make([]string, 0, len(v))
+		for _, x := range v {
+			if s, ok := x.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	return nil
+}

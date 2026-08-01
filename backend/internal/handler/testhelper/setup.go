@@ -271,7 +271,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Delete("/scene/tasks/{id}", scenarioTaskHandler.Delete)
 			r.Post("/scene/tasks/reorder", scenarioTaskHandler.Reorder)
 
-			taskEvaluationHandler := &handler.TaskEvaluationHandler{DB: pool}
+			taskEvaluationHandler := &handler.TaskEvaluationHandler{Service: service.NewTaskEvaluationService(svc2)}
 			r.Get("/scene/tasks/{taskId}/evaluation-methods", taskEvaluationHandler.ListMethods)
 			r.Put("/scene/tasks/{taskId}/evaluation-methods", taskEvaluationHandler.SaveMethods)
 			r.Get("/scene/rubric-templates", taskEvaluationHandler.ListTemplates)
