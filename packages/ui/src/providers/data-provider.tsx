@@ -133,6 +133,7 @@ export interface DataContextValue {
   updateQuestionBank: (id: string, data: QuestionBankFormData) => Promise<void>
   deleteQuestionBank: (id: string) => Promise<void>
   updateQuestionBankStatus: (id: string, action: StatusAction) => Promise<void>
+  loadQuestionBanks?: () => Promise<void>
   evaluationLoading?: boolean
 
   // 题目相关
