@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import {
   ChevronLeft, Plus, RotateCcw, Trash2, Target, CheckCircle2, Info,
   Search, FileText, Pencil, Scale,
@@ -20,8 +20,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-import { createTagElement } from "@/lib/dom-utils"
 import { reportError } from "@/lib/error-handling"
+import { MixedTagEditor } from "@/components/shared/mixed-tag-editor"
 import { taskEvaluationApi } from "@/lib/api"
 import type { GradeMapping } from "@/lib/types/lesson"
 
@@ -92,236 +92,6 @@ type RubricScheme = {
   isDeleted?: boolean
 }
 
-function MixedTagEditor({
-  text,
-  knowledgePointIds,
-  abilityPointIds,
-  knowledgePoints,
-  abilityPoints,
-  onChange,
-  onOpenKpDialog,
-  onOpenAbDialog,
-}: {
-  text: string
-  knowledgePointIds: string[]
-  abilityPointIds: string[]
-  knowledgePoints: any[]
-  abilityPoints: any[]
-  onChange: (updates: { name?: string; knowledgePointIds?: string[]; abilityPointIds?: string[] }) => void
-  onOpenKpDialog: () => void
-  onOpenAbDialog: () => void
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-  const isComposing = useRef(false)
-  const onChangeRef = useRef(onChange)
-  const kpIdsRef = useRef(knowledgePointIds)
-  const abIdsRef = useRef(abilityPointIds)
-  const prevTags = useRef({ kp: [] as string[], ab: [] as string[] })
-  const cursorOffsetRef = useRef<number | null>(null)
-
-  useEffect(() => {
-    onChangeRef.current = onChange
-    kpIdsRef.current = knowledgePointIds
-    abIdsRef.current = abilityPointIds
-  }, [onChange, knowledgePointIds, abilityPointIds])
-
-  const updateCursorOffset = () => {
-    const el = ref.current
-    if (!el) return
-    const selection = document.getSelection()
-    if (!selection || !selection.rangeCount) return
-    const range = selection.getRangeAt(0)
-    if (!el.contains(range.startContainer) && range.startContainer !== el) return
-
-    let offset = 0
-    if (range.startContainer.nodeType === Node.TEXT_NODE) {
-      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
-      let node
-      while ((node = walker.nextNode())) {
-        if (node === range.startContainer) {
-          offset += range.startOffset
-          break
-        }
-        offset += node.textContent?.length || 0
-      }
-    } else if (range.startContainer === el) {
-      for (let i = 0; i < range.startOffset && i < el.childNodes.length; i++) {
-        const child = el.childNodes[i]
-        if (child.nodeType === Node.TEXT_NODE) {
-          offset += child.textContent?.length || 0
-        }
-      }
-    }
-    cursorOffsetRef.current = offset
-  }
-
-  const createTagSpan = useCallback((type: 'kp' | 'ab', id: string): HTMLSpanElement | null => {
-    if (type === 'kp') {
-      const kp = knowledgePoints.find(k => k.id === id)
-      if (!kp) return null
-      const name = kp.name.length > 5 ? kp.name.slice(0, 5) : kp.name
-      const span = createTagElement('kp', id, name, () => {
-        onChangeRef.current({ knowledgePointIds: kpIdsRef.current.filter(i => i !== id) })
-      }, {
-        className: 'inline-flex items-center px-1 rounded text-[9px] font-normal bg-blue-50 text-blue-600 border border-blue-200 mx-0.5 align-middle cursor-default h-4',
-        btnClassName: 'ml-0.5 text-blue-400 hover:text-red-500 leading-none text-[9px]',
-      })
-      if (span) span.title = kp.name
-      return span
-    } else {
-      const ab = abilityPoints.find(a => a.id === id)
-      if (!ab) return null
-      const name = ab.name.length > 5 ? ab.name.slice(0, 5) : ab.name
-      const span = createTagElement('ab', id, name, () => {
-        onChangeRef.current({ abilityPointIds: abIdsRef.current.filter(i => i !== id) })
-      }, {
-        className: 'inline-flex items-center px-1 rounded text-[9px] font-normal bg-amber-50 text-amber-600 border border-amber-200 mx-0.5 align-middle cursor-default h-4',
-        btnClassName: 'ml-0.5 text-amber-400 hover:text-red-500 leading-none text-[9px]',
-      })
-      if (span) span.title = ab.name
-      return span
-    }
-  }, [knowledgePoints, abilityPoints])
-
-  useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-    if (text) el.textContent = text
-    else el.innerHTML = ''
-    knowledgePointIds.forEach(kpid => {
-      const span = createTagSpan('kp', kpid)
-      if (span) el.appendChild(span)
-    })
-    abilityPointIds.forEach(abId => {
-      const span = createTagSpan('ab', abId)
-      if (span) el.appendChild(span)
-    })
-    prevTags.current = { kp: [...knowledgePointIds], ab: [...abilityPointIds] }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const kpChanged = JSON.stringify(prevTags.current.kp) !== JSON.stringify(knowledgePointIds)
-    const abChanged = JSON.stringify(prevTags.current.ab) !== JSON.stringify(abilityPointIds)
-    const domText = Array.from(el.childNodes)
-      .filter(n => n.nodeType === Node.TEXT_NODE)
-      .map(n => n.textContent)
-      .join('')
-    const textChanged = domText !== (text || '')
-    if (!kpChanged && !abChanged && !textChanged) return
-
-    if (el !== document.activeElement) {
-      const newKpIds = knowledgePointIds.filter(id => !prevTags.current.kp.includes(id))
-      const newAbIds = abilityPointIds.filter(id => !prevTags.current.ab.includes(id))
-      const existingKpIds = knowledgePointIds.filter(id => prevTags.current.kp.includes(id))
-      const existingAbIds = abilityPointIds.filter(id => prevTags.current.ab.includes(id))
-
-      if ((newKpIds.length > 0 || newAbIds.length > 0) && cursorOffsetRef.current != null) {
-        const offset = cursorOffsetRef.current
-        const before = text?.slice(0, offset) || ''
-        const after = text?.slice(offset) || ''
-        el.textContent = ''
-        if (before) el.appendChild(document.createTextNode(before))
-        newKpIds.forEach(kpid => {
-          const span = createTagSpan('kp', kpid)
-          if (span) el.appendChild(span)
-        })
-        newAbIds.forEach(abId => {
-          const span = createTagSpan('ab', abId)
-          if (span) el.appendChild(span)
-        })
-        if (after) el.appendChild(document.createTextNode(after))
-        existingKpIds.forEach(kpid => {
-          const span = createTagSpan('kp', kpid)
-          if (span) el.appendChild(span)
-        })
-        existingAbIds.forEach(abId => {
-          const span = createTagSpan('ab', abId)
-          if (span) el.appendChild(span)
-        })
-        cursorOffsetRef.current = null
-      } else {
-        if (text) el.textContent = text
-        else el.innerHTML = ''
-        knowledgePointIds.forEach(kpid => {
-          const span = createTagSpan('kp', kpid)
-          if (span) el.appendChild(span)
-        })
-        abilityPointIds.forEach(abId => {
-          const span = createTagSpan('ab', abId)
-          if (span) el.appendChild(span)
-        })
-      }
-    } else if (kpChanged || abChanged) {
-      const existingKp = new Set(Array.from(el.querySelectorAll('[data-type="kp"]')).map(el => (el as HTMLElement).dataset.id))
-      const existingAb = new Set(Array.from(el.querySelectorAll('[data-type="ab"]')).map(el => (el as HTMLElement).dataset.id))
-      knowledgePointIds.forEach(kpid => {
-        if (!existingKp.has(kpid)) {
-          const span = createTagSpan('kp', kpid)
-          if (span) el.appendChild(span)
-        }
-      })
-      abilityPointIds.forEach(abId => {
-        if (!existingAb.has(abId)) {
-          const span = createTagSpan('ab', abId)
-          if (span) el.appendChild(span)
-        }
-      })
-    }
-    prevTags.current = { kp: [...knowledgePointIds], ab: [...abilityPointIds] }
-  }, [knowledgePointIds, abilityPointIds, text, createTagSpan])
-
-  const handleBlur = () => {
-    if (isComposing.current) return
-    const el = ref.current
-    if (!el) return
-    let newText = ''
-    const newKpIds: string[] = []
-    const newAbIds: string[] = []
-    el.childNodes.forEach(node => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        newText += node.textContent || ''
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        const dataset = (node as HTMLElement).dataset
-        if (dataset.tag) {
-          if (dataset.type === 'kp' && dataset.id) newKpIds.push(dataset.id)
-          if (dataset.type === 'ab' && dataset.id) newAbIds.push(dataset.id)
-        }
-      }
-    })
-    onChangeRef.current({ name: newText, knowledgePointIds: newKpIds, abilityPointIds: newAbIds })
-  }
-
-  return (
-    <div className="space-y-1.5">
-      <div className="min-h-[32px] rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-sm">
-        <div
-          ref={ref}
-          contentEditable
-          suppressContentEditableWarning
-          className="w-full outline-none text-sm leading-6 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
-          data-placeholder="输入评价维度"
-          onBlur={handleBlur}
-          onKeyUp={updateCursorOffset}
-          onClick={updateCursorOffset}
-          onCompositionStart={() => { isComposing.current = true }}
-          onCompositionEnd={() => { isComposing.current = false }}
-          onPaste={(e) => {
-            e.preventDefault()
-            const pasted = e.clipboardData.getData('text/plain')
-            document.execCommand('insertText', false, pasted)
-          }}
-        />
-      </div>
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 text-gray-400 hover:text-primary shrink-0" onMouseDown={updateCursorOffset} onClick={onOpenKpDialog}>关联考查知识点</Button>
-        <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 text-gray-400 hover:text-primary shrink-0" onMouseDown={updateCursorOffset} onClick={onOpenAbDialog}>关联考查能力点</Button>
-      </div>
-    </div>
-  )
-}
 
 export interface MethodDialogCtx {
   state: any
@@ -715,6 +485,7 @@ export function MethodDialogContent({
                           onChange={updates => updateEvalPoint(info.field, ep.id, updates)}
                           onOpenKpDialog={() => openRubricKpDialog(ep.id, info.field)}
                           onOpenAbDialog={() => openRubricAbDialog(ep.id, info.field)}
+                          compact
                         />
                       </td>
                       <td className="py-3 px-2">
