@@ -11,11 +11,9 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
-	"github.com/zhiyu-saas/backend/internal/store"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -26,8 +24,8 @@ type AuthHandler struct {
 	stopCh     chan struct{}
 }
 
-func NewAuthHandler(db *pgxpool.Pool, jwtSecret string) *AuthHandler {
-	h := &AuthHandler{Service: service.NewAuthService(service.New(store.New(db))), JWTSecret: jwtSecret, stopCh: make(chan struct{})}
+func NewAuthHandler(svc *service.AuthService, jwtSecret string) *AuthHandler {
+	h := &AuthHandler{Service: svc, JWTSecret: jwtSecret, stopCh: make(chan struct{})}
 	go func() {
 		ticker := time.NewTicker(5 * time.Minute)
 		defer ticker.Stop()

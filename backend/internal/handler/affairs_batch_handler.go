@@ -3,18 +3,18 @@ package handler
 import (
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/zhiyu-saas/backend/internal/store"
 	"github.com/zhiyu-saas/backend/internal/domain"
+	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type AffairsBatchHandler struct {
 	*BatchHandler
 }
 
-func NewAffairsBatchHandler(db *pgxpool.Pool) *AffairsBatchHandler {
+func NewAffairsBatchHandler(svc *service.PositionService) *AffairsBatchHandler {
 	return &AffairsBatchHandler{
-		BatchHandler: NewBatchHandler(db, BatchTableConfig{
+		BatchHandler: NewBatchHandler(svc, BatchTableConfig{
 			TableName:          "affairs_batches ab LEFT JOIN majors m ON m.id = ab.major_id",
 			WriteTableName:     "affairs_batches",
 			SelectColumns:      "ab.id, ab.name, ab.code, ab.org_node_id, ab.major_id, COALESCE(m.name, '') AS major_name, ab.workflow_id, ab.status, ab.program_count, ab.published_count, ab.pending_count, ab.created_at, ab.updated_at",

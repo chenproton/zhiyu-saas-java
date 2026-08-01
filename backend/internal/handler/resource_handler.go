@@ -2,15 +2,11 @@ package handler
 
 import (
 	"net/http"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // ResourceHandler 当前为占位实现，所有方法返回空数据或成功占位响应。
 // TODO: 对接实际的 resource 数据表后实现具体 CRUD 逻辑。
-type ResourceHandler struct {
-	DB *pgxpool.Pool
-}
+type ResourceHandler struct{}
 
 type ResourceListResponse struct {
 	Items []interface{} `json:"items"`

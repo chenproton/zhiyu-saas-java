@@ -5,6 +5,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
@@ -782,4 +783,37 @@ func (s *EvaluationService) PutCertificationWeights(ctx context.Context, tenantI
 		_, err := txStore.Certifications().PutWeights(ctx, txStore.Q(), tenantID, positionID, pointWeights, taskWeights)
 		return err
 	})
+}
+
+// BatchQueryer 暴露批次查询器。
+func (s *EvaluationService) BatchQueryer() store.Queryer { return s.st.Q() }
+
+// BatchTenantOf 查询批次租户。
+func (s *EvaluationService) BatchTenantOf(ctx context.Context, table, id string) (string, error) {
+	return s.st.Batches().TenantOf(ctx, table, id)
+}
+
+// BatchCreate 创建批次。
+func (s *EvaluationService) BatchCreate(ctx context.Context, table string, cols []string, vals []any) error {
+	return s.st.Batches().Create(ctx, table, cols, vals)
+}
+
+// BatchUpdate 更新批次。
+func (s *EvaluationService) BatchUpdate(ctx context.Context, table string, setClauses []string, args []any) error {
+	return s.st.Batches().Update(ctx, table, setClauses, args)
+}
+
+// BatchDelete 删除批次。
+func (s *EvaluationService) BatchDelete(ctx context.Context, table, id string) error {
+	return s.st.Batches().Delete(ctx, table, id)
+}
+
+// BatchUpdateStatus 更新批次状态。
+func (s *EvaluationService) BatchUpdateStatus(ctx context.Context, table, id, status string) error {
+	return s.st.Batches().UpdateStatus(ctx, table, id, status)
+}
+
+// BatchGetByTable 按表查询批次单行。
+func (s *EvaluationService) BatchGetByTable(ctx context.Context, table, selectColumns, id string) (pgx.Row, error) {
+	return s.st.Batches().GetByTable(ctx, s.st.Q(), table, selectColumns, id)
 }

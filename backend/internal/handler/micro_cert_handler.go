@@ -7,15 +7,15 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type MicroCertHandler struct {
-	DB    *pgxpool.Pool
-	Store *store.MicroCertStore
+	Service *service.MicroCertService
+	Store   *store.MicroCertStore
 }
 
 type MicroCertTemplateListResponse struct {
@@ -48,7 +48,7 @@ func (h *MicroCertHandler) ListTemplates(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	items, total, err := executeListQuery[domain.MicroCertTemplate](r.Context(), h.DB, r, store.ListQueryConfig[domain.MicroCertTemplate]{
+	items, total, err := executeListQuery[domain.MicroCertTemplate](r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.MicroCertTemplate]{
 		Table:         "micro_cert_templates",
 		SelectColumns: "id, title, cert_type_id, cert_type_name, content, cover_image, created_at, updated_at",
 		TenantScoped:  true,
@@ -68,7 +68,7 @@ func (h *MicroCertHandler) ListTemplates(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *MicroCertHandler) ListHistory(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.CertIssuanceRecord](r.Context(), h.DB, r, store.ListQueryConfig[domain.CertIssuanceRecord]{
+	items, total, err := executeListQuery[domain.CertIssuanceRecord](r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.CertIssuanceRecord]{
 		Table:         "cert_issuance_records",
 		SelectColumns: "id, template_id, user_id, cert_number, issue_date, expire_date, status, revoked_at, revoke_reason",
 		TenantScoped:  true,

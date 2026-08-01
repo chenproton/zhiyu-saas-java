@@ -6,15 +6,15 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type IndustryHandler struct {
-	DB    *pgxpool.Pool
-	Store *store.IndustriesStore
+	Service *service.IndustryService
+	Store   *store.IndustriesStore
 }
 
 type IndustryListResponse struct {
@@ -43,7 +43,7 @@ func (h *IndustryHandler) List(w http.ResponseWriter, r *http.Request) {
 	parentID := r.URL.Query().Get("parentId")
 	enabledStr := r.URL.Query().Get("enabled")
 
-	items, total, err := executeListQuery[domain.Industry](r.Context(), h.DB, r, store.ListQueryConfig[domain.Industry]{
+	items, total, err := executeListQuery[domain.Industry](r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.Industry]{
 		Table:         "industries",
 		SelectColumns: "id, tenant_id, code, name, parent_id, enabled, sort_order, created_at, updated_at",
 		TenantScoped:  true,

@@ -8,15 +8,15 @@ import (
 	"unicode"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type StaffTitleHandler struct {
-	DB    *pgxpool.Pool
-	Store *store.StaffTitlesStore
+	Service *service.StaffTitleService
+	Store   *store.StaffTitlesStore
 }
 
 type StaffTitleListResponse struct {
@@ -51,7 +51,7 @@ func (h *StaffTitleHandler) List(w http.ResponseWriter, r *http.Request) {
 		ScanRows:      h.Store.ScanRows,
 	}
 
-	items, total, err := executeListQuery(r.Context(), h.DB, r, cfg)
+	items, total, err := executeListQuery(r.Context(), h.Service.Queryer(), r, cfg)
 	if err != nil {
 		if errors.Is(err, store.ErrMissingTenant) {
 			respondError(w, http.StatusForbidden, "缺少租户信息")

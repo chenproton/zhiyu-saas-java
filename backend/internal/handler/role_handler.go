@@ -6,15 +6,15 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type RoleHandler struct {
-	DB    *pgxpool.Pool
-	Store *store.RolesStore
+	Service *service.RoleService
+	Store   *store.RolesStore
 }
 
 type RoleListResponse struct {
@@ -43,7 +43,7 @@ type AssignRoleRequest struct {
 func (h *RoleHandler) List(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
 
-	items, total, err := executeListQuery[domain.Role](r.Context(), h.DB, r, store.ListQueryConfig[domain.Role]{
+	items, total, err := executeListQuery[domain.Role](r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.Role]{
 		Table:         "roles",
 		SelectColumns: "id, tenant_id, code, name, description, permissions, user_count, status, created_at",
 		TenantScoped:  true,

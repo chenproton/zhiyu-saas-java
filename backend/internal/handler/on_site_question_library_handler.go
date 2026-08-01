@@ -6,15 +6,15 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type OnSiteQuestionLibraryHandler struct {
-	DB    *pgxpool.Pool
-	Store *store.OnSiteQuestionLibraryStore
+	Service *service.OnSiteQuestionLibraryService
+	Store   *store.OnSiteQuestionLibraryStore
 }
 
 type OnSiteQuestionLibraryListResponse struct {
@@ -43,7 +43,7 @@ type UpdateOnSiteQuestionLibraryRequest struct {
 }
 
 func (h *OnSiteQuestionLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.OnSiteQuestionLibraryItem](r.Context(), h.DB, r, store.ListQueryConfig[domain.OnSiteQuestionLibraryItem]{
+	items, total, err := executeListQuery[domain.OnSiteQuestionLibraryItem](r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.OnSiteQuestionLibraryItem]{
 		Table:         "on_site_question_library",
 		SelectColumns: "id, tenant_id, question_text, answer, question_type, score, difficulty, knowledge_point_ids, tags, creator_id, created_at, updated_at",
 		TenantScoped:  true,

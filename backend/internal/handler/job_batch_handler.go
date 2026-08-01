@@ -3,18 +3,18 @@ package handler
 import (
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/zhiyu-saas/backend/internal/store"
 	"github.com/zhiyu-saas/backend/internal/domain"
+	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type JobBatchHandler struct {
 	*BatchHandler
 }
 
-func NewJobBatchHandler(db *pgxpool.Pool) *JobBatchHandler {
+func NewJobBatchHandler(svc *service.PositionService) *JobBatchHandler {
 	return &JobBatchHandler{
-		BatchHandler: NewBatchHandler(db, BatchTableConfig{
+		BatchHandler: NewBatchHandler(svc, BatchTableConfig{
 			TableName:          "batches b LEFT JOIN majors m ON m.id = b.major_id",
 			WriteTableName:     "batches",
 			SelectColumns:      "b.id, b.name, b.code, b.org_node_id, b.major_id, COALESCE(m.name, '') AS major_name, b.workflow_id, b.status, b.position_count, b.published_count, b.pending_count, b.created_at, b.updated_at",

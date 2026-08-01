@@ -3,18 +3,18 @@ package handler
 import (
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/zhiyu-saas/backend/internal/store"
 	"github.com/zhiyu-saas/backend/internal/domain"
+	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type EvaluationBatchHandler struct {
 	*BatchHandler
 }
 
-func NewEvaluationBatchHandler(db *pgxpool.Pool) *EvaluationBatchHandler {
+func NewEvaluationBatchHandler(svc *service.EvaluationService) *EvaluationBatchHandler {
 	return &EvaluationBatchHandler{
-		BatchHandler: NewBatchHandler(db, BatchTableConfig{
+		BatchHandler: &BatchHandler{Service: svc, Config: BatchTableConfig{
 			TableName:          "evaluation_batches eb LEFT JOIN majors m ON m.id = eb.major_id",
 			WriteTableName:     "evaluation_batches",
 			SelectColumns:      "eb.id, eb.name, eb.code, eb.org_node_id, eb.major_id, COALESCE(m.name, '') AS major_name, eb.workflow_id, eb.status, eb.created_at, eb.updated_at",
@@ -26,7 +26,7 @@ func NewEvaluationBatchHandler(db *pgxpool.Pool) *EvaluationBatchHandler {
 			TenantFilterColumn: "eb.tenant_id",
 			ScanRow:            store.ScanEvaluationBatchRow,
 			ScanRows:           scanEvaluationBatchRows,
-		}),
+		}},
 	}
 }
 

@@ -74,20 +74,26 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 
 	_ = router.NewHandlers(pool, TestJWTSecret, &handler.FileHandler{UploadDir: ""}, nil)
 
+	st2 := store.New(pool)
+	svc2 := service.New(st2)
+	authSvc := service.NewAuthService(svc2)
+	positionSvc := service.NewPositionService(svc2)
+	evaluationSvc := service.NewEvaluationService(svc2)
+	scenarioSvc := service.NewScenarioService(svc2)
+	lessonContentSvc := service.NewLessonContentService(svc2)
+
 	r := chi.NewRouter()
 	r.Route("/api/v1", func(r chi.Router) {
 		auth := middleware.JWT(TestJWTSecret)
 
-		authHandler := handler.NewAuthHandler(pool, TestJWTSecret)
+		authHandler := handler.NewAuthHandler(authSvc, TestJWTSecret)
 		r.Post("/auth/login", authHandler.Login)
 		r.Post("/auth/portal/login", authHandler.PortalLogin)
 
-		resourceHandler := &handler.ResourceHandler{DB: pool}
+		resourceHandler := &handler.ResourceHandler{}
 		r.Get("/resources", resourceHandler.List)
 		r.Get("/resources/{id}", resourceHandler.Get)
 
-		st2 := store.New(pool)
-		svc2 := service.New(st2)
 		tenantHandler := &handler.TenantHandler{Service: service.NewTenantService(svc2), AdminService: service.NewTenantAdminService(svc2)}
 		r.Get("/admin/tenants", tenantHandler.AdminList)
 		r.Post("/admin/tenants", tenantHandler.AdminCreate)
@@ -106,7 +112,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 
 			r.Get("/auth/me", authHandler.Me)
 
-			statsHandler := &handler.StatsHandler{DB: pool}
+			statsHandler := &handler.StatsHandler{}
 			r.Get("/stats/dashboard", statsHandler.Dashboard)
 			r.Get("/stats/me", statsHandler.MyStats)
 
@@ -132,7 +138,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/organizations/{id}", orgHandler.Update)
 			r.Delete("/organizations/{id}", orgHandler.Delete)
 
-			orgTypeHandler := &handler.OrgTypeHandler{DB: pool, Store: store.NewOrgTypesStore(pool)}
+			orgTypeHandler := &handler.OrgTypeHandler{Service: service.NewOrgTypeService(svc2), Store: store.NewOrgTypesStore(pool)}
 			r.Get("/org-types", orgTypeHandler.List)
 			r.Get("/org-types/{id}", orgTypeHandler.Get)
 			r.Post("/org-types", orgTypeHandler.Create)
@@ -148,7 +154,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/users/{id}/status", userManagementHandler.UpdateStatus)
 			r.Post("/users/batch", userManagementHandler.BatchCreate)
 
-			roleHandler := &handler.RoleHandler{DB: pool, Store: store.NewRolesStore(pool)}
+			roleHandler := &handler.RoleHandler{Service: service.NewRoleService(svc2), Store: store.NewRolesStore(pool)}
 			r.Get("/roles", roleHandler.List)
 			r.Get("/roles/{id}", roleHandler.Get)
 			r.Post("/roles", roleHandler.Create)
@@ -156,33 +162,33 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Delete("/roles/{id}", roleHandler.Delete)
 			r.Post("/roles/{id}/assign", roleHandler.Assign)
 
-			majorHandler := &handler.MajorHandler{DB: pool, Store: store.NewMajorsStore(pool)}
+			majorHandler := &handler.MajorHandler{Service: service.NewMajorService(svc2), Store: store.NewMajorsStore(pool)}
 			r.Get("/majors", majorHandler.List)
 			r.Get("/majors/{id}", majorHandler.Get)
 			r.Post("/majors", majorHandler.Create)
 			r.Put("/majors/{id}", majorHandler.Update)
 			r.Delete("/majors/{id}", majorHandler.Delete)
 
-			industryHandler := &handler.IndustryHandler{DB: pool, Store: store.NewIndustriesStore(pool)}
+			industryHandler := &handler.IndustryHandler{Service: service.NewIndustryService(svc2), Store: store.NewIndustriesStore(pool)}
 			r.Get("/industries", industryHandler.List)
 			r.Get("/industries/{id}", industryHandler.Get)
 			r.Post("/industries", industryHandler.Create)
 			r.Put("/industries/{id}", industryHandler.Update)
 			r.Delete("/industries/{id}", industryHandler.Delete)
 
-			resourceCodeHandler := &handler.ResourceCodeHandler{Service: service.NewPositionService(svc2)}
+			resourceCodeHandler := &handler.ResourceCodeHandler{Service: positionSvc}
 			r.Get("/resource-codes", resourceCodeHandler.List)
 			r.Get("/resource-codes/{id}", resourceCodeHandler.Get)
 
-			logHandler := &handler.LogHandler{DB: pool}
+			logHandler := &handler.LogHandler{Service: service.NewLogService(svc2)}
 			r.Get("/logs/login", logHandler.LoginLogs)
 			r.Get("/logs/operation", logHandler.OperationLogs)
 
-			subscriptionHandler := &handler.SubscriptionHandler{Service: service.NewPositionService(svc2)}
+			subscriptionHandler := &handler.SubscriptionHandler{Service: positionSvc}
 			r.Get("/subscriptions", subscriptionHandler.Get)
 			r.Put("/subscriptions/{id}", subscriptionHandler.Update)
 
-			positionHandler := &handler.PositionHandler{Service: service.NewPositionService(svc2)}
+			positionHandler := &handler.PositionHandler{Service: positionSvc}
 			positionCloneHandler := &handler.PositionCloneHandler{Service: service.NewPositionCloneService(svc2)}
 			r.Get("/job/positions", positionHandler.List)
 			r.Get("/job/positions/{id}", positionHandler.Get)
@@ -196,7 +202,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/job/positions/{id}/archive", positionHandler.Archive)
 			r.Post("/job/positions/{id}/clone", positionCloneHandler.Clone)
 
-			abilityHandler := &handler.AbilityHandler{Service: service.NewPositionService(svc2)}
+			abilityHandler := &handler.AbilityHandler{Service: positionSvc}
 			r.Get("/job/abilities", abilityHandler.List)
 			r.Get("/job/abilities/{id}", abilityHandler.Get)
 			r.Post("/job/abilities", abilityHandler.Create)
@@ -223,13 +229,13 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/job/position-certificates/{id}", positionCertificateHandler.Update)
 			r.Delete("/job/position-certificates/{id}", positionCertificateHandler.Delete)
 
-			abilityDomainHandler := &handler.AbilityDomainHandler{Service: service.NewPositionService(svc2)}
+			abilityDomainHandler := &handler.AbilityDomainHandler{Service: positionSvc}
 			r.Get("/job/ability-domains", abilityDomainHandler.List)
 			r.Post("/job/ability-domains", abilityDomainHandler.Create)
 			r.Put("/job/ability-domains/{id}", abilityDomainHandler.Update)
 			r.Delete("/job/ability-domains/{id}", abilityDomainHandler.Delete)
 
-			jobBatchHandler := handler.NewJobBatchHandler(pool)
+			jobBatchHandler := handler.NewJobBatchHandler(positionSvc)
 			r.Get("/job/batches", jobBatchHandler.List)
 			r.Get("/job/batches/{id}", jobBatchHandler.Get)
 			r.Post("/job/batches", jobBatchHandler.Create)
@@ -237,21 +243,21 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Delete("/job/batches/{id}", jobBatchHandler.Delete)
 			r.Post("/job/batches/{id}/status", jobBatchHandler.UpdateStatus)
 
-			recommendHandler := &handler.RecommendHandler{Service: service.NewPositionService(svc2)}
+			recommendHandler := &handler.RecommendHandler{Service: positionSvc}
 			r.Get("/job/recommendations", recommendHandler.List)
 			r.Post("/job/recommendations", recommendHandler.Create)
 			r.Put("/job/recommendations/{id}", recommendHandler.Update)
 			r.Delete("/job/recommendations/{id}", recommendHandler.Delete)
 
-			learnRoadHandler := &handler.LearnRoadHandler{DB: pool, Store: store.NewLearnRoadsStore(pool)}
+			learnRoadHandler := &handler.LearnRoadHandler{Service: service.NewLearnRoadService(svc2), Store: store.NewLearnRoadsStore(pool)}
 			r.Get("/job/learn-roads", learnRoadHandler.List)
 			r.Get("/job/learn-roads/{id}", learnRoadHandler.Get)
 			r.Post("/job/learn-roads", learnRoadHandler.Create)
 			r.Put("/job/learn-roads/{id}", learnRoadHandler.Update)
 			r.Delete("/job/learn-roads/{id}", learnRoadHandler.Delete)
 
-			scenarioHandler := &handler.ScenarioHandler{Service: service.NewScenarioService(svc2), DB: st2}
-			scenarioCloneHandler := &handler.ScenarioCloneHandler{Service: service.NewScenarioService(svc2)}
+			scenarioHandler := &handler.ScenarioHandler{Service: scenarioSvc, DB: st2}
+			scenarioCloneHandler := &handler.ScenarioCloneHandler{Service: scenarioSvc}
 			r.Get("/scene/scenarios", scenarioHandler.List)
 			r.Get("/scene/scenarios/{id}", scenarioHandler.Get)
 			r.Post("/scene/scenarios", scenarioHandler.Create)
@@ -263,7 +269,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/scene/scenarios/{id}/archive", scenarioHandler.Archive)
 			r.Post("/scene/scenarios/{id}/clone", scenarioCloneHandler.Clone)
 
-			scenarioTaskHandler := &handler.ScenarioTaskHandler{Service: service.NewScenarioService(svc2)}
+			scenarioTaskHandler := &handler.ScenarioTaskHandler{Service: scenarioSvc}
 			r.Get("/scene/tasks", scenarioTaskHandler.List)
 			r.Get("/scene/tasks/{id}", scenarioTaskHandler.Get)
 			r.Post("/scene/tasks", scenarioTaskHandler.Create)
@@ -302,7 +308,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/scene/grade-mappings", scenarioGradeHandler.UpsertGradeMapping)
 			r.Put("/scene/grade-mappings/{id}", scenarioGradeHandler.UpsertGradeMapping)
 
-			courseHandler := &handler.CourseHandler{Service: service.NewLessonContentService(svc2), DB: pool}
+			courseHandler := &handler.CourseHandler{Service: lessonContentSvc}
 			r.Get("/lesson/courses", courseHandler.List)
 			r.Get("/lesson/courses/{id}", courseHandler.Get)
 			r.Post("/lesson/courses", courseHandler.Create)
@@ -311,16 +317,16 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/lesson/courses/{id}/submit", courseHandler.Submit)
 			r.Post("/lesson/courses/{id}/review", courseHandler.Review)
 			r.Post("/lesson/courses/{id}/publish", courseHandler.Publish)
-			r.Post("/lesson/courses/{id}/clone", (&handler.CourseCloneHandler{Service: service.NewLessonContentService(svc2)}).Clone)
+			r.Post("/lesson/courses/{id}/clone", (&handler.CourseCloneHandler{Service: lessonContentSvc}).Clone)
 
-			knowledgePointHandler := &handler.KnowledgePointHandler{Service: service.NewLessonContentService(svc2)}
+			knowledgePointHandler := &handler.KnowledgePointHandler{Service: lessonContentSvc}
 			r.Get("/lesson/knowledge-points", knowledgePointHandler.List)
 			r.Get("/lesson/knowledge-points/{id}", knowledgePointHandler.Get)
 			r.Post("/lesson/knowledge-points", knowledgePointHandler.Create)
 			r.Put("/lesson/knowledge-points/{id}", knowledgePointHandler.Update)
 			r.Delete("/lesson/knowledge-points/{id}", knowledgePointHandler.Delete)
 
-			courseNodeHandler := &handler.CourseNodeHandler{Service: service.NewLessonContentService(svc2)}
+			courseNodeHandler := &handler.CourseNodeHandler{Service: lessonContentSvc}
 			r.Get("/lesson/nodes", courseNodeHandler.List)
 			r.Get("/lesson/nodes/{id}", courseNodeHandler.Get)
 			r.Post("/lesson/nodes", courseNodeHandler.Create)
@@ -328,7 +334,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Delete("/lesson/nodes/{id}", courseNodeHandler.Delete)
 			r.Post("/lesson/nodes/reorder", courseNodeHandler.Reorder)
 
-			nodeQuizHandler := &handler.NodeQuizHandler{Service: service.NewLessonContentService(svc2)}
+			nodeQuizHandler := &handler.NodeQuizHandler{Service: lessonContentSvc}
 			r.Get("/lesson/quizzes", nodeQuizHandler.ListQuizzes)
 			r.Post("/lesson/quizzes", nodeQuizHandler.CreateQuiz)
 			r.Get("/lesson/quizzes/{id}", nodeQuizHandler.ListQuestions)
@@ -338,20 +344,20 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Put("/lesson/quizzes/questions/{questionId}", nodeQuizHandler.UpdateQuestion)
 			r.Delete("/lesson/quizzes/questions/{questionId}", nodeQuizHandler.DeleteQuestion)
 
-			nodeHomeworkHandler := &handler.NodeHomeworkHandler{Service: service.NewLessonContentService(svc2)}
+			nodeHomeworkHandler := &handler.NodeHomeworkHandler{Service: lessonContentSvc}
 			r.Get("/lesson/homeworks", nodeHomeworkHandler.List)
 			r.Get("/lesson/homeworks/{id}", nodeHomeworkHandler.Get)
 			r.Post("/lesson/homeworks", nodeHomeworkHandler.Create)
 			r.Put("/lesson/homeworks/{id}", nodeHomeworkHandler.Update)
 			r.Delete("/lesson/homeworks/{id}", nodeHomeworkHandler.Delete)
 
-			hybridModuleHandler := &handler.HybridModuleHandler{Service: service.NewPositionService(svc2)}
+			hybridModuleHandler := &handler.HybridModuleHandler{Service: positionSvc}
 			r.Get("/lesson/hybrid-modules", hybridModuleHandler.ListModules)
 			r.Post("/lesson/hybrid-modules", hybridModuleHandler.UpsertModule)
 			r.Put("/lesson/hybrid-modules/{id}", hybridModuleHandler.UpsertModule)
 			r.Delete("/lesson/hybrid-modules/{id}", hybridModuleHandler.DeleteModule)
 
-			courseBatchHandler := handler.NewCourseBatchHandler(pool)
+			courseBatchHandler := handler.NewCourseBatchHandler(positionSvc)
 			r.Get("/lesson/batches", courseBatchHandler.List)
 			r.Get("/lesson/batches/{id}", courseBatchHandler.Get)
 			r.Post("/lesson/batches", courseBatchHandler.Create)
@@ -359,14 +365,14 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Delete("/lesson/batches/{id}", courseBatchHandler.Delete)
 			r.Post("/lesson/batches/{id}/status", courseBatchHandler.UpdateStatus)
 
-			questionBankHandler := &handler.QuestionBankHandler{Service: service.NewEvaluationService(svc2)}
+			questionBankHandler := &handler.QuestionBankHandler{Service: evaluationSvc}
 			r.Get("/evaluation/question-banks", questionBankHandler.List)
 			r.Get("/evaluation/question-banks/{id}", questionBankHandler.Get)
 			r.Post("/evaluation/question-banks", questionBankHandler.Create)
 			r.Put("/evaluation/question-banks/{id}", questionBankHandler.Update)
 			r.Delete("/evaluation/question-banks/{id}", questionBankHandler.Delete)
 
-			questionHandler := &handler.QuestionHandler{Service: service.NewEvaluationService(svc2)}
+			questionHandler := &handler.QuestionHandler{Service: evaluationSvc}
 			r.Get("/evaluation/questions", questionHandler.List)
 			r.Get("/evaluation/questions/{id}", questionHandler.Get)
 			r.Post("/evaluation/questions", questionHandler.Create)
@@ -374,7 +380,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Delete("/evaluation/questions/{id}", questionHandler.Delete)
 			r.Post("/evaluation/questions/batch", questionHandler.BatchCreate)
 
-			examHandler := &handler.ExamHandler{Service: service.NewEvaluationService(svc2)}
+			examHandler := &handler.ExamHandler{Service: evaluationSvc}
 			r.Get("/evaluation/exams", examHandler.List)
 			r.Get("/evaluation/exams/{id}", examHandler.Get)
 			r.Post("/evaluation/exams", examHandler.Create)
@@ -383,7 +389,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/evaluation/exams/{id}/questions", examHandler.AddQuestion)
 			r.Delete("/evaluation/exams/{id}/questions/{questionId}", examHandler.RemoveQuestion)
 
-			examUsageHandler := &handler.ExamUsageHandler{Service: service.NewEvaluationService(svc2)}
+			examUsageHandler := &handler.ExamUsageHandler{Service: evaluationSvc}
 			r.Get("/evaluation/exam-usages", examUsageHandler.List)
 			r.Get("/evaluation/exam-usages/{id}", examUsageHandler.Get)
 			r.Post("/evaluation/exam-usages", examUsageHandler.Create)
@@ -392,13 +398,13 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/evaluation/exam-usages/{id}/start", examUsageHandler.Start)
 			r.Post("/evaluation/exam-usages/{id}/finish", examUsageHandler.Finish)
 
-			evaluationResultHandler := &handler.EvaluationResultHandler{Service: service.NewEvaluationService(svc2)}
+			evaluationResultHandler := &handler.EvaluationResultHandler{Service: evaluationSvc}
 			r.Get("/evaluation/results", evaluationResultHandler.List)
 			r.Get("/evaluation/results/{id}", evaluationResultHandler.Get)
 			r.Post("/evaluation/results/{id}/grade", evaluationResultHandler.Grade)
 			r.Post("/evaluation/results/batch-grade", evaluationResultHandler.BatchGrade)
 
-			certificationHandler := &handler.CertificationHandler{Service: service.NewEvaluationService(svc2)}
+			certificationHandler := &handler.CertificationHandler{Service: evaluationSvc}
 			r.Get("/evaluation/certifications", certificationHandler.ListRules)
 			r.Get("/evaluation/certifications/{id}", certificationHandler.GetRule)
 			r.Post("/evaluation/certifications", certificationHandler.CreateRule)
@@ -409,7 +415,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Get("/evaluation/certifications/items/{id}/points", certificationHandler.ConfigPoints)
 			r.Post("/evaluation/certifications/items/{id}/points", certificationHandler.ConfigPoints)
 
-			graduationHandler := &handler.GraduationHandler{Service: service.NewEvaluationService(svc2)}
+			graduationHandler := &handler.GraduationHandler{Service: evaluationSvc}
 			r.Get("/evaluation/graduation/topics", graduationHandler.ListTopics)
 			r.Get("/evaluation/graduation/topics/{id}", graduationHandler.GetTopic)
 			r.Post("/evaluation/graduation/topics", graduationHandler.CreateTopic)
@@ -429,7 +435,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Get("/evaluation/portraits/archives", studentPortraitHandler.ListArchives)
 			r.Post("/evaluation/portraits/archives", studentPortraitHandler.CreateArchive)
 
-			microCertHandler := &handler.MicroCertHandler{DB: pool, Store: store.NewMicroCertStore(pool)}
+			microCertHandler := &handler.MicroCertHandler{Service: service.NewMicroCertService(svc2), Store: store.NewMicroCertStore(pool)}
 			r.Get("/evaluation/certificates/templates", microCertHandler.ListTemplates)
 			r.Post("/evaluation/certificates/templates", microCertHandler.CreateTemplate)
 			r.Get("/evaluation/certificates/templates/{id}", microCertHandler.ListTemplates)
@@ -438,12 +444,12 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/evaluation/certificates/issue", microCertHandler.IssueCerts)
 			r.Get("/evaluation/certificates/history", microCertHandler.ListHistory)
 
-			evaluationMethodHandler := &handler.EvaluationMethodHandler{Service: service.NewEvaluationService(svc2)}
+			evaluationMethodHandler := &handler.EvaluationMethodHandler{Service: evaluationSvc}
 			r.Get("/evaluation/methods/categories", evaluationMethodHandler.ListCategories)
 			r.Get("/evaluation/methods", evaluationMethodHandler.ListMethods)
 			r.Post("/evaluation/methods/{id}/toggle", evaluationMethodHandler.Toggle)
 
-			appealHandler := &handler.AppealHandler{Service: service.NewEvaluationService(svc2)}
+			appealHandler := &handler.AppealHandler{Service: evaluationSvc}
 			r.Get("/evaluation/appeals", appealHandler.List)
 			r.Get("/evaluation/appeals/{id}", appealHandler.Get)
 			r.Post("/evaluation/appeals", appealHandler.Create)

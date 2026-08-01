@@ -5,13 +5,13 @@ import (
 	"net/http"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type LogHandler struct {
-	DB *pgxpool.Pool
+	Service *service.LogService
 }
 
 type LoginLogListResponse struct {
@@ -25,7 +25,7 @@ type OperationLogListResponse struct {
 }
 
 func (h *LogHandler) LoginLogs(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.LoginLog](r.Context(), h.DB, r, store.ListQueryConfig[domain.LoginLog]{
+	items, total, err := executeListQuery[domain.LoginLog](r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.LoginLog]{
 		Table:         "login_logs",
 		SelectColumns: "id, tenant_id, user_id, user_name, ip, location, device, status, created_at",
 		TenantScoped:  true,
@@ -53,7 +53,7 @@ func (h *LogHandler) LoginLogs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *LogHandler) OperationLogs(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.OperationLog](r.Context(), h.DB, r, store.ListQueryConfig[domain.OperationLog]{
+	items, total, err := executeListQuery[domain.OperationLog](r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.OperationLog]{
 		Table:         "operation_logs",
 		SelectColumns: "id, tenant_id, user_id, user_name, module, action, target_type, target_id, detail, ip, status, created_at",
 		TenantScoped:  true,

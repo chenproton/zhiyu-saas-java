@@ -2,13 +2,9 @@ package handler
 
 import (
 	"net/http"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type StatsHandler struct {
-	DB *pgxpool.Pool
-}
+type StatsHandler struct{}
 
 type DashboardStats struct {
 	TotalInstitutions   int     `json:"totalInstitutions"`

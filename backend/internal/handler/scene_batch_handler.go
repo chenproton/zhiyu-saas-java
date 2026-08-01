@@ -3,18 +3,18 @@ package handler
 import (
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/zhiyu-saas/backend/internal/store"
 	"github.com/zhiyu-saas/backend/internal/domain"
+	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type SceneBatchHandler struct {
 	*BatchHandler
 }
 
-func NewSceneBatchHandler(db *pgxpool.Pool) *SceneBatchHandler {
+func NewSceneBatchHandler(svc *service.ScenarioService) *SceneBatchHandler {
 	return &SceneBatchHandler{
-		BatchHandler: NewBatchHandler(db, BatchTableConfig{
+		BatchHandler: &BatchHandler{Service: svc, Config: BatchTableConfig{
 			TableName:          "scene_batches sb LEFT JOIN majors m ON m.id = sb.major_id",
 			WriteTableName:     "scene_batches",
 			SelectColumns:      "sb.id, sb.name, sb.code, sb.org_node_id, sb.major_id, COALESCE(m.name, '') AS major_name, sb.workflow_id, sb.status, sb.scenario_count, sb.created_at, sb.updated_at",
@@ -26,7 +26,7 @@ func NewSceneBatchHandler(db *pgxpool.Pool) *SceneBatchHandler {
 			TenantFilterColumn: "sb.tenant_id",
 			ScanRow:            store.ScanSceneBatchRow,
 			ScanRows:           scanSceneBatchRows,
-		}),
+		}},
 	}
 }
 

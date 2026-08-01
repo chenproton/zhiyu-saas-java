@@ -6,15 +6,15 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type OrgTypeHandler struct {
-	DB    *pgxpool.Pool
-	Store *store.OrgTypesStore
+	Service *service.OrgTypeService
+	Store   *store.OrgTypesStore
 }
 
 type OrgTypeListResponse struct {
@@ -36,7 +36,7 @@ type UpdateOrgTypeRequest struct {
 }
 
 func (h *OrgTypeHandler) List(w http.ResponseWriter, r *http.Request) {
-	items, total, err := executeListQuery[domain.OrgType](r.Context(), h.DB, r, store.ListQueryConfig[domain.OrgType]{
+	items, total, err := executeListQuery[domain.OrgType](r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.OrgType]{
 		Table:         "org_types",
 		SelectColumns: "id, tenant_id, name, category, description, is_default, created_at",
 		TenantScoped:  true,

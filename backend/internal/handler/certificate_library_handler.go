@@ -6,15 +6,15 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type CertificateLibraryHandler struct {
-	DB    *pgxpool.Pool
-	Store *store.CertificateLibraryStore
+	Service *service.CertificateLibraryService
+	Store   *store.CertificateLibraryStore
 }
 
 type CertificateLibraryListResponse struct {
@@ -39,7 +39,7 @@ type UpdateCertificateLibraryRequest struct {
 func (h *CertificateLibraryHandler) List(w http.ResponseWriter, r *http.Request) {
 	creatorID := r.URL.Query().Get("creatorId")
 
-	items, total, err := executeListQuery[domain.CertificateLibraryItem](r.Context(), h.DB, r, store.ListQueryConfig[domain.CertificateLibraryItem]{
+	items, total, err := executeListQuery[domain.CertificateLibraryItem](r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.CertificateLibraryItem]{
 		Table:         "certificate_library",
 		SelectColumns: "id, tenant_id, name, url, description, image_url, creator_id, created_at",
 		TenantScoped:  true,

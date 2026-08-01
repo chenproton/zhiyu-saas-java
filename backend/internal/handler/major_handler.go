@@ -6,15 +6,15 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type MajorHandler struct {
-	DB    *pgxpool.Pool
-	Store *store.MajorsStore
+	Service *service.MajorService
+	Store   *store.MajorsStore
 }
 
 type MajorListResponse struct {
@@ -40,7 +40,7 @@ type UpdateMajorRequest struct {
 func (h *MajorHandler) List(w http.ResponseWriter, r *http.Request) {
 	enabledStr := r.URL.Query().Get("enabled")
 
-	items, total, err := executeListQuery(r.Context(), h.DB, r, store.ListQueryConfig[domain.Major]{
+	items, total, err := executeListQuery(r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.Major]{
 		Table:         "majors",
 		SelectColumns: "id, tenant_id, code, name, alias, enabled, created_at, updated_at",
 		TenantScoped:  true,

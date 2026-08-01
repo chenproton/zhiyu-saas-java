@@ -5,14 +5,14 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 type NodeEvaluationResultHandler struct {
-	DB *pgxpool.Pool
+	Service *service.NodeEvaluationResultService
 }
 
 func (h *NodeEvaluationResultHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -33,7 +33,7 @@ func (h *NodeEvaluationResultHandler) List(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	items, total, err := executeListQuery(r.Context(), h.DB, r, store.ListQueryConfig[domain.NodeEvaluationResult]{
+	items, total, err := executeListQuery(r.Context(), h.Service.Queryer(), r, store.ListQueryConfig[domain.NodeEvaluationResult]{
 		Table: "node_evaluation_results",
 		SelectColumns: "id, node_id, method_key, evaluatee_id, evaluator_id, evaluator_type, status, " +
 			"total_score, max_score, eval_point_scores, objective_answers, subjective_content, drawn_questions, " +

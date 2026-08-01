@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -18,7 +17,6 @@ import (
 
 type CourseHandler struct {
 	Service *service.LessonContentService
-	DB      *pgxpool.Pool
 }
 
 type CourseListResponse struct {

@@ -10,11 +10,21 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
+
+// batchService 是批次类 handler 需要的通用服务接口。
+type batchService interface {
+	BatchQueryer() store.Queryer
+	BatchTenantOf(ctx context.Context, table, id string) (string, error)
+	BatchCreate(ctx context.Context, table string, cols []string, vals []any) error
+	BatchUpdate(ctx context.Context, table string, setClauses []string, args []any) error
+	BatchDelete(ctx context.Context, table, id string) error
+	BatchUpdateStatus(ctx context.Context, table, id, status string) error
+	BatchGetByTable(ctx context.Context, table, selectColumns, id string) (pgx.Row, error)
+}
 
 type BatchCreateRequest struct {
 	Name       string  `json:"name"`
@@ -70,12 +80,12 @@ type BatchTableConfig struct {
 }
 
 type BatchHandler struct {
-	Service *service.PositionService
+	Service batchService
 	Config  BatchTableConfig
 }
 
-func NewBatchHandler(db *pgxpool.Pool, config BatchTableConfig) *BatchHandler {
-	return &BatchHandler{Service: service.NewPositionService(service.New(store.New(db))), Config: config}
+func NewBatchHandler(svc *service.PositionService, config BatchTableConfig) *BatchHandler {
+	return &BatchHandler{Service: svc, Config: config}
 }
 
 func (h *BatchHandler) List(w http.ResponseWriter, r *http.Request) {
