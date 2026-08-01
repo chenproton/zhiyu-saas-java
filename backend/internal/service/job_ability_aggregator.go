@@ -9,19 +9,18 @@ import (
 	"math"
 	"sync"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 // JobAbilityAggregator 按认证规则汇聚学生场景任务评分为岗位能力结果。
 type JobAbilityAggregator struct {
-	DB *pgxpool.Pool
-	mu sync.Mutex
+	store         *store.Store
+	mu            sync.Mutex
 	positionLocks map[string]*sync.Mutex
 }
 
-func NewJobAbilityAggregator(db *pgxpool.Pool) *JobAbilityAggregator {
-	return &JobAbilityAggregator{DB: db, positionLocks: make(map[string]*sync.Mutex)}
+func NewJobAbilityAggregator(st *store.Store) *JobAbilityAggregator {
+	return &JobAbilityAggregator{store: st, positionLocks: make(map[string]*sync.Mutex)}
 }
 
 func (a *JobAbilityAggregator) lockPosition(tenantID, positionID string) *sync.Mutex {
@@ -66,7 +65,7 @@ func (a *JobAbilityAggregator) AggregatePosition(ctx context.Context, tenantID, 
 
 // AggregateAllPublished 遍历所有 published 规则的 tenant+position 组合逐个汇聚。
 func (a *JobAbilityAggregator) AggregateAllPublished(ctx context.Context) error {
-	rows, err := a.DB.Query(ctx, `
+	rows, err := a.store.Q().Query(ctx, `
 		SELECT DISTINCT tenant_id, career_position_id FROM certification_rules
 		WHERE status = 'published' AND tenant_id IS NOT NULL
 	`)
@@ -104,12 +103,7 @@ func (a *JobAbilityAggregator) AggregateAllPublished(ctx context.Context) error 
 
 // CreateLog 写入一条 running 状态的汇聚日志并返回 id。
 func (a *JobAbilityAggregator) CreateLog(ctx context.Context, tenantID, careerPositionID string) (string, error) {
-	var id string
-	err := a.DB.QueryRow(ctx, `
-		INSERT INTO job_ability_aggregate_logs (tenant_id, career_position_id, status)
-		VALUES ($1, $2, 'running') RETURNING id
-	`, tenantID, careerPositionID).Scan(&id)
-	return id, err
+	return a.store.JobAbilityResults().CreateAggregateLog(ctx, tenantID, careerPositionID)
 }
 
 // RunAggregate 执行汇聚并收尾指定日志记录（success/failed + 统计数）。
@@ -124,11 +118,7 @@ func (a *JobAbilityAggregator) RunAggregate(ctx context.Context, logID, tenantID
 		errMsg = &msg
 		slog.Error("岗位能力汇聚失败", "tenantId", tenantID, "careerPositionId", careerPositionID, "error", err)
 	}
-	if _, uerr := a.DB.Exec(ctx, `
-		UPDATE job_ability_aggregate_logs
-		SET status = $1, student_count = $2, updated_count = $3, error_message = $4, finished_at = NOW()
-		WHERE id = $5
-	`, status, studentCount, updatedCount, errMsg, logID); uerr != nil {
+	if uerr := a.store.JobAbilityResults().FinishAggregateLog(ctx, logID, status, studentCount, updatedCount, errMsg); uerr != nil {
 		slog.Error("更新汇聚日志失败", "logId", logID, "error", uerr)
 	}
 	return err
@@ -142,14 +132,6 @@ type portraitDomainScore struct {
 	Level       string  `json:"level"`
 }
 
-// portraitRecommendPosition 画像推荐岗位，字段名对齐前端 recommendPositions 类型。
-type portraitRecommendPosition struct {
-	PositionID   string  `json:"positionId"`
-	PositionName string  `json:"positionName"`
-	MatchRate    float64 `json:"matchRate"`
-	Grade        string  `json:"grade,omitempty"`
-}
-
 // aggregate 为单租户单岗位计算并 upsert 所有学生的岗位能力结果。
 func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPositionID string, userIDs []string) (int, int, error) {
 	// 防止同岗位并发汇聚导致数据竞争
@@ -158,24 +140,12 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 	defer posLock.Unlock()
 
 	// 1. 加载规则 + 组装能力模型（绑定链/任务链全量自动带出，权重缺省均分兜底）
-	// 优先 published，其次任意状态，无规则则使用默认均分权重
-	var ruleID string
-	err := a.DB.QueryRow(ctx, `
-		SELECT id FROM certification_rules
-		WHERE career_position_id = $1 AND tenant_id = $2 AND status = 'published'
-		ORDER BY updated_at DESC LIMIT 1
-	`, careerPositionID, tenantID).Scan(&ruleID)
-	if err == pgx.ErrNoRows {
-		_ = a.DB.QueryRow(ctx, `
-			SELECT id FROM certification_rules
-			WHERE career_position_id = $1 AND tenant_id = $2
-			ORDER BY updated_at DESC LIMIT 1
-		`, careerPositionID, tenantID).Scan(&ruleID)
-	} else if err != nil {
+	ruleID, err := a.store.Certifications().FindRuleIDForPosition(ctx, tenantID, careerPositionID)
+	if err != nil {
 		return 0, 0, err
 	}
 
-	domains, err := LoadCertificationModel(ctx, a.DB, tenantID, careerPositionID, ruleID)
+	domains, err := a.store.Certifications().LoadModel(ctx, tenantID, careerPositionID, ruleID)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -216,31 +186,12 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 			studentSet[id] = true
 		}
 	} else {
-		stRows, err := a.DB.Query(ctx, `
-			SELECT evaluatee_id FROM scene_evaluation_results
-			WHERE tenant_id = $1 AND task_id = ANY($2) AND status = 'evaluated'
-			UNION
-			SELECT evaluatee_id FROM course_evaluation_results
-			WHERE tenant_id = $1 AND course_id = ANY($2) AND status = 'evaluated'
-			UNION
-			SELECT ner.evaluatee_id
-			FROM node_evaluation_results ner
-			JOIN system_course_nodes n ON n.id = ner.node_id
-			WHERE ner.tenant_id = $1 AND n.course_id = ANY($2) AND ner.status = 'evaluated'
-		`, tenantID, taskIDs)
+		ids, err := a.store.JobAbilityResults().ListCandidateStudents(ctx, tenantID, taskIDs)
 		if err != nil {
 			return 0, 0, err
 		}
-		defer stRows.Close()
-		for stRows.Next() {
-			var id string
-			if err := stRows.Scan(&id); err != nil {
-				return 0, 0, err
-			}
+		for _, id := range ids {
 			studentSet[id] = true
-		}
-		if err := stRows.Err(); err != nil {
-			return 0, 0, err
 		}
 	}
 	studentIDs := make([]string, 0, len(studentSet))
@@ -256,67 +207,17 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 		studentID, taskID string
 	}
 	scores := map[studentTaskKey]taskScore{}
-	scoreRows, err := a.DB.Query(ctx, `
-		SELECT evaluatee_id, task_id, MAX(score)
-		FROM (
-			SELECT evaluatee_id, task_id, total_score / NULLIF(max_score, 0) * 100 AS score
-			FROM scene_evaluation_results
-			WHERE tenant_id = $1 AND task_id = ANY($2) AND evaluatee_id = ANY($3) AND total_score IS NOT NULL AND status = 'evaluated'
-			UNION ALL
-			SELECT evaluatee_id, course_id AS task_id, total_score / NULLIF(max_score, 0) * 100 AS score
-			FROM course_evaluation_results
-			WHERE tenant_id = $1 AND course_id = ANY($2) AND evaluatee_id = ANY($3) AND total_score IS NOT NULL AND status = 'evaluated'
-			UNION ALL
-			SELECT ner.evaluatee_id, n.course_id AS task_id, ner.total_score / NULLIF(ner.max_score, 0) * 100 AS score
-			FROM node_evaluation_results ner
-			JOIN system_course_nodes n ON n.id = ner.node_id
-			WHERE ner.tenant_id = $1 AND n.course_id = ANY($2) AND ner.evaluatee_id = ANY($3) AND ner.total_score IS NOT NULL AND ner.status = 'evaluated'
-		) t
-		GROUP BY evaluatee_id, task_id
-	`, tenantID, taskIDs, studentIDs)
+	scoreRows, err := a.store.JobAbilityResults().LoadStudentTaskScores(ctx, tenantID, taskIDs, studentIDs)
 	if err != nil {
 		return 0, 0, err
 	}
-	defer scoreRows.Close()
-	for scoreRows.Next() {
-		var k studentTaskKey
-		var s float64
-		if err := scoreRows.Scan(&k.studentID, &k.taskID, &s); err != nil {
-			return 0, 0, err
-		}
-		scores[k] = taskScore{score: s}
-	}
-	if err := scoreRows.Err(); err != nil {
-		return 0, 0, err
+	for _, row := range scoreRows {
+		scores[studentTaskKey{row.StudentID, row.TaskID}] = taskScore{score: row.Score}
 	}
 
 	// 学生班级/专业信息
-	type userProfile struct {
-		className string
-		majorID   *string
-		majorName string
-	}
-	profiles := map[string]userProfile{}
-	profileRows, err := a.DB.Query(ctx, `
-		SELECT u.id, COALESCE(o.name, ''), u.major_id, COALESCE(m.name, '')
-		FROM users u
-		LEFT JOIN organizations o ON o.id = u.org_node_id
-		LEFT JOIN majors m ON m.id = u.major_id
-		WHERE u.id = ANY($1)
-	`, studentIDs)
+	profiles, err := a.store.Users().ListProfiles(ctx, studentIDs)
 	if err != nil {
-		return 0, 0, err
-	}
-	defer profileRows.Close()
-	for profileRows.Next() {
-		var id string
-		var p userProfile
-		if err := profileRows.Scan(&id, &p.className, &p.majorID, &p.majorName); err != nil {
-			return 0, 0, err
-		}
-		profiles[id] = p
-	}
-	if err := profileRows.Err(); err != nil {
 		return 0, 0, err
 	}
 
@@ -423,121 +324,58 @@ func (a *JobAbilityAggregator) aggregate(ctx context.Context, tenantID, careerPo
 		profile := profiles[studentID]
 		detailsJSON, err := json.Marshal(details)
 		if err != nil {
-			return updated, updated, err
-		}
-
-		_, err = a.DB.Exec(ctx, `
-			INSERT INTO job_ability_results (
-				tenant_id, career_position_id, user_id, class_name, major_id, major_name,
-				total_ability_points, achieved_ability_points, achievement_rate, grade,
-				ability_point_details, evaluated_at
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
-			ON CONFLICT (career_position_id, user_id) DO UPDATE SET
-				tenant_id = EXCLUDED.tenant_id,
-				class_name = EXCLUDED.class_name,
-				major_id = EXCLUDED.major_id,
-				major_name = EXCLUDED.major_name,
-				total_ability_points = EXCLUDED.total_ability_points,
-				achieved_ability_points = EXCLUDED.achieved_ability_points,
-				achievement_rate = EXCLUDED.achievement_rate,
-				grade = EXCLUDED.grade,
-				ability_point_details = EXCLUDED.ability_point_details,
-				grade_history = CASE
-					WHEN job_ability_results.grade IS NOT NULL AND job_ability_results.grade IS DISTINCT FROM EXCLUDED.grade
-					THEN job_ability_results.grade_history || jsonb_build_array(jsonb_build_object(
-						'grade', job_ability_results.grade,
-						'achievementRate', job_ability_results.achievement_rate,
-						'evaluatedAt', job_ability_results.evaluated_at))
-					ELSE job_ability_results.grade_history
-				END,
-				evaluated_at = EXCLUDED.evaluated_at
-		`, tenantID, careerPositionID, studentID, profile.className, profile.majorID, profile.majorName,
-			len(points), achieved, rate, grade, detailsJSON)
-		if err != nil {
-			return updated, updated, err
-		}
-
-		// 推荐岗位：该用户所有岗位汇聚结果按达标率取前 3
-		recommends, err := a.fetchRecommendPositions(ctx, studentID)
-		if err != nil {
 			return len(studentIDs), updated, err
 		}
-		domainScoresJSON, err := json.Marshal(domainScores)
-		if err != nil {
-			return updated, updated, err
-		}
-		recommendsJSON, err := json.Marshal(recommends)
-		if err != nil {
-			return updated, updated, err
-		}
 
-		// 同步学生画像（岗位等级 + 能力域得分 + 推荐岗位；排名在循环后统一刷新）
-		_, err = a.DB.Exec(ctx, `
-			INSERT INTO student_ability_portraits (
-				tenant_id, user_id, career_position_id, overall_grade,
-				domain_scores, recommend_positions, updated_at
-			) VALUES ($1, $2, $3, $4, $5, $6, NOW())
-			ON CONFLICT (user_id, career_position_id) DO UPDATE SET
-				tenant_id = EXCLUDED.tenant_id,
-				overall_grade = EXCLUDED.overall_grade,
-				domain_scores = EXCLUDED.domain_scores,
-				recommend_positions = EXCLUDED.recommend_positions,
-				updated_at = EXCLUDED.updated_at
-		`, tenantID, studentID, careerPositionID, grade, domainScoresJSON, recommendsJSON)
-		if err != nil {
-			return updated, updated, err
+		if err := a.store.WithTx(ctx, func(txStore *store.Store) error {
+			if err := txStore.JobAbilityResults().UpsertResult(ctx, &store.JobAbilityResultUpsertParams{
+				TenantID:              tenantID,
+				CareerPositionID:      careerPositionID,
+				UserID:                studentID,
+				ClassName:             profile.ClassName,
+				MajorID:               profile.MajorID,
+				MajorName:             profile.MajorName,
+				TotalAbilityPoints:    len(points),
+				AchievedAbilityPoints: achieved,
+				AchievementRate:       rate,
+				Grade:                 grade,
+				AbilityPointDetails:   detailsJSON,
+			}); err != nil {
+				return err
+			}
+
+			recommends, err := txStore.StudentPortraits().FetchRecommendPositions(ctx, studentID)
+			if err != nil {
+				return err
+			}
+			domainScoresJSON, err := json.Marshal(domainScores)
+			if err != nil {
+				return err
+			}
+			recommendsJSON, err := json.Marshal(recommends)
+			if err != nil {
+				return err
+			}
+			return txStore.StudentPortraits().UpsertPortrait(ctx, &store.StudentPortraitUpsertParams{
+				TenantID:           tenantID,
+				UserID:             studentID,
+				CareerPositionID:   careerPositionID,
+				OverallGrade:       grade,
+				DomainScores:       domainScoresJSON,
+				RecommendPositions: recommendsJSON,
+			})
+		}); err != nil {
+			return len(studentIDs), updated, err
 		}
 		updated++
 	}
 
 	// 同岗位下按达标率刷新班级/专业排名
-	if _, err := a.DB.Exec(ctx, `
-		WITH ranked AS (
-			SELECT user_id,
-				RANK() OVER (PARTITION BY class_name ORDER BY achievement_rate DESC) AS class_rank,
-				COUNT(*) OVER (PARTITION BY class_name) AS class_total,
-				RANK() OVER (PARTITION BY major_id ORDER BY achievement_rate DESC) AS major_rank,
-				COUNT(*) OVER (PARTITION BY major_id) AS major_total
-			FROM job_ability_results
-			WHERE career_position_id = $1 AND tenant_id = $2
-		)
-		UPDATE student_ability_portraits p
-		SET class_rank = r.class_rank, class_total = r.class_total,
-			major_rank = r.major_rank, major_total = r.major_total,
-			updated_at = NOW()
-		FROM ranked r
-		WHERE p.career_position_id = $1 AND p.user_id = r.user_id AND p.tenant_id = $2
-	`, careerPositionID, tenantID); err != nil {
+	if err := a.store.JobAbilityResults().RefreshRanks(ctx, careerPositionID, tenantID); err != nil {
 		return len(studentIDs), updated, err
 	}
 
 	return len(studentIDs), updated, nil
-}
-
-// fetchRecommendPositions 取该用户所有岗位汇聚结果按达标率排序的前 3 名。
-func (a *JobAbilityAggregator) fetchRecommendPositions(ctx context.Context, userID string) ([]portraitRecommendPosition, error) {
-	rows, err := a.DB.Query(ctx, `
-		SELECT r.career_position_id, COALESCE(cp.name, ''), r.achievement_rate, COALESCE(r.grade, '')
-		FROM job_ability_results r
-		LEFT JOIN career_positions cp ON cp.id = r.career_position_id
-		WHERE r.user_id = $1
-		ORDER BY r.achievement_rate DESC
-		LIMIT 3
-	`, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	items := make([]portraitRecommendPosition, 0)
-	for rows.Next() {
-		var p portraitRecommendPosition
-		if err := rows.Scan(&p.PositionID, &p.PositionName, &p.MatchRate, &p.Grade); err != nil {
-			return nil, err
-		}
-		items = append(items, p)
-	}
-	return items, rows.Err()
 }
 
 // masteryLevels 掌握程度五档（分数→等级固定映射，不再支持自定义等级映射）。

@@ -419,3 +419,27 @@ func parseUUIDs(ids []string) []uuid.UUID {
 	return out
 }
 
+// ListProfiles 批量查询学生班级/专业信息。
+func (s *UserStore) ListProfiles(ctx context.Context, userIDs []string) (map[string]UserProfile, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT u.id, COALESCE(o.name, ''), u.major_id, COALESCE(m.name, '')
+		FROM users u
+		LEFT JOIN organizations o ON o.id = u.org_node_id
+		LEFT JOIN majors m ON m.id = u.major_id
+		WHERE u.id = ANY($1)
+	`, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	profiles := make(map[string]UserProfile)
+	for rows.Next() {
+		var id string
+		var p UserProfile
+		if err := rows.Scan(&id, &p.ClassName, &p.MajorID, &p.MajorName); err != nil {
+			return nil, err
+		}
+		profiles[id] = p
+	}
+	return profiles, rows.Err()
+}

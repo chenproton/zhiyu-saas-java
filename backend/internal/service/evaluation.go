@@ -753,6 +753,11 @@ func (s *EvaluationService) FindPositionRule(ctx context.Context, positionID, te
 	return s.st.Certifications().FindPositionRule(ctx, s.st.Q(), positionID, tenantID)
 }
 
+// LoadCertificationModel 组装岗位能力认定模型。
+func (s *EvaluationService) LoadCertificationModel(ctx context.Context, tenantID, positionID, ruleID string) ([]domain.CertificationModelDomain, error) {
+	return s.st.Certifications().LoadModel(ctx, tenantID, positionID, ruleID)
+}
+
 // PutCertificationWeights 保存岗位权重（事务）。
 func (s *EvaluationService) PutCertificationWeights(ctx context.Context, tenantID, positionID string, pointWeights, taskWeights []store.CertificationWeightItem) error {
 	return s.WithTx(ctx, func(txStore *store.Store) error {

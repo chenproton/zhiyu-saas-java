@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/robfig/cron/v3"
 	"github.com/zhiyu-saas/backend/internal/service"
+	"github.com/zhiyu-saas/backend/internal/store"
 )
 
 // Scheduler 包装 cron 调度器，Stop 时等待正在运行的任务结束。
@@ -18,7 +19,8 @@ type Scheduler struct {
 
 // Start 启动定时任务：每天 02:00 汇聚所有已发布认证规则的岗位能力结果。
 func Start(pool *pgxpool.Pool) *Scheduler {
-	agg := service.NewJobAbilityAggregator(pool)
+	st := store.New(pool)
+	agg := service.NewJobAbilityAggregator(st)
 	c := cron.New()
 	if _, err := c.AddFunc("0 2 * * *", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)

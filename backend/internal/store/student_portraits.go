@@ -195,3 +195,63 @@ func ScanStudentArchiveRows(rows pgx.Rows) ([]domain.StudentAbilityArchive, erro
 }
 
 var _ = errors.Is
+
+// RecommendPosition 画像推荐岗位。
+type RecommendPosition struct {
+	PositionID   string  `json:"positionId"`
+	PositionName string  `json:"positionName"`
+	MatchRate    float64 `json:"matchRate"`
+	Grade        string  `json:"grade,omitempty"`
+}
+
+// StudentPortraitUpsertParams 学生画像 upsert 参数。
+type StudentPortraitUpsertParams struct {
+	TenantID           string
+	UserID             string
+	CareerPositionID   string
+	OverallGrade       string
+	DomainScores       []byte
+	RecommendPositions []byte
+}
+
+// FetchRecommendPositions 取该用户所有岗位汇聚结果按达标率排序的前 3 名。
+func (s *StudentPortraitStore) FetchRecommendPositions(ctx context.Context, userID string) ([]RecommendPosition, error) {
+	rows, err := s.q.Query(ctx, `
+		SELECT r.career_position_id, COALESCE(cp.name, ''), r.achievement_rate, COALESCE(r.grade, '')
+		FROM job_ability_results r
+		LEFT JOIN career_positions cp ON cp.id = r.career_position_id
+		WHERE r.user_id = $1
+		ORDER BY r.achievement_rate DESC
+		LIMIT 3
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]RecommendPosition, 0)
+	for rows.Next() {
+		var p RecommendPosition
+		if err := rows.Scan(&p.PositionID, &p.PositionName, &p.MatchRate, &p.Grade); err != nil {
+			return nil, err
+		}
+		items = append(items, p)
+	}
+	return items, rows.Err()
+}
+
+// UpsertPortrait 插入或更新学生画像。
+func (s *StudentPortraitStore) UpsertPortrait(ctx context.Context, p *StudentPortraitUpsertParams) error {
+	_, err := s.q.Exec(ctx, `
+		INSERT INTO student_ability_portraits (
+			tenant_id, user_id, career_position_id, overall_grade,
+			domain_scores, recommend_positions, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+		ON CONFLICT (user_id, career_position_id) DO UPDATE SET
+			tenant_id = EXCLUDED.tenant_id,
+			overall_grade = EXCLUDED.overall_grade,
+			domain_scores = EXCLUDED.domain_scores,
+			recommend_positions = EXCLUDED.recommend_positions,
+			updated_at = EXCLUDED.updated_at
+	`, p.TenantID, p.UserID, p.CareerPositionID, p.OverallGrade, p.DomainScores, p.RecommendPositions)
+	return err
+}

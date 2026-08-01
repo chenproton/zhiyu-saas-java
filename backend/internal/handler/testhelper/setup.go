@@ -18,8 +18,8 @@ import (
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/handler"
 	"github.com/zhiyu-saas/backend/internal/middleware"
-	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/router"
+	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -422,7 +422,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 			r.Post("/evaluation/graduation/evaluations", graduationHandler.EvaluationsCRUD)
 			r.Get("/evaluation/graduation/query", graduationHandler.QueryResults)
 
-			studentPortraitHandler := handler.NewStudentPortraitHandler(pool)
+			studentPortraitHandler := handler.NewStudentPortraitHandler(st2)
 			r.Get("/evaluation/portraits", studentPortraitHandler.List)
 			r.Get("/evaluation/portraits/{id}", studentPortraitHandler.Get)
 			r.Post("/evaluation/portraits/generate", studentPortraitHandler.Generate)

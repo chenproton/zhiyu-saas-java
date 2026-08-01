@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
@@ -14,13 +13,12 @@ import (
 // CertificationModelHandler 岗位能力认定模型：关联链全链自动带出（只读），用户只配两级权重。
 type CertificationModelHandler struct {
 	Service *service.EvaluationService
-	DB      *pgxpool.Pool // LoadCertificationModel 既有依赖，保持兼容
 }
 
 type certificationModelResponse struct {
-	Rule       *domain.CertificationRule          `json:"rule"`
-	PositionID string                             `json:"positionId"`
-	Domains    []service.CertificationModelDomain `json:"domains"`
+	Rule       *domain.CertificationRule         `json:"rule"`
+	PositionID string                            `json:"positionId"`
+	Domains    []domain.CertificationModelDomain `json:"domains"`
 }
 
 type certificationPointWeight struct {
@@ -56,7 +54,7 @@ func (h *CertificationModelHandler) GetModel(w http.ResponseWriter, r *http.Requ
 		ruleID = rule.ID
 	}
 
-	domains, err := service.LoadCertificationModel(r.Context(), h.DB, tenantID, positionID, ruleID)
+	domains, err := h.Service.LoadCertificationModel(r.Context(), tenantID, positionID, ruleID)
 	if err != nil {
 		respondServerError(w, r, err, "组装岗位能力模型失败")
 		return

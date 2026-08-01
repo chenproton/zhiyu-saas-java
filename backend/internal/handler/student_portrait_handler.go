@@ -8,7 +8,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/service"
 	"github.com/zhiyu-saas/backend/internal/store"
 )
@@ -18,8 +17,9 @@ type StudentPortraitHandler struct {
 	Agg     *service.JobAbilityAggregator
 }
 
-func NewStudentPortraitHandler(db *pgxpool.Pool) *StudentPortraitHandler {
-	return &StudentPortraitHandler{Service: service.NewEvaluationService(service.New(store.New(db))), Agg: service.NewJobAbilityAggregator(db)}
+func NewStudentPortraitHandler(st *store.Store) *StudentPortraitHandler {
+	svc := service.New(st)
+	return &StudentPortraitHandler{Service: service.NewEvaluationService(svc), Agg: service.NewJobAbilityAggregator(st)}
 }
 
 type StudentPortraitListResponse struct {

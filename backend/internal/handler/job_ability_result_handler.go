@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zhiyu-saas/backend/internal/domain"
 	"github.com/zhiyu-saas/backend/internal/middleware"
 	"github.com/zhiyu-saas/backend/internal/service"
@@ -19,8 +18,9 @@ type JobAbilityResultHandler struct {
 	Agg     *service.JobAbilityAggregator
 }
 
-func NewJobAbilityResultHandler(db *pgxpool.Pool) *JobAbilityResultHandler {
-	return &JobAbilityResultHandler{Service: service.NewEvaluationService(service.New(store.New(db))), Agg: service.NewJobAbilityAggregator(db)}
+func NewJobAbilityResultHandler(st *store.Store) *JobAbilityResultHandler {
+	svc := service.New(st)
+	return &JobAbilityResultHandler{Service: service.NewEvaluationService(svc), Agg: service.NewJobAbilityAggregator(st)}
 }
 
 type JobAbilityResultItem struct {
