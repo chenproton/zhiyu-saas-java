@@ -311,7 +311,7 @@ func (s *PositionStore) SaveFull(ctx context.Context, tx Queryer, tenantID, posi
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO position_certificates (id, tenant_id, career_position_id, certificate_library_id)
 			VALUES ($1, $2, $3, $4)
-			ON CONFLICT (career_position_id, certificate_library_id) DO NOTHING
+			ON CONFLICT DO NOTHING
 		`, uuid.NewString(), tenantID, positionID, libID); err != nil {
 			return err
 		}

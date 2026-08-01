@@ -220,7 +220,7 @@ func (s *RecommendStore) Create(ctx context.Context, tenantID string, p *Recomme
 	err := s.q.QueryRow(ctx, `
 		INSERT INTO position_recommendations (
 			id, tenant_id, major_id, career_position_id, position_type, reason, sort_order, is_enabled, created_by
-		) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9)
+		) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id
 	`, tenantID, p.MajorID, p.CareerPositionID, p.PositionType, p.Reason, p.SortOrder, p.IsEnabled, p.CreatedBy).Scan(&id)
 	if err != nil {

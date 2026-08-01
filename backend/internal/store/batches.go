@@ -45,7 +45,11 @@ func (s *BatchStore) GetByTable(ctx context.Context, q Queryer, table, selectCol
 	if _, err := SanitizeIdentifier(selectColumns, allowedBatchSelectColumns); err != nil {
 		return nil, err
 	}
-	alias := table[:strings.IndexByte(table, ' ')]
+	fields := strings.Fields(table)
+	alias := fields[0]
+	if len(fields) > 1 {
+		alias = fields[1]
+	}
 	return q.QueryRow(ctx, "SELECT "+selectColumns+" FROM "+table+" WHERE "+alias+".id = $1", id), nil
 }
 

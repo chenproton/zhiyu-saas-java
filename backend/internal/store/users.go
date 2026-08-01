@@ -90,7 +90,7 @@ func (s *UserStore) Create(ctx context.Context, tx Queryer, p *UserCreateParams)
 		INSERT INTO users (id, tenant_id, institution_id, org_node_id, major_id,
 			role, platform, login_name, username, password_hash, name, email, phone, avatar_url,
 			student_no, work_id, id_card, title_ids, oauth, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 'active')
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, COALESCE($18::uuid[], '{}'::uuid[]), $19, 'active')
 	`, id, p.TenantID, p.InstitutionID, p.OrgNodeID, p.MajorID,
 		role, platform, globalLoginName, rawLoginName, string(hash), p.Name, p.Email, p.Phone, p.AvatarURL,
 		p.StudentNo, p.WorkID, p.IDCard, p.TitleIDs, domain.JSONMap{}); err != nil {
@@ -125,7 +125,7 @@ func (s *UserStore) Update(ctx context.Context, p *UserUpdateParams) error {
 	_, err := s.q.Exec(ctx, `
 		UPDATE users SET institution_id = $1, org_node_id = $2, major_id = $3,
 			role = $4, login_name = $5, username = $6, name = $7, email = $8, phone = $9, avatar_url = $10,
-			student_no = $11, work_id = $12, id_card = $13, title_ids = $14, updated_at = NOW()
+			student_no = $11, work_id = $12, id_card = $13, title_ids = COALESCE($14::uuid[], '{}'::uuid[]), updated_at = NOW()
 		WHERE id = $15
 	`, p.InstitutionID, p.OrgNodeID, p.MajorID,
 		p.Role, p.GlobalLoginName, p.Username, p.Name, p.Email, p.Phone, p.AvatarURL,

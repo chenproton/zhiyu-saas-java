@@ -127,18 +127,18 @@ func (s *CourseStore) SyncKnowledgePointGranularLessons(ctx context.Context, ten
 	}
 	if _, err := s.q.Exec(ctx, `
 		UPDATE knowledge_points
-		SET granular_lesson_ids = array_append(granular_lesson_ids, $1::text),
+		SET granular_lesson_ids = array_append(granular_lesson_ids, $1::uuid),
 		    updated_at = NOW()
-		WHERE tenant_id = $2 AND id = ANY($3::uuid[]) AND NOT ($1::text = ANY(granular_lesson_ids))
+		WHERE tenant_id = $2 AND id = ANY($3::uuid[]) AND NOT ($1::uuid = ANY(granular_lesson_ids))
 	`, courseID, tenantID, kpIDs); err != nil {
 		return fmt.Errorf("add granular lesson refs: %w", err)
 	}
 	if _, err := s.q.Exec(ctx, `
 		UPDATE knowledge_points
-		SET granular_lesson_ids = array_remove(granular_lesson_ids, $1::text),
+		SET granular_lesson_ids = array_remove(granular_lesson_ids, $1::uuid),
 		    updated_at = NOW()
 		WHERE tenant_id = $2 AND ($3::uuid[] IS NULL OR id <> ALL($3::uuid[]))
-		  AND $1::text = ANY(granular_lesson_ids)
+		  AND $1::uuid = ANY(granular_lesson_ids)
 	`, courseID, tenantID, kpIDs); err != nil {
 		return fmt.Errorf("remove granular lesson refs: %w", err)
 	}

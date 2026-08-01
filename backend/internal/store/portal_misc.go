@@ -136,7 +136,7 @@ func (s *AbilityDomainStore) Create(ctx context.Context, tenantID string, p *Abi
 	var id string
 	err := s.q.QueryRow(ctx, `
 		INSERT INTO ability_domains (id, tenant_id, career_position_id, name, description, binding_ids, sort_order)
-		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6)
 		RETURNING id
 	`, tenantID, p.CareerPositionID, p.Name, p.Description, p.BindingIDs, p.SortOrder).Scan(&id)
 	if err != nil {

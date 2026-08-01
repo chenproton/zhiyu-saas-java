@@ -210,11 +210,13 @@ func (h *BatchHandler) Create(w http.ResponseWriter, r *http.Request) {
 	vals = append(vals, h.Config.CreateExtraVals...)
 
 	if err := h.Service.BatchCreate(r.Context(), h.Config.WriteTableName, cols, vals); err != nil {
+		slog.Error("batch create failed", "entity", h.Config.EntityName, "error", err)
 		respondError(w, http.StatusInternalServerError, "创建"+h.Config.EntityName+"失败")
 		return
 	}
 	batch, err2 := h.scanRow(r.Context(), id)
 	if err2 != nil {
+		slog.Error("batch create scan failed", "entity", h.Config.EntityName, "error", err2)
 		respondError(w, http.StatusInternalServerError, "创建"+h.Config.EntityName+"失败")
 		return
 	}
